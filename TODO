@@ -1,0 +1,3 @@
+- Support running in non-vcs-controlled packages?
+- Be a little bit more clever about editing control files; perhaps use python with debian.deb822 rather than sed?
+- Allow addition of new files?
