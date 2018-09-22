@@ -89,15 +89,15 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True):
     return ret
 
 if __name__ == '__main__':
+    import argparse
     import sys
     from breezy.workingtree import WorkingTree
-    if os.name == "posix":
-        import locale
-        locale.setlocale(locale.LC_ALL, '')
-        # Use better default than ascii with posix filesystems that deal in bytes
-        # natively even when the C locale or no locale at all is given. Note that
-        # we need an immortal string for the hack, hence the lack of a hyphen.
-        sys._brz_default_fs_enc = "utf8"
+    import locale
+    locale.setlocale(locale.LC_ALL, '')
+    # Use better default than ascii with posix filesystems that deal in bytes
+    # natively even when the C locale or no locale at all is given. Note that
+    # we need an immortal string for the hack, hence the lack of a hyphen.
+    sys._brz_default_fs_enc = "utf8"
 
     import breezy
     breezy.initialize()
@@ -106,7 +106,11 @@ if __name__ == '__main__':
     import breezy.plugins.launchpad
     import breezy.plugins.debian # for apt: urls
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--no-update-changelog', action="store_false", help="Whether to update the changelog.")
+    args = parser.parse_args()
+
     wt = WorkingTree.open('.')
     fixers = available_lintian_fixers()
     with wt.lock_write():
-        run_lintian_fixers(wt, fixers)
+        run_lintian_fixers(wt, fixers, update_changelog=(not args.no_update_changelog))
