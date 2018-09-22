@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-from breezy.commit import PointlessCommit
 from breezy.trace import note
 
 import os
@@ -55,21 +54,19 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
 
     summary = description.splitlines()[0]
 
+    if not list(local_tree.iter_changes(local_tree.basis_tree())):
+        raise NoChanges("Script didn't make any changes")
+
     if update_changelog:
-        with local_tree.lock_read():
-            if list(local_tree.iter_changes(local_tree.basis_tree())):
-                subprocess.check_call(
-                    ["dch", "--no-auto-nmu", summary],
-                    cwd=local_tree.basedir)
+        subprocess.check_call(
+            ["dch", "--no-auto-nmu", summary],
+            cwd=local_tree.basedir)
 
     description += "\n"
     description += "Fixes lintian: %s\n" % fixer.tag
     description += "See https://lintian.debian.org/tags/%s.html for more details.\n" % fixer.tag
 
-    try:
-        local_tree.commit(description, allow_pointless=False)
-    except PointlessCommit:
-        raise NoChanges("Script didn't make any changes")
+    local_tree.commit(description, allow_pointless=False)
     # TODO(jelmer): Run sbuild & verify lintian warning is gone?
     return summary
 
@@ -107,10 +104,13 @@ if __name__ == '__main__':
     import breezy.plugins.debian # for apt: urls
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--no-update-changelog', action="store_false", help="Whether to update the changelog.")
+    parser.add_argument('--no-update-changelog', action="store_true", help="Whether to update the changelog.")
+    parser.add_argument('fixers', metavar='TAGS', nargs='*', help='Lintian tag for which to apply fixer.')
     args = parser.parse_args()
 
     wt = WorkingTree.open('.')
     fixers = available_lintian_fixers()
+    if args.fixers:
+        fixers = [f for f in fixers if f.tag in args.fixers]
     with wt.lock_write():
         run_lintian_fixers(wt, fixers, update_changelog=(not args.no_update_changelog))
