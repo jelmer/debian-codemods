@@ -8,6 +8,7 @@ perl -p -i -e 's/^Vcs-Browser: git:\/\/github.com/Vcs-Browser: https:\/\/github.
 perl -p -i -e 's/^Vcs-Browser: http:\/\/github.com/Vcs-Browser: https:\/\/github.com/' debian/control
 perl -p -i -e 's/^Vcs-Git: git:\/\/git.launchpad.net/Vcs-Git: https:\/\/git.launchpad.net/' debian/control
 perl -p -i -e 's/^Vcs-Bzr: http:\/\/code.launchpad.net/Vcs-Bzr: https:\/\/code.launchpad.net/' debian/control
+perl -p -i -e 's/^Vcs-Bzr: http:\/\/bazaar.launchpad.net/Vcs-Bzr: https:\/\/code.launchpad.net/' debian/control
 perl -p -i -e 's/^Vcs-Browser: http:\/\/code.launchpad.net/Vcs-Browser: https:\/\/code.launchpad.net/' debian/control
 if grep "Vcs-Bzr: lp:" debian/control >/dev/null; then
   echo
