@@ -25,7 +25,7 @@ def available_lintian_fixers():
     fixer_scripts = {}
     fixers_dir = os.path.join(os.path.dirname(__file__), 'fixers', 'lintian')
     for n in os.listdir(fixers_dir):
-        if n.endswith("~"):
+        if n.endswith("~") or n.startswith("."):
             continue
         tag = os.path.splitext(n)[0]
         path = os.path.join(fixers_dir, n)
