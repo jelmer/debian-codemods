@@ -4,6 +4,7 @@ from breezy.trace import note
 
 import os
 import subprocess
+import sys
 
 
 class NoChanges(Exception):
@@ -23,7 +24,7 @@ class Fixer(object):
 
 def available_lintian_fixers():
     fixer_scripts = {}
-    fixers_dir = os.path.join(os.path.dirname(__file__), 'fixers', 'lintian')
+    fixers_dir = os.path.join(os.path.dirname(__file__), '..', 'fixers', 'lintian')
     for n in os.listdir(fixers_dir):
         if n.endswith("~") or n.startswith("."):
             continue
@@ -46,7 +47,7 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     if list(local_tree.iter_changes(local_tree.basis_tree())):
         raise AssertionError("Local tree %s has changes" % local_tree.basedir)
     note('Running fixer %s on %s', fixer.tag, local_tree.branch.user_url)
-    p = subprocess.Popen(fixer.script_path, cwd=local_tree.basedir, stdout=subprocess.PIPE)
+    p = subprocess.Popen(fixer.script_path, cwd=local_tree.basedir, stdout=subprocess.PIPE, stderr=sys.stderr)
     (description, err) = p.communicate("")
     if p.returncode != 0:
         raise ScriptFailed("Script %s failed with error code %d" % (
