@@ -11,13 +11,14 @@ def update_control(path='debian/control', **kwargs):
 
 
 def update_control_file(inf, outf, source_package_cb=None, binary_package_cb=None):
-    control = Deb822(inf, encoding='utf-8')
-    if source_package_cb:
-        source_package_cb(control)
-    while control:
-        control.dump(fd=outf, encoding='utf-8')
-        control = Deb822(inf, encoding='utf-8')
-        if control:
-            if binary_package_cb:
-                binary_package_cb(control)
-            outf.write('\n')
+    first = True
+    for paragraph in Deb822.iter_paragraphs(inf, encoding='utf-8'):
+        if paragraph.get("Source"):
+            source_package_cb(paragraph)
+        else:
+            binary_package_cb(paragraph)
+        if paragraph:
+            if not first:
+                outf.write('\n')
+            paragraph.dump(fd=outf, encoding='utf-8')
+            first = False
