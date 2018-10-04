@@ -5,7 +5,10 @@ import sys
 def update_control(path='debian/control', **kwargs):
     outf = BytesIO()
     with open(path, 'rb') as f:
-        update_control_file(f, outf, **kwargs)
+        contents = f.read()
+    if "DO NOT EDIT" in contents:
+        raise Exception("control file not editable")
+    update_control_file(BytesIO(contents), outf, **kwargs)
     with open(path, 'wb') as f:
         f.write(outf.getvalue())
 

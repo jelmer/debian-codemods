@@ -50,6 +50,7 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     p = subprocess.Popen(fixer.script_path, cwd=local_tree.basedir, stdout=subprocess.PIPE, stderr=sys.stderr)
     (description, err) = p.communicate("")
     if p.returncode != 0:
+        # TODO(jelmer): Clean tree; revert changes, remove unknowns
         raise ScriptFailed("Script %s failed with error code %d" % (
                 fixer.script_path, p.returncode))
 

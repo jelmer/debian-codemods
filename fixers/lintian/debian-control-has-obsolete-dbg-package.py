@@ -16,7 +16,7 @@ def bump_debhelper(control):
             continue
         if Version(relation[0]['version'][1]) < minimum_version:
             relation[0]['version'] = ('>=', minimum_version)
-    control["Build-Depends"] = PkgRelation.str(build_depends)
+            control["Build-Depends"] = PkgRelation.str(build_depends)
 
 
 dbg_packages = set()
@@ -33,7 +33,7 @@ with open('debian/changelog', 'rb') as f:
     cl = Changelog(f)
 
 if cl.distributions == "UNRELEASED":
-    version = "<< %s~" % cl.version
+    version = "<< %s" % cl.version
 else:
     version = "<= %s" % cl.version
 
@@ -58,4 +58,4 @@ if difference:
 with open('debian/rules', 'wb') as f:
     f.write(outf.getvalue())
 
-print "Remove debug package%s %s." % (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages))
+print "Transition to automatic debug package%s (from: %s)." % (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages))
