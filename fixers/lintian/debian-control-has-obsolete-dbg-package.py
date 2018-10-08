@@ -14,7 +14,7 @@ def bump_debhelper(control):
             raise Exception("Complex rule for debhelper, aborting")
         if names != ['debhelper']:
             continue
-        if Version(relation[0]['version'][1]) < minimum_version:
+        if relation[0]['version'] is None or Version(relation[0]['version'][1]) < minimum_version:
             relation[0]['version'] = ('>=', minimum_version)
             control["Build-Depends"] = PkgRelation.str(build_depends)
 
