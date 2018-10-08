@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from breezy.rename_map import RenameMap
 from breezy.trace import note
 
 import os
@@ -47,7 +48,14 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     if list(local_tree.iter_changes(local_tree.basis_tree())):
         raise AssertionError("Local tree %s has changes" % local_tree.basedir)
     note('Running fixer %s on %s', fixer.tag, local_tree.branch.user_url)
-    p = subprocess.Popen(fixer.script_path, cwd=local_tree.basedir, stdout=subprocess.PIPE, stderr=sys.stderr)
+    p = subprocess.Popen(fixer.script_path, cwd=local_tree.basedir,
+                         stdout=subprocess.PIPE, stderr=sys.stderr)
+    unknowns = list(local_tree.unknowns())
+    if unknowns:
+        # Urgh.
+        local_tree.add([f for f in unknowns if not os.path.basename(f).startswith('sed')])
+    if local_tree.supports_setting_file_ids():
+        RenameMap.guess_renames(local_tree.basis_tree(), local_tree, dry_run=False)
     (description, err) = p.communicate("")
     if p.returncode != 0:
         # TODO(jelmer): Clean tree; revert changes, remove unknowns

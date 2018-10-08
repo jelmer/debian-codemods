@@ -1,6 +1,6 @@
 #!/bin/sh
 if [ ! -d debian/source ]; then
-    brz mkdir debian/source
+    mkdir debian/source
 fi
 if [ -f debian/source/format ]; then
     echo "source format file already exists" >&2
