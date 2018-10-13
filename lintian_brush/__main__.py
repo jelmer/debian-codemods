@@ -42,12 +42,17 @@ from . import (
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--no-update-changelog', action="store_true", help="Whether to update the changelog.")
+parser.add_argument('list', action="store_true", help="List available fixers.")
 parser.add_argument('fixers', metavar='TAGS', nargs='*', help='Lintian tag for which to apply fixer.')
 args = parser.parse_args()
 
 wt = WorkingTree.open('.')
 fixers = available_lintian_fixers()
-if args.fixers:
-    fixers = [f for f in fixers if f.tag in args.fixers]
-with wt.lock_write():
-    run_lintian_fixers(wt, fixers, update_changelog=(not args.no_update_changelog))
+if args.list:
+    for fixer in sorted([fixer.tag for fixer in fixers]):
+        print(fixer)
+else:
+    if args.fixers:
+        fixers = [f for f in fixers if f.tag in args.fixers]
+    with wt.lock_write():
+        run_lintian_fixers(wt, fixers, update_changelog=(not args.no_update_changelog))
