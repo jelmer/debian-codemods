@@ -7,9 +7,9 @@ with the internals of lintian-brush. Ideally, a script written in any language
 that modifies the package.
 
 Maintainers should of course review the changes made by the tool, but they should
-be able to rely on the tool. If the tool isn't sure about a change (i.e. it may
-break the package) then it should err on the side of caution and not make the
-change.
+be able to rely on the tool making the right modifications. If the tool isn't sure
+about a change (i.e. it may break the package) then it should err on the side
+of caution and not make the change.
 
 (Perhaps at some point in the future we could add a flag with the minimum
 certainty of fixers to run?)

@@ -3,3 +3,5 @@
 - Support running in non-vcs-controlled packages?
 - Be a little bit more clever about editing control files; perhaps use python with debian.deb822 rather than sed?
 - Preserve whitespace formatting when changing control fields; needs debian.deb822 hackery
+- Support different certainty fixers
+- Improve changelog descriptions
