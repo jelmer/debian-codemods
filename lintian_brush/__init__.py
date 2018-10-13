@@ -15,6 +15,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Automatically fix lintian issues."""
+
+__version__ = (0, 1)
+version_string = '.'.join(map(str, __version__))
+
 from breezy.rename_map import RenameMap
 from breezy.trace import note
 

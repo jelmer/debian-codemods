@@ -15,26 +15,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import glob
 from setuptools import setup
 
 setup(
-        name="lintian-brush",
-        author="Jelmer Vernooij",
-        author_email="jelmer@debian.org",
-        packages=["lintian_brush"],
-        url="https://salsa.debian.org/jelmer/lintian-brush",
-        description="Automatic lintian issue fixer",
-        project_urls={
-            "Repository": "https://salsa.debian.org/jelmer/lintian-brush",
-        },
-        requires=['breezy', 'debian'],
-        entry_points = {
-            'console_scripts': ['lintian-brush=lintian_brush.__main__']
-        },
-        package_dir={
-            'lintian_brush': 'lintian_brush',
-        },
-        package_data={
-            'lintian_brush': ['../fixers/lintian/*'],
-        },
+    name="lintian-brush",
+    version="0.1",
+    author="Jelmer Vernooij",
+    author_email="jelmer@debian.org",
+    packages=["lintian_brush"],
+    url="https://salsa.debian.org/jelmer/lintian-brush",
+    description="Automatic lintian issue fixer",
+    project_urls={
+        "Repository": "https://salsa.debian.org/jelmer/lintian-brush",
+    },
+    requires=['breezy', 'debian'],
+    entry_points = {
+        'console_scripts': ['lintian-brush=lintian_brush.__main__']
+    },
+    data_files = [('share/lintian-brush/fixers/lintian', glob.glob('fixers/lintian/*'))],
 )

@@ -38,9 +38,10 @@ from breezy.trace import note
 from . import (
     available_lintian_fixers,
     run_lintian_fixers,
+    version_string,
     )
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(version=version_string)
 parser.add_argument('--no-update-changelog', action="store_true", help="Whether to update the changelog.")
 parser.add_argument('list', action="store_true", help="List available fixers.")
 parser.add_argument('fixers', metavar='TAGS', nargs='*', help='Lintian tag for which to apply fixer.')
