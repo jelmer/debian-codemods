@@ -1,0 +1,26 @@
+.TH LINTIAN-BRUSH "1" "October 2018" "lintian-brush 0.1" "User Commands"
+.SH NAME
+lintian-brush \- automatically fix lintian issues
+.SH SYNOPSIS
+lintian\-brush [\-h] [\-\-no\-update\-changelog] [\-\-version] [\-\-list] [TAGS [TAGS ...]]
+.SH DESCRIPTION
+lintian-brush automatically fixes a set of common lintian issues, adds the relevant changelog entries
+and commits the changes to the local version control system.
+.IP
+.SS "positional arguments:"
+.TP
+TAGS
+Lintian tag for which to apply fixer.
+.SS "optional arguments:"
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+show this help message and exit
+.TP
+\fB\-\-no\-update\-changelog\fR
+Whether to update the changelog.
+.TP
+\fB\-\-version\fR
+show program's version number and exit
+.TP
+\fB\-\-list\fR
+List available fixers.
