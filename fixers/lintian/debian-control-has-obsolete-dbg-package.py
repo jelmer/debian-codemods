@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from io import BytesIO
 from lintian_brush.control import update_control
 from debian.deb822 import PkgRelation
@@ -58,4 +58,4 @@ if difference:
 with open('debian/rules', 'wb') as f:
     f.write(outf.getvalue())
 
-print "Transition to automatic debug package%s (from: %s)." % (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages))
+print("Transition to automatic debug package%s (from: %s)." % (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages)))
