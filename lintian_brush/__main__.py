@@ -41,9 +41,10 @@ from . import (
     version_string,
     )
 
-parser = argparse.ArgumentParser(version=version_string)
+parser = argparse.ArgumentParser(prog='lintian-brush')
 parser.add_argument('--no-update-changelog', action="store_true", help="Whether to update the changelog.")
-parser.add_argument('list', action="store_true", help="List available fixers.")
+parser.add_argument('--version', action='version', version='%(prog)s ' + version_string)
+parser.add_argument('--list', action="store_true", help="List available fixers.")
 parser.add_argument('fixers', metavar='TAGS', nargs='*', help='Lintian tag for which to apply fixer.')
 args = parser.parse_args()
 
