@@ -43,9 +43,18 @@ class Fixer(object):
         self.script_path = script_path
 
 
+def find_fixers_dir():
+    local_dir = os.path.join(os.path.dirname(__file__), '..', 'fixers', 'lintian')
+    if os.path.isdir(local_dir):
+        return local_dir
+    import pkg_resources
+
+    return pkg_resources.resource_filename(__name__, 'lintian-brush/fixers/lintian')
+
+
 def available_lintian_fixers():
     fixer_scripts = {}
-    fixers_dir = os.path.join(os.path.dirname(__file__), '..', 'fixers', 'lintian')
+    fixers_dir = find_fixers_dir()
     for n in os.listdir(fixers_dir):
         if n.endswith("~") or n.startswith("."):
             continue
