@@ -48,8 +48,11 @@ def find_fixers_dir():
     if os.path.isdir(local_dir):
         return local_dir
     import pkg_resources
-
-    return pkg_resources.resource_filename(__name__, 'lintian-brush/fixers/lintian')
+    resource_dir = pkg_resources.resource_filename(__name__, 'lintian-brush/fixers/lintian')
+    if os.path.isdir(resource_dir):
+        return resource_dir
+    # Urgh.
+    return '/usr/share/lintian-brush/fixers/lintian'
 
 
 def available_lintian_fixers():
