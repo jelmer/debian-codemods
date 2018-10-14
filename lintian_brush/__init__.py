@@ -20,8 +20,10 @@
 __version__ = (0, 1)
 version_string = '.'.join(map(str, __version__))
 
+from breezy.clean_tree import clean_tree
 from breezy.rename_map import RenameMap
 from breezy.trace import note
+from breezy.transform import revert
 
 import os
 import subprocess
@@ -102,6 +104,8 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
         RenameMap.guess_renames(local_tree.basis_tree(), local_tree, dry_run=False)
     (description, err) = p.communicate("")
     if p.returncode != 0:
+        revert(local_tree, local_tree.branch.basis_tree(), None)
+        clean_tree(local_tree.basedir, unknown=True, ignored=False, detritus=False, no_prompt=True)
         # TODO(jelmer): Clean tree; revert changes, remove unknowns
         raise ScriptFailed("Script %s failed with error code %d" % (
                 fixer.script_path, p.returncode))
