@@ -40,6 +40,9 @@ else:
 outf = BytesIO()
 with open('debian/rules', 'rb') as f:
     for l in f:
+        if l.strip() == b"include /usr/share/cdbs/1/rules/debhelper.mk":
+            # Ah, cdbs.
+            raise Exception("package uses cdbs")
         if l.startswith(b'\tdh_strip '):
             for dbg_pkg in dbg_packages:
                 if ('--dbg-package=%s' % dbg_pkg).encode('utf-8') in l:
