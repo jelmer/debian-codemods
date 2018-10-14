@@ -37,6 +37,11 @@ class ScriptFailed(Exception):
 
 
 class Fixer(object):
+    """A Fixer script.
+
+    The `tag` attribute contains the name of the lintian tag this fixer
+    addresses.
+    """
 
     def __init__(self, tag, script_path):
         self.tag = tag
@@ -44,6 +49,7 @@ class Fixer(object):
 
 
 def find_fixers_dir():
+    """Find the local directory with lintian fixer scripts."""
     local_dir = os.path.join(os.path.dirname(__file__), '..', 'fixers', 'lintian')
     if os.path.isdir(local_dir):
         return local_dir
@@ -56,6 +62,10 @@ def find_fixers_dir():
 
 
 def available_lintian_fixers():
+    """Return a list of available lintian fixers.
+
+    Returns: Iterator over Fixer objects
+    """
     fixer_scripts = {}
     fixers_dir = find_fixers_dir()
     for n in os.listdir(fixers_dir):
@@ -114,6 +124,15 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
 
 
 def run_lintian_fixers(local_tree, fixers, update_changelog=True):
+    """Run a set of lintian fixers on a tree.
+
+    Args:
+      local_tree: WorkingTree object
+      fixers: A set of Fixer objects
+      update_changelog: Whether to add an entry to the changelog
+    Returns:
+      List of tuples with (lintian-tag, description)
+    """
     ret = []
     for fixer in fixers:
         try:
@@ -126,4 +145,3 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True):
         else:
             ret.append((fixer.tag, description))
     return ret
-

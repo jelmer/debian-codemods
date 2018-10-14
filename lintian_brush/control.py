@@ -15,11 +15,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Utility functions for dealing with control files."""
+
 from io import BytesIO
 from debian.deb822 import Deb822
 import sys
 
+
 def update_control(path='debian/control', **kwargs):
+    """Update a control file.
+
+    The callbacks can modify the paragraphs in place, and can trigger their removal
+    by clearing the paragraph.
+
+    Args:
+      path: Path to the debian/control file to edit
+      source_package_cb: Called on source package paragraph
+      binary_package_cb: Called on each binary package paragraph
+    """
     outf = BytesIO()
     with open(path, 'rb') as f:
         contents = f.read()
@@ -31,6 +44,17 @@ def update_control(path='debian/control', **kwargs):
 
 
 def update_control_file(inf, outf, source_package_cb=None, binary_package_cb=None):
+    """Update a control file.
+
+    The callbacks can modify the paragraphs in place, and can trigger their removal
+    by clearing the paragraph.
+
+    Args:
+      inf: File-like object to read control file from
+      outf: File-like object to write control file to
+      source_package_cb: Called on source package paragraph (optional)
+      binary_package_cb: Called on each binary package paragraph (optional)
+    """
     first = True
     for paragraph in Deb822.iter_paragraphs(inf, encoding='utf-8'):
         if paragraph.get("Source"):
