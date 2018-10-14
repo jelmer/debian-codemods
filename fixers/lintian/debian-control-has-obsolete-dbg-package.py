@@ -40,10 +40,12 @@ else:
 outf = BytesIO()
 with open('debian/rules', 'rb') as f:
     for l in f:
-        if l.startswith('\tdh_strip '):
+        if l.startswith(b'\tdh_strip '):
             for dbg_pkg in dbg_packages:
-                if ('--dbg-package=%s' % dbg_pkg) in l:
-                    l = l.replace('--dbg-package=%s' % dbg_pkg, "--dbgsym-migration='%s (%s)'" % (dbg_pkg, version)).encode('utf-8')
+                if ('--dbg-package=%s' % dbg_pkg).encode('utf-8') in l:
+                    l = l.replace(
+                            ('--dbg-package=%s' % dbg_pkg).encode('utf-8'),
+                            ("--dbgsym-migration='%s (%s)'" % (dbg_pkg, version)).encode('utf-8'))
                     dbg_migration_done.add(dbg_pkg)
         outf.write(l)
 

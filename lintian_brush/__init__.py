@@ -73,6 +73,8 @@ def available_lintian_fixers():
             continue
         tag = os.path.splitext(n)[0]
         path = os.path.join(fixers_dir, n)
+        if os.path.isdir(path):
+            continue
         yield Fixer(tag, path)
 
 
@@ -103,6 +105,8 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
         # TODO(jelmer): Clean tree; revert changes, remove unknowns
         raise ScriptFailed("Script %s failed with error code %d" % (
                 fixer.script_path, p.returncode))
+
+    description = description.decode('utf-8')
 
     summary = description.splitlines()[0]
 
