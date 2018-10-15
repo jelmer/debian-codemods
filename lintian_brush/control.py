@@ -58,9 +58,11 @@ def update_control_file(inf, outf, source_package_cb=None, binary_package_cb=Non
     first = True
     for paragraph in Deb822.iter_paragraphs(inf, encoding='utf-8'):
         if paragraph.get("Source"):
-            source_package_cb(paragraph)
+            if source_package_cb is not None:
+                source_package_cb(paragraph)
         else:
-            binary_package_cb(paragraph)
+            if binary_package_cb is not None:
+                binary_package_cb(paragraph)
         if paragraph:
             if not first:
                 outf.write(b'\n')

@@ -112,6 +112,9 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
 
     description = description.decode('utf-8')
 
+    if not description:
+        raise Exception("Fixer %s did not provide a description" % fixer.script_path)
+
     summary = description.splitlines()[0]
 
     if not list(local_tree.iter_changes(local_tree.basis_tree())):
