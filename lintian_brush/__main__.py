@@ -31,9 +31,6 @@ import breezy
 breezy.initialize()
 import breezy.git
 import breezy.bzr
-import breezy.plugins.launchpad
-import breezy.plugins.debian # for apt: urls
-from breezy.trace import note
 
 from . import (
     available_lintian_fixers,
