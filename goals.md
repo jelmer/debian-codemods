@@ -13,3 +13,10 @@ of caution and not make the change.
 
 (Perhaps at some point in the future we could add a flag with the minimum
 certainty of fixers to run?)
+
+Non-goals
+=========
+
+Most things that are out of scope for lintian should be out of scope for
+lintian-brush as well. In particular, updates that require changes to multiple
+packages probably belong in a different tool.
