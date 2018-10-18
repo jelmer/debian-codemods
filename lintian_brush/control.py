@@ -35,12 +35,14 @@ def update_control(path='debian/control', **kwargs):
     """
     outf = BytesIO()
     with open(path, 'rb') as f:
-        contents = f.read()
+        original_contents = f.read()
     if b"DO NOT EDIT" in contents:
         raise Exception("control file not editable")
-    update_control_file(BytesIO(contents), outf, **kwargs)
-    with open(path, 'wb') as f:
-        f.write(outf.getvalue())
+    update_control_file(BytesIO(original_contents), outf, **kwargs)
+    updated_contents = outf.getvalue()
+    if updated_contents.strip() != original_contents.strip():
+        with open(path, 'wb') as f:
+            f.write(updated_contents)
 
 
 def update_control_file(inf, outf, source_package_cb=None, binary_package_cb=None):
