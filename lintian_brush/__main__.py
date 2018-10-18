@@ -34,6 +34,7 @@ import breezy.bzr
 
 from . import (
     available_lintian_fixers,
+    find_fixers_dir,
     run_lintian_fixers,
     version_string,
     )
@@ -42,11 +43,12 @@ parser = argparse.ArgumentParser(prog='lintian-brush')
 parser.add_argument('--no-update-changelog', action="store_true", help="Whether to update the changelog.")
 parser.add_argument('--version', action='version', version='%(prog)s ' + version_string)
 parser.add_argument('--list', action="store_true", help="List available fixers.")
+parser.add_argument('--fixers-dir', type=str, help='Path to fixer scripts. [%(default)s] ', default=find_fixers_dir())
 parser.add_argument('fixers', metavar='TAGS', nargs='*', help='Lintian tag for which to apply fixer.')
 args = parser.parse_args()
 
 wt = WorkingTree.open('.')
-fixers = available_lintian_fixers()
+fixers = available_lintian_fixers(fixers_dir)
 if args.list:
     for fixer in sorted([fixer.tag for fixer in fixers]):
         print(fixer)

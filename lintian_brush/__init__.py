@@ -63,13 +63,17 @@ def find_fixers_dir():
     return '/usr/share/lintian-brush/fixers/lintian'
 
 
-def available_lintian_fixers():
+def available_lintian_fixers(fixers_dir=None):
     """Return a list of available lintian fixers.
 
-    Returns: Iterator over Fixer objects
+    Args:
+      fixers_dir: Fixers directory to browse
+    Returns:
+      Iterator over Fixer objects
     """
+    if fixers_dir is None:
+        fixers_dir = find_fixers_dir()
     fixer_scripts = {}
-    fixers_dir = find_fixers_dir()
     for n in os.listdir(fixers_dir):
         if n.endswith("~") or n.startswith("."):
             continue
