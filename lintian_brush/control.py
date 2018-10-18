@@ -22,6 +22,10 @@ from debian.deb822 import Deb822
 import sys
 
 
+class GeneratedFile(Exception):
+    """File is generated and should not be edited."""
+
+
 def update_control(path='debian/control', **kwargs):
     """Update a control file.
 
@@ -36,8 +40,8 @@ def update_control(path='debian/control', **kwargs):
     outf = BytesIO()
     with open(path, 'rb') as f:
         original_contents = f.read()
-    if b"DO NOT EDIT" in contents:
-        raise Exception("control file not editable")
+    if b"DO NOT EDIT" in original_contents:
+        raise GeneratedFile()
     update_control_file(BytesIO(original_contents), outf, **kwargs)
     updated_contents = outf.getvalue()
     if updated_contents.strip() != original_contents.strip():
