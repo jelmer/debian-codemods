@@ -1,0 +1,26 @@
+language: python
+sudo: false
+cache: pip
+addons:
+  apt:
+    update: true
+
+python:
+  - 3.4
+  - 3.5
+  - 3.6
+  - 3.7
+  - pypy3.5
+
+install:
+  - travis_retry pip install -U pip coverage codecov flake8 breezy
+
+script:
+  - python -m coverage run -p -m unittest lintian_brush.tests.test_suite
+
+  # Style
+  - flake8 --exclude=build,.git,build-pypy,.tox
+
+after_success:
+  - python -m coverage combine
+  - codecov
