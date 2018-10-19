@@ -20,7 +20,11 @@
 __version__ = (0, 1)
 version_string = '.'.join(map(str, __version__))
 
-from breezy.clean_tree import clean_tree
+from breezy.clean_tree import (
+    iter_deletables,
+    delete_items,
+    _filter_out_nested_controldirs,
+    )
 from breezy.rename_map import RenameMap
 from breezy.trace import note
 from breezy.transform import revert
@@ -38,6 +42,10 @@ class ScriptFailed(Exception):
     """Script failed to run."""
 
 
+class DescriptionMissing(Exception):
+    """The fixer script did not provide a description on stdout."""
+
+
 class Fixer(object):
     """A Fixer script.
 
@@ -45,9 +53,37 @@ class Fixer(object):
     addresses.
     """
 
-    def __init__(self, tag, script_path):
+    def __init__(self, tag):
         self.tag = tag
+
+    def run(self, basedir):
+        """Apply this fixer script.
+
+        Args:
+          basedir: Directory in which to run
+        Returns:
+          description of the change
+        """
+        raise NotImplementedError(self.run)
+
+
+class ScriptFixer(Fixer):
+    """A fixer that is implemented as a shell/python/etc script."""
+
+    def __init__(self, tag, script_path):
+        super(ScriptFixer, self).__init__(tag)
         self.script_path = script_path
+
+    def run(self, basedir):
+        note('Running fixer %s on %s', self.tag, basedir)
+        p = subprocess.Popen(self.script_path, cwd=basedir,
+                             stdout=subprocess.PIPE, stderr=sys.stderr)
+        (description, err) = p.communicate("")
+        if p.returncode != 0:
+            raise ScriptFailed("Script %s failed with error code %d" % (
+                    self.script_path, p.returncode))
+        description = description.decode('utf-8')
+        return description
 
 
 def find_fixers_dir():
@@ -81,7 +117,7 @@ def available_lintian_fixers(fixers_dir=None):
         path = os.path.join(fixers_dir, n)
         if os.path.isdir(path):
             continue
-        yield Fixer(tag, path)
+        yield ScriptFixer(tag, path)
 
 
 def run_lintian_fixer(local_tree, fixer, update_changelog=True):
@@ -97,27 +133,22 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     # Just check there are no changes to begin with
     if list(local_tree.iter_changes(local_tree.basis_tree())):
         raise AssertionError("Local tree %s has changes" % local_tree.basedir)
-    note('Running fixer %s on %s', fixer.tag, local_tree.branch.user_url)
-    p = subprocess.Popen(fixer.script_path, cwd=local_tree.basedir,
-                         stdout=subprocess.PIPE, stderr=sys.stderr)
+    try:
+        description = fixer.run(local_tree.basedir)
+        if not description:
+            raise DescriptionMissing(fixer)
+    except BaseException:
+        revert(local_tree, local_tree.branch.basis_tree(), None)
+        deletables = list(iter_deletables(local_tree, unknown=True, ignored=True, detritus=True))
+        deletables = _filter_out_nested_controldirs(deletables)
+        delete_items(deletables)
+        raise
     unknowns = list(local_tree.unknowns())
     if unknowns:
         # Urgh.
         local_tree.add([f for f in unknowns if not os.path.basename(f).startswith('sed')])
     if local_tree.supports_setting_file_ids():
         RenameMap.guess_renames(local_tree.basis_tree(), local_tree, dry_run=False)
-    (description, err) = p.communicate("")
-    if p.returncode != 0:
-        revert(local_tree, local_tree.branch.basis_tree(), None)
-        clean_tree(local_tree.basedir, unknown=True, ignored=False, detritus=False, no_prompt=True)
-        # TODO(jelmer): Clean tree; revert changes, remove unknowns
-        raise ScriptFailed("Script %s failed with error code %d" % (
-                fixer.script_path, p.returncode))
-
-    description = description.decode('utf-8')
-
-    if not description:
-        raise Exception("Fixer %s did not provide a description" % fixer.script_path)
 
     summary = description.splitlines()[0]
 
@@ -126,8 +157,7 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
 
     if update_changelog:
         subprocess.check_call(
-            ["dch", "--no-auto-nmu", summary],
-            cwd=local_tree.basedir)
+            ["dch", "--no-auto-nmu", summary], cwd=local_tree.basedir)
 
     description += "\n"
     description += "Fixes lintian: %s\n" % fixer.tag

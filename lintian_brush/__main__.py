@@ -48,7 +48,7 @@ parser.add_argument('fixers', metavar='TAGS', nargs='*', help='Lintian tag for w
 args = parser.parse_args()
 
 wt = WorkingTree.open('.')
-fixers = available_lintian_fixers(fixers_dir)
+fixers = available_lintian_fixers(args.fixers_dir)
 if args.list:
     for fixer in sorted([fixer.tag for fixer in fixers]):
         print(fixer)
