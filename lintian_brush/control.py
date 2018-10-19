@@ -19,7 +19,6 @@
 
 from io import BytesIO
 from debian.deb822 import Deb822
-import sys
 
 
 class GeneratedFile(Exception):
@@ -29,8 +28,8 @@ class GeneratedFile(Exception):
 def update_control(path='debian/control', **kwargs):
     """Update a control file.
 
-    The callbacks can modify the paragraphs in place, and can trigger their removal
-    by clearing the paragraph.
+    The callbacks can modify the paragraphs in place, and can trigger their
+    removal by clearing the paragraph.
 
     Args:
       path: Path to the debian/control file to edit
@@ -49,11 +48,12 @@ def update_control(path='debian/control', **kwargs):
             f.write(updated_contents)
 
 
-def update_control_file(inf, outf, source_package_cb=None, binary_package_cb=None):
+def update_control_file(inf, outf, source_package_cb=None,
+                        binary_package_cb=None):
     """Update a control file.
 
-    The callbacks can modify the paragraphs in place, and can trigger their removal
-    by clearing the paragraph.
+    The callbacks can modify the paragraphs in place, and can trigger their
+    removal by clearing the paragraph.
 
     Args:
       inf: File-like object to read control file from

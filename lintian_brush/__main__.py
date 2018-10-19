@@ -15,9 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
 import argparse
-import subprocess
 import sys
 from breezy.workingtree import WorkingTree
 import locale
@@ -40,11 +38,19 @@ from . import (
     )
 
 parser = argparse.ArgumentParser(prog='lintian-brush')
-parser.add_argument('--no-update-changelog', action="store_true", help="Whether to update the changelog.")
-parser.add_argument('--version', action='version', version='%(prog)s ' + version_string)
-parser.add_argument('--list', action="store_true", help="List available fixers.")
-parser.add_argument('--fixers-dir', type=str, help='Path to fixer scripts. [%(default)s] ', default=find_fixers_dir())
-parser.add_argument('fixers', metavar='TAGS', nargs='*', help='Lintian tag for which to apply fixer.')
+parser.add_argument(
+    '--no-update-changelog', action="store_true",
+    help="Whether to update the changelog.")
+parser.add_argument(
+    '--version', action='version', version='%(prog)s ' + version_string)
+parser.add_argument(
+    '--list', action="store_true", help="List available fixers.")
+parser.add_argument(
+    '--fixers-dir', type=str, help='Path to fixer scripts. [%(default)s]',
+    default=find_fixers_dir())
+parser.add_argument(
+    'fixers', metavar='TAGS', nargs='*',
+    help='Lintian tag for which to apply fixer.')
 args = parser.parse_args()
 
 wt = WorkingTree.open('.')
@@ -56,4 +62,5 @@ else:
     if args.fixers:
         fixers = [f for f in fixers if f.tag in args.fixers]
     with wt.lock_write():
-        run_lintian_fixers(wt, fixers, update_changelog=(not args.no_update_changelog))
+        run_lintian_fixers(
+            wt, fixers, update_changelog=(not args.no_update_changelog))

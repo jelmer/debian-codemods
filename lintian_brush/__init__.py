@@ -17,8 +17,9 @@
 
 """Automatically fix lintian issues."""
 
-__version__ = (0, 1)
-version_string = '.'.join(map(str, __version__))
+import os
+import subprocess
+import sys
 
 from breezy.clean_tree import (
     iter_deletables,
@@ -29,9 +30,9 @@ from breezy.rename_map import RenameMap
 from breezy.trace import note
 from breezy.transform import revert
 
-import os
-import subprocess
-import sys
+
+__version__ = (0, 1)
+version_string = '.'.join(map(str, __version__))
 
 
 class NoChanges(Exception):
@@ -88,11 +89,13 @@ class ScriptFixer(Fixer):
 
 def find_fixers_dir():
     """Find the local directory with lintian fixer scripts."""
-    local_dir = os.path.join(os.path.dirname(__file__), '..', 'fixers', 'lintian')
+    local_dir = os.path.join(
+        os.path.dirname(__file__), '..', 'fixers', 'lintian')
     if os.path.isdir(local_dir):
         return local_dir
     import pkg_resources
-    resource_dir = pkg_resources.resource_filename(__name__, 'lintian-brush/fixers/lintian')
+    resource_dir = pkg_resources.resource_filename(
+        __name__, 'lintian-brush/fixers/lintian')
     if os.path.isdir(resource_dir):
         return resource_dir
     # Urgh.
@@ -109,7 +112,6 @@ def available_lintian_fixers(fixers_dir=None):
     """
     if fixers_dir is None:
         fixers_dir = find_fixers_dir()
-    fixer_scripts = {}
     for n in os.listdir(fixers_dir):
         if n.endswith("~") or n.startswith("."):
             continue
@@ -139,16 +141,21 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
             raise DescriptionMissing(fixer)
     except BaseException:
         revert(local_tree, local_tree.branch.basis_tree(), None)
-        deletables = list(iter_deletables(local_tree, unknown=True, ignored=True, detritus=True))
+        # TODO(jelmer): This should be a single function in breezy:
+        deletables = list(iter_deletables(
+            local_tree, unknown=True, ignored=True, detritus=True))
         deletables = _filter_out_nested_controldirs(deletables)
         delete_items(deletables)
         raise
     unknowns = list(local_tree.unknowns())
     if unknowns:
         # Urgh.
-        local_tree.add([f for f in unknowns if not os.path.basename(f).startswith('sed')])
+        local_tree.add(
+            [f for f in unknowns
+             if not os.path.basename(f).startswith('sed')])
     if local_tree.supports_setting_file_ids():
-        RenameMap.guess_renames(local_tree.basis_tree(), local_tree, dry_run=False)
+        RenameMap.guess_renames(
+            local_tree.basis_tree(), local_tree, dry_run=False)
 
     summary = description.splitlines()[0]
 
@@ -161,7 +168,8 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
 
     description += "\n"
     description += "Fixes lintian: %s\n" % fixer.tag
-    description += "See https://lintian.debian.org/tags/%s.html for more details.\n" % fixer.tag
+    description += ("See https://lintian.debian.org/tags/%s.html "
+                    "for more details.\n") % fixer.tag
 
     local_tree.commit(description, allow_pointless=False)
     # TODO(jelmer): Run sbuild & verify lintian warning is gone?

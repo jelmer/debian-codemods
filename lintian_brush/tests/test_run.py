@@ -76,7 +76,8 @@ Arch: all
 
     def test_simple_modify(self):
         with self.tree.lock_write():
-            summary = run_lintian_fixer(self.tree, DummyFixer('some-tag'), update_changelog=False)
+            summary = run_lintian_fixer(
+                self.tree, DummyFixer('some-tag'), update_changelog=False)
         self.assertEqual(summary, "Fixed some tag.")
         self.assertEqual(2, self.tree.branch.revno())
         self.assertEqual(
@@ -90,13 +91,16 @@ Arch: all
                     f.write("test")
                 return "Created new file."
         with self.tree.lock_write():
-            summary = run_lintian_fixer(self.tree, NewFileFixer('some-tag'), update_changelog=False)
+            summary = run_lintian_fixer(
+                self.tree, NewFileFixer('some-tag'), update_changelog=False)
         self.assertEqual(summary, "Created new file.")
-        rev = self.tree.branch.repository.get_revision(self.tree.last_revision())
+        rev = self.tree.branch.repository.get_revision(
+            self.tree.last_revision())
         self.assertEqual(rev.message, (
             'Created new file.\n'
             'Fixes lintian: some-tag\n'
-            'See https://lintian.debian.org/tags/some-tag.html for more details.\n'))
+            'See https://lintian.debian.org/tags/some-tag.html for '
+            'more details.\n'))
         self.assertEqual(2, self.tree.branch.revno())
         basis_tree = self.tree.branch.basis_tree()
         with basis_tree.lock_read():
@@ -112,7 +116,8 @@ Arch: all
                 return "Renamed a file."
         orig_basis_tree = self.tree.branch.basis_tree()
         with self.tree.lock_write():
-            summary = run_lintian_fixer(self.tree, RenameFileFixer('some-tag'), update_changelog=False)
+            summary = run_lintian_fixer(
+                self.tree, RenameFileFixer('some-tag'), update_changelog=False)
         self.assertEqual(summary, "Renamed a file.")
         self.assertEqual(2, self.tree.branch.revno())
         basis_tree = self.tree.branch.basis_tree()
@@ -121,7 +126,8 @@ Arch: all
             self.assertTrue(basis_tree.has_filename('debian/control.blah'))
             self.assertNotEqual(orig_basis_tree.get_revision_id(),
                                 basis_tree.get_revision_id())
-            self.expectFailure('mv --auto appears to be broken',
+            self.expectFailure(
+                'mv --auto appears to be broken',
                 self.assertEqual, basis_tree.path2id('debian/control.blah'),
                 orig_basis_tree.path2id('debian/control'))
 
@@ -135,7 +141,8 @@ Arch: all
                     EmptyFixer('some-tag'), update_changelog=False)
         self.assertEqual(1, self.tree.branch.revno())
         with self.tree.lock_read():
-            self.assertEqual([], list(self.tree.iter_changes(self.tree.basis_tree())))
+            self.assertEqual(
+                [], list(self.tree.iter_changes(self.tree.basis_tree())))
 
     def test_fails(self):
         class FailingFixer(Fixer):
@@ -151,4 +158,5 @@ Arch: all
                     FailingFixer('some-tag'), update_changelog=False)
         self.assertEqual(1, self.tree.branch.revno())
         with self.tree.lock_read():
-            self.assertEqual([], list(self.tree.iter_changes(self.tree.basis_tree())))
+            self.assertEqual(
+                [], list(self.tree.iter_changes(self.tree.basis_tree())))

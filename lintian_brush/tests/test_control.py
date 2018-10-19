@@ -46,6 +46,7 @@ Source: blah
 Testsuite: autopkgtest
 
 """)])
+
         def add_header(control):
             control["XS-Vcs-Git"] = "git://github.com/example/example"
         update_control(source_package_cb=add_header)
@@ -64,6 +65,7 @@ Package: libblah
 Section: extra
 
 """)])
+
         def add_header(control):
             control["Arch"] = "all"
         update_control(binary_package_cb=add_header)
@@ -88,4 +90,3 @@ Source: blah
 Testsuite: autopkgtest
 
 """, 'debian/control')
-
