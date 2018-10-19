@@ -92,6 +92,11 @@ Arch: all
         with self.tree.lock_write():
             summary = run_lintian_fixer(self.tree, NewFileFixer('some-tag'), update_changelog=False)
         self.assertEqual(summary, "Created new file.")
+        rev = self.tree.branch.repository.get_revision(self.tree.last_revision())
+        self.assertEqual(rev.message, (
+            'Created new file.\n'
+            'Fixes lintian: some-tag\n'
+            'See https://lintian.debian.org/tags/some-tag.html for more details.\n'))
         self.assertEqual(2, self.tree.branch.revno())
         basis_tree = self.tree.branch.basis_tree()
         with basis_tree.lock_read():
@@ -129,3 +134,21 @@ Arch: all
                     NoChanges, run_lintian_fixer, self.tree,
                     EmptyFixer('some-tag'), update_changelog=False)
         self.assertEqual(1, self.tree.branch.revno())
+        with self.tree.lock_read():
+            self.assertEqual([], list(self.tree.iter_changes(self.tree.basis_tree())))
+
+    def test_fails(self):
+        class FailingFixer(Fixer):
+            def run(self, basedir):
+                with open(os.path.join(basedir, 'debian/foo'), 'w') as f:
+                    f.write("blah")
+                with open(os.path.join(basedir, 'debian/control'), 'a') as f:
+                    f.write("foo\n")
+                raise Exception("Not successful")
+        with self.tree.lock_write():
+            self.assertRaises(
+                    Exception, run_lintian_fixer, self.tree,
+                    FailingFixer('some-tag'), update_changelog=False)
+        self.assertEqual(1, self.tree.branch.revno())
+        with self.tree.lock_read():
+            self.assertEqual([], list(self.tree.iter_changes(self.tree.basis_tree())))
