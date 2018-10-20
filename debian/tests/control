@@ -1,0 +1,3 @@
+Tests: tool-testsuite
+Depends: lintian-brush
+Restrictions: allow-stderr
