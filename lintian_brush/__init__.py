@@ -141,10 +141,8 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
             raise DescriptionMissing(fixer)
     except BaseException:
         revert(local_tree, local_tree.branch.basis_tree(), None)
-        # TODO(jelmer): This should be a single function in breezy:
         deletables = list(iter_deletables(
             local_tree, unknown=True, ignored=True, detritus=True))
-        deletables = _filter_out_nested_controldirs(deletables)
         delete_items(deletables)
         raise
     unknowns = list(local_tree.unknowns())
