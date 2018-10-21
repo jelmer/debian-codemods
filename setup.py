@@ -33,5 +33,6 @@ setup(
     entry_points = {
         'console_scripts': ['lintian-brush=lintian_brush.__main__']
     },
+    test_suite='lintian_brush.tests.test_suite',
     data_files = [('share/lintian-brush/fixers/lintian', glob.glob('fixers/lintian/*'))],
 )
