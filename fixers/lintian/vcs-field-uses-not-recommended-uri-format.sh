@@ -4,3 +4,4 @@ perl -p -i -e 's/^Vcs-Git: (git\@|)gitlab.com:/Vcs-Git: https:\/\/gitlab.com\//'
 perl -p -i -e 's/^Vcs-Git: (git\@|)github.com:/Vcs-Git: https:\/\/github.com\//' debian/control
 perl -p -i -e 's/^Vcs-Git: (git\@|)gitorious.org:/Vcs-Git: https:\/\/gitorious.org\//' debian/control
 echo "Use recommended URI format in Vcs header."
+echo "Fixed-Lintian-Tags: vcs-field-uses-not-recommended-uri-format"

@@ -16,3 +16,4 @@ if grep "Vcs-Bzr: lp:" debian/control >/dev/null; then
   echo "users that are not logged in on some versions of Bazaar."
 fi
 perl -p -i -e 's/^Vcs-Bzr: lp:/Vcs-Bzr: https:\/\/code.launchpad.net\//' debian/control
+echo "Fixed-Lintian-Tags: vcs-field-uses-insecure-uri"

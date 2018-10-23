@@ -9,3 +9,4 @@ perl -p -i -e 's/^Homepage: http:\/\/bioconductor.org/Homepage: https:\/\/biocon
 perl -p -i -e 's/^Homepage: http:\/\/cran.r-project.org/Homepage: https:\/\/cran.r-project.org/' debian/control
 perl -p -i -e 's/^Homepage: http:\/\/wiki.debian.org/Homepage: https:\/\/wiki.debian.org/' debian/control
 echo "Use secure URI in Homepage field."
+echo "Fixed-Lintian-Tags: homepage-field-uses-insecure-uri"

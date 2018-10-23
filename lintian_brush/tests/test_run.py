@@ -24,6 +24,7 @@ from breezy.tests import TestCaseWithTransport
 
 from lintian_brush import (
     Fixer,
+    FixerResult,
     NoChanges,
     available_lintian_fixers,
     run_lintian_fixer,
@@ -52,7 +53,8 @@ class DummyFixer(Fixer):
     def run(self, basedir):
         with open(os.path.join(basedir, 'debian/control'), 'a') as f:
             f.write('a new line\n')
-        return "Fixed some tag.\nExtended description."
+        return FixerResult("Fixed some tag.\nExtended description.",
+                           ['some-tag'])
 
 
 class RunLintianFixerTests(TestCaseWithTransport):
@@ -89,7 +91,7 @@ Arch: all
             def run(self, basedir):
                 with open(os.path.join(basedir, 'debian/somefile'), 'w') as f:
                     f.write("test")
-                return "Created new file."
+                return FixerResult("Created new file.", ['some-tag'])
         with self.tree.lock_write():
             summary = run_lintian_fixer(
                 self.tree, NewFileFixer('some-tag'), update_changelog=False)
@@ -113,7 +115,7 @@ Arch: all
             def run(self, basedir):
                 os.rename(os.path.join(basedir, 'debian/control'),
                           os.path.join(basedir, 'debian/control.blah'))
-                return "Renamed a file."
+                return FixerResult("Renamed a file.")
         orig_basis_tree = self.tree.branch.basis_tree()
         with self.tree.lock_write():
             summary = run_lintian_fixer(
@@ -134,7 +136,7 @@ Arch: all
     def test_empty_change(self):
         class EmptyFixer(Fixer):
             def run(self, basedir):
-                return "I didn't actually change anything."
+                return FixerResult("I didn't actually change anything.")
         with self.tree.lock_write():
             self.assertRaises(
                     NoChanges, run_lintian_fixer, self.tree,

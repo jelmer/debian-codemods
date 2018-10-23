@@ -5,3 +5,5 @@
 - Preserve whitespace formatting when changing control fields; needs debian.deb822 hackery
 - Support different certainty fixers
 - Improve changelog descriptions
+- Skip fixers for lintian tags that have overrides?
+- Support preserving wrap-and-sort formatting

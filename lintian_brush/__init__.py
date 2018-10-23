@@ -47,6 +47,14 @@ class DescriptionMissing(Exception):
     """The fixer script did not provide a description on stdout."""
 
 
+class FixerResult(object):
+    """Result of a fixer run."""
+
+    def __init__(self, description, fixed_lintian_tags=[]):
+        self.description = description
+        self.fixed_lintian_tags = fixed_lintian_tags
+
+
 class Fixer(object):
     """A Fixer script.
 
@@ -63,7 +71,7 @@ class Fixer(object):
         Args:
           basedir: Directory in which to run
         Returns:
-          description of the change
+          A FixerResult object
         """
         raise NotImplementedError(self.run)
 
@@ -83,8 +91,18 @@ class ScriptFixer(Fixer):
         if p.returncode != 0:
             raise ScriptFailed("Script %s failed with error code %d" % (
                     self.script_path, p.returncode))
+        if not description:
+            raise DescriptionMissing(self)
         description = description.decode('utf-8')
-        return description
+        lines = []
+        fixed_tags = []
+        for line in description.splitlines():
+            # TODO(jelmer): Do this in a slighly less hackish manner
+            if line.startswith('Fixed-Lintian-Tags: '):
+                fixed_tags = line.split(':', 0)[1].split(',')
+            else:
+                lines.append(line)
+        return FixerResult(description, fixed_tags)
 
 
 def find_fixers_dir():
@@ -136,9 +154,7 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     if list(local_tree.iter_changes(local_tree.basis_tree())):
         raise AssertionError("Local tree %s has changes" % local_tree.basedir)
     try:
-        description = fixer.run(local_tree.basedir)
-        if not description:
-            raise DescriptionMissing(fixer)
+        result = fixer.run(local_tree.basedir)
     except BaseException:
         revert(local_tree, local_tree.branch.basis_tree(), None)
         deletables = list(iter_deletables(
@@ -155,7 +171,7 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
         RenameMap.guess_renames(
             local_tree.basis_tree(), local_tree, dry_run=False)
 
-    summary = description.splitlines()[0]
+    summary = result.description.splitlines()[0]
 
     if not list(local_tree.iter_changes(local_tree.basis_tree())):
         raise NoChanges("Script didn't make any changes")
@@ -164,10 +180,12 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
         subprocess.check_call(
             ["dch", "--no-auto-nmu", summary], cwd=local_tree.basedir)
 
-    description += "\n"
-    description += "Fixes lintian: %s\n" % fixer.tag
-    description += ("See https://lintian.debian.org/tags/%s.html "
-                    "for more details.\n") % fixer.tag
+    description = result.description
+    for tag in result.fixed_lintian_tags:
+        description += "\n"
+        description += "Fixes lintian: %s\n" % tag
+        description += ("See https://lintian.debian.org/tags/%s.html "
+                        "for more details.\n") % tag
 
     local_tree.commit(description, allow_pointless=False)
     # TODO(jelmer): Run sbuild & verify lintian warning is gone?

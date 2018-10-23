@@ -17,3 +17,4 @@ else:
   print("3.0 (quilt)")
 EOF
 echo "Explicit specify source format."
+echo "Fixed-Lintian-Tags: missing-debian-source-format"

@@ -8,3 +8,4 @@ if [ ! -d debian/source ]; then
 fi
 mv debian/source.lintian-overrides debian/source/lintian-overrides
 echo "Move source package lintian overrides to debian/source."
+echo "Fixed-Lintian-Tags: package-uses-deprecated-source-override-location"
