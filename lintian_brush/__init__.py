@@ -58,12 +58,12 @@ class FixerResult(object):
 class Fixer(object):
     """A Fixer script.
 
-    The `tag` attribute contains the name of the lintian tag this fixer
-    addresses.
+    The `lintian_tags` attribute contains the name of the lintian tags this
+    fixer addresses.
     """
 
-    def __init__(self, tag):
-        self.tag = tag
+    def __init__(self, lintian_tags):
+        self.lintian_tags = lintian_tags
 
     def run(self, basedir):
         """Apply this fixer script.
@@ -80,11 +80,14 @@ class ScriptFixer(Fixer):
     """A fixer that is implemented as a shell/python/etc script."""
 
     def __init__(self, tag, script_path):
-        super(ScriptFixer, self).__init__(tag)
+        super(ScriptFixer, self).__init__([tag])
         self.script_path = script_path
 
+    def __repr__(self):
+        return "ScriptFixer(%r, %r)" % (self.lintian_tags[0], self.script_path)
+
     def run(self, basedir):
-        note('Running fixer %s on %s', self.tag, basedir)
+        note('Running fixer %r on %s', self, basedir)
         p = subprocess.Popen(self.script_path, cwd=basedir,
                              stdout=subprocess.PIPE, stderr=sys.stderr)
         (description, err) = p.communicate("")
@@ -189,7 +192,7 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
 
     local_tree.commit(description, allow_pointless=False)
     # TODO(jelmer): Run sbuild & verify lintian warning is gone?
-    return summary
+    return result.fixed_lintian_tags, summary
 
 
 def run_lintian_fixers(local_tree, fixers, update_changelog=True):
@@ -205,12 +208,12 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True):
     ret = []
     for fixer in fixers:
         try:
-            description = run_lintian_fixer(
+            fixed_lintian_tags, summary = run_lintian_fixer(
                     local_tree, fixer, update_changelog)
         except ScriptFailed:
-            note('Script for %s failed to run', fixer.tag)
+            note('Fixer %r failed to run', fixer)
         except NoChanges:
             pass
         else:
-            ret.append((fixer.tag, description))
+            ret.append((fixed_lintian_tags, summary))
     return ret

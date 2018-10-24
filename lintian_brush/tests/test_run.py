@@ -45,7 +45,8 @@ class AvailableLintianFixersTest(TestCaseWithTransport):
             'fixers/no-extension'])
         self.assertEqual(
                 {'i-fix-a-tag', 'i-fix-another-tag', 'no-extension'},
-                {fixer.tag for fixer in available_lintian_fixers('fixers')})
+                {fixer.lintian_tags[0]
+                 for fixer in available_lintian_fixers('fixers')})
 
 
 class DummyFixer(Fixer):
@@ -78,9 +79,10 @@ Arch: all
 
     def test_simple_modify(self):
         with self.tree.lock_write():
-            summary = run_lintian_fixer(
+            fixed_tags, summary = run_lintian_fixer(
                 self.tree, DummyFixer('some-tag'), update_changelog=False)
         self.assertEqual(summary, "Fixed some tag.")
+        self.assertEqual(['some-tag'], fixed_tags)
         self.assertEqual(2, self.tree.branch.revno())
         self.assertEqual(
                 self.tree.get_file_lines('debian/control')[-1],
@@ -93,9 +95,10 @@ Arch: all
                     f.write("test")
                 return FixerResult("Created new file.", ['some-tag'])
         with self.tree.lock_write():
-            summary = run_lintian_fixer(
+            fixed_tags, summary = run_lintian_fixer(
                 self.tree, NewFileFixer('some-tag'), update_changelog=False)
         self.assertEqual(summary, "Created new file.")
+        self.assertEqual(['some-tag'], fixed_tags)
         rev = self.tree.branch.repository.get_revision(
             self.tree.last_revision())
         self.assertEqual(rev.message, (
@@ -118,9 +121,10 @@ Arch: all
                 return FixerResult("Renamed a file.")
         orig_basis_tree = self.tree.branch.basis_tree()
         with self.tree.lock_write():
-            summary = run_lintian_fixer(
+            fixed_tags, summary = run_lintian_fixer(
                 self.tree, RenameFileFixer('some-tag'), update_changelog=False)
         self.assertEqual(summary, "Renamed a file.")
+        self.assertEqual([], fixed_tags)
         self.assertEqual(2, self.tree.branch.revno())
         basis_tree = self.tree.branch.basis_tree()
         with basis_tree.lock_read(), orig_basis_tree.lock_read():
