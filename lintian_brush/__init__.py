@@ -113,7 +113,7 @@ class ScriptFixer(Fixer):
 def find_fixers_dir():
     """Find the local directory with lintian fixer scripts."""
     local_dir = os.path.join(
-        os.path.dirname(__file__), '..', 'fixers', 'lintian')
+        os.path.dirname(__file__), '..', 'fixers')
     if os.path.isdir(local_dir):
         return local_dir
     import pkg_resources
