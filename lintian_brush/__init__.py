@@ -30,6 +30,8 @@ from breezy.rename_map import RenameMap
 from breezy.trace import note
 from breezy.transform import revert
 
+from debian.deb822 import Deb822
+
 
 __version__ = (0, 1)
 version_string = '.'.join(map(str, __version__))
@@ -79,8 +81,8 @@ class Fixer(object):
 class ScriptFixer(Fixer):
     """A fixer that is implemented as a shell/python/etc script."""
 
-    def __init__(self, tag, script_path):
-        super(ScriptFixer, self).__init__([tag])
+    def __init__(self, lintian_tags, script_path):
+        super(ScriptFixer, self).__init__(lintian_tags)
         self.script_path = script_path
 
     def __repr__(self):
@@ -116,11 +118,27 @@ def find_fixers_dir():
         return local_dir
     import pkg_resources
     resource_dir = pkg_resources.resource_filename(
-        __name__, 'lintian-brush/fixers/lintian')
+        __name__, 'lintian-brush/fixers')
     if os.path.isdir(resource_dir):
         return resource_dir
     # Urgh.
-    return '/usr/share/lintian-brush/fixers/lintian'
+    return '/usr/share/lintian-brush/fixers'
+
+
+def read_desc_file(path):
+    """Read a description file.
+
+    Args:
+      path: Path to read from.
+    Yields:
+      Fixer objects
+    """
+    dirname = os.path.dirname(path)
+    with open(path, 'r') as f:
+        for paragraph in Deb822.iter_paragraphs(f):
+            yield ScriptFixer(
+                [tag.strip() for tag in paragraph['Lintian-Tags'].split(',')],
+                os.path.join(dirname, paragraph['Fix-Script']))
 
 
 def available_lintian_fixers(fixers_dir=None):
@@ -134,13 +152,10 @@ def available_lintian_fixers(fixers_dir=None):
     if fixers_dir is None:
         fixers_dir = find_fixers_dir()
     for n in os.listdir(fixers_dir):
-        if n.endswith("~") or n.startswith("."):
+        if not n.endswith(".desc"):
             continue
-        tag = os.path.splitext(n)[0]
-        path = os.path.join(fixers_dir, n)
-        if os.path.isdir(path):
-            continue
-        yield ScriptFixer(tag, path)
+        for fixer in read_desc_file(os.path.join(fixers_dir, n)):
+            yield fixer
 
 
 def run_lintian_fixer(local_tree, fixer, update_changelog=True):

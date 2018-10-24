@@ -44,7 +44,10 @@ parser.add_argument(
 parser.add_argument(
     '--version', action='version', version='%(prog)s ' + version_string)
 parser.add_argument(
-    '--list', action="store_true", help="List available fixers.")
+    '--list-fixers', action="store_true", help="List available fixers.")
+parser.add_argument(
+    '--list-tags', action="store_true",
+    help="List lintian tags for which fixers are available.")
 parser.add_argument(
     '--fixers-dir', type=str, help='Path to fixer scripts. [%(default)s]',
     default=find_fixers_dir())
@@ -53,11 +56,21 @@ parser.add_argument(
     help='Lintian tag for which to apply fixer.')
 args = parser.parse_args()
 
+if args.list_fixers and args.list_tags:
+    parser.print_usage()
+    sys.exit(1)
+
 wt = WorkingTree.open('.')
 fixers = available_lintian_fixers(args.fixers_dir)
-if args.list:
-    for fixer in sorted([fixer.tag for fixer in fixers]):
-        print(fixer)
+if args.list_fixers:
+    for script in sorted([fixer.script_path for fixer in fixers]):
+        print(script)
+elif args.list_tags:
+    tags = set()
+    for fixer in fixers:
+        tags.update(fixer.lintian_tags)
+    for tag in sorted(tags):
+        print(tag)
 else:
     if args.fixers:
         fixers = [f for f in fixers if f.tag in args.fixers]

@@ -21,7 +21,6 @@ import os
 
 from breezy.tests import TestCaseWithTransport
 
-
 from lintian_brush import (
     Fixer,
     FixerResult,
@@ -43,10 +42,18 @@ class AvailableLintianFixersTest(TestCaseWithTransport):
             'fixers/.hidden',
             'fixers/backup-file.sh~',
             'fixers/no-extension'])
+        self.build_tree_contents([
+            ('fixers/index.desc', """\
+Fix-Script: foo.sh
+Lintian-Tags: i-fix-a-tag
+
+Fix-Script: bar.sh
+Lintian-Tags: i-fix-another-tag, no-extension
+""")])
         self.assertEqual(
-                {'i-fix-a-tag', 'i-fix-another-tag', 'no-extension'},
-                {fixer.lintian_tags[0]
-                 for fixer in available_lintian_fixers('fixers')})
+                [['i-fix-a-tag'], ['i-fix-another-tag', 'no-extension']],
+                [fixer.lintian_tags
+                 for fixer in available_lintian_fixers('fixers')])
 
 
 class DummyFixer(Fixer):

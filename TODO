@@ -1,6 +1,6 @@
 - Tests
 - Error out when accidentally running on generated files (e.g. look for "DO NOT EDIT")
-- Support running in non-vcs-controlled packages?
+- Support running in non-vcs-controlled packages? How?
 - Be a little bit more clever about editing control files; perhaps use python with debian.deb822 rather than sed?
 - Preserve whitespace formatting when changing control fields; needs debian.deb822 hackery
 - Support different certainty fixers
