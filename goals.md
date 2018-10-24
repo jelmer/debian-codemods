@@ -20,3 +20,7 @@ Non-goals
 Most things that are out of scope for lintian should be out of scope for
 lintian-brush as well. In particular, updates that require changes to multiple
 packages probably belong in a different tool.
+
+Fixing upstream issues is out of scope, even though lintian warns about some
+of those issues. Automatic fixing of these issues belongs in a
+distribution-agnostic tool.
