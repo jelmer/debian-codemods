@@ -102,7 +102,7 @@ class ScriptFixer(Fixer):
         for line in description.splitlines():
             # TODO(jelmer): Do this in a slighly less hackish manner
             if line.startswith('Fixed-Lintian-Tags: '):
-                fixed_tags = line.split(':', 0)[1].split(',')
+                fixed_tags = line.split(':', 1)[1].split(',')
             else:
                 lines.append(line)
         return FixerResult(description, fixed_tags)
