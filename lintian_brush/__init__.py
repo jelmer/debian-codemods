@@ -86,7 +86,7 @@ class ScriptFixer(Fixer):
         self.script_path = script_path
 
     def __repr__(self):
-        return "ScriptFixer(%r, %r)" % (self.lintian_tags[0], self.script_path)
+        return "<ScriptFixer(%r)>" % (os.path.basename(self.script_path))
 
     def run(self, basedir):
         note('Running fixer %r on %s', self, basedir)
@@ -112,8 +112,8 @@ class ScriptFixer(Fixer):
 
 def find_fixers_dir():
     """Find the local directory with lintian fixer scripts."""
-    local_dir = os.path.join(
-        os.path.dirname(__file__), '..', 'fixers')
+    local_dir = os.path.abspath(os.path.join(
+        os.path.dirname(__file__), '..', 'fixers'))
     if os.path.isdir(local_dir):
         return local_dir
     import pkg_resources
