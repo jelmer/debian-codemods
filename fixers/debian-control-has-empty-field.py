@@ -16,3 +16,4 @@ print("debian/control: Remove empty control field%s %s%s." % (
     ", ".join(fields),
     (" in package %s" % ', '.join(packages)) if packages else "",
     ))
+print("Fixed-Lintian-Tags: debian-control-has-empty-field")

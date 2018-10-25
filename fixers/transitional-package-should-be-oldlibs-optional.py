@@ -20,3 +20,4 @@ def oldlibs_priority_optional(control):
 
 update_control(binary_package_cb=oldlibs_priority_optional, source_package_cb=get_source_section)
 print("Move transitional package%s %s to oldlibs/optional per policy 4.0.1." % (("s" if len(packages) > 1 else ""), ", ".join(packages)))
+print("Fixed-Lintian-Tags: transitional-package-should-be-oldlibs-optional")

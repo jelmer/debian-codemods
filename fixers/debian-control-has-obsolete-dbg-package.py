@@ -64,3 +64,4 @@ with open('debian/rules', 'wb') as f:
     f.write(outf.getvalue())
 
 print("Transition to automatic debug package%s (from: %s)." % (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages)))
+print("Fixed-Lintian-Tags: debian-control-has-obsolete-dbg-package")

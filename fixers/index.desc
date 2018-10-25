@@ -43,6 +43,9 @@ Lintian-Tags: malformed-dm-upload-allowed
 Fix-Script: missing-debian-source-format.sh
 Lintian-Tags: missing-debian-source-format
 
+Fix-Script: missing-vcs-browser-field.py
+Lintian-Tags: missing-vcs-browser-field
+
 Fix-Script: out-of-date-copyright-format-uri.sh
 Lintian-Tags: out-of-date-copyright-format-uri
 
@@ -81,3 +84,4 @@ Lintian-Tags: xs-testsuite-field-in-debian-control
 
 Fix-Script: xs-vcs-field-in-debian-control.sh
 Lintian-Tags: xs-vcs-field-in-debian-control
+
