@@ -24,7 +24,6 @@ import sys
 from breezy.clean_tree import (
     iter_deletables,
     delete_items,
-    _filter_out_nested_controldirs,
     )
 from breezy.rename_map import RenameMap
 from breezy.trace import note

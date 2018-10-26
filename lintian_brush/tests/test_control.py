@@ -19,10 +19,8 @@
 
 from breezy.tests import TestCaseWithTransport
 
-
 from lintian_brush.control import (
     update_control,
-    update_control_file,
     GeneratedFile,
     )
 

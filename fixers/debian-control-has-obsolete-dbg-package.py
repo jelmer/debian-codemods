@@ -6,6 +6,7 @@ from debian.changelog import Changelog, Version
 
 minimum_version = Version("9.20160114")
 
+
 def bump_debhelper(control):
     build_depends = PkgRelation.parse_relations(control["Build-Depends"])
     for relation in build_depends:
@@ -14,18 +15,22 @@ def bump_debhelper(control):
             raise Exception("Complex rule for debhelper, aborting")
         if names != ['debhelper']:
             continue
-        if relation[0]['version'] is None or Version(relation[0]['version'][1]) < minimum_version:
+        if (relation[0]['version'] is None or
+                Version(relation[0]['version'][1]) < minimum_version):
             relation[0]['version'] = ('>=', minimum_version)
             control["Build-Depends"] = PkgRelation.str(build_depends)
 
 
 dbg_packages = set()
 dbg_migration_done = set()
+
+
 def del_dbg(control):
     # Delete the freeradius-dbg package from debian/control
     if control["Package"].endswith('-dbg'):
         dbg_packages.add(control["Package"])
         control.clear()
+
 
 update_control(source_package_cb=bump_debhelper, binary_package_cb=del_dbg)
 
@@ -39,18 +44,19 @@ else:
 
 outf = BytesIO()
 with open('debian/rules', 'rb') as f:
-    for l in f:
-        if l.strip() == b"include /usr/share/cdbs/1/rules/debhelper.mk":
+    for line in f:
+        if line.strip() == b"include /usr/share/cdbs/1/rules/debhelper.mk":
             # Ah, cdbs.
             raise Exception("package uses cdbs")
-        if l.startswith(b'\tdh_strip '):
+        if line.startswith(b'\tdh_strip '):
             for dbg_pkg in dbg_packages:
-                if ('--dbg-package=%s' % dbg_pkg).encode('utf-8') in l:
-                    l = l.replace(
+                if ('--dbg-package=%s' % dbg_pkg).encode('utf-8') in line:
+                    line = line.replace(
                             ('--dbg-package=%s' % dbg_pkg).encode('utf-8'),
-                            ("--dbgsym-migration='%s (%s)'" % (dbg_pkg, version)).encode('utf-8'))
+                            ("--dbgsym-migration='%s (%s)'" % (
+                                dbg_pkg, version)).encode('utf-8'))
                     dbg_migration_done.add(dbg_pkg)
-        outf.write(l)
+        outf.write(line)
 
 if not dbg_packages:
     raise Exception("no debug packages found to remove")
@@ -63,5 +69,6 @@ if difference:
 with open('debian/rules', 'wb') as f:
     f.write(outf.getvalue())
 
-print("Transition to automatic debug package%s (from: %s)." % (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages)))
+print("Transition to automatic debug package%s (from: %s)." %
+      (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages)))
 print("Fixed-Lintian-Tags: debian-control-has-obsolete-dbg-package")

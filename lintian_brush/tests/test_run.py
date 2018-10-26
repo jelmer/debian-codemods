@@ -27,7 +27,6 @@ from lintian_brush import (
     NoChanges,
     available_lintian_fixers,
     run_lintian_fixer,
-    run_lintian_fixers,
     )
 
 
@@ -173,3 +172,6 @@ Arch: all
         with self.tree.lock_read():
             self.assertEqual(
                 [], list(self.tree.iter_changes(self.tree.basis_tree())))
+
+
+# TODO(jelmer): run_lintian_fixers

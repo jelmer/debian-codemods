@@ -25,12 +25,12 @@ locale.setlocale(locale.LC_ALL, '')
 # we need an immortal string for the hack, hence the lack of a hyphen.
 sys._brz_default_fs_enc = "utf8"
 
-import breezy
+import breezy  # noqa: E402
 breezy.initialize()
-import breezy.git
-import breezy.bzr
+import breezy.git  # noqa: E402
+import breezy.bzr  # noqa: E402
 
-from . import (
+from . import (  # noqa: E402
     available_lintian_fixers,
     find_fixers_dir,
     run_lintian_fixers,
