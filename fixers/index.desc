@@ -40,7 +40,7 @@ Lintian-Tags: insecure-copyright-format-uri
 Fix-Script: malformed-dm-upload-allowed.sh
 Lintian-Tags: malformed-dm-upload-allowed
 
-Fix-Script: missing-debian-source-format.sh
+Fix-Script: missing-debian-source-format.py
 Lintian-Tags: missing-debian-source-format
 
 Fix-Script: missing-vcs-browser-field.py
