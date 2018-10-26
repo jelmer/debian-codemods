@@ -19,13 +19,19 @@
 
 import os
 
-from breezy.tests import TestCaseWithTransport
+from debian.changelog import Version
+
+from breezy.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    )
 
 from lintian_brush import (
     Fixer,
     FixerResult,
     NoChanges,
     available_lintian_fixers,
+    increment_version,
     run_lintian_fixer,
     )
 
@@ -184,3 +190,17 @@ Arch: all
 
 
 # TODO(jelmer): run_lintian_fixers
+
+
+class IncrementVersionTests(TestCase):
+
+    def assertVersion(self, expected, start):
+        v = Version(start)
+        increment_version(v)
+        self.assertEqual(Version(expected), v)
+
+    def test_full(self):
+        self.assertVersion('1.0-2', '1.0-1')
+
+    def test_native(self):
+        self.assertVersion('1.1', '1.0')
