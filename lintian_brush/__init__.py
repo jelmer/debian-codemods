@@ -17,7 +17,9 @@
 
 """Automatically fix lintian issues."""
 
+from debian.changelog import Changelog
 import os
+import re
 import subprocess
 import sys
 
@@ -87,10 +89,13 @@ class ScriptFixer(Fixer):
     def __repr__(self):
         return "<ScriptFixer(%r)>" % (os.path.basename(self.script_path))
 
-    def run(self, basedir):
+    def run(self, basedir, current_version):
         note('Running fixer %r on %s', self, basedir)
+        env = dict(os.environ.items())
+        env['CURRENT_VERSION'] = str(current_version)
         p = subprocess.Popen(self.script_path, cwd=basedir,
-                             stdout=subprocess.PIPE, stderr=sys.stderr)
+                             stdout=subprocess.PIPE, stderr=sys.stderr,
+                             env=env)
         (description, err) = p.communicate("")
         if p.returncode != 0:
             raise ScriptFailed("Script %s failed with error code %d" % (
@@ -157,6 +162,15 @@ def available_lintian_fixers(fixers_dir=None):
             yield fixer
 
 
+def increment_version(v):
+    if v.debian_revision is not None:
+        v.debian_revision = re.sub(
+                '\\d+$', lambda x: str(int(x.group())+1), v.debian_revision)
+    else:
+        v.upstream_version = re.sub(
+                '\\d+$', lambda x: str(int(x.group())+1), v.upstream_version)
+
+
 def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     """Run a lintian fixer on a tree.
 
@@ -170,8 +184,15 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     # Just check there are no changes to begin with
     if list(local_tree.iter_changes(local_tree.basis_tree())):
         raise AssertionError("Local tree %s has changes" % local_tree.basedir)
+    with local_tree.get_file('debian/changelog') as f:
+        cl = Changelog(f, max_blocks=1)
+    if cl.distributions == 'UNRELEASED':
+        current_version = cl.version
+    else:
+        current_version = cl.version
+        increment_version(current_version)
     try:
-        result = fixer.run(local_tree.basedir)
+        result = fixer.run(local_tree.basedir, current_version=current_version)
     except BaseException:
         revert(local_tree, local_tree.branch.basis_tree(), None)
         deletables = list(iter_deletables(

@@ -29,6 +29,14 @@ from lintian_brush import (
     run_lintian_fixer,
     )
 
+CHANGELOG_FILE = ('debian/changelog', """\
+blah (0.1) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+""")
+
 
 class AvailableLintianFixersTest(TestCaseWithTransport):
 
@@ -57,7 +65,7 @@ Lintian-Tags: i-fix-another-tag, no-extension
 
 class DummyFixer(Fixer):
 
-    def run(self, basedir):
+    def run(self, basedir, current_version):
         with open(os.path.join(basedir, 'debian/control'), 'a') as f:
             f.write('a new line\n')
         return FixerResult("Fixed some tag.\nExtended description.",
@@ -72,15 +80,16 @@ class RunLintianFixerTests(TestCaseWithTransport):
         self.build_tree_contents([
             ('debian/', ),
             ('debian/control', """\
-Source: blah\
+Source: blah
 Vcs-Git: https://example.com/blah
 Testsuite: autopkgtest
 
 Binary: blah
 Arch: all
 
-""")])
-        self.tree.add(['debian', 'debian/control'])
+"""),
+            CHANGELOG_FILE])
+        self.tree.add(['debian', 'debian/changelog', 'debian/control'])
         self.tree.commit('Initial thingy.')
 
     def test_simple_modify(self):
@@ -96,7 +105,7 @@ Arch: all
 
     def test_new_file(self):
         class NewFileFixer(Fixer):
-            def run(self, basedir):
+            def run(self, basedir, current_version):
                 with open(os.path.join(basedir, 'debian/somefile'), 'w') as f:
                     f.write("test")
                 return FixerResult("Created new file.", ['some-tag'])
@@ -121,7 +130,7 @@ Arch: all
 
     def test_rename_file(self):
         class RenameFileFixer(Fixer):
-            def run(self, basedir):
+            def run(self, basedir, current_version):
                 os.rename(os.path.join(basedir, 'debian/control'),
                           os.path.join(basedir, 'debian/control.blah'))
                 return FixerResult("Renamed a file.")
@@ -145,7 +154,7 @@ Arch: all
 
     def test_empty_change(self):
         class EmptyFixer(Fixer):
-            def run(self, basedir):
+            def run(self, basedir, current_version):
                 return FixerResult("I didn't actually change anything.")
         with self.tree.lock_write():
             self.assertRaises(
@@ -158,7 +167,7 @@ Arch: all
 
     def test_fails(self):
         class FailingFixer(Fixer):
-            def run(self, basedir):
+            def run(self, basedir, current_version):
                 with open(os.path.join(basedir, 'debian/foo'), 'w') as f:
                     f.write("blah")
                 with open(os.path.join(basedir, 'debian/control'), 'a') as f:

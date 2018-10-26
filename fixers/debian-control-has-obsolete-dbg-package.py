@@ -1,8 +1,9 @@
 #!/usr/bin/python3
 from io import BytesIO
+import os
 from lintian_brush.control import update_control
 from debian.deb822 import PkgRelation
-from debian.changelog import Changelog, Version
+from debian.changelog import Version
 
 minimum_version = Version("9.20160114")
 
@@ -34,13 +35,10 @@ def del_dbg(control):
 
 update_control(source_package_cb=bump_debhelper, binary_package_cb=del_dbg)
 
-with open('debian/changelog', 'rb') as f:
-    cl = Changelog(f)
-
-if cl.distributions == "UNRELEASED":
-    version = "<< %s" % cl.version
-else:
-    version = "<= %s" % cl.version
+current_version = os.environ["CURRENT_VERSION"]
+migrate_version = "<< %s%s" % (
+        current_version,
+        '' if current_version.endswith('~') else '~')
 
 outf = BytesIO()
 with open('debian/rules', 'rb') as f:
@@ -54,7 +52,7 @@ with open('debian/rules', 'rb') as f:
                     line = line.replace(
                             ('--dbg-package=%s' % dbg_pkg).encode('utf-8'),
                             ("--dbgsym-migration='%s (%s)'" % (
-                                dbg_pkg, version)).encode('utf-8'))
+                                dbg_pkg, migrate_version)).encode('utf-8'))
                     dbg_migration_done.add(dbg_pkg)
         outf.write(line)
 
