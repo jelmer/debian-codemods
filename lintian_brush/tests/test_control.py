@@ -17,11 +17,16 @@
 
 """Tests for lintian_brush.control."""
 
-from breezy.tests import TestCaseWithTransport
+from breezy.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    )
 
 from lintian_brush.control import (
     update_control,
     GeneratedFile,
+    PkgRelation,
+    parse_relations,
     )
 
 
@@ -88,3 +93,17 @@ Source: blah
 Testsuite: autopkgtest
 
 """, 'debian/control')
+
+
+class TestParseRelations(TestCase):
+
+    def test_simple(self):
+        self.assertEqual(
+                [[PkgRelation('debhelper')]], parse_relations('debhelper'))
+        self.assertEqual(
+                ['  \n', [PkgRelation('debhelper')]],
+                parse_relations('  \ndebhelper'))
+        self.assertEqual(
+                ['  \n', [PkgRelation('debhelper')], ' \n'],
+                parse_relations('  \ndebhelper \n'))
+
