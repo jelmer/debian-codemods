@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import os
+import sys
 if not os.path.exists('debian/source'):
     os.mkdir('debian/source')
 if os.path.exists('debian/source/format'):

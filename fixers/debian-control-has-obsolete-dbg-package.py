@@ -1,25 +1,19 @@
 #!/usr/bin/python3
 from io import BytesIO
 import os
-from lintian_brush.control import update_control
-from debian.deb822 import PkgRelation
-from debian.changelog import Version
+from lintian_brush.control import (
+    ensure_minimum_version,
+    update_control,
+    )
 
-minimum_version = Version("9.20160114")
+minimum_version = "9.20160114"
 
 
 def bump_debhelper(control):
-    build_depends = PkgRelation.parse_relations(control["Build-Depends"])
-    for relation in build_depends:
-        names = [r['name'] for r in relation]
-        if len(names) > 1 and names[0] == 'debhelper':
-            raise Exception("Complex rule for debhelper, aborting")
-        if names != ['debhelper']:
-            continue
-        if (relation[0]['version'] is None or
-                Version(relation[0]['version'][1]) < minimum_version):
-            relation[0]['version'] = ('>=', minimum_version)
-            control["Build-Depends"] = PkgRelation.str(build_depends)
+    control["Build-Depends"] = ensure_minimum_version(
+            control["Build-Depends"],
+            "debhelper",
+            minimum_version)
 
 
 dbg_packages = set()
