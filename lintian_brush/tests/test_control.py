@@ -133,7 +133,8 @@ class FormatRelationsTests(TestCase):
                 format_relations([('  \n', [PkgRelation('debhelper')], '')]),
                 '  \ndebhelper')
         self.assertEqual(
-                format_relations([('  \n', [PkgRelation('debhelper')], ' \n')]),
+                format_relations(
+                    [('  \n', [PkgRelation('debhelper')], ' \n')]),
                 '  \ndebhelper \n')
 
     def test_multiple(self):
@@ -142,17 +143,20 @@ class FormatRelationsTests(TestCase):
                 format_relations([('', [PkgRelation('debhelper')], ''),
                                  (' ', [PkgRelation('blah')], '')]))
 
+
 class EnsureMinimumVersionTests(TestCase):
 
     def test_added(self):
         self.assertEqual(
             'debhelper (>= 9)', ensure_minimum_version('', 'debhelper', '9'))
         self.assertEqual(
-            'blah, debhelper (>= 9)', ensure_minimum_version('blah', 'debhelper', '9'))
+            'blah, debhelper (>= 9)',
+            ensure_minimum_version('blah', 'debhelper', '9'))
 
     def test_updated(self):
         self.assertEqual(
-            'debhelper (>= 9)', ensure_minimum_version('debhelper', 'debhelper', '9'))
+            'debhelper (>= 9)',
+            ensure_minimum_version('debhelper', 'debhelper', '9'))
         self.assertEqual(
             'blah, debhelper (>= 9)',
             ensure_minimum_version('blah, debhelper', 'debhelper', '9'))

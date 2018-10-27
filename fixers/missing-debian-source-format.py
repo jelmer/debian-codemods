@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+from debian.changelog import Version
 import os
 import sys
 print("Explicit specify source format.")
@@ -8,13 +9,11 @@ if os.path.exists('debian/source/format'):
     # source format file already exists
     sys.exit(0)
 
-from debian.changelog import Changelog
-with open('debian/changelog') as f:
-  ch = Changelog(f, max_blocks=1)
+version = Version(os.environ['CURRENT_VERSION'])
 
 with open('debian/source/format', 'w') as f:
-    if not ch.version.debian_revision:
-      print("3.0 (native)")
+    if not version.debian_revision:
+        f.write("3.0 (native)\n")
     else:
-      print("3.0 (quilt)")
+        f.write("3.0 (quilt)\n")
 print("Fixed-Lintian-Tags: missing-debian-source-format")

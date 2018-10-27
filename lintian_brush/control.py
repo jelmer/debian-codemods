@@ -148,7 +148,6 @@ class PkgRelation(object):
             return restrictions
 
         def parse_rel(raw):
-            # type: (str) -> Dict[str, Optional[Union[str, list, Tuple[str, str]]]]
             match = cls.__dep_RE.match(raw)
             if match:
                 parts = match.groupdict()
@@ -158,7 +157,7 @@ class PkgRelation(object):
                     'version': None,
                     'arch': None,
                     'restrictions': None,
-                }  # type: Dict[str, Optional[Union[str, list, Tuple[str, str]]]]
+                }
                 if parts['relop'] or parts['version']:
                     d['version'] = (parts['relop'], parts['version'])
                 if parts['archs']:
@@ -182,11 +181,13 @@ class PkgRelation(object):
         return [parse_rel(or_dep) for or_dep in or_deps]
 
     def __repr__(self):
-        return "%s(%r, %r, %r, %r, %r)" % (self.__class__.__name__,
-                self.name, self.version, self.arch, self.archqual, self.restrictions)
+        return "%s(%r, %r, %r, %r, %r)" % (
+                self.__class__.__name__, self.name, self.version, self.arch,
+                self.archqual, self.restrictions)
 
     def __tuple__(self):
-        return (self.name, self.version, self.arch, self.archqual, self.restrictions)
+        return (self.name, self.version, self.arch, self.archqual,
+                self.restrictions)
 
     def __eq__(self, other):
         if not isinstance(other, PkgRelation):
@@ -235,7 +236,8 @@ class PkgRelation(object):
                                       self.restrictions))
         return s
 
-    def __init__(self, name, version=None, arch=None, archqual=None, restrictions=None):
+    def __init__(self, name, version=None, arch=None, archqual=None,
+                 restrictions=None):
         self.name = name
         self.version = version
         self.arch = arch
@@ -257,7 +259,7 @@ def parse_relations(text):
     ret = []
     for top_level in text.split(','):
         if top_level == "":
-            if not ',' in text:
+            if ',' not in text:
                 return []
         if top_level.isspace():
             ret.append((top_level, [], ''))
@@ -324,7 +326,8 @@ def ensure_minimum_version(relationstr, package, minimum_version):
         changed = True
         relations.append(
             (' ' if len(relations) > 0 else '',
-                [PkgRelation(name=package, version=('>=', minimum_version))], ''))
+                [PkgRelation(name=package, version=('>=', minimum_version))],
+                ''))
     if changed:
         return format_relations(relations)
     # Just return the original; we don't preserve all formatting yet.

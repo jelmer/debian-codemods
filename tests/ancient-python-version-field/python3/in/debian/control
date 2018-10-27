@@ -1,0 +1,6 @@
+Source: lintian-brush
+X-Python3-Version: >= 3.2
+
+Package: lintian-brush
+Description: Testing
+ Test test

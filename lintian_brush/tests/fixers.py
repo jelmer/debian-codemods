@@ -29,8 +29,10 @@ from lintian_brush import available_lintian_fixers
 class FixerTestCase(unittest.TestCase):
     """Test case that runs a fixer test."""
 
-    def __init__(self, fixer, path):
+    def __init__(self, fixer, fixer_name, name, path):
         self._fixer = fixer
+        self._fixer_name = fixer_name
+        self._test_name = name
         self._path = path
         self._testdir = None
         self._tempdir = None
@@ -39,7 +41,17 @@ class FixerTestCase(unittest.TestCase):
     def setUp(self):
         self._tempdir = tempfile.mkdtemp()
         self._testdir = os.path.join(self._tempdir, 'testdir')
-        shutil.copytree(os.path.join(self._path, 'in'), self._testdir, symlinks=True)
+
+        def ignore(src, names):
+            return [name for name in names if name.endswith('~')]
+        shutil.copytree(os.path.join(self._path, 'in'), self._testdir,
+                        symlinks=True, ignore=ignore)
+
+    def id(self):
+        return "%s.%s" % (__name__, self._fixer_name, self._test_name)
+
+    def __str__(self):
+        return 'fixer test: %s for %s' % (self._test_name, self._fixer_name)
 
     def tearDown(self):
         shutil.rmtree(self._tempdir)
@@ -58,17 +70,21 @@ class FixerTestCase(unittest.TestCase):
         # Assert that message on stdout matches
         with open(os.path.join(self._path, 'message'), 'r') as f:
             expected_message = f.read()
-        self.assertEqual(result.description, result.description)
+        self.assertEqual(result.description.strip(), expected_message.strip())
 
 
 def test_suite():
     suite = unittest.TestSuite()
-    test_dir = 'tests'
+    test_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'tests')
     for fixer in available_lintian_fixers():
         fixer_plain = os.path.splitext(os.path.basename(fixer.script_path))[0]
         testpath = os.path.join(test_dir, fixer_plain)
         if not os.path.isdir(testpath):
             continue
         for testname in os.listdir(testpath):
-            suite.addTest(FixerTestCase(fixer=fixer, path=os.path.join(test_dir, fixer_plain, testname)))
+            suite.addTest(FixerTestCase(
+                fixer_name=fixer_plain,
+                fixer=fixer,
+                name=testname,
+                path=os.path.join(test_dir, fixer_plain, testname)))
     return suite
