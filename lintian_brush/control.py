@@ -195,6 +195,43 @@ class PkgRelation(object):
             raise TypeError
         return (self.__tuple__() < other.__tuple__())
 
+    def str(self):
+        """Format to string structured inter-package relationships
+
+        Perform the inverse operation of parse_relations, returning a string
+        suitable to be written in a package stanza.
+        """
+        def pp_arch(arch_spec):
+            # type: (PkgRelation.ArchRestriction) -> str
+            return '%s%s' % (
+                '' if arch_spec.enabled else '!',
+                arch_spec.arch,
+            )
+
+        def pp_restrictions(restrictions):
+            # type: (List[PkgRelation.BuildRestriction]) -> str
+            s = []
+            for term in restrictions:
+                s.append(
+                    '%s%s' % (
+                        '' if term.enabled else '!',
+                        term.profile
+                    )
+                )
+            return '<%s>' % ' '.join(s)
+
+        s = self.name
+        if self.archqual is not None:
+            s += ':%s' % self.archqual
+        if self.version is not None:
+            s += ' (%s %s)' % self.version
+        if self.arch is not None:
+            s += ' [%s]' % ' '.join(map(pp_arch, self.arch))
+        if self.restrictions is not None:
+            s += ' %s' % ' '.join(map(pp_restrictions,
+                                      self.restrictions))
+        return s
+
     def __init__(self, name, version=None, arch=None, archqual=None, restrictions=None):
         self.name = name
         self.version = version
@@ -233,3 +270,21 @@ def parse_relations(text):
         if tail_whitespace is not None:
             ret.append(tail_whitespace)
     return ret
+
+
+def format_relations(relations):
+    """Format a package relations string.
+
+    This attemps to create formatting.
+    """
+    c = 0
+    ret = []
+    for relation in relations:
+        if isinstance(relation, str):
+            ret.append(relation)
+        else:
+            if c > 1:
+                ret.append(',')
+            c += 1
+            ret.append(' | '.join(o.str() for o in relation))
+    return ''.join(ret)

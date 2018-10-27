@@ -26,6 +26,7 @@ from lintian_brush.control import (
     update_control,
     GeneratedFile,
     PkgRelation,
+    format_relations,
     parse_relations,
     )
 
@@ -107,3 +108,16 @@ class TestParseRelations(TestCase):
                 ['  \n', [PkgRelation('debhelper')], ' \n'],
                 parse_relations('  \ndebhelper \n'))
 
+
+class TestFormatRelations(TestCase):
+
+    def test_simple(self):
+        self.assertEqual(
+                'debhelper',
+                format_relations([[PkgRelation('debhelper')]]))
+        self.assertEqual(
+                format_relations(['  \n', [PkgRelation('debhelper')]]),
+                '  \ndebhelper')
+        self.assertEqual(
+                format_relations(['  \n', [PkgRelation('debhelper')], ' \n']),
+                '  \ndebhelper \n')
