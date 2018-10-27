@@ -59,7 +59,13 @@ class FixerTestCase(unittest.TestCase):
         self._tempdir = None
 
     def runTest(self):
-        result = self._fixer.run(self._testdir, current_version='1.0-1')
+        env = dict(os.environ.items())
+        env['CURRENT_VERSION'] = '1.0-1'
+        p = subprocess.Popen(self._fixer.script_path, cwd=self._testdir,
+                             stdout=subprocess.PIPE,
+                             env=env)
+        (result, err) = p.communicate("")
+        self.assertEqual(p.returncode, 0)
         p = subprocess.Popen(
             ['diff', '-ur', os.path.join(self._path, 'out'), self._testdir],
             stdout=subprocess.PIPE)
@@ -70,7 +76,7 @@ class FixerTestCase(unittest.TestCase):
         # Assert that message on stdout matches
         with open(os.path.join(self._path, 'message'), 'r') as f:
             expected_message = f.read()
-        self.assertEqual(result.description.strip(), expected_message.strip())
+        self.assertEqual(result.decode().strip(), expected_message.strip())
 
 
 def test_suite():

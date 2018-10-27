@@ -1,1 +1,2 @@
 Remove unnecessary X-Python{,3}-Version field in debian/control.
+Fixed-Lintian-Tags: ancient-python-version-field
