@@ -1,0 +1,2 @@
+Remove unnecessary DM-Upload-Allowed field in debian/control.
+Fixed-Lintian-Tags: dm-upload-allowed-is-obsolete

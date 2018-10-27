@@ -1,0 +1,6 @@
+Source: lintian-brush
+DM-Upload-Allowed: yes
+
+Package: lintian-brush
+Description: Testing
+ Test test
