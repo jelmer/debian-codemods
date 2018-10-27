@@ -23,6 +23,7 @@ from breezy.tests import (
     )
 
 from lintian_brush.control import (
+    ensure_minimum_version,
     update_control,
     GeneratedFile,
     PkgRelation,
@@ -96,28 +97,65 @@ Testsuite: autopkgtest
 """, 'debian/control')
 
 
-class TestParseRelations(TestCase):
+class ParseRelationsTests(TestCase):
+
+    def test_empty(self):
+        self.assertEqual([], parse_relations(''))
+        self.assertEqual([('\n', [], '')], parse_relations('\n'))
 
     def test_simple(self):
         self.assertEqual(
-                [[PkgRelation('debhelper')]], parse_relations('debhelper'))
+                [('', [PkgRelation('debhelper')], '')],
+                parse_relations('debhelper'))
         self.assertEqual(
-                ['  \n', [PkgRelation('debhelper')]],
+                [('  \n', [PkgRelation('debhelper')], '')],
                 parse_relations('  \ndebhelper'))
         self.assertEqual(
-                ['  \n', [PkgRelation('debhelper')], ' \n'],
+                [('  \n', [PkgRelation('debhelper')], ' \n')],
                 parse_relations('  \ndebhelper \n'))
 
 
-class TestFormatRelations(TestCase):
+class FormatRelationsTests(TestCase):
+
+    def test_empty(self):
+        self.assertEqual(
+                '',
+                format_relations([('', [], '')]))
+        self.assertEqual(
+                '\n',
+                format_relations([('', [], '\n')]))
 
     def test_simple(self):
         self.assertEqual(
                 'debhelper',
-                format_relations([[PkgRelation('debhelper')]]))
+                format_relations([('', [PkgRelation('debhelper')], '')]))
         self.assertEqual(
-                format_relations(['  \n', [PkgRelation('debhelper')]]),
+                format_relations([('  \n', [PkgRelation('debhelper')], '')]),
                 '  \ndebhelper')
         self.assertEqual(
-                format_relations(['  \n', [PkgRelation('debhelper')], ' \n']),
+                format_relations([('  \n', [PkgRelation('debhelper')], ' \n')]),
                 '  \ndebhelper \n')
+
+    def test_multiple(self):
+        self.assertEqual(
+                'debhelper, blah',
+                format_relations([('', [PkgRelation('debhelper')], ''),
+                                 (' ', [PkgRelation('blah')], '')]))
+
+class EnsureMinimumVersionTests(TestCase):
+
+    def test_added(self):
+        self.assertEqual(
+            'debhelper (>= 9)', ensure_minimum_version('', 'debhelper', '9'))
+        self.assertEqual(
+            'blah, debhelper (>= 9)', ensure_minimum_version('blah', 'debhelper', '9'))
+
+    def test_updated(self):
+        self.assertEqual(
+            'debhelper (>= 9)', ensure_minimum_version('debhelper', 'debhelper', '9'))
+        self.assertEqual(
+            'blah, debhelper (>= 9)',
+            ensure_minimum_version('blah, debhelper', 'debhelper', '9'))
+        self.assertEqual(
+            'blah, debhelper (>= 9)',
+            ensure_minimum_version('blah, debhelper (>= 8)', 'debhelper', '9'))

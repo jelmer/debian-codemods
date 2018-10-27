@@ -21,6 +21,8 @@ import collections
 from io import BytesIO
 import re
 import warnings
+
+from debian.changelog import Version
 from debian.deb822 import Deb822
 
 
@@ -174,7 +176,8 @@ class PkgRelation(object):
                 version=None,
                 arch=None
                 )
-
+        if text == "":
+            return []
         or_deps = cls.__pipe_sep_RE.split(text)
         return [parse_rel(or_dep) for or_dep in or_deps]
 
@@ -253,22 +256,28 @@ def parse_relations(text):
     """
     ret = []
     for top_level in text.split(','):
+        if top_level == "":
+            if not ',' in text:
+                return []
+        if top_level.isspace():
+            ret.append((top_level, [], ''))
+            continue
+        head_whitespace = ''
         for i in range(len(top_level)):
             if not top_level[i].isspace():
                 if i > 0:
-                    ret.append(top_level[:i])
+                    head_whitespace = top_level[:i]
                 top_level = top_level[i:]
                 break
-        tail_whitespace = None
+        tail_whitespace = ''
         for i in range(len(top_level)):
             if not top_level[-(i+1)].isspace():
                 if i > 0:
                     tail_whitespace = top_level[-i:]
                     top_level = top_level[:-i]
                 break
-        ret.append(PkgRelation.parse(top_level))
-        if tail_whitespace is not None:
-            ret.append(tail_whitespace)
+        ret.append((head_whitespace, PkgRelation.parse(top_level),
+                    tail_whitespace))
     return ret
 
 
@@ -277,14 +286,46 @@ def format_relations(relations):
 
     This attemps to create formatting.
     """
-    c = 0
     ret = []
-    for relation in relations:
-        if isinstance(relation, str):
-            ret.append(relation)
-        else:
-            if c > 1:
-                ret.append(',')
-            c += 1
-            ret.append(' | '.join(o.str() for o in relation))
-    return ''.join(ret)
+    for (head_whitespace, relation, tail_whitespace) in relations:
+        ret.append(head_whitespace + ' | '.join(o.str() for o in relation) +
+                   tail_whitespace)
+    return ','.join(ret)
+
+
+def ensure_minimum_version(relationstr, package, minimum_version):
+    """Update a relation string to ensure a particular version is required.
+
+    Args:
+      relationstr: package relation string
+      package; package name
+      minimum_version: Minimum version
+    Returns:
+      updated relation string
+    """
+    minimum_version = Version(minimum_version)
+    found = False
+    changed = False
+    relations = parse_relations(relationstr)
+    for (head_whitespace, relation, tail_whitespace) in relations:
+        if isinstance(relation, str):  # formatting
+            continue
+        names = [r.name for r in relation]
+        if len(names) > 1 and names[0] == package:
+            raise Exception("Complex rule for debhelper, aborting")
+        if names != [package]:
+            continue
+        found = True
+        if (relation[0].version is None or
+                Version(relation[0].version[1]) < minimum_version):
+            relation[0].version = ('>=', minimum_version)
+            changed = True
+    if not found:
+        changed = True
+        relations.append(
+            (' ' if len(relations) > 0 else '',
+                [PkgRelation(name=package, version=('>=', minimum_version))], ''))
+    if changed:
+        return format_relations(relations)
+    # Just return the original; we don't preserve all formatting yet.
+    return relationstr
