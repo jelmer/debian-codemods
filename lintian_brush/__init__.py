@@ -111,7 +111,7 @@ class ScriptFixer(Fixer):
                 fixed_tags = line.split(':', 1)[1].strip().split(',')
             else:
                 lines.append(line)
-        return FixerResult(description, fixed_tags)
+        return FixerResult('\n'.join(lines), fixed_tags)
 
 
 def find_fixers_dir():

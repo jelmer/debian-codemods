@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import os
 import sys
+print("Explicit specify source format.")
 if not os.path.exists('debian/source'):
     os.mkdir('debian/source')
 if os.path.exists('debian/source/format'):
@@ -16,5 +17,4 @@ with open('debian/source/format', 'w') as f:
       print("3.0 (native)")
     else:
       print("3.0 (quilt)")
-print("Explicit specify source format.")
 print("Fixed-Lintian-Tags: missing-debian-source-format")
