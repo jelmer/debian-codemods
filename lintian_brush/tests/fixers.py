@@ -67,7 +67,7 @@ class FixerTestCase(unittest.TestCase):
         env = dict(os.environ.items())
         cl_path = os.path.join(self._testdir, 'debian/changelog')
         if os.path.exists(cl_path):
-            with open(cl_path) as f:
+            with open(cl_path, 'rb') as f:
                 cl = Changelog(f, max_blocks=1)
             if cl.distributions == 'UNRELEASED':
                 current_version = cl.version
