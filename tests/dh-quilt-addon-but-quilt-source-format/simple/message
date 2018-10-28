@@ -1,0 +1,2 @@
+Don't specify --with=quilt, since package uses '3.0 (quilt)' source format.
+Fixed-Lintian-Tags: dh-quilt-addon-but-quilt-source-format

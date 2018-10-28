@@ -1,0 +1,2 @@
+debian/rules: Avoid using $(PWD) variable.
+Fixed-Lintian-Tags: debian-rules-should-not-use-pwd

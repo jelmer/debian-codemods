@@ -18,6 +18,8 @@ def oldlibs_priority_optional(control):
         control["Section"] = "oldlibs"
         if default_priority != "optional":
             control["Priority"] = "optional"
+        else:
+            del control["Priority"]
 
 
 update_control(binary_package_cb=oldlibs_priority_optional,

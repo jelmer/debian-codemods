@@ -1,0 +1,2 @@
+Move transitional package lintian-brush to oldlibs/optional per policy 4.0.1.
+Fixed-Lintian-Tags: transitional-package-should-be-oldlibs-optional

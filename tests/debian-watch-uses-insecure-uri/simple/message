@@ -1,0 +1,2 @@
+Use secure URI in debian/watch.
+Fixed-Lintian-Tags: debian-watch-uses-insecure-uri

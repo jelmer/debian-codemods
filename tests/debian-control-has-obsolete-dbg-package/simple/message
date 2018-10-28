@@ -1,0 +1,2 @@
+Transition to automatic debug package (from: f2fs-tools-dbg).
+Fixed-Lintian-Tags: debian-control-has-obsolete-dbg-package

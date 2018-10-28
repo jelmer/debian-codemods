@@ -1,0 +1,7 @@
+Source: lintian-brush
+Priority: optional
+
+Package: lintian-brush
+Section: oldlibs
+Description: transitional package for blah
+ Test test
