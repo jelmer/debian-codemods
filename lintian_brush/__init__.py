@@ -97,7 +97,6 @@ class ScriptFixer(Fixer):
         return "<ScriptFixer(%r)>" % (os.path.basename(self.script_path))
 
     def run(self, basedir, current_version):
-        note('Running fixer %r on %s', self, basedir)
         env = dict(os.environ.items())
         env['CURRENT_VERSION'] = str(current_version)
         p = subprocess.Popen(self.script_path, cwd=basedir,
@@ -213,7 +212,7 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     except BaseException:
         revert(local_tree, local_tree.branch.basis_tree(), None)
         deletables = list(iter_deletables(
-            local_tree, unknown=True, ignored=True, detritus=True))
+            local_tree, unknown=True, ignored=False, detritus=False))
         delete_items(deletables)
         raise
     unknowns = list(local_tree.unknowns())
@@ -247,18 +246,22 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     return result.fixed_lintian_tags, summary
 
 
-def run_lintian_fixers(local_tree, fixers, update_changelog=True):
+def run_lintian_fixers(local_tree, fixers, update_changelog=True,
+                       verbose=False):
     """Run a set of lintian fixers on a tree.
 
     Args:
       local_tree: WorkingTree object
       fixers: A set of Fixer objects
       update_changelog: Whether to add an entry to the changelog
+      verbose: Whether to be verbose
     Returns:
       List of tuples with (lintian-tag, description)
     """
     ret = []
     for fixer in fixers:
+        if verbose:
+            note('Running fixer %r on %s', fixer, local_tree.basedir)
         try:
             fixed_lintian_tags, summary = run_lintian_fixer(
                     local_tree, fixer, update_changelog)

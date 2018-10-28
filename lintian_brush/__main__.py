@@ -53,6 +53,8 @@ parser.add_argument(
     '--fixers-dir', type=str, help='Path to fixer scripts. [%(default)s]',
     default=find_fixers_dir())
 parser.add_argument(
+    '--verbose', help='Be verbose', action='store_true', default=False)
+parser.add_argument(
     'fixers', metavar='TAGS', nargs='*',
     help='Lintian tag for which to apply fixer.')
 args = parser.parse_args()
@@ -77,7 +79,8 @@ else:
         fixers = [f for f in fixers if f.tag in args.fixers]
     with wt.lock_write():
         try:
-            run_lintian_fixers(
-                wt, fixers, update_changelog=(not args.no_update_changelog))
+            applied = run_lintian_fixers(
+                wt, fixers, update_changelog=(not args.no_update_changelog),
+                verbose=args.verbose)
         except NotDebianPackage:
             print("%s: Not a debian package" % wt.basedir, file=sys.stderr)
