@@ -57,6 +57,13 @@ class NotDebianPackage(Exception):
         super(NotDebianPackage, self).__init__(tree.basedir)
 
 
+class PendingChanges(Exception):
+    """The directory has pending changes."""
+
+    def __init__(self, tree):
+        super(PendingChanges, self).__init__(tree.basedir)
+
+
 class FixerResult(object):
     """Result of a fixer run."""
 
@@ -197,7 +204,7 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     """
     # Just check there are no changes to begin with
     if list(local_tree.iter_changes(local_tree.basis_tree())):
-        raise AssertionError("Local tree %s has changes" % local_tree.basedir)
+        raise PendingChanges(local_tree)
     if not local_tree.has_filename('debian/changelog'):
         raise NotDebianPackage(local_tree)
     with local_tree.get_file('debian/changelog') as f:

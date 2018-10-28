@@ -32,6 +32,7 @@ import breezy.bzr  # noqa: E402
 
 from . import (  # noqa: E402
     NotDebianPackage,
+    PendingChanges,
     available_lintian_fixers,
     find_fixers_dir,
     run_lintian_fixers,
@@ -83,4 +84,9 @@ else:
                 wt, fixers, update_changelog=(not args.no_update_changelog),
                 verbose=args.verbose)
         except NotDebianPackage:
-            print("%s: Not a debian package" % wt.basedir, file=sys.stderr)
+            print("%s: Not a debian package." % wt.basedir, file=sys.stderr)
+            sys.exit(1)
+        except PendingChanges:
+            print("%s: Please commit pending changes first." % wt.basedir,
+                  file=sys.stderr)
+            sys.exit(1)

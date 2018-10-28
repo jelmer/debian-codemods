@@ -31,6 +31,7 @@ from lintian_brush import (
     FixerResult,
     NoChanges,
     NotDebianPackage,
+    PendingChanges,
     available_lintian_fixers,
     increment_version,
     run_lintian_fixer,
@@ -98,6 +99,13 @@ Arch: all
             CHANGELOG_FILE])
         self.tree.add(['debian', 'debian/changelog', 'debian/control'])
         self.tree.commit('Initial thingy.')
+
+    def test_pending_changes(self):
+        self.build_tree_contents([('debian/changelog', 'blah')])
+        with self.tree.lock_write():
+            self.assertRaises(
+                PendingChanges, run_lintian_fixer,
+                self.tree, DummyFixer('some-tag'), update_changelog=False)
 
     def test_not_debian_tree(self):
         self.tree.remove('debian/changelog')
