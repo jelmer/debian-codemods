@@ -2,10 +2,11 @@
 .SH NAME
 lintian-brush \- automatically fix lintian issues
 .SH SYNOPSIS
-lintian\-brush [\-h] [\-\-no\-update\-changelog] [\-\-version] [\-\-list] [TAGS [TAGS ...]]
+lintian\-brush [\-h] [\-\-no\-update\-changelog] [\-\-version] [\-\-list-fixers] [\-\-list-tags\] [TAGS [TAGS ...]]
 .SH DESCRIPTION
-lintian-brush automatically fixes a set of common lintian issues, adds the relevant changelog entries
-and commits the changes to the local version control system.
+lintian-brush automatically applies a set of fixes for common lintian issues,
+adds the relevant changelog entries and commits the changes to the local
+version control system.
 .IP
 .SS "positional arguments:"
 .TP
@@ -22,5 +23,20 @@ Whether to update the changelog.
 \fB\-\-version\fR
 show program's version number and exit
 .TP
-\fB\-\-list\fR
+\fB\-\-list\-fixers\fR
 List available fixers.
+.TP
+\fB\-\-list\-tags\fR
+List lintian tags for which fixers are available.
+.TP
+\fB\-\-fixers\-dir\fR DIRECTORY
+Override the fixers directory.
+.SH EXAMPLES
+.IP "\fB$ lintian-brush\fR --list-tags"
+List all lintian tags for which fixers are available.
+.IP "\fB$ lintian-brush\fR"
+Run all fixers in the current Debian package.
+.SH "SEE ALSO"
+\&\fIlintian\fR\|(1)
+.SH AUTHORS
+Jelmer Vernooij <jelmer@debian.org>

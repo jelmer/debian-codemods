@@ -24,19 +24,26 @@ subset of the issues:
 * ancient-python-version-field
 * control-file-with-CRLF-EOLs
 * copyright-has-crs
+* debian-control-has-empty-field
+* debian-control-has-obsolete-dbg-package
 * debian-rules-should-not-use-pwd
 * debian-upstream-obsolete-path
 * debian-watch-uses-insecure-uri
+* dh-quilt-addon-but-quilt-source-format
 * dm-upload-allowed-is-obsolete
 * file-contains-trailing-whitespace
 * homepage-field-uses-insecure-uri
 * insecure-copyright-format-uri
 * malformed-dm-upload-allowed
 * missing-debian-source-format
+* missing-vcs-browser-field
 * out-of-date-copyright-format-uri
 * package-uses-deprecated-source-override-location
+* priority-extra-is-replaced-by-priority-optional
 * quilt-series-without-trailing-newline
+* transitional-package-should-be-oldlibs-optional
 * unnecessary-testsuite-autopkgtest-field
+* unversioned-copyright-format-uri
 * vcs-field-uses-insecure-uri
 * vcs-field-uses-not-recommended-uri-format
 * wrong-debian-qa-group-name
@@ -47,8 +54,8 @@ subset of the issues:
 Writing new fixers
 ------------------
 
-Each fixer is a simple script that lives under ``fixers/lintian``. The script
-should be named after the tag it fixes. File extensions are ignored.
+Each fixer is a simple script that lives under ``fixers``. Scripts should
+be registered in the ``index.desc`` file in the same directory.
 
 A fixer is run in the root directory of a package, where it can make changes
 it deems necessary. If a fixer can not provide any improvements, it can simply
