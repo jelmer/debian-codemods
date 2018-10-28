@@ -205,6 +205,8 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     # Just check there are no changes to begin with
     if list(local_tree.iter_changes(local_tree.basis_tree())):
         raise PendingChanges(local_tree)
+    if list(local_tree.unknowns()):
+        raise PendingChanges(local_tree)
     if not local_tree.has_filename('debian/changelog'):
         raise NotDebianPackage(local_tree)
     with local_tree.get_file('debian/changelog') as f:

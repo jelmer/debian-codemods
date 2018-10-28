@@ -107,6 +107,13 @@ Arch: all
                 PendingChanges, run_lintian_fixer,
                 self.tree, DummyFixer('some-tag'), update_changelog=False)
 
+    def test_extra(self):
+        self.build_tree_contents([('debian/foo', 'blah')])
+        with self.tree.lock_write():
+            self.assertRaises(
+                PendingChanges, run_lintian_fixer,
+                self.tree, DummyFixer('some-tag'), update_changelog=False)
+
     def test_not_debian_tree(self):
         self.tree.remove('debian/changelog')
         os.remove('debian/changelog')
