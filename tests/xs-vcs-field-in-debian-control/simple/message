@@ -1,0 +1,2 @@
+Remove unnecessary XS- prefix for Vcs- fields in debian/control.
+Fixed-Lintian-Tags: xs-vcs-field-in-debian-control

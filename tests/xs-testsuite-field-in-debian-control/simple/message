@@ -1,0 +1,2 @@
+Remove unnecessary XS-Testsuite field in debian/control.
+Fixed-Lintian-Tags: xs-testsuite-field-in-debian-control

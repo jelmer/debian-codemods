@@ -1,0 +1,5 @@
+lintian-brush (0.1) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #XXXXXX)
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 28 Oct 2018 00:09:52 +0000

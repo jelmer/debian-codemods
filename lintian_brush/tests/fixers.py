@@ -17,13 +17,17 @@
 
 """Tests for lintian_brush fixers."""
 
+from debian.changelog import Changelog
 import os
 import subprocess
 import shutil
 import tempfile
 import unittest
 
-from lintian_brush import available_lintian_fixers
+from lintian_brush import (
+    available_lintian_fixers,
+    increment_version,
+    )
 
 
 class FixerTestCase(unittest.TestCase):
@@ -36,6 +40,7 @@ class FixerTestCase(unittest.TestCase):
         self._path = path
         self._testdir = None
         self._tempdir = None
+        self.maxDiff = None
         super(FixerTestCase, self).__init__()
 
     def setUp(self):
@@ -60,7 +65,18 @@ class FixerTestCase(unittest.TestCase):
 
     def runTest(self):
         env = dict(os.environ.items())
-        env['CURRENT_VERSION'] = '1.0-1'
+        cl_path = os.path.join(self._testdir, 'debian/changelog')
+        if os.path.exists(cl_path):
+            with open(cl_path) as f:
+                cl = Changelog(f, max_blocks=1)
+            if cl.distributions == 'UNRELEASED':
+                current_version = cl.version
+            else:
+                current_version = cl.version
+            increment_version(current_version)
+        else:
+            current_version = '1.0-1'
+        env['CURRENT_VERSION'] = str(current_version)
         p = subprocess.Popen(self._fixer.script_path, cwd=self._testdir,
                              stdout=subprocess.PIPE,
                              env=env)
@@ -70,8 +86,11 @@ class FixerTestCase(unittest.TestCase):
             ['diff', '-ur', os.path.join(self._path, 'out'), self._testdir],
             stdout=subprocess.PIPE)
         (diff, stderr) = p.communicate('')
-        if p.returncode not in (0, 1):
-            raise ValueError("Unexpected exit code %d" % p.returncode)
+        self.assertIn(
+                p.returncode, (0, 1),
+                "Unexpected exit code %d" % p.returncode)
+        if diff.decode() != '':
+            raise AssertionError("unexpected output: %s" % diff.decode())
         self.assertMultiLineEqual(diff.decode(), '')
         # Assert that message on stdout matches
         with open(os.path.join(self._path, 'message'), 'r') as f:

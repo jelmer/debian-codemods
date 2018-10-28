@@ -1,0 +1,6 @@
+Source: lintian-brush
+XS-Testsuite: autopkgtest
+
+Package: lintian-brush
+Description: Testing
+ Test test

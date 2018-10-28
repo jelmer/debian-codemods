@@ -1,0 +1,6 @@
+Source: lintian-brush
+Testsuite: blah
+
+Package: lintian-brush
+Description: Testing
+ Test test

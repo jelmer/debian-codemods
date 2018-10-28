@@ -1,0 +1,6 @@
+Source: lintian-brush
+Vcs-Git: git@github.com:jelmer/lintian-brush
+
+Package: lintian-brush
+Description: Testing
+ Test test

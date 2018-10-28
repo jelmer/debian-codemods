@@ -1,0 +1,2 @@
+Use recommended URI format in Vcs header.
+Fixed-Lintian-Tags: vcs-field-uses-not-recommended-uri-format

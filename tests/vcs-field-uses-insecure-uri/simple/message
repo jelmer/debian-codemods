@@ -1,0 +1,2 @@
+Use secure URI in Vcs control header.
+Fixed-Lintian-Tags: vcs-field-uses-insecure-uri

@@ -2,7 +2,7 @@
 from debian.changelog import Version
 import os
 import sys
-print("Explicit specify source format.")
+print("Explicitly specify source format.")
 if not os.path.exists('debian/source'):
     os.mkdir('debian/source')
 if os.path.exists('debian/source/format'):

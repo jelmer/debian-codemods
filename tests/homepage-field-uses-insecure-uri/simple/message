@@ -1,0 +1,2 @@
+Use secure URI in Homepage field.
+Fixed-Lintian-Tags: homepage-field-uses-insecure-uri

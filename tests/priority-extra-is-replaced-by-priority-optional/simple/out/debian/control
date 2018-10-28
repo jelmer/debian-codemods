@@ -1,0 +1,7 @@
+Source: lintian-brush
+Priority: optional
+
+Package: lintian-brush
+Priority: optional
+Description: Testing
+ Test test
