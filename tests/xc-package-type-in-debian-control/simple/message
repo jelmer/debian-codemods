@@ -1,0 +1,2 @@
+Replace XC-Package-Type with Package-Type.
+Fixed-Lintian-Tags: xc-package-type-in-debian-control

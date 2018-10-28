@@ -1,0 +1,2 @@
+Move source package lintian overrides to debian/source.
+Fixed-Lintian-Tags: package-uses-deprecated-source-override-location

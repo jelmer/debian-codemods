@@ -1,0 +1,6 @@
+Source: lintian-brush
+Package-Type: foo
+
+Package: lintian-brush
+Description: Testing
+ Test test

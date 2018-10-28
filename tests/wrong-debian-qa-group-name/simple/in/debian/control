@@ -1,0 +1,6 @@
+Source: lintian-brush
+Maintainer: QA Folks <packages@qa.debian.org>
+
+Package: lintian-brush
+Description: Testing
+ Test test
