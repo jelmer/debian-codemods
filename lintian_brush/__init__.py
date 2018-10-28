@@ -27,6 +27,7 @@ from breezy.clean_tree import (
     iter_deletables,
     delete_items,
     )
+from breezy.commit import NullCommitReporter
 from breezy.rename_map import RenameMap
 from breezy.trace import note
 from breezy.transform import revert
@@ -250,7 +251,8 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
         description += ("See https://lintian.debian.org/tags/%s.html "
                         "for more details.\n") % tag
 
-    local_tree.commit(description, allow_pointless=False)
+    local_tree.commit(description, allow_pointless=False,
+                      reporter=NullCommitReporter())
     # TODO(jelmer): Run sbuild & verify lintian warning is gone?
     return result.fixed_lintian_tags, summary
 
