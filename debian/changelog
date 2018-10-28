@@ -1,4 +1,4 @@
-lintian-brush (0.1) UNRELEASED; urgency=medium
+lintian-brush (0.1) experimental; urgency=medium
 
   * Initial release. (Closes: #911016)
 
