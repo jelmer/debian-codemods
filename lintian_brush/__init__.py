@@ -50,6 +50,13 @@ class DescriptionMissing(Exception):
     """The fixer script did not provide a description on stdout."""
 
 
+class NotDebianPackage(Exception):
+    """The specified directory does not contain a Debian package."""
+
+    def __init__(self, tree):
+        super(NotDebianPackage, self).__init__(tree.basedir)
+
+
 class FixerResult(object):
     """Result of a fixer run."""
 
@@ -163,6 +170,14 @@ def available_lintian_fixers(fixers_dir=None):
 
 
 def increment_version(v):
+    """Increment a version number.
+
+    For native packages, increment the main version number.
+    For other packages, increment the debian revision.
+
+    Args:
+        v: Version to increment (modified in place)
+    """
     if v.debian_revision is not None:
         v.debian_revision = re.sub(
                 '\\d+$', lambda x: str(int(x.group())+1), v.debian_revision)
@@ -184,6 +199,8 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     # Just check there are no changes to begin with
     if list(local_tree.iter_changes(local_tree.basis_tree())):
         raise AssertionError("Local tree %s has changes" % local_tree.basedir)
+    if not local_tree.has_filename('debian/changelog'):
+        raise NotDebianPackage(local_tree)
     with local_tree.get_file('debian/changelog') as f:
         cl = Changelog(f, max_blocks=1)
     if cl.distributions == 'UNRELEASED':

@@ -31,6 +31,7 @@ import breezy.git  # noqa: E402
 import breezy.bzr  # noqa: E402
 
 from . import (  # noqa: E402
+    NotDebianPackage,
     available_lintian_fixers,
     find_fixers_dir,
     run_lintian_fixers,
@@ -75,5 +76,8 @@ else:
     if args.fixers:
         fixers = [f for f in fixers if f.tag in args.fixers]
     with wt.lock_write():
-        run_lintian_fixers(
-            wt, fixers, update_changelog=(not args.no_update_changelog))
+        try:
+            run_lintian_fixers(
+                wt, fixers, update_changelog=(not args.no_update_changelog))
+        except NotDebianPackage:
+            print("%s: Not a debian package" % wt.basedir, file=sys.stderr)
