@@ -90,3 +90,10 @@ else:
             print("%s: Please commit pending changes first." % wt.basedir,
                   file=sys.stderr)
             sys.exit(1)
+    if applied:
+        all_tags = set()
+        for tags, summary in applied:
+            all_tags.update(tags)
+        print("Lintian tags fixed: %r" % all_tags)
+    else:
+        print("No changes made.")
