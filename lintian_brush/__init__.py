@@ -18,14 +18,16 @@
 """Automatically fix lintian issues."""
 
 from debian.changelog import Changelog
+import errno
 import os
 import re
+import shutil
 import subprocess
 import sys
+import warnings
 
 from breezy.clean_tree import (
     iter_deletables,
-    delete_items,
     )
 from breezy.commit import NullCommitReporter
 from breezy.rename_map import RenameMap
@@ -111,6 +113,8 @@ class ScriptFixer(Fixer):
                              stdout=subprocess.PIPE, stderr=sys.stderr,
                              env=env)
         (description, err) = p.communicate("")
+        if p.returncode == 2:
+            raise NoChanges()
         if p.returncode != 0:
             raise ScriptFailed("Script %s failed with error code %d" % (
                     self.script_path, p.returncode))
@@ -192,6 +196,29 @@ def increment_version(v):
         v.upstream_version = re.sub(
                 '\\d+$', lambda x: str(int(x.group())+1), v.upstream_version)
 
+
+def delete_items(deletables, dry_run=False):
+    """Delete files in the deletables iterable"""
+    def onerror(function, path, excinfo):
+        """Show warning for errors seen by rmtree.
+        """
+        # Handle only permission error while removing files.
+        # Other errors are re-raised.
+        if function is not os.remove or excinfo[1].errno != errno.EACCES:
+            raise
+        warnings.warn('unable to remove %s' % path)
+    for path, subp in deletables:
+        if isdir(path):
+            shutil.rmtree(path, onerror=onerror)
+        else:
+            try:
+                os.unlink(path)
+            except OSError as e:
+                # We handle only permission error here
+                if e.errno != errno.EACCES:
+                    raise e
+                warnings.warn(
+                    'unable to remove "{0}": {1}.'.format(path, e.strerror))
 
 def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     """Run a lintian fixer on a tree.

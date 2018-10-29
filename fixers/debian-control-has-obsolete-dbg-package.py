@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 from io import BytesIO
 import os
+import sys
 from lintian_brush.control import (
     ensure_minimum_version,
     update_control,
@@ -51,7 +52,8 @@ with open('debian/rules', 'rb') as f:
         outf.write(line)
 
 if not dbg_packages:
-    raise Exception("no debug packages found to remove")
+    # no debug packages found to remove
+    sys.exit(2)
 
 difference = dbg_packages.symmetric_difference(dbg_migration_done)
 
