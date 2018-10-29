@@ -46,25 +46,25 @@ def main(argv):
     parser = argparse.ArgumentParser(prog='lintian-brush')
     parser.add_argument(
         '--no-update-changelog', action="store_true",
-        help="Whether to update the changelog.")
+        help="do not update the changelog")
     parser.add_argument(
         '--version', action='version', version='%(prog)s ' + version_string)
     parser.add_argument(
-        '--list-fixers', action="store_true", help="List available fixers.")
+        '--list-fixers', action="store_true", help="list available fixers")
     parser.add_argument(
         '--list-tags', action="store_true",
-        help="List lintian tags for which fixers are available.")
+        help="list lintian tags for which fixers are available")
     parser.add_argument(
-        '--fixers-dir', type=str, help='Path to fixer scripts. [%(default)s]',
+        '--fixers-dir', type=str, help='path to fixer scripts. [%(default)s]',
         default=find_fixers_dir())
     parser.add_argument(
-        '--verbose', help='Be verbose', action='store_true', default=False)
+        '--verbose', help='be verbose', action='store_true', default=False)
     parser.add_argument(
-        '--directory', metavar='DIRECTORY', help='Directory to run in',
+        '--directory', metavar='DIRECTORY', help='directory to run in',
         type=str, default='.')
     parser.add_argument(
-        'fixers', metavar='TAGS', nargs='*',
-        help='Lintian tag for which to apply fixer.')
+        'fixers', metavar='FIXER', nargs='*',
+        help='specific fixer to run')
     args = parser.parse_args(argv)
 
     if args.list_fixers and args.list_tags:
@@ -84,7 +84,7 @@ def main(argv):
     else:
         wt = WorkingTree.open(args.directory)
         if args.fixers:
-            fixers = [f for f in fixers if f.tag in args.fixers]
+            fixers = [f for f in fixers if f.name in args.fixers]
         with wt.lock_write():
             try:
                 applied = run_lintian_fixers(
