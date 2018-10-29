@@ -26,6 +26,8 @@ import subprocess
 import sys
 import warnings
 
+from breezy import ui
+
 from breezy.clean_tree import (
     iter_deletables,
     )
@@ -297,17 +299,25 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
     Returns:
       List of tuples with (lintian-tag, description)
     """
+    fixers = list(fixers)
     ret = []
-    for fixer in fixers:
-        if verbose:
-            note('Running fixer %r on %s', fixer, local_tree.basedir)
-        try:
-            fixed_lintian_tags, summary = run_lintian_fixer(
-                    local_tree, fixer, update_changelog)
-        except ScriptFailed:
-            note('Fixer %r failed to run', fixer)
-        except NoChanges:
-            pass
-        else:
-            ret.append((fixed_lintian_tags, summary))
+    pb = ui.ui_factory.nested_progress_bar()
+    try:
+        for i, fixer in enumerate(fixers):
+            pb.update('Running fixer %r on %s' % (fixer, local_tree.basedir),
+                      i, len(fixers))
+            try:
+                fixed_lintian_tags, summary = run_lintian_fixer(
+                        local_tree, fixer, update_changelog)
+            except ScriptFailed:
+                note('Fixer %r failed to run.', fixer)
+            except NoChanges:
+                if verbose:
+                    note('Fixer %r made no changes.', fixer)
+            else:
+                if verbose:
+                    note('Fixer %r made changes.', fixer)
+                ret.append((fixed_lintian_tags, summary))
+    finally:
+        pb.finished()
     return ret

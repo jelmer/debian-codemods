@@ -30,7 +30,7 @@ breezy.initialize()
 import breezy.git  # noqa: E402
 import breezy.bzr  # noqa: E402
 
-from breezy.trace import note
+from breezy.trace import note  # noqa: E402
 
 from . import (  # noqa: E402
     NotDebianPackage,
@@ -86,11 +86,10 @@ else:
                 wt, fixers, update_changelog=(not args.no_update_changelog),
                 verbose=args.verbose)
         except NotDebianPackage:
-            note("%s: Not a debian package." % wt.basedir, file=sys.stderr)
+            note("%s: Not a debian package.", wt.basedir)
             sys.exit(1)
         except PendingChanges:
-            note("%s: Please commit pending changes first." % wt.basedir,
-                  file=sys.stderr)
+            note("%s: Please commit pending changes first.", wt.basedir)
             sys.exit(1)
     if applied:
         all_tags = set()
