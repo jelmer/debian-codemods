@@ -41,60 +41,70 @@ from . import (  # noqa: E402
     version_string,
     )
 
-parser = argparse.ArgumentParser(prog='lintian-brush')
-parser.add_argument(
-    '--no-update-changelog', action="store_true",
-    help="Whether to update the changelog.")
-parser.add_argument(
-    '--version', action='version', version='%(prog)s ' + version_string)
-parser.add_argument(
-    '--list-fixers', action="store_true", help="List available fixers.")
-parser.add_argument(
-    '--list-tags', action="store_true",
-    help="List lintian tags for which fixers are available.")
-parser.add_argument(
-    '--fixers-dir', type=str, help='Path to fixer scripts. [%(default)s]',
-    default=find_fixers_dir())
-parser.add_argument(
-    '--verbose', help='Be verbose', action='store_true', default=False)
-parser.add_argument(
-    'fixers', metavar='TAGS', nargs='*',
-    help='Lintian tag for which to apply fixer.')
-args = parser.parse_args()
 
-if args.list_fixers and args.list_tags:
-    parser.print_usage()
-    sys.exit(1)
+def main(argv):
+    parser = argparse.ArgumentParser(prog='lintian-brush')
+    parser.add_argument(
+        '--no-update-changelog', action="store_true",
+        help="Whether to update the changelog.")
+    parser.add_argument(
+        '--version', action='version', version='%(prog)s ' + version_string)
+    parser.add_argument(
+        '--list-fixers', action="store_true", help="List available fixers.")
+    parser.add_argument(
+        '--list-tags', action="store_true",
+        help="List lintian tags for which fixers are available.")
+    parser.add_argument(
+        '--fixers-dir', type=str, help='Path to fixer scripts. [%(default)s]',
+        default=find_fixers_dir())
+    parser.add_argument(
+        '--verbose', help='Be verbose', action='store_true', default=False)
+    parser.add_argument(
+        '--directory', metavar='DIRECTORY', help='Directory to run in',
+        type=str, default='.')
+    parser.add_argument(
+        'fixers', metavar='TAGS', nargs='*',
+        help='Lintian tag for which to apply fixer.')
+    args = parser.parse_args(argv)
 
-wt = WorkingTree.open('.')
-fixers = available_lintian_fixers(args.fixers_dir)
-if args.list_fixers:
-    for script in sorted([fixer.script_path for fixer in fixers]):
-        note(script)
-elif args.list_tags:
-    tags = set()
-    for fixer in fixers:
-        tags.update(fixer.lintian_tags)
-    for tag in sorted(tags):
-        note(tag)
-else:
-    if args.fixers:
-        fixers = [f for f in fixers if f.tag in args.fixers]
-    with wt.lock_write():
-        try:
-            applied = run_lintian_fixers(
-                wt, fixers, update_changelog=(not args.no_update_changelog),
-                verbose=args.verbose)
-        except NotDebianPackage:
-            note("%s: Not a debian package.", wt.basedir)
-            sys.exit(1)
-        except PendingChanges:
-            note("%s: Please commit pending changes first.", wt.basedir)
-            sys.exit(1)
-    if applied:
-        all_tags = set()
-        for tags, summary in applied:
-            all_tags.update(tags)
-        note("Lintian tags fixed: %r" % all_tags)
+    if args.list_fixers and args.list_tags:
+        parser.print_usage()
+        return 1
+
+    fixers = available_lintian_fixers(args.fixers_dir)
+    if args.list_fixers:
+        for script in sorted([fixer.script_path for fixer in fixers]):
+            note(script)
+    elif args.list_tags:
+        tags = set()
+        for fixer in fixers:
+            tags.update(fixer.lintian_tags)
+        for tag in sorted(tags):
+            note(tag)
     else:
-        note("No changes made.")
+        wt = WorkingTree.open(args.directory)
+        if args.fixers:
+            fixers = [f for f in fixers if f.tag in args.fixers]
+        with wt.lock_write():
+            try:
+                applied = run_lintian_fixers(
+                    wt, fixers,
+                    update_changelog=(not args.no_update_changelog),
+                    verbose=args.verbose)
+            except NotDebianPackage:
+                note("%s: Not a debian package.", wt.basedir)
+                return 1
+            except PendingChanges:
+                note("%s: Please commit pending changes first.", wt.basedir)
+                return 1
+        if applied:
+            all_tags = set()
+            for tags, summary in applied:
+                all_tags.update(tags)
+            note("Lintian tags fixed: %r" % all_tags)
+        else:
+            note("No changes made.")
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))
