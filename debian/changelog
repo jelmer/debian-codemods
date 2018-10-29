@@ -6,6 +6,7 @@ lintian-brush (0.2) UNRELEASED; urgency=medium
   * Add --verbose option.
   * Fix running of specific fixers.
   * Add missing dependency on python3-dulwich. Closes: #912219
+  * Obey git global and per-tree committer settings.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 28 Oct 2018 15:44:06 +0000
 

@@ -220,6 +220,53 @@ Arch: all
                 [], list(self.tree.iter_changes(self.tree.basis_tree())))
 
 
+class HonorsVcsCommitter(TestCaseWithTransport):
+
+    def make_package_tree(self, format):
+        tree = self.make_branch_and_tree('.', format=format)
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/control', """\
+Source: blah
+Vcs-Git: https://example.com/blah
+Testsuite: autopkgtest
+
+Binary: blah
+Arch: all
+
+"""),
+            CHANGELOG_FILE])
+        tree.add(['debian', 'debian/changelog', 'debian/control'])
+        tree.commit('Initial thingy.')
+        return tree
+
+    def make_change(self, tree):
+        with tree.lock_write():
+            fixed_tags, summary = run_lintian_fixer(
+                tree, DummyFixer('dummy', 'some-tag'),
+                update_changelog=False)
+        self.assertEqual(summary, "Fixed some tag.")
+        self.assertEqual(['some-tag'], fixed_tags)
+        self.assertEqual(2, tree.branch.revno())
+        self.assertEqual(
+                tree.get_file_lines('debian/control')[-1],
+                b"a new line\n")
+
+    def test_honors_tree_committer_config(self):
+        tree = self.make_package_tree('git')
+        with open(os.path.join(tree.basedir, '.git/config'), 'w') as f:
+            f.write("""\
+[user]
+  email = jane@example.com
+  name = Jane Example
+
+""")
+
+        self.make_change(tree)
+        rev = tree.branch.repository.get_revision(tree.branch.last_revision())
+        self.assertEqual(rev.committer, 'Jane Example <jane@example.com>')
+
+
 # TODO(jelmer): run_lintian_fixers
 
 

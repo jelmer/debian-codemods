@@ -28,6 +28,8 @@ import warnings
 
 from breezy import ui
 
+import breezy.bzr  # noqa: F401
+import breezy.git  # noqa: F401
 from breezy.clean_tree import (
     iter_deletables,
     )
@@ -225,6 +227,22 @@ def delete_items(deletables, dry_run=False):
                     'unable to remove "{0}": {1}.'.format(path, e.strerror))
 
 
+def get_committer(tree):
+    """Get the committer string for a tree.
+
+    Args:
+      tree: A Tree object
+    Returns:
+      A committer string
+    """
+    # TODO(jelmer): Perhaps this logic should be in Breezy?
+    if getattr(tree.branch.repository, '_git', None):
+        return tree.branch.repository._git._get_user_identity()
+    else:
+        config = tree.branch.get_config_stack()
+        return config.get('email')
+
+
 def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     """Run a lintian fixer on a tree.
 
@@ -284,7 +302,8 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
                         "for more details.\n") % tag
 
     local_tree.commit(description, allow_pointless=False,
-                      reporter=NullCommitReporter())
+                      reporter=NullCommitReporter(),
+                      committer=get_committer(local_tree))
     # TODO(jelmer): Run sbuild & verify lintian warning is gone?
     return result.fixed_lintian_tags, summary
 
