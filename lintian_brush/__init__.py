@@ -208,7 +208,7 @@ def delete_items(deletables, dry_run=False):
             raise
         warnings.warn('unable to remove %s' % path)
     for path, subp in deletables:
-        if isdir(path):
+        if os.path.isdir(path):
             shutil.rmtree(path, onerror=onerror)
         else:
             try:
@@ -219,6 +219,7 @@ def delete_items(deletables, dry_run=False):
                     raise e
                 warnings.warn(
                     'unable to remove "{0}": {1}.'.format(path, e.strerror))
+
 
 def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     """Run a lintian fixer on a tree.
