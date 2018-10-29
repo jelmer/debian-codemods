@@ -26,6 +26,7 @@ locale.setlocale(locale.LC_ALL, '')
 sys._brz_default_fs_enc = "utf8"
 
 import breezy  # noqa: E402
+from breezy.errors import DependencyNotPresent  # noqa: E402
 breezy.initialize()
 import breezy.git  # noqa: E402
 import breezy.bzr  # noqa: E402
@@ -82,7 +83,12 @@ def main(argv):
         for tag in sorted(tags):
             note(tag)
     else:
-        wt = WorkingTree.open(args.directory)
+        try:
+            wt = WorkingTree.open(args.directory)
+        except DependencyNotPresent as e:
+            note('Unable to open tree at %s: missing package %s',
+                 args.directory, e.library)
+            return 1
         if args.fixers:
             fixers = [f for f in fixers if f.name in args.fixers]
         with wt.lock_write():
