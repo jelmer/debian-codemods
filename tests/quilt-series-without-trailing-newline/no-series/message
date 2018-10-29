@@ -1,0 +1,2 @@
+Add missing trailing newline in debian/patches/series.
+Fixed-Lintian-Tags: quilt-series-without-trailing-newline
