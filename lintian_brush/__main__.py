@@ -30,6 +30,8 @@ breezy.initialize()
 import breezy.git  # noqa: E402
 import breezy.bzr  # noqa: E402
 
+from breezy.trace import note
+
 from . import (  # noqa: E402
     NotDebianPackage,
     PendingChanges,
@@ -68,13 +70,13 @@ wt = WorkingTree.open('.')
 fixers = available_lintian_fixers(args.fixers_dir)
 if args.list_fixers:
     for script in sorted([fixer.script_path for fixer in fixers]):
-        print(script)
+        note(script)
 elif args.list_tags:
     tags = set()
     for fixer in fixers:
         tags.update(fixer.lintian_tags)
     for tag in sorted(tags):
-        print(tag)
+        note(tag)
 else:
     if args.fixers:
         fixers = [f for f in fixers if f.tag in args.fixers]
@@ -84,16 +86,16 @@ else:
                 wt, fixers, update_changelog=(not args.no_update_changelog),
                 verbose=args.verbose)
         except NotDebianPackage:
-            print("%s: Not a debian package." % wt.basedir, file=sys.stderr)
+            note("%s: Not a debian package." % wt.basedir, file=sys.stderr)
             sys.exit(1)
         except PendingChanges:
-            print("%s: Please commit pending changes first." % wt.basedir,
+            note("%s: Please commit pending changes first." % wt.basedir,
                   file=sys.stderr)
             sys.exit(1)
     if applied:
         all_tags = set()
         for tags, summary in applied:
             all_tags.update(tags)
-        print("Lintian tags fixed: %r" % all_tags)
+        note("Lintian tags fixed: %r" % all_tags)
     else:
-        print("No changes made.")
+        note("No changes made.")
