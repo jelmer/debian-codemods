@@ -84,7 +84,8 @@ class Fixer(object):
     fixer addresses.
     """
 
-    def __init__(self, lintian_tags):
+    def __init__(self, name, lintian_tags):
+        self.name = name
         self.lintian_tags = lintian_tags
 
     def run(self, basedir):
@@ -101,12 +102,12 @@ class Fixer(object):
 class ScriptFixer(Fixer):
     """A fixer that is implemented as a shell/python/etc script."""
 
-    def __init__(self, lintian_tags, script_path):
-        super(ScriptFixer, self).__init__(lintian_tags)
+    def __init__(self, name, lintian_tags, script_path):
+        super(ScriptFixer, self).__init__(name, lintian_tags)
         self.script_path = script_path
 
     def __repr__(self):
-        return "<ScriptFixer(%r)>" % (os.path.basename(self.script_path))
+        return "<ScriptFixer(%r)>" % self.name
 
     def run(self, basedir, current_version):
         env = dict(os.environ.items())
@@ -161,6 +162,7 @@ def read_desc_file(path):
     with open(path, 'r') as f:
         for paragraph in Deb822.iter_paragraphs(f):
             yield ScriptFixer(
+                os.path.splitext(paragraph['Fix-Script'])[0],
                 [tag.strip() for tag in paragraph['Lintian-Tags'].split(',')],
                 os.path.join(dirname, paragraph['Fix-Script']))
 

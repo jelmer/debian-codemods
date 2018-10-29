@@ -102,14 +102,13 @@ def test_suite():
     suite = unittest.TestSuite()
     test_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'tests')
     for fixer in available_lintian_fixers():
-        fixer_plain = os.path.splitext(os.path.basename(fixer.script_path))[0]
-        testpath = os.path.join(test_dir, fixer_plain)
+        testpath = os.path.join(test_dir, fixer.name)
         if not os.path.isdir(testpath):
             continue
         for testname in os.listdir(testpath):
             suite.addTest(FixerTestCase(
-                fixer_name=fixer_plain,
+                fixer_name=fixer.name,
                 fixer=fixer,
                 name=testname,
-                path=os.path.join(test_dir, fixer_plain, testname)))
+                path=os.path.join(test_dir, fixer.name, testname)))
     return suite

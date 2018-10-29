@@ -105,14 +105,16 @@ Arch: all
         with self.tree.lock_write():
             self.assertRaises(
                 PendingChanges, run_lintian_fixer,
-                self.tree, DummyFixer('some-tag'), update_changelog=False)
+                self.tree, DummyFixer('dummy', 'some-tag'),
+                update_changelog=False)
 
     def test_extra(self):
         self.build_tree_contents([('debian/foo', 'blah')])
         with self.tree.lock_write():
             self.assertRaises(
                 PendingChanges, run_lintian_fixer,
-                self.tree, DummyFixer('some-tag'), update_changelog=False)
+                self.tree, DummyFixer('dummy', 'some-tag'),
+                update_changelog=False)
 
     def test_not_debian_tree(self):
         self.tree.remove('debian/changelog')
@@ -121,12 +123,14 @@ Arch: all
         with self.tree.lock_write():
             self.assertRaises(
                 NotDebianPackage, run_lintian_fixer,
-                self.tree, DummyFixer('some-tag'), update_changelog=False)
+                self.tree, DummyFixer('dummy', 'some-tag'),
+                update_changelog=False)
 
     def test_simple_modify(self):
         with self.tree.lock_write():
             fixed_tags, summary = run_lintian_fixer(
-                self.tree, DummyFixer('some-tag'), update_changelog=False)
+                self.tree, DummyFixer('dummy', 'some-tag'),
+                update_changelog=False)
         self.assertEqual(summary, "Fixed some tag.")
         self.assertEqual(['some-tag'], fixed_tags)
         self.assertEqual(2, self.tree.branch.revno())
@@ -142,7 +146,8 @@ Arch: all
                 return FixerResult("Created new file.", ['some-tag'])
         with self.tree.lock_write():
             fixed_tags, summary = run_lintian_fixer(
-                self.tree, NewFileFixer('some-tag'), update_changelog=False)
+                self.tree, NewFileFixer('new-file', 'some-tag'),
+                update_changelog=False)
         self.assertEqual(summary, "Created new file.")
         self.assertEqual(['some-tag'], fixed_tags)
         rev = self.tree.branch.repository.get_revision(
@@ -168,7 +173,8 @@ Arch: all
         orig_basis_tree = self.tree.branch.basis_tree()
         with self.tree.lock_write():
             fixed_tags, summary = run_lintian_fixer(
-                self.tree, RenameFileFixer('some-tag'), update_changelog=False)
+                self.tree, RenameFileFixer('rename', 'some-tag'),
+                update_changelog=False)
         self.assertEqual(summary, "Renamed a file.")
         self.assertEqual([], fixed_tags)
         self.assertEqual(2, self.tree.branch.revno())
@@ -190,7 +196,7 @@ Arch: all
         with self.tree.lock_write():
             self.assertRaises(
                     NoChanges, run_lintian_fixer, self.tree,
-                    EmptyFixer('some-tag'), update_changelog=False)
+                    EmptyFixer('empty', 'some-tag'), update_changelog=False)
         self.assertEqual(1, self.tree.branch.revno())
         with self.tree.lock_read():
             self.assertEqual(
@@ -207,7 +213,7 @@ Arch: all
         with self.tree.lock_write():
             self.assertRaises(
                     Exception, run_lintian_fixer, self.tree,
-                    FailingFixer('some-tag'), update_changelog=False)
+                    FailingFixer('fail', 'some-tag'), update_changelog=False)
         self.assertEqual(1, self.tree.branch.revno())
         with self.tree.lock_read():
             self.assertEqual(
