@@ -23,6 +23,7 @@ from breezy.tests import (
     )
 
 from lintian_brush.control import (
+    can_preserve_deb822,
     ensure_minimum_version,
     update_control,
     GeneratedFile,
@@ -31,6 +32,24 @@ from lintian_brush.control import (
     format_relations,
     parse_relations,
     )
+
+
+class CanPreserveDeb822Tests(TestCase):
+
+    def test_comment(self):
+        self.assertFalse(can_preserve_deb822(b"""\
+Source: blah
+# A comment
+Testsuite: autopkgtest
+
+"""))
+
+    def test_fine(self):
+        self.assertTrue(can_preserve_deb822(b"""\
+Source: blah
+Testsuite: autopkgtest
+
+"""))
 
 
 class UpdateControlTests(TestCaseWithTransport):

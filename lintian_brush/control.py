@@ -33,6 +33,22 @@ class FormattingUnpreservable(Exception):
     """Formatting unpreservable."""
 
 
+def can_preserve_deb822(contents):
+    """Check whether it's possible to preserve a control file.
+
+    Args:
+      contents: Original contents
+    Returns:
+      New contents
+    """
+    outf = BytesIO()
+    for paragraph in Deb822.iter_paragraphs(BytesIO(contents),
+                                            encoding='utf-8'):
+        paragraph.dump(fd=outf, encoding='utf-8')
+        outf.write(b'\n')
+    return outf.getvalue().strip() == contents.strip()
+
+
 def update_control(path='debian/control', **kwargs):
     """Update a control file.
 
@@ -44,13 +60,13 @@ def update_control(path='debian/control', **kwargs):
       source_package_cb: Called on source package paragraph
       binary_package_cb: Called on each binary package paragraph
     """
-    outf = BytesIO()
     with open(path, 'rb') as f:
         original_contents = f.read()
     if b"DO NOT EDIT" in original_contents:
         raise GeneratedFile()
-    if any([l.startswith(b'#') for l in original_contents.splitlines()]):
-        raise FormattingUnpreservable()
+    if not can_preserve_deb822(original_contents):
+        raise FormattingUnpreservable("Unable to preserve formatting", path)
+    outf = BytesIO()
     update_control_file(BytesIO(original_contents), outf, **kwargs)
     updated_contents = outf.getvalue()
     if updated_contents.strip() != original_contents.strip():
