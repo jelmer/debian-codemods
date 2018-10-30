@@ -1,3 +1,9 @@
+lintian-brush (0.3) UNRELEASED; urgency=medium
+
+  * Fix entry point for main script.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 30 Oct 2018 19:58:41 +0000
+
 lintian-brush (0.2) experimental; urgency=medium
 
   * d/docs: Ship documentation files.

@@ -31,7 +31,7 @@ setup(
     },
     requires=['breezy', 'debian'],
     entry_points={
-        'console_scripts': ['lintian-brush=lintian_brush.__main__']
+        'console_scripts': ['lintian-brush=lintian_brush.__main__:main']
     },
     test_suite='lintian_brush.tests.test_suite',
     data_files=[('share/lintian-brush/fixers', glob.glob('fixers/*'))],

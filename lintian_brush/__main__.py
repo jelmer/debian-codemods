@@ -43,7 +43,7 @@ from . import (  # noqa: E402
     )
 
 
-def main(argv):
+def main(argv=None):
     parser = argparse.ArgumentParser(prog='lintian-brush')
     parser.add_argument(
         '--no-update-changelog', action="store_true",
@@ -113,4 +113,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main())
