@@ -26,6 +26,7 @@ from lintian_brush.control import (
     ensure_minimum_version,
     update_control,
     GeneratedFile,
+    FormattingUnpreservable,
     PkgRelation,
     format_relations,
     parse_relations,
@@ -44,6 +45,15 @@ Testsuite: autopkgtest
 
 """)])
         self.assertRaises(GeneratedFile, update_control)
+
+    def test_unpreservable(self):
+        self.build_tree_contents([('debian/', ), ('debian/control', """\
+Source: blah
+# A comment
+Testsuite: autopkgtest
+
+""")])
+        self.assertRaises(FormattingUnpreservable, update_control)
 
     def test_modify_source(self):
         self.build_tree_contents([('debian/', ), ('debian/control', """\

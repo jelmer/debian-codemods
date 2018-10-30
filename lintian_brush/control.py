@@ -30,6 +30,10 @@ class GeneratedFile(Exception):
     """File is generated and should not be edited."""
 
 
+class FormattingUnpreservable(Exception):
+    """Formatting unpreservable."""
+
+
 def update_control(path='debian/control', **kwargs):
     """Update a control file.
 
@@ -46,6 +50,8 @@ def update_control(path='debian/control', **kwargs):
         original_contents = f.read()
     if b"DO NOT EDIT" in original_contents:
         raise GeneratedFile()
+    if any([l.startswith(b'#') for l in original_contents.splitlines()]):
+        raise FormattingUnpreservable()
     update_control_file(BytesIO(original_contents), outf, **kwargs)
     updated_contents = outf.getvalue()
     if updated_contents.strip() != original_contents.strip():
