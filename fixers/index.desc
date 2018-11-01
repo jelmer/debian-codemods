@@ -13,6 +13,9 @@ Lintian-Tags: debian-control-has-empty-field
 Fix-Script: debian-control-has-obsolete-dbg-package.py
 Lintian-Tags: debian-control-has-obsolete-dbg-package
 
+Fix-Script: debian-pyversions-is-obsolete.py
+Lintian-Tags: debian-pyversions-is-obsolete
+
 Fix-Script: debian-rules-should-not-use-pwd.sh
 Lintian-Tags: debian-rules-should-not-use-pwd
 
