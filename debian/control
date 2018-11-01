@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 9),
                dh-python,
                dos2unix,
                python3-all,
-               python3-breezy,
+               python3-breezy (>= 3.0.0~bzr7140),
                python3-breezy.tests,
                python3-dulwich,
                python3-debian,
@@ -18,7 +18,7 @@ Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush
 Package: lintian-brush
 Architecture: all
 Depends: dos2unix,
-         python3-breezy,
+         python3-breezy (>= 3.0.0~bzr7140),
          python3-debian,
          python3-dulwich,
          ${misc:Depends},

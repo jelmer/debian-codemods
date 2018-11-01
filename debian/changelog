@@ -1,3 +1,10 @@
+lintian-brush (0.4) UNRELEASED; urgency=medium
+
+  * (Build-)Depend at least on a version of python3-breezy that has some
+    common Git issues fixed.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 01 Nov 2018 00:50:34 +0000
+
 lintian-brush (0.3) experimental; urgency=medium
 
   * Fix entry point for main script.
