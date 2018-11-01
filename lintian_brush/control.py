@@ -157,7 +157,7 @@ def ensure_minimum_version(relationstr, package, minimum_version):
 
     Args:
       relationstr: package relation string
-      package; package name
+      package: package name
       minimum_version: Minimum version
     Returns:
       updated relation string
@@ -171,7 +171,7 @@ def ensure_minimum_version(relationstr, package, minimum_version):
             continue
         names = [r.name for r in relation]
         if len(names) > 1 and names[0] == package:
-            raise Exception("Complex rule for debhelper, aborting")
+            raise Exception("Complex rule for %s , aborting" % package)
         if names != [package]:
             continue
         found = True
@@ -187,5 +187,31 @@ def ensure_minimum_version(relationstr, package, minimum_version):
                 ''))
     if changed:
         return format_relations(relations)
+    # Just return the original; we don't preserve all formatting yet.
+    return relationstr
+
+
+def drop_dependency(relationstr, package):
+    """Drop a dependency from a depends line.
+
+    Args:
+      relationstr: package relation string
+      package: package name
+    Returns:
+      updated relation string
+    """
+    relations = parse_relations(relationstr)
+    ret = []
+    for entry in relations:
+        (head_whitespace, relation, tail_whitespace) = entry
+        if isinstance(relation, str):  # formatting
+            ret.append(entry)
+            continue
+        names = [r.name for r in relation]
+        if set(names) != set([package]):
+            ret.append(entry)
+            continue
+    if relations != ret:
+        return format_relations(ret)
     # Just return the original; we don't preserve all formatting yet.
     return relationstr

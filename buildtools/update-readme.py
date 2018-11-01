@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 from lintian_brush import available_lintian_fixers
-import os
 import re
 
 with open('README.md', 'r') as f:
@@ -20,4 +19,4 @@ with open('README.md', 'w') as f:
     f.write(re.sub(
         r'(subset of the issues:\n\n).*(\nWriting new fixers\n)',
         '\\1' + replacement_text + '\\2', contents,
-        flags=re.MULTILINE|re.DOTALL))
+        flags=re.MULTILINE | re.DOTALL))

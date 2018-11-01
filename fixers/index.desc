@@ -67,6 +67,9 @@ Lintian-Tags: unnecessary-testsuite-autopkgtest-field
 Fix-Script: unversioned-copyright-format-uri.sh
 Lintian-Tags: unversioned-copyright-format-uri
 
+Fix-Script: useless-autoreconf-build-depends.py
+Lintian-Tags: useless-autoreconf-build-depends
+
 Fix-Script: vcs-field-uses-insecure-uri.sh
 Lintian-Tags: vcs-field-uses-insecure-uri
 

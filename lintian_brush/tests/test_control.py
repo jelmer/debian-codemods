@@ -24,6 +24,7 @@ from breezy.tests import (
 
 from lintian_brush.control import (
     can_preserve_deb822,
+    drop_dependency,
     ensure_minimum_version,
     update_control,
     GeneratedFile,
@@ -192,3 +193,15 @@ class EnsureMinimumVersionTests(TestCase):
         self.assertEqual(
             'blah, debhelper (>= 9)',
             ensure_minimum_version('blah, debhelper (>= 8)', 'debhelper', '9'))
+
+
+class DropDependencyTests(TestCase):
+
+    def test_deleted(self):
+        self.assertEqual(
+            'debhelper (>= 9)',
+            drop_dependency('debhelper (>= 9), dh-autoreconf',
+                            'dh-autoreconf'))
+        self.assertEqual(
+            ' dh-autoreconf',
+            drop_dependency('debhelper (>= 9), dh-autoreconf', 'debhelper'))
