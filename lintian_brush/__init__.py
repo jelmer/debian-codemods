@@ -331,7 +331,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                       i, len(fixers))
             try:
                 fixed_lintian_tags, summary = run_lintian_fixer(
-                        local_tree, fixer, update_changelog,
+                        local_tree, fixer, update_changelog=update_changelog,
                         committer=committer)
             except ScriptFailed:
                 note('Fixer %r failed to run.', fixer)
