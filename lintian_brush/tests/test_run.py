@@ -154,6 +154,7 @@ Arch: all
             self.tree.last_revision())
         self.assertEqual(rev.message, (
             'Created new file.\n'
+            '\n'
             'Fixes lintian: some-tag\n'
             'See https://lintian.debian.org/tags/some-tag.html for '
             'more details.\n'))
@@ -240,17 +241,23 @@ Arch: all
         tree.commit('Initial thingy.')
         return tree
 
-    def make_change(self, tree):
+    def make_change(self, tree, committer=None):
         with tree.lock_write():
             fixed_tags, summary = run_lintian_fixer(
                 tree, DummyFixer('dummy', 'some-tag'),
-                update_changelog=False)
+                update_changelog=False, committer=committer)
         self.assertEqual(summary, "Fixed some tag.")
         self.assertEqual(['some-tag'], fixed_tags)
         self.assertEqual(2, tree.branch.revno())
         self.assertEqual(
                 tree.get_file_lines('debian/control')[-1],
                 b"a new line\n")
+
+    def test_honors_tree_committer_specified(self):
+        tree = self.make_package_tree('git')
+        self.make_change(tree, committer='Jane Example <jane@example.com>')
+        rev = tree.branch.repository.get_revision(tree.branch.last_revision())
+        self.assertEqual(rev.committer, 'Jane Example <jane@example.com>')
 
     def test_honors_tree_committer_config(self):
         tree = self.make_package_tree('git')

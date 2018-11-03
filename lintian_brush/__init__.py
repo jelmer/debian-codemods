@@ -243,12 +243,14 @@ def get_committer(tree):
         return config.get('email')
 
 
-def run_lintian_fixer(local_tree, fixer, update_changelog=True):
+def run_lintian_fixer(local_tree, fixer, committer=None,
+                      update_changelog=True):
     """Run a lintian fixer on a tree.
 
     Args:
       local_tree: WorkingTree object
       fixer: Fixer object to apply
+      committer: Optional commiter (name and email)
       update_changelog: Whether to add a new entry to the changelog
     Returns:
       summary of the changes
@@ -292,13 +294,17 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
     description = result.description
     for tag in result.fixed_lintian_tags:
         description += "\n"
+        description += "\n"
         description += "Fixes lintian: %s\n" % tag
         description += ("See https://lintian.debian.org/tags/%s.html "
                         "for more details.\n") % tag
 
+    if committer is None:
+        committer = get_committer(local_tree)
+
     local_tree.commit(description, allow_pointless=False,
                       reporter=NullCommitReporter(),
-                      committer=get_committer(local_tree))
+                      committer=committer)
     # TODO(jelmer): Run sbuild & verify lintian warning is gone?
     return result.fixed_lintian_tags, summary
 
