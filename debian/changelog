@@ -4,6 +4,8 @@ lintian-brush (0.5) UNRELEASED; urgency=medium
   * Hide tracebacks by default, but report list of failed fixers.
   * Use secure copyright file specification URI.
   * Bump to standards version 4.2.1
+  * file-contains-trailing-whitespace: Also trim empty lines from the
+    ends of files.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Nov 2018 16:50:03 +0000
 
