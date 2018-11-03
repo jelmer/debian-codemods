@@ -250,7 +250,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     Args:
       local_tree: WorkingTree object
       fixer: Fixer object to apply
-      committer: Optional commiter (name and email)
+      committer: Optional committer (name and email)
       update_changelog: Whether to add a new entry to the changelog
     Returns:
       summary of the changes
@@ -310,7 +310,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
 
 
 def run_lintian_fixers(local_tree, fixers, update_changelog=True,
-                       verbose=False):
+                       verbose=False, committer=None):
     """Run a set of lintian fixers on a tree.
 
     Args:
@@ -318,6 +318,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
       fixers: A set of Fixer objects
       update_changelog: Whether to add an entry to the changelog
       verbose: Whether to be verbose
+      committer: Optional committer (name and email)
     Returns:
       List of tuples with (lintian-tag, description)
     """
@@ -330,7 +331,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                       i, len(fixers))
             try:
                 fixed_lintian_tags, summary = run_lintian_fixer(
-                        local_tree, fixer, update_changelog)
+                        local_tree, fixer, update_changelog,
+                        committer=committer)
             except ScriptFailed:
                 note('Fixer %r failed to run.', fixer)
             except NoChanges:
