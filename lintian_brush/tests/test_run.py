@@ -28,6 +28,7 @@ from breezy.tests import (
 
 from lintian_brush import (
     Fixer,
+    FixerFailed,
     FixerResult,
     NoChanges,
     NotDebianPackage,
@@ -35,6 +36,7 @@ from lintian_brush import (
     available_lintian_fixers,
     increment_version,
     run_lintian_fixer,
+    run_lintian_fixers,
     )
 
 CHANGELOG_FILE = ('debian/changelog', """\
@@ -78,6 +80,16 @@ class DummyFixer(Fixer):
             f.write('a new line\n')
         return FixerResult("Fixed some tag.\nExtended description.",
                            ['some-tag'])
+
+
+class FailingFixer(Fixer):
+
+    def run(self, basedir, current_version):
+        with open(os.path.join(basedir, 'debian/foo'), 'w') as f:
+            f.write("blah")
+        with open(os.path.join(basedir, 'debian/control'), 'a') as f:
+            f.write("foo\n")
+        raise FixerFailed("Not successful")
 
 
 class RunLintianFixerTests(TestCaseWithTransport):
@@ -204,13 +216,6 @@ Arch: all
                 [], list(self.tree.iter_changes(self.tree.basis_tree())))
 
     def test_fails(self):
-        class FailingFixer(Fixer):
-            def run(self, basedir, current_version):
-                with open(os.path.join(basedir, 'debian/foo'), 'w') as f:
-                    f.write("blah")
-                with open(os.path.join(basedir, 'debian/control'), 'a') as f:
-                    f.write("foo\n")
-                raise Exception("Not successful")
         with self.tree.lock_write():
             self.assertRaises(
                     Exception, run_lintian_fixer, self.tree,
@@ -219,6 +224,60 @@ Arch: all
         with self.tree.lock_read():
             self.assertEqual(
                 [], list(self.tree.iter_changes(self.tree.basis_tree())))
+
+
+class RunLintianFixersTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(RunLintianFixersTests, self).setUp()
+        self.tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/control', """\
+Source: blah
+Vcs-Git: https://example.com/blah
+Testsuite: autopkgtest
+
+Binary: blah
+Arch: all
+
+"""),
+            CHANGELOG_FILE])
+        self.tree.add(['debian', 'debian/changelog', 'debian/control'])
+        self.tree.commit('Initial thingy.')
+
+    def test_fails(self):
+        with self.tree.lock_write():
+            applied, failed = run_lintian_fixers(
+                    self.tree, [FailingFixer('fail', 'some-tag')],
+                    update_changelog=False)
+        self.assertEqual([], applied)
+        self.assertEqual(['fail'], failed)
+        with self.tree.lock_read():
+            self.assertEqual(
+                [], list(self.tree.iter_changes(self.tree.basis_tree())))
+
+    def test_not_debian_tree(self):
+        self.tree.remove('debian/changelog')
+        os.remove('debian/changelog')
+        self.tree.commit("not a debian dir")
+        with self.tree.lock_write():
+            self.assertRaises(
+                NotDebianPackage, run_lintian_fixers,
+                self.tree, [DummyFixer('dummy', 'some-tag')],
+                update_changelog=False)
+
+    def test_simple_modify(self):
+        with self.tree.lock_write():
+            applied, failed = run_lintian_fixers(
+                self.tree, [DummyFixer('dummy', 'some-tag')],
+                update_changelog=False)
+        self.assertEqual([(['some-tag'], 'Fixed some tag.')], applied)
+        self.assertEqual([], failed)
+        self.assertEqual(2, self.tree.branch.revno())
+        self.assertEqual(
+                self.tree.get_file_lines('debian/control')[-1],
+                b"a new line\n")
 
 
 class HonorsVcsCommitter(TestCaseWithTransport):
@@ -272,9 +331,6 @@ Arch: all
         self.make_change(tree)
         rev = tree.branch.repository.get_revision(tree.branch.last_revision())
         self.assertEqual(rev.committer, 'Jane Example <jane@example.com>')
-
-
-# TODO(jelmer): run_lintian_fixers
 
 
 class IncrementVersionTests(TestCase):

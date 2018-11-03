@@ -24,6 +24,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import warnings
 
 from breezy import ui
@@ -49,8 +50,22 @@ class NoChanges(Exception):
     """Script didn't make any changes."""
 
 
-class ScriptFailed(Exception):
+class FixerFailed(Exception):
+    """Base class for fixer script failures."""
+
+
+class FixerScriptFailed(FixerFailed):
     """Script failed to run."""
+
+    def __init__(self, path, returncode, errors):
+        self.path = path
+        self.returncode = returncode
+        self.errors = errors
+
+    def __str__(self):
+        return ("Script %s failed with exit code: %d\n%s\n" % (
+                self.path, self.returncode,
+                self.errors.decode(errors='replace')))
 
 
 class DescriptionMissing(Exception):
@@ -114,15 +129,18 @@ class ScriptFixer(Fixer):
     def run(self, basedir, current_version):
         env = dict(os.environ.items())
         env['CURRENT_VERSION'] = str(current_version)
-        p = subprocess.Popen(self.script_path, cwd=basedir,
-                             stdout=subprocess.PIPE, stderr=sys.stderr,
-                             env=env)
-        (description, err) = p.communicate("")
-        if p.returncode == 2:
-            raise NoChanges()
-        if p.returncode != 0:
-            raise ScriptFailed("Script %s failed with error code %d" % (
-                    self.script_path, p.returncode))
+        with tempfile.SpooledTemporaryFile() as stderr:
+            p = subprocess.Popen(self.script_path, cwd=basedir,
+                                 stdout=subprocess.PIPE, stderr=stderr,
+                                 env=env)
+            (description, err) = p.communicate("")
+            if p.returncode == 2:
+                raise NoChanges()
+            if p.returncode != 0:
+                stderr.seek(0)
+                raise FixerScriptFailed(
+                        self.script_path, p.returncode,
+                        stderr.read())
         if not description:
             raise DescriptionMissing(self)
         description = description.decode('utf-8')
@@ -320,8 +338,11 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
       verbose: Whether to be verbose
       committer: Optional committer (name and email)
     Returns:
-      List of tuples with (lintian-tag, description)
+      Tuple with two lists:
+        list of tuples with (lintian-tag, description) of fixers that ran
+        list of script names for fixers that failed to run
     """
+    failed_fixers = []
     fixers = list(fixers)
     ret = []
     pb = ui.ui_factory.nested_progress_bar()
@@ -333,8 +354,11 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                 fixed_lintian_tags, summary = run_lintian_fixer(
                         local_tree, fixer, update_changelog=update_changelog,
                         committer=committer)
-            except ScriptFailed:
-                note('Fixer %r failed to run.', fixer)
+            except FixerFailed as e:
+                failed_fixers.append(fixer.name)
+                if verbose:
+                    note('Fixer %r failed to run.', fixer)
+                    sys.stderr.write(str(e))
             except NoChanges:
                 if verbose:
                     note('Fixer %r made no changes.', fixer)
@@ -344,4 +368,4 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                 ret.append((fixed_lintian_tags, summary))
     finally:
         pb.finished()
-    return ret
+    return ret, failed_fixers

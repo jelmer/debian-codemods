@@ -1,3 +1,9 @@
+lintian-brush (0.5) UNRELEASED; urgency=medium
+
+  * Hide tracebacks by default, but report list of failed fixers.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Nov 2018 16:50:03 +0000
+
 lintian-brush (0.4) unstable; urgency=medium
 
   * (Build-)Depend at least on a version of python3-breezy that has some

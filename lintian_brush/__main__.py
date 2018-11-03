@@ -74,7 +74,7 @@ def main(argv=None):
 
     fixers = available_lintian_fixers(args.fixers_dir)
     if args.list_fixers:
-        for script in sorted([fixer.script_path for fixer in fixers]):
+        for script in sorted([fixer.name for fixer in fixers]):
             note(script)
     elif args.list_tags:
         tags = set()
@@ -93,7 +93,7 @@ def main(argv=None):
             fixers = [f for f in fixers if f.name in args.fixers]
         with wt.lock_write():
             try:
-                applied = run_lintian_fixers(
+                applied, failed = run_lintian_fixers(
                     wt, fixers,
                     update_changelog=(not args.no_update_changelog),
                     verbose=args.verbose)
@@ -110,6 +110,9 @@ def main(argv=None):
             note("Lintian tags fixed: %r" % all_tags)
         else:
             note("No changes made.")
+        if failed and not args.verbose:
+            note("Some fixer scripts failed to run: %r. "
+                 "Run with --verbose for details.", set(failed))
 
 
 if __name__ == '__main__':
