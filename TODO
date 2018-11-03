@@ -5,4 +5,7 @@
  + Without --verbose, report a list of those reporters at the end of run
 
 Possibly:
-- Support running in non-vcs-controlled packages? How?
+- Support running in non-vcs-controlled packages?
+ 1) Make a copy of tree
+ 2) Run
+ 3) copy back if successful?
