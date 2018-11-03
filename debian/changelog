@@ -1,4 +1,4 @@
-lintian-brush (0.5) UNRELEASED; urgency=medium
+lintian-brush (0.5) unstable; urgency=medium
 
   * Bump debhelper version to 11.
   * Hide tracebacks by default, but report list of failed fixers.
