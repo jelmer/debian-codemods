@@ -275,12 +275,7 @@ def run_lintian_fixer(local_tree, fixer, update_changelog=True):
             local_tree, unknown=True, ignored=False, detritus=False))
         delete_items(deletables)
         raise
-    unknowns = list(local_tree.unknowns())
-    if unknowns:
-        # Urgh.
-        local_tree.add(
-            [f for f in unknowns
-             if not os.path.basename(f).startswith('sed')])
+    local_tree.smart_add([local_tree.basedir])
     if local_tree.supports_setting_file_ids():
         RenameMap.guess_renames(
             local_tree.basis_tree(), local_tree, dry_run=False)
