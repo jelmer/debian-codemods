@@ -6,6 +6,7 @@ lintian-brush (0.5) UNRELEASED; urgency=medium
   * Bump to standards version 4.2.1
   * file-contains-trailing-whitespace: Also trim empty lines from the
     ends of files.
+  * Trim trailing whitespace.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Nov 2018 16:50:03 +0000
 
@@ -44,4 +45,3 @@ lintian-brush (0.1) experimental; urgency=medium
   * Initial release. (Closes: #911016)
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
-
