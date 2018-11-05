@@ -1,3 +1,10 @@
+lintian-brush (0.6) UNRELEASED; urgency=medium
+
+  * useless-autoreconf-build-depends: Actually require changes, don't
+    just update debhelper build-depends.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 05 Nov 2018 19:31:02 +0000
+
 lintian-brush (0.5) unstable; urgency=medium
 
   * Bump debhelper version to 11.
