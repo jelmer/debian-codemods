@@ -167,13 +167,17 @@ class ScriptFixer(Fixer):
         certainty = None
         for line in description.splitlines():
             # TODO(jelmer): Do this in a slighly less hackish manner
-            (key, value) = line.split(':', 1)
-            if key == 'Fixed-Lintian-Tags':
-                fixed_tags = value.strip().split(',')
-            elif key == 'Certainty':
-                certainty = value.strip()
-            else:
+            try:
+                (key, value) = line.split(':', 1)
+            except ValueError:
                 lines.append(line)
+            else:
+                if key == 'Fixed-Lintian-Tags':
+                    fixed_tags = value.strip().split(',')
+                elif key == 'Certainty':
+                    certainty = value.strip()
+                else:
+                    lines.append(line)
         if certainty not in SUPPORTED_CERTAINTIES:
             raise UnsupportedCertainty(certainty)
         return FixerResult('\n'.join(lines), fixed_tags, certainty)
