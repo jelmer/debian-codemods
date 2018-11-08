@@ -3,6 +3,7 @@ lintian-brush (0.6) UNRELEASED; urgency=medium
   * useless-autoreconf-build-depends: Actually require changes, don't
     just update debhelper build-depends.
   * Add support for a certainty tag in fixer output.
+  * Fix compatibility with newer versions of Dulwich.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 05 Nov 2018 19:31:02 +0000
 
