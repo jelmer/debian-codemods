@@ -1,4 +1,4 @@
-lintian-brush (0.6) UNRELEASED; urgency=medium
+lintian-brush (0.6) unstable; urgency=medium
 
   * useless-autoreconf-build-depends: Actually require changes, don't
     just update debhelper build-depends.
