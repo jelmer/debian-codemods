@@ -283,7 +283,8 @@ def get_committer(tree):
     """
     # TODO(jelmer): Perhaps this logic should be in Breezy?
     if getattr(tree.branch.repository, '_git', None):
-        return tree.branch.repository._git._get_user_identity()
+        cs = tree.branch.repository._git.get_config_stack()
+        return tree.branch.repository._git._get_user_identity(cs)
     else:
         config = tree.branch.get_config_stack()
         return config.get('email')

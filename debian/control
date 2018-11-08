@@ -8,7 +8,7 @@ Build-Depends: debhelper (>= 11),
                python3-all,
                python3-breezy (>= 3.0.0~bzr7140),
                python3-breezy.tests,
-               python3-dulwich,
+               python3-dulwich (>= 0.19.7),
                python3-debian,
                python3-setuptools
 Standards-Version: 4.2.1
@@ -20,7 +20,7 @@ Architecture: all
 Depends: dos2unix,
          python3-breezy (>= 3.0.0~bzr7140),
          python3-debian,
-         python3-dulwich,
+         python3-dulwich (>= 0.19.7),
          ${misc:Depends},
          ${python3:Depends}
 Recommends: lintian
