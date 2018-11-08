@@ -105,8 +105,8 @@ def main(argv=None):
                 return 1
         if applied:
             all_tags = set()
-            for tags, summary in applied:
-                all_tags.update(tags)
+            for result, summary in applied:
+                all_tags.update(result.fixed_lintian_tags)
             note("Lintian tags fixed: %r" % all_tags)
         else:
             note("No changes made.")

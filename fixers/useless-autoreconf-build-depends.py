@@ -19,6 +19,7 @@ def bump_debhelper(control):
         control["Build-Depends"],
         "dh-autoreconf")
 
+
 changed = False
 outf = StringIO()
 with open('debian/rules', 'r') as f:

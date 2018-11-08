@@ -72,3 +72,7 @@ It can include optional metadata in its output::
    links to documentation about the fixed lintian tags. In the future,
    it may also support building the package to verify the lintian tag
    is actually resolved.
+
+ * ``Certainty:`` followed by ``certain`` or ``possible``,
+   indicating how certain the fixer is that the fix was the right
+   one.

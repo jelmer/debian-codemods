@@ -44,6 +44,7 @@ from debian.deb822 import Deb822
 
 __version__ = (0, 1)
 version_string = '.'.join(map(str, __version__))
+SUPPORTED_CERTAINTIES = ['certain', 'possible']
 
 
 class NoChanges(Exception):
@@ -52,6 +53,10 @@ class NoChanges(Exception):
 
 class FixerFailed(Exception):
     """Base class for fixer script failures."""
+
+
+class UnsupportedCertainty(Exception):
+    """Unsupported certainty."""
 
 
 class FixerScriptFailed(FixerFailed):
@@ -89,9 +94,22 @@ class PendingChanges(Exception):
 class FixerResult(object):
     """Result of a fixer run."""
 
-    def __init__(self, description, fixed_lintian_tags=[]):
+    def __init__(self, description, fixed_lintian_tags=[],
+                 certainty=None):
         self.description = description
         self.fixed_lintian_tags = fixed_lintian_tags
+        self.certainty = certainty
+
+    def __repr__(self):
+        return "%s(%r, fixed_lintian_tags=%r, certainty=%r)" % (
+                self.description, self.fixed_lintian_tags, self.certainty)
+
+    def __eq__(self, other):
+        if type(other) != type(self):
+            return False
+        return ((self.description == other.description) and
+                (self.fixed_lintian_tags == other.fixed_lintian_tags) and
+                (self.certainty == other.certainty))
 
 
 class Fixer(object):
@@ -146,13 +164,19 @@ class ScriptFixer(Fixer):
         description = description.decode('utf-8')
         lines = []
         fixed_tags = []
+        certainty = None
         for line in description.splitlines():
             # TODO(jelmer): Do this in a slighly less hackish manner
-            if line.startswith('Fixed-Lintian-Tags: '):
-                fixed_tags = line.split(':', 1)[1].strip().split(',')
+            (key, value) = line.split(':', 1)
+            if key == 'Fixed-Lintian-Tags':
+                fixed_tags = value.strip().split(',')
+            elif key == 'Certainty':
+                certainty = value.strip()
             else:
                 lines.append(line)
-        return FixerResult('\n'.join(lines), fixed_tags)
+        if certainty not in SUPPORTED_CERTAINTIES:
+            raise UnsupportedCertainty(certainty)
+        return FixerResult('\n'.join(lines), fixed_tags, certainty)
 
 
 def find_fixers_dir():
@@ -271,7 +295,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
       committer: Optional committer (name and email)
       update_changelog: Whether to add a new entry to the changelog
     Returns:
-      summary of the changes
+      tuple with set of FixerResult, summary of the changes
     """
     # Just check there are no changes to begin with
     if list(local_tree.iter_changes(local_tree.basis_tree())):
@@ -324,7 +348,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
                       reporter=NullCommitReporter(),
                       committer=committer)
     # TODO(jelmer): Run sbuild & verify lintian warning is gone?
-    return result.fixed_lintian_tags, summary
+    return result, summary
 
 
 def run_lintian_fixers(local_tree, fixers, update_changelog=True,
@@ -339,19 +363,18 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
       committer: Optional committer (name and email)
     Returns:
       Tuple with two lists:
-        list of tuples with (lintian-tag, description) of fixers that ran
-        list of script names for fixers that failed to run
+        list of tuples with (lintian-tag, certainty, description) of fixers
+        that ran list of script names for fixers that failed to run
     """
     failed_fixers = []
     fixers = list(fixers)
     ret = []
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb:
         for i, fixer in enumerate(fixers):
             pb.update('Running fixer %r on %s' % (fixer, local_tree.basedir),
                       i, len(fixers))
             try:
-                fixed_lintian_tags, summary = run_lintian_fixer(
+                result, summary = run_lintian_fixer(
                         local_tree, fixer, update_changelog=update_changelog,
                         committer=committer)
             except FixerFailed as e:
@@ -365,7 +388,5 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
             else:
                 if verbose:
                     note('Fixer %r made changes.', fixer)
-                ret.append((fixed_lintian_tags, summary))
-    finally:
-        pb.finished()
+                ret.append((result, summary))
     return ret, failed_fixers
