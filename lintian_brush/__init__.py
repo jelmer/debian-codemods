@@ -44,7 +44,7 @@ from debian.deb822 import Deb822
 
 __version__ = (0, 1)
 version_string = '.'.join(map(str, __version__))
-SUPPORTED_CERTAINTIES = ['certain', 'possible']
+SUPPORTED_CERTAINTIES = ['certain', 'possible', None]
 
 
 class NoChanges(Exception):
