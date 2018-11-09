@@ -7,4 +7,4 @@ testsuite::
 	python3 setup.py test
 
 README.md::
-	./buildtools/update-readme.py
+	PYTHONPATH=. ./buildtools/update-readme.py
