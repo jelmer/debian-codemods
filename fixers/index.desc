@@ -34,7 +34,7 @@ Lintian-Tags: dm-upload-allowed-is-obsolete
 Fix-Script: file-contains-trailing-whitespace.sh
 Lintian-Tags: file-contains-trailing-whitespace
 
-Fix-Script: homepage-field-uses-insecure-uri.sh
+Fix-Script: homepage-field-uses-insecure-uri.py
 Lintian-Tags: homepage-field-uses-insecure-uri
 
 Fix-Script: insecure-copyright-format-uri.sh
