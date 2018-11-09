@@ -52,6 +52,9 @@ Lintian-Tags: missing-vcs-browser-field
 Fix-Script: out-of-date-copyright-format-uri.sh
 Lintian-Tags: out-of-date-copyright-format-uri
 
+Fix-Script: package-needs-versioned-debhelper-build-depends.py
+Lintian-Tags: package-needs-versioned-debhelper-build-depends
+
 Fix-Script: package-uses-deprecated-source-override-location.sh
 Lintian-Tags: package-uses-deprecated-source-override-location
 
