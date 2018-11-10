@@ -24,6 +24,7 @@ subset of the issues:
 * ancient-python-version-field
 * control-file-with-CRLF-EOLs
 * copyright-has-crs
+* debhelper-but-no-misc-depends
 * debian-control-has-empty-field
 * debian-control-has-obsolete-dbg-package
 * debian-pyversions-is-obsolete

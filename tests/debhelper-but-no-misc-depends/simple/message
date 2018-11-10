@@ -1,0 +1,2 @@
+Add missing ${misc:Depends} to Depends for f2fs-tools.
+Fixed-Lintian-Tags: debhelper-but-no-misc-depends

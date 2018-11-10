@@ -7,6 +7,9 @@ Lintian-Tags: control-file-with-CRLF-EOLs
 Fix-Script: copyright-has-crs.sh
 Lintian-Tags: copyright-has-crs
 
+Fix-Script: debhelper-but-no-misc-depends.py
+Lintian-Tags: debhelper-but-no-misc-depends
+
 Fix-Script: debian-control-has-empty-field.py
 Lintian-Tags: debian-control-has-empty-field
 

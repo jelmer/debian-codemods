@@ -2,6 +2,7 @@ lintian-brush (0.7) UNRELEASED; urgency=medium
 
   * Add fixer for package-needs-versioned-debhelper-build-depends.
   * Add fixer for package-uses-deprecated-debhelper-compat-version
+  * Add support for fixing debhelper-but-no-misc-depends.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 09 Nov 2018 21:07:23 +0000
 
