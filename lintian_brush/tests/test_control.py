@@ -183,6 +183,17 @@ class EnsureMinimumVersionTests(TestCase):
             'blah, debhelper (>= 9)',
             ensure_minimum_version('blah', 'debhelper', '9'))
 
+    def test_unchanged(self):
+        self.assertEqual(
+            'debhelper (>= 9)', ensure_minimum_version(
+                'debhelper (>= 9)', 'debhelper', '9'))
+        self.assertEqual(
+            'debhelper (= 9)', ensure_minimum_version(
+                'debhelper (= 9)', 'debhelper', '9'))
+        self.assertEqual(
+            'debhelper (>= 9)', ensure_minimum_version(
+                'debhelper (>= 9)', 'debhelper', '9~'))
+
     def test_updated(self):
         self.assertEqual(
             'debhelper (>= 9)',

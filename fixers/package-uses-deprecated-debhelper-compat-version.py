@@ -30,7 +30,7 @@ def bump_debhelper(control):
     control["Build-Depends"] = ensure_minimum_version(
             control["Build-Depends"],
             "debhelper",
-            new)
+            "%d~" % new)
 
 
 update_control(source_package_cb=bump_debhelper)
