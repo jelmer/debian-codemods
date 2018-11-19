@@ -64,6 +64,8 @@ def main(argv=None):
         '--directory', metavar='DIRECTORY', help='directory to run in',
         type=str, default='.')
     parser.add_argument(
+        '--diff', help='Print resulting diff afterwards.', action='store_true')
+    parser.add_argument(
         'fixers', metavar='FIXER', nargs='*',
         help='specific fixer to run')
     args = parser.parse_args(argv)
@@ -89,6 +91,7 @@ def main(argv=None):
             note('Unable to open tree at %s: missing package %s',
                  args.directory, e.library)
             return 1
+        since_revid = wt.last_revision()
         if args.fixers:
             fixers = [f for f in fixers if f.name in args.fixers]
         with wt.lock_write():
@@ -113,6 +116,11 @@ def main(argv=None):
         if failed and not args.verbose:
             note("Some fixer scripts failed to run: %r. "
                  "Run with --verbose for details.", set(failed))
+        if args.diff:
+            from breezy.diff import show_diff_trees
+            show_diff_trees(
+                wt.branch.repository.revision_tree(since_revid),
+                wt, sys.stdout.buffer)
 
 
 if __name__ == '__main__':
