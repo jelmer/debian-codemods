@@ -24,8 +24,10 @@ subset of the issues:
 * ancient-python-version-field
 * control-file-with-CRLF-EOLs
 * copyright-has-crs
+* debhelper-but-no-misc-depends
 * debian-control-has-empty-field
 * debian-control-has-obsolete-dbg-package
+* debian-pyversions-is-obsolete
 * debian-rules-should-not-use-pwd
 * debian-upstream-obsolete-path
 * debian-watch-uses-insecure-uri
@@ -38,12 +40,15 @@ subset of the issues:
 * missing-debian-source-format
 * missing-vcs-browser-field
 * out-of-date-copyright-format-uri
+* package-needs-versioned-debhelper-build-depends
+* package-uses-deprecated-debhelper-compat-version
 * package-uses-deprecated-source-override-location
 * priority-extra-is-replaced-by-priority-optional
 * quilt-series-without-trailing-newline
 * transitional-package-should-be-oldlibs-optional
 * unnecessary-testsuite-autopkgtest-field
 * unversioned-copyright-format-uri
+* useless-autoreconf-build-depends
 * vcs-field-uses-insecure-uri
 * vcs-field-uses-not-recommended-uri-format
 * wrong-debian-qa-group-name

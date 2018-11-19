@@ -17,6 +17,7 @@
 
 """Utility functions for dealing with control files."""
 
+import collections
 from io import BytesIO
 
 from debian.changelog import Version
@@ -181,14 +182,59 @@ def ensure_minimum_version(relationstr, package, minimum_version):
             changed = True
     if not found:
         changed = True
-        relations.append(
-            (' ' if len(relations) > 0 else '',
-                [PkgRelation(name=package, version=('>=', minimum_version))],
-                ''))
+        _add_dependency(
+            relations,
+            [PkgRelation(name=package, version=('>=', minimum_version))])
     if changed:
         return format_relations(relations)
     # Just return the original; we don't preserve all formatting yet.
     return relationstr
+
+
+def _add_dependency(relations, relation):
+    """Add a dependency to a depends line.
+
+    Args:
+      relations: existing list of relations
+      relation: New relation
+    Returns:
+      Nothing
+    """
+    if len(relations) == 0:
+        head_whitespace = ''
+    elif len(relations) == 1:
+        head_whitespace = (relations[0][0] or " ")  # Best guess
+    else:
+        ws = collections.defaultdict(lambda: 0)
+        for r in relations[1:]:
+            ws[r[0]] += 1
+        if len(ws) == 1:
+            head_whitespace = list(ws.keys())[0]
+        else:
+            head_whitespace = relations[-1][0]  # Best guest
+    if len(relations) == 0:
+        tail_whitespace = ''
+    else:
+        tail_whitespace = relations[-1][2]
+        relations[-1] = relations[-1][:2] + ('', )
+
+    relations.append((head_whitespace, relation, tail_whitespace))
+
+
+def add_dependency(relationstr, relation):
+    """Add a dependency to a depends line.
+
+    Args:
+      relationstr: existing relations line
+      relation: New relation
+    Returns:
+      Nothing
+    """
+    relations = parse_relations(relationstr)
+    if isinstance(relation, str):
+        relation = PkgRelation.parse(relation)
+    _add_dependency(relations, relation)
+    return format_relations(relations)
 
 
 def drop_dependency(relationstr, package):

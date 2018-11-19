@@ -23,6 +23,7 @@ from breezy.tests import (
     )
 
 from lintian_brush.control import (
+    add_dependency,
     can_preserve_deb822,
     drop_dependency,
     ensure_minimum_version,
@@ -183,6 +184,17 @@ class EnsureMinimumVersionTests(TestCase):
             'blah, debhelper (>= 9)',
             ensure_minimum_version('blah', 'debhelper', '9'))
 
+    def test_unchanged(self):
+        self.assertEqual(
+            'debhelper (>= 9)', ensure_minimum_version(
+                'debhelper (>= 9)', 'debhelper', '9'))
+        self.assertEqual(
+            'debhelper (= 9)', ensure_minimum_version(
+                'debhelper (= 9)', 'debhelper', '9'))
+        self.assertEqual(
+            'debhelper (>= 9)', ensure_minimum_version(
+                'debhelper (>= 9)', 'debhelper', '9~'))
+
     def test_updated(self):
         self.assertEqual(
             'debhelper (>= 9)',
@@ -205,3 +217,30 @@ class DropDependencyTests(TestCase):
         self.assertEqual(
             ' dh-autoreconf',
             drop_dependency('debhelper (>= 9), dh-autoreconf', 'debhelper'))
+
+
+class AddDependencyTests(TestCase):
+
+    def test_added(self):
+        self.assertEqual(
+            'debhelper (>= 9), dh-autoreconf',
+            add_dependency('debhelper (>= 9)', 'dh-autoreconf'))
+        self.assertEqual(
+            'debhelper (>= 9), ${misc:Depends}',
+            add_dependency('debhelper (>= 9)', '${misc:Depends}'))
+
+    def test_indentation(self):
+        self.assertEqual("""foo,
+    bar,
+    blah""", add_dependency("""foo,
+    bar""", 'blah'))
+        self.assertEqual("""foo,
+ bar,
+ blah""", add_dependency("""foo,
+ bar""", 'blah'))
+        self.assertEqual("""foo,
+ bar,
+ blah
+""", add_dependency("""foo,
+ bar
+""", 'blah'))

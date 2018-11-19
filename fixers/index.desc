@@ -7,6 +7,9 @@ Lintian-Tags: control-file-with-CRLF-EOLs
 Fix-Script: copyright-has-crs.sh
 Lintian-Tags: copyright-has-crs
 
+Fix-Script: debhelper-but-no-misc-depends.py
+Lintian-Tags: debhelper-but-no-misc-depends
+
 Fix-Script: debian-control-has-empty-field.py
 Lintian-Tags: debian-control-has-empty-field
 
@@ -34,7 +37,7 @@ Lintian-Tags: dm-upload-allowed-is-obsolete
 Fix-Script: file-contains-trailing-whitespace.sh
 Lintian-Tags: file-contains-trailing-whitespace
 
-Fix-Script: homepage-field-uses-insecure-uri.sh
+Fix-Script: homepage-field-uses-insecure-uri.py
 Lintian-Tags: homepage-field-uses-insecure-uri
 
 Fix-Script: insecure-copyright-format-uri.sh
@@ -57,6 +60,9 @@ Lintian-Tags: package-needs-versioned-debhelper-build-depends
 
 Fix-Script: package-uses-deprecated-source-override-location.sh
 Lintian-Tags: package-uses-deprecated-source-override-location
+
+Fix-Script: package-uses-deprecated-debhelper-compat-version.py
+Lintian-Tags: package-uses-deprecated-debhelper-compat-version
 
 Fix-Script: priority-extra-is-replaced-by-priority-optional.py
 Lintian-Tags: priority-extra-is-replaced-by-priority-optional
