@@ -94,9 +94,8 @@ class FailingFixer(Fixer):
 
 class RunLintianFixerTests(TestCaseWithTransport):
 
-    def setUp(self):
-        super(RunLintianFixerTests, self).setUp()
-        self.tree = self.make_branch_and_tree('.')
+    def make_test_tree(self, format=None):
+        tree = self.make_branch_and_tree('.', format=format)
         self.build_tree_contents([
             ('debian/', ),
             ('debian/control', """\
@@ -109,92 +108,101 @@ Arch: all
 
 """),
             CHANGELOG_FILE])
-        self.tree.add(['debian', 'debian/changelog', 'debian/control'])
-        self.tree.commit('Initial thingy.')
+        tree.add(['debian', 'debian/changelog', 'debian/control'])
+        tree.commit('Initial thingy.')
+        return tree
 
     def test_pending_changes(self):
+        tree = self.make_test_tree()
         self.build_tree_contents([('debian/changelog', 'blah')])
-        with self.tree.lock_write():
+        with tree.lock_write():
             self.assertRaises(
                 PendingChanges, run_lintian_fixer,
-                self.tree, DummyFixer('dummy', 'some-tag'),
+                tree, DummyFixer('dummy', 'some-tag'),
                 update_changelog=False)
 
     def test_extra(self):
+        tree = self.make_test_tree()
         self.build_tree_contents([('debian/foo', 'blah')])
-        with self.tree.lock_write():
+        with tree.lock_write():
             self.assertRaises(
                 PendingChanges, run_lintian_fixer,
-                self.tree, DummyFixer('dummy', 'some-tag'),
+                tree, DummyFixer('dummy', 'some-tag'),
                 update_changelog=False)
 
     def test_not_debian_tree(self):
-        self.tree.remove('debian/changelog')
+        tree = self.make_test_tree()
+        tree.remove('debian/changelog')
         os.remove('debian/changelog')
-        self.tree.commit("not a debian dir")
-        with self.tree.lock_write():
+        tree.commit("not a debian dir")
+        with tree.lock_write():
             self.assertRaises(
                 NotDebianPackage, run_lintian_fixer,
-                self.tree, DummyFixer('dummy', 'some-tag'),
+                tree, DummyFixer('dummy', 'some-tag'),
                 update_changelog=False)
 
     def test_simple_modify(self):
-        with self.tree.lock_write():
+        tree = self.make_test_tree()
+        with tree.lock_write():
             result, summary = run_lintian_fixer(
-                self.tree, DummyFixer('dummy', 'some-tag'),
+                tree, DummyFixer('dummy', 'some-tag'),
                 update_changelog=False)
         self.assertEqual(summary, "Fixed some tag.")
         self.assertEqual(['some-tag'], result.fixed_lintian_tags)
         self.assertEqual('certain', result.certainty)
-        self.assertEqual(2, self.tree.branch.revno())
+        self.assertEqual(2, tree.branch.revno())
         self.assertEqual(
-                self.tree.get_file_lines('debian/control')[-1],
+                tree.get_file_lines('debian/control')[-1],
                 b"a new line\n")
 
     def test_new_file(self):
+        tree = self.make_test_tree()
+
         class NewFileFixer(Fixer):
             def run(self, basedir, current_version):
                 with open(os.path.join(basedir, 'debian/somefile'), 'w') as f:
                     f.write("test")
                 return FixerResult("Created new file.", ['some-tag'])
-        with self.tree.lock_write():
+        with tree.lock_write():
             result, summary = run_lintian_fixer(
-                self.tree, NewFileFixer('new-file', 'some-tag'),
+                tree, NewFileFixer('new-file', 'some-tag'),
                 update_changelog=False)
         self.assertEqual(summary, "Created new file.")
         self.assertIs(None, result.certainty)
         self.assertEqual(['some-tag'], result.fixed_lintian_tags)
-        rev = self.tree.branch.repository.get_revision(
-            self.tree.last_revision())
+        rev = tree.branch.repository.get_revision(
+            tree.last_revision())
         self.assertEqual(rev.message, (
             'Created new file.\n'
             '\n'
             'Fixes lintian: some-tag\n'
             'See https://lintian.debian.org/tags/some-tag.html for '
             'more details.\n'))
-        self.assertEqual(2, self.tree.branch.revno())
-        basis_tree = self.tree.branch.basis_tree()
+        self.assertEqual(2, tree.branch.revno())
+        basis_tree = tree.branch.basis_tree()
         with basis_tree.lock_read():
             self.assertEqual(
                     basis_tree.get_file_text('debian/somefile'),
                     b"test")
 
     def test_rename_file(self):
+        tree = self.make_test_tree()
+
         class RenameFileFixer(Fixer):
             def run(self, basedir, current_version):
                 os.rename(os.path.join(basedir, 'debian/control'),
                           os.path.join(basedir, 'debian/control.blah'))
                 return FixerResult("Renamed a file.")
-        orig_basis_tree = self.tree.branch.basis_tree()
-        with self.tree.lock_write():
+        orig_basis_tree = tree.branch.basis_tree()
+        with tree.lock_write():
             result, summary = run_lintian_fixer(
-                self.tree, RenameFileFixer('rename', 'some-tag'),
+                tree, RenameFileFixer('rename', 'some-tag'),
                 update_changelog=False)
         self.assertEqual(summary, "Renamed a file.")
         self.assertIs(None, result.certainty)
         self.assertEqual([], result.fixed_lintian_tags)
-        self.assertEqual(2, self.tree.branch.revno())
-        basis_tree = self.tree.branch.basis_tree()
+        self.assertEqual(2, tree.branch.revno())
+        basis_tree = tree.branch.basis_tree()
         with basis_tree.lock_read(), orig_basis_tree.lock_read():
             self.assertFalse(basis_tree.has_filename('debian/control'))
             self.assertTrue(basis_tree.has_filename('debian/control.blah'))
@@ -206,27 +214,30 @@ Arch: all
                 orig_basis_tree.path2id('debian/control'))
 
     def test_empty_change(self):
+        tree = self.make_test_tree()
+
         class EmptyFixer(Fixer):
             def run(self, basedir, current_version):
                 return FixerResult("I didn't actually change anything.")
-        with self.tree.lock_write():
+        with tree.lock_write():
             self.assertRaises(
-                    NoChanges, run_lintian_fixer, self.tree,
+                    NoChanges, run_lintian_fixer, tree,
                     EmptyFixer('empty', 'some-tag'), update_changelog=False)
-        self.assertEqual(1, self.tree.branch.revno())
-        with self.tree.lock_read():
+        self.assertEqual(1, tree.branch.revno())
+        with tree.lock_read():
             self.assertEqual(
-                [], list(self.tree.iter_changes(self.tree.basis_tree())))
+                [], list(tree.iter_changes(tree.basis_tree())))
 
     def test_fails(self):
-        with self.tree.lock_write():
+        tree = self.make_test_tree()
+        with tree.lock_write():
             self.assertRaises(
-                    Exception, run_lintian_fixer, self.tree,
+                    Exception, run_lintian_fixer, tree,
                     FailingFixer('fail', 'some-tag'), update_changelog=False)
-        self.assertEqual(1, self.tree.branch.revno())
-        with self.tree.lock_read():
+        self.assertEqual(1, tree.branch.revno())
+        with tree.lock_read():
             self.assertEqual(
-                [], list(self.tree.iter_changes(self.tree.basis_tree())))
+                [], list(tree.iter_changes(tree.basis_tree())))
 
 
 class RunLintianFixersTests(TestCaseWithTransport):
