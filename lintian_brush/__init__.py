@@ -303,7 +303,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
       tuple with set of FixerResult, summary of the changes
     """
     # Just check there are no changes to begin with
-    if list(local_tree.iter_changes(local_tree.basis_tree())):
+    if local_tree.has_changes():
         raise PendingChanges(local_tree)
     if list(local_tree.unknowns()):
         raise PendingChanges(local_tree)

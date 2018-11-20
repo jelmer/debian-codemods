@@ -4,6 +4,8 @@ lintian-brush (0.7) UNRELEASED; urgency=medium
   * Add fixer for package-uses-deprecated-debhelper-compat-version
   * Add support for fixing debhelper-but-no-misc-depends.
   * Add a --diff option.
+  * Don't consider an empty directory to be a pending change in a git
+    repository. Closes: #914038
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 09 Nov 2018 21:07:23 +0000
 

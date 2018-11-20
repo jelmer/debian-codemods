@@ -121,6 +121,32 @@ Arch: all
                 tree, DummyFixer('dummy', 'some-tag'),
                 update_changelog=False)
 
+    def test_pending_changes_bzr_empty_dir(self):
+        # See https://bugs.debian.org/914038
+        tree = self.make_test_tree(format='bzr')
+        self.build_tree_contents([('debian/upstream/', )])
+        with tree.lock_write():
+            self.assertRaises(
+                PendingChanges, run_lintian_fixer,
+                tree, DummyFixer('dummy', 'some-tag'),
+                update_changelog=False)
+
+    def test_pending_changes_git_empty_dir(self):
+        # See https://bugs.debian.org/914038
+        tree = self.make_test_tree(format='git')
+        self.build_tree_contents([('debian/upstream/', )])
+        with tree.lock_write():
+            result, summary = run_lintian_fixer(
+                tree, DummyFixer('dummy', 'some-tag'),
+                update_changelog=False)
+        self.assertEqual(summary, "Fixed some tag.")
+        self.assertEqual(['some-tag'], result.fixed_lintian_tags)
+        self.assertEqual('certain', result.certainty)
+        self.assertEqual(2, tree.branch.revno())
+        self.assertEqual(
+                tree.get_file_lines('debian/control')[-1],
+                b"a new line\n")
+
     def test_extra(self):
         tree = self.make_test_tree()
         self.build_tree_contents([('debian/foo', 'blah')])
