@@ -1,3 +1,9 @@
+lintian-brush (0.8) UNRELEASED; urgency=medium
+
+  * Add CI configuration for Salsa.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 21 Nov 2018 01:17:16 +0000
+
 lintian-brush (0.7) unstable; urgency=medium
 
   * Add fixer for package-needs-versioned-debhelper-build-depends.
