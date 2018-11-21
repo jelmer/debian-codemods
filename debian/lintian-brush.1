@@ -2,7 +2,7 @@
 .SH NAME
 lintian-brush \- automatically fix lintian issues
 .SH SYNOPSIS
-lintian\-brush [\-h] [\-\-no\-update\-changelog] [\-\-version] [\-\-list-fixers] [\-\-list-tags\] [TAGS [TAGS ...]]
+lintian\-brush [\-h] [\-\-no\-update\-changelog] [\-\-version] [\-\-list-fixers] [\-\-list-tags\] [\-\-diff\] [TAGS [TAGS ...]]
 .SH DESCRIPTION
 lintian-brush automatically applies a set of fixes for common lintian issues,
 adds the relevant changelog entries and commits the changes to the local
@@ -31,6 +31,9 @@ List lintian tags for which fixers are available.
 .TP
 \fB\-\-fixers\-dir\fR DIRECTORY
 Override the fixers directory.
+.TP
+\fB\-\-diff\fR
+After running all fixers, display the changes made as a single unified diff.
 .SH EXAMPLES
 .IP "\fB$ lintian-brush\fR --list-tags"
 List all lintian tags for which fixers are available.
