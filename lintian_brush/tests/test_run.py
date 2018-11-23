@@ -35,6 +35,7 @@ from lintian_brush import (
     PendingChanges,
     available_lintian_fixers,
     increment_version,
+    only_changes_last_changelog_block,
     run_lintian_fixer,
     run_lintian_fixers,
     )
@@ -390,3 +391,148 @@ class IncrementVersionTests(TestCase):
 
     def test_native(self):
         self.assertVersion('1.1', '1.0')
+
+
+class OnlyChangesLastChangelogBlockTests(TestCaseWithTransport):
+
+    def make_package_tree(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/control', """\
+Source: blah
+Vcs-Git: https://example.com/blah
+Testsuite: autopkgtest
+
+Binary: blah
+Arch: all
+
+"""),
+            ('debian/changelog', """\
+blah (0.2) UNRELEASED; urgency=medium
+
+  * And a change.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+
+blah (0.1) unstable; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+""")])
+        tree.add(['debian', 'debian/changelog', 'debian/control'])
+        tree.commit('Initial thingy.')
+        return tree
+
+    def test_no_changes(self):
+        tree = self.make_package_tree()
+        self.assertFalse(only_changes_last_changelog_block(tree))
+
+    def test_other_change(self):
+        tree = self.make_package_tree()
+        self.build_tree_contents([
+            ('debian/control', """\
+Source: blah
+Vcs-Bzr: https://example.com/blah
+Testsuite: autopkgtest
+
+Binary: blah
+Arch: all
+
+""")])
+
+        self.assertFalse(only_changes_last_changelog_block(tree))
+
+    def test_other_changes(self):
+        tree = self.make_package_tree()
+        self.build_tree_contents([
+            ('debian/control', """\
+Source: blah
+Vcs-Bzr: https://example.com/blah
+Testsuite: autopkgtest
+
+Binary: blah
+Arch: all
+
+"""),
+            ('debian/changelog', """\
+blah (0.1) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #911016)
+  * Some other change.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+""")])
+        self.assertFalse(only_changes_last_changelog_block(tree))
+
+    def test_changes_to_other_changelog_entries(self):
+        tree = self.make_package_tree()
+        self.build_tree_contents([
+            ('debian/changelog', """\
+blah (0.2) UNRELEASED; urgency=medium
+
+  * debian/changelog: And a change.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+
+blah (0.1) unstable; urgency=medium
+
+  * debian/changelog: Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+""")])
+        self.assertFalse(only_changes_last_changelog_block(tree))
+
+    def test_changes_to_last_only(self):
+        tree = self.make_package_tree()
+        self.build_tree_contents([
+            ('debian/changelog', """\
+blah (0.2) UNRELEASED; urgency=medium
+
+  * And a change.
+  * Not a team upload.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+
+blah (0.1) unstable; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+""")])
+        self.assertTrue(only_changes_last_changelog_block(tree))
+
+    def test_changes_to_last_only_but_released(self):
+        tree = self.make_package_tree()
+        self.build_tree_contents([
+            ('debian/changelog', """\
+blah (0.2) unstable; urgency=medium
+
+  * And a change.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+
+blah (0.1) unstable; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+""")])
+        tree.commit('release')
+        self.build_tree_contents([
+            ('debian/changelog', """\
+blah (0.2) unstable; urgency=medium
+
+  * And a change.
+  * Team Upload.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+
+blah (0.1) unstable; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+""")])
+        self.assertFalse(only_changes_last_changelog_block(tree))

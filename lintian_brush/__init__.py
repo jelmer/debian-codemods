@@ -290,6 +290,38 @@ def get_committer(tree):
         return config.get('email')
 
 
+def only_changes_last_changelog_block(tree):
+    """Check whether the only change in a tree is to the last changelog entry.
+
+    Args:
+      tree: Tree to analyze
+    Returns:
+      boolean
+    """
+    basis_tree = tree.basis_tree()
+    with tree.lock_read(), basis_tree.lock_read():
+        changes = tree.iter_changes(basis_tree)
+        try:
+            first_change = next(changes)
+        except StopIteration:
+            return False
+        try:
+            next(changes)
+        except StopIteration:
+            pass
+        else:
+            return False
+        if first_change[1] != ('debian/changelog', 'debian/changelog'):
+            return False
+        new_cl = Changelog(tree.get_file_text('debian/changelog'))
+        old_cl = Changelog(basis_tree.get_file_text('debian/changelog'))
+        if old_cl.distributions != "UNRELEASED":
+            return False
+        del new_cl._blocks[0]
+        del old_cl._blocks[0]
+        return str(new_cl) == str(old_cl)
+
+
 def run_lintian_fixer(local_tree, fixer, committer=None,
                       update_changelog=True):
     """Run a lintian fixer on a tree.
@@ -331,8 +363,13 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
 
     summary = result.description.splitlines()[0]
 
-    if not list(local_tree.iter_changes(local_tree.basis_tree())):
+    if not local_tree.has_changes():
         raise NoChanges("Script didn't make any changes")
+
+    if update_changelog and only_changes_last_changelog_block(local_tree):
+        # If the script only changed the last entry in the changelog,
+        # don't update the changelog
+        update_changelog = False
 
     if update_changelog:
         subprocess.check_call(
