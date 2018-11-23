@@ -83,7 +83,8 @@ class FixerTestCase(unittest.TestCase):
         (result, err) = p.communicate("")
         self.assertEqual(p.returncode, 0)
         p = subprocess.Popen(
-            ['diff', '-ur', os.path.join(self._path, 'out'), self._testdir],
+            ['diff', '-x', '*~', '-ur', os.path.join(self._path, 'out'),
+                self._testdir],
             stdout=subprocess.PIPE)
         (diff, stderr) = p.communicate('')
         self.assertIn(
