@@ -73,6 +73,9 @@ Lintian-Tags: quilt-series-without-trailing-newline
 Fix-Script: transitional-package-should-be-oldlibs-optional.py
 Lintian-Tags: transitional-package-should-be-oldlibs-optional
 
+Fix-Script: unnecessary-team-upload.py
+Lintian-Tags: unnecessary-team-upload
+
 Fix-Script: unnecessary-testsuite-autopkgtest-field.sh
 Lintian-Tags: unnecessary-testsuite-autopkgtest-field
 
