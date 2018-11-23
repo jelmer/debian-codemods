@@ -48,6 +48,7 @@ subset of the issues:
 * priority-extra-is-replaced-by-priority-optional
 * quilt-series-without-trailing-newline
 * transitional-package-should-be-oldlibs-optional
+* unnecessary-team-upload
 * unnecessary-testsuite-autopkgtest-field
 * unversioned-copyright-format-uri
 * useless-autoreconf-build-depends

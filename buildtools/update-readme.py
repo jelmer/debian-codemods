@@ -17,6 +17,6 @@ with open('README.md', 'w') as f:
     # TODO(jelmer): Use better sentinels, just in case somebody changes
     # the current ones?
     f.write(re.sub(
-        r'(subset of the issues:\n\n).*(\nWriting new fixers\n)',
+        r'(subset of the issues:\n\n).*(\n\.\. _writing-fixers:\n)',
         '\\1' + replacement_text + '\\2', contents,
         flags=re.MULTILINE | re.DOTALL))
