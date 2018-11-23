@@ -5,6 +5,7 @@ import sys
 from lintian_brush.control import (
     ensure_minimum_version,
     update_control,
+    parse_relations,
     )
 
 minimum_version = "9.20160114"
@@ -23,7 +24,12 @@ dbg_migration_done = set()
 
 def del_dbg(control):
     # Delete the freeradius-dbg package from debian/control
-    if control["Package"].endswith('-dbg'):
+    package = control["Package"]
+    if package.endswith('-dbg'):
+        if package.startswith('python'):
+            # -dbgsym packages don't include _d.so files for the python
+            # interpreter
+            return
         dbg_packages.add(control["Package"])
         control.clear()
 
