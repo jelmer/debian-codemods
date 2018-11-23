@@ -18,7 +18,7 @@ def oldlibs_priority_optional(control):
         control["Section"] = "oldlibs"
         if default_priority != "optional":
             control["Priority"] = "optional"
-        else:
+        elif "Priority" in control:
             del control["Priority"]
 
 
