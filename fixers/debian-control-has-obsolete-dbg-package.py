@@ -5,7 +5,6 @@ import sys
 from lintian_brush.control import (
     ensure_minimum_version,
     update_control,
-    parse_relations,
     )
 
 minimum_version = "9.20160114"
