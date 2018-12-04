@@ -1,1 +1,4 @@
 Jelmer Vernooĳ <jelmer@debian.org>
+
+The test interface and some of the fixers were inspired by Ondřej Nový's
+onovy-mass tool @ https://github.com/onovy/onovy-mass
