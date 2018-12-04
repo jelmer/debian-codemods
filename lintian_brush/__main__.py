@@ -26,7 +26,10 @@ locale.setlocale(locale.LC_ALL, '')
 sys._brz_default_fs_enc = "utf8"
 
 import breezy  # noqa: E402
-from breezy.errors import DependencyNotPresent  # noqa: E402
+from breezy.errors import (
+    DependencyNotPresent,  # noqa: E402
+    NotBranchError,
+    )
 breezy.initialize()
 import breezy.git  # noqa: E402
 import breezy.bzr  # noqa: E402
@@ -87,6 +90,9 @@ def main(argv=None):
     else:
         try:
             wt = WorkingTree.open(args.directory)
+        except NotBranchError:
+            note('No version control directory found (e.g. a .git directory).')
+            return 1
         except DependencyNotPresent as e:
             note('Unable to open tree at %s: missing package %s',
                  args.directory, e.library)

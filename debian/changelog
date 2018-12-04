@@ -4,6 +4,7 @@ lintian-brush (0.9) UNRELEASED; urgency=medium
   * Add fixer for unnecessary-team-upload.
   * Don't attempt to remove python*-*-dbg packages; they include _d.so
     files that are not in -dbgsym packages.
+  * Don't traceback when no .git directory is found.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 23 Nov 2018 13:59:02 +0000
 
