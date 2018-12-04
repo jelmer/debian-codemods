@@ -1,4 +1,4 @@
-lintian-brush (0.9) UNRELEASED; urgency=medium
+lintian-brush (0.9) unstable; urgency=medium
 
   * Add CI configuration for Salsa.
   * Add fixer for unnecessary-team-upload.
@@ -7,7 +7,7 @@ lintian-brush (0.9) UNRELEASED; urgency=medium
   * Don't traceback when no .git directory is found.
   * Add fixer for public-upstream-key-not-minimal.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 23 Nov 2018 13:59:02 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 04 Dec 2018 23:12:14 +0000
 
 lintian-brush (0.7) unstable; urgency=medium
 
