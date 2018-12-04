@@ -1,5 +1,7 @@
 #!/bin/sh
 
+which gpg >/dev/null || exit 2
+
 TEMP_KEYRING=$(mktemp)
 
 run_gpg() {
