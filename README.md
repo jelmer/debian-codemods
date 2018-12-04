@@ -46,6 +46,7 @@ subset of the issues:
 * package-uses-deprecated-debhelper-compat-version
 * package-uses-deprecated-source-override-location
 * priority-extra-is-replaced-by-priority-optional
+* public-upstream-key-not-minimal
 * quilt-series-without-trailing-newline
 * transitional-package-should-be-oldlibs-optional
 * unnecessary-team-upload
