@@ -67,6 +67,9 @@ Lintian-Tags: package-uses-deprecated-debhelper-compat-version
 Fix-Script: priority-extra-is-replaced-by-priority-optional.py
 Lintian-Tags: priority-extra-is-replaced-by-priority-optional
 
+Fix-Script: public-upstream-key-not-minimal.sh
+Lintian-Tags: public-upstream-key-not-minimal
+
 Fix-Script: quilt-series-without-trailing-newline.sh
 Lintian-Tags: quilt-series-without-trailing-newline
 

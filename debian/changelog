@@ -5,6 +5,7 @@ lintian-brush (0.9) UNRELEASED; urgency=medium
   * Don't attempt to remove python*-*-dbg packages; they include _d.so
     files that are not in -dbgsym packages.
   * Don't traceback when no .git directory is found.
+  * Add fixer for public-upstream-key-not-minimal.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 23 Nov 2018 13:59:02 +0000
 
