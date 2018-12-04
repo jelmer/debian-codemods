@@ -148,6 +148,28 @@ Arch: all
                 tree.get_file_lines('debian/control')[-1],
                 b"a new line\n")
 
+    def test_pending_changes_git_dir_with_ignored(self):
+        # See https://bugs.debian.org/914038
+        tree = self.make_test_tree(format='git')
+        self.build_tree_contents([
+            ('debian/upstream/', ),
+            ('debian/upstream/blah', ''),
+            ('.gitignore', 'blah\n'),
+            ])
+        tree.add('.gitignore')
+        tree.commit('add gitignore')
+        with tree.lock_write():
+            result, summary = run_lintian_fixer(
+                tree, DummyFixer('dummy', 'some-tag'),
+                update_changelog=False)
+        self.assertEqual(summary, "Fixed some tag.")
+        self.assertEqual(['some-tag'], result.fixed_lintian_tags)
+        self.assertEqual('certain', result.certainty)
+        self.assertEqual(3, tree.branch.revno())
+        self.assertEqual(
+                tree.get_file_lines('debian/control')[-1],
+                b"a new line\n")
+
     def test_extra(self):
         tree = self.make_test_tree()
         self.build_tree_contents([('debian/foo', 'blah')])
