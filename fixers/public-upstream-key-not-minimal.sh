@@ -17,10 +17,13 @@ if [ -f debian/upstream/signing-key.asc ]; then
     gpg_export --armor > debian/upstream/signing-key.asc
 fi
 
-if [ -f debian/upstream/signing-key.pgp ]; then
-    run_gpg --import debian/upstream/signing-key.pgp
-    gpg_export > debian/upstream/signing-key.pgp
-fi
+for p in debian/upstream/signing-key.pgp debian/upstream-signing-key.pgp
+do
+    if [ -f "$p" ]; then
+        run_gpg --import "$p"
+        gpg_export > "$p"
+    fi
+done
 
 echo "Re-export upstream signing key without extra signatures."
 echo "Fixed-Lintian-Tags: public-upstream-key-not-minimal"
