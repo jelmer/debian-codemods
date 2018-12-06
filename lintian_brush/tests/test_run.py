@@ -18,8 +18,12 @@
 """Tests for lintian_brush."""
 
 import os
+import re
 
-from debian.changelog import Version
+from debian.changelog import (
+    Changelog,
+    Version,
+    )
 
 from breezy.tests import (
     TestCase,
@@ -38,6 +42,7 @@ from lintian_brush import (
     only_changes_last_changelog_block,
     run_lintian_fixer,
     run_lintian_fixers,
+    version_string,
     )
 
 CHANGELOG_FILE = ('debian/changelog', """\
@@ -558,3 +563,31 @@ blah (0.1) unstable; urgency=medium
  -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
 """)])
         self.assertFalse(only_changes_last_changelog_block(tree))
+
+
+class LintianBrushVersion(TestCase):
+
+    def test_matches_package_version(self):
+        if not os.path.exists('debian/changelog'):
+            self.skipTest(
+                'no debian/changelog available. '
+                'Running outside of source tree?')
+        with open('debian/changelog', 'r') as f:
+            cl = Changelog(f, max_blocks=1)
+        self.assertEqual(str(cl.version), version_string)
+
+    def test_matches_setup_version(self):
+        if not os.path.exists('setup.py'):
+            self.skipTest(
+                'no setup.py available. '
+                'Running outside of source tree?')
+        # TODO(jelmer): Surely there's a better way of doing this?
+        with open('setup.py', 'r') as f:
+            for l in f:
+                m = re.match(r'[ ]*version="(.*)",', l)
+                if m:
+                    setup_version = m.group(1)
+                    break
+            else:
+                raise AssertionError('setup version not found')
+        self.assertEqual(version_string, setup_version)
