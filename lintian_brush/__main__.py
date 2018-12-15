@@ -16,7 +16,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import argparse
+import atexit
+import shutil
 import sys
+import tempfile
+
+from breezy.branch import Branch
 from breezy.workingtree import WorkingTree
 import locale
 locale.setlocale(locale.LC_ALL, '')
@@ -69,6 +74,11 @@ def main(argv=None):
     parser.add_argument(
         '--diff', help='Print resulting diff afterwards.', action='store_true')
     parser.add_argument(
+        '--dry-run', help=(
+            'Do not make any changes to the current repository. '
+            'Note: currently creates a temporary clone of the repository.'),
+        action='store_true')
+    parser.add_argument(
         'fixers', metavar='FIXER', nargs='*',
         help='specific fixer to run')
     args = parser.parse_args(argv)
@@ -89,7 +99,18 @@ def main(argv=None):
             note(tag)
     else:
         try:
-            wt = WorkingTree.open(args.directory)
+            if args.dry_run:
+                branch = Branch.open(args.directory)
+                td = tempfile.mkdtemp()
+                atexit.register(shutil.rmtree, td)
+                # TODO(jelmer): Make a slimmer copy
+                to_dir = branch.controldir.sprout(
+                    td, None, create_tree_if_local=True,
+                    source_branch=branch,
+                    stacked=branch._format.supports_stacking())
+                wt = to_dir.open_workingtree()
+            else:
+                wt = WorkingTree.open(args.directory)
         except NotBranchError:
             note('No version control directory found (e.g. a .git directory).')
             return 1

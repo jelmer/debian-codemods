@@ -1,3 +1,9 @@
+lintian-brush (0.10) UNRELEASED; urgency=medium
+
+  * Add a (inefficient) --dry-run option. Closes: #915977
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 15 Dec 2018 17:18:50 +0000
+
 lintian-brush (0.9) unstable; urgency=medium
 
   * Add CI configuration for Salsa.
