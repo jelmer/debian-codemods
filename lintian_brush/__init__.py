@@ -323,7 +323,7 @@ def only_changes_last_changelog_block(tree):
 
 
 def run_lintian_fixer(local_tree, fixer, committer=None,
-                      update_changelog=True):
+                      update_changelog=None):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -365,6 +365,10 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
 
     if not local_tree.has_changes():
         raise NoChanges("Script didn't make any changes")
+
+    if update_changelog is None:
+        # Default to true. Perhaps do something more clever.
+        update_changelog = True
 
     if update_changelog and only_changes_last_changelog_block(local_tree):
         # If the script only changed the last entry in the changelog,

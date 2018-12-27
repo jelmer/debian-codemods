@@ -54,8 +54,11 @@ from . import (  # noqa: E402
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='lintian-brush')
     parser.add_argument(
-        '--no-update-changelog', action="store_true",
-        help="do not update the changelog")
+        '--no-update-changelog', action="store_false", default=None,
+        dest="update_changelog", help="do not update the changelog")
+    parser.add_argument(
+        '--update-changelog', action="store_true", dest="update_changelog",
+        help="force updating of the changelog", default=None)
     parser.add_argument(
         '--version', action='version', version='%(prog)s ' + version_string)
     parser.add_argument(
@@ -125,7 +128,7 @@ def main(argv=None):
             try:
                 applied, failed = run_lintian_fixers(
                     wt, fixers,
-                    update_changelog=(not args.no_update_changelog),
+                    update_changelog=args.update_changelog,
                     verbose=args.verbose)
             except NotDebianPackage:
                 note("%s: Not a debian package.", wt.basedir)
