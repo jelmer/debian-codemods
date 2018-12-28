@@ -73,6 +73,9 @@ Lintian-Tags: public-upstream-key-not-minimal
 Fix-Script: quilt-series-without-trailing-newline.sh
 Lintian-Tags: quilt-series-without-trailing-newline
 
+Fix-Script: systemd-service-file-pidfile-refers-to-var-run.py
+Lintian-Tags: systemd-service-file-pidfile-refers-to-var-run
+
 Fix-Script: transitional-package-should-be-oldlibs-optional.py
 Lintian-Tags: transitional-package-should-be-oldlibs-optional
 
