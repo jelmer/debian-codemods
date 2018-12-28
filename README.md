@@ -48,6 +48,7 @@ subset of the issues:
 * priority-extra-is-replaced-by-priority-optional
 * public-upstream-key-not-minimal
 * quilt-series-without-trailing-newline
+* systemd-service-file-pidfile-refers-to-var-run
 * transitional-package-should-be-oldlibs-optional
 * unnecessary-team-upload
 * unnecessary-testsuite-autopkgtest-field
