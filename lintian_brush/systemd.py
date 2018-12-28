@@ -32,6 +32,11 @@ def systemd_service_files(path='debian'):
 def update_service_file(path, cb):
     """Update a service file.
 
+    This is a fairly stupid ini-style parser; it attempts
+    to preserve formatting as best as it can. Other
+    ini-style parsers like configobj and configparser
+    don't preserve whitespace or comments.
+
     Args:
       path: Path to the service file
       cb: Callback called with a config.ConfigObj object
