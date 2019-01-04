@@ -21,7 +21,7 @@ lintian-brush (0.9) unstable; urgency=medium
 lintian-brush (0.7) unstable; urgency=medium
 
   * Add fixer for package-needs-versioned-debhelper-build-depends.
-  * Add fixer for package-uses-deprecated-debhelper-compat-version
+  * Add fixer for package-uses-deprecated-debhelper-compat-version.
   * Add support for fixing debhelper-but-no-misc-depends.
   * Add a --diff option.
   * Don't consider an empty directory to be a pending change in a git
