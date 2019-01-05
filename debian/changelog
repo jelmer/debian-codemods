@@ -1,4 +1,4 @@
-lintian-brush (0.10) UNRELEASED; urgency=medium
+lintian-brush (0.10) unstable; urgency=medium
 
   * Add a (inefficient) --dry-run option. Closes: #915977
   * Add --update-changelog option to force updating of changelog.
