@@ -40,6 +40,7 @@ from breezy.trace import note
 from breezy.transform import revert
 
 from debian.deb822 import Deb822
+import distro_info
 
 
 __version__ = (0, 10)
@@ -123,11 +124,14 @@ class Fixer(object):
         self.name = name
         self.lintian_tags = lintian_tags
 
-    def run(self, basedir):
+    def run(self, basedir, current_version, compat):
         """Apply this fixer script.
 
         Args:
           basedir: Directory in which to run
+          current_version: The version of the package that is being created or
+            updated
+          compat: Compatibility level (a Debian release name)
         Returns:
           A FixerResult object
         """
@@ -144,9 +148,10 @@ class ScriptFixer(Fixer):
     def __repr__(self):
         return "<ScriptFixer(%r)>" % self.name
 
-    def run(self, basedir, current_version):
+    def run(self, basedir, current_version, compat_release):
         env = dict(os.environ.items())
         env['CURRENT_VERSION'] = str(current_version)
+        env['COMPAT_RELEASE'] = compat_release
         with tempfile.SpooledTemporaryFile() as stderr:
             p = subprocess.Popen(self.script_path, cwd=basedir,
                                  stdout=subprocess.PIPE, stderr=stderr,
@@ -323,7 +328,7 @@ def only_changes_last_changelog_block(tree):
 
 
 def run_lintian_fixer(local_tree, fixer, committer=None,
-                      update_changelog=None):
+                      update_changelog=None, compat_release=None):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -331,6 +336,8 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
       fixer: Fixer object to apply
       committer: Optional committer (name and email)
       update_changelog: Whether to add a new entry to the changelog
+      compat_release: Minimum release that the package should be usable on
+        (e.g. 'stable' or 'unstable')
     Returns:
       tuple with set of FixerResult, summary of the changes
     """
@@ -348,8 +355,11 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     else:
         current_version = cl.version
         increment_version(current_version)
+    if compat_release is None:
+        compat_release = 'sid'
     try:
-        result = fixer.run(local_tree.basedir, current_version=current_version)
+        result = fixer.run(local_tree.basedir, current_version=current_version,
+                           compat_release=compat_release)
     except BaseException:
         revert(local_tree, local_tree.branch.basis_tree(), None)
         deletables = list(iter_deletables(
@@ -398,7 +408,8 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
 
 
 def run_lintian_fixers(local_tree, fixers, update_changelog=True,
-                       verbose=False, committer=None):
+                       verbose=False, committer=None,
+                       compat_release=None):
     """Run a set of lintian fixers on a tree.
 
     Args:
@@ -407,6 +418,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
       update_changelog: Whether to add an entry to the changelog
       verbose: Whether to be verbose
       committer: Optional committer (name and email)
+      compat_release: Minimum release that the package should be usable on
+        (e.g. 'sid' or 'stretch')
     Returns:
       Tuple with two lists:
         list of tuples with (lintian-tag, certainty, description) of fixers
@@ -422,7 +435,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
             try:
                 result, summary = run_lintian_fixer(
                         local_tree, fixer, update_changelog=update_changelog,
-                        committer=committer)
+                        committer=committer, compat_release=compat_release)
             except FixerFailed as e:
                 failed_fixers.append(fixer.name)
                 if verbose:

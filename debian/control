@@ -9,6 +9,7 @@ Build-Depends: debhelper (>= 11),
                python3-breezy (>= 3.0.0~bzr7199-1),
                python3-breezy.tests,
                python3-dulwich (>= 0.19.7),
+               python3-distro-info,
                python3-debian,
                python3-setuptools,
                gpg
@@ -21,6 +22,7 @@ Architecture: all
 Depends: python3-breezy (>= 3.0.0~bzr7199-1),
          python3-debian,
          python3-dulwich (>= 0.19.7),
+         python3-distro-info,
          ${misc:Depends},
          ${python3:Depends}
 Recommends: lintian, dos2unix, gpg

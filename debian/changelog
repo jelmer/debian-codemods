@@ -4,6 +4,11 @@ lintian-brush (0.10) UNRELEASED; urgency=medium
   * Add --update-changelog option to force updating of changelog.
   * Add support for systemd-service-file-pidfile-refers-to-var-run.
     Closes: #917565
+  * Don't use functionality that is not available in stable by default;
+    add a --modern flag to disable this.
+  * Don't use functionality that is not available in stable by default;
+    add a --modern flag to enable use of unstable-only functionality
+    (such as debhelper compat levels).
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 15 Dec 2018 17:18:50 +0000
 

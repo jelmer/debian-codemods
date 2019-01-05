@@ -62,7 +62,9 @@ Fix-Script: package-uses-deprecated-source-override-location.sh
 Lintian-Tags: package-uses-deprecated-source-override-location
 
 Fix-Script: package-uses-deprecated-debhelper-compat-version.py
-Lintian-Tags: package-uses-deprecated-debhelper-compat-version
+Lintian-Tags:
+  package-uses-deprecated-debhelper-compat-version,
+  package-uses-old-debhelper-compat-version
 
 Fix-Script: priority-extra-is-replaced-by-priority-optional.py
 Lintian-Tags: priority-extra-is-replaced-by-priority-optional

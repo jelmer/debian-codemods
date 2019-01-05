@@ -41,6 +41,8 @@ import breezy.bzr  # noqa: E402
 
 from breezy.trace import note  # noqa: E402
 
+import distro_info
+
 from . import (  # noqa: E402
     NotDebianPackage,
     PendingChanges,
@@ -81,6 +83,11 @@ def main(argv=None):
             'Do not make any changes to the current repository. '
             'Note: currently creates a temporary clone of the repository.'),
         action='store_true')
+    parser.add_argument(
+        '--modern', help=(
+            'Use features/compatibility levels that are not available in '
+            'stable. (makes backporting harder)'),
+        action='store_true', default=False)
     parser.add_argument(
         'fixers', metavar='FIXER', nargs='*',
         help='specific fixer to run')
@@ -124,11 +131,18 @@ def main(argv=None):
         since_revid = wt.last_revision()
         if args.fixers:
             fixers = [f for f in fixers if f.name in args.fixers]
+        debian_info = distro_info.DebianDistroInfo()
+        if args.modern:
+            compat_release = debian_info.unstable()
+        else:
+            compat_release = debian_info.stable()
+        note('Compat release is %s', compat_release)
         with wt.lock_write():
             try:
                 applied, failed = run_lintian_fixers(
                     wt, fixers,
                     update_changelog=args.update_changelog,
+                    compat_release=compat_release,
                     verbose=args.verbose)
             except NotDebianPackage:
                 note("%s: Not a debian package.", wt.basedir)
