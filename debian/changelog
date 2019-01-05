@@ -5,8 +5,6 @@ lintian-brush (0.10) UNRELEASED; urgency=medium
   * Add support for systemd-service-file-pidfile-refers-to-var-run.
     Closes: #917565
   * Don't use functionality that is not available in stable by default;
-    add a --modern flag to disable this.
-  * Don't use functionality that is not available in stable by default;
     add a --modern flag to enable use of unstable-only functionality
     (such as debhelper compat levels).
 
