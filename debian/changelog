@@ -7,6 +7,7 @@ lintian-brush (0.10) UNRELEASED; urgency=medium
   * Don't use functionality that is not available in stable by default;
     add a --modern flag to enable use of unstable-only functionality
     (such as debhelper compat levels).
+  * Bump debhelper from old 11 to 12.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 15 Dec 2018 17:18:50 +0000
 
