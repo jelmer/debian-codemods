@@ -45,6 +45,7 @@ subset of the issues:
 * package-needs-versioned-debhelper-build-depends
 * package-uses-deprecated-debhelper-compat-version
 * package-uses-deprecated-source-override-location
+* package-uses-old-debhelper-compat-version
 * priority-extra-is-replaced-by-priority-optional
 * public-upstream-key-not-minimal
 * quilt-series-without-trailing-newline
