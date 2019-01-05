@@ -133,10 +133,9 @@ def main(argv=None):
             fixers = [f for f in fixers if f.name in args.fixers]
         debian_info = distro_info.DebianDistroInfo()
         if args.modern:
-            compat_release = debian_info.unstable()
+            compat_release = debian_info.devel()
         else:
             compat_release = debian_info.stable()
-        note('Compat release is %s', compat_release)
         with wt.lock_write():
             try:
                 applied, failed = run_lintian_fixers(
