@@ -19,7 +19,8 @@ Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush
 
 Package: lintian-brush
 Architecture: all
-Depends: python3-breezy (>= 3.0.0~bzr7199),
+Depends: devscripts,
+         python3-breezy (>= 3.0.0~bzr7199),
          python3-debian,
          python3-dulwich (>= 0.19.7),
          python3-distro-info,
