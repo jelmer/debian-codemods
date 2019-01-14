@@ -43,7 +43,7 @@ from debian.deb822 import Deb822
 import distro_info
 
 
-__version__ = (0, 10)
+__version__ = (0, 11)
 version_string = '.'.join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ['certain', 'possible', None]
 
