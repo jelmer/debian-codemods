@@ -1,8 +1,9 @@
-lintian-brush (0.11) UNRELEASED; urgency=medium
+lintian-brush (0.11) unstable; urgency=medium
 
+  [ Jeroen Dekkers ]
   * Add dependency on devscripts. Closes: #919217
 
- -- Jeroen Dekkers <jeroen@dekkers.ch>  Sun, 13 Jan 2019 22:42:03 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 19 Jan 2019 19:11:40 +0000
 
 lintian-brush (0.10) unstable; urgency=medium
 
