@@ -4,6 +4,8 @@ lintian-brush (0.12) UNRELEASED; urgency=medium
   * Fall back to breezy identity and gecos field if no git identity is
     set. Closes: #921241
   * Make gpg more quiet when manipulating keyring files.
+  * Require new Breezy with improved handling of submodule references
+    in .git files. Closes: #921240
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 04 Feb 2019 14:35:14 +0000
 
