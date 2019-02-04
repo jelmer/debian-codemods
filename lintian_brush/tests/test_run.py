@@ -25,6 +25,7 @@ from debian.changelog import (
     Version,
     )
 
+from breezy.config import GlobalStack
 from breezy.tests import (
     TestCase,
     TestCaseWithTransport,
@@ -38,6 +39,7 @@ from lintian_brush import (
     NotDebianPackage,
     PendingChanges,
     available_lintian_fixers,
+    get_committer,
     increment_version,
     only_changes_last_changelog_block,
     run_lintian_fixer,
@@ -591,3 +593,34 @@ class LintianBrushVersion(TestCase):
             else:
                 raise AssertionError('setup version not found')
         self.assertEqual(version_string, setup_version)
+
+
+class GetCommitterTests(TestCaseWithTransport):
+
+    def test_git_env(self):
+        self.overrideEnv('GIT_COMMITTER_NAME', 'Some Git Committer')
+        self.overrideEnv('GIT_COMMITTER_EMAIL', 'committer@example.com')
+        tree = self.make_branch_and_tree('.', format='git')
+        self.assertEqual(
+            'Some Git Committer <committer@example.com>',
+            get_committer(tree))
+
+    def test_git_config(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        with open('.git/config', 'w') as f:
+            f.write("""\
+[user]
+   name = Some Other Git Committer
+   email = other@example.com
+""")
+        self.assertEqual(
+            'Some Other Git Committer <other@example.com>',
+            get_committer(tree))
+
+    def test_global_stack(self):
+        gs = GlobalStack()
+        gs.set('email', 'Yet Another Committer <yet@example.com>')
+        tree = self.make_branch_and_tree('.', format='git')
+        self.assertEqual(
+            'Yet Another Committer <yet@example.com>',
+            get_committer(tree))
