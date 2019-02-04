@@ -1,6 +1,8 @@
 lintian-brush (0.12) UNRELEASED; urgency=medium
 
   * Add --identity flag that shows user identity.
+  * Fall back to breezy identity and gecos field if no git identity is
+    set. Closes: #921241
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 04 Feb 2019 14:35:14 +0000
 

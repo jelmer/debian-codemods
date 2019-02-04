@@ -288,8 +288,26 @@ def get_committer(tree):
     # TODO(jelmer): Perhaps this logic should be in Breezy?
     if getattr(tree.branch.repository, '_git', None):
         cs = tree.branch.repository._git.get_config_stack()
-        identity = tree.branch.repository._git._get_user_identity(cs)
-        return identity.decode('utf-8')
+        user = os.environ.get("GIT_COMMITTER_NAME")
+        email = os.environ.get("GIT_COMMITTER_EMAIL")
+        if user is None:
+            try:
+                user = cs.get(("user", ), "name")
+            except KeyError:
+                user = None
+            else:
+                user = user.decode('utf-8')
+        if email is None:
+            try:
+                email = cs.get(("user", ), "email")
+            except KeyError:
+                email = None
+            else:
+                email = email.decode('utf-8')
+        if user and email:
+            return user + " <" + email + ">"
+        from breezy.config import GlobalStack
+        return GlobalStack().get('email')
     else:
         config = tree.branch.get_config_stack()
         return config.get('email')
