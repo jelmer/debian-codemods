@@ -5,7 +5,7 @@ which gpg >/dev/null || exit 2
 TEMP_KEYRING=$(mktemp)
 
 run_gpg() {
-    gpg --no-default-keyring --keyring "${TEMP_KEYRING}" "$@"
+    gpg --quiet --no-default-keyring --keyring "${TEMP_KEYRING}" "$@"
 }
 
 gpg_export() {
