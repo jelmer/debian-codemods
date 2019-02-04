@@ -54,7 +54,7 @@ class PkgRelation(object):
     @classmethod
     def parse(cls, text):
         def parse_archs(raw):
-            # type: (str) -> List[PkgRelation.ArchRestriction]
+            # type: (str) -> list[PkgRelation.ArchRestriction]
             # assumption: no space between '!' and architecture name
             archs = []
             for arch in cls.__blank_sep_RE.split(raw.strip()):
@@ -65,7 +65,7 @@ class PkgRelation(object):
             return archs
 
         def parse_restrictions(raw):
-            # type: (str) -> List[List[PkgRelation.BuildRestriction]]
+            # type: (str) -> list[list[PkgRelation.BuildRestriction]]
             """ split a restriction formula into a list of restriction lists
 
             Each term in the restriction list is a namedtuple of form:
@@ -158,7 +158,7 @@ class PkgRelation(object):
             )
 
         def pp_restrictions(restrictions):
-            # type: (List[PkgRelation.BuildRestriction]) -> str
+            # type: (list[PkgRelation.BuildRestriction]) -> str
             s = []
             for term in restrictions:
                 s.append(

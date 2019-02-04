@@ -40,10 +40,9 @@ from breezy.trace import note
 from breezy.transform import revert
 
 from debian.deb822 import Deb822
-import distro_info
 
 
-__version__ = (0, 11)
+__version__ = (0, 12)
 version_string = '.'.join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ['certain', 'possible', None]
 
@@ -289,7 +288,8 @@ def get_committer(tree):
     # TODO(jelmer): Perhaps this logic should be in Breezy?
     if getattr(tree.branch.repository, '_git', None):
         cs = tree.branch.repository._git.get_config_stack()
-        return tree.branch.repository._git._get_user_identity(cs)
+        identity = tree.branch.repository._git._get_user_identity(cs)
+        return identity.decode('utf-8')
     else:
         config = tree.branch.get_config_stack()
         return config.get('email')

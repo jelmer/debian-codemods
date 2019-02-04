@@ -21,6 +21,8 @@ import shutil
 import sys
 import tempfile
 
+import distro_info
+
 from breezy.branch import Branch
 from breezy.workingtree import WorkingTree
 import locale
@@ -40,8 +42,6 @@ import breezy.git  # noqa: E402
 import breezy.bzr  # noqa: E402
 
 from breezy.trace import note  # noqa: E402
-
-import distro_info
 
 from . import (  # noqa: E402
     NotDebianPackage,
