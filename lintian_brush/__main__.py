@@ -48,6 +48,7 @@ from . import (  # noqa: E402
     PendingChanges,
     available_lintian_fixers,
     find_fixers_dir,
+    get_committer,
     run_lintian_fixers,
     version_string,
     )
@@ -89,6 +90,10 @@ def main(argv=None):
             'stable. (makes backporting harder)'),
         action='store_true', default=False)
     parser.add_argument(
+        '--identity',
+        help='Print user identity that would be used when committing',
+        action='store_true', default=False)
+    parser.add_argument(
         'fixers', metavar='FIXER', nargs='*',
         help='specific fixer to run')
     args = parser.parse_args(argv)
@@ -128,6 +133,9 @@ def main(argv=None):
             note('Unable to open tree at %s: missing package %s',
                  args.directory, e.library)
             return 1
+        if args.identity:
+            print(get_committer(wt))
+            return 0
         since_revid = wt.last_revision()
         if args.fixers:
             fixers = [f for f in fixers if f.name in args.fixers]
