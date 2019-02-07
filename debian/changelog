@@ -1,4 +1,4 @@
-lintian-brush (0.12) UNRELEASED; urgency=medium
+lintian-brush (0.12) unstable; urgency=medium
 
   * Add --identity flag that shows user identity.
   * Fall back to breezy identity and gecos field if no git identity is
@@ -7,7 +7,7 @@ lintian-brush (0.12) UNRELEASED; urgency=medium
   * Require new Breezy with improved handling of submodule references
     in .git files. Closes: #921240
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 04 Feb 2019 14:35:14 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 07 Feb 2019 05:56:14 +0000
 
 lintian-brush (0.11) unstable; urgency=medium
 
