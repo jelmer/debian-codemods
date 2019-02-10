@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 
-import sys
 from lintian_brush.control import (
     ensure_minimum_version,
     update_control,
     )
+
+
 def bump_debhelper(control):
     control["Build-Depends"] = ensure_minimum_version(
             control["Build-Depends"],
@@ -14,12 +15,15 @@ def bump_debhelper(control):
 # Debian source package is not obliged to contain `debian/compat'.
 # Firstly, it may not use debhelper; secondly it may use modern
 # `debhelper-compat' dependency style.
+
+
 try:
     with open('debian/compat', 'r') as f:
         minimum_version = f.read().strip()
-    update_control(source_package_cb=bump_debhelper)
 except FileNotFoundError:
-    minimum_version = 9999 # Not used anyway.
+    minimum_version = 9999  # Not used anyway.
+else:
+    update_control(source_package_cb=bump_debhelper)
 
 print("Bump debhelper dependency to >= %s, since that's what is "
       "used in debian/compat." % minimum_version)

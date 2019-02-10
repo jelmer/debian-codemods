@@ -1,3 +1,9 @@
+lintian-brush (0.13) UNRELEASED; urgency=medium
+
+  * Don't display error when debian/compat is missing. Closes: #921972
+
+ -- Dmitry Bogatov <KAction@debian.org>  Sun, 10 Feb 2019 22:52:32 +0000
+
 lintian-brush (0.12) unstable; urgency=medium
 
   * Add --identity flag that shows user identity.
