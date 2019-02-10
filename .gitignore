@@ -1,3 +1,5 @@
 build
+dist/*.tar.gz
+dist/*.tar.gz.asc
 lintian-tags
 lintian-brush-tags
