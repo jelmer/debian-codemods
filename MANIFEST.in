@@ -1,5 +1,5 @@
-AUTHORS
-HACKING.md
-LICENSE
-README.md
-TODO
+include AUTHORS
+include HACKING.md
+include LICENSE
+include README.md
+include TODO
