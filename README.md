@@ -75,6 +75,12 @@ it deems necessary. If a fixer can not provide any improvements, it can simply
 leave the working tree untouched - lintian-brush will not create any commits for it
 or update the changelog.
 
+The following additional environment variables are set:
+
+ * ``CURRENT_VERSION``: Package version that is being edited.
+ * ``COMPAT_RELEASE``: Debian release to be compatible with. Usually ``sid``
+   when --modern was specified and the name of the current stable release otherwise.
+
 A fixer should write a short description of the changes it has made to standard
 out; this will be used for the commit message.
 
