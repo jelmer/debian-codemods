@@ -163,8 +163,6 @@ class ScriptFixer(Fixer):
                 raise FixerScriptFailed(
                         self.script_path, p.returncode,
                         stderr.read())
-        if not description:
-            raise DescriptionMissing(self)
         description = description.decode('utf-8')
         lines = []
         fixed_tags = []
@@ -389,11 +387,13 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         RenameMap.guess_renames(
             local_tree.basis_tree(), local_tree, dry_run=False)
 
-    summary = result.description.splitlines()[0]
-
     if not local_tree.has_changes():
         raise NoChanges("Script didn't make any changes")
 
+    if not result.description:
+        raise DescriptionMissing()
+
+    summary = result.description.splitlines()[0]
     if update_changelog is None:
         # Default to true. Perhaps do something more clever.
         update_changelog = True

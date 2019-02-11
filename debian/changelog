@@ -1,6 +1,11 @@
 lintian-brush (0.13) UNRELEASED; urgency=medium
 
+  [ Dmitry Bogatov ]
   * Don't display error when debian/compat is missing. Closes: #921972
+
+  [ Jelmer Vernooĳ ]
+  * Allow fixers to provide an empty description when there are no
+    changes.
 
  -- Dmitry Bogatov <KAction@debian.org>  Sun, 10 Feb 2019 22:52:32 +0000
 
