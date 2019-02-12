@@ -9,12 +9,14 @@ from lintian_brush.control import (
 
 
 def bump_debhelper(control):
-    control["Build-Depends"] = ensure_minimum_version(
-        control["Build-Depends"],
-        "debhelper", Version("9.20160709"))
+    old_build_depends = control["Build-Depends"]
     control["Build-Depends"] = drop_dependency(
         control["Build-Depends"],
         "dh-systemd")
+    if old_build_depends != control["Build-Depends"]:
+        control["Build-Depends"] = ensure_minimum_version(
+            control["Build-Depends"],
+            "debhelper", Version("9.20160709"))
 
 
 if update_control(source_package_cb=bump_debhelper):
