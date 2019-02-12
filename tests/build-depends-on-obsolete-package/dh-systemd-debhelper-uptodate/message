@@ -1,0 +1,2 @@
+Depend on newer debhelper (>= 9.20160709) rather than dh-systemd.
+Fixed-Lintian-Tags: build-depends-on-obsolete-package
