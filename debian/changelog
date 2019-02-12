@@ -10,8 +10,9 @@ lintian-brush (0.13) UNRELEASED; urgency=medium
     settings.
   * Add build-depends-on-obsolete-package fixer. Currently just deals
     with dh-systemd => debhelper upgrades.
+  * Bump standards version to 4.3.0 (no changes).
 
- -- Dmitry Bogatov <KAction@debian.org>  Sun, 10 Feb 2019 22:52:32 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 10 Feb 2019 22:52:32 +0000
 
 lintian-brush (0.12) unstable; urgency=medium
 
