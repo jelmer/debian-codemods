@@ -6,6 +6,8 @@ lintian-brush (0.13) UNRELEASED; urgency=medium
   [ Jelmer Vernooĳ ]
   * Allow fixers to provide an empty description when there are no
     changes.
+  * Add fixer script for debian-source-options-has-custom-compression-
+    settings.
 
  -- Dmitry Bogatov <KAction@debian.org>  Sun, 10 Feb 2019 22:52:32 +0000
 

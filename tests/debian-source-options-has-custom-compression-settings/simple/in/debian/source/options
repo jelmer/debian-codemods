@@ -1,0 +1,4 @@
+compression = gzip
+tar-ignore = .git*
+tar-ignore = .hg*
+tar-ignore = .travis.yml

@@ -22,6 +22,9 @@ Lintian-Tags: debian-pyversions-is-obsolete
 Fix-Script: debian-rules-should-not-use-pwd.sh
 Lintian-Tags: debian-rules-should-not-use-pwd
 
+Fix-Script: debian-source-options-has-custom-compression-settings.py
+Lintian-Tags: debian-source-options-has-custom-compression-settings
+
 Fix-Script: debian-upstream-obsolete-path.sh
 Lintian-Tags: debian-upstream-obsolete-path
 
