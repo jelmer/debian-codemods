@@ -31,6 +31,7 @@ subset of the issues:
 * debian-control-has-obsolete-dbg-package
 * debian-pyversions-is-obsolete
 * debian-rules-should-not-use-pwd
+* debian-source-options-has-custom-compression-settings
 * debian-upstream-obsolete-path
 * debian-watch-uses-insecure-uri
 * dh-quilt-addon-but-quilt-source-format
