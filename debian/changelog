@@ -8,6 +8,8 @@ lintian-brush (0.13) UNRELEASED; urgency=medium
     changes.
   * Add fixer script for debian-source-options-has-custom-compression-
     settings.
+  * Add build-depends-on-obsolete-package fixer. Currently just deals
+    with dh-systemd => debhelper upgrades.
 
  -- Dmitry Bogatov <KAction@debian.org>  Sun, 10 Feb 2019 22:52:32 +0000
 

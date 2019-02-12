@@ -85,7 +85,7 @@ Testsuite: autopkgtest
 
         def add_header(control):
             control["XS-Vcs-Git"] = "git://github.com/example/example"
-        update_control(source_package_cb=add_header)
+        self.assertTrue(update_control(source_package_cb=add_header))
         self.assertFileEqual("""\
 Source: blah
 Testsuite: autopkgtest
@@ -104,7 +104,7 @@ Section: extra
 
         def add_header(control):
             control["Arch"] = "all"
-        update_control(binary_package_cb=add_header)
+        self.assertTrue(update_control(binary_package_cb=add_header))
         self.assertFileEqual("""\
 Source: blah
 Testsuite: autopkgtest
@@ -120,7 +120,7 @@ Source: blah
 Testsuite: autopkgtest
 
 """)])
-        update_control()
+        self.assertFalse(update_control())
         self.assertFileEqual("""\
 Source: blah
 Testsuite: autopkgtest

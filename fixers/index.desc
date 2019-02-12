@@ -1,6 +1,9 @@
 Fix-Script: ancient-python-version-field.sh
 Lintian-Tags: ancient-python-version-field
 
+Fix-Script: build-depends-on-obsolete-package.py
+Lintian-Tags: build-depends-on-obsolete-package
+
 Fix-Script: control-file-with-CRLF-EOLs.sh
 Lintian-Tags: control-file-with-CRLF-EOLs
 

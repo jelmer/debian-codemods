@@ -60,6 +60,8 @@ def update_control(path='debian/control', **kwargs):
       path: Path to the debian/control file to edit
       source_package_cb: Called on source package paragraph
       binary_package_cb: Called on each binary package paragraph
+    Returns:
+      boolean indicating whether any changes were made
     """
     with open(path, 'rb') as f:
         original_contents = f.read()
@@ -73,6 +75,8 @@ def update_control(path='debian/control', **kwargs):
     if updated_contents.strip() != original_contents.strip():
         with open(path, 'wb') as f:
             f.write(updated_contents)
+        return True
+    return False
 
 
 def update_control_file(inf, outf, source_package_cb=None,
