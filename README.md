@@ -24,6 +24,7 @@ The current set of lintian tags for which a fixer is available that can fix a
 subset of the issues:
 
 * ancient-python-version-field
+* build-depends-on-obsolete-package
 * control-file-with-CRLF-EOLs
 * copyright-has-crs
 * debhelper-but-no-misc-depends
