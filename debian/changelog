@@ -1,4 +1,4 @@
-lintian-brush (0.13) UNRELEASED; urgency=medium
+lintian-brush (0.13) unstable; urgency=medium
 
   [ Dmitry Bogatov ]
   * Don't display error when debian/compat is missing. Closes: #921972
