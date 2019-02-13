@@ -1,4 +1,11 @@
-lintian-brush (0.13) UNRELEASED; urgency=medium
+lintian-brush (0.14) UNRELEASED; urgency=medium
+
+  * public-upstream-key-not-minimal: Export public PGP keys as armored
+    text.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 13 Feb 2019 00:45:39 +0000
+
+lintian-brush (0.13) unstable; urgency=medium
 
   [ Dmitry Bogatov ]
   * Don't display error when debian/compat is missing. Closes: #921972
@@ -12,7 +19,7 @@ lintian-brush (0.13) UNRELEASED; urgency=medium
     with dh-systemd => debhelper upgrades.
   * Bump standards version to 4.3.0 (no changes).
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 10 Feb 2019 22:52:32 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 Feb 2019 22:11:32 +0000
 
 lintian-brush (0.12) unstable; urgency=medium
 

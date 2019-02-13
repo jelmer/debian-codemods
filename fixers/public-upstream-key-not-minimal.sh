@@ -21,7 +21,7 @@ for p in debian/upstream/signing-key.pgp debian/upstream-signing-key.pgp
 do
     if [ -f "$p" ]; then
         run_gpg --import "$p"
-        gpg_export > "$p"
+        gpg_export --armor > "$p"
     fi
 done
 
