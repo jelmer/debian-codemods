@@ -9,7 +9,6 @@ from lintian_brush.control import (
 # TODO(jelmer): Can we get these elsewhere rather than
 # hardcoding them here?
 minimum_debhelper_version = 9
-default_debhelper_version = 12
 
 compat_release = os.environ.get('COMPAT_RELEASE', 'sid')
 if compat_release == 'sid':
