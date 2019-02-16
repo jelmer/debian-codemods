@@ -13,6 +13,9 @@ Lintian-Tags: copyright-has-crs
 Fix-Script: debhelper-but-no-misc-depends.py
 Lintian-Tags: debhelper-but-no-misc-depends
 
+Fix-Script: debian-changelog-file-contains-obsolete-user-emacs-settings.sh
+Lintian-Tags: debian-changelog-file-contains-obsolete-user-emacs-settings
+
 Fix-Script: debian-control-has-empty-field.py
 Lintian-Tags: debian-control-has-empty-field
 
@@ -60,6 +63,9 @@ Lintian-Tags: missing-vcs-browser-field
 
 Fix-Script: out-of-date-copyright-format-uri.sh
 Lintian-Tags: out-of-date-copyright-format-uri
+
+Fix-Script: out-of-date-standards-version.py
+Lintian-Tags: out-of-date-standards-version
 
 Fix-Script: package-needs-versioned-debhelper-build-depends.py
 Lintian-Tags: package-needs-versioned-debhelper-build-depends
@@ -116,6 +122,3 @@ Lintian-Tags: xs-testsuite-field-in-debian-control
 
 Fix-Script: xs-vcs-field-in-debian-control.sh
 Lintian-Tags: xs-vcs-field-in-debian-control
-
-Fix-Script: out-of-date-standards-version.py
-Lintian-Tags: out-of-date-standards-version
