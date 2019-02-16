@@ -459,15 +459,15 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
             except FixerFailed as e:
                 failed_fixers.append(fixer.name)
                 if verbose:
-                    note('Fixer %r failed to run.', fixer)
+                    note('Fixer %r failed to run.', fixer.name)
                     sys.stderr.write(str(e))
             except NoChanges:
                 if verbose:
                     note('Fixer %r made no changes. (took: %.2fs)',
-                         fixer, time.time() - start)
+                         fixer.name, time.time() - start)
             else:
                 if verbose:
                     note('Fixer %r made changes. (took %.2fs)',
-                         fixer, time.time() - start)
+                         fixer.name, time.time() - start)
                 ret.append((result, summary))
     return ret, failed_fixers
