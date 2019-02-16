@@ -53,6 +53,7 @@ subset of the issues:
 * priority-extra-is-replaced-by-priority-optional
 * public-upstream-key-not-minimal
 * quilt-series-without-trailing-newline
+* renamed-tag
 * systemd-service-file-pidfile-refers-to-var-run
 * transitional-package-should-be-oldlibs-optional
 * unnecessary-team-upload
