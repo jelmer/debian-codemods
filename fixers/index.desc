@@ -127,3 +127,5 @@ Fix-Script: xs-vcs-field-in-debian-control.sh
 Lintian-Tags: xs-vcs-field-in-debian-control
 
 Fix-Script: empty-debian-source-options.py
+
+Fix-Script: empty-debian-patches-series.py

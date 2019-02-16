@@ -15,6 +15,8 @@ lintian-brush (0.14) UNRELEASED; urgency=medium
   * Hide Python class names in verbose output.
   * Add fixer that removes empty debian/source/options files (no
     matching Lintian tag).
+  * Add fixer that removes empty debian/patches/series (no matching
+    lintian tag).
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 16 Feb 2019 15:11:25 +0000
 
