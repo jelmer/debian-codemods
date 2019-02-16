@@ -3,9 +3,9 @@ Section: admin
 Priority: optional
 Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
 Build-Depends:
- debhelper (>= 12~),
  pkg-config,
- uuid-dev
+ uuid-dev,
+ debhelper-compat (= 12)
 Standards-Version: 4.2.0
 
 Package: f2fs-tools
