@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import warnings
 
 from breezy import ui
@@ -450,6 +451,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
         for i, fixer in enumerate(fixers):
             pb.update('Running fixer %r on %s' % (fixer, local_tree.basedir),
                       i, len(fixers))
+            start = time.time()
             try:
                 result, summary = run_lintian_fixer(
                         local_tree, fixer, update_changelog=update_changelog,
@@ -461,9 +463,11 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                     sys.stderr.write(str(e))
             except NoChanges:
                 if verbose:
-                    note('Fixer %r made no changes.', fixer)
+                    note('Fixer %r made no changes. (took: %.2fs)',
+                         fixer, time.time() - start)
             else:
                 if verbose:
-                    note('Fixer %r made changes.', fixer)
+                    note('Fixer %r made changes. (took %.2fs)',
+                         fixer, time.time() - start)
                 ret.append((result, summary))
     return ret, failed_fixers
