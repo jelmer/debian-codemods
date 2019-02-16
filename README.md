@@ -41,6 +41,7 @@ subset of the issues:
 * file-contains-trailing-whitespace
 * homepage-field-uses-insecure-uri
 * insecure-copyright-format-uri
+* maintainer-script-without-set-e
 * malformed-dm-upload-allowed
 * missing-debian-source-format
 * missing-vcs-browser-field
