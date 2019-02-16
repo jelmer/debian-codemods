@@ -125,3 +125,5 @@ Lintian-Tags: xs-testsuite-field-in-debian-control
 
 Fix-Script: xs-vcs-field-in-debian-control.sh
 Lintian-Tags: xs-vcs-field-in-debian-control
+
+Fix-Script: empty-debian-source-options.py

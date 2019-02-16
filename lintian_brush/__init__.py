@@ -212,10 +212,14 @@ def read_desc_file(path):
     dirname = os.path.dirname(path)
     with open(path, 'r') as f:
         for paragraph in Deb822.iter_paragraphs(f):
-            yield ScriptFixer(
-                os.path.splitext(paragraph['Fix-Script'])[0],
-                [tag.strip() for tag in paragraph['Lintian-Tags'].split(',')],
-                os.path.join(dirname, paragraph['Fix-Script']))
+            name = os.path.splitext(paragraph['Fix-Script'])[0]
+            script_path = os.path.join(dirname, paragraph['Fix-Script'])
+            if 'Lintian-Tags' in paragraph:
+                tags = [tag.strip()
+                        for tag in paragraph['Lintian-Tags'].split(',')]
+            else:
+                tags = []
+            yield ScriptFixer(name, tags, script_path)
 
 
 def available_lintian_fixers(fixers_dir=None):

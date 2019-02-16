@@ -13,6 +13,8 @@ lintian-brush (0.14) UNRELEASED; urgency=medium
   * Fix my e-mail address in debian/copyright.
   * Report fixer duration when --verbose is specified.
   * Hide Python class names in verbose output.
+  * Add fixer that removes empty debian/source/options files (no
+    matching Lintian tag).
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 16 Feb 2019 15:11:25 +0000
 
