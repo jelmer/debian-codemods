@@ -87,6 +87,9 @@ Lintian-Tags: public-upstream-key-not-minimal
 Fix-Script: quilt-series-without-trailing-newline.sh
 Lintian-Tags: quilt-series-without-trailing-newline
 
+Fix-Script: renamed-tag.py
+Lintian-Tags: renamed-tag
+
 Fix-Script: systemd-service-file-pidfile-refers-to-var-run.py
 Lintian-Tags: systemd-service-file-pidfile-refers-to-var-run
 

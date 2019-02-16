@@ -1,0 +1,25 @@
+# This is a comment, and the next line is empty
+
+# The next line should be unaffected:
+foo source: some-tag another exact match
+foo source: some-tag wildcard * match
+
+# This is an example override that only applies to the i386
+# architecture.
+foo [i386] binary: some-tag optional-extra
+
+# An architecture wildcard would look like:
+foo [any-i386] binary: another-tag optional-extra
+
+# Negation also works
+foo [!amd64 !i386] binary: some-random-tag optional-extra
+
+# Negation even works for wildcards
+foo [!any-i386] binary: some-tag-not-for-i386 optional-extra
+
+# The package name and the package type is optional, so this
+# also works
+[linux-any]: tag-only-for-linux optional-extra.
+
+# This line will be rewritten:
+debian-watch-does-not-check-gpg-signature
