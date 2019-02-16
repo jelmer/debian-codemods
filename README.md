@@ -28,6 +28,7 @@ subset of the issues:
 * control-file-with-CRLF-EOLs
 * copyright-has-crs
 * debhelper-but-no-misc-depends
+* debian-changelog-file-contains-obsolete-user-emacs-settings
 * debian-control-has-empty-field
 * debian-control-has-obsolete-dbg-package
 * debian-pyversions-is-obsolete
