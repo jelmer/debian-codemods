@@ -5,7 +5,7 @@ Source: https://salsa.debian.org/jelmer/lintian-brush
 
 Files: *
 Copyright:
- 2018 Jelmer Vernooĳ <jelmre@debian.org>
+ 2018-2019 Jelmer Vernooĳ <jelmer@debian.org>
 License: GPL-2+
 
 Files: lintian_brush/_deb822.py
