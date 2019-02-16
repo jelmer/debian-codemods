@@ -88,9 +88,9 @@ class FixerTestCase(unittest.TestCase):
                              env=env)
         (result, err) = p.communicate("")
         self.assertEqual(p.returncode, 0)
+        out_path = os.path.join(self._path, 'out')
         p = subprocess.Popen(
-            ['diff', '-x', '*~', '-ur', os.path.join(self._path, 'out'),
-                self._testdir],
+            ['diff', '-x', '*~', '-ur', out_path, self._testdir],
             stdout=subprocess.PIPE)
         (diff, stderr) = p.communicate('')
         self.assertIn(
@@ -99,10 +99,14 @@ class FixerTestCase(unittest.TestCase):
         if diff.decode() != '':
             raise AssertionError("unexpected output: %s" % diff.decode())
         self.assertMultiLineEqual(diff.decode(), '')
-        # Assert that message on stdout matches
-        with open(os.path.join(self._path, 'message'), 'r') as f:
-            expected_message = f.read()
-        self.assertEqual(result.decode().strip(), expected_message.strip())
+
+        if (not os.path.islink(out_path) or
+                os.readlink(os.path.join(self._path, 'out')) != 'in'):
+            with open(os.path.join(self._path, 'message'), 'r') as f:
+                # Assert that message on stdout matches
+                self.assertEqual(
+                    result.decode().strip(),
+                    f.read().strip())
 
 
 def test_suite():
