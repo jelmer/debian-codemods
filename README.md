@@ -44,6 +44,7 @@ subset of the issues:
 * missing-debian-source-format
 * missing-vcs-browser-field
 * out-of-date-copyright-format-uri
+* out-of-date-standards-version
 * package-needs-versioned-debhelper-build-depends
 * package-uses-deprecated-debhelper-compat-version
 * package-uses-deprecated-source-override-location
