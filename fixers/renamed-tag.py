@@ -9,6 +9,8 @@ from lintian_brush.lintian_overrides import (
 renames = {
     'debian-watch-may-check-gpg-signature':
         'debian-watch-does-not-check-gpg-signature',
+    'systemd-no-service-for-init-script':
+        'omitted-systemd-service-for-init.d-script',
 }
 
 
