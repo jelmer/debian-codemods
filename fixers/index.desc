@@ -117,3 +117,5 @@ Lintian-Tags: xs-testsuite-field-in-debian-control
 Fix-Script: xs-vcs-field-in-debian-control.sh
 Lintian-Tags: xs-vcs-field-in-debian-control
 
+Fix-Script: out-of-date-standards-version.sh
+Lintian-Tags: out-of-date-standards-version
