@@ -157,6 +157,28 @@ def format_relations(relations):
     return ','.join(ret)
 
 
+def get_relation(relationstr, package):
+    """Retrieve the relation for a particular package.
+
+    Args:
+      relationstr: package relation string
+      package: package name
+    Returns:
+      Relation object
+    """
+    relations = parse_relations(relationstr)
+    for (head_whitespace, relation, tail_whitespace) in relations:
+        if isinstance(relation, str):  # formatting
+            continue
+        names = [r.name for r in relation]
+        if len(names) > 1 and names[0] == package:
+            raise Exception("Complex rule for %s , aborting" % package)
+        if names != [package]:
+            continue
+        return relation
+    raise KeyError(package)
+
+
 def ensure_minimum_version(relationstr, package, minimum_version):
     """Update a relation string to ensure a particular version is required.
 
@@ -189,6 +211,45 @@ def ensure_minimum_version(relationstr, package, minimum_version):
         _add_dependency(
             relations,
             [PkgRelation(name=package, version=('>=', minimum_version))])
+    if changed:
+        return format_relations(relations)
+    # Just return the original; we don't preserve all formatting yet.
+    return relationstr
+
+
+def ensure_exact_version(relationstr, package, version):
+    """Update a relation string to depend on a specific version.
+
+    Args:
+      relationstr: package relation string
+      package: package name
+      version: Exact version to depend on
+    Returns:
+      updated relation string
+    """
+    version = Version(version)
+    found = False
+    changed = False
+    relations = parse_relations(relationstr)
+    for (head_whitespace, relation, tail_whitespace) in relations:
+        if isinstance(relation, str):  # formatting
+            continue
+        names = [r.name for r in relation]
+        if len(names) > 1 and names[0] == package:
+            raise Exception("Complex rule for %s , aborting" % package)
+        if names != [package]:
+            continue
+        found = True
+        if (relation[0].version is None or
+                (relation[0].version[0],
+                 Version(relation[0].version[1])) != ('=', version)):
+            relation[0].version = ('=', version)
+            changed = True
+    if not found:
+        changed = True
+        _add_dependency(
+            relations,
+            [PkgRelation(name=package, version=('=', version))])
     if changed:
         return format_relations(relations)
     # Just return the original; we don't preserve all formatting yet.

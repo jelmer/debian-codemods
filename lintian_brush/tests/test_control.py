@@ -26,7 +26,9 @@ from lintian_brush.control import (
     add_dependency,
     can_preserve_deb822,
     drop_dependency,
+    ensure_exact_version,
     ensure_minimum_version,
+    get_relation,
     update_control,
     GeneratedFile,
     FormattingUnpreservable,
@@ -207,6 +209,38 @@ class EnsureMinimumVersionTests(TestCase):
             ensure_minimum_version('blah, debhelper (>= 8)', 'debhelper', '9'))
 
 
+class EnsureExactVersionTests(TestCase):
+
+    def test_added(self):
+        self.assertEqual(
+            'debhelper (= 9)', ensure_exact_version('', 'debhelper', '9'))
+        self.assertEqual(
+            'blah, debhelper (= 9)',
+            ensure_exact_version('blah', 'debhelper', '9'))
+
+    def test_unchanged(self):
+        self.assertEqual(
+            'debhelper (= 9)', ensure_exact_version(
+                'debhelper (= 9)', 'debhelper', '9'))
+
+    def test_updated(self):
+        self.assertEqual(
+            'debhelper (= 9)', ensure_exact_version(
+                'debhelper (>= 9)', 'debhelper', '9'))
+        self.assertEqual(
+            'debhelper (= 9)',
+            ensure_exact_version('debhelper', 'debhelper', '9'))
+        self.assertEqual(
+            'blah, debhelper (= 9)',
+            ensure_exact_version('blah, debhelper', 'debhelper', '9'))
+        self.assertEqual(
+            'blah, debhelper (= 9)',
+            ensure_exact_version('blah, debhelper (= 8)', 'debhelper', '9'))
+        self.assertEqual(
+            'blah, debhelper (= 9)',
+            ensure_exact_version('blah, debhelper (= 10)', 'debhelper', '9'))
+
+
 class DropDependencyTests(TestCase):
 
     def test_deleted(self):
@@ -244,3 +278,32 @@ class AddDependencyTests(TestCase):
 """, add_dependency("""foo,
  bar
 """, 'blah'))
+
+
+class GetRelationTests(TestCase):
+
+    def test_missing(self):
+        self.assertRaises(
+            KeyError, get_relation, '', 'debhelper')
+        self.assertRaises(
+            KeyError,
+            get_relation, 'blah', 'debhelper')
+
+    def test_simple(self):
+        self.assertEqual(
+            [PkgRelation('debhelper', ('>=', '9'))],
+            get_relation(
+                'debhelper (>= 9)', 'debhelper'))
+        self.assertEqual(
+            [PkgRelation('debhelper', ('=', '9'))],
+            get_relation(
+                'blah, debhelper (= 9)', 'debhelper'))
+
+    def test_complex(self):
+        self.assertRaises(
+            Exception,
+            get_relation, 'blah | debhelper (= 9)', 'debhelper')
+        self.assertRaises(
+            Exception,
+            get_relation,
+            'blah, debhelper (= 9) | debhelper (<< 10)', 'debhelper')
