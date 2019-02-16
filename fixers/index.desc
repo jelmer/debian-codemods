@@ -22,6 +22,9 @@ Lintian-Tags: debian-control-has-empty-field
 Fix-Script: debian-control-has-obsolete-dbg-package.py
 Lintian-Tags: debian-control-has-obsolete-dbg-package
 
+Fix-Script: debian-pycompat-is-obsolete.sh
+Lintian-Tags: debian-pycompat-is-obsolete
+
 Fix-Script: debian-pyversions-is-obsolete.py
 Lintian-Tags: debian-pyversions-is-obsolete
 
