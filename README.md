@@ -24,6 +24,7 @@ The current set of lintian tags for which a fixer is available that can fix a
 subset of the issues:
 
 * ancient-python-version-field
+* build-depends-on-build-essential
 * build-depends-on-obsolete-package
 * control-file-with-CRLF-EOLs
 * copyright-has-crs
@@ -31,6 +32,7 @@ subset of the issues:
 * debian-changelog-file-contains-obsolete-user-emacs-settings
 * debian-control-has-empty-field
 * debian-control-has-obsolete-dbg-package
+* debian-pycompat-is-obsolete
 * debian-pyversions-is-obsolete
 * debian-rules-should-not-use-pwd
 * debian-source-options-has-custom-compression-settings
@@ -45,6 +47,7 @@ subset of the issues:
 * malformed-dm-upload-allowed
 * missing-debian-source-format
 * missing-vcs-browser-field
+* orphaned-package-should-not-have-uploaders
 * out-of-date-copyright-format-uri
 * out-of-date-standards-version
 * package-needs-versioned-debhelper-build-depends
@@ -53,6 +56,7 @@ subset of the issues:
 * package-uses-old-debhelper-compat-version
 * priority-extra-is-replaced-by-priority-optional
 * public-upstream-key-not-minimal
+* public-upstream-keys-in-multiple-locations
 * quilt-series-without-trailing-newline
 * renamed-tag
 * systemd-service-file-pidfile-refers-to-var-run
