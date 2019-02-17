@@ -1,6 +1,9 @@
 Fix-Script: ancient-python-version-field.sh
 Lintian-Tags: ancient-python-version-field
 
+Fix-Script: build-depends-on-build-essential.py
+Lintian-Tags: build-depends-on-build-essential
+
 Fix-Script: build-depends-on-obsolete-package.py
 Lintian-Tags: build-depends-on-obsolete-package
 
