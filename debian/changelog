@@ -21,6 +21,7 @@ lintian-brush (0.14) UNRELEASED; urgency=medium
     debhelper-compat relation in Build-Depends.
   * Add fixer for maintainer-script-without-set-e.
   * Add fixer for debian-pycompat-is-obsolete.
+  * Add fixer for public-upstream-keys-in-multiple-locations.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 16 Feb 2019 15:11:25 +0000
 

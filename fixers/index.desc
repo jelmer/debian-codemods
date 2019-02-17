@@ -94,6 +94,9 @@ Lintian-Tags: priority-extra-is-replaced-by-priority-optional
 Fix-Script: public-upstream-key-not-minimal.sh
 Lintian-Tags: public-upstream-key-not-minimal
 
+Fix-Script: public-upstream-key-not-minimal.sh
+Lintian-Tags: public-upstream-keys-in-multiple-locations
+
 Fix-Script: quilt-series-without-trailing-newline.sh
 Lintian-Tags: quilt-series-without-trailing-newline
 
