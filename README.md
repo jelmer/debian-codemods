@@ -36,6 +36,8 @@ subset of the issues:
 * debian-pyversions-is-obsolete
 * debian-rules-should-not-use-pwd
 * debian-source-options-has-custom-compression-settings
+* debian-tests-control-and-control-autodep8
+* debian-tests-control-autodep8-is-obsolete
 * debian-upstream-obsolete-path
 * debian-watch-uses-insecure-uri
 * dh-quilt-addon-but-quilt-source-format
@@ -54,6 +56,7 @@ subset of the issues:
 * package-uses-deprecated-debhelper-compat-version
 * package-uses-deprecated-source-override-location
 * package-uses-old-debhelper-compat-version
+* possible-missing-colon-in-closes
 * priority-extra-is-replaced-by-priority-optional
 * public-upstream-key-not-minimal
 * public-upstream-keys-in-multiple-locations
