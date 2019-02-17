@@ -94,6 +94,9 @@ Lintian-Tags:
   package-uses-deprecated-debhelper-compat-version,
   package-uses-old-debhelper-compat-version
 
+Fix-Script: possible-missing-colon-in-closes.sh
+Lintian-Tags: possible-missing-colon-in-closes
+
 Fix-Script: priority-extra-is-replaced-by-priority-optional.py
 Lintian-Tags: priority-extra-is-replaced-by-priority-optional
 

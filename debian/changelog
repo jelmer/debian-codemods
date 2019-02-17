@@ -24,6 +24,7 @@ lintian-brush (0.14) UNRELEASED; urgency=medium
   * Add fixer for public-upstream-keys-in-multiple-locations.
   * Add fixer for orphaned-package-should-not-have-uploaders.
   * Add fixer for build-depends-on-build-essential.
+  * Add fixer for possible-missing-colon-in-closes.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 16 Feb 2019 15:11:25 +0000
 
