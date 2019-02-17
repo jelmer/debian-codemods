@@ -25,6 +25,8 @@ lintian-brush (0.14) UNRELEASED; urgency=medium
   * Add fixer for orphaned-package-should-not-have-uploaders.
   * Add fixer for build-depends-on-build-essential.
   * Add fixer for possible-missing-colon-in-closes.
+  * Add fixer for debian-tests-control-autodep8-is-obsolete and debian-
+    tests-control-and-control-autodep8.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 16 Feb 2019 15:11:25 +0000
 

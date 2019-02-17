@@ -1,0 +1,2 @@
+Merge debian/tests/control.autodep8 into debian/tests/control.
+Fixed-Lintian-Tags: debian-tests-control-autodep8-is-obsolete, debian-tests-control-and-control-autodep8

@@ -1,0 +1,4 @@
+Tests: testsuite2
+Depends: blah
+Restrictions: allow-stderr
+

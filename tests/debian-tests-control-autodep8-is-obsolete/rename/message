@@ -1,0 +1,2 @@
+Rename obsolete path debian/tests/control.autodep8 to debian/tests/control.
+Fixed-Lintian-Tags: debian-tests-control-autodep8-is-obsolete

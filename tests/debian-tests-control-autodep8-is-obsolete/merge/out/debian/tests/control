@@ -1,0 +1,7 @@
+Tests: testsuite3
+Depends: blie
+
+Tests: testsuite2
+Depends: blah
+Restrictions: allow-stderr
+

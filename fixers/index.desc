@@ -37,6 +37,11 @@ Lintian-Tags: debian-rules-should-not-use-pwd
 Fix-Script: debian-source-options-has-custom-compression-settings.py
 Lintian-Tags: debian-source-options-has-custom-compression-settings
 
+Fix-Script: debian-tests-control-autodep8-is-obsolete.py
+Lintian-Tags:
+  debian-tests-control-autodep8-is-obsolete,
+  debian-tests-control-and-control-autodep8
+
 Fix-Script: debian-upstream-obsolete-path.sh
 Lintian-Tags: debian-upstream-obsolete-path
 
