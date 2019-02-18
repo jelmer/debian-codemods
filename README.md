@@ -50,6 +50,7 @@ subset of the issues:
 * malformed-dm-upload-allowed
 * missing-debian-source-format
 * missing-vcs-browser-field
+* obsolete-field-in-dep5-copyright
 * orphaned-package-should-not-have-uploaders
 * out-of-date-copyright-format-uri
 * out-of-date-standards-version
