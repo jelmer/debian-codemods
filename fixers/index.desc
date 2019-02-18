@@ -82,6 +82,9 @@ Lintian-Tags: missing-debian-source-format
 Fix-Script: missing-vcs-browser-field.py
 Lintian-Tags: missing-vcs-browser-field
 
+Fix-Script: obsolete-field-in-dep5-copyright.py
+Lintian-Tags: obsolete-field-in-dep5-copyright
+
 Fix-Script: orphaned-package-should-not-have-uploaders.py
 Lintian-Tags: orphaned-package-should-not-have-uploaders
 

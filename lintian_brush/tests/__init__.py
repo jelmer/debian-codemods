@@ -21,6 +21,7 @@ import unittest
 def test_suite():
     names = [
         'control',
+        'copyright',
         'lintian_overrides',
         'run',
         'systemd',

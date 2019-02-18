@@ -1,0 +1,7 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Contact: Jelmer <jelmer@samba.org>
+Name: lintian-brush
+
+Files: *
+License: GPL
+Copyright: 2012...
