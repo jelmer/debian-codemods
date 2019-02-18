@@ -43,6 +43,7 @@ subset of the issues:
 * dh-quilt-addon-but-quilt-source-format
 * dm-upload-allowed-is-obsolete
 * file-contains-trailing-whitespace
+* global-files-wildcard-not-first-paragraph-in-dep5-copyright
 * homepage-field-uses-insecure-uri
 * insecure-copyright-format-uri
 * maintainer-script-without-set-e
