@@ -1,4 +1,4 @@
-lintian-brush (0.14) UNRELEASED; urgency=medium
+lintian-brush (0.13.1) UNRELEASED; urgency=medium
 
   * Avoid creating commit for already minimal key. Closes: #922541
 
