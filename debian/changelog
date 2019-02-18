@@ -28,6 +28,8 @@ lintian-brush (0.14) UNRELEASED; urgency=medium
   * Add fixer for debian-tests-control-autodep8-is-obsolete and debian-
     tests-control-and-control-autodep8. Closes: #917563
   * Avoid creating commit for already minimal key. Closes: #922541
+  * Add fixer for global-files-wildcard-not-first-paragraph-in-dep5-
+    copyright.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 16 Feb 2019 15:11:25 +0000
 

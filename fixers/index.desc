@@ -61,6 +61,9 @@ Fix-Script: empty-debian-patches-series.py
 Fix-Script: file-contains-trailing-whitespace.sh
 Lintian-Tags: file-contains-trailing-whitespace
 
+Fix-Script: global-files-wildcard-not-first-paragraph-in-dep5-copyright.py
+Lintian-Tags: global-files-wildcard-not-first-paragraph-in-dep5-copyright
+
 Fix-Script: homepage-field-uses-insecure-uri.py
 Lintian-Tags: homepage-field-uses-insecure-uri
 
