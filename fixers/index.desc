@@ -58,6 +58,9 @@ Fix-Script: empty-debian-source-options.py
 
 Fix-Script: empty-debian-patches-series.py
 
+Fix-Script: field-name-typo-in-dep5-copyright.py
+Lintian-Tags: field-name-typo-in-dep5-copyright
+
 Fix-Script: file-contains-trailing-whitespace.sh
 Lintian-Tags: file-contains-trailing-whitespace
 

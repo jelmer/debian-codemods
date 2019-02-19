@@ -1,0 +1,2 @@
+Fix field name typos in debian/copyright.
+Fixed-Lintian-Tags: field-name-typo-dep5-copyright
