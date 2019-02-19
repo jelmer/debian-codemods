@@ -1,0 +1,2 @@
+Fix invalid short license name in debian/copyright (gpl2+ => GPL-2+)
+Fixed-Lintian-Tags: invalid-short-name-in-dep5-copyright

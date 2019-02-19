@@ -73,6 +73,9 @@ Lintian-Tags: homepage-field-uses-insecure-uri
 Fix-Script: insecure-copyright-format-uri.sh
 Lintian-Tags: insecure-copyright-format-uri
 
+Fix-Script: invalid-short-name-in-dep5-copyright.py
+Lintian-Tags: invalid-short-name-in-dep5-copyright
+
 Fix-Script: maintainer-script-without-set-e.py
 Lintian-Tags: maintainer-script-without-set-e
 

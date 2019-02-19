@@ -1,6 +1,7 @@
 lintian-brush (0.15) UNRELEASED; urgency=medium
 
   * Add fixer for field-name-typo-in-dep5-copyright.
+  * Add fixer for invalid-short-name-in-dep5-copyright.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 19 Feb 2019 02:11:38 +0000
 
