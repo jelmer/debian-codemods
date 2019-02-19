@@ -48,6 +48,9 @@ Lintian-Tags: debian-upstream-obsolete-path
 Fix-Script: debian-watch-uses-insecure-uri.sh
 Lintian-Tags: debian-watch-uses-insecure-uri
 
+Fix-Script: dep5-file-paragraph-references-header-paragraph.py
+Lintian-Tags: dep5-file-paragraph-references-header-paragraph
+
 Fix-Script: dh-quilt-addon-but-quilt-source-format.sh
 Lintian-Tags: dh-quilt-addon-but-quilt-source-format
 

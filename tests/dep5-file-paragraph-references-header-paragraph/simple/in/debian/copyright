@@ -1,0 +1,9 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: lintrian
+License: Alicense
+ Some terms
+
+Files: *
+Copyright:
+ 2008-2017 Somebody
+License: Alicense
