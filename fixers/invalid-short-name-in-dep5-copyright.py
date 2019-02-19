@@ -4,9 +4,20 @@ from debian.copyright import License
 from lintian_brush.copyright import update_copyright
 
 typos = {
-    'gplv2+': 'GPL-2+',
-    'gpl2+': 'GPL-2+',
-    }
+    'bsd-2': 'BSD-2-Clause',
+    'bsd-3': 'BSD-3-Clause',
+    'bsd-4': 'BSD-4-Clause',
+    'agpl3': 'AGPL-3',
+    'agpl3+': 'AGPL-3+',
+    'lgpl2.1': 'LGPL-2.1',
+    'lgpl2': 'LGPL-2.0',
+    'lgpl3': 'LGPL-3.0',
+}
+for i in [1, 2, 3]:
+    typos['gplv%d' % i] = 'GPL-%d' % i
+    typos['gplv%d+' % i] = 'GPL-%d+' % i
+    typos['gpl%d' % i] = 'GPL-%d' % i
+    typos['gpl%d+' % i] = 'GPL-%d+' % i
 
 renames = {}
 
