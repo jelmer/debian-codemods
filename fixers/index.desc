@@ -91,6 +91,9 @@ Lintian-Tags: missing-debian-source-format
 Fix-Script: missing-vcs-browser-field.py
 Lintian-Tags: missing-vcs-browser-field
 
+Fix-Script: old-fsf-address-in-copyright-file.sh
+Lintian-Tags: old-fsf-address-in-copyright-file
+
 Fix-Script: obsolete-field-in-dep5-copyright.py
 Lintian-Tags: obsolete-field-in-dep5-copyright
 
