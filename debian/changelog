@@ -1,4 +1,4 @@
-lintian-brush (0.15) UNRELEASED; urgency=medium
+lintian-brush (0.15) experimental; urgency=medium
 
   * Add fixer for field-name-typo-in-dep5-copyright.
   * Add fixer for invalid-short-name-in-dep5-copyright.
