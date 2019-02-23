@@ -16,7 +16,7 @@ run_gpg() {
 }
 
 gpg_export() {
-    run_gpg --export-options export-minimal,export-clean --export "$@"
+    run_gpg --export-options export-minimal --export "$@"
 }
 
 for p in $OTHER_PATHS $MAIN_PATH

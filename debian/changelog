@@ -1,3 +1,10 @@
+lintian-brush (0.16) UNRELEASED; urgency=medium
+
+  * Don't export expired signatures; these may still be useful, and
+    excluding them will break the tests in the future.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 23 Feb 2019 03:45:54 +0000
+
 lintian-brush (0.15) experimental; urgency=medium
 
   * Add fixer for field-name-typo-in-dep5-copyright.
