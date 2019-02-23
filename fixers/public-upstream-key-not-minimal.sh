@@ -14,7 +14,7 @@ gpg_export() {
 
 gpg_export_minimal() {
     target="$1"
-    gpg_export export-minimal,export-clean > "${target}.minimal"
+    gpg_export export-minimal > "${target}.minimal"
     gpg_export "" > "${target}.full"
     if ! diff "${target}.minimal" "${target}.full" > /dev/null; then
         mv "${target}.minimal" "${target}"
