@@ -2,6 +2,8 @@ lintian-brush (0.16) UNRELEASED; urgency=medium
 
   * Don't export expired signatures; these may still be useful, and
     excluding them will break the tests in the future.
+  * Migrate debian/compat files to debhelper-compat build-depends for
+    debhelper >= 11.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 23 Feb 2019 03:45:54 +0000
 
