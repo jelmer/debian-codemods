@@ -1,4 +1,4 @@
-lintian-brush (0.13.1) UNRELEASED; urgency=medium
+lintian-brush (0.13.1) unstable; urgency=medium
 
   * Avoid creating commit for already minimal key. Closes: #922541
   * Don't export expired signatures; these may still be useful, and
