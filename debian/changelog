@@ -52,6 +52,15 @@ lintian-brush (0.14) experimental; urgency=medium
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 16 Feb 2019 15:11:25 +0000
 
+lintian-brush (0.13.1) unstable; urgency=medium
+
+  * Avoid creating commit for already minimal key. Closes: #922541
+  * Don't export expired signatures; these may still be useful, and
+    excluding them will break the tests in the future.
+    Fixes reproducible builds.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 16 Feb 2019 15:11:25 +0000
+
 lintian-brush (0.13) unstable; urgency=medium
 
   [ Dmitry Bogatov ]
