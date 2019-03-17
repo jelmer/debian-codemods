@@ -103,6 +103,7 @@ class FixerResult(object):
 
     def __repr__(self):
         return "%s(%r, fixed_lintian_tags=%r, certainty=%r)" % (
+                self.__class__.__name__,
                 self.description, self.fixed_lintian_tags, self.certainty)
 
     def __eq__(self, other):
@@ -124,14 +125,14 @@ class Fixer(object):
         self.name = name
         self.lintian_tags = lintian_tags
 
-    def run(self, basedir, current_version, compat):
+    def run(self, basedir, current_version, compat_release):
         """Apply this fixer script.
 
         Args:
           basedir: Directory in which to run
           current_version: The version of the package that is being created or
             updated
-          compat: Compatibility level (a Debian release name)
+          compat_release: Compatibility level (a Debian release name)
         Returns:
           A FixerResult object
         """
