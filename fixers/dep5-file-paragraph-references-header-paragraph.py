@@ -1,7 +1,12 @@
 #!/usr/bin/python3
 
-from debian.copyright import LicenseParagraph
+from debian.copyright import (
+    LicenseParagraph,
+    NotMachineReadableError,
+    )
 from lintian_brush.copyright import update_copyright
+
+license = None
 
 
 def fix_header_license_references(copyright):
@@ -27,6 +32,13 @@ def fix_header_license_references(copyright):
     license = copyright.header.license
 
 
-update_copyright(fix_header_license_references)
-print('Add missing license paragraph for %s' % license.synopsis)
-print('Fixed-Lintian-Tags: dep5-file-paragraph-references-header-paragraph')
+try:
+    update_copyright(fix_header_license_references)
+except NotMachineReadableError:
+    pass
+else:
+    if license:
+        print('Add missing license paragraph for %s' % license.synopsis)
+        print(
+            'Fixed-Lintian-Tags: '
+            'dep5-file-paragraph-references-header-paragraph')
