@@ -349,6 +349,20 @@ def only_changes_last_changelog_block(tree):
         return str(new_cl) == str(old_cl)
 
 
+def reset_tree(local_tree):
+    """Reset a tree back to its basis tree.
+
+    This will leave ignored and detritus files alone.
+
+    Args:
+      local_tree: tree to work on
+    """
+    revert(local_tree, local_tree.branch.basis_tree(), None)
+    deletables = list(iter_deletables(
+        local_tree, unknown=True, ignored=False, detritus=False))
+    delete_items(deletables)
+
+
 def run_lintian_fixer(local_tree, fixer, committer=None,
                       update_changelog=None, compat_release=None):
     """Run a lintian fixer on a tree.
@@ -383,10 +397,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         result = fixer.run(local_tree.basedir, current_version=current_version,
                            compat_release=compat_release)
     except BaseException:
-        revert(local_tree, local_tree.branch.basis_tree(), None)
-        deletables = list(iter_deletables(
-            local_tree, unknown=True, ignored=False, detritus=False))
-        delete_items(deletables)
+        reset_tree(local_tree)
         raise
     local_tree.smart_add([local_tree.basedir])
     if local_tree.supports_setting_file_ids():
