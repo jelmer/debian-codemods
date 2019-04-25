@@ -5,4 +5,5 @@ dist/*.tar.gz.asc
 lintian-tags
 lintian-brush-tags
 __pycache__
+*.pyc
 lintian_brush.egg-info/
