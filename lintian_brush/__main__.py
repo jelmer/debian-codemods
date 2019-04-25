@@ -51,6 +51,8 @@ from . import (  # noqa: E402
     get_committer,
     run_lintian_fixers,
     version_string,
+    SUPPORTED_CERTAINTIES,
+    DEFAULT_MINIMUM_CERTAINTY,
     )
 
 
@@ -93,6 +95,13 @@ def main(argv=None):
         '--identity',
         help='Print user identity that would be used when committing',
         action='store_true', default=False)
+    # Hide the minimum-certainty option for the moment.
+    parser.add_argument(
+        '--minimum-certainty',
+        type=str,
+        choices=SUPPORTED_CERTAINTIES,
+        default=DEFAULT_MINIMUM_CERTAINTY,
+        help=argparse.SUPPRESS)
     parser.add_argument(
         'fixers', metavar='FIXER', nargs='*',
         help='specific fixer to run')
@@ -150,7 +159,8 @@ def main(argv=None):
                     wt, fixers,
                     update_changelog=args.update_changelog,
                     compat_release=compat_release,
-                    verbose=args.verbose)
+                    verbose=args.verbose,
+                    minimum_certainty=args.minimum_certainty)
             except NotDebianPackage:
                 note("%s: Not a debian package.", wt.basedir)
                 return 1

@@ -39,6 +39,7 @@ from lintian_brush import (
     NotDebianPackage,
     PendingChanges,
     available_lintian_fixers,
+    certainty_sufficient,
     get_committer,
     increment_version,
     only_changes_last_changelog_block,
@@ -83,7 +84,7 @@ Lintian-Tags: i-fix-another-tag, no-extension
 
 class DummyFixer(Fixer):
 
-    def run(self, basedir, current_version, compat_release):
+    def run(self, basedir, current_version, compat_release, minimum_certainty):
         with open(os.path.join(basedir, 'debian/control'), 'a') as f:
             f.write('a new line\n')
         return FixerResult("Fixed some tag.\nExtended description.",
@@ -92,7 +93,7 @@ class DummyFixer(Fixer):
 
 class FailingFixer(Fixer):
 
-    def run(self, basedir, current_version, compat_release):
+    def run(self, basedir, current_version, compat_release, minimum_certainty):
         with open(os.path.join(basedir, 'debian/foo'), 'w') as f:
             f.write("blah")
         with open(os.path.join(basedir, 'debian/control'), 'a') as f:
@@ -215,7 +216,8 @@ Arch: all
         tree = self.make_test_tree()
 
         class NewFileFixer(Fixer):
-            def run(self, basedir, current_version, compat_release):
+            def run(self, basedir, current_version, compat_release,
+                    minimum_certainty):
                 with open(os.path.join(basedir, 'debian/somefile'), 'w') as f:
                     f.write("test")
                 return FixerResult("Created new file.", ['some-tag'])
@@ -245,7 +247,8 @@ Arch: all
         tree = self.make_test_tree()
 
         class RenameFileFixer(Fixer):
-            def run(self, basedir, current_version, compat_release):
+            def run(self, basedir, current_version, compat_release,
+                    minimum_certainty):
                 os.rename(os.path.join(basedir, 'debian/control'),
                           os.path.join(basedir, 'debian/control.blah'))
                 return FixerResult("Renamed a file.")
@@ -273,7 +276,8 @@ Arch: all
         tree = self.make_test_tree()
 
         class EmptyFixer(Fixer):
-            def run(self, basedir, current_version, compat_release):
+            def run(self, basedir, current_version, compat_release,
+                    minimum_certainty):
                 return FixerResult("I didn't actually change anything.")
         with tree.lock_write():
             self.assertRaises(
@@ -624,3 +628,15 @@ class GetCommitterTests(TestCaseWithTransport):
         self.assertEqual(
             'Yet Another Committer <yet@example.com>',
             get_committer(tree))
+
+
+class CertaintySufficientTests(TestCase):
+
+    def test_sufficient(self):
+        self.assertTrue(certainty_sufficient('certain', 'certain'))
+        self.assertTrue(certainty_sufficient('certain', 'possible'))
+        self.assertTrue(certainty_sufficient('certain', None))
+        self.assertTrue(certainty_sufficient('possible', None))
+
+    def test_insufficient(self):
+        self.assertFalse(certainty_sufficient('possible', 'certain'))

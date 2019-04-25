@@ -46,6 +46,7 @@ from debian.deb822 import Deb822
 __version__ = (0, 16)
 version_string = '.'.join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ['certain', 'possible', None]
+DEFAULT_MINIMUM_CERTAINTY = 'certain'
 
 
 class NoChanges(Exception):
@@ -149,10 +150,12 @@ class ScriptFixer(Fixer):
     def __repr__(self):
         return "<ScriptFixer(%r)>" % self.name
 
-    def run(self, basedir, current_version, compat_release):
+    def run(self, basedir, current_version, compat_release,
+            minimum_certainty=DEFAULT_MINIMUM_CERTAINTY):
         env = dict(os.environ.items())
         env['CURRENT_VERSION'] = str(current_version)
         env['COMPAT_RELEASE'] = compat_release
+        env['MINIMUM_CERTAINTY'] = minimum_certainty
         with tempfile.SpooledTemporaryFile() as stderr:
             p = subprocess.Popen(self.script_path, cwd=basedir,
                                  stdout=subprocess.PIPE, stderr=stderr,
@@ -363,8 +366,23 @@ def reset_tree(local_tree):
     delete_items(deletables)
 
 
+def certainty_sufficient(actual_certainty, minimum_certainty):
+    """Check if the actual certainty is sufficient.
+
+    Args:
+      actual_certainty: Actual certainty with which changes were made
+      minimum_certainty: Minimum certainty to keep changes
+    Returns:
+      boolean
+    """
+    if actual_certainty == 'possible' and minimum_certainty == 'certain':
+        return False
+    return True
+
+
 def run_lintian_fixer(local_tree, fixer, committer=None,
-                      update_changelog=None, compat_release=None):
+                      update_changelog=None, compat_release=None,
+                      minimum_certainty=None):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -374,6 +392,8 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
       update_changelog: Whether to add a new entry to the changelog
       compat_release: Minimum release that the package should be usable on
         (e.g. 'stable' or 'unstable')
+      minimum_certainty: How certain the fixer should be
+        about its changes.
     Returns:
       tuple with set of FixerResult, summary of the changes
     """
@@ -393,12 +413,18 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         increment_version(current_version)
     if compat_release is None:
         compat_release = 'sid'
+    if minimum_certainty is None:
+        minimum_certainty = DEFAULT_MINIMUM_CERTAINTY
     try:
         result = fixer.run(local_tree.basedir, current_version=current_version,
-                           compat_release=compat_release)
+                           compat_release=compat_release,
+                           minimum_certainty=minimum_certainty)
     except BaseException:
         reset_tree(local_tree)
         raise
+    if not certainty_sufficient(result.certainty, minimum_certainty):
+        reset_tree(local_tree)
+        raise NoChanges("Script didn't make any changes")
     local_tree.smart_add([local_tree.basedir])
     if local_tree.supports_setting_file_ids():
         RenameMap.guess_renames(
@@ -444,7 +470,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
 
 def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                        verbose=False, committer=None,
-                       compat_release=None):
+                       compat_release=None, minimum_certainty=None):
     """Run a set of lintian fixers on a tree.
 
     Args:
@@ -455,6 +481,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
       committer: Optional committer (name and email)
       compat_release: Minimum release that the package should be usable on
         (e.g. 'sid' or 'stretch')
+      minimum_certainty: How certain the fixer should be
+        about its changes.
     Returns:
       Tuple with two lists:
         list of tuples with (lintian-tag, certainty, description) of fixers
@@ -471,7 +499,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
             try:
                 result, summary = run_lintian_fixer(
                         local_tree, fixer, update_changelog=update_changelog,
-                        committer=committer, compat_release=compat_release)
+                        committer=committer, compat_release=compat_release,
+                        minimum_certainty=minimum_certainty)
             except FixerFailed as e:
                 failed_fixers.append(fixer.name)
                 if verbose:
