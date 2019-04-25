@@ -212,6 +212,37 @@ Arch: all
                 tree.get_file_lines('debian/control')[-1],
                 b"a new line\n")
 
+    def test_simple_modify_too_uncertain(self):
+        tree = self.make_test_tree()
+
+        class UncertainFixer(Fixer):
+            def run(self, basedir, current_version, compat_release,
+                    minimum_certainty):
+                with open(os.path.join(basedir, 'debian/somefile'), 'w') as f:
+                    f.write("test")
+                return FixerResult("Renamed a file.", certainty='possible')
+        with tree.lock_write():
+            self.assertRaises(
+                NoChanges, run_lintian_fixer,
+                tree, UncertainFixer('dummy', 'some-tag'),
+                update_changelog=False, minimum_certainty='certain')
+        self.assertEqual(1, tree.branch.revno())
+
+    def test_simple_modify_acceptably_uncertain(self):
+        tree = self.make_test_tree()
+
+        class UncertainFixer(Fixer):
+            def run(self, basedir, current_version, compat_release,
+                    minimum_certainty):
+                with open(os.path.join(basedir, 'debian/somefile'), 'w') as f:
+                    f.write("test")
+                return FixerResult("Renamed a file.", certainty='possible')
+        with tree.lock_write():
+            result, summary = run_lintian_fixer(
+                tree, UncertainFixer('dummy', 'some-tag'),
+                update_changelog=False, minimum_certainty='possible')
+        self.assertEqual(2, tree.branch.revno())
+
     def test_new_file(self):
         tree = self.make_test_tree()
 
