@@ -6,6 +6,7 @@ lintian-brush (0.16) UNRELEASED; urgency=medium
     debhelper >= 11.
   * dep5-file-paragraph-references-header-paragraph: Don't print an
     error message when the copyright file does not use DEP5.
+  * Add fixer debian-watch-file-is-missing.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 23 Feb 2019 03:45:54 +0000
 
