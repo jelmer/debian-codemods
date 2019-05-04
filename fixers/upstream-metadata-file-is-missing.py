@@ -27,14 +27,23 @@ if 'Repository' not in code:
         code['Repository'] = 'https://' + control['XS-Go-Import-Path']
 
     if os.path.exists('setup.py'):
+        args = [os.path.abspath('setup.py'), 'dist_info']
+        if os.stat('setup.py').st_mode & 0o100 == 0:
+            # TODO(jelmer): Why python3 and not e.g. python
+            args.insert(0, 'python3')
+
         with tempfile.TemporaryDirectory() as td:
-            subprocess.call(
-                ['python', os.path.abspath('setup.py'), 'dist_info'], cwd=td,
-                stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            [name] = os.listdir(td)
-            with open(os.path.join(td, name, 'PKG-INFO'), 'r') as f:
-                python_info = [
-                    l.rstrip('\n').split(': ', 1) for l in f.readlines()]
+            try:
+                subprocess.call(
+                    args, cwd=td, stderr=subprocess.PIPE,
+                    stdout=subprocess.PIPE)
+            except FileNotFoundError:
+                python_info = {}
+            else:
+                [name] = os.listdir(td)
+                with open(os.path.join(td, name, 'PKG-INFO'), 'r') as f:
+                    python_info = [
+                        l.rstrip('\n').split(': ', 1) for l in f.readlines()]
         for key, value in python_info:
             if key == 'Name':
                 code['Name'] = value
