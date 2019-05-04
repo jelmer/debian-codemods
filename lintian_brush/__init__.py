@@ -86,6 +86,13 @@ class NotDebianPackage(Exception):
         super(NotDebianPackage, self).__init__(tree.basedir)
 
 
+class GeneratedControlFile(Exception):
+    """The specified file is generated."""
+
+    def __init__(self, path):
+        self.path = path
+
+
 class PendingChanges(Exception):
     """The directory has pending changes."""
 
@@ -488,6 +495,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
         list of tuples with (lintian-tag, certainty, description) of fixers
         that ran list of script names for fixers that failed to run
     """
+    if local_tree.has_filename('debian/control.in'):
+        raise GeneratedControlFile('debian/control.in')
     failed_fixers = []
     fixers = list(fixers)
     ret = []

@@ -35,6 +35,7 @@ from lintian_brush import (
     Fixer,
     FixerFailed,
     FixerResult,
+    GeneratedControlFile,
     NoChanges,
     NotDebianPackage,
     PendingChanges,
@@ -387,6 +388,19 @@ Arch: all
         self.assertEqual(
                 self.tree.get_file_lines('debian/control')[-1],
                 b"a new line\n")
+
+    def test_generated_control_file(self):
+        with self.tree.lock_write():
+            self.build_tree_contents([
+                ('debian/control.in', """\
+Source: blah
+""")])
+            self.tree.add(['debian/control.in'])
+            self.tree.commit('Add control.in')
+            self.assertRaises(
+                GeneratedControlFile, run_lintian_fixers,
+                self.tree, [DummyFixer('dummy', 'some-tag')],
+                update_changelog=False)
 
 
 class HonorsVcsCommitter(TestCaseWithTransport):
