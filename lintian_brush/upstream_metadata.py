@@ -44,13 +44,13 @@ def get_python_setup_metadata(filename='setup.py'):
     return python_info
 
 
-def guess_upstream_metadata():
+def guess_upstream_metadata(path):
     """Guess the upstream metadata dictionary.
     """
     code = {}
 
     try:
-        with open('debian/control', 'r') as f:
+        with open(os.path.join(path, 'debian/control'), 'r') as f:
             from debian.deb822 import Deb822
             control = Deb822(f)
     except FileNotFoundError:
@@ -60,7 +60,7 @@ def guess_upstream_metadata():
             code['Repository'] = 'https://' + control['XS-Go-Import-Path']
 
     try:
-        python_info = get_python_setup_metadata('setup.py')
+        python_info = get_python_setup_metadata(os.path.join(path, 'setup.py'))
     except FileNotFoundError:
         pass
     else:

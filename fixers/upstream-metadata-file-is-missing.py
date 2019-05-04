@@ -16,7 +16,7 @@ except FileNotFoundError:
 else:
     code = ruamel.yaml.load(inp, ruamel.yaml.RoundTripLoader)
 
-guessed_metadata = guess_upstream_metadata()
+guessed_metadata = guess_upstream_metadata('.')
 for key, value in guessed_metadata.items():
     if key not in code:
         code[key] = value
