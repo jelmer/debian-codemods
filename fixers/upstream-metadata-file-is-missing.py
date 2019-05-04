@@ -6,12 +6,7 @@
 import os
 import sys
 import ruamel.yaml
-import subprocess
-import tempfile
-
-from debian.deb822 import Deb822
-with open('debian/control', 'r') as f:
-    control = Deb822(f)
+from lintian_brush.upstream_metadata import guess_upstream_metadata
 
 try:
     with open('debian/upstream/metadata', 'r') as f:
@@ -21,37 +16,10 @@ except FileNotFoundError:
 else:
     code = ruamel.yaml.load(inp, ruamel.yaml.RoundTripLoader)
 
-
-if 'Repository' not in code:
-    if 'XS-Go-Import-Path' in control:
-        code['Repository'] = 'https://' + control['XS-Go-Import-Path']
-
-    if os.path.exists('setup.py'):
-        args = [os.path.abspath('setup.py'), 'dist_info']
-        if os.stat('setup.py').st_mode & 0o100 == 0:
-            # TODO(jelmer): Why python3 and not e.g. python
-            args.insert(0, 'python3')
-
-        with tempfile.TemporaryDirectory() as td:
-            try:
-                subprocess.call(
-                    args, cwd=td, stderr=subprocess.PIPE,
-                    stdout=subprocess.PIPE)
-            except FileNotFoundError:
-                python_info = {}
-            else:
-                [name] = os.listdir(td)
-                with open(os.path.join(td, name, 'PKG-INFO'), 'r') as f:
-                    python_info = [
-                        l.rstrip('\n').split(': ', 1) for l in f.readlines()]
-        for key, value in python_info:
-            if key == 'Name':
-                code['Name'] = value
-            if key == 'Project-URL':
-                url_type, url = value.split(', ')
-                if url_type in ('GitHub', 'Repository'):
-                    code['Repository'] = url
-
+guessed_metadata = guess_upstream_metadata()
+for key, value in guessed_metadata.items():
+    if key not in code:
+        code[key] = value
 
 if not code:
     sys.exit(0)
