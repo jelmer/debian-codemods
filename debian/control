@@ -13,6 +13,7 @@ Build-Depends: debhelper (>= 12~),
                python3-debian,
                python3-levenshtein,
                python3-setuptools,
+               python3-ruamel.yaml,
                gpg
 Standards-Version: 4.3.0
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git -b unstable
@@ -26,6 +27,7 @@ Depends: devscripts,
          python3-dulwich (>= 0.19.7),
          python3-distro-info,
          python3-levenshtein,
+         python3-ruamel.yaml,
          ${misc:Depends},
          ${python3:Depends}
 Recommends: lintian, dos2unix, gpg
