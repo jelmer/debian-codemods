@@ -153,6 +153,9 @@ Lintian-Tags: unnecessary-testsuite-autopkgtest-field
 Fix-Script: unversioned-copyright-format-uri.sh
 Lintian-Tags: unversioned-copyright-format-uri
 
+Fix-Script: upstream-metadata-file-is-missing.py
+Lintian-Tags: upstream-metadata-file-is-missing
+
 Fix-Script: useless-autoreconf-build-depends.py
 Lintian-Tags: useless-autoreconf-build-depends
 
