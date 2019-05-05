@@ -20,10 +20,24 @@
 import os
 import subprocess
 import tempfile
+import urllib.parse
 
 
-def get_python_setup_metadata(filename='setup.py'):
+KNOWN_HOSTING_SITES = [
+    'github.com', 'gitlab.com', 'launchpad.net', 'salsa.debian.org']
+
+
+def read_python_pkg_info(path):
     """Get the metadata from a python setup.py file."""
+    from pkginfo.utils import get_metadata
+    return get_metadata(path)
+
+
+def get_python_pkg_info(path):
+    pkg_info = read_python_pkg_info(path)
+    if pkg_info.name:
+        return pkg_info
+    filename = os.path.join(path, 'setup.py')
     args = [os.path.abspath(filename), 'dist_info']
     if os.stat(filename).st_mode & 0o100 == 0:
         # TODO(jelmer): Why python3 and not e.g. python
@@ -35,13 +49,8 @@ def get_python_setup_metadata(filename='setup.py'):
                 args, cwd=td, stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE)
         except FileNotFoundError:
-            python_info = {}
-        else:
-            [name] = os.listdir(td)
-            with open(os.path.join(td, name, 'PKG-INFO'), 'r') as f:
-                python_info = [
-                    l.rstrip('\n').split(': ', 1) for l in f.readlines()]
-    return python_info
+            pass
+        return read_python_pkg_info(td)
 
 
 def guess_upstream_metadata(path):
@@ -59,17 +68,23 @@ def guess_upstream_metadata(path):
         if 'XS-Go-Import-Path' in control:
             code['Repository'] = 'https://' + control['XS-Go-Import-Path']
 
-    try:
-        python_info = get_python_setup_metadata(os.path.join(path, 'setup.py'))
-    except FileNotFoundError:
-        pass
-    else:
-        for key, value in python_info:
-            if key == 'Name':
-                code['Name'] = value
-            if key == 'Project-URL':
+    if os.path.exists('setup.py'):
+        try:
+            pkg_info = get_python_pkg_info(path)
+        except FileNotFoundError:
+            pass
+        else:
+            if pkg_info.name:
+                code['Name'] = pkg_info.name
+            if pkg_info.home_page:
+                parsed_url = urllib.parse.urlparse(pkg_info.home_page)
+                if parsed_url.netloc in KNOWN_HOSTING_SITES:
+                    code['Repository'] = pkg_info.home_page
+            for value in pkg_info.project_urls:
                 url_type, url = value.split(', ')
                 if url_type in ('GitHub', 'Repository'):
                     code['Repository'] = url
+
+    # TODO(jelmer): validate Repository by querying it somehow?
 
     return code

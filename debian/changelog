@@ -9,6 +9,7 @@ lintian-brush (0.16) UNRELEASED; urgency=medium
   * Add fixer debian-watch-file-is-missing.
   * Add a (hidden) --minimum-certainty option.
   * Add experimental fixer for upstream-metadata-file-is-missing.
+  * Also check homepage field to guess at upstream repository.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 23 Feb 2019 03:45:54 +0000
 
