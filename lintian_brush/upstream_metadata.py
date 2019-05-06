@@ -65,6 +65,10 @@ def guess_upstream_metadata(path):
     except FileNotFoundError:
         pass
     else:
+        if 'Homepage' in control:
+            parsed_url = urllib.parse.urlparse(control['Homepage'])
+            if parsed_url.netloc in KNOWN_HOSTING_SITES:
+                code['Repository'] = control['Homepage']
         if 'XS-Go-Import-Path' in control:
             code['Repository'] = 'https://' + control['XS-Go-Import-Path']
 
