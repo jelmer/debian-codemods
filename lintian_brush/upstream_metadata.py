@@ -68,6 +68,16 @@ def guess_upstream_metadata(path):
     """
     code = {}
 
+    if os.path.exists('debian/watch'):
+        with open('debian/watch', 'r') as f:
+            for l in f:
+                url = l.split(' ', 1)[0]
+                if url.startswith('https://') or url.startswith('http://'):
+                    repo = guess_repo_from_url(url)
+                    if repo:
+                        code["Repository"] = repo
+                        break
+
     try:
         with open(os.path.join(path, 'debian/control'), 'r') as f:
             from debian.deb822 import Deb822
