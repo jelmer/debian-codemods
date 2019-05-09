@@ -20,11 +20,21 @@
 import os
 import subprocess
 import tempfile
-import urllib.parse
+from urllib.parse import urlparse
 
 
 KNOWN_HOSTING_SITES = [
     'github.com', 'gitlab.com', 'launchpad.net', 'salsa.debian.org']
+
+
+def guess_repo_from_url(url):
+    parsed_url = urlparse(url)
+    if parsed_url.netloc == 'github.com':
+        return ('https://github.com' +
+                '/'.join(parsed_url.path.split('/')[:3]))
+    if parsed_url.netloc in KNOWN_HOSTING_SITES:
+        return url
+    return None
 
 
 def read_python_pkg_info(path):
@@ -66,9 +76,9 @@ def guess_upstream_metadata(path):
         pass
     else:
         if 'Homepage' in control:
-            parsed_url = urllib.parse.urlparse(control['Homepage'])
-            if parsed_url.netloc in KNOWN_HOSTING_SITES:
-                code['Repository'] = control['Homepage']
+            repo = guess_repo_from_url(control['Homepage'])
+            if repo:
+                code['Repository'] = repo
         if 'XS-Go-Import-Path' in control:
             code['Repository'] = 'https://' + control['XS-Go-Import-Path']
 
@@ -81,13 +91,28 @@ def guess_upstream_metadata(path):
             if pkg_info.name:
                 code['Name'] = pkg_info.name
             if pkg_info.home_page:
-                parsed_url = urllib.parse.urlparse(pkg_info.home_page)
-                if parsed_url.netloc in KNOWN_HOSTING_SITES:
-                    code['Repository'] = pkg_info.home_page
+                repo = guess_repo_from_url(pkg_info.home_page)
+                if repo:
+                    code['Repository'] = repo
             for value in pkg_info.project_urls:
                 url_type, url = value.split(', ')
                 if url_type in ('GitHub', 'Repository'):
                     code['Repository'] = url
+
+    if os.path.exists('debian/copyright'):
+        from debian.copyright import Copyright
+        with open('debian/copyright', 'r') as f:
+            copyright = Copyright(f)
+            header = copyright.header
+        if header.upstream_name:
+            code["Name"] = header.upstream_name
+        if header.upstream_contact:
+            code["Contact"] = ','.join(header.upstream_contact)
+        if "X-Upstream-Bugs" in header:
+            code["Bug-Database"] = header["X-Upstream-Bugs"]
+        if "X-Source-Downloaded-From" in header:
+            code["Repository"] = guess_repo_from_url(
+                header["X-Source-Downloaded-From"])
 
     # TODO(jelmer): validate Repository by querying it somehow?
 
