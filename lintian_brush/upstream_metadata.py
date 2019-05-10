@@ -18,6 +18,7 @@
 """Functions for working with upstream metadata."""
 
 import os
+import shlex
 import subprocess
 import tempfile
 from urllib.parse import urlparse
@@ -63,6 +64,34 @@ def get_python_pkg_info(path):
         return read_python_pkg_info(td)
 
 
+def parse_watch_file(f):
+    lines = []
+    continued = ''
+    for line in f:
+        if line.startswith('#'):
+            continue
+        if not line.strip():
+            continue
+        if line.rstrip('\n').endswith('\\'):
+            continued += line.rstrip('\n\\') + ' '
+        else:
+            lines.append(continued + line)
+            continued = ''
+    if continued:
+        # Hmm, broken line?
+        lines.append(continued)
+    if not lines.pop(0).startswith('version='):
+        pass  # Hmm, is this actually a real watch file?
+    for line in lines:
+        line = line.strip()
+        parts = shlex.split(line)
+        if parts[0].startswith('opts='):
+            opts = parts[0][len('opts='):]
+        else:
+            opts = None
+        yield [opts] + parts[1:]
+
+
 def guess_upstream_metadata(path):
     """Guess the upstream metadata dictionary.
     """
@@ -70,8 +99,8 @@ def guess_upstream_metadata(path):
 
     if os.path.exists('debian/watch'):
         with open('debian/watch', 'r') as f:
-            for l in f:
-                url = l.split(' ', 1)[0]
+            for entry in parse_watch_file(f):
+                url = entry[1]
                 if url.startswith('https://') or url.startswith('http://'):
                     repo = guess_repo_from_url(url)
                     if repo:
