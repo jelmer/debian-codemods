@@ -177,8 +177,8 @@ def guess_upstream_metadata(path, trust_package=False):
 
     Args:
       path: Path to the package
-      trust: Whether to trust the package contents and i.e. run
-      executables in it
+      trust_package: Whether to trust the package contents and i.e. run
+          executables in it
     """
     current_certainty = {}
     code = {}

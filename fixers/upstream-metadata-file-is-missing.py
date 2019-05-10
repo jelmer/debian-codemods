@@ -6,7 +6,7 @@
 import os
 import sys
 import ruamel.yaml
-from lintian_brush.upstream_metadata import guess_upstream_metadata
+from lintian_brush.upstream_metadata import guess_upstream_metadata_items
 
 try:
     with open('debian/upstream/metadata', 'r') as f:
@@ -16,13 +16,20 @@ except FileNotFoundError:
 else:
     code = ruamel.yaml.load(inp, ruamel.yaml.RoundTripLoader)
 
+minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
 fields = set()
-guessed_metadata = guess_upstream_metadata(
-    '.', trust_package=('TRUST_PACKAGE' in os.environ))
-for key, value in guessed_metadata.items():
-    if key not in code:
+current_certainty = {k: 'certain' for k in code.keys()}
+for key, value, certainty in guess_upstream_metadata_items(
+        '.', trust_package=(os.environ.get('TRUST_PACKAGE') == 'true')):
+    if certainty == 'possible' and minimum_certainty == 'certain':
+        continue
+    if current_certainty.get(key) != 'certain':
         code[key] = value
+        current_certainty[key] = certainty
         fields.add(key)
+
+achieved_certainty = (
+    'possible' if 'possible' in current_certainty.values() else 'certain')
 
 if not code:
     sys.exit(0)
@@ -36,6 +43,6 @@ with open('debian/upstream/metadata', 'w') as f:
     ruamel.yaml.dump(code, f, Dumper=ruamel.yaml.RoundTripDumper)
 
 print('Set upstream metadata fields: %s.' % ', '.join(sorted(fields)))
-print('Certainty: possible')
+print('Certainty: %s' % achieved_certainty)
 if fixed_tag:
     print('Fixed-Lintian-Tags: upstream-metadata-is-missing')
