@@ -133,7 +133,8 @@ class Fixer(object):
         self.name = name
         self.lintian_tags = lintian_tags
 
-    def run(self, basedir, current_version, compat_release):
+    def run(self, basedir, current_version, compat_release,
+            trust_package=False):
         """Apply this fixer script.
 
         Args:
@@ -141,6 +142,7 @@ class Fixer(object):
           current_version: The version of the package that is being created or
             updated
           compat_release: Compatibility level (a Debian release name)
+          trust_package: Whether to run code from the package
         Returns:
           A FixerResult object
         """
@@ -158,11 +160,13 @@ class ScriptFixer(Fixer):
         return "<ScriptFixer(%r)>" % self.name
 
     def run(self, basedir, current_version, compat_release,
-            minimum_certainty=DEFAULT_MINIMUM_CERTAINTY):
+            minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
+            trust_package=False):
         env = dict(os.environ.items())
         env['CURRENT_VERSION'] = str(current_version)
         env['COMPAT_RELEASE'] = compat_release
         env['MINIMUM_CERTAINTY'] = minimum_certainty
+        env['TRUST_PACKAGE'] = 'true' if trust_package else 'false'
         with tempfile.SpooledTemporaryFile() as stderr:
             p = subprocess.Popen(self.script_path, cwd=basedir,
                                  stdout=subprocess.PIPE, stderr=stderr,
@@ -389,7 +393,7 @@ def certainty_sufficient(actual_certainty, minimum_certainty):
 
 def run_lintian_fixer(local_tree, fixer, committer=None,
                       update_changelog=None, compat_release=None,
-                      minimum_certainty=None):
+                      minimum_certainty=None, trust_package=False):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -401,6 +405,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         (e.g. 'stable' or 'unstable')
       minimum_certainty: How certain the fixer should be
         about its changes.
+      trust_package: Whether to run code from the package if necessary
     Returns:
       tuple with set of FixerResult, summary of the changes
     """
@@ -423,9 +428,11 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     if minimum_certainty is None:
         minimum_certainty = DEFAULT_MINIMUM_CERTAINTY
     try:
-        result = fixer.run(local_tree.basedir, current_version=current_version,
-                           compat_release=compat_release,
-                           minimum_certainty=minimum_certainty)
+        result = fixer.run(
+            local_tree.basedir, current_version=current_version,
+            compat_release=compat_release,
+            minimum_certainty=minimum_certainty,
+            trust_package=trust_package)
     except BaseException:
         reset_tree(local_tree)
         raise
@@ -477,7 +484,8 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
 
 def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                        verbose=False, committer=None,
-                       compat_release=None, minimum_certainty=None):
+                       compat_release=None, minimum_certainty=None,
+                       trust_package=False):
     """Run a set of lintian fixers on a tree.
 
     Args:
@@ -490,6 +498,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
         (e.g. 'sid' or 'stretch')
       minimum_certainty: How certain the fixer should be
         about its changes.
+      trust_package: Whether to run code from the package if necessary
     Returns:
       Tuple with two lists:
         list of tuples with (lintian-tag, certainty, description) of fixers
@@ -509,7 +518,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                 result, summary = run_lintian_fixer(
                         local_tree, fixer, update_changelog=update_changelog,
                         committer=committer, compat_release=compat_release,
-                        minimum_certainty=minimum_certainty)
+                        minimum_certainty=minimum_certainty,
+                        trust_package=trust_package)
             except FixerFailed as e:
                 failed_fixers.append(fixer.name)
                 if verbose:

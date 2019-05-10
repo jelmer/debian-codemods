@@ -103,6 +103,10 @@ def main(argv=None):
         default=DEFAULT_MINIMUM_CERTAINTY,
         help=argparse.SUPPRESS)
     parser.add_argument(
+        '--trust',
+        action='store_true',
+        help=argparse.SUPPRESS)
+    parser.add_argument(
         'fixers', metavar='FIXER', nargs='*',
         help='specific fixer to run')
     args = parser.parse_args(argv)
@@ -160,7 +164,8 @@ def main(argv=None):
                     update_changelog=args.update_changelog,
                     compat_release=compat_release,
                     verbose=args.verbose,
-                    minimum_certainty=args.minimum_certainty)
+                    minimum_certainty=args.minimum_certainty,
+                    trust_package=args.trust)
             except NotDebianPackage:
                 note("%s: Not a debian package.", wt.basedir)
                 return 1
