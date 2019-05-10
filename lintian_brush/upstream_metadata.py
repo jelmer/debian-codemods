@@ -44,11 +44,11 @@ def read_python_pkg_info(path):
     return get_metadata(path)
 
 
-def get_python_pkg_info(path, trust=False):
+def get_python_pkg_info(path, trust_package=False):
     pkg_info = read_python_pkg_info(path)
     if pkg_info.name:
         return pkg_info
-    if not trust:
+    if not trust_package:
         return pkg_info
     filename = os.path.join(path, 'setup.py')
     args = [os.path.abspath(filename), 'dist_info']
@@ -94,7 +94,7 @@ def parse_watch_file(f):
         yield [opts] + parts[1:]
 
 
-def guess_upstream_metadata(path, trust=False):
+def guess_upstream_metadata(path, trust_package=False):
     """Guess the upstream metadata dictionary.
 
     Args:
@@ -130,7 +130,7 @@ def guess_upstream_metadata(path, trust=False):
 
     if os.path.exists(os.path.join(path, 'setup.py')):
         try:
-            pkg_info = get_python_pkg_info(path, trust=trust)
+            pkg_info = get_python_pkg_info(path, trust_package=trust_package)
         except FileNotFoundError:
             pass
         else:

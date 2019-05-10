@@ -18,7 +18,7 @@ else:
 
 fields = set()
 guessed_metadata = guess_upstream_metadata(
-    '.', trust=('TRUST_PACKAGE' in os.environ))
+    '.', trust_package=('TRUST_PACKAGE' in os.environ))
 for key, value in guessed_metadata.items():
     if key not in code:
         code[key] = value
