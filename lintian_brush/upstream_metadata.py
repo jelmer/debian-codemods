@@ -89,9 +89,10 @@ def parse_watch_file(f):
         parts = shlex.split(line)
         if parts[0].startswith('opts='):
             opts = parts[0][len('opts='):]
+            yield [opts] + parts[1:]
         else:
             opts = None
-        yield [opts] + parts[1:]
+            yield [opts] + parts[0:]
 
 
 def guess_upstream_metadata_items(path, trust_package=False):
