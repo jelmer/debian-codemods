@@ -28,11 +28,14 @@ if not code:
     sys.exit(0)
 
 if not os.path.isdir('debian/upstream'):
-    os.mkdir('debian/upstream')
+    os.makedirs('debian/upstream', exist_ok=True)
+
+fixed_tag = not os.path.exists('debian/upstream/metadata')
 
 with open('debian/upstream/metadata', 'w') as f:
     ruamel.yaml.dump(code, f, Dumper=ruamel.yaml.RoundTripDumper)
 
 print('Set upstream metadata fields: %s.' % ', '.join(sorted(fields)))
 print('Certainty: possible')
-print('Fixed-Lintian-Tags: upstream-metadata-is-missing')
+if fixed_tag:
+    print('Fixed-Lintian-Tags: upstream-metadata-is-missing')

@@ -128,7 +128,7 @@ def guess_upstream_metadata(path, trust=False):
         if 'XS-Go-Import-Path' in control:
             code['Repository'] = 'https://' + control['XS-Go-Import-Path']
 
-    if os.path.exists('setup.py'):
+    if os.path.exists(os.path.join(path, 'setup.py')):
         try:
             pkg_info = get_python_pkg_info(path, trust=trust)
         except FileNotFoundError:
@@ -145,9 +145,18 @@ def guess_upstream_metadata(path, trust=False):
                 if url_type in ('GitHub', 'Repository'):
                     code['Repository'] = url
 
-    if os.path.exists('debian/copyright'):
+    if os.path.exists(os.path.join(path, 'package.json')):
+        import json
+        with open(os.path.join(path, 'package.json'), 'r') as f:
+            package = json.load(f)
+        if 'name' in package:
+            code['Name'] = package['name']
+        if 'repository' in package:
+            code['Repository'] = package['repository']['url']
+
+    if os.path.exists(os.path.join(path, 'debian/copyright')):
         from debian.copyright import Copyright
-        with open('debian/copyright', 'r') as f:
+        with open(os.path.join(path, 'debian/copyright'), 'r') as f:
             copyright = Copyright(f)
             header = copyright.header
         if header.upstream_name:
