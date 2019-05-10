@@ -28,6 +28,7 @@ from lintian_brush.control import (
     drop_dependency,
     ensure_exact_version,
     ensure_minimum_version,
+    ensure_some_version,
     get_relation,
     update_control,
     GeneratedFile,
@@ -207,6 +208,30 @@ class EnsureMinimumVersionTests(TestCase):
         self.assertEqual(
             'blah, debhelper (>= 9)',
             ensure_minimum_version('blah, debhelper (>= 8)', 'debhelper', '9'))
+
+
+class EnsureSomeVersionTests(TestCase):
+
+    def test_added(self):
+        self.assertEqual(
+            'debhelper', ensure_some_version('', 'debhelper'))
+        self.assertEqual(
+            'blah, debhelper',
+            ensure_some_version('blah', 'debhelper'))
+
+    def test_unchanged(self):
+        self.assertEqual(
+            'debhelper (>= 9)', ensure_some_version(
+                'debhelper (>= 9)', 'debhelper'))
+        self.assertEqual(
+            'debhelper (= 9)', ensure_some_version(
+                'debhelper (= 9)', 'debhelper'))
+        self.assertEqual(
+            'debhelper (>= 9)', ensure_some_version(
+                'debhelper (>= 9)', 'debhelper'))
+        self.assertEqual(
+            'debhelper', ensure_some_version(
+                'debhelper', 'debhelper'))
 
 
 class EnsureExactVersionTests(TestCase):

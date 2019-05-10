@@ -302,6 +302,29 @@ def add_dependency(relationstr, relation):
     return format_relations(relations)
 
 
+def ensure_some_version(relationstr, package):
+    """Add a package dependency to a depends line if it's not there.
+
+    Args:
+      relationstr: existing relations line
+      package: Package to add dependency on
+    Returns:
+      new formatted relation string
+    """
+    relations = parse_relations(relationstr)
+    for (head_whitespace, relation, tail_whitespace) in relations:
+        if isinstance(relation, str):  # formatting
+            continue
+        names = [r.name for r in relation]
+        if len(names) > 1 and names[0] == package:
+            raise Exception("Complex rule for %s , aborting" % package)
+        if names != [package]:
+            continue
+        return relationstr
+    _add_dependency(relations, PkgRelation.parse(package))
+    return format_relations(relations)
+
+
 def drop_dependency(relationstr, package):
     """Drop a dependency from a depends line.
 
