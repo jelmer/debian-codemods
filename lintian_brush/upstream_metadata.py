@@ -94,24 +94,22 @@ def parse_watch_file(f):
         yield [opts] + parts[1:]
 
 
-def guess_upstream_metadata(path, trust_package=False):
-    """Guess the upstream metadata dictionary.
+def guess_upstream_metadata_items(path, trust_package=False):
+    """Guess upstream metadata items, in no particular order.
 
     Args:
       path: Path to the package
       trust: Whether to trust the package contents and i.e. run
       executables in it
     """
-    code = {}
-
-    if os.path.exists('debian/watch'):
-        with open('debian/watch', 'r') as f:
+    if os.path.exists(os.path.join(path, 'debian/watch')):
+        with open(os.path.join(path, 'debian/watch'), 'r') as f:
             for entry in parse_watch_file(f):
                 url = entry[1]
                 if url.startswith('https://') or url.startswith('http://'):
                     repo = guess_repo_from_url(url)
                     if repo:
-                        code["Repository"] = repo
+                        yield "Repository", repo, "possible"
                         break
 
     try:
@@ -124,9 +122,11 @@ def guess_upstream_metadata(path, trust_package=False):
         if 'Homepage' in control:
             repo = guess_repo_from_url(control['Homepage'])
             if repo:
-                code['Repository'] = repo
+                yield 'Repository', repo, "possible"
         if 'XS-Go-Import-Path' in control:
-            code['Repository'] = 'https://' + control['XS-Go-Import-Path']
+            yield (
+                'Repository', 'https://' + control['XS-Go-Import-Path'],
+                'possible')
 
     if os.path.exists(os.path.join(path, 'setup.py')):
         try:
@@ -135,24 +135,24 @@ def guess_upstream_metadata(path, trust_package=False):
             pass
         else:
             if pkg_info.name:
-                code['Name'] = pkg_info.name
+                yield 'Name', pkg_info.name, 'certain'
             if pkg_info.home_page:
                 repo = guess_repo_from_url(pkg_info.home_page)
                 if repo:
-                    code['Repository'] = repo
+                    yield 'Repository', repo, 'possible'
             for value in pkg_info.project_urls:
                 url_type, url = value.split(', ')
                 if url_type in ('GitHub', 'Repository'):
-                    code['Repository'] = url
+                    yield 'Repository', url, 'certain'
 
     if os.path.exists(os.path.join(path, 'package.json')):
         import json
         with open(os.path.join(path, 'package.json'), 'r') as f:
             package = json.load(f)
         if 'name' in package:
-            code['Name'] = package['name']
+            yield 'Name', package['name'], 'certain'
         if 'repository' in package:
-            code['Repository'] = package['repository']['url']
+            yield 'Repository', package['repository']['url'], 'certain'
 
     if os.path.exists(os.path.join(path, 'debian/copyright')):
         from debian.copyright import Copyright
@@ -160,15 +160,31 @@ def guess_upstream_metadata(path, trust_package=False):
             copyright = Copyright(f)
             header = copyright.header
         if header.upstream_name:
-            code["Name"] = header.upstream_name
+            yield "Name", header.upstream_name, 'certain'
         if header.upstream_contact:
-            code["Contact"] = ','.join(header.upstream_contact)
+            yield "Contact", ','.join(header.upstream_contact), 'certain'
         if "X-Upstream-Bugs" in header:
-            code["Bug-Database"] = header["X-Upstream-Bugs"]
+            yield "Bug-Database", header["X-Upstream-Bugs"], 'certain'
         if "X-Source-Downloaded-From" in header:
-            code["Repository"] = guess_repo_from_url(
-                header["X-Source-Downloaded-From"])
+            yield "Repository", guess_repo_from_url(
+                header["X-Source-Downloaded-From"]), 'certain'
 
     # TODO(jelmer): validate Repository by querying it somehow?
 
+
+def guess_upstream_metadata(path, trust_package=False):
+    """Guess the upstream metadata dictionary.
+
+    Args:
+      path: Path to the package
+      trust: Whether to trust the package contents and i.e. run
+      executables in it
+    """
+    current_certainty = {}
+    code = {}
+    for key, value, certainty in guess_upstream_metadata_items(
+            path, trust_package=trust_package):
+        if current_certainty.get(key) != 'certain':
+            code[key] = value
+            current_certainty[key] = certainty
     return code
