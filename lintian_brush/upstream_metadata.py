@@ -156,7 +156,10 @@ def guess_upstream_metadata_items(path, trust_package=False):
         if 'name' in package:
             yield 'Name', package['name'], 'certain'
         if 'repository' in package:
-            yield 'Repository', package['repository']['url'], 'certain'
+            if isinstance(package['repository'], dict):
+                yield 'Repository', package['repository']['url'], 'certain'
+            elif isinstance(package['repository'], str):
+                yield 'Repository', package['repository'], 'certain'
 
     if os.path.exists(os.path.join(path, 'debian/copyright')):
         from debian.copyright import Copyright
