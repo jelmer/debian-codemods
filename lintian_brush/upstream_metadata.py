@@ -52,8 +52,11 @@ def get_python_pkg_info(path, trust_package=False):
         return pkg_info
     filename = os.path.join(path, 'setup.py')
     args = [os.path.abspath(filename), 'dist_info']
-    if os.stat(filename).st_mode & 0o100 == 0:
-        # TODO(jelmer): Why python3 and not e.g. python
+    with open(filename, 'r') as f:
+        has_shebang = f.readline().startswith('#!')
+    is_executable = (os.stat(filename).st_mode & 0o100 != 0)
+    if not has_shebang or not is_executable:
+        # TODO(jelmer): Why python3 and not e.g. python?
         args.insert(0, 'python3')
 
     with tempfile.TemporaryDirectory() as td:
