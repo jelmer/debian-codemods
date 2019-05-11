@@ -161,6 +161,20 @@ def guess_upstream_metadata_items(path, trust_package=False):
             elif isinstance(package['repository'], str):
                 yield 'Repository', package['repository'], 'certain'
 
+    if os.path.exists(os.path.join(path, 'package.xml')):
+        import xml.etree.ElementTree as ET
+        tree = ET.parse(os.path.join(path, 'package.xml'))
+        root = tree.getroot()
+        assert root.tag == 'package'
+        name_tag = root.find('name')
+        if name_tag is not None:
+            yield 'Name', name_tag.text, 'certain'
+        for url_tag in root.findall('url'):
+            if url_tag.get('type') == 'repository':
+                yield 'Repository', url_tag.text, 'certain'
+            if url_tag.get('type') == 'bugtracker':
+                yield 'Bug-Database', url_tag.text, 'certain'
+
     if os.path.exists(os.path.join(path, 'debian/copyright')):
         from debian.copyright import Copyright
         with open(os.path.join(path, 'debian/copyright'), 'r') as f:
