@@ -157,9 +157,19 @@ def guess_upstream_metadata_items(path, trust_package=False):
             yield 'Name', package['name'], 'certain'
         if 'repository' in package:
             if isinstance(package['repository'], dict):
-                yield 'Repository', package['repository']['url'], 'certain'
+                repo_url = package['repository']['url']
             elif isinstance(package['repository'], str):
-                yield 'Repository', package['repository'], 'certain'
+                repo_url = package['repository']
+            else:
+                repo_url = None
+            if repo_url:
+                parsed_url = urlparse(repo_url)
+                if parsed_url.scheme and parsed_url.netloc:
+                    yield 'Repository', repo_url, 'certain'
+                else:
+                    # Some people seem to default github. :(
+                    repo_url = 'https://github.com/' + parsed_url.path
+                    yield 'Repository', repo_url, 'possible'
 
     if os.path.exists(os.path.join(path, 'package.xml')):
         import xml.etree.ElementTree as ET
