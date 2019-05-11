@@ -311,6 +311,8 @@ def ensure_some_version(relationstr, package):
     Returns:
       new formatted relation string
     """
+    if not isinstance(package, str):
+        raise TypeError(package)
     relations = parse_relations(relationstr)
     for (head_whitespace, relation, tail_whitespace) in relations:
         if isinstance(relation, str):  # formatting
