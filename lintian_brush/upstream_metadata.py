@@ -186,19 +186,24 @@ def guess_upstream_metadata_items(path, trust_package=False):
                 yield 'Bug-Database', url_tag.text, 'certain'
 
     if os.path.exists(os.path.join(path, 'debian/copyright')):
-        from debian.copyright import Copyright
+        from debian.copyright import Copyright, NotMachineReadableError
         with open(os.path.join(path, 'debian/copyright'), 'r') as f:
-            copyright = Copyright(f)
-            header = copyright.header
-        if header.upstream_name:
-            yield "Name", header.upstream_name, 'certain'
-        if header.upstream_contact:
-            yield "Contact", ','.join(header.upstream_contact), 'certain'
-        if "X-Upstream-Bugs" in header:
-            yield "Bug-Database", header["X-Upstream-Bugs"], 'certain'
-        if "X-Source-Downloaded-From" in header:
-            yield "Repository", guess_repo_from_url(
-                header["X-Source-Downloaded-From"]), 'certain'
+            try:
+                copyright = Copyright(f)
+            except NotMachineReadableError:
+                header = None
+            else:
+                header = copyright.header
+        if header:
+            if header.upstream_name:
+                yield "Name", header.upstream_name, 'certain'
+            if header.upstream_contact:
+                yield "Contact", ','.join(header.upstream_contact), 'certain'
+            if "X-Upstream-Bugs" in header:
+                yield "Bug-Database", header["X-Upstream-Bugs"], 'certain'
+            if "X-Source-Downloaded-From" in header:
+                yield "Repository", guess_repo_from_url(
+                    header["X-Source-Downloaded-From"]), 'certain'
 
     # TODO(jelmer): validate Repository by querying it somehow?
 
