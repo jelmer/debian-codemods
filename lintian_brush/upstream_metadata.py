@@ -146,7 +146,7 @@ def guess_upstream_metadata_items(path, trust_package=False):
                     yield 'Repository', repo, 'possible'
             for value in pkg_info.project_urls:
                 url_type, url = value.split(', ')
-                if url_type in ('GitHub', 'Repository'):
+                if url_type in ('GitHub', 'Repository', 'Source Code'):
                     yield 'Repository', url, 'certain'
 
     if os.path.exists(os.path.join(path, 'package.json')):
@@ -184,6 +184,20 @@ def guess_upstream_metadata_items(path, trust_package=False):
                 yield 'Repository', url_tag.text, 'certain'
             if url_tag.get('type') == 'bugtracker':
                 yield 'Bug-Database', url_tag.text, 'certain'
+
+    if os.path.exists(os.path.join(path, 'dist.ini')):
+        from configparser import RawConfigParser
+        parser = RawConfigParser(strict=False)
+        with open(os.path.join(path, 'dist.ini'), 'r') as f:
+            parser.read_string('[START]\n' + f.read())
+        if parser.get('START', 'name'):
+            yield 'Name', parser['START']['name'], 'certain'
+        if parser.get('MetaResources', 'bugtracker.web'):
+            yield ('Bug-Database',
+                   parser['MetaResources']['bugtracker.web'], 'certain')
+        if parser.get('MetaResources', 'repository.url'):
+            yield ('Repository',
+                   parser['MetaResources']['repository.url'], 'certain')
 
     if os.path.exists(os.path.join(path, 'debian/copyright')):
         from debian.copyright import Copyright, NotMachineReadableError
