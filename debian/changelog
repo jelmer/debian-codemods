@@ -11,6 +11,10 @@ lintian-brush (0.16) UNRELEASED; urgency=medium
   * Add experimental fixer for upstream-metadata-file-is-missing.
   * Also check homepage field to guess at upstream repository.
 
+  [ Dmitry Bogatov ]
+  * Add fixer for patch-file-present-but-not-mentioned-in-series.
+    Closes: #928811
+
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 23 Feb 2019 03:45:54 +0000
 
 lintian-brush (0.15) experimental; urgency=medium
