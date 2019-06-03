@@ -176,7 +176,11 @@ def main(argv=None):
             all_tags = set()
             for result, summary in applied:
                 all_tags.update(result.fixed_lintian_tags)
-            note("Lintian tags fixed: %r" % all_tags)
+            if all_tags:
+                note("Lintian tags fixed: %r" % all_tags)
+            else:
+                note("Some changes were made, "
+                     "but there are no affected lintian tags.")
         else:
             note("No changes made.")
         if failed and not args.verbose:
