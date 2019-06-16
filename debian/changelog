@@ -14,6 +14,8 @@ lintian-brush (0.16) UNRELEASED; urgency=medium
   [ Dmitry Bogatov ]
   * Add fixer for patch-file-present-but-not-mentioned-in-series.
     Closes: #928811
+  * Try to replace 'http:' with 'https:' in debian/watch by validating
+    using the uscan report. Closes: #928810
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 23 Feb 2019 03:45:54 +0000
 
