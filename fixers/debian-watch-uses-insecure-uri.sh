@@ -1,9 +1,17 @@
 #!/bin/sh
+test -r debian/watch        || exit 0
+grep 'http://' debian/watch>/dev/null || exit 0
+
+# We hardcode the replacements for some sites, since these testsuite uses these.
+# The method below (involving uscan) doesn't work from e.g. sbuild hosts.
 perl -p -i -e 's/http:\/\/code.launchpad.net\//https:\/\/code.launchpad.net\//' debian/watch
 perl -p -i -e 's/http:\/\/launchpad.net\//https:\/\/launchpad.net\//' debian/watch
 perl -p -i -e 's/http:\/\/ftp.gnu.org\//https:\/\/ftp.gnu.org\//' debian/watch
-test -r debian/watch        || exit 0
-grep 'http://' debian/watch || exit 0
+
+echo "Use secure URI in debian/watch."
+echo "Fixed-Lintian-Tags: debian-watch-uses-insecure-uri"
+
+grep 'http://' debian/watch >/dev/null|| exit 0
 
 before=$(mktemp)
 after=$(mktemp)
@@ -19,5 +27,3 @@ else
        mv debian/watch.bak debian/watch
 fi
 rm -f "${before}" "${after}"
-echo "Use secure URI in debian/watch."
-echo "Fixed-Lintian-Tags: debian-watch-uses-insecure-uri"
