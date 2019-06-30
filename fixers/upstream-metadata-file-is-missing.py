@@ -45,4 +45,4 @@ with open('debian/upstream/metadata', 'w') as f:
 print('Set upstream metadata fields: %s.' % ', '.join(sorted(fields)))
 print('Certainty: %s' % achieved_certainty)
 if fixed_tag:
-    print('Fixed-Lintian-Tags: upstream-metadata-is-missing')
+    print('Fixed-Lintian-Tags: upstream-metadata-file-is-missing')
