@@ -185,7 +185,7 @@ def main(argv=None):
             note("No changes made.")
         if failed and not args.verbose:
             note("Some fixer scripts failed to run: %r. "
-                 "Run with --verbose for details.", set(failed))
+                 "Run with --verbose for details.", set(failed.keys()))
         if args.diff:
             from breezy.diff import show_diff_trees
             show_diff_trees(

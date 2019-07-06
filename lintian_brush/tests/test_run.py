@@ -360,7 +360,7 @@ Arch: all
                     self.tree, [FailingFixer('fail', 'some-tag')],
                     update_changelog=False)
         self.assertEqual([], applied)
-        self.assertEqual(['fail'], failed)
+        self.assertEqual({'fail': FixerFailed('Not successful')}, failed)
         with self.tree.lock_read():
             self.assertEqual(
                 [], list(self.tree.iter_changes(self.tree.basis_tree())))
@@ -385,7 +385,7 @@ Arch: all
                               ['some-tag'], 'certain'),
                   'Fixed some tag.')],
                 applied)
-        self.assertEqual([], failed)
+        self.assertEqual({}, failed)
         self.assertEqual(2, self.tree.branch.revno())
         self.assertEqual(
                 self.tree.get_file_lines('debian/control')[-1],

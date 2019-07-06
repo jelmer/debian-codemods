@@ -56,6 +56,11 @@ class NoChanges(Exception):
 class FixerFailed(Exception):
     """Base class for fixer script failures."""
 
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.args == other.args
+
 
 class UnsupportedCertainty(Exception):
     """Unsupported certainty."""
@@ -73,6 +78,14 @@ class FixerScriptFailed(FixerFailed):
         return ("Script %s failed with exit code: %d\n%s\n" % (
                 self.path, self.returncode,
                 self.errors.decode(errors='replace')))
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return (
+            self.path == other.path and
+            self.returncode == other.returncode and
+            self.errors == other.errors)
 
 
 class DescriptionMissing(Exception):
@@ -501,12 +514,14 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
       trust_package: Whether to run code from the package if necessary
     Returns:
       Tuple with two lists:
-        list of tuples with (lintian-tag, certainty, description) of fixers
-        that ran list of script names for fixers that failed to run
+        1. list of tuples with (lintian-tag, certainty, description) of fixers
+           that ran
+        2. dictionary mapping fixer names for fixers that failed to run to the
+           error that occurred
     """
     if local_tree.has_filename('debian/control.in'):
         raise GeneratedControlFile('debian/control.in')
-    failed_fixers = []
+    failed_fixers = {}
     fixers = list(fixers)
     ret = []
     with ui.ui_factory.nested_progress_bar() as pb:
@@ -521,7 +536,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                         minimum_certainty=minimum_certainty,
                         trust_package=trust_package)
             except FixerFailed as e:
-                failed_fixers.append(fixer.name)
+                failed_fixers[fixer.name] = e
                 if verbose:
                     note('Fixer %r failed to run.', fixer.name)
                     sys.stderr.write(str(e))
