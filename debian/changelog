@@ -1,4 +1,4 @@
-lintian-brush (0.16) UNRELEASED; urgency=medium
+lintian-brush (0.16) unstable; urgency=medium
 
   * Don't export expired signatures; these may still be useful, and
     excluding them will break the tests in the future.
@@ -10,6 +10,7 @@ lintian-brush (0.16) UNRELEASED; urgency=medium
   * Add a (hidden) --minimum-certainty option.
   * Add experimental fixer for upstream-metadata-file-is-missing.
   * Also check homepage field to guess at upstream repository.
+  * Upload to unstable.
 
   [ Dmitry Bogatov ]
   * Add fixer for patch-file-present-but-not-mentioned-in-series.
