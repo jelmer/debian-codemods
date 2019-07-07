@@ -8,6 +8,11 @@ import sys
 import ruamel.yaml
 from lintian_brush.upstream_metadata import guess_upstream_metadata_items
 
+
+class MetadataUnpreservable(Exception):
+    """Unable to preserve formatting of debian/upstream/metadata."""
+
+
 try:
     with open('debian/upstream/metadata', 'r') as f:
         inp = f.read()
@@ -15,6 +20,9 @@ except FileNotFoundError:
     code = {}
 else:
     code = ruamel.yaml.load(inp, ruamel.yaml.RoundTripLoader)
+    roundtrip_inp = ruamel.yaml.dump(code, Dumper=ruamel.yaml.RoundTripDumper)
+    if roundtrip_inp != inp:
+        raise MetadataUnpreservable()
 
 minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
 fields = set()
