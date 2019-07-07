@@ -190,8 +190,11 @@ def guess_upstream_metadata_items(path, trust_package=False):
         parser = RawConfigParser(strict=False)
         with open(os.path.join(path, 'dist.ini'), 'r') as f:
             parser.read_string('[START]\n' + f.read())
-        if parser.get('START', 'name'):
-            yield 'Name', parser['START']['name'], 'certain'
+        try:
+            if parser.get('START', 'name'):
+                yield 'Name', parser['START']['name'], 'certain'
+        except NoSectionError:
+            pass
         try:
             if parser.get('MetaResources', 'bugtracker.web'):
                 yield ('Bug-Database',
