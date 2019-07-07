@@ -186,18 +186,21 @@ def guess_upstream_metadata_items(path, trust_package=False):
                 yield 'Bug-Database', url_tag.text, 'certain'
 
     if os.path.exists(os.path.join(path, 'dist.ini')):
-        from configparser import RawConfigParser
+        from configparser import RawConfigParser, NoSectionError
         parser = RawConfigParser(strict=False)
         with open(os.path.join(path, 'dist.ini'), 'r') as f:
             parser.read_string('[START]\n' + f.read())
         if parser.get('START', 'name'):
             yield 'Name', parser['START']['name'], 'certain'
-        if parser.get('MetaResources', 'bugtracker.web'):
-            yield ('Bug-Database',
-                   parser['MetaResources']['bugtracker.web'], 'certain')
-        if parser.get('MetaResources', 'repository.url'):
-            yield ('Repository',
-                   parser['MetaResources']['repository.url'], 'certain')
+        try:
+            if parser.get('MetaResources', 'bugtracker.web'):
+                yield ('Bug-Database',
+                       parser['MetaResources']['bugtracker.web'], 'certain')
+            if parser.get('MetaResources', 'repository.url'):
+                yield ('Repository',
+                       parser['MetaResources']['repository.url'], 'certain')
+        except NoSectionError:
+            pass
 
     if os.path.exists(os.path.join(path, 'debian/copyright')):
         from debian.copyright import Copyright, NotMachineReadableError
