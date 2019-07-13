@@ -22,6 +22,7 @@ import shlex
 import subprocess
 import tempfile
 from urllib.parse import urlparse
+from warnings import warn
 
 
 KNOWN_HOSTING_SITES = [
@@ -186,10 +187,13 @@ def guess_upstream_metadata_items(path, trust_package=False):
                 yield 'Bug-Database', url_tag.text, 'certain'
 
     if os.path.exists(os.path.join(path, 'dist.ini')):
-        from configparser import RawConfigParser, NoSectionError
+        from configparser import RawConfigParser, NoSectionError, ParsingError
         parser = RawConfigParser(strict=False)
         with open(os.path.join(path, 'dist.ini'), 'r') as f:
-            parser.read_string('[START]\n' + f.read())
+            try:
+                parser.read_string('[START]\n' + f.read())
+            except ParsingError as e:
+                warn('Unable to parse dist.ini: %r' % e)
         try:
             if parser.get('START', 'name'):
                 yield 'Name', parser['START']['name'], 'certain'
