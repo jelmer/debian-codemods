@@ -99,6 +99,133 @@ def parse_watch_file(f):
             yield [opts] + parts[0:]
 
 
+def guess_from_debian_watch(path, trust_package):
+    with open(path, 'r') as f:
+        for entry in parse_watch_file(f):
+            url = entry[1]
+            if url.startswith('https://') or url.startswith('http://'):
+                repo = guess_repo_from_url(url)
+                if repo:
+                    yield "Repository", repo, "possible"
+                    break
+
+
+def guess_from_debian_control(path, trust_package):
+    with open(path, 'r') as f:
+        from debian.deb822 import Deb822
+        control = Deb822(f)
+    if 'Homepage' in control:
+        repo = guess_repo_from_url(control['Homepage'])
+        if repo:
+            yield 'Repository', repo, "possible"
+    if 'XS-Go-Import-Path' in control:
+        yield (
+            'Repository', 'https://' + control['XS-Go-Import-Path'],
+            'possible')
+
+
+def guess_from_setup_py(path, trust_package):
+    try:
+        pkg_info = get_python_pkg_info(
+            os.path.dirname(path), trust_package=trust_package)
+    except FileNotFoundError:
+        pass
+    else:
+        if pkg_info.name:
+            yield 'Name', pkg_info.name, 'certain'
+        if pkg_info.home_page:
+            repo = guess_repo_from_url(pkg_info.home_page)
+            if repo:
+                yield 'Repository', repo, 'possible'
+        for value in pkg_info.project_urls:
+            url_type, url = value.split(', ')
+            if url_type in ('GitHub', 'Repository', 'Source Code'):
+                yield 'Repository', url, 'certain'
+
+
+def guess_from_package_json(path, trust_package):
+    import json
+    with open(path, 'r') as f:
+        package = json.load(f)
+    if 'name' in package:
+        yield 'Name', package['name'], 'certain'
+    if 'repository' in package:
+        if isinstance(package['repository'], dict):
+            repo_url = package['repository']['url']
+        elif isinstance(package['repository'], str):
+            repo_url = package['repository']
+        else:
+            repo_url = None
+        if repo_url:
+            parsed_url = urlparse(repo_url)
+            if parsed_url.scheme and parsed_url.netloc:
+                yield 'Repository', repo_url, 'certain'
+            else:
+                # Some people seem to default github. :(
+                repo_url = 'https://github.com/' + parsed_url.path
+                yield 'Repository', repo_url, 'possible'
+
+
+def guess_from_package_xml(path, trust_package):
+    import xml.etree.ElementTree as ET
+    tree = ET.parse(path)
+    root = tree.getroot()
+    assert root.tag == 'package'
+    name_tag = root.find('name')
+    if name_tag is not None:
+        yield 'Name', name_tag.text, 'certain'
+    for url_tag in root.findall('url'):
+        if url_tag.get('type') == 'repository':
+            yield 'Repository', url_tag.text, 'certain'
+        if url_tag.get('type') == 'bugtracker':
+            yield 'Bug-Database', url_tag.text, 'certain'
+
+
+def guess_from_dist_ini(path, trust_package):
+    from configparser import RawConfigParser, NoSectionError, ParsingError
+    parser = RawConfigParser(strict=False)
+    with open(path, 'r') as f:
+        try:
+            parser.read_string('[START]\n' + f.read())
+        except ParsingError as e:
+            warn('Unable to parse dist.ini: %r' % e)
+    try:
+        if parser.get('START', 'name'):
+            yield 'Name', parser['START']['name'], 'certain'
+    except NoSectionError:
+        pass
+    try:
+        if parser.get('MetaResources', 'bugtracker.web'):
+            yield ('Bug-Database',
+                   parser['MetaResources']['bugtracker.web'], 'certain')
+        if parser.get('MetaResources', 'repository.url'):
+            yield ('Repository',
+                   parser['MetaResources']['repository.url'], 'certain')
+    except NoSectionError:
+        pass
+
+
+def guess_from_debian_copyright(path, trust_package):
+    from debian.copyright import Copyright, NotMachineReadableError
+    with open(path, 'r') as f:
+        try:
+            copyright = Copyright(f)
+        except NotMachineReadableError:
+            header = None
+        else:
+            header = copyright.header
+    if header:
+        if header.upstream_name:
+            yield "Name", header.upstream_name, 'certain'
+        if header.upstream_contact:
+            yield "Contact", ','.join(header.upstream_contact), 'certain'
+        if "X-Upstream-Bugs" in header:
+            yield "Bug-Database", header["X-Upstream-Bugs"], 'certain'
+        if "X-Source-Downloaded-From" in header:
+            yield "Repository", guess_repo_from_url(
+                header["X-Source-Downloaded-From"]), 'certain'
+
+
 def guess_upstream_metadata_items(path, trust_package=False):
     """Guess upstream metadata items, in no particular order.
 
@@ -106,128 +233,26 @@ def guess_upstream_metadata_items(path, trust_package=False):
       path: Path to the package
       trust: Whether to trust the package contents and i.e. run
       executables in it
+    Yields:
+      Tuples with (key, value, certainty)
     """
-    if os.path.exists(os.path.join(path, 'debian/watch')):
-        with open(os.path.join(path, 'debian/watch'), 'r') as f:
-            for entry in parse_watch_file(f):
-                url = entry[1]
-                if url.startswith('https://') or url.startswith('http://'):
-                    repo = guess_repo_from_url(url)
-                    if repo:
-                        yield "Repository", repo, "possible"
-                        break
+    CANDIDATES = [
+        ('debian/watch', guess_from_debian_watch),
+        ('debian/control', guess_from_debian_control),
+        ('setup.py', guess_from_setup_py),
+        ('package.json', guess_from_package_json),
+        ('package.xml', guess_from_package_xml),
+        ('dist.ini', guess_from_dist_ini),
+        ('debian/copyright', guess_from_debian_copyright),
+        ]
 
-    try:
-        with open(os.path.join(path, 'debian/control'), 'r') as f:
-            from debian.deb822 import Deb822
-            control = Deb822(f)
-    except FileNotFoundError:
-        pass
-    else:
-        if 'Homepage' in control:
-            repo = guess_repo_from_url(control['Homepage'])
-            if repo:
-                yield 'Repository', repo, "possible"
-        if 'XS-Go-Import-Path' in control:
-            yield (
-                'Repository', 'https://' + control['XS-Go-Import-Path'],
-                'possible')
-
-    if os.path.exists(os.path.join(path, 'setup.py')):
-        try:
-            pkg_info = get_python_pkg_info(path, trust_package=trust_package)
-        except FileNotFoundError:
-            pass
-        else:
-            if pkg_info.name:
-                yield 'Name', pkg_info.name, 'certain'
-            if pkg_info.home_page:
-                repo = guess_repo_from_url(pkg_info.home_page)
-                if repo:
-                    yield 'Repository', repo, 'possible'
-            for value in pkg_info.project_urls:
-                url_type, url = value.split(', ')
-                if url_type in ('GitHub', 'Repository', 'Source Code'):
-                    yield 'Repository', url, 'certain'
-
-    if os.path.exists(os.path.join(path, 'package.json')):
-        import json
-        with open(os.path.join(path, 'package.json'), 'r') as f:
-            package = json.load(f)
-        if 'name' in package:
-            yield 'Name', package['name'], 'certain'
-        if 'repository' in package:
-            if isinstance(package['repository'], dict):
-                repo_url = package['repository']['url']
-            elif isinstance(package['repository'], str):
-                repo_url = package['repository']
-            else:
-                repo_url = None
-            if repo_url:
-                parsed_url = urlparse(repo_url)
-                if parsed_url.scheme and parsed_url.netloc:
-                    yield 'Repository', repo_url, 'certain'
-                else:
-                    # Some people seem to default github. :(
-                    repo_url = 'https://github.com/' + parsed_url.path
-                    yield 'Repository', repo_url, 'possible'
-
-    if os.path.exists(os.path.join(path, 'package.xml')):
-        import xml.etree.ElementTree as ET
-        tree = ET.parse(os.path.join(path, 'package.xml'))
-        root = tree.getroot()
-        assert root.tag == 'package'
-        name_tag = root.find('name')
-        if name_tag is not None:
-            yield 'Name', name_tag.text, 'certain'
-        for url_tag in root.findall('url'):
-            if url_tag.get('type') == 'repository':
-                yield 'Repository', url_tag.text, 'certain'
-            if url_tag.get('type') == 'bugtracker':
-                yield 'Bug-Database', url_tag.text, 'certain'
-
-    if os.path.exists(os.path.join(path, 'dist.ini')):
-        from configparser import RawConfigParser, NoSectionError, ParsingError
-        parser = RawConfigParser(strict=False)
-        with open(os.path.join(path, 'dist.ini'), 'r') as f:
-            try:
-                parser.read_string('[START]\n' + f.read())
-            except ParsingError as e:
-                warn('Unable to parse dist.ini: %r' % e)
-        try:
-            if parser.get('START', 'name'):
-                yield 'Name', parser['START']['name'], 'certain'
-        except NoSectionError:
-            pass
-        try:
-            if parser.get('MetaResources', 'bugtracker.web'):
-                yield ('Bug-Database',
-                       parser['MetaResources']['bugtracker.web'], 'certain')
-            if parser.get('MetaResources', 'repository.url'):
-                yield ('Repository',
-                       parser['MetaResources']['repository.url'], 'certain')
-        except NoSectionError:
-            pass
-
-    if os.path.exists(os.path.join(path, 'debian/copyright')):
-        from debian.copyright import Copyright, NotMachineReadableError
-        with open(os.path.join(path, 'debian/copyright'), 'r') as f:
-            try:
-                copyright = Copyright(f)
-            except NotMachineReadableError:
-                header = None
-            else:
-                header = copyright.header
-        if header:
-            if header.upstream_name:
-                yield "Name", header.upstream_name, 'certain'
-            if header.upstream_contact:
-                yield "Contact", ','.join(header.upstream_contact), 'certain'
-            if "X-Upstream-Bugs" in header:
-                yield "Bug-Database", header["X-Upstream-Bugs"], 'certain'
-            if "X-Source-Downloaded-From" in header:
-                yield "Repository", guess_repo_from_url(
-                    header["X-Source-Downloaded-From"]), 'certain'
+    for relpath, guesser in CANDIDATES:
+        abspath = os.path.join(path, relpath)
+        if not os.path.exists(abspath):
+            continue
+        for key, value, certainty in guesser(
+                abspath, trust_package=trust_package):
+            yield key, value, certainty
 
     # TODO(jelmer): validate Repository by querying it somehow?
 
