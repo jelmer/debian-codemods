@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 import os
-from lintian_brush.control import update_control
+from lintian_brush.control import update_control, get_relation
+from debian.deb822 import Deb822
 
 
 # Dictionary mapping source and target versions
@@ -16,8 +17,24 @@ def check_4_1_1():
     return os.path.exists("debian/changelog")
 
 
+def check_4_4_0():
+    """Check that the package uses debhelper."""
+    if os.path.exists("debian/compat"):
+        return True
+    with open('debian/control') as f:
+        source = next(Deb822.iter_paragraphs(f))
+        build_deps = source.get('Build-Depends', '')
+        try:
+            get_relation(build_deps, 'debhelper-compat')
+        except KeyError:
+            return False
+        else:
+            return True
+
+
 check_requirements = {
     "4.1.1": check_4_1_1,
+    "4.4.0": check_4_4_0,
 }
 
 

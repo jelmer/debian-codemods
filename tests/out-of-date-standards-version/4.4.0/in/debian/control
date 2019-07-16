@@ -1,0 +1,3 @@
+Source: lintrian-brush
+Standards-version: 4.3.0
+Build-Depends: debhelper-compat (= 11)
