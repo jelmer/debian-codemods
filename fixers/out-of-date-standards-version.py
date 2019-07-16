@@ -8,6 +8,7 @@ from lintian_brush.control import update_control
 upgrade_path = {
     "4.1.0": "4.1.1",
     "4.2.0": "4.2.1",
+    "4.3.0": "4.4.0",
 }
 
 
