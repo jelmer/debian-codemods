@@ -1,6 +1,7 @@
 lintian-brush (0.17) UNRELEASED; urgency=medium
 
-  * Support policy version bumps from 4.3.0 to 4.4.0.
+  [ Dmitry Bogatov ]
+  * Support policy version bumps from 4.3.0 to 4.4.0. Closes: #932314
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 16 Jul 2019 00:13:31 +0000
 
