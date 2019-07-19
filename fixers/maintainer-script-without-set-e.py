@@ -12,7 +12,7 @@ def replace_set_e(path):
     try:
         with open(path, 'rb') as f:
             lines = list(f.readlines())
-    except FileNotFoundError:
+    except (FileNotFoundError, IsADirectoryError):
         return
 
     if b'set -e\n' in lines:
