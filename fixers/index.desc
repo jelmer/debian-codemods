@@ -1,3 +1,9 @@
+# This file contains the list of available fixers, as well as a list of tags
+# that each of them (might) fix.
+
+# Note that the order of this file is significant. Fixers mentioned earlier in
+# this file will always be run before later fixers.
+
 Fix-Script: ancient-python-version-field.sh
 Lintian-Tags: ancient-python-version-field
 
