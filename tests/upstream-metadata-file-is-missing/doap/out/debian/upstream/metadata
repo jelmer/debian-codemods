@@ -2,3 +2,4 @@ Name: blah
 Homepage: http://example.com/blah/trac/
 Bug-Database: http://example.com/blah/trac/newticket
 Repository: http://example.com/blah/svn/trunk/
+Repository-Browse: http://example.com/blah/trac/browser/

@@ -248,7 +248,11 @@ def guess_from_meta_json(path, trust_package):
             if 'homepage' in resources:
                 yield "Homepage", resources["homepage"], 'certain'
             if 'repository' in resources:
-                yield 'Repository', resources["repository"]["url"], 'certain'
+                repo = resources['repository']
+                if 'url' in repo:
+                    yield 'Repository', repo["url"], 'certain'
+                if 'web' in repo:
+                    yield 'Repository-Browse', repo['web'], 'certain'
 
 
 def guess_from_meta_yml(path, trust_package):
@@ -305,9 +309,16 @@ def guess_from_doap(path, trust_package):
                         '{%s}GitRepository' % DOAP_NAMESPACE):
                     repo_location = repo.find(
                         '{http://usefulinc.com/ns/doap#}location')
-                    url = extract_url(repo_location)
-                    if url:
-                        yield 'Repository', url, 'certain'
+                    if repo_location is not None:
+                        url = extract_url(repo_location)
+                        if url:
+                            yield 'Repository', url, 'certain'
+                    web_location = repo.find(
+                        '{http://usefulinc.com/ns/doap#}browse')
+                    if web_location is not None:
+                        url = extract_url(web_location)
+                        if url:
+                            yield 'Repository-Browse', url, 'certain'
 
 
 def guess_upstream_metadata_items(path, trust_package=False):
