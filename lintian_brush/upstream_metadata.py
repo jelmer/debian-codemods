@@ -226,6 +226,15 @@ def guess_from_debian_copyright(path, trust_package):
                 header["X-Source-Downloaded-From"]), 'certain'
 
 
+def guess_from_readme(path, trust_package):
+    with open(path, 'r') as f:
+        for line in f:
+            if line.strip().startswith('git clone'):
+                line = line.strip()
+                url = line.split()[2]
+                yield ('Repository', url, 'possible')
+
+
 def guess_upstream_metadata_items(path, trust_package=False):
     """Guess upstream metadata items, in no particular order.
 
@@ -244,6 +253,8 @@ def guess_upstream_metadata_items(path, trust_package=False):
         ('package.xml', guess_from_package_xml),
         ('dist.ini', guess_from_dist_ini),
         ('debian/copyright', guess_from_debian_copyright),
+        ('README', guess_from_readme),
+        ('README.md', guess_from_readme),
         ]
 
     for relpath, guesser in CANDIDATES:
