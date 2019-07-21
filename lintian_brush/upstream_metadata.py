@@ -206,11 +206,18 @@ def guess_from_dist_ini(path, trust_package):
 
 
 def guess_from_debian_copyright(path, trust_package):
-    from debian.copyright import Copyright, NotMachineReadableError
+    from debian.copyright import (
+        Copyright,
+        NotMachineReadableError,
+        MachineReadableFormatError,
+        )
     with open(path, 'r') as f:
         try:
             copyright = Copyright(f)
         except NotMachineReadableError:
+            header = None
+        except MachineReadableFormatError as e:
+            warn('Error parsing copyright file: %s', e)
             header = None
         else:
             header = copyright.header
