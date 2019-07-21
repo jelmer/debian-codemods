@@ -257,9 +257,9 @@ def guess_from_meta_yml(path, trust_package):
     See http://module-build.sourceforge.net/META-spec-v1.4.html for the
     specification of the format.
     """
-    import yaml
+    import ruamel.yaml
     with open(path, 'r') as f:
-        data = yaml.safe_load(f)
+        data = ruamel.yaml.load(f, ruamel.yaml.SafeLoader)
         if 'name' in data:
             yield 'Name', data['name'], 'certain'
         if 'resources' in data:
