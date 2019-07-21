@@ -251,6 +251,27 @@ def guess_from_meta_json(path, trust_package):
                 yield 'Repository', resources["repository"]["url"], 'certain'
 
 
+def guess_from_meta_yml(path, trust_package):
+    """Guess upstream metadata from a META.yml file.
+
+    See http://module-build.sourceforge.net/META-spec-v1.4.html for the
+    specification of the format.
+    """
+    import yaml
+    with open(path, 'r') as f:
+        data = yaml.safe_load(f)
+        if 'name' in data:
+            yield 'Name', data['name'], 'certain'
+        if 'resources' in data:
+            resources = data['resources']
+            if 'bugtracker' in resources:
+                yield 'Bug-Database', resources['bugtracker'], 'certain'
+            if 'homepage' in resources:
+                yield 'Homepage', resources['homepage'], 'certain'
+            if 'repository' in resources:
+                yield 'Repository', resources['repository'], 'certain'
+
+
 def guess_upstream_metadata_items(path, trust_package=False):
     """Guess upstream metadata items, in no particular order.
 
@@ -270,6 +291,7 @@ def guess_upstream_metadata_items(path, trust_package=False):
         ('dist.ini', guess_from_dist_ini),
         ('debian/copyright', guess_from_debian_copyright),
         ('META.json', guess_from_meta_json),
+        ('META.yml', guess_from_meta_yml),
         ('README', guess_from_readme),
         ('README.md', guess_from_readme),
         ]

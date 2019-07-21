@@ -6,6 +6,7 @@ lintian-brush (0.17) UNRELEASED; urgency=medium
   [ Jelmer Vernooĳ ]
   * Guess (with low certainty) repositories from README.
   * Add support for reading upstream metadata from META.json.
+  * Add support for reading upstream metadata from META.yml files.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 16 Jul 2019 00:13:31 +0000
 
