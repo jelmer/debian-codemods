@@ -38,7 +38,8 @@ def update_copyright(update_cb):
         orig_content = f.read()
 
     copyright = Copyright(orig_content)
-    if copyright.dump() != orig_content:
+    rewritten_content = copyright.dump()
+    if rewritten_content != orig_content:
         raise FormattingUnpreservable(
             "Unable to preserve formatting of debian/copyright")
 
@@ -46,7 +47,7 @@ def update_copyright(update_cb):
 
     new_content = copyright.dump()
 
-    if new_content != orig_content:
+    if new_content != rewritten_content:
         with open('debian/copyright', 'w') as f:
             f.write(new_content)
         return True
