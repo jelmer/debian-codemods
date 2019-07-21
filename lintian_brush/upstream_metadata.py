@@ -235,6 +235,22 @@ def guess_from_readme(path, trust_package):
                 yield ('Repository', url, 'possible')
 
 
+def guess_from_meta_json(path, trust_package):
+    import json
+    with open(path, 'r') as f:
+        data = json.load(f)
+        if 'name' in data:
+            yield 'Name', data['name'], 'certain'
+        if 'resources' in data:
+            resources = data['resources']
+            if 'bugtracker' in resources:
+                yield "Bug-Database", resources["bugtracker"]["web"], 'certain'
+            if 'homepage' in resources:
+                yield "Homepage", resources["homepage"], 'certain'
+            if 'repository' in resources:
+                yield 'Repository', resources["repository"]["url"], 'certain'
+
+
 def guess_upstream_metadata_items(path, trust_package=False):
     """Guess upstream metadata items, in no particular order.
 
@@ -253,6 +269,7 @@ def guess_upstream_metadata_items(path, trust_package=False):
         ('package.xml', guess_from_package_xml),
         ('dist.ini', guess_from_dist_ini),
         ('debian/copyright', guess_from_debian_copyright),
+        ('META.json', guess_from_meta_json),
         ('README', guess_from_readme),
         ('README.md', guess_from_readme),
         ]

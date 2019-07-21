@@ -1,6 +1,8 @@
 - Support different certainty fixers
 - Improve changelog descriptions
-- Skip fixers for lintian tags that have overrides
+- Skip fixers for lintian tags that have overrides (on a per-tag basis?)
+ + Set environment variable with overridden tags?
+- Add a flag to enable formatting-changing changes
 - Better error reporting, allowing fixers to report "I can't work on this particular package"
  + Without --verbose, report a list of those reporters at the end of run
 
