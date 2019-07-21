@@ -19,7 +19,6 @@
 
 __all__ = [
     'NotMachineReadableError',
-    'FormattingUnpreservable',
     'update_copyright',
     ]
 
@@ -28,9 +27,7 @@ from debian.copyright import (
     NotMachineReadableError,
     )
 
-
-class FormattingUnpreservable(Exception):
-    """Formatting unpreservable."""
+from .reformatting import check_preserve_formatting
 
 
 def update_copyright(update_cb):
@@ -39,9 +36,9 @@ def update_copyright(update_cb):
 
     copyright = Copyright(orig_content)
     rewritten_content = copyright.dump()
-    if rewritten_content != orig_content:
-        raise FormattingUnpreservable(
-            "Unable to preserve formatting of debian/copyright")
+    check_preserve_formatting(
+        rewritten_content, orig_content,
+        'debian/copyright')
 
     update_cb(copyright)
 

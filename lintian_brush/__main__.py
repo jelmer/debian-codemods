@@ -107,6 +107,9 @@ def main(argv=None):
         action='store_true',
         help=argparse.SUPPRESS)
     parser.add_argument(
+        '--allow-reformatting', default=False, action='store_true',
+        help=argparse.SUPPRESS)
+    parser.add_argument(
         'fixers', metavar='FIXER', nargs='*',
         help='specific fixer to run')
     args = parser.parse_args(argv)
@@ -165,7 +168,8 @@ def main(argv=None):
                     compat_release=compat_release,
                     verbose=args.verbose,
                     minimum_certainty=args.minimum_certainty,
-                    trust_package=args.trust)
+                    trust_package=args.trust,
+                    allow_reformatting=args.allow_reformatting)
             except NotDebianPackage:
                 note("%s: Not a debian package.", wt.basedir)
                 return 1

@@ -25,6 +25,8 @@ from debian.deb822 import Deb822
 
 from ._deb822 import PkgRelation
 
+from .reformatting import check_preserve_formatting
+
 
 class GeneratedFile(Exception):
     """File is generated and should not be edited."""
@@ -34,7 +36,7 @@ class FormattingUnpreservable(Exception):
     """Formatting unpreservable."""
 
 
-def can_preserve_deb822(contents):
+def reformat_deb822(contents):
     """Check whether it's possible to preserve a control file.
 
     Args:
@@ -47,7 +49,7 @@ def can_preserve_deb822(contents):
                                             encoding='utf-8'):
         paragraph.dump(fd=outf, encoding='utf-8')
         outf.write(b'\n')
-    return outf.getvalue().strip() == contents.strip()
+    return outf.getvalue()
 
 
 def update_control(path='debian/control', **kwargs):
@@ -67,8 +69,10 @@ def update_control(path='debian/control', **kwargs):
         original_contents = f.read()
     if b"DO NOT EDIT" in original_contents:
         raise GeneratedFile()
-    if not can_preserve_deb822(original_contents):
-        raise FormattingUnpreservable("Unable to preserve formatting", path)
+    rewritten_contents = reformat_deb822(original_contents)
+    check_preserve_formatting(
+        rewritten_contents.strip(), original_contents.strip(),
+        path)
     outf = BytesIO()
     update_control_file(BytesIO(original_contents), outf, **kwargs)
     updated_contents = outf.getvalue()

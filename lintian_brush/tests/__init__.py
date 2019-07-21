@@ -23,6 +23,7 @@ def test_suite():
         'control',
         'copyright',
         'lintian_overrides',
+        'reformatting',
         'run',
         'systemd',
         ]

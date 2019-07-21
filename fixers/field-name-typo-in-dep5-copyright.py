@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 from debian.deb822 import Deb822
-from lintian_brush.control import can_preserve_deb822
+from lintian_brush.control import reformat_deb822
+from lintian_brush.reformatting import check_preserve_formatting
 import sys
 
 try:
@@ -12,8 +13,10 @@ except ImportError:
 with open('debian/copyright', 'rb') as f:
     orig_content = f.read()
 
-if not can_preserve_deb822(orig_content):
-    sys.exit(2)
+rewrite_content = reformat_deb822(orig_content)
+check_preserve_formatting(
+    rewrite_content.strip(), orig_content.strip(),
+    'debian/copyright')
 
 valid_field_names = {
     'Files', 'License', 'Copyright', 'Comment',

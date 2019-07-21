@@ -27,9 +27,11 @@ from breezy.tests import (
     )
 
 from lintian_brush.copyright import (
-    FormattingUnpreservable,
     NotMachineReadableError,
     update_copyright,
+    )
+from lintian_brush.reformatting import (
+    FormattingUnpreservable,
     )
 
 

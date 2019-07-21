@@ -147,7 +147,7 @@ class Fixer(object):
         self.lintian_tags = lintian_tags
 
     def run(self, basedir, current_version, compat_release,
-            trust_package=False):
+            trust_package=False, allow_reformatting=False):
         """Apply this fixer script.
 
         Args:
@@ -156,6 +156,8 @@ class Fixer(object):
             updated
           compat_release: Compatibility level (a Debian release name)
           trust_package: Whether to run code from the package
+          allow_reformatting: Allow reformatting of files that are being
+            changed
         Returns:
           A FixerResult object
         """
@@ -174,12 +176,13 @@ class ScriptFixer(Fixer):
 
     def run(self, basedir, current_version, compat_release,
             minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
-            trust_package=False):
+            trust_package=False, allow_reformatting=False):
         env = dict(os.environ.items())
         env['CURRENT_VERSION'] = str(current_version)
         env['COMPAT_RELEASE'] = compat_release
         env['MINIMUM_CERTAINTY'] = minimum_certainty
         env['TRUST_PACKAGE'] = 'true' if trust_package else 'false'
+        env['REFORMATTING'] = ('allow' if allow_reformatting else 'disallow')
         with tempfile.SpooledTemporaryFile() as stderr:
             p = subprocess.Popen(self.script_path, cwd=basedir,
                                  stdout=subprocess.PIPE, stderr=stderr,
@@ -406,7 +409,8 @@ def certainty_sufficient(actual_certainty, minimum_certainty):
 
 def run_lintian_fixer(local_tree, fixer, committer=None,
                       update_changelog=None, compat_release=None,
-                      minimum_certainty=None, trust_package=False):
+                      minimum_certainty=None, trust_package=False,
+                      allow_reformatting=False):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -419,6 +423,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
       minimum_certainty: How certain the fixer should be
         about its changes.
       trust_package: Whether to run code from the package if necessary
+      allow_reformatting: Whether to allow reformatting of changed files
     Returns:
       tuple with set of FixerResult, summary of the changes
     """
@@ -445,7 +450,8 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
             local_tree.basedir, current_version=current_version,
             compat_release=compat_release,
             minimum_certainty=minimum_certainty,
-            trust_package=trust_package)
+            trust_package=trust_package,
+            allow_reformatting=allow_reformatting)
     except BaseException:
         reset_tree(local_tree)
         raise
@@ -498,7 +504,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
 def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                        verbose=False, committer=None,
                        compat_release=None, minimum_certainty=None,
-                       trust_package=False):
+                       trust_package=False, allow_reformatting=False):
     """Run a set of lintian fixers on a tree.
 
     Args:
@@ -512,6 +518,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
       minimum_certainty: How certain the fixer should be
         about its changes.
       trust_package: Whether to run code from the package if necessary
+      allow_reformatting: Whether to allow reformatting of changed files
     Returns:
       Tuple with two lists:
         1. list of tuples with (lintian-tag, certainty, description) of fixers
@@ -534,7 +541,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                         local_tree, fixer, update_changelog=update_changelog,
                         committer=committer, compat_release=compat_release,
                         minimum_certainty=minimum_certainty,
-                        trust_package=trust_package)
+                        trust_package=trust_package,
+                        allow_reformatting=allow_reformatting)
             except FixerFailed as e:
                 failed_fixers[fixer.name] = e
                 if verbose:
