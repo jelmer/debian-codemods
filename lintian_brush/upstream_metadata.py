@@ -272,6 +272,44 @@ def guess_from_meta_yml(path, trust_package):
                 yield 'Repository', resources['repository'], 'certain'
 
 
+def guess_from_doap(path, trust_package):
+    """Guess upstream metadata from a DOAP file.
+    """
+    from xml.etree import ElementTree
+    el = ElementTree.parse(path)
+    root = el.getroot()
+    DOAP_NAMESPACE = 'http://usefulinc.com/ns/doap#'
+    if root.tag != ('{%s}Project' % DOAP_NAMESPACE):
+        warn('Doap file does not have DOAP project as root')
+        return
+
+    def extract_url(el):
+        return el.attrib.get(
+            '{http://www.w3.org/1999/02/22-rdf-syntax-ns#}resource')
+
+    for child in root:
+        if child.tag == ('{%s}name' % DOAP_NAMESPACE):
+            yield 'Name', child.text, 'certain'
+        if child.tag == ('{%s}bug-database' % DOAP_NAMESPACE):
+            url = extract_url(child)
+            if url:
+                yield 'Bug-Database', url, 'certain'
+        if child.tag == ('{%s}homepage' % DOAP_NAMESPACE):
+            url = extract_url(child)
+            if url:
+                yield 'Homepage', url, 'certain'
+        if child.tag == ('{%s}repository' % DOAP_NAMESPACE):
+            for repo in child:
+                if repo.tag in (
+                        '{%s}SVNRepository' % DOAP_NAMESPACE,
+                        '{%s}GitRepository' % DOAP_NAMESPACE):
+                    repo_location = repo.find(
+                        '{http://usefulinc.com/ns/doap#}location')
+                    url = extract_url(repo_location)
+                    if url:
+                        yield 'Repository', url, 'certain'
+
+
 def guess_upstream_metadata_items(path, trust_package=False):
     """Guess upstream metadata items, in no particular order.
 
@@ -292,9 +330,20 @@ def guess_upstream_metadata_items(path, trust_package=False):
         ('debian/copyright', guess_from_debian_copyright),
         ('META.json', guess_from_meta_json),
         ('META.yml', guess_from_meta_yml),
+        ]
+
+    doap_filenames = [n for n in os.listdir(path) if n.endswith('.doap')]
+    if doap_filenames:
+        if len(doap_filenames) == 1:
+            CANDIDATES.append((doap_filenames[0], guess_from_doap))
+        else:
+            warn('More than one doap filename, ignoring all: %r',
+                 doap_filenames)
+
+    CANDIDATES.extend([
         ('README', guess_from_readme),
         ('README.md', guess_from_readme),
-        ]
+        ])
 
     for relpath, guesser in CANDIDATES:
         abspath = os.path.join(path, relpath)
