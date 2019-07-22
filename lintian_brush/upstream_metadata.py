@@ -39,6 +39,16 @@ def guess_repo_from_url(url):
     return None
 
 
+def browse_url_from_repo_url(url):
+    parsed_url = urlparse(url)
+    if parsed_url.netloc == 'github.com':
+        path = '/'.join(parsed_url.path.split('/')[:3])
+        if path.endswith('.git'):
+            path = path[:-4]
+        return ('https://github.com' + path)
+    return None
+
+
 def read_python_pkg_info(path):
     """Get the metadata from a python setup.py file."""
     from pkginfo.utils import get_metadata
@@ -317,15 +327,20 @@ def guess_from_doap(path, trust_package):
                     repo_location = repo.find(
                         '{http://usefulinc.com/ns/doap#}location')
                     if repo_location is not None:
-                        url = extract_url(repo_location)
-                        if url:
-                            yield 'Repository', url, 'certain'
+                        repo_url = extract_url(repo_location)
+                    else:
+                        repo_url = None
+                    if repo_url:
+                        yield 'Repository', repo_url, 'certain'
                     web_location = repo.find(
                         '{http://usefulinc.com/ns/doap#}browse')
                     if web_location is not None:
-                        url = extract_url(web_location)
-                        if url:
-                            yield 'Repository-Browse', url, 'certain'
+                        web_url = extract_url(web_location)
+                    else:
+                        web_url = None
+
+                    if web_url:
+                        yield 'Repository-Browse', web_url, 'certain'
 
 
 def guess_upstream_metadata_items(path, trust_package=False):
@@ -390,3 +405,14 @@ def guess_upstream_metadata(path, trust_package=False):
             code[key] = value
             current_certainty[key] = certainty
     return code
+
+
+def extend_upstream_metadata(code, certainty):
+    """Extend a set of upstream metadata.
+    """
+    if 'Repository' in code and 'Repository-Browse' not in code:
+        browse_url = browse_url_from_repo_url(code['Repository'])
+        if browse_url:
+            code['Repository-Browse'] = browse_url
+            certainty['Repository-Browse'] = certainty['Repository']
+    # TODO(jelmer): Try deriving bug-database too?

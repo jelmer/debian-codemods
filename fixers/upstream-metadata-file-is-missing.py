@@ -7,7 +7,10 @@ import os
 import sys
 import ruamel.yaml
 from lintian_brush.reformatting import check_preserve_formatting
-from lintian_brush.upstream_metadata import guess_upstream_metadata_items
+from lintian_brush.upstream_metadata import (
+    extend_upstream_metadata,
+    guess_upstream_metadata_items,
+    )
 
 
 try:
@@ -32,6 +35,8 @@ for key, value, certainty in guess_upstream_metadata_items(
             code[key] = value
             fields.add(key)
         current_certainty[key] = certainty
+
+extend_upstream_metadata(code, current_certainty)
 
 achieved_certainty = (
     'possible' if 'possible' in current_certainty.values() else 'certain')

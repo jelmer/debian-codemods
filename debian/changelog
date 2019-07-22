@@ -10,6 +10,8 @@ lintian-brush (0.17) UNRELEASED; urgency=medium
   * Add support for reading upstream metadata from DOAP files.
   * Add (hidden) --allow-reformatting flag.
   * Add support for Repository-Browse.
+  * upstream-metadata-file-is-missing: Derive Repository-Browse from
+    Repository when possible.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 16 Jul 2019 00:13:31 +0000
 
