@@ -192,7 +192,12 @@ def guess_from_package_xml(path, trust_package):
 
 
 def guess_from_dist_ini(path, trust_package):
-    from configparser import RawConfigParser, NoSectionError, ParsingError
+    from configparser import (
+        RawConfigParser,
+        NoSectionError,
+        ParsingError,
+        NoOptionError,
+        )
     parser = RawConfigParser(strict=False)
     with open(path, 'r') as f:
         try:
@@ -200,18 +205,18 @@ def guess_from_dist_ini(path, trust_package):
         except ParsingError as e:
             warn('Unable to parse dist.ini: %r' % e)
     try:
-        if parser.get('START', 'name'):
-            yield 'Name', parser['START']['name'], 'certain'
-    except NoSectionError:
+        yield 'Name', parser['START']['name'], 'certain'
+    except (NoSectionError, NoOptionError, KeyError):
         pass
     try:
-        if parser.get('MetaResources', 'bugtracker.web'):
-            yield ('Bug-Database',
-                   parser['MetaResources']['bugtracker.web'], 'certain')
-        if parser.get('MetaResources', 'repository.url'):
-            yield ('Repository',
-                   parser['MetaResources']['repository.url'], 'certain')
-    except NoSectionError:
+        yield ('Bug-Database',
+               parser['MetaResources']['bugtracker.web'], 'certain')
+    except (NoSectionError, NoOptionError, KeyError):
+        pass
+    try:
+        yield ('Repository',
+               parser['MetaResources']['repository.url'], 'certain')
+    except (NoSectionError, NoOptionError, KeyError):
         pass
 
 
