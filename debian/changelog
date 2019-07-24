@@ -1,4 +1,4 @@
-lintian-brush (0.17) UNRELEASED; urgency=medium
+lintian-brush (0.17) unstable; urgency=medium
 
   [ Dmitry Bogatov ]
   * Support policy version bumps from 4.3.0 to 4.4.0. Closes: #932314
@@ -13,7 +13,7 @@ lintian-brush (0.17) UNRELEASED; urgency=medium
   * upstream-metadata-file-is-missing: Derive Repository-Browse from
     Repository when possible.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 16 Jul 2019 00:13:31 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 24 Jul 2019 22:12:00 +0000
 
 lintian-brush (0.16) unstable; urgency=medium
 
