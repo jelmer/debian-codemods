@@ -249,8 +249,9 @@ def guess_from_debian_copyright(path, trust_package):
 
 
 def guess_from_readme(path, trust_package):
-    with open(path, 'r') as f:
+    with open(path, 'rb') as f:
         for line in f:
+            line = line.decode('utf-8', 'replace')
             if line.strip().startswith('git clone'):
                 line = line.strip()
                 url = line.split()[2]
