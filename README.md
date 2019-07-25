@@ -39,8 +39,10 @@ subset of the issues:
 * debian-tests-control-and-control-autodep8
 * debian-tests-control-autodep8-is-obsolete
 * debian-upstream-obsolete-path
+* debian-watch-file-is-missing
 * debian-watch-uses-insecure-uri
 * dep5-file-paragraph-references-header-paragraph
+* dh-clean-k-is-deprecated
 * dh-quilt-addon-but-quilt-source-format
 * dm-upload-allowed-is-obsolete
 * field-name-typo-in-dep5-copyright
@@ -62,6 +64,7 @@ subset of the issues:
 * package-uses-deprecated-debhelper-compat-version
 * package-uses-deprecated-source-override-location
 * package-uses-old-debhelper-compat-version
+* patch-file-present-but-not-mentioned-in-series
 * possible-missing-colon-in-closes
 * priority-extra-is-replaced-by-priority-optional
 * public-upstream-key-not-minimal
@@ -73,6 +76,7 @@ subset of the issues:
 * unnecessary-team-upload
 * unnecessary-testsuite-autopkgtest-field
 * unversioned-copyright-format-uri
+* upstream-metadata-file-is-missing
 * useless-autoreconf-build-depends
 * vcs-field-uses-insecure-uri
 * vcs-field-uses-not-recommended-uri-format
