@@ -16,9 +16,6 @@ Lintian-Tags: build-depends-on-obsolete-package
 Fix-Script: control-file-with-CRLF-EOLs.sh
 Lintian-Tags: control-file-with-CRLF-EOLs
 
-Fix-Script: copyright-has-crs.sh
-Lintian-Tags: copyright-has-crs
-
 Fix-Script: debhelper-but-no-misc-depends.py
 Lintian-Tags: debhelper-but-no-misc-depends
 
@@ -70,23 +67,11 @@ Fix-Script: empty-debian-source-options.py
 
 Fix-Script: empty-debian-patches-series.py
 
-Fix-Script: field-name-typo-in-dep5-copyright.py
-Lintian-Tags: field-name-typo-in-dep5-copyright
-
 Fix-Script: file-contains-trailing-whitespace.sh
 Lintian-Tags: file-contains-trailing-whitespace
 
-Fix-Script: global-files-wildcard-not-first-paragraph-in-dep5-copyright.py
-Lintian-Tags: global-files-wildcard-not-first-paragraph-in-dep5-copyright
-
 Fix-Script: homepage-field-uses-insecure-uri.py
 Lintian-Tags: homepage-field-uses-insecure-uri
-
-Fix-Script: insecure-copyright-format-uri.sh
-Lintian-Tags: insecure-copyright-format-uri
-
-Fix-Script: invalid-short-name-in-dep5-copyright.py
-Lintian-Tags: invalid-short-name-in-dep5-copyright
 
 Fix-Script: maintainer-script-without-set-e.py
 Lintian-Tags: maintainer-script-without-set-e
@@ -100,17 +85,8 @@ Lintian-Tags: missing-debian-source-format
 Fix-Script: missing-vcs-browser-field.py
 Lintian-Tags: missing-vcs-browser-field
 
-Fix-Script: old-fsf-address-in-copyright-file.sh
-Lintian-Tags: old-fsf-address-in-copyright-file
-
-Fix-Script: obsolete-field-in-dep5-copyright.py
-Lintian-Tags: obsolete-field-in-dep5-copyright
-
 Fix-Script: orphaned-package-should-not-have-uploaders.py
 Lintian-Tags: orphaned-package-should-not-have-uploaders
-
-Fix-Script: out-of-date-copyright-format-uri.sh
-Lintian-Tags: out-of-date-copyright-format-uri
 
 Fix-Script: out-of-date-standards-version.py
 Lintian-Tags: out-of-date-standards-version
@@ -159,9 +135,6 @@ Lintian-Tags: unnecessary-team-upload
 Fix-Script: unnecessary-testsuite-autopkgtest-field.sh
 Lintian-Tags: unnecessary-testsuite-autopkgtest-field
 
-Fix-Script: unversioned-copyright-format-uri.sh
-Lintian-Tags: unversioned-copyright-format-uri
-
 Fix-Script: upstream-metadata-file-is-missing.py
 Lintian-Tags: upstream-metadata-file-is-missing
 
@@ -185,3 +158,31 @@ Lintian-Tags: xs-testsuite-field-in-debian-control
 
 Fix-Script: xs-vcs-field-in-debian-control.sh
 Lintian-Tags: xs-vcs-field-in-debian-control
+
+# Copyright related fixers. Fix format URL before semantic fixes.
+Fix-Script: unversioned-copyright-format-uri.sh
+Lintian-Tags: unversioned-copyright-format-uri
+
+Fix-Script: copyright-has-crs.sh
+Lintian-Tags: copyright-has-crs
+
+Fix-Script: insecure-copyright-format-uri.sh
+Lintian-Tags: insecure-copyright-format-uri
+
+Fix-Script: old-fsf-address-in-copyright-file.sh
+Lintian-Tags: old-fsf-address-in-copyright-file
+
+Fix-Script: out-of-date-copyright-format-uri.sh
+Lintian-Tags: out-of-date-copyright-format-uri
+
+Fix-Script: field-name-typo-in-dep5-copyright.py
+Lintian-Tags: field-name-typo-in-dep5-copyright
+
+Fix-Script: global-files-wildcard-not-first-paragraph-in-dep5-copyright.py
+Lintian-Tags: global-files-wildcard-not-first-paragraph-in-dep5-copyright
+
+Fix-Script: invalid-short-name-in-dep5-copyright.py
+Lintian-Tags: invalid-short-name-in-dep5-copyright
+
+Fix-Script: obsolete-field-in-dep5-copyright.py
+Lintian-Tags: obsolete-field-in-dep5-copyright

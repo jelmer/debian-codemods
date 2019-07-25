@@ -1,3 +1,9 @@
+lintian-brush (0.18) UNRELEASED; urgency=medium
+
+  * Fix copyright fields before parsing with python-debian.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 25 Jul 2019 22:05:12 +0000
+
 lintian-brush (0.17) unstable; urgency=medium
 
   [ Dmitry Bogatov ]
