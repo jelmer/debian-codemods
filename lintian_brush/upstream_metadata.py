@@ -96,6 +96,8 @@ def parse_watch_file(f):
     if continued:
         # Hmm, broken line?
         lines.append(continued)
+    if not lines:
+        return
     if not lines.pop(0).startswith('version='):
         pass  # Hmm, is this actually a real watch file?
     for line in lines:
