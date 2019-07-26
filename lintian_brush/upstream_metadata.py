@@ -232,7 +232,7 @@ def guess_from_debian_copyright(path, trust_package):
         except NotMachineReadableError:
             header = None
         except MachineReadableFormatError as e:
-            warn('Error parsing copyright file: %s', e)
+            warn('Error parsing copyright file: %s' % e)
             header = None
         else:
             header = copyright.header
@@ -376,7 +376,7 @@ def guess_upstream_metadata_items(path, trust_package=False):
         if len(doap_filenames) == 1:
             CANDIDATES.append((doap_filenames[0], guess_from_doap))
         else:
-            warn('More than one doap filename, ignoring all: %r',
+            warn('More than one doap filename, ignoring all: %r' %
                  doap_filenames)
 
     CANDIDATES.extend([
