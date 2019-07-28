@@ -268,8 +268,9 @@ def guess_from_meta_json(path, trust_package):
             yield 'Name', data['name'], 'certain'
         if 'resources' in data:
             resources = data['resources']
-            if 'bugtracker' in resources:
+            if 'bugtracker' in resources and 'web' in resources['bugtracker']:
                 yield "Bug-Database", resources["bugtracker"]["web"], 'certain'
+                # TODO(jelmer): Support resources["bugtracker"]["mailto"]
             if 'homepage' in resources:
                 yield "Homepage", resources["homepage"], 'certain'
             if 'repository' in resources:
