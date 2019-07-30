@@ -24,6 +24,7 @@ def test_suite():
         'copyright',
         'lintian_overrides',
         'reformatting',
+        'rules',
         'run',
         'systemd',
         ]
