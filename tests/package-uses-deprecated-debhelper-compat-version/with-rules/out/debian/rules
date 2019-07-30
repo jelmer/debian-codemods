@@ -1,0 +1,3 @@
+all:
+	dh_prep
+	dh --with=blah --buildsystem=python_distutils

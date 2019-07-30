@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 from debian.changelog import Version
-import re
 import sys
 
 from lintian_brush.control import (
@@ -8,7 +7,10 @@ from lintian_brush.control import (
     ensure_minimum_version,
     update_control,
     )
-from lintian_brush.rules import update_rules
+from lintian_brush.rules import (
+    dh_invoke_drop_with,
+    update_rules,
+    )
 
 
 def bump_debhelper(control):
@@ -21,11 +23,7 @@ def bump_debhelper(control):
 
 
 def drop_with_autoreconf(line):
-    line = re.sub(b" --with[ =]autoreconf( .+|)$", b"\\1", line)
-    line = re.sub(b" --with[ =]autoreconf,", b" --with=", line)
-    line = re.sub(b" --with[ =]([^ ]),autoreconf([ ,])", b" --with=\\1\\2",
-                  line)
-    return line
+    return dh_invoke_drop_with(line, b'autoreconf')
 
 
 changed = update_rules(drop_with_autoreconf)

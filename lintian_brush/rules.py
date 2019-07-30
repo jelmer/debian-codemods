@@ -17,6 +17,9 @@
 
 """Utility functions for dealing with rules files."""
 
+import os
+import re
+
 
 def update_rules(command_line_cb, path='debian/rules'):
     """Update a rules file.
@@ -27,6 +30,8 @@ def update_rules(command_line_cb, path='debian/rules'):
     Returns:
       boolean indicating whether any changes were made
     """
+    if not os.path.exists(path):
+        return False
     with open(path, 'rb') as f:
         original_contents = f.read()
     newlines = []
@@ -42,3 +47,13 @@ def update_rules(command_line_cb, path='debian/rules'):
             f.write(updated_contents)
         return True
     return False
+
+
+def dh_invoke_drop_with(line, with_argument):
+    """Drop a particular value from a with argument."""
+    line = re.sub(b" --with[ =]" + with_argument + b"( .+|)$", b"\\1", line)
+    line = re.sub(b" --with[ =]" + with_argument + b",", b" --with=", line)
+    line = re.sub(
+        b" --with[ =]([^ ])," + with_argument + b"([ ,])",
+        b" --with=\\1\\2", line)
+    return line

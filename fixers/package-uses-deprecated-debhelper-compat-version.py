@@ -9,6 +9,11 @@ from lintian_brush.control import (
     get_relation,
     update_control,
     )
+from lintian_brush.rules import (
+    dh_invoke_drop_with,
+    update_rules,
+    )
+
 
 # TODO(jelmer): Can we get these elsewhere rather than
 # hardcoding them here?
@@ -21,6 +26,7 @@ new_debhelper_compat_version = {
     'buster': 12,
     'stretch': 10,
     }.get(compat_release, MINIMUM_DEBHELPER_VERSION)
+
 
 if os.path.exists('debian/compat'):
     # Package currently stores compat version in debian/compat..
@@ -95,6 +101,30 @@ else:
                     "%d" % new_debhelper_compat_version)
 
     update_control(source_package_cb=bump_debhelper_compat)
+
+
+def upgrade_to_debhelper_12():
+
+    def cb(line):
+        if line.strip() == b'dh_clean -k':
+            return b'dh_prep'
+        line = dh_invoke_drop_with(line, b'systemd')
+        return line
+
+    update_rules(cb)
+
+
+upgrade_to_debhelper = {
+    12: upgrade_to_debhelper_12,
+}
+
+
+for version in range(int(str(current_debhelper_compat_version)),
+                     int(str(new_debhelper_compat_version))+1):
+    try:
+        upgrade_to_debhelper[version]()
+    except KeyError:
+        pass
 
 
 if current_debhelper_compat_version < MINIMUM_DEBHELPER_VERSION:

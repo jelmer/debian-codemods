@@ -1,0 +1,3 @@
+all:
+	dh_clean -k
+	dh --with=systemd,blah --buildsystem=python_distutils

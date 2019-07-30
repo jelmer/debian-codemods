@@ -57,10 +57,10 @@ Lintian-Tags: debian-watch-uses-insecure-uri
 Fix-Script: dep5-file-paragraph-references-header-paragraph.py
 Lintian-Tags: dep5-file-paragraph-references-header-paragraph
 
-Fix-Script: debrules-debhelper-updates.py
+Fix-Script: dh-clean-k-is-deprecated.py
 Lintian-Tags: dh-clean-k-is-deprecated
 
-Fix-Script: dh-quilt-addon-but-quilt-source-format.sh
+Fix-Script: dh-quilt-addon-but-quilt-source-format.py
 Lintian-Tags: dh-quilt-addon-but-quilt-source-format
 
 Fix-Script: dm-upload-allowed-is-obsolete.sh
