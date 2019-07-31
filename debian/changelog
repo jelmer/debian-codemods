@@ -3,6 +3,7 @@ lintian-brush (0.18) UNRELEASED; urgency=medium
   * Fix copyright fields before parsing with python-debian.
   * Add fixer for dh-clean-k-is-deprecated.
   * Handle missing bugtracker/web subkey for META.json files.
+  * Upgrade debian/rules in some cases when updating to debhelper 12.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 25 Jul 2019 22:05:12 +0000
 

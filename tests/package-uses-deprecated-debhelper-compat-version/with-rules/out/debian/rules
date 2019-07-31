@@ -1,3 +1,8 @@
 all:
 	dh_prep
-	dh --with=blah --buildsystem=python_distutils
+	dh --with=blah --buildsystem=pybuild
+
+
+override_dh_install:
+	dh_install
+	dh_missing --fail-missing

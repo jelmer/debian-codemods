@@ -37,7 +37,13 @@ def update_rules(command_line_cb, path='debian/rules'):
     newlines = []
     for line in original_contents.splitlines():
         if line.startswith(b'\t'):
-            newlines.append(b'\t' + command_line_cb(line[1:]))
+            ret = command_line_cb(line[1:])
+            if isinstance(ret, bytes):
+                newlines.append(b'\t' + ret)
+            elif isinstance(ret, list):
+                newlines.extend([b'\t' + l for l in ret])
+            else:
+                raise TypeError(ret)
         else:
             newlines.append(line)
 
@@ -56,4 +62,13 @@ def dh_invoke_drop_with(line, with_argument):
     line = re.sub(
         b" --with[ =]([^ ])," + with_argument + b"([ ,])",
         b" --with=\\1\\2", line)
+    return line
+
+
+def dh_invoke_drop_argument(line, argument):
+    """Drop a particular argument from a dh invocation."""
+    if argument not in line:
+        return False
+    line = re.sub(b' ' + argument + b'$', b'', line)
+    line = re.sub(b' ' + argument + b' ', b' ', line)
     return line

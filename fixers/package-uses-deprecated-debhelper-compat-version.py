@@ -11,6 +11,7 @@ from lintian_brush.control import (
     )
 from lintian_brush.rules import (
     dh_invoke_drop_with,
+    dh_invoke_drop_argument,
     update_rules,
     )
 
@@ -109,6 +110,13 @@ def upgrade_to_debhelper_12():
         if line.strip() == b'dh_clean -k':
             return b'dh_prep'
         line = dh_invoke_drop_with(line, b'systemd')
+        line = line.replace(
+            b'--buildsystem=python_distutils', b'--buildsystem=pybuild')
+        if line.startswith(b'dh_install ') and b'--list-missing' in line:
+            line = dh_invoke_drop_argument(line, b'--list-missing')
+        if line.startswith(b'dh_install ') and b'--fail-missing' in line:
+            line = dh_invoke_drop_argument(line, b'--fail-missing')
+            return [line, b'dh_missing --fail-missing']
         return line
 
     update_rules(cb)
