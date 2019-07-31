@@ -104,12 +104,15 @@ else:
     update_control(source_package_cb=bump_debhelper_compat)
 
 
+# For a list of behavior changes between debhelper compat verisons, see
+# https://manpages.debian.org/testing/debhelper/debhelper.7.en.html#Supported_compatibility_levels
+
+
 def upgrade_to_debhelper_12():
 
     def cb(line):
         if line.strip() == b'dh_clean -k':
             return b'dh_prep'
-        line = dh_invoke_drop_with(line, b'systemd')
         line = line.replace(
             b'--buildsystem=python_distutils', b'--buildsystem=pybuild')
         if line.startswith(b'dh_install ') and b'--list-missing' in line:
@@ -122,7 +125,17 @@ def upgrade_to_debhelper_12():
     update_rules(cb)
 
 
+def upgrade_to_debhelper_11():
+
+    def cb(line):
+        line = dh_invoke_drop_with(line, b'systemd')
+        return line
+
+    update_rules(cb)
+
+
 upgrade_to_debhelper = {
+    11: upgrade_to_debhelper_11,
     12: upgrade_to_debhelper_12,
 }
 
