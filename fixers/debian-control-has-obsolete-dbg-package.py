@@ -1,10 +1,13 @@
 #!/usr/bin/python3
-from io import BytesIO
 import os
 import sys
 from lintian_brush.control import (
     ensure_minimum_version,
     update_control,
+    )
+from lintian_brush.rules import (
+    check_cdbs,
+    update_rules,
     )
 
 minimum_version = "9.20160114"
@@ -40,33 +43,35 @@ migrate_version = "<< %s%s" % (
         current_version,
         '' if current_version.endswith('~') else '~')
 
-outf = BytesIO()
-with open('debian/rules', 'rb') as f:
-    for line in f:
-        if line.strip() == b"include /usr/share/cdbs/1/rules/debhelper.mk":
-            # Ah, cdbs.
-            raise Exception("package uses cdbs")
-        if line.startswith(b'\tdh_strip '):
-            for dbg_pkg in dbg_packages:
-                if ('--dbg-package=%s' % dbg_pkg).encode('utf-8') in line:
-                    line = line.replace(
-                            ('--dbg-package=%s' % dbg_pkg).encode('utf-8'),
-                            ("--dbgsym-migration='%s (%s)'" % (
-                                dbg_pkg, migrate_version)).encode('utf-8'))
-                    dbg_migration_done.add(dbg_pkg)
-        outf.write(line)
+
+def migrate_dh_strip(line):
+    if line.startswith(b'dh_strip '):
+        for dbg_pkg in dbg_packages:
+            if ('--dbg-package=%s' % dbg_pkg).encode('utf-8') in line:
+                line = line.replace(
+                        ('--dbg-package=%s' % dbg_pkg).encode('utf-8'),
+                        ("--dbgsym-migration='%s (%s)'" % (
+                            dbg_pkg, migrate_version)).encode('utf-8'))
+                dbg_migration_done.add(dbg_pkg)
+    return line
+
+
+if check_cdbs():
+    # Ah, cdbs.
+    raise Exception("package uses cdbs")
+
+update_rules(migrate_dh_strip)
+
 
 if not dbg_packages:
     # no debug packages found to remove
     sys.exit(2)
 
+
 difference = dbg_packages.symmetric_difference(dbg_migration_done)
 
 if difference:
     raise Exception("packages missing %r" % difference)
-
-with open('debian/rules', 'wb') as f:
-    f.write(outf.getvalue())
 
 print("Transition to automatic debug package%s (from: %s)." %
       (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages)))

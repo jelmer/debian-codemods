@@ -10,6 +10,7 @@ from lintian_brush.control import (
     update_control,
     )
 from lintian_brush.rules import (
+    check_cdbs,
     dh_invoke_drop_with,
     dh_invoke_drop_argument,
     update_rules,
@@ -35,7 +36,11 @@ if os.path.exists('debian/compat'):
     with open('debian/compat', 'r') as f:
         current_debhelper_compat_version = int(f.read().strip())
 
-    if new_debhelper_compat_version >= 11:
+    # debhelper >= 11 supports the magic debhelper-compat build-dependency.
+    # Exclude cdbs, since it only knows to get the debhelper compat version
+    # from debian/compat.
+
+    if new_debhelper_compat_version >= 11 and not check_cdbs():
         # Upgrade to using debhelper-compat, drop debian/compat file.
         os.unlink('debian/compat')
 

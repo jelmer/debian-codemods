@@ -72,3 +72,13 @@ def dh_invoke_drop_argument(line, argument):
     line = re.sub(b' ' + argument + b'$', b'', line)
     line = re.sub(b' ' + argument + b' ', b' ', line)
     return line
+
+
+def check_cdbs(path='debian/rules'):
+    if not os.path.exists(path):
+        return False
+    with open(path, 'rb') as f:
+        for line in f:
+            if line.lstrip(b'-').startswith(b'include /usr/share/cdbs/'):
+                return True
+    return False

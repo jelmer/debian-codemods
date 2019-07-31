@@ -1,0 +1,15 @@
+include /usr/share/cdbs/1/class/autotools.mk
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/rules/utils.mk
+
+all:
+	dh_prep
+	dh --with=blah --buildsystem=pybuild
+
+override_dh_install:
+	dh_install
+	dh_missing --fail-missing
+
+override_dh_clean:
+	dh_clean -O--buildsystem=pybuild
+	rm -rf build
