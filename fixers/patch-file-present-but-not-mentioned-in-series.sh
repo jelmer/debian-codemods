@@ -4,6 +4,7 @@ cd debian/patches
 
 for f in * ; do
 	test "${f}" != series || continue
+	test "${f}" != README || continue
 	grep -q -- "${f}" series || rm "${f}"
 done
 echo "Remove patches missing from debian/patches/series."
