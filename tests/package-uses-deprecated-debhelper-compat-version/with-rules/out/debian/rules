@@ -6,3 +6,7 @@ all:
 override_dh_install:
 	dh_install
 	dh_missing --fail-missing
+
+override_dh_clean:
+	dh_clean -O--buildsystem=pybuild
+	rm -rf build
