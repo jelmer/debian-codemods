@@ -1,4 +1,4 @@
-lintian-brush (0.18) UNRELEASED; urgency=medium
+lintian-brush (0.18) unstable; urgency=medium
 
   * Fix copyright fields before parsing with python-debian.
   * Add fixer for dh-clean-k-is-deprecated.
