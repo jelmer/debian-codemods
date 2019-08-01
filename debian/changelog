@@ -5,6 +5,8 @@ lintian-brush (0.18) UNRELEASED; urgency=medium
   * Handle missing bugtracker/web subkey for META.json files.
   * Upgrade debian/rules in some cases when updating to debhelper 12.
   * Don't remove debian/patches/README.
+  * Use the 'Source' field in copyright files when looking for possible
+    upstream repositories.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 25 Jul 2019 22:05:12 +0000
 

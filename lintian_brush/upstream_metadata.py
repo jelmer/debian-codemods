@@ -245,6 +245,10 @@ def guess_from_debian_copyright(path, trust_package):
             yield "Name", header.upstream_name, 'certain'
         if header.upstream_contact:
             yield "Contact", ','.join(header.upstream_contact), 'certain'
+        if header.source:
+            repo_url = guess_repo_from_url(header.source)
+            if repo_url:
+                yield 'Repository', repo_url, 'possible'
         if "X-Upstream-Bugs" in header:
             yield "Bug-Database", header["X-Upstream-Bugs"], 'certain'
         if "X-Source-Downloaded-From" in header:
