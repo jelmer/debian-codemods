@@ -37,14 +37,14 @@ def update_copyright(update_cb):
     copyright = Copyright(orig_content)
     rewritten_content = copyright.dump()
     check_preserve_formatting(
-        rewritten_content, orig_content,
+        rewritten_content.rstrip('\n'), orig_content.rstrip('\n'),
         'debian/copyright')
 
     update_cb(copyright)
 
     new_content = copyright.dump()
 
-    if new_content != rewritten_content:
+    if new_content.rstrip('\n') != rewritten_content.rstrip('\n'):
         with open('debian/copyright', 'w') as f:
             f.write(new_content)
         return True
