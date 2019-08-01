@@ -6,7 +6,6 @@
 import os
 import sys
 import ruamel.yaml
-from lintian_brush.reformatting import check_preserve_formatting
 from lintian_brush.upstream_metadata import (
     extend_upstream_metadata,
     guess_upstream_metadata_items,
@@ -19,9 +18,8 @@ try:
 except FileNotFoundError:
     code = {}
 else:
-    code = ruamel.yaml.load(inp, ruamel.yaml.RoundTripLoader)
-    rewritten_inp = ruamel.yaml.dump(code, Dumper=ruamel.yaml.RoundTripDumper)
-    check_preserve_formatting(rewritten_inp, inp, 'debian/upstream/metadata')
+    code = ruamel.yaml.round_trip_load(inp, preserve_quotes=True)
+    rewritten_inp = ruamel.yaml.round_trip_dump(code)
 
 minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
 fields = set()
@@ -50,7 +48,7 @@ if not os.path.isdir('debian/upstream'):
 fixed_tag = not os.path.exists('debian/upstream/metadata')
 
 with open('debian/upstream/metadata', 'w') as f:
-    ruamel.yaml.dump(code, f, Dumper=ruamel.yaml.RoundTripDumper)
+    ruamel.yaml.round_trip_dump(code, f)
 
 print('Set upstream metadata fields: %s.' % ', '.join(sorted(fields)))
 print('Certainty: %s' % achieved_certainty)

@@ -7,6 +7,10 @@ lintian-brush (0.18) UNRELEASED; urgency=medium
   * Don't remove debian/patches/README.
   * Use the 'Source' field in copyright files when looking for possible
     upstream repositories.
+  * Don't worry about preserving all formatting for YAML files; comments
+    and indentation are already preserved.
+  * Allow stripping trailing whitespace from debian/copyright when modifying
+    it.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 25 Jul 2019 22:05:12 +0000
 
