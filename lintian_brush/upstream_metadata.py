@@ -182,7 +182,9 @@ def guess_from_package_xml(path, trust_package):
     import xml.etree.ElementTree as ET
     tree = ET.parse(path)
     root = tree.getroot()
-    assert root.tag == 'package'
+    assert root.tag in (
+        'package', '{http://pear.php.net/dtd/package-2.0}package'
+        ), 'root tag is %r' % root.tag
     name_tag = root.find('name')
     if name_tag is not None:
         yield 'Name', name_tag.text, 'certain'
