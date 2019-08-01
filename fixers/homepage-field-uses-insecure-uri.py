@@ -2,6 +2,8 @@
 from lintian_brush.control import (
     update_control,
     )
+import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -29,7 +31,13 @@ def fix_homepage(http_url):
         return https_url
     # Fall back to just comparing the two
     http_contents = urllib.request.urlopen(http_url).read()
-    https_contents = urllib.request.urlopen(https_url).read()
+    try:
+        https_contents = urllib.request.urlopen(https_url).read()
+    except urllib.error.URLError as e:
+        sys.stderr.write(
+            'Unable to access HTTPS version of homepage %s: %s' %
+            (https_url, e))
+        return http_url
     if same_page(http_contents, https_contents):
         return https_url
     return http_url

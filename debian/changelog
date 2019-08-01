@@ -11,6 +11,8 @@ lintian-brush (0.18) UNRELEASED; urgency=medium
     and indentation are already preserved.
   * Allow stripping trailing whitespace from debian/copyright when modifying
     it.
+  * Don't make homepage-field-uses-insecure-uri fixer fail when it can't
+    access homepage over HTTPS. Closes: #933682
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 25 Jul 2019 22:05:12 +0000
 
