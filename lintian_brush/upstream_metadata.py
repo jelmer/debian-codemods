@@ -419,6 +419,8 @@ def guess_upstream_metadata(path, trust_package=False):
         if current_certainty.get(key) != 'certain':
             code[key] = value
             current_certainty[key] = certainty
+
+    extend_upstream_metadata(code, current_certainty)
     return code
 
 
