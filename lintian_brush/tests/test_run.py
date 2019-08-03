@@ -47,7 +47,7 @@ from lintian_brush import (
     run_lintian_fixers,
     version_string,
     )
-from lintian_brush.reformatting import GeneratedControlFile
+from lintian_brush.reformatting import GeneratedFile
 
 
 CHANGELOG_FILE = ('debian/changelog', """\
@@ -401,7 +401,7 @@ Source: blah
             self.tree.add(['debian/control.in'])
             self.tree.commit('Add control.in')
             self.assertRaises(
-                GeneratedControlFile, run_lintian_fixers,
+                GeneratedFile, run_lintian_fixers,
                 self.tree, [DummyFixer('dummy', 'some-tag')],
                 update_changelog=False)
 

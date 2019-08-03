@@ -30,13 +30,13 @@ from lintian_brush.control import (
     ensure_some_version,
     get_relation,
     update_control,
-    GeneratedFile,
     PkgRelation,
     format_relations,
     parse_relations,
     reformat_deb822,
     )
 from lintian_brush.reformatting import (
+    GeneratedFile,
     FormattingUnpreservable,
     )
 

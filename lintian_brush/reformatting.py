@@ -21,7 +21,7 @@ __all__ = ['check_preserve_formatting', 'check_generated_file']
 import os
 
 
-class GeneratedControlFile(Exception):
+class GeneratedFile(Exception):
     """The specified file is generated."""
 
     def __init__(self, path):
@@ -59,4 +59,8 @@ def check_generated_file(path):
       path: Path to the file to check
     """
     if os.path.exists(path + '.in'):
-        raise GeneratedControlFile(path)
+        raise GeneratedFile(path)
+    with open(path, 'rb') as f:
+        original_contents = f.read()
+    if b"DO NOT EDIT" in original_contents:
+        raise GeneratedFile(path)

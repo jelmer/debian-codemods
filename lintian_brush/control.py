@@ -25,11 +25,10 @@ from debian.deb822 import Deb822
 
 from ._deb822 import PkgRelation
 
-from .reformatting import check_preserve_formatting
-
-
-class GeneratedFile(Exception):
-    """File is generated and should not be edited."""
+from .reformatting import (
+    check_generated_file,
+    check_preserve_formatting,
+    )
 
 
 class FormattingUnpreservable(Exception):
@@ -65,10 +64,9 @@ def update_control(path='debian/control', **kwargs):
     Returns:
       boolean indicating whether any changes were made
     """
+    check_generated_file(path)
     with open(path, 'rb') as f:
         original_contents = f.read()
-    if b"DO NOT EDIT" in original_contents:
-        raise GeneratedFile()
     rewritten_contents = reformat_deb822(original_contents)
     check_preserve_formatting(
         rewritten_contents.strip(), original_contents.strip(),
