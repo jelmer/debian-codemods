@@ -729,6 +729,15 @@ class BaseScriptFixerTests(object):
         fixer = self.create_fixer("print('I did not do anything')\n")
         result = fixer.run(self.test_dir, '0.1', 'buster')
         self.assertIsInstance(result, FixerResult)
+        self.assertEqual(result.description, 'I did not do anything')
+
+    def test_chdir(self):
+        fixer = self.create_fixer("import os; print(os.getcwd())\n")
+        os.mkdir('subdir')
+        os.chdir('subdir')
+        result = fixer.run(self.test_dir, '0.1', 'buster')
+        self.assertIsInstance(result, FixerResult)
+        self.assertEqual(result.description, self.test_dir)
 
     def test_exception(self):
         fixer = self.create_fixer("""\

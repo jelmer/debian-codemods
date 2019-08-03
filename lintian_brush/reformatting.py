@@ -60,7 +60,10 @@ def check_generated_file(path):
     """
     if os.path.exists(path + '.in'):
         raise GeneratedFile(path)
-    with open(path, 'rb') as f:
-        original_contents = f.read()
+    try:
+        with open(path, 'rb') as f:
+            original_contents = f.read()
+    except FileNotFoundError:
+        return
     if b"DO NOT EDIT" in original_contents:
         raise GeneratedFile(path)

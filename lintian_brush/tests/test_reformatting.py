@@ -56,6 +56,9 @@ Source: blah
         self.assertRaises(
             GeneratedFile, check_generated_file, 'debian/control')
 
+    def test_missing(self):
+        check_generated_file('debian/control')
+
     def test_do_not_edit(self):
         self.build_tree_contents([('debian/', ), ('debian/control', """\
 # DO NOT EDIT

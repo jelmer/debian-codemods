@@ -214,7 +214,9 @@ class PythonScriptFixer(Fixer):
             sys.stderr = io.StringIO()
             sys.stdout = io.StringIO()
             os.environ = env
+            old_cwd = os.getcwd()
             try:
+                os.chdir(basedir)
                 with open(self.script_path, 'r') as f:
                     code = compile(f.read(), self.script_path, 'exec')
                     exec(code, {})
@@ -234,6 +236,7 @@ class PythonScriptFixer(Fixer):
             os.environ = old_env
             sys.stderr = old_stderr
             sys.stdout = old_stdout
+            os.chdir(old_cwd)
 
         if retcode == 2:
             raise NoChanges()
