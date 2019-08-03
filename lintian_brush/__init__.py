@@ -38,6 +38,7 @@ from breezy.clean_tree import (
     iter_deletables,
     )
 from breezy.commit import NullCommitReporter
+from breezy.errors import NoSuchFile
 from breezy.rename_map import RenameMap
 from breezy.trace import note
 from breezy.transform import revert
@@ -473,6 +474,21 @@ def certainty_sufficient(actual_certainty, minimum_certainty):
     return True
 
 
+def check_clean_tree(local_tree):
+    """Check that a tree is clean and has no pending changes or unknown files.
+
+    Args:
+      local_tree: The tree to check
+    Raises:
+      PendingChanges: When there are pending changes
+    """
+    # Just check there are no changes to begin with
+    if local_tree.has_changes():
+        raise PendingChanges(local_tree)
+    if list(local_tree.unknowns()):
+        raise PendingChanges(local_tree)
+
+
 def run_lintian_fixer(local_tree, fixer, committer=None,
                       update_changelog=None, compat_release=None,
                       minimum_certainty=None, trust_package=False,
@@ -493,15 +509,12 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     Returns:
       tuple with set of FixerResult, summary of the changes
     """
-    # Just check there are no changes to begin with
-    if local_tree.has_changes():
-        raise PendingChanges(local_tree)
-    if list(local_tree.unknowns()):
-        raise PendingChanges(local_tree)
-    if not local_tree.has_filename('debian/changelog'):
+    check_clean_tree(local_tree)
+    try:
+        with local_tree.get_file('debian/changelog') as f:
+            cl = Changelog(f, max_blocks=1)
+    except NoSuchFile:
         raise NotDebianPackage(local_tree)
-    with local_tree.get_file('debian/changelog') as f:
-        cl = Changelog(f, max_blocks=1)
     if cl.distributions == 'UNRELEASED':
         current_version = cl.version
     else:
@@ -592,6 +605,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
         2. dictionary mapping fixer names for fixers that failed to run to the
            error that occurred
     """
+    check_clean_tree(local_tree)
     failed_fixers = {}
     fixers = list(fixers)
     ret = []
