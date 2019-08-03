@@ -11,9 +11,9 @@ Build-Depends: debhelper (>= 12~),
                python3-dulwich (>= 0.19.7),
                python3-distro-info,
                python3-debian,
+               python3-pyinotify [linux-any],
                python3-levenshtein,
                python3-pkginfo,
-               python3-pyinotify [linux-any],
                python3-setuptools,
                python3-ruamel.yaml,
                gpg
@@ -30,11 +30,10 @@ Depends: devscripts,
          python3-distro-info,
          python3-levenshtein,
          python3-pkginfo,
-         python3-pyinotify [linux-any],
          python3-ruamel.yaml,
          ${misc:Depends},
          ${python3:Depends}
-Recommends: lintian, dos2unix, gpg
+Recommends: lintian, dos2unix, gpg, python3-pyinotify
 Description: automatically fix lintian problems
  This package contains a set of scripts that can automatically fix more than 30
  common lintian issues in Debian packages.
