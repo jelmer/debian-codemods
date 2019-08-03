@@ -1,0 +1,14 @@
+#!/usr/bin/make -f
+
+configure-stamp:
+	dh_autotools-dev_updateconfig
+	./configure
+	touch $@
+
+dh:
+	dh $* --with autotools-dev
+
+clean:
+	dh_blah
+	dh_autotools-dev_restoreconfig
+	dh_clean

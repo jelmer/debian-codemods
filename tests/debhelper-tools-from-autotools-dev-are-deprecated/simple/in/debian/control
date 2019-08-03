@@ -1,0 +1,31 @@
+Source: blah2ps
+Section: text
+Priority: optional
+Maintainer: Debian QA Group <packages@qa.debian.org>
+Build-Depends: autotools-dev,
+               bison,
+               bzip2,
+               debhelper (>= 7),
+               docbook-to-man,
+               emacs25 | emacsen,
+               file,
+               flex,
+               ghostscript,
+               gperf,
+               graphicsmagick-imagemagick-compat,
+               groff-base,
+               gv,
+               html2ps,
+               libpaper-dev,
+               lpr,
+               psutils,
+               texinfo,
+               texlive-base-bin
+Standards-Version: 3.9.8
+
+Package: blah2ps
+Architecture: any
+Depends: file, psutils, ${misc:Depends}, ${shlibs:Depends}
+Recommends: bzip2, lpr | rlpr | cups-client, wdiff
+Description: Some description
+ Blah.

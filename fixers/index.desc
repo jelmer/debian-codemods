@@ -19,6 +19,9 @@ Lintian-Tags: control-file-with-CRLF-EOLs
 Fix-Script: debhelper-but-no-misc-depends.py
 Lintian-Tags: debhelper-but-no-misc-depends
 
+Fix-Script: debhelper-tools-from-autotools-dev-are-deprecated.py
+Lintian-Tags: debhelper-tools-from-autotools-dev-are-deprecated
+
 Fix-Script: debian-changelog-file-contains-obsolete-user-emacs-settings.sh
 Lintian-Tags: debian-changelog-file-contains-obsolete-user-emacs-settings
 

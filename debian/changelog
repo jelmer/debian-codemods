@@ -3,6 +3,7 @@ lintian-brush (0.19) UNRELEASED; urgency=medium
   * Run python fixers in-process, to avoid Python interpreter and module
     loading overhead. This provides a ~30% performance improvement for
     some packages.
+  * Add fixer for debhelper-tools-from-autotools-dev-are-deprecated.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 11:47:54 +0000
 
