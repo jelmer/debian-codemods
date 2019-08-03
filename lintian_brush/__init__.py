@@ -541,16 +541,17 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     if not certainty_sufficient(result.certainty, minimum_certainty):
         reset_tree(local_tree, dirty_tracker)
         raise NoChanges("Certainty of script's changes not high enough")
-    if dirty_tracker and not dirty_tracker.is_dirty():
-        raise NoChanges("Script didn't make any changes")
     if dirty_tracker:
         relpaths = dirty_tracker.relpaths()
         local_tree.add(
             [p for p in relpaths
-             if local_tree.has_filename(p)])
+             if local_tree.has_filename(p) and not
+                local_tree.is_ignored(p)])
         specific_files = [
             p for p in relpaths
             if local_tree.is_versioned(p)]
+        if not specific_files:
+            raise NoChanges("Script didn't make any changes")
     else:
         local_tree.smart_add([local_tree.basedir])
         specific_files = None
