@@ -516,7 +516,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         raise
     if not certainty_sufficient(result.certainty, minimum_certainty):
         reset_tree(local_tree)
-        raise NoChanges("Script didn't make any changes")
+        raise NoChanges("Certainty of script's changes not high enough")
     local_tree.smart_add([local_tree.basedir])
     if local_tree.supports_setting_file_ids():
         RenameMap.guess_renames(
