@@ -446,14 +446,17 @@ def only_changes_last_changelog_block(tree):
         return str(new_cl) == str(old_cl)
 
 
-def reset_tree(local_tree):
+def reset_tree(local_tree, dirty_tracker=None):
     """Reset a tree back to its basis tree.
 
     This will leave ignored and detritus files alone.
 
     Args:
       local_tree: tree to work on
+      dirty_tracker: Optional dirty tracker
     """
+    if dirty_tracker and not dirty_tracker.is_dirty():
+        return
     revert(local_tree, local_tree.branch.basis_tree(), None)
     deletables = list(iter_deletables(
         local_tree, unknown=True, ignored=False, detritus=False))
@@ -492,7 +495,7 @@ def check_clean_tree(local_tree):
 def run_lintian_fixer(local_tree, fixer, committer=None,
                       update_changelog=None, compat_release=None,
                       minimum_certainty=None, trust_package=False,
-                      allow_reformatting=False):
+                      allow_reformatting=False, dirty_tracker=None):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -506,6 +509,8 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         about its changes.
       trust_package: Whether to run code from the package if necessary
       allow_reformatting: Whether to allow reformatting of changed files
+      dirty_tracker: Optional object that can be used to tell if the tree
+        has been changed.
     Returns:
       tuple with set of FixerResult, summary of the changes
     """
@@ -531,12 +536,19 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
             trust_package=trust_package,
             allow_reformatting=allow_reformatting)
     except BaseException:
-        reset_tree(local_tree)
+        reset_tree(local_tree, dirty_tracker)
         raise
     if not certainty_sufficient(result.certainty, minimum_certainty):
-        reset_tree(local_tree)
+        reset_tree(local_tree, dirty_tracker)
         raise NoChanges("Certainty of script's changes not high enough")
-    local_tree.smart_add([local_tree.basedir])
+    if dirty_tracker and not dirty_tracker.is_dirty():
+        raise NoChanges("Script didn't make any changes")
+    if dirty_tracker:
+        local_tree.add(
+            [local_tree.relpath(p)
+             for p in dirty_tracker.paths() if os.path.exists(p)])
+    else:
+        local_tree.smart_add([local_tree.basedir])
     if local_tree.supports_setting_file_ids():
         RenameMap.guess_renames(
             local_tree.basis_tree(), local_tree, dry_run=False)
@@ -608,18 +620,22 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
     failed_fixers = {}
     fixers = list(fixers)
     ret = []
+    from .dirty_tracker import DirtyTracker
+    dirty_tracker = DirtyTracker(local_tree)
     with ui.ui_factory.nested_progress_bar() as pb:
         for i, fixer in enumerate(fixers):
             pb.update('Running fixer %r on %s' % (fixer, local_tree.basedir),
                       i, len(fixers))
             start = time.time()
+            dirty_tracker.mark_clean()
             try:
                 result, summary = run_lintian_fixer(
                         local_tree, fixer, update_changelog=update_changelog,
                         committer=committer, compat_release=compat_release,
                         minimum_certainty=minimum_certainty,
                         trust_package=trust_package,
-                        allow_reformatting=allow_reformatting)
+                        allow_reformatting=allow_reformatting,
+                        dirty_tracker=dirty_tracker)
             except FixerFailed as e:
                 failed_fixers[fixer.name] = e
                 if verbose:

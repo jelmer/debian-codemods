@@ -1,0 +1,76 @@
+#!/usr/bin/python3
+# Copyright (C) 2019 Jelmer Vernooij
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+"""Track whether a particular directory structure is dirty."""
+
+import os
+from pyinotify import (
+    WatchManager,
+    IN_CLOSE_WRITE,
+    IN_Q_OVERFLOW,
+    IN_DELETE,
+    IN_MOVED_TO,
+    IN_MOVED_FROM,
+    IN_ATTRIB,
+    ProcessEvent,
+    Notifier,
+    )
+
+
+MASK = (
+    IN_CLOSE_WRITE | IN_DELETE | IN_Q_OVERFLOW | IN_MOVED_TO | IN_MOVED_FROM |
+    IN_ATTRIB)
+
+
+class _Process(ProcessEvent):
+
+    def my_init(self):
+        self.clean = True
+        self.paths = set()
+
+    def process_default(self, event):
+        path = os.path.join(event.path, event.name)
+        self.paths.add(path)
+        self.clean = False
+
+
+class DirtyTracker(object):
+
+    def __init__(self, tree):
+        self._wm = WatchManager()
+        self._process = _Process()
+        self._notifier = Notifier(self._wm, self._process)
+        self._notifier.coalesce_events(True)
+
+        def check_excluded(p):
+            return tree.is_control_filename(tree.relpath(p))
+        self._wdd = self._wm.add_watch(
+            tree.basedir, MASK, rec=True, auto_add=True,
+            exclude_filter=check_excluded)
+
+    def mark_clean(self):
+        self._process.clean = True
+        self._process.paths.clear()
+
+    def is_dirty(self):
+        if self._notifier.check_events(timeout=0):
+            self._notifier.read_events()
+        self._notifier.process_events()
+        return not self._process.clean
+
+    def paths(self):
+        return self._process.paths
