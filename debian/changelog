@@ -1,4 +1,4 @@
-lintian-brush (0.19) UNRELEASED; urgency=medium
+lintian-brush (0.19) unstable; urgency=medium
 
   * Run python fixers in-process, to avoid Python interpreter and module
     loading overhead. This provides a ~30% performance improvement for
@@ -13,7 +13,7 @@ lintian-brush (0.19) UNRELEASED; urgency=medium
     large repositories. Closes: #933777
   * Don't add both debhelper-compat and debhelper build-depends.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 11:47:54 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 20:22:35 +0000
 
 lintian-brush (0.18) unstable; urgency=medium
 
