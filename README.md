@@ -81,6 +81,7 @@ subset of the issues:
 * useless-autoreconf-build-depends
 * vcs-field-uses-insecure-uri
 * vcs-field-uses-not-recommended-uri-format
+* vcs-obsolete-in-debian-infrastructure
 * wrong-debian-qa-group-name
 * xc-package-type-in-debian-control
 * xs-testsuite-field-in-debian-control
