@@ -1,8 +1,8 @@
-lintian-brush (0.20) UNRELEASED; urgency=medium
+lintian-brush (0.20) unstable; urgency=medium
 
   * Fix lintian-brush when pyinotify is not installed.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 20:26:00 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 20:28:30 +0000
 
 lintian-brush (0.19) unstable; urgency=medium
 
