@@ -8,6 +8,9 @@ lintian-brush (0.19) UNRELEASED; urgency=medium
   * Add fixer for vcs-obsolete-in-debian-infrastructure.
   * Check that the tree is clean before running fixers, rather than
     before each fixer.
+  * Use inotify (where available) to track changes to the tree as all fixers
+    are processed. This significantly speeds up runs on
+    large repositories. Closes: #933777
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 11:47:54 +0000
 

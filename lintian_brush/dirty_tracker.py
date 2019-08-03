@@ -51,6 +51,7 @@ class _Process(ProcessEvent):
 class DirtyTracker(object):
 
     def __init__(self, tree):
+        self._tree = tree
         self._wm = WatchManager()
         self._process = _Process()
         self._notifier = Notifier(self._wm, self._process)
@@ -62,15 +63,24 @@ class DirtyTracker(object):
             tree.basedir, MASK, rec=True, auto_add=True,
             exclude_filter=check_excluded)
 
+    def _process_pending(self):
+        if self._notifier.check_events(timeout=0):
+            self._notifier.read_events()
+        self._notifier.process_events()
+
     def mark_clean(self):
+        self._process_pending()
         self._process.clean = True
         self._process.paths.clear()
 
     def is_dirty(self):
-        if self._notifier.check_events(timeout=0):
-            self._notifier.read_events()
-        self._notifier.process_events()
+        self._process_pending()
         return not self._process.clean
 
     def paths(self):
+        self._process_pending()
         return self._process.paths
+
+    def relpaths(self):
+        self._process_pending()
+        return set(self._tree.relpath(p) for p in self.paths())

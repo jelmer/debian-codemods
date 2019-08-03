@@ -110,6 +110,9 @@ def main(argv=None):
         '--allow-reformatting', default=False, action='store_true',
         help=argparse.SUPPRESS)
     parser.add_argument(
+        '--disable-inotify', action='store_true', default=False,
+        help=argparse.SUPPRESS)
+    parser.add_argument(
         'fixers', metavar='FIXER', nargs='*',
         help='specific fixer to run')
     args = parser.parse_args(argv)
@@ -169,7 +172,8 @@ def main(argv=None):
                     verbose=args.verbose,
                     minimum_certainty=args.minimum_certainty,
                     trust_package=args.trust,
-                    allow_reformatting=args.allow_reformatting)
+                    allow_reformatting=args.allow_reformatting,
+                    use_inotify=(False if args.disable_inotify else None))
             except NotDebianPackage:
                 note("%s: Not a debian package.", wt.basedir)
                 return 1

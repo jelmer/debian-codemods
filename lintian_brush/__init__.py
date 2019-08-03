@@ -545,8 +545,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         raise NoChanges("Script didn't make any changes")
     if dirty_tracker:
         local_tree.add(
-            [local_tree.relpath(p)
-             for p in dirty_tracker.paths() if os.path.exists(p)])
+            [p for p in dirty_tracker.relpaths() if os.path.exists(p)])
     else:
         local_tree.smart_add([local_tree.basedir])
     if local_tree.supports_setting_file_ids():
@@ -594,7 +593,8 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
 def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                        verbose=False, committer=None,
                        compat_release=None, minimum_certainty=None,
-                       trust_package=False, allow_reformatting=False):
+                       trust_package=False, allow_reformatting=False,
+                       use_inotify=None):
     """Run a set of lintian fixers on a tree.
 
     Args:
@@ -609,6 +609,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
         about its changes.
       trust_package: Whether to run code from the package if necessary
       allow_reformatting: Whether to allow reformatting of changed files
+      use_inotify: Use inotify to watch changes (significantly improves
+        performance). Defaults to None (automatic)
     Returns:
       Tuple with two lists:
         1. list of tuples with (lintian-tag, certainty, description) of fixers
@@ -620,8 +622,18 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
     failed_fixers = {}
     fixers = list(fixers)
     ret = []
-    from .dirty_tracker import DirtyTracker
-    dirty_tracker = DirtyTracker(local_tree)
+    if use_inotify is True:
+        from .dirty_tracker import DirtyTracker
+        dirty_tracker = DirtyTracker(local_tree)
+    elif use_inotify is False:
+        dirty_tracker = None
+    else:
+        try:
+            from .dirty_tracker import DirtyTracker
+        except ImportError:
+            dirty_tracker = None
+        else:
+            dirty_tracker = DirtyTracker(local_tree)
     with ui.ui_factory.nested_progress_bar() as pb:
         for i, fixer in enumerate(fixers):
             pb.update('Running fixer %r on %s' % (fixer, local_tree.basedir),
