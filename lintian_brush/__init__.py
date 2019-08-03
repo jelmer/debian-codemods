@@ -42,6 +42,8 @@ from breezy.transform import revert
 
 from debian.deb822 import Deb822
 
+from .reformatting import check_generated_file
+
 
 __version__ = (0, 18)
 version_string = '.'.join(map(str, __version__))
@@ -97,13 +99,6 @@ class NotDebianPackage(Exception):
 
     def __init__(self, tree):
         super(NotDebianPackage, self).__init__(tree.basedir)
-
-
-class GeneratedControlFile(Exception):
-    """The specified file is generated."""
-
-    def __init__(self, path):
-        self.path = path
 
 
 class PendingChanges(Exception):
@@ -526,8 +521,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
         2. dictionary mapping fixer names for fixers that failed to run to the
            error that occurred
     """
-    if local_tree.has_filename('debian/control.in'):
-        raise GeneratedControlFile('debian/control.in')
+    check_generated_file('debian/control')
     failed_fixers = {}
     fixers = list(fixers)
     ret = []

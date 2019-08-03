@@ -19,11 +19,14 @@
 
 from breezy.tests import (
     TestCase,
+    TestCaseWithTransport,
     )
 
 from lintian_brush.reformatting import (
     FormattingUnpreservable,
+    check_generated_file,
     check_preserve_formatting,
+    GeneratedControlFile,
     )
 
 
@@ -40,3 +43,15 @@ class CheckPreserveFormattingTests(TestCase):
     def test_reformatting_allowed(self):
         self.overrideEnv('REFORMATTING', 'allow')
         check_preserve_formatting("FOO  ", "FOO ", 'debian/blah')
+
+
+class GeneratedFileTests(TestCaseWithTransport):
+
+    def test_generated_control_file(self):
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/control.in', """\
+Source: blah
+""")])
+        self.assertRaises(
+            GeneratedControlFile, check_generated_file, 'debian/control')

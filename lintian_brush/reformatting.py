@@ -15,10 +15,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__all__ = ['check_preserve_formatting']
+__all__ = ['check_preserve_formatting', 'check_generated_file']
 
 
 import os
+
+
+class GeneratedControlFile(Exception):
+    """The specified file is generated."""
+
+    def __init__(self, path):
+        self.path = path
 
 
 class FormattingUnpreservable(Exception):
@@ -43,3 +50,13 @@ def check_preserve_formatting(rewritten_text, text, path):
     if os.environ.get('REFORMATTING', 'disallow') == 'allow':
         return
     raise FormattingUnpreservable(path)
+
+
+def check_generated_file(path):
+    """Check if a file is generated from another file.
+
+    Args:
+      path: Path to the file to check
+    """
+    if os.path.exists(path + '.in'):
+        raise GeneratedControlFile(path)

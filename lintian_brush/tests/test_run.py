@@ -35,7 +35,6 @@ from lintian_brush import (
     Fixer,
     FixerFailed,
     FixerResult,
-    GeneratedControlFile,
     NoChanges,
     NotDebianPackage,
     PendingChanges,
@@ -48,6 +47,8 @@ from lintian_brush import (
     run_lintian_fixers,
     version_string,
     )
+from lintian_brush.reformatting import GeneratedControlFile
+
 
 CHANGELOG_FILE = ('debian/changelog', """\
 blah (0.1) UNRELEASED; urgency=medium
