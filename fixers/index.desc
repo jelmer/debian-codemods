@@ -82,7 +82,7 @@ Lintian-Tags: homepage-field-uses-insecure-uri
 Fix-Script: maintainer-script-without-set-e.py
 Lintian-Tags: maintainer-script-without-set-e
 
-Fix-Script: malformed-dm-upload-allowed.sh
+Fix-Script: malformed-dm-upload-allowed.py
 Lintian-Tags: malformed-dm-upload-allowed
 
 Fix-Script: missing-debian-source-format.py
