@@ -19,6 +19,7 @@
 
 __all__ = ['guess_repository_url', 'determine_browser_url']
 
+import re
 from urllib.parse import urlparse
 
 
@@ -63,3 +64,27 @@ def determine_browser_url(url):
     # TODO(jelmer): Add support for branches
     assert parsed_url.netloc == 'salsa.debian.org'
     return 'https://salsa.debian.org%s' % parsed_url.path.rstrip('.git')
+
+
+def salsa_url_from_alioth_url(vcs_type, alioth_url):
+    """Guess the salsa URL from an alioth URL.
+
+    Args:
+      vcs_type: VCS type
+      alioth_url: Alioth URL
+    Returns:
+      Salsa URL
+    """
+    # These two regular expressions come from vcswatch:
+    # https://salsa.debian.org/qa/qa/blob/master/data/vcswatch/vcswatch#L165
+    if vcs_type.lower() == 'git':
+        m = "(https?|git)://(anonscm|git).debian.org/(git/)?"
+        if re.match(m, alioth_url):
+            return re.sub(m, 'https://salsa.debian.org/', alioth_url)
+
+    if vcs_type.lower() == 'svn':
+        return alioth_url.replace(
+            'svn://svn.debian.org/pkg-perl/trunk',
+            'https://salsa.debian.org/perl-team/modules/packages')
+
+    return None

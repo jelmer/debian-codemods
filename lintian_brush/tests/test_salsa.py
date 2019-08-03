@@ -23,6 +23,7 @@ from breezy.tests import (
 from lintian_brush.salsa import (
     guess_repository_url,
     determine_browser_url,
+    salsa_url_from_alioth_url,
     )
 
 
@@ -57,3 +58,31 @@ class DetermineBrowserUrlTests(TestCase):
             'https://salsa.debian.org/js-team/node-blah',
             determine_browser_url(
                 'https://salsa.debian.org/js-team/node-blah'))
+
+
+class SalsaUrlFromAliothUrlTests(TestCase):
+
+    def test_mismatch(self):
+        self.assertIs(
+            None, salsa_url_from_alioth_url(
+                'bzr', 'https://code.launchpad.net/blah'))
+
+    def test_perl(self):
+        self.assertEqual(
+            'https://salsa.debian.org/perl-team/modules/packages/libbla',
+            salsa_url_from_alioth_url(
+                'svn', 'svn://svn.debian.org/pkg-perl/trunk/libbla'))
+
+    def test_git(self):
+        self.assertEqual(
+            'https://salsa.debian.org/python-team/modules/python-bla',
+            salsa_url_from_alioth_url(
+                'git',
+                'http://anonscm.debian.org/git/python-team/modules/python-bla')
+            )
+        self.assertEqual(
+            'https://salsa.debian.org/python-team/modules/python-bla',
+            salsa_url_from_alioth_url(
+                'git',
+                'http://anonscm.debian.org/python-team/modules/python-bla')
+            )
