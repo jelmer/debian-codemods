@@ -305,11 +305,10 @@ def read_desc_file(path):
                         for tag in paragraph['Lintian-Tags'].split(',')]
             else:
                 tags = []
-            # TODO(jelmer): Switch to using the PythonScriptFixer for python
-            #               scripts?
-            # if script_path.endswith('.py'):
-            #    yield PythonScriptFixer(name, tags, script_path)
-            yield ScriptFixer(name, tags, script_path)
+            if script_path.endswith('.py'):
+                yield PythonScriptFixer(name, tags, script_path)
+            else:
+                yield ScriptFixer(name, tags, script_path)
 
 
 def available_lintian_fixers(fixers_dir=None):
