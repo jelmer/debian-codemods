@@ -1,11 +1,12 @@
 #!/usr/bin/python3
+from lintian_brush import USER_AGENT
 from lintian_brush.control import (
     update_control,
     )
 import sys
 import urllib.error
 import urllib.parse
-import urllib.request
+from urllib.request import urlopen, Request
 
 known_https = [
     'github.com', 'launchpad.net', 'pypi.python.org',
@@ -30,9 +31,10 @@ def fix_homepage(http_url):
     if result.netloc in known_https:
         return https_url
     # Fall back to just comparing the two
-    http_contents = urllib.request.urlopen(http_url).read()
+    headers = {'User-Agent': USER_AGENT}
+    http_contents = urlopen(Request(http_url, headers=headers)).read()
     try:
-        https_contents = urllib.request.urlopen(https_url).read()
+        https_contents = urlopen(Request(https_url, headers=headers)).read()
     except urllib.error.URLError as e:
         sys.stderr.write(
             'Unable to access HTTPS version of homepage %s: %s' %
