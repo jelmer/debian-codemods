@@ -544,16 +544,29 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     if dirty_tracker and not dirty_tracker.is_dirty():
         raise NoChanges("Script didn't make any changes")
     if dirty_tracker:
+        relpaths = dirty_tracker.relpaths()
         local_tree.add(
-            [p for p in dirty_tracker.relpaths() if os.path.exists(p)])
+            [p for p in relpaths
+             if local_tree.has_filename(p)])
+        specific_files = [
+            p for p in relpaths
+            if local_tree.is_versioned(p)]
     else:
         local_tree.smart_add([local_tree.basedir])
+        specific_files = None
+
+    basis_tree = local_tree.basis_tree()
     if local_tree.supports_setting_file_ids():
         RenameMap.guess_renames(
-            local_tree.basis_tree(), local_tree, dry_run=False)
+            basis_tree, local_tree, dry_run=False)
 
-    if not local_tree.has_changes():
-        raise NoChanges("Script didn't make any changes")
+    if len(local_tree.get_parent_ids()) <= 1:
+        changes = local_tree.iter_changes(
+            basis_tree, specific_files=specific_files)
+        try:
+            next(changes)
+        except StopIteration:
+            raise NoChanges("Script didn't make any changes")
 
     if not result.description:
         raise DescriptionMissing()
@@ -571,6 +584,8 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     if update_changelog:
         subprocess.check_call(
             ["dch", "--no-auto-nmu", summary], cwd=local_tree.basedir)
+        if specific_files:
+            specific_files.append('debian/changelog')
 
     description = result.description
     for tag in result.fixed_lintian_tags:
@@ -585,7 +600,8 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
 
     local_tree.commit(description, allow_pointless=False,
                       reporter=NullCommitReporter(),
-                      committer=committer)
+                      committer=committer,
+                      specific_files=specific_files)
     # TODO(jelmer): Run sbuild & verify lintian warning is gone?
     return result, summary
 
