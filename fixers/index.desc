@@ -40,7 +40,7 @@ Lintian-Tags: debian-pycompat-is-obsolete
 Fix-Script: debian-pyversions-is-obsolete.py
 Lintian-Tags: debian-pyversions-is-obsolete
 
-Fix-Script: debian-rules-should-not-use-pwd.sh
+Fix-Script: debian-rules-should-not-use-pwd.py
 Lintian-Tags: debian-rules-should-not-use-pwd
 
 Fix-Script: debian-source-options-has-custom-compression-settings.py
