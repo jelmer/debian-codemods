@@ -19,6 +19,7 @@
 
 from debian.changelog import Changelog
 import errno
+import io
 import os
 import re
 import shutil
@@ -26,6 +27,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import traceback
 import warnings
 
 from breezy import ui
@@ -157,6 +159,85 @@ class Fixer(object):
         raise NotImplementedError(self.run)
 
 
+def parse_script_fixer_output(text):
+    """Parse the output from a script fixer."""
+    lines = []
+    fixed_tags = []
+    certainty = None
+    for line in text.splitlines():
+        # TODO(jelmer): Do this in a slighly less hackish manner
+        try:
+            (key, value) = line.split(':', 1)
+        except ValueError:
+            lines.append(line)
+        else:
+            if key == 'Fixed-Lintian-Tags':
+                fixed_tags = value.strip().split(',')
+            elif key == 'Certainty':
+                certainty = value.strip()
+            else:
+                lines.append(line)
+    if certainty not in SUPPORTED_CERTAINTIES:
+        raise UnsupportedCertainty(certainty)
+    return FixerResult('\n'.join(lines), fixed_tags, certainty)
+
+
+class PythonScriptFixer(Fixer):
+    """A fixer that is implemented as a python script.
+
+    This gets used just for Python scripts, and significantly speeds
+    things up because it prevents starting a new Python interpreter
+    for every fixer.
+    """
+
+    def __init__(self, name, lintian_tags, script_path):
+        super(PythonScriptFixer, self).__init__(name, lintian_tags)
+        self.script_path = script_path
+
+    def __repr__(self):
+        return "<%s(%r)>" % (self.__class__.__name__, self.name)
+
+    def run(self, basedir, current_version, compat_release,
+            minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
+            trust_package=False, allow_reformatting=False):
+        env = dict(os.environ.items())
+        env['CURRENT_VERSION'] = str(current_version)
+        env['COMPAT_RELEASE'] = compat_release
+        env['MINIMUM_CERTAINTY'] = minimum_certainty
+        env['TRUST_PACKAGE'] = 'true' if trust_package else 'false'
+        env['REFORMATTING'] = ('allow' if allow_reformatting else 'disallow')
+        try:
+            old_env = os.environ
+            old_stderr = sys.stderr
+            old_stdout = sys.stdout
+            sys.stderr = io.StringIO()
+            sys.stdout = io.StringIO()
+            os.environ = env
+            try:
+                with open(self.script_path, 'r') as f:
+                    exec(f.read(), {})
+            except SystemExit as e:
+                retcode = e.code
+            except BaseException as e:
+                raise FixerScriptFailed(
+                    self.script_path, 1, traceback.format_tb(e.__traceback__))
+            else:
+                retcode = 0
+            description = sys.stdout.getvalue()
+            err = sys.stderr.getvalue()
+        finally:
+            os.environ = old_env
+            sys.stderr = old_stderr
+            sys.stdout = old_stdout
+
+        if retcode == 2:
+            raise NoChanges()
+        if retcode != 0:
+            raise FixerScriptFailed(self.script_path, retcode, err)
+
+        return parse_script_fixer_output(description)
+
+
 class ScriptFixer(Fixer):
     """A fixer that is implemented as a shell/python/etc script."""
 
@@ -188,26 +269,7 @@ class ScriptFixer(Fixer):
                 raise FixerScriptFailed(
                         self.script_path, p.returncode,
                         stderr.read())
-        description = description.decode('utf-8')
-        lines = []
-        fixed_tags = []
-        certainty = None
-        for line in description.splitlines():
-            # TODO(jelmer): Do this in a slighly less hackish manner
-            try:
-                (key, value) = line.split(':', 1)
-            except ValueError:
-                lines.append(line)
-            else:
-                if key == 'Fixed-Lintian-Tags':
-                    fixed_tags = value.strip().split(',')
-                elif key == 'Certainty':
-                    certainty = value.strip()
-                else:
-                    lines.append(line)
-        if certainty not in SUPPORTED_CERTAINTIES:
-            raise UnsupportedCertainty(certainty)
-        return FixerResult('\n'.join(lines), fixed_tags, certainty)
+        return parse_script_fixer_output(description.decode('utf-8'))
 
 
 def find_fixers_dir():
@@ -243,6 +305,10 @@ def read_desc_file(path):
                         for tag in paragraph['Lintian-Tags'].split(',')]
             else:
                 tags = []
+            # TODO(jelmer): Switch to using the PythonScriptFixer for python
+            #               scripts?
+            # if script_path.endswith('.py'):
+            #    yield PythonScriptFixer(name, tags, script_path)
             yield ScriptFixer(name, tags, script_path)
 
 

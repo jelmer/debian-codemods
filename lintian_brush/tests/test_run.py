@@ -38,11 +38,13 @@ from lintian_brush import (
     NoChanges,
     NotDebianPackage,
     PendingChanges,
+    UnsupportedCertainty,
     available_lintian_fixers,
     certainty_sufficient,
     get_committer,
     increment_version,
     only_changes_last_changelog_block,
+    parse_script_fixer_output,
     run_lintian_fixer,
     run_lintian_fixers,
     version_string,
@@ -674,3 +676,32 @@ class CertaintySufficientTests(TestCase):
 
     def test_insufficient(self):
         self.assertFalse(certainty_sufficient('possible', 'certain'))
+
+
+class ParseScriptFixerOutputTests(TestCase):
+
+    def test_simple(self):
+        self.assertEqual(
+            FixerResult('Do bla', ['tag-a'], 'certain'),
+            parse_script_fixer_output("""\
+Do bla
+Fixed-Lintian-Tags: tag-a
+Certainty: certain
+"""))
+
+    def test_unknown_certainty(self):
+        self.assertRaises(
+            UnsupportedCertainty,
+            parse_script_fixer_output, """\
+Do bla
+Fixed-Lintian-Tags: tag-a
+Certainty: blah
+""")
+
+    def test_default_certainty(self):
+        self.assertEqual(
+            FixerResult('Do bla', ['tag-a'], None),
+            parse_script_fixer_output("""\
+Do bla
+Fixed-Lintian-Tags: tag-a
+"""))
