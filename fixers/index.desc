@@ -66,9 +66,6 @@ Lintian-Tags: dh-clean-k-is-deprecated
 Fix-Script: dh-quilt-addon-but-quilt-source-format.py
 Lintian-Tags: dh-quilt-addon-but-quilt-source-format
 
-Fix-Script: dm-upload-allowed-is-obsolete.sh
-Lintian-Tags: dm-upload-allowed-is-obsolete
-
 Fix-Script: empty-debian-source-options.py
 
 Fix-Script: empty-debian-patches-series.py
@@ -82,8 +79,10 @@ Lintian-Tags: homepage-field-uses-insecure-uri
 Fix-Script: maintainer-script-without-set-e.py
 Lintian-Tags: maintainer-script-without-set-e
 
-Fix-Script: malformed-dm-upload-allowed.py
-Lintian-Tags: malformed-dm-upload-allowed
+Fix-Script: dm-upload-allowed.py
+Lintian-Tags:
+  malformed-dm-upload-allowed,
+  dm-upload-allowed-is-obsolete
 
 Fix-Script: missing-debian-source-format.py
 Lintian-Tags: missing-debian-source-format
