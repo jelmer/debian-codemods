@@ -80,7 +80,7 @@ class FixerScriptFailed(FixerFailed):
     def __str__(self):
         return ("Script %s failed with exit code: %d\n%s\n" % (
                 self.path, self.returncode,
-                self.errors.decode(errors='replace')))
+                self.errors))
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -216,12 +216,16 @@ class PythonScriptFixer(Fixer):
             os.environ = env
             try:
                 with open(self.script_path, 'r') as f:
-                    exec(f.read(), {})
+                    code = compile(f.read(), self.script_path, 'exec')
+                    exec(code, {})
             except SystemExit as e:
                 retcode = e.code
             except BaseException as e:
+                traceback.print_exception(
+                    type(e), e, e.__traceback__, file=sys.stderr)
                 raise FixerScriptFailed(
-                    self.script_path, 1, traceback.format_tb(e.__traceback__))
+                    self.script_path, 1,
+                    sys.stderr.getvalue())
             else:
                 retcode = 0
             description = sys.stdout.getvalue()
@@ -269,7 +273,7 @@ class ScriptFixer(Fixer):
                 stderr.seek(0)
                 raise FixerScriptFailed(
                         self.script_path, p.returncode,
-                        stderr.read())
+                        stderr.read().decode('utf-8', 'replace'))
         return parse_script_fixer_output(description.decode('utf-8'))
 
 

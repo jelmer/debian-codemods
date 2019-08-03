@@ -19,6 +19,7 @@
 
 import os
 import re
+import sys
 
 from debian.changelog import (
     Changelog,
@@ -35,9 +36,12 @@ from lintian_brush import (
     Fixer,
     FixerFailed,
     FixerResult,
+    FixerScriptFailed,
     NoChanges,
     NotDebianPackage,
     PendingChanges,
+    PythonScriptFixer,
+    ScriptFixer,
     UnsupportedCertainty,
     available_lintian_fixers,
     certainty_sufficient,
@@ -705,3 +709,47 @@ Certainty: blah
 Do bla
 Fixed-Lintian-Tags: tag-a
 """))
+
+
+class BaseScriptFixerTests(object):
+
+    script_fixer_cls = None
+
+    def create_fixer(self, code):
+        self.build_tree_contents([
+            ('script.py',
+             "#!" + sys.executable + "\n" + code)])
+        os.chmod('script.py', 0o755)
+        fixer = self.script_fixer_cls(
+            'fixer', ['a-tag'], os.path.abspath('script.py'))
+        self.assertEqual(os.path.abspath('script.py'), fixer.script_path)
+        return fixer
+
+    def test_noop(self):
+        fixer = self.create_fixer("print('I did not do anything')\n")
+        result = fixer.run(self.test_dir, '0.1', 'buster')
+        self.assertIsInstance(result, FixerResult)
+
+    def test_exception(self):
+        fixer = self.create_fixer("""\
+def foo():
+    raise Exception('oops')
+foo()
+""")
+        e = self.assertRaises(
+            FixerScriptFailed, fixer.run, self.test_dir, '0.1', 'buster')
+        self.assertEqual(e.path, fixer.script_path)
+        self.assertEqual(e.returncode, 1)
+        self.assertEqual(
+            e.errors.splitlines()[-2:],
+            ["    raise Exception('oops')", 'Exception: oops'])
+
+
+class ScriptFixerTests(BaseScriptFixerTests, TestCaseWithTransport):
+
+    script_fixer_cls = ScriptFixer
+
+
+class PythonScriptFixerTests(BaseScriptFixerTests, TestCaseWithTransport):
+
+    script_fixer_cls = PythonScriptFixer
