@@ -80,3 +80,19 @@ class DirtyTrackerTests(TestCaseWithTransport):
         os.rename('tree/foo', 'tree/bar')
         self.assertTrue(self.tracker.is_dirty())
         self.assertEqual(self.tracker.relpaths(), set(['foo', 'bar']))
+
+    def test_deleted(self):
+        self.build_tree_contents([('tree/foo', 'bar')])
+        self.tracker.mark_clean()
+        self.assertFalse(self.tracker.is_dirty())
+        os.unlink('tree/foo')
+        self.assertTrue(self.tracker.is_dirty(), self.tracker._process.paths)
+        self.assertEqual(self.tracker.relpaths(), set(['foo']))
+
+    def test_added_then_deleted(self):
+        self.tracker.mark_clean()
+        self.assertFalse(self.tracker.is_dirty())
+        self.build_tree_contents([('tree/foo', 'bar')])
+        os.unlink('tree/foo')
+        self.assertFalse(self.tracker.is_dirty())
+        self.assertEqual(self.tracker.relpaths(), set([]))

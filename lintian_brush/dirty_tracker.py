@@ -20,6 +20,7 @@
 import os
 from pyinotify import (
     WatchManager,
+    IN_CREATE,
     IN_CLOSE_WRITE,
     IN_Q_OVERFLOW,
     IN_DELETE,
@@ -39,13 +40,17 @@ MASK = (
 class _Process(ProcessEvent):
 
     def my_init(self):
-        self.clean = True
         self.paths = set()
+        self.created = set()
 
     def process_default(self, event):
         path = os.path.join(event.path, event.name)
+        if event.mask & IN_CREATE:
+            self.created.add(path)
         self.paths.add(path)
-        self.clean = False
+        if event.mask & IN_DELETE and path in self.created:
+            self.paths.remove(path)
+            self.created.remove(path)
 
 
 class DirtyTracker(object):
@@ -70,17 +75,16 @@ class DirtyTracker(object):
 
     def mark_clean(self):
         self._process_pending()
-        self._process.clean = True
         self._process.paths.clear()
+        self._process.created.clear()
 
     def is_dirty(self):
         self._process_pending()
-        return not self._process.clean
+        return bool(self._process.paths)
 
     def paths(self):
         self._process_pending()
         return self._process.paths
 
     def relpaths(self):
-        self._process_pending()
         return set(self._tree.relpath(p) for p in self.paths())
