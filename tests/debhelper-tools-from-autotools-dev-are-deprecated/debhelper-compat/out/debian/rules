@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+
+configure-stamp:
+	./configure
+	touch $@
+
+dh:
+	dh $*
+
+clean:
+	dh_blah
+	dh_clean
