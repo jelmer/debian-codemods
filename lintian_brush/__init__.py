@@ -509,7 +509,6 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     Returns:
       tuple with set of FixerResult, summary of the changes
     """
-    check_clean_tree(local_tree)
     try:
         with local_tree.get_file('debian/changelog') as f:
             cl = Changelog(f, max_blocks=1)
