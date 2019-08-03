@@ -26,6 +26,7 @@ def test_suite():
         'reformatting',
         'rules',
         'run',
+        'salsa',
         'systemd',
         ]
     module_names = [__name__ + '.test_' + name for name in names]
