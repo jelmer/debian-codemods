@@ -1,3 +1,9 @@
+lintian-brush (0.21) UNRELEASED; urgency=medium
+
+  * Use vcswatch-like regex to find salsa.debian.org.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 22:50:11 +0000
+
 lintian-brush (0.20) unstable; urgency=medium
 
   * Fix lintian-brush when pyinotify is not installed.

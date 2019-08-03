@@ -6,6 +6,7 @@ from lintian_brush.control import update_control
 from lintian_brush.salsa import (
     determine_browser_url,
     guess_repository_url,
+    salsa_url_from_alioth_url,
     )
 from email.utils import parseaddr
 from urllib.parse import urlparse
@@ -23,23 +24,20 @@ def is_on_obsolete_host(url):
     return host in OBSOLETE_HOSTS
 
 
-def is_on_obsolete_infra(control):
+def get_vcs_info(control):
     if "Vcs-Git" in control:
-        return is_on_obsolete_host(control["Vcs-Git"].split(' ')[0])
+        return ("git", control["Vcs-Git"].split(' ')[0])
 
     if "Vcs-Bzr" in control:
-        vcs_bzr = control["Vcs-Bzr"]
-        return is_on_obsolete_infra(vcs_bzr)
+        return ("bzr", control["Vcs-Bzr"])
 
     if "Vcs-Svn" in control:
-        vcs_svn = control["Vcs-Svn"]
-        return is_on_obsolete_infra(vcs_svn)
+        return ("svn", control["Vcs-Svn"])
 
     if "Vcs-Hg" in control:
-        vcs_hg = control["Vcs-Hg"]
-        return is_on_obsolete_infra(vcs_hg)
+        return ("hg", control["Vcs-Hg"])
 
-    return False
+    return None, None
 
 
 def verify_salsa_repository(url):
@@ -50,14 +48,15 @@ def verify_salsa_repository(url):
 
 
 def migrate_from_obsolete_infra(control):
-    if not is_on_obsolete_infra(control):
+    vcs_type, vcs_url = get_vcs_info(control)
+    if not is_on_obsolete_host(vcs_url):
         return
 
     package = control["Source"]
     maintainer_email = parseaddr(control["Maintainer"])[1]
     salsa_url = guess_repository_url(package, maintainer_email)
     if salsa_url is None:
-        return
+        salsa_url = salsa_url_from_alioth_url(vcs_type, vcs_url)
 
     # Verify that there is actually a repository there
     if os.environ.get('SALSA_PROBE', 'enabled') == 'ensabled':
