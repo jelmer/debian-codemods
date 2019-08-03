@@ -5,6 +5,7 @@ lintian-brush (0.19) UNRELEASED; urgency=medium
     some packages.
   * Add fixer for debhelper-tools-from-autotools-dev-are-deprecated.
   * Set User-Agent when sending HTTP requests.
+  * Add fixer for vcs-obsolete-in-debian-infrastructure.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 11:47:54 +0000
 

@@ -17,8 +17,7 @@
 
 """Utility functions for dealing with control files."""
 
-
-__all__ = ['guess_repository_url']
+__all__ = ['guess_repository_url', 'determine_browser_url']
 
 from urllib.parse import urlparse
 
@@ -27,6 +26,8 @@ MAINTAINER_EMAIL_MAP = {
     'pkg-javascript-devel@lists.alioth.debian.org': 'js-team',
     'python-modules-team@lists.alioth.debian.org': 'python-team/modules',
     'debian-science-maintainers@lists.alioth.debian.org': 'science-team',
+    'pkg-perl-maintainers@lists.alioth.debian.org':
+        'perl-team/modules/packages',
     }
 
 
@@ -47,16 +48,16 @@ def guess_repository_url(package, maintainer_email):
         except KeyError:
             return None
 
-    return 'https://salsa.debian.org/%s/%s' % (team_name, package)
+    return 'https://salsa.debian.org/%s/%s.git' % (team_name, package)
 
 
-def determine_browse_url(url):
-    """Determine the browse URL from a regular Git URL.
+def determine_browser_url(url):
+    """Determine the browser URL from a regular Git URL.
 
     Args:
       url: Regular URL
     Returns:
-      a browse URL
+      a browser URL
     """
     parsed_url = urlparse(url)
     # TODO(jelmer): Add support for branches

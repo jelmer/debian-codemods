@@ -22,7 +22,7 @@ from breezy.tests import (
     )
 from lintian_brush.salsa import (
     guess_repository_url,
-    determine_browse_url,
+    determine_browser_url,
     )
 
 
@@ -36,23 +36,24 @@ class GuessRepositoryURLTests(TestCase):
 
     def test_individual(self):
         self.assertEqual(
-            'https://salsa.debian.org/jelmer/lintian-brush',
+            'https://salsa.debian.org/jelmer/lintian-brush.git',
             guess_repository_url('lintian-brush', 'jelmer@debian.org'))
 
     def test_team(self):
         self.assertEqual(
-            'https://salsa.debian.org/js-team/node-blah',
+            'https://salsa.debian.org/js-team/node-blah.git',
             guess_repository_url(
                 'node-blah', 'pkg-javascript-devel@lists.alioth.debian.org'))
 
 
-class DetermineBrowseUrlTests(TestCase):
+class DetermineBrowserUrlTests(TestCase):
 
-    def test_browse_url(self):
+    def test_browser_url(self):
         self.assertEqual(
             'https://salsa.debian.org/js-team/node-blah',
-            determine_browse_url(
+            determine_browser_url(
                 'https://salsa.debian.org/js-team/node-blah.git'))
         self.assertEqual(
             'https://salsa.debian.org/js-team/node-blah',
-            determine_browse_url('https://salsa.debian.org/js-team/node-blah'))
+            determine_browser_url(
+                'https://salsa.debian.org/js-team/node-blah'))

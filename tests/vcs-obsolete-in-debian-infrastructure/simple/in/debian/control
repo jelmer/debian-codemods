@@ -1,0 +1,8 @@
+Source: lintian-brush
+Maintainer: Jelmer Vernooij <jelmer@debian.org>
+Vcs-Git: git://git.debian.org/jelmer/lintian-brush
+Vcs-Browser: https://alioth.debian.org/git/jelmer/lintian-brush
+
+Package: lintian-brush
+Description: Testing
+ Test test

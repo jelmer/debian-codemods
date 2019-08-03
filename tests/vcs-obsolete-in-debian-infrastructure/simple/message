@@ -1,0 +1,2 @@
+Update Vcs-* headers to use salsa repository.
+Fixed-Lintian-Tags: vcs-obsolete-in-debian-infrastructure
