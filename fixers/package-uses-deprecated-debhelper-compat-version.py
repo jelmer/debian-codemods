@@ -118,20 +118,41 @@ else:
 # https://manpages.debian.org/testing/debhelper/debhelper.7.en.html#Supported_compatibility_levels
 
 
+subitems = set()
+
+
+def update_line(line, orig, new, description):
+    newline = line.replace(orig, new)
+    if newline != line:
+        subitems.add(description)
+    return newline
+
+
 def upgrade_to_debhelper_12():
 
     def cb(line):
-        if line.strip() == b'dh_clean -k':
-            return b'dh_prep'
-        line = line.replace(
-            b'--buildsystem=python_distutils', b'--buildsystem=pybuild')
+        line = update_line(
+            line, b'dh_clean -k', b'dh_prep',
+            'debian/rules: Replace dh_clean -k with dh_prep.')
+        line = update_line(
+            line, b'--buildsystem=python_distutils', b'--buildsystem=pybuild',
+            'Replace python_distutils buildsystem with pybuild.')
         if line.startswith(b'dh_install ') and b'--list-missing' in line:
             line = dh_invoke_drop_argument(line, b'--list-missing')
+            subitems.add(
+                'debian/rules: Call dh_missing rather than using dh_install '
+                '--list-missing.')
         if line.startswith(b'dh_install ') and b'--fail-missing' in line:
             line = dh_invoke_drop_argument(line, b'--fail-missing')
+            subitems.add(
+                'debian/rules: Call dh_missing rather than using dh_install '
+                '--list-missing.')
             return [line, b'dh_missing --fail-missing']
-        if line.startswith(b'dh_systemd_enable '):
-            return line.replace(b'dh_systemd_enable ', b'dh_installsystemd ')
+        if line.startswith(b'dh_systemd_enable'):
+            line = update_line(
+                line, b'dh_systemd_enable', b'dh_installsystemd',
+                'Use dh_installsystemd rather than deprecated '
+                'dh_systemd_enable.')
         return line
 
     update_rules(cb)
@@ -168,6 +189,8 @@ if new_debhelper_compat_version > current_debhelper_compat_version:
         tag = "package-uses-old-debhelper-compat-version"
     print("Bump debhelper from %s %s to %s." % (
         kind, current_debhelper_compat_version, new_debhelper_compat_version))
+    for subitem in sorted(subitems):
+        print("+ " + subitem)
     print("Fixed-Lintian-Tags: %s" % tag)
 else:
     print("Set debhelper-compat version in Build-Depends.")
