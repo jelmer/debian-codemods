@@ -29,6 +29,7 @@ subset of the issues:
 * control-file-with-CRLF-EOLs
 * copyright-has-crs
 * debhelper-but-no-misc-depends
+* debhelper-tools-from-autotools-dev-are-deprecated
 * debian-changelog-file-contains-obsolete-user-emacs-settings
 * debian-control-has-empty-field
 * debian-control-has-obsolete-dbg-package
