@@ -656,7 +656,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
             pb.update('Running fixer %r on %s' % (fixer, local_tree.basedir),
                       i, len(fixers))
             start = time.time()
-            dirty_tracker.mark_clean()
+            if dirty_tracker:
+                dirty_tracker.mark_clean()
             try:
                 result, summary = run_lintian_fixer(
                         local_tree, fixer, update_changelog=update_changelog,
