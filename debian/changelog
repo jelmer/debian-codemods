@@ -11,6 +11,7 @@ lintian-brush (0.19) UNRELEASED; urgency=medium
   * Use inotify (where available) to track changes to the tree as all fixers
     are processed. This significantly speeds up runs on
     large repositories. Closes: #933777
+  * Don't add both debhelper-compat and debhelper build-depends.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 11:47:54 +0000
 

@@ -1,10 +1,9 @@
 #!/usr/bin/python3
-from debian.changelog import Version
 import sys
 
 from lintian_brush.control import (
     drop_dependency,
-    ensure_minimum_version,
+    ensure_minimum_debhelper_version,
     update_control,
     )
 from lintian_brush.rules import (
@@ -14,9 +13,8 @@ from lintian_brush.rules import (
 
 
 def bump_debhelper(control):
-    control["Build-Depends"] = ensure_minimum_version(
-        control["Build-Depends"],
-        "debhelper", Version("10"))
+    control["Build-Depends"] = ensure_minimum_debhelper_version(
+        control["Build-Depends"], "10")
     control["Build-Depends"] = drop_dependency(
         control["Build-Depends"],
         "dh-autoreconf")

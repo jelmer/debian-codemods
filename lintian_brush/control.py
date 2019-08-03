@@ -353,3 +353,31 @@ def drop_dependency(relationstr, package):
         return format_relations(ret)
     # Just return the original; we don't preserve all formatting yet.
     return relationstr
+
+
+def ensure_minimum_debhelper_version(build_depends, minimum_version):
+    """Ensure that the pakcage is at least using version x of debhelper.
+
+    This is a dedicated helper, since debhelper can now also be pulled in
+    with a debhelper-compat dependency.
+
+    Args:
+      build_depends: Build depends relation
+      version: The minimum version
+    """
+    minimum_version = Version(minimum_version)
+    try:
+        debhelper_compat = get_relation(
+            build_depends, "debhelper-compat")
+    except KeyError:
+        pass
+    else:
+        if len(debhelper_compat) > 1:
+            raise Exception("Complex rule for debhelper-compat, aborting")
+        if debhelper_compat[0].version[0] != '=':
+            raise Exception("Complex rule for debhelper-compat, aborting")
+        if Version(debhelper_compat[0].version[1]) >= minimum_version:
+            return build_depends
+    return ensure_minimum_version(
+            build_depends,
+            "debhelper", minimum_version)

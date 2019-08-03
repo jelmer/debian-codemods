@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 
-from debian.changelog import Version
 from lintian_brush.control import (
-    ensure_minimum_version,
+    ensure_minimum_debhelper_version,
     update_control,
     )
 from lintian_brush.rules import (
@@ -19,10 +18,9 @@ def cb(line):
     return dh_invoke_drop_with(line, b'autotools-dev')
 
 
-def bump_debhelper(control):
-    control["Build-Depends"] = ensure_minimum_version(
-        control["Build-Depends"],
-        "debhelper", Version("9.20160114"))
+def bump_debhelper(source):
+    source["Build-Depends"] = ensure_minimum_debhelper_version(
+        source["Build-Depends"], "9.20160114")
 
 
 update_rules(cb)

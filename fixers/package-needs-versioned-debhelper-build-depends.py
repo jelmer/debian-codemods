@@ -3,11 +3,18 @@
 import sys
 from lintian_brush.control import (
     ensure_minimum_version,
+    get_relation,
     update_control,
     )
 
 
 def bump_debhelper(control):
+    try:
+        get_relation(control["Build-Depends"], "debhelper-compat")
+    except KeyError:
+        pass
+    else:
+        return
     control["Build-Depends"] = ensure_minimum_version(
             control["Build-Depends"],
             "debhelper",
