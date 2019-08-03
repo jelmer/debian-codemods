@@ -125,6 +125,8 @@ def upgrade_to_debhelper_12():
         if line.startswith(b'dh_install ') and b'--fail-missing' in line:
             line = dh_invoke_drop_argument(line, b'--fail-missing')
             return [line, b'dh_missing --fail-missing']
+        if line.startswith(b'dh_systemd_enable '):
+            return line.replace(b'dh_systemd_enable ', b'dh_installsystemd ')
         return line
 
     update_rules(cb)
