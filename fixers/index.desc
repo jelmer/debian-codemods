@@ -4,7 +4,7 @@
 # Note that the order of this file is significant. Fixers mentioned earlier in
 # this file will always be run before later fixers.
 
-Fix-Script: ancient-python-version-field.sh
+Fix-Script: ancient-python-version-field.py
 Lintian-Tags: ancient-python-version-field
 
 Fix-Script: build-depends-on-build-essential.py
