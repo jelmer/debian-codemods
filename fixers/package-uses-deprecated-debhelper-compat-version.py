@@ -30,6 +30,11 @@ new_debhelper_compat_version = {
     }.get(compat_release, MINIMUM_DEBHELPER_VERSION)
 
 
+if check_cdbs():
+    # cdbs doesn't appear to support debheler 12 just yet..
+    new_debhelper_compat_version = min(new_debhelper_compat_version, 11)
+
+
 if os.path.exists('debian/compat'):
     # Package currently stores compat version in debian/compat..
 
@@ -154,13 +159,15 @@ for version in range(int(str(current_debhelper_compat_version)),
     except KeyError:
         pass
 
-
-if current_debhelper_compat_version < MINIMUM_DEBHELPER_VERSION:
-    kind = "deprecated"
-    tag = "package-uses-deprecated-debhelper-compat-version"
+if new_debhelper_compat_version > current_debhelper_compat_version:
+    if current_debhelper_compat_version < MINIMUM_DEBHELPER_VERSION:
+        kind = "deprecated"
+        tag = "package-uses-deprecated-debhelper-compat-version"
+    else:
+        kind = "old"
+        tag = "package-uses-old-debhelper-compat-version"
+    print("Bump debhelper from %s %s to %s." % (
+        kind, current_debhelper_compat_version, new_debhelper_compat_version))
+    print("Fixed-Lintian-Tags: %s" % tag)
 else:
-    kind = "old"
-    tag = "package-uses-old-debhelper-compat-version"
-print("Bump debhelper from %s %s to %s." % (
-    kind, current_debhelper_compat_version, new_debhelper_compat_version))
-print("Fixed-Lintian-Tags: %s" % tag)
+    print("Set debhelper-compat version in Build-Depends.")
