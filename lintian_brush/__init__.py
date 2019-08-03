@@ -42,8 +42,6 @@ from breezy.transform import revert
 
 from debian.deb822 import Deb822
 
-from .reformatting import check_generated_file
-
 
 __version__ = (0, 18)
 version_string = '.'.join(map(str, __version__))
@@ -521,7 +519,6 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
         2. dictionary mapping fixer names for fixers that failed to run to the
            error that occurred
     """
-    check_generated_file('debian/control')
     failed_fixers = {}
     fixers = list(fixers)
     ret = []
