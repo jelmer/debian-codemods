@@ -24,32 +24,19 @@ def is_on_obsolete_host(url):
 
 
 def is_on_obsolete_infra(control):
-    try:
-        vcs_git = control["Vcs-Git"]
-    except KeyError:
-        pass
-    else:
-        return is_on_obsolete_host(vcs_git.split(' ')[0])
+    if "Vcs-Git" in control:
+        return is_on_obsolete_host(control["Vcs-Git"].split(' ')[0])
 
-    try:
+    if "Vcs-Bzr" in control:
         vcs_bzr = control["Vcs-Bzr"]
-    except KeyError:
-        pass
-    else:
         return is_on_obsolete_infra(vcs_bzr)
 
-    try:
+    if "Vcs-Svn" in control:
         vcs_svn = control["Vcs-Svn"]
-    except KeyError:
-        pass
-    else:
         return is_on_obsolete_infra(vcs_svn)
 
-    try:
+    if "Vcs-Hg" in control:
         vcs_hg = control["Vcs-Hg"]
-    except KeyError:
-        pass
-    else:
         return is_on_obsolete_infra(vcs_hg)
 
     return False
