@@ -162,7 +162,7 @@ Lintian-Tags: xc-package-type-in-debian-control
 Fix-Script: xs-testsuite-field-in-debian-control.sh
 Lintian-Tags: xs-testsuite-field-in-debian-control
 
-Fix-Script: xs-vcs-field-in-debian-control.sh
+Fix-Script: xs-vcs-field-in-debian-control.py
 Lintian-Tags: xs-vcs-field-in-debian-control
 
 # Copyright related fixers. Fix format URL before semantic fixes.
