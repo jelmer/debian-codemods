@@ -46,7 +46,7 @@ from breezy.transform import revert
 from debian.deb822 import Deb822
 
 
-__version__ = (0, 20)
+__version__ = (0, 21)
 version_string = '.'.join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ['certain', 'possible', None]
 DEFAULT_MINIMUM_CERTAINTY = 'certain'
