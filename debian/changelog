@@ -1,6 +1,7 @@
 lintian-brush (0.21) UNRELEASED; urgency=medium
 
   * Use vcswatch-like regex to find salsa.debian.org.
+  * Support suggesting Vcs-* URLs based on vcswatch.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 22:50:11 +0000
 

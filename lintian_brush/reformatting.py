@@ -31,6 +31,11 @@ class GeneratedFile(Exception):
 class FormattingUnpreservable(Exception):
     """The file is unpreservable."""
 
+    def __init__(self, path, original_contents, rewritten_contents):
+        self.path = path
+        self.original_contents = original_contents
+        self.rewritten_contents = rewritten_contents
+
 
 def check_preserve_formatting(rewritten_text, text, path):
     """Check that formatting can be preserved.
@@ -49,7 +54,7 @@ def check_preserve_formatting(rewritten_text, text, path):
         return
     if os.environ.get('REFORMATTING', 'disallow') == 'allow':
         return
-    raise FormattingUnpreservable(path)
+    raise FormattingUnpreservable(path, text, rewritten_text)
 
 
 def check_generated_file(path):
