@@ -48,4 +48,3 @@ where source = $1""", name)
         if row is None:
             raise KeyError(name)
         return row
-
