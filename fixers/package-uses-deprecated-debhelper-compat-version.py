@@ -52,7 +52,7 @@ if os.path.exists('debian/compat'):
         # Assume that the compat version is set in Build-Depends
         def set_debhelper_compat(control):
             control["Build-Depends"] = ensure_exact_version(
-                control["Build-Depends"],
+                control.get("Build-Depends", ""),
                 "debhelper-compat",
                 "%d" % new_debhelper_compat_version)
             try:
@@ -82,7 +82,7 @@ if os.path.exists('debian/compat'):
 
         def bump_debhelper(control):
             control["Build-Depends"] = ensure_minimum_version(
-                    control["Build-Depends"],
+                    control.get("Build-Depends", ""),
                     "debhelper",
                     "%d~" % new_debhelper_compat_version)
 
@@ -93,7 +93,7 @@ else:
         global current_debhelper_compat_version
         try:
             debhelper_compat_relation = get_relation(
-                control["Build-Depends"], "debhelper-compat")
+                control.get("Build-Depends", ""), "debhelper-compat")
         except KeyError:
             sys.exit(2)
         else:

@@ -10,13 +10,13 @@ from lintian_brush.control import (
 
 def bump_debhelper(control):
     try:
-        get_relation(control["Build-Depends"], "debhelper-compat")
+        get_relation(control.get("Build-Depends", ""), "debhelper-compat")
     except KeyError:
         pass
     else:
         return
     control["Build-Depends"] = ensure_minimum_version(
-            control["Build-Depends"],
+            control.get("Build-Depends", ""),
             "debhelper",
             "%s~" % minimum_version)
 

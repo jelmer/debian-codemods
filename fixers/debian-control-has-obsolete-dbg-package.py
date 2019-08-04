@@ -15,7 +15,7 @@ minimum_version = "9.20160114"
 
 def bump_debhelper(control):
     control["Build-Depends"] = ensure_minimum_debhelper_version(
-        control["Build-Depends"], minimum_version)
+        control.get("Build-Depends", ""), minimum_version)
 
 
 dbg_packages = set()

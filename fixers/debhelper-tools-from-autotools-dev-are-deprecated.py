@@ -20,7 +20,7 @@ def cb(line):
 
 def bump_debhelper(source):
     source["Build-Depends"] = ensure_minimum_debhelper_version(
-        source["Build-Depends"], "9.20160114")
+        source.get("Build-Depends", ""), "9.20160114")
 
 
 update_rules(cb)

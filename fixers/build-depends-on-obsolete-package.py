@@ -7,9 +7,9 @@ from lintian_brush.control import (
 
 
 def bump_debhelper(control):
-    old_build_depends = control["Build-Depends"]
+    old_build_depends = control.get("Build-Depends", "")
     control["Build-Depends"] = drop_dependency(
-        control["Build-Depends"],
+        control.get("Build-Depends", ""),
         "dh-systemd")
     if old_build_depends != control["Build-Depends"]:
         control["Build-Depends"] = ensure_minimum_debhelper_version(
