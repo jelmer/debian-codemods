@@ -286,6 +286,8 @@ class DropDependencyTests(TestCase):
         self.assertEqual(
             ' dh-autoreconf',
             drop_dependency('debhelper (>= 9), dh-autoreconf', 'debhelper'))
+        self.assertEqual(
+            '', drop_dependency('debhelper (>= 9)', 'debhelper'))
 
 
 class AddDependencyTests(TestCase):
