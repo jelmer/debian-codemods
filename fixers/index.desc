@@ -4,6 +4,29 @@
 # Note that the order of this file is significant. Fixers mentioned earlier in
 # this file will always be run before later fixers.
 
+# file-contains-trailing-whitrspace and obsolete-field-in-dep5-copyright are
+# processed first, since they make it for other fixers to change the file
+# while preserving formatting.
+
+Fix-Script: file-contains-trailing-whitespace.sh
+Lintian-Tags: file-contains-trailing-whitespace
+
+# Copyright related fixers. Fix format URL before semantic fixes.
+Fix-Script: unversioned-copyright-format-uri.sh
+Lintian-Tags: unversioned-copyright-format-uri
+
+Fix-Script: copyright-has-crs.sh
+Lintian-Tags: copyright-has-crs
+
+Fix-Script: insecure-copyright-format-uri.sh
+Lintian-Tags: insecure-copyright-format-uri
+
+Fix-Script: out-of-date-copyright-format-uri.sh
+Lintian-Tags: out-of-date-copyright-format-uri
+
+Fix-Script: obsolete-field-in-dep5-copyright.py
+Lintian-Tags: obsolete-field-in-dep5-copyright
+
 Fix-Script: ancient-python-version-field.py
 Lintian-Tags: ancient-python-version-field
 
@@ -69,9 +92,6 @@ Lintian-Tags: dh-quilt-addon-but-quilt-source-format
 Fix-Script: empty-debian-source-options.py
 
 Fix-Script: empty-debian-patches-series.py
-
-Fix-Script: file-contains-trailing-whitespace.sh
-Lintian-Tags: file-contains-trailing-whitespace
 
 Fix-Script: homepage-field-uses-insecure-uri.py
 Lintian-Tags: homepage-field-uses-insecure-uri
@@ -164,21 +184,8 @@ Lintian-Tags: xs-testsuite-field-in-debian-control
 Fix-Script: xs-vcs-field-in-debian-control.py
 Lintian-Tags: xs-vcs-field-in-debian-control
 
-# Copyright related fixers. Fix format URL before semantic fixes.
-Fix-Script: unversioned-copyright-format-uri.sh
-Lintian-Tags: unversioned-copyright-format-uri
-
-Fix-Script: copyright-has-crs.sh
-Lintian-Tags: copyright-has-crs
-
-Fix-Script: insecure-copyright-format-uri.sh
-Lintian-Tags: insecure-copyright-format-uri
-
 Fix-Script: old-fsf-address-in-copyright-file.sh
 Lintian-Tags: old-fsf-address-in-copyright-file
-
-Fix-Script: out-of-date-copyright-format-uri.sh
-Lintian-Tags: out-of-date-copyright-format-uri
 
 Fix-Script: field-name-typo-in-dep5-copyright.py
 Lintian-Tags: field-name-typo-in-dep5-copyright
@@ -188,9 +195,6 @@ Lintian-Tags: global-files-wildcard-not-first-paragraph-in-dep5-copyright
 
 Fix-Script: invalid-short-name-in-dep5-copyright.py
 Lintian-Tags: invalid-short-name-in-dep5-copyright
-
-Fix-Script: obsolete-field-in-dep5-copyright.py
-Lintian-Tags: obsolete-field-in-dep5-copyright
 
 Fix-Script: vcs-obsolete-in-debian-infrastructure.py
 Lintian-Tags: vcs-obsolete-in-debian-infrastructure
