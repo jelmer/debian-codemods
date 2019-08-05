@@ -340,7 +340,7 @@ def drop_dependency(relationstr, package):
     """
     relations = parse_relations(relationstr)
     ret = []
-    for entry in relations:
+    for i, entry in enumerate(relations):
         (head_whitespace, relation, tail_whitespace) = entry
         if isinstance(relation, str):  # formatting
             ret.append(entry)
@@ -349,6 +349,9 @@ def drop_dependency(relationstr, package):
         if set(names) != set([package]):
             ret.append(entry)
             continue
+        elif i == 0 and len(relations) > 1:
+            # If the first item is removed, then copy the spacing to the next item
+            relations[1] = (head_whitespace, relations[1][1], tail_whitespace)
     if relations != ret:
         return format_relations(ret)
     # Just return the original; we don't preserve all formatting yet.
