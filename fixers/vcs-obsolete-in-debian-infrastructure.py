@@ -73,7 +73,7 @@ def migrate_from_obsolete_infra(control):
     loop = asyncio.get_event_loop()
     try:
         if os.environ.get('VCSWATCH', 'enabled') == 'enabled':
-            (vcs_type, vcs_url, vcs_browser) = loop.run_until_complete(
+            (vcs_type, vcs_url, branch, vcs_browser) = loop.run_until_complete(
                 retrieve_vcswatch_urls(package))
         else:
             raise KeyError
@@ -95,6 +95,7 @@ def migrate_from_obsolete_infra(control):
                 return
         print("Update Vcs-* headers to use salsa repository.")
 
+        branch = None
         vcs_browser = determine_browser_url(vcs_url)
 
     for hdr in ["Vcs-Git", "Vcs-Bzr", "Vcs-Hg", "Vcs-Svn"]:
@@ -104,7 +105,7 @@ def migrate_from_obsolete_infra(control):
             del control[hdr]
         except KeyError:
             pass
-    control["Vcs-" + vcs_type] = vcs_url
+    control["Vcs-" + vcs_type] = vcs_url + (" -b %s" % branch if branch else "")
     if vcs_browser is not None:
         control["Vcs-Browser"] = vcs_browser
     else:
