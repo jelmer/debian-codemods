@@ -1,0 +1,8 @@
+Source: lintian-brush
+Maintainer: Jelmer Vernooij <jelmer@debian.org>
+Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush
+Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
+
+Package: lintian-brush
+Description: Testing
+ Test test

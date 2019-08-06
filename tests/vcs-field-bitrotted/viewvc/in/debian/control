@@ -1,0 +1,8 @@
+Source: lintian-brush
+Maintainer: Jelmer Vernooij <jelmer@debian.org>
+Vcs-Svn: http://svn.debian.org/wsvn/pkg-voip/asterisk-prompt-fr-proformatique/?op=log
+Vcs-Browser: https://anonscm.debian.org/viewvc/pkg-voip/asterisk-prompt-fr-proformatique
+
+Package: lintian-brush
+Description: Testing
+ Test test

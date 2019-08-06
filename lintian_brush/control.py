@@ -350,7 +350,8 @@ def drop_dependency(relationstr, package):
             ret.append(entry)
             continue
         elif i == 0 and len(relations) > 1:
-            # If the first item is removed, then copy the spacing to the next item
+            # If the first item is removed, then copy the spacing to the next
+            # item
             relations[1] = (head_whitespace, relations[1][1], tail_whitespace)
     if relations != ret:
         return format_relations(ret)

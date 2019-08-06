@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import re
 from lintian_brush import USER_AGENT
 from lintian_brush.control import update_control
 from lintian_brush.salsa import (
@@ -59,6 +60,9 @@ async def retrieve_vcswatch_urls(package):
     return await vcs_watch.get_package(package)
 
 
+fixed_tags = set()
+
+
 def migrate_from_obsolete_infra(control):
     vcs_type, vcs_url = get_vcs_info(control)
     if vcs_type is None:
@@ -78,6 +82,7 @@ def migrate_from_obsolete_infra(control):
         else:
             raise KeyError
         print("Update Vcs-* headers from vcswatch.")
+        fixed_tags.add("vcs-obsolete-in-debian-infrastructure")
     except KeyError:
         # Otherwise, attempt to guess based on maintainer email.
         guessed_url = guess_repository_url(package, maintainer_email)
@@ -94,9 +99,18 @@ def migrate_from_obsolete_infra(control):
             if not verify_salsa_repository(guessed_url):
                 return
         print("Update Vcs-* headers to use salsa repository.")
+        fixed_tags.add("vcs-obsolete-in-debian-infrastructure")
 
         branch = None
         vcs_browser = determine_browser_url(vcs_url)
+
+    if "Vcs-Cvs" in control and re.match(
+            r"\@(?:cvs\.alioth|anonscm)\.debian\.org:/cvsroot/",
+            control["Vcs-Cvs"]):
+        fixed_tags.add("vcs-field-bitrotted")
+
+    if "Vcs-Svn" in control and "viewvc" in control["Vcs-Browser"]:
+        fixed_tags.add("vcs-field-bitrotted")
 
     for hdr in ["Vcs-Git", "Vcs-Bzr", "Vcs-Hg", "Vcs-Svn"]:
         if hdr == "Vcs-" + vcs_type:
@@ -105,7 +119,8 @@ def migrate_from_obsolete_infra(control):
             del control[hdr]
         except KeyError:
             pass
-    control["Vcs-" + vcs_type] = vcs_url + (" -b %s" % branch if branch else "")
+    control["Vcs-" + vcs_type] = vcs_url + (
+        " -b %s" % branch if branch else "")
     if vcs_browser is not None:
         control["Vcs-Browser"] = vcs_browser
     else:
@@ -113,4 +128,5 @@ def migrate_from_obsolete_infra(control):
 
 
 update_control(source_package_cb=migrate_from_obsolete_infra)
-print("Fixed-Lintian-Tags: vcs-obsolete-in-debian-infrastructure")
+if fixed_tags:
+    print("Fixed-Lintian-Tags: " + ", ".join(sorted(fixed_tags)))

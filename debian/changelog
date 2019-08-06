@@ -6,6 +6,7 @@ lintian-brush (0.21) UNRELEASED; urgency=medium
     a control field.
   * Don't print confusing warning message about directories under
     debian/patches/.
+  * Add fixer for vcs-field-bitrotted.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 22:50:11 +0000
 
