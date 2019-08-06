@@ -200,3 +200,6 @@ Fix-Script: vcs-field-bitrotted.py
 Lintian-Tags:
   vcs-obsolete-in-debian-infrastructure,
   vcs-field-bitrotted
+
+Fix-Script: vcs-field-not-canonical.py
+Lintian-Tags: vcs-field-not-canonical

@@ -1,0 +1,6 @@
+Source: lintian-brush
+Vcs-Browser: https://anonscm.debian.org/loggerhead/pkg-bazaar/bzr
+
+Package: lintian-brush
+Description: Testing
+ Test test
