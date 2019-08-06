@@ -13,7 +13,8 @@ def add_vcs_browser(control):
     parsed = urllib.parse.urlparse(vcs_git)
     if parsed.netloc in ('github.com', 'salsa.debian.org'):
         control["Vcs-Browser"] = urllib.parse.urlunparse(
-                ('https', ) + parsed[1:])
+                ('https', parsed.netloc, parsed.path.rstrip('.git'),
+                 parsed.query, parsed.params, parsed.fragment))
 
 
 update_control(source_package_cb=add_vcs_browser)
