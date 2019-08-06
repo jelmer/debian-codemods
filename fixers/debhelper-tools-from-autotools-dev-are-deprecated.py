@@ -23,7 +23,7 @@ def bump_debhelper(source):
         source.get("Build-Depends", ""), "9.20160114")
 
 
-update_rules(cb)
-update_control(source_package_cb=bump_debhelper)
+if update_rules(cb):
+    update_control(source_package_cb=bump_debhelper)
 print("Drop use of autotools-dev debhelper.")
 print("Fixed-Lintian-Tags: debhelper-tools-from-autotools-dev-are-deprecated")

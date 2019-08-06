@@ -1,0 +1,2 @@
+Drop use of autotools-dev debhelper.
+Fixed-Lintian-Tags: debhelper-tools-from-autotools-dev-are-deprecated

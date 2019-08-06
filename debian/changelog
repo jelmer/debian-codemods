@@ -9,6 +9,8 @@ lintian-brush (0.21) UNRELEASED; urgency=medium
   * Add fixer for vcs-field-bitrotted.
   * Add fixer for vcs-field-not-canonical.
   * Add fixer for vcs-field-mismatch.
+  * debhelper-tools-from-autotools-dev-are-deprecated: Don't bump
+    debhelper version when not removing autotools-dev usage.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 22:50:11 +0000
 
