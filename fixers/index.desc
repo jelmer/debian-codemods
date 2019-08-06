@@ -169,7 +169,7 @@ Lintian-Tags: useless-autoreconf-build-depends
 Fix-Script: vcs-field-uses-insecure-uri.sh
 Lintian-Tags: vcs-field-uses-insecure-uri
 
-Fix-Script: vcs-field-uses-not-recommended-uri-format.sh
+Fix-Script: vcs-field-uses-not-recommended-uri-format.py
 Lintian-Tags: vcs-field-uses-not-recommended-uri-format
 
 Fix-Script: wrong-debian-qa-group-name.py
