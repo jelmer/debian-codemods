@@ -79,6 +79,7 @@ subset of the issues:
 * unversioned-copyright-format-uri
 * upstream-metadata-file-is-missing
 * useless-autoreconf-build-depends
+* vcs-field-bitrotted
 * vcs-field-uses-insecure-uri
 * vcs-field-uses-not-recommended-uri-format
 * vcs-obsolete-in-debian-infrastructure
