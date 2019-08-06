@@ -80,6 +80,7 @@ subset of the issues:
 * upstream-metadata-file-is-missing
 * useless-autoreconf-build-depends
 * vcs-field-bitrotted
+* vcs-field-not-canonical
 * vcs-field-uses-insecure-uri
 * vcs-field-uses-not-recommended-uri-format
 * vcs-obsolete-in-debian-infrastructure
