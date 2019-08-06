@@ -8,6 +8,7 @@ lintian-brush (0.21) UNRELEASED; urgency=medium
     debian/patches/.
   * Add fixer for vcs-field-bitrotted.
   * Add fixer for vcs-field-not-canonical.
+  * Add fixer for vcs-field-mismatch.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 22:50:11 +0000
 

@@ -1,0 +1,6 @@
+Source: lintian-brush
+Vcs-Bzr: https://salsa.debian.org/jelmer/dulwich.git
+
+Package: lintian-brush
+Description: Testing
+ Test test
