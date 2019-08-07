@@ -18,11 +18,11 @@
 """Functions for working with upstream metadata."""
 
 import os
-import shlex
 import subprocess
 import tempfile
 from urllib.parse import urlparse
 from warnings import warn
+from lintian_brush.watch import parse_watch_file
 
 
 KNOWN_HOSTING_SITES = [
@@ -80,43 +80,12 @@ def get_python_pkg_info(path, trust_package=False):
         return read_python_pkg_info(td)
 
 
-def parse_watch_file(f):
-    lines = []
-    continued = ''
-    for line in f:
-        if line.startswith('#'):
-            continue
-        if not line.strip():
-            continue
-        if line.rstrip('\n').endswith('\\'):
-            continued += line.rstrip('\n\\') + ' '
-        else:
-            lines.append(continued + line)
-            continued = ''
-    if continued:
-        # Hmm, broken line?
-        lines.append(continued)
-    if not lines:
-        return
-    if not lines.pop(0).startswith('version='):
-        pass  # Hmm, is this actually a real watch file?
-    for line in lines:
-        line = line.strip()
-        parts = shlex.split(line)
-        if parts[0].startswith('opts='):
-            opts = parts[0][len('opts='):]
-            yield [opts] + parts[1:]
-        else:
-            opts = None
-            yield [opts] + parts[0:]
-
-
 def guess_from_debian_watch(path, trust_package):
     with open(path, 'r') as f:
-        for entry in parse_watch_file(f):
-            url = entry[1]
-            if url.startswith('https://') or url.startswith('http://'):
-                repo = guess_repo_from_url(url)
+        wf = parse_watch_file(f)
+        for w in wf:
+            if w.url.startswith('https://') or w.url.startswith('http://'):
+                repo = guess_repo_from_url(w.url)
                 if repo:
                     yield "Repository", repo, "possible"
                     break
