@@ -543,8 +543,10 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         raise NoChanges("Certainty of script's changes not high enough")
     if dirty_tracker:
         relpaths = dirty_tracker.relpaths()
+        # Sort paths so that directories get added before the files they
+        # contain (on VCSes where it matters)
         local_tree.add(
-            [p for p in relpaths
+            [p for p in sorted(relpaths)
              if local_tree.has_filename(p) and not
                 local_tree.is_ignored(p)])
         specific_files = [

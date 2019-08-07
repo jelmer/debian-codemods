@@ -11,6 +11,8 @@ lintian-brush (0.21) UNRELEASED; urgency=medium
   * Add fixer for vcs-field-mismatch.
   * debhelper-tools-from-autotools-dev-are-deprecated: Don't bump
     debhelper version when not removing autotools-dev usage.
+  * Sort paths so that directories get added before the files they
+    contain (on VCSes where it matters).
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 22:50:11 +0000
 
