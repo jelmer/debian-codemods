@@ -402,3 +402,15 @@ def extend_upstream_metadata(code, certainty):
             code['Repository-Browse'] = browse_url
             certainty['Repository-Browse'] = certainty['Repository']
     # TODO(jelmer): Try deriving bug-database too?
+
+
+if __name__ == '__main__':
+    import argparse
+    import sys
+    import ruamel.yaml
+    parser = argparse.ArgumentParser(sys.argv[0])
+    parser.add_argument('path')
+    args = parser.parse_args()
+
+    metadata = guess_upstream_metadata(args.path)
+    sys.stdout.write(ruamel.yaml.round_trip_dump(metadata))
