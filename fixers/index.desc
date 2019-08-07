@@ -206,3 +206,5 @@ Lintian-Tags: vcs-field-mismatch
 
 Fix-Script: vcs-field-not-canonical.py
 Lintian-Tags: vcs-field-not-canonical
+
+Fix-Script: vcs-broken-uri.py

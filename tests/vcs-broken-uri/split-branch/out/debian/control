@@ -1,0 +1,6 @@
+Source: lintian-brush
+Vcs-Git: https://salsa.debian.org/mvb/grsync.git -b blah
+
+Package: lintian-brush
+Description: Testing
+ Test test

@@ -1,0 +1,6 @@
+Source: lintian-brush
+Vcs-Git: https://salsa.debian.org/cgit/science-team/apertium-bel.git
+
+Package: lintian-brush
+Description: Testing
+ Test test
