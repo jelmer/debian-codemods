@@ -17,9 +17,7 @@
 
 """Functions for working with watch files."""
 
-
-import shlex
-from warnings import warn
+import re
 
 
 DEFAULT_VERSION = 4
@@ -33,7 +31,7 @@ class WatchFile(object):
             entries = []
         self.entries = entries
         if options is None:
-            options = {}
+            options = []
         self.options = options
 
     def __iter__(self):
@@ -52,6 +50,8 @@ class WatchFile(object):
             if entry.options:
                 f.write(serialize_options(entry.options) + ' ')
             f.write(entry.url)
+            if entry.matching_pattern:
+                f.write(+ ' ' + entry.matching_pattern)
             if entry.version:
                 f.write(' ' + entry.version)
             if entry.script:
@@ -61,18 +61,27 @@ class WatchFile(object):
 
 class Watch(object):
 
-    def __init__(self, url, version=None, script=None, opts=None):
+    def __init__(self, url, matching_pattern=None, version=None, script=None,
+                 opts=None):
         self.url = url
+        self.matching_pattern = matching_pattern
         self.version = version
         self.script = script
         if opts is None:
             opts = {}
         self.options = opts
 
+    def __repr__(self):
+        return (
+            "%s(%r, matching_pattern=%r, version=%r, script=%r, opts=%r)" % (
+                self.__class__.__name__, self.url, self.matching_pattern,
+                self.version, self.script, self.options))
+
     def __eq__(self, other):
         if not isinstance(other, Watch):
             return False
         return (other.url == self.url and
+                other.matching_pattern == self.matching_pattern and
                 other.version == self.version and
                 other.script == self.script and
                 other.options == self.options)
@@ -119,19 +128,32 @@ def parse_watch_file(f):
         line = line.strip()
         if not line:
             continue
-        # TODO(jelmer): This is not actually how uscan lexes.
-        parts = shlex.split(line)
-        if parts[0].startswith('opts='):
-            opts = parts[0][len('opts='):].split(',')
-            remaining = parts[1:]
+        if line.startswith('opts='):
+            if line[5] == '"':
+                optend = line.index('"', 6)
+                if optend == -1:
+                    raise ValueError('Not matching " in %r' % line)
+                opts = line[6:optend]
+                line = line[optend+1:]
+            else:
+                try:
+                    (opts, line) = line[5:].split(maxsplit=1)
+                except ValueError:
+                    opts = line[5:]
+                    line = None
+            opts = opts.split(',')
         else:
             opts = None
-            remaining = parts
-        if not remaining:
+        if not line:
             persistent_options.extend(opts)
         else:
-            if len(remaining) > 3:
-                warn('Too many entries on line: %r' % remaining)
-            entries.append(Watch(*remaining[:3], opts=opts))
+            url, line = line.split(maxsplit=1)
+            m = re.findall(r'/([^/]*\([^/]*\)[^/]*)$', url)
+            if m:
+                parts = [m[0]] + line.split(maxsplit=1)
+                url = url[:-len(m[0])-1]
+            else:
+                parts = line.split(maxsplit=2)
+            entries.append(Watch(url, *parts, opts=opts))
     return WatchFile(
         entries=entries, options=persistent_options, version=version)

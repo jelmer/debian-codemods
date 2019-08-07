@@ -41,31 +41,84 @@ class ParseWatchFileTests(TestCase):
         self.assertRaises(
             MissingVersion, parse_watch_file, StringIO("foo=bar\n"))
 
+    def test_parse_with_script(self):
+        wf = parse_watch_file(StringIO("""\
+version=4
+https://samba.org/~jelmer/ blah-(\\d+).tar.gz debian sh blah.sh
+"""))
+        self.assertEqual(4, wf.version)
+        self.assertEqual(
+            [Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz',
+                   'debian', 'sh blah.sh')],
+            wf.entries)
+
     def test_parse_simple(self):
         wf = parse_watch_file(StringIO("""\
 version=4
-https://samba.org/~jelmer/
+https://samba.org/~jelmer/ blah-(\\d+).tar.gz
 """))
         self.assertEqual(4, wf.version)
-        self.assertEqual([Watch('https://samba.org/~jelmer/')], wf.entries)
+        self.assertEqual(
+            [Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz')],
+            wf.entries)
 
     def test_parse_with_opts(self):
         wf = parse_watch_file(StringIO("""\
 version=4
-opts=pgpmode=mangle https://samba.org/~jelmer/
+opts=pgpmode=mangle https://samba.org/~jelmer/ blah-(\\d+).tar.gz
 """))
         self.assertEqual(4, wf.version)
         self.assertEqual([], wf.options)
         self.assertEqual(
-            [Watch('https://samba.org/~jelmer/', opts=['pgpmode=mangle'])],
+            [Watch('https://samba.org/~jelmer/',
+                   'blah-(\\d+).tar.gz', opts=['pgpmode=mangle'])],
             wf.entries)
 
     def test_parse_global_opts(self):
         wf = parse_watch_file(StringIO("""\
 version=4
 opts=pgpmode=mangle
-https://samba.org/~jelmer/
+https://samba.org/~jelmer/ blah-(\\d+).tar.gz
 """))
         self.assertEqual(4, wf.version)
         self.assertEqual(['pgpmode=mangle'], wf.options)
-        self.assertEqual([Watch('https://samba.org/~jelmer/')], wf.entries)
+        self.assertEqual([
+            Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz')],
+            wf.entries)
+
+    def test_parse_opt_quotes(self):
+        wf = parse_watch_file(StringIO("""\
+version=4
+opts="pgpmode=mangle" https://samba.org/~jelmer blah-(\\d+).tar.gz
+"""))
+        self.assertEqual(4, wf.version)
+        self.assertEqual(
+            wf.entries,
+            [Watch('https://samba.org/~jelmer',
+                   'blah-(\\d+).tar.gz', opts=['pgpmode=mangle'])])
+
+    def test_pattern_included(self):
+        wf = parse_watch_file(StringIO("""\
+version=4
+https://pypi.debian.net/case/case-(.+).tar.gz debian
+"""))
+        self.assertEqual(4, wf.version)
+        self.assertEqual(
+            [Watch('https://pypi.debian.net/case', 'case-(.+).tar.gz',
+                   'debian')], wf.entries)
+
+    def test_parse_weird_quotes(self):
+        wf = parse_watch_file(StringIO("""\
+# please also check https://pypi.debian.net/case/watch
+version=3
+opts=repacksuffix=+dfsg",pgpsigurlmangle=s/$/.asc/ \\
+https://pypi.debian.net/case/case-(.+)\\.(?:zip|(?:tar\\.(?:gz|bz2|xz))) \\
+debian sh debian/repack.stub
+"""))
+        self.assertEqual(3, wf.version)
+        self.assertEqual([Watch(
+            'https://pypi.debian.net/case',
+            'case-(.+)\\.(?:zip|(?:tar\\.(?:gz|bz2|xz)))',
+            'debian', 'sh debian/repack.stub',
+            opts=['repacksuffix=+dfsg"', 'pgpsigurlmangle=s/$/.asc/'])],
+            wf.entries)
