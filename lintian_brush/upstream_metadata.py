@@ -18,6 +18,7 @@
 """Functions for working with upstream metadata."""
 
 import os
+import re
 import subprocess
 import tempfile
 from urllib.parse import urlparse
@@ -215,7 +216,11 @@ def guess_from_debian_copyright(path, trust_package):
         if header.upstream_contact:
             yield "Contact", ','.join(header.upstream_contact), 'certain'
         if header.source:
-            repo_url = guess_repo_from_url(header.source)
+            if ' 'in header.source:
+                from_url = re.split('[ ,]', header.source)[0]
+            else:
+                from_url = header.source
+            repo_url = guess_repo_from_url(from_url)
             if repo_url:
                 yield 'Repository', repo_url, 'possible'
         if "X-Upstream-Bugs" in header:
