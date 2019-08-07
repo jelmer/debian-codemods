@@ -11,7 +11,7 @@ HOST_TO_VCS = {
 
 
 def fix_vcs_type(control):
-    for field in control:
+    for field in list(control):
         if not field.startswith('Vcs-') or field == 'Vcs-Browser':
             continue
         vcs = field[4:]
