@@ -22,38 +22,47 @@ __all__ = ['fixup_broken_git_url']
 from urllib.parse import urlparse, urlunparse
 
 
+def fix_path_in_port(parsed):
+    if ':' not in parsed.netloc or parsed.netloc.endswith(']'):
+        return None
+    host, port = parsed.netloc.rsplit(':', 1)
+    if host not in ('salsa.debian.org', 'github.com'):
+        return None
+    if not port or port.isdigit():
+        return None
+    if '/' not in parsed.path[1:]:
+        return parsed._replace(
+            path='%s/%s' % (port, parsed.path.lstrip('/')),
+            netloc=host)
+    return None
+
+
+def fix_salsa_scheme(parsed):
+    if parsed.hostname == 'salsa.debian.org':
+        return parsed._replace(scheme='https')
+    return None
+
+
+def fix_salsa_cgit_url(parsed):
+    if (parsed.hostname == 'salsa.debian.org' and
+            parsed.path.startswith('/cgit/')):
+        return parsed._replace(path=parsed.path[5:])
+    return None
+
+
 def fixup_broken_git_url(url):
     """Attempt to fix up broken Git URLs.
 
     A common misspelling is to add an extra ":" after the hostname
     """
     parsed = urlparse(url)
-    path = parsed.path
-    scheme = parsed.scheme
-    if '@' in parsed.netloc:
-        credentials, host = parsed.netloc.rsplit('@', 1)
-    else:
-        credentials = None
-        host = parsed.netloc
+    changed = False
+    for fn in [fix_path_in_port, fix_salsa_scheme, fix_salsa_cgit_url]:
+        newparsed = fn(parsed)
+        if newparsed:
+            changed = True
+            parsed = newparsed
 
-    if ':' in host and not (host[0] == '[' and host[-1] == ']'):
-        # there *is* port
-        host, port = host.rsplit(':', 1)
-        if not port or port.isdigit():
-            return url
-    if host in ('salsa.debian.org', 'github.com'):
-        if '/' not in path[1:]:
-            path = '%s/%s' % (port, path.lstrip('/'))
-        netloc = host
-        if ":" in netloc:
-            netloc = "[%s]" % netloc
-        if credentials is not None:
-            netloc = '%s@%s' % (credentials, netloc)
-        if host == 'salsa.debian.org':
-            scheme = 'https'
-        if host == 'salsa.debian.org' and path.startswith('/cgit/'):
-            path = path[5:]
-        new_url = urlunparse(
-            (scheme, host, path, parsed.params, parsed.query, parsed.fragment))
-        return new_url
+    if changed:
+        return urlunparse(parsed)
     return url
