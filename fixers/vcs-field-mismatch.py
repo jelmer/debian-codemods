@@ -20,7 +20,7 @@ def fix_vcs_type(control):
         if host not in HOST_TO_VCS:
             continue
         actual_vcs = HOST_TO_VCS[host]
-        if actual_vcs != vcs.lower():
+        if actual_vcs != vcs:
             print(
                 "Changed vcs type from %s to %s based on URL." % (
                     vcs, actual_vcs))
