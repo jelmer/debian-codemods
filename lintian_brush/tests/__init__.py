@@ -29,6 +29,7 @@ def test_suite():
         'run',
         'salsa',
         'systemd',
+        'upstream_metadata',
         'vcs',
         'watch',
         ]

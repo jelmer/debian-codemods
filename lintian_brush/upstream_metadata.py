@@ -131,9 +131,11 @@ def guess_from_package_json(path, trust_package):
         package = json.load(f)
     if 'name' in package:
         yield 'Name', package['name'], 'certain'
+    if 'homepage' in package:
+        yield 'Homepage', package['homepage'], 'certain'
     if 'repository' in package:
         if isinstance(package['repository'], dict):
-            repo_url = package['repository']['url']
+            repo_url = package['repository'].get('url')
         elif isinstance(package['repository'], str):
             repo_url = package['repository']
         else:
