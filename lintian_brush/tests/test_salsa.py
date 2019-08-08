@@ -62,6 +62,9 @@ class DetermineBrowserUrlTests(TestCase):
 
 class SalsaUrlFromAliothUrlTests(TestCase):
 
+    def test_none(self):
+        self.assertIs(None, salsa_url_from_alioth_url(None, None))
+
     def test_mismatch(self):
         self.assertIs(
             None, salsa_url_from_alioth_url(

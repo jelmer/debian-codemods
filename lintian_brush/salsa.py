@@ -76,6 +76,8 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
     Returns:
       Salsa URL
     """
+    if vcs_type is None:
+        return None
     # These two regular expressions come from vcswatch:
     # https://salsa.debian.org/qa/qa/blob/master/data/vcswatch/vcswatch#L165
     if vcs_type.lower() == 'git':
