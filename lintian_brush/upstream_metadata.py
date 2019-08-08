@@ -84,6 +84,8 @@ def get_python_pkg_info(path, trust_package=False):
 def guess_from_debian_watch(path, trust_package):
     with open(path, 'r') as f:
         wf = parse_watch_file(f)
+        if not wf:
+            return
         for w in wf:
             if w.url.startswith('https://') or w.url.startswith('http://'):
                 repo = guess_repo_from_url(w.url)

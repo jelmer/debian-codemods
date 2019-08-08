@@ -147,7 +147,11 @@ def parse_watch_file(f):
         if not line:
             persistent_options.extend(opts)
         else:
-            url, line = line.split(maxsplit=1)
+            try:
+                url, line = line.split(maxsplit=1)
+            except ValueError:
+                url = line
+                line = ''
             m = re.findall(r'/([^/]*\([^/]*\)[^/]*)$', url)
             if m:
                 parts = [m[0]] + line.split(maxsplit=1)

@@ -52,6 +52,16 @@ https://samba.org/~jelmer/ blah-(\\d+).tar.gz debian sh blah.sh
                    'debian', 'sh blah.sh')],
             wf.entries)
 
+    def test_parse_single(self):
+        wf = parse_watch_file(StringIO("""\
+version=4
+https://samba.org/~jelmer/blah-(\\d+).tar.gz
+"""))
+        self.assertEqual(4, wf.version)
+        self.assertEqual(
+            [Watch('https://samba.org/~jelmer', 'blah-(\\d+).tar.gz')],
+            wf.entries)
+
     def test_parse_simple(self):
         wf = parse_watch_file(StringIO("""\
 version=4

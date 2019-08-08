@@ -24,7 +24,27 @@ from breezy.tests import (
 
 from lintian_brush.upstream_metadata import (
     guess_from_package_json,
+    guess_from_debian_watch,
     )
+
+
+class GuessFromDebianWatchTests(TestCaseWithTransport):
+
+    def test_empty(self):
+        self.build_tree_contents([('watch', """\
+# Blah
+""")])
+        self.assertEqual(
+            [], list(guess_from_debian_watch('watch', False)))
+
+    def test_simple(self):
+        self.build_tree_contents([('watch', """\
+version=4
+https://github.com/jelmer/dulwich/tags/dulwich-(.*).tar.gz
+""")])
+        self.assertEqual(
+            [('Repository', 'https://github.com/jelmer/dulwich', 'possible')],
+            list(guess_from_debian_watch('watch', False)))
 
 
 class GuessFromPackageJsonTests(TestCaseWithTransport):
