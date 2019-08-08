@@ -26,6 +26,7 @@ from urllib.parse import urlparse
 MAINTAINER_EMAIL_MAP = {
     'pkg-javascript-devel@lists.alioth.debian.org': 'js-team',
     'python-modules-team@lists.alioth.debian.org': 'python-team/modules',
+    'python-apps-team@lists.alioth.debian.org': 'python-team/applications',
     'debian-science-maintainers@lists.alioth.debian.org': 'science-team',
     'pkg-perl-maintainers@lists.alioth.debian.org':
         'perl-team/modules/packages',
