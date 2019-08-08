@@ -41,6 +41,16 @@ class ParseWatchFileTests(TestCase):
         self.assertRaises(
             MissingVersion, parse_watch_file, StringIO("foo=bar\n"))
 
+    def test_parse_with_spacing_around_version(self):
+        wf = parse_watch_file(StringIO("""\
+version = 3
+https://samba.org/~jelmer/ blah-(\\d+).tar.gz
+"""))
+        self.assertEqual(3, wf.version)
+        self.assertEqual(
+            [Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz')],
+            wf.entries)
+
     def test_parse_with_script(self):
         wf = parse_watch_file(StringIO("""\
 version=4

@@ -118,9 +118,9 @@ def parse_watch_file(f):
     try:
         key, value = firstline.split('=', 1)
     except ValueError:
-        raise MissingVersion(f)
-    if key != 'version':
-        raise MissingVersion(f)
+        raise MissingVersion()
+    if key.strip() != 'version':
+        raise MissingVersion()
     version = int(value.strip())
     persistent_options = []
     entries = []
