@@ -22,6 +22,12 @@ __all__ = ['fixup_broken_git_url']
 from urllib.parse import urlparse, urlunparse
 
 
+def sanitize_url(url):
+    if url.startswith('git+http:') or url.startswith('git+https:'):
+        return url[4:]
+    return url
+
+
 def fix_path_in_port(parsed):
     if ':' not in parsed.netloc or parsed.netloc.endswith(']'):
         return None

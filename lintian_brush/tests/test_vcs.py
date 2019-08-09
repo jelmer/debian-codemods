@@ -21,6 +21,7 @@ from unittest import TestCase
 
 from lintian_brush.vcs import (
     fixup_broken_git_url,
+    sanitize_url,
     )
 
 
@@ -50,3 +51,19 @@ class FixUpGitUrlTests(TestCase):
             'https://salsa.debian.org/jelmer/dulwich',
             fixup_broken_git_url(
                 'https://salsa.debian.org/cgit/jelmer/dulwich'))
+
+
+class SanitizeUrlTests(TestCase):
+
+    def test_simple(self):
+        self.assertEqual(
+            'http://github.com/jelmer/blah',
+            sanitize_url('http://github.com/jelmer/blah'))
+
+    def test_git_http(self):
+        self.assertEqual(
+            'http://github.com/jelmer/blah',
+            sanitize_url('git+http://github.com/jelmer/blah'))
+        self.assertEqual(
+            'https://github.com/jelmer/blah',
+            sanitize_url('git+https://github.com/jelmer/blah'))

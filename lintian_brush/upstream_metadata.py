@@ -23,6 +23,7 @@ import subprocess
 import tempfile
 from urllib.parse import urlparse
 from warnings import warn
+from lintian_brush.vcs import sanitize_url as sanitize_vcs_url
 from lintian_brush.watch import parse_watch_file
 
 
@@ -90,7 +91,7 @@ def guess_from_debian_watch(path, trust_package):
             if w.url.startswith('https://') or w.url.startswith('http://'):
                 repo = guess_repo_from_url(w.url)
                 if repo:
-                    yield "Repository", repo, "possible"
+                    yield "Repository", sanitize_vcs_url(repo), "possible"
                     break
 
 
@@ -101,10 +102,11 @@ def guess_from_debian_control(path, trust_package):
     if 'Homepage' in control:
         repo = guess_repo_from_url(control['Homepage'])
         if repo:
-            yield 'Repository', repo, "possible"
+            yield 'Repository', sanitize_vcs_url(repo), "possible"
     if 'XS-Go-Import-Path' in control:
         yield (
-            'Repository', 'https://' + control['XS-Go-Import-Path'],
+            'Repository',
+            sanitize_vcs_url('https://' + control['XS-Go-Import-Path']),
             'possible')
 
 
@@ -120,11 +122,11 @@ def guess_from_setup_py(path, trust_package):
         if pkg_info.home_page:
             repo = guess_repo_from_url(pkg_info.home_page)
             if repo:
-                yield 'Repository', repo, 'possible'
+                yield 'Repository', sanitize_vcs_url(repo), 'possible'
         for value in pkg_info.project_urls:
             url_type, url = value.split(', ')
             if url_type in ('GitHub', 'Repository', 'Source Code'):
-                yield 'Repository', url, 'certain'
+                yield 'Repository', sanitize_vcs_url(url), 'certain'
 
 
 def guess_from_package_json(path, trust_package):
@@ -145,11 +147,11 @@ def guess_from_package_json(path, trust_package):
         if repo_url:
             parsed_url = urlparse(repo_url)
             if parsed_url.scheme and parsed_url.netloc:
-                yield 'Repository', repo_url, 'certain'
+                yield 'Repository', sanitize_vcs_url(repo_url), 'certain'
             else:
                 # Some people seem to default github. :(
                 repo_url = 'https://github.com/' + parsed_url.path
-                yield 'Repository', repo_url, 'possible'
+                yield 'Repository', sanitize_vcs_url(repo_url), 'possible'
 
 
 def guess_from_package_xml(path, trust_package):
@@ -164,7 +166,7 @@ def guess_from_package_xml(path, trust_package):
         yield 'Name', name_tag.text, 'certain'
     for url_tag in root.findall('url'):
         if url_tag.get('type') == 'repository':
-            yield 'Repository', url_tag.text, 'certain'
+            yield 'Repository', sanitize_vcs_url(url_tag.text), 'certain'
         if url_tag.get('type') == 'bugtracker':
             yield 'Bug-Database', url_tag.text, 'certain'
 
@@ -226,7 +228,7 @@ def guess_from_debian_copyright(path, trust_package):
                 from_url = header.source
             repo_url = guess_repo_from_url(from_url)
             if repo_url:
-                yield 'Repository', repo_url, 'possible'
+                yield 'Repository', sanitize_vcs_url(repo_url), 'possible'
         if "X-Upstream-Bugs" in header:
             yield "Bug-Database", header["X-Upstream-Bugs"], 'certain'
         if "X-Source-Downloaded-From" in header:
@@ -241,7 +243,7 @@ def guess_from_readme(path, trust_package):
             if line.strip().startswith('git clone'):
                 line = line.strip()
                 url = line.split()[2]
-                yield ('Repository', url, 'possible')
+                yield ('Repository', sanitize_vcs_url(url), 'possible')
 
 
 def guess_from_meta_json(path, trust_package):
@@ -260,7 +262,8 @@ def guess_from_meta_json(path, trust_package):
             if 'repository' in resources:
                 repo = resources['repository']
                 if 'url' in repo:
-                    yield 'Repository', repo["url"], 'certain'
+                    yield (
+                        'Repository', sanitize_vcs_url(repo["url"]), 'certain')
                 if 'web' in repo:
                     yield 'Repository-Browse', repo['web'], 'certain'
 
@@ -283,7 +286,9 @@ def guess_from_meta_yml(path, trust_package):
             if 'homepage' in resources:
                 yield 'Homepage', resources['homepage'], 'certain'
             if 'repository' in resources:
-                yield 'Repository', resources['repository'], 'certain'
+                yield (
+                    'Repository', sanitize_vcs_url(resources['repository']),
+                    'certain')
 
 
 def guess_from_doap(path, trust_package):
@@ -324,7 +329,9 @@ def guess_from_doap(path, trust_package):
                     else:
                         repo_url = None
                     if repo_url:
-                        yield 'Repository', repo_url, 'certain'
+                        yield (
+                            'Repository', sanitize_vcs_url(repo_url),
+                            'certain')
                     web_location = repo.find(
                         '{http://usefulinc.com/ns/doap#}browse')
                     if web_location is not None:
