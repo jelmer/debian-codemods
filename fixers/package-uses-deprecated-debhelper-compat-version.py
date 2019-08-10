@@ -138,6 +138,7 @@ def upgrade_to_debhelper_12():
         # e.g. dh_auto_build get upgraded. E.g.
         # this works with disutils but not pybuild:
         # dh_auto_build -- --executable=/usr/bin/python
+        # TODO(jelmer): Also add a dependency on dh-python
         line = update_line(
             line, b'--buildsystem=python_distutils', b'--buildsystem=pybuild',
             'Replace python_distutils buildsystem with pybuild.')
