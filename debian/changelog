@@ -1,4 +1,4 @@
-lintian-brush (0.21) UNRELEASED; urgency=medium
+lintian-brush (0.21) unstable; urgency=medium
 
   * Use vcswatch-like regex to find salsa.debian.org.
   * Support suggesting Vcs-* URLs based on vcswatch.
@@ -14,7 +14,7 @@ lintian-brush (0.21) UNRELEASED; urgency=medium
   * Sort paths so that directories get added before the files they
     contain (on VCSes where it matters).
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 03 Aug 2019 22:50:11 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 10 Aug 2019 13:06:04 +0000
 
 lintian-brush (0.20) unstable; urgency=medium
 
