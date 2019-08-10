@@ -18,11 +18,13 @@
 """Tests for lintian_brush.upstream_metadata."""
 
 from breezy.tests import (
+    TestCase,
     TestCaseWithTransport,
     )
 
 
 from lintian_brush.upstream_metadata import (
+    guess_repo_from_url,
     guess_from_package_json,
     guess_from_debian_watch,
     )
@@ -98,3 +100,25 @@ class GuessFromPackageJsonTests(TestCaseWithTransport):
         self.assertEqual(
             [('Name', 'mozillaeslintsetup', 'certain')],
             list(guess_from_package_json('package.json', False)))
+
+
+class GuessRepoFromUrlTests(TestCase):
+
+    def test_github(self):
+        self.assertEqual(
+            'https://github.com/jelmer/blah',
+            guess_repo_from_url('https://github.com/jelmer/blah'))
+        self.assertEqual(
+            'https://github.com/jelmer/blah',
+            guess_repo_from_url('https://github.com/jelmer/blah/blob/README'))
+        self.assertIs(
+            None,
+            guess_repo_from_url('https://github.com/jelmer'))
+
+    def test_none(self):
+        self.assertIs(None, guess_repo_from_url('https://www.jelmer.uk/'))
+
+    def test_known(self):
+        self.assertEqual(
+            'http://launchpad.net/blah',
+            guess_repo_from_url('http://launchpad.net/blah'))

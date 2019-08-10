@@ -34,6 +34,8 @@ KNOWN_HOSTING_SITES = [
 def guess_repo_from_url(url):
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
+        if parsed_url.path.strip('/').count('/') < 1:
+            return None
         return ('https://github.com' +
                 '/'.join(parsed_url.path.split('/')[:3]))
     if parsed_url.netloc in KNOWN_HOSTING_SITES:
