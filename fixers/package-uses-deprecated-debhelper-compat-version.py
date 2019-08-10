@@ -148,11 +148,6 @@ def upgrade_to_debhelper_12():
                 'debian/rules: Call dh_missing rather than using dh_install '
                 '--list-missing.')
             return [line, b'dh_missing --fail-missing']
-        if line.startswith(b'dh_systemd_enable'):
-            line = update_line(
-                line, b'dh_systemd_enable', b'dh_installsystemd',
-                'Use dh_installsystemd rather than deprecated '
-                'dh_systemd_enable.')
         return line
 
     update_rules(cb)
@@ -162,6 +157,11 @@ def upgrade_to_debhelper_11():
 
     def cb(line):
         line = dh_invoke_drop_with(line, b'systemd')
+        if line.startswith(b'dh_systemd_enable'):
+            line = update_line(
+                line, b'dh_systemd_enable', b'dh_installsystemd',
+                'Use dh_installsystemd rather than deprecated '
+                'dh_systemd_enable.')
         return line
 
     update_rules(cb)
