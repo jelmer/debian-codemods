@@ -134,8 +134,16 @@ def upgrade_to_debhelper_12():
         line = update_line(
             line, b'dh_clean -k', b'dh_prep',
             'debian/rules: Replace dh_clean -k with dh_prep.')
+        # TODO(jelmer): Also make sure that any extra arguments to
+        # e.g. dh_auto_build get upgraded. E.g.
+        # this works with disutils but not pybuild:
+        # dh_auto_build -- --executable=/usr/bin/python
         line = update_line(
             line, b'--buildsystem=python_distutils', b'--buildsystem=pybuild',
+            'Replace python_distutils buildsystem with pybuild.')
+        line = update_line(
+            line, b'-O--buildsystem=python_distutils',
+            b'-O--buildsystem=pybuild',
             'Replace python_distutils buildsystem with pybuild.')
         if line.startswith(b'dh_install ') and b'--list-missing' in line:
             line = dh_invoke_drop_argument(line, b'--list-missing')
