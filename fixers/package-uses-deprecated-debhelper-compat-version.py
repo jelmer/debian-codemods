@@ -145,6 +145,11 @@ def upgrade_to_debhelper_12():
             line, b'-O--buildsystem=python_distutils',
             b'-O--buildsystem=pybuild',
             'Replace python_distutils buildsystem with pybuild.')
+        if line.startswith(b'dh ') or line.startswith(b'dh_installinit'):
+            line = update_line(
+                line, b'--no-restart-on-upgrade',
+                b'--no-stop-on-upgrade',
+                'Replace --no-restart-on-upgrade with --no-stop-on-upgrade.')
         if line.startswith(b'dh_install ') and b'--list-missing' in line:
             line = dh_invoke_drop_argument(line, b'--list-missing')
             subitems.add(
