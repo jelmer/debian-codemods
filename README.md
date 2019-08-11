@@ -41,6 +41,7 @@ subset of the issues:
 * debian-tests-control-autodep8-is-obsolete
 * debian-upstream-obsolete-path
 * debian-watch-file-is-missing
+* debian-watch-file-uses-deprecated-githubredir
 * debian-watch-uses-insecure-uri
 * dep5-file-paragraph-references-header-paragraph
 * dh-clean-k-is-deprecated
