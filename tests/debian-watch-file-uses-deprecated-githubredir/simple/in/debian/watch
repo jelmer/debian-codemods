@@ -1,0 +1,2 @@
+version=3
+http://githubredir.debian.net/github/developmentseed/mirror http://github.com/developmentseed/mirror/archive/(\d+.*)\.tar\.gz

@@ -1,0 +1,2 @@
+version=3
+https://github.com/developmentseed/mirror/tags .*/(\d+.*)\.tar\.gz

@@ -17,7 +17,13 @@
 
 """Functions for working with watch files."""
 
+from io import StringIO
 import re
+
+from lintian_brush.reformatting import (
+    check_generated_file,
+    check_preserve_formatting,
+    )
 
 
 DEFAULT_VERSION = 4
@@ -51,7 +57,7 @@ class WatchFile(object):
                 f.write(serialize_options(entry.options) + ' ')
             f.write(entry.url)
             if entry.matching_pattern:
-                f.write(+ ' ' + entry.matching_pattern)
+                f.write(' ' + entry.matching_pattern)
             if entry.version:
                 f.write(' ' + entry.version)
             if entry.script:
@@ -161,3 +167,26 @@ def parse_watch_file(f):
             entries.append(Watch(url, *parts, opts=opts))
     return WatchFile(
         entries=entries, options=persistent_options, version=version)
+
+
+def update_watch(update_entry=None, path='debian/watch'):
+    check_generated_file(path)
+    with open(path, 'r') as f:
+        original_contents = f.read()
+    wf = parse_watch_file(original_contents.splitlines())
+    nf = StringIO()
+    wf.dump(nf)
+    check_preserve_formatting(
+        nf.getvalue().strip(), original_contents.strip(),
+        path)
+    for entry in wf.entries:
+        if update_entry is not None:
+            update_entry(entry)
+    nf = StringIO()
+    wf.dump(nf)
+    updated_contents = nf.getvalue()
+    if updated_contents.strip() != original_contents.strip():
+        with open(path, 'w') as f:
+            f.write(updated_contents)
+        return True
+    return False

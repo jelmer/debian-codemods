@@ -28,7 +28,8 @@ from lintian_brush.watch import parse_watch_file
 
 
 KNOWN_HOSTING_SITES = [
-    'github.com', 'gitlab.com', 'launchpad.net', 'salsa.debian.org']
+    'code.launchpad.net', 'github.com', 'gitlab.com', 'launchpad.net',
+    'salsa.debian.org']
 
 
 def guess_repo_from_url(url):

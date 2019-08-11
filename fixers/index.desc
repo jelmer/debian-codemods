@@ -208,3 +208,6 @@ Fix-Script: vcs-field-not-canonical.py
 Lintian-Tags: vcs-field-not-canonical
 
 Fix-Script: vcs-broken-uri.py
+
+Fix-Script: debian-watch-file-uses-deprecated-githubredir.py
+Lintian-Tags: debian-watch-file-uses-deprecated-githubredir
