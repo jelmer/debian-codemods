@@ -120,5 +120,10 @@ class GuessRepoFromUrlTests(TestCase):
 
     def test_known(self):
         self.assertEqual(
-            'http://launchpad.net/blah',
-            guess_repo_from_url('http://launchpad.net/blah'))
+            'http://code.launchpad.net/blah',
+            guess_repo_from_url('http://code.launchpad.net/blah'))
+
+    def test_launchpad(self):
+        self.assertEqual(
+            'https://code.launchpad.net/bzr',
+            guess_repo_from_url('http://launchpad.net/bzr/+download'))

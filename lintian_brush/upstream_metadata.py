@@ -38,6 +38,9 @@ def guess_repo_from_url(url):
             return None
         return ('https://github.com' +
                 '/'.join(parsed_url.path.split('/')[:3]))
+    if parsed_url.netloc == 'launchpad.net':
+        return 'https://code.launchpad.net/%s' % (
+            parsed_url.path.strip('/').split('/')[0])
     if parsed_url.netloc in KNOWN_HOSTING_SITES:
         return url
     return None
