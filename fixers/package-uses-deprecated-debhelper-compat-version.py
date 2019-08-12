@@ -31,8 +31,8 @@ new_debhelper_compat_version = {
 
 
 if check_cdbs():
-    # cdbs doesn't appear to support debheler 12 just yet..
-    new_debhelper_compat_version = min(new_debhelper_compat_version, 11)
+    # cdbs doesn't appear to support debhelper 11 or 12 just yet..
+    new_debhelper_compat_version = min(new_debhelper_compat_version, 10)
 
 
 if os.path.exists('debian/compat'):

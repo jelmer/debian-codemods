@@ -72,3 +72,14 @@ def fixup_broken_git_url(url):
     if changed:
         return urlunparse(parsed)
     return url
+
+
+def probe_vcs_url(url):
+    from breezy.branch import Branch
+    try:
+        Branch.open(url).last_revision()
+    except Exception:
+        # TODO(jelmer): Catch more specific exceptions?
+        return False
+    else:
+        return True

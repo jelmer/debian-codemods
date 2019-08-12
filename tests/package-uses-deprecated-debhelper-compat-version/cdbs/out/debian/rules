@@ -4,7 +4,7 @@ include /usr/share/cdbs/1/rules/utils.mk
 
 all:
 	dh_clean -k
-	dh --with=blah --buildsystem=python_distutils
+	dh --with=systemd,blah --buildsystem=python_distutils
 
 override_dh_install:
 	dh_install --fail-missing --list-missing
