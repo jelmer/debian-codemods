@@ -171,8 +171,11 @@ def parse_watch_file(f):
 
 def update_watch(update_entry=None, path='debian/watch'):
     check_generated_file(path)
-    with open(path, 'r') as f:
-        original_contents = f.read()
+    try:
+        with open(path, 'r') as f:
+            original_contents = f.read()
+    except FileNotFoundError:
+        return False
     wf = parse_watch_file(original_contents.splitlines())
     nf = StringIO()
     wf.dump(nf)
