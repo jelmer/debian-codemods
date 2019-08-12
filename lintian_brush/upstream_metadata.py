@@ -25,7 +25,6 @@ from urllib.parse import urlparse
 from warnings import warn
 from lintian_brush.vcs import (
     sanitize_url as sanitize_vcs_url,
-    probe_vcs_url,
     )
 from lintian_brush.watch import parse_watch_file
 
@@ -46,8 +45,6 @@ def guess_repo_from_url(url):
         return 'https://code.launchpad.net/%s' % (
             parsed_url.path.strip('/').split('/')[0])
     if parsed_url.netloc in KNOWN_HOSTING_SITES:
-        return url
-    if probe_vcs_url(url):
         return url
     return None
 
