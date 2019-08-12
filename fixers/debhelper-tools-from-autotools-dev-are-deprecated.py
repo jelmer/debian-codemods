@@ -10,7 +10,7 @@ from lintian_brush.rules import (
     )
 
 
-def cb(line):
+def cb(line, target):
     if line == b'dh_autotools-dev_updateconfig':
         return []
     if line == b'dh_autotools-dev_restoreconfig':

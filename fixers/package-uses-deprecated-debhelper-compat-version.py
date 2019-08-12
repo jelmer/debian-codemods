@@ -128,9 +128,19 @@ def update_line(line, orig, new, description):
     return newline
 
 
+def update_line_drop_argument(target, line, command, argument, description):
+    if (line.startswith(command + b' ') or
+            (target == (b'override_' + command) and
+             line.startswith(b'$(overridden_command)'))) and argument in line:
+        line = dh_invoke_drop_argument(line, argument)
+        subitems.add(description)
+        return line, True
+    return line, False
+
+
 def upgrade_to_debhelper_12():
 
-    def cb(line):
+    def cb(line, target):
         line = update_line(
             line, b'dh_clean -k', b'dh_prep',
             'debian/rules: Replace dh_clean -k with dh_prep.')
@@ -151,16 +161,14 @@ def upgrade_to_debhelper_12():
                 line, b'--no-restart-on-upgrade',
                 b'--no-stop-on-upgrade',
                 'Replace --no-restart-on-upgrade with --no-stop-on-upgrade.')
-        if line.startswith(b'dh_install ') and b'--list-missing' in line:
-            line = dh_invoke_drop_argument(line, b'--list-missing')
-            subitems.add(
-                'debian/rules: Call dh_missing rather than using dh_install '
-                '--list-missing.')
-        if line.startswith(b'dh_install ') and b'--fail-missing' in line:
-            line = dh_invoke_drop_argument(line, b'--fail-missing')
-            subitems.add(
-                'debian/rules: Call dh_missing rather than using dh_install '
-                '--list-missing.')
+        line, changed = update_line_drop_argument(
+            target, line, b'dh_install', b'--list-missing',
+            'debian/rules: Call dh_missing rather than using dh_install '
+            '--list-missing.')
+        line, changed = update_line_drop_argument(
+            target, line, b'dh_install', b'--fail-missing',
+            'debian/rules: Move --fail-missing argument to dh_missing.')
+        if changed:
             return [line, b'dh_missing --fail-missing']
         return line
 
@@ -169,7 +177,7 @@ def upgrade_to_debhelper_12():
 
 def upgrade_to_debhelper_11():
 
-    def cb(line):
+    def cb(line, target):
         line = dh_invoke_drop_with(line, b'systemd')
         if line.startswith(b'dh_systemd_enable'):
             line = update_line(

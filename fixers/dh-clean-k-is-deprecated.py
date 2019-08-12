@@ -3,7 +3,7 @@
 from lintian_brush.rules import update_rules
 
 
-def update_line(line):
+def update_line(line, target):
     if line.strip() == b'dh_clean -k':
         return b'dh_prep'
     return line

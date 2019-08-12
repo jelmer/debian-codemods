@@ -37,7 +37,7 @@ all:
 \techo foo
 """)])
 
-        def replace(line):
+        def replace(line, target):
             if line == b'echo blah':
                 return b'echo bloe'
             return line

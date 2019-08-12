@@ -42,7 +42,7 @@ migrate_version = "<< %s%s" % (
         '' if current_version.endswith('~') else '~')
 
 
-def migrate_dh_strip(line):
+def migrate_dh_strip(line, target):
     if line.startswith(b'dh_strip '):
         for dbg_pkg in dbg_packages:
             if ('--dbg-package=%s' % dbg_pkg).encode('utf-8') in line:

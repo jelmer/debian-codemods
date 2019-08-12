@@ -20,7 +20,7 @@ def bump_debhelper(control):
         "dh-autoreconf")
 
 
-def drop_with_autoreconf(line):
+def drop_with_autoreconf(line, target):
     return dh_invoke_drop_with(line, b'autoreconf')
 
 

@@ -35,15 +35,19 @@ def update_rules(command_line_cb, path='debian/rules'):
     with open(path, 'rb') as f:
         original_contents = f.read()
     newlines = []
+    target = None
     for line in original_contents.splitlines():
         if line.startswith(b'\t'):
-            ret = command_line_cb(line[1:])
+            ret = command_line_cb(line[1:], target)
             if isinstance(ret, bytes):
                 newlines.append(b'\t' + ret)
             elif isinstance(ret, list):
                 newlines.extend([b'\t' + l for l in ret])
             else:
                 raise TypeError(ret)
+        elif b':' in line:
+            target = line.split(b':')[0]
+            newlines.append(line)
         else:
             newlines.append(line)
 

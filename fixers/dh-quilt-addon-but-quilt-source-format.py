@@ -7,7 +7,7 @@ from lintian_brush.rules import (
     )
 
 
-def drop_quilt_with(line):
+def drop_quilt_with(line, target):
     return dh_invoke_drop_with(line, b'quilt')
 
 
