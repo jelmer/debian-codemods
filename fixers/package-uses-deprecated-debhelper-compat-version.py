@@ -187,6 +187,20 @@ def upgrade_to_debhelper_11():
         return line
 
     update_rules(cb)
+    for name in os.listdir('debian'):
+        parts = name.split('.')
+        if len(parts) < 2 or parts[-1] != 'upstart':
+            continue
+        if len(parts) == 3:
+            package = parts[0]
+            service = parts[1]
+        elif len(parts) == 2:
+            package = service = parts[0]
+        os.unlink(os.path.join('debian', name))
+        subitems.add('Drop obsolete upstart file %s.' % name)
+        with open('debian/%s.maintscript' % package, 'a') as f:
+            f.write('rm_conffile /etc/init/%s.conf %s\n' % (
+                service, os.environ['CURRENT_VERSION']))
 
 
 upgrade_to_debhelper = {
