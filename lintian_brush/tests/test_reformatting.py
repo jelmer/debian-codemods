@@ -26,6 +26,7 @@ from lintian_brush.reformatting import (
     FormattingUnpreservable,
     check_generated_file,
     check_preserve_formatting,
+    edit_formatted_file,
     GeneratedFile,
     )
 
@@ -70,3 +71,31 @@ Testsuite: autopkgtest
 """)])
         self.assertRaises(
             GeneratedFile, check_generated_file, 'debian/control')
+
+
+class EditFormattedFileTests(TestCaseWithTransport):
+
+    def test_unchanged(self):
+        self.build_tree_contents([('a', 'some content\n')])
+        self.assertFalse(edit_formatted_file(
+            'a', 'some content\n', 'some content reformatted\n',
+            'some content\n'))
+        self.assertFalse(edit_formatted_file(
+            'a', 'some content\n', 'some content\n',
+            'some content\n'))
+        self.assertFalse(edit_formatted_file(
+            'a', 'some content\n', 'some content reformatted\n',
+            'some content reformatted\n'))
+
+    def test_changed(self):
+        self.build_tree_contents([('a', 'some content\n')])
+        self.assertTrue(edit_formatted_file(
+            'a', 'some content\n', 'some content\n',
+            'new content\n'))
+        self.assertFileEqual('new content\n', 'a')
+
+    def test_unformattable(self):
+        self.assertRaises(
+            FormattingUnpreservable, edit_formatted_file,
+            'a', 'some content\n', 'reformatted content\n',
+            'new content\n')

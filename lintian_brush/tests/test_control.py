@@ -22,9 +22,12 @@ from breezy.tests import (
     TestCaseWithTransport,
     )
 
+from debian.deb822 import Deb822
+
 from lintian_brush.control import (
     add_dependency,
     drop_dependency,
+    dump_paragraphs,
     ensure_exact_version,
     ensure_minimum_version,
     ensure_some_version,
@@ -52,7 +55,6 @@ Testsuite: autopkgtest
 """), b"""\
 Source: blah
 Testsuite: autopkgtest
-
 """)
 
     def test_fine(self):
@@ -64,6 +66,31 @@ Testsuite: autopkgtest
 Source: blah
 Testsuite: autogpktest
 
+""")
+
+
+class DumpParagraphsTests(TestCase):
+
+    def test_simple(self):
+        self.assertEqual(dump_paragraphs([Deb822({
+                'Source': 'blah',
+                'Testsuite': 'autopkgtest'
+            })]), b"""\
+Source: blah
+Testsuite: autopkgtest
+""")
+
+    def test_multi(self):
+        self.assertEqual(dump_paragraphs([
+            Deb822({
+                'Source': 'blah',
+                'Testsuite': 'autopkgtest'
+            }),
+            Deb822({'Package': 'bloe'})]), b"""\
+Source: blah
+Testsuite: autopkgtest
+
+Package: bloe
 """)
 
 
@@ -87,7 +114,12 @@ Source: blah
 Testsuite: autopkgtest
 
 """)])
-        self.assertRaises(FormattingUnpreservable, update_control)
+
+        def update_source(control):
+            control["NewField"] = "New Field"
+        self.assertRaises(
+            FormattingUnpreservable, update_control,
+            source_package_cb=update_source)
 
     def test_modify_source(self):
         self.build_tree_contents([('debian/', ), ('debian/control', """\

@@ -48,7 +48,10 @@ Files: *
 License: GPL
 Copyright: 2012...
 """)])
-        self.assertRaises(FormattingUnpreservable, update_copyright, None)
+
+        def dummy(cb):
+            cb.header.upstream_name = 'llintian-brush'
+        self.assertRaises(FormattingUnpreservable, update_copyright, dummy)
 
     def test_old_style(self):
         self.build_tree_contents([('debian/', ), ('debian/copyright', """\

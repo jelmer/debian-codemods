@@ -15,7 +15,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__all__ = ['check_preserve_formatting', 'check_generated_file']
+__all__ = [
+    'check_preserve_formatting',
+    'check_generated_file',
+    'edit_formatted_file',
+    ]
 
 
 import os
@@ -73,3 +77,29 @@ def check_generated_file(path):
         return
     if b"DO NOT EDIT" in original_contents:
         raise GeneratedFile(path)
+
+
+def edit_formatted_file(
+        path, original_contents, rewritten_contents,
+        updated_contents):
+    """Edit a formatted file.
+
+    Args:
+      path: path to the file
+      original_contents: The original contents of the file
+      rewritten_contents: The contents rewritten with our parser/serializer
+      updated_contents: Updated contents rewritten with our parser/serializer
+        after changes were made.
+    """
+    if type(updated_contents) != type(rewritten_contents):
+        raise TypeError('inconsistent types: %r, %r' % (
+            type(updated_contents), type(rewritten_contents)))
+    if updated_contents in (rewritten_contents, original_contents):
+        return False
+    check_preserve_formatting(
+            rewritten_contents.strip(),
+            original_contents.strip(), path)
+    mode = 'w' + ('b' if isinstance(updated_contents, bytes) else '')
+    with open(path, mode) as f:
+        f.write(updated_contents)
+    return True

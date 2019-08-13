@@ -22,7 +22,7 @@ import re
 
 from lintian_brush.reformatting import (
     check_generated_file,
-    check_preserve_formatting,
+    edit_formatted_file,
     )
 
 
@@ -179,17 +179,12 @@ def update_watch(update_entry=None, path='debian/watch'):
     wf = parse_watch_file(original_contents.splitlines())
     nf = StringIO()
     wf.dump(nf)
-    check_preserve_formatting(
-        nf.getvalue().strip(), original_contents.strip(),
-        path)
+    rewritten_contents = nf.getvalue()
     for entry in wf.entries:
         if update_entry is not None:
             update_entry(entry)
     nf = StringIO()
     wf.dump(nf)
     updated_contents = nf.getvalue()
-    if updated_contents.strip() != original_contents.strip():
-        with open(path, 'w') as f:
-            f.write(updated_contents)
-        return True
-    return False
+    return edit_formatted_file(
+        path, original_contents, rewritten_contents, updated_contents)
