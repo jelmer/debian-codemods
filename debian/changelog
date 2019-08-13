@@ -1,4 +1,4 @@
-lintian-brush (0.22) UNRELEASED; urgency=medium
+lintian-brush (0.22) unstable; urgency=medium
 
   * Ignore github URLs with just a single paths component when looking
     for repo URLs.
@@ -12,7 +12,7 @@ lintian-brush (0.22) UNRELEASED; urgency=medium
   * Support removing upstart conffiles as part of upgrade to debhelper
     11.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 10 Aug 2019 16:49:28 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 13 Aug 2019 20:38:35 +0000
 
 lintian-brush (0.21) unstable; urgency=medium
 
