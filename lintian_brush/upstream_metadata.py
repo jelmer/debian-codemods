@@ -351,6 +351,26 @@ def guess_from_doap(path, trust_package):
                         yield 'Repository-Browse', web_url, 'certain'
 
 
+def guess_from_configure(path, trust_package=False):
+    with open(path, 'r') as f:
+        for line in f:
+            if '=' not in line:
+                continue
+            (key, value) = line.strip().split('=')
+            if ' ' in key:
+                continue
+            if '$' in value:
+                continue
+            if value.startswith("'") and value.endswith("'"):
+                value = value[1:-1]
+            if key == 'PACKAGE_NAME':
+                yield 'Name', value, 'certain'
+            elif key == 'PACKAGE_BUGREPORT':
+                yield 'Bug-Submit', value, 'certain'
+            elif key == 'PACKAGE_URL':
+                yield 'Homepage', value, 'certain'
+
+
 def guess_upstream_metadata_items(path, trust_package=False):
     """Guess upstream metadata items, in no particular order.
 
@@ -371,6 +391,7 @@ def guess_upstream_metadata_items(path, trust_package=False):
         ('debian/copyright', guess_from_debian_copyright),
         ('META.json', guess_from_meta_json),
         ('META.yml', guess_from_meta_yml),
+        ('configure', guess_from_configure),
         ]
 
     doap_filenames = [n for n in os.listdir(path) if n.endswith('.doap')]
