@@ -26,6 +26,7 @@ subset of the issues:
 * ancient-python-version-field
 * build-depends-on-build-essential
 * build-depends-on-obsolete-package
+* comma-separated-files-in-dep5-copyright
 * control-file-with-CRLF-EOLs
 * copyright-has-crs
 * debhelper-but-no-misc-depends
