@@ -22,6 +22,7 @@ def test_suite():
     names = [
         'control',
         'copyright',
+        'deb822',
         'dirty_tracker',
         'lintian_overrides',
         'reformatting',

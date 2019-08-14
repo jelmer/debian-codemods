@@ -22,12 +22,9 @@ from breezy.tests import (
     TestCaseWithTransport,
     )
 
-from debian.deb822 import Deb822
-
 from lintian_brush.control import (
     add_dependency,
     drop_dependency,
-    dump_paragraphs,
     ensure_exact_version,
     ensure_minimum_version,
     ensure_some_version,
@@ -36,62 +33,11 @@ from lintian_brush.control import (
     PkgRelation,
     format_relations,
     parse_relations,
-    reformat_deb822,
     )
 from lintian_brush.reformatting import (
     GeneratedFile,
     FormattingUnpreservable,
     )
-
-
-class ReformatDeb822Tests(TestCase):
-
-    def test_comment(self):
-        self.assertEqual(reformat_deb822(b"""\
-Source: blah
-# A comment
-Testsuite: autopkgtest
-
-"""), b"""\
-Source: blah
-Testsuite: autopkgtest
-""")
-
-    def test_fine(self):
-        self.assertTrue(reformat_deb822(b"""\
-Source: blah
-Testsuite: autopkgtest
-
-"""), b"""\
-Source: blah
-Testsuite: autogpktest
-
-""")
-
-
-class DumpParagraphsTests(TestCase):
-
-    def test_simple(self):
-        self.assertEqual(dump_paragraphs([Deb822({
-                'Source': 'blah',
-                'Testsuite': 'autopkgtest'
-            })]), b"""\
-Source: blah
-Testsuite: autopkgtest
-""")
-
-    def test_multi(self):
-        self.assertEqual(dump_paragraphs([
-            Deb822({
-                'Source': 'blah',
-                'Testsuite': 'autopkgtest'
-            }),
-            Deb822({'Package': 'bloe'})]), b"""\
-Source: blah
-Testsuite: autopkgtest
-
-Package: bloe
-""")
 
 
 class UpdateControlTests(TestCaseWithTransport):

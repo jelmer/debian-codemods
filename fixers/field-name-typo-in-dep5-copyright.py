@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debian.deb822 import Deb822
-from lintian_brush.control import reformat_deb822
+from lintian_brush.deb822 import reformat_deb822
 from lintian_brush.reformatting import check_preserve_formatting
 import sys
 
