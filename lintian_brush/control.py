@@ -25,8 +25,17 @@ from ._deb822 import PkgRelation
 from .deb822 import update_deb822
 
 
-def update_control(path='debian/control', **kwargs):
-    return update_deb822(path, **kwargs)
+def update_control(path='debian/control', source_package_cb=None,
+                   binary_package_cb=None):
+    def paragraph_cb(paragraph):
+        if paragraph.get("Source"):
+            if source_package_cb is not None:
+                source_package_cb(paragraph)
+        else:
+            if binary_package_cb is not None:
+                binary_package_cb(paragraph)
+
+    return update_deb822(path, paragraph_cb=paragraph_cb)
 
 
 def parse_relations(text):

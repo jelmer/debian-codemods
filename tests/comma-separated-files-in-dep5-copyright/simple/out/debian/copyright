@@ -1,0 +1,17 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Name: apackage
+Maintainer: Joe Maintainer <joe@example.com>
+
+Files:
+ update-passwd.c
+ man/*
+Copyright: Joe Maintainer <joe@example.com>
+License: GPL-2
+
+Files: *
+Copyright: Somebody Else <somebody@example.com>
+License: GPL-2
+
+License: GPL-2
+ On Debian and Debian-based systems, a copy of the GNU General Public
+ License version 2 is available in /usr/share/common-licenses/GPL-2.

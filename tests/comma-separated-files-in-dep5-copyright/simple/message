@@ -1,0 +1,2 @@
+debian/copyright: Replace commas with whitespace to separate items in Files paragraph.
+Fixed-Lintian-Tags: comma-separated-files-in-dep5-copyright

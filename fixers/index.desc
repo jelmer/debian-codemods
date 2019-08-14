@@ -15,6 +15,9 @@ Lintian-Tags: file-contains-trailing-whitespace
 Fix-Script: unversioned-copyright-format-uri.sh
 Lintian-Tags: unversioned-copyright-format-uri
 
+Fix-Script: comma-separated-files-in-dep5-copyright.py
+Lintian-Tags: comma-separated-files-in-dep5-copyright
+
 Fix-Script: copyright-has-crs.sh
 Lintian-Tags: copyright-has-crs
 

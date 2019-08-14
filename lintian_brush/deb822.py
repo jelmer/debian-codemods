@@ -64,8 +64,7 @@ def update_deb822(path, **kwargs):
 
     Args:
       path: Path to the debian/control file to edit
-      source_package_cb: Called on source package paragraph
-      binary_package_cb: Called on each binary package paragraph
+      paragraph_cb: Called on paragraphs
     Returns:
       boolean indicating whether any changes were made
     """
@@ -74,14 +73,13 @@ def update_deb822(path, **kwargs):
         original_contents = f.read()
     rewritten_contents = reformat_deb822(original_contents)
     outf = BytesIO()
-    update_control_file(BytesIO(original_contents), outf, **kwargs)
+    update_deb822_file(BytesIO(original_contents), outf, **kwargs)
     updated_contents = outf.getvalue()
     return edit_formatted_file(
         path, original_contents, rewritten_contents, updated_contents)
 
 
-def update_control_file(inf, outf, source_package_cb=None,
-                        binary_package_cb=None):
+def update_deb822_file(inf, outf, paragraph_cb=None):
     """Update a control file.
 
     The callbacks can modify the paragraphs in place, and can trigger their
@@ -90,16 +88,11 @@ def update_control_file(inf, outf, source_package_cb=None,
     Args:
       inf: File-like object to read control file from
       outf: File-like object to write control file to
-      source_package_cb: Called on source package paragraph (optional)
-      binary_package_cb: Called on each binary package paragraph (optional)
+      paragraph_cb: Called on paragraph (optional)
     """
     paragraphs = []
     for paragraph in Deb822.iter_paragraphs(inf, encoding='utf-8'):
-        if paragraph.get("Source"):
-            if source_package_cb is not None:
-                source_package_cb(paragraph)
-        else:
-            if binary_package_cb is not None:
-                binary_package_cb(paragraph)
+        if paragraph_cb:
+            paragraph_cb(paragraph)
         paragraphs.append(paragraph)
     outf.write(dump_paragraphs(paragraphs))
