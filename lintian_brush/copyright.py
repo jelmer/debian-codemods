@@ -34,7 +34,7 @@ def update_copyright(update_cb, path='debian/copyright'):
     with open(path, 'r') as f:
         orig_content = f.read()
 
-    copyright = Copyright(orig_content)
+    copyright = Copyright(orig_content, strict=False)
     rewritten_content = copyright.dump()
 
     update_cb(copyright)

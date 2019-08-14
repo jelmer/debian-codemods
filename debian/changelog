@@ -1,6 +1,7 @@
 lintian-brush (0.23) UNRELEASED; urgency=medium
 
   * Add fixer for comma-separated-files-in-dep5-copyright.
+  * Disable strict parsing of copyright file.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 14 Aug 2019 00:30:39 +0000
 
