@@ -34,6 +34,7 @@ MAINTAINER_EMAIL_MAP = {
     'pkg-ruby-extras-maintainers@lists.alioth.debian.org': 'ruby-team',
     'pkg-clamav-devel@lists.alioth.debian.org': 'clamav-team',
     'pkg-go-maintainers@lists.alioth.debian.org': 'go-team/packages',
+    'pkg-games-devel@lists.alioth.debian.org': 'games-team',
     }
 
 
