@@ -31,6 +31,7 @@ MAINTAINER_EMAIL_MAP = {
     'pkg-perl-maintainers@lists.alioth.debian.org':
         'perl-team/modules/packages',
     'pkg-java-maintainers@lists.alioth.debian.org': 'java-team',
+    'pkg-ruby-extras-maintainers@lists.alioth.debian.org': 'ruby-team',
     }
 
 
