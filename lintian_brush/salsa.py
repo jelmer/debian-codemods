@@ -64,7 +64,10 @@ def determine_browser_url(url):
     parsed_url = urlparse(url)
     # TODO(jelmer): Add support for branches
     assert parsed_url.netloc == 'salsa.debian.org'
-    return 'https://salsa.debian.org%s' % parsed_url.path.rstrip('.git')
+    path = parsed_url.path
+    if path.endswith('.git'):
+        path = path[:-len('.git')]
+    return 'https://salsa.debian.org%s' % path
 
 
 def salsa_url_from_alioth_url(vcs_type, alioth_url):
@@ -86,8 +89,9 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
             return re.sub(m, 'https://salsa.debian.org/', alioth_url)
 
     if vcs_type.lower() == 'svn':
-        return alioth_url.replace(
-            'svn://svn.debian.org/pkg-perl/trunk',
-            'https://salsa.debian.org/perl-team/modules/packages')
+        if alioth_url.startswith('svn://svn.debian.org/pkg-perl/trunk'):
+            return alioth_url.replace(
+                'svn://svn.debian.org/pkg-perl/trunk',
+                'https://salsa.debian.org/perl-team/modules/packages')
 
     return None
