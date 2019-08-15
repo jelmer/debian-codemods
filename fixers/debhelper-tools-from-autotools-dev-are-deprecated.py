@@ -15,7 +15,9 @@ def cb(line, target):
         return []
     if line == b'dh_autotools-dev_restoreconfig':
         return []
-    return dh_invoke_drop_with(line, b'autotools-dev')
+    line = dh_invoke_drop_with(line, b'autotools-dev')
+    line = dh_invoke_drop_with(line, b'autotools_dev')
+    return line
 
 
 def bump_debhelper(source):
