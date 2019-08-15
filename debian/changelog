@@ -4,6 +4,7 @@ lintian-brush (0.23) UNRELEASED; urgency=medium
   * Disable strict parsing of copyright file.
   * Support reading upstream metadata from configure.
   * Add fixer for libmodule-build-perl-needs-to-be-in-build-depend.
+  * Add fixer for space-in-std-shortname-in-dep5-copyright.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 14 Aug 2019 00:30:39 +0000
 

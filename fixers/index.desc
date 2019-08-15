@@ -154,6 +154,9 @@ Lintian-Tags: quilt-series-without-trailing-newline
 Fix-Script: renamed-tag.py
 Lintian-Tags: renamed-tag
 
+Fix-Script: space-in-std-shortname-in-dep5-copyright.py
+Lintian-Tags: space-in-std-shortname-in-dep5-copyright
+
 Fix-Script: systemd-service-file-pidfile-refers-to-var-run.py
 Lintian-Tags: systemd-service-file-pidfile-refers-to-var-run
 
