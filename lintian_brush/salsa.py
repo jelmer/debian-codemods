@@ -63,12 +63,18 @@ def determine_browser_url(url):
     Returns:
       a browser URL
     """
+    if ' -b ' in url:
+        (url, branch) = url.split(' -b ')
+    else:
+        branch = None
     parsed_url = urlparse(url)
     # TODO(jelmer): Add support for branches
     assert parsed_url.netloc == 'salsa.debian.org'
     path = parsed_url.path
     if path.endswith('.git'):
         path = path[:-len('.git')]
+    if branch:
+        path = path + '/tree/%s' % branch
     return 'https://salsa.debian.org%s' % path
 
 
