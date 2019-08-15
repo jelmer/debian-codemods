@@ -33,6 +33,7 @@ MAINTAINER_EMAIL_MAP = {
     'pkg-java-maintainers@lists.alioth.debian.org': 'java-team',
     'pkg-ruby-extras-maintainers@lists.alioth.debian.org': 'ruby-team',
     'pkg-clamav-devel@lists.alioth.debian.org': 'clamav-team',
+    'pkg-go-maintainers@lists.alioth.debian.org': 'go-team/packages',
     }
 
 
