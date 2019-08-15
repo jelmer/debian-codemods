@@ -160,6 +160,8 @@ def guess_from_package_json(path, trust_package):
                 # Some people seem to default github. :(
                 repo_url = 'https://github.com/' + parsed_url.path
                 yield 'Repository', sanitize_vcs_url(repo_url), 'possible'
+    if 'bugs' in package:
+        yield 'Bugs-Database', package['bugs'], 'certain'
 
 
 def guess_from_package_xml(path, trust_package):
