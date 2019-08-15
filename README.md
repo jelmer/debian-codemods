@@ -54,6 +54,7 @@ subset of the issues:
 * homepage-field-uses-insecure-uri
 * insecure-copyright-format-uri
 * invalid-short-name-in-dep5-copyright
+* libmodule-build-perl-needs-to-be-in-build-depends
 * maintainer-script-without-set-e
 * malformed-dm-upload-allowed
 * missing-debian-source-format
@@ -74,6 +75,7 @@ subset of the issues:
 * public-upstream-keys-in-multiple-locations
 * quilt-series-without-trailing-newline
 * renamed-tag
+* space-in-std-shortname-in-dep5-copyright
 * systemd-service-file-pidfile-refers-to-var-run
 * transitional-package-should-be-oldlibs-optional
 * unnecessary-team-upload
