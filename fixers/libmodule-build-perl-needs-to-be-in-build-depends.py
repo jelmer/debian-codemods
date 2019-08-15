@@ -9,8 +9,10 @@ from lintian_brush.control import (
 
 
 def move_libmodule_build_perl(control):
-    if not get_relation(control.get('Build-Depends-Indep', []),
-                        'libmodule-build-perl'):
+    try:
+        get_relation(
+            control.get('Build-Depends-Indep', ''), 'libmodule-build-perl')
+    except KeyError:
         return
 
     control['Build-Depends-Indep'] = drop_dependency(
