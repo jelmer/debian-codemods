@@ -1,0 +1,2 @@
+Move libmodule-build-perl from Build-Depends-Indep to Build-Depends.
+Fixed: libmodule-build-perl-needs-to-be-in-build-depend

@@ -1,0 +1,16 @@
+Source: libtest-mock-guard-perl
+Section: perl
+Priority: optional
+Maintainer: Joe Maintainer <joe@example.com>
+Build-Depends: debhelper (>= 9)
+Build-Depends-Indep: libclass-load-perl (>= 0.06)
+ , libmodule-build-perl
+ , perl
+Standards-Version: 3.9.6
+
+Package: libtest-mock-guard-perl
+Architecture: all
+Depends: ${misc:Depends}, ${perl:Depends}
+ , libclass-load-perl (>= 0.06)
+Description: Simple mock test library
+ A mock test library.

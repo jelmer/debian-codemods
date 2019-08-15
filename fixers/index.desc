@@ -99,6 +99,9 @@ Fix-Script: empty-debian-patches-series.py
 Fix-Script: homepage-field-uses-insecure-uri.py
 Lintian-Tags: homepage-field-uses-insecure-uri
 
+Fix-Script: libmodule-build-perl-needs-to-be-in-build-depends.py
+Lintian-Tags: libmodule-build-perl-needs-to-be-in-build-depends
+
 Fix-Script: maintainer-script-without-set-e.py
 Lintian-Tags: maintainer-script-without-set-e
 
