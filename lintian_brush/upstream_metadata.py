@@ -359,7 +359,7 @@ def guess_from_configure(path, trust_package=False):
         for line in f:
             if '=' not in line:
                 continue
-            (key, value) = line.strip().split('=')
+            (key, value) = line.strip().split('=', 1)
             if ' ' in key:
                 continue
             if '$' in value:
