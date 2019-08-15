@@ -64,7 +64,7 @@ def determine_browser_url(url):
       a browser URL
     """
     if ' -b ' in url:
-        (url, branch) = url.split(' -b ')
+        (url, branch) = url.split(' -b ', 1)
     else:
         branch = None
     parsed_url = urlparse(url)
