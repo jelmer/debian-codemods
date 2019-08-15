@@ -93,5 +93,8 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
             return alioth_url.replace(
                 'svn://svn.debian.org/pkg-perl/trunk',
                 'https://salsa.debian.org/perl-team/modules/packages')
-
+        if alioth_url.startswith('svn://svn.debian.org/pkg-lua/packages'):
+            return alioth_url.replace(
+                'svn://svn.debian.org/pkg-lua/packages',
+                'https://salsa.debian.org/lua-team')
     return None
