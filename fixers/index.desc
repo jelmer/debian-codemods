@@ -116,6 +116,9 @@ Lintian-Tags: missing-debian-source-format
 Fix-Script: missing-vcs-browser-field.py
 Lintian-Tags: missing-vcs-browser-field
 
+Fix-Script: no-homepage-field.py
+Lintian-Tags: no-homepage-field
+
 Fix-Script: orphaned-package-should-not-have-uploaders.py
 Lintian-Tags: orphaned-package-should-not-have-uploaders
 

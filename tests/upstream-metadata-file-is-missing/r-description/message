@@ -1,0 +1,3 @@
+Set upstream metadata fields: Archive, Bug-Database, Name, Repository.
+Certainty: certain
+Fixed-Lintian-Tags: upstream-metadata-file-is-missing
