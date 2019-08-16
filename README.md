@@ -48,6 +48,7 @@ subset of the issues:
 * dh-clean-k-is-deprecated
 * dh-quilt-addon-but-quilt-source-format
 * dm-upload-allowed-is-obsolete
+* empty-debian-tests-control
 * field-name-typo-in-dep5-copyright
 * file-contains-trailing-whitespace
 * global-files-wildcard-not-first-paragraph-in-dep5-copyright
