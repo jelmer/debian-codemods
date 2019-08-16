@@ -19,6 +19,8 @@
 
 __all__ = ['fixup_broken_git_url']
 
+from .salsa import determine_browser_url as determine_salsa_browser_url
+
 from urllib.parse import urlparse, urlunparse
 
 
@@ -83,3 +85,14 @@ def probe_vcs_url(url):
         return False
     else:
         return True
+
+
+def determine_browser_url(vcs_type, vcs_url):
+    parsed = urlparse(vcs_url)
+    if parsed.netloc == 'salsa.debian.org':
+        return determine_salsa_browser_url(vcs_url)
+    if parsed.netloc == 'github.com':
+        return urlunparse(
+            ('https', parsed.netloc, parsed.path.rstrip('.git'),
+             parsed.query, parsed.params, parsed.fragment))
+    return None

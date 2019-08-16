@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 from lintian_brush.control import update_control
-import urllib.parse
+from lintian_brush.vcs import determine_browser_url
 
 
 def add_vcs_browser(control):
@@ -10,11 +10,9 @@ def add_vcs_browser(control):
         vcs_git = control["Vcs-Git"]
     except KeyError:
         return
-    parsed = urllib.parse.urlparse(vcs_git)
-    if parsed.netloc in ('github.com', 'salsa.debian.org'):
-        control["Vcs-Browser"] = urllib.parse.urlunparse(
-                ('https', parsed.netloc, parsed.path.rstrip('.git'),
-                 parsed.query, parsed.params, parsed.fragment))
+    browser_url = determine_browser_url('git', vcs_git)
+    if browser_url is not None:
+        control["Vcs-Browser"] = browser_url
 
 
 update_control(source_package_cb=add_vcs_browser)
