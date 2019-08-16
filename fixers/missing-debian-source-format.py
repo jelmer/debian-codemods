@@ -2,7 +2,6 @@
 from debian.changelog import Version
 import os
 import sys
-print("Explicitly specify source format.")
 if not os.path.exists('debian/source'):
     os.mkdir('debian/source')
 if os.path.exists('debian/source/format'):
@@ -16,4 +15,6 @@ with open('debian/source/format', 'w') as f:
         f.write("3.0 (native)\n")
     else:
         f.write("3.0 (quilt)\n")
+
+print("Explicitly specify source format.")
 print("Fixed-Lintian-Tags: missing-debian-source-format")

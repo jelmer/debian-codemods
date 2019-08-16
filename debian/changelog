@@ -7,6 +7,7 @@ lintian-brush (0.23) UNRELEASED; urgency=medium
   * Add fixer for space-in-std-shortname-in-dep5-copyright.
   * Add support for reading R DESCRIPTION files.
   * Add fixer for no-homepage-field.
+  * Add fixer for debian-tests-empty-control.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 14 Aug 2019 00:30:39 +0000
 

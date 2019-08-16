@@ -21,6 +21,9 @@ Lintian-Tags: comma-separated-files-in-dep5-copyright
 Fix-Script: copyright-has-crs.sh
 Lintian-Tags: copyright-has-crs
 
+Fix-Script: empty-debian-tests-control.py
+Lintian-Tags: empty-debian-tests-control
+
 Fix-Script: insecure-copyright-format-uri.sh
 Lintian-Tags: insecure-copyright-format-uri
 
