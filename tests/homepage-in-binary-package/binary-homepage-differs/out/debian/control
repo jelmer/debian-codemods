@@ -1,0 +1,12 @@
+Source: blah
+Maintainer: Joe Maintainer <joe@example.com>
+Homepage: https://www.example.com/blah
+
+Package: blah1
+Description: blah blah
+ More blah
+
+Package: blah2
+Homepage: https://www.example.com/blah2
+Description: blah blah (x2)
+ More blah

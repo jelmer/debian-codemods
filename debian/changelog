@@ -8,6 +8,7 @@ lintian-brush (0.23) UNRELEASED; urgency=medium
   * Add support for reading R DESCRIPTION files.
   * Add fixer for no-homepage-field.
   * Add fixer for debian-tests-empty-control.
+  * Add fixer for homepage-in-binary-package.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 14 Aug 2019 00:30:39 +0000
 

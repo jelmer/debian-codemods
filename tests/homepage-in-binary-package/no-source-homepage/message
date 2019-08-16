@@ -1,0 +1,2 @@
+Set Homepage field in Source rather than Binary package.
+Fixed-Lintian-Tags: homepage-in-binary-package
