@@ -59,6 +59,7 @@ subset of the issues:
 * malformed-dm-upload-allowed
 * missing-debian-source-format
 * missing-vcs-browser-field
+* no-homepage-field
 * obsolete-field-in-dep5-copyright
 * old-fsf-address-in-copyright-file
 * orphaned-package-should-not-have-uploaders
