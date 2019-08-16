@@ -376,6 +376,26 @@ def guess_from_configure(path, trust_package=False):
                 yield 'Homepage', value, 'certain'
 
 
+def guess_from_r_description(path, trust_package=False):
+    with open(path, 'r') as f:
+        from debian.deb822 import Deb822
+        description = Deb822(f)
+        if 'Package' in description:
+            yield 'Name', description['Package'], 'certain'
+        if 'Repository' in description:
+            yield 'Archive', description['Repository'], 'certain'
+        if 'BugReports' in description:
+            yield 'Bug-Database', description['BugReports'], 'certain'
+        if 'URL' in description:
+            urls = [url.strip() for url in description['URL'].split(',')]
+            if len(urls) == 1:
+                yield 'Homepage', urls[0], 'possible'
+            for url in urls:
+                repo_url = guess_repo_from_url(url)
+                if repo_url:
+                    yield 'Repository', repo_url, 'certain'
+
+
 def guess_upstream_metadata_items(path, trust_package=False):
     """Guess upstream metadata items, in no particular order.
 
@@ -397,6 +417,7 @@ def guess_upstream_metadata_items(path, trust_package=False):
         ('META.json', guess_from_meta_json),
         ('META.yml', guess_from_meta_yml),
         ('configure', guess_from_configure),
+        ('DESCRIPTION', guess_from_r_description),
         ]
 
     doap_filenames = [n for n in os.listdir(path) if n.endswith('.doap')]
