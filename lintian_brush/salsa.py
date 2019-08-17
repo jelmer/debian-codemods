@@ -43,6 +43,11 @@ MAINTAINER_EMAIL_MAP = {
     'debian-ocaml-maint@lists.debian.org': 'ocaml-team',
     }
 
+TEAM_NAME_MAP = {
+    'pkg-go': 'go-team',
+    'pkg-fonts': 'fonts-team',
+}
+
 
 def guess_repository_url(package, maintainer_email):
     """Guess the repository URL for a package hosted on Salsa.
@@ -110,6 +115,11 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
         m = "(https?|git)://(anonscm|git).debian.org/(git/)?users/"
         if re.match(m, alioth_url):
             return re.sub(m, 'https://salsa.debian.org/', alioth_url)
+        m = "(https?|git)://(anonscm|git).debian.org/(git/)?([^/]+)/"
+        if re.match(m, alioth_url) and m.group(2) in TEAM_NAME_MAP:
+            new_name = TEAM_NAME_MAP[m.group(2)]
+            return re.sub(m, 'https://salsa.debian.org/' + new_name,
+                          alioth_url)
 
     if vcs_type.lower() == 'svn':
         if alioth_url.startswith('svn://svn.debian.org/pkg-perl/trunk'):
