@@ -12,6 +12,7 @@ lintian-brush (0.23) UNRELEASED; urgency=medium
   * Fix Git URLs with the branch name in the URL rather than with -b
     argument.
   * Add fixer for maintainer-also-in-uploaders.
+  * Ignore comments in debian/source/options.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 14 Aug 2019 00:30:39 +0000
 

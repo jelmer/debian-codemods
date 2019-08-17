@@ -10,6 +10,9 @@ except FileNotFoundError:
 
 newlines = []
 for line in oldlines:
+    if line.lstrip().startswith('#'):
+        newlines.append(line)
+        continue
     (key, value) = line.split('=')
     if key.strip() == 'compression':
         print("Drop custom source compression.")
