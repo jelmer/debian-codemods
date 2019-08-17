@@ -40,6 +40,7 @@ MAINTAINER_EMAIL_MAP = {
     'pkg-gnustep-maintainers@lists.alioth.debian.org': 'gnustep-team',
     'pkg-gnome-maintainers@lists.alioth.debian.org': 'gnome-team',
     'pkg-multimedia-maintainers@lists.alioth.debian.org': 'multimedia-team',
+    'debian-ocaml-maint@lists.debian.org': 'ocaml-team',
     }
 
 
