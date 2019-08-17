@@ -1,0 +1,7 @@
+Source: blah
+Maintainer: Jelmer Vernooij <jelmer@jelmer.uk>
+Uploaders: Jelmer Vernooij <jelmer@jelmer.uk>, Joe Example <joe@example.com>
+
+Package: blah
+Description: blah blah
+ blah

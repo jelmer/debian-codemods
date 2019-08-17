@@ -116,6 +116,9 @@ Lintian-Tags:
   malformed-dm-upload-allowed,
   dm-upload-allowed-is-obsolete
 
+Fix-Script: maintainer-also-in-uploaders.py
+Lintian-Tags: maintainer-also-in-uploaders.
+
 Fix-Script: missing-debian-source-format.py
 Lintian-Tags: missing-debian-source-format
 

@@ -33,6 +33,7 @@ from lintian_brush.control import (
     PkgRelation,
     format_relations,
     parse_relations,
+    delete_from_list,
     )
 from lintian_brush.reformatting import (
     GeneratedFile,
@@ -327,3 +328,18 @@ class GetRelationTests(TestCase):
             Exception,
             get_relation,
             'blah, debhelper (= 9) | debhelper (<< 10)', 'debhelper')
+
+
+class DeleteFromListTests(TestCase):
+
+    def test_intermediate(self):
+        self.assertEqual('a, c', delete_from_list('a, b, c', 'b'))
+        self.assertEqual('a, c', delete_from_list('a, b, c', 'b '))
+
+    def test_head(self):
+        self.assertEqual('b, c', delete_from_list('a, b, c', 'a'))
+        self.assertEqual(' b, c', delete_from_list(' a, b, c', 'a'))
+
+    def test_tail(self):
+        self.assertEqual('a, b', delete_from_list('a, b, c', 'c'))
+        self.assertEqual('a, b', delete_from_list('a, b , c', 'c'))

@@ -18,6 +18,7 @@
 """Utility functions for dealing with control files."""
 
 import collections
+from itertools import takewhile
 
 from debian.changelog import Version
 
@@ -314,3 +315,20 @@ def ensure_minimum_debhelper_version(build_depends, minimum_version):
     return ensure_minimum_version(
             build_depends,
             "debhelper", minimum_version)
+
+
+def delete_from_list(liststr, item_to_delete):
+    items = liststr.split(',')
+    item_to_delete = item_to_delete.strip()
+    for i, item in enumerate(items):
+        if item.strip() == item_to_delete:
+            deleted_item = items.pop(i)
+            head_whitespace = ''.join(
+                takewhile(lambda x: x.isspace(), deleted_item))
+            if i == 0 and len(items) >= 1:
+                # If we're removing the first item, copy its whitespace to the
+                # second
+                items[i] = head_whitespace + items[i].lstrip()
+            elif i == len(items):
+                items[i-1] = items[i-1].rstrip()
+    return ','.join(items)
