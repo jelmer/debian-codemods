@@ -9,6 +9,8 @@ lintian-brush (0.23) UNRELEASED; urgency=medium
   * Add fixer for no-homepage-field.
   * Add fixer for debian-tests-empty-control.
   * Add fixer for homepage-in-binary-package.
+  * Fix Git URLs with the branch name in the URL rather than with -b
+    argument.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 14 Aug 2019 00:30:39 +0000
 

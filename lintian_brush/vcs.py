@@ -30,32 +30,41 @@ def sanitize_url(url):
     return url
 
 
-def fix_path_in_port(parsed):
+def fix_path_in_port(parsed, branch):
     if ':' not in parsed.netloc or parsed.netloc.endswith(']'):
-        return None
+        return None, None
     host, port = parsed.netloc.rsplit(':', 1)
     if host not in ('salsa.debian.org', 'github.com'):
-        return None
+        return None, None
     if not port or port.isdigit():
-        return None
+        return None, None
     if '/' not in parsed.path[1:]:
         return parsed._replace(
             path='%s/%s' % (port, parsed.path.lstrip('/')),
-            netloc=host)
-    return None
+            netloc=host), branch
+    return None, None
 
 
-def fix_salsa_scheme(parsed):
+def fix_salsa_scheme(parsed, branch):
     if parsed.hostname == 'salsa.debian.org':
-        return parsed._replace(scheme='https')
-    return None
+        return parsed._replace(scheme='https'), branch
+    return None, None
 
 
-def fix_salsa_cgit_url(parsed):
+def fix_salsa_cgit_url(parsed, branch):
     if (parsed.hostname == 'salsa.debian.org' and
             parsed.path.startswith('/cgit/')):
-        return parsed._replace(path=parsed.path[5:])
-    return None
+        return parsed._replace(path=parsed.path[5:]), branch
+    return None, None
+
+
+def fix_salsa_tree_in_url(parsed, branch):
+    if parsed.hostname == 'salsa.debian.org':
+        parts = parsed.path.split('/')
+        if len(parts) >= 5 and parts[3] == 'tree':
+            branch = '/'.join(parts[4:])
+            return parsed._replace(path='/'.join(parts[:3])), branch
+    return None, None
 
 
 def fixup_broken_git_url(url):
@@ -63,16 +72,26 @@ def fixup_broken_git_url(url):
 
     A common misspelling is to add an extra ":" after the hostname
     """
-    parsed = urlparse(url)
+    try:
+        (repo_url, branch) = url.split(' -b ', 1)
+    except ValueError:
+        repo_url = url
+        branch = None
+    parsed = urlparse(repo_url)
     changed = False
-    for fn in [fix_path_in_port, fix_salsa_scheme, fix_salsa_cgit_url]:
-        newparsed = fn(parsed)
+    for fn in [fix_path_in_port, fix_salsa_scheme, fix_salsa_cgit_url,
+               fix_salsa_tree_in_url]:
+        newparsed, newbranch = fn(parsed, branch)
         if newparsed:
             changed = True
             parsed = newparsed
+            branch = newbranch
 
     if changed:
-        return urlunparse(parsed)
+        if branch:
+            return urlunparse(parsed) + ' -b ' + branch
+        else:
+            return urlunparse(parsed)
     return url
 
 

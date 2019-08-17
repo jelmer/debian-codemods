@@ -31,6 +31,9 @@ class FixUpGitUrlTests(TestCase):
         self.assertEqual(
             'git://github.com/jelmer/dulwich',
             fixup_broken_git_url('git://github.com:jelmer/dulwich'))
+        self.assertEqual(
+            'git://github.com/jelmer/dulwich -b blah',
+            fixup_broken_git_url('git://github.com:jelmer/dulwich -b blah'))
 
     def test_preserves(self):
         self.assertEqual(
@@ -51,6 +54,12 @@ class FixUpGitUrlTests(TestCase):
             'https://salsa.debian.org/jelmer/dulwich',
             fixup_broken_git_url(
                 'https://salsa.debian.org/cgit/jelmer/dulwich'))
+
+    def test_salsa_tree_branch(self):
+        self.assertEqual(
+            'https://salsa.debian.org/jelmer/dulwich -b master',
+            fixup_broken_git_url(
+                'https://salsa.debian.org/jelmer/dulwich/tree/master'))
 
 
 class SanitizeUrlTests(TestCase):
