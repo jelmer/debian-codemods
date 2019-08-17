@@ -84,14 +84,14 @@ class SalsaUrlFromAliothUrlTests(TestCase):
 
     def test_git(self):
         self.assertEqual(
-            'https://salsa.debian.org/python-team/modules/python-bla',
+            'https://salsa.debian.org/jelmer/python-bla',
             salsa_url_from_alioth_url(
                 'git',
-                'http://anonscm.debian.org/git/python-team/modules/python-bla')
+                'http://anonscm.debian.org/git/users/jelmer/python-bla')
             )
         self.assertEqual(
-            'https://salsa.debian.org/python-team/modules/python-bla',
+            'https://salsa.debian.org/jelmer/python-bla',
             salsa_url_from_alioth_url(
                 'git',
-                'http://anonscm.debian.org/python-team/modules/python-bla')
+                'http://anonscm.debian.org/users/jelmer/python-bla')
             )

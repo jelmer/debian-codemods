@@ -110,9 +110,6 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
         m = "(https?|git)://(anonscm|git).debian.org/(git/)?users/"
         if re.match(m, alioth_url):
             return re.sub(m, 'https://salsa.debian.org/', alioth_url)
-        m = "(https?|git)://(anonscm|git).debian.org/(git/)?"
-        if re.match(m, alioth_url):
-            return re.sub(m, 'https://salsa.debian.org/', alioth_url)
 
     if vcs_type.lower() == 'svn':
         if alioth_url.startswith('svn://svn.debian.org/pkg-perl/trunk'):

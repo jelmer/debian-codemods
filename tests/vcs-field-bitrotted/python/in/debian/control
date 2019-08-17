@@ -1,6 +1,6 @@
 Source: lintian-brush
 Maintainer: Bla Team <pkg-bla@lists.alioth.debian.org>
-Vcs-Git: http://anonscm.debian.org/git/bla-team/modules/python-bla
+Vcs-Git: http://anonscm.debian.org/git/users/bla/python-bla
 
 Package: lintian-brush
 Description: Testing
