@@ -53,9 +53,11 @@ subset of the issues:
 * file-contains-trailing-whitespace
 * global-files-wildcard-not-first-paragraph-in-dep5-copyright
 * homepage-field-uses-insecure-uri
+* homepage-in-binary-package
 * insecure-copyright-format-uri
 * invalid-short-name-in-dep5-copyright
 * libmodule-build-perl-needs-to-be-in-build-depends
+* maintainer-also-in-uploaders.
 * maintainer-script-without-set-e
 * malformed-dm-upload-allowed
 * missing-debian-source-format
