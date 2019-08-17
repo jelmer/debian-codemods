@@ -115,10 +115,12 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
         m = "(https?|git)://(anonscm|git).debian.org/(git/)?users/"
         if re.match(m, alioth_url):
             return re.sub(m, 'https://salsa.debian.org/', alioth_url)
-        m = "(https?|git)://(anonscm|git).debian.org/(git/)?([^/]+)/"
-        if re.match(m, alioth_url) and m.group(2) in TEAM_NAME_MAP:
-            new_name = TEAM_NAME_MAP[m.group(2)]
-            return re.sub(m, 'https://salsa.debian.org/' + new_name,
+        m = re.match(
+            "(https?|git)://(anonscm|git).debian.org/(git/)?([^/]+)/",
+            alioth_url)
+        if m and m.group(4) in TEAM_NAME_MAP:
+            new_name = TEAM_NAME_MAP[m.group(4)]
+            return re.sub(m.re, 'https://salsa.debian.org/' + new_name + '/',
                           alioth_url)
 
     if vcs_type.lower() == 'svn':
