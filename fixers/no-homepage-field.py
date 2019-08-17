@@ -28,4 +28,5 @@ update_control(source_package_cb=fill_in_homepage)
 
 print('Fill in Homepage field.')
 print('Fixed-Lintian-Tags: no-homepage-field')
-print('Certainty: %s' % current_certainty)
+if current_certainty:
+    print('Certainty: %s' % current_certainty)
