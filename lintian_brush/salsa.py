@@ -38,6 +38,8 @@ MAINTAINER_EMAIL_MAP = {
     'pkg-telepathy-maintainers@lists.alioth.debian.org': 'telepathy-team',
     'debian-fonts@lists.debian.org': 'fonts-team',
     'pkg-gnustep-maintainers@lists.alioth.debian.org': 'gnustep-team',
+    'pkg-gnome-maintainers@lists.alioth.debian.org': 'gnome-team',
+    'pkg-multimedia-maintainers@lists.alioth.debian.org': 'multimedia-team',
     }
 
 
@@ -101,6 +103,12 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
         m = "(https?|git)://(anonscm|git).debian.org/(git/)?collab-maint/"
         if re.match(m, alioth_url):
             return re.sub(m, 'https://salsa.debian.org/debian/', alioth_url)
+        m = "(https?|git)://(anonscm|git).debian.org/(git/)?pkg-lua/"
+        if re.match(m, alioth_url):
+            return re.sub(m, 'https://salsa.debian.org/lua-team/', alioth_url)
+        m = "(https?|git)://(anonscm|git).debian.org/(git/)?users/"
+        if re.match(m, alioth_url):
+            return re.sub(m, 'https://salsa.debian.org/', alioth_url)
         m = "(https?|git)://(anonscm|git).debian.org/(git/)?"
         if re.match(m, alioth_url):
             return re.sub(m, 'https://salsa.debian.org/', alioth_url)
