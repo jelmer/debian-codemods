@@ -17,21 +17,31 @@
 
 """Functions for working with upstream metadata."""
 
+import json
 import os
 import re
 import subprocess
 import tempfile
 from urllib.parse import urlparse
 from warnings import warn
+from lintian_brush import USER_AGENT
 from lintian_brush.vcs import (
     sanitize_url as sanitize_vcs_url,
     )
 from lintian_brush.watch import parse_watch_file
+from urllib.request import urlopen, Request
 
 
 KNOWN_HOSTING_SITES = [
     'code.launchpad.net', 'github.com', 'gitlab.com', 'launchpad.net',
     'salsa.debian.org']
+
+
+def get_sf_metadata(project):
+    headers = {'User-Agent': USER_AGENT}
+    http_url = 'https://sourceforge.net/rest/p/%s' % project
+    http_contents = urlopen(Request(http_url, headers=headers)).read()
+    return json.loads(http_contents)
 
 
 def guess_repo_from_url(url):
