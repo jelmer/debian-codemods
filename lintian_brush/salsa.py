@@ -41,6 +41,7 @@ MAINTAINER_EMAIL_MAP = {
     'pkg-gnome-maintainers@lists.alioth.debian.org': 'gnome-team',
     'pkg-multimedia-maintainers@lists.alioth.debian.org': 'multimedia-team',
     'debian-ocaml-maint@lists.debian.org': 'ocaml-team',
+    'pkg-php-pear@lists.alioth.debian.org': 'php-team/pear',
     }
 
 TEAM_NAME_MAP = {
