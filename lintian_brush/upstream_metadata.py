@@ -111,6 +111,11 @@ def guess_from_debian_watch(path, trust_package):
                 if repo:
                     yield "Repository", sanitize_vcs_url(repo), "possible"
                     break
+            m = re.match('https?://sf.net/([^/]+)', w.url)
+            if m:
+                yield "Archive", "SourceForge", "certain"
+                # TODO(jelmer): Yield sourceforge project name later
+                # so something later can call get_sf_metadata ?
 
 
 def guess_from_debian_control(path, trust_package):
