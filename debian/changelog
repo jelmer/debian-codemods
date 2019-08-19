@@ -1,5 +1,7 @@
-lintian-brush (0.23) unstable; urgency=medium
+lintian-brush (0.23) UNRELEASED; urgency=medium
 
+  * In debian-source-options-has-custom-compression-settings.py, don't
+    crash on options that are not key/value.
   * Add fixer for comma-separated-files-in-dep5-copyright.
   * Disable strict parsing of copyright file.
   * Support reading upstream metadata from configure.
