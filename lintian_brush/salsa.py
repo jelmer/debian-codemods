@@ -48,6 +48,7 @@ TEAM_NAME_MAP = {
     'pkg-go': 'go-team',
     'pkg-fonts': 'fonts-team',
     'pkg-javascript': 'js-team',
+    'debian-science': 'science-team',
 }
 
 
