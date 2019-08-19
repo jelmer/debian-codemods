@@ -1,4 +1,4 @@
-lintian-brush (0.23) UNRELEASED; urgency=medium
+lintian-brush (0.23) unstable; urgency=medium
 
   * Add fixer for comma-separated-files-in-dep5-copyright.
   * Disable strict parsing of copyright file.
@@ -14,7 +14,7 @@ lintian-brush (0.23) UNRELEASED; urgency=medium
   * Add fixer for maintainer-also-in-uploaders.
   * Ignore comments in debian/source/options.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 14 Aug 2019 00:30:39 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 19 Aug 2019 08:21:54 +0000
 
 lintian-brush (0.22) unstable; urgency=medium
 
