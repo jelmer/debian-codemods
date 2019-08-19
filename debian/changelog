@@ -1,4 +1,4 @@
-lintian-brush (0.23) UNRELEASED; urgency=medium
+lintian-brush (0.23) unstable; urgency=medium
 
   * In debian-source-options-has-custom-compression-settings.py, don't
     crash on options that are not key/value.
@@ -16,7 +16,7 @@ lintian-brush (0.23) UNRELEASED; urgency=medium
   * Add fixer for maintainer-also-in-uploaders.
   * Ignore comments in debian/source/options.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 19 Aug 2019 08:21:54 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 19 Aug 2019 08:45:13 +0000
 
 lintian-brush (0.22) unstable; urgency=medium
 
