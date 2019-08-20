@@ -262,13 +262,16 @@ def guess_from_debian_copyright(path, trust_package):
 
 
 def guess_from_readme(path, trust_package):
+    import shlex
     try:
         with open(path, 'rb') as f:
             for line in f:
                 line = line.decode('utf-8', 'replace')
                 if line.strip().startswith('git clone'):
                     line = line.strip()
-                    url = line.split()[2]
+                    argv = shlex.split(line)
+                    args = [arg for arg in argv[2:] if not arg.startswith('-')]
+                    url = args[0]
                     yield ('Repository', sanitize_vcs_url(url), 'possible')
     except IsADirectoryError:
         pass
