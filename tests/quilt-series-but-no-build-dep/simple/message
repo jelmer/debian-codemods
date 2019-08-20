@@ -1,0 +1,2 @@
+Add missing dependency on quilt.
+Fixed-Lintian-Tags: quilt-series-but-no-build-dep

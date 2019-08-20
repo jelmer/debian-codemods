@@ -1,3 +1,9 @@
+lintian-brush (0.24) UNRELEASED; urgency=medium
+
+  * Add fixer for quilt-series-but-no-build-dep.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 20 Aug 2019 18:10:10 +0000
+
 lintian-brush (0.23) unstable; urgency=medium
 
   * In debian-source-options-has-custom-compression-settings.py, don't
