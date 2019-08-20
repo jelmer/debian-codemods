@@ -72,7 +72,7 @@ def dh_invoke_drop_with(line, with_argument):
 def dh_invoke_drop_argument(line, argument):
     """Drop a particular argument from a dh invocation."""
     if argument not in line:
-        return False
+        return line
     line = re.sub(b' ' + argument + b'$', b'', line)
     line = re.sub(b' ' + argument + b' ', b' ', line)
     return line
