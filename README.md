@@ -37,6 +37,7 @@ subset of the issues:
 * debian-pycompat-is-obsolete
 * debian-pyversions-is-obsolete
 * debian-rules-should-not-use-pwd
+* debian-rules-uses-unnecessary-dh-argument
 * debian-source-options-has-custom-compression-settings
 * debian-tests-control-and-control-autodep8
 * debian-tests-control-autodep8-is-obsolete
@@ -77,6 +78,7 @@ subset of the issues:
 * priority-extra-is-replaced-by-priority-optional
 * public-upstream-key-not-minimal
 * public-upstream-keys-in-multiple-locations
+* quilt-series-but-no-build-dep
 * quilt-series-without-trailing-newline
 * renamed-tag
 * space-in-std-shortname-in-dep5-copyright
@@ -84,6 +86,7 @@ subset of the issues:
 * transitional-package-should-be-oldlibs-optional
 * unnecessary-team-upload
 * unnecessary-testsuite-autopkgtest-field
+* unused-build-dependency-on-cdbs
 * unversioned-copyright-format-uri
 * upstream-metadata-file-is-missing
 * useless-autoreconf-build-depends
