@@ -235,3 +235,6 @@ Lintian-Tags: debian-watch-file-uses-deprecated-githubredir
 
 Fix-Script: quilt-series-but-no-build-dep.py
 Lintian-Tags: quilt-series-but-no-build-dep
+
+Fix-Script: unused-build-dependency-on-cdbs.py
+Lintian-Tags: unused-build-dependency-on-cdbs

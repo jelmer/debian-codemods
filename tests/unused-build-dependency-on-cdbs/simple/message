@@ -1,0 +1,2 @@
+Drop unused build-dependency on cdbs.
+Fixed-Lintian-Tags: unused-build-dependency-on-cdbs
