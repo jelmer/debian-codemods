@@ -238,3 +238,6 @@ Lintian-Tags: quilt-series-but-no-build-dep
 
 Fix-Script: unused-build-dependency-on-cdbs.py
 Lintian-Tags: unused-build-dependency-on-cdbs
+
+Fix-Script: debian-rules-uses-unnecessary-dh-argument.py
+Lintian-Tags: debian-rules-uses-unnecessary-dh-argument

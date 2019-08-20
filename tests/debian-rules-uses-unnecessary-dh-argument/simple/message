@@ -1,0 +1,2 @@
+Drop unnecessary dh arguments: --parallel
+Fixed-Lintian-Tags: debian-rules-uses-unnecessary-dh-argument

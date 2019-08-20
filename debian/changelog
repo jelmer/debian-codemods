@@ -2,6 +2,7 @@ lintian-brush (0.24) UNRELEASED; urgency=medium
 
   * Add fixer for quilt-series-but-no-build-dep.
   * Add fixer for unused-build-dependency-on-cdbs.
+  * Add fixer for debian-rules-uses-unnecessary-dh-argument.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 20 Aug 2019 18:10:10 +0000
 

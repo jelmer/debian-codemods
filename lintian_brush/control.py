@@ -21,6 +21,7 @@ import collections
 from itertools import takewhile
 
 from debian.changelog import Version
+from debian.deb822 import Deb822
 
 from ._deb822 import PkgRelation
 from .deb822 import update_deb822
@@ -332,3 +333,25 @@ def delete_from_list(liststr, item_to_delete):
             elif i == len(items):
                 items[i-1] = items[i-1].rstrip()
     return ','.join(items)
+
+
+def get_debhelper_compat_version():
+    try:
+        with open('debian/compat', 'r') as f:
+            return int(f.read().strip())
+    except FileNotFoundError:
+        pass
+
+    try:
+        with open('debian/control', 'r') as f:
+            control = Deb822(f)
+    except FileNotFoundError:
+        return None
+
+    try:
+        [relation] = get_relation(
+            control.get("Build-Depends", ""), "debhelper-compat")
+    except (IndexError, KeyError):
+        return None
+    else:
+        return int(str(relation.version[1]))
