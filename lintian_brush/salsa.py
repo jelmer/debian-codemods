@@ -43,6 +43,7 @@ MAINTAINER_EMAIL_MAP = {
     'debian-ocaml-maint@lists.debian.org': 'ocaml-team',
     'pkg-php-pear@lists.alioth.debian.org': 'php-team/pear',
     'pkg-mpd-maintainers@lists.alioth.debian.org': 'mpd-team',
+    'pkg-cli-apps-team@lists.alioth.debian.org': 'dotnet-team',
     }
 
 TEAM_NAME_MAP = {
@@ -50,6 +51,7 @@ TEAM_NAME_MAP = {
     'pkg-fonts': 'fonts-team',
     'pkg-javascript': 'js-team',
     'pkg-mpd': 'mpd-team',
+    'pkg-electronics': 'electronics-team',
     'debian-science': 'science-team',
 }
 
