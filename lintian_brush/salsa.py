@@ -55,6 +55,7 @@ TEAM_NAME_MAP = {
     'pkg-electronics': 'electronics-team',
     'pkg-xfce': 'xfce-team',
     'debian-science': 'science-team',
+    'pkg-games': 'games-team',
 }
 
 
