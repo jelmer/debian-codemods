@@ -19,7 +19,6 @@ except FileNotFoundError:
     code = {}
 else:
     code = ruamel.yaml.round_trip_load(inp, preserve_quotes=True)
-    rewritten_inp = ruamel.yaml.round_trip_dump(code)
 
 minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
 fields = set()
@@ -27,6 +26,8 @@ current_certainty = {k: 'certain' for k in code.keys()}
 for key, value, certainty in guess_upstream_metadata_items(
         '.', trust_package=(os.environ.get('TRUST_PACKAGE') == 'true')):
     if certainty == 'possible' and minimum_certainty == 'certain':
+        continue
+    if key.startswith('X-') or key in ('Name', 'Contact', 'Homepage'):
         continue
     if current_certainty.get(key) != 'certain':
         if code.get(key) != value:

@@ -683,3 +683,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                          fixer.name, time.time() - start)
                 ret.append((result, summary))
     return ret, failed_fixers
+
+
+def certainty_to_confidence(certainty):
+    return SUPPORTED_CERTAINTIES.index(certainty)

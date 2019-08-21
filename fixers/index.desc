@@ -181,6 +181,8 @@ Lintian-Tags: unnecessary-team-upload
 Fix-Script: unnecessary-testsuite-autopkgtest-field.py
 Lintian-Tags: unnecessary-testsuite-autopkgtest-field
 
+Fix-Script: copyright-missing-upstream-info.py
+
 Fix-Script: upstream-metadata-file-is-missing.py
 Lintian-Tags: upstream-metadata-file-is-missing
 
@@ -241,3 +243,5 @@ Lintian-Tags: unused-build-dependency-on-cdbs
 
 Fix-Script: debian-rules-uses-unnecessary-dh-argument.py
 Lintian-Tags: debian-rules-uses-unnecessary-dh-argument
+
+Fix-Script: upstream-metadata-has-obsolete-field.py

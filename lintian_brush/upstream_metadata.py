@@ -233,7 +233,7 @@ def guess_from_debian_copyright(path, trust_package):
         )
     with open(path, 'r') as f:
         try:
-            copyright = Copyright(f)
+            copyright = Copyright(f, strict=False)
         except NotMachineReadableError:
             header = None
         except MachineReadableFormatError as e:
@@ -414,7 +414,8 @@ def guess_from_r_description(path, trust_package=False):
                     yield 'Repository', repo_url, 'certain'
 
 
-def guess_upstream_metadata_items(path, trust_package=False):
+def guess_upstream_metadata_items(path, trust_package=False,
+                                  minimum_certainty=None):
     """Guess upstream metadata items, in no particular order.
 
     Args:
@@ -457,6 +458,8 @@ def guess_upstream_metadata_items(path, trust_package=False):
             continue
         for key, value, certainty in guesser(
                 abspath, trust_package=trust_package):
+            if certainty == 'possible' and minimum_certainty == 'certain':
+                continue
             yield key, value, certainty
 
     # TODO(jelmer): validate Repository by querying it somehow?

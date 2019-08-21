@@ -3,6 +3,11 @@ lintian-brush (0.24) UNRELEASED; urgency=medium
   * Add fixer for quilt-series-but-no-build-dep.
   * Add fixer for unused-build-dependency-on-cdbs.
   * Add fixer for debian-rules-uses-unnecessary-dh-argument.
+  * Rather than setting Name/Contact fields in debian/upstream/metadata,
+    set them in debian/copyright.
+  * Remove obsolete Name/Contacts fields from debian/upstream/metadata,
+    at least for now. See https://lists.debian.org/debian-
+    devel/2019/08/msg00408.html for background.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 20 Aug 2019 18:10:10 +0000
 
