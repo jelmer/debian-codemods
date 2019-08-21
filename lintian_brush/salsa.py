@@ -47,11 +47,13 @@ MAINTAINER_EMAIL_MAP = {
     }
 
 TEAM_NAME_MAP = {
+    'debian-xml-sgml': 'xml-sgml-team',
     'pkg-go': 'go-team',
     'pkg-fonts': 'fonts-team',
     'pkg-javascript': 'js-team',
     'pkg-mpd': 'mpd-team',
     'pkg-electronics': 'electronics-team',
+    'pkg-xfce': 'xfce-team',
     'debian-science': 'science-team',
 }
 
