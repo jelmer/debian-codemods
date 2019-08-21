@@ -384,8 +384,11 @@ def guess_from_configure(path, trust_package=False):
                 continue
             if '$' in value:
                 continue
+            value = value.strip()
             if value.startswith("'") and value.endswith("'"):
                 value = value[1:-1]
+            if not value:
+                continue
             if key == 'PACKAGE_NAME':
                 yield 'Name', value, 'certain'
             elif key == 'PACKAGE_BUGREPORT':

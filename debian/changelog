@@ -8,6 +8,7 @@ lintian-brush (0.24) UNRELEASED; urgency=medium
   * Remove obsolete Name/Contacts fields from debian/upstream/metadata,
     at least for now. See https://lists.debian.org/debian-
     devel/2019/08/msg00408.html for background.
+  * Ignore empty variables when parsing configure file.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 20 Aug 2019 18:10:10 +0000
 
