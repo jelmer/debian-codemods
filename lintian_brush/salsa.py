@@ -42,12 +42,14 @@ MAINTAINER_EMAIL_MAP = {
     'pkg-multimedia-maintainers@lists.alioth.debian.org': 'multimedia-team',
     'debian-ocaml-maint@lists.debian.org': 'ocaml-team',
     'pkg-php-pear@lists.alioth.debian.org': 'php-team/pear',
+    'pkg-mpd-maintainers@lists.alioth.debian.org': 'mpd-team',
     }
 
 TEAM_NAME_MAP = {
     'pkg-go': 'go-team',
     'pkg-fonts': 'fonts-team',
     'pkg-javascript': 'js-team',
+    'pkg-mpd': 'mpd-team',
     'debian-science': 'science-team',
 }
 
