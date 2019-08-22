@@ -184,7 +184,8 @@ def guess_from_package_xml(path, trust_package):
     tree = ET.parse(path)
     root = tree.getroot()
     assert root.tag in (
-        'package', '{http://pear.php.net/dtd/package-2.0}package'
+        'package', '{http://pear.php.net/dtd/package-2.0}package',
+        '{http://pear.php.net/dtd/package-2.1}package',
         ), 'root tag is %r' % root.tag
     name_tag = root.find('name')
     if name_tag is not None:

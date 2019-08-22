@@ -1,3 +1,9 @@
+lintian-brush (0.25) UNRELEASED; urgency=medium
+
+  * Support pear 2.1 packages.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 22 Aug 2019 20:03:03 +0000
+
 lintian-brush (0.24) unstable; urgency=medium
 
   * Add fixer for quilt-series-but-no-build-dep.
