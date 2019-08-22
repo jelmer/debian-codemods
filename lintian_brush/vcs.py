@@ -25,6 +25,7 @@ from urllib.parse import urlparse, urlunparse
 
 
 def sanitize_url(url):
+    url = url.strip()
     if url.startswith('git+http:') or url.startswith('git+https:'):
         return url[4:]
     return url
