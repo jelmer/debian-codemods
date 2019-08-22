@@ -1,4 +1,4 @@
-lintian-brush (0.24) UNRELEASED; urgency=medium
+lintian-brush (0.24) unstable; urgency=medium
 
   * Add fixer for quilt-series-but-no-build-dep.
   * Add fixer for unused-build-dependency-on-cdbs.
@@ -10,7 +10,7 @@ lintian-brush (0.24) UNRELEASED; urgency=medium
     devel/2019/08/msg00408.html for background.
   * Ignore empty variables when parsing configure file.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 20 Aug 2019 18:10:10 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 22 Aug 2019 19:50:48 +0000
 
 lintian-brush (0.23) unstable; urgency=medium
 
