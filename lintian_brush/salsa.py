@@ -57,6 +57,7 @@ TEAM_NAME_MAP = {
     'debian-science': 'science-team',
     'pkg-games': 'games-team',
     'pkg-bluetooth': 'bluetooth-team',
+    'debichem': 'debichem-team',
 }
 
 
