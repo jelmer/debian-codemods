@@ -409,13 +409,29 @@ def guess_from_r_description(path, trust_package=False):
         if 'BugReports' in description:
             yield 'Bug-Database', description['BugReports'], 'certain'
         if 'URL' in description:
-            urls = [url.strip() for url in description['URL'].split(',')]
+            entries = [entry.strip()
+                       for entry in re.split('[\n,]', description['URL'])]
+            urls = []
+            for entry in entries:
+                m = re.match('([^ ]+) \\((.*)\\)', entry)
+                if m:
+                    url = m.group(1)
+                    label = m.group(2)
+                else:
+                    url = entry
+                    label = None
+                urls.append((label, url))
             if len(urls) == 1:
-                yield 'Homepage', urls[0], 'possible'
-            for url in urls:
-                repo_url = guess_repo_from_url(url)
-                if repo_url:
-                    yield 'Repository', repo_url, 'certain'
+                yield 'Homepage', urls[0][1], 'possible'
+            for label, url in urls:
+                if label and label.lower() in ('devel', 'repository'):
+                    yield 'Repository', url, 'certain'
+                elif label and label.lower() in ('homepage', ):
+                    yield 'Homepage', url, 'certain'
+                else:
+                    repo_url = guess_repo_from_url(url)
+                    if repo_url:
+                        yield 'Repository', repo_url, 'certain'
 
 
 def guess_upstream_metadata_items(path, trust_package=False,

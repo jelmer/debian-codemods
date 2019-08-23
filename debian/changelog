@@ -1,6 +1,7 @@
 lintian-brush (0.25) UNRELEASED; urgency=medium
 
   * Support pear 2.1 packages.
+  * Support labels in the URLS field in DESCRIPTION files.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 22 Aug 2019 20:03:03 +0000
 
