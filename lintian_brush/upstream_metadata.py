@@ -22,7 +22,7 @@ import os
 import re
 import subprocess
 import tempfile
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 from warnings import warn
 from lintian_brush import USER_AGENT
 from lintian_brush.vcs import (
@@ -33,8 +33,8 @@ from urllib.request import urlopen, Request
 
 
 KNOWN_HOSTING_SITES = [
-    'code.launchpad.net', 'github.com', 'gitlab.com', 'launchpad.net',
-    'salsa.debian.org']
+    'code.launchpad.net', 'github.com', 'launchpad.net']
+KNOWN_GITLAB_SITES = ['gitlab.com', 'salsa.debian.org']
 
 
 def get_sf_metadata(project):
@@ -54,6 +54,14 @@ def guess_repo_from_url(url):
     if parsed_url.netloc == 'launchpad.net':
         return 'https://code.launchpad.net/%s' % (
             parsed_url.path.strip('/').split('/')[0])
+    if parsed_url.netloc in KNOWN_GITLAB_SITES:
+        if parsed_url.path.strip('/').count('/') < 1:
+            return None
+        parts = parsed_url.path.split('/')
+        if 'tags' in parts:
+            parts = parts[:parts.index('tags')]
+        return urlunparse(
+            parsed_url._replace(path='/'.join(parts), query=''))
     if parsed_url.netloc in KNOWN_HOSTING_SITES:
         return url
     return None
