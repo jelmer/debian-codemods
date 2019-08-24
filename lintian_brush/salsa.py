@@ -60,6 +60,7 @@ TEAM_NAME_MAP = {
     'debichem': 'debichem-team',
     'openstack': 'openstack-team',
     'pkg-kde': 'qt-kde-team',
+    'debian-islamic': 'islamic-team',
 }
 
 
