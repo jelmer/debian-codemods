@@ -59,6 +59,7 @@ TEAM_NAME_MAP = {
     'pkg-bluetooth': 'bluetooth-team',
     'debichem': 'debichem-team',
     'openstack': 'openstack-team',
+    'pkg-kde': 'qt-kde-team',
 }
 
 
