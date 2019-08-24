@@ -61,6 +61,7 @@ TEAM_NAME_MAP = {
     'openstack': 'openstack-team',
     'pkg-kde': 'qt-kde-team',
     'debian-islamic': 'islamic-team',
+    'pkg-lua': 'lua-team',
 }
 
 
@@ -124,9 +125,6 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
         m = "(https?|git)://(anonscm|git).debian.org/(git/)?collab-maint/"
         if re.match(m, alioth_url):
             return re.sub(m, 'https://salsa.debian.org/debian/', alioth_url)
-        m = "(https?|git)://(anonscm|git).debian.org/(git/)?pkg-lua/"
-        if re.match(m, alioth_url):
-            return re.sub(m, 'https://salsa.debian.org/lua-team/', alioth_url)
         m = "(https?|git)://(anonscm|git).debian.org/(git/)?users/"
         if re.match(m, alioth_url):
             return re.sub(m, 'https://salsa.debian.org/', alioth_url)
