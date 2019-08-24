@@ -122,7 +122,8 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
     # These two regular expressions come from vcswatch:
     # https://salsa.debian.org/qa/qa/blob/master/data/vcswatch/vcswatch#L165
     if vcs_type.lower() == 'git':
-        m = "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?collab-maint/"
+        m = ("(https?|git)://(anonscm|git).debian.org/"
+             "(cgit/|git/)?collab-maint/")
         if re.match(m, alioth_url):
             return re.sub(m, 'https://salsa.debian.org/debian/', alioth_url)
         m = "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?users/"

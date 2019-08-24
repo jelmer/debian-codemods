@@ -1,6 +1,8 @@
 #!/bin/sh
 
-which gpg >/dev/null || exit 2
+GPG=${GPG:-gpg}
+
+${GPG} --version 2>/dev/null >/dev/null || exit 2
 
 OTHER_PATHS="debian/upstream/signing-key.pgp debian/upstream-signing-key.pgp"
 MAIN_PATH=debian/upstream/signing-key.asc
@@ -12,7 +14,7 @@ fi
 TEMP_KEYRING=$(mktemp)
 
 run_gpg() {
-    gpg --quiet --no-default-keyring --keyring "${TEMP_KEYRING}" "$@"
+    ${GPG} --quiet --no-default-keyring --keyring "${TEMP_KEYRING}" "$@"
 }
 
 gpg_export() {
