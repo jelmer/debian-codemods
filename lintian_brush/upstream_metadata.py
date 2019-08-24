@@ -122,6 +122,7 @@ def guess_from_debian_watch(path, trust_package):
             m = re.match('https?://sf.net/([^/]+)', w.url)
             if m:
                 yield "Archive", "SourceForge", "certain"
+                yield "X-SourceForge-Project", m.group(1), "certain"
                 # TODO(jelmer): Yield sourceforge project name later
                 # so something later can call get_sf_metadata ?
 
