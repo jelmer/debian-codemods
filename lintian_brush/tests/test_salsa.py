@@ -106,3 +106,9 @@ class SalsaUrlFromAliothUrlTests(TestCase):
             salsa_url_from_alioth_url(
                 'git',
                 'https://alioth.debian.org/anonscm/git/pkg-lua/blah'))
+        self.assertEqual(
+            'https://salsa.debian.org/science-team/ros-geometry.git',
+            salsa_url_from_alioth_url(
+                'git',
+                'https://anonscm.debian.org/cgit/debian-science/'
+                'ros-geometry.git'))

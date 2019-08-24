@@ -122,24 +122,24 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
     # These two regular expressions come from vcswatch:
     # https://salsa.debian.org/qa/qa/blob/master/data/vcswatch/vcswatch#L165
     if vcs_type.lower() == 'git':
-        m = "(https?|git)://(anonscm|git).debian.org/(git/)?collab-maint/"
+        m = "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?collab-maint/"
         if re.match(m, alioth_url):
             return re.sub(m, 'https://salsa.debian.org/debian/', alioth_url)
-        m = "(https?|git)://(anonscm|git).debian.org/(git/)?users/"
+        m = "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?users/"
         if re.match(m, alioth_url):
             return re.sub(m, 'https://salsa.debian.org/', alioth_url)
         m = re.match(
-            "(https?|git)://(anonscm|git).debian.org/(git/)?([^/]+)/",
+            "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?([^/]+)/",
             alioth_url)
         if m and m.group(4) in TEAM_NAME_MAP:
             new_name = TEAM_NAME_MAP[m.group(4)]
             return re.sub(m.re, 'https://salsa.debian.org/' + new_name + '/',
                           alioth_url)
         m = re.match(
-            'https?://alioth.debian.org/anonscm/git/([^/]+)/',
+            'https?://alioth.debian.org/anonscm/(git/|cgit/)?([^/]+)/',
             alioth_url)
-        if m and m.group(1) in TEAM_NAME_MAP:
-            new_name = TEAM_NAME_MAP[m.group(1)]
+        if m and m.group(2) in TEAM_NAME_MAP:
+            new_name = TEAM_NAME_MAP[m.group(2)]
             return re.sub(m.re, 'https://salsa.debian.org/' + new_name + '/',
                           alioth_url)
 
