@@ -1,4 +1,4 @@
-lintian-brush (0.25) UNRELEASED; urgency=medium
+lintian-brush (0.25) unstable; urgency=medium
 
   * Support pear 2.1 packages.
   * Support labels in the URLS field in DESCRIPTION files.
@@ -6,7 +6,7 @@ lintian-brush (0.25) UNRELEASED; urgency=medium
   * Use fake times for GPG operations, to make the testsuite runs
     reproducible.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 22 Aug 2019 20:03:03 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 24 Aug 2019 14:24:56 +0000
 
 lintian-brush (0.24) unstable; urgency=medium
 
