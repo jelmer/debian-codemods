@@ -58,6 +58,7 @@ TEAM_NAME_MAP = {
     'pkg-games': 'games-team',
     'pkg-bluetooth': 'bluetooth-team',
     'debichem': 'debichem-team',
+    'openstack': 'openstack-team',
 }
 
 
