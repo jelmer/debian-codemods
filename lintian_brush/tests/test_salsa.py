@@ -101,3 +101,8 @@ class SalsaUrlFromAliothUrlTests(TestCase):
                 'git',
                 'http://anonscm.debian.org/pkg-go/golang-example-blah-blah')
             )
+        self.assertEqual(
+            'https://salsa.debian.org/lua-team/blah',
+            salsa_url_from_alioth_url(
+                'git',
+                'https://alioth.debian.org/anonscm/git/pkg-lua/blah'))

@@ -135,6 +135,13 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
             new_name = TEAM_NAME_MAP[m.group(4)]
             return re.sub(m.re, 'https://salsa.debian.org/' + new_name + '/',
                           alioth_url)
+        m = re.match(
+            'https?://alioth.debian.org/anonscm/git/([^/]+)/',
+            alioth_url)
+        if m and m.group(1) in TEAM_NAME_MAP:
+            new_name = TEAM_NAME_MAP[m.group(1)]
+            return re.sub(m.re, 'https://salsa.debian.org/' + new_name + '/',
+                          alioth_url)
 
     if vcs_type.lower() == 'svn':
         if alioth_url.startswith('svn://svn.debian.org/pkg-perl/trunk'):
