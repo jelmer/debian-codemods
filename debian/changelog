@@ -1,3 +1,10 @@
+lintian-brush (0.26) UNRELEASED; urgency=medium
+
+  * quilt-series-but-no-build-dep: only add quilt dependnecy if one does
+    not yet exist.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 25 Aug 2019 13:10:32 +0000
+
 lintian-brush (0.25) unstable; urgency=medium
 
   * Support pear 2.1 packages.
