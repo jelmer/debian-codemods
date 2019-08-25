@@ -177,6 +177,8 @@ def update_watch(update_entry=None, path='debian/watch'):
     except FileNotFoundError:
         return False
     wf = parse_watch_file(original_contents.splitlines())
+    if wf is None:
+        return False
     nf = StringIO()
     wf.dump(nf)
     rewritten_contents = nf.getvalue()
