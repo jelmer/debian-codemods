@@ -1,4 +1,4 @@
-lintian-brush (0.26) UNRELEASED; urgency=medium
+lintian-brush (0.26) unstable; urgency=medium
 
   * quilt-series-but-no-build-dep: only add quilt dependency if one does
     not yet exist.
@@ -7,7 +7,7 @@ lintian-brush (0.26) UNRELEASED; urgency=medium
   * configure parser: Ignore invalid encoding characters in lines that
     are ignored anyway.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 25 Aug 2019 13:10:32 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 25 Aug 2019 22:13:26 +0000
 
 lintian-brush (0.25) unstable; urgency=medium
 
