@@ -1,6 +1,6 @@
 lintian-brush (0.26) UNRELEASED; urgency=medium
 
-  * quilt-series-but-no-build-dep: only add quilt dependnecy if one does
+  * quilt-series-but-no-build-dep: only add quilt dependency if one does
     not yet exist.
   * vcs-field-bitrotted: do not add duplicate -b arguments.
 
