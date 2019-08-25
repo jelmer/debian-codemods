@@ -39,11 +39,11 @@ class VcsWatch(object):
         Args:
           name: Package name
         Returns:
-          Tuple with (vcs_type, vcs_url, branch, vcs_browser)
+          Tuple with (vcs_type, vcs_url, vcs_browser)
         """
         assert self._conn is not None, "call connect() first"
         row = await self._conn.fetchrow("""
-select vcs, url, branch, browser from vcswatch
+select vcs, url, browser from vcswatch
 where source = $1""", name)
         if row is None:
             raise KeyError(name)

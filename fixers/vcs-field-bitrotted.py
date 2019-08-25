@@ -77,7 +77,7 @@ def migrate_from_obsolete_infra(control):
     loop = asyncio.get_event_loop()
     try:
         if os.environ.get('VCSWATCH', 'enabled') == 'enabled':
-            (vcs_type, vcs_url, branch, vcs_browser) = loop.run_until_complete(
+            (vcs_type, vcs_url, vcs_browser) = loop.run_until_complete(
                 retrieve_vcswatch_urls(package))
         else:
             raise KeyError
@@ -101,7 +101,6 @@ def migrate_from_obsolete_infra(control):
         print("Update Vcs-* headers to use salsa repository.")
         fixed_tags.add("vcs-obsolete-in-debian-infrastructure")
 
-        branch = None
         vcs_browser = determine_browser_url(vcs_url)
 
     if "Vcs-Cvs" in control and re.match(
@@ -119,8 +118,7 @@ def migrate_from_obsolete_infra(control):
             del control[hdr]
         except KeyError:
             pass
-    control["Vcs-" + vcs_type] = vcs_url + (
-        " -b %s" % branch if branch else "")
+    control["Vcs-" + vcs_type] = vcs_url
     if vcs_browser is not None:
         control["Vcs-Browser"] = vcs_browser
     else:
