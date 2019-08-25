@@ -4,6 +4,8 @@ lintian-brush (0.26) UNRELEASED; urgency=medium
     not yet exist.
   * vcs-field-bitrotted: do not add duplicate -b arguments.
   * Ignore empty watch files, rather than printing an error.
+  * configure parser: Ignore invalid encoding characters in lines that
+    are ignored anyway.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 25 Aug 2019 13:10:32 +0000
 

@@ -385,26 +385,26 @@ def guess_from_doap(path, trust_package):
 
 
 def guess_from_configure(path, trust_package=False):
-    with open(path, 'r') as f:
+    with open(path, 'rb') as f:
         for line in f:
-            if '=' not in line:
+            if b'=' not in line:
                 continue
-            (key, value) = line.strip().split('=', 1)
-            if ' ' in key:
+            (key, value) = line.strip().split(b'=', 1)
+            if b' ' in key:
                 continue
-            if '$' in value:
+            if b'$' in value:
                 continue
             value = value.strip()
-            if value.startswith("'") and value.endswith("'"):
+            if value.startswith(b"'") and value.endswith(b"'"):
                 value = value[1:-1]
             if not value:
                 continue
-            if key == 'PACKAGE_NAME':
-                yield 'Name', value, 'certain'
-            elif key == 'PACKAGE_BUGREPORT':
-                yield 'Bug-Submit', value, 'certain'
-            elif key == 'PACKAGE_URL':
-                yield 'Homepage', value, 'certain'
+            if key == b'PACKAGE_NAME':
+                yield 'Name', value.decode(), 'certain'
+            elif key == b'PACKAGE_BUGREPORT':
+                yield 'Bug-Submit', value.decode(), 'certain'
+            elif key == b'PACKAGE_URL':
+                yield 'Homepage', value.decode(), 'certain'
 
 
 def guess_from_r_description(path, trust_package=False):
