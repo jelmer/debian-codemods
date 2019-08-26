@@ -63,6 +63,7 @@ TEAM_NAME_MAP = {
     'debian-islamic': 'islamic-team',
     'pkg-lua': 'lua-team',
     'pkg-xorg': 'xorg-team',
+    'debian-astro': 'debian-astro-team',
 }
 
 
