@@ -62,6 +62,7 @@ TEAM_NAME_MAP = {
     'pkg-kde': 'qt-kde-team',
     'debian-islamic': 'islamic-team',
     'pkg-lua': 'lua-team',
+    'pkg-xorg': 'xorg-team',
 }
 
 
