@@ -44,6 +44,7 @@ MAINTAINER_EMAIL_MAP = {
     'pkg-php-pear@lists.alioth.debian.org': 'php-team/pear',
     'pkg-mpd-maintainers@lists.alioth.debian.org': 'mpd-team',
     'pkg-cli-apps-team@lists.alioth.debian.org': 'dotnet-team',
+    'pkg-mono-group@lists.alioth.debian.org': 'dotnet-team',
     }
 
 TEAM_NAME_MAP = {
