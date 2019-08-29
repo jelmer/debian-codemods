@@ -61,6 +61,11 @@ class FixUpGitUrlTests(TestCase):
             fixup_broken_git_url(
                 'https://salsa.debian.org/jelmer/dulwich/tree/master'))
 
+    def test_strip_extra_slash(self):
+        self.assertEqual(
+            'https://salsa.debian.org/salve/auctex.git',
+            fixup_broken_git_url('https://salsa.debian.org//salve/auctex.git'))
+
 
 class SanitizeUrlTests(TestCase):
 

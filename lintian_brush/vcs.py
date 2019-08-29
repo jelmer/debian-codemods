@@ -68,6 +68,12 @@ def fix_salsa_tree_in_url(parsed, branch):
     return None, None
 
 
+def fix_double_slash(parsed, branch):
+    if parsed.path.startswith('//'):
+        return parsed._replace(path=parsed.path[1:]), branch
+    return None, None
+
+
 def fixup_broken_git_url(url):
     """Attempt to fix up broken Git URLs.
 
@@ -81,7 +87,7 @@ def fixup_broken_git_url(url):
     parsed = urlparse(repo_url)
     changed = False
     for fn in [fix_path_in_port, fix_salsa_scheme, fix_salsa_cgit_url,
-               fix_salsa_tree_in_url]:
+               fix_salsa_tree_in_url, fix_double_slash]:
         newparsed, newbranch = fn(parsed, branch)
         if newparsed:
             changed = True
