@@ -254,3 +254,8 @@ Lintian-Tags: excessive-priority-for-library-package
 
 Fix-Script: debian-rules-sets-dpkg-architecture-variable.py
 Lintian-Tags: debian-rules-sets-dpkg-architecture-variable
+
+Fix-Script: built-using-for-golang.py
+Lintian-Tags:
+  missing-built-using-field-for-golang-package,
+  built-using-field-on-arch-all-package

@@ -1,0 +1,9 @@
+Source: blah
+Architecture: any
+Build-Depends: golang-go
+
+Package: blah
+Architecture: all
+Built-Using: ${misc:Built-Using}
+Description: blah
+ blah
