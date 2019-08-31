@@ -35,6 +35,7 @@ subset of the issues:
 * debian-changelog-file-contains-obsolete-user-emacs-settings
 * debian-control-has-empty-field
 * debian-control-has-obsolete-dbg-package
+* debian-control-has-unusual-field-spacing
 * debian-pycompat-is-obsolete
 * debian-pyversions-is-obsolete
 * debian-rules-sets-dpkg-architecture-variable
