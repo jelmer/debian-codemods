@@ -609,6 +609,19 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     return result, summary
 
 
+class ManyResult(object):
+
+    def __init__(self):
+        self.success = []
+        self.failed_fixers = {}
+
+    def __tuple__(self):
+        return (self.success, self.failed_fixers)
+
+    def __iter__(self):
+        return iter(self.__tuple__())
+
+
 def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                        verbose=False, committer=None,
                        compat_release=None, minimum_certainty=None,
@@ -638,9 +651,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
            error that occurred
     """
     check_clean_tree(local_tree)
-    failed_fixers = {}
     fixers = list(fixers)
-    ret = []
     if use_inotify is True:
         from .dirty_tracker import DirtyTracker
         dirty_tracker = DirtyTracker(local_tree)
@@ -653,6 +664,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
             dirty_tracker = None
         else:
             dirty_tracker = DirtyTracker(local_tree)
+    ret = ManyResult()
     with ui.ui_factory.nested_progress_bar() as pb:
         for i, fixer in enumerate(fixers):
             pb.update('Running fixer %r on %s' % (fixer, local_tree.basedir),
@@ -669,7 +681,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                         allow_reformatting=allow_reformatting,
                         dirty_tracker=dirty_tracker)
             except FixerFailed as e:
-                failed_fixers[fixer.name] = e
+                ret.failed_fixers[fixer.name] = e
                 if verbose:
                     note('Fixer %r failed to run.', fixer.name)
                     sys.stderr.write(str(e))
@@ -681,8 +693,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                 if verbose:
                     note('Fixer %r made changes. (took %.2fs)',
                          fixer.name, time.time() - start)
-                ret.append((result, summary))
-    return ret, failed_fixers
+                ret.success.append((result, summary))
+    return ret
 
 
 def certainty_to_confidence(certainty):
