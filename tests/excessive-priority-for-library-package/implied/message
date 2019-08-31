@@ -1,0 +1,2 @@
+Set priority for library packages libbzip2 to optional.
+Fixed-Lintian-Tags: excessive-priority-for-library-package

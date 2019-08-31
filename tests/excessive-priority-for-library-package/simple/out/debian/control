@@ -1,0 +1,8 @@
+Source: bzip2
+Priority: required
+
+Package: libbzip2
+Section: libs
+Priority: optional
+Description: blah blah
+ blah
