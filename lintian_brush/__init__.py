@@ -99,8 +99,8 @@ class DescriptionMissing(Exception):
 class NotDebianPackage(Exception):
     """The specified directory does not contain a Debian package."""
 
-    def __init__(self, tree):
-        super(NotDebianPackage, self).__init__(tree.basedir)
+    def __init__(self, tree, path):
+        super(NotDebianPackage, self).__init__(tree.abspath(path))
 
 
 class PendingChanges(Exception):
@@ -414,11 +414,12 @@ def get_committer(tree):
         return config.get('email')
 
 
-def only_changes_last_changelog_block(tree):
+def only_changes_last_changelog_block(tree, changelog_path):
     """Check whether the only change in a tree is to the last changelog entry.
 
     Args:
       tree: Tree to analyze
+      changelog_path: Path to the changelog file
     Returns:
       boolean
     """
@@ -435,10 +436,10 @@ def only_changes_last_changelog_block(tree):
             pass
         else:
             return False
-        if first_change[1] != ('debian/changelog', 'debian/changelog'):
+        if first_change[1] != (changelog_path, changelog_path):
             return False
-        new_cl = Changelog(tree.get_file_text('debian/changelog'))
-        old_cl = Changelog(basis_tree.get_file_text('debian/changelog'))
+        new_cl = Changelog(tree.get_file_text(changelog_path))
+        old_cl = Changelog(basis_tree.get_file_text(changelog_path))
         if old_cl.distributions != "UNRELEASED":
             return False
         del new_cl._blocks[0]
@@ -495,7 +496,8 @@ def check_clean_tree(local_tree):
 def run_lintian_fixer(local_tree, fixer, committer=None,
                       update_changelog=None, compat_release=None,
                       minimum_certainty=None, trust_package=False,
-                      allow_reformatting=False, dirty_tracker=None):
+                      allow_reformatting=False, dirty_tracker=None,
+                      subpath='.'):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -511,14 +513,20 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
       allow_reformatting: Whether to allow reformatting of changed files
       dirty_tracker: Optional object that can be used to tell if the tree
         has been changed.
+      subpath: Path in tree to operate on
     Returns:
       tuple with set of FixerResult, summary of the changes
     """
+    if subpath == '.':
+        changelog_path = 'debian/changelog'
+    else:
+        changelog_path = os.path.join(subpath, 'debian/changelog')
+
     try:
-        with local_tree.get_file('debian/changelog') as f:
+        with local_tree.get_file(changelog_path) as f:
             cl = Changelog(f, max_blocks=1)
     except NoSuchFile:
-        raise NotDebianPackage(local_tree)
+        raise NotDebianPackage(local_tree, subpath)
     if cl.distributions == 'UNRELEASED':
         current_version = cl.version
     else:
@@ -530,7 +538,8 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         minimum_certainty = DEFAULT_MINIMUM_CERTAINTY
     try:
         result = fixer.run(
-            local_tree.basedir, current_version=current_version,
+            local_tree.abspath(subpath),
+            current_version=current_version,
             compat_release=compat_release,
             minimum_certainty=minimum_certainty,
             trust_package=trust_package,
@@ -555,7 +564,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         if not specific_files:
             raise NoChanges("Script didn't make any changes")
     else:
-        local_tree.smart_add([local_tree.basedir])
+        local_tree.smart_add([local_tree.abspath(subpath)])
         specific_files = None
 
     basis_tree = local_tree.basis_tree()
@@ -579,16 +588,18 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         # Default to true. Perhaps do something more clever.
         update_changelog = True
 
-    if update_changelog and only_changes_last_changelog_block(local_tree):
+    if update_changelog and only_changes_last_changelog_block(
+            local_tree, changelog_path):
         # If the script only changed the last entry in the changelog,
         # don't update the changelog
         update_changelog = False
 
     if update_changelog:
         subprocess.check_call(
-            ["dch", "--no-auto-nmu", summary], cwd=local_tree.basedir)
+            ["dch", "--no-auto-nmu", summary],
+            cwd=local_tree.abspath(subpath))
         if specific_files:
-            specific_files.append('debian/changelog')
+            specific_files.append(changelog_path)
 
     description = result.description
     for tag in result.fixed_lintian_tags:
@@ -626,7 +637,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                        verbose=False, committer=None,
                        compat_release=None, minimum_certainty=None,
                        trust_package=False, allow_reformatting=False,
-                       use_inotify=None):
+                       use_inotify=None, subpath='.'):
     """Run a set of lintian fixers on a tree.
 
     Args:
@@ -643,6 +654,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
       allow_reformatting: Whether to allow reformatting of changed files
       use_inotify: Use inotify to watch changes (significantly improves
         performance). Defaults to None (automatic)
+      subpath: Subpath in the tree in which the package lives
     Returns:
       Tuple with two lists:
         1. list of tuples with (lintian-tag, certainty, description) of fixers
@@ -679,7 +691,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                         minimum_certainty=minimum_certainty,
                         trust_package=trust_package,
                         allow_reformatting=allow_reformatting,
-                        dirty_tracker=dirty_tracker)
+                        dirty_tracker=dirty_tracker,
+                        subpath=subpath)
             except FixerFailed as e:
                 ret.failed_fixers[fixer.name] = e
                 if verbose:

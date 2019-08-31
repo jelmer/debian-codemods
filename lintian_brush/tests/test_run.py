@@ -499,7 +499,8 @@ blah (0.1) unstable; urgency=medium
 
     def test_no_changes(self):
         tree = self.make_package_tree()
-        self.assertFalse(only_changes_last_changelog_block(tree))
+        self.assertFalse(only_changes_last_changelog_block(
+            tree, 'debian/changelog'))
 
     def test_other_change(self):
         tree = self.make_package_tree()
@@ -514,7 +515,8 @@ Arch: all
 
 """)])
 
-        self.assertFalse(only_changes_last_changelog_block(tree))
+        self.assertFalse(only_changes_last_changelog_block(
+            tree, 'debian/changelog'))
 
     def test_other_changes(self):
         tree = self.make_package_tree()
@@ -536,7 +538,8 @@ blah (0.1) UNRELEASED; urgency=medium
 
  -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
 """)])
-        self.assertFalse(only_changes_last_changelog_block(tree))
+        self.assertFalse(only_changes_last_changelog_block(
+            tree, 'debian/changelog'))
 
     def test_changes_to_other_changelog_entries(self):
         tree = self.make_package_tree()
@@ -554,7 +557,8 @@ blah (0.1) unstable; urgency=medium
 
  -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
 """)])
-        self.assertFalse(only_changes_last_changelog_block(tree))
+        self.assertFalse(only_changes_last_changelog_block(
+            tree, 'debian/changelog'))
 
     def test_changes_to_last_only(self):
         tree = self.make_package_tree()
@@ -573,7 +577,8 @@ blah (0.1) unstable; urgency=medium
 
  -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
 """)])
-        self.assertTrue(only_changes_last_changelog_block(tree))
+        self.assertTrue(only_changes_last_changelog_block(
+            tree, 'debian/changelog'))
 
     def test_changes_to_last_only_but_released(self):
         tree = self.make_package_tree()
@@ -607,7 +612,8 @@ blah (0.1) unstable; urgency=medium
 
  -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
 """)])
-        self.assertFalse(only_changes_last_changelog_block(tree))
+        self.assertFalse(only_changes_last_changelog_block(
+            tree, 'debian/changelog'))
 
 
 class LintianBrushVersion(TestCase):

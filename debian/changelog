@@ -6,6 +6,7 @@ lintian-brush (0.27) UNRELEASED; urgency=medium
   * Add fixers for missing-built-using-field-for-golang-package and
     built-using-field-on-arch-all-package.
   * Add fixer for debian-control-has-unusual-field-spacing.
+  * Support running in packages that are not at the repository root.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 31 Aug 2019 12:25:59 +0000
 

@@ -134,7 +134,7 @@ def main(argv=None):
     else:
         try:
             if args.dry_run:
-                branch = Branch.open(args.directory)
+                branch, subpath = Branch.open_containing(args.directory)
                 td = tempfile.mkdtemp()
                 atexit.register(shutil.rmtree, td)
                 # TODO(jelmer): Make a slimmer copy
@@ -144,7 +144,7 @@ def main(argv=None):
                     stacked=branch._format.supports_stacking())
                 wt = to_dir.open_workingtree()
             else:
-                wt = WorkingTree.open(args.directory)
+                wt, subpath = WorkingTree.open_containing(args.directory)
         except NotBranchError:
             note('No version control directory found (e.g. a .git directory).')
             return 1
@@ -173,7 +173,8 @@ def main(argv=None):
                     minimum_certainty=args.minimum_certainty,
                     trust_package=args.trust,
                     allow_reformatting=args.allow_reformatting,
-                    use_inotify=(False if args.disable_inotify else None))
+                    use_inotify=(False if args.disable_inotify else None),
+                    subpath=subpath)
             except NotDebianPackage:
                 note("%s: Not a debian package.", wt.basedir)
                 return 1
