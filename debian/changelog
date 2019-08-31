@@ -1,6 +1,7 @@
 lintian-brush (0.27) UNRELEASED; urgency=medium
 
   * Add fixer for package-contains-linda-overrides.
+  * Add fixer for excessive-priority-for-library-package.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 31 Aug 2019 12:25:59 +0000
 

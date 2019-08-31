@@ -248,3 +248,6 @@ Fix-Script: upstream-metadata-has-obsolete-field.py
 
 Fix-Script: package-contains-linda-override.py
 Lintian-Tags: package-contains-linda-override
+
+Fix-Script: excessive-priority-for-library-package.py
+Lintian-Tags: excessive-priority-for-library-package
