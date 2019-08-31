@@ -50,6 +50,7 @@ subset of the issues:
 * dh-quilt-addon-but-quilt-source-format
 * dm-upload-allowed-is-obsolete
 * empty-debian-tests-control
+* excessive-priority-for-library-package
 * field-name-typo-in-dep5-copyright
 * file-contains-trailing-whitespace
 * global-files-wildcard-not-first-paragraph-in-dep5-copyright
@@ -69,6 +70,7 @@ subset of the issues:
 * orphaned-package-should-not-have-uploaders
 * out-of-date-copyright-format-uri
 * out-of-date-standards-version
+* package-contains-linda-override
 * package-needs-versioned-debhelper-build-depends
 * package-uses-deprecated-debhelper-compat-version
 * package-uses-deprecated-source-override-location
