@@ -31,15 +31,22 @@ def check_go_package(control):
 
 def add_built_using(control):
     if control.get('Architecture', default_architecture) == 'all':
-        del control['Built-Using']
-        removed.append(control['Package'])
+        if 'Built-Using' in control:
+            del control['Built-Using']
+            removed.append(control['Package'])
     else:
-        control["Built-Using"] = add_dependency(
-            control.get('Built-Using', ''), "${misc:Built-Using}")
-        added.append(control['Package'])
+        if go_package:
+            built_using = control.get('Built-Using', '')
+            try:
+                get_relation(built_using, "${misc:Built-Using}")
+            except KeyError:
+                control["Built-Using"] = add_dependency(
+                    built_using, "${misc:Built-Using}")
+                added.append(control['Package'])
 
 
-update_control(binary_package_cb=add_built_using)
+update_control(
+    binary_package_cb=add_built_using, source_package_cb=check_go_package)
 
 if added:
     print('Add missing ${misc:Built-Using} to Built-Using on %s.' %
