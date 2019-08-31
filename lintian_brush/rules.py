@@ -21,12 +21,14 @@ import os
 import re
 
 
-def update_rules(command_line_cb, path='debian/rules'):
+def update_rules(command_line_cb=None, global_line_cb=None,
+                 path='debian/rules'):
     """Update a rules file.
 
     Args:
       path: Path to the debian/rules file to edit
-      command_line_cb: Callback to call on every command line
+      command_line_cb: Callback to call on every rule command line
+      global_line_cb: Callback to call on every global line
     Returns:
       boolean indicating whether any changes were made
     """
@@ -38,18 +40,24 @@ def update_rules(command_line_cb, path='debian/rules'):
     target = None
     for line in original_contents.splitlines():
         if line.startswith(b'\t'):
-            ret = command_line_cb(line[1:], target)
+            if command_line_cb is not None:
+                ret = command_line_cb(line[1:], target)
+            else:
+                ret = line[1:]
             if isinstance(ret, bytes):
                 newlines.append(b'\t' + ret)
             elif isinstance(ret, list):
                 newlines.extend([b'\t' + l for l in ret])
             else:
                 raise TypeError(ret)
-        elif b':' in line:
+        elif b':' in line and b' ' not in line.split(b':')[0]:
             target = line.split(b':')[0]
             newlines.append(line)
         else:
-            newlines.append(line)
+            if global_line_cb:
+                line = global_line_cb(line)
+            if line is not None:
+                newlines.append(line)
 
     updated_contents = b''.join([l+b'\n' for l in newlines])
     if updated_contents.strip() != original_contents.strip():

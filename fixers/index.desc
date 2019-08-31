@@ -251,3 +251,6 @@ Lintian-Tags: package-contains-linda-override
 
 Fix-Script: excessive-priority-for-library-package.py
 Lintian-Tags: excessive-priority-for-library-package
+
+Fix-Script: debian-rules-sets-dpkg-architecture-variable.py
+Lintian-Tags: debian-rules-sets-dpkg-architecture-variable

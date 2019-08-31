@@ -1,0 +1,25 @@
+#! /usr/bin/make -f
+
+CONFIGURE_FLAGS := \
+	--disable-fem-toolbox \
+	--without-gpskca \
+	--without-OpenGL \
+	--without-gltools \
+	--without-OpenDX \
+	--without-grape \
+	--without-silo
+
+DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
+ifneq (,$(filter powerpc ppc64 ppc64el,$(DEB_HOST_ARCH)))
+  export DEB_BUILD_MAINT_OPTIONS=hardening=-stackprotector
+  CONFIGURE_FLAGS += CC=clang
+endif
+
+%:
+	dh $@ --parallel --with autoreconf
+
+override_dh_auto_configure:
+	dh_auto_configure -- $(CONFIGURE_FLAGS)
+
+override_dh_strip:
+	dh_strip --dbg-package=libalberta-dbg
