@@ -36,6 +36,7 @@ subset of the issues:
 * debian-control-has-obsolete-dbg-package
 * debian-pycompat-is-obsolete
 * debian-pyversions-is-obsolete
+* debian-rules-sets-dpkg-architecture-variable
 * debian-rules-should-not-use-pwd
 * debian-rules-uses-unnecessary-dh-argument
 * debian-source-options-has-custom-compression-settings
