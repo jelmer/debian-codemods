@@ -245,3 +245,6 @@ Fix-Script: debian-rules-uses-unnecessary-dh-argument.py
 Lintian-Tags: debian-rules-uses-unnecessary-dh-argument
 
 Fix-Script: upstream-metadata-has-obsolete-field.py
+
+Fix-Script: package-contains-linda-override.py
+Lintian-Tags: package-contains-linda-override
