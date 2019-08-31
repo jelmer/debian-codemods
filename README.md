@@ -26,6 +26,7 @@ subset of the issues:
 * ancient-python-version-field
 * build-depends-on-build-essential
 * build-depends-on-obsolete-package
+* built-using-field-on-arch-all-package
 * comma-separated-files-in-dep5-copyright
 * control-file-with-CRLF-EOLs
 * copyright-has-crs
@@ -63,6 +64,7 @@ subset of the issues:
 * maintainer-also-in-uploaders.
 * maintainer-script-without-set-e
 * malformed-dm-upload-allowed
+* missing-built-using-field-for-golang-package
 * missing-debian-source-format
 * missing-vcs-browser-field
 * no-homepage-field
