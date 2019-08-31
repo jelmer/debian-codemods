@@ -15,6 +15,9 @@ Lintian-Tags: file-contains-trailing-whitespace
 Fix-Script: unversioned-copyright-format-uri.sh
 Lintian-Tags: unversioned-copyright-format-uri
 
+Fix-Script: debian-control-has-unusual-field-spacing.py
+Lintian-Tags: debian-control-has-unusual-field-spacing
+
 Fix-Script: comma-separated-files-in-dep5-copyright.py
 Lintian-Tags: comma-separated-files-in-dep5-copyright
 
