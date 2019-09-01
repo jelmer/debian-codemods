@@ -55,7 +55,7 @@ class _Process(ProcessEvent):
 
 class DirtyTracker(object):
 
-    def __init__(self, tree):
+    def __init__(self, tree, subpath='.'):
         self._tree = tree
         self._wm = WatchManager()
         self._process = _Process()
@@ -65,7 +65,7 @@ class DirtyTracker(object):
         def check_excluded(p):
             return tree.is_control_filename(tree.relpath(p))
         self._wdd = self._wm.add_watch(
-            tree.basedir, MASK, rec=True, auto_add=True,
+            tree.abspath(subpath), MASK, rec=True, auto_add=True,
             exclude_filter=check_excluded)
 
     def _process_pending(self):

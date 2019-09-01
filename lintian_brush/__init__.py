@@ -447,7 +447,7 @@ def only_changes_last_changelog_block(tree, changelog_path):
         return str(new_cl) == str(old_cl)
 
 
-def reset_tree(local_tree, dirty_tracker=None):
+def reset_tree(local_tree, dirty_tracker=None, subpath='.'):
     """Reset a tree back to its basis tree.
 
     This will leave ignored and detritus files alone.
@@ -458,7 +458,8 @@ def reset_tree(local_tree, dirty_tracker=None):
     """
     if dirty_tracker and not dirty_tracker.is_dirty():
         return
-    revert(local_tree, local_tree.branch.basis_tree(), None)
+    revert(local_tree, local_tree.branch.basis_tree(),
+           [subpath] if subpath != '.' else None)
     deletables = list(iter_deletables(
         local_tree, unknown=True, ignored=False, detritus=False))
     delete_items(deletables)
@@ -545,10 +546,10 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
             trust_package=trust_package,
             allow_reformatting=allow_reformatting)
     except BaseException:
-        reset_tree(local_tree, dirty_tracker)
+        reset_tree(local_tree, dirty_tracker, subpath)
         raise
     if not certainty_sufficient(result.certainty, minimum_certainty):
-        reset_tree(local_tree, dirty_tracker)
+        reset_tree(local_tree, dirty_tracker, subpath)
         raise NoChanges("Certainty of script's changes not high enough")
     if dirty_tracker:
         relpaths = dirty_tracker.relpaths()
@@ -565,7 +566,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
             raise NoChanges("Script didn't make any changes")
     else:
         local_tree.smart_add([local_tree.abspath(subpath)])
-        specific_files = None
+        specific_files = [subpath] if subpath != '.' else None
 
     basis_tree = local_tree.basis_tree()
     if local_tree.supports_setting_file_ids():
@@ -666,7 +667,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
     fixers = list(fixers)
     if use_inotify is True:
         from .dirty_tracker import DirtyTracker
-        dirty_tracker = DirtyTracker(local_tree)
+        dirty_tracker = DirtyTracker(local_tree, subpath)
     elif use_inotify is False:
         dirty_tracker = None
     else:
@@ -675,11 +676,12 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
         except ImportError:
             dirty_tracker = None
         else:
-            dirty_tracker = DirtyTracker(local_tree)
+            dirty_tracker = DirtyTracker(local_tree, subpath)
     ret = ManyResult()
     with ui.ui_factory.nested_progress_bar() as pb:
         for i, fixer in enumerate(fixers):
-            pb.update('Running fixer %r on %s' % (fixer, local_tree.basedir),
+            pb.update('Running fixer %r on %s' %
+                      (fixer, local_tree.abspath(subpath)),
                       i, len(fixers))
             start = time.time()
             if dirty_tracker:
