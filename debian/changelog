@@ -7,6 +7,8 @@ lintian-brush (0.27) UNRELEASED; urgency=medium
     built-using-field-on-arch-all-package.
   * Add fixer for debian-control-has-unusual-field-spacing.
   * Support running in packages that are not at the repository root.
+  * Print an error message if a fixer could not be found. Closes:
+    #939131
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 31 Aug 2019 12:25:59 +0000
 

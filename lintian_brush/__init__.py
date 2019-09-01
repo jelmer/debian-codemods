@@ -320,6 +320,24 @@ def read_desc_file(path):
                 yield ScriptFixer(name, tags, script_path)
 
 
+def select_fixers(fixers, names):
+    """Select fixers by name, from a list.
+
+    Args:
+      fixers: List of Fixer objects
+      names: List of names to select
+    Raises:
+      KeyError: if one of the names did not exist
+    """
+    names = set(names)
+    available = set([f.name for f in fixers])
+    missing = names - available
+    if missing:
+        raise KeyError(missing.pop())
+    # Preserve order
+    return [f for f in fixers if f.name in names]
+
+
 def available_lintian_fixers(fixers_dir=None):
     """Return a list of available lintian fixers.
 

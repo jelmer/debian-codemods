@@ -52,6 +52,7 @@ from lintian_brush import (
     parse_script_fixer_output,
     run_lintian_fixer,
     run_lintian_fixers,
+    select_fixers,
     version_string,
     )
 
@@ -767,3 +768,19 @@ class ScriptFixerTests(BaseScriptFixerTests, TestCaseWithTransport):
 class PythonScriptFixerTests(BaseScriptFixerTests, TestCaseWithTransport):
 
     script_fixer_cls = PythonScriptFixer
+
+
+class SelectFixersTests(TestCase):
+
+    def test_exists(self):
+        self.assertEqual(
+            ['dummy1'],
+            [f.name for f in select_fixers(
+                [DummyFixer('dummy1', 'some-tag'),
+                 DummyFixer('dummy2', 'other-tag')],
+                ['dummy1'])])
+
+    def test_missing(self):
+        self.assertRaises(
+            KeyError, select_fixers, [DummyFixer('dummy', 'some-tag')],
+            ['other'])

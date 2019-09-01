@@ -41,7 +41,7 @@ breezy.initialize()
 import breezy.git  # noqa: E402
 import breezy.bzr  # noqa: E402
 
-from breezy.trace import note  # noqa: E402
+from breezy.trace import note, show_error  # noqa: E402
 
 from . import (  # noqa: E402
     NotDebianPackage,
@@ -50,6 +50,7 @@ from . import (  # noqa: E402
     find_fixers_dir,
     get_committer,
     run_lintian_fixers,
+    select_fixers,
     version_string,
     SUPPORTED_CERTAINTIES,
     DEFAULT_MINIMUM_CERTAINTY,
@@ -157,7 +158,11 @@ def main(argv=None):
             return 0
         since_revid = wt.last_revision()
         if args.fixers:
-            fixers = [f for f in fixers if f.name in args.fixers]
+            try:
+                fixers = select_fixers(fixers, args.fixers)
+            except KeyError as e:
+                show_error('Unknown fixer specified: %s', e.args[0])
+                return 1
         debian_info = distro_info.DebianDistroInfo()
         if args.modern:
             compat_release = debian_info.devel()
