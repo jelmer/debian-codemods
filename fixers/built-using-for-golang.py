@@ -26,7 +26,7 @@ def check_go_package(control):
         pass
     else:
         go_package = True
-    default_architecture = control['Architecture']
+    default_architecture = control.get('Architecture')
 
 
 def add_built_using(control):
