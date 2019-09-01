@@ -2,8 +2,7 @@ Source: lintian-brush
 Section: devel
 Priority: optional
 Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
-Build-Depends: debhelper (>= 12~),
-               dh-python,
+Build-Depends: dh-python,
                dos2unix,
                python3-all,
                python3-breezy (>= 3.0.0),
@@ -16,7 +15,8 @@ Build-Depends: debhelper (>= 12~),
                python3-pkginfo,
                python3-setuptools,
                python3-ruamel.yaml,
-               gpg
+               gpg,
+               debhelper-compat (= 12)
 Standards-Version: 4.4.0
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git -b unstable
 Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush/branches/unstable
