@@ -3,6 +3,7 @@
 # TODO(jelmer): Read python3 setup.py dist_info
 # TODO(jelmer): Check XS-Go-Import-Path
 
+from debian.changelog import Version
 import os
 import sys
 import ruamel.yaml
@@ -10,6 +11,11 @@ from lintian_brush.upstream_metadata import (
     extend_upstream_metadata,
     guess_upstream_metadata_items,
     )
+
+
+if not Version(os.environ['CURRENT_VERSION']).debian_revision:
+    # Native package
+    sys.exit(0)
 
 
 try:
