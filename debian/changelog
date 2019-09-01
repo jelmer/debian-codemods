@@ -9,6 +9,7 @@ lintian-brush (0.27) UNRELEASED; urgency=medium
   * Support running in packages that are not at the repository root.
   * Print an error message if a fixer could not be found. Closes:
     #939131
+  * Update standards version, no changes needed.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 31 Aug 2019 12:25:59 +0000
 
