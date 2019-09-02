@@ -33,6 +33,7 @@ subset of the issues:
 * debhelper-but-no-misc-depends
 * debhelper-tools-from-autotools-dev-are-deprecated
 * debian-changelog-file-contains-obsolete-user-emacs-settings
+* debian-changelog-has-wrong-day-of-week
 * debian-control-has-empty-field
 * debian-control-has-obsolete-dbg-package
 * debian-control-has-unusual-field-spacing
@@ -70,6 +71,7 @@ subset of the issues:
 * missing-vcs-browser-field
 * no-homepage-field
 * obsolete-field-in-dep5-copyright
+* obsolete-runtime-tests-restriction
 * old-fsf-address-in-copyright-file
 * orphaned-package-should-not-have-uploaders
 * out-of-date-copyright-format-uri
