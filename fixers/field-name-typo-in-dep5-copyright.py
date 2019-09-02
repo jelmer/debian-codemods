@@ -23,8 +23,9 @@ def fix_field_typos(paragraph):
             continue
         for option in valid_field_names:
             if distance(field, option) == 1:
-                paragraph[option] = paragraph[field]
+                value = paragraph[field]
                 del paragraph[field]
+                paragraph[option] = value
                 fixed = True
                 break
 
