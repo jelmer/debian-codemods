@@ -1,0 +1,30 @@
+bzrtools (2.6.0-5) UNRELEASED; urgency=medium
+
+  [ Jelmer Vernooĳ ]
+  * Remove unnecessary XS-Testsuite field in debian/control.
+  * Use secure copyright file specification URI.
+  * Remove unnecessary X-Python{,3}-Version field in debian/control.
+  * Trim trailing whitespace.
+
+  [ Debian Janitor ]
+  * Bump debhelper from old 9 to 10.
+  * Trim trailing whitespace.
+  * Set upstream metadata fields: Contact, Name.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon,  3 Sep 2018 01:41:31 +0100
+
+bzrtools (2.6.0-4) unstable; urgency=medium
+
+  * Bump standards version to 4.1.4 (no changes).
+  * Add Vincent as uploader.
+  * Upgrade to debhelper 9.
+  * Bump X-Python-Version up to 2.7.
+  * Switch Vcs-Git to launchpad.net, as alioth's bzr hosting is no more.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 22 Apr 2018 00:58:14 +0000
+
+bzrtools (2.6.0-3) unstable; urgency=medium
+
+  * Bump the versionized dependency on bzr (Closes: #814539).
+
+ -- Vincent Ladeuil <v.ladeuil+lp@free.fr>  Fri, 12 Feb 2016 20:57:32 +0100

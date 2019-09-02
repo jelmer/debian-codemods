@@ -1,0 +1,2 @@
+Fix day-of-week for changelog entries 2.6.0-4.
+Fixed-Lintian-Tags: debian-changelog-has-wrong-day-of-week

@@ -265,3 +265,6 @@ Lintian-Tags:
 
 Fix-Script: obsolete-runtime-tests-restriction.py
 Lintian-Tags: obsolete-runtime-tests-restriction
+
+Fix-Script: debian-changelog-has-wrong-day-of-week.py
+Lintian-Tags: debian-changelog-has-wrong-day-of-week
