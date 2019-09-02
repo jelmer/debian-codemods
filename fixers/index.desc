@@ -12,6 +12,9 @@ Fix-Script: file-contains-trailing-whitespace.sh
 Lintian-Tags: file-contains-trailing-whitespace
 
 # Copyright related fixers. Fix format URL before semantic fixes.
+Fix-Script: insecure-copyright-format-uri.sh
+Lintian-Tags: insecure-copyright-format-uri
+
 Fix-Script: unversioned-copyright-format-uri.sh
 Lintian-Tags: unversioned-copyright-format-uri
 
@@ -26,9 +29,6 @@ Lintian-Tags: copyright-has-crs
 
 Fix-Script: empty-debian-tests-control.py
 Lintian-Tags: empty-debian-tests-control
-
-Fix-Script: insecure-copyright-format-uri.sh
-Lintian-Tags: insecure-copyright-format-uri
 
 Fix-Script: out-of-date-copyright-format-uri.sh
 Lintian-Tags: out-of-date-copyright-format-uri
