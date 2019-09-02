@@ -170,7 +170,7 @@ def main(argv=None):
             compat_release = debian_info.stable()
         with wt.lock_write():
             try:
-                applied, failed = run_lintian_fixers(
+                overall_result = run_lintian_fixers(
                     wt, fixers,
                     update_changelog=args.update_changelog,
                     compat_release=compat_release,
@@ -186,9 +186,9 @@ def main(argv=None):
             except PendingChanges:
                 note("%s: Please commit pending changes first.", wt.basedir)
                 return 1
-        if applied:
+        if overall_result.success:
             all_tags = set()
-            for result, summary in applied:
+            for result, summary in overall_result.success:
                 all_tags.update(result.fixed_lintian_tags)
             if all_tags:
                 note("Lintian tags fixed: %r" % all_tags)
@@ -197,9 +197,15 @@ def main(argv=None):
                      "but there are no affected lintian tags.")
         else:
             note("No changes made.")
-        if failed and not args.verbose:
+        if overall_result.failed_fixers and not args.verbose:
             note("Some fixer scripts failed to run: %r. "
-                 "Run with --verbose for details.", set(failed.keys()))
+                 "Run with --verbose for details.",
+                 set(overall_result.failed_fixers.keys()))
+        if overall_result.formatting_unpreservable and not args.verbose:
+            note('Some fixer scripts were unable to preserve formatting: %r. '
+                 'Run with --allow-reformatting to reformat %r.',
+                 set(overall_result.formatting_unpreservable),
+                 set(overall_result.formatting_unpreservable.values()))
         if args.diff:
             from breezy.diff import show_diff_trees
             show_diff_trees(

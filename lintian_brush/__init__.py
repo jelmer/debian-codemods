@@ -46,6 +46,9 @@ from breezy.transform import revert
 from debian.deb822 import Deb822
 
 
+from .reformatting import FormattingUnpreservable
+
+
 __version__ = (0, 28)
 version_string = '.'.join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ['certain', 'possible', None]
@@ -221,6 +224,8 @@ class PythonScriptFixer(Fixer):
                 with open(self.script_path, 'r') as f:
                     code = compile(f.read(), self.script_path, 'exec')
                     exec(code, {})
+            except FormattingUnpreservable:
+                raise
             except SystemExit as e:
                 retcode = e.code
             except BaseException as e:
@@ -644,6 +649,7 @@ class ManyResult(object):
     def __init__(self):
         self.success = []
         self.failed_fixers = {}
+        self.formatting_unpreservable = {}
 
     def __tuple__(self):
         return (self.success, self.failed_fixers)
@@ -713,6 +719,11 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                         allow_reformatting=allow_reformatting,
                         dirty_tracker=dirty_tracker,
                         subpath=subpath)
+            except FormattingUnpreservable as e:
+                ret.formatting_unpreservable[fixer.name] = e.path
+                if verbose:
+                    note('Fixer %r was unable to preserve formatting of %s.',
+                         fixer.name, e.path)
             except FixerFailed as e:
                 ret.failed_fixers[fixer.name] = e
                 if verbose:
