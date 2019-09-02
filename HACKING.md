@@ -21,4 +21,10 @@ To run the testsuite, use:
 python3 setup.py test
 ```
 
+or simply:
+
+```shell
+make check
+```
+
 The tests are also run by the package build and autopkgtest.
