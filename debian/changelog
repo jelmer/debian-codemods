@@ -1,4 +1,4 @@
-lintian-brush (0.28) UNRELEASED; urgency=medium
+lintian-brush (0.28) unstable; urgency=medium
 
   * Add fixer for obsolete-runtime-tests-restriction.
   * Add fixer for debian-changelog-has-wrong-day-of-week.
@@ -6,7 +6,7 @@ lintian-brush (0.28) UNRELEASED; urgency=medium
   * field-name-typo-in-dep5-copyright: Fix preservation of fields when
     the only change is in the case.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 02 Sep 2019 00:23:11 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 02 Sep 2019 02:34:58 +0000
 
 lintian-brush (0.27) unstable; urgency=medium
 
