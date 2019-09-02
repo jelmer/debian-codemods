@@ -6,7 +6,7 @@ check_generated_file('debian/control')
 
 
 def rewrite_line(line):
-    if not line.strip():
+    if not line.split(b'#', 1)[0].strip():
         return line
     if line.startswith(b' ') or line.startswith(b'\t'):
         return line
