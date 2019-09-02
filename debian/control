@@ -35,7 +35,7 @@ Depends: devscripts,
          ${python3:Depends}
 Recommends: lintian, dos2unix, gpg, python3-pyinotify, python3-asyncpg
 Description: automatically fix lintian problems
- This package contains a set of scripts that can automatically fix more than 70
+ This package contains a set of scripts that can automatically fix more than 80
  common lintian issues in Debian packages.
  .
  It comes with a wrapper script that invokes the scripts, updates
