@@ -262,3 +262,6 @@ Fix-Script: built-using-for-golang.py
 Lintian-Tags:
   missing-built-using-field-for-golang-package,
   built-using-field-on-arch-all-package
+
+Fix-Script: obsolete-runtime-tests-restriction.py
+Lintian-Tags: obsolete-runtime-tests-restriction

@@ -1,0 +1,6 @@
+Tests: prove
+Depends: @, @builddeps@
+
+Tests: adequate
+Depends: @, adequate
+Restrictions: needs-reboot
