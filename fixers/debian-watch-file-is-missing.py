@@ -14,8 +14,10 @@ watch_contents = None
 site = None
 wf = WatchFile()
 if os.path.exists('setup.py'):
-    (project, version) = subprocess.check_output(
+    lines = subprocess.check_output(
         ['python3', 'setup.py', '--name', '--version']).splitlines()
+    lines = [line for line in lines if not line.startswith('W: ')]
+    (project, version) = lines
     # TODO(jelmer): verify that <name>-<version> appears on
     # https://pypi.python.org/simple/<name>
     # TODO(jelmer): download watch file from
