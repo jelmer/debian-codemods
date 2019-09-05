@@ -16,7 +16,7 @@ wf = WatchFile()
 if os.path.exists('setup.py'):
     lines = subprocess.check_output(
         ['python3', 'setup.py', '--name', '--version']).splitlines()
-    lines = [line for line in lines if not line.startswith('W: ')]
+    lines = [line for line in lines if not line.startswith(b'W: ')]
     (project, version) = lines
     # TODO(jelmer): verify that <name>-<version> appears on
     # https://pypi.python.org/simple/<name>
