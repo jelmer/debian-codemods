@@ -1,3 +1,9 @@
+lintian-brush (0.29) UNRELEASED; urgency=medium
+
+  * Fix support for newer versions of Breezy.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 21 Sep 2019 20:26:37 +0000
+
 lintian-brush (0.28) unstable; urgency=medium
 
   * Add fixer for obsolete-runtime-tests-restriction.

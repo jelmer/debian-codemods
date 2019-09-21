@@ -49,7 +49,7 @@ from debian.deb822 import Deb822
 from .reformatting import FormattingUnpreservable
 
 
-__version__ = (0, 28)
+__version__ = (0, 29)
 version_string = '.'.join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ['certain', 'possible', None]
 DEFAULT_MINIMUM_CERTAINTY = 'certain'
@@ -459,7 +459,11 @@ def only_changes_last_changelog_block(tree, changelog_path):
             pass
         else:
             return False
-        if first_change[1] != (changelog_path, changelog_path):
+        try:
+            change_paths = first_change.path
+        except AttributeError:  # brz < 3.1
+            change_paths = first_change[1]
+        if change_paths != (changelog_path, changelog_path):
             return False
         new_cl = Changelog(tree.get_file_text(changelog_path))
         old_cl = Changelog(basis_tree.get_file_text(changelog_path))
