@@ -1,8 +1,8 @@
-lintian-brush (0.29) UNRELEASED; urgency=medium
+lintian-brush (0.29) unstable; urgency=medium
 
   * Fix support for newer versions of Breezy.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 21 Sep 2019 20:26:37 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 21 Sep 2019 20:28:15 +0000
 
 lintian-brush (0.28) unstable; urgency=medium
 
