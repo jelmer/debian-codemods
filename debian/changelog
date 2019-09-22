@@ -1,3 +1,9 @@
+lintian-brush (0.30) UNRELEASED; urgency=medium
+
+  * Show tree status when there are pending changes and --verbose is on.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 22 Sep 2019 23:42:46 +0000
+
 lintian-brush (0.29) unstable; urgency=medium
 
   * Fix support for newer versions of Breezy.

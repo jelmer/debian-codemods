@@ -185,6 +185,9 @@ def main(argv=None):
                 return 1
             except PendingChanges:
                 note("%s: Please commit pending changes first.", wt.basedir)
+                if args.verbose:
+                    from breezy.status import show_tree_status
+                    show_tree_status(wt)
                 return 1
         if overall_result.success:
             all_tags = set()
