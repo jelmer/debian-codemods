@@ -1,0 +1,18 @@
+Source: blah
+Section: utils
+Priority: extra
+Maintainer: Example <example@example.com>
+Uploaders: @GNOME_TEAM@
+Build-Depends: cdbs (>= 0.4.123~),
+  anotherline
+
+Package: 4store
+Architecture: any
+Recommends:  ${cdbs:Recommends}
+Depends:
+ blah1
+ blah2
+Description: blah
+ blah
+ .
+ blah
