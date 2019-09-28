@@ -22,9 +22,38 @@ from itertools import takewhile
 
 from debian.changelog import Version
 from debian.deb822 import Deb822
+import subprocess
 
 from ._deb822 import PkgRelation
 from .deb822 import update_deb822
+from .reformatting import GeneratedFile
+
+
+def _update_control_template(template_path, path, paragraph_cb):
+    with open(template_path, 'rb') as f:
+        template = f.read()
+        if b'@GNOME_TEAM@' in template:
+            template_type = 'gnome'
+        elif b'@cdbs@' in template:
+            template_type = 'cdbs'
+        elif b'@lintian-brush-test@' in template:
+            template_type = 'lintian-brush-test'
+        else:
+            raise GeneratedFile(path, template_path)
+    if not update_deb822(template_path, paragraph_cb=paragraph_cb):
+        # A bit odd, since there were changes to the output file. Anyway.
+        return False
+    if template_type == 'cdbs':
+        raise GeneratedFile(path, template_path)
+    elif template_type == 'gnome':
+        subprocess.check_call(["dh_gnome_clean"])
+    elif template_type == 'lintian-brush-test':
+        with open(template_path, 'rb') as inf, open(path, 'wb') as outf:
+            outf.write(
+                inf.read().replace(b'@lintian-brush-test@', b'testvalue'))
+    else:
+        raise AssertionError
+    return True
 
 
 def update_control(path='debian/control', source_package_cb=None,
@@ -36,8 +65,12 @@ def update_control(path='debian/control', source_package_cb=None,
         else:
             if binary_package_cb is not None:
                 binary_package_cb(paragraph)
-
-    return update_deb822(path, paragraph_cb=paragraph_cb)
+    try:
+        return update_deb822(path, paragraph_cb=paragraph_cb)
+    except GeneratedFile as e:
+        if not e.template_path:
+            raise
+        return _update_control_template(e.template_path, path, paragraph_cb)
 
 
 def parse_relations(text):

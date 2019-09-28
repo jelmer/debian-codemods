@@ -28,8 +28,9 @@ import os
 class GeneratedFile(Exception):
     """The specified file is generated."""
 
-    def __init__(self, path):
+    def __init__(self, path, template_path=None):
         self.path = path
+        self.template_path = template_path
 
 
 class FormattingUnpreservable(Exception):
@@ -69,7 +70,7 @@ def check_generated_file(path):
       path: Path to the file to check
     """
     if os.path.exists(path + '.in'):
-        raise GeneratedFile(path)
+        raise GeneratedFile(path, path + '.in')
     try:
         with open(path, 'rb') as f:
             original_contents = f.read()
