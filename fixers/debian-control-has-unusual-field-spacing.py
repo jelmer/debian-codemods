@@ -2,9 +2,6 @@
 
 from lintian_brush.reformatting import check_generated_file
 
-check_generated_file('debian/control')
-
-
 def rewrite_line(line):
     if not line.split(b'#', 1)[0].strip():
         return line

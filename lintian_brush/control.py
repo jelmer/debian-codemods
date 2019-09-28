@@ -19,6 +19,7 @@
 
 import collections
 from itertools import takewhile
+import os
 
 from debian.changelog import Version
 from debian.deb822 import Deb822
@@ -27,6 +28,21 @@ import subprocess
 from ._deb822 import PkgRelation
 from .deb822 import update_deb822
 from .reformatting import GeneratedFile
+
+
+def dh_gnome_clean():
+    """Run the dh_gnome_clean command.
+
+    This needs to do some post-hoc cleaning, since dh_gnome_clean
+    writes various debhelper log files that should not be checked in.
+    """
+    for n in os.listdir('debian'):
+        if n.endswith('.debhelper.log'):
+            raise AssertionError('pre-existing .debhelper.log files')
+    subprocess.check_call(["dh_gnome_clean"])
+    for n in os.listdir('debian'):
+        if n.endswith('.debhelper.log'):
+            os.unlink('debian/' + n)
 
 
 def _update_control_template(template_path, path, paragraph_cb):
@@ -46,7 +62,7 @@ def _update_control_template(template_path, path, paragraph_cb):
     if template_type == 'cdbs':
         raise GeneratedFile(path, template_path)
     elif template_type == 'gnome':
-        subprocess.check_call(["dh_gnome_clean"])
+        dh_gnome_clean()
     elif template_type == 'lintian-brush-test':
         with open(template_path, 'rb') as inf, open(path, 'wb') as outf:
             outf.write(
