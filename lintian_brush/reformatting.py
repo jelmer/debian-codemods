@@ -96,6 +96,7 @@ def edit_formatted_file(
             type(updated_contents), type(rewritten_contents)))
     if updated_contents in (rewritten_contents, original_contents):
         return False
+    check_generated_file(path)
     check_preserve_formatting(
             rewritten_contents.strip(),
             original_contents.strip(), path)

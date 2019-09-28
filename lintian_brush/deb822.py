@@ -20,7 +20,6 @@
 from debian.deb822 import Deb822
 from io import BytesIO
 from .reformatting import (
-    check_generated_file,
     edit_formatted_file,
     )
 
@@ -68,7 +67,6 @@ def update_deb822(path, **kwargs):
     Returns:
       boolean indicating whether any changes were made
     """
-    check_generated_file(path)
     with open(path, 'rb') as f:
         original_contents = f.read()
     rewritten_contents = reformat_deb822(original_contents)
