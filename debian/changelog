@@ -1,4 +1,4 @@
-lintian-brush (0.30) UNRELEASED; urgency=medium
+lintian-brush (0.30) unstable; urgency=medium
 
   * Show tree status when there are pending changes and --verbose is on.
   * Don't complain about generated files unless there is a change that
@@ -7,7 +7,7 @@ lintian-brush (0.30) UNRELEASED; urgency=medium
   * Add basic support for optional debian/lintian-brush.conf
     configuration file in packages.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 22 Sep 2019 23:42:46 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Sep 2019 01:20:39 +0000
 
 lintian-brush (0.29) unstable; urgency=medium
 
