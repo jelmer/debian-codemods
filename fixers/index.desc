@@ -219,6 +219,9 @@ Lintian-Tags: old-fsf-address-in-copyright-file
 Fix-Script: field-name-typo-in-dep5-copyright.py
 Lintian-Tags: field-name-typo-in-dep5-copyright
 
+Fix-Script: unused-license-paragraph-in-dep5-copyright.py
+Lintian-Tags: unused-license-paragraph-in-dep5-copyright
+
 Fix-Script: global-files-wildcard-not-first-paragraph-in-dep5-copyright.py
 Lintian-Tags: global-files-wildcard-not-first-paragraph-in-dep5-copyright
 

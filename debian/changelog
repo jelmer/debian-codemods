@@ -5,6 +5,7 @@ lintian-brush (0.32) UNRELEASED; urgency=medium
     readable copyright files.
   * Support postgresql debian/control.in templates.
   * Add fixer for init.d-script-needs-depends-on-lsb-base.
+  * Add fixer for unused-license-paragraph-in-dep5-copyright.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Sep 2019 15:45:58 +0000
 
