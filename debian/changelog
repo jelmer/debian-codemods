@@ -4,6 +4,7 @@ lintian-brush (0.32) UNRELEASED; urgency=medium
   * Don't print error messages when unable to update non-machine-
     readable copyright files.
   * Support postgresql debian/control.in templates.
+  * Add fixer for init.d-script-needs-depends-on-lsb-base.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Sep 2019 15:45:58 +0000
 
