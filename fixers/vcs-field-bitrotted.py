@@ -95,7 +95,7 @@ def migrate_from_obsolete_infra(control):
                 return
             vcs_type = "Git"
         # Verify that there is actually a repository there
-        if os.environ.get('SALSA_PROBE', 'enabled') == 'ensabled':
+        if os.environ.get('SALSA_PROBE', 'enabled') == 'enabled':
             if not verify_salsa_repository(guessed_url):
                 return
         print("Update Vcs-* headers to use salsa repository.")
