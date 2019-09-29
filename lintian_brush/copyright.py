@@ -31,6 +31,15 @@ from .reformatting import edit_formatted_file
 
 
 def update_copyright(update_cb, path='debian/copyright'):
+    """Update a machine-readable copyright file.
+
+    Args:
+      update_cb: Callback that will be called with the
+        copyright file
+      path: Optional path to the copyright file
+    Returns:
+      bool indicating whether any changes were made
+    """
     with open(path, 'r') as f:
         orig_content = f.read()
 
