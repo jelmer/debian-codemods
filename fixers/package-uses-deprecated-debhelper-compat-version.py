@@ -24,9 +24,19 @@ MINIMUM_DEBHELPER_VERSION = 9
 compat_release = os.environ.get('COMPAT_RELEASE', 'sid')
 
 new_debhelper_compat_version = {
-    'sid': 12,
-    'buster': 12,
+    # Debian
+    'jessie': 9,
     'stretch': 10,
+    'sid': 12,
+    'bullseye': 12,
+    'buster': 12,
+
+    # Ubuntu
+    'xenial': 9,
+    'bionic': 11,
+    'cosmic': 11,
+    'disco': 12,
+    'eoan': 12,
     }.get(compat_release, MINIMUM_DEBHELPER_VERSION)
 
 
