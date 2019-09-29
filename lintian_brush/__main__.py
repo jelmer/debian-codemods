@@ -97,6 +97,10 @@ def main(argv=None):
         '--identity',
         help='Print user identity that would be used when committing',
         action='store_true', default=False)
+    parser.add_argument(
+        '--disable-net-access',
+        help='Do not probe external services.',
+        action='store_true', default=False)
     # Hide the minimum-certainty option for the moment.
     parser.add_argument(
         '--minimum-certainty',
@@ -202,7 +206,8 @@ def main(argv=None):
                     trust_package=args.trust,
                     allow_reformatting=allow_reformatting,
                     use_inotify=(False if args.disable_inotify else None),
-                    subpath=subpath)
+                    subpath=subpath,
+                    net_access=not args.disable_net_access)
             except NotDebianPackage:
                 note("%s: Not a debian package.", wt.basedir)
                 return 1

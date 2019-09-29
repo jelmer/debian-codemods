@@ -8,6 +8,7 @@ import os
 import sys
 import ruamel.yaml
 from lintian_brush.upstream_metadata import (
+    check_upstream_metadata,
     extend_upstream_metadata,
     guess_upstream_metadata_items,
     )
@@ -31,8 +32,6 @@ fields = set()
 current_certainty = {k: 'certain' for k in code.keys()}
 for key, value, certainty in guess_upstream_metadata_items(
         '.', trust_package=(os.environ.get('TRUST_PACKAGE') == 'true')):
-    if certainty == 'possible' and minimum_certainty == 'certain':
-        continue
     if key.startswith('X-') or key in ('Name', 'Contact', 'Homepage'):
         continue
     if current_certainty.get(key) != 'certain':
@@ -42,6 +41,14 @@ for key, value, certainty in guess_upstream_metadata_items(
         current_certainty[key] = certainty
 
 extend_upstream_metadata(code, current_certainty)
+if os.environ.get('NET_ACCESS', 'allow') == 'allow':
+    check_upstream_metadata(code, current_certainty)
+
+# Drop everything that is below our minimum certainty
+for key, certainty in list(current_certainty.items()):
+    if certainty == 'possible' and minimum_certainty == 'certain':
+        del code[key]
+        del current_certainty[key]
 
 achieved_certainty = (
     'possible' if 'possible' in current_certainty.values() else 'certain')

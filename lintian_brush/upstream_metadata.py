@@ -27,6 +27,7 @@ from warnings import warn
 from lintian_brush import USER_AGENT
 from lintian_brush.vcs import (
     sanitize_url as sanitize_vcs_url,
+    probe_vcs_url,
     )
 from lintian_brush.watch import parse_watch_file
 from urllib.request import urlopen, Request
@@ -523,6 +524,20 @@ def extend_upstream_metadata(code, certainty):
             code['Repository-Browse'] = browse_url
             certainty['Repository-Browse'] = certainty['Repository']
     # TODO(jelmer): Try deriving bug-database too?
+
+
+def check_upstream_metadata(code, certainty):
+    """Check upstream metadata.
+
+    This will make network connections, etc.
+    """
+    if 'Repository' in code and certainty['Repository'] == 'possible':
+        if probe_vcs_url(code['Repository']):
+            certainty['Repository'] = 'certain'
+        else:
+            # TODO(jelmer): Remove altogether, or downgrade to a lesser
+            # certainty?
+            pass
 
 
 if __name__ == '__main__':

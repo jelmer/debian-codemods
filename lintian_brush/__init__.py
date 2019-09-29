@@ -204,13 +204,15 @@ class PythonScriptFixer(Fixer):
 
     def run(self, basedir, current_version, compat_release,
             minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
-            trust_package=False, allow_reformatting=False):
+            trust_package=False, allow_reformatting=False,
+            net_access=True):
         env = dict(os.environ.items())
         env['CURRENT_VERSION'] = str(current_version)
         env['COMPAT_RELEASE'] = compat_release
         env['MINIMUM_CERTAINTY'] = minimum_certainty
         env['TRUST_PACKAGE'] = 'true' if trust_package else 'false'
         env['REFORMATTING'] = ('allow' if allow_reformatting else 'disallow')
+        env['NET_ACCESS'] = ('allow' if net_access else 'disallow')
         try:
             old_env = os.environ
             old_stderr = sys.stderr
@@ -264,13 +266,15 @@ class ScriptFixer(Fixer):
 
     def run(self, basedir, current_version, compat_release,
             minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
-            trust_package=False, allow_reformatting=False):
+            trust_package=False, allow_reformatting=False,
+            net_access=True):
         env = dict(os.environ.items())
         env['CURRENT_VERSION'] = str(current_version)
         env['COMPAT_RELEASE'] = compat_release
         env['MINIMUM_CERTAINTY'] = minimum_certainty
         env['TRUST_PACKAGE'] = 'true' if trust_package else 'false'
         env['REFORMATTING'] = ('allow' if allow_reformatting else 'disallow')
+        env['NET_ACCESS'] = ('allow' if net_access else 'disallow')
         with tempfile.SpooledTemporaryFile() as stderr:
             p = subprocess.Popen(self.script_path, cwd=basedir,
                                  stdout=subprocess.PIPE, stderr=stderr,
@@ -525,7 +529,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
                       update_changelog=None, compat_release=None,
                       minimum_certainty=None, trust_package=False,
                       allow_reformatting=False, dirty_tracker=None,
-                      subpath='.'):
+                      subpath='.', net_access=True):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -542,6 +546,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
       dirty_tracker: Optional object that can be used to tell if the tree
         has been changed.
       subpath: Path in tree to operate on
+      net_access: Whether to allow accessing external services
     Returns:
       tuple with set of FixerResult, summary of the changes
     """
@@ -571,7 +576,8 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
             compat_release=compat_release,
             minimum_certainty=minimum_certainty,
             trust_package=trust_package,
-            allow_reformatting=allow_reformatting)
+            allow_reformatting=allow_reformatting,
+            net_access=net_access)
     except BaseException:
         reset_tree(local_tree, dirty_tracker, subpath)
         raise
@@ -666,7 +672,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                        verbose=False, committer=None,
                        compat_release=None, minimum_certainty=None,
                        trust_package=False, allow_reformatting=False,
-                       use_inotify=None, subpath='.'):
+                       use_inotify=None, subpath='.', net_access=True):
     """Run a set of lintian fixers on a tree.
 
     Args:
@@ -684,6 +690,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
       use_inotify: Use inotify to watch changes (significantly improves
         performance). Defaults to None (automatic)
       subpath: Subpath in the tree in which the package lives
+      net_access: Whether to allow network access
     Returns:
       Tuple with two lists:
         1. list of tuples with (lintian-tag, certainty, description) of fixers
@@ -722,7 +729,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                         trust_package=trust_package,
                         allow_reformatting=allow_reformatting,
                         dirty_tracker=dirty_tracker,
-                        subpath=subpath)
+                        subpath=subpath, net_access=net_access)
             except FormattingUnpreservable as e:
                 ret.formatting_unpreservable[fixer.name] = e.path
                 if verbose:

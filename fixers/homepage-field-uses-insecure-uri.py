@@ -3,6 +3,7 @@ from lintian_brush import USER_AGENT
 from lintian_brush.control import (
     update_control,
     )
+import os
 import sys
 import urllib.error
 import urllib.parse
@@ -30,6 +31,8 @@ def fix_homepage(http_url):
     result = urllib.parse.urlparse(http_url)
     if result.netloc in known_https:
         return https_url
+    if os.environ.get('NET_ACCESS', 'allow') != 'allow':
+        return http_url
     # Fall back to just comparing the two
     headers = {'User-Agent': USER_AGENT}
     http_contents = urlopen(Request(http_url, headers=headers)).read()
