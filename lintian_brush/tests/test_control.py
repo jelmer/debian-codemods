@@ -355,6 +355,24 @@ class AddDependencyTests(TestCase):
     bar""", add_dependency("""foo,
     bar""", 'blah', position=1))
 
+    def test_odd_syntax(self):
+        self.assertEqual("""
+ foo
+ , bar
+ , blah
+""", add_dependency("""
+ foo
+ , bar
+""", 'blah'))
+        self.assertEqual("""
+ foo
+ , blah
+ , bar
+""", add_dependency("""
+ foo
+ , bar
+""", 'blah', position=1))
+
 
 class GetRelationTests(TestCase):
 
