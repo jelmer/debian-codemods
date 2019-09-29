@@ -4,6 +4,8 @@ lintian-brush (0.31) UNRELEASED; urgency=medium
     when include is already present.
   * debian-changelog-has-wrong-day-of-week: Properly ignore unparseable
     dates.
+  * Preserve ordering when replacing a debhelper dependency with a
+    debhelper-compat one. Closes: #939077
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Sep 2019 12:58:36 +0000
 

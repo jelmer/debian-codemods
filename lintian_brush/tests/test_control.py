@@ -345,6 +345,16 @@ class AddDependencyTests(TestCase):
  bar
 """, 'blah'))
 
+    def test_insert(self):
+        self.assertEqual("""blah,
+    foo,
+    bar""", add_dependency("""foo,
+    bar""", 'blah', position=0))
+        self.assertEqual("""foo,
+    blah,
+    bar""", add_dependency("""foo,
+    bar""", 'blah', position=1))
+
 
 class GetRelationTests(TestCase):
 
@@ -357,11 +367,11 @@ class GetRelationTests(TestCase):
 
     def test_simple(self):
         self.assertEqual(
-            [PkgRelation('debhelper', ('>=', '9'))],
+            (0, [PkgRelation('debhelper', ('>=', '9'))]),
             get_relation(
                 'debhelper (>= 9)', 'debhelper'))
         self.assertEqual(
-            [PkgRelation('debhelper', ('=', '9'))],
+            (1, [PkgRelation('debhelper', ('=', '9'))]),
             get_relation(
                 'blah, debhelper (= 9)', 'debhelper'))
 

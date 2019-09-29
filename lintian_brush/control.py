@@ -146,10 +146,11 @@ def get_relation(relationstr, package):
       relationstr: package relation string
       package: package name
     Returns:
-      Relation object
+      Tuple with offset and relation object
     """
     relations = parse_relations(relationstr)
-    for (head_whitespace, relation, tail_whitespace) in relations:
+    for i, (head_whitespace, relation, tail_whitespace) in enumerate(
+            relations):
         if isinstance(relation, str):  # formatting
             continue
         names = [r.name for r in relation]
@@ -157,7 +158,7 @@ def get_relation(relationstr, package):
             raise Exception("Complex rule for %s , aborting" % package)
         if names != [package]:
             continue
-        return relation
+        return i, relation
     raise KeyError(package)
 
 
@@ -199,13 +200,14 @@ def ensure_minimum_version(relationstr, package, minimum_version):
     return relationstr
 
 
-def ensure_exact_version(relationstr, package, version):
+def ensure_exact_version(relationstr, package, version, position=None):
     """Update a relation string to depend on a specific version.
 
     Args:
       relationstr: package relation string
       package: package name
       version: Exact version to depend on
+      position: Optional position in the list to insert any new entries
     Returns:
       updated relation string
     """
@@ -231,56 +233,82 @@ def ensure_exact_version(relationstr, package, version):
         changed = True
         _add_dependency(
             relations,
-            [PkgRelation(name=package, version=('=', version))])
+            [PkgRelation(name=package, version=('=', version))],
+            position=position)
     if changed:
         return format_relations(relations)
     # Just return the original; we don't preserve all formatting yet.
     return relationstr
 
 
-def _add_dependency(relations, relation):
+def _add_dependency(relations, relation, position=None):
     """Add a dependency to a depends line.
 
     Args:
       relations: existing list of relations
       relation: New relation
+      position: Optional position to insert the new relation
     Returns:
       Nothing
     """
     if len(relations) == 0:
         head_whitespace = ''
+        tail_whitespace = ''
     elif len(relations) == 1:
         head_whitespace = (relations[0][0] or " ")  # Best guess
-    else:
-        ws = collections.defaultdict(lambda: 0)
-        for r in relations[1:]:
-            ws[r[0]] += 1
-        if len(ws) == 1:
-            head_whitespace = list(ws.keys())[0]
-        else:
-            head_whitespace = relations[-1][0]  # Best guest
-    if len(relations) == 0:
         tail_whitespace = ''
     else:
-        tail_whitespace = relations[-1][2]
-        relations[-1] = relations[-1][:2] + ('', )
+        hws = collections.defaultdict(lambda: 0)
+        for r in relations[1:]:
+            hws[r[0]] += 1
+        if len(hws) == 1:
+            head_whitespace = list(hws.keys())[0]
+        else:
+            head_whitespace = relations[-1][0]  # Best guess
+        tws = collections.defaultdict(lambda: 0)
+        for r in relations[0:-1]:
+            tws[r[2]] += 1
+        if len(tws) == 1:
+            tail_whitespace = list(tws.keys())[0]
+        else:
+            tail_whitespace = relations[0][2]  # Best guess
 
-    relations.append((head_whitespace, relation, tail_whitespace))
+    if position is None:
+        position = len(relations)
+
+    if position < 0 or position > len(relations):
+        raise IndexError('position out of bounds: %r' % position)
+
+    if position == len(relations):
+        if len(relations) == 0:
+            last_tail_whitespace = ''
+        else:
+            last_tail_whitespace = relations[-1][2]
+            relations[-1] = relations[-1][:2] + (tail_whitespace, )
+        relations.append((head_whitespace, relation, last_tail_whitespace))
+    elif position == 0:
+        relations.insert(
+            position, (relations[0][0], relation, tail_whitespace))
+        relations[1] = (head_whitespace, relations[1][1], relations[1][2])
+    else:
+        relations.insert(
+            position, (head_whitespace, relation, tail_whitespace))
 
 
-def add_dependency(relationstr, relation):
+def add_dependency(relationstr, relation, position=None):
     """Add a dependency to a depends line.
 
     Args:
       relationstr: existing relations line
       relation: New relation
+      position: Optional position to insert relation at (defaults to last)
     Returns:
       Nothing
     """
     relations = parse_relations(relationstr)
     if isinstance(relation, str):
         relation = PkgRelation.parse(relation)
-    _add_dependency(relations, relation)
+    _add_dependency(relations, relation, position=position)
     return format_relations(relations)
 
 
@@ -351,7 +379,7 @@ def ensure_minimum_debhelper_version(build_depends, minimum_version):
     """
     minimum_version = Version(minimum_version)
     try:
-        debhelper_compat = get_relation(
+        offset, debhelper_compat = get_relation(
             build_depends, "debhelper-compat")
     except KeyError:
         pass
@@ -398,7 +426,7 @@ def get_debhelper_compat_version():
         return None
 
     try:
-        [relation] = get_relation(
+        offset, [relation] = get_relation(
             control.get("Build-Depends", ""), "debhelper-compat")
     except (IndexError, KeyError):
         return None

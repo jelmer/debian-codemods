@@ -61,25 +61,24 @@ if os.path.exists('debian/compat'):
 
         # Assume that the compat version is set in Build-Depends
         def set_debhelper_compat(control):
-            control["Build-Depends"] = ensure_exact_version(
-                control.get("Build-Depends", ""),
-                "debhelper-compat",
-                "%d" % new_debhelper_compat_version)
             try:
-                debhelper_relation = get_relation(
+                position, debhelper_relation = get_relation(
                     control["Build-Depends"], "debhelper")
             except KeyError:
-                pass
+                position = None
+                debhelper_relation = []
+            control["Build-Depends"] = ensure_exact_version(
+                control["Build-Depends"], "debhelper-compat",
+                "%d" % new_debhelper_compat_version, position=position)
+            # If there are debhelper dependencies >= new debhelper compat
+            # version, then keep them.
+            for rel in debhelper_relation:
+                if Version(rel.version[1]) >= Version(
+                        "%d" % new_debhelper_compat_version):
+                    break
             else:
-                # If there are debhelper dependencies >= new debhelper compat
-                # version, then keep them.
-                for rel in debhelper_relation:
-                    if Version(rel.version[1]) >= Version(
-                            "%d" % new_debhelper_compat_version):
-                        break
-                else:
-                    control["Build-Depends"] = drop_dependency(
-                        control["Build-Depends"], "debhelper")
+                control["Build-Depends"] = drop_dependency(
+                    control["Build-Depends"], "debhelper")
 
         update_control(source_package_cb=set_debhelper_compat)
     else:
@@ -102,7 +101,7 @@ else:
     def bump_debhelper_compat(control):
         global current_debhelper_compat_version
         try:
-            debhelper_compat_relation = get_relation(
+            offset, debhelper_compat_relation = get_relation(
                 control.get("Build-Depends", ""), "debhelper-compat")
         except KeyError:
             sys.exit(2)

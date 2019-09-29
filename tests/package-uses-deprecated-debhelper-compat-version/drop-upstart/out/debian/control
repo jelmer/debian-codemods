@@ -3,9 +3,9 @@ Section: admin
 Priority: optional
 Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
 Build-Depends:
+ debhelper-compat (= 12),
  pkg-config,
- uuid-dev,
- debhelper-compat (= 12)
+ uuid-dev
 Standards-Version: 4.2.0
 
 Package: blah
