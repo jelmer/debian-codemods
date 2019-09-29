@@ -21,6 +21,7 @@ import unittest
 def test_suite():
     names = [
         'changelog',
+        'config',
         'control',
         'copyright',
         'deb822',

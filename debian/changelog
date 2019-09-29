@@ -4,6 +4,8 @@ lintian-brush (0.30) UNRELEASED; urgency=medium
   * Don't complain about generated files unless there is a change that
     can be made to a file.
   * Support updating generated GNOME control files.
+  * Add basic support for optional debian/lintian-brush.conf
+    configuration file in packages.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 22 Sep 2019 23:42:46 +0000
 

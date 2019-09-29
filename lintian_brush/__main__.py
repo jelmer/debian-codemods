@@ -55,6 +55,7 @@ from . import (  # noqa: E402
     SUPPORTED_CERTAINTIES,
     DEFAULT_MINIMUM_CERTAINTY,
     )
+from .config import Config   # noqa: E402
 
 
 def main(argv=None):
@@ -101,14 +102,14 @@ def main(argv=None):
         '--minimum-certainty',
         type=str,
         choices=SUPPORTED_CERTAINTIES,
-        default=DEFAULT_MINIMUM_CERTAINTY,
+        default=None,
         help=argparse.SUPPRESS)
     parser.add_argument(
         '--trust',
         action='store_true',
         help=argparse.SUPPRESS)
     parser.add_argument(
-        '--allow-reformatting', default=False, action='store_true',
+        '--allow-reformatting', default=None, action='store_true',
         help=argparse.SUPPRESS)
     parser.add_argument(
         '--disable-inotify', action='store_true', default=False,
@@ -167,7 +168,29 @@ def main(argv=None):
         if args.modern:
             compat_release = debian_info.devel()
         else:
+            compat_release = None
+        minimum_certainty = args.minimum_certainty
+        allow_reformatting = args.allow_reformatting
+        try:
+            cfg = Config.from_workingtree(wt, subpath)
+        except FileNotFoundError:
+            pass
+        else:
+            if minimum_certainty is None:
+                minimum_certainty = cfg.minimum_certainty()
+            if compat_release is None:
+                compat_release = cfg.compat_release()
+                if compat_release:
+                    compat_release = debian_info.codename(
+                        compat_release, default=compat_release)
+            if allow_reformatting is None:
+                allow_reformatting = cfg.allow_reformatting()
+        if minimum_certainty is None:
+            minimum_certainty = DEFAULT_MINIMUM_CERTAINTY
+        if compat_release is None:
             compat_release = debian_info.stable()
+        if allow_reformatting is None:
+            allow_reformatting = False
         with wt.lock_write():
             try:
                 overall_result = run_lintian_fixers(
@@ -177,7 +200,7 @@ def main(argv=None):
                     verbose=args.verbose,
                     minimum_certainty=args.minimum_certainty,
                     trust_package=args.trust,
-                    allow_reformatting=args.allow_reformatting,
+                    allow_reformatting=allow_reformatting,
                     use_inotify=(False if args.disable_inotify else None),
                     subpath=subpath)
             except NotDebianPackage:
