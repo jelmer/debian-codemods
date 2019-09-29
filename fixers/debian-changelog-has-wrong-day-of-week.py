@@ -7,7 +7,12 @@ versions = []
 
 
 def fix_dow(block):
-    dt = email.utils.parsedate_to_datetime(block.date)
+    try:
+        dt = email.utils.parsedate_to_datetime(block.date)
+    except TypeError:
+        # parsedate_to_datetime is buggy and raises a TypeError
+        # when the date is invalid.
+        return
     if dt is None:
         # Can't interpret the date. Just ignore..
         return

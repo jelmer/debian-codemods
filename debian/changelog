@@ -2,6 +2,8 @@ lintian-brush (0.31) UNRELEASED; urgency=medium
 
   * debian-rules-sets-dpkg-architecture-variable: actually drop variable
     when include is already present.
+  * debian-changelog-has-wrong-day-of-week: Properly ignore unparseable
+    dates.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Sep 2019 12:58:36 +0000
 
