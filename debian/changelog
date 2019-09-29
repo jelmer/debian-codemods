@@ -1,4 +1,4 @@
-lintian-brush (0.31) UNRELEASED; urgency=medium
+lintian-brush (0.31) unstable; urgency=medium
 
   * debian-rules-sets-dpkg-architecture-variable: actually drop variable
     when include is already present.
@@ -7,7 +7,7 @@ lintian-brush (0.31) UNRELEASED; urgency=medium
   * Preserve ordering when replacing a debhelper dependency with a
     debhelper-compat one. Closes: #939077
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Sep 2019 12:58:36 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Sep 2019 14:31:49 +0000
 
 lintian-brush (0.30) unstable; urgency=medium
 
