@@ -3,6 +3,7 @@ lintian-brush (0.32) UNRELEASED; urgency=medium
   * Add flag to disable interaction with external services.
   * Don't print error messages when unable to update non-machine-
     readable copyright files.
+  * Support postgresql debian/control.in templates.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Sep 2019 15:45:58 +0000
 

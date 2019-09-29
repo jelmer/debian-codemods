@@ -45,6 +45,12 @@ def dh_gnome_clean():
             os.unlink('debian/' + n)
 
 
+def pg_buildext_updatecontrol():
+    """Run the 'pg_buildext updatecontrol' command.
+    """
+    subprocess.check_call(["pg_buildext", "updatecontrol"])
+
+
 def _update_control_template(template_path, path, paragraph_cb):
     with open(template_path, 'rb') as f:
         template = f.read()
@@ -52,6 +58,8 @@ def _update_control_template(template_path, path, paragraph_cb):
             template_type = 'gnome'
         elif b'@cdbs@' in template:
             template_type = 'cdbs'
+        elif b'PGVERSION' in template:
+            template_type = 'postgresql'
         elif b'@lintian-brush-test@' in template:
             template_type = 'lintian-brush-test'
         else:
@@ -63,6 +71,8 @@ def _update_control_template(template_path, path, paragraph_cb):
         raise GeneratedFile(path, template_path)
     elif template_type == 'gnome':
         dh_gnome_clean()
+    elif template_type == 'postgresql':
+        pg_buildext_updatecontrol()
     elif template_type == 'lintian-brush-test':
         with open(template_path, 'rb') as inf, open(path, 'wb') as outf:
             outf.write(
