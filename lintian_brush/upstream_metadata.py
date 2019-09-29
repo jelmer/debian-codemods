@@ -182,7 +182,7 @@ def guess_from_package_json(path, trust_package):
             if parsed_url.scheme and parsed_url.netloc:
                 yield 'Repository', sanitize_vcs_url(repo_url), 'certain'
             else:
-                # Some people seem to default github. :(
+                # Some people seem to default to github. :(
                 repo_url = 'https://github.com/' + parsed_url.path
                 yield 'Repository', sanitize_vcs_url(repo_url), 'possible'
     if 'bugs' in package:

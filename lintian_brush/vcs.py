@@ -17,7 +17,7 @@
 
 """Utility functions for dealing with Vcs URLs of various types."""
 
-__all__ = ['fixup_broken_git_url']
+__all__ = ['fixup_broken_git_url', 'sanitize_url']
 
 from .salsa import determine_browser_url as determine_salsa_browser_url
 
@@ -28,7 +28,7 @@ def sanitize_url(url):
     url = url.strip()
     if url.startswith('git+http:') or url.startswith('git+https:'):
         return url[4:]
-    return url
+    return fixup_broken_git_url(url)
 
 
 def fix_path_in_port(parsed, branch):
