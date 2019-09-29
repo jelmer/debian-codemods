@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.copyright import update_copyright
+from lintian_brush.copyright import update_copyright, NotMachineReadableError
 
 renames = [
     ("Name", "Upstream-Name", "upstream_name", False),
@@ -31,7 +31,10 @@ def obsolete_field(copyright):
             del copyright.header[old_name]
 
 
-update_copyright(obsolete_field)
+try:
+    update_copyright(obsolete_field)
+except NotMachineReadableError:
+    pass
 print(
     "Update copyright file header to use current field names (%s)" %
     ', '.join("%s => %s" % (key, value) for (key, value) in applied_renames))

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debian.copyright import License
-from lintian_brush.copyright import update_copyright
+from lintian_brush.copyright import update_copyright, NotMachineReadableError
 
 RENAMES = {
   'Creative Commons Attribution Share-Alike (CC-BY-SA) v3.0': 'CC-BY-SA-3.0',
@@ -23,7 +23,10 @@ def fix_spaces(copyright):
         paragraph.license = License(newsynopsis, paragraph.license.text)
 
 
-update_copyright(fix_spaces)
+try:
+    update_copyright(fix_spaces)
+except NotMachineReadableError:
+    pass
 
 print('Replace spaces in short license names with dashes.')
 print('Fixed-Lintian-Tags: space-in-std-shortname-in-dep5-copyright')

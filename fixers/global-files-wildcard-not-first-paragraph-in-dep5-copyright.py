@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 
-from lintian_brush.copyright import update_copyright
+from lintian_brush.copyright import update_copyright, NotMachineReadableError
 
 
 def swap_files_glob(copyright):
@@ -14,7 +14,10 @@ def swap_files_glob(copyright):
             files_i += 1
 
 
-update_copyright(swap_files_glob)
+try:
+    update_copyright(swap_files_glob)
+except NotMachineReadableError:
+    pass
 
 print('Make "Files: *" paragraph the first in the copyright file.')
 print('Fixed-Lintian-Tags: '

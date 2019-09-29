@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debian.copyright import License
-from lintian_brush.copyright import update_copyright
+from lintian_brush.copyright import update_copyright, NotMachineReadableError
 
 typos = {
     'bsd-2': 'BSD-2-Clause',
@@ -34,7 +34,10 @@ def fix_shortname(copyright):
         paragraph.license = License(new_name, paragraph.license.text)
 
 
-update_copyright(fix_shortname)
+try:
+    update_copyright(fix_shortname)
+except NotMachineReadableError:
+    pass
 
 print("Fix invalid short license name in debian/copyright (%s)" % (
     ', '.join(['%s => %s' % (old, new) for (old, new) in renames.items()])))

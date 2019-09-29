@@ -3,7 +3,7 @@
 import os
 
 from lintian_brush import certainty_to_confidence
-from lintian_brush.copyright import update_copyright
+from lintian_brush.copyright import update_copyright, NotMachineReadableError
 from lintian_brush.upstream_metadata import guess_upstream_metadata_items
 
 
@@ -56,7 +56,10 @@ def add_upstream_metadata(copyright):
                 achieved_certainty.append(certainty)
 
 
-update_copyright(add_upstream_metadata)
+try:
+    update_copyright(add_upstream_metadata)
+except NotMachineReadableError:
+    pass
 
 print('Set fields %s in debian/copyright.' % ', '.join(fields))
 if achieved_certainty:
