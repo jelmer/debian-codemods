@@ -1,0 +1,2 @@
+Rely on pre-initialized dpkg-architecture variables.
+Fixed-Lintian-Tags: debian-rules-sets-dpkg-architecture-variable

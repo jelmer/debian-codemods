@@ -26,7 +26,7 @@ def drop_arch_line(line):
     if not architecture_included:
         architecture_included = True
         return b'include /usr/share/dpkg/architecture.mk'
-    return line
+    return None
 
 
 update_rules(global_line_cb=drop_arch_line)
