@@ -77,6 +77,7 @@ class FixerTestCase(unittest.TestCase):
         else:
             current_version = '1.0-1'
         env['CURRENT_VERSION'] = str(current_version)
+        env['NET_ACCESS'] = 'disallow'
         env_path = os.path.join(self._path, 'env')
         if os.path.exists(env_path):
             with open(env_path, 'r') as f:

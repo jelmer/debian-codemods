@@ -76,7 +76,7 @@ def migrate_from_obsolete_infra(control):
     # If possible, we use vcswatch to find the VCS repository URL
     loop = asyncio.get_event_loop()
     try:
-        if os.environ.get('VCSWATCH', 'enabled') == 'enabled':
+        if os.environ.get('NET_ACCESS', 'allow') == 'allow':
             (vcs_type, vcs_url, vcs_browser) = loop.run_until_complete(
                 retrieve_vcswatch_urls(package))
         else:
@@ -95,7 +95,7 @@ def migrate_from_obsolete_infra(control):
                 return
             vcs_type = "Git"
         # Verify that there is actually a repository there
-        if os.environ.get('SALSA_PROBE', 'enabled') == 'enabled':
+        if os.environ.get('NET_ACCESS', 'allow') == 'allow':
             if not verify_salsa_repository(guessed_url):
                 return
         print("Update Vcs-* headers to use salsa repository.")
