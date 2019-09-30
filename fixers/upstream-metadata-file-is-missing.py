@@ -12,6 +12,7 @@ from lintian_brush.upstream_metadata import (
     extend_upstream_metadata,
     guess_upstream_metadata_items,
     )
+from lintian_brush.vcs import sanitize_url as sanitize_vcs_url
 
 
 if not Version(os.environ['CURRENT_VERSION']).debian_revision:
@@ -52,6 +53,12 @@ for key, certainty in list(current_certainty.items()):
 
 achieved_certainty = (
     'possible' if 'possible' in current_certainty.values() else 'certain')
+
+if 'Repository' in code:
+    new_repository = sanitize_vcs_url(code['Repository'])
+    if new_repository != code['Repository']:
+        code['Repository'] = new_repository
+        fields.add('Repository')
 
 if not fields:
     sys.exit(0)

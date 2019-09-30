@@ -1,6 +1,7 @@
 lintian-brush (0.33) UNRELEASED; urgency=medium
 
   * Support multi-line git commands in README files.
+  * Fix existing repository URLs in debian/upstream/metadata.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Sep 2019 01:19:42 +0000
 
