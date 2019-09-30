@@ -1,4 +1,4 @@
-lintian-brush (0.32) UNRELEASED; urgency=medium
+lintian-brush (0.32) unstable; urgency=medium
 
   * Add flag to disable interaction with external services.
   * Don't print error messages when unable to update non-machine-
@@ -7,7 +7,7 @@ lintian-brush (0.32) UNRELEASED; urgency=medium
   * Add fixer for init.d-script-needs-depends-on-lsb-base.
   * Add fixer for unused-license-paragraph-in-dep5-copyright.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Sep 2019 15:45:58 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Sep 2019 00:03:44 +0000
 
 lintian-brush (0.31) unstable; urgency=medium
 
