@@ -276,13 +276,21 @@ def guess_from_readme(path, trust_package):
     import shlex
     try:
         with open(path, 'rb') as f:
-            for line in f:
-                line = line.decode('utf-8', 'replace')
-                if line.strip().startswith('git clone'):
+            lines = list(f.readlines())
+            for i, line in enumerate(lines):
+                if line.strip().startswith(b'git clone'):
                     line = line.strip()
-                    argv = shlex.split(line)
-                    args = [arg for arg in argv[2:] if not arg.startswith('-')]
-                    url = args[0]
+                    while line.endswith(b'\\'):
+                        line += lines[i+1]
+                        line = line.strip()
+                        i += 1
+                    argv = shlex.split(line.decode('utf-8', 'replace'))
+                    args = [arg for arg in argv[2:]
+                            if not arg.startswith('-') and arg.strip()]
+                    try:
+                        url = args[-2]
+                    except IndexError:
+                        url = args[0]
                     yield ('Repository', sanitize_vcs_url(url), 'possible')
     except IsADirectoryError:
         pass

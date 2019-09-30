@@ -1,3 +1,9 @@
+lintian-brush (0.33) UNRELEASED; urgency=medium
+
+  * Support multi-line git commands in README files.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Sep 2019 01:19:42 +0000
+
 lintian-brush (0.32) unstable; urgency=medium
 
   * Add flag to disable interaction with external services.
