@@ -60,6 +60,7 @@ subset of the issues:
 * global-files-wildcard-not-first-paragraph-in-dep5-copyright
 * homepage-field-uses-insecure-uri
 * homepage-in-binary-package
+* init.d-script-needs-depends-on-lsb-base
 * insecure-copyright-format-uri
 * invalid-short-name-in-dep5-copyright
 * libmodule-build-perl-needs-to-be-in-build-depends
@@ -95,6 +96,7 @@ subset of the issues:
 * unnecessary-team-upload
 * unnecessary-testsuite-autopkgtest-field
 * unused-build-dependency-on-cdbs
+* unused-license-paragraph-in-dep5-copyright
 * unversioned-copyright-format-uri
 * upstream-metadata-file-is-missing
 * useless-autoreconf-build-depends
