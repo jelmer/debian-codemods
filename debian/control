@@ -19,6 +19,7 @@ Build-Depends: bash-completion,
                gpg,
                debhelper-compat (= 12)
 Standards-Version: 4.4.0
+Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git -b unstable
 Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush/branches/unstable
 
