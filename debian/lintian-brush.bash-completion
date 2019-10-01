@@ -1,0 +1,20 @@
+# Bash completion for lintian-brush
+
+shopt -s progcomp
+_lintian_brush ()
+{
+    local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
+    local curOpt optEnums
+    local IFS=$' \n'
+
+    cur=${COMP_WORDS[COMP_CWORD]}
+
+    fixers=$(lintian-brush --list-fixers 2>&1)
+    globalOpts=(-h --no-update-changelog --update-changelog --version --list-fixers --list-tags --fixers-dir --verbose --directory --diff --dry-run --modern --identity --disable-net-access)
+
+    # complete command name if we are not already past the command
+    COMPREPLY=( $( compgen -W "$fixers ${globalOpts[*]}" -- $cur ) )
+    return 0
+}
+
+complete -F _lintian_brush -o default lintian-brush

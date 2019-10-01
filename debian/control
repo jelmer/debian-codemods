@@ -2,7 +2,8 @@ Source: lintian-brush
 Section: devel
 Priority: optional
 Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
-Build-Depends: dh-python,
+Build-Depends: bash-completion,
+               dh-python,
                dos2unix,
                python3-all,
                python3-breezy (>= 3.0.0),
