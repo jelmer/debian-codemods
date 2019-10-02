@@ -35,10 +35,16 @@ def fix_homepage(http_url):
         return http_url
     # Fall back to just comparing the two
     headers = {'User-Agent': USER_AGENT}
-    http_contents = urlopen(Request(http_url, headers=headers)).read()
+    try:
+        http_contents = urlopen(Request(http_url, headers=headers)).read()
+    except (urllib.error.URLError, urllib.error.HTTPError) as e:
+        sys.stderr.write(
+            'Unable to access HTTP version of homepage %s: %s' %
+            (http_url, e))
+        return http_url
     try:
         https_contents = urlopen(Request(https_url, headers=headers)).read()
-    except urllib.error.URLError as e:
+    except (urllib.error.URLError, urllib.error.HTTPError) as e:
         sys.stderr.write(
             'Unable to access HTTPS version of homepage %s: %s' %
             (https_url, e))
