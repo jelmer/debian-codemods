@@ -1,0 +1,33 @@
+#compdef lintian-brush
+
+_fixers(){
+    _values fixer ${(ps:\n:)"$(lintian-brush --list-fixers 2>&1)"}
+}
+
+_lintian-brush() {
+    local ret=1
+    local -a args
+    args+=(
+      '(-h --help)--help[show help message and exit]'
+      '--no-update-changelog[do not update the changelog]'
+      '--update-changelog[force updating of the changelog]'
+      '--version[show version number and exit]'
+      '--list-fixers[list available fixers]'
+      '--list-tags[list lintian tags for which fixers are available]'
+      '--fixers-dir=[set path to fixer scripts]:directory:_files -/'
+      '--verbose[be verbose]'
+      '--directory=[directory to run in]:directory:_files -/'
+      '--diff[Print resulting diff afterwards]'
+      '--dry-run[Do not make any changes to the current repository]'
+      '--modern[Use features/compatibility levels that are not available in stable]'
+      '--identity[Print user identity that would be used when committing]'
+      '--disable-net-access[Do not probe external services]'
+      '*:fixer:_fixers'
+    )
+
+    _arguments $args[@] && ret=0
+
+    return ret
+}
+
+_lintian-brush

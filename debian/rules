@@ -1,4 +1,12 @@
 #!/usr/bin/make -f
 
+ZSH_COMPDIR = /usr/share/zsh/vendor-completions/
+
 %:
 	dh $* --with python3,bash_completion --buildsystem=pybuild
+
+override_dh_auto_install:
+	dh_auto_install
+	mkdir -p debian/lintian-brush/$(ZSH_COMPDIR)
+	install -m644 debian/lintian-brush.zsh-completion \
+	    debian/lintian-brush/$(ZSH_COMPDIR)/_lintian-brush
