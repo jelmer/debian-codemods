@@ -1,0 +1,25 @@
+#!/usr/bin/make -f
+
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+DEB_UPSTREAM_VERSION ?= $(shell dpkg-parsechangelog | \
+			  sed -rne 's,^Version: ([^-]+).*,\1,p')
+
+%:
+	dh $@ --with autoreconf
+
+override_dh_auto_configure:
+	dh_auto_configure -- --sbindir=/sbin \
+		--libdir=/usr/lib/$(DEB_HOST_MULTIARCH) \
+		--with-root-libdir=/lib/$(DEB_HOST_MULTIARCH)
+
+override_dh_install:
+	find $(CURDIR) -name "*.la" -delete
+	dh_install --list-missing
+
+get-orig-source:
+	wget http://git.kernel.org/cgit/linux/kernel/git/jaegeuk/f2fs-tools.git/snapshot/f2fs-tools-$(DEB_UPSTREAM_VERSION).tar.xz
+	mv f2fs-tools-$(DEB_UPSTREAM_VERSION).tar.xz f2fs-tools_$(DEB_UPSTREAM_VERSION).orig.tar.xz
+
+override_dh_shlibdeps:
+	dh_shlibdeps -a -p f2fs-tools-udeb -- -xlibf2fs5 -xlibf2fs-format4
+	dh_shlibdeps -a -N f2fs-tools-udeb
