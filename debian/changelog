@@ -1,3 +1,10 @@
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  * debian-control-has-obsolete-dbg-package: Don't bump debhelper
+    version unless there are -dbg packages.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 04 Oct 2019 02:36:13 +0000
+
 lintian-brush (0.34) unstable; urgency=medium
 
   * Add support for renamed tag: rules-requires-root-implicitly -> rules-
