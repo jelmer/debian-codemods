@@ -28,9 +28,10 @@ import os
 class GeneratedFile(Exception):
     """The specified file is generated."""
 
-    def __init__(self, path, template_path=None):
+    def __init__(self, path, template_path=None, template_type=None):
         self.path = path
         self.template_path = template_path
+        self.template_type = template_type
 
 
 class FormattingUnpreservable(Exception):
