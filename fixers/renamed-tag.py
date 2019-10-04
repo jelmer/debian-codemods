@@ -11,6 +11,7 @@ renames = {
         'debian-watch-does-not-check-gpg-signature',
     'systemd-no-service-for-init-script':
         'omitted-systemd-service-for-init.d-script',
+    'rules-requires-root-implicitly': 'rules-requires-root-missing',
 }
 
 

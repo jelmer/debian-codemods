@@ -1,3 +1,10 @@
+lintian-brush (0.34) UNRELEASED; urgency=medium
+
+  * Add support for renamed tag: rules-requires-root-implicitly -> rules-
+    requires-root-missing.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 04 Oct 2019 01:11:07 +0000
+
 lintian-brush (0.33) unstable; urgency=medium
 
   * Support multi-line git commands in README files.
