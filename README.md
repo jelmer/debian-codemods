@@ -74,6 +74,7 @@ subset of the issues:
 * obsolete-field-in-dep5-copyright
 * obsolete-runtime-tests-restriction
 * old-fsf-address-in-copyright-file
+* older-source-format
 * orphaned-package-should-not-have-uploaders
 * out-of-date-copyright-format-uri
 * out-of-date-standards-version
