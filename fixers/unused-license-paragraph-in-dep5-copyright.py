@@ -20,7 +20,11 @@ def check_license(copyright):
             defined.add(paragraph.license.synopsis)
 
 
-update_copyright(check_license)
+try:
+    update_copyright(check_license)
+except NotMachineReadableError:
+    pass
+
 extra_defined = (defined - used)
 extra_used = (used - defined)
 
@@ -32,10 +36,7 @@ if extra_defined and not extra_used:
         for paragraph in list(copyright._Copyright__paragraphs):
             if paragraph.license.synopsis in extra_defined:
                 copyright._Copyright__paragraphs.remove(paragraph)
-    try:
-        update_copyright(drop_license)
-    except NotMachineReadableError:
-        pass
+    update_copyright(drop_license)
 
 print("Remove unused license definitions for %s." % ', '.join(extra_defined))
 print("Fixed-Lintian-Tags: unused-license-paragraph-in-dep5-copyright")
