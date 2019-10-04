@@ -1,4 +1,4 @@
-lintian-brush (0.34) UNRELEASED; urgency=medium
+lintian-brush (0.34) unstable; urgency=medium
 
   * Add support for renamed tag: rules-requires-root-implicitly -> rules-
     requires-root-missing.
@@ -7,7 +7,7 @@ lintian-brush (0.34) UNRELEASED; urgency=medium
   * vcs-field-bitrotted: don't include URLs that vcswatch reports as
     errorring.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 04 Oct 2019 01:11:07 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 04 Oct 2019 02:02:36 +0000
 
 lintian-brush (0.33) unstable; urgency=medium
 
