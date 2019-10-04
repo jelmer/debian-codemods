@@ -4,6 +4,8 @@ lintian-brush (0.34) UNRELEASED; urgency=medium
     requires-root-missing.
   * unused-license-paragraph-in-dep5-copyright: Ignore
     NotMatchineReadableError.
+  * vcs-field-bitrotted: don't include URLs that vcswatch reports as
+    errorring.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 04 Oct 2019 01:11:07 +0000
 

@@ -3,6 +3,7 @@
 import asyncio
 import os
 import re
+import sys
 from lintian_brush import USER_AGENT
 from lintian_brush.control import update_control
 from lintian_brush.salsa import (
@@ -10,7 +11,7 @@ from lintian_brush.salsa import (
     guess_repository_url,
     salsa_url_from_alioth_url,
     )
-from lintian_brush.vcswatch import VcsWatch
+from lintian_brush.vcswatch import VcsWatch, VcsWatchError
 from email.utils import parseaddr
 from urllib.parse import urlparse
 from urllib.request import urlopen, Request
@@ -77,8 +78,12 @@ def migrate_from_obsolete_infra(control):
     loop = asyncio.get_event_loop()
     try:
         if os.environ.get('NET_ACCESS', 'allow') == 'allow':
-            (vcs_type, vcs_url, vcs_browser) = loop.run_until_complete(
-                retrieve_vcswatch_urls(package))
+            try:
+                (vcs_type, vcs_url, vcs_browser) = loop.run_until_complete(
+                    retrieve_vcswatch_urls(package))
+            except VcsWatchError as e:
+                sys.stderr.write('vcswatch URL unusable: %s\n' % e.args[0])
+                raise KeyError
         else:
             raise KeyError
         print("Update Vcs-* headers from vcswatch.")
@@ -96,7 +101,7 @@ def migrate_from_obsolete_infra(control):
             vcs_type = "Git"
         # Verify that there is actually a repository there
         if os.environ.get('NET_ACCESS', 'allow') == 'allow':
-            if not verify_salsa_repository(guessed_url):
+            if not verify_salsa_repository(vcs_url):
                 return
         print("Update Vcs-* headers to use salsa repository.")
         fixed_tags.add("vcs-obsolete-in-debian-infrastructure")

@@ -18,6 +18,10 @@
 """Support for acessing the VCS Watch database."""
 
 
+class VcsWatchError(Exception):
+    """Error from vcswatch."""
+
+
 class VcsWatch(object):
     """Read VcsWatch data through UDD."""
 
@@ -43,8 +47,10 @@ class VcsWatch(object):
         """
         assert self._conn is not None, "call connect() first"
         row = await self._conn.fetchrow("""
-select vcs, url, browser from vcswatch
+select vcs, url, browser, status, error from vcswatch
 where source = $1""", name)
         if row is None:
             raise KeyError(name)
-        return row
+        if row[3] == 'ERROR':
+            raise VcsWatchError(row[4])
+        return row[:3]
