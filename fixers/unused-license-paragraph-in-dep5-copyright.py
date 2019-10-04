@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.copyright import update_copyright
+from lintian_brush.copyright import update_copyright, NotMachineReadableError
 import sys
 
 used = set()
@@ -32,7 +32,10 @@ if extra_defined and not extra_used:
         for paragraph in list(copyright._Copyright__paragraphs):
             if paragraph.license.synopsis in extra_defined:
                 copyright._Copyright__paragraphs.remove(paragraph)
-    update_copyright(drop_license)
+    try:
+        update_copyright(drop_license)
+    except NotMachineReadableError:
+        pass
 
 print("Remove unused license definitions for %s." % ', '.join(extra_defined))
 print("Fixed-Lintian-Tags: unused-license-paragraph-in-dep5-copyright")
