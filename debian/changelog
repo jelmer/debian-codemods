@@ -5,6 +5,7 @@ lintian-brush (0.33) UNRELEASED; urgency=medium
   * Add basic bash completion support. Closes: #939132
   * Set Rules-Requires-Root field.
   * Add basic zsh completion support.
+  * Add fixer for older-source-format.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Sep 2019 01:19:42 +0000
 
