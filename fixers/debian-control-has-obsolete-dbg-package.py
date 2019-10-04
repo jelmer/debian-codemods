@@ -34,7 +34,13 @@ def del_dbg(control):
         control.clear()
 
 
-update_control(source_package_cb=bump_debhelper, binary_package_cb=del_dbg)
+update_control(binary_package_cb=del_dbg)
+if not dbg_packages:
+    # no debug packages found to remove
+    sys.exit(0)
+
+update_control(source_package_cb=bump_debhelper)
+
 
 current_version = os.environ["CURRENT_VERSION"]
 migrate_version = "<< %s%s" % (
@@ -59,11 +65,6 @@ if check_cdbs():
     raise Exception("package uses cdbs")
 
 update_rules(migrate_dh_strip)
-
-
-if not dbg_packages:
-    # no debug packages found to remove
-    sys.exit(2)
 
 
 difference = dbg_packages.symmetric_difference(dbg_migration_done)
