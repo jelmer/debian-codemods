@@ -143,6 +143,8 @@ Lintian-Tags: orphaned-package-should-not-have-uploaders
 Fix-Script: out-of-date-standards-version.py
 Lintian-Tags: out-of-date-standards-version
 
+Fix-Script: debhelper-compat-wrong-field.py
+
 Fix-Script: package-needs-versioned-debhelper-build-depends.py
 Lintian-Tags: package-needs-versioned-debhelper-build-depends
 

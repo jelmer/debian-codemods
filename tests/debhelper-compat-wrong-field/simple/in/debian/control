@@ -1,0 +1,7 @@
+Source: blah
+Build-Depends-Indep: debhelper-compat (= 12)
+Build-Depends: python3-dulwich
+
+Package: blah
+Description: blah
+ blah blah

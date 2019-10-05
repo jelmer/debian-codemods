@@ -1,0 +1,1 @@
+Move debhelper-compat from Build-Depends-Indep to Build-Depends.
