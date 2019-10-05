@@ -11,13 +11,13 @@ from lintian_brush.control import (
 def move_debhelper_compat(control):
     try:
         pos, old = get_relation(
-            control.get('Build-Depends-Indep', []), 'debhelper-compat')
+            control.get('Build-Depends-Indep', ''), 'debhelper-compat')
     except KeyError:
         return
     control['Build-Depends'] = add_dependency(
-        control.get('Build-Depends', []), old)
+        control.get('Build-Depends', ''), old)
     control['Build-Depends-Indep'] = drop_dependency(
-        control.get('Build-Depends-Indep', []), 'debhelper-compat')
+        control.get('Build-Depends-Indep', ''), 'debhelper-compat')
     if not control['Build-Depends-Indep'].strip():
         del control['Build-Depends-Indep']
 
