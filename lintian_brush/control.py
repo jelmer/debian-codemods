@@ -425,7 +425,8 @@ def delete_from_list(liststr, item_to_delete):
 def get_debhelper_compat_version():
     try:
         with open('debian/compat', 'r') as f:
-            return int(f.read().strip())
+            line = f.readline().split('#', 1)[0]
+            return int(line.strip())
     except FileNotFoundError:
         pass
 

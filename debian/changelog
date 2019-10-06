@@ -11,6 +11,7 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
     Build-Depends field.
   * debian-rules-uses-unnecessary-dh-argument: Cope with non-debhelper
     packages.
+  * Cope with comments in debian/compat.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 04 Oct 2019 02:36:13 +0000
 
