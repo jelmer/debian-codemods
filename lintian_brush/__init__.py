@@ -525,6 +525,19 @@ def check_clean_tree(local_tree):
         raise PendingChanges(local_tree)
 
 
+def add_changelog_entry(tree, path, summary):
+    """Add a changelog entry.
+
+    Args:
+      tree: Tree to edit
+      path: Path to the changelog file
+      summary: Entry to add
+    """
+    subprocess.check_call(
+        ["dch", "--no-auto-nmu", summary],
+        cwd=tree.abspath(os.path.dirname(os.path.dirname(path))))
+
+
 def run_lintian_fixer(local_tree, fixer, committer=None,
                       update_changelog=None, compat_release=None,
                       minimum_certainty=None, trust_package=False,
@@ -629,9 +642,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         update_changelog = False
 
     if update_changelog:
-        subprocess.check_call(
-            ["dch", "--no-auto-nmu", summary],
-            cwd=local_tree.abspath(subpath))
+        add_changelog_entry(local_tree, changelog_path, summary)
         if specific_files:
             specific_files.append(changelog_path)
 
