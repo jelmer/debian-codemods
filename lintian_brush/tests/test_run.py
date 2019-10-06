@@ -45,6 +45,7 @@ from lintian_brush import (
     UnsupportedCertainty,
     available_lintian_fixers,
     check_clean_tree,
+    add_changelog_entry,
     certainty_sufficient,
     get_committer,
     increment_version,
@@ -789,3 +790,63 @@ class SelectFixersTests(TestCase):
         self.assertRaises(
             KeyError, select_fixers, [DummyFixer('dummy', 'some-tag')],
             ['other'])
+
+
+class ChangelogAddEntryTests(TestCaseWithTransport):
+
+    def test_edit_existing(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+ """)])
+        tree.add(['debian', 'debian/changelog'])
+        self.overrideEnv('DEBFULLNAME', 'Jane Example')
+        self.overrideEnv('DEBEMAIL', 'jane@example.com')
+        add_changelog_entry(tree, 'debian/changelog', 'Add a foo')
+        self.assertFileEqual("""\
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  [ Joe Example ]
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+  [ Jane Example ]
+  * Add a foo
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""", 'debian/changelog')
+
+    def test_add_new(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+lintian-brush (0.35) unstable; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+ """)])
+        tree.add(['debian', 'debian/changelog'])
+        self.overrideEnv('DEBFULLNAME', 'Jane Example')
+        self.overrideEnv('DEBEMAIL', 'jane@example.com')
+        add_changelog_entry(tree, 'debian/changelog', 'Add a foo')
+        text = tree.get_file_text('debian/changelog').decode()
+        lines = text.splitlines()
+        self.assertEqual([
+            'lintian-brush (0.36) UNRELEASED; urgency=medium',
+            '',
+            '  * Add a foo',
+            ''],
+            lines[:4])
+        self.assertTrue(
+            lines[4].startswith(' -- Jane Example <jane@example.com>  '),
+            lines[4])
