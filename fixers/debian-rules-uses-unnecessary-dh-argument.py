@@ -11,7 +11,7 @@ unnecessary_args = []
 
 
 compat_version = get_debhelper_compat_version()
-if compat_version >= 10:
+if compat_version and compat_version >= 10:
     unnecessary_args.append(b'--parallel')
 
 

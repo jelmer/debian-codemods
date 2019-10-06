@@ -9,6 +9,8 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
     #941767
   * unused-build-dependency-on-cdbs: Don't error out if there is no
     Build-Depends field.
+  * debian-rules-uses-unnecessary-dh-argument: Cope with non-debhelper
+    packages.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 04 Oct 2019 02:36:13 +0000
 
