@@ -850,3 +850,34 @@ lintian-brush (0.35) unstable; urgency=medium
         self.assertTrue(
             lines[4].startswith(' -- Jane Example <jane@example.com>  '),
             lines[4])
+
+    def test_edit_broken_first_line(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+THIS IS NOT A PARSEABLE LINE
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+ """)])
+        tree.add(['debian', 'debian/changelog'])
+        self.overrideEnv('DEBFULLNAME', 'Jane Example')
+        self.overrideEnv('DEBEMAIL', 'jane@example.com')
+        add_changelog_entry(tree, 'debian/changelog', 'Add a foo')
+        self.assertFileEqual("""\
+THIS IS NOT A PARSEABLE LINE
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  [ Joe Example ]
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+  [ Jane Example ]
+  * Add a foo
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""", 'debian/changelog')

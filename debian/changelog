@@ -5,6 +5,8 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
   * Add fixer debhelper-compat-wrong-field.
   * Support updating templated debian/control files that use cdbs
     template.
+  * Cope with warnings from dch that require confirmation. Closes:
+    #941767
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 04 Oct 2019 02:36:13 +0000
 

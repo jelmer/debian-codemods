@@ -40,7 +40,7 @@ from breezy.clean_tree import (
 from breezy.commit import NullCommitReporter
 from breezy.errors import NoSuchFile
 from breezy.rename_map import RenameMap
-from breezy.trace import note
+from breezy.trace import note, warning
 from breezy.transform import revert
 
 from debian.deb822 import Deb822
@@ -533,9 +533,20 @@ def add_changelog_entry(tree, path, summary):
       path: Path to the changelog file
       summary: Entry to add
     """
-    subprocess.check_call(
+    p = subprocess.Popen(
         ["dch", "--no-auto-nmu", summary],
-        cwd=tree.abspath(os.path.dirname(os.path.dirname(path))))
+        cwd=tree.abspath(os.path.dirname(os.path.dirname(path))),
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    (stdout, stderr) = p.communicate(b"\n")
+    if stdout:
+        raise ValueError(stdout)
+    if stderr:
+        end = b'dch: Did you see that warning?  Press RETURN to continue...\n'
+        if stderr.endswith(end):
+            stderr = stderr[:-len(end)]
+        for line in stderr.splitlines():
+            warning('%s', line)
 
 
 def run_lintian_fixer(local_tree, fixer, committer=None,
