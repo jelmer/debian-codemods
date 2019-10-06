@@ -13,7 +13,9 @@ with open('debian/rules', 'r') as f:
 if not uses_cdbs:
     def drop_cdbs(control):
         control["Build-Depends"] = drop_dependency(
-            control["Build-Depends"], "cdbs")
+            control.get("Build-Depends", ""), "cdbs")
+        if not control["Build-Depends"]:
+            del control["Build-Depends"]
     update_control(source_package_cb=drop_cdbs)
 
 print("Drop unused build-dependency on cdbs.")
