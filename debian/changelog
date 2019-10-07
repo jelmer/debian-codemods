@@ -14,6 +14,7 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
   * Cope with comments in debian/compat.
   * maintainer-also-in-uploaders: Support removing only item in the
     list.
+  * Add build-dependency on devscripts, for dch tests.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 07 Oct 2019 00:14:30 +0000
 

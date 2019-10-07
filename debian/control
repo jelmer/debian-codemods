@@ -3,6 +3,7 @@ Section: devel
 Priority: optional
 Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
 Build-Depends: bash-completion,
+               devscripts,
                dh-python,
                dos2unix,
                python3-all,
