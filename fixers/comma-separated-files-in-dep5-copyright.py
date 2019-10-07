@@ -11,8 +11,10 @@ def split_commas(paragraph):
     paragraph['Files'] = '\n' + '\n'.join(
         ' ' + entry.strip() for entry in paragraph['Files'].split(','))
 
-
-update_deb822(path='debian/copyright', paragraph_cb=split_commas)
+try:
+    update_deb822(path='debian/copyright', paragraph_cb=split_commas)
+except FileNotFoundError:
+    pass
 
 print("debian/copyright: Replace commas with whitespace to separate items "
       "in Files paragraph.")
