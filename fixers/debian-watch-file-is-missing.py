@@ -14,8 +14,13 @@ watch_contents = None
 site = None
 wf = WatchFile()
 if os.path.exists('setup.py'):
-    lines = subprocess.check_output(
-        ['python3', 'setup.py', '--name', '--version']).splitlines()
+    try:
+        lines = subprocess.check_output(
+            ['python3', 'setup.py', '--name', '--version']).splitlines()
+    except subprocess.CalledProcessError:
+        # Worth a shot..
+        lines = subprocess.check_output(
+            ['python2', 'setup.py', '--name', '--version']).splitlines()
     lines = [line for line in lines if not line.startswith(b'W: ')]
     (project, version) = lines
     # TODO(jelmer): verify that <name>-<version> appears on

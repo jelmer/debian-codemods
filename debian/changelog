@@ -15,8 +15,10 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
   * maintainer-also-in-uploaders: Support removing only item in the
     list.
   * Add build-dependency on devscripts, for dch tests.
+  * debian-watch-file-is-missing: fall back to running setup with
+    python2 if python3 does not work.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 07 Oct 2019 00:14:30 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 07 Oct 2019 01:09:58 +0000
 
 lintian-brush (0.34) unstable; urgency=medium
 
