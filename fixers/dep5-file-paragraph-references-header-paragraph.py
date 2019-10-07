@@ -34,7 +34,7 @@ def fix_header_license_references(copyright):
 
 try:
     update_copyright(fix_header_license_references)
-except NotMachineReadableError:
+except (FileNotFoundError, NotMachineReadableError):
     pass
 else:
     if license:

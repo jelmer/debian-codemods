@@ -36,7 +36,7 @@ def fix_shortname(copyright):
 
 try:
     update_copyright(fix_shortname)
-except NotMachineReadableError:
+except (FileNotFoundError, NotMachineReadableError):
     pass
 
 print("Fix invalid short license name in debian/copyright (%s)" % (

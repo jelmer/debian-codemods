@@ -58,7 +58,7 @@ def add_upstream_metadata(copyright):
 
 try:
     update_copyright(add_upstream_metadata)
-except NotMachineReadableError:
+except (FileNotFoundError, NotMachineReadableError):
     pass
 
 print('Set fields %s in debian/copyright.' % ', '.join(fields))

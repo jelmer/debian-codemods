@@ -33,7 +33,7 @@ def obsolete_field(copyright):
 
 try:
     update_copyright(obsolete_field)
-except NotMachineReadableError:
+except (FileNotFoundError, NotMachineReadableError):
     pass
 print(
     "Update copyright file header to use current field names (%s)" %

@@ -16,7 +16,7 @@ def swap_files_glob(copyright):
 
 try:
     update_copyright(swap_files_glob)
-except NotMachineReadableError:
+except (FileNotFoundError, NotMachineReadableError):
     pass
 
 print('Make "Files: *" paragraph the first in the copyright file.')

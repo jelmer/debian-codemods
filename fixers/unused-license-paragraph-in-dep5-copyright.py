@@ -22,7 +22,7 @@ def check_license(copyright):
 
 try:
     update_copyright(check_license)
-except NotMachineReadableError:
+except (FileNotFoundError, NotMachineReadableError):
     pass
 
 extra_defined = (defined - used)

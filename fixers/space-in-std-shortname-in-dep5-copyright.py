@@ -25,7 +25,7 @@ def fix_spaces(copyright):
 
 try:
     update_copyright(fix_spaces)
-except NotMachineReadableError:
+except (FileNotFoundError, NotMachineReadableError):
     pass
 
 print('Replace spaces in short license names with dashes.')
