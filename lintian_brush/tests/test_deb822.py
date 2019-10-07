@@ -102,6 +102,17 @@ Testsuite: autopkgtest
         self.assertRaises(
             GeneratedFile, update_deb822, 'controlfile', paragraph_cb=cb)
 
+    def test_do_not_edit_force(self):
+        self.build_tree_contents([('controlfile', """\
+Source: blah
+Testsuite: autopkgtest
+
+"""), ('controlfile.in', 'bar')])
+
+        def cb(c):
+            c['Source'] = 'blah1'
+        update_deb822('controlfile', paragraph_cb=cb, allow_generated=True)
+
     def test_do_not_edit_no_change(self):
         self.build_tree_contents([('controlfile', """\
 # DO NOT EDIT

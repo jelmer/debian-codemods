@@ -55,7 +55,7 @@ def reformat_deb822(contents):
         Deb822.iter_paragraphs(BytesIO(contents), encoding='utf-8'))
 
 
-def update_deb822(path, **kwargs):
+def update_deb822(path, paragraph_cb=None, allow_generated=False):
     """Update a deb822-style file.
 
     The callbacks can modify the paragraphs in place, and can trigger their
@@ -64,6 +64,7 @@ def update_deb822(path, **kwargs):
     Args:
       path: Path to the debian/control file to edit
       paragraph_cb: Called on paragraphs
+      allow_generated: Whether to allow generated files
     Returns:
       boolean indicating whether any changes were made
     """
@@ -71,10 +72,11 @@ def update_deb822(path, **kwargs):
         original_contents = f.read()
     rewritten_contents = reformat_deb822(original_contents)
     outf = BytesIO()
-    update_deb822_file(BytesIO(original_contents), outf, **kwargs)
+    update_deb822_file(BytesIO(original_contents), outf, paragraph_cb=paragraph_cb)
     updated_contents = outf.getvalue()
     return edit_formatted_file(
-        path, original_contents, rewritten_contents, updated_contents)
+        path, original_contents, rewritten_contents, updated_contents,
+        allow_generated=allow_generated)
 
 
 def update_deb822_file(inf, outf, paragraph_cb=None):

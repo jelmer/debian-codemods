@@ -83,7 +83,7 @@ def check_generated_file(path):
 
 def edit_formatted_file(
         path, original_contents, rewritten_contents,
-        updated_contents):
+        updated_contents, allow_generated=False):
     """Edit a formatted file.
 
     Args:
@@ -92,13 +92,16 @@ def edit_formatted_file(
       rewritten_contents: The contents rewritten with our parser/serializer
       updated_contents: Updated contents rewritten with our parser/serializer
         after changes were made.
+      allow_generated: Do not raise GeneratedFile when encountering a generated
+        file
     """
     if type(updated_contents) != type(rewritten_contents):
         raise TypeError('inconsistent types: %r, %r' % (
             type(updated_contents), type(rewritten_contents)))
     if updated_contents in (rewritten_contents, original_contents):
         return False
-    check_generated_file(path)
+    if not allow_generated:
+        check_generated_file(path)
     check_preserve_formatting(
             rewritten_contents.strip(),
             original_contents.strip(), path)

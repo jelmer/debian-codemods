@@ -68,7 +68,7 @@ def _update_control_template(template_path, path, paragraph_cb):
         # A bit odd, since there were changes to the output file. Anyway.
         return False
     if template_type == 'cdbs':
-        update_deb822(path, paragraph_cb=paragraph_cb)
+        update_deb822(path, paragraph_cb=paragraph_cb, allow_generated=True)
     elif template_type == 'gnome':
         dh_gnome_clean()
     elif template_type == 'postgresql':
