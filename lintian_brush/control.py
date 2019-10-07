@@ -408,6 +408,8 @@ def ensure_minimum_debhelper_version(build_depends, minimum_version):
 def delete_from_list(liststr, item_to_delete):
     items = liststr.split(',')
     item_to_delete = item_to_delete.strip()
+    if not item_to_delete:
+        return liststr
     for i, item in enumerate(items):
         if item.strip() == item_to_delete:
             deleted_item = items.pop(i)
@@ -418,7 +420,8 @@ def delete_from_list(liststr, item_to_delete):
                 # second
                 items[i] = head_whitespace + items[i].lstrip()
             elif i == len(items):
-                items[i-1] = items[i-1].rstrip()
+                if i > 1:
+                    items[i-1] = items[i-1].rstrip()
     return ','.join(items)
 
 

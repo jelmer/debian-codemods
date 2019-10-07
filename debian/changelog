@@ -12,6 +12,8 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
   * debian-rules-uses-unnecessary-dh-argument: Cope with non-debhelper
     packages.
   * Cope with comments in debian/compat.
+  * maintainer-also-in-uploaders: Support removing only item in the
+    list.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 04 Oct 2019 02:36:13 +0000
 

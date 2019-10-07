@@ -416,3 +416,7 @@ class DeleteFromListTests(TestCase):
     def test_tail(self):
         self.assertEqual('a, b', delete_from_list('a, b, c', 'c'))
         self.assertEqual('a, b', delete_from_list('a, b , c', 'c'))
+
+    def test_only(self):
+        self.assertEqual('a', delete_from_list('a', 'c'))
+        self.assertEqual('', delete_from_list('a', 'a'))
