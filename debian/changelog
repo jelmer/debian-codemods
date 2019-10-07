@@ -1,5 +1,6 @@
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
+  * Fix handling of dictionaries for the 'repository' field in META.yml.
   * debian-control-has-obsolete-dbg-package: Don't bump debhelper
     version unless there are -dbg packages.
   * Add fixer debhelper-compat-wrong-field.
@@ -19,7 +20,7 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
     python2 if python3 does not work.
   * Add fixer copyright-continued-lines-with-space.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 07 Oct 2019 01:09:58 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 07 Oct 2019 21:27:22 +0000
 
 lintian-brush (0.34) unstable; urgency=medium
 

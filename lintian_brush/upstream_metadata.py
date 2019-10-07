@@ -336,9 +336,12 @@ def guess_from_meta_yml(path, trust_package):
             if 'homepage' in resources:
                 yield 'Homepage', resources['homepage'], 'certain'
             if 'repository' in resources:
-                yield (
-                    'Repository', sanitize_vcs_url(resources['repository']),
-                    'certain')
+                if isinstance(resources['repository'], dict):
+                    url = resources['repository'].get('url')
+                else:
+                    url = resources['repository']
+                if url:
+                    yield ('Repository', sanitize_vcs_url(url), 'certain')
 
 
 def guess_from_doap(path, trust_package):
