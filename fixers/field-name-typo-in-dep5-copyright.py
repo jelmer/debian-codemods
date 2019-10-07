@@ -29,8 +29,10 @@ def fix_field_typos(paragraph):
                 fixed = True
                 break
 
-
-update_deb822('debian/copyright', paragraph_cb=fix_field_typos)
+try:
+    update_deb822('debian/copyright', paragraph_cb=fix_field_typos)
+except FileNotFoundError:
+    pass
 
 
 print('Fix field name typos in debian/copyright.')
