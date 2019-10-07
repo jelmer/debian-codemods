@@ -74,4 +74,6 @@ def update_service(cb):
       cb: Callback called with a config.ConfigObj object
     """
     for path in systemd_service_files():
+        if os.path.islink(path):
+            continue
         update_service_file(path, cb)

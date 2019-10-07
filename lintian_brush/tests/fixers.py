@@ -91,7 +91,9 @@ class FixerTestCase(unittest.TestCase):
         self.assertEqual(p.returncode, 0)
         out_path = os.path.join(self._path, 'out')
         p = subprocess.Popen(
-            ['diff', '-x', '*~', '-ur', out_path, self._testdir],
+            ['diff', '--no-dereference', '-x', '*~', '-ur',
+             os.path.join(self._path, os.readlink(out_path))
+             if os.path.islink(out_path) else out_path, self._testdir],
             stdout=subprocess.PIPE)
         (diff, stderr) = p.communicate('')
         self.assertIn(

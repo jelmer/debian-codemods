@@ -19,6 +19,7 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
   * debian-watch-file-is-missing: fall back to running setup with
     python2 if python3 does not work.
   * Add fixer copyright-continued-lines-with-space.
+  * Ignore symlinks when updating service files.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 07 Oct 2019 21:27:22 +0000
 
