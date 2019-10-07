@@ -72,7 +72,8 @@ def update_deb822(path, paragraph_cb=None, allow_generated=False):
         original_contents = f.read()
     rewritten_contents = reformat_deb822(original_contents)
     outf = BytesIO()
-    update_deb822_file(BytesIO(original_contents), outf, paragraph_cb=paragraph_cb)
+    update_deb822_file(
+        BytesIO(original_contents), outf, paragraph_cb=paragraph_cb)
     updated_contents = outf.getvalue()
     return edit_formatted_file(
         path, original_contents, rewritten_contents, updated_contents,
