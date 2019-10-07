@@ -17,6 +17,7 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
   * Add build-dependency on devscripts, for dch tests.
   * debian-watch-file-is-missing: fall back to running setup with
     python2 if python3 does not work.
+  * Add fixer copyright-continued-lines-with-space.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 07 Oct 2019 01:09:58 +0000
 
