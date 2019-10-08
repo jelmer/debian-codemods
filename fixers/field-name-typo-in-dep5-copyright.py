@@ -29,6 +29,7 @@ def fix_field_typos(paragraph):
                 fixed = True
                 break
 
+
 try:
     update_deb822('debian/copyright', paragraph_cb=fix_field_typos)
 except FileNotFoundError:

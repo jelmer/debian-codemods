@@ -20,8 +20,10 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
     python2 if python3 does not work.
   * Add fixer copyright-continued-lines-with-space.
   * Ignore symlinks when updating service files.
+  * debian-control-has-obsolete-dbg-package: support --dbg-package
+    arguments in dh lines.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 07 Oct 2019 21:27:22 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 08 Oct 2019 21:48:15 +0000
 
 lintian-brush (0.34) unstable; urgency=medium
 

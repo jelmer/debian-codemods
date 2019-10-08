@@ -49,7 +49,7 @@ migrate_version = "<< %s%s" % (
 
 
 def migrate_dh_strip(line, target):
-    if line.startswith(b'dh_strip '):
+    if line.startswith(b'dh_strip ') or line.startswith(b'dh '):
         for dbg_pkg in dbg_packages:
             if ('--dbg-package=%s' % dbg_pkg).encode('utf-8') in line:
                 line = line.replace(
