@@ -127,7 +127,10 @@ def migrate_from_obsolete_infra(control):
     if vcs_browser is not None:
         control["Vcs-Browser"] = vcs_browser
     else:
-        del control["Vcs-Browser"]
+        try:
+            del control["Vcs-Browser"]
+        except KeyError:
+            pass
 
 
 update_control(source_package_cb=migrate_from_obsolete_infra)
