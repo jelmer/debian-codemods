@@ -39,7 +39,9 @@ check_requirements = {
 
 
 def bump_standards_version(control):
-    current_version = control["Standards-Version"]
+    current_version = control.get("Standards-Version")
+    if current_version is None:
+        return
     while current_version in upgrade_path:
         target_version = upgrade_path[current_version]
         try:
