@@ -7,6 +7,7 @@ from lintian_brush.control import (
     ensure_exact_version,
     ensure_minimum_version,
     get_relation,
+    read_debian_compat_file,
     update_control,
     )
 from lintian_brush.rules import (
@@ -48,8 +49,7 @@ if check_cdbs():
 if os.path.exists('debian/compat'):
     # Package currently stores compat version in debian/compat..
 
-    with open('debian/compat', 'r') as f:
-        current_debhelper_compat_version = int(f.read().strip())
+    current_debhelper_compat_version = read_debian_compat_file('debian/compat')
 
     # debhelper >= 11 supports the magic debhelper-compat build-dependency.
     # Exclude cdbs, since it only knows to get the debhelper compat version

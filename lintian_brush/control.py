@@ -425,11 +425,20 @@ def delete_from_list(liststr, item_to_delete):
     return ','.join(items)
 
 
+def read_debian_compat_file(path):
+    """Read a debian/compat file.
+
+    Args:
+      path: Path to read from
+    """
+    with open(path, 'r') as f:
+        line = f.readline().split('#', 1)[0]
+        return int(line.strip())
+
+
 def get_debhelper_compat_version():
     try:
-        with open('debian/compat', 'r') as f:
-            line = f.readline().split('#', 1)[0]
-            return int(line.strip())
+        return read_debian_compat_file('debian/compat')
     except FileNotFoundError:
         pass
 
