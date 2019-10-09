@@ -194,7 +194,12 @@ def guess_from_package_json(path, trust_package):
                 repo_url = 'https://github.com/' + parsed_url.path
                 yield 'Repository', sanitize_vcs_url(repo_url), 'possible'
     if 'bugs' in package:
-        yield 'Bugs-Database', package['bugs'], 'certain'
+        if isinstance(package['bugs'], dict):
+            url = package['bugs'].get('url')
+        else:
+            url = package['bugs']
+        if url:
+            yield 'Bugs-Database', url, 'certain'
 
 
 def guess_from_package_xml(path, trust_package):

@@ -24,6 +24,7 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
     arguments in dh lines.
   * out-of-date-standards-version: don't update standards version if
     none is set.
+  * package.json: bugs field can be a dict.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 08 Oct 2019 21:48:15 +0000
 
