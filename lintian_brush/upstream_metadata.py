@@ -106,6 +106,14 @@ def get_python_pkg_info(path, trust_package=False):
                 stdout=subprocess.PIPE)
         except FileNotFoundError:
             pass
+        except subprocess.CalledProcessError:
+            if args[0] == 'python3':
+                args[0] = 'python2'
+            else:
+                raise
+            subprocess.call(
+                args, cwd=td, stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE)
         return read_python_pkg_info(td)
 
 
