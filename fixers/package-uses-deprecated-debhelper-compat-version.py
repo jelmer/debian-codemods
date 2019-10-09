@@ -73,7 +73,7 @@ if os.path.exists('debian/compat'):
             # If there are debhelper dependencies >= new debhelper compat
             # version, then keep them.
             for rel in debhelper_relation:
-                if Version(rel.version[1]) >= Version(
+                if rel.version and Version(rel.version[1]) >= Version(
                         "%d" % new_debhelper_compat_version):
                     break
             else:
