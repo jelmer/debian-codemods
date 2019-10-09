@@ -14,6 +14,8 @@ known_https = [
     'pear.php.net', 'pecl.php.net', 'www.bioconductor.org',
     'cran.r-project.org', 'wiki.debian.org']
 
+ERRORS = (urllib.error.URLError, urllib.error.HTTPError, ConnectionResetError)
+
 
 def same_page(http_contents, https_contents):
     # This is a pretty crude way to determine we end up on the same page, but
@@ -37,14 +39,14 @@ def fix_homepage(http_url):
     headers = {'User-Agent': USER_AGENT}
     try:
         http_contents = urlopen(Request(http_url, headers=headers)).read()
-    except (urllib.error.URLError, urllib.error.HTTPError) as e:
+    except ERRORS as e:
         sys.stderr.write(
             'Unable to access HTTP version of homepage %s: %s' %
             (http_url, e))
         return http_url
     try:
         https_contents = urlopen(Request(https_url, headers=headers)).read()
-    except (urllib.error.URLError, urllib.error.HTTPError) as e:
+    except ERRORS as e:
         sys.stderr.write(
             'Unable to access HTTPS version of homepage %s: %s' %
             (https_url, e))
