@@ -63,12 +63,12 @@ if os.path.exists('debian/compat'):
         def set_debhelper_compat(control):
             try:
                 position, debhelper_relation = get_relation(
-                    control["Build-Depends"], "debhelper")
+                    control.get("Build-Depends", ""), "debhelper")
             except KeyError:
                 position = None
                 debhelper_relation = []
             control["Build-Depends"] = ensure_exact_version(
-                control["Build-Depends"], "debhelper-compat",
+                control.get("Build-Depends", ""), "debhelper-compat",
                 "%d" % new_debhelper_compat_version, position=position)
             # If there are debhelper dependencies >= new debhelper compat
             # version, then keep them.
@@ -78,7 +78,9 @@ if os.path.exists('debian/compat'):
                     break
             else:
                 control["Build-Depends"] = drop_dependency(
-                    control["Build-Depends"], "debhelper")
+                    control.get("Build-Depends", ""), "debhelper")
+                if control.get("Build-Depends") == "":
+                    del control["Build-Depends"]
 
         update_control(source_package_cb=set_debhelper_compat)
     else:
