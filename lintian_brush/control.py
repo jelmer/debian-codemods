@@ -51,19 +51,39 @@ def pg_buildext_updatecontrol():
     subprocess.check_call(["pg_buildext", "updatecontrol"])
 
 
-def _update_control_template(template_path, path, paragraph_cb):
+def guess_template_type(template_path):
     with open(template_path, 'rb') as f:
         template = f.read()
         if b'@GNOME_TEAM@' in template:
-            template_type = 'gnome'
+            return 'gnome'
         elif b'@cdbs@' in template:
-            template_type = 'cdbs'
+            return 'cdbs'
         elif b'PGVERSION' in template:
-            template_type = 'postgresql'
+            return 'postgresql'
         elif b'@lintian-brush-test@' in template:
-            template_type = 'lintian-brush-test'
+            return 'lintian-brush-test'
         else:
-            raise GeneratedFile(path, template_path)
+            deb822 = Deb822(template)
+            build_depends = deb822.get('Build-Depends', '')
+            try:
+                get_relation(build_depends, 'gnome-pkg-tools')
+            except KeyError:
+                pass
+            else:
+                return 'gnome'
+            try:
+                get_relation(build_depends, 'cdbs')
+            except KeyError:
+                pass
+            else:
+                return 'cdbs'
+    return None
+
+
+def _update_control_template(template_path, path, paragraph_cb):
+    template_type = guess_template_type(template_path)
+    if template_type is None:
+        raise GeneratedFile(path, template_path)
     if not update_deb822(template_path, paragraph_cb=paragraph_cb):
         # A bit odd, since there were changes to the output file. Anyway.
         return False
