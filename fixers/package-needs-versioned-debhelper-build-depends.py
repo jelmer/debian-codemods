@@ -4,6 +4,7 @@ import sys
 from lintian_brush.control import (
     ensure_minimum_version,
     get_relation,
+    read_debian_compat_file,
     update_control,
     )
 
@@ -26,8 +27,7 @@ def bump_debhelper(control):
 
 
 try:
-    with open('debian/compat', 'r') as f:
-        minimum_version = f.read().strip()
+    minimum_version = read_debian_compat_file('debian/compat')
 except FileNotFoundError:
     sys.exit(0)
 
