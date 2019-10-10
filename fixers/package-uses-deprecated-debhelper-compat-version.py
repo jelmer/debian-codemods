@@ -195,6 +195,11 @@ def upgrade_to_debhelper_11():
                 line, b'dh_systemd_enable', b'dh_installsystemd',
                 'Use dh_installsystemd rather than deprecated '
                 'dh_systemd_enable.')
+        if line.startswith(b'dh_systemd_start'):
+            line = update_line(
+                line, b'dh_systemd_start', b'dh_installsystemd',
+                'Use dh_installsystemd rather than deprecated '
+                'dh_systemd_start.')
         return line
 
     update_rules(cb)
