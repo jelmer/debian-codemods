@@ -337,9 +337,13 @@ def guess_from_meta_yml(path, trust_package):
     See http://module-build.sourceforge.net/META-spec-v1.4.html for the
     specification of the format.
     """
-    import ruamel.yaml
+    import ruamel.yaml, ruamel.yaml.reader
     with open(path, 'r') as f:
-        data = ruamel.yaml.load(f, ruamel.yaml.SafeLoader)
+        try:
+            data = ruamel.yaml.load(f, ruamel.yaml.SafeLoader)
+        except ruamel.yaml.reader.ReaderError as e:
+            warn('Unable to parse META.yml: %s' % e)
+            return
         if 'name' in data:
             yield 'Name', data['name'], 'certain'
         if 'resources' in data:
