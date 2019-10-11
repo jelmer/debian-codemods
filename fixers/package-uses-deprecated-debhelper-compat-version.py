@@ -61,6 +61,8 @@ if os.path.exists('debian/compat'):
 
         # Assume that the compat version is set in Build-Depends
         def set_debhelper_compat(control):
+            # TODO(jelmer): Use iter_relations rather than get_relation,
+            # since that allows for complex debhelper rules.
             try:
                 position, debhelper_relation = get_relation(
                     control.get("Build-Depends", ""), "debhelper")
