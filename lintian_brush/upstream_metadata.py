@@ -337,7 +337,8 @@ def guess_from_meta_yml(path, trust_package):
     See http://module-build.sourceforge.net/META-spec-v1.4.html for the
     specification of the format.
     """
-    import ruamel.yaml, ruamel.yaml.reader
+    import ruamel.yaml
+    import ruamel.yaml.reader
     with open(path, 'r') as f:
         try:
             data = ruamel.yaml.load(f, ruamel.yaml.SafeLoader)

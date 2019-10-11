@@ -4,6 +4,7 @@ from lintian_brush.control import (
     update_control,
     add_dependency,
     get_relation,
+    iter_relations,
     )
 
 added = []
@@ -14,17 +15,9 @@ default_architecture = None
 
 def check_go_package(control):
     global go_package, default_architecture
-    try:
-        get_relation(control.get('Build-Depends', ''), 'golang-go')
-    except KeyError:
-        pass
-    else:
+    if any(iter_relations(control.get('Build-Depends', ''), 'golang-go')):
         go_package = True
-    try:
-        get_relation(control.get('Build-Depends', ''), 'golang-any')
-    except KeyError:
-        pass
-    else:
+    if any(iter_relations(control.get('Build-Depends', ''), 'golang-any')):
         go_package = True
     default_architecture = control.get('Architecture')
 

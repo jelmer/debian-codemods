@@ -65,17 +65,9 @@ def guess_template_type(template_path):
         else:
             deb822 = Deb822(template)
             build_depends = deb822.get('Build-Depends', '')
-            try:
-                get_relation(build_depends, 'gnome-pkg-tools')
-            except KeyError:
-                pass
-            else:
+            if any(iter_relations(build_depends, 'gnome-pkg-tools')):
                 return 'gnome'
-            try:
-                get_relation(build_depends, 'cdbs')
-            except KeyError:
-                pass
-            else:
+            if any(iter_relations(build_depends, 'cdbs')):
                 return 'cdbs'
     return None
 
