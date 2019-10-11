@@ -178,18 +178,34 @@ def get_relation(relationstr, package):
     Returns:
       Tuple with offset and relation object
     """
+    for offset, relation in iter_relations(relationstr, package):
+        names = [r.name for r in relation]
+        if len(names) > 1 and package in names:
+            raise ValueError("Complex rule for %s , aborting" % package)
+        if names != [package]:
+            continue
+        return offset, relation
+    raise KeyError(package)
+
+
+def iter_relations(relationstr, package):
+    """Iterate over the relations relevant for a particular package.
+
+    Args:
+      relationstr: package relation string
+      package: package name
+    Yields:
+      Tuples with offset and relation objects
+    """
     relations = parse_relations(relationstr)
     for i, (head_whitespace, relation, tail_whitespace) in enumerate(
             relations):
         if isinstance(relation, str):  # formatting
             continue
         names = [r.name for r in relation]
-        if len(names) > 1 and names[0] == package:
-            raise Exception("Complex rule for %s , aborting" % package)
-        if names != [package]:
+        if package not in names:
             continue
-        return i, relation
-    raise KeyError(package)
+        yield i, relation
 
 
 def ensure_minimum_version(relationstr, package, minimum_version):

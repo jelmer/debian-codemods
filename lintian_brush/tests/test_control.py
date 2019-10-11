@@ -29,6 +29,7 @@ from lintian_brush.control import (
     ensure_minimum_version,
     ensure_some_version,
     get_relation,
+    iter_relations,
     update_control,
     PkgRelation,
     format_relations,
@@ -395,12 +396,42 @@ class GetRelationTests(TestCase):
 
     def test_complex(self):
         self.assertRaises(
-            Exception,
+            ValueError,
             get_relation, 'blah | debhelper (= 9)', 'debhelper')
         self.assertRaises(
-            Exception,
+            ValueError,
             get_relation,
             'blah, debhelper (= 9) | debhelper (<< 10)', 'debhelper')
+
+
+class IterRelationsTests(TestCase):
+
+    def test_missing(self):
+        self.assertEqual(
+            [], list(iter_relations('', 'debhelper')))
+        self.assertEqual(
+            [], list(iter_relations('blah', 'debhelper')))
+
+    def test_simple(self):
+        self.assertEqual(
+            [(0, [PkgRelation('debhelper', ('>=', '9'))])],
+            list(iter_relations(
+                'debhelper (>= 9)', 'debhelper')))
+        self.assertEqual(
+            [(1, [PkgRelation('debhelper', ('=', '9'))])],
+            list(iter_relations(
+                'blah, debhelper (= 9)', 'debhelper')))
+
+    def test_complex(self):
+        self.assertEqual(
+            [(0, [PkgRelation('blah'), PkgRelation('debhelper', ('=', '9'))])],
+            list(iter_relations('blah | debhelper (= 9)', 'debhelper')))
+        self.assertEqual(
+            [(1,
+              [PkgRelation('debhelper', ('=', '9')),
+               PkgRelation('debhelper', ('<<', '10'))])],
+            list(iter_relations(
+                'blah, debhelper (= 9) | debhelper (<< 10)', 'debhelper')))
 
 
 class DeleteFromListTests(TestCase):
