@@ -1,3 +1,10 @@
+lintian-brush (0.36) UNRELEASED; urgency=medium
+
+  * debian-control-has-unusual-field-spacing: don't update files with
+    unknown template types.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 12 Oct 2019 20:27:32 +0000
+
 lintian-brush (0.35) unstable; urgency=medium
 
   * Fix handling of dictionaries for the 'repository' field in META.yml.

@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 
+from lintian_brush.control import (
+    guess_template_type,
+    )
 from lintian_brush.reformatting import (
     check_generated_file,
     GeneratedFile,
@@ -37,6 +40,9 @@ try:
     check_generated_file('debian/control')
 except GeneratedFile as e:
     if e.template_path:
+        template_type = guess_template_type(e.template_path)
+        if template_type is None:
+            raise
         changed = fix_field_spacing(e.template_path)
         if changed:
             fix_field_spacing('debian/control')
