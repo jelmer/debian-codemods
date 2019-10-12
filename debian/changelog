@@ -1,4 +1,4 @@
-lintian-brush (0.35) UNRELEASED; urgency=medium
+lintian-brush (0.35) unstable; urgency=medium
 
   * Fix handling of dictionaries for the 'repository' field in META.yml.
   * debian-control-has-obsolete-dbg-package: Don't bump debhelper
@@ -27,7 +27,7 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
   * package.json: bugs field can be a dict.
   * upstream-metadata: Don't fail when META.yml file fails to parse.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 08 Oct 2019 21:48:15 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 12 Oct 2019 19:59:21 +0000
 
 lintian-brush (0.34) unstable; urgency=medium
 
