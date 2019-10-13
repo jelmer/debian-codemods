@@ -89,6 +89,8 @@ TEAM_NAME_MAP = {
     'pkg-ocaml-team': 'ocaml-team',
     'pkg-vdr-dvb': 'vdr-team',
     'debian-in': 'debian-in-team',
+    'pkg-octave': 'pkg-octave-team',
+    'pkg-postgresql': 'postgresql',
 }
 
 
