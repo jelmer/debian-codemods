@@ -75,6 +75,7 @@ TEAM_NAME_MAP = {
     'pkg-netmeasure': 'ineteng-team',
     'pkg-hamradio': 'debian-hamradio-team',
     'pkg-sass': 'sass-team',
+    'pkg-rpm': 'pkg-rpm-team',
 }
 
 
