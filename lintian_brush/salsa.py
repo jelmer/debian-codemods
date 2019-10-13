@@ -82,6 +82,11 @@ TEAM_NAME_MAP = {
     'pkg-perl': 'perl-team/modules',
     'debian-iot': 'debian-iot-team',
     'pkg-bitcoin': 'cryptocoin-team',
+    'pkg-cyrus-imapd': 'debian',
+    'pkg-dns': 'dns-team',
+    'pkg-freeipa': 'freeipa-team',
+    'pkg-ocaml-team': 'ocaml-team',
+    'pkg-vdr-dvb': 'vdr-team',
 }
 
 
