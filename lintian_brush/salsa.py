@@ -76,6 +76,8 @@ TEAM_NAME_MAP = {
     'pkg-hamradio': 'debian-hamradio-team',
     'pkg-sass': 'sass-team',
     'pkg-rpm': 'pkg-rpm-team',
+    'tts': 'tts-team',
+    'python-apps': 'python-team/applications',
 }
 
 

@@ -151,3 +151,9 @@ class SalsaUrlFromAliothUrlTests(TestCase):
                 'svn://anonscm.debian.org/pkg-xfce/goodies/trunk/'
                 'xfswitch-plugin/'
             ))
+        self.assertEqual(
+            'https://salsa.debian.org/python-team/applications/pypar2',
+            salsa_url_from_alioth_url(
+                'svn',
+                'svn://anonscm.debian.org/python-apps/packages/pypar2/trunk/'
+            ))
