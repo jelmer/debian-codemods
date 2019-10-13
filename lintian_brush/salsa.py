@@ -80,6 +80,7 @@ TEAM_NAME_MAP = {
     'python-apps': 'python-team/applications',
     'pkg-monitoring': 'monitoring-team',
     'pkg-perl': 'perl-team/modules',
+    'debian-iot': 'debian-iot-team',
 }
 
 
