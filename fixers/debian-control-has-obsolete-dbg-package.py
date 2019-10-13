@@ -60,16 +60,14 @@ def migrate_dh_strip(line, target):
     return line
 
 
-if check_cdbs():
-    # Ah, cdbs.
-    raise Exception("package uses cdbs")
-
 update_rules(migrate_dh_strip)
-
 
 difference = dbg_packages.symmetric_difference(dbg_migration_done)
 
 if difference:
+    if check_cdbs():
+        # Ah, cdbs.
+        raise Exception("package uses cdbs")
     raise Exception("packages missing %r" % difference)
 
 print("Transition to automatic debug package%s (from: %s)." %
