@@ -164,3 +164,10 @@ class SalsaUrlFromAliothUrlTests(TestCase):
                 'svn',
                 'svn://anonscm.debian.org/python-apps/packages/pypar2/trunk/'
             ))
+        self.assertEqual(
+            'https://salsa.debian.org/xml-sgml-team/docbook-slides-demo',
+            salsa_url_from_alioth_url(
+                'svn',
+                'svn://svn.debian.org/debian-xml-sgml/packages/'
+                'docbook-slides-demo/trunk/'
+            ))
