@@ -70,6 +70,7 @@ TEAM_NAME_MAP = {
     'pkg-nvidia': 'nvidia-team',
     'pkg-llvm': 'llvm-team',
     'pkg-nagios': 'nagios-team',
+    'pkg-sugar': 'pkg-sugar-team',
 }
 
 
