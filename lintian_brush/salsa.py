@@ -81,6 +81,7 @@ TEAM_NAME_MAP = {
     'pkg-monitoring': 'monitoring-team',
     'pkg-perl': 'perl-team/modules',
     'debian-iot': 'debian-iot-team',
+    'pkg-bitcoin': 'cryptocoin-team',
 }
 
 
