@@ -204,7 +204,11 @@ def guess_from_package_json(path, trust_package):
 
 def guess_from_package_xml(path, trust_package):
     import xml.etree.ElementTree as ET
-    tree = ET.parse(path)
+    try:
+        tree = ET.parse(path)
+    except ET.ParseError as e:
+        warn('Unable to parse package.xml: %s' % e)
+        return
     root = tree.getroot()
     assert root.tag in (
         'package', '{http://pear.php.net/dtd/package-2.0}package',
