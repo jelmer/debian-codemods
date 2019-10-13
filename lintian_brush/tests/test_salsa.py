@@ -118,6 +118,13 @@ class SalsaUrlFromAliothUrlTests(TestCase):
                 'git',
                 'https://anonscm.debian.org/git/pkg-nagios/'
                 'pkg-check-multi.git'))
+        self.assertEqual(
+            'https://salsa.debian.org/perl-team/modules/packages/'
+            'libgstream-interfaces-perl.git',
+            salsa_url_from_alioth_url(
+                'git',
+                'git://git.debian.org/pkg-perl/packages/'
+                'libgstream-interfaces-perl.git'))
 
     def test_svn(self):
         self.assertEqual(
