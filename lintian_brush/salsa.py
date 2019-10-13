@@ -88,6 +88,7 @@ TEAM_NAME_MAP = {
     'pkg-freeipa': 'freeipa-team',
     'pkg-ocaml-team': 'ocaml-team',
     'pkg-vdr-dvb': 'vdr-team',
+    'debian-in': 'debian-in-team',
 }
 
 
