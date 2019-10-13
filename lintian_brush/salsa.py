@@ -52,6 +52,7 @@ TEAM_NAME_MAP = {
     'pkg-go': 'go-team',
     'pkg-fonts': 'fonts-team',
     'pkg-javascript': 'js-team',
+    'pkg-java': 'java-team',
     'pkg-mpd': 'mpd-team',
     'pkg-electronics': 'electronics-team',
     'pkg-xfce': 'xfce-team',
