@@ -171,3 +171,9 @@ class SalsaUrlFromAliothUrlTests(TestCase):
                 'svn://svn.debian.org/debian-xml-sgml/packages/'
                 'docbook-slides-demo/trunk/'
             ))
+        self.assertEqual(
+            'https://salsa.debian.org/fonts-team/ttf-inconsolata',
+            salsa_url_from_alioth_url(
+                'svn',
+                'svn://svn.debian.org/svn/pkg-fonts/packages/ttf-inconsolata'
+            ))
