@@ -65,6 +65,11 @@ TEAM_NAME_MAP = {
     'pkg-lua': 'lua-team',
     'pkg-xorg': 'xorg-team',
     'debian-astro': 'debian-astro-team',
+    'pkg-icecast': 'multimedia-team',
+    'glibc-bsd': 'bsd-team',
+    'pkg-nvidia': 'nvidia-team',
+    'pkg-llvm': 'llvm-team',
+    'pkg-nagios': 'nagios-team',
 }
 
 
@@ -156,4 +161,32 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
             return alioth_url.replace(
                 'svn://svn.debian.org/pkg-lua/packages',
                 'https://salsa.debian.org/lua-team')
+        parsed_url = urlparse(alioth_url)
+        if (parsed_url.scheme == 'svn' and
+                parsed_url.netloc in (
+                    ('svn.debian.org', 'anonscm.debian.org'))):
+            parts = parsed_url.path.strip('/').split('/')
+            if parts[0] == 'svn':
+                parts.pop(0)
+            if (len(parts) == 3 and
+                    parts[0] in TEAM_NAME_MAP and
+                    parts[2] == 'trunk'):
+                return 'https://salsa.debian.org/%s/%s' % (
+                    TEAM_NAME_MAP[parts[0]], parts[1])
+            if (len(parts) == 3 and
+                    parts[0] in TEAM_NAME_MAP and
+                    parts[1] == 'trunk'):
+                return 'https://salsa.debian.org/%s/%s' % (
+                    TEAM_NAME_MAP[parts[0]], parts[2])
+            if (len(parts) == 4 and
+                    parts[0] in TEAM_NAME_MAP and
+                    parts[1] == 'packages' and
+                    parts[3] == 'trunk'):
+                return 'https://salsa.debian.org/%s/%s' % (
+                    TEAM_NAME_MAP[parts[0]], parts[2])
+            if (len(parts) > 3 and
+                    parts[0] in TEAM_NAME_MAP and
+                    parts[-2] == 'trunk'):
+                return 'https://salsa.debian.org/%s/%s' % (
+                    TEAM_NAME_MAP[parts[0]], parts[-1])
     return None

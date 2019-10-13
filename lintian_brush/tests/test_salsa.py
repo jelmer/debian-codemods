@@ -112,3 +112,42 @@ class SalsaUrlFromAliothUrlTests(TestCase):
                 'git',
                 'https://anonscm.debian.org/cgit/debian-science/'
                 'ros-geometry.git'))
+        self.assertEqual(
+            'https://salsa.debian.org/nagios-team/pkg-check-multi.git',
+            salsa_url_from_alioth_url(
+                'git',
+                'https://anonscm.debian.org/git/pkg-nagios/'
+                'pkg-check-multi.git'))
+
+    def test_svn(self):
+        self.assertEqual(
+            'https://salsa.debian.org/multimedia-team/ezstream',
+            salsa_url_from_alioth_url(
+                'svn',
+                'svn://svn.debian.org/svn/pkg-icecast/ezstream/trunk')
+            )
+        self.assertEqual(
+            'https://salsa.debian.org/bsd-team/freebsd-buildutils',
+            salsa_url_from_alioth_url(
+                'svn',
+                'svn://anonscm.debian.org/glibc-bsd/trunk/freebsd-buildutils/')
+            )
+        self.assertEqual(
+            'https://salsa.debian.org/nvidia-team/nvclock',
+            salsa_url_from_alioth_url(
+                'svn',
+                'svn://svn.debian.org/pkg-nvidia/packages/nvclock/trunk'
+            ))
+        self.assertEqual(
+            'https://salsa.debian.org/llvm-team/llvm',
+            salsa_url_from_alioth_url(
+                'svn',
+                'svn://svn.debian.org/svn/pkg-llvm/llvm/trunk/'
+            ))
+        self.assertEqual(
+            'https://salsa.debian.org/xfce-team/xfswitch-plugin',
+            salsa_url_from_alioth_url(
+                'svn',
+                'svn://anonscm.debian.org/pkg-xfce/goodies/trunk/'
+                'xfswitch-plugin/'
+            ))
