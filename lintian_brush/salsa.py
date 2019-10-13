@@ -71,6 +71,10 @@ TEAM_NAME_MAP = {
     'pkg-llvm': 'llvm-team',
     'pkg-nagios': 'nagios-team',
     'pkg-sugar': 'pkg-sugar-team',
+    'pkg-phototools': 'debian-phototools-team',
+    'pkg-netmeasure': 'ineteng-team',
+    'pkg-hamradio': 'debian-hamradio-team',
+    'pkg-sass': 'sass-team',
 }
 
 
