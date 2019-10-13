@@ -205,6 +205,11 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
                     parts[3] == 'trunk'):
                 return 'https://salsa.debian.org/%s/%s' % (
                     TEAM_NAME_MAP[parts[0]], parts[2])
+            if (len(parts) == 4 and
+                    parts[0] in TEAM_NAME_MAP and
+                    parts[1] == 'trunk' and parts[2] == 'packages'):
+                return 'https://salsa.debian.org/%s/%s' % (
+                    TEAM_NAME_MAP[parts[0]], parts[3])
             if (len(parts) > 3 and
                     parts[0] in TEAM_NAME_MAP and
                     parts[-2] == 'trunk'):
