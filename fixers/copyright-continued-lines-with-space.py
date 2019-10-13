@@ -17,7 +17,10 @@ with open('debian/copyright', 'rb') as f:
             line = b' ' + line[1:]
         lines.append(line)
 
-with open('debian/copyright', 'wb') as f:
-    f.writelines(lines)
+try:
+    with open('debian/copyright', 'wb') as f:
+        f.writelines(lines)
+except FileNotFoundError:
+    pass
 
 print('debian/copyright: Use spaces rather than tabs in continuation lines.')

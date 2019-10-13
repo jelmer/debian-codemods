@@ -6,6 +6,8 @@ lintian-brush (0.36) UNRELEASED; urgency=medium
   * Add pkg-sugar, pkg-phototools, pkg-netmeasure, pkg-hamradio, pkg-sass
     alias.
   * Ignore broken package.xml files.
+  * copyright-continued-lines-with-space: Ignore missing copyright
+    files.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 12 Oct 2019 20:27:32 +0000
 
