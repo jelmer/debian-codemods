@@ -1,4 +1,4 @@
-lintian-brush (0.36) UNRELEASED; urgency=medium
+lintian-brush (0.36) unstable; urgency=medium
 
   * debian-control-has-unusual-field-spacing: don't update files with
     unknown template types.
@@ -11,7 +11,7 @@ lintian-brush (0.36) UNRELEASED; urgency=medium
   * debian-control-has-obsolete-dbg-package: support cdbs if dbg package
     is added with debhelper.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 12 Oct 2019 20:27:32 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 15 Oct 2019 09:34:25 +0000
 
 lintian-brush (0.35) unstable; urgency=medium
 
