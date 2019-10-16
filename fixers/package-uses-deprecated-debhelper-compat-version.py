@@ -2,11 +2,13 @@
 import os
 import sys
 from debian.changelog import Version
+from debian.deb822 import Deb822
 from lintian_brush.control import (
     drop_dependency,
     ensure_exact_version,
     ensure_minimum_version,
     get_relation,
+    iter_relations,
     read_debian_compat_file,
     update_control,
     )
@@ -169,6 +171,12 @@ def upgrade_to_debhelper_12():
             line, b'-O--buildsystem=python_distutils',
             b'-O--buildsystem=pybuild',
             'Replace python_distutils buildsystem with pybuild.')
+        if line.startswith(b'dh ') and b'buildsystem' not in line:
+            with open('debian/control', 'r') as f:
+                deb822 = Deb822(f.read())
+            build_depends = deb822.get('Build-Depends', '')
+            if any(iter_relations(build_depends, 'dh-python')):
+                line += b' --buildsystem=pybuild'
         if line.startswith(b'dh ') or line.startswith(b'dh_installinit'):
             line = update_line(
                 line, b'--no-restart-on-upgrade',

@@ -1,3 +1,10 @@
+lintian-brush (0.37) UNRELEASED; urgency=medium
+
+  * package-uses-deprecated-debhelper-compat-version: Add --
+    buildsystem=pybuild when upgrading Python packages to debhelper 12.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 16 Oct 2019 01:58:15 +0000
+
 lintian-brush (0.36) unstable; urgency=medium
 
   * debian-control-has-unusual-field-spacing: don't update files with

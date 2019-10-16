@@ -1,0 +1,2 @@
+Bump debhelper from old 11 to 12.
+Fixed-Lintian-Tags: package-uses-old-debhelper-compat-version
