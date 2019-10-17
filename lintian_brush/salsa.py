@@ -92,6 +92,7 @@ TEAM_NAME_MAP = {
     'debian-in': 'debian-in-team',
     'pkg-octave': 'pkg-octave-team',
     'pkg-postgresql': 'postgresql',
+    'pkg-grass': 'debian-gis-team',
 }
 
 
