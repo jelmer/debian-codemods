@@ -56,6 +56,7 @@ TEAM_NAME_MAP = {
     'pkg-mpd': 'mpd-team',
     'pkg-electronics': 'electronics-team',
     'pkg-xfce': 'xfce-team',
+    'pkg-lxc': 'lxc-team',
     'debian-science': 'science-team',
     'pkg-games': 'games-team',
     'pkg-bluetooth': 'bluetooth-team',
