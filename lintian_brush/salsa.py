@@ -94,6 +94,7 @@ TEAM_NAME_MAP = {
     'pkg-postgresql': 'postgresql',
     'pkg-grass': 'debian-gis-team',
     'pkg-gnome': 'gnome-team',
+    'pkg-exppsy': 'neurodebian-team',
 }
 
 
