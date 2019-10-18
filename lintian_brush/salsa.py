@@ -93,10 +93,20 @@ TEAM_NAME_MAP = {
     'pkg-octave': 'pkg-octave-team',
     'pkg-postgresql': 'postgresql',
     'pkg-grass': 'debian-gis-team',
+    'pkg-evolution': 'gnome-team',
     'pkg-gnome': 'gnome-team',
     'pkg-exppsy': 'neurodebian-team',
     'pkg-voip': 'pkg-voip-team',
     'pkg-privacy': 'pkg-privacy-team',
+    'pkg-libvirt': 'libvirt-team',
+    'debian-ha': 'ha-team',
+    'debian-lego': 'debian-lego-team',
+    'calendarserver': 'calendarserver-team',
+    '3dprinter': '3dprinting-team',
+    'pkg-multimedia': 'multimedia-team',
+    'pkg-emacsen': 'emacsen-team',
+    'pkg-haskell': 'haskell-team',
+    'pkg-gnutls': 'gnutls-team',
 }
 
 

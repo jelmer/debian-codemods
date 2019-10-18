@@ -189,3 +189,9 @@ class SalsaUrlFromAliothUrlTests(TestCase):
                 'svn',
                 'svn://svn.debian.org/python-apps/packages/upnp-inspector/trunk/'
             ))
+        self.assertEqual(
+            'https://salsa.debian.org/python-team/applications/hotssh',
+            salsa_url_from_alioth_url(
+                'svn',
+                'svn://anonscm.debian.org/python-apps/packages/hotssh/trunk/'
+            ))
