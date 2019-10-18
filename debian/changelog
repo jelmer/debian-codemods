@@ -1,7 +1,8 @@
 lintian-brush (0.37) UNRELEASED; urgency=medium
 
-  * package-uses-deprecated-debhelper-compat-version: Add --
-    buildsystem=pybuild when upgrading Python packages to debhelper 12.
+  * package-uses-deprecated-debhelper-compat-version: Add
+    --buildsystem=pybuild when upgrading Python packages to debhelper 12.
+  * Add various more aliases for salsa team names.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 16 Oct 2019 01:58:15 +0000
 

@@ -1,14 +1,13 @@
 #!/usr/bin/python3
 import os
+import subprocess
 import sys
 from debian.changelog import Version
-from debian.deb822 import Deb822
 from lintian_brush.control import (
     drop_dependency,
     ensure_exact_version,
     ensure_minimum_version,
     get_relation,
-    iter_relations,
     read_debian_compat_file,
     update_control,
     )
@@ -153,30 +152,40 @@ def update_line_drop_argument(target, line, command, argument, description):
     return line, False
 
 
+def detect_debhelper_buildsystem():
+    return subprocess.check_output([
+        'perl', '-w', '-MDebian::Debhelper::Dh_Buildsystems', '-e',
+        'print(Debian::Debhelper::Dh_Buildsystems::load_buildsystem()->NAME);'
+        ]).decode()
+
+
+def upgrade_to_pybuild(line, target):
+    # TODO(jelmer): Also make sure that any extra arguments to
+    # e.g. dh_auto_build get upgraded. E.g.
+    # this works with disutils but not pybuild:
+    # dh_auto_build -- --executable=/usr/bin/python
+    # TODO(jelmer): Also add a dependency on dh-python
+    line = update_line(
+        line, b'--buildsystem=python_distutils', b'--buildsystem=pybuild',
+        'Replace python_distutils buildsystem with pybuild.')
+    line = update_line(
+        line, b'-O--buildsystem=python_distutils',
+        b'-O--buildsystem=pybuild',
+        'Replace python_distutils buildsystem with pybuild.')
+    if line.startswith(b'dh ') and b'buildsystem' not in line:
+        buildsystem = detect_debhelper_buildsystem()
+        if buildsystem == 'python_distutils':
+            line += b' --buildsystem=pybuild'
+    return line
+
+
 def upgrade_to_debhelper_12():
 
     def cb(line, target):
+        line = upgrade_to_pybuild(line, target)
         line = update_line(
             line, b'dh_clean -k', b'dh_prep',
             'debian/rules: Replace dh_clean -k with dh_prep.')
-        # TODO(jelmer): Also make sure that any extra arguments to
-        # e.g. dh_auto_build get upgraded. E.g.
-        # this works with disutils but not pybuild:
-        # dh_auto_build -- --executable=/usr/bin/python
-        # TODO(jelmer): Also add a dependency on dh-python
-        line = update_line(
-            line, b'--buildsystem=python_distutils', b'--buildsystem=pybuild',
-            'Replace python_distutils buildsystem with pybuild.')
-        line = update_line(
-            line, b'-O--buildsystem=python_distutils',
-            b'-O--buildsystem=pybuild',
-            'Replace python_distutils buildsystem with pybuild.')
-        if line.startswith(b'dh ') and b'buildsystem' not in line:
-            with open('debian/control', 'r') as f:
-                deb822 = Deb822(f.read())
-            build_depends = deb822.get('Build-Depends', '')
-            if any(iter_relations(build_depends, 'dh-python')):
-                line += b' --buildsystem=pybuild'
         if line.startswith(b'dh ') or line.startswith(b'dh_installinit'):
             line = update_line(
                 line, b'--no-restart-on-upgrade',
