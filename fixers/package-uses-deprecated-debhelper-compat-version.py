@@ -169,6 +169,9 @@ def upgrade_to_pybuild(line, target):
         line, b'--buildsystem=python_distutils', b'--buildsystem=pybuild',
         'Replace python_distutils buildsystem with pybuild.')
     line = update_line(
+        line, b'--buildsystem python_distutils', b'--buildsystem=pybuild',
+        'Replace python_distutils buildsystem with pybuild.')
+    line = update_line(
         line, b'-O--buildsystem=python_distutils',
         b'-O--buildsystem=pybuild',
         'Replace python_distutils buildsystem with pybuild.')
