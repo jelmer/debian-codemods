@@ -96,6 +96,7 @@ TEAM_NAME_MAP = {
     'pkg-gnome': 'gnome-team',
     'pkg-exppsy': 'neurodebian-team',
     'pkg-voip': 'pkg-voip-team',
+    'pkg-privacy': 'pkg-privacy-team',
 }
 
 

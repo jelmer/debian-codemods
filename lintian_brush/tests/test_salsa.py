@@ -183,3 +183,9 @@ class SalsaUrlFromAliothUrlTests(TestCase):
                 'svn',
                 'svn://svn.debian.org/svn/pkg-kde/trunk/packages/kde3libs'
             ))
+        self.assertEqual(
+            'https://salsa.debian.org/python-team/applications/upnp-inspector',
+            salsa_url_from_alioth_url(
+                'svn',
+                'svn://svn.debian.org/python-apps/packages/upnp-inspector/trunk/'
+            ))
