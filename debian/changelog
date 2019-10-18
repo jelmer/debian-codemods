@@ -1,3 +1,9 @@
+lintian-brush (0.38) UNRELEASED; urgency=medium
+
+  * Add missing dependency on libdebhelper-perl for autopkgtest.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 18 Oct 2019 17:37:51 +0000
+
 lintian-brush (0.37) unstable; urgency=medium
 
   * package-uses-deprecated-debhelper-compat-version: Add
