@@ -95,6 +95,7 @@ TEAM_NAME_MAP = {
     'pkg-grass': 'debian-gis-team',
     'pkg-gnome': 'gnome-team',
     'pkg-exppsy': 'neurodebian-team',
+    'pkg-voip': 'pkg-voip-team',
 }
 
 
