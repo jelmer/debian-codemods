@@ -172,11 +172,19 @@ def update_line_replace_argument(line, old, new, description):
     return line, False
 
 
-def detect_debhelper_buildsystem():
-    return subprocess.check_output([
+DEBHELPER_BUILD_STEPS = ['configure', 'build', 'test', 'install', 'clean']
+
+
+def detect_debhelper_buildsystem(step=None):
+    output = subprocess.check_output([
         'perl', '-w', '-MDebian::Debhelper::Dh_Buildsystems', '-e',
-        'print(Debian::Debhelper::Dh_Buildsystems::load_buildsystem()->NAME);'
-        ]).decode()
+        """\
+my $b=Debian::Debhelper::Dh_Buildsystems::load_buildsystem(undef, %(step)s);\
+if (defined($b)) { print($b->NAME); } else { print("_undefined_"); }\
+""" % {"step": ("'%s'" % step) or 'undef'}]).decode()
+    if output == '_undefined_':
+        return None
+    return output
 
 
 def upgrade_to_pybuild(line, target):
@@ -197,7 +205,13 @@ def upgrade_to_pybuild(line, target):
         b'-O--buildsystem=pybuild',
         'Replace python_distutils buildsystem with pybuild.')
     if line.startswith(b'dh ') and b'buildsystem' not in line:
-        buildsystem = detect_debhelper_buildsystem()
+        if target.decode() in DEBHELPER_BUILD_STEPS:
+            step = target.decode()
+        elif target.startswith(b'dh_auto_'):
+            step = target[len(b'dh_auto_')].decode()
+        else:
+            step = None
+        buildsystem = detect_debhelper_buildsystem(step)
         if buildsystem == 'python_distutils':
             line += b' --buildsystem=pybuild'
     return line

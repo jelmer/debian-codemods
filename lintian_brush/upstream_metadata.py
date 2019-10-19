@@ -312,6 +312,7 @@ def guess_from_readme(path, trust_package):
                     urls.append(sanitize_vcs_url(url))
     except IsADirectoryError:
         pass
+
     def prefer_public(url):
         parsed_url = urlparse(url)
         if 'ssh' in parsed_url.scheme:
