@@ -1,4 +1,4 @@
-lintian-brush (0.38) UNRELEASED; urgency=medium
+lintian-brush (0.38) unstable; urgency=medium
 
   * Add missing dependency on libdebhelper-perl for autopkgtest.
   * Add support for bumping to standards version 4.4.1.
@@ -7,7 +7,7 @@ lintian-brush (0.38) UNRELEASED; urgency=medium
     missing.
   * Fix test_changelog reproducibility.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 18 Oct 2019 17:37:51 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 19 Oct 2019 15:21:53 +0000
 
 lintian-brush (0.37) unstable; urgency=medium
 
