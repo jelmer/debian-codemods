@@ -35,7 +35,7 @@ lintian-brush (0.28) UNRELEASED; urgency=medium
 
   * Add fixer for obsolete-runtime-tests-restriction.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 02 Sep 2019 00:23:11 +0000
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Sep 2019 00:23:11 +0000
 """)])
 
         def bump_version(block):
@@ -46,7 +46,7 @@ lintian-brush (0.29) UNRELEASED; urgency=medium
 
   * Add fixer for obsolete-runtime-tests-restriction.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 02 Sep 2019 00:23:11 +0000
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Sep 2019 00:23:11 +0000
 """, 'debian/changelog')
 
     def test_invalid(self):

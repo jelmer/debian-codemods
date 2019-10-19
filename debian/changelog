@@ -5,6 +5,7 @@ lintian-brush (0.38) UNRELEASED; urgency=medium
   * Support replacing deprecated --same-arch with --arch.
   * copyright-continued-lines-with-space: allow copyright file to be
     missing.
+  * Fix test_changelog reproducibility.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 18 Oct 2019 17:37:51 +0000
 
