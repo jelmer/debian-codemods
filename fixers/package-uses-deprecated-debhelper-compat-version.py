@@ -15,6 +15,7 @@ from lintian_brush.rules import (
     check_cdbs,
     dh_invoke_drop_with,
     dh_invoke_drop_argument,
+    dh_invoke_replace_argument,
     update_rules,
     )
 
@@ -135,6 +136,19 @@ else:
 subitems = set()
 
 
+def line_matches_command(target, line, command):
+    if command is None:
+        # Whatever
+        return True
+
+    if (line.startswith(command + b' ') or
+            (target == (b'override_' + command) and
+                line.startswith(b'$(overridden_command)'))):
+        return True
+
+    return False
+
+
 def update_line(line, orig, new, description):
     newline = line.replace(orig, new)
     if newline != line:
@@ -143,12 +157,18 @@ def update_line(line, orig, new, description):
 
 
 def update_line_drop_argument(target, line, command, argument, description):
-    if (line.startswith(command + b' ') or
-            (target == (b'override_' + command) and
-             line.startswith(b'$(overridden_command)'))) and argument in line:
+    if line_matches_command(target, line, command) and argument in line:
         line = dh_invoke_drop_argument(line, argument)
         subitems.add(description)
         return line, True
+    return line, False
+
+
+def update_line_replace_argument(line, old, new, description):
+    newline = dh_invoke_replace_argument(line, old, new)
+    if newline != line:
+        subitems.add(description)
+        return newline, True
     return line, False
 
 
@@ -160,6 +180,7 @@ def detect_debhelper_buildsystem():
 
 
 def upgrade_to_pybuild(line, target):
+    """Upgrade from python_distutils to pybuild."""
     # TODO(jelmer): Also make sure that any extra arguments to
     # e.g. dh_auto_build get upgraded. E.g.
     # this works with disutils but not pybuild:
@@ -182,27 +203,50 @@ def upgrade_to_pybuild(line, target):
     return line
 
 
+def upgrade_to_dh_prep(line, target):
+    """Replace 'dh_clean -k' with 'dh_prep."""
+    return update_line(
+        line, b'dh_clean -k', b'dh_prep',
+        'debian/rules: Replace dh_clean -k with dh_prep.')
+
+
+def upgrade_to_dh_missing(line, target):
+    """Replace --list-missing / --fail-missing with dh_missing."""
+    line, changed = update_line_drop_argument(
+        target, line, b'dh_install', b'--list-missing',
+        'debian/rules: Call dh_missing rather than using dh_install '
+        '--list-missing.')
+    line, changed = update_line_drop_argument(
+        target, line, b'dh_install', b'--fail-missing',
+        'debian/rules: Move --fail-missing argument to dh_missing.')
+    if changed:
+        return [line, b'dh_missing --fail-missing']
+    return line
+
+
+def replace_deprecated_same_arch(line, target):
+    if not line.startswith(b'dh'):
+        return line
+    line, _ = update_line_replace_argument(
+        line, b'-s', b'-a', 'Replace deprecated -s with -a.')
+    line, _ = update_line_replace_argument(
+        line, b'--same-arch', b'--arch',
+        'Replace deprecated --same-arch with --arch.')
+    return line
+
+
 def upgrade_to_debhelper_12():
 
     def cb(line, target):
+        line = replace_deprecated_same_arch(line, target)
         line = upgrade_to_pybuild(line, target)
-        line = update_line(
-            line, b'dh_clean -k', b'dh_prep',
-            'debian/rules: Replace dh_clean -k with dh_prep.')
+        line = upgrade_to_dh_prep(line, target)
         if line.startswith(b'dh ') or line.startswith(b'dh_installinit'):
             line = update_line(
                 line, b'--no-restart-on-upgrade',
                 b'--no-stop-on-upgrade',
                 'Replace --no-restart-on-upgrade with --no-stop-on-upgrade.')
-        line, changed = update_line_drop_argument(
-            target, line, b'dh_install', b'--list-missing',
-            'debian/rules: Call dh_missing rather than using dh_install '
-            '--list-missing.')
-        line, changed = update_line_drop_argument(
-            target, line, b'dh_install', b'--fail-missing',
-            'debian/rules: Move --fail-missing argument to dh_missing.')
-        if changed:
-            return [line, b'dh_missing --fail-missing']
+        line = upgrade_to_dh_missing(line, target)
         return line
 
     update_rules(cb)

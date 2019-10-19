@@ -86,6 +86,14 @@ def dh_invoke_drop_argument(line, argument):
     return line
 
 
+def dh_invoke_replace_argument(line, old, new):
+    if old not in line:
+        return line
+    line = re.sub(b' ' + old + b'$', b' ' + new, line)
+    line = re.sub(b' ' + old + b' ', b' ' + new + b' ', line)
+    return line
+
+
 def check_cdbs(path='debian/rules'):
     if not os.path.exists(path):
         return False
