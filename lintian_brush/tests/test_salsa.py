@@ -125,9 +125,11 @@ class SalsaUrlFromAliothUrlTests(TestCase):
                 'git',
                 'git://git.debian.org/pkg-perl/packages/'
                 'libgstream-interfaces-perl.git'))
+        # TODO(jelmer): This should actually be
+        # https://salsa.debian.org/qt-kde-team/extras/plasma-widget-menubar.git
         self.assertEqual(
             'https://salsa.debian.org/qt-kde-team/'
-            'plasma-widget-menubar.git',
+            'kde-extras/plasma-widget-menubar.git',
             salsa_url_from_alioth_url(
                 'git',
                 'git://anonscm.debian.org/pkg-kde/kde-extras/'
