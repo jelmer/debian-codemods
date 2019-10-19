@@ -108,6 +108,7 @@ TEAM_NAME_MAP = {
     'pkg-haskell': 'haskell-team',
     'pkg-gnutls': 'gnutls-team',
     'pkg-mysql': 'mariadb-team',
+    'pkg-php': 'php-team',
 }
 
 
