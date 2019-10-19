@@ -24,7 +24,7 @@ import subprocess
 import tempfile
 from urllib.parse import urlparse, urlunparse
 from warnings import warn
-from lintian_brush import USER_AGENT
+from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.vcs import (
     sanitize_url as sanitize_vcs_url,
     probe_vcs_url,
@@ -41,7 +41,9 @@ KNOWN_GITLAB_SITES = ['gitlab.com', 'salsa.debian.org']
 def get_sf_metadata(project):
     headers = {'User-Agent': USER_AGENT}
     http_url = 'https://sourceforge.net/rest/p/%s' % project
-    http_contents = urlopen(Request(http_url, headers=headers)).read()
+    http_contents = urlopen(
+        Request(http_url, headers=headers),
+        timeout=DEFAULT_URLLIB_TIMEOUT).read()
     return json.loads(http_contents)
 
 

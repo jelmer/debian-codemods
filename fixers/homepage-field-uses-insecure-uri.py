@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from lintian_brush import USER_AGENT
+from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.control import (
     update_control,
     )
@@ -38,14 +38,18 @@ def fix_homepage(http_url):
     # Fall back to just comparing the two
     headers = {'User-Agent': USER_AGENT}
     try:
-        http_contents = urlopen(Request(http_url, headers=headers)).read()
+        http_contents = urlopen(
+            Request(http_url, headers=headers),
+            timeout=DEFAULT_URLLIB_TIMEOUT).read()
     except ERRORS as e:
         sys.stderr.write(
             'Unable to access HTTP version of homepage %s: %s' %
             (http_url, e))
         return http_url
     try:
-        https_contents = urlopen(Request(https_url, headers=headers)).read()
+        https_contents = urlopen(
+            Request(https_url, headers=headers),
+            timeout=DEFAULT_URLLIB_TIMEOUT).read()
     except ERRORS as e:
         sys.stderr.write(
             'Unable to access HTTPS version of homepage %s: %s' %

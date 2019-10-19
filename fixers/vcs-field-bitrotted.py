@@ -4,7 +4,7 @@ import asyncio
 import os
 import re
 import sys
-from lintian_brush import USER_AGENT
+from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.control import update_control
 from lintian_brush.salsa import (
     determine_browser_url,
@@ -47,7 +47,8 @@ def get_vcs_info(control):
 def verify_salsa_repository(url):
     headers = {'User-Agent': USER_AGENT}
     browser_url = determine_browser_url(url)
-    response = urlopen(Request(browser_url, headers=headers))
+    response = urlopen(
+        Request(browser_url, headers=headers), timeout=DEFAULT_URLLIB_TIMEOUT)
     return response.status == 200
 
 

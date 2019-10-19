@@ -54,6 +54,8 @@ version_string = '.'.join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ['certain', 'possible', None]
 DEFAULT_MINIMUM_CERTAINTY = 'certain'
 USER_AGENT = 'lintian-brush/' + version_string
+# Too aggressive?
+DEFAULT_URLLIB_TIMEOUT = 3
 
 
 class NoChanges(Exception):
