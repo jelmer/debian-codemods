@@ -3,6 +3,8 @@ lintian-brush (0.38) UNRELEASED; urgency=medium
   * Add missing dependency on libdebhelper-perl for autopkgtest.
   * Add support for bumping to standards version 4.4.1.
   * Support replacing deprecated --same-arch with --arch.
+  * copyright-continued-lines-with-space: allow copyright file to be
+    missing.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 18 Oct 2019 17:37:51 +0000
 
