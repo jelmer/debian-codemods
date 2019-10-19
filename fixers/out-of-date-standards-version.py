@@ -53,8 +53,11 @@ check_requirements = {
     "4.4.1": check_4_4_1,
 }
 
+current_version = None
+
 
 def bump_standards_version(control):
+    global current_version
     try:
         current_version = control["Standards-Version"]
     except KeyError:
@@ -74,6 +77,8 @@ def bump_standards_version(control):
 
 update_control(source_package_cb=bump_standards_version)
 
-print('Update standards version, no changes needed.')
+if current_version:
+    print('Update standards version to %s, no changes needed.' %
+          current_version)
 print('Certainty: certain')
 print('Fixed-Lintian-Tags: out-of-date-standards-version')
