@@ -107,6 +107,7 @@ TEAM_NAME_MAP = {
     'pkg-emacsen': 'emacsen-team',
     'pkg-haskell': 'haskell-team',
     'pkg-gnutls': 'gnutls-team',
+    'pkg-mysql': 'mariadb-team',
 }
 
 
