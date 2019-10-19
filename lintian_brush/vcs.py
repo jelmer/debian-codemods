@@ -103,6 +103,11 @@ def fixup_broken_git_url(url):
 
 
 def probe_vcs_url(url):
+    parsed = urlparse(url)
+    # TODO(jelmer): Disable authentication prompting.
+    if parsed.scheme in ('git+ssh', 'ssh', 'bzr+ssh'):
+        # Let's not probe anything possibly non-public.
+        return None
     from breezy.branch import Branch
     try:
         Branch.open(url).last_revision()

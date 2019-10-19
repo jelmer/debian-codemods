@@ -291,6 +291,7 @@ def guess_from_debian_copyright(path, trust_package):
 
 def guess_from_readme(path, trust_package):
     import shlex
+    urls = []
     try:
         with open(path, 'rb') as f:
             lines = list(f.readlines())
@@ -308,9 +309,17 @@ def guess_from_readme(path, trust_package):
                         url = args[-2]
                     except IndexError:
                         url = args[0]
-                    yield ('Repository', sanitize_vcs_url(url), 'possible')
+                    urls.append(sanitize_vcs_url(url))
     except IsADirectoryError:
         pass
+    def prefer_public(url):
+        parsed_url = urlparse(url)
+        if 'ssh' in parsed_url.scheme:
+            return 1
+        return 0
+    urls.sort(key=prefer_public)
+    if urls:
+        yield ('Repository', urls[0], 'possible')
 
 
 def guess_from_meta_json(path, trust_package):
@@ -524,8 +533,6 @@ def guess_upstream_metadata_items(path, trust_package=False,
             if certainty == 'possible' and minimum_certainty == 'certain':
                 continue
             yield key, value, certainty
-
-    # TODO(jelmer): validate Repository by querying it somehow?
 
 
 def guess_upstream_metadata(path, trust_package=False):
