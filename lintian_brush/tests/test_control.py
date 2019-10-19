@@ -329,6 +329,9 @@ class AddDependencyTests(TestCase):
         self.assertEqual(
             'debhelper (>= 9), ${misc:Depends}',
             add_dependency('debhelper (>= 9)', '${misc:Depends}'))
+        self.assertEqual(
+            'debhelper (>= 9), blah,',
+            add_dependency('debhelper (>= 9),', 'blah'))
 
     def test_indentation(self):
         self.assertEqual("""foo,

@@ -289,6 +289,10 @@ def _add_dependency(relations, relation, position=None):
     Returns:
       Nothing
     """
+    if len(relations) > 0 and not relations[-1][1]:
+        pointless_tail = relations.pop(-1)
+    else:
+        pointless_tail = None
     if len(relations) == 0:
         head_whitespace = ''
         tail_whitespace = ''
@@ -331,6 +335,8 @@ def _add_dependency(relations, relation, position=None):
     else:
         relations.insert(
             position, (head_whitespace, relation, tail_whitespace))
+    if pointless_tail:
+        relations.append(pointless_tail)
 
 
 def add_dependency(relationstr, relation, position=None):

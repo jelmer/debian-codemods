@@ -1,6 +1,7 @@
 lintian-brush (0.39) UNRELEASED; urgency=medium
 
   * Set somewhat more aggressive timeout for HTTP requests.
+  * Properly cope with trailing commas when adding dependencies.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 19 Oct 2019 15:50:25 +0000
 
