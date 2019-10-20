@@ -109,6 +109,7 @@ TEAM_NAME_MAP = {
     'pkg-gnutls': 'gnutls-team',
     'pkg-mysql': 'mariadb-team',
     'pkg-php': 'php-team',
+    'pkg-qemu': 'qemu-team',
 }
 
 
