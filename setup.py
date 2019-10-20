@@ -34,5 +34,8 @@ setup(
         'console_scripts': ['lintian-brush=lintian_brush.__main__:main']
     },
     test_suite='lintian_brush.tests.test_suite',
-    data_files=[('share/lintian-brush/fixers', glob.glob('fixers/*'))],
+    data_files=[
+        ('share/lintian-brush/fixers', glob.glob('fixers/*')),
+        ('share/lintian-brush', ['spdx.json']),
+    ],
 )

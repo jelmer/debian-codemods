@@ -26,3 +26,9 @@ update-readme:
 release: check update-readme
 	./setup.py sdist
 	twine upload --sign dist/lintian-brush-$(VERSION).tar.gz
+
+update-spdx:
+	python3 download-license-data.py > spdx.json
+	brz diff spdx.json || brz commit -m "Update SPDX license data." spdx.json
+
+update: update-spdx update-readme
