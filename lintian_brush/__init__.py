@@ -225,9 +225,13 @@ class PythonScriptFixer(Fixer):
             old_cwd = os.getcwd()
             try:
                 os.chdir(basedir)
+                global_vars = {
+                    "__file__": self.script_path,
+                    "__name__": "__main__",
+                    }
                 with open(self.script_path, 'r') as f:
                     code = compile(f.read(), self.script_path, 'exec')
-                    exec(code, {})
+                    exec(code, global_vars)
             except FormattingUnpreservable:
                 raise
             except SystemExit as e:

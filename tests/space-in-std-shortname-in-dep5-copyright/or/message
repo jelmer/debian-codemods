@@ -1,0 +1,2 @@
+Replace spaces in short license names with dashes.
+Fixed-Lintian-Tags: space-in-std-shortname-in-dep5-copyright
