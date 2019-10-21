@@ -63,9 +63,6 @@ Lintian-Tags: debian-control-has-empty-field
 Fix-Script: debian-control-has-obsolete-dbg-package.py
 Lintian-Tags: debian-control-has-obsolete-dbg-package
 
-Fix-Script: debian-watch-file-is-missing.py
-Lintian-Tags: debian-watch-file-is-missing
-
 Fix-Script: debian-pycompat-is-obsolete.sh
 Lintian-Tags: debian-pycompat-is-obsolete
 
@@ -198,6 +195,9 @@ Fix-Script: copyright-missing-upstream-info.py
 
 Fix-Script: upstream-metadata-file-is-missing.py
 Lintian-Tags: upstream-metadata-file-is-missing
+
+Fix-Script: debian-watch-file-is-missing.py
+Lintian-Tags: debian-watch-file-is-missing
 
 Fix-Script: useless-autoreconf-build-depends.py
 Lintian-Tags: useless-autoreconf-build-depends

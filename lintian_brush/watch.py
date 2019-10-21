@@ -94,7 +94,7 @@ class Watch(object):
         self.version = version
         self.script = script
         if opts is None:
-            opts = {}
+            opts = []
         self.options = opts
 
     def __repr__(self):
