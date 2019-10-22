@@ -5,6 +5,7 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
   * Replace spaces with dashes in license ids, for all SPDX license
     names. Closes: #942722
   * Update standards version to 4.4.1, no changes needed.
+  * Remove unnecessary 'git' usernames from salsa and github URLs.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 19 Oct 2019 15:50:25 +0000
 

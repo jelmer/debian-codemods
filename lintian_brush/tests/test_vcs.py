@@ -66,6 +66,15 @@ class FixUpGitUrlTests(TestCase):
             'https://salsa.debian.org/salve/auctex.git',
             fixup_broken_git_url('https://salsa.debian.org//salve/auctex.git'))
 
+    def test_strip_username(self):
+        self.assertEqual(
+            'git://github.com/RPi-Distro/pgzero.git',
+            fixup_broken_git_url('git://git@github.com:RPi-Distro/pgzero.git'))
+        self.assertEqual(
+            'https://salsa.debian.org/debian-astro-team/pyavm.git',
+            fixup_broken_git_url(
+                'https://git@salsa.debian.org:debian-astro-team/pyavm.git'))
+
 
 class SanitizeUrlTests(TestCase):
 

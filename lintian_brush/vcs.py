@@ -35,15 +35,13 @@ def fix_path_in_port(parsed, branch):
     if ':' not in parsed.netloc or parsed.netloc.endswith(']'):
         return None, None
     host, port = parsed.netloc.rsplit(':', 1)
-    if host not in ('salsa.debian.org', 'github.com'):
+    if host.split('@')[-1] not in ('salsa.debian.org', 'github.com'):
         return None, None
     if not port or port.isdigit():
         return None, None
-    if '/' not in parsed.path[1:]:
-        return parsed._replace(
-            path='%s/%s' % (port, parsed.path.lstrip('/')),
-            netloc=host), branch
-    return None, None
+    return parsed._replace(
+        path='%s/%s' % (port, parsed.path.lstrip('/')),
+        netloc=host), branch
 
 
 def fix_salsa_scheme(parsed, branch):
@@ -74,6 +72,16 @@ def fix_double_slash(parsed, branch):
     return None, None
 
 
+def drop_git_username(parsed, branch):
+    if parsed.hostname not in ('salsa.debian.org', 'github.com'):
+        return None, None
+    if parsed.scheme not in ('git', 'http', 'https'):
+        return None, None
+    if parsed.username == 'git' and parsed.netloc.startswith('git@'):
+        return parsed._replace(netloc=parsed.netloc[4:]), branch
+    return None, None
+
+
 def fixup_broken_git_url(url):
     """Attempt to fix up broken Git URLs.
 
@@ -87,7 +95,7 @@ def fixup_broken_git_url(url):
     parsed = urlparse(repo_url)
     changed = False
     for fn in [fix_path_in_port, fix_salsa_scheme, fix_salsa_cgit_url,
-               fix_salsa_tree_in_url, fix_double_slash]:
+               fix_salsa_tree_in_url, fix_double_slash, drop_git_username]:
         newparsed, newbranch = fn(parsed, branch)
         if newparsed:
             changed = True
