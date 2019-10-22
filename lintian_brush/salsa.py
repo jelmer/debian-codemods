@@ -110,6 +110,11 @@ TEAM_NAME_MAP = {
     'pkg-mysql': 'mariadb-team',
     'pkg-php': 'php-team',
     'pkg-qemu': 'qemu-team',
+    'pkg-xmpp': 'xmpp-team',
+    'uefi': 'efi-team',
+    'pkg-manpages-fr': 'l10n-fr-team',
+    'pkg-proftpd': 'debian-proftpd-team',
+    'pkg-apache': 'apache-team',
 }
 
 
@@ -236,7 +241,7 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
                     TEAM_NAME_MAP[parts[0]], parts[-1])
             if (len(parts) == 3 and
                     parts[0] in TEAM_NAME_MAP and
-                    parts[1] == 'packages'):
+                    parts[1] in ('packages', 'unstable')):
                 return 'https://salsa.debian.org/%s/%s' % (
                     TEAM_NAME_MAP[parts[0]], parts[2])
     return None

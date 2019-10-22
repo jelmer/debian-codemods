@@ -134,6 +134,16 @@ class SalsaUrlFromAliothUrlTests(TestCase):
                 'git',
                 'git://anonscm.debian.org/pkg-kde/kde-extras/'
                 'plasma-widget-menubar.git'))
+        self.assertEqual(
+            'https://salsa.debian.org/fonts-team/fonts-beteckna.git',
+            salsa_url_from_alioth_url(
+                'git',
+                'git://anonscm.debian.org/pkg-fonts/fonts-beteckna.git'))
+        self.assertEqual(
+            'https://salsa.debian.org/brlink/xwit.git',
+            salsa_url_from_alioth_url(
+                'git',
+                'git://anonscm.debian.org/users/brlink/xwit.git'))
 
     def test_svn(self):
         self.assertEqual(
@@ -205,3 +215,8 @@ class SalsaUrlFromAliothUrlTests(TestCase):
                 'svn',
                 'svn://anonscm.debian.org/python-apps/packages/hotssh/trunk/'
             ))
+        self.assertEqual(
+            'https://salsa.debian.org/debichem-team/drawxtl',
+            salsa_url_from_alioth_url(
+                'svn',
+                'svn://svn.debian.org/svn/debichem/unstable/drawxtl'))
