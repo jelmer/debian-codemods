@@ -14,4 +14,4 @@ mode: debian-changelog
 /smg' -i debian/changelog
 
 echo "Drop no longer supported add-log-mailing-address setting from debian/changelog."
-echo "Fixes-Lintian-Tags: debian-changelog-file-contains-obsolete-user-emacs-setting"
+echo "Fixed-Lintian-Tags: debian-changelog-file-contains-obsolete-user-emacs-setting"

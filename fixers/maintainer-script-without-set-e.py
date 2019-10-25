@@ -38,4 +38,4 @@ for name in SCRIPTS:
 
 
 print('Use set -e rather than passing -e on the shebang-line.')
-print('Fixes-Lintian-Tags: maintainer-script-without-set-e')
+print('Fixed-Lintian-Tags: maintainer-script-without-set-e')
