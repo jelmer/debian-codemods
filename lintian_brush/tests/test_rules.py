@@ -22,6 +22,7 @@ from breezy.tests import (
     )
 
 from lintian_brush.rules import (
+    dh_invoke_drop_with,
     update_rules,
     )
 
@@ -50,3 +51,23 @@ all:
 \techo bloe
 \techo foo
 """, 'debian/rules')
+
+
+class InvokeDropWithTests(TestCaseWithTransport):
+
+    def test_drop_with(self):
+        self.assertEqual(
+            b'dh',
+            dh_invoke_drop_with(b'dh --with=blah', b'blah'))
+        self.assertEqual(
+            b'dh --with=foo',
+            dh_invoke_drop_with(b'dh --with=blah,foo', b'blah'))
+        self.assertEqual(
+            b'dh --with=foo --other',
+            dh_invoke_drop_with(b'dh --with=blah,foo --other', b'blah'))
+        self.assertEqual(
+            b'dh',
+            dh_invoke_drop_with(b'dh --with=blah', b'blah'))
+        self.assertEqual(
+            b'dh --with=foo',
+            dh_invoke_drop_with(b'dh --with=foo,blah', b'blah'))

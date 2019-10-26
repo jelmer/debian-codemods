@@ -1,3 +1,9 @@
+lintian-brush (0.40) UNRELEASED; urgency=medium
+
+  * Fix stripping the last argument to --with.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 26 Oct 2019 16:10:28 +0000
+
 lintian-brush (0.39) unstable; urgency=medium
 
   * Set somewhat more aggressive timeout for HTTP requests.
