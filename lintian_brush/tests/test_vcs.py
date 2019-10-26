@@ -20,6 +20,7 @@
 from unittest import TestCase
 
 from lintian_brush.vcs import (
+    determine_browser_url,
     fixup_broken_git_url,
     sanitize_url,
     )
@@ -90,3 +91,19 @@ class SanitizeUrlTests(TestCase):
         self.assertEqual(
             'https://github.com/jelmer/blah',
             sanitize_url('git+https://github.com/jelmer/blah'))
+
+
+class DetermineBrowserUrlTests(TestCase):
+
+    def test_github(self):
+        self.assertEqual(
+            'https://github.com/jelmer/dulwich',
+            determine_browser_url('git', 'https://github.com/jelmer/dulwich.git'))
+        self.assertEqual(
+            'https://github.com/jelmer/dulwich/tree/master',
+            determine_browser_url(
+                'git', 'https://github.com/jelmer/dulwich.git -b master'))
+        self.assertEqual(
+            'https://github.com/jelmer/dulwich/tree/master',
+            determine_browser_url(
+                'git', 'git://github.com/jelmer/dulwich -b master'))

@@ -7,6 +7,7 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
     names. Closes: #942722
   * Update standards version to 4.4.1, no changes needed.
   * Remove unnecessary 'git' usernames from salsa and github URLs.
+  * Fix including branch names for GitHub URLs.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
 

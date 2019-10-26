@@ -22,6 +22,8 @@ __all__ = ['guess_repository_url', 'determine_browser_url']
 import re
 from urllib.parse import urlparse
 
+from .vcs import extract_vcs_url_branch
+
 
 MAINTAINER_EMAIL_MAP = {
     'pkg-javascript-devel@lists.alioth.debian.org': 'js-team',
@@ -146,10 +148,7 @@ def determine_browser_url(url):
     Returns:
       a browser URL
     """
-    if ' -b ' in url:
-        (url, branch) = url.split(' -b ', 1)
-    else:
-        branch = None
+    (url, branch) = extract_vcs_url_branch(url)
     parsed_url = urlparse(url)
     # TODO(jelmer): Add support for branches
     assert parsed_url.netloc == 'salsa.debian.org'

@@ -17,11 +17,24 @@
 
 """Utility functions for dealing with Vcs URLs of various types."""
 
-__all__ = ['fixup_broken_git_url', 'sanitize_url']
+__all__ = [
+    'fixup_broken_git_url',
+    'sanitize_url',
+    'extract_vcs_url_branch',
+    'determine_browser_url',
+    ]
 
-from .salsa import determine_browser_url as determine_salsa_browser_url
 
+import posixpath
 from urllib.parse import urlparse, urlunparse
+
+
+def extract_vcs_url_branch(url):
+    try:
+        (repo_url, branch) = url.split(' -b ', 1)
+    except ValueError:
+        return (url, None)
+    return (repo_url, branch)
 
 
 def sanitize_url(url):
@@ -87,11 +100,8 @@ def fixup_broken_git_url(url):
 
     A common misspelling is to add an extra ":" after the hostname
     """
-    try:
-        (repo_url, branch) = url.split(' -b ', 1)
-    except ValueError:
-        repo_url = url
-        branch = None
+    repo_url, branch = extract_vcs_url_branch(url)
+
     parsed = urlparse(repo_url)
     changed = False
     for fn in [fix_path_in_port, fix_salsa_scheme, fix_salsa_cgit_url,
@@ -127,11 +137,16 @@ def probe_vcs_url(url):
 
 
 def determine_browser_url(vcs_type, vcs_url):
-    parsed = urlparse(vcs_url)
+    repo_url, branch = extract_vcs_url_branch(vcs_url)
+    parsed = urlparse(repo_url)
     if parsed.netloc == 'salsa.debian.org':
+        from .salsa import determine_browser_url as determine_salsa_browser_url
         return determine_salsa_browser_url(vcs_url)
     if parsed.netloc == 'github.com':
+        path = parsed.path.rstrip('.git')
+        if branch:
+            path = posixpath.join(path, 'tree', branch)
         return urlunparse(
-            ('https', parsed.netloc, parsed.path.rstrip('.git'),
+            ('https', parsed.netloc, path,
              parsed.query, parsed.params, parsed.fragment))
     return None
