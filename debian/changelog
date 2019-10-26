@@ -1,4 +1,4 @@
-lintian-brush (0.39) UNRELEASED; urgency=medium
+lintian-brush (0.39) unstable; urgency=medium
 
   * Set somewhat more aggressive timeout for HTTP requests.
   * Properly cope with trailing commas when adding dependencies.
@@ -7,7 +7,7 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
   * Update standards version to 4.4.1, no changes needed.
   * Remove unnecessary 'git' usernames from salsa and github URLs.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 19 Oct 2019 15:50:25 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
 
 lintian-brush (0.38) unstable; urgency=medium
 
