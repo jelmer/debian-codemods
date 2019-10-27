@@ -249,37 +249,47 @@ def replace_deprecated_same_arch(line, target):
     return line
 
 
+def upgrade_to_no_stop_on_upgrade(line, target):
+    if line.startswith(b'dh ') or line.startswith(b'dh_installinit'):
+        line = update_line(
+            line, b'--no-restart-on-upgrade',
+            b'--no-stop-on-upgrade',
+            'Replace --no-restart-on-upgrade with --no-stop-on-upgrade.')
+    return line
+
+
 def upgrade_to_debhelper_12():
 
     def cb(line, target):
         line = replace_deprecated_same_arch(line, target)
         line = upgrade_to_pybuild(line, target)
         line = upgrade_to_dh_prep(line, target)
-        if line.startswith(b'dh ') or line.startswith(b'dh_installinit'):
-            line = update_line(
-                line, b'--no-restart-on-upgrade',
-                b'--no-stop-on-upgrade',
-                'Replace --no-restart-on-upgrade with --no-stop-on-upgrade.')
+        line = upgrade_to_no_stop_on_upgrade(line, target)
         line = upgrade_to_dh_missing(line, target)
         return line
 
     update_rules(cb)
 
 
+def upgrade_to_installsystemd(line, target):
+    line = dh_invoke_drop_with(line, b'systemd')
+    if line.startswith(b'dh_systemd_enable'):
+        line = update_line(
+            line, b'dh_systemd_enable', b'dh_installsystemd',
+            'Use dh_installsystemd rather than deprecated '
+            'dh_systemd_enable.')
+    if line.startswith(b'dh_systemd_start'):
+        line = update_line(
+            line, b'dh_systemd_start', b'dh_installsystemd',
+            'Use dh_installsystemd rather than deprecated '
+            'dh_systemd_start.')
+    return line
+
+
 def upgrade_to_debhelper_11():
 
     def cb(line, target):
-        line = dh_invoke_drop_with(line, b'systemd')
-        if line.startswith(b'dh_systemd_enable'):
-            line = update_line(
-                line, b'dh_systemd_enable', b'dh_installsystemd',
-                'Use dh_installsystemd rather than deprecated '
-                'dh_systemd_enable.')
-        if line.startswith(b'dh_systemd_start'):
-            line = update_line(
-                line, b'dh_systemd_start', b'dh_installsystemd',
-                'Use dh_installsystemd rather than deprecated '
-                'dh_systemd_start.')
+        line = upgrade_to_installsystemd(line, target)
         return line
 
     update_rules(cb)
