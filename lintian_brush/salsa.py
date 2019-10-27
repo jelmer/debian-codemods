@@ -124,6 +124,7 @@ GIT_PATH_RENAMES = {
     '3dprinter/applications': '3dprinting-team',
     'pkg-emacsen/pkg': 'emacsen-team',
     'debian-astro/applications': 'debian-astro-team',
+    'debian-islamic/packages': 'islamic-team',
 }
 
 
