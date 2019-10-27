@@ -243,6 +243,16 @@ class EnsureMinimumVersionTests(TestCase):
         self.assertEqual(
             'blah, debhelper (>= 9)',
             ensure_minimum_version('blah, debhelper (>= 8)', 'debhelper', '9'))
+        self.assertEqual(
+            'blah, debhelper (>= 9)',
+            ensure_minimum_version(
+                'blah, debhelper (>= 8), debhelper (>= 8.1) | dh-systemd',
+                'debhelper', '9'))
+        self.assertEqual(
+            'blah, debhelper (>= 9), debhelper (>= 10) | dh-systemd',
+            ensure_minimum_version(
+                'blah, debhelper (>= 8), debhelper (>= 10) | dh-systemd',
+                'debhelper', '9'))
 
 
 class EnsureSomeVersionTests(TestCase):

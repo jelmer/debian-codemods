@@ -210,16 +210,28 @@ def ensure_minimum_version(relationstr, package, minimum_version):
     Returns:
       updated relation string
     """
+    def is_obsolete(relation):
+        for r in relation:
+            if r.name != package:
+                continue
+            if r.version[0] == '>>' and r.version[1] < minimum_version:
+                return True
+            if r.version[0] == '>=' and r.version[1] <= minimum_version:
+                return True
+        return False
+
     minimum_version = Version(minimum_version)
     found = False
     changed = False
     relations = parse_relations(relationstr)
-    for (head_whitespace, relation, tail_whitespace) in relations:
+    obsolete_relations = []
+    for i, (head_whitespace, relation, tail_whitespace) in enumerate(
+            relations):
         if isinstance(relation, str):  # formatting
             continue
         names = [r.name for r in relation]
-        if len(names) > 1 and names[0] == package:
-            raise Exception("Complex rule for %s , aborting" % package)
+        if len(names) > 1 and package in names and is_obsolete(relation):
+                obsolete_relations.append(i)
         if names != [package]:
             continue
         found = True
@@ -232,6 +244,8 @@ def ensure_minimum_version(relationstr, package, minimum_version):
         _add_dependency(
             relations,
             [PkgRelation(name=package, version=('>=', minimum_version))])
+    for i in reversed(obsolete_relations):
+        del relations[i]
     if changed:
         return format_relations(relations)
     # Just return the original; we don't preserve all formatting yet.
