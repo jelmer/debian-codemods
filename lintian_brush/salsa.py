@@ -197,7 +197,8 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
             for i in range(len(parts), 0, -1):
                 subpath = '/'.join(parts[:i])
                 try:
-                    return ('https://salsa.debian.org/' +
+                    return (
+                        'https://salsa.debian.org/' +
                         GIT_PATH_RENAMES[subpath] + '/' +
                         '/'.join(parts[i:]))
                 except KeyError:

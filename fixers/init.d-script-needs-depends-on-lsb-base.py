@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import update_control, add_dependency
+from lintian_brush.control import update_control, ensure_some_version
 import os
 
 needs_lsb_base = set()
@@ -22,7 +22,7 @@ if needs_lsb_base:
     def add_lsb_base(binary):
         if binary['Package'] not in needs_lsb_base:
             return
-        binary['Depends'] = add_dependency(binary['Depends'], 'lsb-base')
+        binary['Depends'] = ensure_some_version(binary['Depends'], 'lsb-base')
     update_control(binary_package_cb=add_lsb_base)
 
 print('Add missing dependency on lsb-base.')

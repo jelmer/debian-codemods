@@ -231,7 +231,7 @@ def ensure_minimum_version(relationstr, package, minimum_version):
             continue
         names = [r.name for r in relation]
         if len(names) > 1 and package in names and is_obsolete(relation):
-                obsolete_relations.append(i)
+            obsolete_relations.append(i)
         if names != [package]:
             continue
         found = True
