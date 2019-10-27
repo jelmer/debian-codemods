@@ -260,15 +260,13 @@ def upgrade_to_no_stop_on_upgrade(line, target):
 
 def upgrade_to_debhelper_12():
 
-    def cb(line, target):
-        line = replace_deprecated_same_arch(line, target)
-        line = upgrade_to_pybuild(line, target)
-        line = upgrade_to_dh_prep(line, target)
-        line = upgrade_to_no_stop_on_upgrade(line, target)
-        line = upgrade_to_dh_missing(line, target)
-        return line
-
-    update_rules(cb)
+    update_rules([
+        replace_deprecated_same_arch,
+        upgrade_to_pybuild,
+        upgrade_to_dh_prep,
+        upgrade_to_no_stop_on_upgrade,
+        upgrade_to_dh_missing,
+        ])
 
 
 def upgrade_to_installsystemd(line, target):
@@ -288,11 +286,7 @@ def upgrade_to_installsystemd(line, target):
 
 def upgrade_to_debhelper_11():
 
-    def cb(line, target):
-        line = upgrade_to_installsystemd(line, target)
-        return line
-
-    update_rules(cb)
+    update_rules([upgrade_to_installsystemd])
     for name in os.listdir('debian'):
         parts = name.split('.')
         if len(parts) < 2 or parts[-1] != 'upstart':

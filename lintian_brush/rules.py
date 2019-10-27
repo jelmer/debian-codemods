@@ -40,10 +40,12 @@ def update_rules(command_line_cb=None, global_line_cb=None,
     target = None
     for line in original_contents.splitlines():
         if line.startswith(b'\t'):
-            if command_line_cb is not None:
-                ret = command_line_cb(line[1:], target)
-            else:
-                ret = line[1:]
+            ret = line[1:]
+            if callable(command_line_cb):
+                ret = command_line_cb(ret, target)
+            elif isinstance(command_line_cb, list):
+                for fn in command_line_cb:
+                    ret = fn(ret, target)
             if isinstance(ret, bytes):
                 newlines.append(b'\t' + ret)
             elif isinstance(ret, list):
