@@ -3,6 +3,7 @@
 from lintian_brush.control import (
     update_control,
     add_dependency,
+    drop_dependency,
     get_relation,
     iter_relations,
     )
@@ -25,7 +26,10 @@ def check_go_package(control):
 def add_built_using(control):
     if control.get('Architecture', default_architecture) == 'all':
         if 'Built-Using' in control:
-            del control['Built-Using']
+            control['Built-Using'] = drop_dependency(
+                control['Built-Using'], '${misc:Built-Using}')
+            if not control['Built-Using']:
+                del control['Built-Using']
             removed.append(control['Package'])
     else:
         if go_package:
@@ -45,7 +49,7 @@ if added:
     print('Add missing ${misc:Built-Using} to Built-Using on %s.' %
           ', '.join(added))
 if removed:
-    print('Remove unnecessary Built-Using on %s' %
+    print('Remove unnecessary ${misc:Built-Using} for %s' %
           ', '.join(removed))
 print('Fixed-Lintian-Tags: '
       'missing-built-using-field-for-golang-package')

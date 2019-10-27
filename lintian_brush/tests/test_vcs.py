@@ -98,7 +98,8 @@ class DetermineBrowserUrlTests(TestCase):
     def test_github(self):
         self.assertEqual(
             'https://github.com/jelmer/dulwich',
-            determine_browser_url('git', 'https://github.com/jelmer/dulwich.git'))
+            determine_browser_url(
+                'git', 'https://github.com/jelmer/dulwich.git'))
         self.assertEqual(
             'https://github.com/jelmer/dulwich/tree/master',
             determine_browser_url(
