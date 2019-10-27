@@ -44,6 +44,10 @@ def sanitize_url(url):
     return fixup_broken_git_url(url)
 
 
+def plausible_url(url):
+    return ':' in url
+
+
 def fix_path_in_port(parsed, branch):
     if ':' not in parsed.netloc or parsed.netloc.endswith(']'):
         return None, None

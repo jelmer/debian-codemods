@@ -26,6 +26,7 @@ from urllib.parse import urlparse, urlunparse
 from warnings import warn
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.vcs import (
+    plausible_url as plausible_vcs_url,
     sanitize_url as sanitize_vcs_url,
     probe_vcs_url,
     )
@@ -311,7 +312,8 @@ def guess_from_readme(path, trust_package):
                         url = args[-2]
                     except IndexError:
                         url = args[0]
-                    urls.append(sanitize_vcs_url(url))
+                    if plausible_vcs_url(url):
+                        urls.append(sanitize_vcs_url(url))
     except IsADirectoryError:
         pass
 

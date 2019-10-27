@@ -22,6 +22,7 @@ from unittest import TestCase
 from lintian_brush.vcs import (
     determine_browser_url,
     fixup_broken_git_url,
+    plausible_url,
     sanitize_url,
     )
 
@@ -108,3 +109,13 @@ class DetermineBrowserUrlTests(TestCase):
             'https://github.com/jelmer/dulwich/tree/master',
             determine_browser_url(
                 'git', 'git://github.com/jelmer/dulwich -b master'))
+
+
+class PlausibleUrlTests(TestCase):
+
+    def test_url(self):
+        self.assertFalse(plausible_url('the'))
+        self.assertFalse(plausible_url('1'))
+        self.assertTrue(plausible_url('git@foo:blah'))
+        self.assertTrue(plausible_url('git+ssh://git@foo/blah'))
+        self.assertTrue(plausible_url('https://foo/blah'))
