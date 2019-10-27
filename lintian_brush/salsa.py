@@ -119,6 +119,13 @@ TEAM_NAME_MAP = {
     'pkg-apache': 'apache-team',
 }
 
+GIT_PATH_RENAMES = {
+    'pkg-kde/applications': 'qt-kde-team/kde',
+    '3dprinter/applications': '3dprinting-team',
+    'pkg-emacsen/pkg': 'emacsen-team',
+    'debian-astro/applications': 'debian-astro-team',
+}
+
 
 def guess_repository_url(package, maintainer_email):
     """Guess the repository URL for a package hosted on Salsa.
@@ -181,6 +188,19 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
         m = "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?users/"
         if re.match(m, alioth_url):
             return re.sub(m, 'https://salsa.debian.org/', alioth_url)
+        m = re.match(
+            "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?(.+)",
+            alioth_url)
+        if m:
+            parts = m.group(4).split('/')
+            for i in range(len(parts), 0, -1):
+                subpath = '/'.join(parts[:i])
+                try:
+                    return ('https://salsa.debian.org/' +
+                        GIT_PATH_RENAMES[subpath] + '/' +
+                        '/'.join(parts[i:]))
+                except KeyError:
+                    pass
         m = re.match(
             "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?([^/]+)/",
             alioth_url)

@@ -144,6 +144,23 @@ class SalsaUrlFromAliothUrlTests(TestCase):
             salsa_url_from_alioth_url(
                 'git',
                 'git://anonscm.debian.org/users/brlink/xwit.git'))
+        self.assertEqual(
+            'https://salsa.debian.org/qt-kde-team/kde/kruler',
+            salsa_url_from_alioth_url(
+                'git',
+                'https://anonscm.debian.org/git/pkg-kde/applications/'
+                'kruler'))
+        self.assertEqual(
+            'https://salsa.debian.org/3dprinting-team/arduino-mighty',
+            salsa_url_from_alioth_url(
+                'git',
+                'https://anonscm.debian.org/git/3dprinter/applications/'
+                'arduino-mighty'))
+        self.assertEqual(
+            'https://salsa.debian.org/emacsen-team/lua-mode',
+            salsa_url_from_alioth_url(
+                'git',
+                'https://anonscm.debian.org/git/pkg-emacsen/pkg/lua-mode'))
 
     def test_svn(self):
         self.assertEqual(

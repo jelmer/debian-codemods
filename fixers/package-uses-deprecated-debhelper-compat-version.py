@@ -118,7 +118,7 @@ else:
             if debhelper_compat_relation[0].version[0] != '=':
                 # Not sure how to deal with this..
                 sys.exit(2)
-            current_debhelper_compat_version = Version(
+            current_debhelper_compat_version = int(
                 debhelper_compat_relation[0].version[1])
         if current_debhelper_compat_version < new_debhelper_compat_version:
             control["Build-Depends"] = ensure_exact_version(

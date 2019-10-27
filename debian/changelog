@@ -9,6 +9,7 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
   * Remove unnecessary 'git' usernames from salsa and github URLs.
   * Fix including branch names for GitHub URLs.
   * Don't remove Built-Using variables that are unrelated to go.
+  * Support more complex alioth URLs.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
 
