@@ -2,3 +2,6 @@
 
 %:
 	dh $@ --with python2 --buildsystem=pybuild
+
+override_dh_auto_build:
+	PYBUILD_BUILD_ARGS=--install-lib=foo dh_auto_build

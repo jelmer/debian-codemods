@@ -13,6 +13,7 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
   * Support updating non-trivial debhelper dependencies.
   * init.d-script-needs-depends-on-lsb-base: don't add lsb-base
     dependency if one already exists.
+  * Migrate python_distutils arguments to pybuild.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
 

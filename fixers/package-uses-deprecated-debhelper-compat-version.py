@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 import os
+import re
+import shlex
 import subprocess
 import sys
 from debian.changelog import Version
@@ -187,34 +189,49 @@ if (defined($b)) { print($b->NAME); } else { print("_undefined_"); }\
     return output
 
 
-def upgrade_to_pybuild(line, target):
-    """Upgrade from python_distutils to pybuild."""
-    # TODO(jelmer): Also make sure that any extra arguments to
-    # e.g. dh_auto_build get upgraded. E.g.
-    # this works with disutils but not pybuild:
-    # dh_auto_build -- --executable=/usr/bin/python
-    # TODO(jelmer): Also add a dependency on dh-python
-    line = update_line(
-        line, b'--buildsystem=python_distutils', b'--buildsystem=pybuild',
-        'Replace python_distutils buildsystem with pybuild.')
-    line = update_line(
-        line, b'--buildsystem python_distutils', b'--buildsystem=pybuild',
-        'Replace python_distutils buildsystem with pybuild.')
-    line = update_line(
-        line, b'-O--buildsystem=python_distutils',
-        b'-O--buildsystem=pybuild',
-        'Replace python_distutils buildsystem with pybuild.')
-    if line.startswith(b'dh ') and b'buildsystem' not in line:
+class PybuildUpgrader(object):
+
+    def __init__(self):
+        # Does the dh line specify --buildsystem=pybuild?
+        self.upgraded = False
+
+    def fix_line(self, line, target):
+        """Upgrade from python_distutils to pybuild."""
+        line = update_line(
+            line, b'--buildsystem=python_distutils', b'--buildsystem=pybuild',
+            'Replace python_distutils buildsystem with pybuild.')
+        line = update_line(
+            line, b'--buildsystem python_distutils', b'--buildsystem=pybuild',
+            'Replace python_distutils buildsystem with pybuild.')
+        line = update_line(
+            line, b'-O--buildsystem=python_distutils',
+            b'-O--buildsystem=pybuild',
+            'Replace python_distutils buildsystem with pybuild.')
         if target.decode() in DEBHELPER_BUILD_STEPS:
             step = target.decode()
-        elif target.startswith(b'dh_auto_'):
-            step = target[len(b'dh_auto_')].decode()
+        elif target.startswith(b'override_dh_auto_'):
+            step = target[len(b'override_dh_auto_'):].decode()
         else:
             step = None
-        buildsystem = detect_debhelper_buildsystem(step)
-        if buildsystem == 'python_distutils':
-            line += b' --buildsystem=pybuild'
-    return line
+        if line.startswith(b'dh '):
+            if b'buildsystem' not in line:
+                buildsystem = detect_debhelper_buildsystem(step)
+                if buildsystem == 'python_distutils':
+                    line += b' --buildsystem=pybuild'
+                self.upgraded = True
+            else:
+                if b'buildsystem=pybuild' in line:
+                    self.upgraded = True
+        if (line.startswith(b'dh_auto_') and
+            b' -- ' in line and
+            (self.upgraded or
+                re.match(b'--buildsystem[= ]pybuild', line) or
+                detect_debhelper_buildsystem(step) == 'pybuild')):
+            line, rest = line.split(b' -- ', 1)
+            line = (b'PYBUILD_' + step.upper().encode() + b'_ARGS=' +
+                    shlex.quote(rest.decode()).encode() + b' ' + line)
+
+        return line
 
 
 def upgrade_to_dh_prep(line, target):
@@ -260,9 +277,10 @@ def upgrade_to_no_stop_on_upgrade(line, target):
 
 def upgrade_to_debhelper_12():
 
+    pybuild_upgrader = PybuildUpgrader()
     update_rules([
         replace_deprecated_same_arch,
-        upgrade_to_pybuild,
+        pybuild_upgrader.fix_line,
         upgrade_to_dh_prep,
         upgrade_to_no_stop_on_upgrade,
         upgrade_to_dh_missing,
