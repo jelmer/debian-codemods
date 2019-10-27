@@ -178,6 +178,8 @@ DEBHELPER_BUILD_STEPS = ['configure', 'build', 'test', 'install', 'clean']
 
 
 def detect_debhelper_buildsystem(step=None):
+    if os.path.exists('configure.ac') or os.path.exists('configure.in'):
+        return 'autoconf'
     output = subprocess.check_output([
         'perl', '-w', '-MDebian::Debhelper::Dh_Buildsystems', '-e',
         """\
@@ -218,7 +220,7 @@ class PybuildUpgrader(object):
                 buildsystem = detect_debhelper_buildsystem(step)
                 if buildsystem == 'python_distutils':
                     line += b' --buildsystem=pybuild'
-                self.upgraded = True
+                    self.upgraded = True
             else:
                 if b'buildsystem=pybuild' in line:
                     self.upgraded = True
@@ -228,6 +230,8 @@ class PybuildUpgrader(object):
                 re.match(b'--buildsystem[= ]pybuild', line) or
                 detect_debhelper_buildsystem(step) == 'pybuild')):
             line, rest = line.split(b' -- ', 1)
+            if step is None:
+                step = line[len(b'dh_auto_'):].split(b' ', 1)[0].decode()
             line = (b'PYBUILD_' + step.upper().encode() + b'_ARGS=' +
                     shlex.quote(rest.decode()).encode() + b' ' + line)
 
