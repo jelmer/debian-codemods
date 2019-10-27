@@ -252,6 +252,10 @@ def upgrade_to_dh_missing(line, target):
         'debian/rules: Call dh_missing rather than using dh_install '
         '--list-missing.')
     line, changed = update_line_drop_argument(
+        target, line, b'dh_install', b'-O--list-missing',
+        'debian/rules: Call dh_missing rather than using dh_install '
+        '--list-missing.')
+    line, changed = update_line_drop_argument(
         target, line, b'dh_install', b'--fail-missing',
         'debian/rules: Move --fail-missing argument to dh_missing.')
     if changed:
