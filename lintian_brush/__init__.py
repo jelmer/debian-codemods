@@ -189,6 +189,18 @@ def parse_script_fixer_output(text):
     return FixerResult('\n'.join(lines), fixed_tags, certainty)
 
 
+def determine_env(current_version, compat_release, minimum_certainty,
+                  trust_package, allow_reformatting, net_access):
+    env = dict(os.environ.items())
+    env['CURRENT_VERSION'] = str(current_version)
+    env['COMPAT_RELEASE'] = compat_release
+    env['MINIMUM_CERTAINTY'] = minimum_certainty
+    env['TRUST_PACKAGE'] = 'true' if trust_package else 'false'
+    env['REFORMATTING'] = ('allow' if allow_reformatting else 'disallow')
+    env['NET_ACCESS'] = ('allow' if net_access else 'disallow')
+    return env
+
+
 class PythonScriptFixer(Fixer):
     """A fixer that is implemented as a python script.
 
@@ -208,13 +220,13 @@ class PythonScriptFixer(Fixer):
             minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
             trust_package=False, allow_reformatting=False,
             net_access=True):
-        env = dict(os.environ.items())
-        env['CURRENT_VERSION'] = str(current_version)
-        env['COMPAT_RELEASE'] = compat_release
-        env['MINIMUM_CERTAINTY'] = minimum_certainty
-        env['TRUST_PACKAGE'] = 'true' if trust_package else 'false'
-        env['REFORMATTING'] = ('allow' if allow_reformatting else 'disallow')
-        env['NET_ACCESS'] = ('allow' if net_access else 'disallow')
+        env = determine_env(
+            current_version=current_version,
+            compat_release=compat_release,
+            minimum_certainty=minimum_certainty,
+            trust_package=trust_package,
+            allow_reformatting=allow_reformatting,
+            net_access=net_access)
         try:
             old_env = os.environ
             old_stderr = sys.stderr
@@ -274,13 +286,13 @@ class ScriptFixer(Fixer):
             minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
             trust_package=False, allow_reformatting=False,
             net_access=True):
-        env = dict(os.environ.items())
-        env['CURRENT_VERSION'] = str(current_version)
-        env['COMPAT_RELEASE'] = compat_release
-        env['MINIMUM_CERTAINTY'] = minimum_certainty
-        env['TRUST_PACKAGE'] = 'true' if trust_package else 'false'
-        env['REFORMATTING'] = ('allow' if allow_reformatting else 'disallow')
-        env['NET_ACCESS'] = ('allow' if net_access else 'disallow')
+        env = determine_env(
+            current_version=current_version,
+            compat_release=compat_release,
+            minimum_certainty=minimum_certainty,
+            trust_package=trust_package,
+            allow_reformatting=allow_reformatting,
+            net_access=net_access)
         with tempfile.SpooledTemporaryFile() as stderr:
             p = subprocess.Popen(self.script_path, cwd=basedir,
                                  stdout=subprocess.PIPE, stderr=stderr,
