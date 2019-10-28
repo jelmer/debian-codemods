@@ -135,8 +135,6 @@ def guess_from_debian_watch(path, trust_package):
             if m:
                 yield "Archive", "SourceForge", "certain"
                 yield "X-SourceForge-Project", m.group(1), "certain"
-                # TODO(jelmer): Yield sourceforge project name later
-                # so something later can call get_sf_metadata ?
 
 
 def guess_from_debian_control(path, trust_package):
@@ -540,13 +538,14 @@ def guess_upstream_metadata_items(path, trust_package=False,
             yield key, value, certainty
 
 
-def guess_upstream_metadata(path, trust_package=False):
+def guess_upstream_metadata(path, trust_package=False, net_access=False):
     """Guess the upstream metadata dictionary.
 
     Args:
       path: Path to the package
       trust_package: Whether to trust the package contents and i.e. run
           executables in it
+      net_access: Whether to allow net access
     """
     current_certainty = {}
     code = {}
@@ -556,13 +555,38 @@ def guess_upstream_metadata(path, trust_package=False):
             code[key] = value
             current_certainty[key] = certainty
 
-    extend_upstream_metadata(code, current_certainty)
+    extend_upstream_metadata(code, current_certainty, net_access=net_access)
     return code
 
 
-def extend_upstream_metadata(code, certainty):
+def extend_from_sf(code, certainty, sf_project):
+    # First, make sure SF can actually provide any additional data. Otherwise,
+    # don't bother dialing out.
+
+    # The set of fields that sf can possibly provide:
+    sf_fields = ['Homepage']
+    for field in sf_fields:
+        if field not in code or certainty[field] != 'certain':
+            break
+    else:
+        return
+    data = get_sf_metadata(sf_project)
+    if 'Homepage' not in code:
+        try:
+            code['Homepage'] = data['external_homepage']
+            certainty['Homepage'] = certainty['Archive']
+        except KeyError:
+            pass
+
+
+def extend_upstream_metadata(code, certainty, net_access=False):
     """Extend a set of upstream metadata.
     """
+    if (code.get('Archive') == 'SourceForge' and
+            'X-SourceForge-Project' in code and
+            net_access):
+        sf_project = code['X-SourceForge-Project']
+        extend_from_sf(code, certainty, sf_project)
     if 'Repository' in code and 'Repository-Browse' not in code:
         browse_url = browse_url_from_repo_url(code['Repository'])
         if browse_url:
@@ -590,8 +614,17 @@ if __name__ == '__main__':
     import sys
     import ruamel.yaml
     parser = argparse.ArgumentParser(sys.argv[0])
-    parser.add_argument('path')
+    parser.add_argument('path', default='.', nargs='?')
+    parser.add_argument(
+        '--trust',
+        action='store_true',
+        help='Whether to allow running code from the package.')
+    parser.add_argument(
+        '--disable-net-access',
+        help='Do not probe external services.',
+        action='store_true', default=False)
     args = parser.parse_args()
 
-    metadata = guess_upstream_metadata(args.path)
+    metadata = guess_upstream_metadata(
+        args.path, args.trust, not args.disable_net_access)
     sys.stdout.write(ruamel.yaml.round_trip_dump(metadata))

@@ -33,23 +33,33 @@ fields = set()
 current_certainty = {k: 'certain' for k in code.keys()}
 for key, value, certainty in guess_upstream_metadata_items(
         '.', trust_package=(os.environ.get('TRUST_PACKAGE') == 'true')):
-    if key.startswith('X-') or key in ('Name', 'Contact', 'Homepage'):
-        continue
     if current_certainty.get(key) != 'certain':
         if code.get(key) != value:
             code[key] = value
             fields.add(key)
         current_certainty[key] = certainty
 
-extend_upstream_metadata(code, current_certainty)
-if os.environ.get('NET_ACCESS', 'allow') == 'allow':
+net_access = os.environ.get('NET_ACCESS', 'allow') == 'allow'
+extend_upstream_metadata(code, current_certainty, net_access=net_access)
+if net_access:
     check_upstream_metadata(code, current_certainty)
+
+
+# Drop keys that don't belong in debian/upsteam/metadata
+for key in list(code):
+    if key.startswith('X-') or key in ('Name', 'Contact', 'Homepage'):
+        del code[key]
+        del current_certainty[key]
+        fields.remove(key)
+
 
 # Drop everything that is below our minimum certainty
 for key, certainty in list(current_certainty.items()):
     if certainty == 'possible' and minimum_certainty == 'certain':
         del code[key]
         del current_certainty[key]
+        fields.remove(key)
+
 
 achieved_certainty = (
     'possible' if 'possible' in current_certainty.values() else 'certain')
