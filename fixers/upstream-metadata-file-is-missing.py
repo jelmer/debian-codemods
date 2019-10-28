@@ -40,7 +40,8 @@ for key, value, certainty in guess_upstream_metadata_items(
         current_certainty[key] = certainty
 
 net_access = os.environ.get('NET_ACCESS', 'allow') == 'allow'
-extend_upstream_metadata(code, current_certainty, net_access=net_access)
+fields.update(extend_upstream_metadata(
+    code, current_certainty, net_access=net_access))
 if net_access:
     check_upstream_metadata(code, current_certainty)
 
@@ -50,7 +51,8 @@ for key in list(code):
     if key.startswith('X-') or key in ('Name', 'Contact', 'Homepage'):
         del code[key]
         del current_certainty[key]
-        fields.remove(key)
+        if key in fields:
+            fields.remove(key)
 
 
 # Drop everything that is below our minimum certainty
@@ -58,8 +60,8 @@ for key, certainty in list(current_certainty.items()):
     if certainty == 'possible' and minimum_certainty == 'certain':
         del code[key]
         del current_certainty[key]
-        fields.remove(key)
-
+        if key in fields:
+            fields.remove(key)
 
 achieved_certainty = (
     'possible' if 'possible' in current_certainty.values() else 'certain')

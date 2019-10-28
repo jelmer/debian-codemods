@@ -570,6 +570,7 @@ def extend_from_sf(code, certainty, sf_project):
             break
     else:
         return
+    fields = set()
     data = get_sf_metadata(sf_project)
     if 'Homepage' not in code:
         try:
@@ -577,22 +578,28 @@ def extend_from_sf(code, certainty, sf_project):
             certainty['Homepage'] = certainty['Archive']
         except KeyError:
             pass
+        else:
+            fields.add('Homepage')
+    return fields
 
 
 def extend_upstream_metadata(code, certainty, net_access=False):
     """Extend a set of upstream metadata.
     """
+    fields = set()
     if (code.get('Archive') == 'SourceForge' and
             'X-SourceForge-Project' in code and
             net_access):
         sf_project = code['X-SourceForge-Project']
-        extend_from_sf(code, certainty, sf_project)
+        fields.update(extend_from_sf(code, certainty, sf_project))
     if 'Repository' in code and 'Repository-Browse' not in code:
         browse_url = browse_url_from_repo_url(code['Repository'])
         if browse_url:
             code['Repository-Browse'] = browse_url
             certainty['Repository-Browse'] = certainty['Repository']
+            fields.add('Repository-Browse')
     # TODO(jelmer): Try deriving bug-database too?
+    return fields
 
 
 def check_upstream_metadata(code, certainty):
