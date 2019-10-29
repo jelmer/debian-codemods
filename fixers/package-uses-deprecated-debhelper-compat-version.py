@@ -283,10 +283,27 @@ def upgrade_to_no_stop_on_upgrade(line, target):
     return line
 
 
+def debhelper_argument_order(line, target):
+    if line.startswith(b'dh '):
+        args = line.split(b' ')
+        try:
+            x = args.index(b'$*')
+        except ValueError:
+            try:
+                x = args.index(b'$@')
+            except ValueError:
+                return line
+        args.pop(x)
+        args.insert(1, b'$*')
+        return b' '.join(args)
+    return line
+
+
 def upgrade_to_debhelper_12():
 
     pybuild_upgrader = PybuildUpgrader()
     update_rules([
+        debhelper_argument_order,
         replace_deprecated_same_arch,
         pybuild_upgrader.fix_line,
         upgrade_to_dh_prep,
