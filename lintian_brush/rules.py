@@ -39,7 +39,7 @@ def update_rules(command_line_cb=None, global_line_cb=None,
     newlines = []
     target = None
     for line in original_contents.splitlines():
-        if line.startswith(b'\t'):
+        if line.startswith(b'\t') and target:
             ret = line[1:]
             if callable(command_line_cb):
                 ret = command_line_cb(ret, target)
@@ -54,6 +54,9 @@ def update_rules(command_line_cb=None, global_line_cb=None,
                 raise TypeError(ret)
         elif b':' in line and b' ' not in line.split(b':')[0]:
             target = line.split(b':')[0]
+            newlines.append(line)
+        elif not line.strip():
+            target = None
             newlines.append(line)
         else:
             if global_line_cb:
