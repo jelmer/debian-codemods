@@ -15,6 +15,7 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
     dependency if one already exists.
   * Migrate python_distutils arguments to pybuild.
   * Fix debhelper argument order when upgrading to debhelper 12.
+  * Don't attempt to upgrade to debhelper X when already on X.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
 

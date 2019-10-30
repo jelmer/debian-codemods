@@ -352,7 +352,7 @@ upgrade_to_debhelper = {
 }
 
 
-for version in range(int(str(current_debhelper_compat_version)),
+for version in range(int(str(current_debhelper_compat_version))+1,
                      int(str(new_debhelper_compat_version))+1):
     try:
         upgrade_to_debhelper[version]()
