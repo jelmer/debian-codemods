@@ -286,13 +286,14 @@ def upgrade_to_no_stop_on_upgrade(line, target):
 def debhelper_argument_order(line, target):
     if line.startswith(b'dh '):
         args = line.split(b' ')
-        try:
-            x = args.index(b'$*')
-        except ValueError:
+        for possible_va in [b'$*', b'$@', b'${@}']:
             try:
-                x = args.index(b'$@')
+                x = args.index(possible_va)
             except ValueError:
-                return line
+                continue
+            break
+        else:
+            return line
         val = args.pop(x)
         args.insert(1, val)
         return b' '.join(args)
