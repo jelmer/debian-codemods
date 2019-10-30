@@ -293,8 +293,8 @@ def debhelper_argument_order(line, target):
                 x = args.index(b'$@')
             except ValueError:
                 return line
-        args.pop(x)
-        args.insert(1, b'$*')
+        val = args.pop(x)
+        args.insert(1, val)
         return b' '.join(args)
     return line
 
