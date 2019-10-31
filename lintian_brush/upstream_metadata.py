@@ -39,6 +39,28 @@ KNOWN_HOSTING_SITES = [
 KNOWN_GITLAB_SITES = ['gitlab.com', 'salsa.debian.org']
 
 
+# See https://wiki.debian.org/UpstreamMetadata
+# Supported fields:
+# - Homepage
+# - Name
+# - Contact
+# - Repository
+# - Repository-Browse
+# - Bug-Database
+# - Bug-Submit
+# - Screenshots
+# - Archive
+# - X-*
+
+# Supported, but unused.
+# - FAQ
+# - Donation
+# - Documentation
+# - Registration
+# - Security-Contact
+# - Webservice
+
+
 def get_sf_metadata(project):
     headers = {'User-Agent': USER_AGENT}
     http_url = 'https://sourceforge.net/rest/p/%s' % project
