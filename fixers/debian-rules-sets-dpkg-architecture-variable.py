@@ -4,28 +4,35 @@ import re
 from lintian_brush.rules import update_rules
 
 architecture_included = False
+INCLUDE_LINE = b'include /usr/share/dpkg/architecture.mk'
 
 
 def drop_arch_line(line):
     global architecture_included
-    if line.strip() == b'include /usr/share/dpkg/architecture.mk':
+    if line.strip() == INCLUDE_LINE:
         architecture_included = True
         return line
-    m = re.match(
-        b'([A-Z_]+)[ \t]*[:?]?=[ \t]*'
-        b'\\$\\(shell dpkg-architecture -q([A-Z_]+)\\)',
-        line.strip())
+    m = re.match(b'([A-Z_]+)[ \t]*[:?]?=[ \t]*(.*)', line.strip())
     if not m:
         return line
-    if not (m.group(1).startswith(b'DEB_HOST_') or
-            m.group(1).startswith(b'DEB_BUILD_') or
-            m.group(1).startswith(b'DEB_TARGET_')):
+    variable = m.group(1)
+    assignment = m.group(2)
+    if not (variable.startswith(b'DEB_HOST_') or
+            variable.startswith(b'DEB_BUILD_') or
+            variable.startswith(b'DEB_TARGET_')):
         return line
-    if m.group(1) != m.group(2):
-        return line
+    m = re.match(b'\\$\\(shell dpkg-architecture -q([A-Z_]+)\\)', assignment)
+    if not m or variable != m.group(1):
+        # The assignment is different; let's include
+        # the mk file *before* this assignment
+        if not architecture_included:
+            architecture_included = True
+            return [INCLUDE_LINE, line]
+        else:
+            return line
     if not architecture_included:
         architecture_included = True
-        return b'include /usr/share/dpkg/architecture.mk'
+        return INCLUDE_LINE
     return None
 
 

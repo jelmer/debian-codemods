@@ -61,8 +61,14 @@ def update_rules(command_line_cb=None, global_line_cb=None,
         else:
             if global_line_cb:
                 line = global_line_cb(line)
-            if line is not None:
+            if line is None:
+                pass
+            elif isinstance(line, list):
+                newlines.extend(line)
+            elif isinstance(line, bytes):
                 newlines.append(line)
+            else:
+                raise TypeError(line)
 
     updated_contents = b''.join([l+b'\n' for l in newlines])
     if updated_contents.strip() != original_contents.strip():

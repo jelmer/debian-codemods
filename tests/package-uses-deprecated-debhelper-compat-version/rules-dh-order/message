@@ -1,0 +1,3 @@
+Bump debhelper from deprecated 8 to 12.
++ Replace python_distutils buildsystem with pybuild.
+Fixed-Lintian-Tags: package-uses-deprecated-debhelper-compat-version
