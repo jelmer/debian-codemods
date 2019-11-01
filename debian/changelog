@@ -18,6 +18,8 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
   * Don't attempt to upgrade to debhelper X when already on X.
   * Make sure dpkg architecture flags are not included after custom
     assignments.
+  * patch-file-present-but-not-mentioned-in-series: Don't remove files
+    that start with 'README'.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
 

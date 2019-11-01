@@ -153,7 +153,7 @@ Lintian-Tags:
   package-uses-deprecated-debhelper-compat-version,
   package-uses-old-debhelper-compat-version
 
-Fix-Script: patch-file-present-but-not-mentioned-in-series.sh
+Fix-Script: patch-file-present-but-not-mentioned-in-series.py
 Lintian-Tags: patch-file-present-but-not-mentioned-in-series
 
 Fix-Script: possible-missing-colon-in-closes.sh
