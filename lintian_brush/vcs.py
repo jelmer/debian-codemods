@@ -21,20 +21,38 @@ __all__ = [
     'fixup_broken_git_url',
     'sanitize_url',
     'extract_vcs_url_branch',
+    'split_vcs_url',
     'determine_browser_url',
     ]
 
 
 import posixpath
+import re
 from urllib.parse import urlparse, urlunparse
 
 
 def extract_vcs_url_branch(url):
+    # Deprecated, use split_vcs_url
+    (repo_url, branch, subpath) = split_vcs_url(url)
+    if subpath:
+        repo_url = '%s [%s]' % (repo_url, subpath)
+    return repo_url, branch
+
+
+def split_vcs_url(url):
+    m = re.finditer(r' \[([^] ]+)\]', url)
+    try:
+        m = next(m)
+        url = url[:m.start()] + url[m.end():]
+        subpath = m.group(1)
+    except StopIteration:
+        subpath = None
     try:
         (repo_url, branch) = url.split(' -b ', 1)
     except ValueError:
-        return (url, None)
-    return (repo_url, branch)
+        branch = None
+        repo_url = url
+    return (repo_url, branch, subpath)
 
 
 def sanitize_url(url):
