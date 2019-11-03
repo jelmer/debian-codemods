@@ -45,7 +45,9 @@ new_debhelper_compat_version = {
     }.get(compat_release, MINIMUM_DEBHELPER_VERSION)
 
 
-if check_cdbs():
+uses_cdbs = check_cdbs()
+
+if uses_cdbs:
     # cdbs doesn't appear to support debhelper 11 or 12 just yet..
     new_debhelper_compat_version = min(new_debhelper_compat_version, 10)
 
@@ -59,7 +61,7 @@ if os.path.exists('debian/compat'):
     # Exclude cdbs, since it only knows to get the debhelper compat version
     # from debian/compat.
 
-    if new_debhelper_compat_version >= 11 and not check_cdbs():
+    if new_debhelper_compat_version >= 11 and not uses_cdbs:
         # Upgrade to using debhelper-compat, drop debian/compat file.
         os.unlink('debian/compat')
 
