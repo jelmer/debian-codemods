@@ -93,3 +93,8 @@ class InvokeDropWithTests(TestCaseWithTransport):
         self.assertEqual(
             b'dh --with=foo',
             dh_invoke_drop_with(b'dh --with=foo,blah', b'blah'))
+        self.assertEqual(
+            b'dh $@ --verbose --with=autoreconf,cme-upgrade',
+            dh_invoke_drop_with(
+                b'dh $@ --verbose --with autoreconf,systemd,cme-upgrade',
+                b'systemd'))

@@ -86,13 +86,15 @@ def update_rules(command_line_cb=None, global_line_cb=None,
 
 def dh_invoke_drop_with(line, with_argument):
     """Drop a particular value from a with argument."""
+    if with_argument not in line:
+        return line
     # It's the only with argument
     line = re.sub(b" --with[ =]" + with_argument + b"( .+|)$", b"\\1", line)
     # It's at the beginning of the line
     line = re.sub(b" --with[ =]" + with_argument + b",", b" --with=", line)
     # It's somewhere in the middle or at the end
     line = re.sub(
-        b" --with[ =]([^ ])," + with_argument + b"([ ,])",
+        b" --with[ =]([^,]+)," + with_argument + b"([ ,])",
         b" --with=\\1\\2", line)
     # It's at the end
     line = re.sub(
