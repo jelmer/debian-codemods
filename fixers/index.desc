@@ -15,7 +15,7 @@ Lintian-Tags: file-contains-trailing-whitespace
 Fix-Script: insecure-copyright-format-uri.sh
 Lintian-Tags: insecure-copyright-format-uri
 
-Fix-Script: unversioned-copyright-format-uri.sh
+Fix-Script: unversioned-copyright-format-uri.py
 Lintian-Tags: unversioned-copyright-format-uri
 
 Fix-Script: debian-control-has-unusual-field-spacing.py
