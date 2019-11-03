@@ -38,7 +38,13 @@ def update_rules(command_line_cb=None, global_line_cb=None,
         original_contents = f.read()
     newlines = []
     target = None
+    keep = b''
     for line in original_contents.splitlines():
+        line = keep + line
+        keep = b''
+        if line.endswith(b'\\'):
+            keep = line + b'\n'
+            continue
         if line.startswith(b'\t') and target:
             ret = line[1:]
             if callable(command_line_cb):
