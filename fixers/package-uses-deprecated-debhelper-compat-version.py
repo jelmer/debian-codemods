@@ -260,6 +260,8 @@ def upgrade_to_dh_missing(line, target):
         target, line, b'dh_install', b'--fail-missing',
         'debian/rules: Move --fail-missing argument to dh_missing.')
     if changed:
+        # TODO(jelmer): Really, this should be adding a override_dh_missing
+        # section.
         return [line, b'dh_missing --fail-missing']
     return line
 
