@@ -62,7 +62,6 @@ def update_rules(command_line_cb=None, global_line_cb=None,
             target = line.split(b':')[0]
             newlines.append(line)
         elif not line.strip():
-            target = None
             newlines.append(line)
         else:
             if global_line_cb:

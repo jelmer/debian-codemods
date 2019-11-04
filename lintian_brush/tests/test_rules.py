@@ -74,6 +74,31 @@ all:
 \techo bloe
 """, 'debian/rules')
 
+    def test_empty_line(self):
+        self.build_tree_contents([('debian/', ), ('debian/rules', """\
+SOMETHING = 1
+
+all:
+\techo blah
+
+\techo foo
+""")])
+
+        def replace(line, target):
+            if line == b'echo foo':
+                return b'echo bloe'
+            return line
+        self.assertTrue(update_rules(replace))
+        self.assertFalse(update_rules(replace))
+        self.assertFileEqual("""\
+SOMETHING = 1
+
+all:
+\techo blah
+
+\techo bloe
+""", 'debian/rules')
+
 
 class InvokeDropWithTests(TestCaseWithTransport):
 
