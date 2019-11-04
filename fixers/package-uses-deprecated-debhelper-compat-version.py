@@ -2,8 +2,9 @@
 import os
 import re
 import shlex
-import subprocess
 import sys
+import warnings
+
 from debian.changelog import Version
 from lintian_brush.control import (
     drop_dependency,
@@ -12,6 +13,10 @@ from lintian_brush.control import (
     get_relation,
     read_debian_compat_file,
     update_control,
+    )
+from lintian_brush.debhelper import (
+    detect_debhelper_buildsystem,
+    DEBHELPER_BUILD_STEPS,
     )
 from lintian_brush.rules import (
     check_cdbs,
@@ -50,6 +55,40 @@ uses_cdbs = check_cdbs()
 if uses_cdbs:
     # cdbs doesn't appear to support debhelper 11 or 12 just yet..
     new_debhelper_compat_version = min(new_debhelper_compat_version, 10)
+
+
+# If the package uses autoconf, configure doesn't contain --runstatedir, and
+# specifies --without autoreconf, then we can't upgrade beyond debhelper 10. If
+# we do, configure fails because debhelper >= 11 specifies --runstatedir.
+
+# We could choose to drop the --without autoreconf, but we don't know why the
+# maintainer chose to specify it.
+def autoreconf_disabled():
+    try:
+        with open('debian/rules', 'rb') as f:
+            for line in f:
+                if re.findall(b'--without.*autoreconf', line):
+                    return True
+    except FileNotFoundError:
+        return False
+    return False
+
+
+if autoreconf_disabled():
+    try:
+        with open('configure', 'rb') as f:
+            for line in f:
+                if b'runstatedir' in line:
+                    break
+            else:
+                new_debhelper_compat_version = min(
+                    new_debhelper_compat_version, 10)
+                warnings.warn(
+                    'Not upgrading beyond debhelper %d, since the package '
+                    'disables autoreconf but its configure does not provide '
+                    '--runstatedir.' % new_debhelper_compat_version)
+    except FileNotFoundError:
+        pass
 
 
 if os.path.exists('debian/compat'):
@@ -174,23 +213,6 @@ def update_line_replace_argument(line, old, new, description):
         subitems.add(description)
         return newline, True
     return line, False
-
-
-DEBHELPER_BUILD_STEPS = ['configure', 'build', 'test', 'install', 'clean']
-
-
-def detect_debhelper_buildsystem(step=None):
-    if os.path.exists('configure.ac') or os.path.exists('configure.in'):
-        return 'autoconf'
-    output = subprocess.check_output([
-        'perl', '-w', '-MDebian::Debhelper::Dh_Buildsystems', '-e',
-        """\
-my $b=Debian::Debhelper::Dh_Buildsystems::load_buildsystem(undef, %(step)s);\
-if (defined($b)) { print($b->NAME); } else { print("_undefined_"); }\
-""" % {"step": ("'%s'" % step) or 'undef'}]).decode()
-    if output == '_undefined_':
-        return None
-    return output
 
 
 class PybuildUpgrader(object):

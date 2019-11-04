@@ -20,6 +20,8 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
     assignments.
   * patch-file-present-but-not-mentioned-in-series: Don't remove files
     that start with 'README'.
+  * Don't upgrade beyond debhelper 10 when configure doesn't provide --
+    runstatedir and autoreconf is explicitly disabled.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
 
