@@ -152,7 +152,7 @@ def get_python_pkg_info(path, trust_package=False):
 
 def guess_from_debian_watch(path, trust_package):
     def get_package_name():
-        with open('debian/control', 'r') as f:
+        with open(os.path.join(os.path.dirname(path, 'control')), 'r') as f:
             return Deb822(f)['Source']
     with open(path, 'r') as f:
         wf = parse_watch_file(f)
