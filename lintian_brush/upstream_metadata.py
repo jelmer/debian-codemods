@@ -24,6 +24,9 @@ import subprocess
 import tempfile
 from urllib.parse import urlparse, urlunparse
 from warnings import warn
+
+from debian.deb822 import Deb822
+
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.vcs import (
     plausible_url as plausible_vcs_url,
@@ -80,6 +83,11 @@ def guess_repo_from_url(url):
     if parsed_url.netloc == 'launchpad.net':
         return 'https://code.launchpad.net/%s' % (
             parsed_url.path.strip('/').split('/')[0])
+    if parsed_url.netloc == 'git.savannah.gnu.org':
+        path_elements = parsed_url.path.strip('/').split('/')
+        if len(path_elements) != 2 or path_elements[0] != 'git':
+            return None
+        return url
     if parsed_url.netloc in KNOWN_GITLAB_SITES:
         if parsed_url.path.strip('/').count('/') < 1:
             return None
@@ -143,17 +151,21 @@ def get_python_pkg_info(path, trust_package=False):
 
 
 def guess_from_debian_watch(path, trust_package):
+    def get_package_name():
+        with open('debian/control', 'r') as f:
+            return Deb822(f)['Source']
     with open(path, 'r') as f:
         wf = parse_watch_file(f)
         if not wf:
             return
         for w in wf:
-            if w.url.startswith('https://') or w.url.startswith('http://'):
-                repo = guess_repo_from_url(w.url)
+            url = w.format_url(package=get_package_name)
+            if url.startswith('https://') or url.startswith('http://'):
+                repo = guess_repo_from_url(url)
                 if repo:
                     yield "Repository", sanitize_vcs_url(repo), "possible"
                     break
-            m = re.match('https?://sf.net/([^/]+)', w.url)
+            m = re.match('https?://sf.net/([^/]+)', url)
             if m:
                 yield "Archive", "SourceForge", "certain"
                 yield "X-SourceForge-Project", m.group(1), "certain"
@@ -161,7 +173,6 @@ def guess_from_debian_watch(path, trust_package):
 
 def guess_from_debian_control(path, trust_package):
     with open(path, 'r') as f:
-        from debian.deb822 import Deb822
         control = Deb822(f)
     if 'Homepage' in control:
         repo = guess_repo_from_url(control['Homepage'])
@@ -586,7 +597,7 @@ def extend_from_sf(code, certainty, sf_project):
     # don't bother dialing out.
 
     # The set of fields that sf can possibly provide:
-    sf_fields = ['Homepage']
+    sf_fields = ['Homepage', 'Screenshots', 'Name']
     for field in sf_fields:
         if field not in code or certainty[field] != 'certain':
             break
@@ -594,6 +605,10 @@ def extend_from_sf(code, certainty, sf_project):
         return
     fields = set()
     data = get_sf_metadata(sf_project)
+    if 'Name' not in code:
+        code['Name'] = data['name']
+        certainty['Name'] = certainty['Archive']
+        fields.add('Name')
     if 'Homepage' not in code:
         try:
             code['Homepage'] = data['external_homepage']
@@ -602,6 +617,12 @@ def extend_from_sf(code, certainty, sf_project):
             pass
         else:
             fields.add('Homepage')
+    if 'Screenshots' not in code:
+        for screenshot in data.get('screenshots', []):
+            if screenshot['url']:
+                code.setdefault('Screenshots', []).append(screenshot['url'])
+                certainty['Screenshots'] = certainty['Archive']
+                fields.add('Screenshots')
     return fields
 
 

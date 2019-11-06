@@ -179,3 +179,12 @@ class GuessRepoFromUrlTests(TestCase):
         self.assertEqual(
             'https://code.launchpad.net/bzr',
             guess_repo_from_url('http://launchpad.net/bzr/+download'))
+
+    def test_savannah(self):
+        self.assertEqual(
+            'https://git.savannah.gnu.org/git/auctex.git',
+            guess_repo_from_url('https://git.savannah.gnu.org/git/auctex.git'))
+        self.assertIs(
+            None,
+            guess_repo_from_url(
+                'https://git.savannah.gnu.org/blah/auctex.git'))
