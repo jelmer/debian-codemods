@@ -112,6 +112,13 @@ class Watch(object):
                 other.script == self.script and
                 other.options == self.options)
 
+    def format_url(self, package):
+        if '@PACKAGE@' not in self.url:
+            return self.url
+        if callable(package):
+            package = package()
+        return self.url.replace('@PACKAGE@', package)
+
 
 class MissingVersion(Exception):
     """The version= line is missing."""

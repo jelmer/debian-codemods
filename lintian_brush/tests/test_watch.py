@@ -142,3 +142,17 @@ debian sh debian/repack.stub
             'debian', 'sh debian/repack.stub',
             opts=['repacksuffix=+dfsg"', 'pgpsigurlmangle=s/$/.asc/'])],
             wf.entries)
+
+    def test_parse_package_variable(self):
+        wf = parse_watch_file(StringIO("""\
+version = 3
+https://samba.org/~jelmer/@PACKAGE@ blah-(\\d+).tar.gz
+"""))
+        self.assertEqual(3, wf.version)
+        self.assertEqual(
+            [Watch('https://samba.org/~jelmer/@PACKAGE@',
+                   'blah-(\\d+).tar.gz')],
+            wf.entries)
+        self.assertEqual(
+            'https://samba.org/~jelmer/blah',
+            wf.entries[0].format_url('blah'))
