@@ -69,6 +69,7 @@ def autoreconf_disabled():
             for line in f:
                 if re.findall(b'--without.*autoreconf', line):
                     return True
+                # TODO(jelmer): check for empty override_dh_autoreconf target.
     except FileNotFoundError:
         return False
     return False
@@ -196,7 +197,10 @@ def update_line(line, orig, new, description):
     newline = line.replace(orig, new)
     if newline != line:
         subitems.add(description)
-    return newline
+        changed = True
+    else:
+        changed = False
+    return newline, changed
 
 
 def update_line_drop_argument(target, line, command, argument, description):
@@ -223,13 +227,13 @@ class PybuildUpgrader(object):
 
     def fix_line(self, line, target):
         """Upgrade from python_distutils to pybuild."""
-        line = update_line(
+        line, changed = update_line(
             line, b'--buildsystem=python_distutils', b'--buildsystem=pybuild',
             'Replace python_distutils buildsystem with pybuild.')
-        line = update_line(
+        line, changed = update_line(
             line, b'--buildsystem python_distutils', b'--buildsystem=pybuild',
             'Replace python_distutils buildsystem with pybuild.')
-        line = update_line(
+        line, changed = update_line(
             line, b'-O--buildsystem=python_distutils',
             b'-O--buildsystem=pybuild',
             'Replace python_distutils buildsystem with pybuild.')
@@ -264,9 +268,10 @@ class PybuildUpgrader(object):
 
 def upgrade_to_dh_prep(line, target):
     """Replace 'dh_clean -k' with 'dh_prep."""
-    return update_line(
+    line, changed = update_line(
         line, b'dh_clean -k', b'dh_prep',
         'debian/rules: Replace dh_clean -k with dh_prep.')
+    return line
 
 
 def upgrade_to_dh_missing(line, target):
@@ -303,7 +308,7 @@ def replace_deprecated_same_arch(line, target):
 
 def upgrade_to_no_stop_on_upgrade(line, target):
     if line.startswith(b'dh ') or line.startswith(b'dh_installinit'):
-        line = update_line(
+        line, changed = update_line(
             line, b'--no-restart-on-upgrade',
             b'--no-stop-on-upgrade',
             'Replace --no-restart-on-upgrade with --no-stop-on-upgrade.')
@@ -343,12 +348,12 @@ def upgrade_to_debhelper_12():
 def upgrade_to_installsystemd(line, target):
     line = dh_invoke_drop_with(line, b'systemd')
     if line.startswith(b'dh_systemd_enable'):
-        line = update_line(
+        line, changed = update_line(
             line, b'dh_systemd_enable', b'dh_installsystemd',
             'Use dh_installsystemd rather than deprecated '
             'dh_systemd_enable.')
     if line.startswith(b'dh_systemd_start'):
-        line = update_line(
+        line, changed = update_line(
             line, b'dh_systemd_start', b'dh_installsystemd',
             'Use dh_installsystemd rather than deprecated '
             'dh_systemd_start.')
