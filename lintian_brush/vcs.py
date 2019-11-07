@@ -147,7 +147,7 @@ def fixup_broken_git_url(url):
     return url
 
 
-def probe_vcs_url(url, package=None, version=None):
+def probe_vcs_url(url, version=None):
     parsed = urlparse(url)
     # TODO(jelmer): Disable authentication prompting.
     if parsed.scheme in ('git+ssh', 'ssh', 'bzr+ssh'):
@@ -163,8 +163,11 @@ def probe_vcs_url(url, package=None, version=None):
                 return True
             if 'v%s' % version in tag_names:
                 return True
-            if package and ('%s-%s' % (package, version)) in tag_names:
-                return True
+            for tag_name in tag_names:
+                if tag_name.endswith('_' + version):
+                    return True
+                if tag_name.endswith('-' + version):
+                    return True
             return False
         else:
             return True

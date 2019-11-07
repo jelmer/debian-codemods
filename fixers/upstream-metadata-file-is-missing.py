@@ -15,7 +15,10 @@ from lintian_brush.upstream_metadata import (
 from lintian_brush.vcs import sanitize_url as sanitize_vcs_url
 
 
-if not Version(os.environ['CURRENT_VERSION']).debian_revision:
+current_version = Version(os.environ['CURRENT_VERSION'])
+
+
+if not current_version.debian_revision:
     # Native package
     sys.exit(0)
 
@@ -43,7 +46,9 @@ net_access = os.environ.get('NET_ACCESS', 'allow') == 'allow'
 fields.update(extend_upstream_metadata(
     code, current_certainty, net_access=net_access))
 if net_access:
-    check_upstream_metadata(code, current_certainty)
+    # TODO(jelmer): Set package
+    check_upstream_metadata(
+        code, current_certainty, version=current_version.upstream_version)
 
 
 # Drop keys that don't belong in debian/upsteam/metadata

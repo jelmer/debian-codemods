@@ -22,6 +22,7 @@ import os
 import re
 import subprocess
 import tempfile
+import urllib.error
 from urllib.parse import urlparse, urlunparse
 from warnings import warn
 
@@ -64,13 +65,17 @@ KNOWN_GITLAB_SITES = ['gitlab.com', 'salsa.debian.org']
 # - Webservice
 
 
-def get_sf_metadata(project):
-    headers = {'User-Agent': USER_AGENT}
-    http_url = 'https://sourceforge.net/rest/p/%s' % project
+def _load_json_url(http_url):
+    headers = {'User-Agent': USER_AGENT, 'Accept': 'application/json'}
     http_contents = urlopen(
         Request(http_url, headers=headers),
         timeout=DEFAULT_URLLIB_TIMEOUT).read()
     return json.loads(http_contents)
+
+
+def get_sf_metadata(project):
+    return _load_json_url(
+        'https://sourceforge.net/rest/p/%s' % project)
 
 
 def guess_repo_from_url(url):
@@ -645,18 +650,66 @@ def extend_upstream_metadata(code, certainty, net_access=False):
     return fields
 
 
-def check_upstream_metadata(code, certainty):
+def check_upstream_metadata(code, certainty, version=None):
     """Check upstream metadata.
 
     This will make network connections, etc.
     """
     if 'Repository' in code and certainty['Repository'] == 'possible':
-        if probe_vcs_url(code['Repository']):
+        if probe_vcs_url(code['Repository'], version=version):
             certainty['Repository'] = 'certain'
         else:
             # TODO(jelmer): Remove altogether, or downgrade to a lesser
             # certainty?
             pass
+
+
+def guess_from_launchpad(package, distribution='ubuntu', suite=None):
+    if suite is None:
+        if distribution == 'ubuntu':
+            from distro_info import UbuntuDistroInfo
+            suite = UbuntuDistroInfo().devel()
+        elif distribution == 'debian':
+            suite = 'sid'
+    sourcepackage_url = (
+        'https://api.launchpad.net/devel/%(distribution)s/'
+        '%(suite)s/+source/%(package)s' % {
+            'package': package,
+            'suite': suite,
+            'distribution': distribution})
+    try:
+        sourcepackage_data = _load_json_url(sourcepackage_url)
+    except urllib.error.HTTPError as e:
+        if e.status != 404:
+            raise
+        return
+
+    productseries_url = sourcepackage_data.get('productseries_link')
+    if not productseries_url:
+        return
+    productseries_data = _load_json_url(productseries_url)
+    project_link = productseries_data['project_link']
+    project_data = _load_json_url(project_link)
+    if project_data.get('homepage_url'):
+        yield 'Homepage', project_data['homepage_url'], 'possible'
+    yield 'Name', project_data['display_name'], 'possible'
+    if project_data.get('sourceforge_project'):
+        yield ('X-SourceForge-Project', project_data['sourceforge_project'],
+               'possible')
+    branch_link = productseries_data.get('branch_link')
+    if branch_link:
+        try:
+            code_import_data = _load_json_url(branch_link + '/+code-import')
+            if code_import_data['url']:
+                # Sometimes this URL is not set, e.g. for CVS repositories.
+                yield 'Repository', code_import_data['url'], 'possible'
+        except urllib.error.HTTPError as e:
+            if e.status != 404:
+                raise
+            branch_data = _load_json_url(branch_link)
+            yield 'Archive', 'launchpad', 'possible'
+            yield 'Repository', branch_data['bzr_identity'], 'possible'
+            yield 'Repository-Browse', branch_data['web_link'], 'possible'
 
 
 if __name__ == '__main__':
