@@ -126,6 +126,7 @@ GIT_PATH_RENAMES = {
     'debian-astro/packages': 'debian-astro-team',
     'debian-islamic/packages': 'islamic-team',
     'debichem/packages': 'debichem-team',
+    'pkg-privacy/packages': 'pkg-privacy-team',
 }
 
 
