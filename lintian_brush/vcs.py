@@ -147,7 +147,7 @@ def fixup_broken_git_url(url):
     return url
 
 
-def probe_vcs_url(url):
+def probe_vcs_url(url, package=None, version=None):
     parsed = urlparse(url)
     # TODO(jelmer): Disable authentication prompting.
     if parsed.scheme in ('git+ssh', 'ssh', 'bzr+ssh'):
@@ -155,12 +155,22 @@ def probe_vcs_url(url):
         return None
     from breezy.branch import Branch
     try:
-        Branch.open(url).last_revision()
+        b = Branch.open(url)
+        b.last_revision()
+        if version is not None:
+            tag_names = b.tags.get_tag_dict().keys()
+            if version in tag_names:
+                return True
+            if 'v%s' % version in tag_names:
+                return True
+            if package and ('%s-%s' % (package, version)) in tag_names:
+                return True
+            return False
+        else:
+            return True
     except Exception:
         # TODO(jelmer): Catch more specific exceptions?
         return False
-    else:
-        return True
 
 
 def determine_browser_url(vcs_type, vcs_url):
