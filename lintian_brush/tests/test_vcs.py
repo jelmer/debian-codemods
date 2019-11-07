@@ -70,6 +70,12 @@ class FixUpGitUrlTests(TestCase):
             'https://salsa.debian.org/salve/auctex.git',
             fixup_broken_git_url('https://salsa.debian.org//salve/auctex.git'))
 
+    def test_strip_extra_colon(self):
+        self.assertEqual(
+            'https://salsa.debian.org/mckinstry/lcov.git',
+            fixup_broken_git_url(
+                'https://salsa.debian.org:/mckinstry/lcov.git'))
+
     def test_strip_username(self):
         self.assertEqual(
             'git://github.com/RPi-Distro/pgzero.git',

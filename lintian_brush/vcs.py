@@ -107,6 +107,10 @@ def fix_double_slash(parsed, branch):
     return None, None
 
 
+def fix_extra_colon(parsed, branch):
+    return parsed._replace(netloc=parsed.netloc.rstrip(':')), branch
+
+
 def drop_git_username(parsed, branch):
     if parsed.hostname not in ('salsa.debian.org', 'github.com'):
         return None, None
@@ -127,7 +131,8 @@ def fixup_broken_git_url(url):
     parsed = urlparse(repo_url)
     changed = False
     for fn in [fix_path_in_port, fix_salsa_scheme, fix_salsa_cgit_url,
-               fix_salsa_tree_in_url, fix_double_slash, drop_git_username]:
+               fix_salsa_tree_in_url, fix_double_slash, fix_extra_colon,
+               drop_git_username]:
         newparsed, newbranch = fn(parsed, branch)
         if newparsed:
             changed = True
