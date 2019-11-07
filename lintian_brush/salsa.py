@@ -121,10 +121,11 @@ TEAM_NAME_MAP = {
 
 GIT_PATH_RENAMES = {
     'pkg-kde/applications': 'qt-kde-team/kde',
-    '3dprinter/applications': '3dprinting-team',
+    '3dprinter/packages': '3dprinting-team',
     'pkg-emacsen/pkg': 'emacsen-team',
-    'debian-astro/applications': 'debian-astro-team',
+    'debian-astro/packages': 'debian-astro-team',
     'debian-islamic/packages': 'islamic-team',
+    'debichem/packages': 'debichem-team',
 }
 
 

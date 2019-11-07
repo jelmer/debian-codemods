@@ -154,13 +154,29 @@ class SalsaUrlFromAliothUrlTests(TestCase):
             'https://salsa.debian.org/3dprinting-team/arduino-mighty',
             salsa_url_from_alioth_url(
                 'git',
-                'https://anonscm.debian.org/git/3dprinter/applications/'
+                'https://anonscm.debian.org/git/3dprinter/packages/'
                 'arduino-mighty'))
         self.assertEqual(
             'https://salsa.debian.org/emacsen-team/lua-mode',
             salsa_url_from_alioth_url(
                 'git',
                 'https://anonscm.debian.org/git/pkg-emacsen/pkg/lua-mode'))
+        self.assertEqual(
+            'https://salsa.debian.org/debian-astro-team/astromatic.git',
+            salsa_url_from_alioth_url(
+                'git',
+                'http://anonscm.debian.org/cgit/debian-astro/packages/'
+                'astromatic.git'))
+        self.assertEqual(
+            'https://salsa.debian.org/debichem-team/bkchem.git',
+            salsa_url_from_alioth_url(
+                'git',
+                'https://anonscm.debian.org/git/debichem/packages/bkchem.git'))
+        self.assertEqual(
+            'https://salsa.debian.org/3dprinting-team/yagv.git',
+            salsa_url_from_alioth_url(
+                'git',
+                'https://anonscm.debian.org/cgit/3dprinter/packages/yagv.git'))
 
     def test_svn(self):
         self.assertEqual(
