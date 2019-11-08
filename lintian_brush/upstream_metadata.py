@@ -742,20 +742,39 @@ def guess_from_launchpad(package, distribution=None, suite=None):
     yield 'Name', project_data['display_name']
     if project_data.get('sourceforge_project'):
         yield ('X-SourceForge-Project', project_data['sourceforge_project'])
-    branch_link = productseries_data.get('branch_link')
-    if branch_link:
-        try:
-            code_import_data = _load_json_url(branch_link + '/+code-import')
+    if project_data['vcs'] == 'Bzr':
+        branch_link = productseries_data.get('branch_link')
+        if branch_link:
+            try:
+                code_import_data = _load_json_url(
+                    branch_link + '/+code-import')
+                if code_import_data['url']:
+                    # Sometimes this URL is not set, e.g. for CVS repositories.
+                    yield 'Repository', code_import_data['url']
+            except urllib.error.HTTPError as e:
+                if e.status != 404:
+                    raise
+                if project_data['official_codehosting']:
+                    branch_data = _load_json_url(branch_link)
+                    yield 'Archive', 'launchpad'
+                    yield 'Repository', branch_data['bzr_identity']
+                    yield 'Repository-Browse', branch_data['web_link']
+    elif project_data['vcs'] == 'Git':
+        repo_link = (
+            'https://api.launchpad.net/devel/+git?ws.op=getByPath&path=%s' %
+            project_data['name'])
+        repo_data = _load_json_url(repo_link)
+        code_import_link = repo_data.get('code_import_link')
+        if code_import_link:
+            code_import_data = _load_json_url(repo_data['code_import_link'])
             if code_import_data['url']:
                 # Sometimes this URL is not set, e.g. for CVS repositories.
                 yield 'Repository', code_import_data['url']
-        except urllib.error.HTTPError as e:
-            if e.status != 404:
-                raise
-            branch_data = _load_json_url(branch_link)
-            yield 'Archive', 'launchpad'
-            yield 'Repository', branch_data['bzr_identity']
-            yield 'Repository-Browse', branch_data['web_link']
+        else:
+            if project_data['official_codehosting']:
+                yield 'Archive', 'launchpad'
+                yield 'Repository', repo_data['git_https_url']
+                yield 'Repository-Browse', repo_data['web_link']
 
 
 if __name__ == '__main__':
