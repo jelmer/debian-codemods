@@ -616,11 +616,11 @@ def extend_from_sf(code, certainty, sf_project):
     # don't bother dialing out.
 
     # The set of fields that sf can possibly provide:
+    fields = set()
     sf_fields = ['Homepage', 'Screenshots', 'Name']
     if not _possible_fields_missing(
             code, certainty, sf_fields, certainty['Archive']):
-        return
-    fields = set()
+        return fields
     data = get_sf_metadata(sf_project)
     if 'Name' not in code:
         code['Name'] = data['name']
@@ -648,13 +648,13 @@ def extend_from_lp(code, certainty, package, distribution=None, suite=None):
     # don't bother dialing out.
 
     lp_certainty = 'possible'
+    fields = set()
 
     # The set of fields that Launchpad can possibly provide:
     lp_fields = ['Homepage', 'Repository', 'Name']
     if not _possible_fields_missing(code, certainty, lp_fields, lp_certainty):
-        return
+        return fields
 
-    fields = set()
     for key, value in guess_from_launchpad(
             package, distribution=distribution, suite=suite):
         if key not in certainty or (
