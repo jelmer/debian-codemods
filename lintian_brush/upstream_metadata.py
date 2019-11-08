@@ -32,6 +32,7 @@ from lintian_brush import (
     USER_AGENT,
     DEFAULT_URLLIB_TIMEOUT,
     certainty_sufficient,
+    certainty_to_confidence,
     )
 from lintian_brush.vcs import (
     plausible_url as plausible_vcs_url,
@@ -497,7 +498,6 @@ def guess_from_configure(path, trust_package=False):
 
 def guess_from_r_description(path, trust_package=False):
     with open(path, 'r') as f:
-        from debian.deb822 import Deb822
         description = Deb822(f)
         if 'Package' in description:
             yield 'Name', description['Package'], 'certain'
@@ -601,16 +601,24 @@ def guess_upstream_metadata(path, trust_package=False, net_access=False):
     return code
 
 
+def _possible_fields_missing(code, certainty, fields, field_certainty):
+    for field in fields:
+        if field not in code:
+            return True
+        if certainty[field] != 'certain':
+            return True
+    else:
+        return False
+
+
 def extend_from_sf(code, certainty, sf_project):
     # First, make sure SF can actually provide any additional data. Otherwise,
     # don't bother dialing out.
 
     # The set of fields that sf can possibly provide:
     sf_fields = ['Homepage', 'Screenshots', 'Name']
-    for field in sf_fields:
-        if field not in code or certainty[field] != 'certain':
-            break
-    else:
+    if not _possible_fields_missing(
+            code, certainty, sf_fields, certainty['Archive']):
         return
     fields = set()
     data = get_sf_metadata(sf_project)
@@ -635,6 +643,29 @@ def extend_from_sf(code, certainty, sf_project):
     return fields
 
 
+def extend_from_lp(code, certainty, package, distribution=None, suite=None):
+    # First, make sure LP can actually provide any additional data. Otherwise,
+    # don't bother dialing out.
+
+    lp_certainty = 'possible'
+
+    # The set of fields that Launchpad can possibly provide:
+    lp_fields = ['Homepage', 'Repository', 'Name']
+    if not _possible_fields_missing(code, certainty, lp_fields, lp_certainty):
+        return
+
+    fields = set()
+    for key, value in guess_from_launchpad(
+            package, distribution=distribution, suite=suite):
+        if key not in certainty or (
+                certainty_to_confidence(certainty[key]) >
+                certainty_to_confidence(lp_certainty)):
+            code[key] = value
+            certainty[key] = value
+            fields.add(key)
+    return fields
+
+
 def extend_upstream_metadata(code, certainty, net_access=False):
     """Extend a set of upstream metadata.
     """
@@ -644,6 +675,10 @@ def extend_upstream_metadata(code, certainty, net_access=False):
             net_access):
         sf_project = code['X-SourceForge-Project']
         fields.update(extend_from_sf(code, certainty, sf_project))
+    if net_access:
+        with open('debian/control', 'r') as f:
+            package = Deb822(f)['Source']
+        fields.update(extend_from_lp(code, certainty, package))
     if 'Repository' in code and 'Repository-Browse' not in code:
         browse_url = browse_url_from_repo_url(code['Repository'])
         if browse_url:
@@ -668,8 +703,10 @@ def check_upstream_metadata(code, certainty, version=None):
             pass
 
 
-def guess_from_launchpad(package, distribution='ubuntu', suite=None,
-                         certainty='possible'):
+def guess_from_launchpad(package, distribution=None, suite=None):
+    if distribution is None:
+        # Default to Ubuntu; it's got more fields populated.
+        distribution = 'ubuntu'
     if suite is None:
         if distribution == 'ubuntu':
             from distro_info import UbuntuDistroInfo
@@ -696,25 +733,24 @@ def guess_from_launchpad(package, distribution='ubuntu', suite=None,
     project_link = productseries_data['project_link']
     project_data = _load_json_url(project_link)
     if project_data.get('homepage_url'):
-        yield 'Homepage', project_data['homepage_url'], certainty
-    yield 'Name', project_data['display_name'], certainty
+        yield 'Homepage', project_data['homepage_url']
+    yield 'Name', project_data['display_name']
     if project_data.get('sourceforge_project'):
-        yield ('X-SourceForge-Project', project_data['sourceforge_project'],
-               certainty)
+        yield ('X-SourceForge-Project', project_data['sourceforge_project'])
     branch_link = productseries_data.get('branch_link')
     if branch_link:
         try:
             code_import_data = _load_json_url(branch_link + '/+code-import')
             if code_import_data['url']:
                 # Sometimes this URL is not set, e.g. for CVS repositories.
-                yield 'Repository', code_import_data['url'], certainty
+                yield 'Repository', code_import_data['url']
         except urllib.error.HTTPError as e:
             if e.status != 404:
                 raise
             branch_data = _load_json_url(branch_link)
-            yield 'Archive', 'launchpad', certainty
-            yield 'Repository', branch_data['bzr_identity'], certainty
-            yield 'Repository-Browse', branch_data['web_link'], certainty
+            yield 'Archive', 'launchpad'
+            yield 'Repository', branch_data['bzr_identity']
+            yield 'Repository-Browse', branch_data['web_link']
 
 
 if __name__ == '__main__':
