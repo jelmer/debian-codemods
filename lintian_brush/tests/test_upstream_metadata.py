@@ -46,7 +46,7 @@ version=4
 https://github.com/jelmer/dulwich/tags/dulwich-(.*).tar.gz
 """)])
         self.assertEqual(
-            [('Repository', 'https://github.com/jelmer/dulwich', 'possible')],
+            [('Repository', 'https://github.com/jelmer/dulwich', 'likely')],
             list(guess_from_debian_watch('watch', False)))
 
 

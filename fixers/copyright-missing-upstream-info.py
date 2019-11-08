@@ -2,7 +2,7 @@
 
 import os
 
-from lintian_brush import certainty_to_confidence
+from lintian_brush import certainty_to_confidence, certainty_sufficient
 from lintian_brush.copyright import update_copyright, NotMachineReadableError
 from lintian_brush.upstream_metadata import guess_upstream_metadata_items
 
@@ -26,7 +26,7 @@ def add_upstream_metadata(copyright):
         upstream_metadata = {k: (v, 'certain') for (k, v) in code.items()}
     for key, value, certainty in guess_upstream_metadata_items(
             '.', trust_package=(os.environ.get('TRUST_PACKAGE') == 'true')):
-        if certainty == 'possible' and minimum_certainty == 'certain':
+        if not certainty_sufficient(certainty, minimum_certainty):
             continue
         if upstream_metadata.get(key, (None, None))[1] != 'certain':
             upstream_metadata[key] = (value, certainty)

@@ -53,7 +53,7 @@ class FixerTestCase(unittest.TestCase):
                         symlinks=True, ignore=ignore)
 
     def id(self):
-        return "%s.%s" % (__name__, self._fixer_name, self._test_name)
+        return "%s.%s.%s" % (__name__, self._fixer_name, self._test_name)
 
     def __str__(self):
         return 'fixer test: %s for %s' % (self._test_name, self._fixer_name)

@@ -7,6 +7,10 @@ from debian.changelog import Version
 import os
 import sys
 import ruamel.yaml
+from lintian_brush import (
+    certainty_sufficient,
+    min_certainty,
+    )
 from lintian_brush.upstream_metadata import (
     check_upstream_metadata,
     extend_upstream_metadata,
@@ -62,14 +66,13 @@ for key in list(code):
 
 # Drop everything that is below our minimum certainty
 for key, certainty in list(current_certainty.items()):
-    if certainty == 'possible' and minimum_certainty == 'certain':
+    if not certainty_sufficient(certainty, minimum_certainty):
         del code[key]
         del current_certainty[key]
         if key in fields:
             fields.remove(key)
 
-achieved_certainty = (
-    'possible' if 'possible' in current_certainty.values() else 'certain')
+achieved_certainty = min_certainty(current_certainty.values())
 
 if 'Repository' in code:
     new_repository = sanitize_vcs_url(code['Repository'])

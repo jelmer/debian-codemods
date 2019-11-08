@@ -2,6 +2,7 @@
 
 import os
 
+from lintian_brush import certainty_sufficient
 from lintian_brush.control import update_control
 from lintian_brush.upstream_metadata import guess_upstream_metadata_items
 
@@ -17,7 +18,7 @@ def fill_in_homepage(control):
             '.', trust_package=(os.environ.get('TRUST_PACKAGE') == 'true')):
         if key != 'Homepage':
             continue
-        if certainty == 'possible' and minimum_certainty == 'certain':
+        if not certainty_sufficient(certainty, minimum_certainty):
             continue
         if current_certainty != 'certain':
             control["Homepage"] = value

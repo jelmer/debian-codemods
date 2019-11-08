@@ -28,7 +28,11 @@ from warnings import warn
 
 from debian.deb822 import Deb822
 
-from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
+from lintian_brush import (
+    USER_AGENT,
+    DEFAULT_URLLIB_TIMEOUT,
+    certainty_sufficient,
+    )
 from lintian_brush.vcs import (
     plausible_url as plausible_vcs_url,
     sanitize_url as sanitize_vcs_url,
@@ -168,7 +172,7 @@ def guess_from_debian_watch(path, trust_package):
             if url.startswith('https://') or url.startswith('http://'):
                 repo = guess_repo_from_url(url)
                 if repo:
-                    yield "Repository", sanitize_vcs_url(repo), "possible"
+                    yield "Repository", sanitize_vcs_url(repo), "likely"
                     break
             m = re.match('https?://sf.net/([^/]+)', url)
             if m:
@@ -182,12 +186,12 @@ def guess_from_debian_control(path, trust_package):
     if 'Homepage' in control:
         repo = guess_repo_from_url(control['Homepage'])
         if repo:
-            yield 'Repository', sanitize_vcs_url(repo), "possible"
+            yield 'Repository', sanitize_vcs_url(repo), "likely"
     if 'XS-Go-Import-Path' in control:
         yield (
             'Repository',
             sanitize_vcs_url('https://' + control['XS-Go-Import-Path']),
-            'possible')
+            'likely')
 
 
 def guess_from_setup_py(path, trust_package):
@@ -202,7 +206,7 @@ def guess_from_setup_py(path, trust_package):
         if pkg_info.home_page:
             repo = guess_repo_from_url(pkg_info.home_page)
             if repo:
-                yield 'Repository', sanitize_vcs_url(repo), 'possible'
+                yield 'Repository', sanitize_vcs_url(repo), 'likely'
         for value in pkg_info.project_urls:
             url_type, url = value.split(', ')
             if url_type in ('GitHub', 'Repository', 'Source Code'):
@@ -231,7 +235,7 @@ def guess_from_package_json(path, trust_package):
             else:
                 # Some people seem to default to github. :(
                 repo_url = 'https://github.com/' + parsed_url.path
-                yield 'Repository', sanitize_vcs_url(repo_url), 'possible'
+                yield 'Repository', sanitize_vcs_url(repo_url), 'likely'
     if 'bugs' in package:
         if isinstance(package['bugs'], dict):
             url = package['bugs'].get('url')
@@ -320,7 +324,7 @@ def guess_from_debian_copyright(path, trust_package):
                 from_url = header.source
             repo_url = guess_repo_from_url(from_url)
             if repo_url:
-                yield 'Repository', sanitize_vcs_url(repo_url), 'possible'
+                yield 'Repository', sanitize_vcs_url(repo_url), 'likely'
         if "X-Upstream-Bugs" in header:
             yield "Bug-Database", header["X-Upstream-Bugs"], 'certain'
         if "X-Source-Downloaded-From" in header:
@@ -571,7 +575,7 @@ def guess_upstream_metadata_items(path, trust_package=False,
             continue
         for key, value, certainty in guesser(
                 abspath, trust_package=trust_package):
-            if certainty == 'possible' and minimum_certainty == 'certain':
+            if not certainty_sufficient(certainty, minimum_certainty):
                 continue
             yield key, value, certainty
 
@@ -655,7 +659,7 @@ def check_upstream_metadata(code, certainty, version=None):
 
     This will make network connections, etc.
     """
-    if 'Repository' in code and certainty['Repository'] == 'possible':
+    if 'Repository' in code and certainty['Repository'] == 'likely':
         if probe_vcs_url(code['Repository'], version=version):
             certainty['Repository'] = 'certain'
         else:
@@ -664,7 +668,8 @@ def check_upstream_metadata(code, certainty, version=None):
             pass
 
 
-def guess_from_launchpad(package, distribution='ubuntu', suite=None):
+def guess_from_launchpad(package, distribution='ubuntu', suite=None,
+                         certainty='possible'):
     if suite is None:
         if distribution == 'ubuntu':
             from distro_info import UbuntuDistroInfo
@@ -691,25 +696,25 @@ def guess_from_launchpad(package, distribution='ubuntu', suite=None):
     project_link = productseries_data['project_link']
     project_data = _load_json_url(project_link)
     if project_data.get('homepage_url'):
-        yield 'Homepage', project_data['homepage_url'], 'possible'
-    yield 'Name', project_data['display_name'], 'possible'
+        yield 'Homepage', project_data['homepage_url'], certainty
+    yield 'Name', project_data['display_name'], certainty
     if project_data.get('sourceforge_project'):
         yield ('X-SourceForge-Project', project_data['sourceforge_project'],
-               'possible')
+               certainty)
     branch_link = productseries_data.get('branch_link')
     if branch_link:
         try:
             code_import_data = _load_json_url(branch_link + '/+code-import')
             if code_import_data['url']:
                 # Sometimes this URL is not set, e.g. for CVS repositories.
-                yield 'Repository', code_import_data['url'], 'possible'
+                yield 'Repository', code_import_data['url'], certainty
         except urllib.error.HTTPError as e:
             if e.status != 404:
                 raise
             branch_data = _load_json_url(branch_link)
-            yield 'Archive', 'launchpad', 'possible'
-            yield 'Repository', branch_data['bzr_identity'], 'possible'
-            yield 'Repository-Browse', branch_data['web_link'], 'possible'
+            yield 'Archive', 'launchpad', certainty
+            yield 'Repository', branch_data['bzr_identity'], certainty
+            yield 'Repository-Browse', branch_data['web_link'], certainty
 
 
 if __name__ == '__main__':

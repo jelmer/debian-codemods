@@ -51,7 +51,7 @@ from .reformatting import FormattingUnpreservable
 
 __version__ = (0, 39)
 version_string = '.'.join(map(str, __version__))
-SUPPORTED_CERTAINTIES = ['certain', 'possible', None]
+SUPPORTED_CERTAINTIES = ['certain', 'likely', 'possible', None]
 DEFAULT_MINIMUM_CERTAINTY = 'certain'
 USER_AGENT = 'lintian-brush/' + version_string
 # Too aggressive?
@@ -523,9 +523,15 @@ def certainty_sufficient(actual_certainty, minimum_certainty):
     Returns:
       boolean
     """
-    if actual_certainty == 'possible' and minimum_certainty == 'certain':
-        return False
-    return True
+    actual_confidence = certainty_to_confidence(actual_certainty)
+    if actual_confidence is None:
+        # Actual confidence is unknown.
+        # TODO(jelmer): Should we really be ignoring this?
+        return True
+    minimum_confidence = certainty_to_confidence(minimum_certainty)
+    if minimum_confidence is None:
+        return True
+    return actual_confidence <= minimum_confidence
 
 
 def check_clean_tree(local_tree):
@@ -793,4 +799,21 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
 
 
 def certainty_to_confidence(certainty):
+    if certainty in ('unknown', None):
+        return None
     return SUPPORTED_CERTAINTIES.index(certainty)
+
+
+def confidence_to_certainty(confidence):
+    if confidence is None:
+        return 'unknown'
+    try:
+        return SUPPORTED_CERTAINTIES[confidence]
+    except IndexError:
+        raise ValueError(confidence)
+
+
+def min_certainty(certainties):
+    return confidence_to_certainty(
+        max([certainty_to_confidence(c)
+            for c in certainties] + [0]))
