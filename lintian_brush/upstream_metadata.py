@@ -355,6 +355,11 @@ def guess_from_readme(path, trust_package):
                         url = args[0]
                     if plausible_vcs_url(url):
                         urls.append(sanitize_vcs_url(url))
+                m = re.match(
+                    b'.*\(https://travis-ci.org/([^/]+)/([^/]+)\)', line)
+                if m:
+                    yield 'Repository', 'https://github.com/%s/%s' % (
+                        m.group(1).decode(), m.group(2).decode()), 'possible'
     except IsADirectoryError:
         pass
 
