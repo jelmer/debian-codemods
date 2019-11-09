@@ -78,9 +78,20 @@ def _load_json_url(http_url):
     return json.loads(http_contents)
 
 
+class NoSuchSourceForgeProject(Exception):
+
+    def __init__(self, project):
+        self.project = project
+
+
 def get_sf_metadata(project):
-    return _load_json_url(
-        'https://sourceforge.net/rest/p/%s' % project)
+    try:
+        return _load_json_url(
+            'https://sourceforge.net/rest/p/%s' % project)
+    except urllib.error.HTTPError as e:
+        if e.status != 404:
+            raise
+        raise NoSuchSourceForgeProject(project)
 
 
 def guess_repo_from_url(url):
@@ -693,7 +704,13 @@ def extend_upstream_metadata(code, certainty, net_access=False):
             'X-SourceForge-Project' in code and
             net_access):
         sf_project = code['X-SourceForge-Project']
-        fields.update(extend_from_sf(code, certainty, sf_project))
+        try:
+            fields.update(extend_from_sf(code, certainty, sf_project))
+        except NoSuchSourceForgeProject:
+            del code['X-SourceForge-Project']
+            del certainty['X-SourceForge-Project']
+            if 'X-SourceForge-Project' in fields:
+                fields.remove('X-SourceForge-Project')
     if net_access:
         with open('debian/control', 'r') as f:
             package = Deb822(f)['Source']
