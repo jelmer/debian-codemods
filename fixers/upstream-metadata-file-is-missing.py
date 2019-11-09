@@ -46,7 +46,7 @@ fields.update(update_from_guesses(
 
 net_access = os.environ.get('NET_ACCESS', 'allow') == 'allow'
 fields.update(extend_upstream_metadata(
-    code, current_certainty, net_access=net_access))
+    code, current_certainty, '.', net_access=net_access))
 if net_access:
     # TODO(jelmer): Set package
     check_upstream_metadata(

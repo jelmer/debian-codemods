@@ -625,7 +625,8 @@ def guess_upstream_metadata(path, trust_package=False, net_access=False):
         guess_upstream_metadata_items(
             path, trust_package=trust_package))
 
-    extend_upstream_metadata(code, current_certainty, net_access=net_access)
+    extend_upstream_metadata(
+        code, current_certainty, path, net_access=net_access)
     return code
 
 
@@ -696,7 +697,7 @@ def extend_from_lp(code, certainty, package, distribution=None, suite=None):
     return fields
 
 
-def extend_upstream_metadata(code, certainty, net_access=False):
+def extend_upstream_metadata(code, certainty, path, net_access=False):
     """Extend a set of upstream metadata.
     """
     fields = set()
@@ -712,7 +713,7 @@ def extend_upstream_metadata(code, certainty, net_access=False):
             if 'X-SourceForge-Project' in fields:
                 fields.remove('X-SourceForge-Project')
     if net_access:
-        with open('debian/control', 'r') as f:
+        with open(os.path.join(path, 'debian/control'), 'r') as f:
             package = Deb822(f)['Source']
         fields.update(extend_from_lp(code, certainty, package))
     if 'Repository' in code and 'Repository-Browse' not in code:
