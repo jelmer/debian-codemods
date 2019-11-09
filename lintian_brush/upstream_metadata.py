@@ -657,44 +657,36 @@ def guess_from_sf(sf_project):
             'https://sf.net/', vcs_tools[0]['url'])
 
 
-def extend_from_sf(code, certainty, sf_project):
-    # First, make sure SF can actually provide any additional data. Otherwise,
-    # don't bother dialing out.
-
-    # The set of fields that sf can possibly provide:
+def extend_from_external_guesser(
+        code, certainty, guesser_certainty, guesser_fields, guesser):
     fields = set()
-    sf_fields = ['Homepage', 'Screenshots', 'Name']
     if not _possible_fields_missing(
-            code, certainty, sf_fields, certainty['Archive']):
+            code, certainty, guesser_fields, guesser_certainty):
         return fields
 
     fields.update(update_from_guesses(
         code, certainty,
-        [(key, value, certainty['Archive'])
-         for (key, value) in guess_from_sf(sf_project)]))
+        [(key, value, guesser_certainty) for (key, value) in guesser]))
 
     return fields
+
+
+def extend_from_sf(code, certainty, sf_project):
+    # The set of fields that sf can possibly provide:
+    sf_fields = ['Homepage', 'Screenshots', 'Name']
+
+    return extend_from_external_guesser(
+        code, certainty, certainty['Archive'], sf_fields,
+        guess_from_sf(sf_project))
 
 
 def extend_from_lp(code, certainty, package, distribution=None, suite=None):
-    # First, make sure LP can actually provide any additional data. Otherwise,
-    # don't bother dialing out.
-
-    lp_certainty = 'possible'
-    fields = set()
-
     # The set of fields that Launchpad can possibly provide:
     lp_fields = ['Homepage', 'Repository', 'Name']
-    if not _possible_fields_missing(code, certainty, lp_fields, lp_certainty):
-        return fields
 
-    fields.update(update_from_guesses(
-        code, certainty,
-        [(key, value, lp_certainty)
-         for (key, value) in guess_from_launchpad(
-             package, distribution=distribution, suite=suite)]))
-
-    return fields
+    return extend_from_external_guesser(
+        code, certainty, 'possible', lp_fields, guess_from_launchpad(
+             package, distribution=distribution, suite=suite))
 
 
 def extend_upstream_metadata(code, certainty, path, net_access=False):
