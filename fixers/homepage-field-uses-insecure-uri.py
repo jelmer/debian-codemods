@@ -4,6 +4,7 @@ from lintian_brush.control import (
     update_control,
     )
 import os
+import socket
 import sys
 import urllib.error
 import urllib.parse
@@ -14,7 +15,8 @@ known_https = [
     'pear.php.net', 'pecl.php.net', 'www.bioconductor.org',
     'cran.r-project.org', 'wiki.debian.org']
 
-ERRORS = (urllib.error.URLError, urllib.error.HTTPError, ConnectionResetError)
+ERRORS = (urllib.error.URLError, urllib.error.HTTPError, ConnectionResetError,
+          socket.timeout)
 
 
 def same_page(http_contents, https_contents):
