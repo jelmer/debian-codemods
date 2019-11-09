@@ -680,16 +680,24 @@ def extend_from_sf(code, certainty, sf_project):
         guess_from_sf(sf_project))
 
 
-def extend_from_lp(code, certainty, package, distribution=None, suite=None):
+def extend_from_lp(code, certainty, minimum_certainty, package,
+                   distribution=None, suite=None):
     # The set of fields that Launchpad can possibly provide:
     lp_fields = ['Homepage', 'Repository', 'Name']
+    lp_certainty = 'possible'
+
+    if minimum_certainty and minimum_certainty != 'possible':
+        # Don't bother talking to launchpad if we're not
+        # speculating.
+        return set()
 
     return extend_from_external_guesser(
-        code, certainty, 'possible', lp_fields, guess_from_launchpad(
+        code, certainty, lp_certainty, lp_fields, guess_from_launchpad(
              package, distribution=distribution, suite=suite))
 
 
-def extend_upstream_metadata(code, certainty, path, net_access=False):
+def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
+                             net_access=False):
     """Extend a set of upstream metadata.
     """
     fields = set()
@@ -707,7 +715,8 @@ def extend_upstream_metadata(code, certainty, path, net_access=False):
     if net_access:
         with open(os.path.join(path, 'debian/control'), 'r') as f:
             package = Deb822(f)['Source']
-        fields.update(extend_from_lp(code, certainty, package))
+        fields.update(extend_from_lp(
+            code, certainty, minimum_certainty, package))
     if 'Repository' in code and 'Repository-Browse' not in code:
         browse_url = browse_url_from_repo_url(code['Repository'])
         if browse_url:
@@ -799,6 +808,8 @@ def guess_from_launchpad(package, distribution=None, suite=None):
                 yield 'Archive', 'launchpad'
                 yield 'Repository', repo_data['git_https_url']
                 yield 'Repository-Browse', repo_data['web_link']
+    elif project_data.get('vcs') is not None:
+        raise AssertionError('unknown vcs: %r' % project_data['vcs'])
 
 
 if __name__ == '__main__':
