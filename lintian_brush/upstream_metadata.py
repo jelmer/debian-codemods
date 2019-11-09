@@ -23,7 +23,7 @@ import re
 import subprocess
 import tempfile
 import urllib.error
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse, urlunparse, urljoin
 from warnings import warn
 
 from debian.deb822 import Deb822
@@ -653,8 +653,7 @@ def guess_from_sf(sf_project):
     vcs_tools = [
         tool for tool in data.get('tools', []) if tool['name'] in VCS_NAMES]
     if len(vcs_tools) == 1:
-        yield 'Repository', urllib.urljoin(
-            'https://sf.net/', vcs_tools[0]['url'])
+        yield 'Repository', urljoin('https://sf.net/', vcs_tools[0]['url'])
 
 
 def extend_from_external_guesser(
