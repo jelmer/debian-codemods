@@ -15,6 +15,7 @@ from lintian_brush.upstream_metadata import (
     check_upstream_metadata,
     extend_upstream_metadata,
     guess_upstream_metadata_items,
+    update_from_guesses,
     )
 from lintian_brush.vcs import sanitize_url as sanitize_vcs_url
 
@@ -38,13 +39,10 @@ else:
 minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
 fields = set()
 current_certainty = {k: 'certain' for k in code.keys()}
-for key, value, certainty in guess_upstream_metadata_items(
-        '.', trust_package=(os.environ.get('TRUST_PACKAGE') == 'true')):
-    if current_certainty.get(key) != 'certain':
-        if code.get(key) != value:
-            code[key] = value
-            fields.add(key)
-        current_certainty[key] = certainty
+
+fields.update(update_from_guesses(
+    code, current_certainty, guess_upstream_metadata_items(
+        '.', trust_package=(os.environ.get('TRUST_PACKAGE') == 'true'))))
 
 net_access = os.environ.get('NET_ACCESS', 'allow') == 'allow'
 fields.update(extend_upstream_metadata(

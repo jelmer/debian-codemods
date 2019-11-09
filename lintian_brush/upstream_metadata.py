@@ -121,6 +121,19 @@ def browse_url_from_repo_url(url):
     return None
 
 
+def update_from_guesses(code, current_certainty, guessed_items):
+    fields = set()
+    for key, value, certainty in guessed_items:
+        if key not in certainty or (
+                certainty_to_confidence(certainty) <
+                certainty_to_confidence(current_certainty[key])):
+            if code.get(key) != value:
+                code[key] = value
+                fields.add(key)
+            current_certainty[key] = certainty
+    return fields
+
+
 def read_python_pkg_info(path):
     """Get the metadata from a python setup.py file."""
     from pkginfo.utils import get_metadata
@@ -356,7 +369,7 @@ def guess_from_readme(path, trust_package):
                     if plausible_vcs_url(url):
                         urls.append(sanitize_vcs_url(url))
                 m = re.match(
-                    b'.*\(https://travis-ci.org/([^/]+)/([^/]+)\)', line)
+                    b'.*\\(https://travis-ci.org/([^/]+)/([^/]+)\\)', line)
                 if m:
                     yield 'Repository', 'https://github.com/%s/%s' % (
                         m.group(1).decode(), m.group(2).decode()), 'possible'
@@ -596,11 +609,10 @@ def guess_upstream_metadata(path, trust_package=False, net_access=False):
     """
     current_certainty = {}
     code = {}
-    for key, value, certainty in guess_upstream_metadata_items(
-            path, trust_package=trust_package):
-        if current_certainty.get(key) != 'certain':
-            code[key] = value
-            current_certainty[key] = certainty
+    update_from_guesses(
+        code, current_certainty,
+        guess_upstream_metadata_items(
+            path, trust_package=trust_package))
 
     extend_upstream_metadata(code, current_certainty, net_access=net_access)
     return code
@@ -616,6 +628,23 @@ def _possible_fields_missing(code, certainty, fields, field_certainty):
         return False
 
 
+def guess_from_sf(sf_project):
+    data = get_sf_metadata(sf_project)
+    if 'name' in data:
+        yield 'Name', data['name']
+    if 'external_homepage' in data:
+        yield 'Homepage', data['external_homepage']
+    if 'screenshots' in data:
+        yield ('Screenshots',
+               [s['url'] for s in data['screenshots'] if 'url' in s])
+    VCS_NAMES = ['bzr', 'hg', 'git']
+    vcs_tools = [
+        tool for tool in data.get('tools', []) if tool['name'] in VCS_NAMES]
+    if len(vcs_tools) == 1:
+        yield 'Repository', urllib.urljoin(
+            'https://sf.net/', vcs_tools[0]['url'])
+
+
 def extend_from_sf(code, certainty, sf_project):
     # First, make sure SF can actually provide any additional data. Otherwise,
     # don't bother dialing out.
@@ -626,25 +655,12 @@ def extend_from_sf(code, certainty, sf_project):
     if not _possible_fields_missing(
             code, certainty, sf_fields, certainty['Archive']):
         return fields
-    data = get_sf_metadata(sf_project)
-    if 'Name' not in code:
-        code['Name'] = data['name']
-        certainty['Name'] = certainty['Archive']
-        fields.add('Name')
-    if 'Homepage' not in code:
-        try:
-            code['Homepage'] = data['external_homepage']
-            certainty['Homepage'] = certainty['Archive']
-        except KeyError:
-            pass
-        else:
-            fields.add('Homepage')
-    if 'Screenshots' not in code:
-        for screenshot in data.get('screenshots', []):
-            if screenshot['url']:
-                code.setdefault('Screenshots', []).append(screenshot['url'])
-                certainty['Screenshots'] = certainty['Archive']
-                fields.add('Screenshots')
+
+    fields.update(update_from_guesses(
+        code, certainty,
+        [(key, value, certainty['Archive'])
+         for (key, value) in guess_from_sf(sf_project)]))
+
     return fields
 
 
@@ -660,14 +676,12 @@ def extend_from_lp(code, certainty, package, distribution=None, suite=None):
     if not _possible_fields_missing(code, certainty, lp_fields, lp_certainty):
         return fields
 
-    for key, value in guess_from_launchpad(
-            package, distribution=distribution, suite=suite):
-        if key not in certainty or (
-                certainty_to_confidence(certainty[key]) >
-                certainty_to_confidence(lp_certainty)):
-            code[key] = value
-            certainty[key] = value
-            fields.add(key)
+    fields.update(update_from_guesses(
+        code, certainty,
+        [(key, value, lp_certainty)
+         for (key, value) in guess_from_launchpad(
+             package, distribution=distribution, suite=suite)]))
+
     return fields
 
 
@@ -742,7 +756,7 @@ def guess_from_launchpad(package, distribution=None, suite=None):
     yield 'Name', project_data['display_name']
     if project_data.get('sourceforge_project'):
         yield ('X-SourceForge-Project', project_data['sourceforge_project'])
-    if project_data['vcs'] == 'Bzr':
+    if project_data['vcs'] == 'Bazaar':
         branch_link = productseries_data.get('branch_link')
         if branch_link:
             try:
