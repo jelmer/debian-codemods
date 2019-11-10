@@ -30,25 +30,25 @@ from .deb822 import update_deb822
 from .reformatting import GeneratedFile
 
 
-def dh_gnome_clean():
+def dh_gnome_clean(path='.'):
     """Run the dh_gnome_clean command.
 
     This needs to do some post-hoc cleaning, since dh_gnome_clean
     writes various debhelper log files that should not be checked in.
     """
-    for n in os.listdir('debian'):
+    for n in os.listdir(os.path.join(path, 'debian')):
         if n.endswith('.debhelper.log'):
             raise AssertionError('pre-existing .debhelper.log files')
-    subprocess.check_call(["dh_gnome_clean"])
-    for n in os.listdir('debian'):
+    subprocess.check_call(["dh_gnome_clean"], cwd=path)
+    for n in os.listdir(os.path.join(path, 'debian')):
         if n.endswith('.debhelper.log'):
-            os.unlink('debian/' + n)
+            os.unlink(os.path.join(path, 'debian', n))
 
 
-def pg_buildext_updatecontrol():
+def pg_buildext_updatecontrol(path='.'):
     """Run the 'pg_buildext updatecontrol' command.
     """
-    subprocess.check_call(["pg_buildext", "updatecontrol"])
+    subprocess.check_call(["pg_buildext", "updatecontrol"], cwd=path)
 
 
 def guess_template_type(template_path):
@@ -79,12 +79,13 @@ def _update_control_template(template_path, path, paragraph_cb):
     if not update_deb822(template_path, paragraph_cb=paragraph_cb):
         # A bit odd, since there were changes to the output file. Anyway.
         return False
+    package_root = os.path.dirname(os.path.dirname(path))
     if template_type == 'cdbs':
         update_deb822(path, paragraph_cb=paragraph_cb, allow_generated=True)
     elif template_type == 'gnome':
-        dh_gnome_clean()
+        dh_gnome_clean(package_root)
     elif template_type == 'postgresql':
-        pg_buildext_updatecontrol()
+        pg_buildext_updatecontrol(package_root)
     elif template_type == 'lintian-brush-test':
         with open(template_path, 'rb') as inf, open(path, 'wb') as outf:
             outf.write(
