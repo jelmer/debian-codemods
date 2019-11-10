@@ -20,12 +20,14 @@
 from unittest import TestCase
 
 from lintian_brush.vcs import (
+    canonicalize_vcs_url,
     determine_browser_url,
     extract_vcs_url_branch,
     fixup_broken_git_url,
     plausible_url,
     sanitize_url,
     split_vcs_url,
+    unsplit_vcs_url,
     )
 
 
@@ -195,3 +197,46 @@ class SplitVcsUrlTests(TestCase):
             ('https://github.com/jelmer/example', 'master', None),
             split_vcs_url(
                 'https://github.com/jelmer/example -b master'))
+
+
+class UnsplitVcsUrlTests(TestCase):
+
+    def test_none(self):
+        self.assertEqual(
+            'https://github.com/jelmer/example',
+            unsplit_vcs_url('https://github.com/jelmer/example', None, None))
+        self.assertEqual(
+            'https://github.com/jelmer/example [path/to/packaging]',
+            unsplit_vcs_url(
+                'https://github.com/jelmer/example', None,
+                'path/to/packaging'))
+
+    def test_branch(self):
+        self.assertEqual(
+            'https://github.com/jelmer/example -b master '
+            '[path/to/packaging]',
+            unsplit_vcs_url(
+                'https://github.com/jelmer/example', 'master',
+                'path/to/packaging'))
+        self.assertEqual(
+            'https://github.com/jelmer/example -b master',
+            unsplit_vcs_url(
+                'https://github.com/jelmer/example', 'master', None))
+
+
+class CanonicalizeVcsUrlTests(TestCase):
+
+    def test_github(self):
+        self.assertEqual(
+            'https://github.com/jelmer/example.git',
+            canonicalize_vcs_url('Git', 'https://github.com/jelmer/example'))
+
+    def test_salsa(self):
+        self.assertEqual(
+            'https://salsa.debian.org/jelmer/example.git',
+            canonicalize_vcs_url(
+                'Git', 'https://salsa.debian.org/jelmer/example'))
+        self.assertEqual(
+            'https://salsa.debian.org/jelmer/example.git',
+            canonicalize_vcs_url(
+                'Git', 'https://salsa.debian.org/jelmer/example.git'))

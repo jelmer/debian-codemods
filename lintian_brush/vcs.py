@@ -55,6 +55,15 @@ def split_vcs_url(url):
     return (repo_url, branch, subpath)
 
 
+def unsplit_vcs_url(repo_url, branch=None, subpath=None):
+    url = repo_url
+    if branch:
+        url = '%s -b %s' % (url, branch)
+    if subpath:
+        url = '%s [%s]' % (url, subpath)
+    return url
+
+
 def sanitize_url(url):
     url = url.strip()
     if url.startswith('git+http:') or url.startswith('git+https:'):
@@ -140,10 +149,7 @@ def fixup_broken_git_url(url):
             branch = newbranch
 
     if changed:
-        if branch:
-            return urlunparse(parsed) + ' -b ' + branch
-        else:
-            return urlunparse(parsed)
+        return unsplit_vcs_url(urlunparse(parsed), branch)
     return url
 
 
@@ -223,12 +229,13 @@ def canonicalize_vcs_browser_url(url):
 
 
 def canonical_vcs_git_url(url):
-    parsed_url = urlparse(url)
+    (repo_url, branch, subpath) = split_vcs_url(url)
+    parsed_url = urlparse(repo_url)
     if parsed_url.netloc in ('salsa.debian.org', 'github.com'):
         if not parsed_url.path.rstrip('/').endswith('.git'):
             parsed_url = parsed_url._replace(
                 path=parsed_url.path.rstrip('/') + '.git')
-        return urlunparse(parsed_url)
+        return unsplit_vcs_url(urlunparse(parsed_url), branch, subpath)
     return url
 
 
