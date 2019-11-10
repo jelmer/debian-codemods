@@ -194,3 +194,52 @@ def determine_browser_url(vcs_type, vcs_url):
             ('https', parsed.netloc, path,
              parsed.query, parsed.params, parsed.fragment))
     return None
+
+
+def canonicalize_vcs_browser_url(url):
+    url = url.replace(
+        "https://svn.debian.org/wsvn/",
+        "https://anonscm.debian.org/viewvc/")
+    url = url.replace(
+        "http://svn.debian.org/wsvn/",
+        "https://anonscm.debian.org/viewvc/")
+    url = url.replace(
+        "https://git.debian.org/?p=",
+        "https://anonscm.debian.org/git/")
+    url = url.replace(
+        "http://git.debian.org/?p=",
+        "https://anonscm.debian.org/git/")
+    url = url.replace(
+        "https://bzr.debian.org/loggerhead/",
+        "https://anonscm.debian.org/loggerhead/")
+    url = url.replace(
+        "http://bzr.debian.org/loggerhead/",
+        "https://anonscm.debian.org/loggerhead/")
+    url = re.sub(
+        r"^https?://salsa.debian.org/([^/]+/[^/]+)\.git/?$",
+        "https://salsa.debian.org/\\1",
+        url)
+    return url
+
+
+def canonical_vcs_git_url(url):
+    parsed_url = urlparse(url)
+    if parsed_url.netloc in ('salsa.debian.org', 'github.com'):
+        if not parsed_url.path.rstrip('/').endswith('.git'):
+            parsed_url = parsed_url._replace(
+                path=parsed_url.path.rstrip('/') + '.git')
+        return urlunparse(parsed_url)
+    return url
+
+
+canonicalize_vcs_fns = {
+    'Browser': canonicalize_vcs_browser_url,
+    'Git': canonical_vcs_git_url,
+}
+
+
+def canonicalize_vcs_url(vcs_type, url):
+    try:
+        return canonicalize_vcs_fns[vcs_type](url)
+    except KeyError:
+        return url
