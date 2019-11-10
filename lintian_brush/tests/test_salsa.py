@@ -65,6 +65,16 @@ class DetermineBrowserUrlTests(TestCase):
             determine_browser_url(
                 'https://salsa.debian.org/js-team/node-blah -b debian'))
 
+    def test_subpath(self):
+        self.assertEqual(
+            'https://salsa.debian.org/js-team/node-blah/tree/debian/foo',
+            determine_browser_url(
+                'https://salsa.debian.org/js-team/node-blah -b debian [foo]'))
+        self.assertEqual(
+            'https://salsa.debian.org/js-team/node-blah/tree/HEAD/foo',
+            determine_browser_url(
+                'https://salsa.debian.org/js-team/node-blah [foo]'))
+
 
 class SalsaUrlFromAliothUrlTests(TestCase):
 

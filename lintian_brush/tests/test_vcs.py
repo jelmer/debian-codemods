@@ -104,6 +104,12 @@ class SanitizeUrlTests(TestCase):
 
 class DetermineBrowserUrlTests(TestCase):
 
+    def test_salsa(self):
+        self.assertEqual(
+            'https://salsa.debian.org/jelmer/dulwich',
+            determine_browser_url(
+                'git', 'https://salsa.debian.org/jelmer/dulwich.git'))
+
     def test_github(self):
         self.assertEqual(
             'https://github.com/jelmer/dulwich',
@@ -117,6 +123,14 @@ class DetermineBrowserUrlTests(TestCase):
             'https://github.com/jelmer/dulwich/tree/master',
             determine_browser_url(
                 'git', 'git://github.com/jelmer/dulwich -b master'))
+        self.assertEqual(
+            'https://github.com/jelmer/dulwich/tree/master/blah',
+            determine_browser_url(
+                'git', 'git://github.com/jelmer/dulwich -b master [blah]'))
+        self.assertEqual(
+            'https://github.com/jelmer/dulwich/tree/HEAD/blah',
+            determine_browser_url(
+                'git', 'git://github.com/jelmer/dulwich [blah]'))
 
 
 class PlausibleUrlTests(TestCase):

@@ -22,7 +22,7 @@ __all__ = ['guess_repository_url', 'determine_browser_url']
 import re
 from urllib.parse import urlparse
 
-from .vcs import extract_vcs_url_branch
+from .vcs import split_vcs_url
 
 
 MAINTAINER_EMAIL_MAP = {
@@ -158,15 +158,19 @@ def determine_browser_url(url):
     Returns:
       a browser URL
     """
-    (url, branch) = extract_vcs_url_branch(url)
+    (url, branch, subpath) = split_vcs_url(url)
     parsed_url = urlparse(url)
     # TODO(jelmer): Add support for branches
     assert parsed_url.netloc == 'salsa.debian.org'
     path = parsed_url.path
     if path.endswith('.git'):
         path = path[:-len('.git')]
+    if subpath and not branch:
+        branch = "HEAD"
     if branch:
         path = path + '/tree/%s' % branch
+    if subpath:
+        path = path + '/' + subpath
     return 'https://salsa.debian.org%s' % path
 
 

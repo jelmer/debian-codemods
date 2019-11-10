@@ -177,15 +177,19 @@ def probe_vcs_url(url, version=None):
 
 
 def determine_browser_url(vcs_type, vcs_url):
-    repo_url, branch = extract_vcs_url_branch(vcs_url)
+    repo_url, branch, subpath = split_vcs_url(vcs_url)
     parsed = urlparse(repo_url)
     if parsed.netloc == 'salsa.debian.org':
         from .salsa import determine_browser_url as determine_salsa_browser_url
         return determine_salsa_browser_url(vcs_url)
     if parsed.netloc == 'github.com':
         path = parsed.path.rstrip('.git')
+        if subpath and not branch:
+            branch = "HEAD"
         if branch:
             path = posixpath.join(path, 'tree', branch)
+        if subpath:
+            path = posixpath.join(path, subpath)
         return urlunparse(
             ('https', parsed.netloc, path,
              parsed.query, parsed.params, parsed.fragment))
