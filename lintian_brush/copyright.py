@@ -52,13 +52,3 @@ def update_copyright(update_cb, path='debian/copyright'):
 
     return edit_formatted_file(
         path, orig_content, rewritten_content, updated_content)
-
-
-def copyright_is_machine_readable(path='debian/copyright'):
-    try:
-        with open(path, 'r') as f:
-            Copyright(f.read(), strict=False)
-    except (FileNotFoundError, NotMachineReadableError):
-        return False
-    else:
-        return True
