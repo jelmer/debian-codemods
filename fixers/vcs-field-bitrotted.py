@@ -75,7 +75,8 @@ class NewRepositoryURLUnknown(Exception):
         self.vcs_url = vcs_url
 
 
-def find_new_urls(vcs_type, vcs_url, package, maintainer_email, net_access=False):
+def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
+                  net_access=False):
     if net_access and (
             vcs_url.startswith('https://') or vcs_url.startswith('http://')):
         headers = {'User-Agent': USER_AGENT}
@@ -103,7 +104,7 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email, net_access=False
                 print("Update Vcs-* headers from vcswatch.")
                 return (vcs_type, vcs_url, vcs_browser)
             sys.stderr.write(
-                'vcswatch URL %s is still on old infrastructure.' % e.args[0])
+                'vcswatch URL %s is still on old infrastructure.' % vcs_url)
 
     # Otherwise, attempt to guess based on maintainer email.
     guessed_url = guess_repository_url(package, maintainer_email)
@@ -124,7 +125,6 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email, net_access=False
 
     vcs_browser = determine_salsa_browser_url(vcs_url)
     return (vcs_type, vcs_url, vcs_browser)
-
 
 
 fixed_tags = set()
