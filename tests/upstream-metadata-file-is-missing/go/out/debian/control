@@ -6,7 +6,6 @@ Maintainer: Some Maintainer <example@example.com>
 Build-Depends: debhelper (>= 11~),
                dh-golang,
                golang-any
-Homepage: https://github.com/j-keck/arping
 XS-Go-Import-Path: github.com/blah/blah
 Testsuite: autopkgtest-pkg-go
 
