@@ -647,8 +647,9 @@ def guess_from_sf(sf_project):
     if 'external_homepage' in data:
         yield 'Homepage', data['external_homepage']
     if 'screenshots' in data:
-        yield ('Screenshots',
-               [s['url'] for s in data['screenshots'] if 'url' in s])
+        screenshot_urls = [s['url'] for s in data['screenshots'] if 'url' in s]
+        if screenshot_urls:
+            yield ('Screenshots', screenshot_urls)
     VCS_NAMES = ['bzr', 'hg', 'git']
     vcs_tools = [
         tool for tool in data.get('tools', []) if tool['name'] in VCS_NAMES]
