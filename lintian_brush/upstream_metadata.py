@@ -789,14 +789,17 @@ def guess_from_launchpad(package, distribution=None, suite=None):
                     raise
                 if project_data['official_codehosting']:
                     branch_data = _load_json_url(branch_link)
-                    yield 'Archive', 'launchpad'
-                    yield 'Repository', branch_data['bzr_identity']
-                    yield 'Repository-Browse', branch_data['web_link']
+                    if branch_data:
+                        yield 'Archive', 'launchpad'
+                        yield 'Repository', branch_data['bzr_identity']
+                        yield 'Repository-Browse', branch_data['web_link']
     elif project_data['vcs'] == 'Git':
         repo_link = (
             'https://api.launchpad.net/devel/+git?ws.op=getByPath&path=%s' %
             project_data['name'])
         repo_data = _load_json_url(repo_link)
+        if not repo_data:
+            return
         code_import_link = repo_data.get('code_import_link')
         if code_import_link:
             code_import_data = _load_json_url(repo_data['code_import_link'])
