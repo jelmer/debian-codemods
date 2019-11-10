@@ -35,6 +35,7 @@ from lintian_brush import (
     certainty_to_confidence,
     )
 from lintian_brush.vcs import (
+    browse_url_from_repo_url,
     plausible_url as plausible_vcs_url,
     sanitize_url as sanitize_vcs_url,
     probe_vcs_url,
@@ -122,20 +123,10 @@ def guess_repo_from_url(url):
     return None
 
 
-def browse_url_from_repo_url(url):
-    parsed_url = urlparse(url)
-    if parsed_url.netloc == 'github.com':
-        path = '/'.join(parsed_url.path.split('/')[:3])
-        if path.endswith('.git'):
-            path = path[:-4]
-        return ('https://github.com' + path)
-    return None
-
-
 def update_from_guesses(code, current_certainty, guessed_items):
     fields = set()
     for key, value, certainty in guessed_items:
-        if key not in certainty or (
+        if key not in current_certainty or (
                 certainty_to_confidence(certainty) <
                 certainty_to_confidence(current_certainty[key])):
             if code.get(key) != value:

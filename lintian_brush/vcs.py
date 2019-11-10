@@ -182,6 +182,22 @@ def probe_vcs_url(url, version=None):
         return False
 
 
+def browse_url_from_repo_url(url):
+    parsed_url = urlparse(url)
+    if parsed_url.netloc == 'github.com':
+        path = '/'.join(parsed_url.path.split('/')[:3])
+        if path.endswith('.git'):
+            path = path[:-4]
+        return urlunparse(
+            ('https', 'github.com', path,
+             None, None, None))
+    if parsed_url.netloc in ('code.launchpad.net', 'launchpad.net'):
+        return urlunparse(
+            ('https', 'code.launchpad.net', parsed_url.path,
+             parsed_url.query, parsed_url.params, parsed_url.fragment))
+    return None
+
+
 def determine_browser_url(vcs_type, vcs_url):
     repo_url, branch, subpath = split_vcs_url(vcs_url)
     parsed = urlparse(repo_url)
@@ -198,6 +214,11 @@ def determine_browser_url(vcs_type, vcs_url):
             path = posixpath.join(path, subpath)
         return urlunparse(
             ('https', parsed.netloc, path,
+             parsed.query, parsed.params, parsed.fragment))
+    if (parsed.netloc in ('code.launchpad.net', 'launchpad.net') and
+            not branch and not subpath):
+        return urlunparse(
+            ('https', 'code.launchpad.net', path,
              parsed.query, parsed.params, parsed.fragment))
     return None
 
