@@ -1,6 +1,16 @@
 Contributing
 ============
 
+Philosophy
+----------
+
+The fixers in lintian-brush should be as simple as possible. They don't have to
+deal with version control, and can just give up and have their changes reverted
+for them (by exiting with a non-zero exit code).
+
+Fixers should be as fast as possible when they do not find anything to fix, since
+this is the common case.
+
 Coding Style
 ------------
 
