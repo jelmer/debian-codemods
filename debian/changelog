@@ -24,6 +24,9 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
     runstatedir and autoreconf is explicitly disabled.
   * Properly handle empty lines when updating makefiles.
   * Fixup extra : in the netloc part of git URLs.
+  * upstream-metadata-file-is-missing: Don't drop Name and Copyright
+    from debian/upstream/metadata if debian/copyright is not machine-
+    readable.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
 

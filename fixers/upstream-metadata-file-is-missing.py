@@ -11,6 +11,7 @@ from lintian_brush import (
     certainty_sufficient,
     min_certainty,
     )
+from lintian_brush.copyright import copyright_is_machine_readable
 from lintian_brush.upstream_metadata import (
     check_upstream_metadata,
     extend_upstream_metadata,
@@ -54,9 +55,19 @@ if net_access:
         code, current_certainty, version=current_version.upstream_version)
 
 
-# Drop keys that don't belong in debian/upsteam/metadata
+# Homepage is set in debian/control, so don't add it to
+# debian/upstream/metadata.
+external_present_fields = set(['Homepage'])
+
+# If the debian/copyright file is machine-readable, then we can drop the
+# Name/Contact information from the debian/upstream/metadata file.
+if ('Name' in code or 'Contact' in code) and copyright_is_machine_readable():
+    external_present_fields.update(['Name', 'Contact'])
+
+
+# Drop keys that don't need to be in debian/upsteam/metadata
 for key in list(code):
-    if key.startswith('X-') or key in ('Name', 'Contact', 'Homepage'):
+    if key.startswith('X-') or key in external_present_fields:
         del code[key]
         del current_certainty[key]
         if key in fields:
