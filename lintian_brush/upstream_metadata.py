@@ -60,7 +60,9 @@ KNOWN_GITLAB_SITES = ['gitlab.com', 'salsa.debian.org']
 # - Bug-Submit
 # - Screenshots
 # - Archive
-# - X-*
+# - X-SourceForge-Project
+# - X-Wiki
+# - X-Summary
 
 # Supported, but unused.
 # - FAQ
@@ -766,6 +768,10 @@ def guess_from_launchpad(package, distribution=None, suite=None):
     yield 'Name', project_data['display_name']
     if project_data.get('sourceforge_project'):
         yield ('X-SourceForge-Project', project_data['sourceforge_project'])
+    if project_data.get('wiki_url'):
+        yield ('X-Wiki', project_data['wiki_url'])
+    if project_data.get('summary'):
+        yield ('X-Summary', project_data['summary'])
     if project_data['vcs'] == 'Bazaar':
         branch_link = productseries_data.get('branch_link')
         if branch_link:
