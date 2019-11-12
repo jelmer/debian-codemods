@@ -111,6 +111,11 @@ def guess_repo_from_url(url):
         if len(path_elements) != 2 or path_elements[0] != 'git':
             return None
         return url
+    if parsed_url.netloc in ('freedesktop.org', 'www.freedesktop.org'):
+        path_elements = parsed_url.path.strip('/').split('/')
+        if len(path_elements) < 2 or path_elements[0] != 'software':
+            return None
+        return 'https://github.com/freedesktop/%s' % path_elements[1]
     if parsed_url.netloc in KNOWN_GITLAB_SITES:
         if parsed_url.path.strip('/').count('/') < 1:
             return None
@@ -201,9 +206,7 @@ def guess_from_debian_control(path, trust_package):
     with open(path, 'r') as f:
         control = Deb822(f)
     if 'Homepage' in control:
-        repo = guess_repo_from_url(control['Homepage'])
-        if repo:
-            yield 'Repository', sanitize_vcs_url(repo), "likely"
+        yield 'Homepage', control['Homepage'], 'certain'
     if 'XS-Go-Import-Path' in control:
         yield (
             'Repository',
@@ -647,11 +650,13 @@ def guess_from_sf(sf_project):
         screenshot_urls = [s['url'] for s in data['screenshots'] if 'url' in s]
         if screenshot_urls:
             yield ('Screenshots', screenshot_urls)
-    VCS_NAMES = ['bzr', 'hg', 'git']
+    VCS_NAMES = ['bzr', 'hg', 'git', 'cvs']
     vcs_tools = [
         tool for tool in data.get('tools', []) if tool['name'] in VCS_NAMES]
     if len(vcs_tools) == 1:
-        yield 'Repository', urljoin('https://sf.net/', vcs_tools[0]['url'])
+        vcs_tool = vcs_tools[0]
+        if vcs_tool['name'] != 'cvs':
+            yield 'Repository', urljoin('https://sf.net/', vcs_tools[0]['url'])
 
 
 def extend_from_external_guesser(
@@ -693,11 +698,51 @@ def extend_from_lp(code, certainty, minimum_certainty, package,
              package, distribution=distribution, suite=suite))
 
 
+def extract_sf_project_name(url):
+    m = re.fullmatch('https?://(.*).(sf|sourceforge).net/?', url)
+    if m:
+        return m.group(1)
+
+
+def bug_database_url_from_repo_url(url):
+    parsed_url = urlparse(url)
+    if parsed_url.netloc == 'github.com':
+        path = '/'.join(parsed_url.path.split('/')[:3])
+        if path.endswith('.git'):
+            path = path[:-4]
+        path = path + '/issues'
+        return urlunparse(
+            ('https', 'github.com', path,
+             None, None, None))
+    return None
+
+
+def verify_bug_database_url(url):
+    parsed_url = urlparse(url)
+    if parsed_url.netloc == 'github.com':
+        path_elements = parsed_url.path.strip('/').split('/')
+        if len(path_elements) < 3 or path_elements[2] != 'issues':
+            return False
+        api_url = 'https://api.github.com/repos/%s/%s' % (
+            path_elements[0], path_elements[1])
+        data = _load_json_url(api_url)
+        return data['has_issues']
+    return None
+
+
 def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
                              net_access=False,
                              consult_external_directory=False):
     """Extend a set of upstream metadata.
     """
+    if 'Homepage' in code:
+        project = extract_sf_project_name(code['Homepage'])
+        if project:
+            code['Archive'] = 'SourceForge'
+            certainty['Archive'] = 'likely'
+            code['X-SourceForge-Project'] = project
+            certainty['X-SourceForge-Project'] = 'likely'
+
     fields = set()
     if (code.get('Archive') == 'SourceForge' and
             'X-SourceForge-Project' in code and
@@ -711,17 +756,34 @@ def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
             if 'X-SourceForge-Project' in fields:
                 fields.remove('X-SourceForge-Project')
     if net_access and consult_external_directory:
-        with open(os.path.join(path, 'debian/control'), 'r') as f:
-            package = Deb822(f)['Source']
-        fields.update(extend_from_lp(
-            code, certainty, minimum_certainty, package))
+        try:
+            with open(os.path.join(path, 'debian/control'), 'r') as f:
+                package = Deb822(f)['Source']
+        except FileNotFoundError:
+            # Huh, okay.
+            pass
+        else:
+            fields.update(extend_from_lp(
+                code, certainty, minimum_certainty, package))
+    if 'Homepage' in code and 'Repository' not in code:
+        repo = guess_repo_from_url(code['Homepage'])
+        if repo:
+            code['Repository'] = repo
+            certainty['Repository'] = 'likely'
+            fields.add('Repository')
     if 'Repository' in code and 'Repository-Browse' not in code:
         browse_url = browse_url_from_repo_url(code['Repository'])
         if browse_url:
             code['Repository-Browse'] = browse_url
             certainty['Repository-Browse'] = certainty['Repository']
             fields.add('Repository-Browse')
-    # TODO(jelmer): Try deriving bug-database too?
+    if 'Repository' in code and 'Bug-Database' not in code:
+        bug_db_url = bug_database_url_from_repo_url(code['Repository'])
+        if bug_db_url:
+            code['Bug-Database'] = bug_db_url
+            certainty['Bug-Database'] = certainty['Repository']
+            fields.add('Bug-Database')
+    # TODO(jelmer): Set Bug-Submit
     return fields
 
 
@@ -762,10 +824,16 @@ def check_upstream_metadata(code, certainty, version=None):
     if 'Repository' in code and certainty['Repository'] == 'likely':
         if probe_upstream_branch_url(code['Repository'], version=version):
             certainty['Repository'] = 'certain'
+            derived_browse_url = browse_url_from_repo_url(code['Repository'])
+            if derived_browse_url == code.get('Repository-Browse'):
+                certainty['Repository-Browse'] = certainty['Repository']
         else:
             # TODO(jelmer): Remove altogether, or downgrade to a lesser
             # certainty?
             pass
+    if 'Bug-Database' in code and certainty['Bug-Database'] == 'likely':
+        if verify_bug_database_url(code['Bug-Database']):
+            certainty['Bug-Database'] = 'certain'
 
 
 def guess_from_launchpad(package, distribution=None, suite=None):

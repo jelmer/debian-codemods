@@ -54,7 +54,6 @@ if net_access:
     check_upstream_metadata(
         code, current_certainty, version=current_version.upstream_version)
 
-
 # Homepage is set in debian/control, so don't add it to
 # debian/upstream/metadata.
 external_present_fields = set(['Homepage'])
