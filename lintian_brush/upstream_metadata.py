@@ -38,6 +38,7 @@ from lintian_brush.vcs import (
     browse_url_from_repo_url,
     plausible_url as plausible_vcs_url,
     sanitize_url as sanitize_vcs_url,
+    KNOWN_GITLAB_SITES,
     )
 from lintian_brush.watch import parse_watch_file
 from urllib.request import urlopen, Request
@@ -45,7 +46,6 @@ from urllib.request import urlopen, Request
 
 KNOWN_HOSTING_SITES = [
     'code.launchpad.net', 'github.com', 'launchpad.net']
-KNOWN_GITLAB_SITES = ['gitlab.com', 'salsa.debian.org']
 
 
 # See https://wiki.debian.org/UpstreamMetadata
@@ -113,9 +113,15 @@ def guess_repo_from_url(url):
         return url
     if parsed_url.netloc in ('freedesktop.org', 'www.freedesktop.org'):
         path_elements = parsed_url.path.strip('/').split('/')
-        if len(path_elements) < 2 or path_elements[0] != 'software':
-            return None
-        return 'https://github.com/freedesktop/%s' % path_elements[1]
+        if len(path_elements) >= 2 and path_elements[0] == 'software':
+            return 'https://github.com/freedesktop/%s' % path_elements[1]
+        if len(path_elements) >= 3 and path_elements[:2] == [
+                'wiki', 'Software']:
+            return 'https://github.com/freedesktop/%s.git' % path_elements[2]
+    if parsed_url.netloc == 'download.gnome.org':
+        path_elements = parsed_url.path.strip('/').split('/')
+        if len(path_elements) >= 2 and path_elements[0] == 'sources':
+            return 'https://gitlab.gnome.org/gnome/%s.git' % path_elements[1]
     if parsed_url.netloc in KNOWN_GITLAB_SITES:
         if parsed_url.path.strip('/').count('/') < 1:
             return None
@@ -588,10 +594,11 @@ def guess_upstream_metadata_items(path, trust_package=False,
             warn('More than one doap filename, ignoring all: %r' %
                  doap_filenames)
 
-    CANDIDATES.extend([
-        ('README', guess_from_readme),
-        ('README.md', guess_from_readme),
-        ])
+    readme_filenames = [
+        n for n in os.listdir(path)
+        if n.startswith('README') and
+        os.path.splitext(n)[1] not in ('.html', '.pdf', '.xml')]
+    CANDIDATES.extend([(n, guess_from_readme) for n in readme_filenames])
 
     for relpath, guesser in CANDIDATES:
         abspath = os.path.join(path, relpath)
@@ -779,9 +786,11 @@ def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
             fields.add('Repository-Browse')
     if 'Repository' in code and 'Bug-Database' not in code:
         bug_db_url = bug_database_url_from_repo_url(code['Repository'])
-        if bug_db_url:
+        bug_db_certainty = 'likely'
+        if bug_db_url and certainty_sufficient(
+                bug_db_certainty, minimum_certainty):
             code['Bug-Database'] = bug_db_url
-            certainty['Bug-Database'] = certainty['Repository']
+            certainty['Bug-Database'] = bug_db_certainty
             fields.add('Bug-Database')
     # TODO(jelmer): Set Bug-Submit
     return fields

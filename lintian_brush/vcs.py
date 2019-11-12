@@ -31,6 +31,9 @@ import re
 from urllib.parse import urlparse, urlunparse
 
 
+KNOWN_GITLAB_SITES = ['gitlab.com', 'salsa.debian.org', 'gitlab.gnome.org']
+
+
 def extract_vcs_url_branch(url):
     # Deprecated, use split_vcs_url
     (repo_url, branch, subpath) = split_vcs_url(url)
@@ -166,6 +169,11 @@ def browse_url_from_repo_url(url):
         return urlunparse(
             ('https', 'code.launchpad.net', parsed_url.path,
              parsed_url.query, parsed_url.params, parsed_url.fragment))
+    if parsed_url.netloc in KNOWN_GITLAB_SITES:
+        path = parsed_url.path
+        if path.endswith('.git'):
+            path = path[:-4]
+        return urlunparse(('https', parsed_url.netloc, path, None, None, None))
     return None
 
 
