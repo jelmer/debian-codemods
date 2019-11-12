@@ -79,7 +79,7 @@ def _update_control_template(template_path, path, paragraph_cb):
     if not update_deb822(template_path, paragraph_cb=paragraph_cb):
         # A bit odd, since there were changes to the output file. Anyway.
         return False
-    package_root = os.path.dirname(os.path.dirname(path))
+    package_root = os.path.dirname(os.path.dirname(path)) or '.'
     if template_type == 'cdbs':
         update_deb822(path, paragraph_cb=paragraph_cb, allow_generated=True)
     elif template_type == 'gnome':
