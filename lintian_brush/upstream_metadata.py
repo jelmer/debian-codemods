@@ -38,7 +38,6 @@ from lintian_brush.vcs import (
     browse_url_from_repo_url,
     plausible_url as plausible_vcs_url,
     sanitize_url as sanitize_vcs_url,
-    probe_vcs_url,
     )
 from lintian_brush.watch import parse_watch_file
 from urllib.request import urlopen, Request
@@ -602,7 +601,9 @@ def guess_upstream_metadata_items(path, trust_package=False,
             yield key, value, certainty
 
 
-def guess_upstream_metadata(path, trust_package=False, net_access=False):
+def guess_upstream_metadata(
+        path, trust_package=False, net_access=False,
+        consult_external_directory=False):
     """Guess the upstream metadata dictionary.
 
     Args:
@@ -610,6 +611,8 @@ def guess_upstream_metadata(path, trust_package=False, net_access=False):
       trust_package: Whether to trust the package contents and i.e. run
           executables in it
       net_access: Whether to allow net access
+      consult_external_directory: Whether to pull in data
+        from external (user-maintained) directories.
     """
     current_certainty = {}
     code = {}
@@ -619,7 +622,8 @@ def guess_upstream_metadata(path, trust_package=False, net_access=False):
             path, trust_package=trust_package))
 
     extend_upstream_metadata(
-        code, current_certainty, path, net_access=net_access)
+        code, current_certainty, path, net_access=net_access,
+        consult_external_directory=consult_external_directory)
     return code
 
 
@@ -690,7 +694,8 @@ def extend_from_lp(code, certainty, minimum_certainty, package,
 
 
 def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
-                             net_access=False):
+                             net_access=False,
+                             consult_external_directory=False):
     """Extend a set of upstream metadata.
     """
     fields = set()
@@ -705,7 +710,7 @@ def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
             del certainty['X-SourceForge-Project']
             if 'X-SourceForge-Project' in fields:
                 fields.remove('X-SourceForge-Project')
-    if net_access:
+    if net_access and consult_external_directory:
         with open(os.path.join(path, 'debian/control'), 'r') as f:
             package = Deb822(f)['Source']
         fields.update(extend_from_lp(
@@ -720,13 +725,42 @@ def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
     return fields
 
 
+def probe_upstream_branch_url(url, version=None):
+    parsed = urlparse(url)
+    # TODO(jelmer): Disable authentication prompting.
+    if parsed.scheme in ('git+ssh', 'ssh', 'bzr+ssh'):
+        # Let's not probe anything possibly non-public.
+        return None
+    from breezy.branch import Branch
+    try:
+        b = Branch.open(url)
+        b.last_revision()
+        if version is not None:
+            tag_names = b.tags.get_tag_dict().keys()
+            if version in tag_names:
+                return True
+            if 'v%s' % version in tag_names:
+                return True
+            for tag_name in tag_names:
+                if tag_name.endswith('_' + version):
+                    return True
+                if tag_name.endswith('-' + version):
+                    return True
+            return False
+        else:
+            return True
+    except Exception:
+        # TODO(jelmer): Catch more specific exceptions?
+        return False
+
+
 def check_upstream_metadata(code, certainty, version=None):
     """Check upstream metadata.
 
     This will make network connections, etc.
     """
     if 'Repository' in code and certainty['Repository'] == 'likely':
-        if probe_vcs_url(code['Repository'], version=version):
+        if probe_upstream_branch_url(code['Repository'], version=version):
             certainty['Repository'] = 'certain'
         else:
             # TODO(jelmer): Remove altogether, or downgrade to a lesser
@@ -826,8 +860,13 @@ if __name__ == '__main__':
         '--disable-net-access',
         help='Do not probe external services.',
         action='store_true', default=False)
+    parser.add_argument(
+        '--consult-external-directory',
+        action='store_true',
+        help='Pull in external (not maintained by upstream) directory data')
     args = parser.parse_args()
 
     metadata = guess_upstream_metadata(
-        args.path, args.trust, not args.disable_net_access)
+        args.path, args.trust, not args.disable_net_access,
+        consult_external_directory=args.consult_external_directory)
     sys.stdout.write(ruamel.yaml.round_trip_dump(metadata))

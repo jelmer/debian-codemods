@@ -153,35 +153,6 @@ def fixup_broken_git_url(url):
     return url
 
 
-def probe_vcs_url(url, version=None):
-    parsed = urlparse(url)
-    # TODO(jelmer): Disable authentication prompting.
-    if parsed.scheme in ('git+ssh', 'ssh', 'bzr+ssh'):
-        # Let's not probe anything possibly non-public.
-        return None
-    from breezy.branch import Branch
-    try:
-        b = Branch.open(url)
-        b.last_revision()
-        if version is not None:
-            tag_names = b.tags.get_tag_dict().keys()
-            if version in tag_names:
-                return True
-            if 'v%s' % version in tag_names:
-                return True
-            for tag_name in tag_names:
-                if tag_name.endswith('_' + version):
-                    return True
-                if tag_name.endswith('-' + version):
-                    return True
-            return False
-        else:
-            return True
-    except Exception:
-        # TODO(jelmer): Catch more specific exceptions?
-        return False
-
-
 def browse_url_from_repo_url(url):
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
