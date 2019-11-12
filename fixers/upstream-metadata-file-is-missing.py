@@ -62,11 +62,13 @@ external_present_fields = set(['Homepage'])
 # If the debian/copyright file is machine-readable, then we can drop the
 # Name/Contact information from the debian/upstream/metadata file.
 if 'Name' in code or 'Contact' in code:
-    from debian.copyright import Copyright, MachineReadableFormatError
+    from debian.copyright import (
+        Copyright, MachineReadableFormatError, NotMachineReadableError)
     try:
         with open('debian/copyright', 'r') as f:
             c = Copyright(f)
-    except (FileNotFoundError, MachineReadableFormatError):
+    except (FileNotFoundError, NotMachineReadableError,
+            MachineReadableFormatError):
         pass
     else:
         if c.header.upstream_contact:
