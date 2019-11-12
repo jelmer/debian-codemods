@@ -18,6 +18,7 @@ from lintian_brush.upstream_metadata import (
     update_from_guesses,
     )
 from lintian_brush.vcs import sanitize_url as sanitize_vcs_url
+from lintian_brush.yaml import write_yaml_file
 
 
 current_version = Version(os.environ['CURRENT_VERSION'])
@@ -109,8 +110,7 @@ if not os.path.isdir('debian/upstream'):
 
 fixed_tag = not os.path.exists('debian/upstream/metadata')
 
-with open('debian/upstream/metadata', 'w') as f:
-    ruamel.yaml.round_trip_dump(code, f)
+write_yaml_file('debian/upstream/metadata', code)
 
 print('Set upstream metadata fields: %s.' % ', '.join(sorted(fields)))
 print('Certainty: %s' % achieved_certainty)
