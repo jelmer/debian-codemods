@@ -24,6 +24,7 @@ from lintian_brush.rules import (
     dh_invoke_drop_argument,
     dh_invoke_replace_argument,
     update_rules,
+    Makefile,
     )
 
 
@@ -65,11 +66,16 @@ if uses_cdbs:
 # maintainer chose to specify it.
 def autoreconf_disabled():
     try:
-        with open('debian/rules', 'rb') as f:
-            for line in f:
-                if re.findall(b'--without.*autoreconf', line):
-                    return True
-                # TODO(jelmer): check for empty override_dh_autoreconf target.
+        mf = Makefile.from_path('debian/rules')
+        for line in mf.dump_lines():
+            if re.findall(b'--without.*autoreconf', line):
+                return True
+
+        # Another way to disable dh_autoreconf is to add an empty override
+        # rule.
+        rule = mf.get_rule(b'override_dh_autoreconf')
+        if rule and not rule.commands():
+            return True
     except FileNotFoundError:
         return False
     return False

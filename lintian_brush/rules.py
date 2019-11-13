@@ -29,6 +29,10 @@ class Rule(object):
         # TODO(jelmer): What if there are multiple targets?
         self.target = firstline.split(b':')[0]
 
+    def has_target(self, target):
+        # TODO(jelmer): Handle multiple targets
+        return self.target == target
+
     def rename_target(self, oldname, newname):
         # TODO(jelmer): Handle multiple targets
         if self.target == oldname:
@@ -120,14 +124,17 @@ class Makefile(object):
 
         return mf
 
-    def dump(self):
+    def dump_lines(self):
         lines = []
         for entry in self.contents:
             if isinstance(entry, Rule):
                 lines.extend(entry.dump_lines())
             else:
                 lines.append(entry + b'\n')
-        return b''.join(lines)
+        return lines
+
+    def dump(self):
+        return b''.join(self.dump_lines())
 
     def add_rule(self, target, components=None):
         if self.contents:
