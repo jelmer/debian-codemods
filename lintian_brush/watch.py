@@ -196,24 +196,34 @@ def parse_watch_file(f):
         entries=entries, options=persistent_options, version=version)
 
 
-def update_watch(update_entry=None, path='debian/watch'):
-    check_generated_file(path)
-    try:
-        with open(path, 'r') as f:
-            original_contents = f.read()
-    except FileNotFoundError:
+class WatchUpdater(object):
+
+    def __init__(self, path='debian/watch'):
+        self.path = path
+
+    def __enter__(self):
+        check_generated_file(self.path)
+        try:
+            with open(self.path, 'r') as f:
+                self._original_contents = f.read()
+        except FileNotFoundError:
+            return False
+        self.watch_file = parse_watch_file(
+            self._original_contents.splitlines())
+        if self.watch_file is None:
+            return self
+        nf = StringIO()
+        self.watch_file.dump(nf)
+        self._rewritten_contents = nf.getvalue()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.watch_file is None:
+            return
+        nf = StringIO()
+        self.watch_file.dump(nf)
+        updated_contents = nf.getvalue()
+        self.changed = edit_formatted_file(
+            self.path, self._original_contents, self._rewritten_contents,
+            updated_contents)
         return False
-    wf = parse_watch_file(original_contents.splitlines())
-    if wf is None:
-        return False
-    nf = StringIO()
-    wf.dump(nf)
-    rewritten_contents = nf.getvalue()
-    for entry in wf.entries:
-        if update_entry is not None:
-            update_entry(entry)
-    nf = StringIO()
-    wf.dump(nf)
-    updated_contents = nf.getvalue()
-    return edit_formatted_file(
-        path, original_contents, rewritten_contents, updated_contents)

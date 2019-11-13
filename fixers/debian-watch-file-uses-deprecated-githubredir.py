@@ -1,22 +1,21 @@
 #!/usr/bin/python3
 
-from lintian_brush.watch import update_watch
+from lintian_brush.watch import WatchUpdater
 from urllib.parse import urlparse
 
 
-def remove_githubredir(w):
-    parsed_url = urlparse(w.url)
-    if parsed_url.netloc != 'githubredir.debian.net':
-        return
-    parts = parsed_url.path.strip('/').split('/')
-    if parts[0] != 'github':
-        # Hmm.
-        return
-    w.url = 'https://github.com/%s/%s/tags' % (parts[1], parts[2])
-    w.matching_pattern = '.*/' + w.matching_pattern.rsplit('/', 1)[-1]
+with WatchUpdater() as updater:
+    for w in updater.watch_file.entries:
+        parsed_url = urlparse(w.url)
+        if parsed_url.netloc != 'githubredir.debian.net':
+            continue
+        parts = parsed_url.path.strip('/').split('/')
+        if parts[0] != 'github':
+            # Hmm.
+            continue
+        w.url = 'https://github.com/%s/%s/tags' % (parts[1], parts[2])
+        w.matching_pattern = '.*/' + w.matching_pattern.rsplit('/', 1)[-1]
 
-
-update_watch(remove_githubredir)
 
 print(
     'Remove use of githubredir - see '
