@@ -174,6 +174,16 @@ def browse_url_from_repo_url(url):
         if path.endswith('.git'):
             path = path[:-4]
         return urlunparse(('https', parsed_url.netloc, path, None, None, None))
+    if parsed_url.netloc == 'svn.apache.org':
+        path_elements = parsed_url.path.strip('/').split('/')
+        if path_elements[:2] != ['repos', 'asf']:
+            return None
+        path_elements.pop(0)
+        path_elements[0] = 'viewvc'
+        return urlunparse(
+            ('https', parsed_url.netloc, '/'.join(path_elements), None, None,
+             None))
+
     return None
 
 
