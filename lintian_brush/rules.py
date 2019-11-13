@@ -21,14 +21,32 @@ import os
 import re
 
 
-def update_rules(command_line_cb=None, global_line_cb=None,
-                 path='debian/rules'):
-    """Update a rules file.
+class Rule(object):
+
+    def __init__(self, firstline):
+        self.lines = [firstline]
+        # TODO(jelmer): What if there are multiple targets?
+        self.target = firstline.split(b':')[0]
+
+    def commands(self):
+        return [l[1:] for l in self.lines if l.startswith(b'\t')]
+
+    def append_line(self, line):
+        self.lines.append(line)
+
+    def dump_lines(self):
+        return self.lines
+
+
+def update_makefile(path, command_line_cb=None, global_line_cb=None,
+                    keep_rule_cb=None):
+    """Update a makefile.
 
     Args:
-      path: Path to the debian/rules file to edit
+      path: Path to the makefile to edit
       command_line_cb: Callback to call on every rule command line
       global_line_cb: Callback to call on every global line
+      keep_rule_cb: Callback to decide if a particular rule should be kept
     Returns:
       boolean indicating whether any changes were made
     """
@@ -37,7 +55,7 @@ def update_rules(command_line_cb=None, global_line_cb=None,
     with open(path, 'rb') as f:
         original_contents = f.read()
     newlines = []
-    target = None
+    rule = None
     keep = b''
     for line in original_contents.splitlines():
         line = keep + line
@@ -45,25 +63,34 @@ def update_rules(command_line_cb=None, global_line_cb=None,
         if line.endswith(b'\\'):
             keep = line + b'\n'
             continue
-        if line.startswith(b'\t') and target:
+        if line.startswith(b'\t') and rule:
             ret = line[1:]
             if callable(command_line_cb):
-                ret = command_line_cb(ret, target)
+                ret = command_line_cb(ret, rule.target)
             elif isinstance(command_line_cb, list):
                 for fn in command_line_cb:
-                    ret = fn(ret, target)
+                    ret = fn(ret, rule.target)
             if isinstance(ret, bytes):
-                newlines.append(b'\t' + ret)
+                rule.append_line(b'\t' + ret)
             elif isinstance(ret, list):
-                newlines.extend([b'\t' + l for l in ret])
+                for l in ret:
+                    rule.append_line(b'\t' + l)
             else:
                 raise TypeError(ret)
         elif b':' in line and b' ' not in line.split(b':')[0]:
-            target = line.split(b':')[0]
-            newlines.append(line)
+            if rule and (not keep_rule_cb or keep_rule_cb(rule)):
+                newlines.extend(rule.dump_lines())
+            rule = Rule(line)
         elif not line.strip():
-            newlines.append(line)
+            if rule:
+                rule.append_line(line)
+            else:
+                newlines.append(line)
         else:
+            if rule and (not keep_rule_cb or keep_rule_cb(rule)):
+                newlines.extend(rule.dump_lines())
+                rule = None
+
             if global_line_cb:
                 line = global_line_cb(line)
             if line is None:
@@ -75,12 +102,48 @@ def update_rules(command_line_cb=None, global_line_cb=None,
             else:
                 raise TypeError(line)
 
+    if keep:
+        raise ValueError('file ends with continuation line')
+
+    if rule:
+        if not keep_rule_cb or keep_rule_cb(rule):
+            newlines.extend(rule.dump_lines())
+        else:
+            while newlines and not newlines[-1].strip():
+                del newlines[-1]
+
     updated_contents = b''.join([l+b'\n' for l in newlines])
     if updated_contents.strip() != original_contents.strip():
         with open(path, 'wb') as f:
             f.write(updated_contents)
         return True
     return False
+
+
+def discard_pointless_override(rule):
+    if not rule.target.startswith(b'override_'):
+        return True
+    command = rule.target[len(b'override_'):]
+    if rule.commands() == [command]:
+        return False
+    return True
+
+
+def update_rules(command_line_cb=None, global_line_cb=None,
+                 keep_rule_cb=discard_pointless_override, path='debian/rules'):
+    """Update a debian/rules file.
+
+    Args:
+      command_line_cb: Callback to call on every rule command line
+      global_line_cb: Callback to call on every global line
+      keep_rule_cb: Callback to decide if a particular rule should be kept
+      path: Path to the debian/rules file to edit
+    Returns:
+      boolean indicating whether any changes were made
+    """
+    return update_makefile(
+        path, command_line_cb=command_line_cb, global_line_cb=global_line_cb,
+        keep_rule_cb=keep_rule_cb)
 
 
 def dh_invoke_drop_with(line, with_argument):

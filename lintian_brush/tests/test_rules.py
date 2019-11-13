@@ -99,6 +99,28 @@ all:
 \techo bloe
 """, 'debian/rules')
 
+    def test_keep_rule_cb(self):
+        self.build_tree_contents([('debian/', ), ('debian/rules', """\
+SOMETHING = 1
+
+all:
+\techo blah
+
+none:
+\techo foo
+""")])
+
+        def discard_none(rule):
+            return rule.target != b'none'
+        self.assertTrue(update_rules(keep_rule_cb=discard_none))
+        self.assertFalse(update_rules(keep_rule_cb=discard_none))
+        self.assertFileEqual("""\
+SOMETHING = 1
+
+all:
+\techo blah
+""", 'debian/rules')
+
 
 class InvokeDropWithTests(TestCaseWithTransport):
 

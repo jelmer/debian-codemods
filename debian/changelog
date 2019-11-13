@@ -27,6 +27,7 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
   * upstream-metadata-file-is-missing: Don't drop Name and Copyright
     from debian/upstream/metadata if debian/copyright is not machine-
     readable.
+  * Eliminate unnecessary overrides in debian/rules. Closes: #944530
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
 
