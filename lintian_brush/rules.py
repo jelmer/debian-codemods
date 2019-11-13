@@ -45,13 +45,81 @@ class Rule(object):
         self.lines.append(line)
 
     def dump_lines(self):
-        return self.lines
+        return [line + b'\n' for line in self.lines]
 
     def __bool__(self):
         return bool(self.lines)
 
     def clear(self):
         self.lines = []
+
+    def _trim_trailing_whitespace(self):
+        while self.lines and not self.lines[-1].strip():
+            del self.lines[-1]
+
+
+class Makefile(object):
+
+    def __init__(self, contents=None):
+        self.contents = list(contents or [])
+
+    @classmethod
+    def from_path(cls, path):
+        with open(path, 'rb') as f:
+            original_contents = f.read()
+        return cls.from_bytes(original_contents)
+
+    def get_rule(self, target):
+        for entry in self.contents:
+            if isinstance(entry, Rule) and entry.has_target(target):
+                return entry
+        else:
+            return None
+
+    @classmethod
+    def from_bytes(cls, contents):
+        mf = cls()
+        keep = b''
+        rule = None
+        for line in contents.splitlines():
+            line = keep + line
+            keep = b''
+            if line.endswith(b'\\'):
+                keep = line + b'\n'
+                continue
+            if line.startswith(b'\t') and rule:
+                rule.append_line(line)
+            elif b':' in line and b' ' not in line.split(b':')[0]:
+                if rule:
+                    mf.contents.append(rule)
+                rule = Rule(line)
+            elif not line.strip():
+                if rule:
+                    rule.append_line(line)
+                else:
+                    mf.contents.append(line)
+            else:
+                if rule:
+                    mf.contents.append(rule)
+                rule = None
+                mf.contents.append(line)
+
+        if keep:
+            raise ValueError('file ends with continuation line')
+
+        if rule:
+            mf.contents.append(rule)
+
+        return mf
+
+    def dump(self):
+        lines = []
+        for entry in self.contents:
+            if isinstance(entry, Rule):
+                lines.extend(entry.dump_lines())
+            else:
+                lines.append(entry + b'\n')
+        return b''.join(lines)
 
 
 def update_makefile(path, command_line_cb=None, global_line_cb=None,
@@ -70,73 +138,56 @@ def update_makefile(path, command_line_cb=None, global_line_cb=None,
         return False
     with open(path, 'rb') as f:
         original_contents = f.read()
-    newlines = []
-    rule = None
+    mf = Makefile.from_bytes(original_contents)
 
-    def process_rule():
-        if rule:
+    newcontents = []
+    for entry in mf.contents:
+        if isinstance(entry, Rule):
+            rule = entry
+            newlines = []
+            for line in list(rule.lines[1:]):
+                if line.startswith(b'\t'):
+                    ret = line[1:]
+                    if callable(command_line_cb):
+                        ret = command_line_cb(ret, rule.target)
+                    elif isinstance(command_line_cb, list):
+                        for fn in command_line_cb:
+                            ret = fn(ret, rule.target)
+                    if isinstance(ret, bytes):
+                        newlines.append(b'\t' + ret)
+                    elif isinstance(ret, list):
+                        for l in ret:
+                            newlines.append(b'\t' + l)
+                    else:
+                        raise TypeError(ret)
+                else:
+                    newlines.append(line)
+
+            rule.lines = [rule.lines[0]] + newlines
+
             if rule_cb:
                 rule_cb(rule)
-            if not rule:
-                return False
-            newlines.extend(rule.dump_lines())
-            return True
-        else:
-            return False
-
-    keep = b''
-    for line in original_contents.splitlines():
-        line = keep + line
-        keep = b''
-        if line.endswith(b'\\'):
-            keep = line + b'\n'
-            continue
-        if line.startswith(b'\t') and rule:
-            ret = line[1:]
-            if callable(command_line_cb):
-                ret = command_line_cb(ret, rule.target)
-            elif isinstance(command_line_cb, list):
-                for fn in command_line_cb:
-                    ret = fn(ret, rule.target)
-            if isinstance(ret, bytes):
-                rule.append_line(b'\t' + ret)
-            elif isinstance(ret, list):
-                for l in ret:
-                    rule.append_line(b'\t' + l)
-            else:
-                raise TypeError(ret)
-        elif b':' in line and b' ' not in line.split(b':')[0]:
-            process_rule()
-            rule = Rule(line)
-        elif not line.strip():
             if rule:
-                rule.append_line(line)
-            else:
-                newlines.append(line)
+                newcontents.append(rule)
         else:
-            process_rule()
-            rule = None
-
+            line = entry
             if global_line_cb:
                 line = global_line_cb(line)
             if line is None:
                 pass
             elif isinstance(line, list):
-                newlines.extend(line)
+                newcontents.extend(line)
             elif isinstance(line, bytes):
-                newlines.append(line)
+                newcontents.append(line)
             else:
                 raise TypeError(line)
 
-    if keep:
-        raise ValueError('file ends with continuation line')
+    if newcontents and isinstance(newcontents[-1], Rule):
+        newcontents[-1]._trim_trailing_whitespace()
 
-    if rule:
-        if not process_rule():
-            while newlines and not newlines[-1].strip():
-                del newlines[-1]
+    mf = Makefile(newcontents)
 
-    updated_contents = b''.join([l+b'\n' for l in newlines])
+    updated_contents = mf.dump()
     if updated_contents.strip() != original_contents.strip():
         with open(path, 'wb') as f:
             f.write(updated_contents)
