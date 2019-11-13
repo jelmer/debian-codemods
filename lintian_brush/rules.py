@@ -22,6 +22,7 @@ import re
 
 
 class Rule(object):
+    """A make rule."""
 
     def __init__(self, firstline):
         self.lines = [firstline]

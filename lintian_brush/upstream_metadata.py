@@ -458,6 +458,10 @@ def guess_from_doap(path, trust_package):
     el = ElementTree.parse(path)
     root = el.getroot()
     DOAP_NAMESPACE = 'http://usefulinc.com/ns/doap#'
+    if root.tag == '{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF':
+        # If things are wrapped in RDF, unpack.
+        [root] = list(root)
+
     if root.tag != ('{%s}Project' % DOAP_NAMESPACE):
         warn('Doap file does not have DOAP project as root')
         return
@@ -586,7 +590,10 @@ def guess_upstream_metadata_items(path, trust_package=False,
         ('DESCRIPTION', guess_from_r_description),
         ]
 
-    doap_filenames = [n for n in os.listdir(path) if n.endswith('.doap')]
+    doap_filenames = [
+        n for n in os.listdir(path)
+        if n.endswith('.doap') or
+        (n.endswith('.xml') and n.startswith('doap_XML_'))]
     if doap_filenames:
         if len(doap_filenames) == 1:
             CANDIDATES.append((doap_filenames[0], guess_from_doap))
