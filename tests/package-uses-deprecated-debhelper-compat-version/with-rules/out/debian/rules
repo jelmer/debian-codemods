@@ -17,4 +17,6 @@ override_dh_install_changelogs:
 override_dh_installinit:
 	dh_installinit -R -pracoon -- start 40 S . stop 07 0 1 6 .
 	dh_installinit -R -pipsec-tools --name=setkey --no-start -- start 14 S .
+
+override_dh_installsystemd:
 	dh_installsystemd -pracoon

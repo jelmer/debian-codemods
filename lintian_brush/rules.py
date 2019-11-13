@@ -33,8 +33,9 @@ class Rule(object):
         # TODO(jelmer): Handle multiple targets
         if self.target == oldname:
             self.target = newname
-            self.firstline = b';'.join([
+            firstline = b':'.join([
                 self.target, self.lines[0].split(b':', 1)[1]])
+            self.lines = [firstline] + self.lines[1:]
             return True
         return False
 

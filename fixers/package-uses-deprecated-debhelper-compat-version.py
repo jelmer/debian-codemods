@@ -360,9 +360,15 @@ def upgrade_to_installsystemd(line, target):
     return line
 
 
+def rename_installsystemd_target(rule):
+    rule.rename_target(
+        b'override_dh_systemd_enable', b'override_dh_installsystemd')
+
+
 def upgrade_to_debhelper_11():
 
-    update_rules([upgrade_to_installsystemd])
+    update_rules(
+        [upgrade_to_installsystemd], rule_cb=rename_installsystemd_target)
     for name in os.listdir('debian'):
         parts = name.split('.')
         if len(parts) < 2 or parts[-1] != 'upstart':
