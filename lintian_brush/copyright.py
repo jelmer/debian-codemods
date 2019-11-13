@@ -30,6 +30,28 @@ from debian.copyright import (
 from .reformatting import edit_formatted_file
 
 
+class CopyrightUpdater(object):
+
+    def __init__(self, path='debian/copyright'):
+        self.path = path
+
+    def __enter__(self):
+        with open(self.path, 'r') as f:
+            self._orig_content = f.read()
+
+        self.copyright = Copyright(self._orig_content, strict=False)
+        self._rewritten_content = self.copyright.dump()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        updated_content = self.copyright.dump()
+
+        self.changed = edit_formatted_file(
+            self.path, self._orig_content, self._rewritten_content,
+            updated_content)
+        return False
+
+
 def update_copyright(update_cb, path='debian/copyright'):
     """Update a machine-readable copyright file.
 
@@ -40,15 +62,6 @@ def update_copyright(update_cb, path='debian/copyright'):
     Returns:
       bool indicating whether any changes were made
     """
-    with open(path, 'r') as f:
-        orig_content = f.read()
-
-    copyright = Copyright(orig_content, strict=False)
-    rewritten_content = copyright.dump()
-
-    update_cb(copyright)
-
-    updated_content = copyright.dump()
-
-    return edit_formatted_file(
-        path, orig_content, rewritten_content, updated_content)
+    with CopyrightUpdater(path=path) as updater:
+        update_cb(updater.copyright)
+    return updater.changed
