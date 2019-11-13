@@ -723,7 +723,7 @@ def extract_sf_project_name(url):
         return m.group(1)
 
 
-def bug_database_url_from_repo_url(url):
+def guess_bug_database_url_from_repo_url(url):
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
         path = '/'.join(parsed_url.path.split('/')[:3])
@@ -733,6 +733,25 @@ def bug_database_url_from_repo_url(url):
         return urlunparse(
             ('https', 'github.com', path,
              None, None, None))
+    return None
+
+
+def bug_submit_url_from_bug_database_url(url):
+    parsed_url = urlparse(url)
+    if parsed_url.netloc == 'github.com':
+        path_elements = parsed_url.path.strip('/').split('/')
+        if len(path_elements) != 3:
+            return None
+        if path_elements[2] != 'issues':
+            return None
+        return urlunparse(
+            ('https', 'github.com', parsed_url.path + '/new',
+             None, None, None))
+    if parsed_url.netloc == 'bugs.launchpad.net':
+        path_elements = parsed_url.path.strip('/').split('/')
+        if len(path_elements) == 1:
+            return urlunparse(
+                parsed_url._replace(path=parsed_url.path+'/+filebug'))
     return None
 
 
@@ -797,13 +816,20 @@ def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
             certainty['Repository-Browse'] = certainty['Repository']
             fields.add('Repository-Browse')
     if 'Repository' in code and 'Bug-Database' not in code:
-        bug_db_url = bug_database_url_from_repo_url(code['Repository'])
+        bug_db_url = guess_bug_database_url_from_repo_url(code['Repository'])
         bug_db_certainty = 'likely'
         if bug_db_url and certainty_sufficient(
                 bug_db_certainty, minimum_certainty):
             code['Bug-Database'] = bug_db_url
             certainty['Bug-Database'] = bug_db_certainty
             fields.add('Bug-Database')
+    if 'Bug-Database' in code and 'Bug-Submit' not in code:
+        bug_submit_url = bug_submit_url_from_bug_database_url(
+            code['Bug-Database'])
+        if bug_submit_url:
+            code['Bug-Submit'] = bug_submit_url
+            certainty['Bug-Submit'] = certainty['Bug-Database']
+            fields.add('Bug-Submit')
     # TODO(jelmer): Set Bug-Submit
     return fields
 
