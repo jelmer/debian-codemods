@@ -280,25 +280,47 @@ def upgrade_to_dh_prep(line, target):
     return line
 
 
-def upgrade_to_dh_missing(line, target):
+class DhMissingUpgrader(object):
     """Replace --list-missing / --fail-missing with dh_missing."""
-    for arg in [b'--list-missing', b'-O--list-missing']:
+
+    def __init__(self):
+        self.fail_missing = False
+
+    def fix_line(self, line, target):
+        for arg in [b'--list-missing', b'-O--list-missing']:
+            line, changed = update_line_drop_argument(
+                target, line, b'dh_install', arg,
+                'debian/rules: Rely on default use of dh_missing rather than '
+                'using dh_install --list-missing.')
+            line, changed = update_line_drop_argument(
+                target, line, b'dh', arg,
+                'debian/rules: Rely on default use of dh_missing rather than '
+                'using --list-missing.')
         line, changed = update_line_drop_argument(
-            target, line, b'dh_install', arg,
-            'debian/rules: Rely on default use of dh_missing rather than '
-            'using dh_install --list-missing.')
-        line, changed = update_line_drop_argument(
-            target, line, b'dh', arg,
-            'debian/rules: Rely on default use of dh_missing rather than '
-            'using --list-missing.')
-    line, changed = update_line_drop_argument(
-        target, line, b'dh_install', b'--fail-missing',
-        'debian/rules: Move --fail-missing argument to dh_missing.')
-    if changed:
-        # TODO(jelmer): Really, this should be adding a override_dh_missing
-        # section.
-        return [line, b'dh_missing --fail-missing']
-    return line
+            target, line, b'dh_install', b'--fail-missing',
+            'debian/rules: Move --fail-missing argument to dh_missing.')
+        if changed:
+            self.fail_missing = True
+        return line
+
+    def fix_makefile(self, mf):
+        if not self.fail_missing:
+            return
+        rule = mf.get_rule(b'override_dh_missing')
+        if not rule:
+            rule = mf.add_rule(b'override_dh_missing')
+            rule.append_command(b'dh_missing --fail-missing')
+        else:
+            for i, line in enumerate(rule.lines):
+                if line.startswith(b'dh_missing '):
+                    if b'--fail-missing' in line:
+                        return
+                    else:
+                        rule.lines[i] += b' --fail-missing'
+            else:
+                raise Exception(
+                    'override_dh_missing exists, but has no call to '
+                    'dh_missing')
 
 
 def replace_deprecated_same_arch(line, target):
@@ -341,14 +363,15 @@ def debhelper_argument_order(line, target):
 def upgrade_to_debhelper_12():
 
     pybuild_upgrader = PybuildUpgrader()
+    dh_missing_upgrader = DhMissingUpgrader()
     update_rules([
         debhelper_argument_order,
         replace_deprecated_same_arch,
         pybuild_upgrader.fix_line,
         upgrade_to_dh_prep,
         upgrade_to_no_stop_on_upgrade,
-        upgrade_to_dh_missing,
-        ])
+        dh_missing_upgrader.fix_line,
+        ], makefile_cb=dh_missing_upgrader.fix_makefile)
 
 
 def upgrade_to_installsystemd(line, target):

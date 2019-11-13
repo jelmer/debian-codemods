@@ -153,7 +153,7 @@ class Makefile(object):
 
 
 def update_makefile(path, command_line_cb=None, global_line_cb=None,
-                    rule_cb=None):
+                    rule_cb=None, makefile_cb=None):
     """Update a makefile.
 
     Args:
@@ -216,6 +216,8 @@ def update_makefile(path, command_line_cb=None, global_line_cb=None,
         newcontents[-1]._trim_trailing_whitespace()
 
     mf = Makefile(newcontents)
+    if makefile_cb:
+        makefile_cb(mf)
 
     updated_contents = mf.dump()
     if updated_contents.strip() != original_contents.strip():
@@ -234,7 +236,8 @@ def discard_pointless_override(rule):
 
 
 def update_rules(command_line_cb=None, global_line_cb=None,
-                 rule_cb=discard_pointless_override, path='debian/rules'):
+                 rule_cb=discard_pointless_override,
+                 makefile_cb=None, path='debian/rules'):
     """Update a debian/rules file.
 
     Args:
@@ -247,7 +250,7 @@ def update_rules(command_line_cb=None, global_line_cb=None,
     """
     return update_makefile(
         path, command_line_cb=command_line_cb, global_line_cb=global_line_cb,
-        rule_cb=rule_cb)
+        rule_cb=rule_cb, makefile_cb=makefile_cb)
 
 
 def dh_invoke_drop_with(line, with_argument):
