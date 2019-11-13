@@ -18,10 +18,13 @@
 """Tests for lintian_brush.rules."""
 
 from breezy.tests import (
+    TestCase,
     TestCaseWithTransport,
     )
 
 from lintian_brush.rules import (
+    Makefile,
+    Rule,
     dh_invoke_drop_with,
     update_rules,
     )
@@ -121,6 +124,36 @@ SOMETHING = 1
 all:
 \techo blah
 """, 'debian/rules')
+
+
+class MakefileTests(TestCase):
+
+    def test_add_rule(self):
+        mf = Makefile.from_bytes(b"""\
+SOMETHING = 1
+
+all:
+\techo blah
+
+none:
+\techo foo
+""")
+        r = mf.add_rule(b'blah')
+        self.assertIsInstance(r, Rule)
+        r.append_command(b'echo really blah')
+        self.assertEqual(b"""\
+SOMETHING = 1
+
+all:
+\techo blah
+
+none:
+\techo foo
+
+blah:
+\techo really blah
+
+""", mf.dump())
 
 
 class InvokeDropWithTests(TestCaseWithTransport):

@@ -44,6 +44,9 @@ class Rule(object):
     def append_line(self, line):
         self.lines.append(line)
 
+    def append_command(self, command):
+        self.lines.append(b'\t' + command + b'\n')
+
     def dump_lines(self):
         return [line + b'\n' for line in self.lines]
 
@@ -56,6 +59,10 @@ class Rule(object):
     def _trim_trailing_whitespace(self):
         while self.lines and not self.lines[-1].strip():
             del self.lines[-1]
+
+    def _ensure_trailing_whitespace(self):
+        if self.lines and self.lines[-1].strip():
+            self.lines.append(b'')
 
 
 class Makefile(object):
@@ -120,6 +127,21 @@ class Makefile(object):
             else:
                 lines.append(entry + b'\n')
         return b''.join(lines)
+
+    def add_rule(self, target, components=None):
+        if self.contents:
+            if isinstance(self.contents[-1], Rule):
+                self.contents[-1]._ensure_trailing_whitespace()
+            elif self.contents[-1].strip():
+                self.contents.append(b'\n')
+        if isinstance(target, list):
+            target = b' '.join(target)
+        line = b'%s:' % target
+        if components:
+            line += b' ' + b' '.join(components)
+        rule = Rule(line)
+        self.contents.append(rule)
+        return rule
 
 
 def update_makefile(path, command_line_cb=None, global_line_cb=None,
