@@ -111,9 +111,10 @@ none:
 """)])
 
         def discard_none(rule):
-            return rule.target != b'none'
-        self.assertTrue(update_rules(keep_rule_cb=discard_none))
-        self.assertFalse(update_rules(keep_rule_cb=discard_none))
+            if rule.target == b'none':
+                rule.clear()
+        self.assertTrue(update_rules(rule_cb=discard_none))
+        self.assertFalse(update_rules(rule_cb=discard_none))
         self.assertFileEqual("""\
 SOMETHING = 1
 

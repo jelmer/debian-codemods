@@ -29,6 +29,15 @@ class Rule(object):
         # TODO(jelmer): What if there are multiple targets?
         self.target = firstline.split(b':')[0]
 
+    def rename_target(self, oldname, newname):
+        # TODO(jelmer): Handle multiple targets
+        if self.target == oldname:
+            self.target = newname
+            self.firstline = b';'.join([
+                self.target, self.lines[0].split(b':', 1)[1]])
+            return True
+        return False
+
     def commands(self):
         return [l[1:] for l in self.lines if l.startswith(b'\t')]
 
@@ -38,16 +47,22 @@ class Rule(object):
     def dump_lines(self):
         return self.lines
 
+    def __bool__(self):
+        return bool(self.lines)
+
+    def clear(self):
+        self.lines = []
+
 
 def update_makefile(path, command_line_cb=None, global_line_cb=None,
-                    keep_rule_cb=None):
+                    rule_cb=None):
     """Update a makefile.
 
     Args:
       path: Path to the makefile to edit
       command_line_cb: Callback to call on every rule command line
       global_line_cb: Callback to call on every global line
-      keep_rule_cb: Callback to decide if a particular rule should be kept
+      rule_cb: Callback called for every rule
     Returns:
       boolean indicating whether any changes were made
     """
@@ -57,6 +72,18 @@ def update_makefile(path, command_line_cb=None, global_line_cb=None,
         original_contents = f.read()
     newlines = []
     rule = None
+
+    def process_rule():
+        if rule:
+            if rule_cb:
+                rule_cb(rule)
+            if not rule:
+                return False
+            newlines.extend(rule.dump_lines())
+            return True
+        else:
+            return False
+
     keep = b''
     for line in original_contents.splitlines():
         line = keep + line
@@ -79,8 +106,7 @@ def update_makefile(path, command_line_cb=None, global_line_cb=None,
             else:
                 raise TypeError(ret)
         elif b':' in line and b' ' not in line.split(b':')[0]:
-            if rule and (not keep_rule_cb or keep_rule_cb(rule)):
-                newlines.extend(rule.dump_lines())
+            process_rule()
             rule = Rule(line)
         elif not line.strip():
             if rule:
@@ -88,9 +114,8 @@ def update_makefile(path, command_line_cb=None, global_line_cb=None,
             else:
                 newlines.append(line)
         else:
-            if rule and (not keep_rule_cb or keep_rule_cb(rule)):
-                newlines.extend(rule.dump_lines())
-                rule = None
+            process_rule()
+            rule = None
 
             if global_line_cb:
                 line = global_line_cb(line)
@@ -107,9 +132,7 @@ def update_makefile(path, command_line_cb=None, global_line_cb=None,
         raise ValueError('file ends with continuation line')
 
     if rule:
-        if not keep_rule_cb or keep_rule_cb(rule):
-            newlines.extend(rule.dump_lines())
-        else:
+        if not process_rule():
             while newlines and not newlines[-1].strip():
                 del newlines[-1]
 
@@ -123,28 +146,27 @@ def update_makefile(path, command_line_cb=None, global_line_cb=None,
 
 def discard_pointless_override(rule):
     if not rule.target.startswith(b'override_'):
-        return True
+        return
     command = rule.target[len(b'override_'):]
     if rule.commands() == [command]:
-        return False
-    return True
+        rule.clear()
 
 
 def update_rules(command_line_cb=None, global_line_cb=None,
-                 keep_rule_cb=discard_pointless_override, path='debian/rules'):
+                 rule_cb=discard_pointless_override, path='debian/rules'):
     """Update a debian/rules file.
 
     Args:
       command_line_cb: Callback to call on every rule command line
       global_line_cb: Callback to call on every global line
-      keep_rule_cb: Callback to decide if a particular rule should be kept
+      rule_cb: Callback to call on every rule
       path: Path to the debian/rules file to edit
     Returns:
       boolean indicating whether any changes were made
     """
     return update_makefile(
         path, command_line_cb=command_line_cb, global_line_cb=global_line_cb,
-        keep_rule_cb=keep_rule_cb)
+        rule_cb=rule_cb)
 
 
 def dh_invoke_drop_with(line, with_argument):
