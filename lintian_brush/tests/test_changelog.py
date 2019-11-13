@@ -23,7 +23,7 @@ from breezy.tests import (
 
 from lintian_brush.changelog import (
     ChangelogCreateError,
-    update_changelog,
+    ChangelogUpdater,
     )
 
 
@@ -38,9 +38,8 @@ lintian-brush (0.28) UNRELEASED; urgency=medium
  -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Sep 2019 00:23:11 +0000
 """)])
 
-        def bump_version(block):
-            block.version = '0.29'
-        update_changelog(block_cb=bump_version)
+        with ChangelogUpdater() as updater:
+            updater.changelog.version = '0.29'
         self.assertFileEqual("""\
 lintian-brush (0.29) UNRELEASED; urgency=medium
 
@@ -53,4 +52,4 @@ lintian-brush (0.29) UNRELEASED; urgency=medium
         self.build_tree_contents([('debian/', ), ('debian/changelog', """\
 lalalalala
 """)])
-        self.assertRaises(ChangelogCreateError, update_changelog)
+        self.assertRaises(ChangelogCreateError, ChangelogUpdater().__enter__)

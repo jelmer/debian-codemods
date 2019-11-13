@@ -20,7 +20,7 @@
 __all__ = [
     'ChangelogParseError',
     'ChangelogCreateError',
-    'update_changelog',
+    'ChangelogUpdater',
     ]
 
 from io import StringIO
@@ -32,19 +32,33 @@ from debian.changelog import (
 from .reformatting import edit_formatted_file
 
 
-def update_changelog(path='debian/changelog', block_cb=None):
-    """Update a changelog file."""
-    with open(path, 'r') as f:
-        orig_content = f.read()
-    cl = Changelog(orig_content)
-    f = StringIO()
-    cl.write_to_open_file(f)
-    rewritten_content = f.getvalue()
-    for block in cl:
-        if block_cb:
-            block_cb(block)
-    f = StringIO()
-    cl.write_to_open_file(f)
-    updated_contents = f.getvalue()
-    return edit_formatted_file(
-        path, orig_content, rewritten_content, updated_contents)
+class ChangelogUpdater(object):
+    """Update a changelog file.
+
+    This will only write out the changelog file if it has been changed.
+    """
+
+    def __init__(self, path='debian/changelog'):
+        self.path = path
+
+    def __enter__(self):
+        with open(self.path, 'r') as f:
+            self._orig_content = f.read()
+        self._cl = Changelog(self._orig_content)
+        f = StringIO()
+        self._cl.write_to_open_file(f)
+        self._rewritten_content = f.getvalue()
+        return self
+
+    @property
+    def changelog(self):
+        return self._cl
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        f = StringIO()
+        self._cl.write_to_open_file(f)
+        updated_contents = f.getvalue()
+        self.changed = edit_formatted_file(
+            self.path, self._orig_content,
+            self._rewritten_content, updated_contents)
+        return False
