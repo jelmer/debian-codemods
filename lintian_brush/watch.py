@@ -207,7 +207,8 @@ class WatchUpdater(object):
             with open(self.path, 'r') as f:
                 self._original_contents = f.read()
         except FileNotFoundError:
-            return False
+            self.watch_file = None
+            return self
         self.watch_file = parse_watch_file(
             self._original_contents.splitlines())
         if self.watch_file is None:
@@ -219,7 +220,7 @@ class WatchUpdater(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.watch_file is None:
-            return
+            return False
         nf = StringIO()
         self.watch_file.dump(nf)
         updated_contents = nf.getvalue()
