@@ -30,8 +30,10 @@ def detect_debhelper_buildsystem(step=None):
     if os.path.exists('configure.ac') or os.path.exists('configure.in'):
         return 'autoconf'
     output = subprocess.check_output([
-        'perl', '-w', '-MDebian::Debhelper::Dh_Buildsystems', '-e',
+        'perl', '-w', '-MDebian::Debhelper::Dh_Lib',
+        '-MDebian::Debhelper::Dh_Buildsystems', '-e',
         """\
+Debian::Debhelper::Dh_Lib::init();
 my $b=Debian::Debhelper::Dh_Buildsystems::load_buildsystem(undef, %(step)s);\
 if (defined($b)) { print($b->NAME); } else { print("_undefined_"); }\
 """ % {"step": ("'%s'" % step) if step is not None else 'undef'}]).decode()
