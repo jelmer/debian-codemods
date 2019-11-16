@@ -122,6 +122,11 @@ def guess_repo_from_url(url):
         path_elements = parsed_url.path.strip('/').split('/')
         if len(path_elements) >= 2 and path_elements[0] == 'sources':
             return 'https://gitlab.gnome.org/gnome/%s.git' % path_elements[1]
+    if parsed_url.netloc == 'ftp.gnome.org':
+        path_elements = parsed_url.path.strip('/').split('/')
+        if len(path_elements) >= 4 and path_elements[:3] == [
+                'pub', 'GNOME', 'sources']:
+            return 'https://gitlab.gnome.org/gnome/%s.git' % path_elements[3]
     if parsed_url.netloc == 'www.apache.org':
         path_elements = parsed_url.path.strip('/').split('/')
         if len(path_elements) > 2 and path_elements[0] == 'dist':
