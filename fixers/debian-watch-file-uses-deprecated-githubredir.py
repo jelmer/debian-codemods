@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 
 with WatchUpdater() as updater:
-    for w in updater.watch_file.entries:
+    for w in getattr(updater.watch_file, 'entries', []):
         parsed_url = urlparse(w.url)
         if parsed_url.netloc != 'githubredir.debian.net':
             continue
