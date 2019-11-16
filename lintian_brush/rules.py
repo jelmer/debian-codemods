@@ -27,7 +27,8 @@ class Rule(object):
     def __init__(self, firstline):
         self.lines = [firstline]
         # TODO(jelmer): What if there are multiple targets?
-        self.target = firstline.split(b':')[0]
+        self.target, self._component_str = firstline.split(b':', 1)
+        self.components = self._component_str.split()
 
     def has_target(self, target):
         # TODO(jelmer): Handle multiple targets
@@ -37,8 +38,7 @@ class Rule(object):
         # TODO(jelmer): Handle multiple targets
         if self.target == oldname:
             self.target = newname
-            firstline = b':'.join([
-                self.target, self.lines[0].split(b':', 1)[1]])
+            firstline = b':'.join([self.target, self._component_str])
             self.lines = [firstline] + self.lines[1:]
             return True
         return False
@@ -231,7 +231,7 @@ def discard_pointless_override(rule):
     if not rule.target.startswith(b'override_'):
         return
     command = rule.target[len(b'override_'):]
-    if rule.commands() == [command]:
+    if rule.commands() == [command] and not rule.components:
         rule.clear()
 
 
