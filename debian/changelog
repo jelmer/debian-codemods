@@ -29,6 +29,8 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
     readable.
   * Eliminate unnecessary overrides in debian/rules. Closes: #944530
   * upstream-metadata-file: Attempt to set Bug-Database and Bug-Submit.
+  * Put dh_missing calls into their own rule. Closes: #944531
+  * Support parsing continuation lines in makefiles. Closes: #942594
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
 
