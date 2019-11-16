@@ -34,7 +34,15 @@ def detect_debhelper_buildsystem(step=None):
         """\
 my $b=Debian::Debhelper::Dh_Buildsystems::load_buildsystem(undef, %(step)s);\
 if (defined($b)) { print($b->NAME); } else { print("_undefined_"); }\
-""" % {"step": ("'%s'" % step) or 'undef'}]).decode()
+""" % {"step": ("'%s'" % step) if step is not None else 'undef'}]).decode()
     if output == '_undefined_':
         return None
     return output
+
+
+def lowest_non_deprecated_compat_level():
+    output = subprocess.check_output([
+        'perl', '-w', '-MDebian::Debhelper::Dh_Lib', '-e',
+        'print(Debian::Debhelper::Dh_Lib::LOWEST_NON_DEPRECATED_COMPAT_LEVEL);'
+        ]).decode()
+    return int(output)

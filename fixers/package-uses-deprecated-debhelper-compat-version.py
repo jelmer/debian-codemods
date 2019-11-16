@@ -17,6 +17,7 @@ from lintian_brush.control import (
 from lintian_brush.debhelper import (
     detect_debhelper_buildsystem,
     DEBHELPER_BUILD_STEPS,
+    lowest_non_deprecated_compat_level,
     )
 from lintian_brush.rules import (
     check_cdbs,
@@ -27,10 +28,6 @@ from lintian_brush.rules import (
     Makefile,
     )
 
-
-# TODO(jelmer): Can we get these elsewhere rather than
-# hardcoding them here?
-MINIMUM_DEBHELPER_VERSION = 9
 
 compat_release = os.environ.get('COMPAT_RELEASE', 'sid')
 
@@ -48,7 +45,10 @@ new_debhelper_compat_version = {
     'cosmic': 11,
     'disco': 12,
     'eoan': 12,
-    }.get(compat_release, MINIMUM_DEBHELPER_VERSION)
+    }.get(compat_release)
+
+if new_debhelper_compat_version is None:
+    new_debhelper_compat_version = lowest_non_deprecated_compat_level()
 
 
 uses_cdbs = check_cdbs()
@@ -428,7 +428,7 @@ for version in range(int(str(current_debhelper_compat_version))+1,
         pass
 
 if new_debhelper_compat_version > current_debhelper_compat_version:
-    if current_debhelper_compat_version < MINIMUM_DEBHELPER_VERSION:
+    if current_debhelper_compat_version < lowest_non_deprecated_compat_level():
         kind = "deprecated"
         tag = "package-uses-deprecated-debhelper-compat-version"
     else:

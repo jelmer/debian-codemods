@@ -25,6 +25,7 @@ def test_suite():
         'control',
         'copyright',
         'deb822',
+        'debhelper',
         'dirty_tracker',
         'lintian_overrides',
         'reformatting',
