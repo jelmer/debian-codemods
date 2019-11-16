@@ -221,6 +221,9 @@ def update_makefile(path, command_line_cb=None, global_line_cb=None,
 
     updated_contents = mf.dump()
     if updated_contents.strip() != original_contents.strip():
+        updated_contents = updated_contents.rstrip(b'\n')
+        if updated_contents:
+            updated_contents += b'\n'
         with open(path, 'wb') as f:
             f.write(updated_contents)
         return True
