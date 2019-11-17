@@ -261,17 +261,21 @@ def dh_invoke_drop_with(line, with_argument):
     if with_argument not in line:
         return line
     # It's the only with argument
-    line = re.sub(b" --with[ =]" + with_argument + b"( .+|)$", b"\\1", line)
+    line = re.sub(
+        b"[ \t]--with[ =]" + with_argument + b"( .+|)$",
+        b"\\1", line)
     # It's at the beginning of the line
-    line = re.sub(b" --with[ =]" + with_argument + b",", b" --with=", line)
+    line = re.sub(
+        b"([ \t])--with([ =])" + with_argument + b",",
+        b"\\1--with\\2", line)
     # It's somewhere in the middle or at the end
     line = re.sub(
-        b" --with[ =]([^,]+)," + with_argument + b"([ ,])",
-        b" --with=\\1\\2", line)
+        b"([ \t])--with[ =]([^,]+)," + with_argument + b"([ ,])",
+        b"\\1--with=\\2\\3", line)
     # It's at the end
     line = re.sub(
-        b" --with[ =](.+)," + with_argument + b"$",
-        b" --with=\\1", line)
+        b"([ \t])--with[ =](.+)," + with_argument + b"$",
+        b"\\1--with=\\2", line)
     return line
 
 
@@ -279,16 +283,17 @@ def dh_invoke_drop_argument(line, argument):
     """Drop a particular argument from a dh invocation."""
     if argument not in line:
         return line
-    line = re.sub(b' ' + argument + b'$', b'', line)
-    line = re.sub(b' ' + argument + b' ', b' ', line)
+    line = re.sub(b'[ \t]+' + argument + b'$', b'', line)
+    line = re.sub(b'([ \t])' + argument + b'[ \t]', b'\\1', line)
     return line
 
 
 def dh_invoke_replace_argument(line, old, new):
     if old not in line:
         return line
-    line = re.sub(b' ' + old + b'$', b' ' + new, line)
-    line = re.sub(b' ' + old + b' ', b' ' + new + b' ', line)
+    line = re.sub(b'([ \t])' + old + b'$', b'\\1' + new, line)
+    line = re.sub(
+        b'([ \t])' + old + b'[ \t]', b'\\1' + new + b'\\2', line)
     return line
 
 
