@@ -151,7 +151,8 @@ Lintian-Tags: package-uses-deprecated-source-override-location
 Fix-Script: package-uses-deprecated-debhelper-compat-version.py
 Lintian-Tags:
   package-uses-deprecated-debhelper-compat-version,
-  package-uses-old-debhelper-compat-version
+  package-uses-old-debhelper-compat-version,
+  uses-debhelper-compat-file
 
 Fix-Script: patch-file-present-but-not-mentioned-in-series.py
 Lintian-Tags: patch-file-present-but-not-mentioned-in-series

@@ -29,6 +29,7 @@ from lintian_brush.rules import (
     )
 
 
+fixed_tags = set()
 compat_release = os.environ.get('COMPAT_RELEASE', 'sid')
 
 new_debhelper_compat_version = {
@@ -137,6 +138,7 @@ if os.path.exists('debian/compat'):
                     del control["Build-Depends"]
 
         update_control(source_package_cb=set_debhelper_compat)
+        fixed_tags.add('uses-debhelper-compat-file')
     else:
         if current_debhelper_compat_version < new_debhelper_compat_version:
             with open('debian/compat', 'w') as f:
@@ -430,14 +432,15 @@ for version in range(int(str(current_debhelper_compat_version))+1,
 if new_debhelper_compat_version > current_debhelper_compat_version:
     if current_debhelper_compat_version < lowest_non_deprecated_compat_level():
         kind = "deprecated"
-        tag = "package-uses-deprecated-debhelper-compat-version"
+        fixed_tags.add("package-uses-deprecated-debhelper-compat-version")
     else:
         kind = "old"
-        tag = "package-uses-old-debhelper-compat-version"
+        fixed_tags.add("package-uses-old-debhelper-compat-version")
     print("Bump debhelper from %s %s to %s." % (
         kind, current_debhelper_compat_version, new_debhelper_compat_version))
     for subitem in sorted(subitems):
         print("+ " + subitem)
-    print("Fixed-Lintian-Tags: %s" % tag)
 else:
     print("Set debhelper-compat version in Build-Depends.")
+
+print("Fixed-Lintian-Tags: %s" % ', '.join(sorted(fixed_tags)))
