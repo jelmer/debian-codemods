@@ -101,6 +101,7 @@ subset of the issues:
 * unversioned-copyright-format-uri
 * upstream-metadata-file-is-missing
 * useless-autoreconf-build-depends
+* uses-debhelper-compat-file
 * vcs-field-bitrotted
 * vcs-field-mismatch
 * vcs-field-not-canonical
