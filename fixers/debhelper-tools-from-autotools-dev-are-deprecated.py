@@ -11,9 +11,9 @@ from lintian_brush.rules import (
 
 
 def cb(line, target):
-    if line == b'dh_autotools-dev_updateconfig':
+    if line.strip() == b'dh_autotools-dev_updateconfig':
         return []
-    if line == b'dh_autotools-dev_restoreconfig':
+    if line.strip() == b'dh_autotools-dev_restoreconfig':
         return []
     line = dh_invoke_drop_with(line, b'autotools-dev')
     line = dh_invoke_drop_with(line, b'autotools_dev')
