@@ -128,6 +128,12 @@ def guess_repo_from_url(url):
               e.lower() for e in path_elements[:3]] == [
                   'pub', 'gnome', 'sources']):
             return 'https://gitlab.gnome.org/gnome/%s.git' % path_elements[3]
+    if parsed_url.netloc == 'sourceforge.net':
+        path_elements = parsed_url.path.strip('/').split('/')
+        if (len(path_elements) >= 4 and path_elements[0] == 'p'
+                and path_elements[3] == 'ci'):
+            return 'https://sourceforge.net/p/%s/%s' % (
+                path_elements[1], path_elements[2])
     if parsed_url.netloc == 'www.apache.org':
         path_elements = parsed_url.path.strip('/').split('/')
         if len(path_elements) > 2 and path_elements[0] == 'dist':
@@ -831,6 +837,12 @@ def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
             code['Repository-Browse'] = browse_url
             certainty['Repository-Browse'] = certainty['Repository']
             fields.add('Repository-Browse')
+    if 'Repository-Browse' in code and 'Repository' not in code:
+        repo = guess_repo_from_url(code['Repository-Browse'])
+        if repo:
+            code['Repository'] = repo
+            certainty['Repository'] = certainty['Repository-Browse']
+            fields.add('Repository')
     if 'Repository' in code and 'Bug-Database' not in code:
         bug_db_url = guess_bug_database_url_from_repo_url(code['Repository'])
         bug_db_certainty = 'likely'
