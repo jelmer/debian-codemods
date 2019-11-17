@@ -293,7 +293,7 @@ def dh_invoke_replace_argument(line, old, new):
         return line
     line = re.sub(b'([ \t])' + old + b'$', b'\\1' + new, line)
     line = re.sub(
-        b'([ \t])' + old + b'[ \t]', b'\\1' + new + b'\\2', line)
+        b'([ \t])' + old + b'([ \t])', b'\\1' + new + b'\\2', line)
     return line
 
 
