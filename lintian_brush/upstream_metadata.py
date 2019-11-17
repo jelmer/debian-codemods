@@ -352,6 +352,11 @@ def guess_from_debian_copyright(path, trust_package):
         except MachineReadableFormatError as e:
             warn('Error parsing copyright file: %s' % e)
             header = None
+        except ValueError as e:
+            # This can happen with an error message of
+            # ValueError: value must not have blank lines
+            warn('Error parsing copyright file: %s' % e)
+            header = None
         else:
             header = copyright.header
     if header:
