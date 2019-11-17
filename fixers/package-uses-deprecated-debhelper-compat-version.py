@@ -5,9 +5,7 @@ import shlex
 import sys
 import warnings
 
-from debian.changelog import Version
 from lintian_brush.control import (
-    drop_dependency,
     ensure_exact_version,
     ensure_minimum_version,
     get_relation,
@@ -29,7 +27,6 @@ from lintian_brush.rules import (
     )
 
 
-fixed_tags = set()
 compat_release = os.environ.get('COMPAT_RELEASE', 'sid')
 
 new_debhelper_compat_version = {
@@ -103,57 +100,20 @@ if os.path.exists('debian/compat'):
     # Package currently stores compat version in debian/compat..
 
     current_debhelper_compat_version = read_debian_compat_file('debian/compat')
-
-    # debhelper >= 11 supports the magic debhelper-compat build-dependency.
-    # Exclude cdbs, since it only knows to get the debhelper compat version
-    # from debian/compat.
-
-    if new_debhelper_compat_version >= 11 and not uses_cdbs:
-        # Upgrade to using debhelper-compat, drop debian/compat file.
-        os.unlink('debian/compat')
-
-        # Assume that the compat version is set in Build-Depends
-        def set_debhelper_compat(control):
-            # TODO(jelmer): Use iter_relations rather than get_relation,
-            # since that allows for complex debhelper rules.
-            try:
-                position, debhelper_relation = get_relation(
-                    control.get("Build-Depends", ""), "debhelper")
-            except KeyError:
-                position = None
-                debhelper_relation = []
-            control["Build-Depends"] = ensure_exact_version(
-                control.get("Build-Depends", ""), "debhelper-compat",
-                "%d" % new_debhelper_compat_version, position=position)
-            # If there are debhelper dependencies >= new debhelper compat
-            # version, then keep them.
-            for rel in debhelper_relation:
-                if rel.version and Version(rel.version[1]) >= Version(
-                        "%d" % new_debhelper_compat_version):
-                    break
-            else:
-                control["Build-Depends"] = drop_dependency(
-                    control.get("Build-Depends", ""), "debhelper")
-                if control.get("Build-Depends") == "":
-                    del control["Build-Depends"]
-
-        update_control(source_package_cb=set_debhelper_compat)
-        fixed_tags.add('uses-debhelper-compat-file')
+    if current_debhelper_compat_version < new_debhelper_compat_version:
+        with open('debian/compat', 'w') as f:
+            f.write('%s\n' % new_debhelper_compat_version)
     else:
-        if current_debhelper_compat_version < new_debhelper_compat_version:
-            with open('debian/compat', 'w') as f:
-                f.write('%s\n' % new_debhelper_compat_version)
-        else:
-            # Nothing to do
-            sys.exit(2)
+        # Nothing to do
+        sys.exit(2)
 
-        def bump_debhelper(control):
-            control["Build-Depends"] = ensure_minimum_version(
-                    control.get("Build-Depends", ""),
-                    "debhelper",
-                    "%d~" % new_debhelper_compat_version)
+    def bump_debhelper(control):
+        control["Build-Depends"] = ensure_minimum_version(
+                control.get("Build-Depends", ""),
+                "debhelper",
+                "%d~" % new_debhelper_compat_version)
 
-        update_control(source_package_cb=bump_debhelper)
+    update_control(source_package_cb=bump_debhelper)
 else:
     # Assume that the compat version is set in Build-Depends
     def bump_debhelper_compat(control):
@@ -432,15 +392,13 @@ for version in range(int(str(current_debhelper_compat_version))+1,
 if new_debhelper_compat_version > current_debhelper_compat_version:
     if current_debhelper_compat_version < lowest_non_deprecated_compat_level():
         kind = "deprecated"
-        fixed_tags.add("package-uses-deprecated-debhelper-compat-version")
+        tag = "package-uses-deprecated-debhelper-compat-version"
     else:
         kind = "old"
-        fixed_tags.add("package-uses-old-debhelper-compat-version")
+        tag = "package-uses-old-debhelper-compat-version"
     print("Bump debhelper from %s %s to %s." % (
         kind, current_debhelper_compat_version, new_debhelper_compat_version))
     for subitem in sorted(subitems):
         print("+ " + subitem)
-else:
-    print("Set debhelper-compat version in Build-Depends.")
 
-print("Fixed-Lintian-Tags: %s" % ', '.join(sorted(fixed_tags)))
+    print("Fixed-Lintian-Tags: %s" % tag)
