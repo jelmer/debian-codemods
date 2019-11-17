@@ -188,3 +188,9 @@ class GuessRepoFromUrlTests(TestCase):
             None,
             guess_repo_from_url(
                 'https://git.savannah.gnu.org/blah/auctex.git'))
+
+    def test_bitbucket(self):
+        self.assertEqual(
+            'https://bitbucket.org/fenics-project/dolfin',
+            guess_repo_from_url(
+                'https://bitbucket.org/fenics-project/dolfin/downloads/'))
