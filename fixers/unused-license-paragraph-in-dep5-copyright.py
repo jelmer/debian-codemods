@@ -33,6 +33,7 @@ try:
                     updater.copyright._Copyright__paragraphs.remove(paragraph)
 except (FileNotFoundError, NotMachineReadableError):
     pass
-
-print("Remove unused license definitions for %s." % ', '.join(extra_defined))
-print("Fixed-Lintian-Tags: unused-license-paragraph-in-dep5-copyright")
+else:
+    print("Remove unused license definitions for %s." %
+          ', '.join(extra_defined))
+    print("Fixed-Lintian-Tags: unused-license-paragraph-in-dep5-copyright")
