@@ -296,11 +296,17 @@ class DhMissingUpgrader(object):
                 target, line, b'dh', arg,
                 'debian/rules: Rely on default use of dh_missing rather than '
                 'using --list-missing.')
-        line, changed = update_line_drop_argument(
-            target, line, b'dh_install', b'--fail-missing',
-            'debian/rules: Move --fail-missing argument to dh_missing.')
-        if changed:
-            self.fail_missing = True
+        for arg in [b'--fail-missing', b'-O--fail-missing']:
+            line, changed = update_line_drop_argument(
+                target, line, b'dh_install', b'--fail-missing',
+                'debian/rules: Move --fail-missing argument to dh_missing.')
+            if changed:
+                self.fail_missing = True
+            line, changed = update_line_drop_argument(
+                target, line, b'dh', b'--fail-missing',
+                'debian/rules: Move --fail-missing argument to dh_missing.')
+            if changed:
+                self.fail_missing = True
         return line
 
     def fix_makefile(self, mf):
