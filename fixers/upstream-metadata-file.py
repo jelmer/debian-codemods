@@ -37,6 +37,8 @@ except FileNotFoundError:
 else:
     code = ruamel.yaml.round_trip_load(inp, preserve_quotes=True)
 
+original_fields = set(code)
+
 minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
 fields = set()
 current_certainty = {k: 'certain' for k in code.keys()}
@@ -59,26 +61,18 @@ if net_access:
 # debian/upstream/metadata.
 external_present_fields = set(['Homepage'])
 
-# If the debian/copyright file is machine-readable, then we can drop the
-# Name/Contact information from the debian/upstream/metadata file.
+# If the debian/copyright file is machine-readable, then we do
+# not need to set the Name/Contact information in the debian/upstream/metadata
+# file.
 if 'Name' in code or 'Contact' in code:
-    from debian.copyright import (
-        Copyright, MachineReadableFormatError, NotMachineReadableError)
-    try:
-        with open('debian/copyright', 'r') as f:
-            c = Copyright(f)
-    except (FileNotFoundError, NotMachineReadableError,
-            MachineReadableFormatError):
-        pass
-    else:
-        if c.header.upstream_contact:
-            external_present_fields.add('Contact')
-        if c.header.upstream_name:
-            external_present_fields.add('Name')
+    from lintian_brush.copyright import upstream_fields_in_copyright
+    external_present_fields.update(upstream_fields_in_copyright())
 
 
 # Drop keys that don't need to be in debian/upsteam/metadata
 for key in list(code):
+    if key in original_fields:
+        continue
     if key.startswith('X-') or key in external_present_fields:
         del code[key]
         del current_certainty[key]

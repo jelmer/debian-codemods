@@ -1,0 +1,9 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: blah
+Upstream-Contact: Jelmer <jelmer@jelmer@jelmer.uk>
+Source: https://salsa.debian.org/jelmer/blah
+
+Files: *
+Copyright:
+ 2018-2019 Jelmer Vernooĳ <jelmer@debian.org>
+License: GPL-2+

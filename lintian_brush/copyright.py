@@ -19,11 +19,13 @@
 
 __all__ = [
     'NotMachineReadableError',
+    'MachineReadableFormatError',
     'update_copyright',
     ]
 
 from debian.copyright import (
     Copyright,
+    MachineReadableFormatError,
     NotMachineReadableError,
     )
 
@@ -65,3 +67,19 @@ def update_copyright(update_cb, path='debian/copyright'):
     with CopyrightUpdater(path=path) as updater:
         update_cb(updater.copyright)
     return updater.changed
+
+
+def upstream_fields_in_copyright(path='debian/copyright'):
+    ret = []
+    try:
+        with open(path, 'r') as f:
+            c = Copyright(f)
+    except (FileNotFoundError, NotMachineReadableError,
+            MachineReadableFormatError):
+        return []
+    else:
+        if c.header.upstream_contact:
+            ret.append('Contact')
+        if c.header.upstream_name:
+            ret.append('Name')
+    return ret
