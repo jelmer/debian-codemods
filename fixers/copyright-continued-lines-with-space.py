@@ -33,6 +33,14 @@ EXPECTED_HEADER = (
     b'Format: '
     b'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0')
 
+
+UNICODE_LINE_BREAK = "\u2028".encode('utf-8')
+UNICODE_PARAGRAPH_SEPARATOR = "\u2029".encode('utf-8')
+
+
+tabs_replaced = False
+unicode_linebreaks_replaced = False
+
 try:
     lines = []
     with open('debian/copyright', 'rb') as f:
@@ -51,6 +59,19 @@ try:
                         break
                 else:
                     line = b' \t' + line[1:]
+                tabs_replaced = True
+            if UNICODE_PARAGRAPH_SEPARATOR in line:
+                # Not quite the same thing, but close enough..
+                line = line.replace(
+                    UNICODE_PARAGRAPH_SEPARATOR,
+                    UNICODE_LINE_BREAK * 2)
+            if UNICODE_LINE_BREAK in line:
+                unicode_linebreaks_replaced = True
+                parts = line.split(UNICODE_LINE_BREAK)
+                # If the line is empty, replace it with a .
+                parts = [p if p else b'.' for p in parts]
+                parts = [parts[0]] + [b' ' + p for p in parts[1:]]
+                line = b'\n'.join(parts)
             lines.append(line)
             prev_value_offset = value_offset(line)
 except FileNotFoundError:
@@ -59,4 +80,11 @@ else:
     with open('debian/copyright', 'wb') as f:
         f.writelines(lines)
 
-print('debian/copyright: Use spaces rather than tabs in continuation lines.')
+sys.stdout.write('debian/copyright: ')
+if tabs_replaced:
+    sys.stdout.write('use spaces rather than tabs to start continuation lines')
+    if unicode_linebreaks_replaced:
+        sys.stdout.write(', ')
+if unicode_linebreaks_replaced:
+    sys.stdout.write('replace unicode linebreaks with regular linebreaks')
+sys.stdout.write('.\n')

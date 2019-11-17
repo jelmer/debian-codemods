@@ -1,1 +1,1 @@
-debian/copyright: Use spaces rather than tabs in continuation lines.
+debian/copyright: use spaces rather than tabs to start continuation lines.

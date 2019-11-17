@@ -32,6 +32,7 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
   * Put dh_missing calls into their own rule. Closes: #944531
   * Support parsing continuation lines in makefiles. Closes: #942594
   * Properly migrate --fail-missing on default dh rule.
+  * Replace unicode line breaks in debian/copyright with standard ones.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
 
