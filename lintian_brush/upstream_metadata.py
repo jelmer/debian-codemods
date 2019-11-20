@@ -592,6 +592,13 @@ def guess_from_r_description(path, trust_package=False):
                         yield 'Repository', repo_url, 'certain'
 
 
+def guess_from_environment():
+    try:
+        yield 'Repository', os.environ['UPSTREAM_BRANCH_URL'], 'certain'
+    except KeyError:
+        pass
+
+
 def _get_guessers(path, trust_package=False):
     CANDIDATES = [
         ('debian/watch', guess_from_debian_watch),
@@ -623,6 +630,8 @@ def _get_guessers(path, trust_package=False):
         if n.startswith('README') and
         os.path.splitext(n)[1] not in ('.html', '.pdf', '.xml')]
     CANDIDATES.extend([(n, guess_from_readme) for n in readme_filenames])
+
+    yield guess_from_environment()
 
     for relpath, guesser in CANDIDATES:
         abspath = os.path.join(path, relpath)
