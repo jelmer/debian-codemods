@@ -592,17 +592,7 @@ def guess_from_r_description(path, trust_package=False):
                         yield 'Repository', repo_url, 'certain'
 
 
-def guess_upstream_metadata_items(path, trust_package=False,
-                                  minimum_certainty=None):
-    """Guess upstream metadata items, in no particular order.
-
-    Args:
-      path: Path to the package
-      trust: Whether to trust the package contents and i.e. run
-      executables in it
-    Yields:
-      Tuples with (key, value, certainty)
-    """
+def _get_guessers(path, trust_package=False):
     CANDIDATES = [
         ('debian/watch', guess_from_debian_watch),
         ('debian/control', guess_from_debian_control),
@@ -638,8 +628,23 @@ def guess_upstream_metadata_items(path, trust_package=False,
         abspath = os.path.join(path, relpath)
         if not os.path.exists(abspath):
             continue
-        for key, value, certainty in guesser(
-                abspath, trust_package=trust_package):
+        yield guesser(abspath, trust_package=trust_package)
+
+
+def guess_upstream_metadata_items(path, trust_package=False,
+                                  minimum_certainty=None):
+    """Guess upstream metadata items, in no particular order.
+
+    Args:
+      path: Path to the package
+      trust: Whether to trust the package contents and i.e. run
+      executables in it
+    Yields:
+      Tuples with (key, value, certainty)
+    """
+    guessers = _get_guessers(path, trust_package=trust_package)
+    for guesser in guessers:
+        for key, value, certainty in guesser:
             if not certainty_sufficient(certainty, minimum_certainty):
                 continue
             yield key, value, certainty
