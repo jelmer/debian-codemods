@@ -17,6 +17,7 @@ from lintian_brush.vcs import (
     )
 from lintian_brush.vcswatch import VcsWatch, VcsWatchError
 from email.utils import parseaddr
+import urllib.error
 from urllib.parse import urlparse
 from urllib.request import urlopen, Request
 
@@ -80,14 +81,19 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
     if net_access and (
             vcs_url.startswith('https://') or vcs_url.startswith('http://')):
         headers = {'User-Agent': USER_AGENT}
-        response = urlopen(
-            Request(vcs_url, headers=headers), timeout=DEFAULT_URLLIB_TIMEOUT)
-        redirected_url = response.geturl()
-        if not is_on_obsolete_host(redirected_url):
-            vcs_url = redirected_url
-            vcs_browser = determine_browser_url(vcs_type, vcs_url)
-            print("Update Vcs-* headers from URL redirect.")
-            return (vcs_type, vcs_url, vcs_browser)
+        try:
+            response = urlopen(
+                Request(vcs_url, headers=headers),
+                timeout=DEFAULT_URLLIB_TIMEOUT)
+        except urllib.error.HTTPError:
+            pass
+        else:
+            redirected_url = response.geturl()
+            if not is_on_obsolete_host(redirected_url):
+                vcs_url = redirected_url
+                vcs_browser = determine_browser_url(vcs_type, vcs_url)
+                print("Update Vcs-* headers from URL redirect.")
+                return (vcs_type, vcs_url, vcs_browser)
 
     # If possible, we use vcswatch to find the VCS repository URL
     if net_access:
