@@ -17,6 +17,7 @@
 
 """Handling of quilt patches."""
 
+from breezy.errors import NotBranchError
 
 from debian.changelog import Changelog
 
@@ -45,4 +46,30 @@ def find_patch_base(tree):
         if possible_tag in tags:
             return tags[possible_tag]
     # TODO(jelmer): Do something clever, like look for the last merge?
+    return None
+
+
+def find_patches_branch(tree):
+    """Find the branch that is used to track patches.
+
+    Args:
+      tree: Tree for which to find patches branch
+    Returns:
+      A `Branch` instance
+    """
+    if tree.branch.name is None:
+        return None
+    branch_name = 'patch-queue/%s' % tree.branch.name
+    try:
+        return tree.branch.controldir.open_branch(branch_name)
+    except NotBranchError:
+        pass
+    if tree.branch.name == 'master':
+        branch_name = 'patched'
+    else:
+        branch_name = 'patched-%s' % tree.branch.name
+    try:
+        return tree.branch.controldir.open_branch(branch_name)
+    except NotBranchError:
+        pass
     return None
