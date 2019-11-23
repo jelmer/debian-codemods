@@ -35,6 +35,8 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
   * Replace unicode line breaks in debian/copyright with standard ones.
   * Properly report when fixing uses-debhelper-compat-file.
   * Handle conditionals in makefiles. Closes: #945370
+  * Add fixer for debian-rules-contains-unnecessary-get-orig-source-
+    target.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
 

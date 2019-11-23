@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+get-orig-source:
+	wget https://example.com/blah.tar.gz
+
+override_dh_install:
+	dh_install --blah
