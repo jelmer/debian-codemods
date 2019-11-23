@@ -39,6 +39,7 @@ subset of the issues:
 * debian-control-has-unusual-field-spacing
 * debian-pycompat-is-obsolete
 * debian-pyversions-is-obsolete
+* debian-rules-contains-unnecessary-get-orig-source-target
 * debian-rules-sets-dpkg-architecture-variable
 * debian-rules-should-not-use-pwd
 * debian-rules-uses-unnecessary-dh-argument
