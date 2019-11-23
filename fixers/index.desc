@@ -122,11 +122,10 @@ Lintian-Tags: init.d-script-needs-depends-on-lsb-base
 Fix-Script: maintainer-also-in-uploaders.py
 Lintian-Tags: maintainer-also-in-uploaders.
 
-Fix-Script: older-source-format.py
-Lintian-Tags: older-source-format
-
-Fix-Script: missing-debian-source-format.py
-Lintian-Tags: missing-debian-source-format
+Fix-Script: source-format.py
+Lintian-Tags:
+  older-source-format,
+  missing-debian-source-format
 
 Fix-Script: missing-vcs-browser-field.py
 Lintian-Tags: missing-vcs-browser-field
