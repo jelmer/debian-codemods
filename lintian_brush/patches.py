@@ -19,12 +19,14 @@
 
 import contextlib
 import os
+import tempfile
 
 from breezy import osutils
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy.errors import NotBranchError, NoSuchFile
-from breezy.patches import iter_patched_from_hunks, parse_patches
+from breezy.patches import parse_patches
+from breezy.patch import write_to_cmd
 from breezy.workingtree import WorkingTree
 
 from debian.changelog import Changelog
@@ -211,3 +213,28 @@ def tree_non_patches_changes(tree=None):
                 path = d[1][1]
             if path and not osutils.is_inside('debian', path):
                 yield d
+
+
+# Copied from lp:~jelmer/brz/patch-api
+def iter_patched_from_hunks(orig_lines, hunks):
+    """Iterate through a series of lines with a patch applied.
+    This handles a single file, and does exact, not fuzzy patching.
+
+    :param orig_lines: The unpatched lines.
+    :param hunks: An iterable of Hunk instances.
+
+    This is different from breezy.patches in that it invokes the patch
+    command.
+    """
+    with tempfile.NamedTemporaryFile() as f:
+        f.writelines(orig_lines)
+        f.flush()
+        # TODO(jelmer): Stream patch contents to command, rather than
+        # serializing the entire patch upfront.
+        serialized = b''.join([hunk.as_bytes() for hunk in hunks])
+        args = ["patch", "-f", "-s", "--posix", "--binary",
+                "-o", "-", f.name, "-r", "-"]
+        stdout, stderr, status = write_to_cmd(args, serialized)
+    if status == 0:
+        return [stdout]
+    raise Exception(stderr)
