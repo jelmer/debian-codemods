@@ -17,7 +17,10 @@
 
 """Handling of quilt patches."""
 
+import os
+
 from breezy.errors import NotBranchError
+from breezy.patches import iter_patched_from_hunks
 
 from debian.changelog import Changelog
 
@@ -73,3 +76,57 @@ def find_patches_branch(tree):
     except NotBranchError:
         pass
     return None
+
+
+# Copied from lp:~jelmer/brz/transform-patches
+def apply_patches(tt, patches):
+    """Apply patches to a TreeTransform.
+
+    :param tt: TreeTransform instance
+    :param patches: List of patches
+    """
+    from breezy.bzr.generate_ids import gen_file_id
+    # TODO(jelmer): Extract and set mode
+    for patch in patches:
+        if patch.oldname == b'/dev/null':
+            trans_id = None
+            orig_contents = b''
+        else:
+            oldname = patch.oldname.decode()
+            trans_id = tt.trans_id_tree_path(oldname)
+            orig_contents = tt._tree.get_file_text(oldname)
+            tt.delete_contents(trans_id)
+
+        if patch.newname != b'/dev/null':
+            new_contents = iter_patched_from_hunks(
+                orig_contents.splitlines(True), patch.hunks)
+            if trans_id is None:
+                newname = patch.newname.decode()
+                parts = os.path.split(newname)
+                trans_id = tt.root
+                for part in parts[1:-1]:
+                    trans_id = tt.new_directory(part, trans_id)
+                tt.new_file(
+                    parts[-1], trans_id, new_contents,
+                    file_id=gen_file_id(newname))
+            else:
+                tt.create_file(new_contents, trans_id)
+
+
+class AppliedPatches(object):
+    """Context that provides access to a tree with patches applied.
+    """
+
+    def __init__(self, tree, patches):
+        self.tree = tree
+        self.patches = patches
+
+    def __enter__(self):
+        from breezy.transform import TransformPreview
+        self._tt = TransformPreview(self.tree)
+        apply_patches(self._tt, self.patches)
+        return self._tt.get_preview_tree()
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self._tt.finalize()
+        return False

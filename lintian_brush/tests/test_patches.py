@@ -20,8 +20,12 @@
 from breezy.tests import (
     TestCaseWithTransport,
     )
+from breezy.patches import (
+    parse_patch,
+    )
 
 from ..patches import (
+    AppliedPatches,
     find_patch_base,
     find_patches_branch,
     )
@@ -83,3 +87,49 @@ class FindPatchBranchTests(TestCaseWithTransport):
         other = self.make_named_branch_and_tree('.', name='other')
         other.branch.controldir.create_branch(name='patched-other')
         self.assertEqual('patched-other', find_patches_branch(other).name)
+
+
+class AppliedPatchesTests(TestCaseWithTransport):
+
+    def test_apply_simple(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'a\n')])
+        tree.add('a')
+        tree.commit('Add a')
+        patch = parse_patch(b"""\
+--- a
++++ a
+@@ -1 +1 @@
+-a
++b
+""".splitlines(True))
+        with AppliedPatches(tree, [patch]) as newtree:
+            self.assertEqual(b'b\n', newtree.get_file_text('a'))
+
+    def test_apply_delete(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'a\n')])
+        tree.add('a')
+        tree.commit('Add a')
+        patch = parse_patch(b"""\
+--- a
++++ /dev/null
+@@ -1 +0,0 @@
+-a
+""".splitlines(True))
+        with AppliedPatches(tree, [patch]) as newtree:
+            self.assertFalse(newtree.has_filename('a'))
+
+    def test_apply_add(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'a\n')])
+        tree.add('a')
+        tree.commit('Add a')
+        patch = parse_patch(b"""\
+--- /dev/null
++++ b
+@@ -0,0 +1 @@
++b
+""".splitlines(True))
+        with AppliedPatches(tree, [patch]) as newtree:
+            self.assertEqual(b'b\n', newtree.get_file_text('b'))
