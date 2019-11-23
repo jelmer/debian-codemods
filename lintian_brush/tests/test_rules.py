@@ -39,6 +39,15 @@ all:
 """)
         self.assertEqual(mf.contents, [Rule(b'all', commands=[b'test'])])
 
+    def test_conditional(self):
+        mf = Makefile.from_bytes(b"""\
+all:
+ifeq (foo, bar)
+\ttest
+endif
+""")
+        self.assertEqual(1, len(mf.contents))
+
 
 class UpdateRulesTests(TestCaseWithTransport):
 

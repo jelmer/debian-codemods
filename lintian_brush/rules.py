@@ -92,6 +92,13 @@ class Rule(object):
             self.lines.append(b'')
 
 
+def is_conditional(line):
+    return (
+        line.startswith(b'ifeq') or
+        line.startswith(b'ifneq') or
+        line.startswith(b'endif'))
+
+
 class Makefile(object):
 
     def __init__(self, contents=None):
@@ -123,6 +130,11 @@ class Makefile(object):
                 continue
             if line.startswith(b'\t') and rule:
                 rule.append_line(line)
+            elif is_conditional(line):
+                if rule:
+                    rule.append_line(line)
+                else:
+                    mf.contents.append(line)
             elif b':' in line and b' ' not in line.split(b':')[0]:
                 if rule:
                     mf.contents.append(rule)
