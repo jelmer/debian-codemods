@@ -33,7 +33,7 @@ with open('debian/source/format', 'w') as f:
             # TODO(jelmer): Or maybe exit with code 2?
             pass
         else:
-            delta = list(tree_non_patches_changes())
+            delta = list(tree_non_patches_changes(tree))
             if delta:
                 sys.stderr.write(
                     'Tree has non-quilt changes against upstream.\n')
