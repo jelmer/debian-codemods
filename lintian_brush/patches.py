@@ -22,6 +22,7 @@ import os
 import tempfile
 
 from breezy import osutils
+from breezy.commit import filter_excluded
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy.errors import NotBranchError, NoSuchFile
@@ -164,6 +165,10 @@ def read_quilt_patches(tree, directory='debian/patches'):
                 yield patch
 
 
+class PatchApplicationBaseNotFound(Exception):
+    """Unable to find base for patch application."""
+
+
 @contextlib.contextmanager
 def upstream_with_applied_patches(tree, patches):
     """Create a copy of the upstream tree with applied patches.
@@ -179,7 +184,7 @@ def upstream_with_applied_patches(tree, patches):
 
     upstream_revision = find_patch_base(tree)
     if upstream_revision is None:
-        raise Exception('unable to find base for patch application')
+        raise PatchApplicationBaseNotFound(tree)
     upstream_tree = tree.branch.repository.revision_tree(upstream_revision)
 
     with AppliedPatches(upstream_tree, patches) as tree:
@@ -206,13 +211,18 @@ def tree_non_patches_changes(tree=None):
     with upstream_with_applied_patches(tree, patches) \
             as upstream_patches_tree, \
             AppliedPatches(tree, patches) as patches_tree:
-        for d in patches_tree.iter_changes(upstream_patches_tree):
+        delta = []
+        for d in filter_excluded(
+                patches_tree.iter_changes(upstream_patches_tree),
+                exclude=['debian']):
             try:
                 path = d.path[1]
-            except AttributeError:
-                path = d[1][1]
-            if path and not osutils.is_inside('debian', path):
-                yield d
+            except AttributeError:  # breezy < 3.1
+                path = d[3][1]
+            if path == '':
+                continue
+            delta.append(path)
+        return delta
 
 
 # Copied from lp:~jelmer/brz/patch-api
