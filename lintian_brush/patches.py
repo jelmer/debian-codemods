@@ -208,7 +208,7 @@ def tree_non_patches_changes(tree=None):
             AppliedPatches(tree, patches) as patches_tree:
         for d in patches_tree.iter_changes(upstream_patches_tree):
             try:
-                path = d.patch[1]
+                path = d.path[1]
             except AttributeError:
                 path = d[1][1]
             if path and not osutils.is_inside('debian', path):

@@ -96,13 +96,13 @@ class FindPatchBranchTests(TestCaseWithTransport):
 class AppliedPatchesTests(TestCaseWithTransport):
 
     def test_apply_simple(self):
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree('.', format='git')
         self.build_tree_contents([('a', 'a\n')])
         tree.add('a')
         tree.commit('Add a')
         patch = parse_patch(b"""\
---- a
-+++ a
+--- a/a
++++ b/a
 @@ -1 +1 @@
 -a
 +b
@@ -111,12 +111,12 @@ class AppliedPatchesTests(TestCaseWithTransport):
             self.assertEqual(b'b\n', newtree.get_file_text('a'))
 
     def test_apply_delete(self):
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree('.', format='git')
         self.build_tree_contents([('a', 'a\n')])
         tree.add('a')
         tree.commit('Add a')
         patch = parse_patch(b"""\
---- a
+--- a/a
 +++ /dev/null
 @@ -1 +0,0 @@
 -a
@@ -125,13 +125,13 @@ class AppliedPatchesTests(TestCaseWithTransport):
             self.assertFalse(newtree.has_filename('a'))
 
     def test_apply_add(self):
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree('.', format='git')
         self.build_tree_contents([('a', 'a\n')])
         tree.add('a')
         tree.commit('Add a')
         patch = parse_patch(b"""\
 --- /dev/null
-+++ b
++++ b/b
 @@ -0,0 +1 @@
 +b
 """.splitlines(True))
@@ -143,8 +143,8 @@ class ReadQuiltPatchesTests(TestCaseWithTransport):
 
     def test_read_patches(self):
         patch = """\
---- a
-+++ b
+--- a/a
++++ b/a
 @@ -1,5 +1,5 @@
  line 1
  line 2
@@ -188,8 +188,8 @@ blah (0.38) unstable; urgency=medium
             ('debian/patches/', ),
             ('debian/patches/series', '1.patch\n'),
             ('debian/patches/1.patch', """\
---- afile
-+++ afile
+--- a/afile
++++ b/afile
 @@ -1 +1 @@
 -some line
 +another line
@@ -223,8 +223,8 @@ blah (0.38) unstable; urgency=medium
             ('debian/patches/', ),
             ('debian/patches/series', '1.patch\n'),
             ('debian/patches/1.patch', """\
---- afile
-+++ afile
+--- a/afile
++++ b/afile
 @@ -1 +1 @@
 -some line
 +another line
