@@ -24,11 +24,28 @@ import re
 class Rule(object):
     """A make rule."""
 
-    def __init__(self, firstline):
+    def __init__(self, target=None, commands=None):
+        self.target = target
+        self._component_str = b''
+        self.components = []
+        if target:
+            self.lines = (
+                [b'%s:' % target] +
+                [b'\t' + cmd for cmd in (commands or [])])
+        else:
+            self.lines = None
+
+    @classmethod
+    def _from_first_line(cls, firstline):
+        self = cls()
         self.lines = [firstline]
         # TODO(jelmer): What if there are multiple targets?
         self.target, self._component_str = firstline.split(b':', 1)
         self.components = self._component_str.split()
+        return self
+
+    def __repr__(self):
+        return "<%s(%r)>" % (type(self).__name__, self.target)
 
     def has_target(self, target):
         # TODO(jelmer): Handle multiple targets
@@ -54,6 +71,11 @@ class Rule(object):
 
     def dump_lines(self):
         return [line + b'\n' for line in self.lines]
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return False
+        return self.dump_lines() == other.dump_lines()
 
     def __bool__(self):
         return bool(self.lines)
@@ -104,7 +126,7 @@ class Makefile(object):
             elif b':' in line and b' ' not in line.split(b':')[0]:
                 if rule:
                     mf.contents.append(rule)
-                rule = Rule(line)
+                rule = Rule._from_first_line(line)
             elif not line.strip():
                 if rule:
                     rule.append_line(line)
@@ -147,7 +169,7 @@ class Makefile(object):
         line = b'%s:' % target
         if components:
             line += b' ' + b' '.join(components)
-        rule = Rule(line)
+        rule = Rule._from_first_line(line)
         self.contents.append(rule)
         return rule
 

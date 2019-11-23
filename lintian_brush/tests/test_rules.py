@@ -30,6 +30,16 @@ from lintian_brush.rules import (
     )
 
 
+class MakefileParseTests(TestCase):
+
+    def test_simple_rule(self):
+        mf = Makefile.from_bytes(b"""\
+all:
+\ttest
+""")
+        self.assertEqual(mf.contents, [Rule(b'all', commands=[b'test'])])
+
+
 class UpdateRulesTests(TestCaseWithTransport):
 
     def test_update_command(self):
