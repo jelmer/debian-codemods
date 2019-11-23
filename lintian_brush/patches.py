@@ -21,8 +21,11 @@ import contextlib
 import os
 
 from breezy import osutils
+import breezy.bzr  # noqa: F401
+import breezy.git  # noqa: F401
 from breezy.errors import NotBranchError, NoSuchFile
 from breezy.patches import iter_patched_from_hunks, parse_patches
+from breezy.workingtree import WorkingTree
 
 from debian.changelog import Changelog
 
@@ -81,12 +84,15 @@ def find_patches_branch(tree):
 
 
 # Copied from lp:~jelmer/brz/transform-patches
-def apply_patches(tt, patches):
+def apply_patches(tt, patches, prefix=1):
     """Apply patches to a TreeTransform.
 
     :param tt: TreeTransform instance
     :param patches: List of patches
     """
+    def strip_prefix(p):
+        return '/'.join(p.split('/')[prefix:])
+
     from breezy.bzr.generate_ids import gen_file_id
     # TODO(jelmer): Extract and set mode
     for patch in patches:
@@ -94,7 +100,7 @@ def apply_patches(tt, patches):
             trans_id = None
             orig_contents = b''
         else:
-            oldname = patch.oldname.decode()
+            oldname = strip_prefix(patch.oldname.decode())
             trans_id = tt.trans_id_tree_path(oldname)
             orig_contents = tt._tree.get_file_text(oldname)
             tt.delete_contents(trans_id)
@@ -103,7 +109,7 @@ def apply_patches(tt, patches):
             new_contents = iter_patched_from_hunks(
                 orig_contents.splitlines(True), patch.hunks)
             if trans_id is None:
-                newname = patch.newname.decode()
+                newname = strip_prefix(patch.newname.decode())
                 parts = os.path.split(newname)
                 trans_id = tt.root
                 for part in parts[1:-1]:
@@ -119,14 +125,15 @@ class AppliedPatches(object):
     """Context that provides access to a tree with patches applied.
     """
 
-    def __init__(self, tree, patches):
+    def __init__(self, tree, patches, prefix=1):
         self.tree = tree
         self.patches = patches
+        self.prefix = prefix
 
     def __enter__(self):
         from breezy.transform import TransformPreview
         self._tt = TransformPreview(self.tree)
-        apply_patches(self._tt, self.patches)
+        apply_patches(self._tt, self.patches, prefix=self.prefix)
         return self._tt.get_preview_tree()
 
     def __exit__(self, exc_type, exc_value, exc_tb):
@@ -177,7 +184,7 @@ def upstream_with_applied_patches(tree, patches):
         yield tree
 
 
-def tree_non_patches_changes(tree):
+def tree_non_patches_changes(tree=None):
     """Check if a Debian tree has changes vs upstream tree.
 
     Args:
@@ -185,6 +192,8 @@ def tree_non_patches_changes(tree):
     Returns:
         list of TreeDelta objects
     """
+    if tree is None:
+        tree = WorkingTree.open('.')
     directory = 'debian/patches'
     if not tree.has_filename(directory):
         return []
