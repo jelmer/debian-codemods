@@ -24,6 +24,30 @@ with open('debian/source/format', 'w') as f:
         f.write("3.0 (native)\n")
     else:
         f.write("3.0 (quilt)\n")
+        from lintian_brush.patches import tree_non_patches_changes
+        from breezy import errors
+        from breezy.workingtree import WorkingTree
+        try:
+            tree, path = WorkingTree.open_containing('.')
+        except errors.NotBranchError:
+            # TODO(jelmer): Or maybe exit with code 2?
+            pass
+        else:
+            delta = list(tree_non_patches_changes())
+            if delta:
+                sys.stderr.write(
+                    'Tree has non-quilt changes against upstream.\n')
+                try:
+                    with open('debian/source/options', 'r') as f:
+                        options = list(f.readlines())
+                except FileNotFoundError:
+                    options = []
+                if 'single-debian-patch\n' not in options:
+                    options.append('single-debian-patch\n')
+                if 'auto-commit\n' not in options:
+                    options.append('auto-commit\n')
+                with open('debian/source/options', 'w') as f:
+                    f.writelines(options)
 
 
 print(description)

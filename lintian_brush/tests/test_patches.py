@@ -96,7 +96,7 @@ class FindPatchBranchTests(TestCaseWithTransport):
 class AppliedPatchesTests(TestCaseWithTransport):
 
     def test_apply_simple(self):
-        tree = self.make_branch_and_tree('.', format='git')
+        tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', 'a\n')])
         tree.add('a')
         tree.commit('Add a')
@@ -111,7 +111,7 @@ class AppliedPatchesTests(TestCaseWithTransport):
             self.assertEqual(b'b\n', newtree.get_file_text('a'))
 
     def test_apply_delete(self):
-        tree = self.make_branch_and_tree('.', format='git')
+        tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', 'a\n')])
         tree.add('a')
         tree.commit('Add a')
@@ -125,7 +125,7 @@ class AppliedPatchesTests(TestCaseWithTransport):
             self.assertFalse(newtree.has_filename('a'))
 
     def test_apply_add(self):
-        tree = self.make_branch_and_tree('.', format='git')
+        tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', 'a\n')])
         tree.add('a')
         tree.commit('Add a')
@@ -193,14 +193,23 @@ blah (0.38) unstable; urgency=medium
 @@ -1 +1 @@
 -some line
 +another line
-""")])
-        self.tree.add(['debian', 'debian/changelog'])
+--- /dev/null
++++ b/newfile
+@@ -0,0 +1 @@
++new line
+"""),
+            ('unchangedfile', 'unchanged\n')])
+        self.tree.add(['debian', 'debian/changelog', 'unchangedfile'])
 
     def test_upstream_branch(self):
         self.tree.branch.tags.set_tag('upstream/0.38', self.upstream_revid)
         patches = list(read_quilt_patches(self.tree))
         with upstream_with_applied_patches(self.tree, patches) as t:
             self.assertEqual(b'another line\n', t.get_file_text('afile'))
+            self.assertEqual(b'new line\n', t.get_file_text('newfile'))
+            # TODO(jelmer): PreviewTree appears to be broken
+            # self.assertEqual(b'unchanged\n',
+            #                  t.get_file_text('unchangedfile'))
 
 
 class TreePatchesNonPatchesTests(TestCaseWithTransport):

@@ -28,7 +28,6 @@ import breezy.git  # noqa: F401
 from breezy.errors import NotBranchError, NoSuchFile
 from breezy.patches import parse_patches
 from breezy.patch import write_to_cmd
-from breezy.workingtree import WorkingTree
 
 from debian.changelog import Changelog
 
@@ -134,13 +133,18 @@ class AppliedPatches(object):
         self.prefix = prefix
 
     def __enter__(self):
-        from breezy.transform import TransformPreview
-        self._tt = TransformPreview(self.tree)
-        apply_patches(self._tt, self.patches, prefix=self.prefix)
-        return self._tt.get_preview_tree()
+        if self.patches:
+            from breezy.transform import TransformPreview
+            self._tt = TransformPreview(self.tree)
+            apply_patches(self._tt, self.patches, prefix=self.prefix)
+            return self._tt.get_preview_tree()
+        else:
+            self._tt = None
+            return self.tree
 
     def __exit__(self, exc_type, exc_value, exc_tb):
-        self._tt.finalize()
+        if self._tt:
+            self._tt.finalize()
         return False
 
 
@@ -191,7 +195,7 @@ def upstream_with_applied_patches(tree, patches):
         yield tree
 
 
-def tree_non_patches_changes(tree=None):
+def tree_non_patches_changes(tree):
     """Check if a Debian tree has changes vs upstream tree.
 
     Args:
@@ -199,30 +203,23 @@ def tree_non_patches_changes(tree=None):
     Returns:
         list of TreeDelta objects
     """
-    if tree is None:
-        tree = WorkingTree.open('.')
     directory = 'debian/patches'
-    if not tree.has_filename(directory):
-        return []
-
     patches = list(read_quilt_patches(tree, directory))
 
     # TODO(jelmer): What if patches are already applied on tree?
     with upstream_with_applied_patches(tree, patches) \
             as upstream_patches_tree, \
             AppliedPatches(tree, patches) as patches_tree:
-        delta = []
-        for d in filter_excluded(
+        for change in filter_excluded(
                 patches_tree.iter_changes(upstream_patches_tree),
                 exclude=['debian']):
             try:
-                path = d.path[1]
+                path = change.path[1]
             except AttributeError:  # breezy < 3.1
-                path = d[3][1]
+                path = change[1][1]
             if path == '':
                 continue
-            delta.append(path)
-        return delta
+            yield change
 
 
 # Copied from lp:~jelmer/brz/patch-api
