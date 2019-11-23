@@ -30,6 +30,8 @@ from ..patches import (
     find_patch_base,
     find_patches_branch,
     read_quilt_patches,
+    tree_non_patches_changes,
+    upstream_with_applied_patches,
     )
 
 
@@ -164,3 +166,77 @@ class ReadQuiltPatchesTests(TestCaseWithTransport):
         self.assertEqual(1, len(patches))
         self.assertIsInstance(patches[0], Patch)
         self.assertEqual(patch.encode('utf-8'), patches[0].as_bytes())
+
+
+class UpstreamWithAppliedPatchesTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(UpstreamWithAppliedPatchesTests, self).setUp()
+        self.tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('afile', 'some line\n')])
+        self.tree.add('afile')
+        self.upstream_revid = self.tree.commit('upstream')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+blah (0.38) unstable; urgency=medium
+
+  * Fix something
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 19 Oct 2019 15:21:53 +0000
+ """),
+            ('debian/patches/', ),
+            ('debian/patches/series', '1.patch\n'),
+            ('debian/patches/1.patch', """\
+--- afile
++++ afile
+@@ -1 +1 @@
+-some line
++another line
+""")])
+        self.tree.add(['debian', 'debian/changelog'])
+
+    def test_upstream_branch(self):
+        self.tree.branch.tags.set_tag('upstream/0.38', self.upstream_revid)
+        patches = list(read_quilt_patches(self.tree))
+        with upstream_with_applied_patches(self.tree, patches) as t:
+            self.assertEqual(b'another line\n', t.get_file_text('afile'))
+
+
+class TreePatchesNonPatchesTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TreePatchesNonPatchesTests, self).setUp()
+        self.tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('afile', 'some line\n')])
+        self.tree.add('afile')
+        self.upstream_revid = self.tree.commit('upstream')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+blah (0.38) unstable; urgency=medium
+
+  * Fix something
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 19 Oct 2019 15:21:53 +0000
+ """),
+            ('debian/patches/', ),
+            ('debian/patches/series', '1.patch\n'),
+            ('debian/patches/1.patch', """\
+--- afile
++++ afile
+@@ -1 +1 @@
+-some line
++another line
+""")])
+        self.tree.add(['debian', 'debian/changelog'])
+
+    def test_no_delta(self):
+        self.tree.branch.tags.set_tag('upstream/0.38', self.upstream_revid)
+        self.assertEqual([], list(tree_non_patches_changes(self.tree)))
+
+    def test_delta(self):
+        self.tree.branch.tags.set_tag('upstream/0.38', self.upstream_revid)
+        self.build_tree_contents([('anotherfile', 'blah')])
+        self.tree.add('anotherfile')
+        self.assertEqual(1, len(list(tree_non_patches_changes(self.tree))))

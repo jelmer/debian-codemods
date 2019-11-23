@@ -17,6 +17,7 @@
 
 """Handling of quilt patches."""
 
+import contextlib
 import os
 
 from breezy import osutils
@@ -152,3 +153,52 @@ def read_quilt_patches(tree, directory='debian/patches'):
         with tree.get_file(osutils.pathjoin(directory, patchname)) as f:
             for patch in parse_patches(f, allow_dirty=True, keep_dirty=False):
                 yield patch
+
+
+@contextlib.contextmanager
+def upstream_with_applied_patches(tree, patches):
+    """Create a copy of the upstream tree with applied patches.
+
+    Args:
+      tree: Tree with applied patches
+    """
+    patches_branch = find_patches_branch(tree)
+    if patches_branch is not None:
+        # TODO(jelmer): Make sure it's actually rebased on current upstream
+        yield patches_branch.basis_tree()
+        return
+
+    upstream_revision = find_patch_base(tree)
+    if upstream_revision is None:
+        raise Exception('unable to find base for patch application')
+    upstream_tree = tree.branch.repository.revision_tree(upstream_revision)
+
+    with AppliedPatches(upstream_tree, patches) as tree:
+        yield tree
+
+
+def tree_non_patches_changes(tree):
+    """Check if a Debian tree has changes vs upstream tree.
+
+    Args:
+      tree: Tree to check
+    Returns:
+        list of TreeDelta objects
+    """
+    directory = 'debian/patches'
+    if not tree.has_filename(directory):
+        return []
+
+    patches = list(read_quilt_patches(tree, directory))
+
+    # TODO(jelmer): What if patches are already applied on tree?
+    with upstream_with_applied_patches(tree, patches) \
+            as upstream_patches_tree, \
+            AppliedPatches(tree, patches) as patches_tree:
+        for d in patches_tree.iter_changes(upstream_patches_tree):
+            try:
+                path = d.patch[1]
+            except AttributeError:
+                path = d[1][1]
+            if path and not osutils.is_inside('debian', path):
+                yield d
