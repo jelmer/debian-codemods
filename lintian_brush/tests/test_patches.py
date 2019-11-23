@@ -22,12 +22,14 @@ from breezy.tests import (
     )
 from breezy.patches import (
     parse_patch,
+    Patch,
     )
 
 from ..patches import (
     AppliedPatches,
     find_patch_base,
     find_patches_branch,
+    read_quilt_patches,
     )
 
 
@@ -133,3 +135,32 @@ class AppliedPatchesTests(TestCaseWithTransport):
 """.splitlines(True))
         with AppliedPatches(tree, [patch]) as newtree:
             self.assertEqual(b'b\n', newtree.get_file_text('b'))
+
+
+class ReadQuiltPatchesTests(TestCaseWithTransport):
+
+    def test_read_patches(self):
+        patch = """\
+--- a
++++ b
+@@ -1,5 +1,5 @@
+ line 1
+ line 2
+-line 3
++new line 3
+ line 4
+ line 5
+"""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/patches/', ),
+            ('debian/patches/series', 'foo\n'),
+            ('debian/patches/foo', patch)])
+        tree.add(['debian', 'debian/patches', 'debian/patches/series',
+                  'debian/patches/foo'])
+        tree.commit('add patch')
+        patches = list(read_quilt_patches(tree))
+        self.assertEqual(1, len(patches))
+        self.assertIsInstance(patches[0], Patch)
+        self.assertEqual(patch.encode('utf-8'), patches[0].as_bytes())

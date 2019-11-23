@@ -19,8 +19,9 @@
 
 import os
 
-from breezy.errors import NotBranchError
-from breezy.patches import iter_patched_from_hunks
+from breezy import osutils
+from breezy.errors import NotBranchError, NoSuchFile
+from breezy.patches import iter_patched_from_hunks, parse_patches
 
 from debian.changelog import Changelog
 
@@ -130,3 +131,24 @@ class AppliedPatches(object):
     def __exit__(self, exc_type, exc_value, exc_tb):
         self._tt.finalize()
         return False
+
+
+def read_quilt_patches(tree, directory='debian/patches'):
+    """Read patch contents from quilt directory.
+
+    Args:
+      tree: Tree to read
+      directory: Patch directory
+    Returns:
+      list of Patch objects
+    """
+    series_path = osutils.pathjoin(directory, 'series')
+    try:
+        series_lines = tree.get_file_lines(series_path)
+    except NoSuchFile:
+        return []
+    for line in series_lines:
+        patchname = line.decode().strip()
+        with tree.get_file(osutils.pathjoin(directory, patchname)) as f:
+            for patch in parse_patches(f, allow_dirty=True, keep_dirty=False):
+                yield patch
