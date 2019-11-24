@@ -96,7 +96,7 @@ def get_sf_metadata(project):
         raise NoSuchSourceForgeProject(project)
 
 
-def guess_repo_from_url(url):
+def guess_repo_from_url(url, net_access=False):
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
         if parsed_url.path.strip('/').count('/') < 1:
@@ -153,6 +153,9 @@ def guess_repo_from_url(url):
         return urlunparse(
             parsed_url._replace(path='/'.join(parts), query=''))
     if parsed_url.netloc in KNOWN_HOSTING_SITES:
+        return url
+    # Maybe it's already pointing at a VCS repo?
+    if net_access and probe_upstream_branch_url(url):
         return url
     return None
 
@@ -840,7 +843,7 @@ def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
             fields.update(extend_from_lp(
                 code, certainty, minimum_certainty, package))
     if 'Homepage' in code and 'Repository' not in code:
-        repo = guess_repo_from_url(code['Homepage'])
+        repo = guess_repo_from_url(code['Homepage'], net_access=net_access)
         if repo:
             code['Repository'] = repo
             certainty['Repository'] = 'likely'
@@ -852,7 +855,8 @@ def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
             certainty['Repository-Browse'] = certainty['Repository']
             fields.add('Repository-Browse')
     if 'Repository-Browse' in code and 'Repository' not in code:
-        repo = guess_repo_from_url(code['Repository-Browse'])
+        repo = guess_repo_from_url(
+            code['Repository-Browse'], net_access=net_access)
         if repo:
             code['Repository'] = repo
             certainty['Repository'] = certainty['Repository-Browse']
@@ -872,17 +876,18 @@ def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
             code['Bug-Submit'] = bug_submit_url
             certainty['Bug-Submit'] = certainty['Bug-Database']
             fields.add('Bug-Submit')
-    # TODO(jelmer): Set Bug-Submit
     return fields
 
 
 def probe_upstream_branch_url(url, version=None):
     parsed = urlparse(url)
-    # TODO(jelmer): Disable authentication prompting.
     if parsed.scheme in ('git+ssh', 'ssh', 'bzr+ssh'):
         # Let's not probe anything possibly non-public.
         return None
+    import breezy.ui
     from breezy.branch import Branch
+    old_ui = breezy.ui.ui_factory
+    breezy.ui.ui_factory = breezy.ui.SilentUIFactory()
     try:
         b = Branch.open(url)
         b.last_revision()
@@ -903,6 +908,8 @@ def probe_upstream_branch_url(url, version=None):
     except Exception:
         # TODO(jelmer): Catch more specific exceptions?
         return False
+    finally:
+        breezy.ui.ui_factory = old_ui
 
 
 def check_upstream_metadata(code, certainty, version=None):
