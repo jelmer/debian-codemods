@@ -415,6 +415,9 @@ def guess_from_readme(path, trust_package):
                 if m:
                     yield 'Repository', 'https://github.com/%s/%s' % (
                         m.group(1).decode(), m.group(2).decode()), 'possible'
+                for m in re.finditer(
+                        b'https://github.com/([^/]+)/([^/]+)/issues', line):
+                    yield 'Bug-Database', m.group(0).decode(), 'possible'
     except IsADirectoryError:
         pass
 
