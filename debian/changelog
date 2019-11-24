@@ -1,6 +1,7 @@
 lintian-brush (0.41) UNRELEASED; urgency=medium
 
   * Probe Homepage URL for VCS attributes.
+  * Fix finding of upstream repository for SourceForge projects.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 Nov 2019 04:35:26 +0000
 

@@ -708,13 +708,22 @@ def guess_from_sf(sf_project):
         screenshot_urls = [s['url'] for s in data['screenshots'] if 'url' in s]
         if screenshot_urls:
             yield ('Screenshots', screenshot_urls)
-    VCS_NAMES = ['bzr', 'hg', 'git', 'cvs']
+    # TODO(jelmer): What about cvs and bzr?
+    VCS_NAMES = ['hg', 'git', 'svn']
     vcs_tools = [
-        tool for tool in data.get('tools', []) if tool['name'] in VCS_NAMES]
+        (tool['name'], tool['url'])
+        for tool in data.get('tools', []) if tool['name'] in VCS_NAMES]
     if len(vcs_tools) == 1:
-        vcs_tool = vcs_tools[0]
-        if vcs_tool['name'] != 'cvs':
-            yield 'Repository', urljoin('https://sf.net/', vcs_tools[0]['url'])
+        (kind, url) = vcs_tools[0]
+        if kind == 'git':
+            url = urljoin('https://git.code.sf.net/', url)
+        elif kind == 'svn':
+            url = urljoin('https://svn.code.sf.net/', url)
+        elif kind == 'hg':
+            url = urljoin('https://hg.code.sf.net/', url)
+        else:
+            raise KeyError(kind)
+        yield 'Repository', url
 
 
 def extend_from_external_guesser(
@@ -893,6 +902,9 @@ def probe_upstream_branch_url(url, version=None):
         b.last_revision()
         if version is not None:
             tag_names = b.tags.get_tag_dict().keys()
+            if not tag_names:
+                # Uhm, hmm
+                return True
             if version in tag_names:
                 return True
             if 'v%s' % version in tag_names:
