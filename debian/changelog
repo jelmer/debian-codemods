@@ -1,4 +1,4 @@
-lintian-brush (0.39) UNRELEASED; urgency=medium
+lintian-brush (0.39) unstable; urgency=medium
 
   * Fix stripping the last argument to --with.
   * Set somewhat more aggressive timeout for HTTP requests.
@@ -38,7 +38,7 @@ lintian-brush (0.39) UNRELEASED; urgency=medium
   * Add fixer for debian-rules-contains-unnecessary-get-orig-source-
     target.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Oct 2019 02:13:20 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 Nov 2019 03:02:52 +0000
 
 lintian-brush (0.38) unstable; urgency=medium
 
