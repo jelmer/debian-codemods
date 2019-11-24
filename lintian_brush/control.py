@@ -485,14 +485,14 @@ def read_debian_compat_file(path):
         return int(line.strip())
 
 
-def get_debhelper_compat_version():
+def get_debhelper_compat_version(path='.'):
     try:
-        return read_debian_compat_file('debian/compat')
+        return read_debian_compat_file(os.path.join(path, 'debian/compat'))
     except FileNotFoundError:
         pass
 
     try:
-        with open('debian/control', 'r') as f:
+        with open(os.path.join(path, 'debian/control'), 'r') as f:
             control = Deb822(f)
     except FileNotFoundError:
         return None
