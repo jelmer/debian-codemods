@@ -144,6 +144,12 @@ def guess_repo_from_url(url, net_access=False):
         if len(path_elements) >= 2:
             return 'https://bitbucket.org/%s/%s' % (
                 path_elements[0], path_elements[1])
+    if parsed_url.netloc == 'ftp.gnu.org':
+        path_elements = parsed_url.path.strip('/').split('/')
+        if len(path_elements) >= 2 and path_elements[0] == 'gnu':
+            return 'https://git.savannah.gnu.org/git/%s.git' % (
+                path_elements[1])
+        return None
     if parsed_url.netloc in KNOWN_GITLAB_SITES:
         if parsed_url.path.strip('/').count('/') < 1:
             return None
