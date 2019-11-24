@@ -1,4 +1,4 @@
-lintian-brush (0.39) unstable; urgency=medium
+lintian-brush (0.40) unstable; urgency=medium
 
   * Fix stripping the last argument to --with.
   * Set somewhat more aggressive timeout for HTTP requests.
