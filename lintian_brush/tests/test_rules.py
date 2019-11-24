@@ -26,6 +26,7 @@ from lintian_brush.rules import (
     Makefile,
     Rule,
     dh_invoke_drop_with,
+    dh_invoke_add_with,
     update_rules,
     )
 
@@ -198,3 +199,17 @@ class InvokeDropWithTests(TestCaseWithTransport):
             dh_invoke_drop_with(
                 b'dh $@ --verbose --with autoreconf,systemd,cme-upgrade',
                 b'systemd'))
+
+
+class InvokeAddWithTests(TestCaseWithTransport):
+
+    def test_add_with(self):
+        self.assertEqual(
+            b'dh --with=blah',
+            dh_invoke_add_with(b'dh', b'blah'))
+        self.assertEqual(
+            b'dh --with=foo,blah',
+            dh_invoke_add_with(b'dh --with=foo', b'blah'))
+        self.assertEqual(
+            b'dh --with=foo,blah --other',
+            dh_invoke_add_with(b'dh --with=foo --other', b'blah'))

@@ -290,6 +290,17 @@ def update_rules(command_line_cb=None, global_line_cb=None,
         rule_cb=rule_cb, makefile_cb=makefile_cb)
 
 
+def dh_invoke_add_with(line, with_argument):
+    """Add a particular value to a with argument."""
+    if with_argument in line:
+        return line
+    if b' --with' not in line:
+        return line + b' --with=' + with_argument
+    return re.sub(
+        b'([ \t])--with([ =])([^ \t]+)', b'\\1--with\\2\\3,' + with_argument,
+        line)
+
+
 def dh_invoke_drop_with(line, with_argument):
     """Drop a particular value from a with argument."""
     if with_argument not in line:
