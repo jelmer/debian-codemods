@@ -4,6 +4,8 @@ lintian-brush (0.41) UNRELEASED; urgency=medium
   * Fix finding of upstream repository for SourceForge projects.
   * Pick up GitHub issues locations from README.
   * Don't leave behind backup files when comparing uscan watch files.
+  * dh-quilt-addon-but-quilt-source-format: only drop quilt if package
+    is on the 3.0 (quilt) format.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 Nov 2019 04:35:26 +0000
 

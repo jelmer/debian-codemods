@@ -92,9 +92,6 @@ Lintian-Tags: dep5-file-paragraph-references-header-paragraph
 Fix-Script: dh-clean-k-is-deprecated.py
 Lintian-Tags: dh-clean-k-is-deprecated
 
-Fix-Script: dh-quilt-addon-but-quilt-source-format.py
-Lintian-Tags: dh-quilt-addon-but-quilt-source-format
-
 Fix-Script: empty-debian-source-options.py
 
 Fix-Script: empty-debian-patches-series.py
@@ -126,6 +123,11 @@ Fix-Script: source-format.py
 Lintian-Tags:
   older-source-format,
   missing-debian-source-format
+
+# Intentionally after source-format, so that we upgrade to 3.0 (quilt) first,
+# and then drop the quilt extension.
+Fix-Script: dh-quilt-addon-but-quilt-source-format.py
+Lintian-Tags: dh-quilt-addon-but-quilt-source-format
 
 Fix-Script: missing-vcs-browser-field.py
 Lintian-Tags: missing-vcs-browser-field
