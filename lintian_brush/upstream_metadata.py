@@ -98,8 +98,9 @@ def get_sf_metadata(project):
 
 def guess_repo_from_url(url, net_access=False):
     parsed_url = urlparse(url)
+    path_elements = parsed_url.path.strip('/').split('/')
     if parsed_url.netloc == 'github.com':
-        if parsed_url.path.strip('/').count('/') < 1:
+        if len(path_elements) < 2:
             return None
         return ('https://github.com' +
                 '/'.join(parsed_url.path.split('/')[:3]))
@@ -107,45 +108,37 @@ def guess_repo_from_url(url, net_access=False):
         return 'https://code.launchpad.net/%s' % (
             parsed_url.path.strip('/').split('/')[0])
     if parsed_url.netloc == 'git.savannah.gnu.org':
-        path_elements = parsed_url.path.strip('/').split('/')
         if len(path_elements) != 2 or path_elements[0] != 'git':
             return None
         return url
     if parsed_url.netloc in ('freedesktop.org', 'www.freedesktop.org'):
-        path_elements = parsed_url.path.strip('/').split('/')
         if len(path_elements) >= 2 and path_elements[0] == 'software':
             return 'https://github.com/freedesktop/%s' % path_elements[1]
         if len(path_elements) >= 3 and path_elements[:2] == [
                 'wiki', 'Software']:
             return 'https://github.com/freedesktop/%s.git' % path_elements[2]
     if parsed_url.netloc == 'download.gnome.org':
-        path_elements = parsed_url.path.strip('/').split('/')
         if len(path_elements) >= 2 and path_elements[0] == 'sources':
             return 'https://gitlab.gnome.org/gnome/%s.git' % path_elements[1]
     if parsed_url.netloc == 'ftp.gnome.org':
-        path_elements = parsed_url.path.strip('/').split('/')
         if (len(path_elements) >= 4 and [
               e.lower() for e in path_elements[:3]] == [
                   'pub', 'gnome', 'sources']):
             return 'https://gitlab.gnome.org/gnome/%s.git' % path_elements[3]
     if parsed_url.netloc == 'sourceforge.net':
-        path_elements = parsed_url.path.strip('/').split('/')
         if (len(path_elements) >= 4 and path_elements[0] == 'p'
                 and path_elements[3] == 'ci'):
             return 'https://sourceforge.net/p/%s/%s' % (
                 path_elements[1], path_elements[2])
     if parsed_url.netloc == 'www.apache.org':
-        path_elements = parsed_url.path.strip('/').split('/')
         if len(path_elements) > 2 and path_elements[0] == 'dist':
             return 'https://svn.apache.org/repos/asf/%s/%s' % (
                 path_elements[1], path_elements[2])
     if parsed_url.netloc == 'bitbucket.org':
-        path_elements = parsed_url.path.strip('/').split('/')
         if len(path_elements) >= 2:
             return 'https://bitbucket.org/%s/%s' % (
                 path_elements[0], path_elements[1])
     if parsed_url.netloc == 'ftp.gnu.org':
-        path_elements = parsed_url.path.strip('/').split('/')
         if len(path_elements) >= 2 and path_elements[0] == 'gnu':
             return 'https://git.savannah.gnu.org/git/%s.git' % (
                 path_elements[1])
