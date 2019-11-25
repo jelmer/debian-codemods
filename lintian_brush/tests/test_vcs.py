@@ -87,6 +87,11 @@ class FixUpGitUrlTests(TestCase):
             fixup_broken_git_url(
                 'https://git@salsa.debian.org:debian-astro-team/pyavm.git'))
 
+    def test_github_tree_url(self):
+        self.assertEqual(
+            'https://github.com/blah/blah -b master',
+            fixup_broken_git_url('https://github.com/blah/blah/tree/master'))
+
 
 class SanitizeUrlTests(TestCase):
 
