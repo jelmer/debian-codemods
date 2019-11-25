@@ -31,5 +31,5 @@ if not changed:
 
 update_control(source_package_cb=bump_debhelper)
 
-print("Drop unnecessary dependency on dh-autoconf.")
+print("Drop unnecessary dependency on dh-autoreconf.")
 print("Fixed-Lintian-Tags: useless-autoreconf-build-depends")
