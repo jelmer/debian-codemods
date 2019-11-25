@@ -43,15 +43,16 @@ if os.path.exists('debian/compat'):
                 control.get("Build-Depends", ""), "debhelper-compat",
                 "%d" % debhelper_compat_version, position=position)
             current_compat_version = Version("%d" % debhelper_compat_version)
-            # If there are debhelper dependencies >= new debhelper compat
+            # If there are debhelper dependencies >> new debhelper compat
             # version, then keep them.
             for rel in debhelper_relation:
                 if not rel.version:
                     continue
-                if rel.version[0] == '>=' and Version(
+                if rel.version[0] in ('=', '>=') and Version(
                         rel.version[1]) > current_compat_version:
                     break
-                if Version(rel.version[1]) >= current_compat_version:
+                if rel.version[0] == '>>' and Version(
+                        rel.version[1]) >= current_compat_version:
                     break
             else:
                 control["Build-Depends"] = drop_dependency(

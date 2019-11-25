@@ -1,0 +1,2 @@
+Set debhelper-compat version in Build-Depends.
+Fixed-Lintian-Tags: uses-debhelper-compat-file
