@@ -131,7 +131,7 @@ class Makefile(object):
                 continue
             if line.startswith(b'\t') and rule:
                 rule.append_line(line)
-            elif is_conditional(line):
+            elif is_conditional(line) or line.startswith(b'#'):
                 if rule:
                     rule.append_line(line)
                 else:
