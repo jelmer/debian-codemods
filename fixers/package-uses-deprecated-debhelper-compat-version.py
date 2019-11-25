@@ -71,8 +71,10 @@ def autoreconf_disabled():
 
         # Another way to disable dh_autoreconf is to add an empty override
         # rule.
-        rule = mf.get_rule(b'override_dh_autoreconf')
-        if rule and not rule.commands():
+        for rule in mf.iter_rules(b'override_dh_autoreconf'):
+            if rule.commands():
+                return False
+        else:
             return True
     except FileNotFoundError:
         return False
@@ -153,9 +155,11 @@ def line_matches_command(target, line, command):
         # Whatever
         return True
 
-    if (line.startswith(command + b' ') or
-            (target == (b'override_' + command) and
-                line.startswith(b'$(overridden_command)'))):
+    if line.startswith(command + b' ') or line == command:
+        return True
+
+    if (target == (b'override_' + command) and
+            line.startswith(b'$(overridden_command)')):
         return True
 
     return False
@@ -246,7 +250,7 @@ class DhMissingUpgrader(object):
     """Replace --list-missing / --fail-missing with dh_missing."""
 
     def __init__(self):
-        self.fail_missing = False
+        self.need_override_missing = False
 
     def fix_line(self, line, target):
         for arg in [b'--list-missing', b'-O--list-missing']:
@@ -262,14 +266,21 @@ class DhMissingUpgrader(object):
                     'debian/rules: Move --fail-missing argument to dh_missing.'
                     )
                 if changed:
-                    self.fail_missing = True
+                    if target == b'override_dh_install' or command == b'dh':
+                        self.need_override_missing = True
+                    else:
+                        subitems.add(
+                            'debian/rules: Move --fail-missing argument '
+                            'to dh_missing.')
+                        return [line, b'dh_missing --fail-missing']
         return line
 
     def fix_makefile(self, mf):
-        if not self.fail_missing:
+        if not self.need_override_missing:
             return
-        rule = mf.get_rule(b'override_dh_missing')
-        if not rule:
+        try:
+            [rule] = list(mf.iter_rules(b'override_dh_missing'))
+        except ValueError:
             rule = mf.add_rule(b'override_dh_missing')
             rule.append_command(b'dh_missing --fail-missing')
         else:

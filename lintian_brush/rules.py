@@ -96,6 +96,7 @@ def is_conditional(line):
     return (
         line.startswith(b'ifeq') or
         line.startswith(b'ifneq') or
+        line.startswith(b'else') or
         line.startswith(b'endif'))
 
 
@@ -110,12 +111,12 @@ class Makefile(object):
             original_contents = f.read()
         return cls.from_bytes(original_contents)
 
-    def get_rule(self, target):
+    def iter_rules(self, target):
         for entry in self.contents:
             if isinstance(entry, Rule) and entry.has_target(target):
-                return entry
+                yield entry
         else:
-            return None
+            return
 
     @classmethod
     def from_bytes(cls, contents):
