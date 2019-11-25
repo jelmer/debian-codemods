@@ -859,6 +859,12 @@ def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
             code['Repository'] = repo
             certainty['Repository'] = 'likely'
             fields.add('Repository')
+    if 'Bug-Database' in code and 'Repository' not in code:
+        repo = guess_repo_from_url(code['Bug-Database'], net_access=net_access)
+        if repo:
+            code['Repository'] = repo
+            certainty['Repository'] = 'likely'
+            fields.add('Repository')
     if 'Repository' in code and 'Repository-Browse' not in code:
         browse_url = browse_url_from_repo_url(code['Repository'])
         if browse_url:
