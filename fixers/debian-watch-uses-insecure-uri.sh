@@ -18,6 +18,8 @@ after=$(mktemp)
 uscan --dehs > "${before}" 2>&1
 sed -i.bak s,http://,https://,g debian/watch
 uscan --dehs > "${after}" 2>&1
+# uscan creates backup files.
+rm -f debian/upstream/signing-key.*.backup
 
 # Make sure that reports are same up to http/https substitution in URL.
 sed -i s,http://,https://,g "${before}" "${after}"
