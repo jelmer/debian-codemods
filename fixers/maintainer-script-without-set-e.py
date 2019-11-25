@@ -24,7 +24,8 @@ def replace_set_e(path):
     for i, line in enumerate(lines[1:]):
         if line == b'set -e\n':
             return
-        if not line.startswith(b'#') and line != b'\n':
+        if (not (line.startswith(b'#') or line == b'\n') or
+                line.strip() == b'#DEBHELPER#'):
             lines.insert(i, b'\n')
             lines.insert(i+1, b'set -e\n')
             break
