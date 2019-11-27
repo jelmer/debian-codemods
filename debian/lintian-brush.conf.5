@@ -32,6 +32,18 @@ If disabled, lintian-brush will not run any fixers that can not preserve
 formatting.
 
 .PP
+.nf
+\fBupdate-changelog\fP = \fITrue|False\fP
+.fi
+.IP
+The \fBupdate-changelog\fP setting determines whether new lines in the changelog
+will be added for the changes that lintian-brush has made to the package.
+.IP
+By default, lintian-brush will automatically determine whether the changelog
+should be updated.
+.IP
+You may want to set this to \fIFalse\fR if you are using "gbp dch" to generate
+your changelog entries.
 
 .SH "SEE ALSO"
 \&\fIlintian-brush\fR\|(1),

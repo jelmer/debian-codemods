@@ -7,6 +7,7 @@ lintian-brush (0.41) UNRELEASED; urgency=medium
   * dh-quilt-addon-but-quilt-source-format: only drop quilt if package
     is on the 3.0 (quilt) format.
   * Add lintian-brush.conf(5) manpage.
+  * Add an update-changelog variable.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 Nov 2019 04:35:26 +0000
 

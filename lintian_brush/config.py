@@ -20,12 +20,18 @@
 import os
 
 from configobj import ConfigObj
+import warnings
 
 
 PACKAGE_CONFIG_FILENAME = 'debian/lintian-brush.conf'
 
 
-SUPPORTED_KEYS = ['compat-release', 'minimum-certainty', 'allow-reformatting']
+SUPPORTED_KEYS = [
+    'compat-release',
+    'minimum-certainty',
+    'allow-reformatting',
+    'update-changelog',
+    ]
 
 
 class Config(object):
@@ -37,8 +43,7 @@ class Config(object):
         self._obj = ConfigObj(path, raise_errors=True, file_error=True)
         for k in self._obj.keys():
             if k not in SUPPORTED_KEYS:
-                raise ValueError(
-                    'unknown setting %s in %s' % (k, path))
+                warnings.warn('unknown setting %s in %s' % (k, path))
 
     @classmethod
     def from_workingtree(cls, wt, subpath):
@@ -55,3 +60,9 @@ class Config(object):
 
     def minimum_certainty(self):
         return self._obj.get('minimum-certainty')
+
+    def update_changelog(self):
+        try:
+            return self._obj.as_bool('update-changelog')
+        except KeyError:
+            return None

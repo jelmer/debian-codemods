@@ -175,6 +175,7 @@ def main(argv=None):
             compat_release = None
         minimum_certainty = args.minimum_certainty
         allow_reformatting = args.allow_reformatting
+        update_changelog = args.update_changelog
         try:
             cfg = Config.from_workingtree(wt, subpath)
         except FileNotFoundError:
@@ -189,6 +190,8 @@ def main(argv=None):
                         compat_release, default=compat_release)
             if allow_reformatting is None:
                 allow_reformatting = cfg.allow_reformatting()
+            if update_changelog is None:
+                update_changelog = cfg.update_changelog()
         if minimum_certainty is None:
             minimum_certainty = DEFAULT_MINIMUM_CERTAINTY
         if compat_release is None:
@@ -199,7 +202,7 @@ def main(argv=None):
             try:
                 overall_result = run_lintian_fixers(
                     wt, fixers,
-                    update_changelog=args.update_changelog,
+                    update_changelog=update_changelog,
                     compat_release=compat_release,
                     verbose=args.verbose,
                     minimum_certainty=args.minimum_certainty,

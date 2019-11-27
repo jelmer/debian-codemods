@@ -46,13 +46,23 @@ minimum-certainty = possible
         cfg = Config('debian/lintian-brush.conf')
         self.assertEqual('possible', cfg.minimum_certainty())
 
+    def test_update_changelog(self):
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/lintian-brush.conf', """\
+update-changelog = True
+""")])
+        cfg = Config('debian/lintian-brush.conf')
+        self.assertEqual(True, cfg.update_changelog())
+
     def test_unknown(self):
         self.build_tree_contents([
             ('debian/', ),
             ('debian/lintian-brush.conf', """\
 unknown = dunno
 """)])
-        self.assertRaises(ValueError, Config, 'debian/lintian-brush.conf')
+        with self.assertWarns(Warning):
+            Config('debian/lintian-brush.conf')
 
     def test_missing(self):
         self.assertRaises(FileNotFoundError, Config, 'blah.conf')
