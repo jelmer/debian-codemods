@@ -61,6 +61,22 @@ blah (0.38) unstable; urgency=medium
             self.upstream_revid, find_patch_base(self.tree))
 
 
+class ReadSeriesFileTests(TestCaseWithTransport):
+
+    def test_no_series_file(self):
+        t = self.make_branch_and_tree('.')
+        self.assertEqual([], list(read_quilt_patches(t)))
+
+    def test_comments(self):
+        t = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/patches/', ),
+            ('debian/patches/series',
+             "# This file intentionally left blank.\n")])
+        self.assertEqual([], list(read_quilt_patches(t)))
+
+
 class FindPatchBranchTests(TestCaseWithTransport):
 
     def make_named_branch_and_tree(self, path, name):

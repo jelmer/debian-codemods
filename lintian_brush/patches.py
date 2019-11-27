@@ -163,7 +163,10 @@ def read_quilt_patches(tree, directory='debian/patches'):
     except NoSuchFile:
         return []
     for line in series_lines:
-        patchname = line.decode().strip()
+        line = line.strip().split(b'#')[0].strip()
+        if not line:
+            continue
+        patchname = line.decode()
         with tree.get_file(osutils.pathjoin(directory, patchname)) as f:
             for patch in parse_patches(f, allow_dirty=True, keep_dirty=False):
                 yield patch
