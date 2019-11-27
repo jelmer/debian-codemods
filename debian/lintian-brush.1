@@ -34,12 +34,22 @@ Override the fixers directory.
 .TP
 \fB\-\-diff\fR
 After running all fixers, display the changes made as a single unified diff.
+.TP
+\fB\-\-modern\fR
+Use features that require packages that are not yet available in Debian stable.
+.TP
+\fB\-\-identity\fR
+Print the identity (name and e\-mailaddress) that lintian-brush will make when committing changes, and exit.
+.TP
+\fB\-\-disable\-net\-access\fR
+Do not attempt to use the network to e.g. retrieve additional package metadata from hosting sites, or to check whether a homepage is also available over HTTPS.
 .SH EXAMPLES
 .IP "\fB$ lintian-brush\fR --list-tags"
 List all lintian tags for which fixers are available.
 .IP "\fB$ lintian-brush\fR"
 Run all fixers in the current Debian package.
 .SH "SEE ALSO"
+\&\fIlintian-brush.conf\fR\|(5)
 \&\fIlintian\fR\|(1)
 .SH AUTHORS
 Jelmer Vernooij <jelmer@debian.org>

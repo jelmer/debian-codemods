@@ -1,0 +1,40 @@
+.TH LINTIAN-BRUSH "5" "October 2018" "lintian-brush 0.1" "File Formats Manual"
+.SH NAME
+lintian-brush.conf \- per-package configuration for lintian-brush
+.SH DESCRIPTION
+.PP
+A lintian-brush per-package configuration file contains of a series of single key/value pairs.
+.PP
+The hash sign \(lq\fB#\fP\(rq) is used as a comment character. Any text after
+the comment character to the end of the line is ignored.
+
+.SH VARIABLES
+.PP
+.nf
+\fBcompat-release\fP = \fIRELEASE\fP
+.fi
+.IP
+\fBcompat-release\fP specifies the oldest release that the package aims to be
+compatible with. lintian-brush will not make any changes that require packages not
+present in this release.
+.IP
+The default compat release is "stable".
+
+.PP
+.nf
+\fBallow-reformatting\fP = \fITrue|False\fP
+.fi
+.IP
+If \fBallow-reformatting\fP is enabled, lintian-brush will make changes to
+debian files in a way that does not necessarily preserve existing formatting.
+.IP
+If disabled, lintian-brush will not run any fixers that can not preserve
+formatting.
+
+.PP
+
+.SH "SEE ALSO"
+\&\fIlintian-brush\fR\|(1),
+\&\fIlintian\fR\|(1)
+.SH AUTHORS
+Jelmer Vernooij <jelmer@debian.org>

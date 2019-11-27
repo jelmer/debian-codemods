@@ -6,6 +6,7 @@ lintian-brush (0.41) UNRELEASED; urgency=medium
   * Don't leave behind backup files when comparing uscan watch files.
   * dh-quilt-addon-but-quilt-source-format: only drop quilt if package
     is on the 3.0 (quilt) format.
+  * Add lintian-brush.conf(5) manpage.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 Nov 2019 04:35:26 +0000
 
