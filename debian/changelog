@@ -1,4 +1,4 @@
-lintian-brush (0.41) UNRELEASED; urgency=medium
+lintian-brush (0.41) unstable; urgency=medium
 
   * Probe Homepage URL for VCS attributes.
   * Fix finding of upstream repository for SourceForge projects.
@@ -9,7 +9,7 @@ lintian-brush (0.41) UNRELEASED; urgency=medium
   * Add lintian-brush.conf(5) manpage.
   * Add an update-changelog variable.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 Nov 2019 04:35:26 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 27 Nov 2019 04:36:35 +0000
 
 lintian-brush (0.40) unstable; urgency=medium
 
