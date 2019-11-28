@@ -28,6 +28,7 @@ def test_suite():
         'debhelper',
         'dirty_tracker',
         'lintian_overrides',
+        'multiarch_hints',
         'patches',
         'reformatting',
         'rules',
