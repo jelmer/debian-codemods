@@ -58,6 +58,7 @@ subset of the issues:
 * excessive-priority-for-library-package
 * field-name-typo-in-dep5-copyright
 * file-contains-trailing-whitespace
+* font-package-not-multi-arch-foreign
 * global-files-wildcard-not-first-paragraph-in-dep5-copyright
 * homepage-field-uses-insecure-uri
 * homepage-in-binary-package
