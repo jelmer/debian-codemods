@@ -1,0 +1,25 @@
+Source: fonts-blah
+Section: fonts
+Priority: extra
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper (>= 7)
+Standards-Version: 3.8.0
+
+Package: fonts-blah
+Architecture: all
+Depends: ${misc:Depends}
+Provides: ttf-blah
+Conflicts: ttf-blah (<= 0.090709+0-1), iceweasel (<< 3.5)
+Replaces: ttf-blah (<= 0.090709+0-1)
+Description: TeX fonts to display blah pages
+ blah uses some TeX fonts to render mathematical contents in web pages
+ so blah pages should be displayed much better with this package.
+
+Package: ttf-blah
+Architecture: all
+Depends: fonts-blah, ${misc:Depends}
+Description: transition dummy package.
+ This dummy package is provided for a smooth transition from the
+ previous ttf-blah package to the fonts-blah package.
+ .
+ It may be safely removed after installation.

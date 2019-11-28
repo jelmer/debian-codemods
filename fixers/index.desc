@@ -288,3 +288,6 @@ Lintian-Tags: debian-changelog-has-wrong-day-of-week
 
 Fix-Script: debian-rules-contains-unnecessary-get-orig-source-target.py
 Lintian-Tags: debian-rules-contains-unnecessary-get-orig-source-target
+
+Fix-Script: font-package-not-multi-arch-foreign.py
+Lintian-Tags: font-package-not-multi-arch-foreign

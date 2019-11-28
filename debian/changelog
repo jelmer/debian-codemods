@@ -1,3 +1,9 @@
+lintian-brush (0.42) UNRELEASED; urgency=medium
+
+  * Add fixer for font-package-not-multi-arch-foreign.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 28 Nov 2019 08:43:50 +0000
+
 lintian-brush (0.41) unstable; urgency=medium
 
   * Probe Homepage URL for VCS attributes.
