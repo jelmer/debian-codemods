@@ -24,6 +24,7 @@ from urllib.request import urlopen, Request
 from lintian_brush import (
     USER_AGENT,
     DEFAULT_URLLIB_TIMEOUT,
+    add_changelog_entry,
     )
 from lintian_brush.control import (
     update_control,
@@ -69,18 +70,27 @@ def download_multiarch_hints(url=MULTIARCH_HINTS_URL):
         return parse_multiarch_hints(f)
 
 
+def add_message(tree, binary, message):
+    add_changelog_entry(
+        tree, 'debian/changelog', '%s: %s' % (binary['Package'], message))
+
+
 def apply_hint_ma_foreign(tree, binary, hint):
-    binary['Multi-Arch'] = 'foreign'
+    if binary.get('Multi-Arch') != 'foreign':
+        binary['Multi-Arch'] = 'foreign'
+        return 'Add Multi-Arch: foreign.', 'certain'
 
 
 def apply_hint_ma_foreign_lib(tree, binary, hint):
     if binary.get('Multi-Arch') == 'foreign':
         del binary['Multi-Arch']
+        return 'Drop Multi-Arch: foreign.', 'certain'
 
 
 def apply_hint_file_conflict(tree, binary, hint):
     if binary.get('Multi-Arch') == 'same':
         del binary['Multi-Arch']
+        return 'Drop Multi-Arch: same.', 'certain'
 
 
 def apply_hint_dep_any(tree, binary, hint):
@@ -93,22 +103,33 @@ def apply_hint_dep_any(tree, binary, hint):
     dep = m.group(2)
     if 'Depends' not in binary:
         return
+    changed = False
     relations = parse_relations(binary['Depends'])
     for entry in relations:
         (head_whitespace, relation, tail_whitespace) = entry
         if not isinstance(relation, str):  # formatting
             for r in relation:
-                if r.name == dep:
+                if r.name == dep and r.archqual != 'all':
                     r.archqual = 'all'
+                    changed = True
+    if not changed:
+        return
     binary['Depends'] = format_relations(relations)
+    return ('Add :all qualifier for %s dependency.' % dep), 'certain'
 
 
 def apply_hint_ma_same(tree, binary, hint):
+    if binary.get('Multi-Arch') == 'same':
+        return
     binary['Multi-Arch'] = 'same'
+    return 'Add Multi-Arch: same.', 'certain'
 
 
 def apply_hint_arch_all(tree, binary, hint):
+    if binary['Architecture'] == 'all':
+        return
     binary['Architecture'] = 'all'
+    return 'Make package Architecture: all.', 'possible'
 
 
 HINT_APPLIERS = {
@@ -121,14 +142,20 @@ HINT_APPLIERS = {
 }
 
 
-def apply_multiarch_hints(tree, hints):
+def apply_multiarch_hints(tree, hints, minimum_certainty=None):
 
     def update_binary(binary):
         for hint in hints.get(binary['Package'], []):
             kind = hint['link'].rsplit('#', 1)[1]
-            HINT_APPLIERS[kind](tree, binary, hint)
+            ret = HINT_APPLIERS[kind](
+                tree, binary, hint, minimum_certainty=minimum_certainty)
+            if ret:
+                description, certainty = ret
+                add_message(tree, binary, description)
 
-    return update_control(binary_package_cb=update_binary)
+    return update_control(
+        path=tree.abspath('debian/control'),
+        binary_package_cb=update_binary)
 
 
 if __name__ == '__main__':
