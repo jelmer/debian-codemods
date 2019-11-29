@@ -31,6 +31,7 @@ from debian.deb822 import Deb822
 from lintian_brush import (
     USER_AGENT,
     DEFAULT_URLLIB_TIMEOUT,
+    SUPPORTED_CERTAINTIES,
     certainty_sufficient,
     certainty_to_confidence,
     )
@@ -56,6 +57,8 @@ class UpstreamDatum(object):
     def __init__(self, field, value, certainty=None, origin=None):
         self.field = field
         self.value = value
+        if certainty not in SUPPORTED_CERTAINTIES:
+            raise ValueError(certainty)
         self.certainty = certainty
         self.origin = origin
 
@@ -186,17 +189,13 @@ def guess_repo_from_url(url, net_access=False):
     return None
 
 
-def update_from_guesses(code, current_certainty, guessed_items):
-    fields = set()
+def update_from_guesses(upstream_metadata, guessed_items):
     for datum in guessed_items:
-        if datum.field not in current_certainty or (
+        current_datum = upstream_metadata.get(datum.field)
+        if not current_datum or (
                 certainty_to_confidence(datum.certainty) <
-                certainty_to_confidence(current_certainty[datum.field])):
-            if code.get(datum.field) != datum.value:
-                code[datum.field] = datum.value
-                fields.add(datum.field)
-            current_certainty[datum.field] = datum.certainty
-    return fields
+                certainty_to_confidence(current_datum.certainty)):
+            upstream_metadata[datum.field] = datum
 
 
 def read_python_pkg_info(path):
@@ -606,11 +605,14 @@ def guess_from_configure(path, trust_package=False):
             if not value:
                 continue
             if key == b'PACKAGE_NAME':
-                yield UpstreamDatum('Name', value.decode(), 'certain')
+                yield UpstreamDatum(
+                    'Name', value.decode(), 'certain', './configure')
             elif key == b'PACKAGE_BUGREPORT':
-                yield UpstreamDatum('Bug-Submit', value.decode(), 'certain')
+                yield UpstreamDatum(
+                    'Bug-Submit', value.decode(), 'certain', './configure')
             elif key == b'PACKAGE_URL':
-                yield UpstreamDatum('Homepage', value.decode(), 'certain')
+                yield UpstreamDatum(
+                    'Homepage', value.decode(), 'certain', './configure')
 
 
 def guess_from_r_description(path, trust_package=False):
@@ -731,24 +733,23 @@ def guess_upstream_metadata(
       consult_external_directory: Whether to pull in data
         from external (user-maintained) directories.
     """
-    current_certainty = {}
-    code = {}
+    upstream_metadata = {}
     update_from_guesses(
-        code, current_certainty,
+        upstream_metadata,
         guess_upstream_metadata_items(
             path, trust_package=trust_package))
 
     extend_upstream_metadata(
-        code, current_certainty, path, net_access=net_access,
+        upstream_metadata, path, net_access=net_access,
         consult_external_directory=consult_external_directory)
-    return code
+    return {k: v.value for (k, v) in upstream_metadata.items()}
 
 
-def _possible_fields_missing(code, certainty, fields, field_certainty):
+def _possible_fields_missing(upstream_metadata, fields, field_certainty):
     for field in fields:
-        if field not in code:
+        if field not in upstream_metadata:
             return True
-        if certainty[field] != 'certain':
+        if upstream_metadata[field].certainty != 'certain':
             return True
     else:
         return False
@@ -783,30 +784,27 @@ def guess_from_sf(sf_project):
 
 
 def extend_from_external_guesser(
-        code, certainty, guesser_certainty, guesser_fields, guesser):
-    fields = set()
+        upstream_metadata, guesser_certainty, guesser_fields, guesser):
     if not _possible_fields_missing(
-            code, certainty, guesser_fields, guesser_certainty):
-        return fields
+            upstream_metadata, guesser_fields, guesser_certainty):
+        return
 
-    fields.update(update_from_guesses(
-        code, certainty,
+    update_from_guesses(
+        upstream_metadata,
         [UpstreamDatum(key, value, guesser_certainty)
-         for (key, value) in guesser]))
-
-    return fields
+         for (key, value) in guesser])
 
 
-def extend_from_sf(code, certainty, sf_project):
+def extend_from_sf(upstream_metadata, sf_project):
     # The set of fields that sf can possibly provide:
     sf_fields = ['Homepage', 'Screenshots', 'Name']
 
     return extend_from_external_guesser(
-        code, certainty, certainty['Archive'], sf_fields,
+        upstream_metadata, upstream_metadata['Archive'].certainty, sf_fields,
         guess_from_sf(sf_project))
 
 
-def extend_from_lp(code, certainty, minimum_certainty, package,
+def extend_from_lp(upstream_metadata, minimum_certainty, package,
                    distribution=None, suite=None):
     # The set of fields that Launchpad can possibly provide:
     lp_fields = ['Homepage', 'Repository', 'Name']
@@ -815,10 +813,10 @@ def extend_from_lp(code, certainty, minimum_certainty, package,
     if minimum_certainty and minimum_certainty != 'possible':
         # Don't bother talking to launchpad if we're not
         # speculating.
-        return set()
+        return
 
-    return extend_from_external_guesser(
-        code, certainty, lp_certainty, lp_fields, guess_from_launchpad(
+    extend_from_external_guesser(
+        upstream_metadata, lp_certainty, lp_fields, guess_from_launchpad(
              package, distribution=distribution, suite=suite))
 
 
@@ -873,31 +871,28 @@ def verify_bug_database_url(url):
     return None
 
 
-def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
+def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
                              net_access=False,
                              consult_external_directory=False):
     """Extend a set of upstream metadata.
     """
-    if 'Homepage' in code:
-        project = extract_sf_project_name(code['Homepage'])
+    if 'Homepage' in upstream_metadata:
+        project = extract_sf_project_name(upstream_metadata['Homepage'].value)
         if project:
-            code['Archive'] = 'SourceForge'
-            certainty['Archive'] = 'likely'
-            code['X-SourceForge-Project'] = project
-            certainty['X-SourceForge-Project'] = 'likely'
+            upstream_metadata['Archive'] = UpstreamDatum(
+                'Archive', 'SourceForge', 'likely')
+            upstream_metadata['X-SourceForge-Project'] = UpstreamDatum(
+                'X-SourceForge-Project', 'project', 'likely')
 
-    fields = set()
-    if (code.get('Archive') == 'SourceForge' and
-            'X-SourceForge-Project' in code and
+    archive = upstream_metadata.get('Archive')
+    if (archive and archive.value == 'SourceForge' and
+            'X-SourceForge-Project' in upstream_metadata and
             net_access):
-        sf_project = code['X-SourceForge-Project']
+        sf_project = upstream_metadata['X-SourceForge-Project'].value
         try:
-            fields.update(extend_from_sf(code, certainty, sf_project))
+            extend_from_sf(upstream_metadata, sf_project)
         except NoSuchSourceForgeProject:
-            del code['X-SourceForge-Project']
-            del certainty['X-SourceForge-Project']
-            if 'X-SourceForge-Project' in fields:
-                fields.remove('X-SourceForge-Project')
+            del upstream_metadata['X-SourceForge-Project']
     if net_access and consult_external_directory:
         try:
             with open(os.path.join(path, 'debian/control'), 'r') as f:
@@ -906,49 +901,55 @@ def extend_upstream_metadata(code, certainty, path, minimum_certainty=None,
             # Huh, okay.
             pass
         else:
-            fields.update(extend_from_lp(
-                code, certainty, minimum_certainty, package))
-    if 'Homepage' in code and 'Repository' not in code:
-        repo = guess_repo_from_url(code['Homepage'], net_access=net_access)
-        if repo:
-            code['Repository'] = repo
-            certainty['Repository'] = 'likely'
-            fields.add('Repository')
-    if 'Bug-Database' in code and 'Repository' not in code:
-        repo = guess_repo_from_url(code['Bug-Database'], net_access=net_access)
-        if repo:
-            code['Repository'] = repo
-            certainty['Repository'] = 'likely'
-            fields.add('Repository')
-    if 'Repository' in code and 'Repository-Browse' not in code:
-        browse_url = browse_url_from_repo_url(code['Repository'])
-        if browse_url:
-            code['Repository-Browse'] = browse_url
-            certainty['Repository-Browse'] = certainty['Repository']
-            fields.add('Repository-Browse')
-    if 'Repository-Browse' in code and 'Repository' not in code:
+            extend_from_lp(upstream_metadata, minimum_certainty, package)
+    if ('Homepage' in upstream_metadata and
+            'Repository' not in upstream_metadata):
         repo = guess_repo_from_url(
-            code['Repository-Browse'], net_access=net_access)
+                upstream_metadata['Homepage'].value, net_access=net_access)
         if repo:
-            code['Repository'] = repo
-            certainty['Repository'] = certainty['Repository-Browse']
-            fields.add('Repository')
-    if 'Repository' in code and 'Bug-Database' not in code:
-        bug_db_url = guess_bug_database_url_from_repo_url(code['Repository'])
+            upstream_metadata['Repository'] = UpstreamDatum(
+                'Repository', repo, 'likely')
+    if ('Bug-Database' in upstream_metadata and
+            'Repository' not in upstream_metadata):
+        repo = guess_repo_from_url(
+            upstream_metadata['Bug-Database'].value, net_access=net_access)
+        if repo:
+            upstream_metadata['Repository'] = UpstreamDatum(
+                'Repository', repo, 'likely')
+    if ('Repository' in upstream_metadata and
+            'Repository-Browse' not in upstream_metadata):
+        browse_url = browse_url_from_repo_url(
+                upstream_metadata['Repository'].value)
+        if browse_url:
+            upstream_metadata['Repository-Browse'] = UpstreamDatum(
+                'Repository-Browse', browse_url,
+                upstream_metadata['Repository'].certainty)
+    if ('Repository-Browse' in upstream_metadata and
+            'Repository' not in upstream_metadata):
+        repo = guess_repo_from_url(
+            upstream_metadata['Repository-Browse'].value,
+            net_access=net_access)
+        if repo:
+            upstream_metadata['Repository'] = UpstreamDatum(
+                'Repository', repo,
+                upstream_metadata['Repository-Browse'].certainty)
+    if ('Repository' in upstream_metadata and
+            'Bug-Database' not in upstream_metadata):
+        bug_db_url = guess_bug_database_url_from_repo_url(
+            upstream_metadata['Repository'].value)
         bug_db_certainty = 'likely'
         if bug_db_url and certainty_sufficient(
                 bug_db_certainty, minimum_certainty):
-            code['Bug-Database'] = bug_db_url
-            certainty['Bug-Database'] = bug_db_certainty
-            fields.add('Bug-Database')
-    if 'Bug-Database' in code and 'Bug-Submit' not in code:
+            upstream_metadata['Bug-Database'] = UpstreamDatum(
+                'Bug-Database', bug_db_url, bug_db_certainty)
+    if ('Bug-Database' in upstream_metadata and
+            'Bug-Submit' not in upstream_metadata):
         bug_submit_url = bug_submit_url_from_bug_database_url(
-            code['Bug-Database'])
+            upstream_metadata['Bug-Database'].value)
         if bug_submit_url:
-            code['Bug-Submit'] = bug_submit_url
-            certainty['Bug-Submit'] = certainty['Bug-Database']
-            fields.add('Bug-Submit')
-    return fields
+            upstream_metadata['Bug-Submit'] = UpstreamDatum(
+                'Bug-Submit', bug_submit_url,
+                upstream_metadata['Bug-Database'].certainty)
 
 
 def probe_upstream_branch_url(url, version=None):
@@ -987,24 +988,27 @@ def probe_upstream_branch_url(url, version=None):
         breezy.ui.ui_factory = old_ui
 
 
-def check_upstream_metadata(code, certainty, version=None):
+def check_upstream_metadata(upstream_metadata, version=None):
     """Check upstream metadata.
 
     This will make network connections, etc.
     """
-    if 'Repository' in code and certainty['Repository'] == 'likely':
-        if probe_upstream_branch_url(code['Repository'], version=version):
-            certainty['Repository'] = 'certain'
-            derived_browse_url = browse_url_from_repo_url(code['Repository'])
-            if derived_browse_url == code.get('Repository-Browse'):
-                certainty['Repository-Browse'] = certainty['Repository']
+    repository = upstream_metadata.get('Repository')
+    if repository and repository.certainty == 'likely':
+        if probe_upstream_branch_url(repository.value, version=version):
+            repository.certainty = 'certain'
+            derived_browse_url = browse_url_from_repo_url(repository.value)
+            browse_repo = upstream_metadata.get('Repository-Browse')
+            if browse_repo and derived_browse_url == browse_repo.value:
+                browse_repo.certainty = repository.certainty
         else:
             # TODO(jelmer): Remove altogether, or downgrade to a lesser
             # certainty?
             pass
-    if 'Bug-Database' in code and certainty['Bug-Database'] == 'likely':
-        if verify_bug_database_url(code['Bug-Database']):
-            certainty['Bug-Database'] = 'certain'
+    bug_database = upstream_metadata.get('Bug-Database')
+    if bug_database and bug_database.certainty == 'likely':
+        if verify_bug_database_url(bug_database.value):
+            bug_database.certainty = 'certain'
 
 
 def guess_from_launchpad(package, distribution=None, suite=None):
