@@ -4,7 +4,10 @@ import os
 
 from lintian_brush import certainty_to_confidence, certainty_sufficient
 from lintian_brush.copyright import update_copyright, NotMachineReadableError
-from lintian_brush.upstream_metadata import guess_upstream_metadata_items
+from lintian_brush.upstream_metadata import (
+    guess_upstream_metadata_items,
+    UpstreamDatum,
+    )
 
 
 minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
@@ -23,37 +26,40 @@ def add_upstream_metadata(copyright):
         upstream_metadata = {}
     else:
         code = ruamel.yaml.safe_load(inp)
-        upstream_metadata = {k: (v, 'certain') for (k, v) in code.items()}
-    for key, value, certainty in guess_upstream_metadata_items(
+        upstream_metadata = {
+            k: UpstreamDatum(k, v, 'certain') for (k, v) in code.items()}
+    for datum in guess_upstream_metadata_items(
             '.', trust_package=(os.environ.get('TRUST_PACKAGE') == 'true')):
-        if not certainty_sufficient(certainty, minimum_certainty):
+        if not certainty_sufficient(datum.certainty, minimum_certainty):
             continue
-        if upstream_metadata.get(key, (None, None))[1] != 'certain':
-            upstream_metadata[key] = (value, certainty)
+        if (datum.field not in upstream_metadata or
+                upstream_metadata[datum.field].certainty != 'certain'):
+            upstream_metadata[datum.field] = datum
 
     if not copyright.header.upstream_name:
         try:
-            (value, certainty) = upstream_metadata['Name']
+            datum = upstream_metadata['Name']
         except KeyError:
             pass
         else:
-            if value:
-                copyright.header.upstream_name = value
+            if datum.value:
+                copyright.header.upstream_name = datum.value
                 fields.append('Upstream-Name')
-                achieved_certainty.append(certainty)
+                achieved_certainty.append(datum.certainty)
 
     if not copyright.header.upstream_contact:
         try:
-            (value, certainty) = upstream_metadata['Contact']
+            datum = upstream_metadata['Contact']
         except KeyError:
             pass
         else:
-            if value:
+            if datum.value:
+                value = datum.value
                 if isinstance(value, str):
                     value = [value]
                 copyright.header.upstream_contact = value
                 fields.append('Upstream-Contact')
-                achieved_certainty.append(certainty)
+                achieved_certainty.append(datum.certainty)
 
 
 try:

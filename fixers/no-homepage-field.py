@@ -14,15 +14,15 @@ def fill_in_homepage(control):
     if 'Homepage' in control:
         return
     minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
-    for key, value, certainty in guess_upstream_metadata_items(
+    for datum in guess_upstream_metadata_items(
             '.', trust_package=(os.environ.get('TRUST_PACKAGE') == 'true')):
-        if key != 'Homepage':
+        if datum.field != 'Homepage':
             continue
-        if not certainty_sufficient(certainty, minimum_certainty):
+        if not certainty_sufficient(datum.certainty, minimum_certainty):
             continue
         if current_certainty != 'certain':
-            control["Homepage"] = value
-            current_certainty = certainty
+            control["Homepage"] = datum.value
+            current_certainty = datum.certainty
 
 
 update_control(source_package_cb=fill_in_homepage)

@@ -48,6 +48,33 @@ KNOWN_HOSTING_SITES = [
     'code.launchpad.net', 'github.com', 'launchpad.net']
 
 
+class UpstreamDatum(object):
+    """A single piece of upstream metadata."""
+
+    __slots__ = ['field', 'value', 'certainty', 'origin']
+
+    def __init__(self, field, value, certainty=None, origin=None):
+        self.field = field
+        self.value = value
+        self.certainty = certainty
+        self.origin = origin
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and \
+                self.field == other.field and \
+                self.value == other.value and \
+                self.certainty == other.certainty and \
+                self.origin == other.origin
+
+    def __str__(self):
+        return "%s: %s" % (self.field, self.value)
+
+    def __repr__(self):
+        return "%s(%r, %r, %r, %r)" % (
+            type(self).__name__, self.field, self.value, self.certainty,
+            self.origin)
+
+
 # See https://wiki.debian.org/UpstreamMetadata
 # Supported fields:
 # - Homepage
@@ -161,14 +188,14 @@ def guess_repo_from_url(url, net_access=False):
 
 def update_from_guesses(code, current_certainty, guessed_items):
     fields = set()
-    for key, value, certainty in guessed_items:
-        if key not in current_certainty or (
-                certainty_to_confidence(certainty) <
-                certainty_to_confidence(current_certainty[key])):
-            if code.get(key) != value:
-                code[key] = value
-                fields.add(key)
-            current_certainty[key] = certainty
+    for datum in guessed_items:
+        if datum.field not in current_certainty or (
+                certainty_to_confidence(datum.certainty) <
+                certainty_to_confidence(current_certainty[datum.field])):
+            if code.get(datum.field) != datum.value:
+                code[datum.field] = datum.value
+                fields.add(datum.field)
+            current_certainty[datum.field] = datum.certainty
     return fields
 
 
@@ -224,24 +251,27 @@ def guess_from_debian_watch(path, trust_package):
             if url.startswith('https://') or url.startswith('http://'):
                 repo = guess_repo_from_url(url)
                 if repo:
-                    yield "Repository", sanitize_vcs_url(repo), "likely"
+                    yield UpstreamDatum(
+                        "Repository", sanitize_vcs_url(repo), "likely")
                     break
             m = re.match('https?://sf.net/([^/]+)', url)
             if m:
-                yield "Archive", "SourceForge", "certain"
-                yield "X-SourceForge-Project", m.group(1), "certain"
+                yield UpstreamDatum("Archive", "SourceForge", "certain")
+                yield UpstreamDatum(
+                    "X-SourceForge-Project", m.group(1), "certain")
 
 
 def guess_from_debian_control(path, trust_package):
     with open(path, 'r') as f:
         control = Deb822(f)
     if 'Homepage' in control:
-        yield 'Homepage', control['Homepage'], 'certain'
+        yield UpstreamDatum('Homepage', control['Homepage'], 'certain')
     if 'XS-Go-Import-Path' in control:
         yield (
-            'Repository',
-            sanitize_vcs_url('https://' + control['XS-Go-Import-Path']),
-            'likely')
+            UpstreamDatum(
+                'Repository',
+                sanitize_vcs_url('https://' + control['XS-Go-Import-Path']),
+                'likely'))
 
 
 def guess_from_setup_py(path, trust_package):
@@ -252,15 +282,17 @@ def guess_from_setup_py(path, trust_package):
         pass
     else:
         if pkg_info.name:
-            yield 'Name', pkg_info.name, 'certain'
+            yield UpstreamDatum('Name', pkg_info.name, 'certain')
         if pkg_info.home_page:
             repo = guess_repo_from_url(pkg_info.home_page)
             if repo:
-                yield 'Repository', sanitize_vcs_url(repo), 'likely'
+                yield UpstreamDatum(
+                    'Repository', sanitize_vcs_url(repo), 'likely')
         for value in pkg_info.project_urls:
             url_type, url = value.split(', ')
             if url_type in ('GitHub', 'Repository', 'Source Code'):
-                yield 'Repository', sanitize_vcs_url(url), 'certain'
+                yield UpstreamDatum(
+                    'Repository', sanitize_vcs_url(url), 'certain')
 
 
 def guess_from_package_json(path, trust_package):
@@ -268,9 +300,9 @@ def guess_from_package_json(path, trust_package):
     with open(path, 'r') as f:
         package = json.load(f)
     if 'name' in package:
-        yield 'Name', package['name'], 'certain'
+        yield UpstreamDatum('Name', package['name'], 'certain')
     if 'homepage' in package:
-        yield 'Homepage', package['homepage'], 'certain'
+        yield UpstreamDatum('Homepage', package['homepage'], 'certain')
     if 'repository' in package:
         if isinstance(package['repository'], dict):
             repo_url = package['repository'].get('url')
@@ -281,18 +313,20 @@ def guess_from_package_json(path, trust_package):
         if repo_url:
             parsed_url = urlparse(repo_url)
             if parsed_url.scheme and parsed_url.netloc:
-                yield 'Repository', sanitize_vcs_url(repo_url), 'certain'
+                yield UpstreamDatum(
+                    'Repository', sanitize_vcs_url(repo_url), 'certain')
             else:
                 # Some people seem to default to github. :(
                 repo_url = 'https://github.com/' + parsed_url.path
-                yield 'Repository', sanitize_vcs_url(repo_url), 'likely'
+                yield UpstreamDatum(
+                    'Repository', sanitize_vcs_url(repo_url), 'likely')
     if 'bugs' in package:
         if isinstance(package['bugs'], dict):
             url = package['bugs'].get('url')
         else:
             url = package['bugs']
         if url:
-            yield 'Bugs-Database', url, 'certain'
+            yield UpstreamDatum('Bugs-Database', url, 'certain')
 
 
 def guess_from_package_xml(path, trust_package):
@@ -309,12 +343,13 @@ def guess_from_package_xml(path, trust_package):
         ), 'root tag is %r' % root.tag
     name_tag = root.find('name')
     if name_tag is not None:
-        yield 'Name', name_tag.text, 'certain'
+        yield UpstreamDatum('Name', name_tag.text, 'certain')
     for url_tag in root.findall('url'):
         if url_tag.get('type') == 'repository':
-            yield 'Repository', sanitize_vcs_url(url_tag.text), 'certain'
+            yield UpstreamDatum(
+                'Repository', sanitize_vcs_url(url_tag.text), 'certain')
         if url_tag.get('type') == 'bugtracker':
-            yield 'Bug-Database', url_tag.text, 'certain'
+            yield UpstreamDatum('Bug-Database', url_tag.text, 'certain')
 
 
 def guess_from_dist_ini(path, trust_package):
@@ -331,17 +366,18 @@ def guess_from_dist_ini(path, trust_package):
         except ParsingError as e:
             warn('Unable to parse dist.ini: %r' % e)
     try:
-        yield 'Name', parser['START']['name'], 'certain'
+        yield UpstreamDatum('Name', parser['START']['name'], 'certain')
     except (NoSectionError, NoOptionError, KeyError):
         pass
     try:
-        yield ('Bug-Database',
-               parser['MetaResources']['bugtracker.web'], 'certain')
+        yield UpstreamDatum(
+            'Bug-Database', parser['MetaResources']['bugtracker.web'],
+            'certain')
     except (NoSectionError, NoOptionError, KeyError):
         pass
     try:
-        yield ('Repository',
-               parser['MetaResources']['repository.url'], 'certain')
+        yield UpstreamDatum(
+            'Repository', parser['MetaResources']['repository.url'], 'certain')
     except (NoSectionError, NoOptionError, KeyError):
         pass
 
@@ -369,9 +405,10 @@ def guess_from_debian_copyright(path, trust_package):
             header = copyright.header
     if header:
         if header.upstream_name:
-            yield "Name", header.upstream_name, 'certain'
+            yield UpstreamDatum("Name", header.upstream_name, 'certain')
         if header.upstream_contact:
-            yield "Contact", ','.join(header.upstream_contact), 'certain'
+            yield UpstreamDatum(
+                "Contact", ','.join(header.upstream_contact), 'certain')
         if header.source:
             if ' 'in header.source:
                 from_url = re.split('[ ,]', header.source)[0]
@@ -379,12 +416,16 @@ def guess_from_debian_copyright(path, trust_package):
                 from_url = header.source
             repo_url = guess_repo_from_url(from_url)
             if repo_url:
-                yield 'Repository', sanitize_vcs_url(repo_url), 'likely'
+                yield UpstreamDatum(
+                    'Repository', sanitize_vcs_url(repo_url), 'likely')
         if "X-Upstream-Bugs" in header:
-            yield "Bug-Database", header["X-Upstream-Bugs"], 'certain'
+            yield UpstreamDatum(
+                "Bug-Database", header["X-Upstream-Bugs"], 'certain')
         if "X-Source-Downloaded-From" in header:
-            yield "Repository", guess_repo_from_url(
-                header["X-Source-Downloaded-From"]), 'certain'
+            yield UpstreamDatum(
+                "Repository",
+                guess_repo_from_url(header["X-Source-Downloaded-From"]),
+                'certain')
 
 
 def guess_from_readme(path, trust_package):
@@ -412,11 +453,14 @@ def guess_from_readme(path, trust_package):
                 m = re.match(
                     b'.*\\(https://travis-ci.org/([^/]+)/([^/]+)\\)', line)
                 if m:
-                    yield 'Repository', 'https://github.com/%s/%s' % (
-                        m.group(1).decode(), m.group(2).decode()), 'possible'
+                    yield UpstreamDatum(
+                        'Repository', 'https://github.com/%s/%s' % (
+                            m.group(1).decode(), m.group(2).decode()),
+                        'possible')
                 for m in re.finditer(
                         b'https://github.com/([^/]+)/([^/]+)/issues', line):
-                    yield 'Bug-Database', m.group(0).decode(), 'possible'
+                    yield UpstreamDatum(
+                        'Bug-Database', m.group(0).decode(), 'possible')
     except IsADirectoryError:
         pass
 
@@ -427,7 +471,7 @@ def guess_from_readme(path, trust_package):
         return 0
     urls.sort(key=prefer_public)
     if urls:
-        yield ('Repository', urls[0], 'possible')
+        yield UpstreamDatum('Repository', urls[0], 'possible')
 
 
 def guess_from_meta_json(path, trust_package):
@@ -435,21 +479,24 @@ def guess_from_meta_json(path, trust_package):
     with open(path, 'r') as f:
         data = json.load(f)
         if 'name' in data:
-            yield 'Name', data['name'], 'certain'
+            yield UpstreamDatum('Name', data['name'], 'certain')
         if 'resources' in data:
             resources = data['resources']
             if 'bugtracker' in resources and 'web' in resources['bugtracker']:
-                yield "Bug-Database", resources["bugtracker"]["web"], 'certain'
+                yield UpstreamDatum(
+                    "Bug-Database", resources["bugtracker"]["web"], 'certain')
                 # TODO(jelmer): Support resources["bugtracker"]["mailto"]
             if 'homepage' in resources:
-                yield "Homepage", resources["homepage"], 'certain'
+                yield UpstreamDatum(
+                    "Homepage", resources["homepage"], 'certain')
             if 'repository' in resources:
                 repo = resources['repository']
                 if 'url' in repo:
-                    yield (
+                    yield UpstreamDatum(
                         'Repository', sanitize_vcs_url(repo["url"]), 'certain')
                 if 'web' in repo:
-                    yield 'Repository-Browse', repo['web'], 'certain'
+                    yield UpstreamDatum(
+                        'Repository-Browse', repo['web'], 'certain')
 
 
 def guess_from_meta_yml(path, trust_package):
@@ -467,20 +514,23 @@ def guess_from_meta_yml(path, trust_package):
             warn('Unable to parse META.yml: %s' % e)
             return
         if 'name' in data:
-            yield 'Name', data['name'], 'certain'
+            yield UpstreamDatum('Name', data['name'], 'certain')
         if 'resources' in data:
             resources = data['resources']
             if 'bugtracker' in resources:
-                yield 'Bug-Database', resources['bugtracker'], 'certain'
+                yield UpstreamDatum(
+                    'Bug-Database', resources['bugtracker'], 'certain')
             if 'homepage' in resources:
-                yield 'Homepage', resources['homepage'], 'certain'
+                yield UpstreamDatum(
+                    'Homepage', resources['homepage'], 'certain')
             if 'repository' in resources:
                 if isinstance(resources['repository'], dict):
                     url = resources['repository'].get('url')
                 else:
                     url = resources['repository']
                 if url:
-                    yield ('Repository', sanitize_vcs_url(url), 'certain')
+                    yield UpstreamDatum(
+                        'Repository', sanitize_vcs_url(url), 'certain')
 
 
 def guess_from_doap(path, trust_package):
@@ -504,15 +554,15 @@ def guess_from_doap(path, trust_package):
 
     for child in root:
         if child.tag == ('{%s}name' % DOAP_NAMESPACE):
-            yield 'Name', child.text, 'certain'
+            yield UpstreamDatum('Name', child.text, 'certain')
         if child.tag == ('{%s}bug-database' % DOAP_NAMESPACE):
             url = extract_url(child)
             if url:
-                yield 'Bug-Database', url, 'certain'
+                yield UpstreamDatum('Bug-Database', url, 'certain')
         if child.tag == ('{%s}homepage' % DOAP_NAMESPACE):
             url = extract_url(child)
             if url:
-                yield 'Homepage', url, 'certain'
+                yield UpstreamDatum('Homepage', url, 'certain')
         if child.tag == ('{%s}repository' % DOAP_NAMESPACE):
             for repo in child:
                 if repo.tag in (
@@ -525,7 +575,7 @@ def guess_from_doap(path, trust_package):
                     else:
                         repo_url = None
                     if repo_url:
-                        yield (
+                        yield UpstreamDatum(
                             'Repository', sanitize_vcs_url(repo_url),
                             'certain')
                     web_location = repo.find(
@@ -536,7 +586,8 @@ def guess_from_doap(path, trust_package):
                         web_url = None
 
                     if web_url:
-                        yield 'Repository-Browse', web_url, 'certain'
+                        yield UpstreamDatum(
+                            'Repository-Browse', web_url, 'certain')
 
 
 def guess_from_configure(path, trust_package=False):
@@ -555,22 +606,24 @@ def guess_from_configure(path, trust_package=False):
             if not value:
                 continue
             if key == b'PACKAGE_NAME':
-                yield 'Name', value.decode(), 'certain'
+                yield UpstreamDatum('Name', value.decode(), 'certain')
             elif key == b'PACKAGE_BUGREPORT':
-                yield 'Bug-Submit', value.decode(), 'certain'
+                yield UpstreamDatum('Bug-Submit', value.decode(), 'certain')
             elif key == b'PACKAGE_URL':
-                yield 'Homepage', value.decode(), 'certain'
+                yield UpstreamDatum('Homepage', value.decode(), 'certain')
 
 
 def guess_from_r_description(path, trust_package=False):
     with open(path, 'r') as f:
         description = Deb822(f)
         if 'Package' in description:
-            yield 'Name', description['Package'], 'certain'
+            yield UpstreamDatum('Name', description['Package'], 'certain')
         if 'Repository' in description:
-            yield 'Archive', description['Repository'], 'certain'
+            yield UpstreamDatum(
+                'Archive', description['Repository'], 'certain')
         if 'BugReports' in description:
-            yield 'Bug-Database', description['BugReports'], 'certain'
+            yield UpstreamDatum(
+                'Bug-Database', description['BugReports'], 'certain')
         if 'URL' in description:
             entries = [entry.strip()
                        for entry in re.split('[\n,]', description['URL'])]
@@ -585,21 +638,22 @@ def guess_from_r_description(path, trust_package=False):
                     label = None
                 urls.append((label, url))
             if len(urls) == 1:
-                yield 'Homepage', urls[0][1], 'possible'
+                yield UpstreamDatum('Homepage', urls[0][1], 'possible')
             for label, url in urls:
                 if label and label.lower() in ('devel', 'repository'):
-                    yield 'Repository', url, 'certain'
+                    yield UpstreamDatum('Repository', url, 'certain')
                 elif label and label.lower() in ('homepage', ):
-                    yield 'Homepage', url, 'certain'
+                    yield UpstreamDatum('Homepage', url, 'certain')
                 else:
                     repo_url = guess_repo_from_url(url)
                     if repo_url:
-                        yield 'Repository', repo_url, 'certain'
+                        yield UpstreamDatum('Repository', repo_url, 'certain')
 
 
 def guess_from_environment():
     try:
-        yield 'Repository', os.environ['UPSTREAM_BRANCH_URL'], 'certain'
+        yield UpstreamDatum(
+            'Repository', os.environ['UPSTREAM_BRANCH_URL'], 'certain')
     except KeyError:
         pass
 
@@ -658,10 +712,10 @@ def guess_upstream_metadata_items(path, trust_package=False,
     """
     guessers = _get_guessers(path, trust_package=trust_package)
     for guesser in guessers:
-        for key, value, certainty in guesser:
-            if not certainty_sufficient(certainty, minimum_certainty):
+        for datum in guesser:
+            if not certainty_sufficient(datum.certainty, minimum_certainty):
                 continue
-            yield key, value, certainty
+            yield datum
 
 
 def guess_upstream_metadata(
@@ -737,7 +791,8 @@ def extend_from_external_guesser(
 
     fields.update(update_from_guesses(
         code, certainty,
-        [(key, value, guesser_certainty) for (key, value) in guesser]))
+        [UpstreamDatum(key, value, guesser_certainty)
+         for (key, value) in guesser]))
 
     return fields
 

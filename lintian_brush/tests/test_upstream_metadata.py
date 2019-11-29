@@ -24,6 +24,7 @@ from breezy.tests import (
 
 
 from lintian_brush.upstream_metadata import (
+    UpstreamDatum,
     guess_repo_from_url,
     guess_from_package_json,
     guess_from_debian_watch,
@@ -46,7 +47,8 @@ version=4
 https://github.com/jelmer/dulwich/tags/dulwich-(.*).tar.gz
 """)])
         self.assertEqual(
-            [('Repository', 'https://github.com/jelmer/dulwich', 'likely')],
+            [UpstreamDatum(
+                'Repository', 'https://github.com/jelmer/dulwich', 'likely')],
             list(guess_from_debian_watch('watch', False)))
 
 
@@ -73,10 +75,12 @@ class GuessFromPackageJsonTests(TestCaseWithTransport):
 }
 """)])
         self.assertEqual(
-            [('Name', 'autosize', 'certain'),
-             ('Homepage', 'http://www.jacklmoore.com/autosize', 'certain'),
-             ('Repository', 'http://github.com/jackmoore/autosize.git',
-              'certain')],
+            [UpstreamDatum('Name', 'autosize', 'certain'),
+             UpstreamDatum(
+                 'Homepage', 'http://www.jacklmoore.com/autosize', 'certain'),
+             UpstreamDatum(
+                 'Repository', 'http://github.com/jackmoore/autosize.git',
+                 'certain')],
             list(guess_from_package_json('package.json', False)))
 
     def test_dummy(self):
@@ -99,7 +103,7 @@ class GuessFromPackageJsonTests(TestCaseWithTransport):
 }
 """)])
         self.assertEqual(
-            [('Name', 'mozillaeslintsetup', 'certain')],
+            [UpstreamDatum('Name', 'mozillaeslintsetup', 'certain')],
             list(guess_from_package_json('package.json', False)))
 
 
@@ -146,12 +150,15 @@ Date/Publication: 2019-08-02 20:30:02 UTC
 """)])
         ret = guess_from_r_description('DESCRIPTION', True)
         self.assertEqual(list(ret), [
-            ('Name', 'crul', 'certain'),
-            ('Archive', 'CRAN', 'certain'),
-            ('Bug-Database', 'https://github.com/ropensci/crul/issues',
+            UpstreamDatum('Name', 'crul', 'certain'),
+            UpstreamDatum('Archive', 'CRAN', 'certain'),
+            UpstreamDatum(
+                'Bug-Database', 'https://github.com/ropensci/crul/issues',
                 'certain'),
-            ('Repository', 'https://github.com/ropensci/crul', 'certain'),
-            ('Homepage', 'https://www.example.com/crul', 'certain')])
+            UpstreamDatum(
+                'Repository', 'https://github.com/ropensci/crul', 'certain'),
+            UpstreamDatum(
+                'Homepage', 'https://www.example.com/crul', 'certain')])
 
 
 class GuessRepoFromUrlTests(TestCase):
