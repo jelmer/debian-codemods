@@ -148,12 +148,13 @@ class Fixer(object):
         self.name = name
         self.lintian_tags = lintian_tags
 
-    def run(self, basedir, current_version, compat_release,
+    def run(self, basedir, package, current_version, compat_release,
             trust_package=False, allow_reformatting=False):
         """Apply this fixer script.
 
         Args:
           basedir: Directory in which to run
+          package: Name of the source package
           current_version: The version of the package that is being created or
             updated
           compat_release: Compatibility level (a Debian release name)
@@ -189,9 +190,10 @@ def parse_script_fixer_output(text):
     return FixerResult('\n'.join(lines), fixed_tags, certainty)
 
 
-def determine_env(current_version, compat_release, minimum_certainty,
+def determine_env(package, current_version, compat_release, minimum_certainty,
                   trust_package, allow_reformatting, net_access):
     env = dict(os.environ.items())
+    env['PACKAGE'] = package
     env['CURRENT_VERSION'] = str(current_version)
     env['COMPAT_RELEASE'] = compat_release
     env['MINIMUM_CERTAINTY'] = minimum_certainty
@@ -216,11 +218,12 @@ class PythonScriptFixer(Fixer):
     def __repr__(self):
         return "<%s(%r)>" % (self.__class__.__name__, self.name)
 
-    def run(self, basedir, current_version, compat_release,
+    def run(self, basedir, package, current_version, compat_release,
             minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
             trust_package=False, allow_reformatting=False,
             net_access=True):
         env = determine_env(
+            package=package,
             current_version=current_version,
             compat_release=compat_release,
             minimum_certainty=minimum_certainty,
@@ -282,11 +285,12 @@ class ScriptFixer(Fixer):
     def __repr__(self):
         return "<ScriptFixer(%r)>" % self.name
 
-    def run(self, basedir, current_version, compat_release,
+    def run(self, basedir, package, current_version, compat_release,
             minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
             trust_package=False, allow_reformatting=False,
             net_access=True):
         env = determine_env(
+            package=package,
             current_version=current_version,
             compat_release=compat_release,
             minimum_certainty=minimum_certainty,
@@ -608,6 +612,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
             cl = Changelog(f, max_blocks=1)
     except NoSuchFile:
         raise NotDebianPackage(local_tree, subpath)
+    package = cl.package
     if cl.distributions == 'UNRELEASED':
         current_version = cl.version
     else:
@@ -620,6 +625,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     try:
         result = fixer.run(
             local_tree.abspath(subpath),
+            package=package,
             current_version=current_version,
             compat_release=compat_release,
             minimum_certainty=minimum_certainty,

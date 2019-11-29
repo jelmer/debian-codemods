@@ -161,8 +161,8 @@ Arch: all
 
 class DummyFixer(Fixer):
 
-    def run(self, basedir, current_version, compat_release, minimum_certainty,
-            trust_package, allow_reformatting, net_access):
+    def run(self, basedir, package, current_version, compat_release,
+            minimum_certainty, trust_package, allow_reformatting, net_access):
         with open(os.path.join(basedir, 'debian/control'), 'a') as f:
             f.write('a new line\n')
         return FixerResult("Fixed some tag.\nExtended description.",
@@ -171,8 +171,8 @@ class DummyFixer(Fixer):
 
 class FailingFixer(Fixer):
 
-    def run(self, basedir, current_version, compat_release, minimum_certainty,
-            trust_package, allow_reformatting, net_access):
+    def run(self, basedir, package, current_version, compat_release,
+            minimum_certainty, trust_package, allow_reformatting, net_access):
         with open(os.path.join(basedir, 'debian/foo'), 'w') as f:
             f.write("blah")
         with open(os.path.join(basedir, 'debian/control'), 'a') as f:
@@ -229,7 +229,7 @@ Arch: all
         tree = self.make_test_tree()
 
         class UncertainFixer(Fixer):
-            def run(self, basedir, current_version, compat_release,
+            def run(self, basedir, package, current_version, compat_release,
                     minimum_certainty, trust_package, allow_reformatting,
                     net_access):
                 with open(os.path.join(basedir, 'debian/somefile'), 'w') as f:
@@ -246,7 +246,7 @@ Arch: all
         tree = self.make_test_tree()
 
         class UncertainFixer(Fixer):
-            def run(self, basedir, current_version, compat_release,
+            def run(self, basedir, package, current_version, compat_release,
                     minimum_certainty, trust_package, allow_reformatting,
                     net_access):
                 with open(os.path.join(basedir, 'debian/somefile'), 'w') as f:
@@ -262,7 +262,7 @@ Arch: all
         tree = self.make_test_tree()
 
         class NewFileFixer(Fixer):
-            def run(self, basedir, current_version, compat_release,
+            def run(self, basedir, package, current_version, compat_release,
                     minimum_certainty, trust_package, allow_reformatting,
                     net_access):
                 with open(os.path.join(basedir, 'debian/somefile'), 'w') as f:
@@ -294,7 +294,7 @@ Arch: all
         tree = self.make_test_tree()
 
         class RenameFileFixer(Fixer):
-            def run(self, basedir, current_version, compat_release,
+            def run(self, basedir, package, current_version, compat_release,
                     minimum_certainty, trust_package, allow_reformatting,
                     net_access):
                 os.rename(os.path.join(basedir, 'debian/control'),
@@ -324,7 +324,7 @@ Arch: all
         tree = self.make_test_tree()
 
         class EmptyFixer(Fixer):
-            def run(self, basedir, current_version, compat_release,
+            def run(self, basedir, package, current_version, compat_release,
                     minimum_certainty, trust_package, allow_reformatting,
                     net_access):
                 return FixerResult("I didn't actually change anything.")
@@ -775,7 +775,7 @@ class BaseScriptFixerTests(object):
 
     def test_noop(self):
         fixer = self.create_fixer("print('I did not do anything')\n")
-        result = fixer.run(self.test_dir, '0.1', 'buster')
+        result = fixer.run(self.test_dir, 'blah', '0.1', 'buster')
         self.assertIsInstance(result, FixerResult)
         self.assertEqual(result.description, 'I did not do anything')
 
@@ -783,7 +783,7 @@ class BaseScriptFixerTests(object):
         fixer = self.create_fixer("import os; print(os.getcwd())\n")
         os.mkdir('subdir')
         os.chdir('subdir')
-        result = fixer.run(self.test_dir, '0.1', 'buster')
+        result = fixer.run(self.test_dir, 'blah', '0.1', 'buster')
         self.assertIsInstance(result, FixerResult)
         self.assertEqual(result.description, self.test_dir)
 
@@ -794,7 +794,8 @@ def foo():
 foo()
 """)
         e = self.assertRaises(
-            FixerScriptFailed, fixer.run, self.test_dir, '0.1', 'buster')
+            FixerScriptFailed, fixer.run, self.test_dir, 'blah', '0.1',
+            'buster')
         self.assertEqual(e.path, fixer.script_path)
         self.assertEqual(e.returncode, 1)
         self.assertEqual(

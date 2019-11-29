@@ -53,7 +53,6 @@ fields.update(extend_upstream_metadata(
     minimum_certainty=minimum_certainty, net_access=net_access,
     consult_external_directory=True))
 if net_access:
-    # TODO(jelmer): Set package
     check_upstream_metadata(
         code, current_certainty, version=current_version.upstream_version)
 
