@@ -3,6 +3,7 @@ lintian-brush (0.42) UNRELEASED; urgency=medium
   * Add fixer for font-package-not-multi-arch-foreign.
   * Actually install lintian-brush.conf(5) manpage.
   * Don't drop unnecessary overrides unless making other changes.
+  * Disable credentials prompting when probing VCS URLs. Closes: #942648
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 28 Nov 2019 08:43:50 +0000
 
