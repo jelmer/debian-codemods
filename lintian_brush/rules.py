@@ -274,7 +274,7 @@ def discard_pointless_override(rule):
 
 
 def update_rules(command_line_cb=None, global_line_cb=None,
-                 rule_cb=discard_pointless_override,
+                 rule_cb=None,
                  makefile_cb=None, path='debian/rules'):
     """Update a debian/rules file.
 
@@ -286,9 +286,14 @@ def update_rules(command_line_cb=None, global_line_cb=None,
     Returns:
       boolean indicating whether any changes were made
     """
-    return update_makefile(
+    changed = update_makefile(
         path, command_line_cb=command_line_cb, global_line_cb=global_line_cb,
         rule_cb=rule_cb, makefile_cb=makefile_cb)
+    if changed:
+        update_makefile(path, rule_cb=discard_pointless_override)
+        return True
+    else:
+        return False
 
 
 def dh_invoke_add_with(line, with_argument):
