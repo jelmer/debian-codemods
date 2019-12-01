@@ -100,7 +100,8 @@ def is_conditional(line):
         line.startswith(b'ifeq') or
         line.startswith(b'ifneq') or
         line.startswith(b'else') or
-        line.startswith(b'endif'))
+        line.startswith(b'endif') or
+        line.startswith(b'include'))
 
 
 class Makefile(object):
