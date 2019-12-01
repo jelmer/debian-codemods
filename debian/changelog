@@ -1,4 +1,4 @@
-lintian-brush (0.42) UNRELEASED; urgency=medium
+lintian-brush (0.43) unstable; urgency=medium
 
   * Add fixer for font-package-not-multi-arch-foreign.
   * Actually install lintian-brush.conf(5) manpage.
