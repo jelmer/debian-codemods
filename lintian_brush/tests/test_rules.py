@@ -49,6 +49,16 @@ endif
 """)
         self.assertEqual(1, len(mf.contents))
 
+    def test_conditional_rule(self):
+        mf = Makefile.from_bytes(b"""\
+all: %: test
+\ttest
+""")
+        self.assertEqual(
+            mf.contents,
+            [Rule(b'all', commands=[b'test'], prereq_targets=[b'%:', b'test'])]
+            )
+
 
 class UpdateRulesTests(TestCaseWithTransport):
 

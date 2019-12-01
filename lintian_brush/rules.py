@@ -24,13 +24,16 @@ import re
 class Rule(object):
     """A make rule."""
 
-    def __init__(self, target=None, commands=None):
+    def __init__(self, target=None, commands=None, prereq_targets=None):
         self.target = target
-        self._component_str = b''
-        self.components = []
+        self.components = prereq_targets or []
+        if self.components:
+            self._component_str = b' ' + b' '.join(self.components)
+        else:
+            self._component_str = b''
         if target:
             self.lines = (
-                [b'%s:' % target] +
+                [b'%s:%s' % (target, self._component_str)] +
                 [b'\t' + cmd for cmd in (commands or [])])
         else:
             self.lines = None
