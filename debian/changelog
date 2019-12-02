@@ -1,3 +1,9 @@
+lintian-brush (0.44) UNRELEASED; urgency=medium
+
+  * Cope with continuations at the end of debian/rules files.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 02 Dec 2019 14:37:26 +0000
+
 lintian-brush (0.43) unstable; urgency=medium
 
   * Add fixer for font-package-not-multi-arch-foreign.

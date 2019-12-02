@@ -127,12 +127,20 @@ class Makefile(object):
         mf = cls()
         keep = b''
         rule = None
+        joinedlines = []
         for line in contents.splitlines():
             line = keep + line
             keep = b''
             if line.endswith(b'\\'):
                 keep = line + b'\n'
                 continue
+            joinedlines.append(line)
+
+        if keep:
+            # file ends with continuation line..
+            joinedlines.append(keep)
+
+        for line in joinedlines:
             if line.startswith(b'\t') and rule:
                 rule.append_line(line)
             elif is_conditional(line) or line.startswith(b'#'):
@@ -154,9 +162,6 @@ class Makefile(object):
                     mf.contents.append(rule)
                 rule = None
                 mf.contents.append(line)
-
-        if keep:
-            raise ValueError('file ends with continuation line')
 
         if rule:
             mf.contents.append(rule)
