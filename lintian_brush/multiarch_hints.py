@@ -25,6 +25,8 @@ from lintian_brush import (
     USER_AGENT,
     DEFAULT_URLLIB_TIMEOUT,
     add_changelog_entry,
+    certainty_sufficient,
+    get_committer,
     )
 from lintian_brush.control import (
     update_control,
@@ -75,25 +77,25 @@ def add_message(tree, binary, message):
         tree, 'debian/changelog', '%s: %s' % (binary['Package'], message))
 
 
-def apply_hint_ma_foreign(tree, binary, hint):
+def apply_hint_ma_foreign(tree, subpath, binary, hint):
     if binary.get('Multi-Arch') != 'foreign':
         binary['Multi-Arch'] = 'foreign'
-        return 'Add Multi-Arch: foreign.', 'certain'
+        return 'Add Multi-Arch: foreign.'
 
 
-def apply_hint_ma_foreign_lib(tree, binary, hint):
+def apply_hint_ma_foreign_lib(tree, subpath, binary, hint):
     if binary.get('Multi-Arch') == 'foreign':
         del binary['Multi-Arch']
-        return 'Drop Multi-Arch: foreign.', 'certain'
+        return 'Drop Multi-Arch: foreign.'
 
 
-def apply_hint_file_conflict(tree, binary, hint):
+def apply_hint_file_conflict(tree, subpath, binary, hint):
     if binary.get('Multi-Arch') == 'same':
         del binary['Multi-Arch']
-        return 'Drop Multi-Arch: same.', 'certain'
+        return 'Drop Multi-Arch: same.'
 
 
-def apply_hint_dep_any(tree, binary, hint):
+def apply_hint_dep_any(tree, subpath, binary, hint):
     m = re.match(
         '(.*) could have its dependency on (.*) annotated with :any',
         hint['description'])
@@ -109,58 +111,74 @@ def apply_hint_dep_any(tree, binary, hint):
         (head_whitespace, relation, tail_whitespace) = entry
         if not isinstance(relation, str):  # formatting
             for r in relation:
-                if r.name == dep and r.archqual != 'all':
-                    r.archqual = 'all'
+                if r.name == dep and r.archqual != 'any':
+                    r.archqual = 'any'
                     changed = True
     if not changed:
         return
     binary['Depends'] = format_relations(relations)
-    return ('Add :all qualifier for %s dependency.' % dep), 'certain'
+    return ('Add :all qualifier for %s dependency.' % dep)
 
 
-def apply_hint_ma_same(tree, binary, hint):
+def apply_hint_ma_same(tree, subpath, binary, hint):
     if binary.get('Multi-Arch') == 'same':
         return
     binary['Multi-Arch'] = 'same'
-    return 'Add Multi-Arch: same.', 'certain'
+    return 'Add Multi-Arch: same.'
 
 
-def apply_hint_arch_all(tree, binary, hint):
+def apply_hint_arch_all(tree, subpath, binary, hint):
     if binary['Architecture'] == 'all':
         return
     binary['Architecture'] = 'all'
-    return 'Make package Architecture: all.', 'possible'
+    return 'Make package Architecture: all.'
 
 
-HINT_APPLIERS = {
-    'ma-foreign': apply_hint_ma_foreign,
-    'file-conflict': apply_hint_file_conflict,
-    'ma-foreign-library': apply_hint_ma_foreign_lib,
-    'dep-any': apply_hint_dep_any,
-    'ma-same': apply_hint_ma_same,
-    'arch-all': apply_hint_arch_all,
-}
+class MultiArchHintApplier(object):
+
+    def __init__(self, kind, fn, certainty):
+        self.kind = kind
+        self.fn = fn
+        self.certainty = certainty
 
 
-def apply_multiarch_hints(tree, hints, minimum_certainty=None):
+_HINT_APPLIERS = [
+    MultiArchHintApplier('ma-foreign', apply_hint_ma_foreign, 'certain'),
+    MultiArchHintApplier('file-conflict', apply_hint_file_conflict, 'certain'),
+    MultiArchHintApplier(
+        'ma-foreign-library', apply_hint_ma_foreign_lib, 'certain'),
+    MultiArchHintApplier('dep-any', apply_hint_dep_any, 'certain'),
+    MultiArchHintApplier('ma-same', apply_hint_ma_same, 'certain'),
+    MultiArchHintApplier('arch-all', apply_hint_arch_all, 'possible'),
+]
+HINT_APPLIERS = {ha.kind: ha for ha in _HINT_APPLIERS}
+
+
+def apply_multiarch_hints(tree, subpath, hints, minimum_certainty=None):
+
+    changes = []
 
     def update_binary(binary):
         for hint in hints.get(binary['Package'], []):
             kind = hint['link'].rsplit('#', 1)[1]
-            ret = HINT_APPLIERS[kind](
-                tree, binary, hint, minimum_certainty=minimum_certainty)
-            if ret:
-                description, certainty = ret
+            hint_info = HINT_APPLIERS[kind]
+            if not certainty_sufficient(
+                    hint_info.certainty, minimum_certainty):
+                continue
+            description = hint_info.fn(tree, subpath, binary, hint)
+            if description:
                 add_message(tree, binary, description)
+                changes.append((binary, description))
 
-    return update_control(
-        path=tree.abspath('debian/control'),
+    update_control(
+        path=tree.abspath(os.path.join(subpath, 'debian/control')),
         binary_package_cb=update_binary)
+
+    return changes
 
 
 if __name__ == '__main__':
     import argparse
-    from debian.deb822 import Deb822
     import os
     import sys
     from breezy.workingtree import WorkingTree
@@ -175,6 +193,7 @@ if __name__ == '__main__':
     breezy.initialize()
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
+    from breezy.commit import NullCommitReporter
 
     parser = argparse.ArgumentParser(prog='multi-arch-fixer')
     parser.add_argument(
@@ -183,10 +202,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
     hints = download_multiarch_hints()
     wt, subpath = WorkingTree.open_containing(args.directory)
-    with wt.get_file(os.path.join(subpath, 'debian', 'control')) as f:
-        source = Deb822(f)['Source']
-        source_hints = hints.get(source, [])
-    if not source_hints:
-        print('No hints for %s' % source)
-        sys.exit(0)
-    apply_multiarch_hints(wt, hints)
+    changes = apply_multiarch_hints(wt, subpath, hints)
+    committer = get_committer(wt)
+
+    message = '\n'.join([
+        'Apply multi-arch hints:',
+        ] + ['* %s: %s' % (binary['Package'], description)
+             for (binary, description) in changes])
+
+    wt.commit(message, allow_pointless=False,
+              reporter=NullCommitReporter(),
+              committer=committer)
