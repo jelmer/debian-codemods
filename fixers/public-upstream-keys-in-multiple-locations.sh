@@ -7,7 +7,7 @@ ${GPG} --version 2>/dev/null >/dev/null || exit 2
 OTHER_PATHS="debian/upstream/signing-key.pgp debian/upstream-signing-key.pgp"
 MAIN_PATH=debian/upstream/signing-key.asc
 
-if [[ $(ls $OTHER_PATHS $MAIN_PATH | wc -l) -lt 2 ]]; then
+if [ $(ls $OTHER_PATHS $MAIN_PATH 2>/dev/null | wc -l) -lt 2 ]; then
     exit 0
 fi
 
