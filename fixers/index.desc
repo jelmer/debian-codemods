@@ -291,3 +291,6 @@ Lintian-Tags: debian-rules-contains-unnecessary-get-orig-source-target
 
 Fix-Script: font-package-not-multi-arch-foreign.py
 Lintian-Tags: font-package-not-multi-arch-foreign
+
+Fix-Script: debian-rules-not-executable.py
+Lintian-Tags: debian-rules-not-executable

@@ -1,6 +1,7 @@
 lintian-brush (0.44) UNRELEASED; urgency=medium
 
   * Cope with continuations at the end of debian/rules files.
+  * Add fixer for debian-rules-not-executable.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 02 Dec 2019 14:37:26 +0000
 
