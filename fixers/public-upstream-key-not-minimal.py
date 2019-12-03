@@ -3,6 +3,7 @@
 import os
 import subprocess
 import shlex
+import shutil
 import sys
 import tempfile
 
@@ -38,14 +39,11 @@ def gpg_export(options, keyring, homedir):
 
 
 def minimize_key_block(key):
-    with tempfile.TemporaryDirectory() as td:
+    td = tempfile.mkdtemp()
+    try:
         keyring = os.path.join(td, 'keyring.pgp')
         homedir = os.path.join(td, 'home')
         os.mkdir(homedir, 0o700)
-        with open(os.path.join(homedir, 'gpg-agent.conf'), 'w') as f:
-            # Disable the extra socket, since it interacts badly with
-            # TemporaryDirectory cleanup.
-            f.write('extra-socket none\n')
         run_gpg(['--import'], keyring=keyring, homedir=homedir, stdin=key)
         minimal = gpg_export(
             ['export-minimal'], keyring=keyring, homedir=homedir)
@@ -54,6 +52,8 @@ def minimize_key_block(key):
             return key
         else:
             return minimal
+    finally:
+        shutil.rmtree(td, ignore_errors=True)
 
 
 for p in [
