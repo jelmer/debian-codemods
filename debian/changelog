@@ -4,6 +4,7 @@ lintian-brush (0.44) UNRELEASED; urgency=medium
   * Add fixer for debian-rules-not-executable.
   * Add (for now) hidden --compat-release option.
   * Don't strip comments when minimizing upstream keys. Closes: #942719
+  * Report lintian tag fixed for tab-in-licence-text.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 02 Dec 2019 14:37:26 +0000
 

@@ -1,1 +1,2 @@
 debian/copyright: use spaces rather than tabs to start continuation lines.
+Fixed-Lintian-Tags: tab-in-licence-text

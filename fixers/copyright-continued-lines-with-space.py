@@ -80,11 +80,15 @@ else:
     with open('debian/copyright', 'wb') as f:
         f.writelines(lines)
 
+tags = set()
 sys.stdout.write('debian/copyright: ')
 if tabs_replaced:
     sys.stdout.write('use spaces rather than tabs to start continuation lines')
     if unicode_linebreaks_replaced:
         sys.stdout.write(', ')
+    tags.add('tab-in-licence-text')
 if unicode_linebreaks_replaced:
     sys.stdout.write('replace unicode linebreaks with regular linebreaks')
 sys.stdout.write('.\n')
+if tags:
+    print('Fixed-Lintian-Tags: %s' % ', '.join(sorted(tags)))
