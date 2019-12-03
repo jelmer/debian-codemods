@@ -166,10 +166,10 @@ Lintian-Tags: possible-missing-colon-in-closes
 Fix-Script: priority-extra-is-replaced-by-priority-optional.py
 Lintian-Tags: priority-extra-is-replaced-by-priority-optional
 
-Fix-Script: public-upstream-key-not-minimal.sh
+Fix-Script: public-upstream-key-not-minimal.py
 Lintian-Tags: public-upstream-key-not-minimal
 
-Fix-Script: public-upstream-key-not-minimal.sh
+Fix-Script: public-upstream-keys-in-multiple-locations.sh
 Lintian-Tags: public-upstream-keys-in-multiple-locations
 
 Fix-Script: quilt-series-without-trailing-newline.sh
