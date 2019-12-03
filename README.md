@@ -96,6 +96,7 @@ subset of the issues:
 * renamed-tag
 * space-in-std-shortname-in-dep5-copyright
 * systemd-service-file-pidfile-refers-to-var-run
+* tab-in-licence-text
 * transitional-package-should-be-oldlibs-optional
 * unnecessary-team-upload
 * unnecessary-testsuite-autopkgtest-field
