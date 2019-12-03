@@ -69,6 +69,11 @@ def download_multiarch_hints(url=MULTIARCH_HINTS_URL):
     with urlopen(
             Request(url, headers=headers),
             timeout=DEFAULT_URLLIB_TIMEOUT) as f:
+        if url.endswith('.xz'):
+            import lzma
+            # It would be nicer if there was a content-type, but there isn't
+            # :-(
+            f = lzma.LZMAFile(f)
         return parse_multiarch_hints(f)
 
 
