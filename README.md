@@ -131,9 +131,13 @@ or update the changelog.
 
 The following additional environment variables are set:
 
+ * ``PACKAGE``: The name of the source package that is being edited.
  * ``CURRENT_VERSION``: Package version that is being edited.
  * ``COMPAT_RELEASE``: Debian release to be compatible with. Usually ``sid``
    when --modern was specified and the name of the current stable release otherwise.
+ * ``NET_ACCESS``: Whether the fixer is allowed to make network connections
+   (e.g. sending HTTP requests). Used by --disable-net-access and the testsuite.
+   Set to either ``allow`` or ``disallow``.
 
 A fixer should write a short description of the changes it has made to standard
 out; this will be used for the commit message.
@@ -146,7 +150,7 @@ It can include optional metadata in its output::
    it may also support building the package to verify the lintian tag
    is actually resolved.
 
- * ``Certainty:`` followed by ``certain`` or ``possible``,
+ * ``Certainty:`` followed by ``certain``, ``likely`` or ``possible``,
    indicating how certain the fixer is that the fix was the right
    one.
 
