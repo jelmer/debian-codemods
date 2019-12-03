@@ -118,6 +118,7 @@ def main(argv=None):
     parser.add_argument(
         '--disable-inotify', action='store_true', default=False,
         help=argparse.SUPPRESS)
+    parser.add_argument('--compat-release', type=str, help=argparse.SUPPRESS)
     parser.add_argument(
         'fixers', metavar='FIXER', nargs='*',
         help='specific fixer to run')
@@ -170,9 +171,12 @@ def main(argv=None):
                 return 1
         debian_info = distro_info.DebianDistroInfo()
         if args.modern:
+            if args.compat_release:
+                show_error('--compat-release and --modern are incompatible.')
+                return 1
             compat_release = debian_info.devel()
         else:
-            compat_release = None
+            compat_release = args.compat_release
         minimum_certainty = args.minimum_certainty
         allow_reformatting = args.allow_reformatting
         update_changelog = args.update_changelog
