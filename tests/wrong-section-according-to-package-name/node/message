@@ -1,2 +1,3 @@
 Fix sections for binary package node-requirejs-text (web => javascript).
+Certainty: likely
 Fixed-Lintian-Tags: wrong-section-according-to-package-name

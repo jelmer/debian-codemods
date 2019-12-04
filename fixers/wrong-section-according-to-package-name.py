@@ -1,8 +1,17 @@
 #!/usr/bin/python3
 
+from lintian_brush import certainty_sufficient
 from lintian_brush.control import update_control
+import os
 import re
 import sys
+
+CERTAINTY = 'likely'
+
+minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
+if not certainty_sufficient(CERTAINTY, minimum_certainty):
+    sys.exit(0)
+
 
 NAME_SECTION_MAPPINGS_PATH = (
     '/usr/share/lintian/data/fields/name_section_mappings')
@@ -61,4 +70,5 @@ update_control(
 # TODO(jelmer): If there is only a single binary package without section, just
 # set the section of the source package?
 print("Fix sections for %s." % ', '.join(['%s (%s => %s)' % v for v in fixed]))
+print("Certainty: %s" % CERTAINTY)
 print("Fixed-Lintian-Tags: wrong-section-according-to-package-name")
