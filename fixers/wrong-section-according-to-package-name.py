@@ -57,5 +57,8 @@ def fix_binary_section(control):
 update_control(
     source_package_cb=fix_source_section, binary_package_cb=fix_binary_section)
 
+# TODO(jelmer): Make sure that the Section is not under the Description
+# TODO(jelmer): If there is only a single binary package without section, just
+# set the section of the source package?
 print("Fix sections for %s." % ', '.join(['%s (%s => %s)' % v for v in fixed]))
 print("Fixed-Lintian-Tags: wrong-section-according-to-package-name")
