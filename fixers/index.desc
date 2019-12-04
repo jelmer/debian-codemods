@@ -295,3 +295,6 @@ Lintian-Tags: font-package-not-multi-arch-foreign
 
 Fix-Script: debian-rules-not-executable.py
 Lintian-Tags: debian-rules-not-executable
+
+Fix-Script: wrong-section-according-to-package-name.py
+Lintian-Tags: wrong-section-according-to-package-name

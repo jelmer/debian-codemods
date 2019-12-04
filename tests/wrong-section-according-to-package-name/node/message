@@ -1,0 +1,2 @@
+Fix sections for binary package node-requirejs-text (web => javascript).
+Fixed-Lintian-Tags: wrong-section-according-to-package-name

@@ -1,0 +1,12 @@
+Source: requirejs-text
+Section: web
+
+Package: node-requirejs-text
+Architecture: all
+Depends: ${misc:Depends}, nodejs
+Description: RequireJS/AMD loader plugin for text resources
+ This plugins provides a text.js, a plugin for requirejs that adds support
+ for loading text resources.
+ .
+ Known to work in RequireJS, but should work in other AMD loaders that support
+ the same loader plugin API.
