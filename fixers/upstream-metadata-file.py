@@ -15,10 +15,10 @@ from lintian_brush.upstream_metadata import (
     UpstreamDatum,
     check_upstream_metadata,
     extend_upstream_metadata,
+    fix_upstream_metadata,
     guess_upstream_metadata_items,
     update_from_guesses,
     )
-from lintian_brush.vcs import sanitize_url as sanitize_vcs_url
 from lintian_brush.yaml import write_yaml_file
 
 
@@ -42,18 +42,22 @@ upstream_metadata = {
     k: UpstreamDatum(k, v, 'certain') for (k, v) in code.items()}
 
 minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
-
-update_from_guesses(
-    upstream_metadata,
-    guess_upstream_metadata_items(
-        '.', trust_package=(os.environ.get('TRUST_PACKAGE') == 'true')))
-
+trust_package = os.environ.get('TRUST_PACKAGE') == 'true'
 net_access = os.environ.get('NET_ACCESS', 'allow') == 'allow'
+
+# Do some guessing based on what's in the package
+update_from_guesses(
+    upstream_metadata, guess_upstream_metadata_items(
+        '.', trust_package=trust_package))
+
+# Then extend that by contacting e.g. SourceForge
 extend_upstream_metadata(
     upstream_metadata, '.',
     minimum_certainty=minimum_certainty, net_access=net_access,
     consult_external_directory=True)
 if net_access:
+    # Verify that online resources actually exist and adjust certainty
+    # accordingly.
     check_upstream_metadata(
         upstream_metadata, version=current_version.upstream_version)
 
@@ -82,9 +86,7 @@ for key, datum in list(upstream_metadata.items()):
 achieved_certainty = min_certainty(
     [d.certainty for d in upstream_metadata.values()])
 
-if 'Repository' in upstream_metadata:
-    repo = upstream_metadata['Repository']
-    repo.value = sanitize_vcs_url(repo.value)
+fix_upstream_metadata(upstream_metadata)
 
 changed = {
     k: v

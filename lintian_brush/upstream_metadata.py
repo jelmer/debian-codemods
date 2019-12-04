@@ -149,12 +149,12 @@ def guess_repo_from_url(url, net_access=False):
             return 'https://github.com/freedesktop/%s.git' % path_elements[2]
     if parsed_url.netloc == 'download.gnome.org':
         if len(path_elements) >= 2 and path_elements[0] == 'sources':
-            return 'https://gitlab.gnome.org/gnome/%s.git' % path_elements[1]
+            return 'https://gitlab.gnome.org/GNOME/%s.git' % path_elements[1]
     if parsed_url.netloc == 'ftp.gnome.org':
         if (len(path_elements) >= 4 and [
               e.lower() for e in path_elements[:3]] == [
                   'pub', 'gnome', 'sources']):
-            return 'https://gitlab.gnome.org/gnome/%s.git' % path_elements[3]
+            return 'https://gitlab.gnome.org/GNOME/%s.git' % path_elements[3]
     if parsed_url.netloc == 'sourceforge.net':
         if (len(path_elements) >= 4 and path_elements[0] == 'p'
                 and path_elements[3] == 'ci'):
@@ -742,6 +742,9 @@ def guess_upstream_metadata(
     extend_upstream_metadata(
         upstream_metadata, path, net_access=net_access,
         consult_external_directory=consult_external_directory)
+
+    fix_upstream_metadata(upstream_metadata)
+
     return {k: v.value for (k, v) in upstream_metadata.items()}
 
 
@@ -841,8 +844,8 @@ def guess_bug_database_url_from_repo_url(url):
 
 def bug_submit_url_from_bug_database_url(url):
     parsed_url = urlparse(url)
+    path_elements = parsed_url.path.strip('/').split('/')
     if parsed_url.netloc == 'github.com':
-        path_elements = parsed_url.path.strip('/').split('/')
         if len(path_elements) != 3:
             return None
         if path_elements[2] != 'issues':
@@ -851,10 +854,16 @@ def bug_submit_url_from_bug_database_url(url):
             ('https', 'github.com', parsed_url.path + '/new',
              None, None, None))
     if parsed_url.netloc == 'bugs.launchpad.net':
-        path_elements = parsed_url.path.strip('/').split('/')
         if len(path_elements) == 1:
             return urlunparse(
                 parsed_url._replace(path=parsed_url.path+'/+filebug'))
+    if parsed_url.netloc in KNOWN_GITLAB_SITES:
+        if len(path_elements) < 2:
+            return None
+        if path_elements[-1] != 'issues':
+            return None
+        return urlunparse(
+            parsed_url._replace(path=parsed_url.path.rstrip('/')+'/new'))
     return None
 
 
@@ -1087,6 +1096,15 @@ def guess_from_launchpad(package, distribution=None, suite=None):
                 yield 'Repository-Browse', repo_data['web_link']
     elif project_data.get('vcs') is not None:
         raise AssertionError('unknown vcs: %r' % project_data['vcs'])
+
+
+def fix_upstream_metadata(upstream_metadata):
+    """Fix existing upstream metadata."""
+    if 'Repository' in upstream_metadata:
+        repo = upstream_metadata['Repository']
+        url = repo.value
+        url = sanitize_vcs_url(url)
+        repo.value = url
 
 
 if __name__ == '__main__':
