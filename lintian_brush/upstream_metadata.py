@@ -1025,12 +1025,14 @@ def parse_pkgbuild_variables(f):
     variables = {}
     keep = None
     for line in f:
-        if line.startswith(b' ') or line.startswith(b'#'):
+        if (line.startswith(b'\t') or line.startswith(b' ') or
+                line.startswith(b'#')):
             continue
         if keep:
             keep = (keep[0], keep[1] + line)
             if line.rstrip().endswith(b')'):
-                variables[keep[0].decode()] = shlex.split(keep[1].decode())
+                variables[keep[0].decode()] = shlex.split(
+                    keep[1].rstrip(b'\n').decode())
                 keep = None
             continue
         try:
@@ -1039,11 +1041,11 @@ def parse_pkgbuild_variables(f):
             continue
         if value.startswith(b'('):
             if value.rstrip().endswith(b')'):
-                value = value[1:-2]
+                value = value[1:-1]
             else:
                 keep = (key, value[1:])
                 continue
-        variables[key.decode()] = shlex.split(value.decode())
+        variables[key.decode()] = shlex.split(value.rstrip(b'\n').decode())
     return variables
 
 
@@ -1069,7 +1071,7 @@ def guess_from_aur(package):
             value = value[0]
             if "${" in value:
                 for k, v in variables.items():
-                    value = value.replace('${%s}' % k, v)
+                    value = value.replace('${%s}' % k, ' '.join(v))
             try:
                 unique_name, url = value.split('::', 1)
             except ValueError:
