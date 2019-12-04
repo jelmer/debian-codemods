@@ -46,6 +46,7 @@ from lintian_brush import (
     available_lintian_fixers,
     check_clean_tree,
     add_changelog_entry,
+    guess_update_changelog,
     certainty_sufficient,
     min_certainty,
     certainty_to_confidence,
@@ -918,3 +919,20 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
 """, 'debian/changelog')
+
+
+class GuessUpdateChangelogTests(TestCaseWithTransport):
+
+    def test_no_gbp_conf(self):
+        tree = self.make_branch_and_tree('.')
+        self.assertTrue(guess_update_changelog(tree))
+
+    def test_gbp_conf_dch(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/gbp.conf', """\
+[dch]
+""")])
+        tree.add(['debian', 'debian/gbp.conf'])
+        self.assertFalse(guess_update_changelog(tree))

@@ -6,6 +6,8 @@ lintian-brush (0.44) UNRELEASED; urgency=medium
   * Don't strip comments when minimizing upstream keys. Closes: #942719
   * Report lintian tag fixed for tab-in-licence-text.
   * Add fixer for wrong-section-according-to-package-name.
+  * Look for [dch] section in gbp.conf when guessing whether to update
+    changelog.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 02 Dec 2019 14:37:26 +0000
 

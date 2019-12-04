@@ -577,6 +577,37 @@ def add_changelog_entry(tree, path, summary):
             warning('%s', line)
 
 
+def guess_update_changelog(tree, path=''):
+    """Guess whether the changelog should be updated.
+
+    Args:
+      tree: Tree to edit
+      path: Path to packaging in tree
+    """
+    try:
+        gbp_conf_path = os.path.join(path, 'debian/gbp.conf')
+        gbp_conf_text = tree.get_file_text(gbp_conf_path)
+    except NoSuchFile:
+        pass
+    else:
+        try:
+            import configparser
+        except ImportError:
+            pass
+        else:
+            parser = configparser.ConfigParser(defaults={}, strict=False)
+            parser.read_string(
+                gbp_conf_text.decode('utf-8', errors='replace'), gbp_conf_path)
+            if parser.has_section('dch'):
+                note('Assuming changelog does not need to be updated, '
+                     'since there is a [dch] section in gbp.conf.')
+                return False
+    # TODO(jelmes): Do something more clever here, perhaps looking at history
+    # of the changelog file?
+
+    return True
+
+
 def run_lintian_fixer(local_tree, fixer, committer=None,
                       update_changelog=None, compat_release=None,
                       minimum_certainty=None, trust_package=False,
@@ -673,8 +704,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
 
     summary = result.description.splitlines()[0]
     if update_changelog is None:
-        # Default to true. Perhaps do something more clever.
-        update_changelog = True
+        update_changelog = guess_update_changelog(local_tree, subpath)
 
     if update_changelog and only_changes_last_changelog_block(
             local_tree, changelog_path):
