@@ -2,6 +2,7 @@
 
 import os
 from lintian_brush.control import update_control, get_relation
+from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
 
 # Dictionary mapping source and target versions
@@ -44,6 +45,20 @@ def check_4_4_1():
                 vcs_fields.append(name)
     if len(vcs_fields) > 1:
         return False
+
+    # Check that Files entries don't refer to directories.
+    # They must be wildcards *in* the directories.
+    try:
+        with open('debian/copyright', 'r') as f:
+            copyright = Copyright(f)
+            for para in copyright.all_files_paragraphs():
+                for glob in para.files:
+                    if os.path.isdir(glob):
+                        return False
+    except FileNotFoundError:
+        return False
+    except NotMachineReadableError:
+        pass
     return True
 
 
@@ -61,6 +76,7 @@ def bump_standards_version(control):
     try:
         current_version = control["Standards-Version"]
     except KeyError:
+        # Huh, no standards version?
         return
     while current_version in upgrade_path:
         target_version = upgrade_path[current_version]
