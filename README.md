@@ -113,6 +113,7 @@ subset of the issues:
 * vcs-field-uses-not-recommended-uri-format
 * vcs-obsolete-in-debian-infrastructure
 * wrong-debian-qa-group-name
+* wrong-section-according-to-package-name
 * xc-package-type-in-debian-control
 * xs-testsuite-field-in-debian-control
 * xs-vcs-field-in-debian-control
