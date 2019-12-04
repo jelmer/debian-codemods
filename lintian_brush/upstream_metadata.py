@@ -1062,16 +1062,14 @@ def guess_from_aur(package):
         return
 
     variables = parse_pkgbuild_variables(f)
-    branch = None
     for key, value in variables.items():
-        if key == '_branch':
-            branch = value[0]
         if key == 'url':
             yield 'Homepage', value[0]
         if key == 'source':
             value = value[0]
-            if branch:
-                value = value.replace('${_branch}', branch)
+            if "${" in value:
+                for k, v in variables.items():
+                    value = value.replace('${%s}' % k, v)
             try:
                 unique_name, url = value.split('::', 1)
             except ValueError:
