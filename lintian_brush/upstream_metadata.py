@@ -1020,6 +1020,66 @@ def check_upstream_metadata(upstream_metadata, version=None):
             bug_database.certainty = 'certain'
 
 
+def parse_pkgbuild_variables(f):
+    import shlex
+    variables = {}
+    keep = None
+    for line in f:
+        if line.startswith(b' ') or line.startswith(b'#'):
+            continue
+        if keep:
+            keep = (keep[0], keep[1] + line)
+            if line.rstrip().endswith(b')'):
+                variables[keep[0].decode()] = shlex.split(keep[1].decode())
+                keep = None
+            continue
+        try:
+            (key, value) = line.split(b'=', 1)
+        except ValueError:
+            continue
+        if value.startswith(b'('):
+            if value.rstrip().endswith(b')'):
+                value = value[1:-2]
+            else:
+                keep = (key, value[1:])
+                continue
+        variables[key.decode()] = shlex.split(value.decode())
+    return variables
+
+
+def guess_from_aur(package):
+    url = (
+        'https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=%s-git' %
+        package)
+    headers = {'User-Agent': USER_AGENT}
+    try:
+        f = urlopen(
+            Request(url, headers=headers),
+            timeout=DEFAULT_URLLIB_TIMEOUT)
+    except urllib.error.HTTPError as e:
+        if e.status != 404:
+            raise
+        return
+
+    variables = parse_pkgbuild_variables(f)
+    branch = None
+    for key, value in variables.items():
+        if key == '_branch':
+            branch = value[0]
+        if key == 'url':
+            yield 'Homepage', value[0]
+        if key == 'source':
+            value = value[0]
+            if branch:
+                value = value.replace('${_branch}', branch)
+            try:
+                unique_name, url = value.split('::', 1)
+            except ValueError:
+                url = value
+            if url.startswith('git+'):
+                yield 'Repository', sanitize_vcs_url(url)
+
+
 def guess_from_launchpad(package, distribution=None, suite=None):
     if distribution is None:
         # Default to Ubuntu; it's got more fields populated.
