@@ -31,7 +31,12 @@ import re
 from urllib.parse import urlparse, urlunparse
 
 
-KNOWN_GITLAB_SITES = ['gitlab.com', 'salsa.debian.org', 'gitlab.gnome.org']
+KNOWN_GITLAB_SITES = [
+    'gitlab.com',
+    'salsa.debian.org',
+    'gitlab.gnome.org',
+    'gitlab.freedesktop.org',
+    ]
 
 
 def extract_vcs_url_branch(url):
