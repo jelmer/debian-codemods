@@ -1041,7 +1041,7 @@ def parse_pkgbuild_variables(f):
             continue
         if value.startswith(b'('):
             if value.rstrip().endswith(b')'):
-                value = value[1:-1]
+                value = value.rstrip()[1:-1]
             else:
                 keep = (key, value[1:])
                 continue
@@ -1068,16 +1068,21 @@ def guess_from_aur(package):
         if key == 'url':
             yield 'Homepage', value[0]
         if key == 'source':
+            if not value:
+                continue
             value = value[0]
             if "${" in value:
                 for k, v in variables.items():
                     value = value.replace('${%s}' % k, ' '.join(v))
+                    value = value.replace('$%s' % k, ' '.join(v))
             try:
                 unique_name, url = value.split('::', 1)
             except ValueError:
                 url = value
             if url.startswith('git+'):
                 yield 'Repository', sanitize_vcs_url(url)
+        if key == '_gitroot':
+            yield 'Repository', sanitize_vcs_url(value[0])
 
 
 def guess_from_launchpad(package, distribution=None, suite=None):
@@ -1131,7 +1136,12 @@ def guess_from_launchpad(package, distribution=None, suite=None):
                 if e.status != 404:
                     raise
                 if project_data['official_codehosting']:
-                    branch_data = _load_json_url(branch_link)
+                    try:
+                        branch_data = _load_json_url(branch_link)
+                    except urllib.error.HTTPError as e:
+                        if e.status != 404:
+                            raise
+                        branch_data = None
                     if branch_data:
                         yield 'Archive', 'launchpad'
                         yield 'Repository', branch_data['bzr_identity']
