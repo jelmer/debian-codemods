@@ -67,7 +67,10 @@ try:
 except (FileNotFoundError, NotMachineReadableError):
     pass
 
-print('Set fields %s in debian/copyright.' % ', '.join(fields))
+if len(fields) == 1:
+    print('Set field %s in debian/copyright.' % ', '.join(fields))
+else:
+    print('Set fields %s in debian/copyright.' % ', '.join(fields))
 if achieved_certainty:
     print('Certainty: %s' %
           min(achieved_certainty, key=certainty_to_confidence))

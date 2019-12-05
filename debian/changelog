@@ -1,3 +1,10 @@
+lintian-brush (0.45) UNRELEASED; urgency=medium
+
+  * Improve plural vs singular in commit messages and changelog
+    messages.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Dec 2019 22:21:34 +0000
+
 lintian-brush (0.44) unstable; urgency=medium
 
   * Cope with continuations at the end of debian/rules files.

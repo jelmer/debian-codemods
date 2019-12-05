@@ -30,9 +30,11 @@ update_deb822(
     paragraph_cb=drop_deprecated_feature, path='debian/tests/control')
 
 
-print('Drop deprecated restrictions %s. See '
+print('Drop deprecated restriction%s %s. See '
       'https://salsa.debian.org/ci-team/autopkgtest/tree/'
-      'master/doc/README.package-tests.rst' % ', ' .join(removed_restrictions))
+      'master/doc/README.package-tests.rst' % (
+       's' if len(removed_restrictions) > 1 else '',
+       ', ' .join(removed_restrictions)))
 print('Fixed-Lintian-Tags: obsolete-runtime-tests-restriction')
 if 'needs-recommends' in removed_restrictions:
     # This is Certainty: possible, since the package may actually rely on the

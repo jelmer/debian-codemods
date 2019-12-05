@@ -1,2 +1,2 @@
-Set Multi-Arch: foreign on packages .
+Set Multi-Arch: foreign on package .
 Fixed-Lintian-Tags: font-packge-not-multi-arch-foreign

@@ -24,6 +24,6 @@ update_control(
     source_package_cb=read_source_package,
     binary_package_cb=drop_library_priority)
 
-print('Set priority for library packages %s to optional.' %
-      ', '.join(changed))
+print('Set priority for library package%s %s to optional.' % (
+      's' if len(changed) > 1 else '', ', '.join(changed)))
 print('Fixed-Lintian-Tags: excessive-priority-for-library-package')

@@ -29,6 +29,7 @@ for patch in os.listdir('debian/patches'):
     os.unlink(path)
 
 
-print("Remove patches %s that are missing from debian/patches/series." %
-      ', '.join(sorted(removed)))
+print("Remove patch%s %s that %s missing from debian/patches/series." %
+      ('es' if len(removed) > 1 else '', ', '.join(sorted(removed)),
+       'is' if len(removed) == 1 else 'are'))
 print("Fixed-Lintian-Tags: patch-file-present-but-not-mentioned-in-series")

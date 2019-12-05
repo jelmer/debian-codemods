@@ -19,5 +19,6 @@ def set_multiarch_foreign(binary):
 
 update_control(binary_package_cb=set_multiarch_foreign)
 
-print('Set Multi-Arch: foreign on packages %s.' % ', '.join(updated_packages))
+print('Set Multi-Arch: foreign on package%s %s.' % (
+    's' if len(updated_packages) > 1 else '', ', '.join(updated_packages)))
 print("Fixed-Lintian-Tags: font-packge-not-multi-arch-foreign")

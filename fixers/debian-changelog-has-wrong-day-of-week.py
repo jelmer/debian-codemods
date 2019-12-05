@@ -22,7 +22,10 @@ with ChangelogUpdater() as updater:
             block.date = newdate
             versions.append(block.version)
 
-
-print('Fix day-of-week for changelog entries %s.'
-      % ', '.join([str(v) for v in versions]))
+if len(versions) == 1:
+    print('Fix day-of-week for changelog entry %s.'
+          % ', '.join([str(v) for v in versions]))
+else:
+    print('Fix day-of-week for changelog entries %s.'
+          % ', '.join([str(v) for v in versions]))
 print('Fixed-Lintian-Tags: debian-changelog-has-wrong-day-of-week')

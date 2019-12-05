@@ -35,5 +35,6 @@ if removed_fields:
         if os.listdir('debian/upstream') == []:
             os.rmdir('debian/upstream')
 
-print('Remove obsolete fields %s from debian/upstream/metadata.' %
-      ', '.join(sorted(removed_fields)))
+print('Remove obsolete field%s %s from debian/upstream/metadata.' %
+      ('s' if len(removed_fields) > 1 else '',
+       ', '.join(sorted(removed_fields))))
