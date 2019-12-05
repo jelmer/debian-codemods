@@ -1,4 +1,4 @@
-lintian-brush (0.44) UNRELEASED; urgency=medium
+lintian-brush (0.44) unstable; urgency=medium
 
   * Cope with continuations at the end of debian/rules files.
   * Add fixer for debian-rules-not-executable.
@@ -9,7 +9,7 @@ lintian-brush (0.44) UNRELEASED; urgency=medium
   * Look for [dch] section in gbp.conf when guessing whether to update
     changelog.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 02 Dec 2019 14:37:26 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Dec 2019 03:22:22 +0000
 
 lintian-brush (0.43) unstable; urgency=medium
 
