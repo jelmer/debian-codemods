@@ -608,8 +608,9 @@ def guess_from_configure(path, trust_package=False):
                 yield UpstreamDatum(
                     'Name', value.decode(), 'certain', './configure')
             elif key == b'PACKAGE_BUGREPORT':
-                yield UpstreamDatum(
-                    'Bug-Submit', value.decode(), 'certain', './configure')
+                if value not in (b'BUG-REPORT-ADDRESS', ):
+                    yield UpstreamDatum(
+                        'Bug-Submit', value.decode(), 'certain', './configure')
             elif key == b'PACKAGE_URL':
                 yield UpstreamDatum(
                     'Homepage', value.decode(), 'certain', './configure')
