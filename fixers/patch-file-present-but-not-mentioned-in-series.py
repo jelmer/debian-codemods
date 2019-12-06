@@ -5,7 +5,7 @@ import sys
 
 try:
     with open('debian/patches/series', 'r') as f:
-        patches = set([l.strip() for l in f.readlines()])
+        patches = set([l.split()[0] for l in f.readlines()])
 except FileNotFoundError:
     sys.exit(0)
 
