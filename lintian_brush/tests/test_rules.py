@@ -45,7 +45,7 @@ all:
 all:
 ifeq (foo, bar)
 \ttest
-endif
+  endif
 """)
         self.assertEqual(1, len(mf.contents))
 

@@ -96,6 +96,7 @@ class Rule(object):
 
 
 def is_conditional(line):
+    line = line.lstrip(b' ')
     return (
         line.startswith(b'ifeq') or
         line.startswith(b'ifneq') or

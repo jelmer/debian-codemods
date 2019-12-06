@@ -2,6 +2,7 @@ lintian-brush (0.45) UNRELEASED; urgency=medium
 
   * Improve plural vs singular in commit messages and changelog
     messages.
+  * Support whitespace before conditionals in makefiles.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Dec 2019 22:21:34 +0000
 
