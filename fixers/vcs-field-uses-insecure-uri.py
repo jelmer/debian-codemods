@@ -5,7 +5,7 @@ import os
 from lintian_brush.control import update_control
 from lintian_brush.vcs import find_secure_vcs_url
 
-updated = []
+updated = set()
 net_access = os.environ.get('NET_ACCESS', 'disallow') == 'allow'
 lp_note = False
 
@@ -25,11 +25,16 @@ def fix_insecure_vcs_uri(control):
             # The URL was already secure
             continue
         control[key] = newvalue
+        updated.add(key)
 
 
 update_control(source_package_cb=fix_insecure_vcs_uri)
 
-print("Use secure URI in Vcs control header.")
+if len(updated) == 1:
+    print("Use secure URI in Vcs control header %s." % list(updated)[0])
+else:
+    print("Use secure URI in Vcs control headers: %s." %
+          ', '.join(sorted(updated)))
 if lp_note:
     print("")
     print("The lp: prefix gets expanded to http://code.launchpad.net/ for "
