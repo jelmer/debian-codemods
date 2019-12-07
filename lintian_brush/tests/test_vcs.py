@@ -96,6 +96,11 @@ class FixUpGitUrlTests(TestCase):
             'https://gitlab.freedesktop.org/xorg/xserver',
             fixup_broken_git_url('git://anongit.freedesktop.org/xorg/xserver'))
 
+    def test_gnome(self):
+        self.assertEqual(
+            'https://gitlab.gnome.org/GNOME/alacarte',
+            fixup_broken_git_url('https://git.gnome.org/browse/alacarte'))
+
 
 class SanitizeUrlTests(TestCase):
 

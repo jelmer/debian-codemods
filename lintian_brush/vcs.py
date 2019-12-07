@@ -154,9 +154,13 @@ def fix_branch_argument(parsed, branch):
 
 def fix_git_gnome_org_url(parsed, branch):
     if parsed.netloc == 'git.gnome.org':
+        if parsed.path.startswith('/browse'):
+            path = parsed.path[7:]
+        else:
+            path = parsed.path
         parsed = parsed._replace(
             netloc='gitlab.gnome.org', scheme='https',
-            path='/GNOME' + parsed.path)
+            path='/GNOME' + path)
         return parsed, branch
     return None, None
 
