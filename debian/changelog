@@ -11,6 +11,8 @@ lintian-brush (0.45) UNRELEASED; urgency=medium
   * Don't update changelog if there are only gbp-dch entries in the
     current changelog entry. Closes: #946339
   * Fixup outdated freedesktop.org repository URLs.
+  * Use canonical and secure repository URIs in
+    debian/upstream/metadata.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Dec 2019 22:21:34 +0000
 
