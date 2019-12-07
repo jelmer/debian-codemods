@@ -145,7 +145,7 @@ class Makefile(object):
         for line in joinedlines:
             if line.startswith(b'\t') and rule:
                 rule.append_line(line)
-            elif is_conditional(line) or line.startswith(b'#'):
+            elif is_conditional(line) or line.lstrip(b' ').startswith(b'#'):
                 if rule:
                     rule.append_line(line)
                 else:
