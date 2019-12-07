@@ -92,6 +92,11 @@ class FixUpGitUrlTests(TestCase):
             'https://github.com/blah/blah -b master',
             fixup_broken_git_url('https://github.com/blah/blah/tree/master'))
 
+    def test_freedesktop(self):
+        self.assertEqual(
+            'https://gitlab.freedesktop.org/xorg/xserver',
+            fixup_broken_git_url('git://anongit.freedesktop.org/xorg/xserver'))
+
 
 class SanitizeUrlTests(TestCase):
 

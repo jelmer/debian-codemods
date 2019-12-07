@@ -158,6 +158,14 @@ def fix_git_gnome_org_url(parsed, branch):
     return None, None
 
 
+def fix_freedesktop_org_url(parsed, branch):
+    if parsed.netloc == 'anongit.freedesktop.org':
+        parsed = parsed._replace(
+            netloc='gitlab.freedesktop.org', scheme='https')
+        return parsed, branch
+    return None, None
+
+
 def fixup_broken_git_url(url):
     """Attempt to fix up broken Git URLs.
 
@@ -169,7 +177,8 @@ def fixup_broken_git_url(url):
     changed = False
     for fn in [fix_path_in_port, fix_salsa_scheme, fix_salsa_cgit_url,
                fix_salsa_tree_in_url, fix_double_slash, fix_extra_colon,
-               drop_git_username, fix_branch_argument, fix_git_gnome_org_url]:
+               drop_git_username, fix_branch_argument, fix_git_gnome_org_url,
+               fix_freedesktop_org_url]:
         newparsed, newbranch = fn(parsed, branch)
         if newparsed:
             changed = True
