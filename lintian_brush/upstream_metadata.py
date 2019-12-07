@@ -1065,6 +1065,24 @@ def probe_upstream_branch_url(url, version=None):
         breezy.ui.ui_factory = old_ui
 
 
+def verify_screenshots(urls):
+    headers = {'User-Agent': USER_AGENT}
+    for url in urls:
+        try:
+            response = urlopen(
+                Request(url, headers=headers, method='HEAD'),
+                timeout=DEFAULT_URLLIB_TIMEOUT)
+        except urllib.error.HTTPError as e:
+            if e.status == 404:
+                yield url, False
+            else:
+                yield url, None
+        else:
+            assert response is not None
+            # TODO(jelmer): Check content-type?
+            yield url, True
+
+
 def check_upstream_metadata(upstream_metadata, version=None):
     """Check upstream metadata.
 
@@ -1086,6 +1104,19 @@ def check_upstream_metadata(upstream_metadata, version=None):
     if bug_database and bug_database.certainty == 'likely':
         if verify_bug_database_url(bug_database.value):
             bug_database.certainty = 'certain'
+    screenshots = upstream_metadata.get('Screenshots')
+    if screenshots and screenshots.certainty == 'likely':
+        newvalue = []
+        screenshots.certainty = 'certain'
+        for i, (url, status) in enumerate(verify_screenshots(
+                screenshots.value)):
+            if status is True:
+                newvalue.append(url)
+            elif status is False:
+                pass
+            else:
+                screenshots.certainty = 'likely'
+        screenshots.value = newvalue
 
 
 def parse_pkgbuild_variables(f):
