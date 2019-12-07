@@ -881,6 +881,73 @@ def verify_bug_database_url(url):
     return None
 
 
+def _extrapolate_repository_from_homepage(upstream_metadata, net_access):
+    repo = guess_repo_from_url(
+            upstream_metadata['Homepage'].value, net_access=net_access)
+    if repo:
+        return UpstreamDatum('Repository', repo, 'likely')
+
+
+def _extrapolate_repository_from_bug_db(upstream_metadata, net_access):
+    repo = guess_repo_from_url(
+        upstream_metadata['Bug-Database'].value, net_access=net_access)
+    if repo:
+        return UpstreamDatum('Repository', repo, 'likely')
+
+
+def _extrapolate_repository_browse_from_repository(
+        upstream_metadata, net_access):
+    browse_url = browse_url_from_repo_url(
+            upstream_metadata['Repository'].value)
+    if browse_url:
+        return UpstreamDatum(
+            'Repository-Browse', browse_url,
+            upstream_metadata['Repository'].certainty)
+
+
+def _extrapolate_repository_from_repository_browse(
+        upstream_metadata, net_access):
+    repo = guess_repo_from_url(
+        upstream_metadata['Repository-Browse'].value,
+        net_access=net_access)
+    if repo:
+        return UpstreamDatum(
+            'Repository', repo,
+            upstream_metadata['Repository-Browse'].certainty)
+
+
+def _extrapolate_bug_database_from_repository(
+        upstream_metadata, net_access):
+    bug_db_url = guess_bug_database_url_from_repo_url(
+        upstream_metadata['Repository'].value)
+    bug_db_certainty = 'likely'
+    if bug_db_url:
+        return UpstreamDatum('Bug-Database', bug_db_url, bug_db_certainty)
+
+
+def _extrapolate_bug_submit_from_bug_db(
+        upstream_metadata, net_access):
+    bug_submit_url = bug_submit_url_from_bug_database_url(
+        upstream_metadata['Bug-Database'].value)
+    if bug_submit_url:
+        return UpstreamDatum(
+            'Bug-Submit', bug_submit_url,
+            upstream_metadata['Bug-Database'].certainty)
+
+
+EXTRAPOLATE_FNS = [
+    ('Homepage', 'Repository', _extrapolate_repository_from_homepage),
+    ('Bug-Database', 'Repository', _extrapolate_repository_from_bug_db),
+    ('Repository', 'Repository-Browse',
+     _extrapolate_repository_browse_from_repository),
+    ('Repository-Browse', 'Repository',
+     _extrapolate_repository_from_repository_browse),
+    ('Repository', 'Bug-Database',
+     _extrapolate_bug_database_from_repository),
+    ('Bug-Database', 'Bug-Submit', _extrapolate_bug_submit_from_bug_db),
+]
+
+
 def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
                              net_access=False,
                              consult_external_directory=False):
@@ -912,54 +979,18 @@ def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
             pass
         else:
             extend_from_lp(upstream_metadata, minimum_certainty, package)
-    if ('Homepage' in upstream_metadata and
-            'Repository' not in upstream_metadata):
-        repo = guess_repo_from_url(
-                upstream_metadata['Homepage'].value, net_access=net_access)
-        if repo:
-            upstream_metadata['Repository'] = UpstreamDatum(
-                'Repository', repo, 'likely')
-    if ('Bug-Database' in upstream_metadata and
-            'Repository' not in upstream_metadata):
-        repo = guess_repo_from_url(
-            upstream_metadata['Bug-Database'].value, net_access=net_access)
-        if repo:
-            upstream_metadata['Repository'] = UpstreamDatum(
-                'Repository', repo, 'likely')
-    if ('Repository' in upstream_metadata and
-            'Repository-Browse' not in upstream_metadata):
-        browse_url = browse_url_from_repo_url(
-                upstream_metadata['Repository'].value)
-        if browse_url:
-            upstream_metadata['Repository-Browse'] = UpstreamDatum(
-                'Repository-Browse', browse_url,
-                upstream_metadata['Repository'].certainty)
-    if ('Repository-Browse' in upstream_metadata and
-            'Repository' not in upstream_metadata):
-        repo = guess_repo_from_url(
-            upstream_metadata['Repository-Browse'].value,
-            net_access=net_access)
-        if repo:
-            upstream_metadata['Repository'] = UpstreamDatum(
-                'Repository', repo,
-                upstream_metadata['Repository-Browse'].certainty)
-    if ('Repository' in upstream_metadata and
-            'Bug-Database' not in upstream_metadata):
-        bug_db_url = guess_bug_database_url_from_repo_url(
-            upstream_metadata['Repository'].value)
-        bug_db_certainty = 'likely'
-        if bug_db_url and certainty_sufficient(
-                bug_db_certainty, minimum_certainty):
-            upstream_metadata['Bug-Database'] = UpstreamDatum(
-                'Bug-Database', bug_db_url, bug_db_certainty)
-    if ('Bug-Database' in upstream_metadata and
-            'Bug-Submit' not in upstream_metadata):
-        bug_submit_url = bug_submit_url_from_bug_database_url(
-            upstream_metadata['Bug-Database'].value)
-        if bug_submit_url:
-            upstream_metadata['Bug-Submit'] = UpstreamDatum(
-                'Bug-Submit', bug_submit_url,
-                upstream_metadata['Bug-Database'].certainty)
+    changed = True
+    while changed:
+        changed = False
+        for from_field, to_field, fn in EXTRAPOLATE_FNS:
+            if (to_field in upstream_metadata or
+                    from_field not in upstream_metadata):
+                continue
+            result = fn(upstream_metadata, net_access)
+            if result and certainty_sufficient(
+                    result.certainty, minimum_certainty):
+                upstream_metadata[to_field] = result
+                changed = True
 
 
 def probe_upstream_branch_url(url, version=None):
