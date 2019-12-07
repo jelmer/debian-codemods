@@ -947,9 +947,8 @@ def _extrapolate_bug_database_from_repository(
         upstream_metadata, net_access):
     bug_db_url = guess_bug_database_url_from_repo_url(
         upstream_metadata['Repository'].value)
-    bug_db_certainty = 'likely'
     if bug_db_url:
-        return UpstreamDatum('Bug-Database', bug_db_url, bug_db_certainty)
+        return UpstreamDatum('Bug-Database', bug_db_url, 'likely')
 
 
 def _extrapolate_bug_submit_from_bug_db(
@@ -974,7 +973,7 @@ def _copy_bug_db_field(upstream_metadata, net_access):
 
 EXTRAPOLATE_FNS = [
     ('Homepage', 'Repository', _extrapolate_repository_from_homepage),
-    ('Bugs-Databse', 'Bug-Database', _copy_bug_db_field),
+    ('Bugs-Database', 'Bug-Database', _copy_bug_db_field),
     ('Bug-Database', 'Repository', _extrapolate_repository_from_bug_db),
     ('Repository', 'Repository-Browse',
      _extrapolate_repository_browse_from_repository),
