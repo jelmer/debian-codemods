@@ -158,7 +158,7 @@ Lintian-Tags: uses-debhelper-compat-file
 Fix-Script: patch-file-present-but-not-mentioned-in-series.py
 Lintian-Tags: patch-file-present-but-not-mentioned-in-series
 
-Fix-Script: possible-missing-colon-in-closes.sh
+Fix-Script: possible-missing-colon-in-closes.py
 Lintian-Tags: possible-missing-colon-in-closes
 
 Fix-Script: priority-extra-is-replaced-by-priority-optional.py
