@@ -39,7 +39,7 @@ from lintian_brush.vcs import (
     browse_url_from_repo_url,
     plausible_url as plausible_vcs_url,
     sanitize_url as sanitize_vcs_url,
-    KNOWN_GITLAB_SITES,
+    is_gitlab_site,
     )
 from lintian_brush.watch import parse_watch_file
 from urllib.request import urlopen, Request
@@ -173,7 +173,7 @@ def guess_repo_from_url(url, net_access=False):
             return 'https://git.savannah.gnu.org/git/%s.git' % (
                 path_elements[1])
         return None
-    if parsed_url.netloc in KNOWN_GITLAB_SITES:
+    if is_gitlab_site(parsed_url.netloc, net_access):
         if parsed_url.path.strip('/').count('/') < 1:
             return None
         parts = parsed_url.path.split('/')
@@ -882,7 +882,7 @@ def bug_submit_url_from_bug_database_url(url):
         if len(path_elements) == 1:
             return urlunparse(
                 parsed_url._replace(path=parsed_url.path+'/+filebug'))
-    if parsed_url.netloc in KNOWN_GITLAB_SITES:
+    if is_gitlab_site(parsed_url.netloc):
         if len(path_elements) < 2:
             return None
         if path_elements[-1] != 'issues':
