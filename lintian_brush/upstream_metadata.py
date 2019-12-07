@@ -325,7 +325,7 @@ def guess_from_package_json(path, trust_package):
         else:
             url = package['bugs']
         if url:
-            yield UpstreamDatum('Bugs-Database', url, 'certain')
+            yield UpstreamDatum('Bug-Database', url, 'certain')
 
 
 def guess_from_package_xml(path, trust_package):
@@ -935,8 +935,19 @@ def _extrapolate_bug_submit_from_bug_db(
             upstream_metadata['Bug-Database'].certainty)
 
 
+def _copy_bug_db_field(upstream_metadata, net_access):
+    ret = UpstreamDatum(
+        'Bug-Database',
+        upstream_metadata['Bugs-Database'].value,
+        upstream_metadata['Bugs-Database'].certainty,
+        upstream_metadata['Bugs-Database'].origin)
+    del upstream_metadata['Bugs-Database']
+    return ret
+
+
 EXTRAPOLATE_FNS = [
     ('Homepage', 'Repository', _extrapolate_repository_from_homepage),
+    ('Bugs-Databse', 'Bug-Database', _copy_bug_db_field),
     ('Bug-Database', 'Repository', _extrapolate_repository_from_bug_db),
     ('Repository', 'Repository-Browse',
      _extrapolate_repository_browse_from_repository),
