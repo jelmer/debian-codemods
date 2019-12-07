@@ -79,7 +79,7 @@ for key, datum in list(upstream_metadata.items()):
         del upstream_metadata[key]
 
     # Drop everything that is below our minimum certainty
-    if not certainty_sufficient(datum.certainty, minimum_certainty):
+    elif not certainty_sufficient(datum.certainty, minimum_certainty):
         del upstream_metadata[key]
 
 
