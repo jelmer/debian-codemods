@@ -43,7 +43,7 @@ upstream_metadata = {
 
 minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
 trust_package = os.environ.get('TRUST_PACKAGE') == 'true'
-net_access = os.environ.get('NET_ACCESS', 'allow') == 'allow'
+net_access = os.environ.get('NET_ACCESS', 'disallow') == 'allow'
 
 # Do some guessing based on what's in the package
 update_from_guesses(
