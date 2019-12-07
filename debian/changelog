@@ -13,6 +13,8 @@ lintian-brush (0.45) UNRELEASED; urgency=medium
   * Fixup outdated freedesktop.org repository URLs.
   * Use canonical and secure repository URIs in
     debian/upstream/metadata.
+  * Downgrade certainty of e-mail addresses in configure-reported bug
+    submit addresses.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Dec 2019 22:21:34 +0000
 
