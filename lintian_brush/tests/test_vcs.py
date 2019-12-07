@@ -101,12 +101,12 @@ class SanitizeUrlTests(TestCase):
 
     def test_simple(self):
         self.assertEqual(
-            'http://github.com/jelmer/blah.git',
+            'https://github.com/jelmer/blah.git',
             sanitize_url('http://github.com/jelmer/blah'))
 
     def test_git_http(self):
         self.assertEqual(
-            'http://github.com/jelmer/blah.git',
+            'https://github.com/jelmer/blah.git',
             sanitize_url('git+http://github.com/jelmer/blah'))
         self.assertEqual(
             'https://github.com/jelmer/blah.git',

@@ -205,7 +205,7 @@ Lintian-Tags: debian-watch-file-is-missing
 Fix-Script: useless-autoreconf-build-depends.py
 Lintian-Tags: useless-autoreconf-build-depends
 
-Fix-Script: vcs-field-uses-insecure-uri.sh
+Fix-Script: vcs-field-uses-insecure-uri.py
 Lintian-Tags: vcs-field-uses-insecure-uri
 
 Fix-Script: vcs-field-uses-not-recommended-uri-format.py

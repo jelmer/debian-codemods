@@ -80,7 +80,7 @@ class GuessFromPackageJsonTests(TestCaseWithTransport):
              UpstreamDatum(
                  'Homepage', 'http://www.jacklmoore.com/autosize', 'certain'),
              UpstreamDatum(
-                 'Repository', 'http://github.com/jackmoore/autosize.git',
+                 'Repository', 'https://github.com/jackmoore/autosize.git',
                  'certain')],
             list(guess_from_package_json('package.json', False)))
 

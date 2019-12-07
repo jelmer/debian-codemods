@@ -69,6 +69,7 @@ def sanitize_url(url):
         url = url[4:]
     url = fixup_broken_git_url(url)
     url = canonical_vcs_git_url(url)
+    url = find_secure_vcs_url(url, net_access=False) or url
     return url
 
 
@@ -287,3 +288,56 @@ def canonicalize_vcs_url(vcs_type, url):
         return canonicalize_vcs_fns[vcs_type](url)
     except KeyError:
         return url
+
+
+def try_open_branch(url, branch_name=None):
+    import breezy.ui
+    from breezy.controldir import ControlDir
+    old_ui = breezy.ui.ui_factory
+    breezy.ui.ui_factory = breezy.ui.SilentUIFactory()
+    try:
+        c = ControlDir.open(url)
+        b = c.open_branch(name=branch_name)
+        b.last_revision()
+        return b
+    except Exception:
+        # TODO(jelmer): Catch more specific exceptions?
+        return None
+    finally:
+        breezy.ui.ui_factory = old_ui
+
+
+SECURE_SCHEMES = ['https', 'git+ssh', 'bzr+ssh', 'hg+ss', 'ssh', 'svn+ssh']
+
+
+def find_secure_vcs_url(url, net_access=True):
+    (repo_url, branch, subpath) = split_vcs_url(url)
+    parsed_repo_url = urlparse(repo_url)
+    if parsed_repo_url.scheme in SECURE_SCHEMES:
+        return url
+
+    # Sites we know to be available over https
+    if parsed_repo_url.hostname in (KNOWN_GITLAB_SITES + [
+            'github.com', 'git.launchpad.net', 'bazaar.launchpad.net',
+            'code.launchpad.net']):
+        parsed_repo_url = parsed_repo_url._replace(scheme='https')
+
+    if parsed_repo_url.scheme == 'lp':
+        parsed_repo_url = parsed_repo_url._replace(
+            scheme='https', netloc='code.launchpad.net')
+
+    if net_access:
+        secure_repo_url = parsed_repo_url._replace(scheme='https')
+        insecure_branch = try_open_branch(repo_url, branch)
+        secure_branch = try_open_branch(urlunparse(parsed_repo_url), branch)
+        if secure_branch:
+            if (not insecure_branch or
+                    secure_branch.last_revision() ==
+                    insecure_branch.last_revision()):
+                parsed_repo_url = secure_repo_url
+
+    if parsed_repo_url.scheme in SECURE_SCHEMES:
+        return unsplit_vcs_url(urlunparse(parsed_repo_url), branch, subpath)
+
+    # Can't find a secure URI :(
+    return None
