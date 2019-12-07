@@ -87,7 +87,7 @@ def fix_path_in_port(parsed, branch):
     if ':' not in parsed.netloc or parsed.netloc.endswith(']'):
         return None, None
     host, port = parsed.netloc.rsplit(':', 1)
-    if host.split('@')[-1] not in ('salsa.debian.org', 'github.com'):
+    if host.split('@')[-1] not in (KNOWN_GITLAB_SITES + ['github.com']):
         return None, None
     if not port or port.isdigit():
         return None, None
@@ -96,8 +96,8 @@ def fix_path_in_port(parsed, branch):
         netloc=host), branch
 
 
-def fix_salsa_scheme(parsed, branch):
-    if parsed.hostname == 'salsa.debian.org':
+def fix_gitlab_scheme(parsed, branch):
+    if parsed.hostname in KNOWN_GITLAB_SITES:
         return parsed._replace(scheme='https'), branch
     return None, None
 
@@ -109,8 +109,8 @@ def fix_salsa_cgit_url(parsed, branch):
     return None, None
 
 
-def fix_salsa_tree_in_url(parsed, branch):
-    if parsed.hostname == 'salsa.debian.org':
+def fix_gitlab_tree_in_url(parsed, branch):
+    if parsed.hostname in KNOWN_GITLAB_SITES:
         parts = parsed.path.split('/')
         if len(parts) >= 5 and parts[3] == 'tree':
             branch = '/'.join(parts[4:])
@@ -175,8 +175,8 @@ def fixup_broken_git_url(url):
 
     parsed = urlparse(repo_url)
     changed = False
-    for fn in [fix_path_in_port, fix_salsa_scheme, fix_salsa_cgit_url,
-               fix_salsa_tree_in_url, fix_double_slash, fix_extra_colon,
+    for fn in [fix_path_in_port, fix_gitlab_scheme, fix_salsa_cgit_url,
+               fix_gitlab_tree_in_url, fix_double_slash, fix_extra_colon,
                drop_git_username, fix_branch_argument, fix_git_gnome_org_url,
                fix_freedesktop_org_url]:
         newparsed, newbranch = fn(parsed, branch)
@@ -275,7 +275,7 @@ def canonicalize_vcs_browser_url(url):
 def canonical_vcs_git_url(url):
     (repo_url, branch, subpath) = split_vcs_url(url)
     parsed_url = urlparse(repo_url)
-    if parsed_url.netloc in ('salsa.debian.org', 'github.com'):
+    if parsed_url.netloc in (KNOWN_GITLAB_SITES + ['github.com']):
         if not parsed_url.path.rstrip('/').endswith('.git'):
             parsed_url = parsed_url._replace(
                 path=parsed_url.path.rstrip('/') + '.git')
