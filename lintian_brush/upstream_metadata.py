@@ -812,9 +812,10 @@ def extend_from_external_guesser(
 def extend_from_sf(upstream_metadata, sf_project):
     # The set of fields that sf can possibly provide:
     sf_fields = ['Homepage', 'Screenshots', 'Name']
+    sf_certainty = upstream_metadata['Archive'].certainty
 
     return extend_from_external_guesser(
-        upstream_metadata, upstream_metadata['Archive'].certainty, sf_fields,
+        upstream_metadata, sf_certainty, sf_fields,
         guess_from_sf(sf_project))
 
 
@@ -824,7 +825,7 @@ def extend_from_lp(upstream_metadata, minimum_certainty, package,
     lp_fields = ['Homepage', 'Repository', 'Name']
     lp_certainty = 'possible'
 
-    if minimum_certainty and minimum_certainty != 'possible':
+    if certainty_sufficient(lp_certainty, minimum_certainty):
         # Don't bother talking to launchpad if we're not
         # speculating.
         return
@@ -832,6 +833,19 @@ def extend_from_lp(upstream_metadata, minimum_certainty, package,
     extend_from_external_guesser(
         upstream_metadata, lp_certainty, lp_fields, guess_from_launchpad(
              package, distribution=distribution, suite=suite))
+
+
+def extend_from_aur(upstream_metadata, minimum_certainty, package):
+    # The set of fields that AUR can possibly provide:
+    aur_fields = ['Homepage', 'Repository']
+    aur_certainty = 'possible'
+
+    if certainty_sufficient(aur_certainty, minimum_certainty):
+        # Don't bother talking to AUR if we're not speculating.
+        return
+
+    extend_from_external_guesser(
+        upstream_metadata, aur_certainty, aur_fields, guess_from_aur(package))
 
 
 def extract_sf_project_name(url):
@@ -1000,6 +1014,7 @@ def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
             pass
         else:
             extend_from_lp(upstream_metadata, minimum_certainty, package)
+        extend_from_aur(upstream_metadata, minimum_certainty, package)
     changed = True
     while changed:
         changed = False
