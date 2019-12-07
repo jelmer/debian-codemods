@@ -8,6 +8,8 @@ lintian-brush (0.45) UNRELEASED; urgency=medium
     controversial.
   * Double-check bug numbers when adding missing colons in closes:
     stanzas. Closes: #946338
+  * Don't update changelog if there are only gbp-dch entries in the
+    current changelog entry. Closes: #946339
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Dec 2019 22:21:34 +0000
 

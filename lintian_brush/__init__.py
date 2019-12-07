@@ -577,33 +577,59 @@ def add_changelog_entry(tree, path, summary):
             warning('%s', line)
 
 
-def guess_update_changelog(tree, path=''):
+def gbp_conf_has_dch_section(tree, path=''):
+    try:
+        gbp_conf_path = os.path.join(path, 'debian/gbp.conf')
+        gbp_conf_text = tree.get_file_text(gbp_conf_path)
+    except NoSuchFile:
+        return False
+    try:
+        import configparser
+    except ImportError:
+        return None
+    else:
+        parser = configparser.ConfigParser(defaults={}, strict=False)
+        parser.read_string(
+            gbp_conf_text.decode('utf-8', errors='replace'), gbp_conf_path)
+        return parser.has_section('dch')
+
+
+def all_sha_prefixed(cl):
+    sha_prefixed = 0
+    for change in cl.changes():
+        if not change.startswith('  * '):
+            continue
+        if re.match(r'  \* \[[0-9a-f]{7}\] ', change):
+            sha_prefixed += 1
+        else:
+            return False
+    return (sha_prefixed > 0)
+
+
+def guess_update_changelog(tree, path='', cl=None):
     """Guess whether the changelog should be updated.
 
     Args:
       tree: Tree to edit
       path: Path to packaging in tree
     """
-    try:
-        gbp_conf_path = os.path.join(path, 'debian/gbp.conf')
-        gbp_conf_text = tree.get_file_text(gbp_conf_path)
-    except NoSuchFile:
-        pass
-    else:
-        try:
-            import configparser
-        except ImportError:
-            pass
-        else:
-            parser = configparser.ConfigParser(defaults={}, strict=False)
-            parser.read_string(
-                gbp_conf_text.decode('utf-8', errors='replace'), gbp_conf_path)
-            if parser.has_section('dch'):
-                note('Assuming changelog does not need to be updated, '
-                     'since there is a [dch] section in gbp.conf.')
-                return False
+    if gbp_conf_has_dch_section(tree, path):
+        note('Assuming changelog does not need to be updated, '
+             'since there is a [dch] section in gbp.conf.')
+        return False
+
     # TODO(jelmes): Do something more clever here, perhaps looking at history
     # of the changelog file?
+    changelog_path = os.path.join(path, 'debian/changelog')
+    if cl is None:
+        try:
+            with tree.get_file(changelog_path) as f:
+                cl = Changelog(f, max_blocks=1)
+        except NoSuchFile:
+            cl = None
+
+    if cl and all_sha_prefixed(cl[0]):
+        return False
 
     return True
 
@@ -704,7 +730,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
 
     summary = result.description.splitlines()[0]
     if update_changelog is None:
-        update_changelog = guess_update_changelog(local_tree, subpath)
+        update_changelog = guess_update_changelog(local_tree, subpath, cl)
 
     if update_changelog and only_changes_last_changelog_block(
             local_tree, changelog_path):

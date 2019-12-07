@@ -936,3 +936,23 @@ class GuessUpdateChangelogTests(TestCaseWithTransport):
 """)])
         tree.add(['debian', 'debian/gbp.conf'])
         self.assertFalse(guess_update_changelog(tree))
+
+    def test_changelog_sha_prefixed(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+blah (0.20.1) unstable; urgency=medium
+
+  [ Somebody ]
+  * [ebb7c31] do a thing
+  * [629746a] do another thing that actually requires us to wrap lines
+    and then
+
+  [ Somebody Else ]
+  * [b02b435] do another thing
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+""")])
+        tree.add(['debian', 'debian/changelog'])
+        self.assertFalse(guess_update_changelog(tree))
