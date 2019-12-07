@@ -733,7 +733,7 @@ def guess_upstream_metadata_items(path, trust_package=False,
 
 def guess_upstream_metadata(
         path, trust_package=False, net_access=False,
-        consult_external_directory=False):
+        consult_external_directory=False, check=False):
     """Guess the upstream metadata dictionary.
 
     Args:
@@ -753,6 +753,9 @@ def guess_upstream_metadata(
     extend_upstream_metadata(
         upstream_metadata, path, net_access=net_access,
         consult_external_directory=consult_external_directory)
+
+    if check:
+        check_upstream_metadata(upstream_metadata)
 
     fix_upstream_metadata(upstream_metadata)
 
@@ -1184,6 +1187,7 @@ def guess_from_aur(package):
                 unique_name, url = value.split('::', 1)
             except ValueError:
                 url = value
+            url = url.replace('#branch=', ',branch=')
             if any([url.startswith(vcs+'+') for vcs in vcses]):
                 yield 'Repository', sanitize_vcs_url(url)
         if key == '_gitroot':
@@ -1297,6 +1301,9 @@ if __name__ == '__main__':
         help='Do not probe external services.',
         action='store_true', default=False)
     parser.add_argument(
+        '--check', action='store_true',
+        help='Check guessed metadata against external sources.')
+    parser.add_argument(
         '--consult-external-directory',
         action='store_true',
         help='Pull in external (not maintained by upstream) directory data')
@@ -1304,5 +1311,7 @@ if __name__ == '__main__':
 
     metadata = guess_upstream_metadata(
         args.path, args.trust, not args.disable_net_access,
-        consult_external_directory=args.consult_external_directory)
+        consult_external_directory=args.consult_external_directory,
+        check=args.check)
+
     sys.stdout.write(ruamel.yaml.round_trip_dump(metadata))
