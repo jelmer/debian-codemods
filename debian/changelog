@@ -6,6 +6,8 @@ lintian-brush (0.45) UNRELEASED; urgency=medium
   * Support options in debian/patches/series.
   * Drop the empty-debian-patches-series file, which has proved
     controversial.
+  * Double-check bug numbers when adding missing colons in closes:
+    stanzas. Closes: #946338
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Dec 2019 22:21:34 +0000
 
