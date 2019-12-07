@@ -17,6 +17,8 @@
 
 """Support for acessing the VCS Watch database."""
 
+from .udd import connect_udd_mirror
+
 
 class VcsWatchError(Exception):
     """Error from vcswatch."""
@@ -29,13 +31,7 @@ class VcsWatch(object):
         self._conn = None
 
     async def connect(self):
-        import asyncpg
-        self._conn = await asyncpg.connect(
-            database="udd",
-            user="udd-mirror",
-            password="udd-mirror",
-            port=5432,
-            host="udd-mirror.debian.net")
+        self._conn = connect_udd_mirror()
 
     async def get_package(self, name):
         """Get the VCS information for a package.
