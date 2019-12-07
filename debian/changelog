@@ -17,6 +17,8 @@ lintian-brush (0.45) UNRELEASED; urgency=medium
     submit addresses.
   * Fix reporting of fixed tag out-of-date-copyright-format-uri. Thanks,
     Mattia Rizzolo.
+  * When vcswatch only has an updated Vcs-Git URL but not a Vcs-Browser
+    field, automatically attempt to determine Vcs-Browser URL.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Dec 2019 22:21:34 +0000
 

@@ -108,6 +108,10 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
         else:
             if not is_on_obsolete_host(vcs_url):
                 print("Update Vcs-* headers from vcswatch.")
+                if is_on_obsolete_host(vcs_browser):
+                    vcs_browser = (
+                        determine_browser_url(vcs_type, vcs_url) or
+                        vcs_browser)
                 return (vcs_type, vcs_url, vcs_browser)
             sys.stderr.write(
                 'vcswatch URL %s is still on old infrastructure.' % vcs_url)
