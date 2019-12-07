@@ -15,6 +15,8 @@ lintian-brush (0.45) UNRELEASED; urgency=medium
     debian/upstream/metadata.
   * Downgrade certainty of e-mail addresses in configure-reported bug
     submit addresses.
+  * Fix reporting of fixed tag out-of-date-copyright-format-uri. Thanks,
+    Mattia Rizzolo.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Dec 2019 22:21:34 +0000
 
