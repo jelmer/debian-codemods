@@ -20,7 +20,6 @@
 __all__ = [
     'fixup_broken_git_url',
     'sanitize_url',
-    'extract_vcs_url_branch',
     'split_vcs_url',
     'determine_browser_url',
     ]
@@ -37,14 +36,6 @@ KNOWN_GITLAB_SITES = [
     'gitlab.gnome.org',
     'gitlab.freedesktop.org',
     ]
-
-
-def extract_vcs_url_branch(url):
-    # Deprecated, use split_vcs_url
-    (repo_url, branch, subpath) = split_vcs_url(url)
-    if subpath:
-        repo_url = '%s [%s]' % (repo_url, subpath)
-    return repo_url, branch
 
 
 def split_vcs_url(url):
@@ -173,7 +164,7 @@ def fixup_broken_git_url(url):
 
     A common misspelling is to add an extra ":" after the hostname
     """
-    repo_url, branch = extract_vcs_url_branch(url)
+    repo_url, branch, subpath = split_vcs_url(url)
 
     parsed = urlparse(repo_url)
     changed = False
@@ -188,7 +179,7 @@ def fixup_broken_git_url(url):
             branch = newbranch
 
     if changed:
-        return unsplit_vcs_url(urlunparse(parsed), branch)
+        return unsplit_vcs_url(urlunparse(parsed), branch, subpath)
     return url
 
 
