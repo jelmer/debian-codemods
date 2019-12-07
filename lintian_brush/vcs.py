@@ -38,6 +38,11 @@ KNOWN_GITLAB_SITES = [
     ]
 
 
+def is_gitlab_site(hostname, net_access=False):
+    # TODO(jelmer): Try API to see if this is a gitlab site
+    return hostname in KNOWN_GITLAB_SITES
+
+
 def split_vcs_url(url):
     m = re.finditer(r' \[([^] ]+)\]', url)
     try:
@@ -67,6 +72,10 @@ def sanitize_url(url):
     url = url.strip()
     if url.startswith('git+http:') or url.startswith('git+https:'):
         url = url[4:]
+    if url.startswith('hg+https:') or url.startswith('hg+http'):
+        url = url[3:]
+    if url.startswith('bzr+lp:') or url.startswith('bzr+http'):
+        url = url.split('+', 1)[1]
     url = fixup_broken_git_url(url)
     url = canonical_vcs_git_url(url)
     url = find_secure_vcs_url(url, net_access=False) or url
@@ -91,7 +100,7 @@ def fix_path_in_port(parsed, branch):
 
 
 def fix_gitlab_scheme(parsed, branch):
-    if parsed.hostname in KNOWN_GITLAB_SITES:
+    if is_gitlab_site(parsed.hostname):
         return parsed._replace(scheme='https'), branch
     return None, None
 
@@ -104,7 +113,7 @@ def fix_salsa_cgit_url(parsed, branch):
 
 
 def fix_gitlab_tree_in_url(parsed, branch):
-    if parsed.hostname in KNOWN_GITLAB_SITES:
+    if is_gitlab_site(parsed.hostname):
         parts = parsed.path.split('/')
         if len(parts) >= 5 and parts[3] == 'tree':
             branch = '/'.join(parts[4:])
@@ -197,7 +206,7 @@ def browse_url_from_repo_url(url):
         return urlunparse(
             ('https', 'code.launchpad.net', parsed_url.path,
              parsed_url.query, parsed_url.params, parsed_url.fragment))
-    if parsed_url.netloc in KNOWN_GITLAB_SITES:
+    if is_gitlab_site(parsed_url.netloc):
         path = parsed_url.path
         if path.endswith('.git'):
             path = path[:-4]
@@ -269,7 +278,8 @@ def canonicalize_vcs_browser_url(url):
 def canonical_vcs_git_url(url):
     (repo_url, branch, subpath) = split_vcs_url(url)
     parsed_url = urlparse(repo_url)
-    if parsed_url.netloc in (KNOWN_GITLAB_SITES + ['github.com']):
+    if (is_gitlab_site(parsed_url.netloc) or
+            parsed_url.netloc in ['github.com']):
         if not parsed_url.path.rstrip('/').endswith('.git'):
             parsed_url = parsed_url._replace(
                 path=parsed_url.path.rstrip('/') + '.git')
@@ -307,7 +317,7 @@ def try_open_branch(url, branch_name=None):
         breezy.ui.ui_factory = old_ui
 
 
-SECURE_SCHEMES = ['https', 'git+ssh', 'bzr+ssh', 'hg+ss', 'ssh', 'svn+ssh']
+SECURE_SCHEMES = ['https', 'git+ssh', 'bzr+ssh', 'hg+ssh', 'ssh', 'svn+ssh']
 
 
 def find_secure_vcs_url(url, net_access=True):
@@ -317,9 +327,10 @@ def find_secure_vcs_url(url, net_access=True):
         return url
 
     # Sites we know to be available over https
-    if parsed_repo_url.hostname in (KNOWN_GITLAB_SITES + [
-            'github.com', 'git.launchpad.net', 'bazaar.launchpad.net',
-            'code.launchpad.net']):
+    if (is_gitlab_site(parsed_repo_url.hostname, net_access) or
+            parsed_repo_url.hostname in [
+                'github.com', 'git.launchpad.net', 'bazaar.launchpad.net',
+                'code.launchpad.net']):
         parsed_repo_url = parsed_repo_url._replace(scheme='https')
 
     if parsed_repo_url.scheme == 'lp':

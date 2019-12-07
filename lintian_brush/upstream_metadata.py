@@ -1093,17 +1093,23 @@ def parse_pkgbuild_variables(f):
 
 
 def guess_from_aur(package):
-    url = (
-        'https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=%s-git' %
-        package)
-    headers = {'User-Agent': USER_AGENT}
-    try:
-        f = urlopen(
-            Request(url, headers=headers),
-            timeout=DEFAULT_URLLIB_TIMEOUT)
-    except urllib.error.HTTPError as e:
-        if e.status != 404:
-            raise
+    vcses = ['git', 'bzr', 'hg']
+    for vcs in vcses:
+        url = (
+            'https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=%s-%s' %
+            (package, vcs))
+        headers = {'User-Agent': USER_AGENT}
+        try:
+            f = urlopen(
+                Request(url, headers=headers),
+                timeout=DEFAULT_URLLIB_TIMEOUT)
+        except urllib.error.HTTPError as e:
+            if e.status != 404:
+                raise
+            continue
+        else:
+            break
+    else:
         return
 
     variables = parse_pkgbuild_variables(f)
@@ -1122,7 +1128,7 @@ def guess_from_aur(package):
                 unique_name, url = value.split('::', 1)
             except ValueError:
                 url = value
-            if url.startswith('git+'):
+            if any([url.startswith(vcs+'+') for vcs in vcses]):
                 yield 'Repository', sanitize_vcs_url(url)
         if key == '_gitroot':
             yield 'Repository', sanitize_vcs_url(value[0])
