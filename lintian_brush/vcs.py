@@ -75,8 +75,10 @@ def unsplit_vcs_url(repo_url, branch=None, subpath=None):
 def sanitize_url(url):
     url = url.strip()
     if url.startswith('git+http:') or url.startswith('git+https:'):
-        return url[4:]
-    return fixup_broken_git_url(url)
+        url = url[4:]
+    url = fixup_broken_git_url(url)
+    url = canonical_vcs_git_url(url)
+    return url
 
 
 def plausible_url(url):

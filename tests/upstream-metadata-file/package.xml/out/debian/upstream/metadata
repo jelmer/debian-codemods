@@ -1,5 +1,5 @@
 Name: blah
 Bug-Database: https://github.com/example/tracker/issues
 Bug-Submit: https://github.com/example/tracker/issues/new
-Repository: https://github.com/example/repo
+Repository: https://github.com/example/repo.git
 Repository-Browse: https://github.com/example/repo

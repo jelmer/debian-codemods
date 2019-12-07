@@ -2,5 +2,5 @@ Name: readxl
 Archive: CRAN
 Bug-Database: https://github.com/tidyverse/readxl/issues
 Bug-Submit: https://github.com/tidyverse/readxl/issues/new
-Repository: https://github.com/tidyverse/readxl
+Repository: https://github.com/tidyverse/readxl.git
 Repository-Browse: https://github.com/tidyverse/readxl

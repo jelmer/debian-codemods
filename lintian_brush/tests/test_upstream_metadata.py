@@ -48,7 +48,8 @@ https://github.com/jelmer/dulwich/tags/dulwich-(.*).tar.gz
 """)])
         self.assertEqual(
             [UpstreamDatum(
-                'Repository', 'https://github.com/jelmer/dulwich', 'likely')],
+                'Repository', 'https://github.com/jelmer/dulwich.git',
+                'likely')],
             list(guess_from_debian_watch('watch', False)))
 
 
