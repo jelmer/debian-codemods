@@ -19,28 +19,30 @@
 
 import copy
 import os
-import ruamel.yaml
-
-
-def write_yaml_file(path, code):
-    with open(path, 'w') as f:
-        ruamel.yaml.round_trip_dump(code, f)
+from ruamel.yaml import YAML
 
 
 class YamlUpdater(object):
 
     def __init__(self, path, remove_empty=True):
+        self.yaml = YAML()
         self.path = path
         self.remove_empty = remove_empty
+        self._directives = []
 
     def __enter__(self):
         try:
             with open(self.path, 'r') as f:
-                inp = f.read()
+                inp = list(f)
         except FileNotFoundError:
             self._code = {}
         else:
-            self._code = ruamel.yaml.round_trip_load(inp, preserve_quotes=True)
+            if '---\n' in inp:
+                for i, line in enumerate(inp):
+                    if line == '---\n':
+                        self._directives = inp[:i+1]
+                        break
+            self._code = self.yaml.load(''.join(inp))
         self._orig = copy.deepcopy(self._code)
         return self._code
 
@@ -51,5 +53,7 @@ class YamlUpdater(object):
                     os.unlink(self.path)
             else:
                 if self._code != self._orig:
-                    write_yaml_file(self.path, self._code)
+                    with open(self.path, 'w') as f:
+                        f.writelines(self._directives)
+                        self.yaml.dump(self._code, f)
         return False

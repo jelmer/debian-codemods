@@ -7,6 +7,8 @@ lintian-brush (0.46) UNRELEASED; urgency=medium
   * Prevent unnecessary includes of /usr/share/dpkg/architecture.mk.
     Closes: #946414
   * Add a --exclude flag.
+  * Attempt to preserve YAML directives in debian/upstream/metadata, if
+    present. See #946413
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Dec 2019 15:33:27 +0000
 

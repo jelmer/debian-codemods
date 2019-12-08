@@ -55,3 +55,33 @@ Somekey: origvalue
         with YamlUpdater('newfile.yaml') as code:
             del code['Origkey']
             del code['Somekey']
+        self.assertPathDoesNotExist('newfile.yaml')
+
+    def test_no_change(self):
+        with open('newfile.yaml', 'w') as f:
+            f.write("""\
+Origkey: origvalue
+Somekey: origvalue
+""")
+        with YamlUpdater('newfile.yaml'):
+            pass
+        self.assertFileEqual("""\
+Origkey: origvalue
+Somekey: origvalue
+""", "newfile.yaml")
+
+    def test_preserve_header(self):
+        with open('newfile.yaml', 'w') as f:
+            f.write("""\
+---
+Origkey: origvalue
+Somekey: origvalue
+""")
+        with YamlUpdater('newfile.yaml') as code:
+            code['Newkey'] = 'newvalue'
+        self.assertFileEqual("""\
+---
+Origkey: origvalue
+Somekey: origvalue
+Newkey: newvalue
+""", "newfile.yaml")
