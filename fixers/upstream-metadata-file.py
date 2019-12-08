@@ -53,7 +53,13 @@ update_from_guesses(
 # Then extend that by contacting e.g. SourceForge
 extend_upstream_metadata(
     upstream_metadata, '.',
-    minimum_certainty=minimum_certainty, net_access=net_access,
+    # Downgrade minimum certainty, since check_upstream_metadata can upgrade it
+    # to "certain" later.
+    minimum_certainty=(
+        'likely'
+        if net_access and minimum_certainty == 'certain'
+        else minimum_certainty),
+    net_access=net_access,
     consult_external_directory=True)
 if net_access:
     # Verify that online resources actually exist and adjust certainty
