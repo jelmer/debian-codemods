@@ -45,10 +45,11 @@ class YamlUpdater(object):
         return self._code
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if not self._code and self.remove_empty:
-            if os.path.exists(self.path):
-                os.unlink(self.path)
-        else:
-            if self._code != self._orig:
-                write_yaml_file(self.path, self._code)
+        if not exc_type:
+            if not self._code and self.remove_empty:
+                if os.path.exists(self.path):
+                    os.unlink(self.path)
+            else:
+                if self._code != self._orig:
+                    write_yaml_file(self.path, self._code)
         return False
