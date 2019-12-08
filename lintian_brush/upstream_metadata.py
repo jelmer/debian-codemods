@@ -609,18 +609,24 @@ def guess_from_configure(path, trust_package=False):
                     'Name', value.decode(), 'certain', './configure')
             elif key == b'PACKAGE_BUGREPORT':
                 if value in (b'BUG-REPORT-ADDRESS', ):
-                    pass
+                    certainty = 'invalid'
                 elif b'@' in value and not value.endswith(b'gnu.org'):
                     # Downgrade the trustworthiness of this field for most
                     # upstreams if it contains an e-mail address. Most
                     # upstreams seem to just set this to some random address,
                     # and then forget about it.
-                    yield UpstreamDatum(
-                        'Bug-Submit', value.decode(), 'possible',
-                        './configure')
+                    certainty = 'possible'
                 else:
+                    parsed_url = urlparse(value.decode())
+                    if parsed_url.path.strip('/'):
+                        certainty = 'certain'
+                    else:
+                        # It seems unlikely that the bug submit URL lives at
+                        # the root.
+                        certainty = 'possible'
+                if certainty != 'invalid':
                     yield UpstreamDatum(
-                        'Bug-Submit', value.decode(), 'certain', './configure')
+                        'Bug-Submit', value.decode(), certainty, './configure')
             elif key == b'PACKAGE_URL':
                 yield UpstreamDatum(
                     'Homepage', value.decode(), 'certain', './configure')
