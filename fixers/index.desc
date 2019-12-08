@@ -136,9 +136,6 @@ Lintian-Tags: no-homepage-field
 Fix-Script: orphaned-package-should-not-have-uploaders.py
 Lintian-Tags: orphaned-package-should-not-have-uploaders
 
-Fix-Script: out-of-date-standards-version.py
-Lintian-Tags: out-of-date-standards-version
-
 Fix-Script: debhelper-compat-wrong-field.py
 
 Fix-Script: package-needs-versioned-debhelper-build-depends.py
@@ -296,3 +293,6 @@ Lintian-Tags: debian-rules-not-executable
 
 Fix-Script: wrong-section-according-to-package-name.py
 Lintian-Tags: wrong-section-according-to-package-name
+
+Fix-Script: out-of-date-standards-version.py
+Lintian-Tags: out-of-date-standards-version
