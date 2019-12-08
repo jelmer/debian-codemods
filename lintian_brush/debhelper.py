@@ -48,3 +48,27 @@ def lowest_non_deprecated_compat_level():
         'print(Debian::Debhelper::Dh_Lib::LOWEST_NON_DEPRECATED_COMPAT_LEVEL);'
         ]).decode()
     return int(output)
+
+
+debhelper_compat_version = {
+    # Debian
+    'jessie': 9,
+    'stretch': 10,
+    'sid': 12,
+    'bullseye': 12,
+    'buster': 12,
+
+    # Ubuntu
+    'xenial': 9,
+    'bionic': 11,
+    'cosmic': 11,
+    'disco': 12,
+    'eoan': 12,
+    }
+
+
+def maximum_debhelper_compat_version(compat_release):
+    max_version = debhelper_compat_version.get(compat_release)
+    if max_version is None:
+        max_version = lowest_non_deprecated_compat_level()
+    return max_version

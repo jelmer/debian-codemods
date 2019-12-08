@@ -3,6 +3,7 @@ lintian-brush (0.46) UNRELEASED; urgency=medium
   * Downgrade certainty of init.d-script-needs-depends-on-lsb-base fixer
     because of false positives, effectively disabling it. Partially addresses
     #946398
+  * Don't drop autoreconf if we can't upgrade debhelper beyond 9.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Dec 2019 15:33:27 +0000
 

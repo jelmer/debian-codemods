@@ -14,8 +14,9 @@ from lintian_brush.control import (
     )
 from lintian_brush.debhelper import (
     detect_debhelper_buildsystem,
-    DEBHELPER_BUILD_STEPS,
     lowest_non_deprecated_compat_level,
+    maximum_debhelper_compat_version,
+    DEBHELPER_BUILD_STEPS,
     )
 from lintian_brush.rules import (
     check_cdbs,
@@ -29,25 +30,7 @@ from lintian_brush.rules import (
 
 compat_release = os.environ.get('COMPAT_RELEASE', 'sid')
 
-new_debhelper_compat_version = {
-    # Debian
-    'jessie': 9,
-    'stretch': 10,
-    'sid': 12,
-    'bullseye': 12,
-    'buster': 12,
-
-    # Ubuntu
-    'xenial': 9,
-    'bionic': 11,
-    'cosmic': 11,
-    'disco': 12,
-    'eoan': 12,
-    }.get(compat_release)
-
-if new_debhelper_compat_version is None:
-    new_debhelper_compat_version = lowest_non_deprecated_compat_level()
-
+new_debhelper_compat_version = maximum_debhelper_compat_version(compat_release)
 
 uses_cdbs = check_cdbs()
 
