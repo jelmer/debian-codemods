@@ -13,9 +13,12 @@ for n in os.listdir('debian'):
                 if l.startswith('. /lib/lsb/'):
                     needs_lsb_base.add(n.split('.')[0])
                     break
+    # TODO(jelmer): This doesn't find all service files; they may not live in
+    # the debian/ directory.
     if n.endswith('.service'):
         other_service_present.add(n.split('.')[0].rstrip('@'))
 
+# TODO(jelmer): Also check that there are no implicit dependencies on lsb-base.
 needs_lsb_base -= other_service_present
 
 if needs_lsb_base:
@@ -27,3 +30,4 @@ if needs_lsb_base:
 
 print('Add missing dependency on lsb-base.')
 print('Fixed-Lintian-Tags: init.d-script-needs-depends-on-lsb-base')
+print('Certainty: possible')

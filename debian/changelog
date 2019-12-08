@@ -1,3 +1,11 @@
+lintian-brush (0.46) UNRELEASED; urgency=medium
+
+  * Downgrade certainty of init.d-script-needs-depends-on-lsb-base fixer
+    because of false positives, effectively disabling it. Closes:
+    #946398
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Dec 2019 15:33:27 +0000
+
 lintian-brush (0.45) unstable; urgency=medium
 
   * Improve plural vs singular in commit messages and changelog
