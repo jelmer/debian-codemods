@@ -22,6 +22,26 @@ def watchfile_has_http():
         return False
 
 
+def update_watchfile(fn):
+    with open('debian/watch', 'r') as f:
+        old = f.readlines()
+
+    new = []
+    for line in old:
+        try:
+            (bef, aft) = line.split('#', 1)
+        except ValueError:
+            new.append(fn(line))
+        else:
+            new.append('#'.join([fn(bef), aft]))
+
+    if old != new:
+        with open('debian/watch', 'w') as f:
+            f.write(new)
+        return True
+    return False
+
+
 if not watchfile_has_http():
     sys.exit(0)
 
@@ -29,16 +49,14 @@ if not watchfile_has_http():
 # We hardcode the replacements for some sites, since these testsuite uses
 # these. The method below (involving uscan) doesn't work from e.g. sbuild
 # hosts.
-with open('debian/watch', 'r') as f:
-    old = f.read()
+def stock_replace(line):
+    for hostname in ['code.launchpad.net', 'launchpad.net', 'ftp.gnu.org']:
+        line = line.replace('http://%s/' % hostname, 'https://%s/' % hostname)
+    return line
 
-new = old
-for hostname in ['code.launchpad.net', 'launchpad.net', 'ftp.gnu.org']:
-    new = new.replace('http://%s/' % hostname, 'https://%s/' % hostname)
 
-if new != old:
-    with open('debian/watch', 'w') as f:
-        f.write(new)
+update_watchfile(stock_replace)
+
 
 print("Use secure URI in debian/watch.")
 print("Fixed-Lintian-Tags: debian-watch-uses-insecure-uri")
@@ -58,11 +76,13 @@ def run_uscan_dehs():
 
 before = run_uscan_dehs()
 
-with open('debian/watch', 'r') as f:
-    old = f.read()
-new = old.replace('http://', 'https://')
-with open('debian/watch', 'w') as f:
-    f.write(new)
+
+def replace_all(line):
+    return line.replace('http://', 'https://')
+
+
+if not update_watchfile(replace_all):
+    sys.exit(0)
 
 after = run_uscan_dehs()
 

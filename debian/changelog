@@ -19,6 +19,7 @@ lintian-brush (0.45) UNRELEASED; urgency=medium
     Mattia Rizzolo.
   * When vcswatch only has an updated Vcs-Git URL but not a Vcs-Browser
     field, automatically attempt to determine Vcs-Browser URL.
+  * Don't update URLs in comments in watch files. Closes: #946254
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Dec 2019 22:21:34 +0000
 
