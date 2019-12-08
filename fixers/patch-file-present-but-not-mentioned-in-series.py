@@ -4,8 +4,13 @@ import os
 import sys
 
 try:
+    patches = set()
     with open('debian/patches/series', 'r') as f:
-        patches = set([l.split()[0] for l in f.readlines()])
+        for line in f:
+            line = line.split('#', 1)[0]
+            if not line:
+                continue
+            patches.add(line.split()[0])
 except FileNotFoundError:
     sys.exit(0)
 
