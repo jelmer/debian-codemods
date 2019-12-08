@@ -1,4 +1,4 @@
-lintian-brush (0.45) UNRELEASED; urgency=medium
+lintian-brush (0.45) unstable; urgency=medium
 
   * Improve plural vs singular in commit messages and changelog
     messages.
@@ -21,7 +21,7 @@ lintian-brush (0.45) UNRELEASED; urgency=medium
     field, automatically attempt to determine Vcs-Browser URL.
   * Don't update URLs in comments in watch files. Closes: #946254
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Dec 2019 22:21:34 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Dec 2019 14:18:27 +0000
 
 lintian-brush (0.44) unstable; urgency=medium
 
