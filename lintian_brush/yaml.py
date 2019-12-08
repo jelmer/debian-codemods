@@ -17,9 +17,38 @@
 
 """Utility functions for dealing with YAML files."""
 
+import copy
+import os
 import ruamel.yaml
 
 
 def write_yaml_file(path, code):
     with open(path, 'w') as f:
         ruamel.yaml.round_trip_dump(code, f)
+
+
+class YamlUpdater(object):
+
+    def __init__(self, path, remove_empty=True):
+        self.path = path
+        self.remove_empty = remove_empty
+
+    def __enter__(self):
+        try:
+            with open(self.path, 'r') as f:
+                inp = f.read()
+        except FileNotFoundError:
+            self._code = {}
+        else:
+            self._code = ruamel.yaml.round_trip_load(inp, preserve_quotes=True)
+        self._orig = copy.deepcopy(self._code)
+        return self._code
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not self._code and self.remove_empty:
+            if os.path.exists(self.path):
+                os.unlink(self.path)
+        else:
+            if self._code != self._orig:
+                write_yaml_file(self.path, self._code)
+        return False
