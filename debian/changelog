@@ -6,6 +6,7 @@ lintian-brush (0.46) UNRELEASED; urgency=medium
   * Don't drop autoreconf if we can't upgrade debhelper beyond 9.
   * Prevent unnecessary includes of /usr/share/dpkg/architecture.mk.
     Closes: #946414
+  * Add a --exclude flag.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Dec 2019 15:33:27 +0000
 

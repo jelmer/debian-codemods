@@ -120,6 +120,9 @@ def main(argv=None):
         help=argparse.SUPPRESS)
     parser.add_argument('--compat-release', type=str, help=argparse.SUPPRESS)
     parser.add_argument(
+        '--exclude', metavar='EXCLUDE', type=str, action='append',
+        help='Exclude a fixer.')
+    parser.add_argument(
         'fixers', metavar='FIXER', nargs='*',
         help='specific fixer to run')
     args = parser.parse_args(argv)
@@ -165,7 +168,7 @@ def main(argv=None):
         since_revid = wt.last_revision()
         if args.fixers:
             try:
-                fixers = select_fixers(fixers, args.fixers)
+                fixers = select_fixers(fixers, args.fixers, args.exclude)
             except KeyError as e:
                 show_error('Unknown fixer specified: %s', e.args[0])
                 return 1

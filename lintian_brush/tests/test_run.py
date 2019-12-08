@@ -829,6 +829,19 @@ class SelectFixersTests(TestCase):
             KeyError, select_fixers, [DummyFixer('dummy', 'some-tag')],
             ['other'])
 
+    def test_exclude_missing(self):
+        self.assertRaises(
+            KeyError, select_fixers, [DummyFixer('dummy', 'some-tag')],
+            ['dummy'], ['some-other'])
+
+    def test_exclude(self):
+        self.assertEqual(
+            ['dummy1'],
+            [f.name for f in select_fixers(
+                [DummyFixer('dummy1', 'some-tag'),
+                 DummyFixer('dummy2', 'other-tag')],
+                ['dummy1', 'dummy2'], ['dummy2'])])
+
 
 class ChangelogAddEntryTests(TestCaseWithTransport):
 

@@ -351,16 +351,22 @@ def read_desc_file(path):
                 yield ScriptFixer(name, tags, script_path)
 
 
-def select_fixers(fixers, names):
+def select_fixers(fixers, names, exclude=None):
     """Select fixers by name, from a list.
 
     Args:
       fixers: List of Fixer objects
       names: List of names to select
+      exclude: List of names to exclude
     Raises:
       KeyError: if one of the names did not exist
     """
     names = set(names)
+    if exclude:
+        for name in exclude:
+            if name not in names:
+                raise KeyError(name)
+            names.remove(name)
     available = set([f.name for f in fixers])
     missing = names - available
     if missing:
