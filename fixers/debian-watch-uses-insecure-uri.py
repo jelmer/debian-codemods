@@ -37,7 +37,7 @@ def update_watchfile(fn):
 
     if old != new:
         with open('debian/watch', 'w') as f:
-            f.write(new)
+            f.writelines(new)
         return True
     return False
 
