@@ -778,10 +778,9 @@ def guess_from_sf(sf_project):
         yield 'Name', data['name']
     if 'external_homepage' in data:
         yield 'Homepage', data['external_homepage']
-    if 'screenshots' in data:
-        screenshot_urls = [s['url'] for s in data['screenshots'] if 'url' in s]
-        if screenshot_urls:
-            yield ('Screenshots', screenshot_urls)
+    # In theory there are screenshots linked from the sourceforge project that
+    # we can use, but if there are multiple "subprojects" then it will be
+    # unclear which one they belong to.
     # TODO(jelmer): What about cvs and bzr?
     VCS_NAMES = ['hg', 'git', 'svn']
     vcs_tools = [
@@ -814,7 +813,7 @@ def extend_from_external_guesser(
 
 def extend_from_sf(upstream_metadata, sf_project):
     # The set of fields that sf can possibly provide:
-    sf_fields = ['Homepage', 'Screenshots', 'Name']
+    sf_fields = ['Homepage', 'Name']
     sf_certainty = upstream_metadata['Archive'].certainty
 
     return extend_from_external_guesser(
