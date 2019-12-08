@@ -22,6 +22,8 @@ def whitespace_prefix_length(l):
 def value_offset(l):
     if not l.strip():
         return None
+    if l.startswith(b'#'):
+        return None
     if l[0:1] in (b'\t', b' '):
         return whitespace_prefix_length(l)
     else:
