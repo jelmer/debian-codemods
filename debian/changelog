@@ -12,6 +12,8 @@ lintian-brush (0.46) UNRELEASED; urgency=medium
   * Disable setting of the Screenshots field in debian/upstream/metadata
     to individual files; it seems likely these will get stale and become
     a source of toil.
+  * Don't keep debian/upstream/metadata files with just the Archive
+    field set.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Dec 2019 15:33:27 +0000
 

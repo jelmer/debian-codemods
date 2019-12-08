@@ -44,7 +44,7 @@ from lintian_brush.vcs import (
 from lintian_brush.watch import parse_watch_file
 from urllib.request import urlopen, Request
 
-
+ADDON_ONLY_FIELDS = ['Archive']
 KNOWN_HOSTING_SITES = [
     'code.launchpad.net', 'github.com', 'launchpad.net']
 

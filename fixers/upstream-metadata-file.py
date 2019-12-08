@@ -17,6 +17,7 @@ from lintian_brush.upstream_metadata import (
     fix_upstream_metadata,
     guess_upstream_metadata_items,
     update_from_guesses,
+    ADDON_ONLY_FIELDS,
     )
 from lintian_brush.yaml import YamlUpdater
 
@@ -92,9 +93,6 @@ with YamlUpdater('debian/upstream/metadata') as code:
     if not changed:
         sys.exit(0)
 
-    if not os.path.isdir('debian/upstream'):
-        os.makedirs('debian/upstream', exist_ok=True)
-
     fixed_tag = not os.path.exists('debian/upstream/metadata')
 
     # If we're setting them new, put Name and Contact first
@@ -107,6 +105,13 @@ with YamlUpdater('debian/upstream/metadata') as code:
 
     for k, v in sorted(changed.items(), key=sort_key):
         code[k] = v.value
+
+    # If there are only add-on-only fields, then just remove the file.
+    if not (set(code.keys()) - set(ADDON_ONLY_FIELDS)):
+        code.clear()
+
+    if code and not os.path.isdir('debian/upstream'):
+        os.makedirs('debian/upstream', exist_ok=True)
 
 
 fields = [

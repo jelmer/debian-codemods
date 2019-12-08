@@ -27,6 +27,7 @@ class YamlUpdater(object):
     def __init__(self, path, remove_empty=True):
         self.yaml = YAML()
         self.path = path
+        self._dirpath = os.path.dirname(path)
         self.remove_empty = remove_empty
         self._directives = []
 
@@ -51,8 +52,12 @@ class YamlUpdater(object):
             if not self._code and self.remove_empty:
                 if os.path.exists(self.path):
                     os.unlink(self.path)
+                    if self._dirpath and not os.listdir(self._dirpath):
+                        os.rmdir(self._dirpath)
             else:
                 if self._code != self._orig:
+                    if not os.path.exists(self._dirpath) and self._dirpath:
+                        os.mkdir(self._dirpath)
                     with open(self.path, 'w') as f:
                         f.writelines(self._directives)
                         self.yaml.dump(self._code, f)
