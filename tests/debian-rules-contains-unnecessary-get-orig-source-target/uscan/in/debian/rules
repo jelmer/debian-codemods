@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+get-orig-source:
+	uscan --verbose
+
+override_dh_install:
+	dh_install --blah
