@@ -827,7 +827,7 @@ def extend_from_external_guesser(
     update_from_guesses(
         upstream_metadata,
         [UpstreamDatum(key, value, guesser_certainty)
-             for (key, value) in guesser])
+         for (key, value) in guesser])
 
 
 def extend_from_sf(upstream_metadata, sf_project):
