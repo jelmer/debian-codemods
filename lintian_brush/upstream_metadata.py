@@ -189,6 +189,18 @@ def guess_repo_from_url(url, net_access=False):
     return None
 
 
+def known_bad_guess(datum):
+    if datum.field == 'Bug-Submit':
+        parsed_url = urlparse(datum.value)
+        if parsed_url.hostname == 'bugzilla.gnome.org':
+            return True
+    return False
+
+
+def filter_bad_guesses(guessed_items):
+    return filter(lambda x: not known_bad_guess(x), guessed_items)
+
+
 def update_from_guesses(upstream_metadata, guessed_items):
     for datum in guessed_items:
         current_datum = upstream_metadata.get(datum.field)
@@ -753,8 +765,9 @@ def guess_upstream_metadata(
     upstream_metadata = {}
     update_from_guesses(
         upstream_metadata,
-        guess_upstream_metadata_items(
-            path, trust_package=trust_package))
+        filter_bad_guesses(
+            guess_upstream_metadata_items(
+                path, trust_package=trust_package)))
 
     extend_upstream_metadata(
         upstream_metadata, path, net_access=net_access,
@@ -814,7 +827,7 @@ def extend_from_external_guesser(
     update_from_guesses(
         upstream_metadata,
         [UpstreamDatum(key, value, guesser_certainty)
-         for (key, value) in guesser])
+             for (key, value) in guesser])
 
 
 def extend_from_sf(upstream_metadata, sf_project):

@@ -17,6 +17,7 @@ from lintian_brush.upstream_metadata import (
     fix_upstream_metadata,
     guess_upstream_metadata_items,
     update_from_guesses,
+    filter_bad_guesses,
     ADDON_ONLY_FIELDS,
     )
 from lintian_brush.yaml import YamlUpdater
@@ -40,8 +41,9 @@ with YamlUpdater('debian/upstream/metadata') as code:
 
     # Do some guessing based on what's in the package
     update_from_guesses(
-        upstream_metadata, guess_upstream_metadata_items(
-            '.', trust_package=trust_package))
+        upstream_metadata, filter_bad_guesses(
+            guess_upstream_metadata_items(
+                '.', trust_package=trust_package)))
 
     # Then extend that by contacting e.g. SourceForge
     extend_upstream_metadata(
