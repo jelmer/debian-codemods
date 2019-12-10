@@ -294,5 +294,8 @@ Lintian-Tags: debian-rules-not-executable
 Fix-Script: wrong-section-according-to-package-name.py
 Lintian-Tags: wrong-section-according-to-package-name
 
+Fix-Script: debian-rules-missing-recommended-target.py
+Lintian-Tags: debian-rules-missing-recommended-target
+
 Fix-Script: out-of-date-standards-version.py
 Lintian-Tags: out-of-date-standards-version

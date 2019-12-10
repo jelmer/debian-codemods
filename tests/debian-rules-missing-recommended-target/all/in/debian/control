@@ -1,0 +1,11 @@
+Source: blah
+Section: net
+Priority: optional
+Maintainer: Joe Maintainer <joe@example.com>
+Standards-Version: 3.9.8
+
+Package: blah
+Architecture: all
+Depends: ${misc:Depends}, ${shlibs:Depends}, debianutils (>= 1.16)
+Description: A package description
+ This is description of an "any" package.

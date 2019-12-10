@@ -21,6 +21,21 @@ import os
 import re
 
 
+def wildcard_to_re(wildcard):
+    wc = []
+    for c in wildcard:
+        if c == '%':
+            wc.append('.*')
+        else:
+            wc.append(re.escape(c))
+    return re.compile(''.join(wc))
+
+
+def matches_wildcard(text, wildcard):
+    wc = wildcard_to_re(wildcard)
+    return wc.fullmatch(text)
+
+
 class Rule(object):
     """A make rule."""
 
@@ -50,9 +65,13 @@ class Rule(object):
     def __repr__(self):
         return "<%s(%r)>" % (type(self).__name__, self.target)
 
-    def has_target(self, target):
-        # TODO(jelmer): Handle multiple targets
-        return self.target == target
+    def has_target(self, target, exact=True):
+        if exact:
+            # TODO(jelmer): Handle multiple targets
+            return self.target == target
+        else:
+            # TODO(jelmer): Handle multiple targets
+            return matches_wildcard(target.decode(), self.target.decode())
 
     def rename_target(self, oldname, newname):
         # TODO(jelmer): Handle multiple targets
@@ -71,6 +90,11 @@ class Rule(object):
 
     def append_command(self, command):
         self.lines.append(b'\t' + command + b'\n')
+
+    def append_component(self, component):
+        self.components.append(component)
+        self._component_str = b' ' + b' '.join(self.components)
+        self.lines[0] = b'%s:%s' % (self.target, self._component_str)
 
     def dump_lines(self):
         return [line + b'\n' for line in self.lines]
@@ -117,9 +141,9 @@ class Makefile(object):
             original_contents = f.read()
         return cls.from_bytes(original_contents)
 
-    def iter_rules(self, target):
+    def iter_rules(self, target, exact=True):
         for entry in self.contents:
-            if isinstance(entry, Rule) and entry.has_target(target):
+            if isinstance(entry, Rule) and entry.has_target(target, exact):
                 yield entry
         else:
             return

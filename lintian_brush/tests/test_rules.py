@@ -27,6 +27,7 @@ from lintian_brush.rules import (
     Rule,
     dh_invoke_drop_with,
     dh_invoke_add_with,
+    matches_wildcard,
     update_rules,
     )
 
@@ -223,3 +224,15 @@ class InvokeAddWithTests(TestCaseWithTransport):
         self.assertEqual(
             b'dh --with=foo,blah --other',
             dh_invoke_add_with(b'dh --with=foo --other', b'blah'))
+
+
+class MatchesWildcardTests(TestCase):
+
+    def test_some(self):
+        self.assertTrue(matches_wildcard('foo', 'foo'))
+        self.assertTrue(matches_wildcard('foo', 'fo%'))
+        self.assertTrue(matches_wildcard('foo', '%'))
+        self.assertFalse(matches_wildcard('foo', 'bar'))
+        self.assertFalse(matches_wildcard('foo', 'fo'))
+        self.assertFalse(matches_wildcard('foo', 'oo'))
+        self.assertFalse(matches_wildcard('foo', 'b%'))
