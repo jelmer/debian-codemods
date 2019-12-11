@@ -15,6 +15,8 @@ lintian-brush (0.46) UNRELEASED; urgency=medium
   * Don't keep debian/upstream/metadata files with just the Archive
     field set.
   * Add fixer for debian-rules-missing-recommended-target.
+  * possible-missing-colon-in-closes: Cope with phrases like 'partially
+    closes'.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Dec 2019 15:33:27 +0000
 

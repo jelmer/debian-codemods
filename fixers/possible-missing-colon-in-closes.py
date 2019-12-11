@@ -27,7 +27,7 @@ async def valid_bug(package, bug):
 
 def check_bug(package, m):
     global certainty
-    bug = int(m.group(2))
+    bug = int(m.group('bug'))
     loop = asyncio.get_event_loop()
     valid = loop.run_until_complete(valid_bug(package, bug))
     if valid is None:
@@ -35,12 +35,12 @@ def check_bug(package, m):
         valid = True
         # Check number of digits; upstream projects don't often hit the 5-digit
         # bug numbers that Debian has.
-        if len(m.group(2)) >= 5:
+        if len(m.group('bug')) >= 5:
             certainty = 'likely'
         else:
             certainty = 'possible'
     if valid:
-        return '%s: #%d' % (m.group(1), bug)
+        return '%s: #%d' % (m.group('closes'), bug)
     else:
         return m.group(0)
 
@@ -49,7 +49,8 @@ with ChangelogUpdater() as updater:
     for block in updater.changelog:
         for i, change in enumerate(block._changes):
             block._changes[i] = re.sub(
-                r'(closes) #([0-9]+)',
+                r'(?<!partially )(?P<closes>closes) '
+                r'#(?P<bug>[0-9]+)',
                 partial(check_bug, block.package), change,
                 flags=re.IGNORECASE)
 
