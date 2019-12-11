@@ -348,6 +348,8 @@ def upgrade_to_installsystemd(line, target):
 def rename_installsystemd_target(rule):
     rule.rename_target(
         b'override_dh_systemd_enable', b'override_dh_installsystemd')
+    rule.rename_target(
+        b'override_dh_systemd_start', b'override_dh_installsystemd')
 
 
 def upgrade_to_debhelper_11():
