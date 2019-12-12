@@ -17,6 +17,8 @@ lintian-brush (0.46) UNRELEASED; urgency=medium
   * Add fixer for debian-rules-missing-recommended-target.
   * possible-missing-colon-in-closes: Cope with phrases like 'partially
     closes'.
+  * Fix handling of empty Build-Depends in build-depends-on-{build-
+    essential,obsolete-package}.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Dec 2019 15:33:27 +0000
 

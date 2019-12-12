@@ -7,8 +7,11 @@ from lintian_brush.control import (
 
 
 def drop_build_essential(control):
-    control["Build-Depends"] = drop_dependency(
-        control.get("Build-Depends", ""), "build-essential")
+    try:
+        control["Build-Depends"] = drop_dependency(
+            control["Build-Depends"], "build-essential")
+    except KeyError:
+        pass
 
 
 update_control(source_package_cb=drop_build_essential)
