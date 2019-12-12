@@ -926,6 +926,15 @@ def verify_bug_database_url(url):
     return None
 
 
+def verify_bug_submit_url(url):
+    parsed_url = urlparse(url)
+    if parsed_url.netloc == 'gitlab.com':
+        path = '/'.join(parsed_url.path.strip('/').split('/')[:2])
+        return verify_bug_database_url(
+            urlunparse(parsed_url._replace(path=path)))
+    return None
+
+
 def _extrapolate_repository_from_homepage(upstream_metadata, net_access):
     repo = guess_repo_from_url(
             upstream_metadata['Homepage'].value, net_access=net_access)
@@ -1124,6 +1133,10 @@ def check_upstream_metadata(upstream_metadata, version=None):
     if bug_database and bug_database.certainty == 'likely':
         if verify_bug_database_url(bug_database.value):
             bug_database.certainty = 'certain'
+    bug_submit = upstream_metadata.get('Bug-Submit')
+    if bug_submit and bug_submit.certainty == 'likely':
+        if verify_bug_submit_url(bug_submit.value):
+            bug_submit.certainty = 'certain'
     screenshots = upstream_metadata.get('Screenshots')
     if screenshots and screenshots.certainty == 'likely':
         newvalue = []

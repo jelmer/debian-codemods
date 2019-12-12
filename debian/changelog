@@ -1,4 +1,4 @@
-lintian-brush (0.46) UNRELEASED; urgency=medium
+lintian-brush (0.46) unstable; urgency=medium
 
   * Downgrade certainty of init.d-script-needs-depends-on-lsb-base fixer
     because of false positives, effectively disabling it. Partially addresses
@@ -20,7 +20,7 @@ lintian-brush (0.46) UNRELEASED; urgency=medium
   * Fix handling of empty Build-Depends in build-depends-on-{build-
     essential,obsolete-package}.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Dec 2019 15:33:27 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 12 Dec 2019 23:54:23 +0000
 
 lintian-brush (0.45) unstable; urgency=medium
 
