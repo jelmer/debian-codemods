@@ -1,0 +1,9 @@
+#!/usr/bin/make -f
+
+include /usr/share/foo.mk
+
+build: blah
+	$(MAKE) install DESTDIR=debian/..
+
+clean:
+	dh_prep -k

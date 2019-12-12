@@ -24,6 +24,10 @@ def process_makefile(mf):
     if has_build_arch and has_build_indep:
         return
 
+    if any([l.lstrip(b' -').startswith(b'include ') for l in mf.dump_lines()]):
+        # No handling of includes for the moment.
+        return
+
     archs = get_archs()
     if not has_build_indep:
         added.append('build-indep')
