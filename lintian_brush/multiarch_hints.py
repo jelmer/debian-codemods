@@ -75,6 +75,8 @@ def multiarch_hints_by_binary(hints):
 def multiarch_hints_by_source(hints):
     ret = {}
     for entry in hints:
+        if 'source' not in entry:
+            continue
         ret.setdefault(entry['source'], []).append(entry)
     return ret
 
