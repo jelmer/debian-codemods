@@ -74,7 +74,11 @@ def run_uscan_dehs():
         ['uscan', '--dehs', '--report'], stderr=subprocess.PIPE)
 
 
-before = run_uscan_dehs()
+try:
+    before = run_uscan_dehs()
+except subprocess.CalledProcessError:
+    # Before doesn't work :(
+    sys.exit(0)
 
 
 def replace_all(line):
@@ -84,7 +88,10 @@ def replace_all(line):
 if not update_watchfile(replace_all):
     sys.exit(0)
 
-after = run_uscan_dehs()
+try:
+    after = run_uscan_dehs()
+except subprocess.CalledProcessError:
+    sys.exit(2)
 
 # uscan creates backup files.
 for path in [
