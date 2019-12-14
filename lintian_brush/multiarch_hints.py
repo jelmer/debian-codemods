@@ -202,7 +202,8 @@ class MultiArchHintFixer(Fixer):
                     continue
                 description = applier.fn(binary, hint)
                 if description:
-                    changes.append((binary, description, applier.certainty))
+                    changes.append(
+                        (binary, hint, description, applier.certainty))
 
         old_cwd = os.getcwd()
         try:
@@ -213,10 +214,10 @@ class MultiArchHintFixer(Fixer):
             os.chdir(old_cwd)
 
         overall_certainty = min_certainty(
-            [certainty for (binary, description, certainty) in changes])
+            [certainty for (binary, hint, description, certainty) in changes])
         overall_description = "Apply multi-arch hints.\n\n" + "\n".join(
             ["* %s: %s" % (binary['Package'], description)
-             for (binary, description, certainty) in changes])
+             for (binary, hint, description, certainty) in changes])
         return MultiArchFixerResult(
             overall_description, certainty=overall_certainty, changes=changes)
 
