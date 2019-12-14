@@ -705,15 +705,17 @@ class CertaintyVsConfidenceTests(TestCase):
 
     def test_confidence_to_certainty(self):
         self.assertEqual("certain", confidence_to_certainty(0))
-        self.assertEqual("likely", confidence_to_certainty(1))
-        self.assertEqual("possible", confidence_to_certainty(2))
+        self.assertEqual("confident", confidence_to_certainty(1))
+        self.assertEqual("likely", confidence_to_certainty(2))
+        self.assertEqual("possible", confidence_to_certainty(3))
         self.assertEqual("unknown", confidence_to_certainty(None))
         self.assertRaises(ValueError, confidence_to_certainty, 2000)
 
     def test_certainty_to_confidence(self):
         self.assertEqual(0, certainty_to_confidence("certain"))
-        self.assertEqual(1, certainty_to_confidence("likely"))
-        self.assertEqual(2, certainty_to_confidence("possible"))
+        self.assertEqual(1, certainty_to_confidence("confident"))
+        self.assertEqual(2, certainty_to_confidence("likely"))
+        self.assertEqual(3, certainty_to_confidence("possible"))
         self.assertIs(None, certainty_to_confidence("unknown"))
         self.assertRaises(ValueError, certainty_to_confidence, "blah")
 

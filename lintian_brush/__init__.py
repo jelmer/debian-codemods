@@ -51,7 +51,7 @@ from .reformatting import FormattingUnpreservable
 
 __version__ = (0, 46)
 version_string = '.'.join(map(str, __version__))
-SUPPORTED_CERTAINTIES = ['certain', 'likely', 'possible', None]
+SUPPORTED_CERTAINTIES = ['certain', 'confident', 'likely', 'possible', None]
 DEFAULT_MINIMUM_CERTAINTY = 'certain'
 USER_AGENT = 'lintian-brush/' + version_string
 # Too aggressive?
