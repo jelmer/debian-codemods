@@ -11,6 +11,7 @@ try:
         for line in f:
             line = line.split('#', 1)[0]
             if not line:
+                patches.add(line.split('#')[1].strip())
                 continue
             patches.add(line.split()[0])
 except FileNotFoundError:
