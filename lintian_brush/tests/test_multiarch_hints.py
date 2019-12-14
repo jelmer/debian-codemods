@@ -48,13 +48,13 @@ hints:
   version: 1.8.3-2+b11
 """)
         self.assertEqual(
-            parse_multiarch_hints(f), {
-            'coinor-libcoinmp-dev': [{
+            parse_multiarch_hints(f), [{
                 'binary': 'coinor-libcoinmp-dev',
                 'description': 'coinor-libcoinmp-dev conflicts on ...',
-                'link': 'https://wiki.debian.org/MultiArch/Hints#file-conflict',
+                'link': (
+                    'https://wiki.debian.org/MultiArch/Hints#file-conflict'),
                 'severity': 'high',
                 'source': 'coinmp',
                 'version': '1.8.3-2+b11'
-            }],
-        })
+              }],
+            )

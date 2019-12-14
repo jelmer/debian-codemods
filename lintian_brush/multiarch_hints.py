@@ -17,18 +17,29 @@
 
 """Utility functions for applying multi-arch hints."""
 
+import contextlib
+import os
 import re
+import sys
 
 from urllib.request import urlopen, Request
 
 from lintian_brush import (
+    Fixer,
+    NoChanges,
+    FixerResult,
+    min_certainty,
     USER_AGENT,
+    SUPPORTED_CERTAINTIES,
     DEFAULT_URLLIB_TIMEOUT,
-    add_changelog_entry,
     certainty_sufficient,
     get_committer,
+    get_dirty_tracker,
+    check_clean_tree,
+    run_lintian_fixer,
+    version_string,
     )
-from lintian_brush.control import (
+from .control import (
     update_control,
     format_relations,
     parse_relations,
@@ -51,19 +62,31 @@ def parse_multiarch_hints(f):
     data = ruamel.yaml.load(f, ruamel.yaml.SafeLoader)
     if data.get('format') != 'multiarch-hints-1.0':
         raise ValueError('invalid file format: %r' % data.get('format'))
+    return data['hints']
+
+
+def multiarch_hints_by_binary(hints):
     ret = {}
-    for entry in data['hints']:
+    for entry in hints:
         ret.setdefault(entry['binary'], []).append(entry)
     return ret
 
 
+def multiarch_hints_by_source(hints):
+    ret = {}
+    for entry in hints:
+        ret.setdefault(entry['source'], []).append(entry)
+    return ret
+
+
+@contextlib.contextmanager
 def download_multiarch_hints(url=MULTIARCH_HINTS_URL):
     """Load multi-arch hints from a URL.
 
     Args:
       url: URL to read from
     Returns:
-      parsed multi-arch hints file, see parse_multiarch_hints
+      multi-arch hints file
     """
     headers = {'User-Agent': USER_AGENT}
     with urlopen(
@@ -74,33 +97,28 @@ def download_multiarch_hints(url=MULTIARCH_HINTS_URL):
             # It would be nicer if there was a content-type, but there isn't
             # :-(
             f = lzma.LZMAFile(f)
-        return parse_multiarch_hints(f)
+        yield f
 
 
-def add_message(tree, binary, message):
-    add_changelog_entry(
-        tree, 'debian/changelog', '%s: %s' % (binary['Package'], message))
-
-
-def apply_hint_ma_foreign(tree, subpath, binary, hint):
+def apply_hint_ma_foreign(binary, hint):
     if binary.get('Multi-Arch') != 'foreign':
         binary['Multi-Arch'] = 'foreign'
         return 'Add Multi-Arch: foreign.'
 
 
-def apply_hint_ma_foreign_lib(tree, subpath, binary, hint):
+def apply_hint_ma_foreign_lib(binary, hint):
     if binary.get('Multi-Arch') == 'foreign':
         del binary['Multi-Arch']
         return 'Drop Multi-Arch: foreign.'
 
 
-def apply_hint_file_conflict(tree, subpath, binary, hint):
+def apply_hint_file_conflict(binary, hint):
     if binary.get('Multi-Arch') == 'same':
         del binary['Multi-Arch']
         return 'Drop Multi-Arch: same.'
 
 
-def apply_hint_dep_any(tree, subpath, binary, hint):
+def apply_hint_dep_any(binary, hint):
     m = re.match(
         '(.*) could have its dependency on (.*) annotated with :any',
         hint['description'])
@@ -125,14 +143,14 @@ def apply_hint_dep_any(tree, subpath, binary, hint):
     return ('Add :all qualifier for %s dependency.' % dep)
 
 
-def apply_hint_ma_same(tree, subpath, binary, hint):
+def apply_hint_ma_same(binary, hint):
     if binary.get('Multi-Arch') == 'same':
         return
     binary['Multi-Arch'] = 'same'
     return 'Add Multi-Arch: same.'
 
 
-def apply_hint_arch_all(tree, subpath, binary, hint):
+def apply_hint_arch_all(binary, hint):
     if binary['Architecture'] == 'all':
         return
     binary['Architecture'] = 'all'
@@ -147,7 +165,59 @@ class MultiArchHintApplier(object):
         self.certainty = certainty
 
 
-_HINT_APPLIERS = [
+class MultiArchFixerResult(FixerResult):
+
+    def __init__(self, description, certainty, changes):
+        super(MultiArchFixerResult, self).__init__(
+            description=description, certainty=certainty)
+        self.changes = changes
+
+
+class MultiArchHintFixer(Fixer):
+
+    def __init__(self, appliers, hints):
+        super(MultiArchHintFixer, self).__init__(name='multiarch-hints')
+        self._appliers = {applier.kind: applier for applier in appliers}
+        self._hints = hints
+
+    def run(self, basedir, package, current_version, compat_release,
+            minimum_certainty=None, trust_package=False,
+            allow_reformatting=False, net_access=True):
+        if not net_access:
+            # This should never happen - perhaps if something else imported and
+            # used this class?
+            raise NoChanges()
+        changes = []
+
+        def update_binary(binary):
+            for hint in self._hints.get(binary['Package'], []):
+                kind = hint['link'].rsplit('#', 1)[1]
+                applier = self._appliers[kind]
+                if not certainty_sufficient(
+                        applier.certainty, minimum_certainty):
+                    continue
+                description = applier.fn(binary, hint)
+                if description:
+                    changes.append((binary, description, applier.certainty))
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(basedir)
+            update_control(
+                binary_package_cb=update_binary)
+        finally:
+            os.chdir(old_cwd)
+
+        overall_certainty = min_certainty(
+            [certainty for (binary, description, certainty) in changes])
+        overall_description = "Apply multi-arch hints.\n\n" + "\n".join(
+            ["* %s: %s" % (binary['Package'], description)
+             for (binary, description, certainty) in changes])
+        return MultiArchFixerResult(
+            overall_description, certainty=overall_certainty, changes=changes)
+
+
+APPLIERS = [
     MultiArchHintApplier('ma-foreign', apply_hint_ma_foreign, 'certain'),
     MultiArchHintApplier('file-conflict', apply_hint_file_conflict, 'certain'),
     MultiArchHintApplier(
@@ -156,35 +226,10 @@ _HINT_APPLIERS = [
     MultiArchHintApplier('ma-same', apply_hint_ma_same, 'certain'),
     MultiArchHintApplier('arch-all', apply_hint_arch_all, 'possible'),
 ]
-HINT_APPLIERS = {ha.kind: ha for ha in _HINT_APPLIERS}
 
 
-def apply_multiarch_hints(tree, subpath, hints, minimum_certainty=None):
-
-    changes = []
-
-    def update_binary(binary):
-        for hint in hints.get(binary['Package'], []):
-            kind = hint['link'].rsplit('#', 1)[1]
-            hint_info = HINT_APPLIERS[kind]
-            if not certainty_sufficient(
-                    hint_info.certainty, minimum_certainty):
-                continue
-            description = hint_info.fn(tree, subpath, binary, hint)
-            if description:
-                add_message(tree, binary, description)
-                changes.append((binary, description))
-
-    update_control(
-        path=tree.abspath(os.path.join(subpath, 'debian/control')),
-        binary_package_cb=update_binary)
-
-    return changes
-
-
-if __name__ == '__main__':
+def main(argv=None):
     import argparse
-    import os
     import sys
     from breezy.workingtree import WorkingTree
     import locale
@@ -198,23 +243,82 @@ if __name__ == '__main__':
     breezy.initialize()
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
-    from breezy.commit import NullCommitReporter
+
+    from .config import Config
 
     parser = argparse.ArgumentParser(prog='multi-arch-fixer')
     parser.add_argument(
         '--directory', metavar='DIRECTORY', help='directory to run in',
         type=str, default='.')
-    args = parser.parse_args()
-    hints = download_multiarch_hints()
+    parser.add_argument(
+        '--disable-inotify', action='store_true', default=False,
+        help=argparse.SUPPRESS)
+    parser.add_argument(
+        '--identity',
+        help='Print user identity that would be used when committing',
+        action='store_true', default=False)
+    # Hide the minimum-certainty option for the moment.
+    parser.add_argument(
+        '--minimum-certainty',
+        type=str,
+        choices=SUPPORTED_CERTAINTIES,
+        default=None,
+        help=argparse.SUPPRESS)
+    parser.add_argument(
+        '--no-update-changelog', action="store_false", default=None,
+        dest="update_changelog", help="do not update the changelog")
+    parser.add_argument(
+        '--update-changelog', action="store_true", dest="update_changelog",
+        help="force updating of the changelog", default=None)
+    parser.add_argument(
+        '--version', action='version', version='%(prog)s ' + version_string)
+    parser.add_argument(
+        '--allow-reformatting', default=None, action='store_true',
+        help=argparse.SUPPRESS)
+
+    args = parser.parse_args(argv)
+    minimum_certainty = args.minimum_certainty
     wt, subpath = WorkingTree.open_containing(args.directory)
-    changes = apply_multiarch_hints(wt, subpath, hints)
-    committer = get_committer(wt)
+    if args.identity:
+        print(get_committer(wt))
+        return 0
 
-    message = '\n'.join([
-        'Apply multi-arch hints:',
-        ] + ['* %s: %s' % (binary['Package'], description)
-             for (binary, description) in changes])
+    with download_multiarch_hints() as f:
+        hints = multiarch_hints_by_binary(parse_multiarch_hints(f))
+    update_changelog = args.update_changelog
+    allow_reformatting = args.allow_reformatting
+    try:
+        cfg = Config.from_workingtree(wt, subpath)
+    except FileNotFoundError:
+        pass
+    else:
+        if minimum_certainty is None:
+            minimum_certainty = cfg.minimum_certainty()
+        if allow_reformatting is None:
+            allow_reformatting = cfg.allow_reformatting()
+        if update_changelog is None:
+            update_changelog = cfg.update_changelog()
 
-    wt.commit(message, allow_pointless=False,
-              reporter=NullCommitReporter(),
-              committer=committer)
+    use_inotify = (False if args.disable_inotify else None),
+    check_clean_tree(wt)
+    dirty_tracker = get_dirty_tracker(wt, subpath, use_inotify)
+    if dirty_tracker:
+        dirty_tracker.mark_clean()
+
+    try:
+        result, summary = run_lintian_fixer(
+            wt, MultiArchHintFixer(APPLIERS, hints),
+            update_changelog=update_changelog,
+            minimum_certainty=minimum_certainty,
+            dirty_tracker=dirty_tracker,
+            subpath=subpath, allow_reformatting=allow_reformatting,
+            net_access=True)
+    except NoChanges:
+        print('Nothing to do.')
+    else:
+        for binary, description, certainty in result.changes:
+            print('%s: %s' % (binary['Package'], description))
+
+
+if __name__ == '__main__':
+    sys.exit(main())

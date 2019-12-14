@@ -1,3 +1,9 @@
+lintian-brush (0.47) UNRELEASED; urgency=medium
+
+  * Add apply-multiarch-hints script.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 14 Dec 2019 13:51:36 +0000
+
 lintian-brush (0.46) unstable; urgency=medium
 
   * Downgrade certainty of init.d-script-needs-depends-on-lsb-base fixer

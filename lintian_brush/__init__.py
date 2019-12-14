@@ -144,12 +144,13 @@ class Fixer(object):
     fixer addresses.
     """
 
-    def __init__(self, name, lintian_tags):
+    def __init__(self, name, lintian_tags=None):
         self.name = name
-        self.lintian_tags = lintian_tags
+        self.lintian_tags = lintian_tags or []
 
     def run(self, basedir, package, current_version, compat_release,
-            trust_package=False, allow_reformatting=False):
+            minimum_certainty=None, trust_package=False,
+            allow_reformatting=False, net_access=True):
         """Apply this fixer script.
 
         Args:
@@ -782,6 +783,22 @@ class ManyResult(object):
         return iter(self.__tuple__())
 
 
+def get_dirty_tracker(local_tree, subpath='', use_inotify=None):
+    """Create a dirty tracker object."""
+    if use_inotify is True:
+        from .dirty_tracker import DirtyTracker
+        return DirtyTracker(local_tree, subpath)
+    elif use_inotify is False:
+        return None
+    else:
+        try:
+            from .dirty_tracker import DirtyTracker
+        except ImportError:
+            return None
+        else:
+            return DirtyTracker(local_tree, subpath)
+
+
 def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                        verbose=False, committer=None,
                        compat_release=None, minimum_certainty=None,
@@ -814,18 +831,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
     """
     check_clean_tree(local_tree)
     fixers = list(fixers)
-    if use_inotify is True:
-        from .dirty_tracker import DirtyTracker
-        dirty_tracker = DirtyTracker(local_tree, subpath)
-    elif use_inotify is False:
-        dirty_tracker = None
-    else:
-        try:
-            from .dirty_tracker import DirtyTracker
-        except ImportError:
-            dirty_tracker = None
-        else:
-            dirty_tracker = DirtyTracker(local_tree, subpath)
+    dirty_tracker = get_dirty_tracker(
+        local_tree, subpath=subpath, use_inotify=use_inotify)
     ret = ManyResult()
     with ui.ui_factory.nested_progress_bar() as pb:
         for i, fixer in enumerate(fixers):

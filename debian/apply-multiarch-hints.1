@@ -1,0 +1,32 @@
+.TH apply-multiarch-hints "1" "October 2018" "apply-multiarch-hints 0.1" "User Commands"
+.SH NAME
+apply-multiarch-hints \- apply multi-arch hints
+.SH SYNOPSIS
+apply\-multiarch\-hints [\-h] [\-\-no\-update\-changelog] [\-\-version] [\-\-diff\]
+.SH DESCRIPTION
+Apply multi-arch hints to a package.
+.IP
+.SS "optional arguments:"
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+show this help message and exit
+.TP
+\fB\-\-no\-update\-changelog\fR
+Whether to update the changelog.
+.TP
+\fB\-\-version\fR
+show program's version number and exit
+.TP
+\fB\-\-diff\fR
+After running all fixers, display the changes made as a single unified diff.
+.TP
+\fB\-\-identity\fR
+Print the identity (name and e\-mailaddress) that apply-multiarch-hints will use when committing changes, and exit.
+.TP
+\fB\-\-verbose\fR
+Print list of fixers that was run and print tracebacks for failed fixers.
+.SH "SEE ALSO"
+\&\fIlintian-brush.conf\fR\|(5)
+\&\fIlintian-brush\fR\|(1)
+.SH AUTHORS
+Jelmer Vernooij <jelmer@debian.org>

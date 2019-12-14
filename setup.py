@@ -31,7 +31,10 @@ setup(
     },
     requires=['breezy', 'debian'],
     entry_points={
-        'console_scripts': ['lintian-brush=lintian_brush.__main__:main']
+        'console_scripts': [
+            'lintian-brush=lintian_brush.__main__:main',
+            'apply-multiarch-hints=lintian_brush.multiarch_hints:main',
+            ]
     },
     test_suite='lintian_brush.tests.test_suite',
     data_files=[
