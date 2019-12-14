@@ -87,14 +87,18 @@ if not wf.entries:
         from urllib.parse import urlparse
         from debian.changelog import Version
 
-        parsed_url = urlparse(code['Repository'])
-        upstream_version = Version(
-            os.environ['CURRENT_VERSION']).upstream_version
-        if parsed_url.hostname == 'github.com':
-            w = guess_github_watch_entry(parsed_url, upstream_version)
-            if w:
-                site = 'github'
-                wf.entries.append(w)
+        try:
+            parsed_url = urlparse(code['Repository'])
+        except KeyError:
+            pass
+        else:
+            upstream_version = Version(
+                os.environ['CURRENT_VERSION']).upstream_version
+            if parsed_url.hostname == 'github.com':
+                w = guess_github_watch_entry(parsed_url, upstream_version)
+                if w:
+                    site = 'github'
+                    wf.entries.append(w)
 
 
 if not wf.entries:
