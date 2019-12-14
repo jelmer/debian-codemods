@@ -48,7 +48,7 @@ from .control import (
     )
 
 
-MULTIARCH_HINTS_URL = 'https://dedup.debian.net/static/multiarch-hints.yaml'
+MULTIARCH_HINTS_URL = 'https://dedup.debian.net/static/multiarch-hints.yaml.xz'
 
 
 def parse_multiarch_hints(f):
