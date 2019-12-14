@@ -27,6 +27,8 @@ from urllib.request import urlopen, Request
 from lintian_brush import (
     Fixer,
     NoChanges,
+    NotDebianPackage,
+    PendingChanges,
     FixerResult,
     min_certainty,
     USER_AGENT,
@@ -245,6 +247,7 @@ def main(argv=None):
     breezy.initialize()
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
+    from breezy.trace import note  # noqa: E402
 
     from .config import Config
 
@@ -282,11 +285,9 @@ def main(argv=None):
     minimum_certainty = args.minimum_certainty
     wt, subpath = WorkingTree.open_containing(args.directory)
     if args.identity:
-        print(get_committer(wt))
+        note(get_committer(wt))
         return 0
 
-    with download_multiarch_hints() as f:
-        hints = multiarch_hints_by_binary(parse_multiarch_hints(f))
     update_changelog = args.update_changelog
     allow_reformatting = args.allow_reformatting
     try:
@@ -302,10 +303,19 @@ def main(argv=None):
             update_changelog = cfg.update_changelog()
 
     use_inotify = (False if args.disable_inotify else None),
-    check_clean_tree(wt)
+    try:
+        check_clean_tree(wt)
+    except PendingChanges:
+        note("%s: Please commit pending changes first.", wt.basedir)
+        return 1
+
     dirty_tracker = get_dirty_tracker(wt, subpath, use_inotify)
     if dirty_tracker:
         dirty_tracker.mark_clean()
+
+    note("Downloading multiarch hints.")
+    with download_multiarch_hints() as f:
+        hints = multiarch_hints_by_binary(parse_multiarch_hints(f))
 
     try:
         result, summary = run_lintian_fixer(
@@ -316,10 +326,13 @@ def main(argv=None):
             subpath=subpath, allow_reformatting=allow_reformatting,
             net_access=True)
     except NoChanges:
-        print('Nothing to do.')
+        note('Nothing to do.')
+    except NotDebianPackage:
+        note("%s: Not a debian package.", wt.basedir)
+        return 1
     else:
         for binary, description, certainty in result.changes:
-            print('%s: %s' % (binary['Package'], description))
+            note('%s: %s' % (binary['Package'], description))
 
 
 if __name__ == '__main__':
