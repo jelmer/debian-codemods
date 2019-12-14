@@ -145,3 +145,40 @@ def update_overrides_file(cb, path='debian/source/lintian-overrides'):
         f.writelines(lines)
 
     return True
+
+
+def _get_overrides(package=None):
+    if package in ('source', None):
+        paths = ['debian/source/lintian-overrides',
+                 'debian/source.lintian-overrides']
+    else:
+        paths = []
+        # TODO(jelmer)
+
+    for path in paths:
+        try:
+            with open(path, 'r') as f:
+                for line in f.readlines():
+                    if line.startswith('#') or not line.strip():
+                        pass
+                    else:
+                        yield parse_override(line)
+        except FileNotFoundError:
+            pass
+
+
+def override_exists(tag, info=None, package=None):
+    """Check if a particular override exists.
+
+    Args:
+      tag: Tag name
+      info: Optional info
+      package: Package (as type, name tuple)
+    """
+    for override in _get_overrides(package):
+        if override.tag != tag:
+            continue
+        if override.info and info != override.info:
+            continue
+        return True
+    return False

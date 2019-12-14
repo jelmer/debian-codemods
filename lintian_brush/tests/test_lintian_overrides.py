@@ -23,11 +23,13 @@ from breezy.tests import (
     )
 
 from lintian_brush.lintian_overrides import (
+    Override,
     overrides_paths,
+    override_exists,
     parse_override,
     serialize_override,
     update_overrides_file,
-    Override,
+    _get_overrides,
     )
 
 
@@ -112,3 +114,22 @@ class SerializeOverrideTests(TestCase):
         self.assertEqual(
             serialize_override(Override(tag='sometag', archlist='i386')),
             '[i386]: sometag\n')
+
+
+class OverrideExistsTests(TestCaseWithTransport):
+
+    def test_override_exists(self):
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/source/', ),
+            ('debian/source/lintian-overrides', """\
+blah source: patch-file-exists-but info
+""")])
+        self.assertEqual([
+            Override(package='blah', archlist=None, type='source',
+                     tag='patch-file-exists-but', info='info')],
+            list(_get_overrides()))
+        self.assertTrue(override_exists('patch-file-exists-but', info='info'))
+        self.assertFalse(override_exists('patch-file-exists-but', info='no'))
+        self.assertTrue(override_exists(
+            'patch-file-exists-but', info='info', package='source'))

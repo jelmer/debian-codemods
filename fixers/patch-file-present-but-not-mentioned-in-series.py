@@ -3,6 +3,8 @@
 import os
 import sys
 
+from lintian_brush.lintian_overrides import override_exists
+
 try:
     patches = set()
     with open('debian/patches/series', 'r') as f:
@@ -29,6 +31,10 @@ for patch in os.listdir('debian/patches'):
         continue
     # Ignore everything that is listed in series
     if patch in patches:
+        continue
+    if override_exists(
+            'patch-file-present-but-not-mentioned-in-series',
+            package='source', info=patch):
         continue
     removed.add(patch)
     os.unlink(path)
