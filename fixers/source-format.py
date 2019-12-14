@@ -37,17 +37,23 @@ with open('debian/source/format', 'w') as f:
             if delta:
                 sys.stderr.write(
                     'Tree has non-quilt changes against upstream.\n')
-                try:
-                    with open('debian/source/options', 'r') as f:
-                        options = list(f.readlines())
-                except FileNotFoundError:
-                    options = []
-                if 'single-debian-patch\n' not in options:
-                    options.append('single-debian-patch\n')
-                if 'auto-commit\n' not in options:
-                    options.append('auto-commit\n')
-                with open('debian/source/options', 'w') as f:
-                    f.writelines(options)
+                description = description.rstrip('.') + (
+                    ', enabling single-debian-patch.')
+                if os.environ.get('OPINIONATED', 'no') == 'yes':
+                    try:
+                        with open('debian/source/options', 'r') as f:
+                            options = list(f.readlines())
+                    except FileNotFoundError:
+                        options = []
+                    if 'single-debian-patch\n' not in options:
+                        options.append('single-debian-patch\n')
+                    if 'auto-commit\n' not in options:
+                        options.append('auto-commit\n')
+                    with open('debian/source/options', 'w') as f:
+                        f.writelines(options)
+                else:
+                    # Let's leave it to the maintainer to convert.
+                    sys.exit(2)
 
 
 print(description)

@@ -186,7 +186,7 @@ class MultiArchHintFixer(Fixer):
 
     def run(self, basedir, package, current_version, compat_release,
             minimum_certainty=None, trust_package=False,
-            allow_reformatting=False, net_access=True):
+            allow_reformatting=False, net_access=True, opinionated=False):
         if not net_access:
             # This should never happen - perhaps if something else imported and
             # used this class?

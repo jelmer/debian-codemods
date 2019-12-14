@@ -1,6 +1,7 @@
 lintian-brush (0.47) UNRELEASED; urgency=medium
 
   * Add apply-multiarch-hints script.
+  * Add --opinionated option. Closes: #942604
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 14 Dec 2019 13:51:36 +0000
 

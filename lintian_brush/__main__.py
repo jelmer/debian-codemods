@@ -123,6 +123,9 @@ def main(argv=None):
         '--exclude', metavar='EXCLUDE', type=str, action='append',
         help='Exclude a fixer.')
     parser.add_argument(
+        '--opinionated', action='store_true',
+        help=argparse.SUPPRESS)
+    parser.add_argument(
         'fixers', metavar='FIXER', nargs='*',
         help='specific fixer to run')
     args = parser.parse_args(argv)
@@ -217,7 +220,8 @@ def main(argv=None):
                     allow_reformatting=allow_reformatting,
                     use_inotify=(False if args.disable_inotify else None),
                     subpath=subpath,
-                    net_access=not args.disable_net_access)
+                    net_access=not args.disable_net_access,
+                    opinionated=args.opinionated)
             except NotDebianPackage:
                 note("%s: Not a debian package.", wt.basedir)
                 return 1

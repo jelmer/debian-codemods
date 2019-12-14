@@ -150,7 +150,7 @@ class Fixer(object):
 
     def run(self, basedir, package, current_version, compat_release,
             minimum_certainty=None, trust_package=False,
-            allow_reformatting=False, net_access=True):
+            allow_reformatting=False, net_access=True, opinionated=False):
         """Apply this fixer script.
 
         Args:
@@ -162,6 +162,7 @@ class Fixer(object):
           trust_package: Whether to run code from the package
           allow_reformatting: Allow reformatting of files that are being
             changed
+          opinionated: Whether to be opinionated
         Returns:
           A FixerResult object
         """
@@ -192,7 +193,7 @@ def parse_script_fixer_output(text):
 
 
 def determine_env(package, current_version, compat_release, minimum_certainty,
-                  trust_package, allow_reformatting, net_access):
+                  trust_package, allow_reformatting, net_access, opinionated):
     env = dict(os.environ.items())
     env['PACKAGE'] = package
     env['CURRENT_VERSION'] = str(current_version)
@@ -201,6 +202,7 @@ def determine_env(package, current_version, compat_release, minimum_certainty,
     env['TRUST_PACKAGE'] = 'true' if trust_package else 'false'
     env['REFORMATTING'] = ('allow' if allow_reformatting else 'disallow')
     env['NET_ACCESS'] = ('allow' if net_access else 'disallow')
+    env['OPINIONATED'] = ('yes' if opinionated else 'no')
     return env
 
 
@@ -222,7 +224,7 @@ class PythonScriptFixer(Fixer):
     def run(self, basedir, package, current_version, compat_release,
             minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
             trust_package=False, allow_reformatting=False,
-            net_access=True):
+            net_access=True, opinionated=False):
         env = determine_env(
             package=package,
             current_version=current_version,
@@ -230,7 +232,8 @@ class PythonScriptFixer(Fixer):
             minimum_certainty=minimum_certainty,
             trust_package=trust_package,
             allow_reformatting=allow_reformatting,
-            net_access=net_access)
+            net_access=net_access,
+            opinionated=opinionated)
         try:
             old_env = os.environ
             old_stderr = sys.stderr
@@ -289,7 +292,7 @@ class ScriptFixer(Fixer):
     def run(self, basedir, package, current_version, compat_release,
             minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
             trust_package=False, allow_reformatting=False,
-            net_access=True):
+            net_access=True, opinionated=False):
         env = determine_env(
             package=package,
             current_version=current_version,
@@ -297,7 +300,8 @@ class ScriptFixer(Fixer):
             minimum_certainty=minimum_certainty,
             trust_package=trust_package,
             allow_reformatting=allow_reformatting,
-            net_access=net_access)
+            net_access=net_access,
+            opinionated=opinionated)
         with tempfile.SpooledTemporaryFile() as stderr:
             p = subprocess.Popen(self.script_path, cwd=basedir,
                                  stdout=subprocess.PIPE, stderr=stderr,
@@ -645,7 +649,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
                       update_changelog=None, compat_release=None,
                       minimum_certainty=None, trust_package=False,
                       allow_reformatting=False, dirty_tracker=None,
-                      subpath='.', net_access=True):
+                      subpath='.', net_access=True, opinionated=None):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -663,6 +667,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         has been changed.
       subpath: Path in tree to operate on
       net_access: Whether to allow accessing external services
+      opinionated: Whether to be opinionated
     Returns:
       tuple with set of FixerResult, summary of the changes
     """
@@ -695,7 +700,8 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
             minimum_certainty=minimum_certainty,
             trust_package=trust_package,
             allow_reformatting=allow_reformatting,
-            net_access=net_access)
+            net_access=net_access,
+            opinionated=opinionated)
     except BaseException:
         reset_tree(local_tree, dirty_tracker, subpath)
         raise
@@ -803,7 +809,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                        verbose=False, committer=None,
                        compat_release=None, minimum_certainty=None,
                        trust_package=False, allow_reformatting=False,
-                       use_inotify=None, subpath='.', net_access=True):
+                       use_inotify=None, subpath='.', net_access=True,
+                       opinionated=None):
     """Run a set of lintian fixers on a tree.
 
     Args:
@@ -822,6 +829,7 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
         performance). Defaults to None (automatic)
       subpath: Subpath in the tree in which the package lives
       net_access: Whether to allow network access
+      opinionated: Whether to be opinionated
     Returns:
       Tuple with two lists:
         1. list of tuples with (lintian-tag, certainty, description) of fixers
@@ -850,7 +858,8 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                         trust_package=trust_package,
                         allow_reformatting=allow_reformatting,
                         dirty_tracker=dirty_tracker,
-                        subpath=subpath, net_access=net_access)
+                        subpath=subpath, net_access=net_access,
+                        opinionated=opinionated)
             except FormattingUnpreservable as e:
                 ret.formatting_unpreservable[fixer.name] = e.path
                 if verbose:
