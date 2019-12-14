@@ -636,7 +636,7 @@ class LintianBrushVersion(TestCase):
                 'Running outside of source tree?')
         with open('debian/changelog', 'r') as f:
             cl = Changelog(f, max_blocks=1)
-        self.assertEqual(str(cl.version), version_string)
+        self.assertEqual(str(cl.version).split('+')[0], version_string)
 
     def test_matches_setup_version(self):
         if not os.path.exists('setup.py'):
