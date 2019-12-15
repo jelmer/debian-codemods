@@ -103,7 +103,14 @@ def update_control(path='debian/control', source_package_cb=None,
                 source_package_cb(paragraph)
         else:
             if binary_package_cb is not None:
+                old_fields = list(paragraph)
                 binary_package_cb(paragraph)
+                # Make sure Description stays the last field
+                if list(paragraph) != old_fields:
+                    if list(old_fields)[-1] == 'Description':
+                        paragraph._Deb822Dict__keys.add('Description')
+                        paragraph._Deb822Dict__keys.remove('Description')
+
     try:
         return update_deb822(path, paragraph_cb=paragraph_cb)
     except GeneratedFile as e:

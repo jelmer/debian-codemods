@@ -165,6 +165,32 @@ Testsuite: autopkgtest
 Uploaders: @lintian-brush-test@
 """, "debian/control.in")
 
+    def test_description_stays_last(self):
+        self.build_tree_contents([('debian/', ), ('debian/control', """\
+Source: blah
+Testsuite: autopkgtest
+
+Package: libblah
+Section: extra
+Description: foo
+ bar
+
+""")])
+
+        def add_header(control):
+            control["Arch"] = "all"
+        self.assertTrue(update_control(binary_package_cb=add_header))
+        self.assertFileEqual("""\
+Source: blah
+Testsuite: autopkgtest
+
+Package: libblah
+Section: extra
+Arch: all
+Description: foo
+ bar
+""", 'debian/control')
+
 
 class ParseRelationsTests(TestCase):
 

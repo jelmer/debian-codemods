@@ -1,3 +1,10 @@
+lintian-brush (0.48) UNRELEASED; urgency=medium
+
+  * For esthetic reasons, keep Description as the last field in binary
+    package stanzas.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 15 Dec 2019 17:20:33 +0000
+
 lintian-brush (0.47) unstable; urgency=medium
 
   * Add apply-multiarch-hints script.
