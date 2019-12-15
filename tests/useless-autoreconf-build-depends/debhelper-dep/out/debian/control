@@ -1,0 +1,12 @@
+Source: blah
+Maintainer: Team Maintainers <team@lists.alioth.debian.org>
+Uploaders: Joe Example <joe@example.com>
+Section: math
+Priority: optional
+Build-Depends: debhelper (>= 10~)
+Standards-Version: 4.1.1
+
+Package: blah
+Architecture: any
+Description: Description
+ More description

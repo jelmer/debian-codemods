@@ -1,0 +1,2 @@
+Drop unnecessary dependency on dh-autoreconf.
+Fixed-Lintian-Tags: useless-autoreconf-build-depends

@@ -18,7 +18,7 @@ compat_release = os.environ.get('COMPAT_RELEASE', 'sid')
 
 def bump_debhelper(control):
     control["Build-Depends"] = ensure_minimum_debhelper_version(
-        control.get("Build-Depends", ""), "10")
+        control.get("Build-Depends", ""), "10~")
     control["Build-Depends"] = drop_dependency(
         control["Build-Depends"],
         "dh-autoreconf")

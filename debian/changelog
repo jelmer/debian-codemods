@@ -2,6 +2,8 @@ lintian-brush (0.47) UNRELEASED; urgency=medium
 
   * Add apply-multiarch-hints script.
   * Add --opinionated option. Closes: #942604
+  * useless-autoreconf-build-depends: Depend on debhelper (>= 10~)
+    rather than (>= 10). Closes: #946743
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 14 Dec 2019 13:51:36 +0000
 
