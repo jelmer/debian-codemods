@@ -1,0 +1,2 @@
+Re-export upstream signing key without extra signatures.
+Fixed-Lintian-Tags: public-upstream-key-not-minimal

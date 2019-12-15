@@ -3,9 +3,7 @@
 import os
 import subprocess
 import shlex
-import shutil
 import sys
-import tempfile
 
 gpg = shlex.split(os.environ.get('GPG', 'gpg'))
 
@@ -14,12 +12,10 @@ KEY_BLOCK_START = b'-----BEGIN PGP PUBLIC KEY BLOCK-----'
 KEY_BLOCK_END = b'-----END PGP PUBLIC KEY BLOCK-----'
 
 
-def run_gpg(args, keyring, homedir, stdin=None):
-    argv = (
-        gpg +
-        ['--homedir', homedir, '--quiet', '--no-default-keyring',
-         '--keyring=%s' % keyring] +
-        args)
+def gpg_import_export(options, stdin):
+    argv = gpg + [
+            '--armor', '--quiet', '--no-default-keyring',
+            '--import-options', ','.join(['import-export'] + options)]
     try:
         p = subprocess.Popen(
             argv, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
@@ -32,28 +28,14 @@ def run_gpg(args, keyring, homedir, stdin=None):
     return stdout
 
 
-def gpg_export(options, keyring, homedir):
-    return run_gpg(
-        ['--export-options', ','.join(options), '--export', '--armor'],
-        keyring=keyring, homedir=homedir)
-
-
 def minimize_key_block(key):
-    td = tempfile.mkdtemp()
-    try:
-        keyring = os.path.join(td, 'keyring.pgp')
-        homedir = os.path.join(td, 'home')
-        os.mkdir(homedir, 0o700)
-        run_gpg(['--import'], keyring=keyring, homedir=homedir, stdin=key)
-        minimal = gpg_export(
-            ['export-minimal'], keyring=keyring, homedir=homedir)
-        full = gpg_export([], keyring=keyring, homedir=homedir)
-        if minimal == full:
-            return key
-        else:
-            return minimal
-    finally:
-        shutil.rmtree(td, ignore_errors=True)
+    minimal = gpg_import_export(
+        ['import-minimal', 'import-clean', 'self-sigs-only'], key)
+    full = gpg_import_export([], key)
+    if minimal == full:
+        return key
+    else:
+        return minimal
 
 
 for p in [
