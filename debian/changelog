@@ -1,4 +1,4 @@
-lintian-brush (0.47) UNRELEASED; urgency=medium
+lintian-brush (0.47) unstable; urgency=medium
 
   * Add apply-multiarch-hints script.
   * Add --opinionated option. Closes: #942604
@@ -6,7 +6,7 @@ lintian-brush (0.47) UNRELEASED; urgency=medium
     rather than (>= 10). Closes: #946743
   * Don't remove expired keys from upstream signing key. Closes: #946407
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 14 Dec 2019 13:51:36 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 15 Dec 2019 14:50:44 +0000
 
 lintian-brush (0.46) unstable; urgency=medium
 
