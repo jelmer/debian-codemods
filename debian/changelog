@@ -2,6 +2,8 @@ lintian-brush (0.48) UNRELEASED; urgency=medium
 
   * For esthetic reasons, keep Description as the last field in binary
     package stanzas.
+  * Handle commented out patches in patch-file-present-but-not-mentioned-
+    in-series.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 15 Dec 2019 17:20:33 +0000
 

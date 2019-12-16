@@ -9,9 +9,11 @@ try:
     patches = set()
     with open('debian/patches/series', 'r') as f:
         for line in f:
+            if line.startswith('#'):
+                patches.add(line.split('#')[1].strip())
+                continue
             line = line.split('#', 1)[0]
             if not line:
-                patches.add(line.split('#')[1].strip())
                 continue
             patches.add(line.split()[0])
 except FileNotFoundError:
