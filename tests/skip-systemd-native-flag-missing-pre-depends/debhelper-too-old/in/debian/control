@@ -1,0 +1,6 @@
+Source: blah
+Build-Depends: debhelper-compat (= 11)
+
+Package: blah
+Description: description
+ longer description

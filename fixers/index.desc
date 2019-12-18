@@ -152,6 +152,9 @@ Lintian-Tags:
 Fix-Script: uses-debhelper-compat-file.py
 Lintian-Tags: uses-debhelper-compat-file
 
+Fix-Script: skip-systemd-native-flag-missing-pre-depends.py
+Lintian-Tags: skip-systemd-native-flag-missing-pre-depends
+
 Fix-Script: patch-file-present-but-not-mentioned-in-series.py
 Lintian-Tags: patch-file-present-but-not-mentioned-in-series
 
