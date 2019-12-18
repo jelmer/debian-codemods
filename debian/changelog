@@ -5,6 +5,8 @@ lintian-brush (0.48) UNRELEASED; urgency=medium
   * Handle commented out patches in patch-file-present-but-not-mentioned-
     in-series.
   * Add fixer for skip-systemd-native-flag-missing-pre-depends.
+  * Reintroduce fixer for removal of empty patches, but hide behind --
+    opinionated.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 15 Dec 2019 17:20:33 +0000
 

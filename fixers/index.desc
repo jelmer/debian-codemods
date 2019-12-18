@@ -94,6 +94,8 @@ Lintian-Tags: dh-clean-k-is-deprecated
 
 Fix-Script: empty-debian-source-options.py
 
+Fix-Script: empty-debian-patches-series.py
+
 Fix-Script: homepage-in-binary-package.py
 Lintian-Tags: homepage-in-binary-package
 
