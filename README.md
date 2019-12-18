@@ -52,6 +52,7 @@ subset of the issues:
 * debian-watch-file-is-missing
 * debian-watch-file-uses-deprecated-githubredir
 * debian-watch-uses-insecure-uri
+* declares-possibly-conflicting-debhelper-compat-versions
 * dep5-file-paragraph-references-header-paragraph
 * dh-clean-k-is-deprecated
 * dh-quilt-addon-but-quilt-source-format
