@@ -95,6 +95,7 @@ subset of the issues:
 * quilt-series-but-no-build-dep
 * quilt-series-without-trailing-newline
 * renamed-tag
+* skip-systemd-native-flag-missing-pre-depends
 * space-in-std-shortname-in-dep5-copyright
 * systemd-service-file-pidfile-refers-to-var-run
 * tab-in-licence-text
