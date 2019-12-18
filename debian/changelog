@@ -8,6 +8,8 @@ lintian-brush (0.48) UNRELEASED; urgency=medium
   * Reintroduce fixer for removal of empty patches, but hide behind --
     opinionated.
   * Add fixer for invalid-standards-version.
+  * Add fixer for declares-possibly-conflicting-debhelper-compat-
+    versions.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 15 Dec 2019 17:20:33 +0000
 

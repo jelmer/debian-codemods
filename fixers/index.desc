@@ -138,6 +138,9 @@ Lintian-Tags: no-homepage-field
 Fix-Script: orphaned-package-should-not-have-uploaders.py
 Lintian-Tags: orphaned-package-should-not-have-uploaders
 
+Fix-Script: declares-possibly-conflicting-debhelper-compat-versions.py
+Lintian-Tags: declares-possibly-conflicting-debhelper-compat-versions
+
 Fix-Script: debhelper-compat-wrong-field.py
 
 Fix-Script: package-needs-versioned-debhelper-build-depends.py
