@@ -32,7 +32,7 @@ def fix_invalid_standards_version(control):
         return
     if len(sv) == 2 and (sv[0], sv[1], 0) in release_dates:
         control['Standards-Version'] += '.0'
-        print("Adding missing .0 suffix in Standards-Version.")
+        print("Add missing .0 suffix in Standards-Version.")
         return
     if sv > sorted(release_dates)[-1]:
         # Maybe we're just unaware of new policy releases?
@@ -41,7 +41,7 @@ def fix_invalid_standards_version(control):
     candidates = [v for v in release_dates if v < sv]
     newsv = sorted(candidates)[-1]
     newsv_str = '.'.join([str(x) for x in newsv])
-    print('Replacing invalid standards version %s with valid %s.' % (
+    print('Replace invalid standards version %s with valid %s.' % (
           control['Standards-Version'], newsv_str))
     control['Standards-Version'] = newsv_str
 
