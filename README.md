@@ -67,6 +67,7 @@ subset of the issues:
 * init.d-script-needs-depends-on-lsb-base
 * insecure-copyright-format-uri
 * invalid-short-name-in-dep5-copyright
+* invalid-standards-version
 * libmodule-build-perl-needs-to-be-in-build-depends
 * maintainer-also-in-uploaders.
 * maintainer-script-without-set-e
