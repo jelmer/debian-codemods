@@ -194,6 +194,8 @@ def known_bad_guess(datum):
         parsed_url = urlparse(datum.value)
         if parsed_url.hostname == 'bugzilla.gnome.org':
             return True
+        if parsed_url.hostname == 'bugs.freedesktop.org':
+            return True
     return False
 
 
