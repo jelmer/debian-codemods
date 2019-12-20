@@ -15,6 +15,7 @@ def set_multiarch_foreign(binary):
     if 'Multi-Arch' in binary:
         return
     binary['Multi-Arch'] = 'foreign'
+    updated_packages.add(package)
 
 
 update_control(binary_package_cb=set_multiarch_foreign)
