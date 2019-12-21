@@ -133,7 +133,8 @@ be registered in the ``index.desc`` file in the same directory.
 A fixer is run in the root directory of a package, where it can make changes
 it deems necessary. If a fixer can not provide any improvements, it can simply
 leave the working tree untouched - lintian-brush will not create any commits for it
-or update the changelog.
+or update the changelog. If exits with a non-zero return code, whatever changes
+it has made will be discarded and the fixer will be reported as having failed.
 
 The following additional environment variables are set:
 
@@ -144,6 +145,8 @@ The following additional environment variables are set:
  * ``NET_ACCESS``: Whether the fixer is allowed to make network connections
    (e.g. sending HTTP requests). Used by --disable-net-access and the testsuite.
    Set to either ``allow`` or ``disallow``.
+ * ``OPINIONATED``: Set to ``yes`` or ``no``. If ``no``, fixers are not expected
+   to make changes in which there is no obvious single correct fix.
 
 A fixer should write a short description of the changes it has made to standard
 out; this will be used for the commit message.
@@ -156,8 +159,8 @@ It can include optional metadata in its output::
    it may also support building the package to verify the lintian tag
    is actually resolved.
 
- * ``Certainty:`` followed by ``certain``, ``likely`` or ``possible``,
-   indicating how certain the fixer is that the fix was the right
+ * ``Certainty:`` followed by ``certain``, ``confident``, ``likely`` or
+   ``possible``, indicating how certain the fixer is that the fix was the right
    one.
 
 The easiest way to test fixers is to create a skeleton *in* and *out* source tree under
