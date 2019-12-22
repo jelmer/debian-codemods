@@ -15,7 +15,10 @@ try:
             line = line.split('#', 1)[0]
             if not line:
                 continue
-            patches.add(line.split()[0])
+            try:
+                patches.add(line.split()[0])
+            except IndexError:
+                continue
 except FileNotFoundError:
     sys.exit(0)
 
