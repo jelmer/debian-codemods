@@ -73,6 +73,9 @@ def eliminate_dbgsym_migration(line, target):
 
     def rep_dbgsym_migration(m):
         rep = m.group(2).strip(b'"').strip(b"'").decode()
+        if '$' in rep:
+            # too complicated
+            return m.group(0)
         rep = PkgRelation.parse_relations(rep)
         if migration_done(rep):
             return b''

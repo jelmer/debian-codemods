@@ -1,0 +1,2 @@
+COMPAT_RELEASE=stretch
+JESSIE_PACKAGES=amule-dbg
