@@ -10,6 +10,7 @@ lintian-brush (0.48) UNRELEASED; urgency=medium
   * Add fixer for invalid-standards-version.
   * Add fixer for declares-possibly-conflicting-debhelper-compat-
     versions.
+  * Add fixer for debug-symbol-migration-possibly-complete.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 15 Dec 2019 17:20:33 +0000
 
