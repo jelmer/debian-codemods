@@ -23,7 +23,7 @@ import re
 import subprocess
 import tempfile
 import urllib.error
-from urllib.parse import urlparse, urlunparse, urljoin
+from urllib.parse import quote, urlparse, urlunparse, urljoin
 from warnings import warn
 
 from debian.deb822 import Deb822
@@ -190,7 +190,7 @@ def guess_repo_from_url(url, net_access=False):
 
 
 def known_bad_guess(datum):
-    if datum.field == 'Bug-Submit':
+    if datum.field in ('Bug-Submit', 'Bug-Database'):
         parsed_url = urlparse(datum.value)
         if parsed_url.hostname == 'bugzilla.gnome.org':
             return True
@@ -576,6 +576,10 @@ def guess_from_doap(path, trust_package):
             url = extract_url(child)
             if url:
                 yield UpstreamDatum('Homepage', url, 'certain')
+        if child.tag == ('{%s}download-page' % DOAP_NAMESPACE):
+            url = extract_url(child)
+            if url:
+                yield UpstreamDatum('X-Download', url, 'certain')
         if child.tag == ('{%s}repository' % DOAP_NAMESPACE):
             for repo in child:
                 if repo.tag in (
@@ -887,6 +891,14 @@ def guess_bug_database_url_from_repo_url(url):
         return urlunparse(
             ('https', 'github.com', path,
              None, None, None))
+    if is_gitlab_site(parsed_url.hostname):
+        path = '/'.join(parsed_url.path.split('/')[:3])
+        if path.endswith('.git'):
+            path = path[:-4]
+        path = path + '/issues'
+        return urlunparse(
+            ('https', parsed_url.hostname, path,
+             None, None, None))
     return None
 
 
@@ -925,13 +937,26 @@ def verify_bug_database_url(url):
             path_elements[0], path_elements[1])
         data = _load_json_url(api_url)
         return data['has_issues']
+    if is_gitlab_site(parsed_url.netloc):
+        path_elements = parsed_url.path.strip('/').split('/')
+        if len(path_elements) < 3 or path_elements[-1] != 'issues':
+            return False
+        api_url = 'https://%s/api/v4/projects/%s/issues' % (
+            parsed_url.netloc, quote('/'.join(path_elements[:-1]), safe=''))
+        try:
+            data = _load_json_url(api_url)
+        except urllib.error.HTTPError as e:
+            if e.status == 404:
+                return
+            raise
+        return len(data) > 0
     return None
 
 
 def verify_bug_submit_url(url):
     parsed_url = urlparse(url)
-    if parsed_url.netloc == 'gitlab.com':
-        path = '/'.join(parsed_url.path.strip('/').split('/')[:2])
+    if parsed_url.netloc == 'gitlab.com' or is_gitlab_site(parsed_url.netloc):
+        path = '/'.join(parsed_url.path.strip('/').split('/')[:-1])
         return verify_bug_database_url(
             urlunparse(parsed_url._replace(path=path)))
     return None
@@ -940,6 +965,13 @@ def verify_bug_submit_url(url):
 def _extrapolate_repository_from_homepage(upstream_metadata, net_access):
     repo = guess_repo_from_url(
             upstream_metadata['Homepage'].value, net_access=net_access)
+    if repo:
+        return UpstreamDatum('Repository', repo, 'likely')
+
+
+def _extrapolate_repository_from_download(upstream_metadata, net_access):
+    repo = guess_repo_from_url(
+            upstream_metadata['X-Download'].value, net_access=net_access)
     if repo:
         return UpstreamDatum('Repository', repo, 'likely')
 
@@ -1011,6 +1043,7 @@ EXTRAPOLATE_FNS = [
     ('Repository', 'Bug-Database',
      _extrapolate_bug_database_from_repository),
     ('Bug-Database', 'Bug-Submit', _extrapolate_bug_submit_from_bug_db),
+    ('X-Download', 'Repository', _extrapolate_repository_from_download),
 ]
 
 
@@ -1073,6 +1106,7 @@ def probe_upstream_branch_url(url, version=None):
         b = Branch.open(url)
         b.last_revision()
         if version is not None:
+            version = version.split('+git')[0]
             tag_names = b.tags.get_tag_dict().keys()
             if not tag_names:
                 # Uhm, hmm
@@ -1081,10 +1115,14 @@ def probe_upstream_branch_url(url, version=None):
                 return True
             if 'v%s' % version in tag_names:
                 return True
+            if version.replace('.', '_') in tag_names:
+                return True
             for tag_name in tag_names:
                 if tag_name.endswith('_' + version):
                     return True
                 if tag_name.endswith('-' + version):
+                    return True
+                if tag_name.endswith('_%s' % version.replace('.', '_')):
                     return True
             return False
         else:
