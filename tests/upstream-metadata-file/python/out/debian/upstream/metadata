@@ -1,3 +1,5 @@
 Name: blah
+Bug-Database: https://salsa.debian.org/jelmer/lintian-brush/issues
+Bug-Submit: https://salsa.debian.org/jelmer/lintian-brush/issues/new
 Repository: https://salsa.debian.org/jelmer/lintian-brush.git
 Repository-Browse: https://salsa.debian.org/jelmer/lintian-brush

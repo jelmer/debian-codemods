@@ -204,12 +204,15 @@ def filter_bad_guesses(guessed_items):
 
 
 def update_from_guesses(upstream_metadata, guessed_items):
+    changed = False
     for datum in guessed_items:
         current_datum = upstream_metadata.get(datum.field)
         if not current_datum or (
                 certainty_to_confidence(datum.certainty) <
                 certainty_to_confidence(current_datum.certainty)):
             upstream_metadata[datum.field] = datum
+            changed = True
+    return changed
 
 
 def read_python_pkg_info(path):
@@ -1083,12 +1086,23 @@ def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
     while changed:
         changed = False
         for from_field, to_field, fn in EXTRAPOLATE_FNS:
-            if (to_field in upstream_metadata or
-                    from_field not in upstream_metadata):
+            try:
+                from_value = upstream_metadata[from_field]
+            except KeyError:
+                continue
+            old_to_value = upstream_metadata.get(to_field)
+            if old_to_value is not None and (
+                    certainty_to_confidence(from_value.certainty) >=
+                    certainty_to_confidence(old_to_value.certainty)):
                 continue
             result = fn(upstream_metadata, net_access)
-            if result and certainty_sufficient(
-                    result.certainty, minimum_certainty):
+            if not result:
+                continue
+            if not certainty_sufficient(result.certainty, minimum_certainty):
+                continue
+            if old_to_value is None or (
+                    certainty_to_confidence(result.certainty) <
+                    certainty_to_confidence(old_to_value.certainty)):
                 upstream_metadata[to_field] = result
                 changed = True
 
