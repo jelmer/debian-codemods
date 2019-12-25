@@ -27,13 +27,16 @@ removed = set()
 for patch in os.listdir('debian/patches'):
     path = os.path.join('debian', 'patches', patch)
     # Don't delete the series file
-    if patch == 'series':
+    if patch in ('series', '00list'):
         continue
     # Ignore everything that is not a regular file
     if not os.path.isfile(path):
         continue
     # Ignore any README files
     if patch.startswith('README'):
+        continue
+    # Ignore any notes files
+    if patch.startswith('notes'):
         continue
     # Ignore everything that is listed in series
     if patch in patches:
