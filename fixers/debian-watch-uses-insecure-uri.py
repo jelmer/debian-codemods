@@ -14,6 +14,9 @@ def watchfile_has_http():
     with open('debian/watch', 'r') as f:
         wf = parse_watch_file(f)
 
+    if not wf:
+        return False
+
     for entry in wf:
         if entry.url.startswith('http://'):
             return True
