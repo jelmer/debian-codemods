@@ -1,4 +1,4 @@
-lintian-brush (0.48) UNRELEASED; urgency=medium
+lintian-brush (0.48) unstable; urgency=medium
 
   * For esthetic reasons, keep Description as the last field in binary
     package stanzas.
