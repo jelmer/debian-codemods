@@ -147,6 +147,14 @@ class DetermineBrowserUrlTests(TestCase):
             'https://github.com/jelmer/dulwich/tree/HEAD/blah',
             determine_browser_url(
                 'git', 'git://github.com/jelmer/dulwich [blah]'))
+        self.assertEqual(
+            'https://git.sv.gnu.org/cgit/rcs.git',
+            determine_browser_url(
+                'git', 'https://git.sv.gnu.org/git/rcs.git'))
+        self.assertEqual(
+            'https://git.savannah.gnu.org/cgit/rcs.git',
+            determine_browser_url(
+                'git', 'git://git.savannah.gnu.org/rcs.git'))
 
 
 class PlausibleUrlTests(TestCase):

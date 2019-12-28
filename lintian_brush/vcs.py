@@ -224,6 +224,15 @@ def browse_url_from_repo_url(url):
         return urlunparse(
             ('https', parsed_url.netloc, '/'.join(path_elements), None, None,
              None))
+    if parsed_url.hostname in ('git.savannah.gnu.org', 'git.sv.gnu.org'):
+        path_elements = parsed_url.path.strip('/').split('/')
+        if parsed_url.scheme == 'https' and path_elements[0] == 'git':
+            path_elements.pop(0)
+        # Why cgit and not gitweb?
+        path_elements.insert(0, 'cgit')
+        return urlunparse(
+            ('https', parsed_url.netloc, '/'.join(path_elements), None,
+             None, None))
 
     return None
 
@@ -250,6 +259,15 @@ def determine_browser_url(vcs_type, vcs_url):
         return urlunparse(
             ('https', 'code.launchpad.net', path,
              parsed.query, parsed.params, parsed.fragment))
+    if parsed.hostname in ('git.savannah.gnu.org', 'git.sv.gnu.org'):
+        path_elements = parsed.path.strip('/').split('/')
+        if parsed.scheme == 'https' and path_elements[0] == 'git':
+            path_elements.pop(0)
+        # Why cgit and not gitweb?
+        path_elements.insert(0, 'cgit')
+        return urlunparse(
+            ('https', parsed.netloc, '/'.join(path_elements), None,
+             None, None))
     return None
 
 
@@ -340,6 +358,10 @@ def find_secure_vcs_url(url, net_access=True):
     if parsed_repo_url.scheme == 'lp':
         parsed_repo_url = parsed_repo_url._replace(
             scheme='https', netloc='code.launchpad.net')
+
+    if parsed_repo_url.hostname in ('git.savannah.gnu.org', 'git.sv.gnu.org'):
+        parsed_repo_url = parsed_repo_url.replace(
+            scheme='https', path='/git' + parsed_repo_url.path)
 
     if net_access:
         secure_repo_url = parsed_repo_url._replace(scheme='https')

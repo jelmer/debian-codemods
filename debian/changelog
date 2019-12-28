@@ -1,6 +1,7 @@
 lintian-brush (0.49) UNRELEASED; urgency=medium
 
   * Add support for upgrading from standards version 4.1.4 -> 4.1.5.
+  * Determine secure and browser URLs from Savannah Git URLs.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 28 Dec 2019 00:30:23 +0000
 
