@@ -1,3 +1,9 @@
+lintian-brush (0.49) UNRELEASED; urgency=medium
+
+  * Add support for upgrading from standards version 4.1.4 -> 4.1.5.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 28 Dec 2019 00:30:23 +0000
+
 lintian-brush (0.48) unstable; urgency=medium
 
   * For esthetic reasons, keep Description as the last field in binary

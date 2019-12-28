@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os
+from debian.changelog import Changelog
 from lintian_brush.control import update_control, get_relation
 from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
@@ -11,6 +12,7 @@ upgrade_path = {
     "4.2.0": "4.2.1",
     "4.3.0": "4.4.0",
     "4.4.0": "4.4.1",
+    "4.1.4": "4.1.5",
 }
 
 
@@ -62,10 +64,29 @@ def check_4_4_1():
     return True
 
 
+def check_4_1_5():
+    # If epoch has changed -> return False
+    with open('debian/changelog', 'r') as f:
+        cl = Changelog(f, max_blocks=2)
+        epochs = set()
+        for block in cl:
+            epochs.add(block.version.epoch)
+        if len(epochs) > 1:
+            return False
+
+    with open('debian/control') as f:
+        source = Deb822(f)
+        if 'Rules-Requires-Root' not in source:
+            return False
+
+    return True
+
+
 check_requirements = {
     "4.1.1": check_4_1_1,
     "4.4.0": check_4_4_0,
     "4.4.1": check_4_4_1,
+    "4.1.5": check_4_1_5,
 }
 
 current_version = None
