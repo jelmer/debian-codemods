@@ -490,6 +490,17 @@ def guess_from_readme(path, trust_package):
         yield UpstreamDatum('Repository', urls[0], 'possible')
 
 
+def guess_from_debian_patch(path, trust_package):
+    with open(path, 'r') as f:
+        for line in f:
+            if line.startswith('Forwarded: '):
+                forwarded = line.split(':', 1)[1].strip()
+                bug_db = bug_database_from_issue_url(forwarded)
+                if bug_db:
+                    yield UpstreamDatum('Bug-Database', bug_db, 'possible')
+    return []
+
+
 def guess_from_meta_json(path, trust_package):
     import json
     with open(path, 'r') as f:
@@ -730,6 +741,12 @@ def _get_guessers(path, trust_package=False):
         os.path.splitext(n)[1] not in ('.html', '.pdf', '.xml')]
     CANDIDATES.extend([(n, guess_from_readme) for n in readme_filenames])
 
+    debian_patches = [
+        os.path.join('debian', 'patches', n)
+        for n in os.listdir('debian/patches')
+        if os.path.isfile(os.path.join('debian/patches', n))]
+    CANDIDATES.extend([(p, guess_from_debian_patch) for p in debian_patches])
+
     yield guess_from_environment()
 
     for relpath, guesser in CANDIDATES:
@@ -882,6 +899,16 @@ def extract_sf_project_name(url):
     m = re.fullmatch('https?://(.*).(sf|sourceforge).net/?', url)
     if m:
         return m.group(1)
+
+
+def bug_database_from_issue_url(url):
+    parsed_url = urlparse(url)
+    if parsed_url.netloc == 'github.com':
+        path_elements = parsed_url.path.strip('/').split('/')
+        if len(path_elements) > 2 and path_elements[2] == 'issues':
+            return urlunparse(
+                ('https', 'github.com', '/'.join(path_elements[:3]),
+                 None, None, None))
 
 
 def guess_bug_database_url_from_repo_url(url):
