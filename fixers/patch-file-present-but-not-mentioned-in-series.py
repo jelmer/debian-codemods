@@ -4,21 +4,13 @@ import os
 import sys
 
 from lintian_brush.lintian_overrides import override_exists
+from lintian_brush.patches import read_quilt_series
 
 try:
     patches = set()
-    with open('debian/patches/series', 'r') as f:
-        for line in f:
-            if line.startswith('#'):
-                patches.add(line.split('#')[1].strip())
-                continue
-            line = line.split('#', 1)[0]
-            if not line:
-                continue
-            try:
-                patches.add(line.split()[0])
-            except IndexError:
-                continue
+    with open('debian/patches/series', 'rb') as f:
+        for patch, quoted, options in read_quilt_series(f):
+            patches.add(patch)
 except FileNotFoundError:
     sys.exit(0)
 

@@ -148,6 +148,21 @@ class AppliedPatches(object):
         return False
 
 
+def read_quilt_series(f):
+    for line in f:
+        if line.startswith(b'#'):
+            quoted = True
+            line = line.split(b'#')[1].strip()
+        else:
+            quoted = False
+        args = line.decode().split()
+        patch = args[0]
+        if not patch:
+            continue
+        options = args[1:]
+        yield patch, quoted, options
+
+
 def read_quilt_patches(tree, directory='debian/patches'):
     """Read patch contents from quilt directory.
 
@@ -162,11 +177,10 @@ def read_quilt_patches(tree, directory='debian/patches'):
         series_lines = tree.get_file_lines(series_path)
     except NoSuchFile:
         return []
-    for line in series_lines:
-        line = line.strip().split(b'#')[0].strip()
-        if not line:
+    for patchname, quoted, options in read_quilt_series(series_lines):
+        if quoted:
             continue
-        patchname = line.decode()
+        # TODO(jelmer): Pass on options?
         with tree.get_file(osutils.pathjoin(directory, patchname)) as f:
             for patch in parse_patches(f, allow_dirty=True, keep_dirty=False):
                 yield patch
