@@ -741,11 +741,16 @@ def _get_guessers(path, trust_package=False):
         os.path.splitext(n)[1] not in ('.html', '.pdf', '.xml')]
     CANDIDATES.extend([(n, guess_from_readme) for n in readme_filenames])
 
-    debian_patches = [
-        os.path.join('debian', 'patches', n)
-        for n in os.listdir('debian/patches')
-        if os.path.isfile(os.path.join('debian/patches', n))]
-    CANDIDATES.extend([(p, guess_from_debian_patch) for p in debian_patches])
+    try:
+        debian_patches = [
+            os.path.join('debian', 'patches', n)
+            for n in os.listdir('debian/patches')
+            if os.path.isfile(os.path.join('debian/patches', n))]
+    except FileNotFoundError:
+        pass
+    else:
+        CANDIDATES.extend(
+            [(p, guess_from_debian_patch) for p in debian_patches])
 
     yield guess_from_environment()
 
