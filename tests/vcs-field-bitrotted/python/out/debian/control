@@ -1,6 +1,6 @@
 Source: lintian-brush
 Maintainer: Bla Team <pkg-bla@lists.alioth.debian.org>
-Vcs-Git: https://salsa.debian.org/bla/python-bla
+Vcs-Git: https://salsa.debian.org/bla/python-bla.git
 Vcs-Browser: https://salsa.debian.org/bla/python-bla
 
 Package: lintian-brush

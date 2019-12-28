@@ -174,15 +174,7 @@ def determine_browser_url(url):
     return 'https://salsa.debian.org%s' % path
 
 
-def salsa_url_from_alioth_url(vcs_type, alioth_url):
-    """Guess the salsa URL from an alioth URL.
-
-    Args:
-      vcs_type: VCS type
-      alioth_url: Alioth URL
-    Returns:
-      Salsa URL
-    """
+def _salsa_path_from_alioth_url(vcs_type, alioth_url):
     if vcs_type is None:
         return None
     # These two regular expressions come from vcswatch:
@@ -191,10 +183,10 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
         m = ("(https?|git)://(anonscm|git).debian.org/"
              "(cgit/|git/)?collab-maint/")
         if re.match(m, alioth_url):
-            return re.sub(m, 'https://salsa.debian.org/debian/', alioth_url)
+            return re.sub(m, 'debian/', alioth_url)
         m = "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?users/"
         if re.match(m, alioth_url):
-            return re.sub(m, 'https://salsa.debian.org/', alioth_url)
+            return re.sub(m, '', alioth_url)
         m = re.match(
             "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?(.+)",
             alioth_url)
@@ -204,7 +196,6 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
                 subpath = '/'.join(parts[:i])
                 try:
                     return (
-                        'https://salsa.debian.org/' +
                         GIT_PATH_RENAMES[subpath] + '/' +
                         '/'.join(parts[i:]))
                 except KeyError:
@@ -214,25 +205,23 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
             alioth_url)
         if m and m.group(4) in TEAM_NAME_MAP:
             new_name = TEAM_NAME_MAP[m.group(4)]
-            return re.sub(m.re, 'https://salsa.debian.org/' + new_name + '/',
-                          alioth_url)
+            return re.sub(m.re, new_name + '/', alioth_url)
         m = re.match(
             'https?://alioth.debian.org/anonscm/(git/|cgit/)?([^/]+)/',
             alioth_url)
         if m and m.group(2) in TEAM_NAME_MAP:
             new_name = TEAM_NAME_MAP[m.group(2)]
-            return re.sub(m.re, 'https://salsa.debian.org/' + new_name + '/',
-                          alioth_url)
+            return re.sub(m.re, new_name + '/', alioth_url)
 
     if vcs_type.lower() == 'svn':
         if alioth_url.startswith('svn://svn.debian.org/pkg-perl/trunk'):
             return alioth_url.replace(
                 'svn://svn.debian.org/pkg-perl/trunk',
-                'https://salsa.debian.org/perl-team/modules/packages')
+                'perl-team/modules/packages')
         if alioth_url.startswith('svn://svn.debian.org/pkg-lua/packages'):
             return alioth_url.replace(
                 'svn://svn.debian.org/pkg-lua/packages',
-                'https://salsa.debian.org/lua-team')
+                'lua-team')
         parsed_url = urlparse(alioth_url)
         if (parsed_url.scheme == 'svn' and
                 parsed_url.netloc in (
@@ -243,32 +232,44 @@ def salsa_url_from_alioth_url(vcs_type, alioth_url):
             if (len(parts) == 3 and
                     parts[0] in TEAM_NAME_MAP and
                     parts[2] == 'trunk'):
-                return 'https://salsa.debian.org/%s/%s' % (
-                    TEAM_NAME_MAP[parts[0]], parts[1])
+                return '%s/%s' % (TEAM_NAME_MAP[parts[0]], parts[1])
             if (len(parts) == 3 and
                     parts[0] in TEAM_NAME_MAP and
                     parts[1] == 'trunk'):
-                return 'https://salsa.debian.org/%s/%s' % (
-                    TEAM_NAME_MAP[parts[0]], parts[2])
+                return '%s/%s' % (TEAM_NAME_MAP[parts[0]], parts[2])
             if (len(parts) == 4 and
                     parts[0] in TEAM_NAME_MAP and
                     parts[1] == 'packages' and
                     parts[3] == 'trunk'):
-                return 'https://salsa.debian.org/%s/%s' % (
-                    TEAM_NAME_MAP[parts[0]], parts[2])
+                return '%s/%s' % (TEAM_NAME_MAP[parts[0]], parts[2])
             if (len(parts) == 4 and
                     parts[0] in TEAM_NAME_MAP and
                     parts[1] == 'trunk' and parts[2] == 'packages'):
-                return 'https://salsa.debian.org/%s/%s' % (
-                    TEAM_NAME_MAP[parts[0]], parts[3])
+                return '%s/%s' % (TEAM_NAME_MAP[parts[0]], parts[3])
             if (len(parts) > 3 and
                     parts[0] in TEAM_NAME_MAP and
                     parts[-2] == 'trunk'):
-                return 'https://salsa.debian.org/%s/%s' % (
-                    TEAM_NAME_MAP[parts[0]], parts[-1])
+                return '%s/%s' % (TEAM_NAME_MAP[parts[0]], parts[-1])
             if (len(parts) == 3 and
                     parts[0] in TEAM_NAME_MAP and
                     parts[1] in ('packages', 'unstable')):
-                return 'https://salsa.debian.org/%s/%s' % (
-                    TEAM_NAME_MAP[parts[0]], parts[2])
+                return '%s/%s' % (TEAM_NAME_MAP[parts[0]], parts[2])
     return None
+
+
+def salsa_url_from_alioth_url(vcs_type, alioth_url):
+    """Guess the salsa URL from an alioth URL.
+
+    Args:
+      vcs_type: VCS type
+      alioth_url: Alioth URL
+    Returns:
+      Salsa URL
+    """
+    path = _salsa_path_from_alioth_url(vcs_type, alioth_url)
+    if path is None:
+        return None
+    path = path.strip('/')
+    if not path.endswith('.git'):
+        path = path + '.git'
+    return 'https://salsa.debian.org/' + path
