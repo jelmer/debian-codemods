@@ -938,7 +938,12 @@ def verify_bug_database_url(url):
             return False
         api_url = 'https://api.github.com/repos/%s/%s' % (
             path_elements[0], path_elements[1])
-        data = _load_json_url(api_url)
+        try:
+            data = _load_json_url(api_url)
+        except urllib.error.HTTPError as e:
+            if e.status == 404:
+                return False
+            raise
         return data['has_issues']
     if is_gitlab_site(parsed_url.netloc):
         path_elements = parsed_url.path.strip('/').split('/')
@@ -950,7 +955,7 @@ def verify_bug_database_url(url):
             data = _load_json_url(api_url)
         except urllib.error.HTTPError as e:
             if e.status == 404:
-                return
+                return False
             raise
         return len(data) > 0
     return None
