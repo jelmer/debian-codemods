@@ -466,9 +466,14 @@ def guess_from_readme(path, trust_package):
                         url = args[0]
                     if plausible_vcs_url(url):
                         urls.append(sanitize_vcs_url(url))
-                m = re.match(
-                    b'.*\\(https://travis-ci.org/([^/]+)/([^/]+)\\)', line)
-                if m:
+                for m in re.finditer(
+                        b'https://travis-ci.org/([^/]+)/([^/?.]+)', line):
+                    yield UpstreamDatum(
+                        'Repository', 'https://github.com/%s/%s' % (
+                            m.group(1).decode(), m.group(2).decode()),
+                        'possible')
+                for m in re.finditer(
+                        b'https://coveralls.io/r/([^/]+)/([^/?.]+)', line):
                     yield UpstreamDatum(
                         'Repository', 'https://github.com/%s/%s' % (
                             m.group(1).decode(), m.group(2).decode()),
