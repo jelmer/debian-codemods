@@ -360,7 +360,7 @@ def find_secure_vcs_url(url, net_access=True):
             scheme='https', netloc='code.launchpad.net')
 
     if parsed_repo_url.hostname in ('git.savannah.gnu.org', 'git.sv.gnu.org'):
-        parsed_repo_url = parsed_repo_url.replace(
+        parsed_repo_url = parsed_repo_url._replace(
             scheme='https', path='/git' + parsed_repo_url.path)
 
     if net_access:
