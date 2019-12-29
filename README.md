@@ -29,6 +29,7 @@ subset of the issues:
 * built-using-field-on-arch-all-package
 * comma-separated-files-in-dep5-copyright
 * control-file-with-CRLF-EOLs
+* copyright-does-not-refer-to-common-license-file
 * copyright-has-crs
 * debhelper-but-no-misc-depends
 * debhelper-tools-from-autotools-dev-are-deprecated
