@@ -30,8 +30,15 @@ subset of the issues:
 * comma-separated-files-in-dep5-copyright
 * control-file-with-CRLF-EOLs
 * copyright-does-not-refer-to-common-license-file
+* copyright-file-contains-full-apache-2-license
+* copyright-file-contains-full-gfdl-license
+* copyright-file-contains-full-gpl-license
 * copyright-has-crs
+* copyright-refers-to-symlink-license
 * copyright-should-refer-to-common-license-file-for-apache-2
+* copyright-should-refer-to-common-license-file-for-gfdl
+* copyright-should-refer-to-common-license-file-for-gpl
+* copyright-should-refer-to-common-license-file-for-lgpl
 * debhelper-but-no-misc-depends
 * debhelper-tools-from-autotools-dev-are-deprecated
 * debian-changelog-file-contains-obsolete-user-emacs-settings
