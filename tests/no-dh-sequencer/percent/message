@@ -1,0 +1,2 @@
+Use dh $@ sequencer.
+Fixed-Lintian-Tags: no-dh-sequencer

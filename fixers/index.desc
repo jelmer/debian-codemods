@@ -308,6 +308,9 @@ Lintian-Tags: debian-rules-missing-recommended-target
 Fix-Script: debug-symbol-migration-possibly-complete.py
 Lintian-Tags: debug-symbol-migration-possibly-complete
 
+Fix-Script: no-dh-sequencer.py
+Lintian-Tags: no-dh-sequencer
+
 Fix-Script: invalid-standards-version.py
 Lintian-Tags: invalid-standards-version
 

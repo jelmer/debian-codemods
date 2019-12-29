@@ -5,6 +5,7 @@ lintian-brush (0.49) UNRELEASED; urgency=medium
     Romain Francoise for the report.
   * Include trailing '.git' in salsa VCS URLs.
   * Guess bug database from forwarded field in debian patches.
+  * Add fixer for no-dh-sequencer.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 28 Dec 2019 00:30:23 +0000
 
