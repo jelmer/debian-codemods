@@ -37,5 +37,5 @@ if i > 0 and last_change._changes[i-1] == '' and last_change._changes[i] == '':
 with open('debian/changelog', 'w') as f:
     f.write(str(cl))
 
-print("Remove unnecesary Team Upload line in changelog.")
+print("Remove unnecessary Team Upload line in changelog.")
 print("Fixed-Lintian-Tags: unnecessary-team-upload")
