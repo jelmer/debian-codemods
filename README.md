@@ -31,6 +31,7 @@ subset of the issues:
 * control-file-with-CRLF-EOLs
 * copyright-does-not-refer-to-common-license-file
 * copyright-has-crs
+* copyright-should-refer-to-common-license-file-for-apache-2
 * debhelper-but-no-misc-depends
 * debhelper-tools-from-autotools-dev-are-deprecated
 * debian-changelog-file-contains-obsolete-user-emacs-settings
