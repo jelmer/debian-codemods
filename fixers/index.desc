@@ -248,6 +248,9 @@ Lintian-Tags: global-files-wildcard-not-first-paragraph-in-dep5-copyright
 Fix-Script: invalid-short-name-in-dep5-copyright.py
 Lintian-Tags: invalid-short-name-in-dep5-copyright
 
+Fix-Script: copyright-refers-to-symlink-license.py
+Lintian-Tags: copyright-refers-to-symlink-license
+
 Fix-Script: vcs-field-bitrotted.py
 Lintian-Tags:
   vcs-obsolete-in-debian-infrastructure,
