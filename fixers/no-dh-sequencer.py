@@ -17,6 +17,7 @@ def use_dh_at_sequencer(line, target):
         args.pop(x)
         args.insert(1, b'$@')
         return b' '.join(args)
+    return line
 
 
 update_rules(use_dh_at_sequencer)
