@@ -196,6 +196,8 @@ def known_bad_guess(datum):
             return True
         if parsed_url.hostname == 'bugs.freedesktop.org':
             return True
+    if datum.value.lower() == 'unknown':
+        return True
     return False
 
 
