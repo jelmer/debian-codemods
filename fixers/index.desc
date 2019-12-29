@@ -37,7 +37,9 @@ Fix-Script: obsolete-field-in-dep5-copyright.py
 Lintian-Tags: obsolete-field-in-dep5-copyright
 
 Fix-Script: common-license.py
-Lintian-Tags: copyright-does-not-refer-to-common-license-file
+Lintian-Tags:
+  copyright-does-not-refer-to-common-license-file,
+  copyright-should-refer-to-common-license-file-for-apache-2
 
 Fix-Script: ancient-python-version-field.py
 Lintian-Tags: ancient-python-version-field

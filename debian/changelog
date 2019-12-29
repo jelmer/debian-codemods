@@ -1,6 +1,8 @@
 lintian-brush (0.50) UNRELEASED; urgency=medium
 
   * Add fixer for copyright-does-not-refer-to-common-license-file.
+  * Add fixer for copyright-should-refer-to-common-license-file-for-
+    apache-2.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Dec 2019 20:00:28 +0000
 
