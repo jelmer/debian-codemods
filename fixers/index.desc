@@ -39,7 +39,13 @@ Lintian-Tags: obsolete-field-in-dep5-copyright
 Fix-Script: common-license.py
 Lintian-Tags:
   copyright-does-not-refer-to-common-license-file,
-  copyright-should-refer-to-common-license-file-for-apache-2
+  copyright-should-refer-to-common-license-file-for-apache-2,
+  copyright-should-refer-to-common-license-file-for-gpl,
+  copyright-should-refer-to-common-license-file-for-gfdl,
+  copyright-should-refer-to-common-license-file-for-lgpl,
+  copyright-file-contains-full-apache-2-license,
+  copyright-file-contains-full-gfdl-license,
+  copyright-file-contains-full-gpl-license
 
 Fix-Script: ancient-python-version-field.py
 Lintian-Tags: ancient-python-version-field
@@ -249,7 +255,9 @@ Fix-Script: invalid-short-name-in-dep5-copyright.py
 Lintian-Tags: invalid-short-name-in-dep5-copyright
 
 Fix-Script: copyright-refers-to-symlink-license.py
-Lintian-Tags: copyright-refers-to-symlink-license
+Lintian-Tags:
+  copyright-refers-to-symlink-license,
+  copyright-refers-to-versionless-license-file
 
 Fix-Script: vcs-field-bitrotted.py
 Lintian-Tags:

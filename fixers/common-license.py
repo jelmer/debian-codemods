@@ -37,10 +37,9 @@ def cached_common_license(name):
 
 
 _COMMON_LICENSES = [
-    ('CC0-1.0', cached_common_license('CC0-1.0')),
     ('CC0-1.0', cached_common_license('CC0-1.0').replace('Legal Code ', '')),
-    ('Apache-2.0', cached_common_license('Apache-2.0')),
-]
+] + [(name, cached_common_license(name))
+     for name in os.listdir(COMMON_LICENSES_DIR)]
 
 
 _BLURB = {
@@ -74,7 +73,10 @@ can be found in the file `/usr/share/common-licenses/Apache-2.0'.
 }
 
 
-def find_common_license(text):
+def find_common_license_from_fulltext(text):
+    # Don't bother for anything that's short
+    if len(text.splitlines()) < 15:
+        return None
     text = normalize_license_text(text)
     for shortname, fulltext in _COMMON_LICENSES:
         if license_text_matches(fulltext, text):
@@ -88,7 +90,7 @@ def blurb_without_debian_reference(shorttext):
     return shorttext[:i].strip()
 
 
-def find_common_blurb(text):
+def find_common_license_from_blurb(text):
     text = normalize_license_text(text)
     for name, shorttext in _BLURB.items():
         if normalize_license_text(shorttext) == text:
@@ -101,34 +103,58 @@ def find_common_blurb(text):
             return name
 
 
+def get_blurb_for_license(name):
+    try:
+        return _BLURB[name]
+    except KeyError:
+        return (
+            'On Debian systems, the full text can be found '
+            'in the file "%s/%s"' % (COMMON_LICENSES_DIR, name))
+
+
 with CopyrightUpdater() as updater:
     renames = {}
-    for license_para in updater.copyright.all_license_paragraphs():
-        license = license_para.license
-        if not license.text:
+    for para in updater.copyright.all_paragraphs():
+        license = para.license
+        if not license or not license.text:
             continue
-        common_license = find_common_license(license.text)
+        common_license = find_common_license_from_fulltext(license.text)
+        old_text = license.text
         if common_license is not None:
-            license_para.license = License(
-                common_license, _BLURB[common_license])
+            blurb = get_blurb_for_license(common_license)
+            para.license = License(common_license, blurb)
             updated.add(common_license)
-            tags.add('copyright-does-not-refer-to-common-license-file')
+            if common_license == 'Apache-2.0':
+                tags.add('copyright-file-contains-full-apache-2-license')
+            if common_license.startswith('GFDL-'):
+                tags.add('copyright-file-contains-full-gfdl-license')
+            if common_license.startswith('GPL-'):
+                tags.add('copyright-file-contains-full-gpl-license')
         else:
-            common_license = find_common_blurb(license.text)
+            common_license = find_common_license_from_blurb(license.text)
             if common_license and COMMON_LICENSES_DIR not in license.text:
-                license_para.license = License(
-                    common_license, _BLURB[common_license])
-                if common_license == 'Apache-2.0':
-                    updated.add(common_license)
-                    tags.add(
-                        'copyright-should-refer-to-common-'
-                        'license-file-for-apache-2')
+                para.license = License(common_license, _BLURB[common_license])
+                updated.add(common_license)
             if common_license is None and os.path.exists(
                     os.path.join(COMMON_LICENSES_DIR, license.synopsis)):
                 warn(
                     'A common license shortname (%s) is used, but license '
                     'text not recognized.' % license.synopsis, UserWarning)
-        if common_license and license.synopsis != common_license:
+        if common_license is None:
+            continue
+
+        if common_license in ('Apache-2.0', 'Apache-2'):
+            tags.add(
+                'copyright-should-refer-to-common-license-file-for-apache-2')
+        elif common_license.startswith('GPL-'):
+            tags.add('copyright-should-refer-to-common-license-file-for-gpl')
+        elif common_license.startswith('LGPL-'):
+            tags.add('copyright-should-refer-to-common-license-file-for-lgpl')
+        elif common_license.startswith('GFDL-'):
+            tags.add('copyright-should-refer-to-common-license-file-for-gfdl')
+        if COMMON_LICENSES_DIR not in old_text:
+            tags.add('copyright-does-not-refer-to-common-license-file')
+        if license.synopsis != common_license:
             renames[license.synopsis] = common_license
     for paragraph in updater.copyright.all_paragraphs():
         if not paragraph.license or not paragraph.license.synopsis:
@@ -141,4 +167,4 @@ with CopyrightUpdater() as updater:
 
 
 print('Refer to common license file for %s.' % ', '.join(sorted(updated)))
-print('Fixed-Lintian-Tags: %s' % ', '.join(sorted(tags)))
+print('Fixed-Lintian-Tags: ' + ', '.join(sorted(tags)))

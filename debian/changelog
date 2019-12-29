@@ -1,6 +1,15 @@
 lintian-brush (0.51) UNRELEASED; urgency=medium
 
-  * Add fixer for copyright-refers-to-symlink-license.
+  * Add fixers for:
+     copyright-refers-to-symlink-license,
+     copyright-refers-to-versionless-license-file.
+  * Add fixers for:
+     copyright-should-refer-to-common-license-file-for-gpl,
+     copyright-should-refer-to-common-license-file-for-gfdl,
+     copyright-should-refer-to-common-license-file-for-lgpl,
+     copyright-file-contains-full-apache-2-license,
+     copyright-file-contains-full-gfdl-license,
+     copyright-file-contains-full-gpl-license.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Dec 2019 22:59:17 +0000
 
