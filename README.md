@@ -155,7 +155,7 @@ out; this will be used for the commit message.
 
 It can include optional metadata in its output::
 
- * ``Fixes-Lintian-Tags:`` followed by a comma-separated list of lintian tags
+ * ``Fixed-Lintian-Tags:`` followed by a comma-separated list of lintian tags
    that it claims to have fixed. This will make lintian-brush include
    links to documentation about the fixed lintian tags. In the future,
    it may also support building the package to verify the lintian tag
