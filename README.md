@@ -35,6 +35,7 @@ subset of the issues:
 * copyright-file-contains-full-gpl-license
 * copyright-has-crs
 * copyright-refers-to-symlink-license
+* copyright-refers-to-versionless-license-file
 * copyright-should-refer-to-common-license-file-for-apache-2
 * copyright-should-refer-to-common-license-file-for-gfdl
 * copyright-should-refer-to-common-license-file-for-gpl
