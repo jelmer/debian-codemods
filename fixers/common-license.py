@@ -85,3 +85,4 @@ with CopyrightUpdater() as updater:
 
 
 print('Refer to common license file for %s.' % ', '.join(sorted(updated)))
+print('Fixed-Lintian-Tags: copyright-does-not-refer-to-common-license-file')
