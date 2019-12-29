@@ -77,6 +77,7 @@ subset of the issues:
 * missing-built-using-field-for-golang-package
 * missing-debian-source-format
 * missing-vcs-browser-field
+* no-dh-sequencer
 * no-homepage-field
 * obsolete-field-in-dep5-copyright
 * obsolete-runtime-tests-restriction
