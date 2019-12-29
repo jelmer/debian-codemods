@@ -34,6 +34,7 @@ setup(
         'console_scripts': [
             'lintian-brush=lintian_brush.__main__:main',
             'apply-multiarch-hints=lintian_brush.multiarch_hints:main',
+            'guess-upstream-metadata=lintian_brush.upstream_metadata:main',
             ]
     },
     test_suite='lintian_brush.tests.test_suite',
