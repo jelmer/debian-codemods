@@ -1,0 +1,2 @@
+Remove executable bit from desktop files.
+Fixed-Lintian-Tags: executable-desktop-file

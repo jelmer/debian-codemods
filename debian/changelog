@@ -11,6 +11,8 @@ lintian-brush (0.51) UNRELEASED; urgency=medium
      copyright-file-contains-full-gfdl-license,
      copyright-file-contains-full-gpl-license.
   * Add fixer for desktop-entry-contains-encoding-key.
+  * Add fixers for desktop-entry-file-has-crs and executable-desktop-
+    file.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Dec 2019 22:59:17 +0000
 

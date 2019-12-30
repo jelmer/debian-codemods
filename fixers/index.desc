@@ -27,6 +27,12 @@ Lintian-Tags: comma-separated-files-in-dep5-copyright
 Fix-Script: copyright-has-crs.sh
 Lintian-Tags: copyright-has-crs
 
+Fix-Script: desktop-entry-file-has-crs.sh
+Lintian-Tags: desktop-entry-file-has-crs
+
+Fix-Script: executable-desktop-file.sh
+Lintian-Tags: executable-desktop-file
+
 Fix-Script: empty-debian-tests-control.py
 Lintian-Tags: empty-debian-tests-control
 

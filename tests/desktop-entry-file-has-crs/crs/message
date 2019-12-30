@@ -1,0 +1,2 @@
+Remove CRs from desktop files.
+Fixed-Lintian-Tags: desktop-entry-file-has-crs
