@@ -2,6 +2,7 @@ lintian-brush (0.53) UNRELEASED; urgency=medium
 
   * Be a bit quieter when unable to contact udd.
   * Filter out duplicate lines in the last last changelog entry.
+  * Add manpage for guess-upstream-metadata(1).
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:42:08 +0000
 

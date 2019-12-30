@@ -34,6 +34,7 @@ from lintian_brush import (
     SUPPORTED_CERTAINTIES,
     certainty_sufficient,
     certainty_to_confidence,
+    version_string,
     )
 from lintian_brush.vcs import (
     browse_url_from_repo_url,
@@ -1438,6 +1439,8 @@ def main(argv=None):
         '--consult-external-directory',
         action='store_true',
         help='Pull in external (not maintained by upstream) directory data')
+    parser.add_argument(
+        '--version', action='version', version='%(prog)s ' + version_string)
     args = parser.parse_args(argv)
 
     metadata = guess_upstream_metadata(
