@@ -17,7 +17,10 @@
 
 """Tests for lintian_brush.patches."""
 
+from io import BytesIO
+
 from breezy.tests import (
+    TestCase,
     TestCaseWithTransport,
     )
 from breezy.patches import (
@@ -30,9 +33,49 @@ from ..patches import (
     find_patch_base,
     find_patches_branch,
     read_quilt_patches,
+    read_quilt_series,
     tree_non_patches_changes,
     upstream_with_applied_patches,
     )
+
+
+class ReadSeriesFileTests(TestCase):
+
+    def test_comment(self):
+        f = BytesIO(b"""\
+# This file intentionally left blank.
+""")
+        self.assertEqual(
+            [('This', True, ['file', 'intentionally', 'left', 'blank.'])],
+            list(read_quilt_series(f)))
+
+    def test_empty(self):
+        f = BytesIO(b"\n")
+        self.assertEqual([], list(read_quilt_series(f)))
+
+    def test_empty_line(self):
+        f = BytesIO(b"""\
+patch1
+
+patch2
+""")
+        self.assertEqual(
+            [
+                ("patch1", False, []),
+                ("patch2", False, []),
+            ], list(read_quilt_series(f)))
+
+    def test_options(self):
+        f = BytesIO(b"""\
+name -p0
+name2
+""")
+        self.assertEqual(
+            [
+                ("name", False, ["-p0"]),
+                ("name2", False, []),
+            ],
+            list(read_quilt_series(f)))
 
 
 class FindPatchBaseTests(TestCaseWithTransport):
@@ -59,22 +102,6 @@ blah (0.38) unstable; urgency=medium
         self.tree.branch.tags.set_tag('upstream-0.38', self.upstream_revid)
         self.assertEqual(
             self.upstream_revid, find_patch_base(self.tree))
-
-
-class ReadSeriesFileTests(TestCaseWithTransport):
-
-    def test_no_series_file(self):
-        t = self.make_branch_and_tree('.')
-        self.assertEqual([], list(read_quilt_patches(t)))
-
-    def test_comments(self):
-        t = self.make_branch_and_tree('.')
-        self.build_tree_contents([
-            ('debian/', ),
-            ('debian/patches/', ),
-            ('debian/patches/series',
-             "# This file intentionally left blank.\n")])
-        self.assertEqual([], list(read_quilt_patches(t)))
 
 
 class FindPatchBranchTests(TestCaseWithTransport):
@@ -182,6 +209,19 @@ class ReadQuiltPatchesTests(TestCaseWithTransport):
         self.assertEqual(1, len(patches))
         self.assertIsInstance(patches[0], Patch)
         self.assertEqual(patch.encode('utf-8'), patches[0].as_bytes())
+
+    def test_no_series_file(self):
+        t = self.make_branch_and_tree('.')
+        self.assertEqual([], list(read_quilt_patches(t)))
+
+    def test_comments(self):
+        t = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/patches/', ),
+            ('debian/patches/series',
+             "# This file intentionally left blank.\n")])
+        self.assertEqual([], list(read_quilt_patches(t)))
 
 
 class UpstreamWithAppliedPatchesTests(TestCaseWithTransport):

@@ -156,6 +156,8 @@ def read_quilt_series(f):
         else:
             quoted = False
         args = line.decode().split()
+        if not args:
+            continue
         patch = args[0]
         if not patch:
             continue
