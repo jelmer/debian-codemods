@@ -1417,7 +1417,7 @@ def fix_upstream_metadata(upstream_metadata):
         repo.value = url
 
 
-if __name__ == '__main__':
+def main(argv=None):
     import argparse
     import sys
     import ruamel.yaml
@@ -1438,7 +1438,7 @@ if __name__ == '__main__':
         '--consult-external-directory',
         action='store_true',
         help='Pull in external (not maintained by upstream) directory data')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     metadata = guess_upstream_metadata(
         args.path, args.trust, not args.disable_net_access,
@@ -1446,3 +1446,8 @@ if __name__ == '__main__':
         check=args.check)
 
     sys.stdout.write(ruamel.yaml.round_trip_dump(metadata))
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main())
