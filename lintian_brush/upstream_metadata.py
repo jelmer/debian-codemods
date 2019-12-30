@@ -835,6 +835,9 @@ def guess_from_sf(sf_project):
         yield 'Name', data['name']
     if 'external_homepage' in data:
         yield 'Homepage', data['external_homepage']
+    if 'preferred_support_url' in data:
+        if verify_bug_database_url(data['preferred_support_url']):
+            yield 'Bug-Database', data['preferred_support_url']
     # In theory there are screenshots linked from the sourceforge project that
     # we can use, but if there are multiple "subprojects" then it will be
     # unclear which one they belong to.
@@ -870,7 +873,7 @@ def extend_from_external_guesser(
 
 def extend_from_sf(upstream_metadata, sf_project):
     # The set of fields that sf can possibly provide:
-    sf_fields = ['Homepage', 'Name']
+    sf_fields = ['Homepage', 'Name', 'Repository']
     sf_certainty = upstream_metadata['Archive'].certainty
 
     return extend_from_external_guesser(
@@ -1105,7 +1108,7 @@ def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
             upstream_metadata['Archive'] = UpstreamDatum(
                 'Archive', 'SourceForge', 'likely')
             upstream_metadata['X-SourceForge-Project'] = UpstreamDatum(
-                'X-SourceForge-Project', 'project', 'likely')
+                'X-SourceForge-Project', project, 'likely')
 
     archive = upstream_metadata.get('Archive')
     if (archive and archive.value == 'SourceForge' and
