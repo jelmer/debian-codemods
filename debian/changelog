@@ -1,4 +1,4 @@
-lintian-brush (0.51) UNRELEASED; urgency=medium
+lintian-brush (0.51) unstable; urgency=medium
 
   * Add fixers for:
      copyright-refers-to-symlink-license,
@@ -14,7 +14,7 @@ lintian-brush (0.51) UNRELEASED; urgency=medium
   * Add fixers for desktop-entry-file-has-crs and executable-desktop-
     file.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Dec 2019 22:59:17 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 01:20:52 +0000
 
 lintian-brush (0.50) unstable; urgency=medium
 
