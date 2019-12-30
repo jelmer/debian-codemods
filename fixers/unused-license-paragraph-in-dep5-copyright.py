@@ -13,12 +13,12 @@ try:
             if not paragraph.license:
                 continue
             if paragraph.files:
-                used.add(paragraph.license.synopsis)
+                used.update(paragraph.license.synopsis.split(" or "))
         for paragraph in updater.copyright.all_paragraphs():
             if not paragraph.license:
                 continue
             if paragraph.license.text:
-                defined.add(paragraph.license.synopsis)
+                defined.update(paragraph.license.synopsis.split(" or "))
 
         extra_defined = (defined - used)
         extra_used = (used - defined)
