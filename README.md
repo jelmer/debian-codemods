@@ -66,11 +66,13 @@ subset of the issues:
 * declares-possibly-conflicting-debhelper-compat-versions
 * dep5-file-paragraph-references-header-paragraph
 * desktop-entry-contains-encoding-key
+* desktop-entry-file-has-crs
 * dh-clean-k-is-deprecated
 * dh-quilt-addon-but-quilt-source-format
 * dm-upload-allowed-is-obsolete
 * empty-debian-tests-control
 * excessive-priority-for-library-package
+* executable-desktop-file
 * field-name-typo-in-dep5-copyright
 * file-contains-trailing-whitespace
 * font-package-not-multi-arch-foreign
