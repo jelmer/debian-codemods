@@ -5,6 +5,8 @@ from functools import partial
 from lintian_brush.changelog import ChangelogUpdater
 import os
 import re
+import socket
+from warnings import warn
 
 certainty = 'certain'
 debbugs = None
@@ -21,6 +23,9 @@ async def valid_bug(package, bug):
             await debbugs.connect()
         except ImportError:
             # No asynpcg?
+            return None
+        except socket.gaierror as e:
+            warn('Unable to connect to debbugs: %s' % e)
             return None
     return await debbugs.check_bug(package, bug)
 

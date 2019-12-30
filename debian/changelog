@@ -1,3 +1,9 @@
+lintian-brush (0.53) UNRELEASED; urgency=medium
+
+  * Be a bit quieter when unable to contact udd.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:42:08 +0000
+
 lintian-brush (0.52) unstable; urgency=medium
 
   * Fix regression recognizing versioned common license files.
