@@ -29,6 +29,7 @@ from debian.changelog import (
     ChangelogCreateError,
     ChangelogParseError,
     )
+import re
 from .reformatting import edit_formatted_file
 
 
@@ -62,3 +63,26 @@ class ChangelogUpdater(object):
             self.path, self._orig_content,
             self._rewritten_content, updated_contents)
         return False
+
+
+def changes_by_author(changes):
+    linenos = []
+    change = []
+    author = None
+    for i, line in enumerate(changes):
+        if not line:
+            continue
+        m = re.fullmatch(r'  \[ (.*) \]', line)
+        if m:
+            author = m.group(1)
+            continue
+        if not line.startswith('  * '):
+            change.append(line)
+            linenos.append(i)
+        else:
+            if change:
+                yield (author, linenos, change)
+            change = [line]
+            linenos = [i]
+    if change:
+        yield (author, linenos, change)
