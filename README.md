@@ -65,6 +65,7 @@ subset of the issues:
 * debug-symbol-migration-possibly-complete
 * declares-possibly-conflicting-debhelper-compat-versions
 * dep5-file-paragraph-references-header-paragraph
+* desktop-entry-contains-encoding-key
 * dh-clean-k-is-deprecated
 * dh-quilt-addon-but-quilt-source-format
 * dm-upload-allowed-is-obsolete
