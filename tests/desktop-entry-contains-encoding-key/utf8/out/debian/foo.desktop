@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=XScreensaver
+TryExec=xscreensaver
+Exec=/usr/share/xscreensaver/xscreensaver-wrapper.sh -nosplash
+NoDisplay=true
+X-KDE-StartupNotify=false
+Comment=The XScreensaver daemon

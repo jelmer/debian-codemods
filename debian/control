@@ -12,6 +12,7 @@ Build-Depends: bash-completion,
                python3-dulwich (>= 0.19.7),
                python3-distro-info,
                python3-debian,
+               python3-iniparse,
                python3-pyinotify [linux-any],
                python3-levenshtein,
                python3-pkginfo,
@@ -37,7 +38,7 @@ Depends: devscripts,
          python3-ruamel.yaml,
          ${misc:Depends},
          ${python3:Depends}
-Recommends: lintian, dos2unix, gpg, python3-pyinotify, python3-asyncpg, libdebhelper-perl
+Recommends: lintian, dos2unix, gpg, python3-pyinotify, python3-asyncpg, libdebhelper-perl, python3-iniparse
 Suggests: gnome-pkg-tools, postgresql-common
 Description: automatically fix lintian problems
  This package contains a set of scripts that can automatically fix more than 80

@@ -38,6 +38,7 @@ def test_suite():
         'upstream_metadata',
         'vcs',
         'watch',
+        'xdg',
         'yaml',
         ]
     module_names = [__name__ + '.test_' + name for name in names]

@@ -324,6 +324,9 @@ Lintian-Tags: debian-rules-missing-recommended-target
 Fix-Script: debug-symbol-migration-possibly-complete.py
 Lintian-Tags: debug-symbol-migration-possibly-complete
 
+Fix-Script: desktop-entry-contains-encoding-key.py
+Lintian-Tags: desktop-entry-contains-encoding-key
+
 Fix-Script: no-dh-sequencer.py
 Lintian-Tags: no-dh-sequencer
 
