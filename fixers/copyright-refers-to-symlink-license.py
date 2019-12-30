@@ -4,7 +4,7 @@ from functools import partial
 import os
 import re
 
-from debian.copyright import License
+from debian.copyright import License, NotMachineReadableError
 
 from lintian_brush.copyright import CopyrightUpdater
 
@@ -29,14 +29,17 @@ def replace_symlink_path(synopsis, m):
     return newpath
 
 
-with CopyrightUpdater() as updater:
-    for para in updater.copyright.all_paragraphs():
-        license = para.license
-        if not license or not license.text:
-            continue
-        para.license = License(license.synopsis, re.sub(
-            '/usr/share/common-licenses/([A-Za-z0-9.]+)',
-            partial(replace_symlink_path, license.synopsis), license.text))
+try:
+    with CopyrightUpdater() as updater:
+        for para in updater.copyright.all_paragraphs():
+            license = para.license
+            if not license or not license.text:
+                continue
+            para.license = License(license.synopsis, re.sub(
+                '/usr/share/common-licenses/([A-Za-z0-9.]+)',
+                partial(replace_symlink_path, license.synopsis), license.text))
+except (FileNotFoundError, NotMachineReadableError):
+    pass
 
 
 print('Refer to specific version of license %s.' % ', '.join(sorted(updated)))

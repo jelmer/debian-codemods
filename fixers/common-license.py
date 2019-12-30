@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from debian.copyright import License
+from debian.copyright import License, NotMachineReadableError
 from lintian_brush.copyright import CopyrightUpdater
 
 import os
@@ -112,59 +112,66 @@ def get_blurb_for_license(name):
             'in the file "%s/%s"' % (COMMON_LICENSES_DIR, name))
 
 
-with CopyrightUpdater() as updater:
-    renames = {}
-    for para in updater.copyright.all_paragraphs():
-        license = para.license
-        if not license or not license.text:
-            continue
-        common_license = find_common_license_from_fulltext(license.text)
-        old_text = license.text
-        if common_license is not None:
-            blurb = get_blurb_for_license(common_license)
-            para.license = License(common_license, blurb)
-            updated.add(common_license)
-            if common_license == 'Apache-2.0':
-                tags.add('copyright-file-contains-full-apache-2-license')
-            if common_license.startswith('GFDL-'):
-                tags.add('copyright-file-contains-full-gfdl-license')
-            if common_license.startswith('GPL-'):
-                tags.add('copyright-file-contains-full-gpl-license')
-        else:
-            common_license = find_common_license_from_blurb(license.text)
-            if common_license and COMMON_LICENSES_DIR not in license.text:
-                para.license = License(common_license, _BLURB[common_license])
+try:
+    with CopyrightUpdater() as updater:
+        renames = {}
+        for para in updater.copyright.all_paragraphs():
+            license = para.license
+            if not license or not license.text:
+                continue
+            common_license = find_common_license_from_fulltext(license.text)
+            old_text = license.text
+            if common_license is not None:
+                blurb = get_blurb_for_license(common_license)
+                para.license = License(common_license, blurb)
                 updated.add(common_license)
-            if common_license is None and os.path.exists(
-                    os.path.join(COMMON_LICENSES_DIR, license.synopsis)):
-                warn(
-                    'A common license shortname (%s) is used, but license '
-                    'text not recognized.' % license.synopsis, UserWarning)
-        if common_license is None:
-            continue
+                if common_license == 'Apache-2.0':
+                    tags.add('copyright-file-contains-full-apache-2-license')
+                if common_license.startswith('GFDL-'):
+                    tags.add('copyright-file-contains-full-gfdl-license')
+                if common_license.startswith('GPL-'):
+                    tags.add('copyright-file-contains-full-gpl-license')
+            else:
+                common_license = find_common_license_from_blurb(license.text)
+                if common_license and COMMON_LICENSES_DIR not in license.text:
+                    blurb = get_blurb_for_license(common_license)
+                    para.license = License(common_license, blurb)
+                    updated.add(common_license)
+                if common_license is None and os.path.exists(
+                        os.path.join(COMMON_LICENSES_DIR, license.synopsis)):
+                    warn(
+                        'A common license shortname (%s) is used, but license '
+                        'text not recognized.' % license.synopsis, UserWarning)
+            if common_license is None:
+                continue
 
-        if common_license in ('Apache-2.0', 'Apache-2'):
-            tags.add(
-                'copyright-should-refer-to-common-license-file-for-apache-2')
-        elif common_license.startswith('GPL-'):
-            tags.add('copyright-should-refer-to-common-license-file-for-gpl')
-        elif common_license.startswith('LGPL-'):
-            tags.add('copyright-should-refer-to-common-license-file-for-lgpl')
-        elif common_license.startswith('GFDL-'):
-            tags.add('copyright-should-refer-to-common-license-file-for-gfdl')
-        if COMMON_LICENSES_DIR not in old_text:
-            tags.add('copyright-does-not-refer-to-common-license-file')
-        if license.synopsis != common_license:
-            renames[license.synopsis] = common_license
-    for paragraph in updater.copyright.all_paragraphs():
-        if not paragraph.license or not paragraph.license.synopsis:
-            continue
-        try:
-            newsynopsis = renames[paragraph.license.synopsis]
-        except KeyError:
-            continue
-        paragraph.license = License(newsynopsis, paragraph.license.text)
-
+            if common_license in ('Apache-2.0', 'Apache-2'):
+                tags.add(
+                    'copyright-should-refer-to-common-license-file-'
+                    'for-apache-2')
+            elif common_license.startswith('GPL-'):
+                tags.add(
+                    'copyright-should-refer-to-common-license-file-for-gpl')
+            elif common_license.startswith('LGPL-'):
+                tags.add(
+                    'copyright-should-refer-to-common-license-file-for-lgpl')
+            elif common_license.startswith('GFDL-'):
+                tags.add(
+                    'copyright-should-refer-to-common-license-file-for-gfdl')
+            if COMMON_LICENSES_DIR not in old_text:
+                tags.add('copyright-does-not-refer-to-common-license-file')
+            if license.synopsis != common_license:
+                renames[license.synopsis] = common_license
+        for paragraph in updater.copyright.all_paragraphs():
+            if not paragraph.license or not paragraph.license.synopsis:
+                continue
+            try:
+                newsynopsis = renames[paragraph.license.synopsis]
+            except KeyError:
+                continue
+            paragraph.license = License(newsynopsis, paragraph.license.text)
+except (NotMachineReadableError, FileNotFoundError):
+    pass
 
 print('Refer to common license file for %s.' % ', '.join(sorted(updated)))
 print('Fixed-Lintian-Tags: ' + ', '.join(sorted(tags)))
