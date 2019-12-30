@@ -1,3 +1,9 @@
+lintian-brush (0.52) UNRELEASED; urgency=medium
+
+  * Fix regression recognizing versioned common license files.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 02:17:43 +0000
+
 lintian-brush (0.51) unstable; urgency=medium
 
   * Add fixers for:
