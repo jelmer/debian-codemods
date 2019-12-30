@@ -1,0 +1,14 @@
+blah (5.42+dfsg1-2) unstable; urgency=medium
+
+  * New upstream release.
+  * Fix day-of-week for changelog entry 4.23-1.
+  * New upstream release.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:25:35 +0000
+
+blah (5.42+dfsg1-1) unstable; urgency=medium
+
+ * Initial Release.
+ * Initial Release.
+
+ -- Somebody <somebody@example.com>  Fri, 25 Jan 2019 00:15:07 +0100
