@@ -2,11 +2,10 @@
 .SH NAME
 guess-upstream-metadata \- guess upstream package metadata
 .SH DESCRIPTION
-usage: ./guess\-upstream\-metadata [\-h] [\-\-trust] [\-\-disable\-net\-access]
-.TP
-[\-\-check] [\-\-consult\-external\-directory]
-[\-\-version]
-[path]
+guess\-upstream\-metadata [\-h] [\-\-trust] [\-\-disable\-net\-access] [\-\-check] [\-\-consult\-external\-directory] [\-\-version] [path]
+This tool tries to guess upstream metadata (Homepage, Contact, VCS Repository)
+information from a Debian package. It does this by parsing various files in the
+package, and possibly calling out to external services (unless --disable-net-access is specified).
 .SS "positional arguments:"
 .IP
 path
