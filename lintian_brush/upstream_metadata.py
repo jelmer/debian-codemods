@@ -1285,9 +1285,13 @@ def parse_pkgbuild_variables(f):
 
 def guess_from_pecl(package):
     if not package.startswith('php-'):
-        return
+        return iter([])
     php_package = package[4:]
     url = 'https://pecl.php.net/packages/%s' % php_package
+    return guess_from_pecl_url(url)
+
+
+def guess_from_pecl_url(url):
     headers = {'User-Agent': USER_AGENT}
     try:
         f = urlopen(
@@ -1301,10 +1305,13 @@ def guess_from_pecl(package):
     bs = BeautifulSoup(f.read(), features='lxml')
     tag = bs.find('a', text='Browse Source')
     if tag is not None:
-        yield 'Repository-Browse', sanitize_vcs_url(url)
+        yield 'Repository-Browse', sanitize_vcs_url(tag.attrs['href'])
     tag = bs.find('a', text='Package Bugs')
     if tag is not None:
-        yield 'Bug-Database', url
+        yield 'Bug-Database', tag.attrs['href']
+    tag = bs.find('th', text='Homepage').parent.find('a')
+    if tag is not None:
+        yield 'Homepage', tag.attrs['href']
 
 
 def guess_from_aur(package):
