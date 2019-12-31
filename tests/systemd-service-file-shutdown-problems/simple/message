@@ -1,0 +1,2 @@
+Add Before=shutdown.target to Unit section.
+Fixed-Lintian-Tags: systemd-service-file-shutdown-problems
