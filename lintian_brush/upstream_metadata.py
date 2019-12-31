@@ -437,6 +437,9 @@ def guess_from_debian_copyright(path, trust_package):
             if repo_url:
                 yield UpstreamDatum(
                     'Repository', sanitize_vcs_url(repo_url), 'likely')
+            if (from_url.startswith('https://pecl.php.net/package/') or
+                    from_url.startswith('http://pecl.php.net/package/')):
+                yield UpstreamDatum('X-Pecl-URL', from_url, 'certain')
         if "X-Upstream-Bugs" in header:
             yield UpstreamDatum(
                 "Bug-Database", header["X-Upstream-Bugs"], 'certain')
@@ -882,6 +885,14 @@ def extend_from_sf(upstream_metadata, sf_project):
         guess_from_sf(sf_project))
 
 
+def extend_from_pecl(upstream_metadata, pecl_url, certainty):
+    pecl_fields = ['Homepage', 'Repository', 'Bug-Database']
+
+    return extend_from_external_guesser(
+        upstream_metadata, certainty, pecl_fields,
+        guess_from_pecl_url(pecl_url))
+
+
 def extend_from_lp(upstream_metadata, minimum_certainty, package,
                    distribution=None, suite=None):
     # The set of fields that Launchpad can possibly provide:
@@ -1130,6 +1141,9 @@ def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
         else:
             extend_from_lp(upstream_metadata, minimum_certainty, package)
         extend_from_aur(upstream_metadata, minimum_certainty, package)
+    pecl_url = upstream_metadata.get('X-Pecl-URL')
+    if net_access and pecl_url:
+        extend_from_pecl(upstream_metadata, pecl_url.value, pecl_url.certainty)
     changed = True
     while changed:
         changed = False
