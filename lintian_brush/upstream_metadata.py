@@ -1309,9 +1309,11 @@ def guess_from_pecl_url(url):
     tag = bs.find('a', text='Package Bugs')
     if tag is not None:
         yield 'Bug-Database', tag.attrs['href']
-    tag = bs.find('th', text='Homepage').parent.find('a')
-    if tag is not None:
-        yield 'Homepage', tag.attrs['href']
+    label_tag = bs.find('th', text='Homepage')
+    if label_tag is not None:
+        tag = label_tag.parent.find('a')
+        if tag is not None:
+            yield 'Homepage', tag.attrs['href']
 
 
 def guess_from_aur(package):
