@@ -1287,16 +1287,19 @@ def guess_from_pecl(package):
     if not package.startswith('php-'):
         return iter([])
     php_package = package[4:]
-    url = 'https://pecl.php.net/packages/%s' % php_package
-    return guess_from_pecl_url(url)
+    url = 'https://pecl.php.net/packages/%s' % php_package.replace('-', '_')
+    data = dict(guess_from_pecl_url(url))
+    try:
+        data['Repository'] = guess_repo_from_url(data['Repository-Browse'])
+    except KeyError:
+        pass
+    return data.items()
 
 
 def guess_from_pecl_url(url):
     headers = {'User-Agent': USER_AGENT}
     try:
-        f = urlopen(
-            Request(url, headers=headers),
-            timeout=DEFAULT_URLLIB_TIMEOUT)
+        f = urlopen(Request(url, headers=headers))
     except urllib.error.HTTPError as e:
         if e.status != 404:
             raise
@@ -1305,7 +1308,7 @@ def guess_from_pecl_url(url):
     bs = BeautifulSoup(f.read(), features='lxml')
     tag = bs.find('a', text='Browse Source')
     if tag is not None:
-        yield 'Repository-Browse', sanitize_vcs_url(tag.attrs['href'])
+        yield 'Repository-Browse', tag.attrs['href']
     tag = bs.find('a', text='Package Bugs')
     if tag is not None:
         yield 'Bug-Database', tag.attrs['href']
