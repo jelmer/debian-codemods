@@ -232,8 +232,8 @@ def get_python_pkg_info(path, trust_package=False):
         return pkg_info
     filename = os.path.join(path, 'setup.py')
     args = [os.path.abspath(filename), 'dist_info']
-    with open(filename, 'r') as f:
-        has_shebang = f.readline().startswith('#!')
+    with open(filename, 'rb') as f:
+        has_shebang = f.readline().startswith(b'#!')
     is_executable = (os.stat(filename).st_mode & 0o100 != 0)
     if not has_shebang or not is_executable:
         # TODO(jelmer): Why python3 and not e.g. python?
@@ -673,7 +673,7 @@ def guess_from_configure(path, trust_package=False):
 
 
 def guess_from_r_description(path, trust_package=False):
-    with open(path, 'r') as f:
+    with open(path, 'rb') as f:
         description = Deb822(f)
         if 'Package' in description:
             yield UpstreamDatum('Name', description['Package'], 'certain')
