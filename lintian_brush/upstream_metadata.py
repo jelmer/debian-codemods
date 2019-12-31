@@ -23,7 +23,7 @@ import re
 import subprocess
 import tempfile
 import urllib.error
-from urllib.parse import quote, urlparse, urlunparse, urljoin
+from urllib.parse import quote, urlparse, urlunparse, urljoin, parse_qs
 from warnings import warn
 
 from debian.deb822 import Deb822
@@ -182,6 +182,14 @@ def guess_repo_from_url(url, net_access=False):
             parts = parts[:parts.index('tags')]
         return urlunparse(
             parsed_url._replace(path='/'.join(parts), query=''))
+    if parsed_url.hostname == 'git.php.net':
+        if parsed_url.path.startswith('/repository/'):
+            return url
+        if not parsed_url.path.strip('/'):
+            qs = parse_qs(parsed_url.query)
+            if 'p' in qs:
+                return urlunparse(parsed_url._replace(
+                    path='/repository/' + qs['p'][0], query=''))
     if parsed_url.netloc in KNOWN_HOSTING_SITES:
         return url
     # Maybe it's already pointing at a VCS repo?
@@ -1313,7 +1321,9 @@ def guess_from_pecl(package):
 def guess_from_pecl_url(url):
     headers = {'User-Agent': USER_AGENT}
     try:
-        f = urlopen(Request(url, headers=headers))
+        f = urlopen(
+            Request(url, headers=headers),
+            timeout=DEFAULT_URLLIB_TIMEOUT)
     except urllib.error.HTTPError as e:
         if e.status != 404:
             raise
