@@ -1283,6 +1283,30 @@ def parse_pkgbuild_variables(f):
     return variables
 
 
+def guess_from_pecl(package):
+    if not package.startswith('php-'):
+        return
+    php_package = package[4:]
+    url = 'https://pecl.php.net/packages/%s' % php_package
+    headers = {'User-Agent': USER_AGENT}
+    try:
+        f = urlopen(
+            Request(url, headers=headers),
+            timeout=DEFAULT_URLLIB_TIMEOUT)
+    except urllib.error.HTTPError as e:
+        if e.status != 404:
+            raise
+        return
+    from bs4 import BeautifulSoup
+    bs = BeautifulSoup(f.read(), features='lxml')
+    tag = bs.find('a', text='Browse Source')
+    if tag is not None:
+        yield 'Repository-Browse', sanitize_vcs_url(url)
+    tag = bs.find('a', text='Package Bugs')
+    if tag is not None:
+        yield 'Bug-Database', url
+
+
 def guess_from_aur(package):
     vcses = ['git', 'bzr', 'hg']
     for vcs in vcses:
