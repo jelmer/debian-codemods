@@ -617,6 +617,8 @@ def all_sha_prefixed(cl):
     return (sha_prefixed > 0)
 
 
+_changelog_policy_noted = False
+
 def guess_update_changelog(tree, path='', cl=None):
     """Guess whether the changelog should be updated.
 
@@ -624,9 +626,12 @@ def guess_update_changelog(tree, path='', cl=None):
       tree: Tree to edit
       path: Path to packaging in tree
     """
+    global _changelog_policy_noted
     if gbp_conf_has_dch_section(tree, path):
-        note('Assuming changelog does not need to be updated, '
-             'since there is a [dch] section in gbp.conf.')
+        if not _changelog_policy_noted:
+            note('Assuming changelog does not need to be updated, '
+                 'since there is a [dch] section in gbp.conf.')
+            _changelog_policy_noted = True
         return False
 
     # TODO(jelmes): Do something more clever here, perhaps looking at history

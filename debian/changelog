@@ -4,6 +4,7 @@ lintian-brush (0.53) UNRELEASED; urgency=medium
   * Filter out duplicate lines in the last last changelog entry.
   * Add manpage for guess-upstream-metadata(1).
   * Cope with non-UTF8 R DESCRIPTION files.
+  * Only mention whether changelog will be updated once per run.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:42:08 +0000
 
