@@ -27,7 +27,6 @@ subset of the issues:
 * build-depends-on-build-essential
 * build-depends-on-obsolete-package
 * built-using-field-on-arch-all-package
-* changelog-has-duplicate-line
 * comma-separated-files-in-dep5-copyright
 * control-file-with-CRLF-EOLs
 * copyright-does-not-refer-to-common-license-file
