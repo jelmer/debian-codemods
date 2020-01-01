@@ -145,6 +145,20 @@ class OptionList(object):
     def __getitem__(self, i):
         return self._items()[i].value
 
+    def __delitem__(self, k):
+        i = 0
+        for o in self._options:
+            vals = o.value.split()
+            if k >= i and k < i + len(vals):
+                del vals[k - i]
+                o.value = ' '.join(vals)
+                for l in self._section._lines:
+                    l.contents.remove(o)
+                break
+            i += len(vals)
+        else:
+            raise IndexError(k)
+
     def __setitem__(self, k, val):
         i = 0
         for o in self._options:
@@ -171,6 +185,13 @@ class OptionList(object):
 
     def __contains__(self, v):
         return v in self._items()
+
+    def remove(self, value):
+        for i, v in enumerate(self._items()):
+            if v == value:
+                del self[i]
+                return
+        raise ValueError(value)
 
     def append(self, v):
         option = OptionLine(self._key, v, separator='=')
