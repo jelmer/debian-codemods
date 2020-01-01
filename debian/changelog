@@ -13,6 +13,7 @@ lintian-brush (0.53) UNRELEASED; urgency=medium
   [ Jelmer Vernooĳ ]
   * Refactor systemd support.
   * Add fixer for systemd-service-alias-without-extension.
+  * Add fixer for systemd-service-file-refers-to-obsolete-bindto.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:42:08 +0000
 

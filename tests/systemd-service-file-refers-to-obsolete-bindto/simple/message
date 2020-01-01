@@ -1,0 +1,2 @@
+Rename BindTo key to BindsTo in systemd files.
+Fixed-Lintian-Tags: systemd-service-file-refers-to-obsolete-bindto

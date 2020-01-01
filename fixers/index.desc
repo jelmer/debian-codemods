@@ -215,6 +215,9 @@ Lintian-Tags: systemd-service-file-shutdown-problems
 Fix-Script: systemd-service-alias-without-extension.py
 Lintian-Tags: systemd-service-alias-without-extension
 
+Fix-Script: systemd-service-file-refers-to-obsolete-bindto.py
+Lintian-Tags: systemd-service-file-refers-to-obsolete-bindto
+
 Fix-Script: transitional-package-should-be-oldlibs-optional.py
 Lintian-Tags: transitional-package-should-be-oldlibs-optional
 

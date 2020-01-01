@@ -56,6 +56,16 @@ class Section(ConfigNamespace):
         self._lines = [lineobj]
         self._options = {}
 
+    def rename(self, oldkey, newkey):
+        option = self._options[oldkey]
+        self._options[newkey] = option
+        del self._options[oldkey]
+        if isinstance(option, list):
+            for opt in option:
+                opt.name = newkey
+        else:
+            option.name = newkey
+
     def _getitem(self, key):
         if key == '__name__':
             return self._lines[-1].name

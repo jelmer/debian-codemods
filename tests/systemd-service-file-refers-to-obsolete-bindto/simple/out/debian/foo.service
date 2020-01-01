@@ -1,0 +1,13 @@
+[Unit]
+Description=Microsft Azure Linux Agent (provision)
+DefaultDependencies=no
+Wants=network-online.target
+After=network-online.target
+Before=ssh.service
+Conflicts=shutdown.target
+Alias=bar.service
+BindsTo=%i.device
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/waagent -provision
