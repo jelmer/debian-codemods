@@ -72,6 +72,25 @@ Before=b.service
 Before=c.service
 """)
 
+    def test_multiple_set(self):
+        f = StringIO("""\
+[Service]
+Before=a.service
+Before=b.service
+""")
+        uf = UnitFile(f)
+        uf['Service']['Before'][0] = 'a.service'
+        uf['Service']['Before'][1] = 'c.service'
+        self.assertRaises(IndexError, uf['Service']['Before'].__getitem__, 3)
+        self.assertEqual(
+            ['a.service', 'c.service'],
+            list(uf['Service']['Before']))
+        self.assertEqual(str(uf), """\
+[Service]
+Before=a.service
+Before=c.service
+""")
+
     def test_multiple_remove(self):
         f = StringIO("""\
 [Service]

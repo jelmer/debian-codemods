@@ -135,6 +135,18 @@ class OptionList(object):
     def __getitem__(self, i):
         return self._items()[i].value
 
+    def __setitem__(self, k, val):
+        i = 0
+        for o in self._options:
+            vals = o.value.split()
+            if k >= i and k < i + len(vals):
+                vals[k - i] = val
+                o.value = ' '.join(vals)
+                break
+            i += len(vals)
+        else:
+            raise IndexError(k)
+
     def _items(self):
         ret = []
         for o in self._options:
