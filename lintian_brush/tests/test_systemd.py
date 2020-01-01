@@ -52,8 +52,8 @@ Documentation=man:apcupsd(8)
 
     def test_update_service_file(self):
         def cb(section, name, value):
-            if section == b"Unit" and name == b"Description":
-                return b"Not really a UPS pmd"
+            if section == "Unit" and name == "Description":
+                return "Not really a UPS pmd"
             return value
         update_service_file('debian/apcupsd.service', cb)
         self.assertFileEqual("""\
@@ -68,8 +68,8 @@ Documentation=man:apcupsd(8)
 
     def test_update_service(self):
         def cb(section, name, value):
-            if section == b"Unit" and name == b"Description":
-                return b"Not really a UPS pmd"
+            if section == "Unit" and name == "Description":
+                return "Not really a UPS pmd"
             return value
         update_service(cb)
         self.assertFileEqual("""\

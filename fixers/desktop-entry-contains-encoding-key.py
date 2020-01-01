@@ -2,10 +2,7 @@
 
 import sys
 
-try:
-    from lintian_brush.xdg import DesktopEntryUpdater
-except ImportError:  # no iniparse
-    sys.exit(2)
+from lintian_brush.xdg import DesktopEntryUpdater
 
 import os
 

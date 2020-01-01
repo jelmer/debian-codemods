@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
+import sys
+
 from lintian_brush.systemd import update_service
 
 
 def replace_var_run(section, name, value):
-    if section == b"Service" and name == b"PIDFile":
-        return value.replace(b"/var/run/", b"/run/")
+    if section == "Service" and name == "PIDFile":
+        return value.replace("/var/run/", "/run/")
     return value
 
 
