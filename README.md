@@ -114,6 +114,7 @@ subset of the issues:
 * renamed-tag
 * skip-systemd-native-flag-missing-pre-depends
 * space-in-std-shortname-in-dep5-copyright
+* systemd-service-alias-without-extensions
 * systemd-service-file-pidfile-refers-to-var-run
 * systemd-service-file-shutdown-problems
 * tab-in-licence-text
