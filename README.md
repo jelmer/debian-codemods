@@ -27,6 +27,7 @@ subset of the issues:
 * build-depends-on-build-essential
 * build-depends-on-obsolete-package
 * built-using-field-on-arch-all-package
+* changelog-has-duplicate-line
 * comma-separated-files-in-dep5-copyright
 * control-file-with-CRLF-EOLs
 * copyright-does-not-refer-to-common-license-file
@@ -115,6 +116,7 @@ subset of the issues:
 * skip-systemd-native-flag-missing-pre-depends
 * space-in-std-shortname-in-dep5-copyright
 * systemd-service-file-pidfile-refers-to-var-run
+* systemd-service-file-shutdown-problems
 * tab-in-licence-text
 * transitional-package-should-be-oldlibs-optional
 * unnecessary-team-upload
