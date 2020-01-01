@@ -1,4 +1,4 @@
-lintian-brush (0.53) UNRELEASED; urgency=medium
+lintian-brush (0.53) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * Be a bit quieter when unable to contact udd.
@@ -16,7 +16,7 @@ lintian-brush (0.53) UNRELEASED; urgency=medium
   * Add fixer for systemd-service-file-refers-to-obsolete-bindto.
   * Add fixer for systemd-service-file-refers-to-obsolete-target.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:42:08 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 01 Jan 2020 21:10:22 +0000
 
 lintian-brush (0.52) unstable; urgency=medium
 
