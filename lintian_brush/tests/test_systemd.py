@@ -42,7 +42,16 @@ Before=b.service
 """)
         uf = UnitFile(f)
         self.assertEqual(['Service'], list(uf))
-        self.assertEqual(['a.service', 'b.service'], uf['Service']['Before'])
+        self.assertEqual(
+            ['a.service', 'b.service'],
+            list(uf['Service']['Before']))
+
+    def test_multiple_default(self):
+        f = StringIO("""\
+[Service]
+""")
+        uf = UnitFile(f)
+        self.assertEqual([], list(uf['Service']['Before']))
 
     def test_multiple_add(self):
         f = StringIO("""\
@@ -55,7 +64,7 @@ Before=b.service
         self.assertEqual(['Service'], list(uf))
         self.assertEqual(
             ['a.service', 'b.service', 'c.service'],
-            uf['Service']['Before'])
+            list(uf['Service']['Before']))
         self.assertEqual(str(uf), """\
 [Service]
 Before=a.service
@@ -72,11 +81,11 @@ Before=b.service
         uf = UnitFile(f)
         uf['Service']['Before'] = ['a.service']
         self.assertEqual(['Service'], list(uf))
-        self.assertEqual(['a.service'], uf['Service']['Before'])
         self.assertEqual(str(uf), """\
 [Service]
 Before=a.service
 """)
+        self.assertEqual(['a.service'], list(uf['Service']['Before']))
 
     def test_multiple_reset(self):
         f = StringIO("""\
@@ -86,7 +95,7 @@ Before=
 Before=b.service
 """)
         uf = UnitFile(f)
-        self.assertEqual(['b.service'], uf['Service']['Before'])
+        self.assertEqual(['b.service'], list(uf['Service']['Before']))
         self.assertEqual(str(uf), """\
 [Service]
 Before=a.service

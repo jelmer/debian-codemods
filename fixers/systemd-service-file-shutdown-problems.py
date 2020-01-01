@@ -1,14 +1,17 @@
 #!/usr/bin/python3
 
-from lintian_brush.systemd import update_service
+from lintian_brush.systemd import SystemdServiceUpdater, systemd_service_files
 
 
-def add_before_shutdown_target(section, name, value):
-    if section == b"Unit" and name == b"Conflicts":
-        value += b"\nBefore=shutdown.target"
-    return value
+for path in systemd_service_files():
+    with SystemdServiceUpdater(path) as updater:
+        try:
+            if (updater.file['Unit']['DefaultDependencies'] == 'no' and
+                    'shutdown.target' in updater.file['Unit']['Conflicts'] and
+                    'shutdown.target' not in updater.file['Unit']['Before']):
+                updater.file['Unit']['Before'].append('shutdown.target')
+        except KeyError:
+            pass
 
-
-update_service(add_before_shutdown_target)
 print("Add Before=shutdown.target to Unit section.")
 print("Fixed-Lintian-Tags: systemd-service-file-shutdown-problems")

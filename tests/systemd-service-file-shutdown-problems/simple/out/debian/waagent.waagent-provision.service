@@ -5,8 +5,8 @@ Wants=network-online.target
 After=network-online.target
 Before=ssh.service
 Conflicts=shutdown.target
-Before=shutdown.target
 ConditionVirtualization=microsoft
+Before=shutdown.target
 
 [Service]
 Type=oneshot

@@ -45,7 +45,7 @@ import os
 
 LIST_KEYS = [
     'Before', 'After', 'Documentation', 'Wants', 'Alias', 'WantedBy',
-    'Requires', 'RequiredBy', 'Also']
+    'Requires', 'RequiredBy', 'Also', 'Conflicts']
 
 
 class Section(ConfigNamespace):
@@ -59,12 +59,14 @@ class Section(ConfigNamespace):
     def _getitem(self, key):
         if key == '__name__':
             return self._lines[-1].name
-        option = self._options[key]
+        try:
+            option = self._options[key]
+        except KeyError:
+            if key in LIST_KEYS:
+                return OptionList(self, key, [])
+            raise
         if isinstance(option, list):
-            ret = []
-            for o in option:
-                ret.extend(o.value.split())
-            return ret
+            return OptionList(self, key, option)
         else:
             return option.value
 
@@ -123,17 +125,46 @@ class Section(ConfigNamespace):
         raise Exception('No sub-sections allowed', name)
 
 
+class OptionList(object):
+
+    def __init__(self, section, key, options):
+        self._section = section
+        self._key = key
+        self._options = options
+
+    def __getitem__(self, i):
+        return self._items()[i].value
+
+    def _items(self):
+        ret = []
+        for o in self._options:
+            ret.extend(o.value.split())
+        return ret
+
+    def __iter__(self):
+        return iter(self._items())
+
+    def __len__(self):
+        return len(self._items())
+
+    def __contains__(self, v):
+        return v in self._items()
+
+    def append(self, v):
+        option = OptionLine(self._key, v, separator='=')
+        obj = LineContainer(option)
+        self._section._lines[-1].add(obj)
+        self._section._options[v].append(obj)
+        self._options.append(option)
+
+
 class UnitFile(ConfigNamespace):
     _data = None
     _sections = None
-    _parse_exc = None
 
-    def __init__(self, fp=None, defaults=None, parse_exc=True):
+    def __init__(self, fp=None):
         self._data = LineContainer()
-        self._parse_exc = parse_exc
         self._sections = {}
-        if defaults is None:
-            defaults = {}
         if fp is not None:
             self._readfp(fp)
 
@@ -206,16 +237,12 @@ class UnitFile(ConfigNamespace):
 
             if not cur_section and not isinstance(
                     lineobj, (CommentLine, EmptyLine, SectionLine)):
-                if self._parse_exc:
-                    raise MissingSectionHeaderError(fname, linecount, line)
-                else:
-                    lineobj = make_comment(line)
+                raise MissingSectionHeaderError(fname, linecount, line)
 
             if lineobj is None:
-                if self._parse_exc:
-                    if exc is None:
-                        exc = ParsingError(fname)
-                    exc.append(linecount, line)
+                if exc is None:
+                    exc = ParsingError(fname)
+                exc.append(linecount, line)
                 lineobj = make_comment(line)
 
             if isinstance(lineobj, ContinuationLine):
@@ -226,10 +253,9 @@ class UnitFile(ConfigNamespace):
                     cur_option.add(lineobj)
                 else:
                     # illegal continuation line - convert to comment
-                    if self._parse_exc:
-                        if exc is None:
-                            exc = ParsingError(fname)
-                        exc.append(linecount, line)
+                    if exc is None:
+                        exc = ParsingError(fname)
+                    exc.append(linecount, line)
                     lineobj = make_comment(line)
 
             if isinstance(lineobj, OptionLine):
@@ -275,11 +301,15 @@ class UnitFile(ConfigNamespace):
             raise exc
 
 
-def systemd_service_files(path='debian'):
+def systemd_service_files(path='debian', exclude_links=True):
     """List paths to systemd service files."""
     for name in os.listdir(path):
-        if name.endswith('.service'):
-            yield os.path.join(path, name)
+        if not name.endswith('.service'):
+            continue
+        subpath = os.path.join(path, name)
+        if exclude_links and os.path.islink(subpath):
+            continue
+        yield subpath
 
 
 class SystemdServiceUpdater(object):
@@ -335,6 +365,4 @@ def update_service(cb):
       cb: Callback called with a config.ConfigObj object
     """
     for path in systemd_service_files():
-        if os.path.islink(path):
-            continue
         update_service_file(path, cb)
