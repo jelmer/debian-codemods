@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-import sys
-
 from lintian_brush.xdg import DesktopEntryUpdater
 
 import os

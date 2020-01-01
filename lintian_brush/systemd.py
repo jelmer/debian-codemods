@@ -20,7 +20,7 @@
 
 from io import StringIO
 
-from iniparse.ini import INIConfig, LineContainer, OptionLine
+from iniparse.ini import INIConfig
 
 from .reformatting import edit_formatted_file
 

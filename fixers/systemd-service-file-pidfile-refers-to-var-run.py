@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-import sys
-
 from lintian_brush.systemd import update_service
 
 

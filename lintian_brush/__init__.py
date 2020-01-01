@@ -619,6 +619,7 @@ def all_sha_prefixed(cl):
 
 _changelog_policy_noted = False
 
+
 def guess_update_changelog(tree, path='', cl=None):
     """Guess whether the changelog should be updated.
 
