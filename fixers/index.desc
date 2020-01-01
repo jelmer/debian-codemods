@@ -212,8 +212,8 @@ Lintian-Tags: systemd-service-file-pidfile-refers-to-var-run
 Fix-Script: systemd-service-file-shutdown-problems.py
 Lintian-Tags: systemd-service-file-shutdown-problems
 
-Fix-Script: systemd-service-alias-without-extensions.py
-Lintian-Tags: systemd-service-alias-without-extensions
+Fix-Script: systemd-service-alias-without-extension.py
+Lintian-Tags: systemd-service-alias-without-extension
 
 Fix-Script: transitional-package-should-be-oldlibs-optional.py
 Lintian-Tags: transitional-package-should-be-oldlibs-optional

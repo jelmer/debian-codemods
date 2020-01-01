@@ -1,0 +1,2 @@
+Use proper extensions in Alias in systemd files.
+Fixed-Lintian-Tags: systemd-service-alias-without-extension
