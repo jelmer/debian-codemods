@@ -2,6 +2,11 @@
 
 # Copyright (C) 2018 Jelmer Vernooij
 #
+# Parts imported from python3-iniparse:
+# Copyright (c) 2001, 2002, 2003 Python Software Foundation
+# Copyright (c) 2004-2008 Paramjit Oberoi <param.cs.wisc.edu>
+# Copyright (c) 2007 Tim Lauridsen <tla@rasmil.dk>
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -20,11 +25,254 @@
 
 from io import StringIO
 
-from iniparse.ini import INIConfig
+from iniparse.config import ConfigNamespace
+from iniparse.ini import (
+    LineContainer,
+    SectionLine,
+    OptionLine,
+    ContinuationLine,
+    MissingSectionHeaderError,
+    ParsingError,
+    EmptyLine,
+    CommentLine,
+    make_comment,
+    readline_iterator,
+    )
 
 from .reformatting import edit_formatted_file
 
 import os
+
+LIST_KEYS = [
+    'Before', 'After', 'Documentation', 'Wants', 'Alias', 'WantedBy',
+    'Requires', 'RequiredBy', 'Also']
+
+
+class Section(ConfigNamespace):
+    _lines = None
+    _options = None
+
+    def __init__(self, lineobj):
+        self._lines = [lineobj]
+        self._options = {}
+
+    def _getitem(self, key):
+        if key == '__name__':
+            return self._lines[-1].name
+        option = self._options[key]
+        if isinstance(option, list):
+            ret = []
+            for o in option:
+                ret.extend(o.value.split())
+            return ret
+        else:
+            return option.value
+
+    def __setitem__(self, key, value):
+        if key in LIST_KEYS:
+            remaining = list(value)
+            for option in self._options.get(key, []):
+                values = option.value.split()
+                for v in list(values):
+                    try:
+                        remaining.remove(v)
+                    except ValueError:
+                        values.remove(v)
+                option.value = ' '.join(values)
+                if not option.value:
+                    for l in self._lines:
+                        l.contents.remove(option)
+            if remaining:
+                obj = LineContainer(
+                    OptionLine(key, ' '.join(remaining), separator='='))
+                self._lines[-1].add(obj)
+                self._options[key].append(obj)
+        else:
+            if key not in self._options:
+                # create a dummy object - value may have multiple lines
+                obj = LineContainer(OptionLine(key, '', separator='='))
+                self._lines[-1].add(obj)
+                self._options[key] = obj
+            # the set_value() function in LineContainer
+            # automatically handles multi-line values
+            self._options[key].value = value
+
+    def __delitem__(self, key):
+        for l in self._lines:
+            remaining = []
+            for o in l.contents:
+                if isinstance(o, LineContainer):
+                    if key != o.name:
+                        remaining.append(o)
+                else:
+                    remaining.append(o)
+            l.contents = remaining
+        del self._options[key]
+
+    def __iter__(self):
+        d = set()
+        for l in self._lines:
+            for x in l.contents:
+                if isinstance(x, LineContainer):
+                    ans = x.name
+                    if ans not in d:
+                        yield ans
+                        d.add(ans)
+
+    def _new_namespace(self, name):
+        raise Exception('No sub-sections allowed', name)
+
+
+class UnitFile(ConfigNamespace):
+    _data = None
+    _sections = None
+    _parse_exc = None
+
+    def __init__(self, fp=None, defaults=None, parse_exc=True):
+        self._data = LineContainer()
+        self._parse_exc = parse_exc
+        self._sections = {}
+        if defaults is None:
+            defaults = {}
+        if fp is not None:
+            self._readfp(fp)
+
+    def _getitem(self, key):
+        return self._sections[key]
+
+    def __setitem__(self, key, value):
+        raise Exception('Values must be inside sections', key, value)
+
+    def __delitem__(self, key):
+        for line in self._sections[key]._lines:
+            self._data.contents.remove(line)
+        del self._sections[key]
+
+    def __iter__(self):
+        d = set()
+        for x in self._data.contents:
+            if isinstance(x, LineContainer):
+                if x.name not in d:
+                    yield x.name
+                    d.add(x.name)
+
+    def _new_namespace(self, name):
+        if self._data.contents:
+            self._data.add(EmptyLine())
+        obj = LineContainer(SectionLine(name))
+        self._data.add(obj)
+        if name in self._sections:
+            ns = self._sections[name]
+            ns._lines.append(obj)
+        else:
+            ns = Section(obj)
+            self._sections[name] = ns
+        return ns
+
+    def __str__(self):
+        return self._data.__str__()
+
+    _line_types = [EmptyLine, CommentLine,
+                   SectionLine, OptionLine,
+                   ContinuationLine]
+
+    def _parse(self, line):
+        for linetype in self._line_types:
+            lineobj = linetype.parse(line)
+            if lineobj:
+                return lineobj
+        else:
+            # can't parse line
+            return None
+
+    def _readfp(self, fp):
+        cur_section = None
+        cur_option = None
+        cur_section_name = None
+        cur_option_name = None
+        pending_lines = []
+        try:
+            fname = fp.name
+        except AttributeError:
+            fname = '<???>'
+        linecount = 0
+        exc = None
+        line = None
+        optobj = None
+
+        for line in readline_iterator(fp):
+            lineobj = self._parse(line)
+            linecount += 1
+
+            if not cur_section and not isinstance(
+                    lineobj, (CommentLine, EmptyLine, SectionLine)):
+                if self._parse_exc:
+                    raise MissingSectionHeaderError(fname, linecount, line)
+                else:
+                    lineobj = make_comment(line)
+
+            if lineobj is None:
+                if self._parse_exc:
+                    if exc is None:
+                        exc = ParsingError(fname)
+                    exc.append(linecount, line)
+                lineobj = make_comment(line)
+
+            if isinstance(lineobj, ContinuationLine):
+                if cur_option:
+                    if pending_lines:
+                        cur_option.extend(pending_lines)
+                        pending_lines = []
+                    cur_option.add(lineobj)
+                else:
+                    # illegal continuation line - convert to comment
+                    if self._parse_exc:
+                        if exc is None:
+                            exc = ParsingError(fname)
+                        exc.append(linecount, line)
+                    lineobj = make_comment(line)
+
+            if isinstance(lineobj, OptionLine):
+                if pending_lines:
+                    cur_section.extend(pending_lines)
+                    pending_lines = []
+                cur_option = LineContainer(lineobj)
+                cur_section.add(cur_option)
+                cur_option_name = cur_option.name
+                optobj = self._sections[cur_section_name]
+                if cur_option_name in LIST_KEYS:
+                    if not cur_option.value.split():
+                        # Reset list.
+                        optobj._options[cur_option_name] = []
+                    else:
+                        optobj._options.setdefault(cur_option_name, []).append(
+                            cur_option)
+                else:
+                    optobj._options[cur_option_name] = cur_option
+
+            if isinstance(lineobj, SectionLine):
+                self._data.extend(pending_lines)
+                pending_lines = []
+                cur_section = LineContainer(lineobj)
+                self._data.add(cur_section)
+                cur_option = None
+                cur_option_name = None
+                cur_section_name = cur_section.name
+                if cur_section_name not in self._sections:
+                    self._sections[cur_section_name] = Section(cur_section)
+                else:
+                    self._sections[cur_section_name]._lines.append(
+                        cur_section)
+
+            if isinstance(lineobj, (CommentLine, EmptyLine)):
+                pending_lines.append(lineobj)
+
+        self._data.extend(pending_lines)
+        if line and line[-1] == '\n':
+            self._data.add(EmptyLine())
+
+        if exc:
+            raise exc
 
 
 def systemd_service_files(path='debian'):
@@ -43,8 +291,7 @@ class SystemdServiceUpdater(object):
         with open(self.path, 'r') as f:
             self._orig_content = f.read()
 
-        self.file = INIConfig(
-            StringIO(self._orig_content), optionxformvalue=lambda x: x)
+        self.file = UnitFile(StringIO(self._orig_content))
         self._rewritten_content = self.dump()
         return self
 
@@ -77,7 +324,8 @@ def update_service_file(path, cb):
             for name in updater.file[section]:
                 oldval = updater.file[section][name]
                 newval = cb(section, name, oldval)
-                updater.file[section][name] = newval
+                if newval != oldval:
+                    updater.file[section][name] = newval
 
 
 def update_service(cb):

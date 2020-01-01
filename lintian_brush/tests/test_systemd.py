@@ -21,11 +21,87 @@ from breezy.tests import (
     TestCaseWithTransport,
     )
 
+from io import StringIO
+
 from lintian_brush.systemd import (
+    MissingSectionHeaderError,
+    UnitFile,
     systemd_service_files,
     update_service_file,
     update_service,
     )
+
+
+class UnitFileParser(TestCaseWithTransport):
+
+    def test_multiple(self):
+        f = StringIO("""\
+[Service]
+Before=a.service
+Before=b.service
+""")
+        uf = UnitFile(f)
+        self.assertEqual(['Service'], list(uf))
+        self.assertEqual(['a.service', 'b.service'], uf['Service']['Before'])
+
+    def test_multiple_add(self):
+        f = StringIO("""\
+[Service]
+Before=a.service
+Before=b.service
+""")
+        uf = UnitFile(f)
+        uf['Service']['Before'] = ['a.service', 'b.service', 'c.service']
+        self.assertEqual(['Service'], list(uf))
+        self.assertEqual(
+            ['a.service', 'b.service', 'c.service'],
+            uf['Service']['Before'])
+        self.assertEqual(str(uf), """\
+[Service]
+Before=a.service
+Before=b.service
+Before=c.service
+""")
+
+    def test_multiple_remove(self):
+        f = StringIO("""\
+[Service]
+Before=a.service
+Before=b.service
+""")
+        uf = UnitFile(f)
+        uf['Service']['Before'] = ['a.service']
+        self.assertEqual(['Service'], list(uf))
+        self.assertEqual(['a.service'], uf['Service']['Before'])
+        self.assertEqual(str(uf), """\
+[Service]
+Before=a.service
+""")
+
+    def test_multiple_reset(self):
+        f = StringIO("""\
+[Service]
+Before=a.service
+Before=
+Before=b.service
+""")
+        uf = UnitFile(f)
+        self.assertEqual(['b.service'], uf['Service']['Before'])
+        self.assertEqual(str(uf), """\
+[Service]
+Before=a.service
+Before=
+Before=b.service
+""")
+
+    def test_setting_before_section(self):
+        f = StringIO("""\
+Before=a.service
+
+[Service]
+Before=b.service
+""")
+        self.assertRaises(MissingSectionHeaderError, UnitFile, f)
 
 
 class UpdateServiceFilesTests(TestCaseWithTransport):
