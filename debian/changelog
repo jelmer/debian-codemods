@@ -1,10 +1,10 @@
-lintian-brush (0.54) UNRELEASED; urgency=medium
+lintian-brush (0.54) unstable; urgency=medium
 
   * Fix accidental removal of dh overrides with just conditions.
   * Disable the skip-systemd-native-flag-missing-pre-depends fixer for now,
     since it is too naive.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 03 Jan 2020 01:36:10 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 03 Jan 2020 17:43:21 +0000
 
 lintian-brush (0.53) unstable; urgency=medium
 
