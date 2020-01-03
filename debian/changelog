@@ -1,6 +1,8 @@
 lintian-brush (0.54) UNRELEASED; urgency=medium
 
   * Fix accidental removal of dh overrides with just conditions.
+  * Disable the skip-systemd-native-flag-missing-pre-depends fixer for now,
+    since it is too naive.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 03 Jan 2020 01:36:10 +0000
 
