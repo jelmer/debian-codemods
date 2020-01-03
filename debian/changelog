@@ -1,3 +1,9 @@
+lintian-brush (0.54) UNRELEASED; urgency=medium
+
+  * Fix accidental removal of dh overrides with just conditions.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 03 Jan 2020 01:36:10 +0000
+
 lintian-brush (0.53) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]

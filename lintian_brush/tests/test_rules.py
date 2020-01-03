@@ -27,6 +27,7 @@ from lintian_brush.rules import (
     Rule,
     dh_invoke_drop_with,
     dh_invoke_add_with,
+    discard_pointless_override,
     matches_wildcard,
     update_rules,
     )
@@ -236,3 +237,11 @@ class MatchesWildcardTests(TestCase):
         self.assertFalse(matches_wildcard('foo', 'fo'))
         self.assertFalse(matches_wildcard('foo', 'oo'))
         self.assertFalse(matches_wildcard('foo', 'b%'))
+
+
+class DiscardPointlessOverrideTests(TestCase):
+
+    def test_simple(self):
+        rule = Rule(b'override_dh_blah', [b'dh_blah'])
+        discard_pointless_override(rule)
+        self.assertEqual(rule.lines, [])

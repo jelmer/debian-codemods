@@ -304,8 +304,11 @@ def discard_pointless_override(rule):
     if not rule.target.startswith(b'override_'):
         return
     command = rule.target[len(b'override_'):]
-    if rule.commands() == [command] and not rule.components:
-        rule.clear()
+    if [l for l in rule.lines[1:] if l.strip()] != [b'\t' + command]:
+        return
+    if rule.components:
+        return
+    rule.clear()
 
 
 def update_rules(command_line_cb=None, global_line_cb=None,

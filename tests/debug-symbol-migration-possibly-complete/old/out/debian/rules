@@ -2,3 +2,8 @@
 
 %:
 	dh $@
+
+override_dh_test:
+ifneq (${SOME_TEST_THING}, 1)
+	dh_test
+endif
