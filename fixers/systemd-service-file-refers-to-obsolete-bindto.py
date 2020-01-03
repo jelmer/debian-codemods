@@ -4,7 +4,11 @@ from lintian_brush.systemd import systemd_service_files, SystemdServiceUpdater
 
 for path in systemd_service_files():
     with SystemdServiceUpdater(path) as updater:
-        updater.file['Unit'].rename('BindTo', 'BindsTo')
+        unit = updater.file['Unit']
+        try:
+            unit.rename('BindTo', 'BindsTo')
+        except KeyError:
+            pass
 
 
 print('Rename BindTo key to BindsTo in systemd files.')
