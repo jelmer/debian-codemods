@@ -47,8 +47,11 @@ migrate_version = "<< %s%s" % (
         current_version,
         '' if current_version.endswith('~') else '~')
 
+rules_uses_variables = False
+
 
 def migrate_dh_strip(line, target):
+    global rules_uses_variables
     if line.startswith(b'dh_strip ') or line.startswith(b'dh '):
         for dbg_pkg in dbg_packages:
             if ('--dbg-package=%s' % dbg_pkg).encode('utf-8') in line:
@@ -57,6 +60,8 @@ def migrate_dh_strip(line, target):
                         ("--dbgsym-migration='%s (%s)'" % (
                             dbg_pkg, migrate_version)).encode('utf-8'))
                 dbg_migration_done.add(dbg_pkg)
+        if b'$' in line:
+            rules_uses_variables = True
     return line
 
 
@@ -68,6 +73,9 @@ if difference:
     if check_cdbs():
         # Ah, cdbs.
         raise Exception("package uses cdbs")
+    if rules_uses_variables:
+        # Don't know how to deal with these yet.
+        sys.exit(2)
     raise Exception("packages missing %r" % difference)
 
 print("Transition to automatic debug package%s (from: %s)." %
