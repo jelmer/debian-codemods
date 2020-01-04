@@ -1025,7 +1025,7 @@ def verify_bug_database_url(url):
 
 def verify_bug_submit_url(url):
     parsed_url = urlparse(url)
-    if parsed_url.netloc == 'gitlab.com' or is_gitlab_site(parsed_url.netloc):
+    if parsed_url.netloc == 'github.com' or is_gitlab_site(parsed_url.netloc):
         path = '/'.join(parsed_url.path.strip('/').split('/')[:-1])
         return verify_bug_database_url(
             urlunparse(parsed_url._replace(path=path)))
