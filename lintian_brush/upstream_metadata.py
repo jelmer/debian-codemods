@@ -642,6 +642,10 @@ def guess_from_doap(path, trust_package):
                             'Repository-Browse', web_url, 'certain')
 
 
+def is_email_address(value):
+    return '@' in value or ' (at) ' in value
+
+
 def guess_from_configure(path, trust_package=False):
     with open(path, 'rb') as f:
         for line in f:
@@ -663,7 +667,8 @@ def guess_from_configure(path, trust_package=False):
             elif key == b'PACKAGE_BUGREPORT':
                 if value in (b'BUG-REPORT-ADDRESS', ):
                     certainty = 'invalid'
-                elif b'@' in value and not value.endswith(b'gnu.org'):
+                elif (is_email_address(value.decode()) and
+                        not value.endswith(b'gnu.org')):
                     # Downgrade the trustworthiness of this field for most
                     # upstreams if it contains an e-mail address. Most
                     # upstreams seem to just set this to some random address,
