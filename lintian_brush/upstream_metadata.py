@@ -510,14 +510,13 @@ def guess_from_readme(path, trust_package):
 
 
 def guess_from_debian_patch(path, trust_package):
-    with open(path, 'r') as f:
+    with open(path, 'rb') as f:
         for line in f:
-            if line.startswith('Forwarded: '):
-                forwarded = line.split(':', 1)[1].strip()
-                bug_db = bug_database_from_issue_url(forwarded)
+            if line.startswith(b'Forwarded: '):
+                forwarded = line.split(b':', 1)[1].strip()
+                bug_db = bug_database_from_issue_url(forwarded.decode('utf-8'))
                 if bug_db:
                     yield UpstreamDatum('Bug-Database', bug_db, 'possible')
-    return []
 
 
 def guess_from_meta_json(path, trust_package):

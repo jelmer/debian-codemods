@@ -1,6 +1,7 @@
 lintian-brush (0.55) UNRELEASED; urgency=medium
 
   * Fix verification of Bug-Submit URLs for github.com.
+  * Fix handling of non-default encodings in debian/patches.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 04 Jan 2020 17:45:48 +0000
 
