@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import asyncio
 from debian.deb822 import PkgRelation
 from lintian_brush.rules import update_rules
 import os
