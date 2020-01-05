@@ -3,6 +3,7 @@
 import asyncio
 import os
 import re
+import socket
 import sys
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.control import update_control
@@ -86,6 +87,8 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
                 Request(vcs_url, headers=headers),
                 timeout=DEFAULT_URLLIB_TIMEOUT)
         except urllib.error.HTTPError:
+            pass
+        except socket.timeout:
             pass
         else:
             redirected_url = response.geturl()
