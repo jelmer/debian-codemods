@@ -1478,6 +1478,15 @@ def fix_upstream_metadata(upstream_metadata):
         repo.value = url
 
 
+# If we're setting them new, put Name and Contact first
+def upstream_metadata_sort_key(x):
+    (k, v) = x
+    return {
+        'Name': '00-Name',
+        'Contact': '01-Contact',
+        }.get(k, k)
+
+
 def main(argv=None):
     import argparse
     import sys

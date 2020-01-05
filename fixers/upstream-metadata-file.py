@@ -19,6 +19,7 @@ from lintian_brush.upstream_metadata import (
     update_from_guesses,
     filter_bad_guesses,
     ADDON_ONLY_FIELDS,
+    upstream_metadata_sort_key,
     )
 from lintian_brush.yaml import YamlUpdater
 
@@ -97,15 +98,7 @@ with YamlUpdater('debian/upstream/metadata') as code:
 
     fixed_tag = not os.path.exists('debian/upstream/metadata')
 
-    # If we're setting them new, put Name and Contact first
-    def sort_key(x):
-        (k, v) = x
-        return {
-            'Name': '00-Name',
-            'Contact': '01-Contact',
-            }.get(k, k)
-
-    for k, v in sorted(changed.items(), key=sort_key):
+    for k, v in sorted(changed.items(), key=upstream_metadata_sort_key):
         code[k] = v.value
 
     # If there are only add-on-only fields, then just remove the file.
