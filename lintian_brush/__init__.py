@@ -564,7 +564,7 @@ def check_clean_tree(local_tree):
         raise PendingChanges(local_tree)
 
 
-def add_changelog_entry(tree, path, summary):
+def add_changelog_entry(tree, path, summary, qa=False):
     """Add a changelog entry.
 
     Args:
@@ -572,8 +572,11 @@ def add_changelog_entry(tree, path, summary):
       path: Path to the changelog file
       summary: Entry to add
     """
+    args = ["dch", "--no-auto-nmu"]
+    if qa:
+        args.append('--qa')
     p = subprocess.Popen(
-        ["dch", "--no-auto-nmu", summary],
+        args + [summary],
         cwd=tree.abspath(os.path.dirname(os.path.dirname(path))),
         stdin=subprocess.PIPE, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE)
