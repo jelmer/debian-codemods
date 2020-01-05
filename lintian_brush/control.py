@@ -117,6 +117,13 @@ def update_control(path='debian/control', source_package_cb=None,
         if not e.template_path:
             raise
         return _update_control_template(e.template_path, path, paragraph_cb)
+    except FileNotFoundError:
+        for template_path in [path + '.in']:
+            if os.path.exists(template_path):
+                return _update_control_template(
+                    template_path, path, paragraph_cb)
+        else:
+            raise
 
 
 def parse_relations(text):
