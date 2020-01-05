@@ -29,6 +29,8 @@ try:
 
         if extra_defined and not extra_used:
             for paragraph in list(updater.copyright._Copyright__paragraphs):
+                if not paragraph.license:
+                    continue
                 if paragraph.license.synopsis in extra_defined:
                     updater.copyright._Copyright__paragraphs.remove(paragraph)
 except (FileNotFoundError, NotMachineReadableError):
