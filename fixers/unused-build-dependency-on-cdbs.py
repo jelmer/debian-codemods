@@ -2,9 +2,9 @@
 
 from lintian_brush.control import drop_dependency, update_control
 
-with open('debian/rules', 'r') as f:
+with open('debian/rules', 'rb') as f:
     for line in f:
-        if '/usr/share/cdbs/' in line:
+        if b'/usr/share/cdbs/' in line:
             uses_cdbs = True
             break
     else:
