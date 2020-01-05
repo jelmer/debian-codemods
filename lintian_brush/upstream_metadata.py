@@ -58,6 +58,8 @@ class UpstreamDatum(object):
 
     def __init__(self, field, value, certainty=None, origin=None):
         self.field = field
+        if value is None:
+            raise ValueError(field)
         self.value = value
         if certainty not in SUPPORTED_CERTAINTIES:
             raise ValueError(certainty)
@@ -599,7 +601,7 @@ def guess_from_doap(path, trust_package):
             '{http://www.w3.org/1999/02/22-rdf-syntax-ns#}resource')
 
     for child in root:
-        if child.tag == ('{%s}name' % DOAP_NAMESPACE):
+        if child.tag == ('{%s}name' % DOAP_NAMESPACE) and child.text:
             yield UpstreamDatum('Name', child.text, 'certain')
         if child.tag == ('{%s}bug-database' % DOAP_NAMESPACE):
             url = extract_url(child)
