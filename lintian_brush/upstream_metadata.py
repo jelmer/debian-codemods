@@ -41,6 +41,7 @@ from lintian_brush.vcs import (
     plausible_url as plausible_vcs_url,
     sanitize_url as sanitize_vcs_url,
     is_gitlab_site,
+    split_vcs_url,
     )
 from lintian_brush.watch import parse_watch_file
 from urllib.request import urlopen, Request
@@ -946,6 +947,7 @@ def bug_database_from_issue_url(url):
 
 
 def guess_bug_database_url_from_repo_url(url):
+    url = split_vcs_url(url)[0]
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
         path = '/'.join(parsed_url.path.split('/')[:3])
