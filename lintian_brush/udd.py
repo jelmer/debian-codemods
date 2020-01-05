@@ -17,6 +17,9 @@
 
 """Support for acessing UDD."""
 
+import asyncio
+
+
 _udd = None
 
 
@@ -25,10 +28,12 @@ async def connect_udd_mirror():
     global _udd
     if _udd:
         return _udd
+    loop = asyncio.get_event_loop()
     _udd = await asyncpg.connect(
         database="udd",
         user="udd-mirror",
         password="udd-mirror",
         port=5432,
-        host="udd-mirror.debian.net")
+        host="udd-mirror.debian.net",
+        loop=loop)
     return _udd
