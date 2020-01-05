@@ -18,7 +18,7 @@ def move_libmodule_build_perl(control):
     control['Build-Depends-Indep'] = drop_dependency(
         control['Build-Depends-Indep'], 'libmodule-build-perl')
     control['Build-Depends'] = add_dependency(
-        control['Build-Depends'], 'libmodule-build-perl')
+        control.get('Build-Depends', ''), 'libmodule-build-perl')
 
 
 update_control(source_package_cb=move_libmodule_build_perl)
