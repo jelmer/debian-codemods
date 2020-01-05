@@ -19,6 +19,8 @@ def fix_header_license_references(copyright):
     used_licenses = set()
     seen_licenses = set()
     for files_paragraph in copyright.all_files_paragraphs():
+        if not files_paragraph.license:
+            continue
         used_licenses.add(files_paragraph.license.synopsis)
         if files_paragraph.license.text:
             seen_licenses.add(files_paragraph.license.synopsis)
