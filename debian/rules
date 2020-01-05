@@ -3,7 +3,7 @@
 ZSH_COMPDIR = /usr/share/zsh/vendor-completions/
 
 %:
-	dh $* --with python3,bash_completion --buildsystem=pybuild
+	dh $@ --with python3,bash_completion --buildsystem=pybuild
 
 override_dh_auto_install:
 	dh_auto_install
