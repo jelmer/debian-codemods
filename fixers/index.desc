@@ -21,11 +21,11 @@ Lintian-Tags: unversioned-copyright-format-uri
 Fix-Script: debian-control-has-unusual-field-spacing.py
 Lintian-Tags: debian-control-has-unusual-field-spacing
 
-Fix-Script: comma-separated-files-in-dep5-copyright.py
-Lintian-Tags: comma-separated-files-in-dep5-copyright
-
 Fix-Script: copyright-has-crs.sh
 Lintian-Tags: copyright-has-crs
+
+Fix-Script: copyright-continued-lines-with-space.py
+Lintian-Tags: tab-in-licence-text
 
 Fix-Script: desktop-entry-file-has-crs.sh
 Lintian-Tags: desktop-entry-file-has-crs
@@ -41,6 +41,9 @@ Lintian-Tags: out-of-date-copyright-format-uri
 
 Fix-Script: obsolete-field-in-dep5-copyright.py
 Lintian-Tags: obsolete-field-in-dep5-copyright
+
+Fix-Script: comma-separated-files-in-dep5-copyright.py
+Lintian-Tags: comma-separated-files-in-dep5-copyright
 
 Fix-Script: common-license.py
 Lintian-Tags:
@@ -201,9 +204,6 @@ Lintian-Tags: quilt-series-without-trailing-newline
 
 Fix-Script: renamed-tag.py
 Lintian-Tags: renamed-tag
-
-Fix-Script: copyright-continued-lines-with-space.py
-Lintian-Tags: tab-in-licence-text
 
 Fix-Script: space-in-std-shortname-in-dep5-copyright.py
 Lintian-Tags: space-in-std-shortname-in-dep5-copyright
