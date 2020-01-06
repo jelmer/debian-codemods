@@ -283,9 +283,8 @@ Arch: all
         self.assertEqual(rev.message, (
             'Created new file.\n'
             '\n'
-            'Fixes lintian: some-tag\n'
-            'See https://lintian.debian.org/tags/some-tag.html for '
-            'more details.\n'))
+            'Fixes: lintian: some-tag\n'
+            'See-also: https://lintian.debian.org/tags/some-tag.html\n'))
         self.assertEqual(2, tree.branch.revno())
         basis_tree = tree.branch.basis_tree()
         with basis_tree.lock_read():

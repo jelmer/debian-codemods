@@ -3,6 +3,8 @@ lintian-brush (0.55) UNRELEASED; urgency=medium
   * Fix verification of Bug-Submit URLs for github.com.
   * Fix handling of non-default encodings in debian/patches.
   * Use dh $@ sequencer.
+  * Change the commit message style so the footer is short, human-readable
+    and parseable. Closes: #946803
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 04 Jan 2020 17:45:48 +0000
 

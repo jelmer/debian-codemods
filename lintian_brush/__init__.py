@@ -769,9 +769,9 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     for tag in result.fixed_lintian_tags:
         description += "\n"
         description += "\n"
-        description += "Fixes lintian: %s\n" % tag
-        description += ("See https://lintian.debian.org/tags/%s.html "
-                        "for more details.\n") % tag
+        description += "Fixes: lintian: %s\n" % tag
+        description += (
+            "See-also: https://lintian.debian.org/tags/%s.html\n" % tag)
 
     if committer is None:
         committer = get_committer(local_tree)
