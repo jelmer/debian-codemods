@@ -62,3 +62,30 @@ class YamlUpdater(object):
                         f.writelines(self._directives)
                         self.yaml.dump(self._code, f)
         return False
+
+
+def update_ordered_dict(code, changed, key=None):
+    if key is None:
+        def key(x):
+            return x
+
+    to_insert = []
+    for k, v in changed:
+        if k in code:
+            code[k] = v
+        else:
+            to_insert.append((k, v))
+
+    to_insert.sort(key=key)
+    i = 0
+    for k, v in list(code.items()):
+        if not to_insert:
+            break
+        if key(k) > key(to_insert[0][0]):
+            code.insert(i, *to_insert.pop(0))
+            i += 1
+        i += 1
+
+    while to_insert:
+        k, v = to_insert.pop(0)
+        code[k] = v

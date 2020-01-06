@@ -1,3 +1,9 @@
+lintian-brush (0.56) UNRELEASED; urgency=medium
+
+  * Attempt to keep preferred order of fields in YAML files.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 06 Jan 2020 22:25:11 +0000
+
 lintian-brush (0.55) unstable; urgency=medium
 
   * Fix verification of Bug-Submit URLs for github.com.

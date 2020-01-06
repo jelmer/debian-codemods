@@ -19,10 +19,14 @@
 
 from breezy.tests import (
     TestCaseInTempDir,
+    TestCase,
     )
+
+from ruamel.yaml.compat import ordereddict
 
 from lintian_brush.yaml import (
     YamlUpdater,
+    update_ordered_dict,
     )
 
 
@@ -85,3 +89,38 @@ Origkey: origvalue
 Somekey: origvalue
 Newkey: newvalue
 """, "newfile.yaml")
+
+
+class UpdateOrderedDict(TestCase):
+
+    def setUp(self):
+        super(UpdateOrderedDict, self).setUp()
+        self._od = ordereddict()
+
+    def test_empty(self):
+        update_ordered_dict(self._od, [('Contact', 'Foo'), ('Blah', 'blah')])
+        self.assertEqual(ordereddict([
+            ('Blah', 'blah'),
+            ('Contact', 'Foo')]), self._od)
+
+    def test_modify(self):
+        self._od['Contact'] = 'Bar'
+        self._od['ZZ'] = 'z'
+        update_ordered_dict(
+            self._od, [('Contact', 'Foo'), ('Blah', 'blah')])
+        self.assertEqual(ordereddict([
+            ('Blah', 'blah'),
+            ('Contact', 'Foo'),
+            ('ZZ', 'z'),
+            ]), self._od)
+
+    def test_insert_before(self):
+        self._od['Contact'] = 'Bar'
+        self._od['Bar'] = 'Bar'
+        update_ordered_dict(
+            self._od, [('Daar', 'blah')])
+        self.assertEqual(ordereddict([
+            ('Contact', 'Bar'),
+            ('Bar', 'Bar'),
+            ('Daar', 'blah'),
+            ]), self._od)

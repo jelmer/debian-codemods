@@ -21,7 +21,10 @@ from lintian_brush.upstream_metadata import (
     ADDON_ONLY_FIELDS,
     upstream_metadata_sort_key,
     )
-from lintian_brush.yaml import YamlUpdater
+from lintian_brush.yaml import (
+    YamlUpdater,
+    update_ordered_dict,
+    )
 
 
 current_version = Version(os.environ['CURRENT_VERSION'])
@@ -96,10 +99,15 @@ with YamlUpdater('debian/upstream/metadata') as code:
     if not changed:
         sys.exit(0)
 
+    # A change that just says the "Name" field is a bit silly
+    if set(changed.keys()) - set(ADDON_ONLY_FIELDS) == set(['Name']):
+        sys.exit(0)
+
     fixed_tag = not os.path.exists('debian/upstream/metadata')
 
-    for k, v in sorted(changed.items(), key=upstream_metadata_sort_key):
-        code[k] = v.value
+    update_ordered_dict(
+        code, [(k, v.value) for (k, v) in changed.items()],
+        key=upstream_metadata_sort_key)
 
     # If there are only add-on-only fields, then just remove the file.
     if not (set(code.keys()) - set(ADDON_ONLY_FIELDS)):
