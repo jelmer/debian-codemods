@@ -18,6 +18,7 @@
 """Utility functions for dealing with YAML files."""
 
 import copy
+from io import StringIO
 import os
 from ruamel.yaml import YAML
 
@@ -47,6 +48,47 @@ class YamlUpdater(object):
         self._orig = copy.deepcopy(self._code)
         return self._code
 
+    def _only_simple_changes(self):
+        def is_one_line(k, v):
+            f = StringIO()
+            self.yaml.dump({k: v}, f)
+            return len(f.getvalue().splitlines()) == 1
+        # Check if there are only "simple" changes, i.e.
+        # changes that update string fields
+        for k, v in self._code.items():
+            if v == self._orig.get(k) or not is_one_line(k, v):
+                continue
+        for k, v in self._orig.items():
+            if k not in self._code or not is_one_line(k, v):
+                return False
+        return True
+
+    def _update_lines(self, lines, f):
+        for line in self._directives:
+            f.write(line)
+        os = list(self._orig.keys())
+        cs = list(self._code.keys())
+        o = 0
+        for line in lines[len(self._directives):]:
+            key = os[o]
+            if line.startswith(os[o] + ':'):
+                while cs and cs[0] not in os:
+                    self.yaml.dump({cs[0]: self._code[cs[0]]}, f)
+                    cs.pop(0)
+                if key not in self._code:
+                    pass  # Line was removed
+                elif self._code[key] == self._orig[key]:
+                    # Line stayed the same
+                    f.write(line)
+                    cs.remove(key)
+                else:
+                    self.yaml.dump({key: self._code[key]}, f)
+                    cs.remove(key)
+                o += 1
+        while cs:
+            key = cs.pop(0)
+            self.yaml.dump({key: self._code[key]}, f)
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         if not exc_type:
             if not self._code and self.remove_empty:
@@ -58,9 +100,18 @@ class YamlUpdater(object):
                 if self._code != self._orig:
                     if not os.path.exists(self._dirpath) and self._dirpath:
                         os.mkdir(self._dirpath)
-                    with open(self.path, 'w') as f:
-                        f.writelines(self._directives)
-                        self.yaml.dump(self._code, f)
+                    if self._only_simple_changes():
+                        try:
+                            with open(self.path, 'r') as f:
+                                lines = list(f.readlines())
+                        except FileNotFoundError:
+                            lines = []
+                        with open(self.path, 'w') as f:
+                            self._update_lines(lines, f)
+                    else:
+                        with open(self.path, 'w') as f:
+                            f.writelines(self._directives)
+                            self.yaml.dump(self._code, f)
         return False
 
 
