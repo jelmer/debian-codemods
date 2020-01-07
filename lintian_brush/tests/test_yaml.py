@@ -124,3 +124,28 @@ class UpdateOrderedDict(TestCase):
             ('Bar', 'Bar'),
             ('Daar', 'blah'),
             ]), self._od)
+
+    def test_csb(self):
+        from ..upstream_metadata import upstream_metadata_sort_key
+        self._od['Registry'] = [
+                ordereddict([('Name', 'OMICtools'), ('Entry', 'OMICS_09827')]),
+                ordereddict([('Name', 'bio.tools'), ('Entry', 'NA')])]
+        self._od['Repository'] = 'https://github.com/csb-toolbox/CSB'
+        update_ordered_dict(
+            self._od,
+            [('Bug-Database', 'https://github.com/csb-toolbox/CSB/issues'),
+             ('Bug-Submit', 'https://github.com/csb-toolbox/CSB/issues/new'),
+             ('Repository', 'https://github.com/csb-toolbox/CSB/issues.git')],
+            key=upstream_metadata_sort_key)
+        self.assertEqual(
+            ordereddict([
+                 ('Bug-Database', 'https://github.com/csb-toolbox/CSB/issues'),
+                 ('Bug-Submit',
+                  'https://github.com/csb-toolbox/CSB/issues/new'),
+                 ('Registry', [
+                     ordereddict([('Name', 'OMICtools'),
+                                  ('Entry', 'OMICS_09827')]),
+                     ordereddict([('Name', 'bio.tools'), ('Entry', 'NA')])
+                  ]),
+                 ('Repository',
+                  'https://github.com/csb-toolbox/CSB/issues.git')]), self._od)

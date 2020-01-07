@@ -135,9 +135,7 @@ def update_ordered_dict(code, changed, key=None):
     to_insert.sort(key=key)
     i = 0
     for k, v in list(code.items()):
-        if not to_insert:
-            break
-        if key((k, v)) > key(to_insert[0]):
+        while to_insert and key((k, v)) > key(to_insert[0]):
             code.insert(i, *to_insert.pop(0))
             i += 1
         i += 1
