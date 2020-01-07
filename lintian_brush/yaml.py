@@ -59,7 +59,7 @@ class YamlUpdater(object):
             if v == self._orig.get(k) or not is_one_line(k, v):
                 continue
         for k, v in self._orig.items():
-            if k not in self._code or not is_one_line(k, v):
+            if k not in self._code and not is_one_line(k, v):
                 return False
         return True
 
@@ -70,8 +70,11 @@ class YamlUpdater(object):
         cs = list(self._code.keys())
         o = 0
         for line in lines[len(self._directives):]:
-            key = os[o]
-            if line.startswith(os[o] + ':'):
+            try:
+                key = os[o]
+            except IndexError:
+                key = None
+            if key and line.startswith(key + ':'):
                 while cs and cs[0] not in os:
                     self.yaml.dump({cs[0]: self._code[cs[0]]}, f)
                     cs.pop(0)
@@ -85,6 +88,8 @@ class YamlUpdater(object):
                     self.yaml.dump({key: self._code[key]}, f)
                     cs.remove(key)
                 o += 1
+            else:
+                f.write(line)
         while cs:
             key = cs.pop(0)
             self.yaml.dump({key: self._code[key]}, f)

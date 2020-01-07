@@ -1,0 +1,43 @@
+Archive: pypi.python.org
+Bug-Database: https://gitlab.com/fdroid/blah/issues
+Bug-Submit: https://gitlab.com/fdroid/blah/issues/new
+Cite-As: https://example.com
+Contact: https://forum.example.com
+Documentation: https://example.com/docs
+Donation: https://example.com/about
+Repository: https://gitlab.com/fdroid/blah
+Repository-Browse: https://gitlab.com/fdroid/blah
+Security-Contact: team@example.com
+Webservice: https://example.com/packages
+Screenshots:
+  - https://example.com/repo/org.fdroid.fdroid/en-US/phoneScreenshots/screenshot-app-details.png
+  - https://example.com/repo/org.fdroid.fdroid/en-US/phoneScreenshots/screenshot-dark-details.png
+  - https://example.com/repo/org.fdroid.fdroid/en-US/phoneScreenshots/screenshot-dark-home.png
+  - https://example.com/repo/org.fdroid.fdroid/en-US/phoneScreenshots/screenshot-dark-knownvuln.png
+  - https://example.com/repo/org.fdroid.fdroid/en-US/phoneScreenshots/screenshot-knownvuln.png
+  - https://example.com/repo/org.fdroid.fdroid/en-US/phoneScreenshots/screenshot-search.png
+  - https://example.com/repo/org.fdroid.fdroid/en-US/phoneScreenshots/screenshot-updates.png
+  - https://example.com/assets/fdroid-screenshot-af.png
+  - https://example.com/assets/fdroid-screenshot-ar.png
+  - https://example.com/assets/fdroid-screenshot-bo.png
+  - https://example.com/assets/fdroid-screenshot-ca.png
+  - https://example.com/assets/fdroid-screenshot-cs.png
+  - https://example.com/assets/fdroid-screenshot-de.png
+  - https://example.com/assets/fdroid-screenshot-el.png
+  - https://example.com/assets/fdroid-screenshot-en.png
+  - https://example.com/assets/fdroid-screenshot-es.png
+  - https://example.com/assets/fdroid-screenshot-fa.png
+  - https://example.com/assets/fdroid-screenshot-fr.png
+  - https://example.com/assets/fdroid-screenshot-it.png
+  - https://example.com/assets/fdroid-screenshot-ja.png
+  - https://example.com/assets/fdroid-screenshot-nl.png
+  - https://example.com/assets/fdroid-screenshot-pl.png
+  - https://example.com/assets/fdroid-screenshot-pt-BR.png
+  - https://example.com/assets/fdroid-screenshot-ro.png
+  - https://example.com/assets/fdroid-screenshot-ru.png
+  - https://example.com/assets/fdroid-screenshot-sv.png
+  - https://example.com/assets/fdroid-screenshot-tr.png
+  - https://example.com/assets/fdroid-screenshot-uk.png
+  - https://example.com/assets/fdroid-screenshot-vi.png
+  - https://example.com/assets/fdroid-screenshot-zh.png
+  - https://example.com/assets/fdroid-screenshot-zh-TW.png
