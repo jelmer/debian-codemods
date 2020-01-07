@@ -1,11 +1,15 @@
 lintian-brush (0.56) UNRELEASED; urgency=medium
 
+  [ Jelmer Vernooĳ ]
   * Attempt to keep preferred order of fields in YAML files.
   * Don't write debian/upstream/metadata when just setting name. Closes:
     #948276
   * debian/upstream/metadata: Insert new entries alphabetically. Closes:
     #948155
   * Try harder to avoid rewriting YAML files.
+
+  [ Sven Joachim ]
+  * Fix Vcs-{Git,Browser} fields.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 06 Jan 2020 22:25:11 +0000
 
