@@ -43,7 +43,6 @@ from lintian_brush.vcs import (
     is_gitlab_site,
     split_vcs_url,
     )
-from lintian_brush.watch import parse_watch_file
 from urllib.request import urlopen, Request
 
 ADDON_ONLY_FIELDS = ['Archive']
@@ -269,11 +268,19 @@ def get_python_pkg_info(path, trust_package=False):
 
 
 def guess_from_debian_watch(path, trust_package):
+    from lintian_brush.watch import (
+        parse_watch_file,
+        MissingVersion,
+        )
+
     def get_package_name():
         with open(os.path.join(os.path.dirname(path), 'control'), 'r') as f:
             return Deb822(f)['Source']
     with open(path, 'r') as f:
-        wf = parse_watch_file(f)
+        try:
+            wf = parse_watch_file(f)
+        except MissingVersion:
+            return
         if not wf:
             return
         for w in wf:

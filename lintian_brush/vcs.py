@@ -237,14 +237,31 @@ def browse_url_from_repo_url(url):
     return None
 
 
+def determine_gitlab_browser_url(url):
+    (url, branch, subpath) = split_vcs_url(url)
+    parsed_url = urlparse(url.rstrip('/'))
+    # TODO(jelmer): Add support for branches
+    path = parsed_url.path
+    if path.endswith('.git'):
+        path = path[:-len('.git')]
+    if subpath and not branch:
+        branch = "HEAD"
+    if branch:
+        path = path + '/tree/%s' % branch
+    if subpath:
+        path = path + '/' + subpath
+    return 'https://%s%s' % (parsed_url.hostname, path)
+
+
 def determine_browser_url(vcs_type, vcs_url):
     repo_url, branch, subpath = split_vcs_url(vcs_url)
-    parsed = urlparse(repo_url)
-    if parsed.netloc == 'salsa.debian.org':
-        from .salsa import determine_browser_url as determine_salsa_browser_url
-        return determine_salsa_browser_url(vcs_url)
+    parsed = urlparse(repo_url.rstrip('/'))
+    if is_gitlab_site(parsed.netloc):
+        return determine_gitlab_browser_url(vcs_url)
     if parsed.netloc == 'github.com':
-        path = parsed.path.rstrip('.git')
+        path = parsed.path
+        if path.endswith('.git'):
+            path = path[:-4]
         if subpath and not branch:
             branch = "HEAD"
         if branch:
