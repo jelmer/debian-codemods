@@ -120,7 +120,7 @@ subset of the issues:
 * systemd-service-file-refers-to-obsolete-bindto
 * systemd-service-file-refers-to-obsolete-target
 * systemd-service-file-shutdown-problems
-* tab-in-licence-text
+* tab-in-license-text
 * transitional-package-should-be-oldlibs-optional
 * unnecessary-team-upload
 * unnecessary-testsuite-autopkgtest-field
