@@ -345,6 +345,13 @@ def dh_invoke_add_with(line, with_argument):
         line)
 
 
+def dh_invoke_get_with(line):
+    ret = []
+    for m in re.finditer(b'[ \t]--with[ =]([^ \t]+)', line):
+        ret.extend(m.group(1).decode('utf-8').split(','))
+    return ret
+
+
 def dh_invoke_drop_with(line, with_argument):
     """Drop a particular value from a with argument."""
     if with_argument not in line:

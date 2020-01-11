@@ -152,7 +152,9 @@ Fix-Script: dh-quilt-addon-but-quilt-source-format.py
 Lintian-Tags: dh-quilt-addon-but-quilt-source-format
 
 Fix-Script: missing-build-dependency-for-dh_-command.py
-Lintian-Tags: missing-build-dependency-for-dh_-command
+Lintian-Tags:
+  missing-build-dependency-for-dh_-command,
+  missing-build-dependency-for-dh-addon
 
 Fix-Script: missing-vcs-browser-field.py
 Lintian-Tags: missing-vcs-browser-field

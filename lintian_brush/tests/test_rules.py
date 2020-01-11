@@ -27,6 +27,7 @@ from lintian_brush.rules import (
     Rule,
     dh_invoke_drop_with,
     dh_invoke_add_with,
+    dh_invoke_get_with,
     discard_pointless_override,
     matches_wildcard,
     update_rules,
@@ -211,6 +212,23 @@ class InvokeDropWithTests(TestCaseWithTransport):
             dh_invoke_drop_with(
                 b'dh $@ --verbose --with autoreconf,systemd,cme-upgrade',
                 b'systemd'))
+
+
+class DhInvokeGetWithsTests(TestCaseWithTransport):
+
+    def test_simple(self):
+        self.assertEqual(
+            ['blah'],
+            dh_invoke_get_with(b'dh --with=blah --foo'))
+        self.assertEqual(
+            ['blah'],
+            dh_invoke_get_with(b'dh --with=blah'))
+        self.assertEqual(
+            ['blah', 'blie'],
+            dh_invoke_get_with(b'dh --with=blah --with blie'))
+        self.assertEqual(
+            ['blah', 'blie'],
+            dh_invoke_get_with(b'dh --with=blah,blie'))
 
 
 class InvokeAddWithTests(TestCaseWithTransport):

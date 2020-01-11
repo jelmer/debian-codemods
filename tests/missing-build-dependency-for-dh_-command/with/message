@@ -1,0 +1,2 @@
+Add missing build dependency on dh addon.
+Fixed-Lintian-Tags: missing-build-dependency-for-dh-addon
