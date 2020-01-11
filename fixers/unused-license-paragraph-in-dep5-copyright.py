@@ -9,6 +9,13 @@ defined = set()
 
 try:
     with CopyrightUpdater() as updater:
+        if updater.copyright.header.license:
+            if updater.copyright.header.license.synopsis:
+                used.update(
+                    updater.copyright.header.license.synopsis.split(" or "))
+            if updater.copyright.header.license.text:
+                defined.update(
+                    updater.copyright.header.license.synopsis.split(" or "))
         for paragraph in updater.copyright.all_files_paragraphs():
             if not paragraph.license:
                 continue
