@@ -1,4 +1,4 @@
-lintian-brush (0.56) UNRELEASED; urgency=medium
+lintian-brush (0.56) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * Attempt to keep preferred order of fields in YAML files.
@@ -16,7 +16,7 @@ lintian-brush (0.56) UNRELEASED; urgency=medium
   * Add fixer for missing-build-dependency-for-dh-addon.
   * s/licence/license/g
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 06 Jan 2020 22:25:11 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 11 Jan 2020 22:21:59 +0000
 
 lintian-brush (0.55) unstable; urgency=medium
 
