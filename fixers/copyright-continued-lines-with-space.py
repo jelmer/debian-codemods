@@ -88,7 +88,7 @@ if tabs_replaced:
     sys.stdout.write('use spaces rather than tabs to start continuation lines')
     if unicode_linebreaks_replaced:
         sys.stdout.write(', ')
-    tags.add('tab-in-licence-text')
+    tags.add('tab-in-license-text')
 if unicode_linebreaks_replaced:
     sys.stdout.write('replace unicode linebreaks with regular linebreaks')
 sys.stdout.write('.\n')
