@@ -87,6 +87,8 @@ subset of the issues:
 * maintainer-also-in-uploaders.
 * maintainer-script-without-set-e
 * malformed-dm-upload-allowed
+* missing-build-dependency-for-dh-addon
+* missing-build-dependency-for-dh_-command
 * missing-built-using-field-for-golang-package
 * missing-debian-source-format
 * missing-vcs-browser-field
@@ -112,7 +114,6 @@ subset of the issues:
 * quilt-series-but-no-build-dep
 * quilt-series-without-trailing-newline
 * renamed-tag
-* skip-systemd-native-flag-missing-pre-depends
 * space-in-std-shortname-in-dep5-copyright
 * systemd-service-alias-without-extension
 * systemd-service-file-pidfile-refers-to-var-run
