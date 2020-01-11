@@ -11,6 +11,9 @@ lintian-brush (0.56) UNRELEASED; urgency=medium
   [ Sven Joachim ]
   * Fix Vcs-{Git,Browser} fields.
 
+  [ Jelmer Vernooĳ ]
+  * Add fixer for missing-build-dependency-for-dh_-command.
+
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 06 Jan 2020 22:25:11 +0000
 
 lintian-brush (0.55) unstable; urgency=medium

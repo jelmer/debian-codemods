@@ -1,0 +1,6 @@
+Source: blah
+Build-Depends: libc6-dev, dh-python
+
+Package: python3-blah
+Description: blah blah
+ blah

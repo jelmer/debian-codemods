@@ -1,0 +1,2 @@
+Add missing build dependency for dh_ commands.
+Fixed-Lintian-Tags: missing-build-dependency-for-dh_command

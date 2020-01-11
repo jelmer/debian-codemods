@@ -1,0 +1,7 @@
+#!/usr/bin/make
+
+%:
+	dh $@
+
+override_dh_build:
+	dh_python3
