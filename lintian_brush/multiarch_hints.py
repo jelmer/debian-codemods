@@ -177,11 +177,29 @@ class MultiArchFixerResult(FixerResult):
         self.changes = changes
 
 
+def apply_multiarch_hints(hints, minimum_certainty='certain'):
+    changes = []
+    appliers = {applier.kind: applier for applier in APPLIERS}
+
+    def update_binary(binary):
+        for hint in hints.get(binary['Package'], []):
+            kind = hint['link'].rsplit('#', 1)[1]
+            applier = appliers[kind]
+            if not certainty_sufficient(
+                    applier.certainty, minimum_certainty):
+                continue
+            description = applier.fn(binary, hint)
+            if description:
+                changes.append(
+                    (binary, hint, description, applier.certainty))
+    update_control(binary_package_cb=update_binary)
+    return changes
+
+
 class MultiArchHintFixer(Fixer):
 
-    def __init__(self, appliers, hints):
+    def __init__(self, hints):
         super(MultiArchHintFixer, self).__init__(name='multiarch-hints')
-        self._appliers = {applier.kind: applier for applier in appliers}
         self._hints = hints
 
     def run(self, basedir, package, current_version, compat_release,
@@ -191,25 +209,10 @@ class MultiArchHintFixer(Fixer):
             # This should never happen - perhaps if something else imported and
             # used this class?
             raise NoChanges()
-        changes = []
-
-        def update_binary(binary):
-            for hint in self._hints.get(binary['Package'], []):
-                kind = hint['link'].rsplit('#', 1)[1]
-                applier = self._appliers[kind]
-                if not certainty_sufficient(
-                        applier.certainty, minimum_certainty):
-                    continue
-                description = applier.fn(binary, hint)
-                if description:
-                    changes.append(
-                        (binary, hint, description, applier.certainty))
-
         old_cwd = os.getcwd()
         try:
             os.chdir(basedir)
-            update_control(
-                binary_package_cb=update_binary)
+            changes = apply_multiarch_hints(self._hints, minimum_certainty)
         finally:
             os.chdir(old_cwd)
 
@@ -320,7 +323,7 @@ def main(argv=None):
 
     try:
         result, summary = run_lintian_fixer(
-            wt, MultiArchHintFixer(APPLIERS, hints),
+            wt, MultiArchHintFixer(hints),
             update_changelog=update_changelog,
             minimum_certainty=minimum_certainty,
             dirty_tracker=dirty_tracker,

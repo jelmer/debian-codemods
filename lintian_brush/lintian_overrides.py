@@ -198,10 +198,11 @@ async def get_unused_overrides(packages):
             len(args)+1, len(args)+2))
         args.extend([name, type])
 
-    return list(await udd.fetch("""\
+    return list(await udd.fetch(
+        """\
 select package, package_type, package_version, information
 from lintian where tag = 'unused-override' AND (%s)""" % " OR ".join(extra),
-    *args))
+        *args))
 
 
 async def remove_unused():
