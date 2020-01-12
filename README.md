@@ -44,6 +44,7 @@ subset of the issues:
 * debhelper-tools-from-autotools-dev-are-deprecated
 * debian-changelog-file-contains-obsolete-user-emacs-settings
 * debian-changelog-has-wrong-day-of-week
+* debian-changelog-line-too-long
 * debian-control-has-empty-field
 * debian-control-has-obsolete-dbg-package
 * debian-control-has-unusual-field-spacing
@@ -92,6 +93,7 @@ subset of the issues:
 * missing-built-using-field-for-golang-package
 * missing-debian-source-format
 * missing-vcs-browser-field
+* misspelled-closes-bug
 * no-dh-sequencer
 * no-homepage-field
 * obsolete-field-in-dep5-copyright
