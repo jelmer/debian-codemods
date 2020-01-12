@@ -205,7 +205,7 @@ from lintian where tag = 'unused-override' AND (%s)""" % " OR ".join(extra),
         *args))
 
 
-async def remove_unused():
+def remove_unused():
     from debian.deb822 import Deb822
     packages = []
     with open('debian/control', 'r') as f:
@@ -214,10 +214,17 @@ async def remove_unused():
                 packages.append(('source', para['Source']))
             else:
                 packages.append(('binary', para['Package']))
-    unused_overrides = await get_unused_overrides(packages)
+    global unused_overrides
+    unused_overrides = None
     removed = []
 
     def drop_override(override):
+        global unused_overrides
+        if unused_overrides is None:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            unused_overrides = loop.run_until_complete(
+                get_unused_overrides(packages))
         for unused_override in unused_overrides:
             if override.package not in (None, unused_override[0]):
                 continue
@@ -238,14 +245,13 @@ async def remove_unused():
 
 if __name__ == '__main__':
     import argparse
-    import asyncio
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--remove-unused', action='store_true',
         help='Remove unused overrides.')
     args = parser.parse_args()
     if args.remove_unused:
-        removed = asyncio.run(remove_unused())
+        removed = remove_unused()
         print('Removed %d unused overrides' % len(removed))
     else:
         parser.print_usage()
