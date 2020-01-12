@@ -1,0 +1,6 @@
+blah (2.6.0) unstable; urgency=medium
+
+  * Fix bug
+    https://www.example.com/this/is/a/very/long/url/that/can/not/be/broken/because/it/is/longer/than/80/characters.
+
+ -- Joe Example <joe@example.com>  Mon, 26 Feb 2018 11:31:48 -0800
