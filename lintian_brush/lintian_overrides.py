@@ -218,13 +218,7 @@ def remove_unused():
     unused_overrides = None
     removed = []
 
-    def drop_override(override):
-        global unused_overrides
-        if unused_overrides is None:
-            import asyncio
-            loop = asyncio.get_event_loop()
-            unused_overrides = loop.run_until_complete(
-                get_unused_overrides(packages))
+    def is_unused(override, unused_overrides):
         for unused_override in unused_overrides:
             if override.package not in (None, unused_override[0]):
                 continue
@@ -236,6 +230,17 @@ def remove_unused():
                 expected_info = override.tag
             if expected_info != unused_override[3]:
                 continue
+            return True
+        return False
+
+    def drop_override(override):
+        global unused_overrides
+        if unused_overrides is None:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            unused_overrides = loop.run_until_complete(
+                get_unused_overrides(packages))
+        if is_unused(override, unused_overrides):
             removed.append(override)
             return None
         return override
