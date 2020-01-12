@@ -2,6 +2,7 @@ lintian-brush (0.57) UNRELEASED; urgency=medium
 
   * Add fixer for debian-changelog-line-too-long.
   * Add fixer for misspelling-in-bug-closes.
+  * Add some initial code for cleaning up unused lintian overrides.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 12 Jan 2020 16:09:28 +0000
 

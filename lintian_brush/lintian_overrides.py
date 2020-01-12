@@ -141,8 +141,11 @@ def update_overrides_file(cb, path='debian/source/lintian-overrides'):
     if not changed:
         return False
 
-    with open(path, 'w') as f:
-        f.writelines(lines)
+    if lines:
+        with open(path, 'w') as f:
+            f.writelines(lines)
+    else:
+        os.unlink(path)
 
     return True
 
@@ -182,3 +185,66 @@ def override_exists(tag, info=None, package=None):
             continue
         return True
     return False
+
+
+async def get_unused_overrides(packages):
+    from .udd import connect_udd_mirror
+    udd = await connect_udd_mirror()
+
+    args = []
+    extra = []
+    for (type, name) in packages:
+        extra.append('package = $%d AND package_type = $%d' % (
+            len(args)+1, len(args)+2))
+        args.extend([name, type])
+
+    return list(await udd.fetch("""\
+select package, package_type, package_version, information
+from lintian where tag = 'unused-override' AND (%s)""" % " OR ".join(extra),
+    *args))
+
+
+async def remove_unused():
+    from debian.deb822 import Deb822
+    packages = []
+    with open('debian/control', 'r') as f:
+        for para in Deb822.iter_paragraphs(f):
+            if 'Source' in para:
+                packages.append(('source', para['Source']))
+            else:
+                packages.append(('binary', para['Package']))
+    unused_overrides = await get_unused_overrides(packages)
+    removed = []
+
+    def drop_override(override):
+        for unused_override in unused_overrides:
+            if override.package not in (None, unused_override[0]):
+                continue
+            if override.type not in (None, unused_override[1]):
+                continue
+            if override.info:
+                expected_info = '%s %s' % (override.tag, override.info)
+            else:
+                expected_info = override.tag
+            if expected_info != unused_override[3]:
+                continue
+            removed.append(override)
+            return None
+        return override
+    update_overrides(drop_override)
+    return removed
+
+
+if __name__ == '__main__':
+    import argparse
+    import asyncio
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--remove-unused', action='store_true',
+        help='Remove unused overrides.')
+    args = parser.parse_args()
+    if args.remove_unused:
+        removed = asyncio.run(remove_unused())
+        print('Removed %d unused overrides' % len(removed))
+    else:
+        parser.print_usage()
