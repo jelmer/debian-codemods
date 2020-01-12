@@ -196,7 +196,9 @@ Fix-Script: patch-file-present-but-not-mentioned-in-series.py
 Lintian-Tags: patch-file-present-but-not-mentioned-in-series
 
 Fix-Script: possible-missing-colon-in-closes.py
-Lintian-Tags: possible-missing-colon-in-closes
+Lintian-Tags:
+  possible-missing-colon-in-closes,
+  misspelled-closes-bug
 
 Fix-Script: priority-extra-is-replaced-by-priority-optional.py
 Lintian-Tags: priority-extra-is-replaced-by-priority-optional

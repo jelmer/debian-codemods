@@ -10,6 +10,7 @@ from warnings import warn
 
 certainty = 'certain'
 debbugs = None
+tags = set()
 
 
 async def valid_bug(package, bug):
@@ -45,21 +46,36 @@ def check_bug(package, m):
         else:
             certainty = 'possible'
     if valid:
+        tags.add("possible-missing-colon-in-closes")
         return '%s: #%d' % (m.group('closes'), bug)
     else:
         return m.group(0)
 
 
+def fix_close_typo(m):
+    tags.add('misspelled-closes-bug')
+    return '%ss: #%s' % (m.group('close'), m.group('bug'))
+
+
 with ChangelogUpdater() as updater:
     for block in updater.changelog:
         for i, change in enumerate(block._changes):
-            block._changes[i] = re.sub(
+            change = re.sub(
                 r'(?<!partially )(?P<closes>closes) '
                 r'#(?P<bug>[0-9]+)',
                 partial(check_bug, block.package), change,
                 flags=re.IGNORECASE)
+            change = re.sub(
+                '(?P<close>close): #(?P<bug>[0-9]+)',
+                fix_close_typo, change, flags=re.IGNORECASE)
+            block._changes[i] = change
 
 
-print("Add missing colon in closes line.")
-print("Fixed-Lintian-Tags: possible-missing-colon-in-closes")
+if tags == set(['possible-missing-colon-in-closes']):
+    print("Add missing colon in closes line.")
+elif tags == set(['misspelled-closes-bug']):
+    print("Fix misspelling of Close => Closes.")
+else:
+    print("Fix formatting of bug closes.")
+print("Fixed-Lintian-Tags: %s" % ", ".join(sorted(tags)))
 print("Certainty: %s" % certainty)
