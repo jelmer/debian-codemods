@@ -155,8 +155,7 @@ def _get_overrides(package=None):
         paths = ['debian/source/lintian-overrides',
                  'debian/source.lintian-overrides']
     else:
-        paths = []
-        # TODO(jelmer)
+        paths = ['debian/%s.lintian-overrides' % package]
 
     for path in paths:
         try:
