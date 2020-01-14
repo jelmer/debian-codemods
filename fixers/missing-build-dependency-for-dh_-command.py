@@ -31,7 +31,12 @@ mf = Makefile.from_path('debian/rules')
 for entry in mf.contents:
     if isinstance(entry, Rule):
         for command in entry.commands():
-            executable = shlex.split(command.decode('utf-8', 'replace'))[0]
+            if command.lstrip().startswith(b'#'):
+                continue
+            try:
+                executable = shlex.split(command.decode('utf-8', 'replace'))[0]
+            except ValueError:
+                continue
             try:
                 dep = COMMAND_TO_DEP[executable]
             except KeyError:
