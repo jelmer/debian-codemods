@@ -70,8 +70,9 @@ def check_generated_file(path):
     Args:
       path: Path to the file to check
     """
-    if os.path.exists(path + '.in'):
-        raise GeneratedFile(path, path + '.in')
+    for ext in ['.in', '.m4']:
+        if os.path.exists(path + ext):
+            raise GeneratedFile(path, path + ext)
     try:
         with open(path, 'rb') as f:
             original_contents = f.read()
