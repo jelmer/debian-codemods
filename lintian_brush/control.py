@@ -52,23 +52,26 @@ def pg_buildext_updatecontrol(path='.'):
 
 
 def guess_template_type(template_path):
-    with open(template_path, 'rb') as f:
-        template = f.read()
-        if b'@GNOME_TEAM@' in template:
-            return 'gnome'
-        elif b'@cdbs@' in template:
-            return 'cdbs'
-        elif b'PGVERSION' in template:
-            return 'postgresql'
-        elif b'@lintian-brush-test@' in template:
-            return 'lintian-brush-test'
-        else:
-            deb822 = Deb822(template)
-            build_depends = deb822.get('Build-Depends', '')
-            if any(iter_relations(build_depends, 'gnome-pkg-tools')):
+    try:
+        with open(template_path, 'rb') as f:
+            template = f.read()
+            if b'@GNOME_TEAM@' in template:
                 return 'gnome'
-            if any(iter_relations(build_depends, 'cdbs')):
+            elif b'@cdbs@' in template:
                 return 'cdbs'
+            elif b'PGVERSION' in template:
+                return 'postgresql'
+            elif b'@lintian-brush-test@' in template:
+                return 'lintian-brush-test'
+            else:
+                deb822 = Deb822(template)
+                build_depends = deb822.get('Build-Depends', '')
+                if any(iter_relations(build_depends, 'gnome-pkg-tools')):
+                    return 'gnome'
+                if any(iter_relations(build_depends, 'cdbs')):
+                    return 'cdbs'
+    except IsADirectoryError:
+        return 'directory'
     return None
 
 
@@ -90,6 +93,8 @@ def _update_control_template(template_path, path, paragraph_cb):
         with open(template_path, 'rb') as inf, open(path, 'wb') as outf:
             outf.write(
                 inf.read().replace(b'@lintian-brush-test@', b'testvalue'))
+    elif template_type == 'directory':
+        raise GeneratedFile(path, template_path)
     else:
         raise AssertionError
     return True
