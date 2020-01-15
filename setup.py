@@ -39,7 +39,8 @@ setup(
     },
     test_suite='lintian_brush.tests.test_suite',
     data_files=[
-        ('share/lintian-brush/fixers', glob.glob('fixers/*')),
+        ('share/lintian-brush/fixers',
+         [n for n in glob.glob('fixers/*') if not n.endswith('/slow')]),
         ('share/lintian-brush', ['spdx.json']),
     ],
 )
