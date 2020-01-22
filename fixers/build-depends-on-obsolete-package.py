@@ -4,6 +4,7 @@ from lintian_brush.control import (
     ensure_minimum_debhelper_version,
     update_control,
     )
+from lintian_brush.fixer import report_result
 
 
 def bump_debhelper(control):
@@ -19,5 +20,6 @@ def bump_debhelper(control):
 
 
 if update_control(source_package_cb=bump_debhelper):
-    print("Depend on newer debhelper (>= 9.20160709) rather than dh-systemd.")
-print("Fixed-Lintian-Tags: build-depends-on-obsolete-package")
+    report_result(
+        "Depend on newer debhelper (>= 9.20160709) rather than dh-systemd.",
+        fixed_lintian_tags=['build-depends-on-obsolete-package'])

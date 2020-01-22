@@ -6,6 +6,7 @@ from lintian_brush.control import (
     add_dependency,
     drop_dependency,
     )
+from lintian_brush.fixer import report_result
 
 
 def move_debhelper_compat(control):
@@ -23,4 +24,5 @@ def move_debhelper_compat(control):
 
 
 update_control(source_package_cb=move_debhelper_compat)
-print('Move debhelper-compat from Build-Depends-Indep to Build-Depends.')
+report_result(
+    'Move debhelper-compat from Build-Depends-Indep to Build-Depends.')

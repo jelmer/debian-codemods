@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.control import update_control
+from lintian_brush.fixer import report_result
 
 
 def drop_ancient_python_versions(source):
@@ -17,5 +18,6 @@ def drop_ancient_python_versions(source):
 
 update_control(source_package_cb=drop_ancient_python_versions)
 
-print("Remove unnecessary X-Python{,3}-Version field in debian/control.")
-print("Fixed-Lintian-Tags: ancient-python-version-field")
+report_result(
+    "Remove unnecessary X-Python{,3}-Version field in debian/control.",
+    fixed_lintian_tags=['ancient-python-version-field'])

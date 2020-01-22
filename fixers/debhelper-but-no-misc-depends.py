@@ -5,6 +5,7 @@ from lintian_brush.control import (
     parse_relations,
     update_control,
     )
+from lintian_brush.fixer import report_result
 
 
 uses_debhelper = False
@@ -36,6 +37,7 @@ def add_misc_depends(control):
 
 update_control(source_package_cb=check_debhelper,
                binary_package_cb=add_misc_depends)
-print("Add missing ${misc:Depends} to Depends for %s." %
-      ", ".join(misc_depends_added))
-print("Fixed-Lintian-Tags: debhelper-but-no-misc-depends")
+report_result(
+    "Add missing ${misc:Depends} to Depends for %s." %
+    ", ".join(misc_depends_added),
+    fixed_lintian_tags=['debhelper-but-no-misc-depends'])

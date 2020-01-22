@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.deb822 import update_deb822
+from lintian_brush.fixer import report_result
 
 
 def split_commas(paragraph):
@@ -17,6 +18,7 @@ try:
 except FileNotFoundError:
     pass
 
-print("debian/copyright: Replace commas with whitespace to separate items "
-      "in Files paragraph.")
-print('Fixed-Lintian-Tags: comma-separated-files-in-dep5-copyright')
+report_result(
+    "debian/copyright: Replace commas with whitespace to separate items "
+    "in Files paragraph.",
+    fixed_lintian_tags=['comma-separated-files-in-dep5-copyright'])

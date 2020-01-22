@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.changelog import ChangelogUpdater
+from lintian_brush.fixer import report_result
 import textwrap
 
 WIDTH = 80
@@ -46,6 +47,7 @@ with ChangelogUpdater() as updater:
             block._changes = new_changes
             updated.append(block.version)
 
-print('Wrap long lines in changelog entries: %s.' % (
-    ', '.join([str(v) for v in updated])))
-print('Fixed-Lintian-Tags: debian-changelog-line-too-long')
+report_result(
+    'Wrap long lines in changelog entries: %s.' % (
+     ', '.join([str(v) for v in updated])),
+    fixed_lintian_tags=['debian-changelog-line-too-long'])

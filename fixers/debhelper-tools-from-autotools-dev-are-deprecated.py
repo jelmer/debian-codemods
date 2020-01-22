@@ -4,6 +4,7 @@ from lintian_brush.control import (
     ensure_minimum_debhelper_version,
     update_control,
     )
+from lintian_brush.fixer import report_result
 from lintian_brush.rules import (
     update_rules,
     dh_invoke_drop_with,
@@ -27,5 +28,8 @@ def bump_debhelper(source):
 
 if update_rules(cb):
     update_control(source_package_cb=bump_debhelper)
-print("Drop use of autotools-dev debhelper.")
-print("Fixed-Lintian-Tags: debhelper-tools-from-autotools-dev-are-deprecated")
+
+
+report_result(
+    "Drop use of autotools-dev debhelper.",
+    fixed_lintian_tags=['debhelper-tools-from-autotools-dev-are-deprecated'])

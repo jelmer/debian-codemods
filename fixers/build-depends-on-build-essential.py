@@ -4,6 +4,7 @@ from lintian_brush.control import (
     drop_dependency,
     update_control,
     )
+from lintian_brush.fixer import report_result
 
 
 def drop_build_essential(control):
@@ -15,5 +16,7 @@ def drop_build_essential(control):
 
 
 update_control(source_package_cb=drop_build_essential)
-print("Drop unnecessary dependency on build-essential.")
-print("Fixed-Lintian-Tags: build-depends-on-build-essential")
+
+report_result(
+    "Drop unnecessary dependency on build-essential.",
+    fixed_lintian_tags=['build-depends-on-build-essential'])

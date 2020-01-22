@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.changelog import ChangelogUpdater, changes_by_author
+from lintian_brush.fixer import report_result
 
 with ChangelogUpdater() as updater:
     block = updater.changelog[0]
@@ -14,4 +15,4 @@ with ChangelogUpdater() as updater:
             seen.add((author, change))
 
 
-print('Remove duplicate line from changelog.')
+report_result('Remove duplicate line from changelog.')

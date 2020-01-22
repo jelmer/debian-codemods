@@ -7,6 +7,7 @@ import re
 from debian.copyright import License, NotMachineReadableError
 
 from lintian_brush.copyright import CopyrightUpdater
+from lintian_brush.fixer import report_result
 
 SYNOPSIS_ALIAS = {}
 updated = set()
@@ -42,5 +43,6 @@ except (FileNotFoundError, NotMachineReadableError):
     pass
 
 
-print('Refer to specific version of license %s.' % ', '.join(sorted(updated)))
-print('Fixed-Lintian-Tags: ' + ', '.join(sorted(tags)))
+report_result(
+    'Refer to specific version of license %s.' % ', '.join(sorted(updated)),
+    fixed_lintian_tags=tags)

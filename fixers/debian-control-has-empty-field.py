@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 from lintian_brush.control import update_control
+from lintian_brush.fixer import report_result
 fields = []
 packages = []
 
@@ -15,9 +16,11 @@ def rm_empty_field(control):
 
 update_control(source_package_cb=rm_empty_field,
                binary_package_cb=rm_empty_field)
-print("debian/control: Remove empty control field%s %s%s." % (
-    "s" if len(fields) > 1 else "",
-    ", ".join(fields),
-    (" in package %s" % ', '.join(packages)) if packages else "",
-    ))
-print("Fixed-Lintian-Tags: debian-control-has-empty-field")
+
+report_result(
+    "debian/control: Remove empty control field%s %s%s." % (
+     "s" if len(fields) > 1 else "",
+     ", ".join(fields),
+     (" in package %s" % ', '.join(packages)) if packages else "",
+    ),
+    fixed_lintian_tags=['debian-control-has-empty-field'])

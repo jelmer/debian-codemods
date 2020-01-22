@@ -2,6 +2,7 @@
 
 from debian.copyright import License, NotMachineReadableError
 from lintian_brush.copyright import CopyrightUpdater
+from lintian_brush.fixer import report_result
 
 import os
 import re
@@ -173,5 +174,6 @@ try:
 except (NotMachineReadableError, FileNotFoundError):
     pass
 
-print('Refer to common license file for %s.' % ', '.join(sorted(updated)))
-print('Fixed-Lintian-Tags: ' + ', '.join(sorted(tags)))
+report_result(
+    'Refer to common license file for %s.' % ', '.join(sorted(updated)),
+    fixed_lintian_tags=tags)
