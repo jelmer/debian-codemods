@@ -70,16 +70,16 @@ def update_copyright(update_cb, path='debian/copyright'):
 
 
 def upstream_fields_in_copyright(path='debian/copyright'):
-    ret = []
+    ret = {}
     try:
         with open(path, 'r') as f:
             c = Copyright(f)
     except (FileNotFoundError, NotMachineReadableError,
             MachineReadableFormatError):
-        return []
+        return {}
     else:
         if c.header.upstream_contact:
-            ret.append('Contact')
+            ret['Contact'] = c.header.upstream_contact
         if c.header.upstream_name:
-            ret.append('Name')
+            ret['Name'] = c.header.upstream_name
     return ret

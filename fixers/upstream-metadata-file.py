@@ -75,7 +75,7 @@ with YamlUpdater('debian/upstream/metadata') as code:
     # debian/upstream/metadata file.
     if 'Name' in upstream_metadata or 'Contact' in upstream_metadata:
         from lintian_brush.copyright import upstream_fields_in_copyright
-        external_present_fields.update(upstream_fields_in_copyright())
+        external_present_fields.update(upstream_fields_in_copyright().keys())
 
     for key, datum in list(upstream_metadata.items()):
         # Drop keys that don't need to be in debian/upsteam/metadata
