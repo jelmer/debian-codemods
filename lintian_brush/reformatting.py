@@ -119,24 +119,36 @@ class Updater(object):
     def __init__(self, path):
         self.path = path
 
+    def _nonexistant(self):
+        raise
+
     def _parse(self, content):
+        """Parse the specified bytestring and returned parsed object."""
         raise NotImplementedError(self._parse)
 
     def _format(self, parsed):
+        """Serialize the parsed object."""
         raise NotImplementedError(self._format)
 
     def __enter__(self):
-        with open(self.path, 'r') as f:
-            self._orig_content = f.read()
-
-        self._parsed = self._parse(self._orig_content)
+        try:
+            with open(self.path, 'r') as f:
+                self._orig_content = f.read()
+        except FileNotFoundError:
+            self._parsed = self._nonexistant()
+        else:
+            self._parsed = self._parse(self._orig_content)
         self._rewritten_content = self._format(self._parsed)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         updated_content = self._format(self._parsed)
 
-        self.changed = edit_formatted_file(
-            self.path, self._orig_content, self._rewritten_content,
-            updated_content)
+        if updated_content is None:
+            if os.path.exists(self.path):
+                os.unlink(self.path)
+        else:
+            self.changed = edit_formatted_file(
+                self.path, self._orig_content, self._rewritten_content,
+                updated_content)
         return False

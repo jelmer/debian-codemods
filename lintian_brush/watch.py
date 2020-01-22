@@ -21,8 +21,7 @@ from io import StringIO
 import re
 
 from lintian_brush.reformatting import (
-    check_generated_file,
-    edit_formatted_file,
+    Updater,
     )
 
 
@@ -196,35 +195,22 @@ def parse_watch_file(f):
         entries=entries, options=persistent_options, version=version)
 
 
-class WatchUpdater(object):
+class WatchUpdater(Updater):
 
     def __init__(self, path='debian/watch'):
-        self.path = path
+        super(WatchUpdater, self).__init__(path)
 
-    def __enter__(self):
-        check_generated_file(self.path)
-        try:
-            with open(self.path, 'r') as f:
-                self._original_contents = f.read()
-        except FileNotFoundError:
-            self.watch_file = None
-            return self
-        self.watch_file = parse_watch_file(
-            self._original_contents.splitlines())
-        if self.watch_file is None:
-            return self
-        nf = StringIO()
-        self.watch_file.dump(nf)
-        self._rewritten_contents = nf.getvalue()
-        return self
+    @property
+    def watch_file(self):
+        return self._parsed
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.watch_file is None:
-            return False
+    def _nonexistant(self):
+        return None
+
+    def _parse(self, content):
+        return parse_watch_file(content.splitlines())
+
+    def _format(self, parsed):
         nf = StringIO()
-        self.watch_file.dump(nf)
-        updated_contents = nf.getvalue()
-        self.changed = edit_formatted_file(
-            self.path, self._original_contents, self._rewritten_contents,
-            updated_contents)
-        return False
+        parsed.dump(nf)
+        return nf.getvalue()
