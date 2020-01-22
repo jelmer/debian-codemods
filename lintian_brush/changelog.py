@@ -30,39 +30,29 @@ from debian.changelog import (
     ChangelogParseError,
     )
 import re
-from .reformatting import edit_formatted_file
+from .reformatting import Updater
 
 
-class ChangelogUpdater(object):
+class ChangelogUpdater(Updater):
     """Update a changelog file.
 
     This will only write out the changelog file if it has been changed.
     """
 
     def __init__(self, path='debian/changelog'):
-        self.path = path
+        super(ChangelogUpdater, self).__init__(path)
 
-    def __enter__(self):
-        with open(self.path, 'r') as f:
-            self._orig_content = f.read()
-        self._cl = Changelog(self._orig_content)
+    def _parse(self, content):
+        return Changelog(content)
+
+    def _format(self, parsed):
         f = StringIO()
-        self._cl.write_to_open_file(f)
-        self._rewritten_content = f.getvalue()
-        return self
+        parsed.write_to_open_file(f)
+        return f.getvalue()
 
     @property
     def changelog(self):
-        return self._cl
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        f = StringIO()
-        self._cl.write_to_open_file(f)
-        updated_contents = f.getvalue()
-        self.changed = edit_formatted_file(
-            self.path, self._orig_content,
-            self._rewritten_content, updated_contents)
-        return False
+        return self._parsed
 
 
 def changes_by_author(changes):

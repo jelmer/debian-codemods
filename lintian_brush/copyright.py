@@ -29,29 +29,23 @@ from debian.copyright import (
     NotMachineReadableError,
     )
 
-from .reformatting import edit_formatted_file
+from .reformatting import Updater
 
 
-class CopyrightUpdater(object):
+class CopyrightUpdater(Updater):
 
     def __init__(self, path='debian/copyright'):
-        self.path = path
+        super(CopyrightUpdater, self).__init__(path)
 
-    def __enter__(self):
-        with open(self.path, 'r') as f:
-            self._orig_content = f.read()
+    def _parse(self, content):
+        return Copyright(content, strict=False)
 
-        self.copyright = Copyright(self._orig_content, strict=False)
-        self._rewritten_content = self.copyright.dump()
-        return self
+    def _format(self, parsed):
+        return parsed.dump()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        updated_content = self.copyright.dump()
-
-        self.changed = edit_formatted_file(
-            self.path, self._orig_content, self._rewritten_content,
-            updated_content)
-        return False
+    @property
+    def copyright(self):
+        return self._parsed
 
 
 def update_copyright(update_cb, path='debian/copyright'):

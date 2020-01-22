@@ -39,7 +39,7 @@ from iniparse.ini import (
     readline_iterator,
     )
 
-from .reformatting import edit_formatted_file
+from .reformatting import Updater
 
 import os
 
@@ -355,29 +355,17 @@ def systemd_service_files(path='debian', exclude_links=True):
         yield subpath
 
 
-class SystemdServiceUpdater(object):
+class SystemdServiceUpdater(Updater):
 
-    def __init__(self, path):
-        self.path = path
+    def _parse(self, content):
+        return UnitFile(StringIO(self._orig_content))
 
-    def __enter__(self):
-        with open(self.path, 'r') as f:
-            self._orig_content = f.read()
+    def _format(self, parsed):
+        return str(parsed)
 
-        self.file = UnitFile(StringIO(self._orig_content))
-        self._rewritten_content = self.dump()
-        return self
-
-    def dump(self):
-        return str(self.file)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        updated_content = self.dump()
-
-        self.changed = edit_formatted_file(
-            self.path, self._orig_content, self._rewritten_content,
-            updated_content)
-        return False
+    @property
+    def file(self):
+        return self._parsed
 
 
 def update_service_file(path, cb):

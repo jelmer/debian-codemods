@@ -19,6 +19,7 @@ __all__ = [
     'check_preserve_formatting',
     'check_generated_file',
     'edit_formatted_file',
+    'Updater',
     ]
 
 
@@ -110,3 +111,32 @@ def edit_formatted_file(
     with open(path, mode) as f:
         f.write(updated_contents)
     return True
+
+
+class Updater(object):
+    """Context object for updating a file, preserving formatting."""
+
+    def __init__(self, path):
+        self.path = path
+
+    def _parse(self, content):
+        raise NotImplementedError(self._parse)
+
+    def _format(self, parsed):
+        raise NotImplementedError(self._format)
+
+    def __enter__(self):
+        with open(self.path, 'r') as f:
+            self._orig_content = f.read()
+
+        self._parsed = self._parse(self._orig_content)
+        self._rewritten_content = self._format(self._parsed)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        updated_content = self._format(self._parsed)
+
+        self.changed = edit_formatted_file(
+            self.path, self._orig_content, self._rewritten_content,
+            updated_content)
+        return False
