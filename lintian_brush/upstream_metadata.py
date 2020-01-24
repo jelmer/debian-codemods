@@ -858,11 +858,11 @@ def _possible_fields_missing(upstream_metadata, fields, field_certainty):
 
 def guess_from_sf(sf_project):
     data = get_sf_metadata(sf_project)
-    if 'name' in data:
+    if data.get('name'):
         yield 'Name', data['name']
-    if 'external_homepage' in data:
+    if data.get('external_homepage'):
         yield 'Homepage', data['external_homepage']
-    if 'preferred_support_url' in data:
+    if data.get('preferred_support_url'):
         if verify_bug_database_url(data['preferred_support_url']):
             yield 'Bug-Database', data['preferred_support_url']
     # In theory there are screenshots linked from the sourceforge project that
