@@ -18,7 +18,6 @@
 """Handling of quilt patches."""
 
 import contextlib
-from io import BytesIO
 import os
 import tempfile
 
@@ -26,15 +25,11 @@ from breezy import osutils
 from breezy.commit import filter_excluded
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
-from breezy.diff import show_diff_trees
 from breezy.errors import NotBranchError, NoSuchFile
 from breezy.patches import parse_patches
 from breezy.patch import write_to_cmd
-from breezy.workingtree import WorkingTree
 
-from debian.changelog import Changelog, Version
-
-from . import reset_tree
+from debian.changelog import Changelog
 
 
 def find_patch_base(tree):
@@ -272,6 +267,14 @@ def iter_patched_from_hunks(orig_lines, hunks):
 
 
 def find_common_patch_suffix(names, default='.patch'):
+    """Find the common prefix to use for patches.
+
+    Args:
+      names: List of filenames in debian/patches/
+      default: Default suffix if no default can be found
+    Returns:
+      a suffix
+    """
     suffix_count = {}
     for name in names:
         if name in ('series', '00list'):
@@ -285,3 +288,22 @@ def find_common_patch_suffix(names, default='.patch'):
     if not suffix_count:
         return default
     return max(suffix_count.items(), key=lambda v: v[1])[0]
+
+
+def add_patch(name, contents, header=None):
+    if not os.path.isdir('debian/patches'):
+        os.mkdir('debian/patches')
+    patch_suffix = find_common_patch_suffix(os.listdir('debian/patches'))
+    patchname = name + patch_suffix
+    with open(os.path.join('debian/patches', patchname), 'wb') as f:
+        if header is not None:
+            header.dump(f)
+            f.write(b'\n')
+        f.write(contents)
+
+    # TODO(jelmer): Write to patches branch if applicable
+
+    with open('debian/patches/series', 'a') as f:
+        f.write('%s\n' % patchname)
+
+    return patchname
