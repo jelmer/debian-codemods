@@ -18,16 +18,20 @@
 """Helper functions for fixers."""
 
 
-def report_result(description, fixed_lintian_tags=None, certainty=None):
+def report_result(description, fixed_lintian_tags=None, certainty=None,
+                  patch_name=None):
     """Report the result of a fixer.
 
     Args:
       description: Description of the fix
       fixed_lintian_tags: Set of fixed lintian tags
       certainty: Certainty of the fix
+      patch_name: Suggested patch name, if there are upstream changes
     """
     print(description)
     if certainty:
         print('Certainty: %s' % certainty)
     if fixed_lintian_tags:
         print('Fixed-Lintian-Tags: %s' % ', '.join(sorted(fixed_lintian_tags)))
+    if patch_name:
+        print('Patch-Name: %s' % patch_name)

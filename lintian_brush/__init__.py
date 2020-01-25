@@ -119,22 +119,25 @@ class FixerResult(object):
     """Result of a fixer run."""
 
     def __init__(self, description, fixed_lintian_tags=[],
-                 certainty=None):
+                 certainty=None, patch_name=None):
         self.description = description
         self.fixed_lintian_tags = fixed_lintian_tags
         self.certainty = certainty
+        self.patch_name = patch_name
 
     def __repr__(self):
-        return "%s(%r, fixed_lintian_tags=%r, certainty=%r)" % (
+        return "%s(%r, fixed_lintian_tags=%r, certainty=%r, patch_name=%r)" % (
                 self.__class__.__name__,
-                self.description, self.fixed_lintian_tags, self.certainty)
+                self.description, self.fixed_lintian_tags, self.certainty,
+                self.patch_name)
 
     def __eq__(self, other):
         if type(other) != type(self):
             return False
         return ((self.description == other.description) and
                 (self.fixed_lintian_tags == other.fixed_lintian_tags) and
-                (self.certainty == other.certainty))
+                (self.certainty == other.certainty) and
+                (self.patch_name == other.patch_name))
 
 
 class Fixer(object):
@@ -174,6 +177,7 @@ def parse_script_fixer_output(text):
     lines = []
     fixed_tags = []
     certainty = None
+    patch_name = None
     for line in text.splitlines():
         # TODO(jelmer): Do this in a slighly less hackish manner
         try:
@@ -185,11 +189,13 @@ def parse_script_fixer_output(text):
                 fixed_tags = value.strip().split(',')
             elif key == 'Certainty':
                 certainty = value.strip()
+            elif key == 'Patch-Name':
+                patch_name = value.strip()
             else:
                 lines.append(line)
     if certainty not in SUPPORTED_CERTAINTIES:
         raise UnsupportedCertainty(certainty)
-    return FixerResult('\n'.join(lines), fixed_tags, certainty)
+    return FixerResult('\n'.join(lines), fixed_tags, certainty, patch_name)
 
 
 def determine_env(package, current_version, compat_release, minimum_certainty,

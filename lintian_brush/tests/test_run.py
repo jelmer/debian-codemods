@@ -762,6 +762,16 @@ Do bla
 Fixed-Lintian-Tags: tag-a
 """))
 
+    def test_patch_name(self):
+        self.assertEqual(
+            FixerResult('Do bla', ['tag-a'], 'certain', 'aname'),
+            parse_script_fixer_output("""\
+Do bla
+Fixed-Lintian-Tags: tag-a
+Certainty: certain
+Patch-Name: aname
+"""))
+
 
 class BaseScriptFixerTests(object):
 
