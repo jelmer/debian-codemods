@@ -30,6 +30,7 @@ from breezy.patches import (
 
 from ..patches import (
     AppliedPatches,
+    find_common_patch_suffix,
     find_patch_base,
     find_patches_branch,
     read_quilt_patches,
@@ -305,3 +306,22 @@ blah (0.38) unstable; urgency=medium
         self.build_tree_contents([('anotherfile', 'blah')])
         self.tree.add('anotherfile')
         self.assertEqual(1, len(list(tree_non_patches_changes(self.tree))))
+
+
+class FindCommonPatchSuffixTests(TestCase):
+
+    def test_simple(self):
+        self.assertEqual(
+            '.blah',
+            find_common_patch_suffix(['foo.blah', 'series']))
+        self.assertEqual(
+            '.patch', find_common_patch_suffix(['foo.patch', 'series']))
+        self.assertEqual(
+            '.patch', find_common_patch_suffix(['series']))
+        self.assertEqual(
+            '.blah', find_common_patch_suffix(['series'], '.blah'))
+        self.assertEqual(
+            '', find_common_patch_suffix(['series', 'foo', 'bar']))
+        self.assertEqual(
+            '.patch',
+            find_common_patch_suffix(['series', 'foo.patch', 'bar.patch']))

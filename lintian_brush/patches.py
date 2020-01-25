@@ -18,6 +18,7 @@
 """Handling of quilt patches."""
 
 import contextlib
+from io import BytesIO
 import os
 import tempfile
 
@@ -25,11 +26,15 @@ from breezy import osutils
 from breezy.commit import filter_excluded
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
+from breezy.diff import show_diff_trees
 from breezy.errors import NotBranchError, NoSuchFile
 from breezy.patches import parse_patches
 from breezy.patch import write_to_cmd
+from breezy.workingtree import WorkingTree
 
-from debian.changelog import Changelog
+from debian.changelog import Changelog, Version
+
+from . import reset_tree
 
 
 def find_patch_base(tree):
@@ -264,3 +269,19 @@ def iter_patched_from_hunks(orig_lines, hunks):
     if status == 0:
         return [stdout]
     raise Exception(stderr)
+
+
+def find_common_patch_suffix(names, default='.patch'):
+    suffix_count = {}
+    for name in names:
+        if name in ('series', '00list'):
+            continue
+        if name.startswith('README'):
+            continue
+        suffix = os.path.splitext(name)[1]
+        if suffix not in suffix_count:
+            suffix_count[suffix] = 0
+        suffix_count[suffix] += 1
+    if not suffix_count:
+        return default
+    return max(suffix_count.items(), key=lambda v: v[1])[0]
