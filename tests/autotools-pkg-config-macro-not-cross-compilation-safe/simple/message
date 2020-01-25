@@ -1,0 +1,10 @@
+Use cross-build compatible macro for finding pkg-config.
+
+The package uses AC_PATH_PROG to discover the location of pkg-config(1). This
+macro fails to select the correct version to support cross-compilation.
+
+This patch changes it to use PKG_PROG_PKG_CONFIG macro from pkg.m4.
+
+Refer to https://bugs.debian.org/884798 for details.
+Fixed-Lintian-Tags: autotools-pkg-config-macro-not-cross-compilation-safe
+Patch-Name: ac-path-pkgconfig
