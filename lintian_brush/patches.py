@@ -18,9 +18,12 @@
 """Handling of quilt patches."""
 
 import contextlib
+from email.message import Message
+from io import BytesIO
 import os
 import tempfile
 
+from breezy.diff import show_diff_trees
 from breezy import osutils
 from breezy.commit import filter_excluded
 import breezy.bzr  # noqa: F401
@@ -30,6 +33,8 @@ from breezy.patches import parse_patches
 from breezy.patch import write_to_cmd
 
 from debian.changelog import Changelog
+
+from . import reset_tree
 
 
 def find_patch_base(tree):
@@ -291,13 +296,25 @@ def find_common_patch_suffix(names, default='.patch'):
 
 
 def add_patch(name, contents, header=None):
+    """Add a new patch.
+
+    Args:
+      name: Patch name without suffix
+      contents: Diff
+      header: RFC822 to read
+    Returns:
+      Name of the patch that was written (including suffix)
+    """
     if not os.path.isdir('debian/patches'):
         os.mkdir('debian/patches')
     patch_suffix = find_common_patch_suffix(os.listdir('debian/patches'))
     patchname = name + patch_suffix
-    with open(os.path.join('debian/patches', patchname), 'wb') as f:
+    path = os.path.join('debian/patches', patchname)
+    if os.path.exists(path):
+        raise FileExistsError(path)
+    with open(path, 'wb') as f:
         if header is not None:
-            header.dump(f)
+            f.write(header.as_string().encode('utf-8'))
             f.write(b'\n')
         f.write(contents)
 
@@ -307,3 +324,32 @@ def add_patch(name, contents, header=None):
         f.write('%s\n' % patchname)
 
     return patchname
+
+
+def move_upstream_changes_to_patch(
+        local_tree, subpath, patch_name, description,
+        dirty_tracker=None):
+    """Move upstream changes to patch.
+
+    Args:
+      local_tree: local tree
+      subpath: subpath
+      patch_name: Suggested patch name
+      description: Description
+      dirty_tracker: Dirty tracker
+    """
+    diff = BytesIO()
+    basis_tree = local_tree.basis_tree()
+    show_diff_trees(basis_tree, local_tree, diff)
+    reset_tree(local_tree, dirty_tracker, subpath)
+    header = Message()
+    lines = description.splitlines()
+    header['Description'] = lines[0].rstrip('\n')
+    header.set_payload(''.join([l + '\n' for l in lines[1:]]).lstrip())
+    patchname = add_patch(patch_name, diff.getvalue(), header)
+    specific_files = [
+        os.path.join(subpath, 'debian/patches'),
+        os.path.join(subpath, 'debian/patches/series'),
+        os.path.join(subpath, 'debian/patches', patchname)]
+    local_tree.add(specific_files)
+    return specific_files, patchname
