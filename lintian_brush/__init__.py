@@ -766,6 +766,21 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         raise DescriptionMissing()
 
     summary = result.description.splitlines()[0]
+
+    # If there are upstream changes in a non-native package, perhaps
+    # export them to debian/patches
+    if (any([not p.startswith('debian/') for p in specific_files])
+            and current_version.debian_revision):
+        from .patches import move_upstream_changes_to_patch
+        try:
+            specific_files, patch_name = move_upstream_changes_to_patch(
+                local_tree, subpath, result.patch_name, result.description,
+                dirty_tracker)
+        except FileExistsError as e:
+            raise NoChanges('patch path %s already exists\n' % e.args[0])
+
+        summary = 'Add patch %s: %s' % (patch_name, summary)
+
     if update_changelog is None:
         update_changelog = guess_update_changelog(local_tree, subpath, cl)
 
