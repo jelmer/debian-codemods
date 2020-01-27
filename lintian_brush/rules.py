@@ -20,6 +20,8 @@
 import os
 import re
 
+from .reformatting import Updater
+
 
 def wildcard_to_re(wildcard):
     wc = []
@@ -222,6 +224,28 @@ class Makefile(object):
         return rule
 
 
+class MakefileUpdater(Updater):
+
+    def __init__(self, path):
+        super(MakefileUpdater, self).__init__(path, mode='b')
+
+    def _parse(self, content):
+        return Makefile.from_bytes(content)
+
+    def _format(self, parsed):
+        return parsed.dump()
+
+    @property
+    def makefile(self):
+        return self._parsed
+
+
+class RulesUpdater(Updater):
+
+    def __init__(self, path='debian/rules'):
+        super(RulesUpdater, self).__init__(path)
+
+
 def update_makefile(path, command_line_cb=None, global_line_cb=None,
                     rule_cb=None, makefile_cb=None):
     """Update a makefile.
@@ -236,68 +260,57 @@ def update_makefile(path, command_line_cb=None, global_line_cb=None,
     """
     if not os.path.exists(path):
         return False
-    with open(path, 'rb') as f:
-        original_contents = f.read()
-    mf = Makefile.from_bytes(original_contents)
-
-    newcontents = []
-    for entry in mf.contents:
-        if isinstance(entry, Rule):
-            rule = entry
-            newlines = []
-            for line in list(rule.lines[1:]):
-                if line.startswith(b'\t'):
-                    ret = line[1:]
-                    if callable(command_line_cb):
-                        ret = command_line_cb(ret, rule.target)
-                    elif isinstance(command_line_cb, list):
-                        for fn in command_line_cb:
-                            ret = fn(ret, rule.target)
-                    if isinstance(ret, bytes):
-                        newlines.append(b'\t' + ret)
-                    elif isinstance(ret, list):
-                        for l in ret:
-                            newlines.append(b'\t' + l)
+    with MakefileUpdater(path) as updater:
+        newcontents = []
+        for entry in updater.makefile.contents:
+            if isinstance(entry, Rule):
+                rule = entry
+                newlines = []
+                for line in list(rule.lines[1:]):
+                    if line.startswith(b'\t'):
+                        ret = line[1:]
+                        if callable(command_line_cb):
+                            ret = command_line_cb(ret, rule.target)
+                        elif isinstance(command_line_cb, list):
+                            for fn in command_line_cb:
+                                ret = fn(ret, rule.target)
+                        if isinstance(ret, bytes):
+                            newlines.append(b'\t' + ret)
+                        elif isinstance(ret, list):
+                            for l in ret:
+                                newlines.append(b'\t' + l)
+                        else:
+                            raise TypeError(ret)
                     else:
-                        raise TypeError(ret)
-                else:
-                    newlines.append(line)
+                        newlines.append(line)
 
-            rule.lines = [rule.lines[0]] + newlines
+                rule.lines = [rule.lines[0]] + newlines
 
-            if rule_cb:
-                rule_cb(rule)
-            if rule:
-                newcontents.append(rule)
-        else:
-            line = entry
-            if global_line_cb:
-                line = global_line_cb(line)
-            if line is None:
-                pass
-            elif isinstance(line, list):
-                newcontents.extend(line)
-            elif isinstance(line, bytes):
-                newcontents.append(line)
+                if rule_cb:
+                    rule_cb(rule)
+                if rule:
+                    newcontents.append(rule)
             else:
-                raise TypeError(line)
+                line = entry
+                if global_line_cb:
+                    line = global_line_cb(line)
+                if line is None:
+                    pass
+                elif isinstance(line, list):
+                    newcontents.extend(line)
+                elif isinstance(line, bytes):
+                    newcontents.append(line)
+                else:
+                    raise TypeError(line)
 
-    if newcontents and isinstance(newcontents[-1], Rule):
-        newcontents[-1]._trim_trailing_whitespace()
+        if newcontents and isinstance(newcontents[-1], Rule):
+            newcontents[-1]._trim_trailing_whitespace()
 
-    mf = Makefile(newcontents)
-    if makefile_cb:
-        makefile_cb(mf)
+        updater.makefile.contents = newcontents
+        if makefile_cb:
+            makefile_cb(updater.makefile)
 
-    updated_contents = mf.dump()
-    if updated_contents.strip() != original_contents.strip():
-        updated_contents = updated_contents.rstrip(b'\n')
-        if updated_contents:
-            updated_contents += b'\n'
-        with open(path, 'wb') as f:
-            f.write(updated_contents)
-        return True
-    return False
+    return updater.changed
 
 
 def discard_pointless_override(rule):

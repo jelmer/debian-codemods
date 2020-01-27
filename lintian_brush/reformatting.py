@@ -116,8 +116,9 @@ def edit_formatted_file(
 class Updater(object):
     """Context object for updating a file, preserving formatting."""
 
-    def __init__(self, path):
+    def __init__(self, path, mode=''):
         self.path = path
+        self.mode = mode
 
     def _nonexistant(self):
         raise
@@ -132,7 +133,7 @@ class Updater(object):
 
     def __enter__(self):
         try:
-            with open(self.path, 'r') as f:
+            with open(self.path, 'r' + self.mode) as f:
                 self._orig_content = f.read()
         except FileNotFoundError:
             self._parsed = self._nonexistant()
