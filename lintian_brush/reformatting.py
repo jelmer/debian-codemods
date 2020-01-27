@@ -145,11 +145,18 @@ class Updater(object):
             self._rewritten_content = None
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def _updated_content(self):
         if self._parsed is not None:
-            updated_content = self._format(self._parsed)
+            return self._format(self._parsed)
         else:
-            updated_content = None
+            return None
+
+    def has_changed(self):
+        return self._updated_content() not in (
+            self._rewritten_content, self._orig_content)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        updated_content = self._updated_content()
 
         if updated_content is None:
             if os.path.exists(self.path):
