@@ -1215,6 +1215,8 @@ def probe_upstream_branch_url(url, version=None):
                 return True
             if 'v%s' % version in tag_names:
                 return True
+            if 'release/%s' % version in tag_names:
+                return True
             if version.replace('.', '_') in tag_names:
                 return True
             for tag_name in tag_names:
