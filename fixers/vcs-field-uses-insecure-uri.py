@@ -1,12 +1,10 @@
 #!/usr/bin/python3
 
-import os
-
 from lintian_brush.control import update_control
+from lintian_brush.fixer import net_access_allowed
 from lintian_brush.vcs import find_secure_vcs_url
 
 updated = set()
-net_access = os.environ.get('NET_ACCESS', 'disallow') == 'allow'
 lp_note = False
 
 
@@ -17,7 +15,8 @@ def fix_insecure_vcs_uri(control):
             continue
         if value.startswith('lp:'):
             lp_note = True
-        newvalue = find_secure_vcs_url(value, net_access=net_access)
+        newvalue = find_secure_vcs_url(
+            value, net_access=net_access_allowed())
         if newvalue is None:
             # We can't find a secure version :(
             continue

@@ -10,6 +10,7 @@ from lintian_brush import (
     certainty_sufficient,
     min_certainty,
     )
+from lintian_brush.fixer import net_access_allowed
 from lintian_brush.upstream_metadata import (
     UpstreamDatum,
     check_upstream_metadata,
@@ -41,7 +42,7 @@ with YamlUpdater('debian/upstream/metadata') as code:
 
     minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
     trust_package = os.environ.get('TRUST_PACKAGE') == 'true'
-    net_access = os.environ.get('NET_ACCESS', 'disallow') == 'allow'
+    net_access = net_access_allowed()
 
     # Do some guessing based on what's in the package
     update_from_guesses(

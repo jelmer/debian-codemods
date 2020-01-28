@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 
+from lintian_brush.fixer import net_access_allowed
 from lintian_brush.watch import parse_watch_file
 
 if not os.path.exists('debian/watch'):
@@ -68,7 +69,7 @@ if not watchfile_has_http():
     sys.exit(0)
 
 
-if os.environ.get('NET_ACCESS', 'disallow') == 'disallow':
+if not net_access_allowed():
     sys.exit(0)
 
 

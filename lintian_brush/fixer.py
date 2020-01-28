@@ -17,6 +17,8 @@
 
 """Helper functions for fixers."""
 
+import os
+
 
 def report_result(description, fixed_lintian_tags=None, certainty=None,
                   patch_name=None):
@@ -35,3 +37,8 @@ def report_result(description, fixed_lintian_tags=None, certainty=None,
         print('Fixed-Lintian-Tags: %s' % ', '.join(sorted(fixed_lintian_tags)))
     if patch_name:
         print('Patch-Name: %s' % patch_name)
+
+
+def net_access_allowed():
+    """Check whether network access is allowed."""
+    return os.environ.get('NET_ACCESS', 'disallow') == 'allow'

@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 
+from lintian_brush.fixer import net_access_allowed
 from lintian_brush.watch import WatchFile, Watch
 
 
@@ -39,7 +40,7 @@ if os.path.exists('setup.py'):
 def guess_github_watch_entry(parsed_url, upstream_version):
     from breezy.branch import Branch
     import re
-    if os.environ.get('NET_ACCESS', 'allow') != 'allow':
+    if not net_access_allowed():
         return None
     branch = Branch.open(code['Repository'])
     tags = branch.tags.get_tag_dict()

@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
+from lintian_brush.fixer import net_access_allowed
 from lintian_brush.control import (
     update_control,
     )
-import os
 import socket
 import sys
 import urllib.error
@@ -35,7 +35,7 @@ def fix_homepage(http_url):
     result = urllib.parse.urlparse(http_url)
     if result.netloc in known_https:
         return https_url
-    if os.environ.get('NET_ACCESS', 'allow') != 'allow':
+    if not net_access_allowed():
         return http_url
     # Fall back to just comparing the two
     headers = {'User-Agent': USER_AGENT}

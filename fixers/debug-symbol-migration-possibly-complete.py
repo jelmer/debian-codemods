@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from debian.deb822 import PkgRelation
+from lintian_brush.fixer import net_access_allowed
 from lintian_brush.rules import update_rules
 import os
 
@@ -8,7 +9,6 @@ import re
 
 
 compat_release = os.environ.get('COMPAT_RELEASE', 'sid')
-net_access = os.environ.get('NET_ACCESS', 'disallow') == 'allow'
 
 
 def previous_release(release):
@@ -35,7 +35,7 @@ VERSION_CMP_SQL = {
 
 
 async def package_exists(package, release, version_cmp, version):
-    if not net_access:
+    if not net_access_allowed():
         try:
             return (
                 package in

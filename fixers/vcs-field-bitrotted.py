@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 
 import asyncio
-import os
 import re
 import socket
 import sys
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.control import update_control
+from lintian_brush.fixer import net_access_allowed
 from lintian_brush.salsa import (
     determine_browser_url as determine_salsa_browser_url,
     guess_repository_url,
@@ -156,7 +156,7 @@ def migrate_from_obsolete_infra(control):
     try:
         (vcs_type, vcs_url, vcs_browser) = find_new_urls(
             vcs_type, vcs_url, package, maintainer_email,
-            net_access=(os.environ.get('NET_ACCESS', 'disallow') == 'allow'))
+            net_access=net_access_allowed())
     except NewRepositoryURLUnknown:
         return
 

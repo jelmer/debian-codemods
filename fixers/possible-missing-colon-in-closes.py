@@ -3,7 +3,7 @@
 import asyncio
 from functools import partial
 from lintian_brush.changelog import ChangelogUpdater
-import os
+from lintian_brush.fixer import net_access_allowed
 import re
 import socket
 from warnings import warn
@@ -14,7 +14,7 @@ tags = set()
 
 
 async def valid_bug(package, bug):
-    if os.environ.get('NET_ACCESS', 'disallowed') == 'disallow':
+    if not net_access_allowed():
         return None
     global debbugs
     if debbugs is None:
