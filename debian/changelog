@@ -7,6 +7,7 @@ lintian-brush (0.57) UNRELEASED; urgency=medium
   * Drop unnecessary --with=systemd if debhelper 10 is in use. Closes:
     #949818
   * Add fixer for unused-override. Closes: #932528
+  * Properly parse exceptions in license synopsis.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 12 Jan 2020 16:09:28 +0000
 
