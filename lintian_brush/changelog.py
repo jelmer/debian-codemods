@@ -30,7 +30,11 @@ from debian.changelog import (
     ChangelogParseError,
     )
 import re
+import textwrap
 from .reformatting import Updater
+
+
+WIDTH = 80
 
 
 class ChangelogUpdater(Updater):
@@ -76,3 +80,28 @@ def changes_by_author(changes):
             linenos = [i]
     if change:
         yield (author, linenos, change)
+
+
+class TextWrapper(textwrap.TextWrapper):
+
+    whitespace = r'[%s]' % re.escape(textwrap._whitespace)
+    wordsep_simple_re = re.compile(r'(%s+)' % whitespace)
+
+    def __init__(self):
+        super(TextWrapper, self).__init__(
+            width=WIDTH, initial_indent='  * ', subsequent_indent='    ',
+            break_long_words=False, break_on_hyphens=False)
+
+    def _split(self, text):
+        chunks = [c for c in self.wordsep_simple_re.split(text) if c]
+        ret = []
+        i = 0
+        while i < len(chunks):
+            if (chunks[i] in ('Closes:', 'LP:') and
+                    i+2 < len(chunks) and chunks[i+2].startswith('#')):
+                ret.append('%s %s' % (chunks[i], chunks[i+2]))
+                i += 3
+            else:
+                ret.append(chunks[i])
+                i += 1
+        return ret

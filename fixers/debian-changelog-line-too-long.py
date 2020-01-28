@@ -1,18 +1,11 @@
 #!/usr/bin/python3
 
-from lintian_brush.changelog import ChangelogUpdater
+from lintian_brush.changelog import ChangelogUpdater, TextWrapper, WIDTH
 from lintian_brush.fixer import report_result
-import textwrap
 
-WIDTH = 80
 
 updated = []
-wrapper = textwrap.TextWrapper(
-    width=WIDTH,
-    initial_indent='  * ',
-    subsequent_indent='    ',
-    break_long_words=False,
-    break_on_hyphens=False)
+wrapper = TextWrapper()
 
 
 def rewrap_change(change):

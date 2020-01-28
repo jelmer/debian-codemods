@@ -18,12 +18,14 @@
 """Tests for lintian_brush.changelog."""
 
 from breezy.tests import (
+    TestCase,
     TestCaseWithTransport,
     )
 
 from lintian_brush.changelog import (
     ChangelogCreateError,
     ChangelogUpdater,
+    TextWrapper,
     )
 
 
@@ -53,3 +55,16 @@ lintian-brush (0.29) UNRELEASED; urgency=medium
 lalalalala
 """)])
         self.assertRaises(ChangelogCreateError, ChangelogUpdater().__enter__)
+
+
+class TextWrapperTests(TestCase):
+
+    def setUp(self):
+        super(TextWrapperTests, self).setUp()
+        self.wrapper = TextWrapper()
+
+    def test_wrap_closes(self):
+        self.assertEqual(
+            ['And', ' ', 'this', ' ', 'fixes', ' ', 'something.', ' ',
+             'Closes: #123456'],
+            self.wrapper._split('And this fixes something. Closes: #123456'))
