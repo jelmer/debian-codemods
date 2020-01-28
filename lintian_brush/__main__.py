@@ -126,6 +126,9 @@ def main(argv=None):
         '--opinionated', action='store_true',
         help=argparse.SUPPRESS)
     parser.add_argument(
+        '--diligent', action='count', default=0, dest='diligence',
+        help=argparse.SUPPRESS)
+    parser.add_argument(
         'fixers', metavar='FIXER', nargs='*',
         help='specific fixer to run')
     args = parser.parse_args(argv)
@@ -221,7 +224,8 @@ def main(argv=None):
                     use_inotify=(False if args.disable_inotify else None),
                     subpath=subpath,
                     net_access=not args.disable_net_access,
-                    opinionated=args.opinionated)
+                    opinionated=args.opinionated,
+                    diligence=args.diligence)
             except NotDebianPackage:
                 note("%s: Not a debian package.", wt.basedir)
                 return 1

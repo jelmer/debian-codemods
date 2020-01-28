@@ -162,9 +162,7 @@ Arch: all
 
 class DummyFixer(Fixer):
 
-    def run(self, basedir, package, current_version, compat_release,
-            minimum_certainty, trust_package, allow_reformatting, net_access,
-            opinionated):
+    def run(self, basedir, package, *args, **kwargs):
         with open(os.path.join(basedir, 'debian/control'), 'a') as f:
             f.write('a new line\n')
         return FixerResult("Fixed some tag.\nExtended description.",
@@ -173,9 +171,7 @@ class DummyFixer(Fixer):
 
 class FailingFixer(Fixer):
 
-    def run(self, basedir, package, current_version, compat_release,
-            minimum_certainty, trust_package, allow_reformatting, net_access,
-            opinionated):
+    def run(self, basedir, package, *args, **kwargs):
         with open(os.path.join(basedir, 'debian/foo'), 'w') as f:
             f.write("blah")
         with open(os.path.join(basedir, 'debian/control'), 'a') as f:
@@ -232,9 +228,7 @@ Arch: all
         tree = self.make_test_tree()
 
         class UncertainFixer(Fixer):
-            def run(self, basedir, package, current_version, compat_release,
-                    minimum_certainty, trust_package, allow_reformatting,
-                    net_access, opinionated):
+            def run(self, basedir, package, *args, **kwargs):
                 with open(os.path.join(basedir, 'debian/somefile'), 'w') as f:
                     f.write("test")
                 return FixerResult("Renamed a file.", certainty='possible')
@@ -249,9 +243,7 @@ Arch: all
         tree = self.make_test_tree()
 
         class UncertainFixer(Fixer):
-            def run(self, basedir, package, current_version, compat_release,
-                    minimum_certainty, trust_package, allow_reformatting,
-                    net_access, opinionated):
+            def run(self, basedir, package, *args, **kwargs):
                 with open(os.path.join(basedir, 'debian/somefile'), 'w') as f:
                     f.write("test")
                 return FixerResult("Renamed a file.", certainty='possible')
@@ -265,9 +257,7 @@ Arch: all
         tree = self.make_test_tree()
 
         class NewFileFixer(Fixer):
-            def run(self, basedir, package, current_version, compat_release,
-                    minimum_certainty, trust_package, allow_reformatting,
-                    net_access, opinionated):
+            def run(self, basedir, package, *args, **kwargs):
                 with open(os.path.join(basedir, 'debian/somefile'), 'w') as f:
                     f.write("test")
                 return FixerResult("Created new file.", ['some-tag'])
@@ -296,9 +286,7 @@ Arch: all
         tree = self.make_test_tree()
 
         class RenameFileFixer(Fixer):
-            def run(self, basedir, package, current_version, compat_release,
-                    minimum_certainty, trust_package, allow_reformatting,
-                    net_access, opinionated):
+            def run(self, basedir, package, *args, **kwargs):
                 os.rename(os.path.join(basedir, 'debian/control'),
                           os.path.join(basedir, 'debian/control.blah'))
                 return FixerResult("Renamed a file.")
@@ -326,9 +314,7 @@ Arch: all
         tree = self.make_test_tree()
 
         class EmptyFixer(Fixer):
-            def run(self, basedir, package, current_version, compat_release,
-                    minimum_certainty, trust_package, allow_reformatting,
-                    net_access, opinionated):
+            def run(self, basedir, package, *args, **kwargs):
                 return FixerResult("I didn't actually change anything.")
         with tree.lock_write():
             self.assertRaises(
