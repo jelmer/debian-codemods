@@ -21,6 +21,7 @@ from lintian_brush.upstream_metadata import (
     filter_bad_guesses,
     ADDON_ONLY_FIELDS,
     upstream_metadata_sort_key,
+    upstream_version,
     )
 from lintian_brush.yaml import (
     YamlUpdater,
@@ -64,8 +65,8 @@ with YamlUpdater('debian/upstream/metadata') as code:
     if net_access:
         # Verify that online resources actually exist and adjust certainty
         # accordingly.
-        check_upstream_metadata(
-            upstream_metadata, version=current_version.upstream_version)
+        upstream_version = upstream_version(current_version)
+        check_upstream_metadata(upstream_metadata, version=upstream_version)
 
     # Homepage is set in debian/control, so don't add it to
     # debian/upstream/metadata.

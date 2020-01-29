@@ -1505,6 +1505,12 @@ def upstream_metadata_sort_key(x):
         }.get(k, k)
 
 
+def upstream_version(version):
+    """Drop debian-specific modifiers from an upstream version string.
+    """
+    return version.upstream_version.split("+dfsg")[0]
+
+
 def main(argv=None):
     import argparse
     import sys
