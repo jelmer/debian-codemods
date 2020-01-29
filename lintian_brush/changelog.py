@@ -97,7 +97,7 @@ class TextWrapper(textwrap.TextWrapper):
         ret = []
         i = 0
         while i < len(chunks):
-            if (chunks[i] in ('Closes:', 'LP:') and
+            if (any(chunks[i].endswith(x) for x in ['Closes:', 'LP:']) and
                     i+2 < len(chunks) and chunks[i+2].startswith('#')):
                 ret.append('%s %s' % (chunks[i], chunks[i+2]))
                 i += 3

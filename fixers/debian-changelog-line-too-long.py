@@ -5,12 +5,12 @@ from lintian_brush.fixer import report_result
 
 
 updated = []
-wrapper = TextWrapper()
 
 
 def rewrap_change(change):
     if (any([len(line) > WIDTH for line in change]) and
             change[0].startswith('  * ')):
+        wrapper = TextWrapper()
         return wrapper.wrap(''.join(change)[4:])
     else:
         return change

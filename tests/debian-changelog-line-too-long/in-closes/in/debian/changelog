@@ -1,0 +1,5 @@
+blah (2.6.0) unstable; urgency=medium
+
+  * Fix blocks/blockedby of archived bugs and more blah blah blah bl (Closes: #XXXXXXX).
+
+ -- Joe Example <joe@example.com>  Mon, 26 Feb 2018 11:31:48 -0800
