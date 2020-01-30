@@ -39,6 +39,7 @@ from breezy.clean_tree import (
     )
 from breezy.commit import NullCommitReporter
 from breezy.errors import NoSuchFile
+from breezy.osutils import is_inside
 from breezy.rename_map import RenameMap
 from breezy.trace import note, warning
 from breezy.transform import revert
@@ -486,33 +487,29 @@ def get_committer(tree):
         return config.get('email')
 
 
-def only_changes_last_changelog_block(tree, changelog_path):
+def only_changes_last_changelog_block(tree, changelog_path, changes):
     """Check whether the only change in a tree is to the last changelog entry.
 
     Args:
       tree: Tree to analyze
       changelog_path: Path to the changelog file
+      changes: Changes in the tree
     Returns:
       boolean
     """
     basis_tree = tree.basis_tree()
     with tree.lock_read(), basis_tree.lock_read():
-        changes = tree.iter_changes(basis_tree)
-        try:
-            first_change = next(changes)
-        except StopIteration:
-            return False
-        try:
-            next(changes)
-        except StopIteration:
-            pass
+        for change in changes:
+            try:
+                change_paths = change.path
+            except AttributeError:  # brz < 3.1
+                change_paths = change[1]
+            if change_paths == ('', ''):
+                continue
+            if change_paths != (changelog_path, changelog_path):
+                return False
+            break
         else:
-            return False
-        try:
-            change_paths = first_change.path
-        except AttributeError:  # brz < 3.1
-            change_paths = first_change[1]
-        if change_paths != (changelog_path, changelog_path):
             return False
         new_cl = Changelog(tree.get_file_text(changelog_path))
         old_cl = Changelog(basis_tree.get_file_text(changelog_path))
@@ -666,6 +663,18 @@ def guess_update_changelog(tree, path='', cl=None):
     return True
 
 
+def has_non_debian_changes(changes):
+    for change in changes:
+        try:
+            change_paths = change.paths
+        except AttributeError:  # brz < 3.1
+            change_paths = change[1]
+        for path in change_paths:
+            if path and not is_inside('debian', path):
+                return True
+    return False
+
+
 def run_lintian_fixer(local_tree, fixer, committer=None,
                       update_changelog=None, compat_release=None,
                       minimum_certainty=None, trust_package=False,
@@ -754,13 +763,12 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         RenameMap.guess_renames(
             basis_tree, local_tree, dry_run=False)
 
-    if len(local_tree.get_parent_ids()) <= 1:
-        changes = local_tree.iter_changes(
-            basis_tree, specific_files=specific_files)
-        try:
-            next(changes)
-        except StopIteration:
-            raise NoChanges("Script didn't make any changes")
+    changes = list(local_tree.iter_changes(
+        basis_tree, specific_files=specific_files,
+        want_unversioned=False, require_versioned=True))
+
+    if len(local_tree.get_parent_ids()) <= 1 and not changes:
+        raise NoChanges("Script didn't make any changes")
 
     if not result.description:
         raise DescriptionMissing()
@@ -769,8 +777,11 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
 
     # If there are upstream changes in a non-native package, perhaps
     # export them to debian/patches
-    if (any([not p.startswith('debian/') for p in specific_files])
-            and current_version.debian_revision):
+    if has_non_debian_changes(changes) and current_version.debian_revision:
+        # TODO(jelmer): Apply all patches before generating a diff.
+        reset_tree(local_tree, dirty_tracker, subpath)
+        raise NoChanges("Creating upstream patches not supported yet")
+
         from .patches import move_upstream_changes_to_patch
         try:
             specific_files, patch_name = move_upstream_changes_to_patch(
@@ -785,7 +796,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         update_changelog = guess_update_changelog(local_tree, subpath, cl)
 
     if update_changelog and only_changes_last_changelog_block(
-            local_tree, changelog_path):
+            local_tree, changelog_path, changes):
         # If the script only changed the last entry in the changelog,
         # don't update the changelog
         update_changelog = False

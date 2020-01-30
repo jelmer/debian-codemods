@@ -497,8 +497,11 @@ blah (0.1) unstable; urgency=medium
 
     def test_no_changes(self):
         tree = self.make_package_tree()
+        basis_tree = tree.basis_tree()
+        with tree.lock_read(), basis_tree.lock_read():
+            changes = tree.iter_changes(basis_tree)
         self.assertFalse(only_changes_last_changelog_block(
-            tree, 'debian/changelog'))
+            tree, 'debian/changelog', changes))
 
     def test_other_change(self):
         tree = self.make_package_tree()
@@ -512,9 +515,11 @@ Binary: blah
 Arch: all
 
 """)])
-
+        basis_tree = tree.basis_tree()
+        with tree.lock_read(), basis_tree.lock_read():
+            changes = tree.iter_changes(basis_tree)
         self.assertFalse(only_changes_last_changelog_block(
-            tree, 'debian/changelog'))
+            tree, 'debian/changelog', changes))
 
     def test_other_changes(self):
         tree = self.make_package_tree()
@@ -536,8 +541,11 @@ blah (0.1) UNRELEASED; urgency=medium
 
  -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
 """)])
+        basis_tree = tree.basis_tree()
+        with tree.lock_read(), basis_tree.lock_read():
+            changes = tree.iter_changes(basis_tree)
         self.assertFalse(only_changes_last_changelog_block(
-            tree, 'debian/changelog'))
+            tree, 'debian/changelog', changes))
 
     def test_changes_to_other_changelog_entries(self):
         tree = self.make_package_tree()
@@ -555,8 +563,11 @@ blah (0.1) unstable; urgency=medium
 
  -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
 """)])
+        basis_tree = tree.basis_tree()
+        with tree.lock_read(), basis_tree.lock_read():
+            changes = tree.iter_changes(basis_tree)
         self.assertFalse(only_changes_last_changelog_block(
-            tree, 'debian/changelog'))
+            tree, 'debian/changelog', changes))
 
     def test_changes_to_last_only(self):
         tree = self.make_package_tree()
@@ -575,8 +586,11 @@ blah (0.1) unstable; urgency=medium
 
  -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
 """)])
+        basis_tree = tree.basis_tree()
+        with tree.lock_read(), basis_tree.lock_read():
+            changes = tree.iter_changes(basis_tree)
         self.assertTrue(only_changes_last_changelog_block(
-            tree, 'debian/changelog'))
+            tree, 'debian/changelog', changes))
 
     def test_changes_to_last_only_but_released(self):
         tree = self.make_package_tree()
@@ -610,8 +624,11 @@ blah (0.1) unstable; urgency=medium
 
  -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
 """)])
+        basis_tree = tree.basis_tree()
+        with tree.lock_read(), basis_tree.lock_read():
+            changes = tree.iter_changes(basis_tree)
         self.assertFalse(only_changes_last_changelog_block(
-            tree, 'debian/changelog'))
+            tree, 'debian/changelog', changes))
 
 
 class LintianBrushVersion(TestCase):
