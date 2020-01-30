@@ -365,8 +365,8 @@ Lintian-Tags: invalid-standards-version
 Fix-Script: out-of-date-standards-version.py
 Lintian-Tags: out-of-date-standards-version
 
-# Fix-Script: autotools-pkg-config-macro-not-cross-compilation-safe.py
-# Lintian-Tags: autotools-pkg-config-macro-not-cross-compilation-safe
+Fix-Script: autotools-pkg-config-macro-not-cross-compilation-safe.py
+Lintian-Tags: autotools-pkg-config-macro-not-cross-compilation-safe
 
 Fix-Script: unused-override.py
 Lintian-Tags: unused-override
