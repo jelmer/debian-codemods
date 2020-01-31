@@ -17,8 +17,9 @@ def read_desc_files(path):
         elif entry.name.endswith('.desc'):
             with open(entry.path, 'r') as f:
                 desc = Deb822(f)
-                for renamed_from in desc['Renamed-From']:
-                    renames[renamed_from] = desc['Tag']
+                for renamed_from in desc.get('Renamed-From', '').splitlines():
+                    if renamed_from.strip():
+                        renames[renamed_from.strip()] = desc['Tag']
 
 
 try:
@@ -31,7 +32,8 @@ try:
             (old, new) = line.split('=>')
             renames[old.strip()] = new.strip()
 except FileNotFoundError:
-    read_desc_files(renames, '/usr/share/lintian/tags')
+    # lintian >= 2.48.0 stores rename information in the .desc files
+    read_desc_files('/usr/share/lintian/tags/')
 
 
 with open('renamed-tags.json', 'w') as f:
