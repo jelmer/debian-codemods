@@ -1,0 +1,2 @@
+# This macro is used intentionally :-)
+lintian-brush source: autotools-pkg-config-macro-not-cross-compilation-safe tests/autotools-pkg-config-macro-not-cross-compilation-safe/simple/in/configure.ac (line 10)

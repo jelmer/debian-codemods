@@ -1,3 +1,11 @@
+lintian-brush (0.58) UNRELEASED; urgency=medium
+
+  * Add override for autotools-pkg-config-macro-not-cross-compilation-
+    safe, which correctly (but intentionally) gets triggered for our
+    test.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 31 Jan 2020 11:34:36 +0000
+
 lintian-brush (0.57) unstable; urgency=medium
 
   * Add fixer for debian-changelog-line-too-long.
