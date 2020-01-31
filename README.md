@@ -24,6 +24,7 @@ The current set of lintian tags for which a fixer is available that can fix a
 subset of the issues:
 
 * ancient-python-version-field
+* autotools-pkg-config-macro-not-cross-compilation-safe
 * build-depends-on-build-essential
 * build-depends-on-obsolete-package
 * built-using-field-on-arch-all-package
@@ -94,7 +95,6 @@ subset of the issues:
 * missing-debian-source-format
 * missing-vcs-browser-field
 * misspelled-closes-bug
-* no-dh-sequencer
 * no-homepage-field
 * obsolete-field-in-dep5-copyright
 * obsolete-runtime-tests-restriction
@@ -128,6 +128,7 @@ subset of the issues:
 * unnecessary-testsuite-autopkgtest-field
 * unused-build-dependency-on-cdbs
 * unused-license-paragraph-in-dep5-copyright
+* unused-override
 * unversioned-copyright-format-uri
 * upstream-metadata-file-is-missing
 * useless-autoreconf-build-depends
