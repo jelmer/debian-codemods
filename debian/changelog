@@ -1,4 +1,4 @@
-lintian-brush (0.57) UNRELEASED; urgency=medium
+lintian-brush (0.57) unstable; urgency=medium
 
   * Add fixer for debian-changelog-line-too-long.
   * Add fixer for misspelling-in-bug-closes.
@@ -12,7 +12,7 @@ lintian-brush (0.57) UNRELEASED; urgency=medium
   * Ship a renamed-tags.json file, since the upstream file has
     disappeared. Closes: #950321
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 12 Jan 2020 16:09:28 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 31 Jan 2020 11:29:12 +0000
 
 lintian-brush (0.56) unstable; urgency=medium
 
