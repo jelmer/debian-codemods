@@ -75,21 +75,19 @@ def guess_template_type(template_path):
     return None
 
 
-def _update_control_template(template_path, path, paragraph_cb):
+def _update_control_template(template_path, path, changes):
     template_type = guess_template_type(template_path)
     if template_type is None:
         raise GeneratedFile(path, template_path)
     with Deb822Updater(template_path) as updater:
-        for paragraph in updater.paragraphs:
-            paragraph_cb(paragraph)
+        updater.apply_changes(changes)
     if not updater.changed:
         # A bit odd, since there were changes to the output file. Anyway.
         return False
     package_root = os.path.dirname(os.path.dirname(path)) or '.'
     if template_type == 'cdbs':
         with Deb822Updater(path, allow_generated=True) as updater:
-            for paragraph in updater.paragraphs:
-                paragraph_cb(paragraph)
+            updater.apply_changes(changes)
     elif template_type == 'gnome':
         dh_gnome_clean(package_root)
     elif template_type == 'postgresql':
@@ -121,22 +119,81 @@ def update_control(path='debian/control', source_package_cb=None,
                         paragraph._Deb822Dict__keys.add('Description')
                         paragraph._Deb822Dict__keys.remove('Description')
 
-    try:
-        with Deb822Updater(path) as updater:
-            for paragraph in updater.paragraphs:
-                paragraph_cb(paragraph)
-        return updater.changed
-    except GeneratedFile as e:
-        if not e.template_path:
-            raise
-        return _update_control_template(e.template_path, path, paragraph_cb)
-    except FileNotFoundError:
-        for template_path in [path + '.in', path + '.m4']:
-            if os.path.exists(template_path):
-                return _update_control_template(
-                    template_path, path, paragraph_cb)
+    with ControlUpdater(path) as updater:
+        for paragraph in updater.paragraphs:
+            paragraph_cb(paragraph)
+    return updater.changed
+
+
+class ControlUpdater(object):
+
+    def __init__(self, path='debian/control'):
+        self.path = path
+        self._primary = Deb822Updater(path)
+
+    @property
+    def paragraphs(self):
+        return self._primary.paragraphs
+
+    @property
+    def source(self):
+        if not self._primary.paragraphs[0].get('Source'):
+            raise ValueError('first paragraph is not Source')
+        return self._primary.paragraphs[0]
+
+    @property
+    def binaries(self):
+        return self._primary.paragraphs[1:]
+
+    def changes(self):
+        orig = self._primary._parse(self._primary._orig_content)
+        changes = {}
+
+        def by_key(ps):
+            ret = {}
+            for p in ps:
+                if 'Source' in p:
+                    ret[('Source', p['Source'])] = p
+                else:
+                    ret[('Package', p['Package'])] = p
+            return ret
+
+        orig_by_key = by_key(orig)
+        new_by_key = by_key(self.paragraphs)
+        for key in set(orig_by_key).union(set(new_by_key)):
+            old = orig_by_key.get(key, {})
+            new = new_by_key.get(key, {})
+            if old == new:
+                continue
+            fields = list(old)
+            fields.extend([field for field in new if field not in fields])
+            for field in fields:
+                if old.get(field) != new.get(field):
+                    changes.setdefault(key, []).append((field, new.get(field)))
+        return changes
+
+    def __enter__(self):
+        self._primary.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            self._primary.__exit__(exc_type, exc_val, exc_tb)
+        except GeneratedFile as e:
+            if not e.template_path:
+                raise
+            self.changed = _update_control_template(
+                e.template_path, self.path, self.changes())
+        except FileNotFoundError:
+            for template_path in [self.path + '.in', self.path + '.m4']:
+                if os.path.exists(template_path):
+                    self.changed = _update_control_template(
+                        template_path, self.path, self.changes())
+            else:
+                raise
         else:
-            raise
+            self.changed = self._primary.changed
+        return False
 
 
 def parse_relations(text):

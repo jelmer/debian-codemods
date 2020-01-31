@@ -35,6 +35,7 @@ from lintian_brush.control import (
     format_relations,
     parse_relations,
     delete_from_list,
+    ControlUpdater,
     )
 from lintian_brush.reformatting import (
     GeneratedFile,
@@ -152,18 +153,20 @@ Uploaders: @lintian-brush-test@
 """)])
 
         def source_cb(c):
-            c['Source'] = 'blah1'
-        update_control(source_package_cb=source_cb)
+            c['Testsuite'] = 'autopkgtest8'
+        with ControlUpdater() as updater:
+            source_cb(updater.source)
+            updater.changes()
         self.assertFileEqual("""\
-Source: blah1
-Testsuite: autopkgtest
-Uploaders: testvalue
-""", "debian/control")
-        self.assertFileEqual("""\
-Source: blah1
-Testsuite: autopkgtest
+Source: blah
+Testsuite: autopkgtest8
 Uploaders: @lintian-brush-test@
 """, "debian/control.in")
+        self.assertFileEqual("""\
+Source: blah
+Testsuite: autopkgtest8
+Uploaders: testvalue
+""", "debian/control")
 
     def test_description_stays_last(self):
         self.build_tree_contents([('debian/', ), ('debian/control', """\

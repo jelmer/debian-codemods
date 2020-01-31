@@ -61,6 +61,17 @@ class Deb822Updater(Updater):
         super(Deb822Updater, self).__init__(
             path, allow_generated=allow_generated, mode='b')
 
+    def apply_changes(self, changes):
+        changes = dict(changes.items())
+        for paragraph in self.paragraphs:
+            for item in paragraph.items():
+                for key, value in changes.pop(item, []):
+                    if value is None:
+                        del paragraph[key]
+                    else:
+                        paragraph[key] = value
+        self.paragraphs.extend([Deb822(dict(p)) for p in changes.values()])
+
     def _parse(self, content):
         return list(Deb822.iter_paragraphs(content, encoding='utf-8'))
 
