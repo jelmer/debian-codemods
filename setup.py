@@ -41,6 +41,6 @@ setup(
     data_files=[
         ('share/lintian-brush/fixers',
          [n for n in glob.glob('fixers/*') if not n.endswith('/slow')]),
-        ('share/lintian-brush', ['spdx.json']),
+        ('share/lintian-brush', ['spdx.json', 'renamed-tags.json']),
     ],
 )
