@@ -1,15 +1,13 @@
 #!/usr/bin/python3
-from lintian_brush.control import update_control
+from lintian_brush.control import ControlUpdater
 
 
-def fix_xs_vcs_headers(control):
-    for key in list(control):
+with ControlUpdater() as updater:
+    for key in list(updater.source):
         if key.startswith('XS-Vcs-'):
-            control[key[3:]] = control[key]
-            del control[key]
+            updater.source[key[3:]] = updater.source[key]
+            del updater.source[key]
 
-
-update_control(source_package_cb=fix_xs_vcs_headers)
 
 print("Remove unnecessary XS- prefix for Vcs- fields in debian/control.")
 print("Fixed-Lintian-Tags: xs-vcs-field-in-debian-control")

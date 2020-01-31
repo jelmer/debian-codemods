@@ -9,7 +9,7 @@ from lintian_brush.control import (
     ensure_exact_version,
     get_relation,
     read_debian_compat_file,
-    update_control,
+    ControlUpdater,
     )
 from lintian_brush.rules import (
     check_cdbs,
@@ -30,17 +30,17 @@ if os.path.exists('debian/compat'):
         os.unlink('debian/compat')
 
         # Assume that the compat version is set in Build-Depends
-        def set_debhelper_compat(control):
+        with ControlUpdater() as updater:
             # TODO(jelmer): Use iter_relations rather than get_relation,
             # since that allows for complex debhelper rules.
             try:
                 position, debhelper_relation = get_relation(
-                    control.get("Build-Depends", ""), "debhelper")
+                    updater.source.get("Build-Depends", ""), "debhelper")
             except KeyError:
                 position = None
                 debhelper_relation = []
-            control["Build-Depends"] = ensure_exact_version(
-                control.get("Build-Depends", ""), "debhelper-compat",
+            updater.source["Build-Depends"] = ensure_exact_version(
+                updater.source.get("Build-Depends", ""), "debhelper-compat",
                 "%d" % debhelper_compat_version, position=position)
             current_compat_version = Version("%d" % debhelper_compat_version)
             # If there are debhelper dependencies >> new debhelper compat
@@ -55,12 +55,10 @@ if os.path.exists('debian/compat'):
                         rel.version[1]) >= current_compat_version:
                     break
             else:
-                control["Build-Depends"] = drop_dependency(
-                    control.get("Build-Depends", ""), "debhelper")
-                if control.get("Build-Depends") == "":
-                    del control["Build-Depends"]
-
-        update_control(source_package_cb=set_debhelper_compat)
+                updater.source["Build-Depends"] = drop_dependency(
+                    updater.source.get("Build-Depends", ""), "debhelper")
+                if updater.source.get("Build-Depends") == "":
+                    del updater.source["Build-Depends"]
 
 print("Set debhelper-compat version in Build-Depends.")
 print("Fixed-Lintian-Tags: uses-debhelper-compat-file")

@@ -2,7 +2,7 @@
 
 import os
 from debian.changelog import Changelog
-from lintian_brush.control import update_control, get_relation
+from lintian_brush.control import ControlUpdater, get_relation
 from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
 
@@ -92,27 +92,25 @@ check_requirements = {
 current_version = None
 
 
-def bump_standards_version(control):
-    global current_version
+with ControlUpdater() as updater:
     try:
-        current_version = control["Standards-Version"]
+        current_version = updater.source["Standards-Version"]
     except KeyError:
         # Huh, no standards version?
-        return
-    while current_version in upgrade_path:
-        target_version = upgrade_path[current_version]
-        try:
-            check_fn = check_requirements[target_version]
-        except KeyError:
-            pass
-        else:
-            if not check_fn():
-                break
-        current_version = target_version
-    control["Standards-Version"] = current_version
+        pass
+    else:
+        while current_version in upgrade_path:
+            target_version = upgrade_path[current_version]
+            try:
+                check_fn = check_requirements[target_version]
+            except KeyError:
+                pass
+            else:
+                if not check_fn():
+                    break
+            current_version = target_version
+        updater.source["Standards-Version"] = current_version
 
-
-update_control(source_package_cb=bump_standards_version)
 
 if current_version:
     print('Update standards version to %s, no changes needed.' %

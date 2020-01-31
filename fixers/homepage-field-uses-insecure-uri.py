@@ -1,9 +1,7 @@
 #!/usr/bin/python3
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.fixer import net_access_allowed
-from lintian_brush.control import (
-    update_control,
-    )
+from lintian_brush.control import ControlUpdater
 import socket
 import sys
 import urllib.error
@@ -62,15 +60,14 @@ def fix_homepage(http_url):
     return http_url
 
 
-def fix_homepage_header(control):
+with ControlUpdater() as updater:
     try:
-        homepage = control["Homepage"]
+        homepage = updater.source["Homepage"]
     except KeyError:
-        return
-    control["Homepage"] = fix_homepage(homepage)
+        pass
+    else:
+        updater.source["Homepage"] = fix_homepage(homepage)
 
-
-update_control(source_package_cb=fix_homepage_header)
 
 print("Use secure URI in Homepage field.")
 print("Fixed-Lintian-Tags: homepage-field-uses-insecure-uri")

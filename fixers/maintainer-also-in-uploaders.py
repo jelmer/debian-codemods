@@ -1,19 +1,16 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import update_control, delete_from_list
+from lintian_brush.control import ControlUpdater, delete_from_list
 
 
-def drop_maintainer_from_uploaders(control):
-    if 'Uploaders' not in control:
-        return
-    uploaders = control['Uploaders'].split(',')
-    maintainer = control['Maintainer']
-    if maintainer not in [uploader.strip() for uploader in uploaders]:
-        return
-    control['Uploaders'] = delete_from_list(control['Uploaders'], maintainer)
+with ControlUpdater() as updater:
+    if 'Uploaders' in updater.source:
+        uploaders = updater.source['Uploaders'].split(',')
+        maintainer = updater.source['Maintainer']
+        if maintainer in [uploader.strip() for uploader in uploaders]:
+            updater.source['Uploaders'] = delete_from_list(
+                updater.source['Uploaders'], maintainer)
 
-
-update_control(source_package_cb=drop_maintainer_from_uploaders)
 
 print("Remove maintainer from uploaders.")
 print("Fixed-Lintian-Tags: maintainer-also-in-uploaders")

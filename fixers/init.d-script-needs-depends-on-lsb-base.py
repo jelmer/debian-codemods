@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import update_control, ensure_some_version
+from lintian_brush.control import ensure_some_version, ControlUpdater
 import os
 
 needs_lsb_base = set()
@@ -22,11 +22,12 @@ for n in os.listdir('debian'):
 needs_lsb_base -= other_service_present
 
 if needs_lsb_base:
-    def add_lsb_base(binary):
-        if binary['Package'] not in needs_lsb_base:
-            return
-        binary['Depends'] = ensure_some_version(binary['Depends'], 'lsb-base')
-    update_control(binary_package_cb=add_lsb_base)
+    with ControlUpdater() as updater:
+        for binary in updater.binaries:
+            if binary['Package'] not in needs_lsb_base:
+                continue
+            binary['Depends'] = ensure_some_version(
+                binary['Depends'], 'lsb-base')
 
 print('Add missing dependency on lsb-base.')
 print('Fixed-Lintian-Tags: init.d-script-needs-depends-on-lsb-base')

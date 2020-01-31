@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import update_control
+from lintian_brush.control import ControlUpdater
 from urllib.parse import urlparse
 
 HOST_TO_VCS = {
@@ -10,12 +10,12 @@ HOST_TO_VCS = {
     }
 
 
-def fix_vcs_type(control):
-    for field in list(control):
+with ControlUpdater() as updater:
+    for field in list(updater.source):
         if not field.startswith('Vcs-') or field.lower() == 'vcs-browser':
             continue
         vcs = field[4:]
-        vcs_url = control[field]
+        vcs_url = updater.source[field]
         host = urlparse(vcs_url).netloc.split('@')[-1]
         if host not in HOST_TO_VCS:
             continue
@@ -24,10 +24,8 @@ def fix_vcs_type(control):
             print(
                 "Changed vcs type from %s to %s based on URL." % (
                     vcs, actual_vcs))
-            del control["Vcs-" + vcs]
-            control["Vcs-" + actual_vcs] = vcs_url
+            del updater.source["Vcs-" + vcs]
+            updater.source["Vcs-" + actual_vcs] = vcs_url
 
-
-update_control(source_package_cb=fix_vcs_type)
 
 print("Fixed-Lintian-Tags: vcs-field-mismatch")

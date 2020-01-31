@@ -1,22 +1,20 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import update_control
+from lintian_brush.control import ControlUpdater
 from lintian_brush.fixer import report_result
 
 
-def drop_ancient_python_versions(source):
+with ControlUpdater() as updater:
     # Remove anything that involves python 2.6, 2.7, 3.3
-    if "X-Python-Version" in source:
-        if source["X-Python-Version"].strip().startswith(">= 2."):
-            del source["X-Python-Version"]
-    if ("X-Python3-Version" in source and
-            source["X-Python3-Version"].strip().startswith(">=")):
-        vers = source["X-Python3-Version"].split(">=")[1].strip()
+    if "X-Python-Version" in updater.source:
+        if updater.source["X-Python-Version"].strip().startswith(">= 2."):
+            del updater.source["X-Python-Version"]
+    if ("X-Python3-Version" in updater.source and
+            updater.source["X-Python3-Version"].strip().startswith(">=")):
+        vers = updater.source["X-Python3-Version"].split(">=")[1].strip()
         if vers in ("3.0", "3.1", "3.2", "3.3", "3.4"):
-            del source["X-Python3-Version"]
+            del updater.source["X-Python3-Version"]
 
-
-update_control(source_package_cb=drop_ancient_python_versions)
 
 report_result(
     "Remove unnecessary X-Python{,3}-Version field in debian/control.",

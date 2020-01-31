@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import drop_dependency, update_control
+from lintian_brush.control import drop_dependency, ControlUpdater
 
 with open('debian/rules', 'rb') as f:
     for line in f:
@@ -11,12 +11,11 @@ with open('debian/rules', 'rb') as f:
         uses_cdbs = False
 
 if not uses_cdbs:
-    def drop_cdbs(control):
-        control["Build-Depends"] = drop_dependency(
-            control.get("Build-Depends", ""), "cdbs")
-        if not control["Build-Depends"]:
-            del control["Build-Depends"]
-    update_control(source_package_cb=drop_cdbs)
+    with ControlUpdater() as updater:
+        updater.source["Build-Depends"] = drop_dependency(
+            updater.source.get("Build-Depends", ""), "cdbs")
+        if not updater.source["Build-Depends"]:
+            del updater.source["Build-Depends"]
 
 print("Drop unused build-dependency on cdbs.")
 print("Fixed-Lintian-Tags: unused-build-dependency-on-cdbs")

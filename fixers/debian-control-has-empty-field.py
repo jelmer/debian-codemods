@@ -1,21 +1,18 @@
 #!/usr/bin/python3
-from lintian_brush.control import update_control
+from lintian_brush.control import ControlUpdater
 from lintian_brush.fixer import report_result
 fields = []
 packages = []
 
 
-def rm_empty_field(control):
-    for k, v in control.items():
-        if not v.strip():
-            fields.append(k)
-            if control.get("Package"):
-                packages.append(control.get("Package"))
-            del control[k]
-
-
-update_control(source_package_cb=rm_empty_field,
-               binary_package_cb=rm_empty_field)
+with ControlUpdater() as updater:
+    for para in updater.paragraphs:
+        for k, v in para.items():
+            if not v.strip():
+                fields.append(k)
+                if para.get("Package"):
+                    packages.append(para.get("Package"))
+                del para[k]
 
 report_result(
     "debian/control: Remove empty control field%s %s%s." % (
