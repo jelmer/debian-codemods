@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.deb822 import update_deb822
+from lintian_brush.deb822 import Deb822Updater
 import sys
 
 try:
@@ -15,23 +15,19 @@ valid_field_names = {
 
 fixed = False
 
-
-def fix_field_typos(paragraph):
-    global fixed
-    for field in paragraph:
-        if field in valid_field_names:
-            continue
-        for option in valid_field_names:
-            if distance(field, option) == 1:
-                value = paragraph[field]
-                del paragraph[field]
-                paragraph[option] = value
-                fixed = True
-                break
-
-
 try:
-    update_deb822('debian/copyright', paragraph_cb=fix_field_typos)
+    with Deb822Updater('debian/copyright') as updater:
+        for paragraph in updater.paragraphs:
+            for field in paragraph:
+                if field in valid_field_names:
+                    continue
+                for option in valid_field_names:
+                    if distance(field, option) == 1:
+                        value = paragraph[field]
+                        del paragraph[field]
+                        paragraph[option] = value
+                        fixed = True
+                        break
 except FileNotFoundError:
     pass
 

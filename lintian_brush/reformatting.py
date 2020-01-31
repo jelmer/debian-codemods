@@ -116,9 +116,10 @@ def edit_formatted_file(
 class Updater(object):
     """Context object for updating a file, preserving formatting."""
 
-    def __init__(self, path, mode=''):
+    def __init__(self, path, mode='', allow_generated=False):
         self.path = path
         self.mode = mode
+        self.allow_generated = allow_generated
 
     def _nonexistant(self):
         raise
@@ -164,5 +165,5 @@ class Updater(object):
         else:
             self.changed = edit_formatted_file(
                 self.path, self._orig_content, self._rewritten_content,
-                updated_content)
+                updated_content, self.allow_generated)
         return False

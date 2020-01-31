@@ -26,7 +26,7 @@ from debian.deb822 import Deb822
 import subprocess
 
 from ._deb822 import PkgRelation
-from .deb822 import update_deb822
+from .deb822 import Deb822Updater
 from .reformatting import GeneratedFile
 
 
@@ -79,12 +79,17 @@ def _update_control_template(template_path, path, paragraph_cb):
     template_type = guess_template_type(template_path)
     if template_type is None:
         raise GeneratedFile(path, template_path)
-    if not update_deb822(template_path, paragraph_cb=paragraph_cb):
+    with Deb822Updater(template_path) as updater:
+        for paragraph in updater.paragraphs:
+            paragraph_cb(paragraph)
+    if not updater.changed:
         # A bit odd, since there were changes to the output file. Anyway.
         return False
     package_root = os.path.dirname(os.path.dirname(path)) or '.'
     if template_type == 'cdbs':
-        update_deb822(path, paragraph_cb=paragraph_cb, allow_generated=True)
+        with Deb822Updater(path, allow_generated=True) as updater:
+            for paragraph in updater.paragraphs:
+                paragraph_cb(paragraph)
     elif template_type == 'gnome':
         dh_gnome_clean(package_root)
     elif template_type == 'postgresql':
@@ -117,7 +122,10 @@ def update_control(path='debian/control', source_package_cb=None,
                         paragraph._Deb822Dict__keys.remove('Description')
 
     try:
-        return update_deb822(path, paragraph_cb=paragraph_cb)
+        with Deb822Updater(path) as updater:
+            for paragraph in updater.paragraphs:
+                paragraph_cb(paragraph)
+        return updater.changed
     except GeneratedFile as e:
         if not e.template_path:
             raise

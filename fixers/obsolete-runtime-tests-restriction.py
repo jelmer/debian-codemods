@@ -3,31 +3,28 @@
 import os
 import sys
 
-from lintian_brush.deb822 import update_deb822
+from lintian_brush.deb822 import Deb822Updater
 
 
 DEPRECATED_RESTRICTIONS = ['needs-recommends']
 removed_restrictions = []
 
 
-def drop_deprecated_feature(paragraph):
-    restrictions = paragraph.get('Restrictions', '').split(',')
-    if restrictions == ['']:
-        return
-    for i, restriction in enumerate(list(restrictions)):
-        if restriction.strip() in DEPRECATED_RESTRICTIONS:
-            del restrictions[i]
-            removed_restrictions.append(restriction.strip())
-    paragraph['Restrictions'] = ','.join(restrictions).lstrip()
-    if not paragraph['Restrictions'].strip():
-        del paragraph['Restrictions']
-
-
 if not os.path.exists('debian/tests/control'):
     sys.exit(0)
 
-update_deb822(
-    paragraph_cb=drop_deprecated_feature, path='debian/tests/control')
+with Deb822Updater('debian/tests/control') as updater:
+    for paragraph in updater.paragraphs:
+        restrictions = paragraph.get('Restrictions', '').split(',')
+        if restrictions == ['']:
+            continue
+        for i, restriction in enumerate(list(restrictions)):
+            if restriction.strip() in DEPRECATED_RESTRICTIONS:
+                del restrictions[i]
+                removed_restrictions.append(restriction.strip())
+        paragraph['Restrictions'] = ','.join(restrictions).lstrip()
+        if not paragraph['Restrictions'].strip():
+            del paragraph['Restrictions']
 
 
 print('Drop deprecated restriction%s %s. See '

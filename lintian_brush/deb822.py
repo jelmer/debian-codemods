@@ -20,7 +20,7 @@
 from debian.deb822 import Deb822
 from io import BytesIO
 from .reformatting import (
-    edit_formatted_file,
+    Updater,
     )
 
 
@@ -55,45 +55,18 @@ def reformat_deb822(contents):
         Deb822.iter_paragraphs(BytesIO(contents), encoding='utf-8'))
 
 
-def update_deb822(path, paragraph_cb=None, allow_generated=False):
-    """Update a deb822-style file.
+class Deb822Updater(Updater):
 
-    The callbacks can modify the paragraphs in place, and can trigger their
-    removal by clearing the paragraph.
+    def __init__(self, path, allow_generated=False):
+        super(Deb822Updater, self).__init__(
+            path, allow_generated=allow_generated, mode='b')
 
-    Args:
-      path: Path to the debian/control file to edit
-      paragraph_cb: Called on paragraphs
-      allow_generated: Whether to allow generated files
-    Returns:
-      boolean indicating whether any changes were made
-    """
-    with open(path, 'rb') as f:
-        original_contents = f.read()
-    rewritten_contents = reformat_deb822(original_contents)
-    outf = BytesIO()
-    update_deb822_file(
-        BytesIO(original_contents), outf, paragraph_cb=paragraph_cb)
-    updated_contents = outf.getvalue()
-    return edit_formatted_file(
-        path, original_contents, rewritten_contents, updated_contents,
-        allow_generated=allow_generated)
+    def _parse(self, content):
+        return list(Deb822.iter_paragraphs(content, encoding='utf-8'))
 
+    @property
+    def paragraphs(self):
+        return self._parsed
 
-def update_deb822_file(inf, outf, paragraph_cb=None):
-    """Update a control file.
-
-    The callbacks can modify the paragraphs in place, and can trigger their
-    removal by clearing the paragraph.
-
-    Args:
-      inf: File-like object to read control file from
-      outf: File-like object to write control file to
-      paragraph_cb: Called on paragraph (optional)
-    """
-    paragraphs = []
-    for paragraph in Deb822.iter_paragraphs(inf, encoding='utf-8'):
-        if paragraph_cb:
-            paragraph_cb(paragraph)
-        paragraphs.append(paragraph)
-    outf.write(dump_paragraphs(paragraphs))
+    def _format(self, paragraphs):
+        return dump_paragraphs(paragraphs)

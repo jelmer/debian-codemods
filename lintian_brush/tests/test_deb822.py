@@ -25,9 +25,9 @@ from breezy.tests import (
 from debian.deb822 import Deb822
 
 from lintian_brush.deb822 import (
+    Deb822Updater,
     dump_paragraphs,
     reformat_deb822,
-    update_deb822,
     )
 from lintian_brush.reformatting import (
     FormattingUnpreservable,
@@ -97,10 +97,11 @@ Testsuite: autopkgtest
 
 """)])
 
-        def cb(c):
-            c['Source'] = 'blah1'
-        self.assertRaises(
-            GeneratedFile, update_deb822, 'controlfile', paragraph_cb=cb)
+        def change():
+            with Deb822Updater('controlfile') as updater:
+                for c in updater.paragraphs:
+                    c['Source'] = 'blah1'
+        self.assertRaises(GeneratedFile, change)
 
     def test_do_not_edit_force(self):
         self.build_tree_contents([('controlfile', """\
@@ -109,9 +110,9 @@ Testsuite: autopkgtest
 
 """), ('controlfile.in', 'bar')])
 
-        def cb(c):
-            c['Source'] = 'blah1'
-        update_deb822('controlfile', paragraph_cb=cb, allow_generated=True)
+        with Deb822Updater('controlfile', allow_generated=True) as updater:
+            for c in updater.paragraphs:
+                c['Source'] = 'blah1'
 
     def test_do_not_edit_no_change(self):
         self.build_tree_contents([('controlfile', """\
@@ -122,7 +123,8 @@ Source: blah
 Testsuite: autopkgtest
 
 """)])
-        update_deb822('controlfile')
+        with Deb822Updater('controlfile'):
+            pass
 
     def test_unpreservable(self):
         self.build_tree_contents([('controlfile', """\
@@ -132,11 +134,12 @@ Testsuite: autopkgtest
 
 """)])
 
-        def update_source(control):
-            control["NewField"] = "New Field"
-        self.assertRaises(
-            FormattingUnpreservable, update_deb822,
-            'controlfile', paragraph_cb=update_source)
+        def change():
+            with Deb822Updater('controlfile') as updater:
+                for control in updater.paragraphs:
+                    control["NewField"] = "New Field"
+
+        self.assertRaises(FormattingUnpreservable, change)
 
     def test_modify_paragraph(self):
         self.build_tree_contents([('controlfile', """\
@@ -145,10 +148,10 @@ Testsuite: autopkgtest
 
 """)])
 
-        def add_header(control):
-            control["XS-Vcs-Git"] = "git://github.com/example/example"
-        self.assertTrue(update_deb822(
-            'controlfile', paragraph_cb=add_header))
+        with Deb822Updater('controlfile') as updater:
+            for control in updater.paragraphs:
+                control["XS-Vcs-Git"] = "git://github.com/example/example"
+        self.assertTrue(updater.changed)
         self.assertFileEqual("""\
 Source: blah
 Testsuite: autopkgtest
@@ -161,7 +164,9 @@ Source: blah
 Testsuite: autopkgtest
 
 """)])
-        self.assertFalse(update_deb822('controlfile'))
+        with Deb822Updater('controlfile') as updater:
+            pass
+        self.assertFalse(updater.changed)
         self.assertFileEqual("""\
 Source: blah
 Testsuite: autopkgtest

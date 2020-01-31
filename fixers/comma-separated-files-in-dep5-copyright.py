@@ -1,20 +1,17 @@
 #!/usr/bin/python3
 
-from lintian_brush.deb822 import update_deb822
+from lintian_brush.deb822 import Deb822Updater
 from lintian_brush.fixer import report_result
 
-
-def split_commas(paragraph):
-    if 'Files' not in paragraph:
-        return
-    if ',' not in paragraph['Files']:
-        return
-    paragraph['Files'] = '\n' + '\n'.join(
-        ' ' + entry.strip() for entry in paragraph['Files'].split(','))
-
-
 try:
-    update_deb822(path='debian/copyright', paragraph_cb=split_commas)
+    with Deb822Updater(path='debian/copyright') as updater:
+        for paragraph in updater.paragraphs:
+            if 'Files' not in paragraph:
+                continue
+            if ',' not in paragraph['Files']:
+                continue
+            paragraph['Files'] = '\n' + '\n'.join(
+                ' ' + entry.strip() for entry in paragraph['Files'].split(','))
 except FileNotFoundError:
     pass
 
