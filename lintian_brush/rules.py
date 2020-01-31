@@ -91,7 +91,7 @@ class Rule(object):
         self.lines.append(line)
 
     def append_command(self, command):
-        self.lines.append(b'\t' + command + b'\n')
+        self.lines.append(b'\t' + command)
 
     def append_component(self, component):
         self.components.append(component)
@@ -143,12 +143,15 @@ class Makefile(object):
             original_contents = f.read()
         return cls.from_bytes(original_contents)
 
-    def iter_rules(self, target, exact=True):
+    def iter_all_rules(self):
         for entry in self.contents:
-            if isinstance(entry, Rule) and entry.has_target(target, exact):
+            if isinstance(entry, Rule):
                 yield entry
-        else:
-            return
+
+    def iter_rules(self, target, exact=True):
+        for rule in self.iter_all_rules():
+            if rule.has_target(target, exact):
+                yield rule
 
     @classmethod
     def from_bytes(cls, contents):
@@ -198,7 +201,12 @@ class Makefile(object):
 
     def dump_lines(self):
         lines = []
-        for entry in self.contents:
+        contents = self.contents[:]
+        while contents and not contents[-1]:
+            del contents[-1]
+        if contents and isinstance(contents[-1], Rule):
+            contents[-1]._trim_trailing_whitespace()
+        for entry in contents:
             if isinstance(entry, Rule):
                 lines.extend(entry.dump_lines())
             else:
@@ -240,29 +248,24 @@ class MakefileUpdater(Updater):
         return self._parsed
 
 
-class RulesUpdater(Updater):
+class RulesUpdater(MakefileUpdater):
 
     def __init__(self, path='debian/rules'):
         super(RulesUpdater, self).__init__(path)
 
+    def legacy_update(self, command_line_cb=None, global_line_cb=None,
+                      rule_cb=None, makefile_cb=None):
+        """Update a debian/rules file.
 
-def update_makefile(path, command_line_cb=None, global_line_cb=None,
-                    rule_cb=None, makefile_cb=None):
-    """Update a makefile.
-
-    Args:
-      path: Path to the makefile to edit
-      command_line_cb: Callback to call on every rule command line
-      global_line_cb: Callback to call on every global line
-      rule_cb: Callback called for every rule
-    Returns:
-      boolean indicating whether any changes were made
-    """
-    if not os.path.exists(path):
-        return False
-    with MakefileUpdater(path) as updater:
+        Args:
+          command_line_cb: Callback to call on every rule command line
+          global_line_cb: Callback to call on every global line
+          rule_cb: Callback to call on every rule
+        Returns:
+          boolean indicating whether any changes were made
+        """
         newcontents = []
-        for entry in updater.makefile.contents:
+        for entry in self.makefile.contents:
             if isinstance(entry, Rule):
                 rule = entry
                 newlines = []
@@ -303,14 +306,15 @@ def update_makefile(path, command_line_cb=None, global_line_cb=None,
                 else:
                     raise TypeError(line)
 
-        if newcontents and isinstance(newcontents[-1], Rule):
-            newcontents[-1]._trim_trailing_whitespace()
-
-        updater.makefile.contents = newcontents
+        self.makefile.contents = newcontents
         if makefile_cb:
-            makefile_cb(updater.makefile)
-
-    return updater.changed
+            makefile_cb(self.makefile)
+        if self.has_changed():
+            for rule in self.makefile.iter_all_rules():
+                discard_pointless_override(rule)
+            return True
+        else:
+            return False
 
 
 def discard_pointless_override(rule):
@@ -337,14 +341,15 @@ def update_rules(command_line_cb=None, global_line_cb=None,
     Returns:
       boolean indicating whether any changes were made
     """
-    changed = update_makefile(
-        path, command_line_cb=command_line_cb, global_line_cb=global_line_cb,
-        rule_cb=rule_cb, makefile_cb=makefile_cb)
-    if changed:
-        update_makefile(path, rule_cb=discard_pointless_override)
-        return True
-    else:
+    if not os.path.exists(path):
         return False
+    with RulesUpdater(path) as updater:
+        updater.legacy_update(
+            command_line_cb=command_line_cb,
+            global_line_cb=global_line_cb,
+            rule_cb=rule_cb,
+            makefile_cb=makefile_cb)
+    return updater.changed
 
 
 def dh_invoke_add_with(line, with_argument):
