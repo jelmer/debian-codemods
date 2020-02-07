@@ -87,9 +87,10 @@ class TextWrapper(textwrap.TextWrapper):
     whitespace = r'[%s]' % re.escape(textwrap._whitespace)
     wordsep_simple_re = re.compile(r'(%s+)' % whitespace)
 
-    def __init__(self):
+    def __init__(self, initial_indent='  * '):
         super(TextWrapper, self).__init__(
-            width=WIDTH, initial_indent='  * ', subsequent_indent='    ',
+            width=WIDTH, initial_indent=initial_indent,
+            subsequent_indent=' ' * len(initial_indent),
             break_long_words=False, break_on_hyphens=False)
 
     def _split(self, text):

@@ -3,6 +3,8 @@ lintian-brush (0.58) UNRELEASED; urgency=medium
   * Add override for autotools-pkg-config-macro-not-cross-compilation-
     safe, which correctly (but intentionally) gets triggered for our
     test.
+  * Improve handling of long lines in debian/changelog, especially when
+    dealing with subitems.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 31 Jan 2020 11:34:36 +0000
 

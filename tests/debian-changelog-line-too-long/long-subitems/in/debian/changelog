@@ -1,0 +1,9 @@
+blah (2.6.0) unstable; urgency=medium
+
+  * New upstream bugfix release:
+    + debian/patches/07_traps-Clip-the-trapezoid-extents-against-the-clip-ex.patch,
+      debian/patches/08_xlib-Allow-applications-to-create-0x0-surfaces.patch:
+      - Dropped, merged upstream.
+    + Refresh patches to apply cleanly again.
+
+ -- Joe Example <joe@example.com>  Mon, 26 Feb 2018 11:31:48 -0800

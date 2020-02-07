@@ -2,27 +2,34 @@
 
 from lintian_brush.changelog import ChangelogUpdater, TextWrapper, WIDTH
 from lintian_brush.fixer import report_result
+import re
 
 
 updated = []
+initial_re = re.compile(r'^[  ]+[\+\-\*] ')
 
 
 def rewrap_change(change):
-    if (any([len(line) > WIDTH for line in change]) and
-            change[0].startswith('  * ')):
-        wrapper = TextWrapper()
-        return wrapper.wrap(''.join(change)[4:])
+    if not change:
+        return change
+    m = initial_re.match(change[0])
+    if any([len(line) > WIDTH for line in change]) and m:
+        wrapper = TextWrapper(m.group(0))
+        return wrapper.wrap(''.join(change)[len(m.group(0)):])
     else:
         return change
 
 
 def rewrap_changes(changes):
     change = []
+    indent = None
     for line in changes:
-        if line.startswith('  * '):
+        m = initial_re.match(line)
+        if m:
             yield from rewrap_change(change)
             change = [line]
-        elif line.startswith('    ') and change:
+            indent = len(m.group(0))
+        elif change and line.startswith(' ' * indent):
             change.append(line)
         else:
             yield from rewrap_change(change)
