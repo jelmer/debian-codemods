@@ -666,7 +666,7 @@ def guess_update_changelog(tree, path='', cl=None):
 def has_non_debian_changes(changes):
     for change in changes:
         try:
-            change_paths = change.paths
+            change_paths = change.path
         except AttributeError:  # brz < 3.1
             change_paths = change[1]
         for path in change_paths:
