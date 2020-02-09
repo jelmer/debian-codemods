@@ -1,8 +1,12 @@
 #!/usr/bin/python3
+import json
 import os
+import re
 import subprocess
 import sys
+from urllib.request import urlopen, Request
 
+from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.fixer import net_access_allowed
 from lintian_brush.watch import WatchFile, Watch
 
@@ -10,6 +14,9 @@ from lintian_brush.watch import WatchFile, Watch
 if os.path.exists('debian/watch'):
     # Nothing to do here..
     sys.exit(0)
+
+
+certainty = 'possible'
 
 watch_contents = None
 site = None
@@ -24,15 +31,36 @@ if os.path.exists('setup.py'):
             ['python2', 'setup.py', '--name', '--version']).splitlines()
     lines = [line for line in lines if not line.startswith(b'W: ')]
     (project, version) = lines
-    # TODO(jelmer): verify that <name>-<version> appears on
-    # https://pypi.python.org/simple/<name>
-    # TODO(jelmer): download watch file from
-    # http://pypi.debian.net/<project>/watch
-    url = (r'https://pypi.debian.net/%(project)s/%(project)'
-           r's-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))' % {
-            'project': project.decode()})
-    w = Watch(url, opts=[
-        'uversionmangle=s/(rc|a|b|c)/~$1/', 'pgpsigurlmangle=s/$/.asc/'])
+    project = project.decode()
+    version = version.decode()
+    current_version_filenames = None
+    if net_access_allowed():
+        json_url = 'https://pypi.python.org/pypi/%s/json' % project
+        headers = {'User-Agent': USER_AGENT}
+        response = urlopen(
+            Request(json_url, headers=headers), timeout=DEFAULT_URLLIB_TIMEOUT)
+        pypi_data = json.load(response)
+        if version in pypi_data['releases']:
+            release = pypi_data['releases'][version]
+            current_version_filenames = [
+                (d['filename'], d['has_sig'])
+                for d in release if d['packagetype'] == 'sdist']
+    filename_regex = (
+        r'%(project)s-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))' % {
+            'project': project})
+    opts = []
+    # TODO(jelmer): Set uversionmangle?
+    # opts.append('uversionmangle=s/(rc|a|b|c)/~$1/')
+    if current_version_filenames:
+        for (fn, has_sig) in current_version_filenames:
+            if re.match(filename_regex, fn):
+                certainty = 'certain'
+                if has_sig:
+                    opts.append('pgpsigurlmangle=s/$/.asc/')
+    url = (r'https://pypi.debian.net/%(project)s/%(fname_regex)s' % {
+        'project': project, 'fname_regex': filename_regex})
+    # TODO(jelmer): Add pgpsigurlmangle if has_sig==True
+    w = Watch(url, opts=opts)
     wf.entries.append(w)
     site = "pypi"
 
@@ -109,5 +137,5 @@ with open('debian/watch', 'w') as f:
     wf.dump(f)
 
 print("Add debian/watch file, using %s." % site)
-print("Certainty: possible")
+print("Certainty: %s" % certainty)
 print("Fixed-Lintian-Tags: debian-watch-file-is-missing")

@@ -7,6 +7,8 @@ lintian-brush (0.58) UNRELEASED; urgency=medium
     dealing with subitems.
   * Ignore rather than print tracebacks when mandatory fields in
     debian/control are missing.
+  * When generating watch files for pypi, check package details against
+    the API.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 31 Jan 2020 11:34:36 +0000
 
