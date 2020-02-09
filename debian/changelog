@@ -5,6 +5,8 @@ lintian-brush (0.58) UNRELEASED; urgency=medium
     test.
   * Improve handling of long lines in debian/changelog, especially when
     dealing with subitems.
+  * Ignore rather than print tracebacks when mandatory fields in
+    debian/control are missing.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 31 Jan 2020 11:34:36 +0000
 
