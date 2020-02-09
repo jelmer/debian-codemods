@@ -120,17 +120,20 @@ class FixerResult(object):
     """Result of a fixer run."""
 
     def __init__(self, description, fixed_lintian_tags=[],
-                 certainty=None, patch_name=None):
+                 certainty=None, patch_name=None,
+                 revision_id=None):
         self.description = description
         self.fixed_lintian_tags = fixed_lintian_tags
         self.certainty = certainty
         self.patch_name = patch_name
+        self.revision_id = revision_id
 
     def __repr__(self):
-        return "%s(%r, fixed_lintian_tags=%r, certainty=%r, patch_name=%r)" % (
+        return ("%s(%r, fixed_lintian_tags=%r, certainty=%r, patch_name=%r, "
+                "revision_id=%r)") % (
                 self.__class__.__name__,
                 self.description, self.fixed_lintian_tags, self.certainty,
-                self.patch_name)
+                self.patch_name, self.revision_id)
 
     def __eq__(self, other):
         if type(other) != type(self):
@@ -138,7 +141,8 @@ class FixerResult(object):
         return ((self.description == other.description) and
                 (self.fixed_lintian_tags == other.fixed_lintian_tags) and
                 (self.certainty == other.certainty) and
-                (self.patch_name == other.patch_name))
+                (self.patch_name == other.patch_name) and
+                (self.revision_id == other.revision_id))
 
 
 class Fixer(object):
@@ -817,10 +821,12 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     if committer is None:
         committer = get_committer(local_tree)
 
-    local_tree.commit(description, allow_pointless=False,
-                      reporter=NullCommitReporter(),
-                      committer=committer,
-                      specific_files=specific_files)
+    revid = local_tree.commit(
+        description, allow_pointless=False,
+        reporter=NullCommitReporter(),
+        committer=committer,
+        specific_files=specific_files)
+    result.revision_id = revid
     # TODO(jelmer): Run sbuild & verify lintian warning is gone?
     return result, summary
 

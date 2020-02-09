@@ -383,9 +383,10 @@ Arch: all
             applied, failed = run_lintian_fixers(
                 self.tree, [DummyFixer('dummy', 'some-tag')],
                 update_changelog=False)
+            revid = self.tree.last_revision()
         self.assertEqual(
                 [(FixerResult("Fixed some tag.\nExtended description.",
-                              ['some-tag'], 'certain'),
+                              ['some-tag'], 'certain', revision_id=revid),
                   'Fixed some tag.')],
                 applied)
         self.assertEqual({}, failed)
