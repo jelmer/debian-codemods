@@ -1,0 +1,5 @@
+# Don't need no gzip compression.
+compression = gzip
+tar-ignore = .git*
+tar-ignore = .hg*
+tar-ignore = .travis.yml
