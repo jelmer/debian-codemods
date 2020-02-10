@@ -13,6 +13,8 @@ lintian-brush (0.58) UNRELEASED; urgency=medium
     debian/source/options.
   * Keep copies of the BSD license inlined, but rename BSD => BSD-3-
     clause (per the spec).
+  * Don't remove patch files that are present but not mentioned in
+    series unless --opinionated is specified.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 31 Jan 2020 11:34:36 +0000
 
