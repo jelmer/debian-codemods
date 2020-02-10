@@ -1,0 +1,7 @@
+blah (2.6.0) unstable; urgency=medium
+
+  * Build-Depend on libsdl1.2-dev, libsdl-ttf2.0-dev and libsdl-mixer1.2-dev instead
+    of with the embedded version, add -lSDL_ttf to --with-py-libs in debian/rules
+    and rebootstrap (Closes: #382202)
+
+ -- Joe Example <joe@example.com>  Mon, 26 Feb 2018 11:31:48 -0800

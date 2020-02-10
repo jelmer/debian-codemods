@@ -15,7 +15,8 @@ def rewrap_change(change):
     m = initial_re.match(change[0])
     if any([len(line) > WIDTH for line in change]) and m:
         wrapper = TextWrapper(m.group(0))
-        return wrapper.wrap(''.join(change)[len(m.group(0)):])
+        return wrapper.wrap(
+                '\n'.join(l[len(m.group(0)):] for l in change))
     else:
         return change
 
