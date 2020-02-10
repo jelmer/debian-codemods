@@ -10,6 +10,11 @@ from warnings import warn
 
 
 COMMON_LICENSES_DIR = '/usr/share/common-licenses'
+# BSD is so short, inlining is fine.
+INLINED_LICENSES = ['BSD-3-clause']
+# In reality, what debian ships as "/usr/share/common-licenses/BSD" is
+# BSD-3-clause in SPDX.
+SPDX_RENAMES = {'BSD': 'BSD-3-clause'}
 updated = set()
 tags = set()
 _common_licenses = {}
@@ -39,7 +44,7 @@ def cached_common_license(name):
 
 _COMMON_LICENSES = [
     ('CC0-1.0', cached_common_license('CC0-1.0').replace('Legal Code ', '')),
-] + [(name, cached_common_license(name))
+] + [(SPDX_RENAMES.get(name, name), cached_common_license(name))
      for name in os.listdir(COMMON_LICENSES_DIR)]
 
 
@@ -124,8 +129,9 @@ try:
             old_text = license.text
             if common_license is not None:
                 blurb = get_blurb_for_license(common_license)
-                para.license = License(common_license, blurb)
-                updated.add(common_license)
+                if common_license not in INLINED_LICENSES:
+                    para.license = License(common_license, blurb)
+                    updated.add(common_license)
                 if common_license == 'Apache-2.0':
                     tags.add('copyright-file-contains-full-apache-2-license')
                 if common_license.startswith('GFDL-'):
@@ -174,6 +180,18 @@ try:
 except (NotMachineReadableError, FileNotFoundError):
     pass
 
-report_result(
-    'Refer to common license file for %s.' % ', '.join(sorted(updated)),
-    fixed_lintian_tags=tags)
+
+done = []
+if updated:
+    done.append(
+        'refer to common license file for %s' % ', '.join(sorted(updated)))
+if set(renames.values()) - set(updated):
+    done.append('use common license names: ' + ', '.join(
+        ['%s (was: %s)' % (new, old) for (old, new) in sorted(renames.items())
+         if new not in updated]))
+
+
+if done:
+    report_result(
+        done[0][0].capitalize() + ('; '.join(done) + '.')[1:],
+        fixed_lintian_tags=tags)

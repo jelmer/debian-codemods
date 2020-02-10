@@ -6,6 +6,11 @@ import sys
 from lintian_brush.lintian_overrides import override_exists
 from lintian_brush.patches import read_quilt_series
 
+if os.environ.get('OPINIONATED', 'no') != 'yes':
+    # In a lot of cases, it seems like removing the patch is not the right
+    # thing to do.
+    sys.exit(0)
+
 try:
     patches = set()
     with open('debian/patches/series', 'rb') as f:
