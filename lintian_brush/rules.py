@@ -41,7 +41,9 @@ def matches_wildcard(text, wildcard):
 class Rule(object):
     """A make rule."""
 
-    def __init__(self, target=None, commands=None, prereq_targets=None):
+    def __init__(self, target=None, commands=None, prereq_targets=None,
+                 precomment=None):
+        self.precomment = precomment or []
         self.target = target
         self.components = prereq_targets or []
         if self.components:
@@ -56,8 +58,8 @@ class Rule(object):
             self.lines = None
 
     @classmethod
-    def _from_first_line(cls, firstline):
-        self = cls()
+    def _from_first_line(cls, firstline, precomment=None):
+        self = cls(precomment=precomment)
         self.lines = [firstline]
         # TODO(jelmer): What if there are multiple targets?
         self.target, self._component_str = firstline.split(b':', 1)
@@ -99,26 +101,29 @@ class Rule(object):
         self.lines[0] = b'%s:%s' % (self.target, self._component_str)
 
     def dump_lines(self):
-        return [line + b'\n' for line in self.lines]
+        for line in self.precomment:
+            yield line + b'\n'
+        for line in self.lines:
+            yield line + b'\n'
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
-        return self.dump_lines() == other.dump_lines()
+        return list(self.dump_lines()) == list(other.dump_lines())
 
     def __bool__(self):
         return bool(self.lines)
 
     def clear(self):
+        self.precomment = []
         self.lines = []
 
-    def _trim_trailing_whitespace(self):
-        while self.lines and not self.lines[-1].strip():
-            del self.lines[-1]
-
-    def _ensure_trailing_whitespace(self):
-        if self.lines and self.lines[-1].strip():
-            self.lines.append(b'')
+    def _finish(self):
+        rest = [self]
+        while self.lines and (
+                not self.lines[-1] or self.lines[-1].startswith(b'#')):
+            rest.insert(1, self.lines.pop(-1))
+        return rest
 
 
 def is_conditional(line):
@@ -181,8 +186,13 @@ class Makefile(object):
                     mf.contents.append(line)
             elif b':' in line and b' ' not in line.split(b':')[0]:
                 if rule:
-                    mf.contents.append(rule)
-                rule = Rule._from_first_line(line)
+                    mf.contents.extend(rule._finish())
+                precomment = []
+                while (len(mf.contents) > 1 and
+                        isinstance(mf.contents[-1], bytes) and
+                        mf.contents[-1].startswith(b'#')):
+                    precomment.insert(0, mf.contents.pop(-1))
+                rule = Rule._from_first_line(line, precomment=precomment)
             elif not line.strip():
                 if rule:
                     rule.append_line(line)
@@ -190,25 +200,27 @@ class Makefile(object):
                     mf.contents.append(line)
             else:
                 if rule:
-                    mf.contents.append(rule)
+                    mf.contents.extend(rule._finish())
                 rule = None
                 mf.contents.append(line)
 
         if rule:
-            mf.contents.append(rule)
+            mf.contents.extend(rule._finish())
 
         return mf
 
     def dump_lines(self):
         lines = []
         contents = self.contents[:]
-        while contents and not contents[-1]:
+        while contents and contents[-1] == b'':
             del contents[-1]
-        if contents and isinstance(contents[-1], Rule):
-            contents[-1]._trim_trailing_whitespace()
         for entry in contents:
             if isinstance(entry, Rule):
-                lines.extend(entry.dump_lines())
+                if entry.lines == []:
+                    if lines[-1] == b'\n':
+                        lines.pop(-1)
+                else:
+                    lines.extend(entry.dump_lines())
             else:
                 lines.append(entry + b'\n')
         return lines
@@ -216,18 +228,16 @@ class Makefile(object):
     def dump(self):
         return b''.join(self.dump_lines())
 
-    def add_rule(self, target, components=None):
+    def add_rule(self, target, components=None, precomment=None):
         if self.contents:
             if isinstance(self.contents[-1], Rule):
-                self.contents[-1]._ensure_trailing_whitespace()
-            elif self.contents[-1].strip():
-                self.contents.append(b'\n')
+                self.contents.append(b'')
         if isinstance(target, list):
             target = b' '.join(target)
         line = b'%s:' % target
         if components:
             line += b' ' + b' '.join(components)
-        rule = Rule._from_first_line(line)
+        rule = Rule._from_first_line(line, precomment=precomment)
         self.contents.append(rule)
         return rule
 
@@ -293,6 +303,9 @@ class RulesUpdater(MakefileUpdater):
                     rule_cb(rule)
                 if rule:
                     newcontents.append(rule)
+                else:
+                    if newcontents and newcontents[-1] == b'':
+                        newcontents.pop(-1)
             else:
                 line = entry
                 if global_line_cb:

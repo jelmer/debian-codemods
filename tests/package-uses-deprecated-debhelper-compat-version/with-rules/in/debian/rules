@@ -3,6 +3,7 @@ all:
 	dh --with=systemd,blah --buildsystem=python_distutils
 
 
+# This comment will also be removed, since it relates to override_dh_install.
 override_dh_install:
 	dh_install --fail-missing --list-missing
 

@@ -62,6 +62,23 @@ all: %: test
             [Rule(b'all', commands=[b'test'], prereq_targets=[b'%:', b'test'])]
             )
 
+    def test_rule_with_comment(self):
+        mf = Makefile.from_bytes(b"""\
+rule1:
+\ttest1
+
+# And this is a comment
+rule2:
+\ttest2
+""")
+        self.assertEqual(
+            mf.contents,
+            [Rule(b'rule1', commands=[b'test1']),
+             b'',
+             Rule(b'rule2', commands=[b'test2'],
+                  precomment=[b'# And this is a comment'])
+             ])
+
 
 class UpdateRulesTests(TestCaseWithTransport):
 
@@ -168,10 +185,12 @@ SOMETHING = 1
 all:
 \techo blah
 
+# Original rule
+# Multi-line comment
 none:
 \techo foo
 """)
-        r = mf.add_rule(b'blah')
+        r = mf.add_rule(b'blah', precomment=[b'# A new rule'])
         self.assertIsInstance(r, Rule)
         r.append_command(b'echo really blah')
         self.assertEqual(b"""\
@@ -180,9 +199,12 @@ SOMETHING = 1
 all:
 \techo blah
 
+# Original rule
+# Multi-line comment
 none:
 \techo foo
 
+# A new rule
 blah:
 \techo really blah
 """, mf.dump())
