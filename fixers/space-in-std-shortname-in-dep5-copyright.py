@@ -1,8 +1,5 @@
 #!/usr/bin/python3
 
-import os
-import json
-
 from debian.copyright import License
 from lintian_brush.copyright import update_copyright, NotMachineReadableError
 from lintian_brush.licenses import load_spdx_data
@@ -20,8 +17,12 @@ REPLACE_SPACES = [
   'bsd-style',
 ]
 
+spdx_data = load_spdx_data()
 
-REPLACE_SPACES.extend(load_spdx_data()['licenses'])
+RENAMES.update(
+    {license['name'].lower(): license_id
+     for license_id, license in spdx_data['licenses'].items()})
+REPLACE_SPACES.extend(spdx_data['licenses'])
 REPLACE_SPACES = set([license_id.lower() for license_id in REPLACE_SPACES])
 for license_id in list(REPLACE_SPACES):
     if license_id.endswith('.0'):
