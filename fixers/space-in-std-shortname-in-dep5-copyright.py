@@ -5,6 +5,7 @@ import json
 
 from debian.copyright import License
 from lintian_brush.copyright import update_copyright, NotMachineReadableError
+from lintian_brush.licenses import load_spdx_data
 
 RENAMES = {k.lower(): v for k, v in {
   'Creative Commons Attribution Share-Alike (CC-BY-SA) v3.0': 'CC-BY-SA-3.0',
@@ -20,21 +21,7 @@ REPLACE_SPACES = [
 ]
 
 
-def load_spdx_data():
-    path = os.path.abspath(os.path.join(
-        os.path.dirname(__file__), '..', 'spdx.json'))
-    if not os.path.isfile(path):
-        import pkg_resources
-        path = pkg_resources.resource_filename(
-            __name__, 'lintian-brush/spdx.json')
-        if not os.path.isfile(path):
-            # Urgh.
-            path = '/usr/share/lintian-brush/spdx.json'
-    with open(path, 'rb') as f:
-        return json.load(f)
-
-
-REPLACE_SPACES.extend(load_spdx_data()['license_ids'])
+REPLACE_SPACES.extend(load_spdx_data()['licenses'])
 REPLACE_SPACES = set([license_id.lower() for license_id in REPLACE_SPACES])
 for license_id in list(REPLACE_SPACES):
     if license_id.endswith('.0'):
