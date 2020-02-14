@@ -35,5 +35,5 @@ License: CC0-1.0
  You should have received a copy of the CC0 Public Domain Dedication along with
  this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
  .
- On Debian systems, the complete text of the CC0 1.0 Universal license can be
- found in "/usr/share/common-licenses/CC0-1.0".
+ On Debian systems, the full text of the CC0 1.0 Universal license can be found
+ in the file `/usr/share/common-licenses/CC0-1.0'.

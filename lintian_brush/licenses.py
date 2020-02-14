@@ -27,9 +27,6 @@ FULL_LICENSE_NAME = {
     'CC0-1.0': 'CC0 1.0 Universal license',
 }
 
-# BSD is so short, inlining is fine.
-INLINED_LICENSES = ['BSD-3-clause']
-
 
 def load_spdx_data():
     path = os.path.abspath(os.path.join(
