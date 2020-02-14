@@ -1,4 +1,4 @@
-lintian-brush (0.58) UNRELEASED; urgency=medium
+lintian-brush (0.58) unstable; urgency=medium
 
   * Add override for autotools-pkg-config-macro-not-cross-compilation-
     safe, which correctly (but intentionally) gets triggered for our
@@ -16,7 +16,7 @@ lintian-brush (0.58) UNRELEASED; urgency=medium
   * Don't remove patch files that are present but not mentioned in
     series unless --opinionated is specified.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 31 Jan 2020 11:34:36 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 14 Feb 2020 02:35:54 +0000
 
 lintian-brush (0.57) unstable; urgency=medium
 
