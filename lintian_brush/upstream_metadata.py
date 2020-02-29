@@ -176,6 +176,11 @@ def guess_repo_from_url(url, net_access=False):
             return 'https://git.savannah.gnu.org/git/%s.git' % (
                 path_elements[1])
         return None
+    if parsed_url.netloc == 'download.savannah.gnu.org':
+        if len(path_elements) >= 2 and path_elements[0] == 'releases':
+            return 'https://git.savannah.gnu.org/git/%s.git' % (
+                path_elements[1])
+        return None
     if is_gitlab_site(parsed_url.netloc, net_access):
         if parsed_url.path.strip('/').count('/') < 1:
             return None
