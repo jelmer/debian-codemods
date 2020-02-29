@@ -512,6 +512,10 @@ def guess_from_readme(path, trust_package):
                     yield UpstreamDatum(
                         'Bug-Database',
                         m.group(0).decode().rstrip(), 'possible')
+                m = re.fullmatch(b'https://github.com/([^/]+)/([^/?.]+)', line)
+                if m:
+                    yield UpstreamDatum(
+                        'Repository', line.strip().decode(), 'likely')
     except IsADirectoryError:
         pass
 
