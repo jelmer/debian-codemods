@@ -1,3 +1,10 @@
+lintian-brush (0.59) UNRELEASED; urgency=medium
+
+  * unused-license-paragraph-in-dep5-copyright: downgrade certainty when
+    license is mentioned elsewhere.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 02 Mar 2020 00:38:50 +0000
+
 lintian-brush (0.58) unstable; urgency=medium
 
   * Add override for autotools-pkg-config-macro-not-cross-compilation-

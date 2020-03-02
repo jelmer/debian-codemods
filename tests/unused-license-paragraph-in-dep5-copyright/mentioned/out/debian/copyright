@@ -1,0 +1,10 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: blah
+Source: https://github.com/example/blah
+
+Files: *
+Copyright: 2013 Somebody <somebody@example.com>
+License: Custom License
+
+License: Custom License
+ We mostly just follow BSL-1.

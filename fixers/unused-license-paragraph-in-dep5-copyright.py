@@ -57,6 +57,17 @@ try:
             # are actually the referenced ones.
             certainty = 'possible'
 
+        for name in extra_defined:
+            for paragraph in updater.copyright.all_paragraphs():
+                if not paragraph.license:
+                    continue
+                if paragraph.license.synopsis == name:
+                    continue
+                if paragraph.license.text and name in paragraph.license.text:
+                    certainty = 'possible'
+                if paragraph.comment and name in paragraph.comment:
+                    certainty = 'possible'
+
         if extra_defined and not extra_used:
             for paragraph in list(updater.copyright._Copyright__paragraphs):
                 if not paragraph.license:
