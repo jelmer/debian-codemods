@@ -299,13 +299,15 @@ blah (0.38) unstable; urgency=medium
 
     def test_no_delta(self):
         self.tree.branch.tags.set_tag('upstream/0.38', self.upstream_revid)
-        self.assertEqual([], list(tree_non_patches_changes(self.tree)))
+        self.assertEqual([], list(tree_non_patches_changes(
+            self.tree, 'debian/patches')))
 
     def test_delta(self):
         self.tree.branch.tags.set_tag('upstream/0.38', self.upstream_revid)
         self.build_tree_contents([('anotherfile', 'blah')])
         self.tree.add('anotherfile')
-        self.assertEqual(1, len(list(tree_non_patches_changes(self.tree))))
+        self.assertEqual(1, len(list(tree_non_patches_changes(
+            self.tree, 'debian/patches'))))
 
 
 class FindCommonPatchSuffixTests(TestCase):

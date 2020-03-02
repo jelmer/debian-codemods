@@ -235,16 +235,18 @@ def tree_patches_directory(tree):
     return None
 
 
-def tree_non_patches_changes(tree):
+def tree_non_patches_changes(tree, patches_directory):
     """Check if a Debian tree has changes vs upstream tree.
 
     Args:
       tree: Tree to check
+      patches_directory: Name of patches directory
     Returns:
         list of TreeDelta objects
     """
-    directory = tree_patches_directory(tree)
-    patches = list(read_quilt_patches(tree, directory))
+    if patches_directory is None:
+        return
+    patches = list(read_quilt_patches(tree, patches_directory))
 
     # TODO(jelmer): What if patches are already applied on tree?
     with upstream_with_applied_patches(tree, patches) \

@@ -24,7 +24,10 @@ with open('debian/source/format', 'w') as f:
         f.write("3.0 (native)\n")
     else:
         f.write("3.0 (quilt)\n")
-        from lintian_brush.patches import tree_non_patches_changes
+        from lintian_brush.patches import (
+            tree_non_patches_changes,
+            tree_patches_directory,
+            )
         from breezy import errors
         from breezy.workingtree import WorkingTree
         try:
@@ -33,7 +36,8 @@ with open('debian/source/format', 'w') as f:
             # TODO(jelmer): Or maybe exit with code 2?
             pass
         else:
-            delta = list(tree_non_patches_changes(tree))
+            patches_directory = tree_patches_directory(tree)
+            delta = list(tree_non_patches_changes(tree, patches_directory))
             if delta:
                 sys.stderr.write(
                     'Tree has non-quilt changes against upstream.\n')
