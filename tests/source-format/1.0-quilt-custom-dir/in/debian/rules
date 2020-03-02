@@ -1,0 +1,1 @@
+export QUILT_PATCH_DIR = debian/patches-applied

@@ -36,6 +36,7 @@ from ..patches import (
     read_quilt_patches,
     read_quilt_series,
     tree_non_patches_changes,
+    tree_patches_directory,
     upstream_with_applied_patches,
     )
 
@@ -327,3 +328,33 @@ class FindCommonPatchSuffixTests(TestCase):
         self.assertEqual(
             '.patch',
             find_common_patch_suffix(['series', 'foo.patch', 'bar.patch']))
+
+
+class TreePatchesDirectoryTests(TestCaseWithTransport):
+
+    def test_none(self):
+        tree = self.make_branch_and_tree('.')
+        self.assertIs(None, tree_patches_directory(tree))
+
+    def test_default(self):
+        tree = self.make_branch_and_tree('.')
+        tree.mkdir('debian')
+        tree.mkdir('debian/patches')
+        self.assertEqual('debian/patches', tree_patches_directory(tree))
+
+    def test_custom(self):
+        tree = self.make_branch_and_tree('.')
+        tree.mkdir('debian')
+        tree.mkdir('debian/patches-applied')
+        self.build_tree_contents([('debian/rules', """\
+
+export QUILT_PATCH_DIR := debian/patches-applied
+
+all:
+
+blah: bloe
+\tfoo
+""")])
+        tree.add('debian/rules')
+        self.assertEqual(
+            'debian/patches-applied', tree_patches_directory(tree))

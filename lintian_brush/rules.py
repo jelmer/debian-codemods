@@ -158,6 +158,18 @@ class Makefile(object):
             if rule.has_target(target, exact):
                 yield rule
 
+    def get_variable(self, desired_key):
+        for line in self.contents:
+            if not isinstance(line, bytes):
+                continue
+            m = re.fullmatch(
+                br'(export\s)?([A-Za-z0-9_]+)\s*[:?]?=\s*(.*)', line)
+            if not m:
+                continue
+            if m.group(2).strip() == desired_key:
+                return m.group(3).strip()
+        raise KeyError(desired_key)
+
     @classmethod
     def from_bytes(cls, contents):
         mf = cls()

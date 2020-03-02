@@ -219,6 +219,29 @@ def upstream_with_applied_patches(tree, patches):
         yield tree
 
 
+def rules_find_patches_directory(makefile):
+    try:
+        val = makefile.get_variable(b'QUILT_PATCH_DIR')
+    except KeyError:
+        return None
+    else:
+        return val.decode()
+
+
+def find_patches_directory(path):
+    from .rules import Makefile
+    directory = 'debian/patches'
+    try:
+        mf = Makefile.from_path(os.path.join(path, 'debian/rules'))
+    except FileNotFoundError:
+        pass
+    else:
+        rules_directory = rules_find_patches_directory(mf)
+        if rules_directory is not None:
+            directory = rules_directory
+    return directory
+
+
 def tree_patches_directory(tree):
     """Find the name of the patches directory.
 
@@ -227,9 +250,7 @@ def tree_patches_directory(tree):
     Returns:
       path to patches directory, if any
     """
-    # TODO(jelmer): Check if the QUILT_PATCH_DIR variable is set in
-    # debian/rules.
-    directory = 'debian/patches'
+    directory = find_patches_directory(tree.abspath('.'))
     if tree.has_filename(directory):
         return directory
     return None
@@ -313,19 +334,18 @@ def find_common_patch_suffix(names, default='.patch'):
     return max(suffix_count.items(), key=lambda v: v[1])[0]
 
 
-def add_patch(tree, name, contents, header=None):
+def add_patch(tree, patches_directory, name, contents, header=None):
     """Add a new patch.
 
     Args:
       tree: Tree to edit
+      patches_directory: Name of patches directory
       name: Patch name without suffix
       contents: Diff
       header: RFC822 to read
     Returns:
       Name of the patch that was written (including suffix)
     """
-    # TODO(jelmer): Use tree_patches_directory
-    patches_directory = 'debian/patches'
     if not tree.has_filename(patches_directory):
         tree.mkdir(patches_directory)
     patch_suffix = find_common_patch_suffix(os.listdir(patches_directory))
@@ -368,10 +388,12 @@ def move_upstream_changes_to_patch(
     lines = description.splitlines()
     header['Description'] = lines[0].rstrip('\n')
     header.set_payload(''.join([l + '\n' for l in lines[1:]]).lstrip())
-    patchname = add_patch(local_tree, patch_name, diff.getvalue(), header)
+    patches_directory = tree_patches_directory(local_tree)
+    patchname = add_patch(
+        local_tree, patches_directory, patch_name, diff.getvalue(), header)
     specific_files = [
-        os.path.join(subpath, 'debian/patches'),
-        os.path.join(subpath, 'debian/patches/series'),
-        os.path.join(subpath, 'debian/patches', patchname)]
+        os.path.join(subpath, patches_directory),
+        os.path.join(subpath, patches_directory, 'series'),
+        os.path.join(subpath, patches_directory, patchname)]
     local_tree.add(specific_files)
     return specific_files, patchname

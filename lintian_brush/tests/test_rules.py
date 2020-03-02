@@ -209,6 +209,21 @@ blah:
 \techo really blah
 """, mf.dump())
 
+    def test_get_variable(self):
+        mf = Makefile.from_bytes(b"""\
+SOMETHING = 1
+export SOMETHING_ELSE = 2
+SOMETHING_EXPORTED := 4
+
+all:
+\techo blah
+
+""")
+        self.assertEqual(b'1', mf.get_variable(b'SOMETHING'))
+        self.assertEqual(b'2', mf.get_variable(b'SOMETHING_ELSE'))
+        self.assertEqual(b'4', mf.get_variable(b'SOMETHING_EXPORTED'))
+        self.assertRaises(KeyError, mf.get_variable, b'SOMETHING_MISSING')
+
 
 class InvokeDropWithTests(TestCaseWithTransport):
 

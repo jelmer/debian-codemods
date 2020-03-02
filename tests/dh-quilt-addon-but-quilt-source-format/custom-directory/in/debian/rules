@@ -1,0 +1,6 @@
+#!/usr/bin/make -f
+
+export QUILT_PATCH_DIR = debian/pathces-applies
+
+%:
+	dh $@ --with=quilt
