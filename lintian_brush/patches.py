@@ -219,6 +219,22 @@ def upstream_with_applied_patches(tree, patches):
         yield tree
 
 
+def tree_patches_directory(tree):
+    """Find the name of the patches directory.
+
+    Args:
+      tree: Tree to check
+    Returns:
+      path to patches directory, if any
+    """
+    # TODO(jelmer): Check if the QUILT_PATCH_DIR variable is set in
+    # debian/rules.
+    directory = 'debian/patches'
+    if tree.has_filename(directory):
+        return directory
+    return None
+
+
 def tree_non_patches_changes(tree):
     """Check if a Debian tree has changes vs upstream tree.
 
@@ -227,7 +243,7 @@ def tree_non_patches_changes(tree):
     Returns:
         list of TreeDelta objects
     """
-    directory = 'debian/patches'
+    directory = tree_patches_directory(tree)
     patches = list(read_quilt_patches(tree, directory))
 
     # TODO(jelmer): What if patches are already applied on tree?
@@ -295,24 +311,27 @@ def find_common_patch_suffix(names, default='.patch'):
     return max(suffix_count.items(), key=lambda v: v[1])[0]
 
 
-def add_patch(name, contents, header=None):
+def add_patch(tree, name, contents, header=None):
     """Add a new patch.
 
     Args:
+      tree: Tree to edit
       name: Patch name without suffix
       contents: Diff
       header: RFC822 to read
     Returns:
       Name of the patch that was written (including suffix)
     """
-    if not os.path.isdir('debian/patches'):
-        os.mkdir('debian/patches')
-    patch_suffix = find_common_patch_suffix(os.listdir('debian/patches'))
+    # TODO(jelmer): Use tree_patches_directory
+    patches_directory = 'debian/patches'
+    if not tree.has_filename(patches_directory):
+        tree.mkdir(patches_directory)
+    patch_suffix = find_common_patch_suffix(os.listdir(patches_directory))
     patchname = name + patch_suffix
-    path = os.path.join('debian/patches', patchname)
-    if os.path.exists(path):
+    path = os.path.join(patches_directory, patchname)
+    if tree.has_filename(path):
         raise FileExistsError(path)
-    with open(path, 'wb') as f:
+    with open(tree.abspath(path), 'wb') as f:
         if header is not None:
             f.write(header.as_string().encode('utf-8'))
             f.write(b'\n')
@@ -320,7 +339,8 @@ def add_patch(name, contents, header=None):
 
     # TODO(jelmer): Write to patches branch if applicable
 
-    with open('debian/patches/series', 'a') as f:
+    series_path = os.path.join(patches_directory, 'series')
+    with open(tree.abspath(series_path, 'a')) as f:
         f.write('%s\n' % patchname)
 
     return patchname
@@ -346,7 +366,7 @@ def move_upstream_changes_to_patch(
     lines = description.splitlines()
     header['Description'] = lines[0].rstrip('\n')
     header.set_payload(''.join([l + '\n' for l in lines[1:]]).lstrip())
-    patchname = add_patch(patch_name, diff.getvalue(), header)
+    patchname = add_patch(local_tree, patch_name, diff.getvalue(), header)
     specific_files = [
         os.path.join(subpath, 'debian/patches'),
         os.path.join(subpath, 'debian/patches/series'),
