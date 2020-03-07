@@ -1,25 +1,32 @@
 .TH LINTIAN-BRUSH "5" "October 2018" "lintian-brush 0.1" "File Formats Manual"
 .SH NAME
-lintian-brush.conf \- per-package configuration for lintian-brush
+debian/lintian-brush.conf \- per-package configuration for lintian-brush
 .SH DESCRIPTION
 .PP
-A lintian-brush per-package configuration file contains of a series of single key/value pairs.
+A lintian-brush per-package configuration file that contains of a series of
+single key/value pairs. The configuration file should be placed
+in the package at \fIdebian/lintian-brush.conf\fR.
 .PP
-The hash sign \(lq\fB#\fP\(rq) is used as a comment character. Any text after
+The hash sign \(lq\fB#\fP\(rq is used as a comment character. Any text after
 the comment character to the end of the line is ignored.
 
 .SH VARIABLES
 .PP
+The following variables are currently supported:
+
 .nf
 \fBcompat-release\fP = \fIRELEASE\fP
 .fi
 .IP
 \fBcompat-release\fP specifies the oldest release that the package aims to be
-compatible with. lintian-brush will not make any changes that require packages not
-present in this release.
+compatible with. lintian-brush will not make any changes that require packages or
+features not present in this release.
+.IP
+Supported values are Debian and Ubuntu code names as well as aliases
+("testing", "experimental", "stable", "unstable"). Version numbers
+are currently not supported.
 .IP
 The default compat release is "stable".
-
 .PP
 .nf
 \fBallow-reformatting\fP = \fITrue|False\fP
@@ -39,8 +46,9 @@ formatting.
 The \fBupdate-changelog\fP setting determines whether new lines in the changelog
 will be added for the changes that lintian-brush has made to the package.
 .IP
-By default, lintian-brush will automatically determine whether the changelog
-should be updated.
+By default, lintian-brush will automatically (using some basic heuristics,
+such as checking for the presence of a \fB[gbp]\fR section in \fIdebian/gbp.conf\fP)
+determine whether the changelog should be updated.
 .IP
 You may want to set this to \fIFalse\fR if you are using "gbp dch" to generate
 your changelog entries.

@@ -4,6 +4,8 @@ lintian-brush (0.59) UNRELEASED; urgency=medium
     license is mentioned elsewhere.
   * Look for custom patches directory in debian/rules.
   * Document the --dry-run option in lintian-brush(1). Closes: #953161
+  * lintian-brush.conf.5: Clarify syntax of compat-release, location of
+    file. Closes: #953164
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 02 Mar 2020 00:38:50 +0000
 
