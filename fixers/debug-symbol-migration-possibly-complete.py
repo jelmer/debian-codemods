@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 
 from debian.deb822 import PkgRelation
-from lintian_brush.fixer import net_access_allowed
+from lintian_brush.fixer import net_access_allowed, compat_release
 from lintian_brush.rules import update_rules
 import os
 
 import re
 
 
-compat_release = os.environ.get('COMPAT_RELEASE', 'sid')
+compat_release = compat_release()
 
 
 def previous_release(release):

@@ -42,3 +42,7 @@ def report_result(description, fixed_lintian_tags=None, certainty=None,
 def net_access_allowed():
     """Check whether network access is allowed."""
     return os.environ.get('NET_ACCESS', 'disallow') == 'allow'
+
+
+def compat_release():
+    return os.environ.get('COMPAT_RELEASE', 'sid')

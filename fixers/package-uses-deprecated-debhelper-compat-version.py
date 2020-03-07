@@ -18,6 +18,7 @@ from lintian_brush.debhelper import (
     maximum_debhelper_compat_version,
     DEBHELPER_BUILD_STEPS,
     )
+from lintian_brush.fixer import compat_release
 from lintian_brush.rules import (
     check_cdbs,
     dh_invoke_drop_with,
@@ -28,9 +29,8 @@ from lintian_brush.rules import (
     )
 
 
-compat_release = os.environ.get('COMPAT_RELEASE', 'sid')
-
-new_debhelper_compat_version = maximum_debhelper_compat_version(compat_release)
+new_debhelper_compat_version = maximum_debhelper_compat_version(
+    compat_release())
 
 uses_cdbs = check_cdbs()
 
