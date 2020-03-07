@@ -47,6 +47,11 @@ Print the identity (name and e\-mailaddress) that lintian-brush will use when co
 \fB\-\-disable\-net\-access\fR
 Do not attempt to use the network to e.g. retrieve additional package metadata from hosting sites, or to check whether a homepage is also available over HTTPS.
 .TP
+\fB\-\-dry\-run\fR
+Run fixers but do not actually make changes to the repository. Useful in particular in combination with \-\-diff.
+.IP
+Note that this currently will create a temporary clone of the repository, which may be slow for large repositories.
+.TP
 \fB\-\-verbose\fR
 Print list of fixers that was run and print tracebacks for failed fixers.
 .SH EXAMPLES
