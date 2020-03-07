@@ -1,4 +1,4 @@
-lintian-brush (0.59) UNRELEASED; urgency=medium
+lintian-brush (0.59) unstable; urgency=medium
 
   * unused-license-paragraph-in-dep5-copyright: downgrade certainty when
     license is mentioned elsewhere.
@@ -7,7 +7,7 @@ lintian-brush (0.59) UNRELEASED; urgency=medium
   * lintian-brush.conf.5: Clarify syntax of compat-release, location of
     file. Closes: #953164
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 02 Mar 2020 00:38:50 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 07 Mar 2020 14:31:37 +0000
 
 lintian-brush (0.58) unstable; urgency=medium
 
