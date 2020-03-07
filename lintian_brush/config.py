@@ -21,6 +21,7 @@ import os
 
 from configobj import ConfigObj
 import warnings
+import distro_info
 
 
 PACKAGE_CONFIG_FILENAME = 'debian/lintian-brush.conf'
@@ -32,6 +33,18 @@ SUPPORTED_KEYS = [
     'allow-reformatting',
     'update-changelog',
     ]
+
+
+def resolve_release_codename(name):
+    debian = distro_info.DebianDistroInfo()
+    if debian.codename(name):
+        return debian.codename(name)
+    if debian.valid(name):
+        return name
+    ubuntu = distro_info.UbuntuDistroInfo()
+    if ubuntu.valid(name):
+        return name
+    return None
 
 
 class Config(object):
@@ -50,7 +63,11 @@ class Config(object):
         return cls(os.path.join(wt.basedir, subpath, PACKAGE_CONFIG_FILENAME))
 
     def compat_release(self):
-        return self._obj.get('compat-release')
+        value = self._obj.get('compat-release')
+        codename = resolve_release_codename(value)
+        if codename is None:
+            warnings.warn('unknown compat release %s, ignoring.' % value)
+        return codename
 
     def allow_reformatting(self):
         try:

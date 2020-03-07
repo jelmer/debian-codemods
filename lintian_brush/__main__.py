@@ -198,9 +198,6 @@ def main(argv=None):
                 minimum_certainty = cfg.minimum_certainty()
             if compat_release is None:
                 compat_release = cfg.compat_release()
-                if compat_release:
-                    compat_release = debian_info.codename(
-                        compat_release, default=compat_release)
             if allow_reformatting is None:
                 allow_reformatting = cfg.allow_reformatting()
             if update_changelog is None:

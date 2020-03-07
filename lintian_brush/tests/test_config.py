@@ -18,24 +18,43 @@
 """Tests for lintian_brush.config."""
 
 from breezy.tests import (
+    TestCase,
     TestCaseWithTransport,
     )
 
+from distro_info import DebianDistroInfo
+
 from lintian_brush.config import (
     Config,
+    resolve_release_codename,
     )
+
+
+class ResolveCodeNameTests(TestCase):
+
+    def test_resolve_debian(self):
+        self.assertEqual('sid', resolve_release_codename('sid'))
+        self.assertEqual('buster', resolve_release_codename('buster'))
+        self.assertEqual('sid', resolve_release_codename('unstable'))
+
+    def test_resolve_unknown(self):
+        self.assertEqual(None, resolve_release_codename('blah'))
+
+    def test_resolve_ubuntu(self):
+        self.assertEqual('trusty', resolve_release_codename('trusty'))
 
 
 class ConfigReadTests(TestCaseWithTransport):
 
     def test_compat_release(self):
+        debian = DebianDistroInfo()
         self.build_tree_contents([
             ('debian/', ),
             ('debian/lintian-brush.conf', """\
 compat-release = testing
 """)])
         cfg = Config('debian/lintian-brush.conf')
-        self.assertEqual('testing', cfg.compat_release())
+        self.assertEqual(debian.testing(), cfg.compat_release())
 
     def test_minimum_certainty(self):
         self.build_tree_contents([
