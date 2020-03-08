@@ -572,7 +572,7 @@ def guess_from_meta_yml(path, trust_package):
     """
     import ruamel.yaml
     import ruamel.yaml.reader
-    with open(path, 'r') as f:
+    with open(path, 'rb') as f:
         try:
             data = ruamel.yaml.load(f, ruamel.yaml.SafeLoader)
         except ruamel.yaml.reader.ReaderError as e:
