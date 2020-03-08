@@ -865,6 +865,21 @@ def _possible_fields_missing(upstream_metadata, fields, field_certainty):
         return False
 
 
+def _sf_git_extract_url(page):
+    from bs4 import BeautifulSoup
+    bs = BeautifulSoup(page, features='lxml')
+    el = bs.find(id='access_url')
+    if not el:
+        return None
+    value = el.get('value')
+    if value is None:
+        return None
+    access_command = value.split(' ')
+    if access_command[:2] != ['git', 'clone']:
+        return None
+    return access_command[2]
+
+
 def guess_from_sf(sf_project):
     data = get_sf_metadata(sf_project)
     if data.get('name'):
@@ -885,14 +900,20 @@ def guess_from_sf(sf_project):
     if len(vcs_tools) == 1:
         (kind, url) = vcs_tools[0]
         if kind == 'git':
-            url = urljoin('https://git.code.sf.net/', url)
+            url = urljoin('https://sourceforge.net/', url)
+            headers = {'User-Agent': USER_AGENT, 'Accept': 'text/html'}
+            http_contents = urlopen(
+                Request(url, headers=headers),
+                timeout=DEFAULT_URLLIB_TIMEOUT).read()
+            url = _sf_git_extract_url(http_contents)
         elif kind == 'svn':
             url = urljoin('https://svn.code.sf.net/', url)
         elif kind == 'hg':
             url = urljoin('https://hg.code.sf.net/', url)
         else:
             raise KeyError(kind)
-        yield 'Repository', url
+        if url is not None:
+            yield 'Repository', url
 
 
 def extend_from_external_guesser(
