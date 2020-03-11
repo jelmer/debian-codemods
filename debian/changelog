@@ -1,3 +1,10 @@
+lintian-brush (0.60) UNRELEASED; urgency=medium
+
+  * missing-build-dependency-for-dh_-command: Don't break on empty
+    lines. Closes: #953392
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 10 Mar 2020 11:47:17 +0000
+
 lintian-brush (0.59) unstable; urgency=medium
 
   * unused-license-paragraph-in-dep5-copyright: downgrade certainty when

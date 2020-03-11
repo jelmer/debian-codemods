@@ -35,7 +35,7 @@ for entry in mf.contents:
                 continue
             try:
                 executable = shlex.split(command.decode('utf-8', 'replace'))[0]
-            except ValueError:
+            except (ValueError, IndexError):
                 continue
             try:
                 dep = COMMAND_TO_DEP[executable]
