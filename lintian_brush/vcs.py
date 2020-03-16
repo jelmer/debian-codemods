@@ -383,7 +383,7 @@ def find_secure_vcs_url(url, net_access=True):
     if net_access:
         secure_repo_url = parsed_repo_url._replace(scheme='https')
         insecure_branch = try_open_branch(repo_url, branch)
-        secure_branch = try_open_branch(urlunparse(parsed_repo_url), branch)
+        secure_branch = try_open_branch(urlunparse(secure_repo_url), branch)
         if secure_branch:
             if (not insecure_branch or
                     secure_branch.last_revision() ==

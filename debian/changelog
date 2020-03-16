@@ -2,6 +2,8 @@ lintian-brush (0.60) UNRELEASED; urgency=medium
 
   * missing-build-dependency-for-dh_-command: Don't break on empty
     lines. Closes: #953392
+  * Fix bug in detection of secure versions of Vcs-* URLs. Closes:
+    #954034
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 10 Mar 2020 11:47:17 +0000
 
