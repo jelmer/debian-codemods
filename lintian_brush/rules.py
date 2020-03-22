@@ -407,14 +407,14 @@ def dh_invoke_drop_with(line, with_argument):
     line = re.sub(
         b"([ \t])--with([ =])" + with_argument + b",",
         b"\\1--with\\2", line)
-    # It's somewhere in the middle or at the end
+    # It's somewhere in the middle or the end
     line = re.sub(
-        b"([ \t])--with[ =]([^,]+)," + with_argument + b"([ ,])",
-        b"\\1--with=\\2\\3", line)
+        b"([ \t])--with([ =])(.+)," + with_argument + b"([ ,])",
+        b"\\1--with\\2\\3\\4", line)
     # It's at the end
     line = re.sub(
-        b"([ \t])--with[ =](.+)," + with_argument + b"$",
-        b"\\1--with=\\2", line)
+        b"([ \t])--with([ =])(.+)," + with_argument + b"$",
+        b"\\1--with\\2\\3", line)
     return line
 
 

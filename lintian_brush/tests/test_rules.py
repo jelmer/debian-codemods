@@ -244,9 +244,14 @@ class InvokeDropWithTests(TestCaseWithTransport):
             b'dh --with=foo',
             dh_invoke_drop_with(b'dh --with=foo,blah', b'blah'))
         self.assertEqual(
-            b'dh $@ --verbose --with=autoreconf,cme-upgrade',
+            b'dh $@ --verbose --with autoreconf,cme-upgrade',
             dh_invoke_drop_with(
                 b'dh $@ --verbose --with autoreconf,systemd,cme-upgrade',
+                b'systemd'))
+        self.assertEqual(
+            b'dh $@ --with gir,python3,sphinxdoc --without autoreconf --buildsystem=cmake',
+            dh_invoke_drop_with(
+                b'dh $@ --with gir,python3,sphinxdoc,systemd --without autoreconf --buildsystem=cmake',
                 b'systemd'))
 
 
