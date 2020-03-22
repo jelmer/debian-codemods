@@ -255,6 +255,11 @@ class InvokeDropWithTests(TestCaseWithTransport):
                 b'dh $@ --with gir,python3,sphinxdoc,systemd '
                 b'--without autoreconf --buildsystem=cmake',
                 b'systemd'))
+        self.assertEqual(
+            b'dh $@',
+            dh_invoke_drop_with(
+                b'dh $@ --with systemd',
+                b'systemd'))
 
 
 class DhInvokeGetWithsTests(TestCaseWithTransport):
