@@ -63,6 +63,14 @@ class NoChanges(Exception):
     """Script didn't make any changes."""
 
 
+class NotCertainEnough(NoChanges):
+    """Script made changes but with too low certainty."""
+
+    def __init__(self, certainty, minimum_certainty):
+        self.certainty = certainty
+        self.minimum_certainty = minimum_certainty
+
+
 class FixerFailed(Exception):
     """Base class for fixer script failures."""
 
@@ -744,7 +752,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         raise
     if not certainty_sufficient(result.certainty, minimum_certainty):
         reset_tree(local_tree, dirty_tracker, subpath)
-        raise NoChanges("Certainty of script's changes not high enough")
+        raise NotCertainEnough(result.certainty, minimum_certainty)
     if dirty_tracker:
         relpaths = dirty_tracker.relpaths()
         # Sort paths so that directories get added before the files they
@@ -928,6 +936,12 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
                 if verbose:
                     note('Fixer %r failed to run.', fixer.name)
                     sys.stderr.write(str(e))
+            except NotCertainEnough as e:
+                if verbose:
+                    note('Fixer %r made changes but not high enough '
+                         'certainty (was %r, needed %r). (took: %.2fs)',
+                         fixer.name, e.certainty, e.minimum_certainty,
+                         time.time() - start)
             except NoChanges:
                 if verbose:
                     note('Fixer %r made no changes. (took: %.2fs)',
