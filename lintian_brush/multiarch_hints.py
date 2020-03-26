@@ -336,7 +336,7 @@ def main(argv=None):
         note("%s: Not a debian package.", wt.basedir)
         return 1
     else:
-        for binary, description, certainty in result.changes:
+        for binary, hint, description, certainty in result.changes:
             note('%s: %s' % (binary['Package'], description))
 
 
