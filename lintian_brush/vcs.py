@@ -35,6 +35,7 @@ KNOWN_GITLAB_SITES = [
     'salsa.debian.org',
     'gitlab.gnome.org',
     'gitlab.freedesktop.org',
+    'gitlab.labs.nic.cz',
     ]
 
 
