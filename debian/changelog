@@ -9,6 +9,8 @@ lintian-brush (0.60) UNRELEASED; urgency=medium
     were not high enough certainty.
   * debian/watch: Strip leading spaces in version > 3.
   * Add gitlab.labs.nic.cz to list of GitLab hosting sites.
+  * missing-build-dependency-for-dh_-command: Don't add unnecessary
+    build deps.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 10 Mar 2020 11:47:17 +0000
 

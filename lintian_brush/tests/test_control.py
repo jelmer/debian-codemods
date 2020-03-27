@@ -30,6 +30,8 @@ from lintian_brush.control import (
     ensure_some_version,
     get_relation,
     iter_relations,
+    is_relation_implied,
+    is_dep_implied,
     update_control,
     PkgRelation,
     format_relations,
@@ -493,3 +495,62 @@ class DeleteFromListTests(TestCase):
     def test_only(self):
         self.assertEqual('a', delete_from_list('a', 'c'))
         self.assertEqual('', delete_from_list('a', 'a'))
+
+
+class IsDepImpliedTests(TestCase):
+
+    def parse(self, p):
+        [dep] = PkgRelation.parse(p)
+        return dep
+
+    def test_no_version(self):
+        self.assertTrue(
+            is_dep_implied(self.parse('bzr'), self.parse('bzr')))
+        self.assertTrue(
+            is_dep_implied(self.parse('bzr'), self.parse('bzr (>= 3)')))
+        self.assertTrue(
+            is_dep_implied(self.parse('bzr'), self.parse('bzr (<< 3)')))
+
+    def test_wrong_package(self):
+        self.assertFalse(
+            is_dep_implied(self.parse('bzr'), self.parse('foo (<< 3)')))
+
+    def test_version(self):
+        self.assertFalse(
+            is_dep_implied(self.parse('bzr (>= 3)'), self.parse('bzr (<< 3)')))
+        self.assertTrue(
+            is_dep_implied(self.parse('bzr (>= 3)'), self.parse('bzr (= 3)')))
+        self.assertFalse(
+            is_dep_implied(self.parse('bzr (= 3)'), self.parse('bzr (>= 3)')))
+        self.assertFalse(
+            is_dep_implied(self.parse('bzr (>= 3)'), self.parse('bzr (>> 3)')))
+        self.assertFalse(
+            is_dep_implied(self.parse('bzr (= 3)'), self.parse('bzr (= 4)')))
+        self.assertFalse(
+            is_dep_implied(self.parse('bzr (>= 3)'), self.parse('bzr (>= 2)')))
+        self.assertTrue(
+            is_dep_implied(self.parse('bzr (>= 3)'), self.parse('bzr (>= 3)')))
+
+
+class IsRelationImpliedTests(TestCase):
+
+    def test_unrelated(self):
+        self.assertFalse(is_relation_implied('bzr', 'bar'))
+        self.assertFalse(is_relation_implied('bzr (= 3)', 'bar'))
+        self.assertFalse(is_relation_implied('bzr (= 3) | foo', 'bar'))
+
+    def test_too_old(self):
+        self.assertFalse(is_relation_implied('bzr (= 3)', 'bzr'))
+        self.assertFalse(is_relation_implied('bzr (= 3)', 'bzr (= 2)'))
+        self.assertFalse(is_relation_implied('bzr (= 3)', 'bzr (>= 2)'))
+
+    def test_ors(self):
+        self.assertFalse(is_relation_implied('bzr (= 3)', 'bzr | foo'))
+        self.assertFalse(is_relation_implied('bzr', 'bzr | foo'))
+        self.assertTrue(is_relation_implied('bzr | foo', 'bzr | foo'))
+
+    def test_implied(self):
+        self.assertTrue(is_relation_implied('bzr (= 3)', 'bzr (= 3)'))
+        self.assertTrue(is_relation_implied('bzr', 'bzr'))
+        self.assertTrue(is_relation_implied('bzr | foo', 'bzr'))
+        self.assertFalse(is_relation_implied('bzr (= 3)', 'bzr (>= 3)'))

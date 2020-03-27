@@ -588,3 +588,55 @@ def get_debhelper_compat_version(path='.'):
         return None
     else:
         return int(str(relation.version[1]))
+
+
+def is_dep_implied(dep, outer):
+    """Check if one dependency is implied by another.
+    """
+    if dep.name != outer.name:
+        return False
+    if not dep.version:
+        return True
+    if outer.version == dep.version:
+        return True
+    if not outer.version:
+        return False
+    if dep.version[0] == '>=':
+        if outer.version[0] == '>>':
+            return Version(outer.version[1]) > Version(dep.version[1])
+        elif outer.version[0] in ('>=', '='):
+            return Version(outer.version[1]) >= Version(dep.version[1])
+        elif outer.version[0] in ('<<', '<='):
+            return False
+        else:
+            raise AssertionError('unsupported: %s' % outer.version[0])
+    elif dep.version[0] == '=':
+        if outer.version[0] == '=':
+            return Version(outer.version[1]) == Version(dep.version[1])
+        else:
+            return False
+    else:
+        raise AssertionError('unable to handle checks for %s' % dep.version[0])
+
+
+def is_relation_implied(inner, outer):
+    """Check if one relation implies another.
+
+    Args:
+      inner: Inner relation
+      outer: Outer relation
+    Return: boolean
+    """
+    if isinstance(inner, str):
+        inner = PkgRelation.parse(inner)
+    if isinstance(outer, str):
+        outer = PkgRelation.parse(outer)
+
+    if inner == outer:
+        return True
+
+    # "bzr >= 1.3" implied by "bzr >= 1.3 | libc6"
+    for inner_dep in inner:
+        if all(is_dep_implied(inner_dep, outer_dep) for outer_dep in outer):
+            return True
+    return False

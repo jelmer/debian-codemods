@@ -1,6 +1,12 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import update_control, add_dependency, get_relation
+from lintian_brush.control import (
+    ControlUpdater,
+    PkgRelation,
+    parse_relations,
+    add_dependency,
+    is_relation_implied,
+    )
 from lintian_brush.lintian_overrides import override_exists
 from lintian_brush.rules import Makefile, Rule, dh_invoke_get_with
 import shlex
@@ -66,22 +72,16 @@ if not need:
 fixed_tags = set()
 
 
-def add_missing_build_deps(source):
+with ControlUpdater() as updater:
     for deps in need:
-        build_deps = source.get('Build-Depends', '')
-        for dep in deps.split('|'):
-            try:
-                get_relation(build_deps, dep.strip())
-            except KeyError:
-                pass
-            else:
+        parsed = PkgRelation.parse(deps)
+        build_deps = updater.source.get('Build-Depends', '')
+        for unused1, existing, unused2 in parse_relations(build_deps):
+            if is_relation_implied(parsed, existing):
                 break
         else:
-            source['Build-Depends'] = add_dependency(build_deps, deps)
+            updater.source['Build-Depends'] = add_dependency(build_deps, deps)
             fixed_tags.add(tags[deps])
-
-
-update_control(source_package_cb=add_missing_build_deps)
 
 print('Add missing build dependency on dh addon.')
 print('Fixed-Lintian-Tags: %s' % ', '.join(fixed_tags))
