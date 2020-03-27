@@ -35,6 +35,7 @@ from lintian_brush import (
     certainty_sufficient,
     certainty_to_confidence,
     version_string,
+    min_certainty,
     )
 from lintian_brush.vcs import (
     browse_url_from_repo_url,
@@ -521,6 +522,12 @@ def guess_from_readme(path, trust_package):
                 if m:
                     yield UpstreamDatum(
                         'Repository', line.strip().decode(), 'likely')
+                for m in re.finditer(
+                        b'https://([^/]+)/([^ ]+)', line):
+                    if is_gitlab_site(m.group(1).decode()):
+                        yield UpstreamDatum(
+                            'Repository',
+                            m.group(0).decode().rstrip(), 'likely')
     except IsADirectoryError:
         pass
 
@@ -1087,21 +1094,29 @@ def _extrapolate_repository_from_homepage(upstream_metadata, net_access):
     repo = guess_repo_from_url(
             upstream_metadata['Homepage'].value, net_access=net_access)
     if repo:
-        return UpstreamDatum('Repository', repo, 'likely')
+        return UpstreamDatum(
+            'Repository', repo,
+            min_certainty(['likely', upstream_metadata['Homepage'].certainty]))
 
 
 def _extrapolate_repository_from_download(upstream_metadata, net_access):
     repo = guess_repo_from_url(
             upstream_metadata['X-Download'].value, net_access=net_access)
     if repo:
-        return UpstreamDatum('Repository', repo, 'likely')
+        return UpstreamDatum(
+            'Repository', repo,
+            min_certainty(
+                ['likely', upstream_metadata['X-Download'].certainty]))
 
 
 def _extrapolate_repository_from_bug_db(upstream_metadata, net_access):
     repo = guess_repo_from_url(
         upstream_metadata['Bug-Database'].value, net_access=net_access)
     if repo:
-        return UpstreamDatum('Repository', repo, 'likely')
+        return UpstreamDatum(
+            'Repository', repo,
+            min_certainty(
+                ['likely', upstream_metadata['Bug-Database'].certainty]))
 
 
 def _extrapolate_repository_browse_from_repository(
@@ -1130,7 +1145,10 @@ def _extrapolate_bug_database_from_repository(
     bug_db_url = guess_bug_database_url_from_repo_url(
         upstream_metadata['Repository'].value)
     if bug_db_url:
-        return UpstreamDatum('Bug-Database', bug_db_url, 'likely')
+        return UpstreamDatum(
+            'Bug-Database', bug_db_url,
+            min_certainty(
+                ['likely', upstream_metadata['Repository'].certainty]))
 
 
 def _extrapolate_bug_submit_from_bug_db(
