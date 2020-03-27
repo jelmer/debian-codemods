@@ -19,6 +19,7 @@
 
 from io import StringIO
 import re
+from warnings import warn
 
 from lintian_brush.reformatting import (
     Updater,
@@ -130,23 +131,25 @@ def parse_watch_file(f):
       f: watch file to parse
     """
     lines = []
-    continued = ''
+    continued = []
     for line in f:
         if line.startswith('#'):
             continue
         if not line.strip():
             continue
         if line.rstrip('\n').endswith('\\'):
-            continued += line.rstrip('\n\\') + ' '
+            continued.append(line.rstrip('\n\\'))
         else:
-            lines.append(continued + line)
-            continued = ''
+            continued.append(line)
+            lines.append(continued)
+            continued = []
     if continued:
         # Hmm, broken line?
-        lines.append(continued)
+        warn('watchfile ended with \\; skipping last line')
+        lines.append([continued])
     if not lines:
         return None
-    firstline = lines.pop(0)
+    firstline = ''.join(lines.pop(0))
     try:
         key, value = firstline.split('=', 1)
     except ValueError:
@@ -156,8 +159,10 @@ def parse_watch_file(f):
     version = int(value.strip())
     persistent_options = []
     entries = []
-    for line in lines:
-        line = line.strip()
+    for chunked in lines:
+        if version > 3:
+            chunked = [chunk.lstrip() for chunk in chunked]
+        line = ''.join(chunked).strip()
         if not line:
             continue
         if line.startswith('opts='):

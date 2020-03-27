@@ -117,6 +117,30 @@ opts="pgpmode=mangle" https://samba.org/~jelmer blah-(\\d+).tar.gz
             [Watch('https://samba.org/~jelmer',
                    'blah-(\\d+).tar.gz', opts=['pgpmode=mangle'])])
 
+    def test_parse_continued_leading_spaces_4(self):
+        wf = parse_watch_file(StringIO("""\
+version=4
+opts=pgpmode=mangle,\\
+    foo=bar https://samba.org/~jelmer blah-(\\d+).tar.gz
+"""))
+        self.assertEqual(4, wf.version)
+        self.assertEqual(
+            wf.entries,
+            [Watch('https://samba.org/~jelmer',
+                   'blah-(\\d+).tar.gz', opts=['pgpmode=mangle', 'foo=bar'])])
+
+    def test_parse_continued_leading_spaces_3(self):
+        wf = parse_watch_file(StringIO("""\
+version=3
+opts=pgpmode=mangle,\\
+    foo=bar blah-(\\d+).tar.gz
+"""))
+        self.assertEqual(3, wf.version)
+        self.assertEqual(
+            wf.entries,
+            [Watch('foo=bar',
+                   'blah-(\\d+).tar.gz', opts=['pgpmode=mangle', ''])])
+
     def test_pattern_included(self):
         wf = parse_watch_file(StringIO("""\
 version=4

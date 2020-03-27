@@ -7,6 +7,7 @@ lintian-brush (0.60) UNRELEASED; urgency=medium
   * Fix a corner case removing items from --with arguments.
   * In verbose mode, report when the fixer script made changes but they
     were not high enough certainty.
+  * debian/watch: Strip leading spaces in version > 3.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 10 Mar 2020 11:47:17 +0000
 
