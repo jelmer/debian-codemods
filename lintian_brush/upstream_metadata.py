@@ -480,8 +480,8 @@ def guess_from_readme(path, trust_package):
         with open(path, 'rb') as f:
             lines = list(f.readlines())
             for i, line in enumerate(lines):
-                if line.strip().startswith(b'git clone'):
-                    line = line.strip()
+                if line.strip().lstrip(b'$').strip().startswith(b'git clone'):
+                    line = line.strip().lstrip(b'$').strip()
                     while line.endswith(b'\\'):
                         line += lines[i+1]
                         line = line.strip()
