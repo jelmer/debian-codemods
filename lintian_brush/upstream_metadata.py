@@ -480,6 +480,7 @@ def guess_from_readme(path, trust_package):
         with open(path, 'rb') as f:
             lines = list(f.readlines())
             for i, line in enumerate(lines):
+                line = line.strip()
                 if line.strip().lstrip(b'$').strip().startswith(b'git clone'):
                     line = line.strip().lstrip(b'$').strip()
                     while line.endswith(b'\\'):
@@ -513,6 +514,10 @@ def guess_from_readme(path, trust_package):
                         'Bug-Database',
                         m.group(0).decode().rstrip(), 'possible')
                 m = re.fullmatch(b'https://github.com/([^/]+)/([^/?.]+)', line)
+                if m:
+                    yield UpstreamDatum(
+                        'Repository', line.strip().decode(), 'likely')
+                m = re.fullmatch(b'git://([^ ]+)', line)
                 if m:
                     yield UpstreamDatum(
                         'Repository', line.strip().decode(), 'likely')
