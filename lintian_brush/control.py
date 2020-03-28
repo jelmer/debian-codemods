@@ -72,12 +72,19 @@ def guess_template_type(template_path):
                     return 'cdbs'
     except IsADirectoryError:
         return 'directory'
+    try:
+        with open('debian/rules', 'rb') as f:
+            for l in f:
+                if l.startswith(b'debian/control:'):
+                    return 'rules'
+    except FileNotFoundError:
+        pass
     return None
 
 
 def _update_control_template(template_path, path, changes):
     template_type = guess_template_type(template_path)
-    if template_type is None:
+    if template_type is None or template_type == 'rules':
         raise GeneratedFile(path, template_path)
     with Deb822Updater(template_path) as updater:
         updater.apply_changes(changes)
@@ -152,6 +159,8 @@ class ControlUpdater(object):
         def by_key(ps):
             ret = {}
             for p in ps:
+                if not p:
+                    continue
                 if 'Source' in p:
                     ret[('Source', p['Source'])] = p
                 else:
