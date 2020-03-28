@@ -20,6 +20,7 @@
 import json
 import os
 import re
+import socket
 import subprocess
 import tempfile
 import urllib.error
@@ -1508,6 +1509,9 @@ def guess_from_launchpad(package, distribution=None, suite=None):
     except urllib.error.HTTPError as e:
         if e.status != 404:
             raise
+        return
+    except socket.timeout:
+        warn('timeout error contacting launchpad, ignoring')
         return
 
     productseries_url = sourcepackage_data.get('productseries_link')
