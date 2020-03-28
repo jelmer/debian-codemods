@@ -86,7 +86,7 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
             response = urlopen(
                 Request(vcs_url, headers=headers),
                 timeout=DEFAULT_URLLIB_TIMEOUT)
-        except urllib.error.HTTPError:
+        except (urllib.error.HTTPError, urllib.error.URLError):
             pass
         except socket.timeout:
             pass
