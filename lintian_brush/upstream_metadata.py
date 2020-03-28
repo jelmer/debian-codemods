@@ -549,6 +549,10 @@ def guess_from_debian_patch(path, trust_package):
                 bug_db = bug_database_from_issue_url(forwarded.decode('utf-8'))
                 if bug_db:
                     yield UpstreamDatum('Bug-Database', bug_db, 'possible')
+                repo_url = repo_url_from_merge_request_url(
+                    forwarded.decode('utf-8'))
+                if repo_url:
+                    yield UpstreamDatum('Repository', repo_url, 'possible')
 
 
 def guess_from_meta_json(path, trust_package):
@@ -993,6 +997,24 @@ def extract_sf_project_name(url):
         return m.group(1)
 
 
+def repo_url_from_merge_request_url(url):
+    parsed_url = urlparse(url)
+    if parsed_url.netloc == 'github.com':
+        path_elements = parsed_url.path.strip('/').split('/')
+        if len(path_elements) > 2 and path_elements[2] == 'issues':
+            return urlunparse(
+                ('https', 'github.com', '/'.join(path_elements[:3]),
+                 None, None, None))
+    if is_gitlab_site(parsed_url.netloc):
+        path_elements = parsed_url.path.strip('/').split('/')
+        if (len(path_elements) > 2 and
+                path_elements[-2] == 'merge_requests' and
+                path_elements[-1].isdigit()):
+            return urlunparse(
+                ('https', parsed_url.netloc, '/'.join(path_elements[:-2]),
+                 None, None, None))
+
+
 def bug_database_from_issue_url(url):
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
@@ -1000,6 +1022,14 @@ def bug_database_from_issue_url(url):
         if len(path_elements) > 2 and path_elements[2] == 'issues':
             return urlunparse(
                 ('https', 'github.com', '/'.join(path_elements[:3]),
+                 None, None, None))
+    if is_gitlab_site(parsed_url.netloc):
+        path_elements = parsed_url.path.strip('/').split('/')
+        if (len(path_elements) > 2 and
+                path_elements[-2] == 'issues' and
+                path_elements[-1].isdigit()):
+            return urlunparse(
+                ('https', parsed_url.netloc, '/'.join(path_elements[:-2]),
                  None, None, None))
 
 
