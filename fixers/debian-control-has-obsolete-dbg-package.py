@@ -3,7 +3,7 @@ import os
 import sys
 from lintian_brush.control import (
     ensure_minimum_debhelper_version,
-    update_control,
+    ControlUpdater,
     )
 from lintian_brush.rules import (
     check_cdbs,
@@ -13,33 +13,28 @@ from lintian_brush.rules import (
 minimum_version = "9.20160114"
 
 
-def bump_debhelper(control):
-    control["Build-Depends"] = ensure_minimum_debhelper_version(
-        control.get("Build-Depends", ""), minimum_version)
-
-
 dbg_packages = set()
 dbg_migration_done = set()
 
 
-def del_dbg(control):
-    # Delete the freeradius-dbg package from debian/control
-    package = control["Package"]
-    if package.endswith('-dbg'):
-        if package.startswith('python'):
-            # -dbgsym packages don't include _d.so files for the python
-            # interpreter
-            return
-        dbg_packages.add(control["Package"])
-        control.clear()
+with ControlUpdater() as updater:
+    for control in updater.binaries:
+        # Delete the freeradius-dbg package from debian/control
+        package = control["Package"]
+        if package.endswith('-dbg'):
+            if package.startswith('python'):
+                # -dbgsym packages don't include _d.so files for the python
+                # interpreter
+                continue
+            dbg_packages.add(control["Package"])
+            control.clear()
 
+    if not dbg_packages:
+        # no debug packages found to remove
+        sys.exit(0)
 
-update_control(binary_package_cb=del_dbg)
-if not dbg_packages:
-    # no debug packages found to remove
-    sys.exit(0)
-
-update_control(source_package_cb=bump_debhelper)
+    updater.source["Build-Depends"] = ensure_minimum_debhelper_version(
+        updater.source.get("Build-Depends", ""), minimum_version)
 
 
 current_version = os.environ["CURRENT_VERSION"]
