@@ -49,7 +49,7 @@ from urllib.request import urlopen, Request
 
 ADDON_ONLY_FIELDS = ['Archive']
 KNOWN_HOSTING_SITES = [
-    'code.launchpad.net', 'github.com', 'launchpad.net']
+    'code.launchpad.net', 'github.com', 'launchpad.net', 'git.openstack.org']
 
 
 class UpstreamDatum(object):
@@ -277,6 +277,18 @@ def get_python_pkg_info(path, trust_package=False):
                 args, cwd=td, stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE)
         return read_python_pkg_info(td)
+
+
+def guess_from_debian_rules(path, trust_package):
+    from .rules import Makefile
+    mf = Makefile.from_path(path)
+    try:
+        upstream_git = mf.get_variable(b'UPSTREAM_GIT')
+    except KeyError:
+        pass
+    else:
+        yield UpstreamDatum(
+            "Repository", sanitize_vcs_url(upstream_git.decode()), "certain")
 
 
 def guess_from_debian_watch(path, trust_package):
@@ -779,6 +791,7 @@ def _get_guessers(path, trust_package=False):
     CANDIDATES = [
         ('debian/watch', guess_from_debian_watch),
         ('debian/control', guess_from_debian_control),
+        ('debian/rules', guess_from_debian_rules),
         ('setup.py', guess_from_setup_py),
         ('package.json', guess_from_package_json),
         ('package.xml', guess_from_package_xml),
@@ -803,8 +816,9 @@ def _get_guessers(path, trust_package=False):
 
     readme_filenames = [
         n for n in os.listdir(path)
-        if n.startswith('README') and
-        os.path.splitext(n)[1] not in ('.html', '.pdf', '.xml')]
+        if any([n.startswith(p)
+                for p in ['README', 'HACKING', 'CONTRIBUTING']])
+        and os.path.splitext(n)[1] not in ('.html', '.pdf', '.xml')]
     CANDIDATES.extend([(n, guess_from_readme) for n in readme_filenames])
 
     try:

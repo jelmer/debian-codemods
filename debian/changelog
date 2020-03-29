@@ -11,6 +11,8 @@ lintian-brush (0.60) UNRELEASED; urgency=medium
   * Add gitlab.labs.nic.cz to list of GitLab hosting sites.
   * missing-build-dependency-for-dh_-command: Don't add unnecessary
     build deps.
+  * List git.openstack.org as known hosting site.
+  * Scan debian/rules for hints of upstream repository URL.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 10 Mar 2020 11:47:17 +0000
 
