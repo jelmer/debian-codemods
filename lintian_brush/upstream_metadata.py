@@ -202,8 +202,13 @@ def guess_repo_from_url(url, net_access=False):
     if parsed_url.netloc in KNOWN_HOSTING_SITES:
         return url
     # Maybe it's already pointing at a VCS repo?
-    if net_access and probe_upstream_branch_url(url):
+    if parsed_url.netloc.startswith('svn.'):
+        # 'svn' subdomains are often used for hosting SVN repositories.
         return url
+    if net_access:
+        if probe_upstream_branch_url(url):
+            return url
+        return None
     return None
 
 
@@ -455,16 +460,17 @@ def guess_from_debian_copyright(path, trust_package):
                 "Contact", ','.join(header.upstream_contact), 'certain')
         if header.source:
             if ' 'in header.source:
-                from_url = re.split('[ ,]', header.source)[0]
+                from_urls = [u for u in re.split('[ ,\n]', header.source) if u]
             else:
-                from_url = header.source
-            repo_url = guess_repo_from_url(from_url)
-            if repo_url:
-                yield UpstreamDatum(
-                    'Repository', sanitize_vcs_url(repo_url), 'likely')
-            if (from_url.startswith('https://pecl.php.net/package/') or
-                    from_url.startswith('http://pecl.php.net/package/')):
-                yield UpstreamDatum('X-Pecl-URL', from_url, 'certain')
+                from_urls = [header.source]
+            for from_url in from_urls:
+                repo_url = guess_repo_from_url(from_url)
+                if repo_url:
+                    yield UpstreamDatum(
+                        'Repository', sanitize_vcs_url(repo_url), 'likely')
+                if (from_url.startswith('https://pecl.php.net/package/') or
+                        from_url.startswith('http://pecl.php.net/package/')):
+                    yield UpstreamDatum('X-Pecl-URL', from_url, 'certain')
         if "X-Upstream-Bugs" in header:
             yield UpstreamDatum(
                 "Bug-Database", header["X-Upstream-Bugs"], 'certain')
@@ -1417,7 +1423,8 @@ def guess_from_pecl(package):
     url = 'https://pecl.php.net/packages/%s' % php_package.replace('-', '_')
     data = dict(guess_from_pecl_url(url))
     try:
-        data['Repository'] = guess_repo_from_url(data['Repository-Browse'])
+        data['Repository'] = guess_repo_from_url(
+                data['Repository-Browse'], net_access=True)
     except KeyError:
         pass
     return data.items()
