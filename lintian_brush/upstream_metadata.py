@@ -155,6 +155,10 @@ def guess_repo_from_url(url, net_access=False):
     if parsed_url.netloc == 'download.gnome.org':
         if len(path_elements) >= 2 and path_elements[0] == 'sources':
             return 'https://gitlab.gnome.org/GNOME/%s.git' % path_elements[1]
+    if parsed_url.netloc == 'download.kde.org':
+        if len(path_elements) >= 2 and path_elements[0] in (
+                'stable', 'unstable'):
+            return 'https://anongit.kde.org/%s.git' % path_elements[1]
     if parsed_url.netloc == 'ftp.gnome.org':
         if (len(path_elements) >= 4 and [
               e.lower() for e in path_elements[:3]] == [

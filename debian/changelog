@@ -13,6 +13,7 @@ lintian-brush (0.60) UNRELEASED; urgency=medium
     build deps.
   * List git.openstack.org as known hosting site.
   * Scan debian/rules for hints of upstream repository URL.
+  * Support finding upstream KDE repositories.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 10 Mar 2020 11:47:17 +0000
 
