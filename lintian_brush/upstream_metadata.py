@@ -1065,6 +1065,33 @@ def guess_bug_database_url_from_repo_url(url):
     return None
 
 
+def bug_database_url_from_bug_submit_url(url):
+    parsed_url = urlparse(url)
+    path_elements = parsed_url.path.strip('/').split('/')
+    if parsed_url.netloc == 'github.com':
+        if len(path_elements) not in (3, 4):
+            return None
+        if path_elements[2] != 'issues':
+            return None
+        return urlunparse(
+            ('https', 'github.com', '/'.join(path_elements[:3]),
+             None, None, None))
+    if parsed_url.netloc == 'bugs.launchpad.net':
+        if len(path_elements) >= 1:
+            return urlunparse(
+                parsed_url._replace(path='/%s' % path_elements[0]))
+    if is_gitlab_site(parsed_url.netloc):
+        if len(path_elements) < 2:
+            return None
+        if path_elements[-2] != 'issues':
+            return None
+        if path_elements[-1] == 'new':
+            path_elements.pop(-1)
+        return urlunparse(
+            parsed_url._replace(path='/'.join(path_elements)))
+    return None
+
+
 def bug_submit_url_from_bug_database_url(url):
     parsed_url = urlparse(url)
     path_elements = parsed_url.path.strip('/').split('/')
@@ -1201,6 +1228,16 @@ def _extrapolate_bug_submit_from_bug_db(
             upstream_metadata['Bug-Database'].certainty)
 
 
+def _extrapolate_bug_db_from_bug_submit(
+        upstream_metadata, net_access):
+    bug_db_url = bug_database_url_from_bug_submit_url(
+        upstream_metadata['Bug-Submit'].value)
+    if bug_db_url:
+        return UpstreamDatum(
+            'Bug-Database', bug_db_url,
+            upstream_metadata['Bug-Submit'].certainty)
+
+
 def _copy_bug_db_field(upstream_metadata, net_access):
     ret = UpstreamDatum(
         'Bug-Database',
@@ -1222,6 +1259,7 @@ EXTRAPOLATE_FNS = [
     ('Repository', 'Bug-Database',
      _extrapolate_bug_database_from_repository),
     ('Bug-Database', 'Bug-Submit', _extrapolate_bug_submit_from_bug_db),
+    ('Bug-Submit', 'Bug-Database', _extrapolate_bug_db_from_bug_submit),
     ('X-Download', 'Repository', _extrapolate_repository_from_download),
 ]
 
