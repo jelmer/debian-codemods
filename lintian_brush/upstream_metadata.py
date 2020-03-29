@@ -996,6 +996,9 @@ def extract_sf_project_name(url):
     m = re.fullmatch('https?://(.*).(sf|sourceforge).net/?', url)
     if m:
         return m.group(1)
+    m = re.match('https://sourceforge.net/projects/([^/]+)', url)
+    if m:
+        return m.group(1)
 
 
 def repo_url_from_merge_request_url(url):
