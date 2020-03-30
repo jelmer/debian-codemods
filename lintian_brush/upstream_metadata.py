@@ -1498,6 +1498,9 @@ def guess_from_pecl_url(url):
         if e.status != 404:
             raise
         return
+    except socket.timeout:
+        warn('timeout contacting pecl, ignoring: %s' % url)
+        return
     from bs4 import BeautifulSoup
     bs = BeautifulSoup(f.read(), features='lxml')
     tag = bs.find('a', text='Browse Source')
@@ -1579,7 +1582,7 @@ def guess_from_launchpad(package, distribution=None, suite=None):
             raise
         return
     except socket.timeout:
-        warn('timeout error contacting launchpad, ignoring')
+        warn('timeout contacting launchpad, ignoring')
         return
 
     productseries_url = sourcepackage_data.get('productseries_link')
