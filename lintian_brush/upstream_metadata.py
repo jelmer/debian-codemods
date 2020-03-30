@@ -47,6 +47,8 @@ from lintian_brush.vcs import (
     )
 from urllib.request import urlopen, Request
 
+# Pecl is quite slow, so up the timeout a bit.
+PECL_URLLIB_TIMEOUT = 8
 ADDON_ONLY_FIELDS = ['Archive']
 KNOWN_HOSTING_SITES = [
     'code.launchpad.net', 'github.com', 'launchpad.net', 'git.openstack.org']
@@ -1491,7 +1493,7 @@ def guess_from_pecl_url(url):
     try:
         f = urlopen(
             Request(url, headers=headers),
-            timeout=DEFAULT_URLLIB_TIMEOUT)
+            timeout=PECL_URLLIB_TIMEOUT)
     except urllib.error.HTTPError as e:
         if e.status != 404:
             raise
