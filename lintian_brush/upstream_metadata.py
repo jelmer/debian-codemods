@@ -924,7 +924,11 @@ def _sf_git_extract_url(page):
 
 
 def guess_from_sf(sf_project):
-    data = get_sf_metadata(sf_project)
+    try:
+        data = get_sf_metadata(sf_project)
+    except socket.timeout:
+        warn('timeout contacting launchpad, ignoring: %s' % sf_project)
+        return
     if data.get('name'):
         yield 'Name', data['name']
     if data.get('external_homepage'):
