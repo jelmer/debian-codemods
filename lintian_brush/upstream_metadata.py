@@ -1319,7 +1319,7 @@ def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
             pass
         else:
             extend_from_lp(upstream_metadata, minimum_certainty, package)
-        extend_from_aur(upstream_metadata, minimum_certainty, package)
+            extend_from_aur(upstream_metadata, minimum_certainty, package)
     pecl_url = upstream_metadata.get('X-Pecl-URL')
     if net_access and pecl_url:
         extend_from_pecl(upstream_metadata, pecl_url.value, pecl_url.certainty)
