@@ -1,3 +1,10 @@
+lintian-brush (0.61) UNRELEASED; urgency=medium
+
+  * Fix a bug incorrectly removing used license stanzas with license
+    exceptions in debian/copyright.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 04 Apr 2020 21:53:49 +0000
+
 lintian-brush (0.60) unstable; urgency=medium
 
   * missing-build-dependency-for-dh_-command: Don't break on empty

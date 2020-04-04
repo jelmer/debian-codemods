@@ -5,18 +5,26 @@ from lintian_brush.fixer import report_result
 import sys
 import re
 
-used = set()
+used = []
 defined = set()
 certainty = 'certain'
 
 
 def extract_licenses(synopsis):
+    """Extract license names from a synopsis.
+
+    This will return a list of licenses, as a list of possible names per
+    license.
+    """
     ret = []
     for license in synopsis.split(" or "):
+        options = []
+        options.append(license)
         m = re.fullmatch(r'(.*) with (.*) exception', license)
         if m:
             license = m.group(1)
-        ret.append(license)
+        options.append(license)
+        ret.append(options)
     return ret
 
 
@@ -35,8 +43,8 @@ try:
             synopsis = updater.copyright.header.license.synopsis
             if synopsis:
                 if synopsis in defined:
-                    used.add(synopsis)
-                used.update(extract_licenses(synopsis))
+                    used.append([synopsis])
+                used.extend(extract_licenses(synopsis))
 
         for paragraph in updater.copyright.all_files_paragraphs():
             if not paragraph.license:
@@ -44,15 +52,24 @@ try:
             if paragraph.files:
                 synopsis = paragraph.license.synopsis
                 if synopsis in defined:
-                    used.add(synopsis)
-                used.update(extract_licenses(synopsis))
+                    used.append([synopsis])
+                used.extend(extract_licenses(synopsis))
 
-        extra_defined = (defined - used)
-        extra_used = (used - defined)
+        extra_defined = set(defined)
+        for options in used:
+            extra_defined -= set(options)
+
+        extra_used = []
+        for options in used:
+            for option in options:
+                if option in defined:
+                    break
+            else:
+                extra_used.append(options)
 
         if extra_used:
             sys.stderr.write('Undefined licenses in copyright: %r' %
-                             extra_used)
+                             [options[0] for options in extra_used])
             # Drop the certainty since it's possible the undefined licenses
             # are actually the referenced ones.
             certainty = 'possible'

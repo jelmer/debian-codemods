@@ -1,0 +1,42 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Blah
+
+Files: *
+Copyright: 2000 Somebody
+ * something is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ *
+ * something program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses>.
+ *
+ * As a special exception to the GNU General Public License, if you
+ * distribute this file as part of a program that also links with and
+ * uses the libopts library from AutoGen, you may include it under
+ * the same distribution terms used by the libopts library.
+License: GPL-2+ or LGPL-3+ with libopts exception or BSD-3-clause with libopts exception
+
+License: LGPL-3+
+ On Debian GNU/Linux systems, the complete text of the GNU Lesser General
+ Public License version 3 can be found in
+ `/usr/share/common-licenses/LGPL-3'.
+
+License: LGPL-3+ with libopts exception
+ For LGPL-3+ see paragraph "License: LGPL-3+" above.
+ .
+ If you distribute this file as part of a program that also links with and
+ uses the libopts library from AutoGen, you may include it under
+ the same distribution terms used by the libopts library.
+
+License: BSD-3-clause with libopts exception
+ For BSD-3-clause see paragraph "License: BSD-3-clause" above.
+ .
+ If you distribute this file as part of a program that also links with and
+ uses the libopts library from AutoGen, you may include it under
+ the same distribution terms used by the libopts library.
