@@ -6,7 +6,11 @@ import subprocess
 import sys
 from urllib.request import urlopen, Request
 
-from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
+from lintian_brush import (
+    USER_AGENT,
+    DEFAULT_URLLIB_TIMEOUT,
+    certainty_to_confidence,
+    )
 from lintian_brush.fixer import net_access_allowed
 from lintian_brush.watch import WatchFile, Watch
 
@@ -15,13 +19,10 @@ if os.path.exists('debian/watch'):
     # Nothing to do here..
     sys.exit(0)
 
+candidates = []
 
-certainty = 'possible'
-
-watch_contents = None
-site = None
-wf = WatchFile()
 if os.path.exists('setup.py'):
+    certainty = 'likely'
     try:
         lines = subprocess.check_output(
             ['python3', 'setup.py', '--name', '--version']).splitlines()
@@ -61,19 +62,22 @@ if os.path.exists('setup.py'):
         'project': project, 'fname_regex': filename_regex})
     # TODO(jelmer): Add pgpsigurlmangle if has_sig==True
     w = Watch(url, opts=opts)
-    wf.entries.append(w)
-    site = "pypi"
+    candidates.append((w, 'pypi', certainty))
 
 
 def guess_github_watch_entry(parsed_url, upstream_version):
     from breezy.branch import Branch
     import re
     if not net_access_allowed():
-        return None
+        return None, None
     branch = Branch.open(code['Repository'])
     tags = branch.tags.get_tag_dict()
     POSSIBLE_PATTERNS = [r"v(\d\S+)", r"(\d\S+)"]
     version_pattern = None
+    # TODO(jelmer): Maybe use releases API instead?
+    # TODO(jelmer): Automatically added mangling for
+    # e.g. rc and beta
+    uversionmangle = []
     for name in sorted(tags, reverse=True):
         for pattern in POSSIBLE_PATTERNS:
             m = re.match(pattern, name)
@@ -85,54 +89,70 @@ def guess_github_watch_entry(parsed_url, upstream_version):
         if version_pattern:
             break
     else:
-        return None
+        return None, None
     (username, project) = parsed_url.path.strip('/').split('/')
+    if project.endswith('.git'):
+        project = project[:-4]
     download_url = 'https://github.com/%(user)s/%(project)s/tags' % {
         'user': username, 'project': project}
-    matching_pattern = r'.*/%s\.tar\.gz' % version_pattern
+    matching_pattern = r'.*\/%s\.tar\.gz' % version_pattern
     opts = []
     opts.append(
         r'filenamemangle=s/%(pattern)s/%(project)s-$1\.tar\.gz/' % {
             'pattern': matching_pattern,
             'project': project})
+    if uversionmangle:
+        opts.append(r'uversionmangle=' + ';'.join(uversionmangle))
     # TODO(jelmer): Check for GPG
     # opts.append(
     #    r'pgpsigurlmangle='
     #    r's/archive\/%s\.tar\.gz/releases\/download\/$1\/$1\.tar\.gz\.asc/' %
     #    version_pattern)
-    return Watch(download_url, matching_pattern, opts=opts)
+    return Watch(download_url, matching_pattern, opts=opts), 'certain'
 
 
-if not wf.entries:
+try:
+    with open('debian/upstream/metadata', 'r') as f:
+        inp = f.read()
+except FileNotFoundError:
+    pass
+else:
+    import ruamel.yaml
+    code = ruamel.yaml.round_trip_load(inp, preserve_quotes=True)
+
+    from urllib.parse import urlparse
+    from debian.changelog import Version
+
     try:
-        with open('debian/upstream/metadata', 'r') as f:
-            inp = f.read()
-    except FileNotFoundError:
+        parsed_url = urlparse(code['Repository'])
+    except KeyError:
         pass
     else:
-        import ruamel.yaml
-        code = ruamel.yaml.round_trip_load(inp, preserve_quotes=True)
-
-        from urllib.parse import urlparse
-        from debian.changelog import Version
-
-        try:
-            parsed_url = urlparse(code['Repository'])
-        except KeyError:
-            pass
-        else:
-            upstream_version = Version(
-                os.environ['CURRENT_VERSION']).upstream_version
-            if parsed_url.hostname == 'github.com':
-                w = guess_github_watch_entry(parsed_url, upstream_version)
-                if w:
-                    site = 'github'
-                    wf.entries.append(w)
+        upstream_version = Version(
+            os.environ['CURRENT_VERSION']).upstream_version
+        if parsed_url.hostname == 'github.com':
+            w, certainty = guess_github_watch_entry(
+                parsed_url, upstream_version)
+            if w:
+                candidates.append((w, 'github', certainty))
 
 
-if not wf.entries:
+if not candidates:
     sys.exit(0)
 
+winner = None
+for candidate in candidates:
+    if winner is not None and (
+            certainty_to_confidence(candidate[2]) >=
+            certainty_to_confidence(winner[2])):
+        continue
+    winner = candidate
+
+wf = WatchFile()
+(entry, site, certainty) = winner
+wf.entries.append(winner[0])
+
+# TODO(jelmer): Find candidate with highest certainty
 with open('debian/watch', 'w') as f:
     wf.dump(f)
 
