@@ -1,4 +1,4 @@
-lintian-brush (0.60) UNRELEASED; urgency=medium
+lintian-brush (0.60) unstable; urgency=medium
 
   * missing-build-dependency-for-dh_-command: Don't break on empty
     lines. Closes: #953392
@@ -16,7 +16,7 @@ lintian-brush (0.60) UNRELEASED; urgency=medium
   * Support finding upstream KDE repositories.
   * Some improvements to creating of watch files from GitHub projects.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 10 Mar 2020 11:47:17 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 04 Apr 2020 17:11:01 +0000
 
 lintian-brush (0.59) unstable; urgency=medium
 
