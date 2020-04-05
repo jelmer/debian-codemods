@@ -201,7 +201,7 @@ def parse_script_fixer_output(text):
             lines.append(line)
         else:
             if key == 'Fixed-Lintian-Tags':
-                fixed_tags = value.strip().split(',')
+                fixed_tags = [tag.strip() for tag in value.strip().split(',')]
             elif key == 'Certainty':
                 certainty = value.strip()
             elif key == 'Patch-Name':
