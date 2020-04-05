@@ -961,6 +961,9 @@
         "Parity-6.0.0": {
             "name": "The Parity Public License 6.0.0"
         },
+        "Parity-7.0.0": {
+            "name": "The Parity Public License 7.0.0"
+        },
         "Plexus": {
             "name": "Plexus Classworlds License"
         },
