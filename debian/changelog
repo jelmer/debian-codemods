@@ -4,6 +4,7 @@ lintian-brush (0.61) UNRELEASED; urgency=medium
     exceptions in debian/copyright.
   * Report when the upstream-metadata-missing-repository and upstream-
     metadata-missing-bug-tracking tags are fixed.
+  * Add fixer for upstream-metadata-in-native-source.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 04 Apr 2020 21:53:49 +0000
 

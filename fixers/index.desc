@@ -373,3 +373,6 @@ Lintian-Tags: autotools-pkg-config-macro-not-cross-compilation-safe
 
 Fix-Script: unused-override.py
 Lintian-Tags: unused-override
+
+Fix-Script: upstream-metadata-in-native-source.py
+Lintian-Tags: upstream-metadata-in-native-source
