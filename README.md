@@ -131,6 +131,9 @@ subset of the issues:
 * unused-override
 * unversioned-copyright-format-uri
 * upstream-metadata-file-is-missing
+* upstream-metadata-in-native-source
+* upstream-metadata-missing-bug-tracking
+* upstream-metadata-missing-repository
 * useless-autoreconf-build-depends
 * uses-debhelper-compat-file
 * vcs-field-bitrotted
