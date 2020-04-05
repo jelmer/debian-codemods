@@ -245,7 +245,10 @@ Lintian-Tags: unnecessary-testsuite-autopkgtest-field
 Fix-Script: copyright-missing-upstream-info.py
 
 Fix-Script: upstream-metadata-file.py
-Lintian-Tags: upstream-metadata-file-is-missing
+Lintian-Tags:
+  upstream-metadata-file-is-missing,
+  upstream-metadata-missing-bug-tracking,
+  upstream-metadata-missing-repository
 
 Fix-Script: debian-watch-file-is-missing.py
 Lintian-Tags: debian-watch-file-is-missing

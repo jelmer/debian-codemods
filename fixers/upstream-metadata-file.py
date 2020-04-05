@@ -10,7 +10,10 @@ from lintian_brush import (
     certainty_sufficient,
     min_certainty,
     )
-from lintian_brush.fixer import net_access_allowed
+from lintian_brush.fixer import (
+    net_access_allowed,
+    report_result,
+    )
 from lintian_brush.upstream_metadata import (
     UpstreamDatum,
     check_upstream_metadata,
@@ -30,6 +33,7 @@ from lintian_brush.yaml import (
 
 
 current_version = Version(os.environ['CURRENT_VERSION'])
+fixed_tags = []
 
 
 if not current_version.debian_revision:
@@ -101,11 +105,21 @@ with YamlUpdater('debian/upstream/metadata') as code:
     if not changed:
         sys.exit(0)
 
+    if (('Repository' in changed and 'Repository' not in code) or
+            ('Repository-Browse' in changed and
+                'Repository-Browse' not in code)):
+        fixed_tags.append('upstream-metadata-missing-repository')
+
+    if (('Bug-Database' in changed and 'Bug-Database' not in code) or
+            ('Bug-Submit' in changed and 'But-Submit' not in code)):
+        fixed_tags.append('upstream-metadata-missing-bug-tracking')
+
     # A change that just says the "Name" field is a bit silly
     if set(changed.keys()) - set(ADDON_ONLY_FIELDS) == set(['Name']):
         sys.exit(0)
 
-    fixed_tag = not os.path.exists('debian/upstream/metadata')
+    if not os.path.exists('debian/upstream/metadata'):
+        fixed_tags.append('upstream-metadata-file-is-missing')
 
     update_ordered_dict(
         code, [(k, v.value) for (k, v) in changed.items()],
@@ -124,7 +138,7 @@ fields = [
     for k, v in sorted(changed.items())
     ]
 
-print('Set upstream metadata fields: %s.' % ', '.join(sorted(fields)))
-print('Certainty: %s' % achieved_certainty)
-if fixed_tag:
-    print('Fixed-Lintian-Tags: upstream-metadata-file-is-missing')
+report_result(
+    'Set upstream metadata fields: %s.' % ', '.join(sorted(fields)),
+    fixed_lintian_tags=fixed_tags,
+    certainty=achieved_certainty)

@@ -2,6 +2,8 @@ lintian-brush (0.61) UNRELEASED; urgency=medium
 
   * Fix a bug incorrectly removing used license stanzas with license
     exceptions in debian/copyright.
+  * Report when the upstream-metadata-missing-repository and upstream-
+    metadata-missing-bug-tracking tags are fixed.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 04 Apr 2020 21:53:49 +0000
 
