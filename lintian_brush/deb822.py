@@ -55,32 +55,67 @@ def reformat_deb822(contents):
         Deb822.iter_paragraphs(BytesIO(contents), encoding='utf-8'))
 
 
+class ChangeConflict(Exception):
+    """Indicates that a proposed change didn't match what was found.
+    """
+
+    def __init__(self, para_key, field, expected_old_value, actual_old_value,
+                 new_value):
+        self.paragraph_key = para_key
+        self.field = field
+        self.expected_old_value = expected_old_value
+        self.actual_old_value = actual_old_value
+        self.new_value = new_value
+
+
 class Deb822Updater(Updater):
 
     def __init__(self, path, allow_generated=False):
         super(Deb822Updater, self).__init__(
             path, allow_generated=allow_generated, mode='b')
 
-    def apply_changes(self, changes):
+    def apply_changes(self, changes, resolve_conflict=None):
         """Apply a set of changes to this deb822 instance.
 
         Args:
-          dict mapping paragraph types to
-          list of (field_name, old_value, new_value)
+          changes: dict mapping paragraph types to
+              list of (field_name, old_value, new_value)
+            resolve_conflict: callback that receives
+                (para_key, field, expected_old_value, actual_old_value,
+                 new_value) and returns a new value
         """
+        def _default_resolve_conflict(para_key, field, expected_old_value,
+                                      actual_old_value, new_value):
+            raise ChangeConflict(
+                para_key, field, expected_old_value, actual_old_value,
+                new_value)
+
+        if resolve_conflict is None:
+            resolve_conflict = _default_resolve_conflict
+
         changes = dict(changes.items())
         for paragraph in self.paragraphs:
             for item in paragraph.items():
                 for key, old_value, new_value in changes.pop(item, []):
+                    if paragraph.get(key) != old_value:
+                        new_value = resolve_conflict(
+                            item, key, paragraph.get(key),
+                            old_value, new_value)
                     if new_value is None:
                         del paragraph[key]
                     else:
                         paragraph[key] = new_value
         # Add any new paragraphs that weren't processed earlier
-        for p in changes.values():
-            self.paragraphs.append(Deb822(
-                [(field, new_value)
-                 for (field, old_value, new_value) in p]))
+        for key, p in changes.items():
+            paragraph = Deb822()
+            for (field, old_value, new_value) in p:
+                if old_value is not None:
+                    new_value = resolve_conflict(
+                        key, field, None, old_value, new_value)
+                if new_value is None:
+                    continue
+                paragraph[field] = new_value
+            self.paragraphs.append(paragraph)
 
     def _parse(self, content):
         return list(Deb822.iter_paragraphs(content, encoding='utf-8'))

@@ -25,6 +25,7 @@ from breezy.tests import (
 from debian.deb822 import Deb822
 
 from lintian_brush.deb822 import (
+    ChangeConflict,
     Deb822Updater,
     dump_paragraphs,
     reformat_deb822,
@@ -172,3 +173,76 @@ Source: blah
 Testsuite: autopkgtest
 
 """, 'controlfile')
+
+
+class ApplyChangesTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(ApplyChangesTests, self).setUp()
+        self.build_tree_contents([('controlfile', """\
+Source: blah
+Testsuite: autopkgtest
+
+""")])
+
+    def test_simple_set(self):
+        with Deb822Updater('controlfile') as updater:
+            updater.apply_changes(
+                {('Source', 'blah'): [('Build-Depends', None, 'foo')]})
+        self.assertFileEqual("""\
+Source: blah
+Testsuite: autopkgtest
+Build-Depends: foo
+""", 'controlfile')
+
+    def test_simple_change(self):
+        with Deb822Updater('controlfile') as updater:
+            updater.apply_changes(
+                {('Source', 'blah'): [('Testsuite', 'autopkgtest', 'foo')]})
+        self.assertFileEqual("""\
+Source: blah
+Testsuite: foo
+""", 'controlfile')
+
+    def test_change_conflict(self):
+        with Deb822Updater('controlfile') as updater:
+            self.assertRaises(
+                ChangeConflict, updater.apply_changes,
+                {('Source', 'blah'): [('Testsuite', 'different', 'foo')]})
+
+    def test_simple_delete(self):
+        with Deb822Updater('controlfile') as updater:
+            updater.apply_changes(
+                {('Source', 'blah'): [('Testsuite', 'autopkgtest', None)]})
+        self.assertFileEqual("""\
+Source: blah
+""", 'controlfile')
+
+    def test_delete_conflict(self):
+        with Deb822Updater('controlfile') as updater:
+            self.assertRaises(
+                ChangeConflict, updater.apply_changes,
+                {('Source', 'blah'): [('Nonexistent', 'autopkgtest', None)]})
+
+    def test_simple_add_para(self):
+        with Deb822Updater('controlfile') as updater:
+            updater.apply_changes(
+                {('Source', 'new'): [
+                    ('Source', None, 'new'),
+                    ('Build-Depends', None, 'bar')]})
+        self.assertFileEqual("""\
+Source: blah
+Testsuite: autopkgtest
+
+Source: new
+Build-Depends: bar
+""", 'controlfile')
+
+    def test_simple_add_para_conflict(self):
+        with Deb822Updater('controlfile') as updater:
+            self.assertRaises(
+                ChangeConflict,
+                updater.apply_changes,
+                {('Source', 'new'): [
+                    ('Source', None, 'new'),
+                    ('Build-Depends', 'bar', 'bar')]})
