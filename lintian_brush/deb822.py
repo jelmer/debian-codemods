@@ -62,15 +62,25 @@ class Deb822Updater(Updater):
             path, allow_generated=allow_generated, mode='b')
 
     def apply_changes(self, changes):
+        """Apply a set of changes to this deb822 instance.
+
+        Args:
+          dict mapping paragraph types to
+          list of (field_name, old_value, new_value)
+        """
         changes = dict(changes.items())
         for paragraph in self.paragraphs:
             for item in paragraph.items():
-                for key, value in changes.pop(item, []):
-                    if value is None:
+                for key, old_value, new_value in changes.pop(item, []):
+                    if new_value is None:
                         del paragraph[key]
                     else:
-                        paragraph[key] = value
-        self.paragraphs.extend([Deb822(dict(p)) for p in changes.values()])
+                        paragraph[key] = new_value
+        # Add any new paragraphs that weren't processed earlier
+        for p in changes.values():
+            self.paragraphs.append(Deb822(
+                [(field, new_value)
+                 for (field, old_value, new_value) in p]))
 
     def _parse(self, content):
         return list(Deb822.iter_paragraphs(content, encoding='utf-8'))

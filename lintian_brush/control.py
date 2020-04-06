@@ -153,6 +153,12 @@ class ControlUpdater(object):
         return self._primary.paragraphs[1:]
 
     def changes(self):
+        """Return a dictionary describing the changes since the base.
+
+        Returns:
+          dictionary mapping tuples of (kind, name) to
+            list of (field_name, old_value, new_value)
+        """
         orig = self._primary._parse(self._primary._orig_content)
         changes = {}
 
@@ -178,7 +184,8 @@ class ControlUpdater(object):
             fields.extend([field for field in new if field not in fields])
             for field in fields:
                 if old.get(field) != new.get(field):
-                    changes.setdefault(key, []).append((field, new.get(field)))
+                    changes.setdefault(key, []).append(
+                        (field, old.get(field), new.get(field)))
         return changes
 
     def __enter__(self):
