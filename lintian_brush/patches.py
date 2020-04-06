@@ -37,6 +37,9 @@ from debian.changelog import Changelog
 from . import reset_tree
 
 
+DEFAULT_DEBIAN_PATCHES_DIR = 'debian/patches'
+
+
 def find_patch_base(tree):
     """Find the base revision to apply patches to.
 
@@ -170,7 +173,7 @@ def read_quilt_series(f):
         yield patch, quoted, options
 
 
-def read_quilt_patches(tree, directory='debian/patches'):
+def read_quilt_patches(tree, directory=DEFAULT_DEBIAN_PATCHES_DIR):
     """Read patch contents from quilt directory.
 
     Args:
@@ -220,6 +223,13 @@ def upstream_with_applied_patches(tree, patches):
 
 
 def rules_find_patches_directory(makefile):
+    """Find the patches directory set in debian/rules.
+
+    Args:
+        makefile: Makefile to scan
+    Returns:
+        path to patches directory, or None if none was found in debian/rules
+    """
     try:
         val = makefile.get_variable(b'QUILT_PATCH_DIR')
     except KeyError:
@@ -229,8 +239,15 @@ def rules_find_patches_directory(makefile):
 
 
 def find_patches_directory(path):
+    """Find the name of the patches directory, if any.
+
+    Args:
+      path: Root to package
+    Returns:
+      relative path to patches directory, or None if none exists
+    """
     from .rules import Makefile
-    directory = 'debian/patches'
+    directory = None
     try:
         mf = Makefile.from_path(os.path.join(path, 'debian/rules'))
     except FileNotFoundError:
@@ -239,21 +256,27 @@ def find_patches_directory(path):
         rules_directory = rules_find_patches_directory(mf)
         if rules_directory is not None:
             directory = rules_directory
+    if directory is None and os.path.exists(
+            os.path.join(path, DEFAULT_DEBIAN_PATCHES_DIR)):
+        directory = DEFAULT_DEBIAN_PATCHES_DIR
     return directory
 
 
 def tree_patches_directory(tree):
     """Find the name of the patches directory.
 
+    This will always return a path, even if the patches
+    directory does not yet exist.
+
     Args:
       tree: Tree to check
     Returns:
-      path to patches directory, if any
+      path to patches directory, or what it should be
     """
     directory = find_patches_directory(tree.abspath('.'))
-    if tree.has_filename(directory):
-        return directory
-    return None
+    if directory is None:
+        return DEFAULT_DEBIAN_PATCHES_DIR
+    return directory
 
 
 def tree_non_patches_changes(tree, patches_directory):

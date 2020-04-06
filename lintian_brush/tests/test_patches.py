@@ -334,7 +334,7 @@ class TreePatchesDirectoryTests(TestCaseWithTransport):
 
     def test_none(self):
         tree = self.make_branch_and_tree('.')
-        self.assertIs(None, tree_patches_directory(tree))
+        self.assertEqual('debian/patches', tree_patches_directory(tree))
 
     def test_default(self):
         tree = self.make_branch_and_tree('.')
