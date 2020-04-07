@@ -154,10 +154,8 @@ Uploaders: @lintian-brush-test@
 
 """)])
 
-        def source_cb(c):
-            c['Testsuite'] = 'autopkgtest8'
         with ControlUpdater() as updater:
-            source_cb(updater.source)
+            updater.source['Testsuite'] = 'autopkgtest8'
             updater.changes()
         self.assertFileEqual("""\
 Source: blah
@@ -169,6 +167,32 @@ Source: blah
 Testsuite: autopkgtest8
 Uploaders: testvalue
 """, "debian/control")
+
+    def test_update_cdbs_template(self):
+        self.build_tree_contents([('debian/', ), ('debian/control', """\
+Source: blah
+Testsuite: autopkgtest
+Build-Depends: some-foo, libc6
+
+"""), ('debian/control.in', """\
+Source: blah
+Testsuite: autopkgtest
+Build-Depends: @cdbs@, libc6
+
+""")])
+
+        with ControlUpdater() as updater:
+            updater.source['Build-Depends'] = 'some-foo, libc6, some-bar'
+        self.assertFileEqual("""\
+Source: blah
+Testsuite: autopkgtest
+Build-Depends: some-foo, libc6, some-bar
+""", "debian/control")
+        self.assertFileEqual("""\
+Source: blah
+Testsuite: autopkgtest
+Build-Depends: @cdbs@, libc6, some-bar
+""", "debian/control.in")
 
     def test_description_stays_last(self):
         self.build_tree_contents([('debian/', ), ('debian/control', """\

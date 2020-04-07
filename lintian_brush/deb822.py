@@ -99,8 +99,8 @@ class Deb822Updater(Updater):
                 for key, old_value, new_value in changes.pop(item, []):
                     if paragraph.get(key) != old_value:
                         new_value = resolve_conflict(
-                            item, key, paragraph.get(key),
-                            old_value, new_value)
+                            item, key, old_value, paragraph.get(key),
+                            new_value)
                     if new_value is None:
                         del paragraph[key]
                     else:
@@ -111,7 +111,7 @@ class Deb822Updater(Updater):
             for (field, old_value, new_value) in p:
                 if old_value is not None:
                     new_value = resolve_conflict(
-                        key, field, None, old_value, new_value)
+                        key, field, old_value, None, new_value)
                 if new_value is None:
                     continue
                 paragraph[field] = new_value

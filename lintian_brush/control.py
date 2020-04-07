@@ -26,7 +26,7 @@ from debian.deb822 import Deb822
 import subprocess
 
 from ._deb822 import PkgRelation
-from .deb822 import Deb822Updater
+from .deb822 import Deb822Updater, ChangeConflict
 from .reformatting import GeneratedFile
 
 
@@ -82,12 +82,26 @@ def guess_template_type(template_path):
     return None
 
 
+def _cdbs_resolve_conflict(para_key, field, expected_old_value,
+                           actual_old_value, new_value):
+    if (para_key[0] == 'Source' and field == 'Build-Depends' and
+            expected_old_value in new_value):
+        return new_value.replace(expected_old_value, actual_old_value)
+    raise ChangeConflict(
+        para_key, field, expected_old_value, actual_old_value,
+        new_value)
+
+
 def _update_control_template(template_path, path, changes):
     template_type = guess_template_type(template_path)
     if template_type is None or template_type == 'rules':
         raise GeneratedFile(path, template_path)
     with Deb822Updater(template_path) as updater:
-        updater.apply_changes(changes)
+        if template_type == 'cdbs':
+            resolve_conflict = _cdbs_resolve_conflict
+        else:
+            resolve_conflict = None
+        updater.apply_changes(changes, resolve_conflict=resolve_conflict)
     if not updater.changed:
         # A bit odd, since there were changes to the output file. Anyway.
         return False
