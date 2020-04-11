@@ -152,6 +152,13 @@ class ControlUpdater(object):
         self.path = path
         self._primary = Deb822Updater(path)
 
+    @classmethod
+    def from_tree(cls, tree, subpath=None):
+        relpath = 'debian/control'
+        if subpath not in (None, '.', ''):
+            relpath = os.path.join(subpath, relpath)
+        return cls(tree.abspath(relpath))
+
     @property
     def paragraphs(self):
         return self._primary.paragraphs
