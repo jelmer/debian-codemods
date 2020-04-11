@@ -187,6 +187,11 @@ class SalsaUrlFromAliothUrlTests(TestCase):
             salsa_url_from_alioth_url(
                 'git',
                 'https://anonscm.debian.org/cgit/3dprinter/packages/yagv.git'))
+        self.assertEqual(
+            'https://salsa.debian.org/fonts-team/fonts-pagul.git',
+            salsa_url_from_alioth_url(
+                'git',
+                'git://anonscm.debian.org/debian-in/fonts-pagul.git'))
 
     def test_svn(self):
         self.assertEqual(

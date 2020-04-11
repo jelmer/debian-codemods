@@ -190,6 +190,8 @@ def _salsa_path_from_alioth_url(vcs_type, alioth_url):
         m = re.match(
             "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?([^/]+)/",
             alioth_url)
+        if m and m.group(4) == 'debian-in' and 'fonts-' in alioth_url:
+            return re.sub(m.re, 'fonts-team/', alioth_url)
         if m and m.group(4) in TEAM_NAME_MAP:
             new_name = TEAM_NAME_MAP[m.group(4)]
             return re.sub(m.re, new_name + '/', alioth_url)
