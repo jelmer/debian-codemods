@@ -4,6 +4,7 @@
     "debian-watch-may-check-gpg-signature": "debian-watch-does-not-check-gpg-signature",
     "dep5-file-paragraph-reference-header-paragraph": "dep5-file-paragraph-references-header-paragraph",
     "depends-on-build-essential-package-without-using-version": "build-depends-on-build-essential-package-without-using-version",
+    "description-too-long": "synopsis-too-long",
     "insane-line-length-in-source-file": "very-long-line-length-in-source-file",
     "no-debian-copyright": "no-debian-copyright-in-source",
     "package-install-apt-preferences": "package-installs-apt-preferences",
