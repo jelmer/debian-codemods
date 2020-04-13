@@ -48,7 +48,7 @@ from lintian_brush.vcs import (
 from urllib.request import urlopen, Request
 
 # Pecl is quite slow, so up the timeout a bit.
-PECL_URLLIB_TIMEOUT = 8
+PECL_URLLIB_TIMEOUT = 15
 ADDON_ONLY_FIELDS = ['Archive']
 KNOWN_HOSTING_SITES = [
     'code.launchpad.net', 'github.com', 'launchpad.net', 'git.openstack.org']
