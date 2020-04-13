@@ -8,6 +8,7 @@
         "u-boot-exception-2.0",
         "PS-or-PDF-font-exception-20170817",
         "gnu-javamail-exception",
+        "LGPL-3.0-linking-exception",
         "DigiRule-FOSS-exception",
         "LLVM-exception",
         "Linux-syscall-note",
@@ -759,6 +760,9 @@
         },
         "MulanPSL-1.0": {
             "name": "Mulan Permissive Software License, Version 1"
+        },
+        "MulanPSL-2.0": {
+            "name": "Mulan Permissive Software License, Version 2"
         },
         "Multics": {
             "name": "Multics License"
