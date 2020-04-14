@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os
+import re
 from debian.changelog import Changelog
 from lintian_brush.control import ControlUpdater, get_relation
 from debian.copyright import Copyright, NotMachineReadableError
@@ -9,10 +10,11 @@ from debian.deb822 import Deb822
 # Dictionary mapping source and target versions
 upgrade_path = {
     "4.1.0": "4.1.1",
+    "4.1.4": "4.1.5",
     "4.2.0": "4.2.1",
     "4.3.0": "4.4.0",
     "4.4.0": "4.4.1",
-    "4.1.4": "4.1.5",
+    "4.4.1": "4.5.0",
 }
 
 
@@ -82,11 +84,52 @@ def check_4_1_5():
     return True
 
 
+def _poor_grep(path, needle):
+    with open(path, 'rb') as f:
+        lines = f.readlines()
+        pat = re.compile(needle)
+        return any(bool(pat.search(line)) for line in lines)
+
+
+def check_4_5_0():
+    # Hardcoded or dynamically allocated usernames should start with an
+    # underscore.
+
+    uses_update_rc_d = False
+
+    # For now, just check if there are any postinst / preinst script that call
+    # adduser / useradd
+    for entry in os.scandir('debian'):
+        if (not entry.name.endswith('.postinst') and
+                not entry.name.endswith('.preinst')):
+            continue
+        if _poor_grep(entry.path, b'(adduser|useradd)'):
+            return False
+        if _poor_grep(entry.path, b'update-rc.d'):
+            uses_update_rc_d = True
+
+    # Including an init script is encouraged if there is no systemd unit, and
+    # optional if there is (previously, it was recommended).
+    for entry in os.scandir('debian'):
+        if not entry.name.endswith('.init'):
+            continue
+        shortname = entry.name[:-len('.init')]
+        if (not os.path.exists('debian/%s.service' % shortname) and
+                not os.path.exists('debian/%s@.service' % shortname)):
+            return False
+        # Use of update-rc.d is required if the package includes an init
+        # script.
+        if not uses_update_rc_d:
+            return False
+    return True
+
+
 check_requirements = {
     "4.1.1": check_4_1_1,
     "4.4.0": check_4_4_0,
     "4.4.1": check_4_4_1,
     "4.1.5": check_4_1_5,
+    "4.5.0": check_4_5_0,
 }
 
 current_version = None
