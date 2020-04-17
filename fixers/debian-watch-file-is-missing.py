@@ -15,11 +15,12 @@ from lintian_brush.fixer import (
     current_package_version,
     net_access_allowed,
     report_result,
+    package_is_native,
     )
 from lintian_brush.watch import WatchFile, Watch
 
 
-if os.path.exists('debian/watch'):
+if os.path.exists('debian/watch') or package_is_native():
     # Nothing to do here..
     sys.exit(0)
 
