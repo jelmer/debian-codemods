@@ -11,7 +11,11 @@ from lintian_brush import (
     DEFAULT_URLLIB_TIMEOUT,
     certainty_to_confidence,
     )
-from lintian_brush.fixer import net_access_allowed
+from lintian_brush.fixer import (
+    current_package_version,
+    net_access_allowed,
+    report_result,
+    )
 from lintian_brush.watch import WatchFile, Watch
 
 
@@ -121,15 +125,13 @@ else:
     code = ruamel.yaml.round_trip_load(inp, preserve_quotes=True)
 
     from urllib.parse import urlparse
-    from debian.changelog import Version
 
     try:
         parsed_url = urlparse(code['Repository'])
     except KeyError:
         pass
     else:
-        upstream_version = Version(
-            os.environ['CURRENT_VERSION']).upstream_version
+        upstream_version = current_package_version().upstream_version
         if parsed_url.hostname == 'github.com':
             w, certainty = guess_github_watch_entry(
                 parsed_url, upstream_version)
@@ -156,6 +158,7 @@ wf.entries.append(winner[0])
 with open('debian/watch', 'w') as f:
     wf.dump(f)
 
-print("Add debian/watch file, using %s." % site)
-print("Certainty: %s" % certainty)
-print("Fixed-Lintian-Tags: debian-watch-file-is-missing")
+report_result(
+    "Add debian/watch file, using %s." % site,
+    certainty=certainty,
+    fixed_lintian_tags=['debian-watch-file-is-missing'])

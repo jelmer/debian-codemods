@@ -17,6 +17,7 @@
 
 """Helper functions for fixers."""
 
+from debian.changelog import Version
 import os
 
 
@@ -46,3 +47,11 @@ def net_access_allowed():
 
 def compat_release():
     return os.environ.get('COMPAT_RELEASE', 'sid')
+
+
+def current_package_version():
+    return Version(os.environ['CURRENT_VERSION'])
+
+
+def package_is_native():
+    return (not current_package_version().debian_revision)

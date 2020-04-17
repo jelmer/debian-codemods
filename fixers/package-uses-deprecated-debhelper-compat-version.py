@@ -18,7 +18,11 @@ from lintian_brush.debhelper import (
     maximum_debhelper_compat_version,
     DEBHELPER_BUILD_STEPS,
     )
-from lintian_brush.fixer import compat_release
+from lintian_brush.fixer import (
+    compat_release,
+    current_package_version,
+    report_result,
+    )
 from lintian_brush.rules import (
     check_cdbs,
     dh_invoke_drop_with,
@@ -369,7 +373,7 @@ def upgrade_to_debhelper_11():
         subitems.add('Drop obsolete upstart file %s.' % name)
         with open('debian/%s.maintscript' % package, 'a') as f:
             f.write('rm_conffile /etc/init/%s.conf %s\n' % (
-                service, os.environ['CURRENT_VERSION']))
+                service, str(current_package_version())))
 
 
 upgrade_to_debhelper = {
@@ -392,9 +396,11 @@ if new_debhelper_compat_version > current_debhelper_compat_version:
     else:
         kind = "old"
         tag = "package-uses-old-debhelper-compat-version"
-    print("Bump debhelper from %s %s to %s." % (
-        kind, current_debhelper_compat_version, new_debhelper_compat_version))
+    lines = ["Bump debhelper from %s %s to %s." % (
+        kind, current_debhelper_compat_version, new_debhelper_compat_version)]
     for subitem in sorted(subitems):
-        print("+ " + subitem)
+        lines.append("+ " + subitem)
 
-    print("Fixed-Lintian-Tags: %s" % tag)
+    report_result(
+        description='\n'.join(lines),
+        fixed_lintian_tags=[tag])

@@ -3,7 +3,6 @@
 # TODO(jelmer): Read python3 setup.py dist_info
 # TODO(jelmer): Check XS-Go-Import-Path
 
-from debian.changelog import Version
 import os
 import sys
 from lintian_brush import (
@@ -11,6 +10,8 @@ from lintian_brush import (
     min_certainty,
     )
 from lintian_brush.fixer import (
+    current_package_version,
+    package_is_native,
     net_access_allowed,
     report_result,
     )
@@ -32,13 +33,15 @@ from lintian_brush.yaml import (
     )
 
 
-current_version = Version(os.environ['CURRENT_VERSION'])
 fixed_tags = []
 
 
-if not current_version.debian_revision:
+if package_is_native():
     # Native package
     sys.exit(0)
+
+
+current_version = current_package_version()
 
 
 with YamlUpdater('debian/upstream/metadata') as code:

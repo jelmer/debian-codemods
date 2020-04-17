@@ -1,12 +1,13 @@
 #!/usr/bin/python3
 
-from debian.changelog import Version
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import (
+    package_is_native,
+    report_result,
+    )
 import os
 import sys
 
-version = Version(os.environ['CURRENT_VERSION'])
-if version.debian_revision:
+if not package_is_native():
     # Nothing to do
     sys.exit(0)
 

@@ -1,6 +1,8 @@
 #!/usr/bin/python3
-from debian.changelog import Version
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import (
+    report_result,
+    package_is_native,
+    )
 import os
 import sys
 
@@ -19,9 +21,7 @@ else:
 if orig_format not in (None, '1.0'):
     sys.exit(0)
 
-version = Version(os.environ['CURRENT_VERSION'])
-
-if not version.debian_revision:
+if package_is_native():
     format = '3.0 (native)'
     description = "Upgrade to newer source format %s." % format
 else:

@@ -1,9 +1,12 @@
 #!/usr/bin/python3
-import os
 import sys
 from lintian_brush.control import (
     ensure_minimum_debhelper_version,
     ControlUpdater,
+    )
+from lintian_brush.fixer import (
+    current_package_version,
+    report_result,
     )
 from lintian_brush.rules import (
     check_cdbs,
@@ -37,7 +40,7 @@ with ControlUpdater() as updater:
         updater.source.get("Build-Depends", ""), minimum_version)
 
 
-current_version = os.environ["CURRENT_VERSION"]
+current_version = str(current_package_version())
 migrate_version = "<< %s%s" % (
         current_version,
         '' if current_version.endswith('~') else '~')
@@ -73,6 +76,7 @@ if difference:
         sys.exit(2)
     raise Exception("packages missing %r" % difference)
 
-print("Transition to automatic debug package%s (from: %s)." %
-      (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages)))
-print("Fixed-Lintian-Tags: debian-control-has-obsolete-dbg-package")
+report_result(
+    "Transition to automatic debug package%s (from: %s)." %
+    (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages)),
+    fixed_lintian_tags=['debian-control-has-obsolete-dbg-package'])
