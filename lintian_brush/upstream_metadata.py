@@ -44,6 +44,7 @@ from lintian_brush.vcs import (
     sanitize_url as sanitize_vcs_url,
     is_gitlab_site,
     split_vcs_url,
+    unsplit_vcs_url,
     )
 from urllib.request import urlopen, Request
 
@@ -99,6 +100,8 @@ class UpstreamDatum(object):
 # - X-SourceForge-Project
 # - X-Wiki
 # - X-Summary
+# - X-License
+# - X-Copyright
 
 # Supported, but unused.
 # - FAQ
@@ -700,6 +703,60 @@ def guess_from_doap(path, trust_package):
                             'Repository-Browse', web_url, 'certain')
 
 
+def guess_from_cabal(path, trust_package=False):
+    # TODO(jelmer): Perhaps use a standard cabal parser in Python?
+    # The current parser is not really correct, but good enough for our needs.
+    # https://www.haskell.org/cabal/release/cabal-1.10.1.0/doc/users-guide/
+    repo_url = None
+    repo_branch = None
+    repo_subpath = None
+    with open(path, 'r', encoding='utf-8') as f:
+        section = None
+        for line in f:
+            if line.lstrip().startswith('--'):
+                # Comment
+                continue
+            if not line.strip():
+                section = None
+                continue
+            try:
+                (field, value) = line.split(':', 1)
+            except ValueError:
+                if not line.startswith(' '):
+                    section = line.strip()
+                continue
+            # The case of field names is not sigificant
+            field = field.lower()
+            value = value.strip()
+            if not field.startswith(' '):
+                if field == 'homepage':
+                    yield UpstreamDatum('Homepage', value, 'certain')
+                if field == 'bug-reports':
+                    yield UpstreamDatum('Bug-Database', value, 'certain')
+                if field == 'name':
+                    yield UpstreamDatum('Name', value, 'certain')
+                if field == 'maintainer':
+                    yield UpstreamDatum('Contact', value, 'certain')
+                if field == 'copyright':
+                    yield UpstreamDatum('X-Copyright', value, 'certain')
+                if field == 'license':
+                    yield UpstreamDatum('X-License', value, 'certain')
+            else:
+                field = field.strip()
+                if section == 'source-repository head':
+                    if field == 'location':
+                        repo_url = value
+                    if field == 'branch':
+                        repo_branch = value
+                    if field == 'subdir':
+                        repo_subpath = value
+    if repo_url:
+        yield UpstreamDatum(
+            'Repository',
+            unsplit_vcs_url(repo_url, repo_branch, repo_subpath),
+            'certain')
+
+
 def is_email_address(value):
     return '@' in value or ' (at) ' in value
 
@@ -819,6 +876,14 @@ def _get_guessers(path, trust_package=False):
         else:
             warn('More than one doap filename, ignoring all: %r' %
                  doap_filenames)
+
+    cabal_filenames = [n for n in os.listdir(path) if n.endswith('.cabal')]
+    if cabal_filenames:
+        if len(cabal_filenames) == 1:
+            CANDIDATES.append((cabal_filenames[0], guess_from_cabal))
+        else:
+            warn('More than one cabal filename, ignoring all: %r' %
+                 cabal_filenames)
 
     readme_filenames = [
         n for n in os.listdir(path)

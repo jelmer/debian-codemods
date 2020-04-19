@@ -8,6 +8,7 @@ lintian-brush (0.61) UNRELEASED; urgency=medium
   * Preserve @cdbs@ in debian/control.in in cdbs packages.
   * Add support for updating to Standards-Version 4.5.0 in some cases.
   * Don't create watch files for native packages.
+  * Add support for parsing upstream metadata from cabal files.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 04 Apr 2020 21:53:49 +0000
 
