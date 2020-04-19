@@ -723,7 +723,7 @@ def guess_from_cabal(path, trust_package=False):
                 (field, value) = line.split(':', 1)
             except ValueError:
                 if not line.startswith(' '):
-                    section = line.strip()
+                    section = line.strip().lower()
                 continue
             # The case of field names is not sigificant
             field = field.lower()
