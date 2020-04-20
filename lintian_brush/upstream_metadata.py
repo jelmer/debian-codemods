@@ -215,7 +215,7 @@ def guess_repo_from_url(url, net_access=False):
         # 'svn' subdomains are often used for hosting SVN repositories.
         return url
     if net_access:
-        if probe_upstream_branch_url(url):
+        if verify_repository_url(url):
             return url
         return None
     return None
@@ -1206,6 +1206,45 @@ def bug_submit_url_from_bug_database_url(url):
     return None
 
 
+def verify_repository_url(url, version=None):
+    parsed_url = urlparse(url)
+    if parsed_url.netloc == 'github.com':
+        path_elements = parsed_url.path.strip('/').split('/')
+        if path_elements[1].endswith('.git'):
+            path_elements[1] = path_elements[1][:-4]
+        if len(path_elements) < 2:
+            return False
+        api_url = 'https://api.github.com/repos/%s/%s' % (
+            path_elements[0], path_elements[1])
+        try:
+            data = _load_json_url(api_url)
+        except urllib.error.HTTPError as e:
+            if e.status == 404:
+                return False
+            elif e.status == 403:
+                # Probably rate-limited. Let's just hope for the best.
+                pass
+            else:
+                raise
+        else:
+            if data.get('archived', False):
+                return False
+            if data['description'].startswith('Moved to '):
+                return False
+            if 'has moved' in data['description']:
+                return False
+            if data['description'].startswith('Mirror of '):
+                return False
+            homepage = data.get('homepage')
+            if homepage and is_gitlab_site(homepage):
+                return False
+            # TODO(jelmer): Look at the contents of the repository; if it
+            # contains just a single README file with < 10 lines, assume
+            # the worst.
+            # return data['clone_url']
+    return probe_upstream_branch_url(url, version=version)
+
+
 def verify_bug_database_url(url):
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
@@ -1220,7 +1259,7 @@ def verify_bug_database_url(url):
             if e.status == 404:
                 return False
             raise
-        return data['has_issues']
+        return data['has_issues'] and not data.get('archived', False)
     if is_gitlab_site(parsed_url.netloc):
         path_elements = parsed_url.path.strip('/').split('/')
         if len(path_elements) < 3 or path_elements[-1] != 'issues':
@@ -1413,6 +1452,25 @@ def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
                 changed = True
 
 
+def _version_in_tags(version, tag_names):
+    if version in tag_names:
+        return True
+    if 'v%s' % version in tag_names:
+        return True
+    if 'release/%s' % version in tag_names:
+        return True
+    if version.replace('.', '_') in tag_names:
+        return True
+    for tag_name in tag_names:
+        if tag_name.endswith('_' + version):
+            return True
+        if tag_name.endswith('-' + version):
+            return True
+        if tag_name.endswith('_%s' % version.replace('.', '_')):
+            return True
+    return False
+
+
 def probe_upstream_branch_url(url, version=None):
     parsed = urlparse(url)
     if parsed.scheme in ('git+ssh', 'ssh', 'bzr+ssh'):
@@ -1431,21 +1489,8 @@ def probe_upstream_branch_url(url, version=None):
             if not tag_names:
                 # Uhm, hmm
                 return True
-            if version in tag_names:
+            if _version_in_tags(version, tag_names):
                 return True
-            if 'v%s' % version in tag_names:
-                return True
-            if 'release/%s' % version in tag_names:
-                return True
-            if version.replace('.', '_') in tag_names:
-                return True
-            for tag_name in tag_names:
-                if tag_name.endswith('_' + version):
-                    return True
-                if tag_name.endswith('-' + version):
-                    return True
-                if tag_name.endswith('_%s' % version.replace('.', '_')):
-                    return True
             return False
         else:
             return True
@@ -1481,7 +1526,7 @@ def check_upstream_metadata(upstream_metadata, version=None):
     """
     repository = upstream_metadata.get('Repository')
     if repository and repository.certainty == 'likely':
-        if probe_upstream_branch_url(repository.value, version=version):
+        if verify_repository_url(repository.value, version=version):
             repository.certainty = 'certain'
             derived_browse_url = browse_url_from_repo_url(repository.value)
             browse_repo = upstream_metadata.get('Repository-Browse')
