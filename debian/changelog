@@ -11,6 +11,8 @@ lintian-brush (0.61) UNRELEASED; urgency=medium
   * Add support for parsing upstream metadata from cabal files.
   * Try to identify upstream repositories that have moved.
     Closes: #955453
+  * debian-watch-file-uses-deprecated-githubredir: Don't remove watch
+    files with just empty comments. Closes: #958678
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 04 Apr 2020 21:53:49 +0000
 

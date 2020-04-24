@@ -63,6 +63,15 @@ class WatchFile(object):
     def __iter__(self):
         return iter(self.entries)
 
+    def __bool__(self):
+        return bool(self.entries)
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and \
+                self.entries == other.entries and \
+                self.options == other.options and \
+                self.version == other.version
+
     def dump(self, f):
         def serialize_options(opts):
             s = ','.join(opts)
@@ -213,9 +222,14 @@ class WatchUpdater(Updater):
         return None
 
     def _parse(self, content):
-        return parse_watch_file(content.splitlines())
+        wf = parse_watch_file(content.splitlines())
+        if wf is None:
+            return WatchFile([])
+        return wf
 
     def _format(self, parsed):
+        if parsed is None:
+            return None
         nf = StringIO()
         parsed.dump(nf)
         return nf.getvalue()

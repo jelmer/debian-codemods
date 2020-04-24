@@ -19,6 +19,7 @@
 
 from breezy.tests import (
     TestCase,
+    TestCaseWithTransport,
     )
 
 from io import StringIO
@@ -27,6 +28,8 @@ from lintian_brush.watch import (
     parse_watch_file,
     MissingVersion,
     Watch,
+    WatchFile,
+    WatchUpdater,
     )
 
 
@@ -180,3 +183,24 @@ https://samba.org/~jelmer/@PACKAGE@ blah-(\\d+).tar.gz
         self.assertEqual(
             'https://samba.org/~jelmer/blah',
             wf.entries[0].format_url('blah'))
+
+
+class WatchUpdaterTests(TestCaseWithTransport):
+
+    def test_file_with_just_comments(self):
+        self.build_tree_contents([('watch', '# tests\n')])
+        with WatchUpdater('watch') as updater:
+            self.assertEqual(WatchFile([]), updater.watch_file)
+        self.assertFileEqual('# tests\n', 'watch')
+
+    def test_version_change(self):
+        self.build_tree_contents([('watch', """\
+version=3
+https://pypi.debian.net/case case-(.+)\\.tar.gz
+""")])
+        with WatchUpdater('watch') as updater:
+            updater.watch_file.version = 4
+        self.assertFileEqual("""\
+version=4
+https://pypi.debian.net/case case-(.+)\\.tar.gz
+""", 'watch')
