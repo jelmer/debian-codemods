@@ -1,4 +1,4 @@
-lintian-brush (0.61) UNRELEASED; urgency=medium
+lintian-brush (0.61) unstable; urgency=medium
 
   * Fix a bug incorrectly removing used license stanzas with license
     exceptions in debian/copyright.
@@ -14,7 +14,7 @@ lintian-brush (0.61) UNRELEASED; urgency=medium
   * debian-watch-file-uses-deprecated-githubredir: Don't remove watch
     files with just empty comments. Closes: #958678
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 04 Apr 2020 21:53:49 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 24 Apr 2020 23:04:27 +0000
 
 lintian-brush (0.60) unstable; urgency=medium
 
