@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.control import get_debhelper_compat_version
+from lintian_brush.fixer import report_result
 from lintian_brush.rules import (
     dh_invoke_drop_argument,
     dh_invoke_drop_with,
@@ -36,6 +37,7 @@ def drop_unnecessary_args(line, target):
 
 update_rules(drop_unnecessary_args)
 
-print('Drop unnecessary dh arguments: %s' %
-      ', '.join([arg.decode() for arg in removed_args]))
-print('Fixed-Lintian-Tags: debian-rules-uses-unnecessary-dh-argument')
+report_result(
+    'Drop unnecessary dh arguments: %s' %
+    ', '.join([arg.decode() for arg in removed_args]),
+    fixed_lintian_tags=['debian-rules-uses-unnecessary-dh-argument'])
