@@ -1679,8 +1679,13 @@ def guess_from_launchpad(package, distribution=None, suite=None):
         distribution = 'ubuntu'
     if suite is None:
         if distribution == 'ubuntu':
-            from distro_info import UbuntuDistroInfo
-            suite = UbuntuDistroInfo().devel()
+            from distro_info import UbuntuDistroInfo, DistroDataOutdated
+            ubuntu = UbuntuDistroInfo()
+            try:
+                suite = ubuntu.devel()
+            except DistroDataOutdated as e:
+                warn(str(e))
+                suite = ubuntu.all[-1]
         elif distribution == 'debian':
             suite = 'sid'
     sourcepackage_url = (
