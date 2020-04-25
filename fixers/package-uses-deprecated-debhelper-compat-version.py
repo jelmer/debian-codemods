@@ -10,7 +10,6 @@ from lintian_brush.control import (
     ensure_minimum_version,
     get_relation,
     read_debian_compat_file,
-    update_control,
     ControlUpdater,
     )
 from lintian_brush.debhelper import (
@@ -97,20 +96,17 @@ if os.path.exists('debian/compat'):
         # Nothing to do
         sys.exit(2)
 
-    def bump_debhelper(control):
-        control["Build-Depends"] = ensure_minimum_version(
-                control.get("Build-Depends", ""),
-                "debhelper",
-                "%d~" % new_debhelper_compat_version)
-
-    update_control(source_package_cb=bump_debhelper)
+    with ControlUpdater() as updater:
+        updater.source["Build-Depends"] = ensure_minimum_version(
+            updater.source.get("Build-Depends", ""),
+            "debhelper",
+            "%d~" % new_debhelper_compat_version)
 else:
     # Assume that the compat version is set in Build-Depends
-    def bump_debhelper_compat(control):
-        global current_debhelper_compat_version
+    with ControlUpdater() as updater:
         try:
             offset, debhelper_compat_relation = get_relation(
-                control.get("Build-Depends", ""), "debhelper-compat")
+                updater.source.get("Build-Depends", ""), "debhelper-compat")
         except KeyError:
             sys.exit(2)
         else:
@@ -123,12 +119,10 @@ else:
             current_debhelper_compat_version = int(
                 debhelper_compat_relation[0].version[1])
         if current_debhelper_compat_version < new_debhelper_compat_version:
-            control["Build-Depends"] = ensure_exact_version(
-                    control["Build-Depends"],
+            updater.source["Build-Depends"] = ensure_exact_version(
+                    updater.source["Build-Depends"],
                     "debhelper-compat",
                     "%d" % new_debhelper_compat_version)
-
-    update_control(source_package_cb=bump_debhelper_compat)
 
 
 # For a list of behavior changes between debhelper compat verisons, see

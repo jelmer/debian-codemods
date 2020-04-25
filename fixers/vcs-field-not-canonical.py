@@ -1,23 +1,23 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import update_control
+from lintian_brush.control import ControlUpdater
+from lintian_brush.fixer import report_result
 from lintian_brush.vcs import canonicalize_vcs_url
 
 
 fields = set()
 
 
-def canonicalize_control(control):
-    for name in control:
+with ControlUpdater() as updater:
+    for name in updater.source:
         if not name.startswith("Vcs-"):
             continue
-        new_value = canonicalize_vcs_url(name[len("Vcs-"):], control[name])
-        if new_value != control[name]:
-            control[name] = new_value
+        new_value = canonicalize_vcs_url(
+            name[len("Vcs-"):], updater.source[name])
+        if new_value != updater.source[name]:
+            updater.source[name] = new_value
             fields.add(name)
 
-
-update_control(source_package_cb=canonicalize_control)
-
-print("Use canonical URL in " + ', '.join(sorted(fields)) + '.')
-print("Fixed-Lintian-Tags: vcs-field-not-canonical")
+report_result(
+    "Use canonical URL in " + ', '.join(sorted(fields)) + '.',
+    fixed_lintian_tags=['vcs-field-not-canonical'])

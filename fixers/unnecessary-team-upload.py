@@ -1,8 +1,9 @@
 #!/usr/bin/python3
 
 from lintian_brush.control import (
-    update_control,
+    ControlUpdater,
     )
+from lintian_brush.fixer import report_result
 
 from debian.changelog import Changelog
 from email.utils import parseaddr
@@ -12,12 +13,10 @@ TEAM_UPLOAD_LINE = '  * Team upload.'
 uploader_emails = []
 
 
-def check_uploaders(control):
-    for entry in control.get('Uploaders', '').split(','):
+with ControlUpdater() as updater:
+    for entry in updater.source.get('Uploaders', '').split(','):
         uploader_emails.append(parseaddr(entry)[1])
 
-
-update_control(source_package_cb=check_uploaders)
 
 with open('debian/changelog', 'r') as f:
     cl = Changelog(f.read())
@@ -37,5 +36,6 @@ if i > 0 and last_change._changes[i-1] == '' and last_change._changes[i] == '':
 with open('debian/changelog', 'w') as f:
     f.write(str(cl))
 
-print("Remove unnecessary Team Upload line in changelog.")
-print("Fixed-Lintian-Tags: unnecessary-team-upload")
+report_result(
+    "Remove unnecessary Team Upload line in changelog.",
+    fixed_lintian_tags=['unnecessary-team-upload'])

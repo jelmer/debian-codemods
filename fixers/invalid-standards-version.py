@@ -2,7 +2,7 @@
 
 import sys
 
-from lintian_brush.control import update_control
+from lintian_brush.control import ControlUpdater
 
 
 def parse_version(v):
@@ -23,28 +23,27 @@ except FileNotFoundError:
     sys.exit(2)
 
 
-def fix_invalid_standards_version(control):
+with ControlUpdater() as updater:
     try:
-        sv = parse_version(control['Standards-Version'])
+        sv = parse_version(updater.source['Standards-Version'])
     except KeyError:
-        return
+        sys.exit(0)
     if sv[:3] in release_dates:
-        return
+        sys.exit(0)
     if len(sv) == 2 and (sv[0], sv[1], 0) in release_dates:
-        control['Standards-Version'] += '.0'
+        updater.source['Standards-Version'] += '.0'
         print("Add missing .0 suffix in Standards-Version.")
-        return
-    if sv > sorted(release_dates)[-1]:
+    elif sv > sorted(release_dates)[-1]:
         # Maybe we're just unaware of new policy releases?
-        return
-    # Just find the previous standards version..
-    candidates = [v for v in release_dates if v < sv]
-    newsv = sorted(candidates)[-1]
-    newsv_str = '.'.join([str(x) for x in newsv])
-    print('Replace invalid standards version %s with valid %s.' % (
-          control['Standards-Version'], newsv_str))
-    control['Standards-Version'] = newsv_str
+        sys.exit(0)
+    else:
+        # Just find the previous standards version..
+        candidates = [v for v in release_dates if v < sv]
+        newsv = sorted(candidates)[-1]
+        newsv_str = '.'.join([str(x) for x in newsv])
+        print('Replace invalid standards version %s with valid %s.' % (
+              updater.source['Standards-Version'], newsv_str))
+        updater.source['Standards-Version'] = newsv_str
 
 
-update_control(source_package_cb=fix_invalid_standards_version)
 print('Fixed-Lintian-Tags: invalid-standards-version')

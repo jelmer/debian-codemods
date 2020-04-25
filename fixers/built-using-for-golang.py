@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.control import (
-    update_control,
+    ControlUpdater,
     add_dependency,
     drop_dependency,
     get_relation,
@@ -14,36 +14,32 @@ go_package = False
 default_architecture = None
 
 
-def check_go_package(control):
-    global go_package, default_architecture
-    if any(iter_relations(control.get('Build-Depends', ''), 'golang-go')):
+with ControlUpdater() as updater:
+    if any(iter_relations(updater.source.get('Build-Depends', ''),
+                          'golang-go')):
         go_package = True
-    if any(iter_relations(control.get('Build-Depends', ''), 'golang-any')):
+    if any(iter_relations(updater.source.get('Build-Depends', ''),
+                          'golang-any')):
         go_package = True
-    default_architecture = control.get('Architecture')
+    default_architecture = updater.source.get('Architecture')
 
-
-def add_built_using(control):
-    if control.get('Architecture', default_architecture) == 'all':
-        if 'Built-Using' in control:
-            control['Built-Using'] = drop_dependency(
-                control['Built-Using'], '${misc:Built-Using}')
-            if not control['Built-Using']:
-                del control['Built-Using']
-            removed.append(control['Package'])
-    else:
-        if go_package:
-            built_using = control.get('Built-Using', '')
-            try:
-                get_relation(built_using, "${misc:Built-Using}")
-            except KeyError:
-                control["Built-Using"] = add_dependency(
-                    built_using, "${misc:Built-Using}")
-                added.append(control['Package'])
-
-
-update_control(
-    binary_package_cb=add_built_using, source_package_cb=check_go_package)
+    for binary in updater.binaries:
+        if binary.get('Architecture', default_architecture) == 'all':
+            if 'Built-Using' in binary:
+                binary['Built-Using'] = drop_dependency(
+                    binary['Built-Using'], '${misc:Built-Using}')
+                if not binary['Built-Using']:
+                    del binary['Built-Using']
+                removed.append(binary['Package'])
+        else:
+            if go_package:
+                built_using = binary.get('Built-Using', '')
+                try:
+                    get_relation(built_using, "${misc:Built-Using}")
+                except KeyError:
+                    binary["Built-Using"] = add_dependency(
+                        built_using, "${misc:Built-Using}")
+                    added.append(binary['Package'])
 
 if added:
     print('Add missing ${misc:Built-Using} to Built-Using on %s.' %

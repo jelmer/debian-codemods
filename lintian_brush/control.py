@@ -18,6 +18,7 @@
 """Utility functions for dealing with control files."""
 
 import collections
+import contextlib
 from itertools import takewhile
 import os
 
@@ -124,6 +125,24 @@ def _update_control_template(template_path, path, changes):
     return True
 
 
+@contextlib.contextmanager
+def _preserve_field_order_preferences(paragraphs):
+    description_is_not_last = set()
+    for para in paragraphs:
+        if 'Package' not in para:
+            continue
+        if list(para) and list(para)[-1] != 'Description':
+            description_is_not_last.add(para['Package'])
+    yield
+    for para in paragraphs:
+        if 'Package' not in para:
+            continue
+        if para['Package'] not in description_is_not_last:
+            # Make sure Description stays the last field
+            para._Deb822Dict__keys.add('Description')
+            para._Deb822Dict__keys.remove('Description')
+
+
 def update_control(path='debian/control', source_package_cb=None,
                    binary_package_cb=None):
     def paragraph_cb(paragraph):
@@ -132,13 +151,7 @@ def update_control(path='debian/control', source_package_cb=None,
                 source_package_cb(paragraph)
         else:
             if binary_package_cb is not None:
-                old_fields = list(paragraph)
                 binary_package_cb(paragraph)
-                # Make sure Description stays the last field
-                if list(paragraph) != old_fields:
-                    if list(old_fields)[-1] == 'Description':
-                        paragraph._Deb822Dict__keys.add('Description')
-                        paragraph._Deb822Dict__keys.remove('Description')
 
     with ControlUpdater(path) as updater:
         for paragraph in updater.paragraphs:
@@ -211,9 +224,13 @@ class ControlUpdater(object):
 
     def __enter__(self):
         self._primary.__enter__()
+        self._field_order_preserver = _preserve_field_order_preferences(
+            self._primary.paragraphs)
+        self._field_order_preserver.__enter__()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self._field_order_preserver.__exit__(exc_type, exc_val, exc_tb)
         try:
             self._primary.__exit__(exc_type, exc_val, exc_tb)
         except GeneratedFile as e:

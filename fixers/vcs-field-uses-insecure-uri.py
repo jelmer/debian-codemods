@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import update_control
+from lintian_brush.control import ControlUpdater
 from lintian_brush.fixer import net_access_allowed
 from lintian_brush.vcs import find_secure_vcs_url
 
@@ -8,9 +8,8 @@ updated = set()
 lp_note = False
 
 
-def fix_insecure_vcs_uri(control):
-    global updated, lp_note
-    for key, value in control.items():
+with ControlUpdater() as updater:
+    for key, value in updater.source.items():
         if not key.startswith('Vcs-'):
             continue
         if value.startswith('lp:'):
@@ -23,11 +22,9 @@ def fix_insecure_vcs_uri(control):
         if newvalue == value:
             # The URL was already secure
             continue
-        control[key] = newvalue
+        updater.source[key] = newvalue
         updated.add(key)
 
-
-update_control(source_package_cb=fix_insecure_vcs_uri)
 
 if len(updated) == 1:
     print("Use secure URI in Vcs control header %s." % list(updated)[0])

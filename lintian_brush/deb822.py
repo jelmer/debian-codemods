@@ -69,6 +69,9 @@ class ChangeConflict(Exception):
 
 
 class Deb822Updater(Updater):
+    """Update the contents of a Deb822-style file.
+
+    """
 
     def __init__(self, path, allow_generated=False):
         super(Deb822Updater, self).__init__(

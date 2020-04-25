@@ -1,26 +1,28 @@
 #!/usr/bin/python3
 
 from lintian_brush.control import (
-    update_control,
+    ControlUpdater,
     get_relation,
     drop_dependency,
     add_dependency,
     )
+from lintian_brush.fixer import report_result
 
 
-def move_libmodule_build_perl(control):
+with ControlUpdater() as updater:
     try:
         get_relation(
-            control.get('Build-Depends-Indep', ''), 'libmodule-build-perl')
+            updater.source.get('Build-Depends-Indep', ''),
+            'libmodule-build-perl')
     except KeyError:
-        return
+        pass
+    else:
+        updater.source['Build-Depends-Indep'] = drop_dependency(
+            updater.source['Build-Depends-Indep'], 'libmodule-build-perl')
+        updater.source['Build-Depends'] = add_dependency(
+            updater.source.get('Build-Depends', ''), 'libmodule-build-perl')
 
-    control['Build-Depends-Indep'] = drop_dependency(
-        control['Build-Depends-Indep'], 'libmodule-build-perl')
-    control['Build-Depends'] = add_dependency(
-        control.get('Build-Depends', ''), 'libmodule-build-perl')
 
-
-update_control(source_package_cb=move_libmodule_build_perl)
-print('Move libmodule-build-perl from Build-Depends-Indep to Build-Depends.')
-print('Fixed: libmodule-build-perl-needs-to-be-in-build-depend')
+report_result(
+    'Move libmodule-build-perl from Build-Depends-Indep to Build-Depends.',
+    fixed_lintian_tags=['libmodule-build-perl-needs-to-be-in-build-depend'])

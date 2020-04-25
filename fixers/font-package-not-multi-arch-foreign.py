@@ -1,24 +1,23 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import update_control
+from lintian_brush.control import ControlUpdater
 
 updated_packages = set()
 
 
-def set_multiarch_foreign(binary):
-    package = binary['Package']
-    if (not package.startswith('fonts-') and
-            not package.startswith('xfonts-')):
-        return
-    if binary.get('Architecture') not in ('all', None):
-        return
-    if 'Multi-Arch' in binary:
-        return
-    binary['Multi-Arch'] = 'foreign'
-    updated_packages.add(package)
+with ControlUpdater() as updater:
+    for binary in updater.binaries:
+        package = binary['Package']
+        if (not package.startswith('fonts-') and
+                not package.startswith('xfonts-')):
+            continue
+        if binary.get('Architecture') not in ('all', None):
+            continue
+        if 'Multi-Arch' in binary:
+            continue
+        binary['Multi-Arch'] = 'foreign'
+        updated_packages.add(package)
 
-
-update_control(binary_package_cb=set_multiarch_foreign)
 
 print('Set Multi-Arch: foreign on package%s %s.' % (
     's' if len(updated_packages) > 1 else '', ', '.join(updated_packages)))

@@ -1,16 +1,13 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import update_control
+from lintian_brush.control import ControlUpdater
+from lintian_brush.fixer import report_result
 
 
-def drop_unnecessary_autopkgtest(source):
-    if "Testsuite" not in source:
-        return
-    if source["Testsuite"] == "autopkgtest":
-        del source["Testsuite"]
+with ControlUpdater() as updater:
+    if updater.source.get("Testsuite") == "autopkgtest":
+        del updater.source["Testsuite"]
 
-
-update_control(source_package_cb=drop_unnecessary_autopkgtest)
-
-print("Remove unnecessary 'Testsuite: autopkgtest' header.")
-print("Fixed-Lintian-Tags: unnecessary-testsuite-autopkgtest-field")
+report_result(
+    "Remove unnecessary 'Testsuite: autopkgtest' header.",
+    fixed_lintian_tags=['unnecessary-testsuite-autopkgtest-field'])

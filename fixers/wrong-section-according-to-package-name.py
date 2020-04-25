@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush import certainty_sufficient
-from lintian_brush.control import update_control
+from lintian_brush.control import ControlUpdater
 import os
 import re
 import sys
@@ -42,29 +42,24 @@ def find_expected_section(name):
 default_section = None
 fixed = []
 
-
-def fix_source_section(control):
-    global default_section
-    expected_section = find_expected_section(control["Source"])
-    if expected_section and expected_section != control.get("Section"):
+with ControlUpdater() as updater:
+    expected_section = find_expected_section(updater.source["Source"])
+    if expected_section and expected_section != updater.source.get("Section"):
         fixed.append(
-            ('source package', control.get("Section"), expected_section))
-        control["Section"] = expected_section
-    default_section = control["Section"]
+            ('source package', updater.source.get("Section"),
+             expected_section))
+        updater.source["Section"] = expected_section
+    default_section = updater.source["Section"]
 
+    for binary in updater.binaries:
+        expected_section = find_expected_section(binary["Package"])
+        section = binary.get("Section", default_section)
+        if expected_section and expected_section != section:
+            fixed.append(
+                ('binary package %s' % binary["Package"],
+                 section, expected_section))
+            binary["Section"] = expected_section
 
-def fix_binary_section(control):
-    expected_section = find_expected_section(control["Package"])
-    section = control.get("Section", default_section)
-    if expected_section and expected_section != section:
-        fixed.append(
-            ('binary package %s' % control["Package"],
-             section, expected_section))
-        control["Section"] = expected_section
-
-
-update_control(
-    source_package_cb=fix_source_section, binary_package_cb=fix_binary_section)
 
 # TODO(jelmer): Make sure that the Section is not under the Description
 # TODO(jelmer): If there is only a single binary package without section, just

@@ -1,16 +1,16 @@
 #!/usr/bin/python3
 
 from lintian_brush.rules import update_rules
-from lintian_brush.control import update_control
+from lintian_brush.control import ControlUpdater
 
 
 def get_archs():
     archs = set()
 
-    def process_binary(control):
-        archs.add(control['Architecture'])
-
-    update_control(binary_package_cb=process_binary)
+    # TODO(jelmer): Not really an 'update'
+    with ControlUpdater() as updater:
+        for binary in updater.binaries:
+            archs.add(binary['Architecture'])
     return archs
 
 

@@ -2,7 +2,8 @@
 
 import os
 
-from lintian_brush.control import ensure_some_version, update_control
+from lintian_brush.control import ensure_some_version, ControlUpdater
+from lintian_brush.fixer import report_result
 
 try:
     with open('debian/source/format', 'r') as f:
@@ -11,12 +12,11 @@ except FileNotFoundError:
     format = None
 
 if format != '3.0 (quilt)' and os.path.exists('debian/patches/series'):
-    def add_quilt_dependency(source):
-        source['Build-Depends'] = ensure_some_version(
-            source['Build-Depends'], 'quilt')
-
-    update_control(source_package_cb=add_quilt_dependency)
+    with ControlUpdater() as updater:
+        updater.source['Build-Depends'] = ensure_some_version(
+            updater.source['Build-Depends'], 'quilt')
 
 
-print('Add missing dependency on quilt.')
-print('Fixed-Lintian-Tags: quilt-series-but-no-build-dep')
+report_result(
+    'Add missing dependency on quilt.',
+    fixed_lintian_tags=['quilt-series-but-no-build-dep'])
