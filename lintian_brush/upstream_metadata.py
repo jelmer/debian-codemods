@@ -1263,6 +1263,11 @@ def verify_bug_database_url(url):
         except urllib.error.HTTPError as e:
             if e.status == 404:
                 return False
+            if e.status == 403:
+                # Probably rate limited
+                warn('Unable to verify bug database URL %s: %s' % (
+                     url, e.reason))
+                return None
             raise
         return data['has_issues'] and not data.get('archived', False)
     if is_gitlab_site(parsed_url.netloc):
