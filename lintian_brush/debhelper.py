@@ -54,7 +54,7 @@ debhelper_compat_version = {
     # Debian
     'jessie': 9,
     'stretch': 10,
-    'sid': 12,
+    'sid': 13,
     'bullseye': 12,
     'buster': 12,
 

@@ -1,3 +1,9 @@
+lintian-brush (0.62) UNRELEASED; urgency=medium
+
+  * Bump maximum debhelper compat version in sid to 13.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 25 Apr 2020 03:28:37 +0000
+
 lintian-brush (0.61) unstable; urgency=medium
 
   * Fix a bug incorrectly removing used license stanzas with license
