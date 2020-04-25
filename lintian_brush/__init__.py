@@ -50,7 +50,7 @@ from debian.deb822 import Deb822
 from .reformatting import FormattingUnpreservable
 
 
-__version__ = (0, 61)
+__version__ = (0, 62)
 version_string = '.'.join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ['certain', 'confident', 'likely', 'possible', None]
 DEFAULT_MINIMUM_CERTAINTY = 'certain'
@@ -62,11 +62,16 @@ DEFAULT_URLLIB_TIMEOUT = 3
 class NoChanges(Exception):
     """Script didn't make any changes."""
 
+    def __init__(self, fixer, comment=None):
+        super(NoChanges, self).__init__(fixer, comment)
+        self.fixer = fixer
+
 
 class NotCertainEnough(NoChanges):
     """Script made changes but with too low certainty."""
 
-    def __init__(self, certainty, minimum_certainty):
+    def __init__(self, fixer, certainty, minimum_certainty):
+        super(NotCertainEnough, self).__init__(fixer)
         self.certainty = certainty
         self.minimum_certainty = minimum_certainty
 
@@ -108,6 +113,10 @@ class FixerScriptFailed(FixerFailed):
 
 class DescriptionMissing(Exception):
     """The fixer script did not provide a description on stdout."""
+
+    def __init__(self, fixer):
+        super(DescriptionMissing, self).__init__(fixer)
+        self.fixer = fixer
 
 
 class NotDebianPackage(Exception):
@@ -296,7 +305,7 @@ class PythonScriptFixer(Fixer):
             os.chdir(old_cwd)
 
         if retcode == 2:
-            raise NoChanges()
+            raise NoChanges(self)
         if retcode != 0:
             raise FixerScriptFailed(self.script_path, retcode, err)
 
@@ -333,7 +342,7 @@ class ScriptFixer(Fixer):
                                  env=env)
             (description, err) = p.communicate("")
             if p.returncode == 2:
-                raise NoChanges()
+                raise NoChanges(self)
             if p.returncode != 0:
                 stderr.seek(0)
                 raise FixerScriptFailed(
@@ -752,7 +761,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         raise
     if not certainty_sufficient(result.certainty, minimum_certainty):
         reset_tree(local_tree, dirty_tracker, subpath)
-        raise NotCertainEnough(result.certainty, minimum_certainty)
+        raise NotCertainEnough(fixer, result.certainty, minimum_certainty)
     if dirty_tracker:
         relpaths = dirty_tracker.relpaths()
         # Sort paths so that directories get added before the files they
@@ -765,7 +774,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
             p for p in relpaths
             if local_tree.is_versioned(p)]
         if not specific_files:
-            raise NoChanges("Script didn't make any changes")
+            raise NoChanges(fixer, "Script didn't make any changes")
     else:
         local_tree.smart_add([local_tree.abspath(subpath)])
         specific_files = [subpath] if subpath != '.' else None
@@ -780,10 +789,10 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
         want_unversioned=False, require_versioned=True))
 
     if len(local_tree.get_parent_ids()) <= 1 and not changes:
-        raise NoChanges("Script didn't make any changes")
+        raise NoChanges(fixer, "Script didn't make any changes")
 
     if not result.description:
-        raise DescriptionMissing()
+        raise DescriptionMissing(fixer)
 
     summary = result.description.splitlines()[0]
 
