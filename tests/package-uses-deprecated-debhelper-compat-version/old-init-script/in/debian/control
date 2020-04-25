@@ -1,0 +1,5 @@
+Source: blah
+Build-Depends: debhelper (>= 9)
+
+Package: blah
+Description: a binary with a init script

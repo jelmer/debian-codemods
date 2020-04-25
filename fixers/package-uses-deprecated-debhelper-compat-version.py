@@ -11,6 +11,7 @@ from lintian_brush.control import (
     get_relation,
     read_debian_compat_file,
     update_control,
+    ControlUpdater,
     )
 from lintian_brush.debhelper import (
     detect_debhelper_buildsystem,
@@ -356,6 +357,21 @@ def rename_installsystemd_target(rule):
         b'override_dh_systemd_start', b'override_dh_installsystemd')
 
 
+def upgrade_to_debhelper_10():
+
+    # dh_installinit will no longer install a file named debian/package as an
+    # init script.
+
+    with ControlUpdater() as updater:
+        for binary in updater.binaries:
+            name = binary['Package']
+            if os.path.isfile(os.path.join('debian', name)):
+                os.rename(os.path.join('debian', name),
+                          os.path.join('debian', name + '.init'))
+                subitems.add(
+                    'Rename debian/%s to debian/%s.init.' % (name, name))
+
+
 def upgrade_to_debhelper_11():
 
     update_rules(
@@ -377,6 +393,7 @@ def upgrade_to_debhelper_11():
 
 
 upgrade_to_debhelper = {
+    10: upgrade_to_debhelper_10,
     11: upgrade_to_debhelper_11,
     12: upgrade_to_debhelper_12,
 }
