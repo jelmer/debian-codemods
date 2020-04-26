@@ -1,6 +1,7 @@
 lintian-brush (0.62) UNRELEASED; urgency=medium
 
   * Bump maximum debhelper compat version in sid to 13. Closes: #958775
+  * Handle old style freedesktop git URLs with /git/ prefix.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 25 Apr 2020 03:28:37 +0000
 

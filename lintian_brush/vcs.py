@@ -168,8 +168,12 @@ def fix_git_gnome_org_url(parsed, branch):
 
 def fix_freedesktop_org_url(parsed, branch):
     if parsed.netloc == 'anongit.freedesktop.org':
+        path = parsed.path
+        if path.startswith('/git/'):
+            path = path[len('/git'):]
         parsed = parsed._replace(
-            netloc='gitlab.freedesktop.org', scheme='https')
+            netloc='gitlab.freedesktop.org', scheme='https',
+            path=path)
         return parsed, branch
     return None, None
 

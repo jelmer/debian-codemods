@@ -95,6 +95,10 @@ class FixUpGitUrlTests(TestCase):
         self.assertEqual(
             'https://gitlab.freedesktop.org/xorg/xserver',
             fixup_broken_git_url('git://anongit.freedesktop.org/xorg/xserver'))
+        self.assertEqual(
+            'https://gitlab.freedesktop.org/xorg/lib/libSM',
+            fixup_broken_git_url(
+                'git://anongit.freedesktop.org/git/xorg/lib/libSM'))
 
     def test_gnome(self):
         self.assertEqual(
