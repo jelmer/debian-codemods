@@ -1,9 +1,13 @@
 #!/usr/bin/python3
 
+import re
+
 from lintian_brush.upstream_metadata import ADDON_ONLY_FIELDS
 from lintian_brush.yaml import YamlUpdater
 
-obsolete_fields = set()
+SEP_CHARS = r'\n+|\s\s+|\t+'
+
+obsolete_fields = {}
 removed_fields = []
 
 with YamlUpdater('debian/upstream/metadata') as code:
@@ -15,8 +19,19 @@ with YamlUpdater('debian/upstream/metadata') as code:
         obsolete_fields.update(
             upstream_fields_in_copyright('debian/copyright'))
 
-    for field in obsolete_fields:
-        if field in code:
+    for field, copyright_value in obsolete_fields.items():
+        try:
+            um_value = code[field]
+        except KeyError:
+            continue
+        if isinstance(copyright_value, tuple):
+            copyright_entries = [x.strip() for x in copyright_value]
+        else:
+            copyright_entries = re.split(SEP_CHARS, copyright_value)
+        um_entries = re.split(SEP_CHARS, um_value)
+        um_entries = set([x.lower() for x in um_entries])
+        copyright_entries = set([x.lower() for x in copyright_entries])
+        if um_entries == copyright_entries:
             del code[field]
             removed_fields.append(field)
 
