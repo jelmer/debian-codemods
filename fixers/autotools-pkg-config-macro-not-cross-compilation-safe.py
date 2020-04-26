@@ -2,11 +2,12 @@
 
 from lintian_brush.fixer import report_result
 import re
+from typing import List
 
 
 for name in ['configure.ac', 'configure.in']:
-    oldlines = []
-    newlines = []
+    oldlines: List[bytes] = []
+    newlines: List[bytes] = []
     try:
         with open(name, 'rb') as f:
             for line in f:

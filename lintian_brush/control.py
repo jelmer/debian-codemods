@@ -21,17 +21,19 @@ import collections
 import contextlib
 from itertools import takewhile
 import os
+from typing import Optional, Callable
 
 from debian.changelog import Version
 from debian.deb822 import Deb822
 import subprocess
+from typing import List
 
 from ._deb822 import PkgRelation
 from .deb822 import Deb822Updater, ChangeConflict
 from .reformatting import GeneratedFile
 
 
-def dh_gnome_clean(path='.'):
+def dh_gnome_clean(path: str = '.') -> None:
     """Run the dh_gnome_clean command.
 
     This needs to do some post-hoc cleaning, since dh_gnome_clean
@@ -46,13 +48,13 @@ def dh_gnome_clean(path='.'):
             os.unlink(os.path.join(path, 'debian', n))
 
 
-def pg_buildext_updatecontrol(path='.'):
+def pg_buildext_updatecontrol(path: str = '.') -> None:
     """Run the 'pg_buildext updatecontrol' command.
     """
     subprocess.check_call(["pg_buildext", "updatecontrol"], cwd=path)
 
 
-def guess_template_type(template_path):
+def guess_template_type(template_path: str) -> Optional[str]:
     try:
         with open(template_path, 'rb') as f:
             template = f.read()
@@ -83,9 +85,16 @@ def guess_template_type(template_path):
     return None
 
 
-def _cdbs_resolve_conflict(para_key, field, expected_old_value,
-                           actual_old_value, new_value):
+def _cdbs_resolve_conflict(
+        para_key: str,
+        field: str,
+        expected_old_value: Optional[str],
+        actual_old_value: Optional[str],
+        new_value: Optional[str]) -> Optional[str]:
     if (para_key[0] == 'Source' and field == 'Build-Depends' and
+            expected_old_value is not None and
+            new_value is not None and
+            actual_old_value is not None and
             expected_old_value in new_value):
         return new_value.replace(expected_old_value, actual_old_value)
     raise ChangeConflict(
@@ -93,11 +102,14 @@ def _cdbs_resolve_conflict(para_key, field, expected_old_value,
         new_value)
 
 
-def _update_control_template(template_path, path, changes):
+def _update_control_template(template_path: str, path: str, changes):
     template_type = guess_template_type(template_path)
     if template_type is None or template_type == 'rules':
         raise GeneratedFile(path, template_path)
     with Deb822Updater(template_path) as updater:
+        resolve_conflict: Optional[Callable[[
+            str, str, Optional[str], Optional[str], Optional[str]],
+            Optional[str]]]
         if template_type == 'cdbs':
             resolve_conflict = _cdbs_resolve_conflict
         else:
@@ -161,7 +173,9 @@ def update_control(path='debian/control', source_package_cb=None,
 
 class ControlUpdater(object):
 
-    def __init__(self, path='debian/control'):
+    changed: bool
+
+    def __init__(self, path: str = 'debian/control'):
         self.path = path
         self._primary = Deb822Updater(path)
 
@@ -173,17 +187,17 @@ class ControlUpdater(object):
         return cls(tree.abspath(relpath))
 
     @property
-    def paragraphs(self):
+    def paragraphs(self) -> List[Deb822]:
         return self._primary.paragraphs
 
     @property
-    def source(self):
+    def source(self) -> Deb822:
         if not self._primary.paragraphs[0].get('Source'):
             raise ValueError('first paragraph is not Source')
         return self._primary.paragraphs[0]
 
     @property
-    def binaries(self):
+    def binaries(self) -> List[Deb822]:
         return self._primary.paragraphs[1:]
 
     def changes(self):

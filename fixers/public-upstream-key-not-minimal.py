@@ -4,6 +4,7 @@ import os
 import subprocess
 import shlex
 import sys
+from typing import List, Optional
 
 gpg = shlex.split(os.environ.get('GPG', 'gpg'))
 
@@ -43,16 +44,16 @@ for p in [
         'debian/upstream/signing-key.pgp',
         'debian/upstream-signing-key.pgp']:
     if os.path.exists(p):
-        out = []
-        key = None
+        out: List[bytes] = []
+        key: Optional[List[bytes]] = None
         with open(p, 'rb') as f:
             for line in f:
                 if line.strip() == KEY_BLOCK_START:
                     key = [line]
-                elif line.strip() == KEY_BLOCK_END:
+                elif line.strip() == KEY_BLOCK_END and key is not None:
                     key.append(line)
-                    key = minimize_key_block(b''.join(key)).splitlines(True)
-                    out.extend(key)
+                    out.extend(minimize_key_block(
+                        b''.join(key)).splitlines(True))
                     key = None
                 elif key is not None:
                     key.append(line)

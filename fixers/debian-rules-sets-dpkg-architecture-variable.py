@@ -2,12 +2,13 @@
 
 import re
 from lintian_brush.rules import update_rules, Makefile
+from typing import Set
 
 architecture_included = False
 PATH = '/usr/share/dpkg/architecture.mk'
 INCLUDE_LINE = b'include ' + PATH.encode('ascii')
 
-_variables = set()
+_variables: Set[str] = set()
 
 
 def variable_defined(var):

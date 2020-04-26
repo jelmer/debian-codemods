@@ -11,18 +11,18 @@ RENAMES = {k.lower(): v for k, v in {
 
 
 # TODO(jelmer): Ideally we'd get the list of standard SPDX
-REPLACE_SPACES = [
+REPLACE_SPACES = {
   'public-domain',
   'mit-style',
   'bsd-style',
-]
+}
 
 spdx_data = load_spdx_data()
 
 RENAMES.update(
     {license['name'].lower(): license_id
      for license_id, license in spdx_data['licenses'].items()})
-REPLACE_SPACES.extend(spdx_data['licenses'])
+REPLACE_SPACES.update(set(spdx_data['licenses']))
 REPLACE_SPACES = set([license_id.lower() for license_id in REPLACE_SPACES])
 for license_id in list(REPLACE_SPACES):
     if license_id.endswith('.0'):

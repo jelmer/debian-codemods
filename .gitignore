@@ -8,3 +8,4 @@ __pycache__
 *.pyc
 lintian_brush.egg-info/
 .testrepository/
+.mypy_cache

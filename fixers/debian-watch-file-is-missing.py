@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import sys
+from typing import Optional, Tuple
 from urllib.request import urlopen, Request
 
 from lintian_brush import (
@@ -36,9 +37,9 @@ if os.path.exists('setup.py'):
         lines = subprocess.check_output(
             ['python2', 'setup.py', '--name', '--version']).splitlines()
     lines = [line for line in lines if not line.startswith(b'W: ')]
-    (project, version) = lines
-    project = project.decode()
-    version = version.decode()
+    (project_bytes, version_bytes) = lines
+    project = project_bytes.decode()
+    version = version_bytes.decode()
     current_version_filenames = None
     if net_access_allowed():
         json_url = 'https://pypi.python.org/pypi/%s/json' % project
@@ -143,13 +144,16 @@ else:
 if not candidates:
     sys.exit(0)
 
-winner = None
+winner: Optional[Tuple[Watch, str, str]] = None
 for candidate in candidates:
-    if winner is not None and (
-            certainty_to_confidence(candidate[2]) >=
+    if winner is not None and (  # type: ignore
+            certainty_to_confidence(candidate[2]) >=   # type: ignore
             certainty_to_confidence(winner[2])):
         continue
     winner = candidate
+
+if not winner:
+    sys.exit(0)
 
 wf = WatchFile()
 (entry, site, certainty) = winner

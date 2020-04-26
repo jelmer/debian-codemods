@@ -84,7 +84,7 @@ def changes_by_author(changes):
 
 class TextWrapper(textwrap.TextWrapper):
 
-    whitespace = r'[%s]' % re.escape(textwrap._whitespace)
+    whitespace = r'[%s]' % re.escape('\t\n\x0b\x0c\r ')
     wordsep_simple_re = re.compile(r'(%s+)' % whitespace)
 
     def __init__(self, initial_indent='  * '):

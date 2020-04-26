@@ -11,6 +11,7 @@ from lintian_brush.licenses import (
 import os
 import re
 import textwrap
+from typing import Dict
 from warnings import warn
 
 
@@ -24,7 +25,7 @@ CANONICAL_NAMES = {
 }
 updated = set()
 tags = set()
-_common_licenses = {}
+_common_licenses: Dict[str, str] = {}
 
 
 def normalize_license_text(text):

@@ -20,6 +20,7 @@
 import os
 import re
 import sys
+from typing import Type
 
 from debian.changelog import (
     Changelog,
@@ -779,7 +780,7 @@ Patch-Name: aname
 
 class BaseScriptFixerTests(object):
 
-    script_fixer_cls = None
+    script_fixer_cls: Type[Fixer]
 
     def create_fixer(self, code):
         self.build_tree_contents([

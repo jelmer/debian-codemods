@@ -29,9 +29,9 @@ with YamlUpdater('debian/upstream/metadata') as code:
         else:
             copyright_entries = re.split(SEP_CHARS, copyright_value)
         um_entries = re.split(SEP_CHARS, um_value)
-        um_entries = set([x.lower() for x in um_entries])
-        copyright_entries = set([x.lower() for x in copyright_entries])
-        if um_entries == copyright_entries:
+        um_entries = [x.lower() for x in um_entries]
+        copyright_entries = [x.lower() for x in copyright_entries]
+        if set(um_entries) == set(copyright_entries):
             del code[field]
             removed_fields.append(field)
 

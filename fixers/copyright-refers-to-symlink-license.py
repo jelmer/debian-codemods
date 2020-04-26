@@ -3,13 +3,14 @@
 from functools import partial
 import os
 import re
+from typing import Dict
 
 from debian.copyright import License, NotMachineReadableError
 
 from lintian_brush.copyright import CopyrightUpdater
 from lintian_brush.fixer import report_result
 
-SYNOPSIS_ALIAS = {}
+SYNOPSIS_ALIAS: Dict[str, str] = {}
 updated = set()
 tags = set()
 

@@ -17,7 +17,7 @@
 
 """Automatically fix lintian issues."""
 
-from debian.changelog import Changelog
+from debian.changelog import Changelog, Version
 import errno
 import io
 import os
@@ -28,6 +28,7 @@ import sys
 import tempfile
 import time
 import traceback
+from typing import Optional, List, Sequence, Iterator, Iterable
 import warnings
 
 from breezy import ui
@@ -43,6 +44,7 @@ from breezy.osutils import is_inside
 from breezy.rename_map import RenameMap
 from breezy.trace import note, warning
 from breezy.transform import revert
+from breezy.workingtree import WorkingTree
 
 from debian.deb822 import Deb822
 
@@ -169,7 +171,7 @@ class Fixer(object):
     fixer addresses.
     """
 
-    def __init__(self, name, lintian_tags=None):
+    def __init__(self, name: str, lintian_tags: List[str] = None):
         self.name = name
         self.lintian_tags = lintian_tags or []
 
@@ -315,17 +317,24 @@ class PythonScriptFixer(Fixer):
 class ScriptFixer(Fixer):
     """A fixer that is implemented as a shell/python/etc script."""
 
-    def __init__(self, name, lintian_tags, script_path):
+    def __init__(self, name: str, lintian_tags: List[str], script_path: str):
         super(ScriptFixer, self).__init__(name, lintian_tags)
         self.script_path = script_path
 
     def __repr__(self):
         return "<ScriptFixer(%r)>" % self.name
 
-    def run(self, basedir, package, current_version, compat_release,
-            minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
-            trust_package=False, allow_reformatting=False,
-            net_access=True, opinionated=False, diligence=0):
+    def run(self,
+            basedir: str,
+            package: str,
+            current_version: Version,
+            compat_release: str,
+            minimum_certainty: str = DEFAULT_MINIMUM_CERTAINTY,
+            trust_package: bool = False,
+            allow_reformatting: bool = False,
+            net_access: bool = True,
+            opinionated: bool = False,
+            diligence: int = 0):
         env = determine_env(
             package=package,
             current_version=current_version,
@@ -340,7 +349,7 @@ class ScriptFixer(Fixer):
             p = subprocess.Popen(self.script_path, cwd=basedir,
                                  stdout=subprocess.PIPE, stderr=stderr,
                                  env=env)
-            (description, err) = p.communicate("")
+            (description, err) = p.communicate(b"")
             if p.returncode == 2:
                 raise NoChanges(self)
             if p.returncode != 0:
@@ -351,7 +360,7 @@ class ScriptFixer(Fixer):
         return parse_script_fixer_output(description.decode('utf-8'))
 
 
-def find_fixers_dir():
+def find_fixers_dir() -> str:
     """Find the local directory with lintian fixer scripts."""
     local_dir = os.path.abspath(os.path.join(
         os.path.dirname(__file__), '..', 'fixers'))
@@ -366,7 +375,7 @@ def find_fixers_dir():
     return '/usr/share/lintian-brush/fixers'
 
 
-def read_desc_file(path):
+def read_desc_file(path: str) -> Iterator[Fixer]:
     """Read a description file.
 
     Args:
@@ -390,31 +399,34 @@ def read_desc_file(path):
                 yield ScriptFixer(name, tags, script_path)
 
 
-def select_fixers(fixers, names, exclude=None):
+def select_fixers(fixers: List[Fixer],
+                  names: List[str],
+                  exclude: Optional[Iterable[str]] = None) -> List[Fixer]:
     """Select fixers by name, from a list.
 
     Args:
       fixers: List of Fixer objects
-      names: List of names to select
-      exclude: List of names to exclude
+      names: Set of names to select
+      exclude: Set of names to exclude
     Raises:
       KeyError: if one of the names did not exist
     """
-    names = set(names)
+    names_set = set(names)
     if exclude:
         for name in exclude:
-            if name not in names:
+            if name not in names_set:
                 raise KeyError(name)
-            names.remove(name)
+            names_set.remove(name)
     available = set([f.name for f in fixers])
-    missing = names - available
+    missing = names_set - available
     if missing:
         raise KeyError(missing.pop())
     # Preserve order
-    return [f for f in fixers if f.name in names]
+    return [f for f in fixers if f.name in names_set]
 
 
-def available_lintian_fixers(fixers_dir=None):
+def available_lintian_fixers(
+        fixers_dir: Optional[str] = None) -> Iterator[Fixer]:
     """Return a list of available lintian fixers.
 
     Args:
@@ -431,7 +443,7 @@ def available_lintian_fixers(fixers_dir=None):
             yield fixer
 
 
-def increment_version(v):
+def increment_version(v: Version) -> None:
     """Increment a version number.
 
     For native packages, increment the main version number.
@@ -448,7 +460,7 @@ def increment_version(v):
                 '\\d+$', lambda x: str(int(x.group())+1), v.upstream_version)
 
 
-def delete_items(deletables, dry_run=False):
+def delete_items(deletables, dry_run: bool = False):
     """Delete files in the deletables iterable"""
     def onerror(function, path, excinfo):
         """Show warning for errors seen by rmtree.
@@ -472,7 +484,7 @@ def delete_items(deletables, dry_run=False):
                     'unable to remove "{0}": {1}.'.format(path, e.strerror))
 
 
-def get_committer(tree):
+def get_committer(tree: WorkingTree) -> str:
     """Get the committer string for a tree.
 
     Args:
@@ -487,18 +499,14 @@ def get_committer(tree):
         email = os.environ.get("GIT_COMMITTER_EMAIL")
         if user is None:
             try:
-                user = cs.get(("user", ), "name")
+                user = cs.get(("user", ), "name").decode('utf-8')
             except KeyError:
                 user = None
-            else:
-                user = user.decode('utf-8')
         if email is None:
             try:
-                email = cs.get(("user", ), "email")
+                email = cs.get(("user", ), "email").decode('utf-8')
             except KeyError:
                 email = None
-            else:
-                email = email.decode('utf-8')
         if user and email:
             return user + " <" + email + ">"
         from breezy.config import GlobalStack
@@ -508,7 +516,10 @@ def get_committer(tree):
         return config.get('email')
 
 
-def only_changes_last_changelog_block(tree, changelog_path, changes):
+def only_changes_last_changelog_block(
+        tree: WorkingTree,
+        changelog_path: str,
+        changes) -> bool:
     """Check whether the only change in a tree is to the last changelog entry.
 
     Args:
@@ -541,7 +552,8 @@ def only_changes_last_changelog_block(tree, changelog_path, changes):
         return str(new_cl) == str(old_cl)
 
 
-def reset_tree(local_tree, dirty_tracker=None, subpath='.'):
+def reset_tree(local_tree: WorkingTree, dirty_tracker=None,
+               subpath: str = '.') -> None:
     """Reset a tree back to its basis tree.
 
     This will leave ignored and detritus files alone.
@@ -549,6 +561,7 @@ def reset_tree(local_tree, dirty_tracker=None, subpath='.'):
     Args:
       local_tree: tree to work on
       dirty_tracker: Optional dirty tracker
+      subpath: Subpath to operate on
     """
     if dirty_tracker and not dirty_tracker.is_dirty():
         return
@@ -559,7 +572,8 @@ def reset_tree(local_tree, dirty_tracker=None, subpath='.'):
     delete_items(deletables)
 
 
-def certainty_sufficient(actual_certainty, minimum_certainty):
+def certainty_sufficient(actual_certainty: str,
+                         minimum_certainty: Optional[str]) -> bool:
     """Check if the actual certainty is sufficient.
 
     Args:
@@ -579,7 +593,7 @@ def certainty_sufficient(actual_certainty, minimum_certainty):
     return actual_confidence <= minimum_confidence
 
 
-def check_clean_tree(local_tree):
+def check_clean_tree(local_tree: WorkingTree) -> None:
     """Check that a tree is clean and has no pending changes or unknown files.
 
     Args:
@@ -594,7 +608,8 @@ def check_clean_tree(local_tree):
         raise PendingChanges(local_tree)
 
 
-def add_changelog_entry(tree, path, summary, qa=False):
+def add_changelog_entry(tree: WorkingTree, path: str, summary: str,
+                        qa: bool = False) -> None:
     """Add a changelog entry.
 
     Args:
@@ -621,7 +636,8 @@ def add_changelog_entry(tree, path, summary, qa=False):
             warning('%s', line)
 
 
-def gbp_conf_has_dch_section(tree, path=''):
+def gbp_conf_has_dch_section(tree: WorkingTree,
+                             path: str = '') -> Optional[bool]:
     try:
         gbp_conf_path = os.path.join(path, 'debian/gbp.conf')
         gbp_conf_text = tree.get_file_text(gbp_conf_path)
@@ -638,7 +654,7 @@ def gbp_conf_has_dch_section(tree, path=''):
         return parser.has_section('dch')
 
 
-def all_sha_prefixed(cl):
+def all_sha_prefixed(cl: Changelog) -> bool:
     sha_prefixed = 0
     for change in cl.changes():
         if not change.startswith('  * '):
@@ -653,7 +669,9 @@ def all_sha_prefixed(cl):
 _changelog_policy_noted = False
 
 
-def guess_update_changelog(tree, path='', cl=None):
+def guess_update_changelog(tree: WorkingTree,
+                           path: str = '',
+                           cl: Changelog = None):
     """Guess whether the changelog should be updated.
 
     Args:
@@ -696,12 +714,19 @@ def has_non_debian_changes(changes):
     return False
 
 
-def run_lintian_fixer(local_tree, fixer, committer=None,
-                      update_changelog=None, compat_release=None,
-                      minimum_certainty=None, trust_package=False,
-                      allow_reformatting=False, dirty_tracker=None,
-                      subpath='.', net_access=True, opinionated=None,
-                      diligence=0):
+def run_lintian_fixer(local_tree: WorkingTree,
+                      fixer: Fixer,
+                      committer: Optional[str] = None,
+                      update_changelog: Optional[bool] = None,
+                      compat_release: Optional[str] = None,
+                      minimum_certainty: Optional[str] = None,
+                      trust_package: bool = False,
+                      allow_reformatting: bool = False,
+                      dirty_tracker=None,
+                      subpath: str = '.',
+                      net_access: bool = True,
+                      opinionated: Optional[bool] = None,
+                      diligence: int = 0):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -762,6 +787,7 @@ def run_lintian_fixer(local_tree, fixer, committer=None,
     if not certainty_sufficient(result.certainty, minimum_certainty):
         reset_tree(local_tree, dirty_tracker, subpath)
         raise NotCertainEnough(fixer, result.certainty, minimum_certainty)
+    specific_files: Optional[List[str]]
     if dirty_tracker:
         relpaths = dirty_tracker.relpaths()
         # Sort paths so that directories get added before the files they
@@ -862,7 +888,9 @@ class ManyResult(object):
         return iter(self.__tuple__())
 
 
-def get_dirty_tracker(local_tree, subpath='', use_inotify=None):
+def get_dirty_tracker(local_tree: WorkingTree,
+                      subpath: str = '',
+                      use_inotify: bool = None):
     """Create a dirty tracker object."""
     if use_inotify is True:
         from .dirty_tracker import DirtyTracker
@@ -878,12 +906,20 @@ def get_dirty_tracker(local_tree, subpath='', use_inotify=None):
             return DirtyTracker(local_tree, subpath)
 
 
-def run_lintian_fixers(local_tree, fixers, update_changelog=True,
-                       verbose=False, committer=None,
-                       compat_release=None, minimum_certainty=None,
-                       trust_package=False, allow_reformatting=False,
-                       use_inotify=None, subpath='.', net_access=True,
-                       opinionated=None, diligence=0):
+def run_lintian_fixers(local_tree: WorkingTree,
+                       fixers: List[Fixer],
+                       update_changelog: bool = True,
+                       verbose: bool = False,
+                       committer: Optional[str] = None,
+                       compat_release: Optional[str] = None,
+                       minimum_certainty: Optional[str] = None,
+                       trust_package: bool = False,
+                       allow_reformatting: bool = False,
+                       use_inotify: Optional[bool] = None,
+                       subpath: str = '.',
+                       net_access: bool = True,
+                       opinionated: Optional[bool] = None,
+                       diligence: int = 0):
     """Run a set of lintian fixers on a tree.
 
     Args:
@@ -963,22 +999,22 @@ def run_lintian_fixers(local_tree, fixers, update_changelog=True,
     return ret
 
 
-def certainty_to_confidence(certainty):
+def certainty_to_confidence(certainty: Optional[str]) -> Optional[int]:
     if certainty in ('unknown', None):
         return None
     return SUPPORTED_CERTAINTIES.index(certainty)
 
 
-def confidence_to_certainty(confidence):
+def confidence_to_certainty(confidence: Optional[int]) -> str:
     if confidence is None:
         return 'unknown'
     try:
-        return SUPPORTED_CERTAINTIES[confidence]
+        return SUPPORTED_CERTAINTIES[confidence] or 'unknown'
     except IndexError:
         raise ValueError(confidence)
 
 
-def min_certainty(certainties):
+def min_certainty(certainties: Sequence[str]) -> str:
     return confidence_to_certainty(
         max([certainty_to_confidence(c)
             for c in certainties] + [0]))

@@ -90,8 +90,8 @@ if os.path.exists('debian/compat'):
 
     current_debhelper_compat_version = read_debian_compat_file('debian/compat')
     if current_debhelper_compat_version < new_debhelper_compat_version:
-        with open('debian/compat', 'w') as f:
-            f.write('%s\n' % new_debhelper_compat_version)
+        with open('debian/compat', 'w') as cf:
+            cf.write('%s\n' % new_debhelper_compat_version)
     else:
         # Nothing to do
         sys.exit(2)

@@ -29,7 +29,7 @@ import os
 VALID_TYPES = ['udeb', 'source', 'binary']
 Override = collections.namedtuple(
     'Override', ['package', 'archlist', 'type', 'tag', 'info'])
-Override.__new__.__defaults__ = (None,) * len(Override._fields)
+Override.__new__.__defaults__ = (None,) * len(Override._fields)  # type: ignore
 
 
 def overrides_paths():
