@@ -318,17 +318,22 @@ def guess_from_debian_watch(path, trust_package):
             return
         for w in wf:
             url = w.format_url(package=get_package_name)
+            if 'mode=git' in w.options:
+                yield UpstreamDatum(
+                    "Repository", sanitize_vcs_url(url), "confident")
+                continue
             if url.startswith('https://') or url.startswith('http://'):
                 repo = guess_repo_from_url(url)
                 if repo:
                     yield UpstreamDatum(
                         "Repository", sanitize_vcs_url(repo), "likely")
-                    break
+                    continue
             m = re.match('https?://sf.net/([^/]+)', url)
             if m:
                 yield UpstreamDatum("Archive", "SourceForge", "certain")
                 yield UpstreamDatum(
                     "X-SourceForge-Project", m.group(1), "certain")
+                continue
 
 
 def guess_from_debian_control(path, trust_package):

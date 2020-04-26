@@ -4,6 +4,7 @@ lintian-brush (0.62) UNRELEASED; urgency=medium
   * Handle old style freedesktop git URLs with /git/ prefix.
   * Don't remove name/contact from upstream metadata if different from
     copyright. Closes: #948948
+  * Extract Git repository URLs from debian/watch in git mode.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 25 Apr 2020 03:28:37 +0000
 
