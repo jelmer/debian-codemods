@@ -136,6 +136,7 @@ subset of the issues:
 * upstream-metadata-missing-repository
 * useless-autoreconf-build-depends
 * uses-debhelper-compat-file
+* uses-deprecated-ttmp
 * vcs-field-bitrotted
 * vcs-field-mismatch
 * vcs-field-not-canonical
