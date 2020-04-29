@@ -1,0 +1,3 @@
+Replace use of deprecated $ADTTMP with $AUTOPKGTEST_TMP.
+Certainty: certain
+Fixed-Lintian-Tags: uses-deprecated-adttmp
