@@ -224,6 +224,12 @@
         "Borceux": {
             "name": "Borceux license"
         },
+        "CAL-1.0": {
+            "name": "Cryptographic Autonomy License 1.0"
+        },
+        "CAL-1.0-Combined-Work-Exception": {
+            "name": "Cryptographic Autonomy License 1.0"
+        },
         "CATOSL-1.1": {
             "name": "Computer Associates Trusted Open Source License 1.1"
         },
@@ -829,6 +835,9 @@
         },
         "Nunit": {
             "name": "Nunit License"
+        },
+        "O-UDA-1.0": {
+            "name": "Open Use of Data Agreement v1.0"
         },
         "OCCT-PL": {
             "name": "Open CASCADE Technology Public License"
