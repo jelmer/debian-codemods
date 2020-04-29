@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.deb822 import Deb822Updater
+from lintian_brush.fixer import report_result
 import sys
 
 try:
@@ -32,5 +33,6 @@ except FileNotFoundError:
     pass
 
 
-print('Fix field name typos in debian/copyright.')
-print('Fixed-Lintian-Tags: field-name-typo-dep5-copyright')
+report_result(
+    'Fix field name typos in debian/copyright.',
+    fixed_lintian_tags=['field-name-typo-dep5-copyright'])
