@@ -548,24 +548,24 @@ def guess_from_readme(path, trust_package):
                         'Bug-Database',
                         m.group(0).decode().rstrip(), 'possible')
                 for m in re.finditer(
-                        b'https://github.com/([^/]+)/([^/]+).git', line):
+                        b'https://github.com/([^/]+)/([^/\\s]+)(.git)?', line):
                     yield UpstreamDatum(
                         'Repository',
                         m.group(0).decode().rstrip(), 'possible')
                 m = re.fullmatch(b'https://github.com/([^/]+)/([^/?.]+)', line)
                 if m:
                     yield UpstreamDatum(
-                        'Repository', line.strip().decode(), 'likely')
+                        'Repository', line.strip().decode(), 'possible')
                 m = re.fullmatch(b'git://([^ ]+)', line)
                 if m:
                     yield UpstreamDatum(
-                        'Repository', line.strip().decode(), 'likely')
+                        'Repository', line.strip().decode(), 'possible')
                 for m in re.finditer(
                         b'https://([^/]+)/([^ ]+)', line):
                     if is_gitlab_site(m.group(1).decode()):
                         yield UpstreamDatum(
                             'Repository',
-                            m.group(0).decode().rstrip(), 'likely')
+                            m.group(0).decode().rstrip(), 'possible')
     except IsADirectoryError:
         pass
 

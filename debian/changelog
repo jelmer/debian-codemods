@@ -6,6 +6,8 @@ lintian-brush (0.62) UNRELEASED; urgency=medium
     copyright. Closes: #948948
   * Extract Git repository URLs from debian/watch in git mode.
   * Add fixer for uses-deprecated-adttmp.
+  * Downgrade the certainty for some upstream URLs, unless they can be
+    verified in some way.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 25 Apr 2020 03:28:37 +0000
 
