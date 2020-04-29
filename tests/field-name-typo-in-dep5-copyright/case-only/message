@@ -1,2 +1,1 @@
-Fix field name typos in debian/copyright.
-Fixed-Lintian-Tags: field-name-typo-dep5-copyright
+Fix field name case in debian/copyright (Upstream-name => Upstream-Name).

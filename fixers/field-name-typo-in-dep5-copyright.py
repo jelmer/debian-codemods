@@ -14,7 +14,8 @@ valid_field_names = {
     'Upstream-Name', 'Format', 'Upstream-Contact',
     'Source', 'Upstream', 'Contact', 'Name'}
 
-fixed = False
+typo_fixed = set()
+case_fixed = set()
 
 try:
     with Deb822Updater('debian/copyright') as updater:
@@ -27,12 +28,29 @@ try:
                         value = paragraph[field]
                         del paragraph[field]
                         paragraph[option] = value
-                        fixed = True
+                        if option.lower() == field.lower():
+                            case_fixed.add((field, option))
+                        else:
+                            typo_fixed.add((field, option))
                         break
 except FileNotFoundError:
     pass
 
 
+if case_fixed:
+    kind = 'case' + ('s' if len(case_fixed) > 1 else '')
+else:
+    kind = ''
+if typo_fixed:
+    if case_fixed:
+        kind += ' and '
+    kind += 'typo' + ('s' if len(typo_fixed) > 1 else '')
+
+fixed_str = ', '.join(
+    ['%s => %s' % (old, new)
+     for (old, new) in sorted(list(case_fixed) + list(typo_fixed))])
+
 report_result(
-    'Fix field name typos in debian/copyright.',
-    fixed_lintian_tags=['field-name-typo-dep5-copyright'])
+    'Fix field name %s in debian/copyright (%s).' % (kind, fixed_str),
+    fixed_lintian_tags=(
+        ['field-name-typo-dep5-copyright'] if typo_fixed else []))
