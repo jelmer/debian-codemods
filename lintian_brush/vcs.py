@@ -27,6 +27,7 @@ __all__ = [
 
 import posixpath
 import re
+from typing import Optional, Tuple
 from urllib.parse import urlparse, urlunparse
 
 
@@ -39,12 +40,12 @@ KNOWN_GITLAB_SITES = [
     ]
 
 
-def is_gitlab_site(hostname, net_access=False):
+def is_gitlab_site(hostname: str, net_access: bool = False) -> bool:
     # TODO(jelmer): Try API to see if this is a gitlab site
     return hostname in KNOWN_GITLAB_SITES
 
 
-def split_vcs_url(url):
+def split_vcs_url(url: str) -> Tuple[str, Optional[str], Optional[str]]:
     m = re.finditer(r' \[([^] ]+)\]', url)
     try:
         m = next(m)
@@ -60,7 +61,9 @@ def split_vcs_url(url):
     return (repo_url, branch, subpath)
 
 
-def unsplit_vcs_url(repo_url, branch=None, subpath=None):
+def unsplit_vcs_url(repo_url: str,
+                    branch: Optional[str] = None,
+                    subpath: Optional[str] = None) -> str:
     url = repo_url
     if branch:
         url = '%s -b %s' % (url, branch)
@@ -69,7 +72,7 @@ def unsplit_vcs_url(repo_url, branch=None, subpath=None):
     return url
 
 
-def sanitize_url(url):
+def sanitize_url(url: str) -> str:
     url = url.strip()
     if url.startswith('git+http:') or url.startswith('git+https:'):
         url = url[4:]
@@ -83,7 +86,7 @@ def sanitize_url(url):
     return url
 
 
-def plausible_url(url):
+def plausible_url(url: str) -> bool:
     return ':' in url
 
 
@@ -202,7 +205,7 @@ def fixup_broken_git_url(url):
     return url
 
 
-def browse_url_from_repo_url(url):
+def browse_url_from_repo_url(url: str) -> str:
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
         path = '/'.join(parsed_url.path.split('/')[:3])
@@ -258,7 +261,7 @@ def determine_gitlab_browser_url(url):
     return 'https://%s%s' % (parsed_url.hostname, path)
 
 
-def determine_browser_url(vcs_type, vcs_url):
+def determine_browser_url(vcs_type, vcs_url: str) -> Optional[str]:
     repo_url, branch, subpath = split_vcs_url(vcs_url)
     parsed = urlparse(repo_url.rstrip('/'))
     if is_gitlab_site(parsed.netloc):
@@ -337,7 +340,7 @@ canonicalize_vcs_fns = {
 }
 
 
-def canonicalize_vcs_url(vcs_type, url):
+def canonicalize_vcs_url(vcs_type: str, url: str) -> str:
     try:
         return canonicalize_vcs_fns[vcs_type](url)
     except KeyError:
