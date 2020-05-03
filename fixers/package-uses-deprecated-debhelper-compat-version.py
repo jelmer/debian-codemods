@@ -386,10 +386,31 @@ def upgrade_to_debhelper_11():
                 service, str(current_package_version())))
 
 
+def upgrade_to_debhelper_13():
+
+    # dh_installtempfiles will handle d/tmpfile{,s}.  It prefer the latter
+    # and warns about the former.
+
+    with ControlUpdater() as updater:
+        for binary in updater.binaries:
+            name = binary['Package']
+            tmpfile = os.path.join('debian', name + ".tmpfile")
+            if os.path.isfile(tmpfile):
+                os.rename(tmpfile, tmpfile + 's')
+                subitems.add(
+                    'Rename %s to %ss.' % (tmpfile, tmpfile))
+        if os.path.isfile(os.path.join('debian', "tmpfile")):
+            tmpfile = os.path.join('debian', "tmpfile")
+            os.rename(tmpfile, tmpfile + 's')
+            subitems.add(
+                'Rename %s to %ss.' % (tmpfile, tmpfile))
+
+
 upgrade_to_debhelper = {
     10: upgrade_to_debhelper_10,
     11: upgrade_to_debhelper_11,
     12: upgrade_to_debhelper_12,
+    13: upgrade_to_debhelper_13,
 }
 
 
