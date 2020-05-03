@@ -29,7 +29,10 @@ from pyinotify import (
     IN_ATTRIB,
     ProcessEvent,
     Notifier,
+    Event,
     )
+from typing import Set
+from breezy.workingtree import WorkingTree
 
 
 MASK = (
@@ -37,13 +40,16 @@ MASK = (
     IN_ATTRIB)
 
 
-class _Process(ProcessEvent):
+class _Process(ProcessEvent):  # type: ignore
 
-    def my_init(self):
+    paths: Set[str]
+    created: Set[str]
+
+    def my_init(self) -> None:
         self.paths = set()
         self.created = set()
 
-    def process_default(self, event):
+    def process_default(self, event: Event) -> None:
         path = os.path.join(event.path, event.name)
         if event.mask & IN_CREATE:
             self.created.add(path)
@@ -55,36 +61,36 @@ class _Process(ProcessEvent):
 
 class DirtyTracker(object):
 
-    def __init__(self, tree, subpath='.'):
+    def __init__(self, tree: WorkingTree, subpath: str = '.') -> None:
         self._tree = tree
         self._wm = WatchManager()
         self._process = _Process()
         self._notifier = Notifier(self._wm, self._process)
         self._notifier.coalesce_events(True)
 
-        def check_excluded(p):
-            return tree.is_control_filename(tree.relpath(p))
+        def check_excluded(p: str) -> bool:
+            return tree.is_control_filename(tree.relpath(p))  # type: ignore
         self._wdd = self._wm.add_watch(
             tree.abspath(subpath), MASK, rec=True, auto_add=True,
             exclude_filter=check_excluded)
 
-    def _process_pending(self):
+    def _process_pending(self) -> None:
         if self._notifier.check_events(timeout=0):
             self._notifier.read_events()
         self._notifier.process_events()
 
-    def mark_clean(self):
+    def mark_clean(self) -> None:
         self._process_pending()
         self._process.paths.clear()
         self._process.created.clear()
 
-    def is_dirty(self):
+    def is_dirty(self) -> bool:
         self._process_pending()
         return bool(self._process.paths)
 
-    def paths(self):
+    def paths(self) -> Set[str]:
         self._process_pending()
         return self._process.paths
 
-    def relpaths(self):
+    def relpaths(self) -> Set[str]:
         return set(self._tree.relpath(p) for p in self.paths())
