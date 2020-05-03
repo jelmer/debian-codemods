@@ -52,7 +52,7 @@ SUBSTITUTIONS = {
 
 class WatchFile(object):
 
-    def __init__(self, entries: Optional[List[Watch]] = None,
+    def __init__(self, entries: Optional[List['Watch']] = None,
                  options: Optional[List[str]] = None,
                  version: int = DEFAULT_VERSION) -> None:
         self.version = version
@@ -63,7 +63,7 @@ class WatchFile(object):
             options = []
         self.options = options
 
-    def __iter__(self) -> Iterator[Watch]:
+    def __iter__(self) -> Iterator['Watch']:
         return iter(self.entries)
 
     def __bool__(self) -> bool:
