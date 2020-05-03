@@ -19,6 +19,7 @@
 
 from io import StringIO
 import re
+from typing import Iterable, List, Union, Callable, Optional, TextIO, Iterator
 from warnings import warn
 
 from lintian_brush.reformatting import (
@@ -26,7 +27,7 @@ from lintian_brush.reformatting import (
     )
 
 
-DEFAULT_VERSION = 4
+DEFAULT_VERSION: int = 4
 
 # TODO(jelmer): Add support for substitution variables:
 
@@ -51,7 +52,9 @@ SUBSTITUTIONS = {
 
 class WatchFile(object):
 
-    def __init__(self, entries=None, options=None, version=DEFAULT_VERSION):
+    def __init__(self, entries: Optional[List[Watch]] = None,
+                 options: Optional[List[str]] = None,
+                 version: int = DEFAULT_VERSION) -> None:
         self.version = version
         if entries is None:
             entries = []
@@ -60,20 +63,20 @@ class WatchFile(object):
             options = []
         self.options = options
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Watch]:
         return iter(self.entries)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.entries)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, type(self)) and \
                 self.entries == other.entries and \
                 self.options == other.options and \
                 self.version == other.version
 
-    def dump(self, f):
-        def serialize_options(opts):
+    def dump(self, f: TextIO) -> None:
+        def serialize_options(opts: List[str]) -> str:
             s = ','.join(opts)
             if ' ' in s or '\t' in s:
                 return 'opts="' + s + '"'
@@ -96,8 +99,9 @@ class WatchFile(object):
 
 class Watch(object):
 
-    def __init__(self, url, matching_pattern=None, version=None, script=None,
-                 opts=None):
+    def __init__(self, url: str, matching_pattern: Optional[str] = None,
+                 version: Optional[str] = None, script: Optional[str] = None,
+                 opts: Optional[List[str]] = None) -> None:
         self.url = url
         self.matching_pattern = matching_pattern
         self.version = version
@@ -106,13 +110,13 @@ class Watch(object):
             opts = []
         self.options = opts
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             "%s(%r, matching_pattern=%r, version=%r, script=%r, opts=%r)" % (
                 self.__class__.__name__, self.url, self.matching_pattern,
                 self.version, self.script, self.options))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Watch):
             return False
         return (other.url == self.url and
@@ -121,7 +125,7 @@ class Watch(object):
                 other.script == self.script and
                 other.options == self.options)
 
-    def format_url(self, package):
+    def format_url(self, package: Union[str, Callable[[], str]]) -> str:
         if '@PACKAGE@' not in self.url:
             return self.url
         if callable(package):
@@ -133,14 +137,15 @@ class MissingVersion(Exception):
     """The version= line is missing."""
 
 
-def parse_watch_file(f):
+def parse_watch_file(f: Iterable[str]) -> Optional[WatchFile]:
     """Parse a watch file.
 
     Args:
       f: watch file to parse
     """
-    lines = []
-    continued = []
+    line: Optional[str]
+    lines: List[List[str]] = []
+    continued: List[str] = []
     for line in f:
         if line.startswith('#'):
             continue
@@ -155,7 +160,7 @@ def parse_watch_file(f):
     if continued:
         # Hmm, broken line?
         warn('watchfile ended with \\; skipping last line')
-        lines.append([continued])
+        lines.append(continued)
     if not lines:
         return None
     firstline = ''.join(lines.pop(0))
@@ -166,8 +171,9 @@ def parse_watch_file(f):
     if key.strip() != 'version':
         raise MissingVersion()
     version = int(value.strip())
-    persistent_options = []
-    entries = []
+    persistent_options: List[str] = []
+    entries: List[Watch] = []
+    chunked: List[str]
     for chunked in lines:
         if version > 3:
             chunked = [chunk.lstrip() for chunk in chunked]
@@ -211,23 +217,25 @@ def parse_watch_file(f):
 
 class WatchUpdater(Updater):
 
-    def __init__(self, path='debian/watch'):
+    _parsed: WatchFile
+
+    def __init__(self, path: str = 'debian/watch') -> None:
         super(WatchUpdater, self).__init__(path)
 
     @property
-    def watch_file(self):
+    def watch_file(self) -> WatchFile:
         return self._parsed
 
-    def _nonexistant(self):
+    def _nonexistant(self) -> None:
         return None
 
-    def _parse(self, content):
+    def _parse(self, content: str) -> WatchFile:
         wf = parse_watch_file(content.splitlines())
         if wf is None:
             return WatchFile([])
         return wf
 
-    def _format(self, parsed):
+    def _format(self, parsed: WatchFile) -> str:
         if parsed is None:
             return None
         nf = StringIO()
