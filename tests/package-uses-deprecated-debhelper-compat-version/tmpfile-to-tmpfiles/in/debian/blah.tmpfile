@@ -1,0 +1,2 @@
+# Stolen from man-db
+d /var/cache/man 0755 man man 1w
