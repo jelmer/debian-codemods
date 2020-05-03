@@ -65,7 +65,10 @@ def highest_stable_compat_level() -> int:
     output = subprocess.check_output([
         'perl', '-w', '-MDebian::Debhelper::Dh_Lib', '-e',
         'print(Debian::Debhelper::Dh_Lib::HIGHEST_STABLE_COMPAT_LEVEL);'
-        ]).decode()
+        ], stderr=subprocess.PIPE).decode()
+    if output == '':
+        # Older version of debhelper, presumably
+        return 13
     return int(output)
 
 
