@@ -27,8 +27,12 @@ def value_offset(l):
     if l[0:1] in (b'\t', b' '):
         return whitespace_prefix_length(l)
     else:
-        key, value = l.split(b':', 1)
-        return len(key) + 1 + whitespace_prefix_length(value)
+        try:
+            key, value = l.split(b':', 1)
+        except ValueError:
+            return None
+        else:
+            return len(key) + 1 + whitespace_prefix_length(value)
 
 
 EXPECTED_HEADER = (
@@ -48,6 +52,7 @@ try:
     with open('debian/copyright', 'rb') as f:
         line = f.readline()
         if line.rstrip().rstrip(b'/') != EXPECTED_HEADER:
+            # Not a machine-readable copyright file
             sys.exit(0)
         lines.append(line)
         prev_value_offset = None
