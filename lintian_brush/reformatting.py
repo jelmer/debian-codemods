@@ -29,7 +29,7 @@ import os
 class GeneratedFile(Exception):
     """The specified file is generated."""
 
-    def __init__(self, path, template_path=None, template_type=None):
+    def __init__(self, path: str, template_path=None, template_type=None):
         self.path = path
         self.template_path = template_path
         self.template_type = template_type
@@ -116,7 +116,7 @@ def edit_formatted_file(
 class Updater(object):
     """Context object for updating a file, preserving formatting."""
 
-    def __init__(self, path, mode='', allow_generated=False):
+    def __init__(self, path: str, mode='', allow_generated=False):
         self.path = path
         self.mode = mode
         self.allow_generated = allow_generated
