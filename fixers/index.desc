@@ -379,3 +379,6 @@ Lintian-Tags: upstream-metadata-in-native-source
 
 Fix-Script: uses-deprecated-adttmp.py
 Lintian-Tags: uses-deprecated-adttmp
+
+Fix-Script: binary-control-field-duplicates-source.py
+Lintian-Tags: binary-control-field-duplicates-source
