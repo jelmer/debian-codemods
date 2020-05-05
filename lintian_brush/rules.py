@@ -19,11 +19,12 @@
 
 import os
 import re
+from typing import Iterator, Optional, List
 
 from .reformatting import Updater
 
 
-def wildcard_to_re(wildcard):
+def wildcard_to_re(wildcard: str) -> re.Pattern:
     wc = []
     for c in wildcard:
         if c == '%':
@@ -33,16 +34,18 @@ def wildcard_to_re(wildcard):
     return re.compile(''.join(wc))
 
 
-def matches_wildcard(text, wildcard):
+def matches_wildcard(text: str, wildcard: str) -> bool:
     wc = wildcard_to_re(wildcard)
-    return wc.fullmatch(text)
+    return bool(wc.fullmatch(text))
 
 
 class Rule(object):
     """A make rule."""
 
-    def __init__(self, target=None, commands=None, prereq_targets=None,
-                 precomment=None):
+    def __init__(self, target: Optional[bytes] = None,
+                 commands: Optional[List[bytes]] = None,
+                 prereq_targets: Optional[List[bytes]] = None,
+                 precomment: Optional[List[bytes]] = None):
         self.precomment = precomment or []
         self.target = target
         self.components = prereq_targets or []
@@ -55,10 +58,12 @@ class Rule(object):
                 [b'%s:%s' % (target, self._component_str)] +
                 [b'\t' + cmd for cmd in (commands or [])])
         else:
-            self.lines = None
+            self.lines = []
 
     @classmethod
-    def _from_first_line(cls, firstline, precomment=None):
+    def _from_first_line(
+            cls, firstline: bytes,
+            precomment: Optional[List[bytes]] = None) -> 'Rule':
         self = cls(precomment=precomment)
         self.lines = [firstline]
         # TODO(jelmer): What if there are multiple targets?
@@ -69,7 +74,9 @@ class Rule(object):
     def __repr__(self):
         return "<%s(%r)>" % (type(self).__name__, self.target)
 
-    def has_target(self, target, exact=True):
+    def has_target(self, target: bytes, exact: bool = True) -> bool:
+        if not self.target:
+            return False
         if exact:
             # TODO(jelmer): Handle multiple targets
             return self.target == target
@@ -77,7 +84,7 @@ class Rule(object):
             # TODO(jelmer): Handle multiple targets
             return matches_wildcard(target.decode(), self.target.decode())
 
-    def rename_target(self, oldname, newname):
+    def rename_target(self, oldname: bytes, newname: bytes) -> bool:
         # TODO(jelmer): Handle multiple targets
         if self.target == oldname:
             self.target = newname
@@ -86,35 +93,35 @@ class Rule(object):
             return True
         return False
 
-    def commands(self):
+    def commands(self) -> List[bytes]:
         return [l[1:] for l in self.lines if l.startswith(b'\t')]
 
-    def append_line(self, line):
+    def append_line(self, line: bytes) -> None:
         self.lines.append(line)
 
-    def append_command(self, command):
+    def append_command(self, command: bytes) -> None:
         self.lines.append(b'\t' + command)
 
-    def append_component(self, component):
+    def append_component(self, component: bytes) -> None:
         self.components.append(component)
         self._component_str = b' ' + b' '.join(self.components)
         self.lines[0] = b'%s:%s' % (self.target, self._component_str)
 
-    def dump_lines(self):
+    def dump_lines(self) -> Iterator[bytes]:
         for line in self.precomment:
             yield line + b'\n'
         for line in self.lines:
             yield line + b'\n'
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if not isinstance(other, type(self)):
             return False
         return list(self.dump_lines()) == list(other.dump_lines())
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.lines)
 
-    def clear(self):
+    def clear(self) -> None:
         self.precomment = []
         self.lines = []
 
@@ -139,26 +146,26 @@ def is_conditional(line):
 
 class Makefile(object):
 
-    def __init__(self, contents=None):
+    def __init__(self, contents: Optional[bytes] = None):
         self.contents = list(contents or [])
 
     @classmethod
-    def from_path(cls, path):
+    def from_path(cls, path: str) -> 'Makefile':
         with open(path, 'rb') as f:
             original_contents = f.read()
         return cls.from_bytes(original_contents)
 
-    def iter_all_rules(self):
+    def iter_all_rules(self) -> Iterator[Rule]:
         for entry in self.contents:
             if isinstance(entry, Rule):
                 yield entry
 
-    def iter_rules(self, target, exact=True):
+    def iter_rules(self, target: bytes, exact: bool = True) -> Iterator[Rule]:
         for rule in self.iter_all_rules():
             if rule.has_target(target, exact):
                 yield rule
 
-    def get_variable(self, desired_key):
+    def get_variable(self, desired_key: bytes) -> bytes:
         for line in self.contents:
             if not isinstance(line, bytes):
                 continue

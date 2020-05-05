@@ -20,6 +20,8 @@ lintian-brush (0.62) UNRELEASED; urgency=medium
     on empty debian/source/options files.
   * Add fixer for binary-control-field-duplicates-source.
   * Process overrides in unused-license-paragraph-in-dep5-copyright.
+  * debian-rules-uses-unnecessary-dh-argument: Deal with argument
+    negation on the % target.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 25 Apr 2020 03:28:37 +0000
 
