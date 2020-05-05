@@ -180,24 +180,26 @@ def parse_watch_file(f: Iterable[str]) -> Optional[WatchFile]:
         line = ''.join(chunked).strip()
         if not line:
             continue
+        opts: Optional[List[str]]
         if line.startswith('opts='):
             if line[5] == '"':
                 optend = line.index('"', 6)
                 if optend == -1:
                     raise ValueError('Not matching " in %r' % line)
-                opts = line[6:optend]
+                opts_str = line[6:optend]
                 line = line[optend+1:]
             else:
                 try:
-                    (opts, line) = line[5:].split(maxsplit=1)
+                    (opts_str, line) = line[5:].split(maxsplit=1)
                 except ValueError:
-                    opts = line[5:]
+                    opts_str = line[5:]
                     line = None
-            opts = opts.split(',')
+            opts = opts_str.split(',')
         else:
             opts = None
         if not line:
-            persistent_options.extend(opts)
+            if opts:
+                persistent_options.extend(opts)
         else:
             try:
                 url, line = line.split(maxsplit=1)
@@ -210,7 +212,7 @@ def parse_watch_file(f: Iterable[str]) -> Optional[WatchFile]:
                 url = url[:-len(m[0])-1]
             else:
                 parts = line.split(maxsplit=2)
-            entries.append(Watch(url, *parts, opts=opts))
+            entries.append(Watch(url, *parts, opts=opts))  # type: ignore
     return WatchFile(
         entries=entries, options=persistent_options, version=version)
 

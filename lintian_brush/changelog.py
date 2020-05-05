@@ -31,6 +31,7 @@ from debian.changelog import (
     )
 import re
 import textwrap
+from typing import List, Iterator
 from .reformatting import Updater
 
 
@@ -106,3 +107,35 @@ class TextWrapper(textwrap.TextWrapper):
                 ret.append(chunks[i])
                 i += 1
         return ret
+
+
+_initial_re = re.compile(r'^[  ]+[\+\-\*] ')
+
+
+def rewrap_change(change: List[str]) -> List[str]:
+    if not change:
+        return change
+    m = _initial_re.match(change[0])
+    if any([len(line) > WIDTH for line in change]) and m:
+        wrapper = TextWrapper(m.group(0))
+        return wrapper.wrap(
+                '\n'.join(l[len(m.group(0)):] for l in change))
+    else:
+        return change
+
+
+def rewrap_changes(changes: Iterator[str]) -> Iterator[str]:
+    change: List[str] = []
+    indent = None
+    for line in changes:
+        m = _initial_re.match(line)
+        if m:
+            yield from rewrap_change(change)
+            change = [line]
+            indent = len(m.group(0))
+        elif change and line.startswith(' ' * indent):  # type: ignore
+            change.append(line)
+        else:
+            yield from rewrap_change(change)
+            change = []
+            yield line

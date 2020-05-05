@@ -46,12 +46,13 @@ def is_gitlab_site(hostname: str, net_access: bool = False) -> bool:
 
 
 def split_vcs_url(url: str) -> Tuple[str, Optional[str], Optional[str]]:
-    m = re.finditer(r' \[([^] ]+)\]', url)
-    try:
-        m = next(m)
+    subpath: Optional[str]
+    branch: Optional[str]
+    m = re.search(r' \[([^] ]+)\]', url)
+    if m:
         url = url[:m.start()] + url[m.end():]
         subpath = m.group(1)
-    except StopIteration:
+    else:
         subpath = None
     try:
         (repo_url, branch) = url.split(' -b ', 1)
@@ -205,7 +206,7 @@ def fixup_broken_git_url(url):
     return url
 
 
-def browse_url_from_repo_url(url: str) -> str:
+def browse_url_from_repo_url(url: str) -> Optional[str]:
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
         path = '/'.join(parsed_url.path.split('/')[:3])
