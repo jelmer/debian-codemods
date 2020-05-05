@@ -26,6 +26,8 @@ from lintian_brush.changelog import (
     ChangelogCreateError,
     ChangelogUpdater,
     TextWrapper,
+    rewrap_change,
+    rewrap_changes,
     )
 
 
@@ -68,3 +70,30 @@ class TextWrapperTests(TestCase):
             ['And', ' ', 'this', ' ', 'fixes', ' ', 'something.', ' ',
              'Closes: #123456'],
             self.wrapper._split('And this fixes something. Closes: #123456'))
+
+
+LONG_LINE = (
+    "This is a very long line that could have been broken "
+    "and should have been broken but was not broken.")
+
+
+class RewrapChangeTests(TestCase):
+
+    def test_too_short(self):
+        self.assertEqual([], rewrap_change([]))
+        self.assertEqual(['Foo bar'], rewrap_change(['Foo bar']))
+        self.assertEqual(['Foo', 'bar'], rewrap_change(['Foo', 'bar']))
+        self.assertEqual(
+            ['  * Beginning', '  next line'],
+            rewrap_change(
+                ['  * Beginning', '  next line']))
+
+    def test_no_initial(self):
+        self.assertEqual(['x' * 100], rewrap_change(['x' * 100]))
+
+    def test_wrap(self):
+        self.assertEqual(
+            ['  * This is a very long line that could have been '
+             'broken and should have been',
+             '    broken but was not broken.'],
+            rewrap_change(['  * ' + LONG_LINE]))
