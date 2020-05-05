@@ -112,14 +112,35 @@ class TextWrapper(textwrap.TextWrapper):
 _initial_re = re.compile(r'^[  ]+[\+\-\*] ')
 
 
+def _can_join(line1, line2):
+    if line1.endswith(':'):
+        return False
+    if line2 and line2[:1].isupper():
+        if line1.endswith(']') or line1.endswith('}'):
+            return False
+        if not line1.endswith('.'):
+            return False
+    return True
+
+
 def rewrap_change(change: List[str]) -> List[str]:
     if not change:
         return change
     m = _initial_re.match(change[0])
     if any([len(line) > WIDTH for line in change]) and m:
         wrapper = TextWrapper(m.group(0))
-        return wrapper.wrap(
-                '\n'.join(l[len(m.group(0)):] for l in change))
+        lines = [l[len(m.group(0)):] for l in change]
+        todo = [lines[0]]
+        ret = []
+        for i in range(len(lines) - 1):
+            if _can_join(lines[i], lines[i+1]):
+                todo.append(lines[i+1])
+            else:
+                ret.extend(wrapper.wrap('\n'.join(todo)))
+                wrapper = TextWrapper(change[i+1][:len(m.group(0))])
+                todo = [lines[i+1]]
+        ret.extend(wrapper.wrap('\n'.join(todo)))
+        return ret
     else:
         return change
 

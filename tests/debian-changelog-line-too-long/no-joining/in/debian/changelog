@@ -1,0 +1,12 @@
+cdebconf (0.48) unstable; urgency=low
+
+  * Denis Barbier
+    - Sort translated choices when a select/multiselect template contains
+      a line Listorder: lexicographic
+      If some Choices items must not be sorted, they can be prepended with
+      an exclamation mark.  Adding a comment is a good idea to let
+      translators know why this sign has been put here:
+        _Choices: ${FOO}, !Other[ You only have to translate Other, remove the exclamation mark and this comment between brackets]
+      Currently text, newt, slang and gtk frontends support this feature.
+
+ -- Petter Reinholdtsen <pere@debian.org>  Fri, 31 Oct 2003 19:00:23 +0100

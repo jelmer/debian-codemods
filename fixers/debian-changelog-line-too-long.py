@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.changelog import (
-    ChangelogUpdater, TextWrapper, WIDTH, rewrap_changes,
+    ChangelogUpdater, WIDTH, rewrap_changes,
     )
 from lintian_brush.fixer import report_result
 

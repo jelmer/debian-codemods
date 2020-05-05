@@ -27,7 +27,6 @@ from lintian_brush.changelog import (
     ChangelogUpdater,
     TextWrapper,
     rewrap_change,
-    rewrap_changes,
     )
 
 
@@ -97,3 +96,16 @@ class RewrapChangeTests(TestCase):
              'broken and should have been',
              '    broken but was not broken.'],
             rewrap_change(['  * ' + LONG_LINE]))
+
+    def test_no_join(self):
+        self.assertEqual("""\
+    - Translators know why this sign has been put here:
+        _Choices: ${FOO}, !Other[ You only have to translate Other, remove the
+      exclamation mark and this comment between brackets]
+      Currently text, newt, slang and gtk frontends support this feature.
+""".splitlines(), rewrap_change("""\
+    - Translators know why this sign has been put here:
+        _Choices: ${FOO}, !Other[ You only have to translate Other, remove \
+the exclamation mark and this comment between brackets]
+      Currently text, newt, slang and gtk frontends support this feature.
+""".splitlines()))

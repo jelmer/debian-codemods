@@ -1,0 +1,2 @@
+Wrap long lines in changelog entries: 0.48.
+Fixed-Lintian-Tags: debian-changelog-line-too-long
