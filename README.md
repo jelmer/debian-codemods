@@ -25,6 +25,7 @@ subset of the issues:
 
 * ancient-python-version-field
 * autotools-pkg-config-macro-not-cross-compilation-safe
+* binary-control-field-duplicates-source
 * build-depends-on-build-essential
 * build-depends-on-obsolete-package
 * built-using-field-on-arch-all-package
@@ -136,7 +137,7 @@ subset of the issues:
 * upstream-metadata-missing-repository
 * useless-autoreconf-build-depends
 * uses-debhelper-compat-file
-* uses-deprecated-ttmp
+* uses-deprecated-adttmp
 * vcs-field-bitrotted
 * vcs-field-mismatch
 * vcs-field-not-canonical
