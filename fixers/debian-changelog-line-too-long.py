@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 
 from lintian_brush.changelog import (
-    ChangelogUpdater, WIDTH, rewrap_changes,
+    ChangelogUpdater,
+    rewrap_changes,
+    any_long_lines,
     )
 from lintian_brush.fixer import report_result
 
@@ -9,7 +11,7 @@ from lintian_brush.fixer import report_result
 updated = []
 with ChangelogUpdater() as updater:
     for block in updater.changelog:
-        if not any([len(change) > WIDTH for change in block.changes()]):
+        if not any_long_lines(block.changes()):
             continue
         old_changes = list(block._changes)
         new_changes = rewrap_changes(block._changes)

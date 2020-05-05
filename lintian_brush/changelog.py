@@ -123,26 +123,31 @@ def _can_join(line1, line2):
     return True
 
 
+def any_long_lines(lines, width=WIDTH):
+    return any([len(line) > width for line in lines])
+
+
 def rewrap_change(change: List[str]) -> List[str]:
     if not change:
         return change
     m = _initial_re.match(change[0])
-    if any([len(line) > WIDTH for line in change]) and m:
-        wrapper = TextWrapper(m.group(0))
-        lines = [l[len(m.group(0)):] for l in change]
-        todo = [lines[0]]
-        ret = []
-        for i in range(len(lines) - 1):
-            if _can_join(lines[i], lines[i+1]):
-                todo.append(lines[i+1])
-            else:
-                ret.extend(wrapper.wrap('\n'.join(todo)))
-                wrapper = TextWrapper(change[i+1][:len(m.group(0))])
-                todo = [lines[i+1]]
-        ret.extend(wrapper.wrap('\n'.join(todo)))
-        return ret
-    else:
+    if not any_long_lines(change) or not m:
         return change
+    wrapper = TextWrapper(m.group(0))
+    prefix_len = len(m.group(0))
+    lines = [l[prefix_len:] for l in change]
+    todo = [lines[0]]
+    ret = []
+    for i in range(len(lines) - 1):
+        if _can_join(lines[i], lines[i+1]) and any_long_lines(
+                todo, WIDTH-prefix_len):
+            todo.append(lines[i+1])
+        else:
+            ret.extend(wrapper.wrap('\n'.join(todo)))
+            wrapper = TextWrapper(change[i+1][:len(m.group(0))])
+            todo = [lines[i+1]]
+    ret.extend(wrapper.wrap('\n'.join(todo)))
+    return ret
 
 
 def rewrap_changes(changes: Iterator[str]) -> Iterator[str]:

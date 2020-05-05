@@ -96,6 +96,17 @@ class RewrapChangeTests(TestCase):
              'broken and should have been',
              '    broken but was not broken.'],
             rewrap_change(['  * ' + LONG_LINE]))
+        self.assertEqual("""\
+  * Build-Depend on libsdl1.2-dev, libsdl-ttf2.0-dev and libsdl-mixer1.2-dev
+    instead of with the embedded version, add -lSDL_ttf to --with-py-libs in
+    debian/rules and rebootstrap (Closes: #382202)
+""".splitlines(), rewrap_change("""\
+  * Build-Depend on libsdl1.2-dev, libsdl-ttf2.0-dev and libsdl-mixer1.2-dev \
+instead
+    of with the embedded version, add -lSDL_ttf to --with-py-libs in \
+debian/rules
+    and rebootstrap (Closes: #382202)
+""".splitlines()))
 
     def test_no_join(self):
         self.assertEqual("""\
