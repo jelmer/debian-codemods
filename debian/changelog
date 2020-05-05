@@ -16,6 +16,8 @@ lintian-brush (0.62) UNRELEASED; urgency=medium
   [ Jelmer Vernooĳ ]
   * debian-changelog-line-too-long: Be careful about joining lines that
     aren't too long in entries that do have long lines. Closes: #959496
+  * debian-source-options-has-custom-compression-settings: Don't break
+    on empty debian/source/options files.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 25 Apr 2020 03:28:37 +0000
 
