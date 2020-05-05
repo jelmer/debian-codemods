@@ -19,6 +19,7 @@ lintian-brush (0.62) UNRELEASED; urgency=medium
   * debian-source-options-has-custom-compression-settings: Don't break
     on empty debian/source/options files.
   * Add fixer for binary-control-field-duplicates-source.
+  * Process overrides in unused-license-paragraph-in-dep5-copyright.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 25 Apr 2020 03:28:37 +0000
 

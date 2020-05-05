@@ -2,6 +2,7 @@
 
 from lintian_brush.copyright import CopyrightUpdater, NotMachineReadableError
 from lintian_brush.fixer import report_result
+from lintian_brush.lintian_overrides import override_exists
 import sys
 import re
 
@@ -88,6 +89,11 @@ try:
         if extra_defined and not extra_used:
             for paragraph in list(updater.copyright._Copyright__paragraphs):
                 if not paragraph.license:
+                    continue
+                if override_exists(
+                        'unused-license-paragraph-in-dep5-copyright',
+                        package='source',
+                        info=paragraph.license.synopsis.lower()):
                     continue
                 if paragraph.license.synopsis in extra_defined:
                     updater.copyright._Copyright__paragraphs.remove(paragraph)
