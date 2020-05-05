@@ -386,6 +386,34 @@ def upgrade_to_debhelper_11():
                 service, str(current_package_version())))
 
 
+def drop_dh_missing_fail(line, target):
+    """Remove dh_missing --fail-missing."""
+    # Note that this is not currently replacing plain calls to dh_missing with
+    # empty an "override_dh_missing" rule.
+
+    if not line.startswith(b'dh_missing '):
+        return line
+    argv = shlex.split(line.decode())
+    for arg in ['--fail-missing', '-O--fail-missing']:
+        if arg in argv:
+            # If we added the --fail-missing argument first, then
+            # don't announce that here.
+            try:
+                subitems.remove(
+                    'debian/rules: Move --fail-missing argument '
+                    'to dh_missing.')
+            except KeyError:
+                subitems.add(
+                    'debian/rules: Drop --fail-missing argument '
+                    'to dh_missing, which is now the default.')
+            else:
+                subitems.add(
+                    'debian/rules: Drop --fail-missing argument, '
+                    'now the default.')
+            argv.remove(arg)
+    return shlex.join(argv).encode()
+
+
 def upgrade_to_debhelper_13():
 
     # dh_installtempfiles will handle d/tmpfile{,s}.  It prefer the latter
@@ -404,6 +432,13 @@ def upgrade_to_debhelper_13():
             os.rename(tmpfile, tmpfile + 's')
             subitems.add(
                 'Rename %s to %ss.' % (tmpfile, tmpfile))
+
+    update_rules([
+        # The dh_missing command will now default to --fail-missing.  This can
+        # be reverted to a non-fatal warning by explicitly passing
+        # --list-missing like it was in compat 12.
+        drop_dh_missing_fail,
+        ])
 
 
 upgrade_to_debhelper = {
