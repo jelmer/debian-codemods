@@ -378,4 +378,4 @@ Fix-Script: upstream-metadata-in-native-source.py
 Lintian-Tags: upstream-metadata-in-native-source
 
 Fix-Script: uses-deprecated-adttmp.py
-Lintian-Tags: uses-deprecated-ttmp
+Lintian-Tags: uses-deprecated-adttmp
