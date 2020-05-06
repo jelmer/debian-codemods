@@ -17,6 +17,12 @@
 
 """Helper functions for fixers."""
 
+from . import (
+    DEFAULT_MINIMUM_CERTAINTY,
+    certainty_sufficient,
+    )
+
+
 from debian.changelog import Version
 import os
 
@@ -55,3 +61,9 @@ def current_package_version():
 
 def package_is_native():
     return (not current_package_version().debian_revision)
+
+
+def meets_minimum_certainty(certainty):
+    return certainty_sufficient(
+        certainty,
+        os.environ.get('MINIMUM_CERTAINTY', DEFAULT_MINIMUM_CERTAINTY))

@@ -3,6 +3,7 @@ lintian-brush (0.63) UNRELEASED; urgency=medium
   * Clean up unnecessary 'dh_missing --fail-missing' when upgrading to
     debhelper 13. Closes: #959823
   * Add document start when adding new YAML files. Closes: #958413
+  * Check Debian bugs when correcting Close => Closes.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 05 May 2020 22:45:16 +0000
 

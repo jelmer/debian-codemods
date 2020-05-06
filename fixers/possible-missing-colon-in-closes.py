@@ -3,7 +3,11 @@
 import asyncio
 from functools import partial
 from lintian_brush.changelog import ChangelogUpdater
-from lintian_brush.fixer import net_access_allowed
+from lintian_brush import min_certainty
+from lintian_brush.fixer import (
+    net_access_allowed,
+    meets_minimum_certainty,
+    )
 import re
 import socket
 from warnings import warn
@@ -31,30 +35,44 @@ async def valid_bug(package, bug):
     return await debbugs.check_bug(package, bug)
 
 
-def check_bug(package, m):
-    global certainty
-    bug = int(m.group('bug'))
+def check_bug(package, bugno):
     loop = asyncio.get_event_loop()
-    valid = loop.run_until_complete(valid_bug(package, bug))
-    if valid is None:
-        # Let's assume valid, but downgrade certainty
-        valid = True
-        # Check number of digits; upstream projects don't often hit the 5-digit
-        # bug numbers that Debian has.
-        if len(m.group('bug')) >= 5:
-            certainty = 'likely'
-        else:
-            certainty = 'possible'
-    if valid:
+    valid = loop.run_until_complete(valid_bug(package, bugno))
+    if valid is not None:
+        return (valid, 'certain')
+    # Let's assume valid, but downgrade certainty
+    valid = True
+    # Check number of digits; upstream projects don't often hit the 5-digit
+    # bug numbers that Debian has.
+    if len(str(bugno)) >= 5:
+        certainty = 'likely'
+    else:
+        certainty = 'possible'
+    return (valid, certainty)
+
+
+def fix_close_colon(package, m):
+    global certainty
+    bugno = int(m.group('bug'))
+    (valid, bug_certainty) = check_bug(package, bugno)
+    if meets_minimum_certainty(bug_certainty) and valid:
+        certainty = min_certainty([certainty, bug_certainty])
         tags.add("possible-missing-colon-in-closes")
-        return '%s: #%d' % (m.group('closes'), bug)
+        return '%s: #%d' % (m.group('closes'), bugno)
     else:
         return m.group(0)
 
 
-def fix_close_typo(m):
-    tags.add('misspelled-closes-bug')
-    return '%ss: #%s' % (m.group('close'), m.group('bug'))
+def fix_close_typo(package, m):
+    global certainty
+    bugno = int(m.group('bug'))
+    (valid, bug_certainty) = check_bug(package, bugno)
+    if meets_minimum_certainty(bug_certainty) and valid:
+        certainty = min_certainty([certainty, bug_certainty])
+        tags.add('misspelled-closes-bug')
+        return '%ss: #%s' % (m.group('close'), m.group('bug'))
+    else:
+        return m.group(0)
 
 
 with ChangelogUpdater() as updater:
@@ -63,11 +81,12 @@ with ChangelogUpdater() as updater:
             change = re.sub(
                 r'(?<!partially )(?P<closes>closes) '
                 r'#(?P<bug>[0-9]+)',
-                partial(check_bug, block.package), change,
+                partial(fix_close_colon, block.package), change,
                 flags=re.IGNORECASE)
             change = re.sub(
                 '(?P<close>close): #(?P<bug>[0-9]+)',
-                fix_close_typo, change, flags=re.IGNORECASE)
+                partial(fix_close_typo, block.package), change,
+                flags=re.IGNORECASE)
             block._changes[i] = change
 
 
