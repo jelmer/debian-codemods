@@ -110,7 +110,7 @@ class YamlUpdater(object):
                             with open(self.path, 'r') as f:
                                 lines = list(f.readlines())
                         except FileNotFoundError:
-                            lines = []
+                            lines = ['---\n']
                         with open(self.path, 'w') as f:
                             self._update_lines(lines, f)
                     else:

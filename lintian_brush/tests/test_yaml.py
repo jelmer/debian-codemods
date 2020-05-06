@@ -35,7 +35,7 @@ class YamlUpdaterTests(TestCaseInTempDir):
     def test_new(self):
         with YamlUpdater('newfile.yaml') as code:
             code['Somekey'] = 'Somevalue'
-        self.assertFileEqual("Somekey: Somevalue\n", "newfile.yaml")
+        self.assertFileEqual("---\nSomekey: Somevalue\n", "newfile.yaml")
 
     def test_update(self):
         with open('newfile.yaml', 'w') as f:
