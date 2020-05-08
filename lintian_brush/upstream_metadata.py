@@ -548,12 +548,12 @@ def guess_from_readme(path, trust_package):
                         'Bug-Database',
                         m.group(0).decode().rstrip(), 'possible')
                 for m in re.finditer(
-                        b'https://github.com/([^/]+)/([^/\\s()]+)(.git)?',
+                        b'https://github.com/([^/]+)/([^/\\s()>]+)(.git)?',
                         line):
                     yield UpstreamDatum(
                         'Repository', m.group(0).decode().rstrip(), 'possible')
                 m = re.fullmatch(
-                    b'https://github.com/([^/]+)/([^/?.()]+)', line)
+                    b'https://github.com/([^/]+)/([^/?.()>]+)', line)
                 if m:
                     yield UpstreamDatum(
                         'Repository', line.strip().decode(), 'possible')
