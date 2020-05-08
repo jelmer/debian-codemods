@@ -1240,12 +1240,13 @@ def verify_repository_url(url, version=None):
         else:
             if data.get('archived', False):
                 return False
-            if data['description'].startswith('Moved to '):
-                return False
-            if 'has moved' in data['description']:
-                return False
-            if data['description'].startswith('Mirror of '):
-                return False
+            if data['description']:
+                if data['description'].startswith('Moved to '):
+                    return False
+                if 'has moved' in data['description']:
+                    return False
+                if data['description'].startswith('Mirror of '):
+                    return False
             homepage = data.get('homepage')
             if homepage and is_gitlab_site(homepage):
                 return False
