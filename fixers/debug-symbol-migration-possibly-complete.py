@@ -34,7 +34,7 @@ VERSION_CMP_SQL = {
     }
 
 
-async def package_exists(package, release, version_cmp, version):
+async def package_exists(package, release, version_info):
     if not net_access_allowed():
         try:
             return (
@@ -44,10 +44,13 @@ async def package_exists(package, release, version_cmp, version):
             return None
     from lintian_brush.udd import connect_udd_mirror
     udd = await connect_udd_mirror()
-    row = await udd.fetchrow(
-        'SELECT True FROM packages WHERE release = $2 AND package = $1 '
-        'AND version %s $3' % VERSION_CMP_SQL[version_cmp],
-        package, release, version)
+    query = 'SELECT True FROM packages WHERE release = $2 AND package = $1'
+    args = [package, release]
+    if version_info is not None:
+        version_cmp, version = version_info
+        query += ' AND version %s $3' % VERSION_CMP_SQL[version_cmp]
+        args.append(version)
+    row = await udd.fetchrow(query, *args)
     return bool(row)
 
 
@@ -63,7 +66,7 @@ def migration_done(rels):
             # Not sure how to handle | Replaces
             return False
         if loop.run_until_complete(package_exists(
-                rel[0]['name'], previous, *rel[0]['version'])) is not False:
+                rel[0]['name'], previous, rel[0]['version'])) is not False:
             return False
     return True
 
