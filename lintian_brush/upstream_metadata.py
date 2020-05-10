@@ -531,7 +531,7 @@ def guess_from_readme(path, trust_package):
                     if plausible_vcs_url(url):
                         urls.append(sanitize_vcs_url(url))
                 for m in re.finditer(
-                        b'https://travis-ci.org/([^/]+)/([^/?.]+)', line):
+                        b'https://travis-ci.org/([^/]+)/([^/?.()>]+)', line):
                     yield UpstreamDatum(
                         'Repository', 'https://github.com/%s/%s' % (
                             m.group(1).decode(), m.group(2).decode().rstrip()),
