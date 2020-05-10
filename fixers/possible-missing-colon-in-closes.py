@@ -36,8 +36,7 @@ async def valid_bug(package, bug):
 
 
 def check_bug(package, bugno):
-    loop = asyncio.get_event_loop()
-    valid = loop.run_until_complete(valid_bug(package, bugno))
+    valid = asyncio.run(valid_bug(package, bugno))
     if valid is not None:
         return (valid, 'certain')
     # Let's assume valid, but downgrade certainty

@@ -100,9 +100,8 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
 
     # If possible, we use vcswatch to find the VCS repository URL
     if net_access:
-        loop = asyncio.get_event_loop()
         try:
-            (vcs_type, vcs_url, vcs_browser) = loop.run_until_complete(
+            (vcs_type, vcs_url, vcs_browser) = asyncio.run(
                 retrieve_vcswatch_urls(package))
         except VcsWatchError as e:
             sys.stderr.write('vcswatch URL unusable: %s\n' % e.args[0])

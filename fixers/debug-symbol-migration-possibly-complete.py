@@ -60,12 +60,11 @@ def migration_done(rels):
     if previous is None:
         # We can't determine if the migration is done
         return False
-    loop = asyncio.get_event_loop()
     for rel in rels:
         if len(rel) > 1:
             # Not sure how to handle | Replaces
             return False
-        if loop.run_until_complete(package_exists(
+        if asyncio.run(package_exists(
                 rel[0]['name'], previous, rel[0]['version'])) is not False:
             return False
     return True
