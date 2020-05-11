@@ -16,16 +16,21 @@ try:
     with CopyrightUpdater() as updater:
         for paragraph in updater.copyright.all_files_paragraphs():
             files = list()
-            for f in paragraph.files:
-                if re_license.search(f):
-                    deleted.add(f)
+            # access the private member because of #960278
+            for f in paragraph._RestrictedWrapper__data['Files'].splitlines():
+                if re_license.search(f.strip()):
+                    deleted.add(f.strip())
                 else:
-                    files.append(f)
-            files = tuple(files)
+                    if files:
+                        files.append(f)
+                    else:
+                        # First line, should not start with whitespaces.
+                        files.append(f.strip())
+            files_entry = "\n".join(files)
             if not files:
                 updater.copyright._Copyright__paragraphs.remove(paragraph)
-            elif files != paragraph.files:
-                paragraph.files = files
+            elif files_entry != paragraph._RestrictedWrapper__data['Files']:
+                paragraph._RestrictedWrapper__data['Files'] = files_entry
 
         if not deleted:
             sys.exit(0)
