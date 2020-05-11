@@ -1,0 +1,3 @@
+Remove listed license files (pathto/LICENSE) from copyright.
+Certainty: certain
+Fixed-Lintian-Tags: license-file-listed-in-debian-copyright

@@ -87,6 +87,7 @@ subset of the issues:
 * invalid-short-name-in-dep5-copyright
 * invalid-standards-version
 * libmodule-build-perl-needs-to-be-in-build-depends
+* license-file-listed-in-debian-copyright
 * maintainer-also-in-uploaders.
 * maintainer-script-without-set-e
 * malformed-dm-upload-allowed
