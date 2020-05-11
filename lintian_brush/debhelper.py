@@ -50,26 +50,28 @@ if (defined($b)) { print($b->NAME); } else { print("_undefined_"); }\
     return output
 
 
+LINTIAN_COMPAT_LEVEL_PATH = '/usr/share/lintian/data/debhelper/compat-level'
+
+
+def _get_lintian_compat_levels() -> Dict[str, int]:
+    ret = {}
+    with open(LINTIAN_COMPAT_LEVEL_PATH, 'r') as f:
+        for l in f:
+            if l.startswith('#') or not l.strip():
+                continue
+            (key, value) = l.split('=', 1)
+            ret[key] = int(value)
+    return ret
+
+
 def lowest_non_deprecated_compat_level() -> int:
     """Find the lowest non-deprecated debhelper compat level."""
-    output = subprocess.check_output([
-        'perl', '-w', '-MDebian::Debhelper::Dh_Lib', '-e',
-        'print(Debian::Debhelper::Dh_Lib::LOWEST_NON_DEPRECATED_COMPAT_LEVEL);'
-        ]).decode()
-    return int(output)
+    return _get_lintian_compat_levels()['deprecated']
 
 
 def highest_stable_compat_level() -> int:
     """Find the highest stable debhelper compat level."""
-    # Note: available in the first upload after 2020-05-03
-    output = subprocess.check_output([
-        'perl', '-w', '-MDebian::Debhelper::Dh_Lib', '-e',
-        'print(Debian::Debhelper::Dh_Lib::HIGHEST_STABLE_COMPAT_LEVEL);'
-        ], stderr=subprocess.PIPE).decode()
-    if output == '':
-        # Older version of debhelper, presumably
-        return 13
-    return int(output)
+    return _get_lintian_compat_levels()['recommended']
 
 
 debhelper_compat_version: Dict[str, int] = {

@@ -12,6 +12,7 @@ from lintian_brush.rules import Makefile, Rule, dh_invoke_get_with
 import shlex
 import sys
 
+# TODO(jelmer): Read /usr/share/lintian/data/debhelper/dh_commands{,-manual}
 COMMAND_TO_DEP = {
     'dh_python2': 'dh-python | dh-sequence-python2',
     'dh_python3': 'dh-python | dh-sequence-python3',

@@ -21,10 +21,19 @@ from breezy.tests import (
     TestCase,
     )
 
-from ..debhelper import lowest_non_deprecated_compat_level
+from ..debhelper import (
+    lowest_non_deprecated_compat_level,
+    highest_stable_compat_level,
+    )
 
 
 class LowestNonDeprecatedCompatLevel(TestCase):
 
     def test_is_valid(self):
         self.assertIsInstance(lowest_non_deprecated_compat_level(), int)
+
+
+class HighestStableCompatLevelTests(TestCase):
+
+    def test_is_valid(self):
+        self.assertIsInstance(highest_stable_compat_level(), int)
