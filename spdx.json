@@ -365,6 +365,15 @@
         "CERN-OHL-1.2": {
             "name": "CERN Open Hardware Licence v1.2"
         },
+        "CERN-OHL-P-2.0": {
+            "name": "CERN Open Hardware Licence Version 2 - Permissive"
+        },
+        "CERN-OHL-S-2.0": {
+            "name": "CERN Open Hardware Licence Version 2 - Strongly Reciprocal"
+        },
+        "CERN-OHL-W-2.0": {
+            "name": "CERN Open Hardware Licence Version 2 - Weakly Reciprocal"
+        },
         "CNRI-Jython": {
             "name": "CNRI Jython License"
         },
@@ -979,6 +988,12 @@
         },
         "Plexus": {
             "name": "Plexus Classworlds License"
+        },
+        "PolyForm-Noncommercial-1.0.0": {
+            "name": "PolyForm Noncommercial License 1.0.0"
+        },
+        "PolyForm-Small-Business-1.0.0": {
+            "name": "PolyForm Small Business License 1.0.0"
         },
         "PostgreSQL": {
             "name": "PostgreSQL License"
