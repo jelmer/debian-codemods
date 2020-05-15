@@ -81,8 +81,8 @@ class FixerTestCase(unittest.TestCase):
         env_path = os.path.join(self._path, 'env')
         if os.path.exists(env_path):
             with open(env_path, 'r') as f:
-                for l in f:
-                    key, value = l.rstrip('\n').split('=')
+                for line in f:
+                    key, value = line.rstrip('\n').split('=')
                     env[key] = value
         p = subprocess.Popen(self._fixer.script_path, cwd=self._testdir,
                              stdout=subprocess.PIPE,

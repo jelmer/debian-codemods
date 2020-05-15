@@ -92,8 +92,8 @@ class Section(ConfigNamespace):
                         values.remove(v)
                 option.value = ' '.join(values)
                 if not option.value:
-                    for l in self._lines:
-                        l.contents.remove(option)
+                    for line in self._lines:
+                        line.contents.remove(option)
             if remaining:
                 obj = LineContainer(
                     OptionLine(key, ' '.join(remaining), separator='='))
@@ -110,21 +110,21 @@ class Section(ConfigNamespace):
             self._options[key].value = value
 
     def __delitem__(self, key):
-        for l in self._lines:
+        for line in self._lines:
             remaining = []
-            for o in l.contents:
+            for o in line.contents:
                 if isinstance(o, LineContainer):
                     if key != o.name:
                         remaining.append(o)
                 else:
                     remaining.append(o)
-            l.contents = remaining
+            line.contents = remaining
         del self._options[key]
 
     def __iter__(self):
         d = set()
-        for l in self._lines:
-            for x in l.contents:
+        for line in self._lines:
+            for x in line.contents:
                 if isinstance(x, LineContainer):
                     ans = x.name
                     if ans not in d:
@@ -152,8 +152,8 @@ class OptionList(object):
             if k >= i and k < i + len(vals):
                 del vals[k - i]
                 o.value = ' '.join(vals)
-                for l in self._section._lines:
-                    l.contents.remove(o)
+                for line in self._section._lines:
+                    line.contents.remove(o)
                 break
             i += len(vals)
         else:
