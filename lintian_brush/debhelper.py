@@ -23,6 +23,8 @@ import os
 import subprocess
 from typing import Dict, Optional
 
+from .lintian import read_debhelper_lintian_data_file
+
 
 DEBHELPER_BUILD_STEPS = ['configure', 'build', 'test', 'install', 'clean']
 
@@ -54,14 +56,10 @@ LINTIAN_COMPAT_LEVEL_PATH = '/usr/share/lintian/data/debhelper/compat-level'
 
 
 def _get_lintian_compat_levels() -> Dict[str, int]:
-    ret = {}
     with open(LINTIAN_COMPAT_LEVEL_PATH, 'r') as f:
-        for l in f:
-            if l.startswith('#') or not l.strip():
-                continue
-            (key, value) = l.split('=', 1)
-            ret[key] = int(value)
-    return ret
+        return {
+            key: int(value)
+            for (key, value) in read_debhelper_lintian_data_file(f)}
 
 
 def lowest_non_deprecated_compat_level() -> int:
