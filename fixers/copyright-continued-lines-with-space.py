@@ -4,31 +4,31 @@ import re
 import sys
 
 
-def expand_tabs(l, tabwidth=8):
+def expand_tabs(line, tabwidth=8):
     ret = []
-    for i, c in enumerate(l):
-        if l[i:i+1] == b'\t':
+    for i, c in enumerate(line):
+        if line[i:i+1] == b'\t':
             # Round up to the next unit of tabwidth
             ret.extend([b' '] * (tabwidth - len(ret) % tabwidth))
         else:
-            ret.append(l[i:i+1])
+            ret.append(line[i:i+1])
     return b''.join(ret)
 
 
-def whitespace_prefix_length(l):
-    return len(re.match(b'^\\s*', l).group(0))
+def whitespace_prefix_length(line):
+    return len(re.match(b'^\\s*', line).group(0))
 
 
-def value_offset(l):
-    if not l.strip():
+def value_offset(line):
+    if not line.strip():
         return None
-    if l.startswith(b'#'):
+    if line.startswith(b'#'):
         return None
-    if l[0:1] in (b'\t', b' '):
-        return whitespace_prefix_length(l)
+    if line[0:1] in (b'\t', b' '):
+        return whitespace_prefix_length(line)
     else:
         try:
-            key, value = l.split(b':', 1)
+            key, value = line.split(b':', 1)
         except ValueError:
             return None
         else:

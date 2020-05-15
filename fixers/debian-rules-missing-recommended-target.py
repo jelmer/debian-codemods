@@ -24,7 +24,8 @@ def process_makefile(mf):
     if has_build_arch and has_build_indep:
         return
 
-    if any([l.lstrip(b' -').startswith(b'include ') for l in mf.dump_lines()]):
+    if any([line.lstrip(b' -').startswith(b'include ')
+            for line in mf.dump_lines()]):
         # No handling of includes for the moment.
         return
 

@@ -17,9 +17,9 @@ def variable_defined(var):
         return var in _variables
     k = {}
     with open(PATH, 'r') as f:
-        for l in f:
-            if l.strip().startswith('$(foreach '):
-                vs = l.strip()[len('$(foreach '):].split(',')
+        for line in f:
+            if line.strip().startswith('$(foreach '):
+                vs = line.strip()[len('$(foreach '):].split(',')
                 k[vs[0]] = vs[1]
     for machine in k['machine'].split(' '):
         for var in k['var'].split(' '):
