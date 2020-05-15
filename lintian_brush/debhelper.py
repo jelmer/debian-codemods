@@ -59,7 +59,7 @@ def _get_lintian_compat_levels() -> Dict[str, int]:
     with open(LINTIAN_COMPAT_LEVEL_PATH, 'r') as f:
         return {
             key: int(value)
-            for (key, value) in read_debhelper_lintian_data_file(f)}
+            for (key, value) in read_debhelper_lintian_data_file(f, '=')}
 
 
 def lowest_non_deprecated_compat_level() -> int:
