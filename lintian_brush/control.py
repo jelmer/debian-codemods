@@ -77,8 +77,8 @@ def guess_template_type(template_path: str) -> Optional[str]:
         return 'directory'
     try:
         with open('debian/rules', 'rb') as f:
-            for l in f:
-                if l.startswith(b'debian/control:'):
+            for line in f:
+                if line.startswith(b'debian/control:'):
                     return 'rules'
     except FileNotFoundError:
         pass

@@ -94,7 +94,7 @@ class Rule(object):
         return False
 
     def commands(self) -> List[bytes]:
-        return [l[1:] for l in self.lines if l.startswith(b'\t')]
+        return [line[1:] for line in self.lines if line.startswith(b'\t')]
 
     def append_line(self, line: bytes) -> None:
         self.lines.append(line)
@@ -309,8 +309,8 @@ class RulesUpdater(MakefileUpdater):
                         if isinstance(ret, bytes):
                             newlines.append(b'\t' + ret)
                         elif isinstance(ret, list):
-                            for l in ret:
-                                newlines.append(b'\t' + l)
+                            for otherl in ret:
+                                newlines.append(b'\t' + otherl)
                         else:
                             raise TypeError(ret)
                     else:
@@ -353,7 +353,7 @@ def discard_pointless_override(rule):
     if not rule.target.startswith(b'override_'):
         return
     command = rule.target[len(b'override_'):]
-    if [l for l in rule.lines[1:] if l.strip()] != [b'\t' + command]:
+    if [line for line in rule.lines[1:] if line.strip()] != [b'\t' + command]:
         return
     if rule.components:
         return

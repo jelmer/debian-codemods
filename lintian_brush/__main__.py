@@ -33,8 +33,8 @@ locale.setlocale(locale.LC_ALL, '')
 sys._brz_default_fs_enc = "utf8"   # type: ignore
 
 import breezy  # noqa: E402
-from breezy.errors import (
-    DependencyNotPresent,  # noqa: E402
+from breezy.errors import (  # noqa: E402
+    DependencyNotPresent,
     NotBranchError,
     )
 breezy.initialize()

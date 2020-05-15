@@ -9,8 +9,8 @@ other_service_present = set()
 for n in os.listdir('debian'):
     if n.endswith('.init'):
         with open(os.path.join('debian', n), 'r') as f:
-            for l in f:
-                if l.startswith('. /lib/lsb/'):
+            for line in f:
+                if line.startswith('. /lib/lsb/'):
                     needs_lsb_base.add(n.split('.')[0])
                     break
     # TODO(jelmer): This doesn't find all service files; they may not live in

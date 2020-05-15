@@ -410,7 +410,7 @@ def move_upstream_changes_to_patch(
     header = Message()
     lines = description.splitlines()
     header['Description'] = lines[0].rstrip('\n')
-    header.set_payload(''.join([l + '\n' for l in lines[1:]]).lstrip())
+    header.set_payload(''.join([line + '\n' for line in lines[1:]]).lstrip())
     patches_directory = tree_patches_directory(local_tree)
     patchname = add_patch(
         local_tree, patches_directory, patch_name, diff.getvalue(), header)

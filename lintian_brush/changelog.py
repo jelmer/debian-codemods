@@ -135,7 +135,7 @@ def rewrap_change(change: List[str]) -> List[str]:
         return change
     wrapper = TextWrapper(m.group(0))
     prefix_len = len(m.group(0))
-    lines = [l[prefix_len:] for l in change]
+    lines = [line[prefix_len:] for line in change]
     todo = [lines[0]]
     ret = []
     for i in range(len(lines) - 1):
