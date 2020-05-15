@@ -485,7 +485,7 @@ def guess_from_debian_copyright(path, trust_package):
             yield UpstreamDatum(
                 "Contact", ','.join(header.upstream_contact), 'certain')
         if header.source:
-            if ' 'in header.source:
+            if ' ' in header.source:
                 from_urls = [u for u in re.split('[ ,\n]', header.source) if u]
             else:
                 from_urls = [header.source]
