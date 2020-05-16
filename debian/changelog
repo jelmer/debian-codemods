@@ -1,4 +1,4 @@
-lintian-brush (0.64) UNRELEASED; urgency=medium
+lintian-brush (0.64) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * Only check GitHub repository for moved repository info if it is set.
@@ -9,7 +9,7 @@ lintian-brush (0.64) UNRELEASED; urgency=medium
   [ Jelmer Vernooĳ ]
   * Read dh commands from the lintian files.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 May 2020 20:02:14 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 16 May 2020 14:33:36 +0000
 
 lintian-brush (0.63) unstable; urgency=medium
 
