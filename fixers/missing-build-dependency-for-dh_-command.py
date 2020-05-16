@@ -7,31 +7,35 @@ from lintian_brush.control import (
     add_dependency,
     is_relation_implied,
     )
+from lintian_brush.fixer import report_result
+from lintian_brush.lintian import read_debhelper_lintian_data_file
 from lintian_brush.lintian_overrides import override_exists
 from lintian_brush.rules import Makefile, Rule, dh_invoke_get_with
 import shlex
 import sys
 
-# TODO(jelmer): Read /usr/share/lintian/data/debhelper/dh_commands{,-manual}
-COMMAND_TO_DEP = {
-    'dh_python2': 'dh-python | dh-sequence-python2',
-    'dh_python3': 'dh-python | dh-sequence-python3',
-    'dh_haskell_depends': 'haskell-devscripts-minimal',
-    'dh_installtex': 'tex-common',
-}
+COMMAND_TO_DEP = {}
 
-ADDON_TO_DEP = {
-    'python3': 'dh-python | dh-sequence-python3',
-    'autotools_dev': 'autotools-dev',
-    'autoreconf':
-        'dh-autoreconf | debhelper (>= 9.20160403~) | debhelper-compat',
-    'bash_completion': 'bash-completion',
-    'gir': 'gobject-introspection',
-    'systemd': 'debhelper (>= 9.20160709~) | debhelper-compat | dh-systemd',
-}
+for path, sep in [
+    ('/usr/share/lintian/data/debhelper/dh_commands', '='),
+    ('/usr/share/lintian/data/debhelper/dh_commands-manual', '||'),
+        ]:
+    with open(path, 'r') as f:
+        COMMAND_TO_DEP.update(read_debhelper_lintian_data_file(f, sep))
 
-need = set()
-tags = {}
+
+ADDON_TO_DEP = {}
+
+
+for path, sep in [
+    ('/usr/share/lintian/data/common/dh_addons', '='),
+    ('/usr/share/lintian/data/debhelper/dh_addons-manual', '||'),
+        ]:
+    with open(path, 'r') as f:
+        ADDON_TO_DEP.update(read_debhelper_lintian_data_file(f, sep))
+
+
+need = []
 
 mf = Makefile.from_path('debian/rules')
 
@@ -53,8 +57,7 @@ for entry in mf.contents:
                     'missing-build-dependency-for-dh_-command',
                         package='source', info='%s => %s' % (executable, dep)):
                     continue
-                need.add(dep)
-                tags[dep] = 'missing-build-dependency-for-dh_command'
+                need.append((dep, ['missing-build-dependency-for-dh_command']))
             if executable == 'dh' or executable.startswith('dh_'):
                 for addon in dh_invoke_get_with(command):
                     try:
@@ -62,8 +65,8 @@ for entry in mf.contents:
                     except KeyError:
                         pass
                     else:
-                        need.add(dep)
-                        tags[dep] = 'missing-build-dependency-for-dh-addon'
+                        need.append(
+                            (dep, ['missing-build-dependency-for-dh-addon']))
 
 
 if not need:
@@ -74,7 +77,7 @@ fixed_tags = set()
 
 
 with ControlUpdater() as updater:
-    for deps in need:
+    for deps, tags in need:
         parsed = PkgRelation.parse(deps)
         build_deps = updater.source.get('Build-Depends', '')
         for unused1, existing, unused2 in parse_relations(build_deps):
@@ -82,7 +85,8 @@ with ControlUpdater() as updater:
                 break
         else:
             updater.source['Build-Depends'] = add_dependency(build_deps, deps)
-            fixed_tags.add(tags[deps])
+            fixed_tags.update(tags)
 
-print('Add missing build dependency on dh addon.')
-print('Fixed-Lintian-Tags: %s' % ', '.join(fixed_tags))
+report_result(
+    'Add missing build dependency on dh addon.',
+    fixed_lintian_tags=fixed_tags)

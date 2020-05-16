@@ -6,6 +6,9 @@ lintian-brush (0.64) UNRELEASED; urgency=medium
   [ Sandro Knauß ]
   * Add fixer for license-file-listed-in-debian-copyright.
 
+  [ Jelmer Vernooĳ ]
+  * Read dh commands from the lintian files.
+
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 May 2020 20:02:14 +0000
 
 lintian-brush (0.63) unstable; urgency=medium
