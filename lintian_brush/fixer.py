@@ -71,3 +71,7 @@ def meets_minimum_certainty(certainty):
 
 def trust_package():
     return os.environ.get('TRUST_PACKAGE') == 'true'
+
+
+def opinionated():
+    return os.environ.get('OPINIONATED', 'no') == 'yes'
