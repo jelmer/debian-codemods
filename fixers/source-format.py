@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 from lintian_brush.fixer import (
     report_result,
+    opinionated,
     package_is_native,
     )
 import os
@@ -49,7 +50,7 @@ else:
             if delta:
                 sys.stderr.write(
                     'Tree has non-quilt changes against upstream.\n')
-                if os.environ.get('OPINIONATED', 'no') == 'yes':
+                if opinionated():
                     format = "3.0 (quilt)"
                     description = "Upgrade to newer source format %s." % format
                     try:

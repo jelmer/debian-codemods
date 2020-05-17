@@ -3,10 +3,13 @@
 import os
 import sys
 
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import (
+    opinionated,
+    report_result,
+    )
 
 
-if os.environ.get('OPINIONATED', 'no') != 'yes':
+if not opinionated():
     sys.exit(0)
 
 try:

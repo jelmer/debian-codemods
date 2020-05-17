@@ -1,15 +1,13 @@
 #!/usr/bin/python3
 
-from lintian_brush import certainty_sufficient
 from lintian_brush.control import ControlUpdater
-import os
+from lintian_brush.fixer import meets_minimum_certainty
 import re
 import sys
 
 CERTAINTY = 'likely'
 
-minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
-if not certainty_sufficient(CERTAINTY, minimum_certainty):
+if not meets_minimum_certainty(CERTAINTY):
     sys.exit(0)
 
 

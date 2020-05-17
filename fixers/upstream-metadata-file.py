@@ -6,12 +6,12 @@
 import os
 import sys
 from lintian_brush import (
-    certainty_sufficient,
     min_certainty,
     )
 from lintian_brush.fixer import (
     current_package_version,
     package_is_native,
+    meets_minimum_certainty,
     net_access_allowed,
     report_result,
     trust_package,
@@ -92,7 +92,7 @@ with YamlUpdater('debian/upstream/metadata') as code:
             del upstream_metadata[key]
 
         # Drop everything that is below our minimum certainty
-        elif not certainty_sufficient(datum.certainty, minimum_certainty):
+        elif not meets_minimum_certainty(datum.certainty):
             del upstream_metadata[key]
 
     achieved_certainty = min_certainty(

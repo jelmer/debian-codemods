@@ -3,10 +3,12 @@
 import os
 import sys
 
+from lintian_brush.fixer import opinionated, report_result
 from lintian_brush.lintian_overrides import override_exists
 from lintian_brush.patches import read_quilt_series
 
-if os.environ.get('OPINIONATED', 'no') != 'yes':
+
+if not opinionated():
     # In a lot of cases, it seems like removing the patch is not the right
     # thing to do.
     sys.exit(0)
@@ -46,7 +48,10 @@ for patch in os.listdir('debian/patches'):
     os.unlink(path)
 
 
-print("Remove patch%s %s that %s missing from debian/patches/series." %
+description = (
+      "Remove patch%s %s that %s missing from debian/patches/series." %
       ('es' if len(removed) > 1 else '', ', '.join(sorted(removed)),
        'is' if len(removed) == 1 else 'are'))
-print("Fixed-Lintian-Tags: patch-file-present-but-not-mentioned-in-series")
+report_result(
+    description,
+    fixed_lintian_tags=["patch-file-present-but-not-mentioned-in-series"])

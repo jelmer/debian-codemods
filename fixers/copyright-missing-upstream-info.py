@@ -1,16 +1,17 @@
 #!/usr/bin/python3
 
-import os
-
-from lintian_brush import certainty_to_confidence, certainty_sufficient
+from lintian_brush import certainty_to_confidence
 from lintian_brush.copyright import update_copyright, NotMachineReadableError
+from lintian_brush.fixer import (
+    meets_minimum_certainty,
+    trust_package,
+    )
 from lintian_brush.upstream_metadata import (
     guess_upstream_metadata_items,
     UpstreamDatum,
     )
 
 
-minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
 fields = []
 achieved_certainty = []
 
@@ -29,8 +30,8 @@ def add_upstream_metadata(copyright):
         upstream_metadata = {
             k: UpstreamDatum(k, v, 'certain') for (k, v) in code.items()}
     for datum in guess_upstream_metadata_items(
-            '.', trust_package=(os.environ.get('TRUST_PACKAGE') == 'true')):
-        if not certainty_sufficient(datum.certainty, minimum_certainty):
+            '.', trust_package=trust_package()):
+        if not meets_minimum_certainty(datum.certainty):
             continue
         if (datum.field not in upstream_metadata or
                 upstream_metadata[datum.field].certainty != 'certain'):
