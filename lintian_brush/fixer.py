@@ -67,3 +67,7 @@ def meets_minimum_certainty(certainty):
     return certainty_sufficient(
         certainty,
         os.environ.get('MINIMUM_CERTAINTY', DEFAULT_MINIMUM_CERTAINTY))
+
+
+def trust_package():
+    return os.environ.get('TRUST_PACKAGE') == 'true'

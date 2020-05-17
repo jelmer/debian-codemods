@@ -14,6 +14,7 @@ from lintian_brush.fixer import (
     package_is_native,
     net_access_allowed,
     report_result,
+    trust_package,
     )
 from lintian_brush.upstream_metadata import (
     UpstreamDatum,
@@ -49,14 +50,13 @@ with YamlUpdater('debian/upstream/metadata') as code:
         k: UpstreamDatum(k, v, 'certain') for (k, v) in code.items()}
 
     minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
-    trust_package = os.environ.get('TRUST_PACKAGE') == 'true'
     net_access = net_access_allowed()
 
     # Do some guessing based on what's in the package
     update_from_guesses(
         upstream_metadata, filter_bad_guesses(
             guess_upstream_metadata_items(
-                '.', trust_package=trust_package)))
+                '.', trust_package=trust_package())))
 
     # Then extend that by contacting e.g. SourceForge
     extend_upstream_metadata(

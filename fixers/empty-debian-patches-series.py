@@ -3,6 +3,9 @@
 import os
 import sys
 
+from lintian_brush.fixer import report_result
+
+
 if os.environ.get('OPINIONATED', 'no') != 'yes':
     sys.exit(0)
 
@@ -13,4 +16,4 @@ try:
 except FileNotFoundError:
     pass
 
-print('Remove empty debian/patches/series.')
+report_result('Remove empty debian/patches/series.')
