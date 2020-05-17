@@ -907,6 +907,7 @@ lintian-brush (0.35) unstable; urgency=medium
         tree.add(['debian', 'debian/changelog'])
         self.overrideEnv('DEBFULLNAME', 'Jane Example')
         self.overrideEnv('DEBEMAIL', 'jane@example.com')
+        self.overrideEnv('DEBCHANGE_VENDOR', 'debian')
         add_changelog_entry(tree, 'debian/changelog', 'Add a foo')
         text = tree.get_file_text('debian/changelog').decode()
         lines = text.splitlines()
