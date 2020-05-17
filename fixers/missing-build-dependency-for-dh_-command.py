@@ -11,10 +11,17 @@ from lintian_brush.fixer import report_result
 from lintian_brush.lintian import read_debhelper_lintian_data_file
 from lintian_brush.lintian_overrides import override_exists
 from lintian_brush.rules import Makefile, Rule, dh_invoke_get_with
+import os
 import shlex
 import sys
 
 COMMAND_TO_DEP = {}
+
+
+if not os.path.isdir('/usr/share/lintian/data'):
+    # lintian doesn't appear to be installed
+    sys.exit(2)
+
 
 for path, sep in [
     ('/usr/share/lintian/data/debhelper/dh_commands', '='),
