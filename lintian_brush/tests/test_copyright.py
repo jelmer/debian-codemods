@@ -19,6 +19,7 @@
 
 from debian.copyright import (
     FilesParagraph,
+    LicenseParagraph,
     License,
     )
 
@@ -48,6 +49,7 @@ Files: *
 License: GPL
 Copyright: 2012...
 """)])
+
         def dummy():
             with CopyrightUpdater() as updater:
                 updater.copyright.header.upstream_name = 'llintian-brush'
@@ -59,8 +61,9 @@ This package was debianized in 1995 by Joe Example <joe@example.com>
 
 It was downloaded from ftp://ftp.example.com/pub/blah.
 """)])
+
         def dummy():
-            with CopyrightUpdater() as updater:
+            with CopyrightUpdater():
                 pass
         self.assertRaises(NotMachineReadableError, dummy)
 
@@ -93,3 +96,44 @@ Files: foo.c
 Copyright: 2012 Joe Example
 License: Apache
 """, 'debian/copyright')
+
+    def test_add_paragraph(self):
+        self.build_tree_contents([('debian/', ), ('debian/copyright', """\
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: lintian-brush
+Upstream-Contact: Jelmer <jelmer@samba.org>
+""")])
+
+        with CopyrightUpdater() as updater:
+            updater.copyright.add_license_paragraph(LicenseParagraph.create(
+                License("Blah", 'Blah\nblah blah\nblah\n\n')))
+        self.assertTrue(updater.changed)
+        self.assertFileEqual("""\
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: lintian-brush
+Upstream-Contact: Jelmer <jelmer@samba.org>
+
+License: Blah
+ Blah
+ blah blah
+ blah
+ .
+""", 'debian/copyright')
+
+    def test_preserve_whitespace(self):
+        self.build_tree_contents([('debian/', ), ('debian/copyright', """\
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: lintian-brush
+Upstream-Contact: Jelmer <jelmer@samba.org>
+
+License: Blah
+ blah
+ .
+""")])
+
+        with CopyrightUpdater() as updater:
+            license_para = list(updater.copyright.all_license_paragraphs())[0]
+            self.assertEqual(
+                'License: Blah\n blah\n .\n',
+                license_para.dump())
+            self.assertEqual("blah\n", license_para.license.text)

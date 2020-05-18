@@ -37,9 +37,11 @@ try:
             license = para.license
             if not license or not license.text:
                 continue
-            para.license = License(license.synopsis, re.sub(
+            changed_text = re.sub(
                 '/usr/share/common-licenses/([A-Za-z0-9-.]+)',
-                partial(replace_symlink_path, license.synopsis), license.text))
+                partial(replace_symlink_path, license.synopsis), license.text)
+            if changed_text != license.text:
+                para.license = License(license.synopsis, changed_text)
 except (FileNotFoundError, NotMachineReadableError):
     pass
 
