@@ -4,14 +4,11 @@ from debian.copyright import (
     LicenseParagraph,
     NotMachineReadableError,
     )
-from lintian_brush.copyright import update_copyright
-
-license = None
+from lintian_brush.copyright import CopyrightUpdater
+from lintian_brush.fixer import report_result
 
 
 def fix_header_license_references(copyright):
-    global license
-
     if not copyright.header.license:
         return
     if not copyright.header.license.text:
@@ -31,16 +28,17 @@ def fix_header_license_references(copyright):
             copyright.add_license_paragraph(
                 LicenseParagraph.create(
                     copyright.header.license))
-    license = copyright.header.license
+    return copyright.header.license
 
 
 try:
-    update_copyright(fix_header_license_references)
+    with CopyrightUpdater() as updater:
+        license = fix_header_license_references(updater.copyright)
 except (FileNotFoundError, NotMachineReadableError):
     pass
 else:
     if license:
-        print('Add missing license paragraph for %s' % license.synopsis)
-        print(
-            'Fixed-Lintian-Tags: '
-            'dep5-file-paragraph-references-header-paragraph')
+        report_result(
+            'Add missing license paragraph for %s' % license.synopsis,
+            fixed_lintian_tags=[
+                'dep5-file-paragraph-references-header-paragraph'])

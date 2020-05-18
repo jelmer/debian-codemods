@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 
-from lintian_brush.copyright import update_copyright, NotMachineReadableError
+from lintian_brush.copyright import CopyrightUpdater, NotMachineReadableError
+from lintian_brush.fixer import report_result
 
 
 def swap_files_glob(copyright):
@@ -15,10 +16,12 @@ def swap_files_glob(copyright):
 
 
 try:
-    update_copyright(swap_files_glob)
+    with CopyrightUpdater() as updater:
+        swap_files_glob(updater.copyright)
 except (FileNotFoundError, NotMachineReadableError):
     pass
 
-print('Make "Files: *" paragraph the first in the copyright file.')
-print('Fixed-Lintian-Tags: '
-      'global-files-wildcard-not-first-paragraph-in-dep5-copyright')
+report_result(
+    'Make "Files: *" paragraph the first in the copyright file.',
+    fixed_lintian_tags=[
+        'global-files-wildcard-not-first-paragraph-in-dep5-copyright'])

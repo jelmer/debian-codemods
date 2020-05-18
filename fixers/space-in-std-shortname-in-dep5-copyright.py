@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 from debian.copyright import License
-from lintian_brush.copyright import update_copyright, NotMachineReadableError
+from lintian_brush.copyright import CopyrightUpdater, NotMachineReadableError
+from lintian_brush.fixer import report_result
 from lintian_brush.licenses import load_spdx_data
 
 RENAMES = {k.lower(): v for k, v in {
@@ -49,9 +50,11 @@ def fix_spaces(copyright):
 
 
 try:
-    update_copyright(fix_spaces)
+    with CopyrightUpdater() as updater:
+        fix_spaces(updater.copyright)
 except (FileNotFoundError, NotMachineReadableError):
     pass
 
-print('Replace spaces in short license names with dashes.')
-print('Fixed-Lintian-Tags: space-in-std-shortname-in-dep5-copyright')
+report_result(
+    'Replace spaces in short license names with dashes.',
+    fixed_lintian_tags=['space-in-std-shortname-in-dep5-copyright'])

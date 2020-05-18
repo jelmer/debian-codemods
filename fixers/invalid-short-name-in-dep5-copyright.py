@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 from debian.copyright import License
-from lintian_brush.copyright import update_copyright, NotMachineReadableError
+from lintian_brush.copyright import CopyrightUpdater, NotMachineReadableError
+from lintian_brush.fixer import report_result
 
 typos = {
     'bsd-2': 'BSD-2-Clause',
@@ -35,10 +36,13 @@ def fix_shortname(copyright):
 
 
 try:
-    update_copyright(fix_shortname)
+    with CopyrightUpdater() as updater:
+        fix_shortname(updater.copyright)
 except (FileNotFoundError, NotMachineReadableError):
     pass
 
-print("Fix invalid short license name in debian/copyright (%s)" % (
-    ', '.join(['%s => %s' % (old, new) for (old, new) in renames.items()])))
-print('Fixed-Lintian-Tags: invalid-short-name-in-dep5-copyright')
+report_result(
+    "Fix invalid short license name in debian/copyright (%s)" % (
+        ', '.join(
+            ['%s => %s' % (old, new) for (old, new) in renames.items()])),
+    fixed_lintian_tags=['invalid-short-name-in-dep5-copyright'])
