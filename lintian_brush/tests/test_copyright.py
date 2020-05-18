@@ -28,7 +28,7 @@ from breezy.tests import (
 
 from lintian_brush.copyright import (
     NotMachineReadableError,
-    update_copyright,
+    CopyrightUpdater,
     )
 from lintian_brush.reformatting import (
     FormattingUnpreservable,
@@ -48,10 +48,10 @@ Files: *
 License: GPL
 Copyright: 2012...
 """)])
-
-        def dummy(cb):
-            cb.header.upstream_name = 'llintian-brush'
-        self.assertRaises(FormattingUnpreservable, update_copyright, dummy)
+        def dummy():
+            with CopyrightUpdater() as updater:
+                updater.copyright.header.upstream_name = 'llintian-brush'
+        self.assertRaises(FormattingUnpreservable, dummy)
 
     def test_old_style(self):
         self.build_tree_contents([('debian/', ), ('debian/copyright', """\
@@ -59,7 +59,10 @@ This package was debianized in 1995 by Joe Example <joe@example.com>
 
 It was downloaded from ftp://ftp.example.com/pub/blah.
 """)])
-        self.assertRaises(NotMachineReadableError, update_copyright, None)
+        def dummy():
+            with CopyrightUpdater() as updater:
+                pass
+        self.assertRaises(NotMachineReadableError, dummy)
 
     def test_modify(self):
         self.build_tree_contents([('debian/', ), ('debian/copyright', """\
@@ -72,11 +75,11 @@ License: GPL
 Copyright: 2012...
 """)])
 
-        def add_stanza(copyright):
-            copyright.add_files_paragraph(FilesParagraph.create(
+        with CopyrightUpdater() as updater:
+            updater.copyright.add_files_paragraph(FilesParagraph.create(
                 ['foo.c'], "2012 Joe Example",
                 License("Apache")))
-        self.assertTrue(update_copyright(add_stanza))
+        self.assertTrue(updater.changed)
         self.assertFileEqual("""\
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: lintian-brush

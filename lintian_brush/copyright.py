@@ -20,7 +20,7 @@
 __all__ = [
     'NotMachineReadableError',
     'MachineReadableFormatError',
-    'update_copyright',
+    'CopyrightUpdater',
     ]
 
 from debian.copyright import (
@@ -33,6 +33,8 @@ from .reformatting import Updater
 
 
 class CopyrightUpdater(Updater):
+    """Update a machine-readable copyright file.
+    """
 
     def __init__(self, path='debian/copyright'):
         super(CopyrightUpdater, self).__init__(path)
@@ -46,21 +48,6 @@ class CopyrightUpdater(Updater):
     @property
     def copyright(self):
         return self._parsed
-
-
-def update_copyright(update_cb, path='debian/copyright'):
-    """Update a machine-readable copyright file.
-
-    Args:
-      update_cb: Callback that will be called with the
-        copyright file
-      path: Optional path to the copyright file
-    Returns:
-      bool indicating whether any changes were made
-    """
-    with CopyrightUpdater(path=path) as updater:
-        update_cb(updater.copyright)
-    return updater.changed
 
 
 def upstream_fields_in_copyright(path='debian/copyright'):
