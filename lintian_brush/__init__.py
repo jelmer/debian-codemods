@@ -608,14 +608,17 @@ def check_clean_tree(local_tree: WorkingTree) -> None:
         raise PendingChanges(local_tree)
 
 
-def add_changelog_entry(tree: WorkingTree, path: str, summary: str,
-                        qa: bool = False) -> None:
+def add_changelog_entry(
+        tree: WorkingTree, path: str, summary: str,
+        qa: bool = False, suppress_warnings: bool = False) -> None:
     """Add a changelog entry.
 
     Args:
       tree: Tree to edit
       path: Path to the changelog file
       summary: Entry to add
+      qa: Whether to add a qa entry
+      suppress_warnings: Whether to suppress any warnings from 'dch'
     """
     args = ["dch", "--no-auto-nmu"]
     if qa:
@@ -628,7 +631,7 @@ def add_changelog_entry(tree: WorkingTree, path: str, summary: str,
     (stdout, stderr) = p.communicate(b"\n")
     if stdout:
         raise ValueError(stdout)
-    if stderr:
+    if stderr and not suppress_warnings:
         end = b'dch: Did you see that warning?  Press RETURN to continue...\n'
         if stderr.endswith(end):
             stderr = stderr[:-len(end)]
