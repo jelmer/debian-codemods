@@ -54,7 +54,7 @@ def upstream_fields_in_copyright(path='debian/copyright'):
     ret = {}
     try:
         with open(path, 'r') as f:
-            c = Copyright(f)
+            c = Copyright(f, strict=False)
     except (FileNotFoundError, NotMachineReadableError,
             MachineReadableFormatError):
         return {}

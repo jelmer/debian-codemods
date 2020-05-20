@@ -54,7 +54,7 @@ def check_4_4_1():
     # They must be wildcards *in* the directories.
     try:
         with open('debian/copyright', 'r') as f:
-            copyright = Copyright(f)
+            copyright = Copyright(f, strict=False)
             for para in copyright.all_files_paragraphs():
                 for glob in para.files:
                     if os.path.isdir(glob):
