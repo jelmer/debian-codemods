@@ -190,3 +190,11 @@ def _guess_update_changelog_from_branch(
         return False
     # Assume yes
     return True
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    args = parser.parse_args()
+    wt, subpath = WorkingTree.open_containing('.')
+    print(guess_update_changelog(wt, subpath))
