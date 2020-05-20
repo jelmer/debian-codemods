@@ -26,6 +26,7 @@ def test_suite():
         'copyright',
         'deb822',
         'debhelper',
+        'detect_gbp_dch',
         'dirty_tracker',
         'lintian_overrides',
         'multiarch_hints',

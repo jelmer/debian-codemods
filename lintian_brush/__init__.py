@@ -639,72 +639,6 @@ def add_changelog_entry(
             warning('%s', line)
 
 
-def gbp_conf_has_dch_section(tree: WorkingTree,
-                             path: str = '') -> Optional[bool]:
-    try:
-        gbp_conf_path = os.path.join(path, 'debian/gbp.conf')
-        gbp_conf_text = tree.get_file_text(gbp_conf_path)
-    except NoSuchFile:
-        return False
-    try:
-        import configparser
-    except ImportError:
-        return None
-    else:
-        parser = configparser.ConfigParser(defaults={}, strict=False)
-        parser.read_string(
-            gbp_conf_text.decode('utf-8', errors='replace'), gbp_conf_path)
-        return parser.has_section('dch')
-
-
-def all_sha_prefixed(cl: Changelog) -> bool:
-    sha_prefixed = 0
-    for change in cl.changes():
-        if not change.startswith('  * '):
-            continue
-        if re.match(r'  \* \[[0-9a-f]{7}\] ', change):
-            sha_prefixed += 1
-        else:
-            return False
-    return (sha_prefixed > 0)
-
-
-_changelog_policy_noted = False
-
-
-def guess_update_changelog(tree: WorkingTree,
-                           path: str = '',
-                           cl: Changelog = None):
-    """Guess whether the changelog should be updated.
-
-    Args:
-      tree: Tree to edit
-      path: Path to packaging in tree
-    """
-    global _changelog_policy_noted
-    if gbp_conf_has_dch_section(tree, path):
-        if not _changelog_policy_noted:
-            note('Assuming changelog does not need to be updated, '
-                 'since there is a [dch] section in gbp.conf.')
-            _changelog_policy_noted = True
-        return False
-
-    # TODO(jelmes): Do something more clever here, perhaps looking at history
-    # of the changelog file?
-    changelog_path = os.path.join(path, 'debian/changelog')
-    if cl is None:
-        try:
-            with tree.get_file(changelog_path) as f:
-                cl = Changelog(f, max_blocks=1)
-        except NoSuchFile:
-            cl = None
-
-    if cl and all_sha_prefixed(cl[0]):
-        return False
-
-    return True
-
-
 def has_non_debian_changes(changes):
     for change in changes:
         try:
@@ -843,6 +777,7 @@ def run_lintian_fixer(local_tree: WorkingTree,
         summary = 'Add patch %s: %s' % (patch_name, summary)
 
     if update_changelog is None:
+        from .detect_gbp_dch import guess_update_changelog
         update_changelog = guess_update_changelog(local_tree, subpath, cl)
 
     if update_changelog and only_changes_last_changelog_block(
