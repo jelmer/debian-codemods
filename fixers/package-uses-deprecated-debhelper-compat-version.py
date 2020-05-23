@@ -393,8 +393,8 @@ def drop_dh_missing_fail(line, target):
 
     if not line.startswith(b'dh_missing '):
         return line
-    argv = shlex.split(line.decode())
-    for arg in ['--fail-missing', '-O--fail-missing']:
+    argv = line.split(b' ')
+    for arg in [b'--fail-missing', b'-O--fail-missing']:
         if arg in argv:
             # If we added the --fail-missing argument first, then
             # don't announce that here.
@@ -411,7 +411,7 @@ def drop_dh_missing_fail(line, target):
                     'debian/rules: Drop --fail-missing argument, '
                     'now the default.')
             argv.remove(arg)
-    return shlex.join(argv).encode()
+    return b' '.join(argv)
 
 
 def upgrade_to_debhelper_13():
