@@ -23,13 +23,14 @@ __all__ = [
     'ChangelogUpdater',
     ]
 
+from datetime import datetime
+from email.utils import format_datetime
 from io import StringIO
 from debian.changelog import (
     Changelog,
     ChangelogCreateError,
     ChangelogParseError,
     get_maintainer,
-    format_date,
     Version,
     )
 from email.utils import parseaddr
@@ -193,11 +194,12 @@ def _inc_version(version: Version) -> Version:
 def _changelog_add_entry(
         cl: Changelog, summary: List[str],
         maintainer: Optional[Tuple[str, str]] = None,
-        timestamp: Optional[float] = None,
-        localtime: Optional[bool] = True,
+        timestamp: Optional[datetime] = None,
         urgency: str = 'low') -> None:
     """Add an entry to a changelog.
     """
+    if timestamp is None:
+        timestamp = datetime.now()
     if maintainer is None:
         maintainer = get_maintainer()
     if cl[0].distributions == 'UNRELEASED':
@@ -222,7 +224,7 @@ def _changelog_add_entry(
             version=_inc_version(cl[0].version),
             urgency=urgency,
             author="%s <%s>" % maintainer,
-            date=format_date(timestamp),
+            date=format_datetime(timestamp),
             distributions='UNRELEASED',
             changes=[''])
     cl[0]._changes.append(INITIAL_INDENT + summary[0])
@@ -234,8 +236,7 @@ def _changelog_add_entry(
 def add_changelog_entry(
         tree: MutableTree, path: str, summary: List[str],
         maintainer: Optional[Tuple[str, str]] = None,
-        timestamp: Optional[float] = None,
-        localtime: Optional[bool] = True,
+        timestamp: Optional[datetime] = None,
         urgency: str = 'low') -> None:
     """Add a changelog entry.
 
@@ -253,7 +254,7 @@ def add_changelog_entry(
             f, max_blocks=None, allow_empty_author=True, strict=False)
         _changelog_add_entry(
             cl, summary=summary, maintainer=maintainer,
-            timestamp=timestamp, localtime=localtime, urgency=urgency)
+            timestamp=timestamp, urgency=urgency)
     # Workaround until
     # https://salsa.debian.org/python-debian-team/python-debian/-/merge_requests/22
     # lands.

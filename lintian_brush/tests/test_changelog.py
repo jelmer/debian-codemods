@@ -17,6 +17,8 @@
 
 """Tests for lintian_brush.changelog."""
 
+from datetime import datetime
+
 from breezy.tests import (
     TestCase,
     TestCaseWithTransport,
@@ -236,13 +238,13 @@ lintian-brush (0.35) unstable; urgency=medium
         self.overrideEnv('DEBEMAIL', 'jane@example.com')
         self.overrideEnv('DEBCHANGE_VENDOR', 'debian')
         add_changelog_entry(tree, 'debian/changelog', ['Add a foo'],
-                            timestamp=1590334046, localtime=False)
+                            timestamp=datetime(2020, 5, 24, 15, 27, 26))
         self.assertFileEqual("""\
 lintian-brush (0.36) UNRELEASED; urgency=low
 
   * Add a foo
 
- -- Jane Example <jane@example.com>  Sun, 24 May 2020 15:27:26 +0000
+ -- Jane Example <jane@example.com>  Sun, 24 May 2020 15:27:26 -0000
 
 lintian-brush (0.35) unstable; urgency=medium
 
