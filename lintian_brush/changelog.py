@@ -227,9 +227,15 @@ def _changelog_add_entry(
             date=format_datetime(timestamp),
             distributions='UNRELEASED',
             changes=[''])
-    cl[0]._changes.append(INITIAL_INDENT + summary[0])
+    wrapper = TextWrapper(INITIAL_INDENT)
+    cl[0]._changes.extend(wrapper.wrap(summary[0]))
     for line in summary[1:]:
-        cl[0]._changes.append(len(INITIAL_INDENT) * ' ' + line)
+        prefix = len(INITIAL_INDENT) * ' '
+        m = re.match(r'^[  ]*[\+\-\*] ', line)
+        if m:
+            prefix += m.group(0)
+            line = line[len(m.group(0)):]
+        cl[0]._changes.extend(TextWrapper(prefix).wrap(line))
     cl[0]._changes.append('')
 
 

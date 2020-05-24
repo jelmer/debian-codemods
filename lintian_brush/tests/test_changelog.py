@@ -288,6 +288,68 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
 """, 'debian/changelog')
 
+    def test_add_long_line(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""")])
+        tree.add(['debian', 'debian/changelog'])
+        self.overrideEnv('DEBFULLNAME', 'Joe Example')
+        self.overrideEnv('DEBEMAIL', 'joe@example.com')
+        add_changelog_entry(
+            tree, 'debian/changelog', [
+            'This is adding a very long sentence that is longer than '
+            'would fit on a single line in a 80-character-wide line.'])
+        self.assertFileEqual("""\
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+  * This is adding a very long sentence that is longer than would fit on a
+    single line in a 80-character-wide line.
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""", 'debian/changelog')
+
+    def test_add_long_subline(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""")])
+        tree.add(['debian', 'debian/changelog'])
+        self.overrideEnv('DEBFULLNAME', 'Joe Example')
+        self.overrideEnv('DEBEMAIL', 'joe@example.com')
+        add_changelog_entry(
+            tree, 'debian/changelog', [
+            'This is the main item.',
+            '+ This is adding a very long sentence that is longer than '
+            'would fit on a single line in a 80-character-wide line.'])
+        self.assertFileEqual("""\
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+  * This is the main item.
+    + This is adding a very long sentence that is longer than would fit on a
+      single line in a 80-character-wide line.
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""", 'debian/changelog')
+
 
 class IncVersionTests(TestCase):
 
