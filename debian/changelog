@@ -1,3 +1,10 @@
+lintian-brush (0.68) UNRELEASED; urgency=medium
+
+  * missing-build-dependency-for-dh_-command: Support checking Build-
+    Depends-Indep and Build-Depends-Arch.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 May 2020 22:56:01 +0000
+
 lintian-brush (0.67) unstable; urgency=medium
 
   * Fix regression when adding a new stanza to an existing changelog

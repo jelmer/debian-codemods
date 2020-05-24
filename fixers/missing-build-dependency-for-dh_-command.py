@@ -86,11 +86,17 @@ fixed_tags = set()
 with ControlUpdater() as updater:
     for deps, tags in need:
         parsed = PkgRelation.parse(deps)
-        build_deps = updater.source.get('Build-Depends', '')
-        for unused1, existing, unused2 in parse_relations(build_deps):
-            if is_relation_implied(parsed, existing):
-                break
-        else:
+        is_implied = False
+
+        for field in ['Build-Depends', 'Build-Depends-Indep',
+                      'Build-Depends-Arch']:
+            for unused1, existing, unused2 in parse_relations(
+                    updater.source.get(field, '')):
+                if is_relation_implied(parsed, existing):
+                    is_implied = True
+
+        if not is_implied:
+            build_deps = updater.source.get('Build-Depends', '')
             updater.source['Build-Depends'] = add_dependency(build_deps, deps)
             fixed_tags.update(tags)
 
