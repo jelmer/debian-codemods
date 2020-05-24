@@ -42,7 +42,7 @@ from breezy.commit import NullCommitReporter
 from breezy.errors import NoSuchFile
 from breezy.osutils import is_inside
 from breezy.rename_map import RenameMap
-from breezy.trace import note, warning
+from breezy.trace import note
 from breezy.transform import revert
 from breezy.workingtree import WorkingTree
 
@@ -608,37 +608,6 @@ def check_clean_tree(local_tree: WorkingTree) -> None:
         raise PendingChanges(local_tree)
 
 
-def add_changelog_entry(
-        tree: WorkingTree, path: str, summary: str,
-        qa: bool = False, suppress_warnings: bool = False) -> None:
-    """Add a changelog entry.
-
-    Args:
-      tree: Tree to edit
-      path: Path to the changelog file
-      summary: Entry to add
-      qa: Whether to add a qa entry
-      suppress_warnings: Whether to suppress any warnings from 'dch'
-    """
-    args = ["dch", "--no-auto-nmu"]
-    if qa:
-        args.append('--qa')
-    p = subprocess.Popen(
-        args + [summary],
-        cwd=tree.abspath(os.path.dirname(os.path.dirname(path))),
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
-    (stdout, stderr) = p.communicate(b"\n")
-    if stdout:
-        raise ValueError(stdout)
-    if stderr and not suppress_warnings:
-        end = b'dch: Did you see that warning?  Press RETURN to continue...\n'
-        if stderr.endswith(end):
-            stderr = stderr[:-len(end)]
-        for line in stderr.splitlines():
-            warning('%s', line)
-
-
 def has_non_debian_changes(changes):
     for change in changes:
         try:
@@ -757,7 +726,9 @@ def run_lintian_fixer(local_tree: WorkingTree,
     if not result.description:
         raise DescriptionMissing(fixer)
 
-    summary = result.description.splitlines()[0]
+    lines = result.description.splitlines()
+    summary = lines[0]
+    details = lines[1:]
 
     # If there are upstream changes in a non-native package, perhaps
     # export them to debian/patches
@@ -787,7 +758,8 @@ def run_lintian_fixer(local_tree: WorkingTree,
         update_changelog = False
 
     if update_changelog:
-        add_changelog_entry(local_tree, changelog_path, summary)
+        from .changelog import add_changelog_entry
+        add_changelog_entry(local_tree, changelog_path, [summary] + details)
         if specific_files:
             specific_files.append(changelog_path)
 

@@ -190,7 +190,8 @@ def _inc_version(version: Version) -> Version:
         return ret
 
 
-def _changelog_add_entry(cl: Changelog, summary: List[str],
+def _changelog_add_entry(
+        cl: Changelog, summary: List[str],
         maintainer: Optional[Tuple[str, str]] = None,
         timestamp: Optional[float] = None,
         localtime: Optional[bool] = True,
@@ -216,7 +217,7 @@ def _changelog_add_entry(cl: Changelog, summary: List[str],
         if not cl[0]._changes[-1].strip():
             del cl[0]._changes[-1]
     else:
-        block = cl.new_block(
+        cl.new_block(
             package=cl[0].package,
             version=_inc_version(cl[0].version),
             urgency=urgency,

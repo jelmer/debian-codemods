@@ -1,3 +1,11 @@
+lintian-brush (0.66) UNRELEASED; urgency=medium
+
+  * Directly edit debian/changelog rather than calling out to dch:
+   + Allows adding more details in changelog entries.
+   + Possibly addresses #960853.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 May 2020 16:19:02 +0000
+
 lintian-brush (0.65) unstable; urgency=medium
 
   * Explicitly set vendor when running tests; fixes tests running on
