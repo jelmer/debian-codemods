@@ -26,6 +26,7 @@
         "OCaml-LGPL-linking-exception",
         "GCC-exception-3.1",
         "Bootloader-exception",
+        "SHL-2.0",
         "Classpath-exception-2.0",
         "Swift-exception",
         "Autoconf-exception-2.0",
@@ -38,6 +39,7 @@
         "i2p-gpl-java-exception",
         "GPL-CC-1.0",
         "Qt-LGPL-exception-1.1",
+        "SHL-2.1",
         "Qt-GPL-exception-1.0"
     ],
     "licenses": {
@@ -228,7 +230,7 @@
             "name": "Cryptographic Autonomy License 1.0"
         },
         "CAL-1.0-Combined-Work-Exception": {
-            "name": "Cryptographic Autonomy License 1.0"
+            "name": "Cryptographic Autonomy License 1.0 (Combined Work Exception)"
         },
         "CATOSL-1.1": {
             "name": "Computer Associates Trusted Open Source License 1.1"
@@ -590,6 +592,9 @@
         "HaskellReport": {
             "name": "Haskell Language Report License"
         },
+        "Hippocratic-2.1": {
+            "name": "Hippocratic License 2.1"
+        },
         "IBM-pibs": {
             "name": "IBM PowerPC Initialization and Boot Software"
         },
@@ -791,6 +796,9 @@
         "NBPL-1.0": {
             "name": "Net Boolean Public License v1"
         },
+        "NCGL-UK-2.0": {
+            "name": "Non-Commercial Government Licence"
+        },
         "NCSA": {
             "name": "University of Illinois/NCSA Open Source License"
         },
@@ -877,6 +885,9 @@
         },
         "OFL-1.1-no-RFN": {
             "name": "SIL Open Font License 1.1 with no Reserved Font Name"
+        },
+        "OGC-1.0": {
+            "name": "OGC Software License, Version 1.0"
         },
         "OGL-Canada-2.0": {
             "name": "Open Government Licence - Canada"
