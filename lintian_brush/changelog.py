@@ -204,7 +204,7 @@ def _changelog_add_entry(
         maintainer = get_maintainer()
     if cl[0].distributions == 'UNRELEASED':
         by_author = list(changes_by_author(cl[0].changes()))
-        if len(by_author) == 1 and by_author[0][0] is None:
+        if all([author is None for (author, linenos, change) in by_author]):
             entry_maintainer = parseaddr(cl[0].author)
             if entry_maintainer != maintainer:
                 cl[0]._changes.insert(1, '  [ %s ]' % entry_maintainer[0])

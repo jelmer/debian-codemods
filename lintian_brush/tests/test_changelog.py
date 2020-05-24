@@ -137,6 +137,7 @@ class ChangelogAddEntryTests(TestCaseWithTransport):
             ('debian/changelog', """\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
+  * Initial change.
   * Support updating templated debian/control files that use cdbs
     template.
 
@@ -150,6 +151,7 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
   [ Joe Example ]
+  * Initial change.
   * Support updating templated debian/control files that use cdbs
     template.
 
