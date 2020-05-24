@@ -219,8 +219,8 @@ class MultiArchHintFixer(Fixer):
 
         overall_certainty = min_certainty(
             [certainty for (binary, hint, description, certainty) in changes])
-        overall_description = "Apply multi-arch hints.\n\n" + "\n".join(
-            ["* %s: %s" % (binary['Package'], description)
+        overall_description = "Apply multi-arch hints.\n" + "\n".join(
+            ["+ %s: %s" % (binary['Package'], description)
              for (binary, hint, description, certainty) in changes])
         return MultiArchFixerResult(
             overall_description, certainty=overall_certainty, changes=changes)
