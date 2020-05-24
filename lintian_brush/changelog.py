@@ -28,14 +28,21 @@ from debian.changelog import (
     Changelog,
     ChangelogCreateError,
     ChangelogParseError,
+    get_maintainer,
+    format_date,
+    Version,
     )
+from email.utils import parseaddr
 import re
 import textwrap
-from typing import List, Iterator
+from typing import List, Iterator, Tuple, Optional
 from .reformatting import Updater
+
+from breezy.mutabletree import MutableTree
 
 
 WIDTH = 80
+INITIAL_INDENT = '  * '
 
 
 class ChangelogUpdater(Updater):
@@ -71,7 +78,7 @@ def changes_by_author(changes):
         if m:
             author = m.group(1)
             continue
-        if not line.startswith('  * '):
+        if not line.startswith(INITIAL_INDENT):
             change.append(line)
             linenos.append(i)
         else:
@@ -88,7 +95,7 @@ class TextWrapper(textwrap.TextWrapper):
     whitespace = r'[%s]' % re.escape('\t\n\x0b\x0c\r ')
     wordsep_simple_re = re.compile(r'(%s+)' % whitespace)
 
-    def __init__(self, initial_indent='  * '):
+    def __init__(self, initial_indent=INITIAL_INDENT):
         super(TextWrapper, self).__init__(
             width=WIDTH, initial_indent=initial_indent,
             subsequent_indent=' ' * len(initial_indent),
@@ -165,3 +172,93 @@ def rewrap_changes(changes: Iterator[str]) -> Iterator[str]:
             yield from rewrap_change(change)
             change = []
             yield line
+
+
+def _inc_version(version: Version) -> Version:
+    """Increment a Debian version string."""
+    ret = Version(str(version))
+    # TODO(jelmer): Add ubuntuX suffix on Ubuntu
+    if ret.debian_revision:
+        # Non-native package
+        m = re.match('^(.*?)([0-9]+)$', ret.debian_revision)
+        ret.debian_revision = m.group(1) + str(int(m.group(2))+1)
+        return ret
+    else:
+        # Native package
+        m = re.match('^(.*?)([0-9]+)$', ret.upstream_version)
+        ret.upstream_version = m.group(1) + str(int(m.group(2))+1)
+        return ret
+
+
+def _changelog_add_entry(cl: Changelog, summary: List[str],
+        maintainer: Optional[Tuple[str, str]] = None,
+        timestamp: Optional[float] = None,
+        localtime: Optional[bool] = True,
+        urgency: str = 'low') -> None:
+    """Add an entry to a changelog.
+    """
+    if maintainer is None:
+        maintainer = get_maintainer()
+    if cl[0].distributions == 'UNRELEASED':
+        by_author = list(changes_by_author(cl[0].changes()))
+        if len(by_author) == 1 and by_author[0][0] is None:
+            entry_maintainer = parseaddr(cl[0].author)
+            if entry_maintainer != maintainer:
+                cl[0]._changes.insert(1, '  [ %s ]' % entry_maintainer[0])
+                if cl[0]._changes[-1]:
+                    cl[0]._changes.append('')
+                cl[0]._changes.append('  [ %s ]' % maintainer[0])
+        else:
+            if by_author[-1][0] != maintainer[0]:
+                if cl[0]._changes[-1]:
+                    cl[0]._changes.append('')
+                cl[0]._changes.append('  [ %s ]' % maintainer[0])
+        if not cl[0]._changes[-1].strip():
+            del cl[0]._changes[-1]
+    else:
+        block = cl.new_block(
+            package=cl[0].package,
+            version=_inc_version(cl[0].version),
+            urgency=urgency,
+            author="%s <%s>" % maintainer,
+            date=format_date(timestamp),
+            distributions='UNRELEASED',
+            changes=[''])
+    cl[0]._changes.append(INITIAL_INDENT + summary[0])
+    for line in summary[1:]:
+        cl[0]._changes.append(len(INITIAL_INDENT) * ' ' + line)
+    cl[0]._changes.append('')
+
+
+def add_changelog_entry(
+        tree: MutableTree, path: str, summary: List[str],
+        maintainer: Optional[Tuple[str, str]] = None,
+        timestamp: Optional[float] = None,
+        localtime: Optional[bool] = True,
+        urgency: str = 'low') -> None:
+    """Add a changelog entry.
+
+    Args:
+      tree: Tree to edit
+      path: Path to the changelog file
+      summary: Entry to add
+      maintainer: Maintainer details; tuple of fullname and email
+      suppress_warnings: Whether to suppress any warnings from 'dch'
+    """
+    # TODO(jelmer): This logic should ideally be in python-debian.
+    with tree.get_file(path) as f:
+        cl = Changelog()
+        cl.parse_changelog(
+            f, max_blocks=None, allow_empty_author=True, strict=False)
+        _changelog_add_entry(
+            cl, summary=summary, maintainer=maintainer,
+            timestamp=timestamp, localtime=localtime, urgency=urgency)
+    # Workaround until
+    # https://salsa.debian.org/python-debian-team/python-debian/-/merge_requests/22
+    # lands.
+    pieces = []
+    for line in cl.initial_blank_lines:
+        pieces.append(line.encode(cl._encoding) + b'\n')
+    for block in cl._blocks:
+        pieces.append(bytes(block))
+    tree.put_file_bytes_non_atomic(path, b''.join(pieces))

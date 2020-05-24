@@ -27,7 +27,11 @@ from lintian_brush.changelog import (
     ChangelogUpdater,
     TextWrapper,
     rewrap_change,
+    add_changelog_entry,
+    _inc_version,
     )
+
+from debian.changelog import Version
 
 
 class UpdateChangelogTests(TestCaseWithTransport):
@@ -120,3 +124,172 @@ debian/rules
 the exclamation mark and this comment between brackets]
       Currently text, newt, slang and gtk frontends support this feature.
 """.splitlines()))
+
+
+class ChangelogAddEntryTests(TestCaseWithTransport):
+
+    def test_edit_existing_new_author(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""")])
+        tree.add(['debian', 'debian/changelog'])
+        self.overrideEnv('DEBFULLNAME', 'Jane Example')
+        self.overrideEnv('DEBEMAIL', 'jane@example.com')
+        add_changelog_entry(tree, 'debian/changelog', ['Add a foo'])
+        self.assertFileEqual("""\
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  [ Joe Example ]
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+  [ Jane Example ]
+  * Add a foo
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""", 'debian/changelog')
+
+    def test_edit_existing_multi_new_author(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  [ Jane Example ]
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+  [ Joe Example ]
+  * Another change
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""")])
+        tree.add(['debian', 'debian/changelog'])
+        self.overrideEnv('DEBFULLNAME', 'Jane Example')
+        self.overrideEnv('DEBEMAIL', 'jane@example.com')
+        add_changelog_entry(tree, 'debian/changelog', ['Add a foo'])
+        self.assertFileEqual("""\
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  [ Jane Example ]
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+  [ Joe Example ]
+  * Another change
+
+  [ Jane Example ]
+  * Add a foo
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""", 'debian/changelog')
+
+    def test_edit_existing_existing_author(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""")])
+        tree.add(['debian', 'debian/changelog'])
+        self.overrideEnv('DEBFULLNAME', 'Joe Example')
+        self.overrideEnv('DEBEMAIL', 'joe@example.com')
+        add_changelog_entry(tree, 'debian/changelog', ['Add a foo'])
+        self.assertFileEqual("""\
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+  * Add a foo
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""", 'debian/changelog')
+
+    def test_add_new(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+lintian-brush (0.35) unstable; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""")])
+        tree.add(['debian', 'debian/changelog'])
+        self.overrideEnv('DEBFULLNAME', 'Jane Example')
+        self.overrideEnv('DEBEMAIL', 'jane@example.com')
+        self.overrideEnv('DEBCHANGE_VENDOR', 'debian')
+        add_changelog_entry(tree, 'debian/changelog', ['Add a foo'],
+                            timestamp=1590334046, localtime=False)
+        self.assertFileEqual("""\
+lintian-brush (0.36) UNRELEASED; urgency=low
+
+  * Add a foo
+
+ -- Jane Example <jane@example.com>  Sun, 24 May 2020 15:27:26 +0000
+
+lintian-brush (0.35) unstable; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""", 'debian/changelog')
+
+    def test_edit_broken_first_line(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+THIS IS NOT A PARSEABLE LINE
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""")])
+        tree.add(['debian', 'debian/changelog'])
+        self.overrideEnv('DEBFULLNAME', 'Jane Example')
+        self.overrideEnv('DEBEMAIL', 'jane@example.com')
+        add_changelog_entry(tree, 'debian/changelog', ['Add a foo', '+ Bar'])
+        self.assertFileEqual("""\
+THIS IS NOT A PARSEABLE LINE
+lintian-brush (0.35) UNRELEASED; urgency=medium
+
+  [ Joe Example ]
+  * Support updating templated debian/control files that use cdbs
+    template.
+
+  [ Jane Example ]
+  * Add a foo
+    + Bar
+
+ -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
+""", 'debian/changelog')
+
+
+class IncVersionTests(TestCase):
+
+    def test_native(self):
+        self.assertEqual(Version('1.1'), _inc_version(Version('1.0')))
+        self.assertEqual(Version('1a1.1'), _inc_version(Version('1a1.0')))
+
+    def test_non_native(self):
+        self.assertEqual(Version('1.1-2'), _inc_version(Version('1.1-1')))
