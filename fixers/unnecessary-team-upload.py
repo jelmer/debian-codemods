@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
+from lintian_brush.changelog import ChangelogUpdater
 from lintian_brush.control import (
     ControlUpdater,
     )
 from lintian_brush.fixer import report_result
 
-from debian.changelog import Changelog
 from email.utils import parseaddr
 import sys
 
@@ -18,23 +18,21 @@ with ControlUpdater() as updater:
         uploader_emails.append(parseaddr(entry)[1])
 
 
-with open('debian/changelog', 'r') as f:
-    cl = Changelog(f.read())
+with ChangelogUpdater() as updater:
+    last_change = updater.changelog[0]
+    if last_change.distributions != 'UNRELEASED':
+        sys.exit(0)
+    has_team_upload = (TEAM_UPLOAD_LINE in last_change.changes())
+    name, email = parseaddr(last_change.author)
+    if email not in uploader_emails or not has_team_upload:
+        sys.exit(0)
 
-last_change = cl[0]
-has_team_upload = (TEAM_UPLOAD_LINE in last_change.changes())
-name, email = parseaddr(last_change.author)
-if email not in uploader_emails or not has_team_upload:
-    sys.exit(2)
-
-i = last_change._changes.index(TEAM_UPLOAD_LINE)
-del last_change._changes[i]
-if i > 0 and last_change._changes[i-1] == '' and last_change._changes[i] == '':
-    # Also remove the next line, if it's empty
+    i = last_change._changes.index(TEAM_UPLOAD_LINE)
     del last_change._changes[i]
-
-with open('debian/changelog', 'w') as f:
-    f.write(str(cl))
+    if (i > 0 and last_change._changes[i-1] == '' and
+            last_change._changes[i] == ''):
+        # Also remove the next line, if it's empty
+        del last_change._changes[i]
 
 report_result(
     "Remove unnecessary Team Upload line in changelog.",
