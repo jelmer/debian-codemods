@@ -620,6 +620,20 @@ def has_non_debian_changes(changes):
     return False
 
 
+_changelog_policy_noted = False
+
+
+def _note_changelog_policy(policy, msg):
+    global _changelog_policy_noted
+    if not _changelog_policy_noted:
+        if policy:
+            extra = 'Specify --no-update-changelog to override.'
+        else:
+            extra = 'Specify --update-changelog to override.'
+        note('%s %s', msg, extra)
+    _changelog_policy_noted = True
+
+
 def run_lintian_fixer(local_tree: WorkingTree,
                       fixer: Fixer,
                       committer: Optional[str] = None,
@@ -749,7 +763,13 @@ def run_lintian_fixer(local_tree: WorkingTree,
 
     if update_changelog is None:
         from .detect_gbp_dch import guess_update_changelog
-        update_changelog = guess_update_changelog(local_tree, subpath, cl)
+        dch_guess = guess_update_changelog(local_tree, subpath, cl)
+        if dch_guess:
+            update_changelog = dch_guess[0]
+            _note_changelog_policy(update_changelog, dch_guess[1])
+        else:
+            # Assume we should update changelog
+            update_changelog = True
 
     if update_changelog and only_changes_last_changelog_block(
             local_tree, changelog_path, changes):

@@ -21,10 +21,9 @@
 from debian.changelog import Changelog
 import itertools
 import re
-from typing import Optional
+from typing import Optional, Tuple
 
 from breezy import osutils, version_info as breezy_version
-from breezy.trace import note
 from breezy.branch import Branch
 from breezy.errors import NoSuchFile
 from breezy.tree import Tree
@@ -69,23 +68,11 @@ def all_sha_prefixed(cl: Changelog) -> bool:
     return (sha_prefixed > 0)
 
 
-_changelog_policy_noted = False
-
-
-def _note_changelog_policy(policy, msg):
-    global _changelog_policy_noted
-    if not _changelog_policy_noted:
-        if policy:
-            extra = 'Specify --no-update-changelog to override.'
-        else:
-            extra = 'Specify --update-changelog to override.'
-        note('%s %s', msg, extra)
-    _changelog_policy_noted = True
-
-
-def guess_update_changelog(tree: WorkingTree,
-                           path: str = '',
-                           cl: Optional[Changelog] = None) -> bool:
+def guess_update_changelog(
+        tree: WorkingTree,
+        path: str = '',
+        cl: Optional[Changelog] = None
+        ) -> Optional[Tuple[bool, str]]:
     """Guess whether the changelog should be updated.
 
     Args:
@@ -100,7 +87,6 @@ def guess_update_changelog(tree: WorkingTree,
     ret = _guess_update_changelog_from_branch(tree.branch, path)
     if ret is not None:
         return ret
-    # Assume true
     return None
 
 
@@ -108,11 +94,9 @@ def _guess_update_changelog_from_tree(
         tree: Tree, path: str = '',
         cl: Optional[Changelog] = None) -> Optional[bool]:
     if gbp_conf_has_dch_section(tree, path):
-        _note_changelog_policy(
-            False,
-            'Assuming changelog does not need to be updated, '
+        return (
+            False, 'Assuming changelog does not need to be updated, '
             'since there is a [dch] section in gbp.conf.')
-        return False
 
     # TODO(jelmes): Do something more clever here, perhaps looking at history
     # of the changelog file?
@@ -125,12 +109,11 @@ def _guess_update_changelog_from_tree(
             cl = None
     if cl:
         if all_sha_prefixed(cl[0]):
-            _note_changelog_policy(
+            return (
                 False,
                 'Assuming changelog does not need to be updated, '
                 'since all entries in last changelog entry are prefixed '
                 'by git shas.')
-            return False
 
     return None
 
@@ -198,29 +181,29 @@ def _guess_update_changelog_from_branch(
     (changelog_only, other_only, mixed, dch_references) = _changelog_stats(
             branch, history, subpath)
     if dch_references:
-        _note_changelog_policy(
+        return (
             False,
             'Assuming changelog does not need to be updated, since '
             'there are Gbp-Dch stanzas in commit messages')
-        return False
     if changelog_only == 0:
-        return True
+        return (
+            True,
+            'Assuming changelog needs to be updated, since '
+            'it is always changed together with other files in the tree.')
     if mixed == 0 and changelog_only > 0 and other_only > 0:
         # changelog is *always* updated in a separate commit.
-        _note_changelog_policy(
+        return (
             False,
             'Assuming changelog does not need to be updated, since '
             'changelog entries are always updated in separate commits.')
-        return False
     # Is this a reasonable threshold?
     if changelog_only > mixed and other_only > mixed:
-        _note_changelog_policy(
+        return (
             False,
             'Assuming changelog does not need to be updated, since '
             'changelog entries are usually updated in separate commits.')
         return False
-    # Assume yes
-    return True
+    return None
 
 
 if __name__ == '__main__':

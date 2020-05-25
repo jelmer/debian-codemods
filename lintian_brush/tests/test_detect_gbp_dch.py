@@ -50,7 +50,10 @@ class GuessUpdateChangelogTests(TestCaseWithTransport):
 [dch]
 """)])
         tree.add(['debian', 'debian/gbp.conf'])
-        self.assertFalse(guess_update_changelog(tree))
+        self.assertEqual(
+            (False, 'Assuming changelog does not need to be updated, since '
+             'there is a [dch] section in gbp.conf.'),
+            guess_update_changelog(tree))
 
     def test_changelog_sha_prefixed(self):
         tree = self.make_branch_and_tree('.')
@@ -70,11 +73,20 @@ blah (0.20.1) unstable; urgency=medium
  -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
 """)])
         tree.add(['debian', 'debian/changelog'])
-        self.assertFalse(guess_update_changelog(tree))
+        self.assertEqual(
+            (False, 'Assuming changelog does not need to be updated, '
+             'since all entries in last changelog entry are prefixed '
+             'by git shas.'),
+            guess_update_changelog(tree))
 
     def test_empty(self):
         tree = self.make_branch_and_tree('.')
-        self.assertTrue(guess_update_changelog(tree))
+        self.assertEqual(
+            (True,
+             'Assuming changelog needs to be updated, '
+             'since it is always changed together '
+             'with other files in the tree.'),
+            guess_update_changelog(tree))
 
     def test_update_with_change(self):
         builder = self.make_branch_builder('.')
@@ -101,7 +113,10 @@ blah (0.20.1) unstable; urgency=medium
         builder.finish_series()
         branch = builder.get_branch()
         tree = branch.controldir.create_workingtree()
-        self.assertTrue(guess_update_changelog(tree))
+        self.assertEqual(
+            (True, 'Assuming changelog needs to be updated, '
+             'since it is always changed together '
+             'with other files in the tree.'), guess_update_changelog(tree))
 
     def test_changelog_updated_separately(self):
         builder = self.make_branch_builder('.')
@@ -132,7 +147,11 @@ blah (0.20.1) unstable; urgency=medium
         builder.finish_series()
         branch = builder.get_branch()
         tree = branch.controldir.create_workingtree()
-        self.assertFalse(guess_update_changelog(tree))
+        self.assertEqual(
+            (False,
+             'Assuming changelog does not need to be updated, '
+             'since changelog entries are usually updated in '
+             'separate commits.'), guess_update_changelog(tree))
 
     def test_has_dch_in_messages(self):
         builder = self.make_branch_builder('.')
@@ -141,4 +160,7 @@ blah (0.20.1) unstable; urgency=medium
             message='Git-Dch: ignore\n')
         branch = builder.get_branch()
         tree = branch.controldir.create_workingtree()
-        self.assertFalse(guess_update_changelog(tree))
+        self.assertEqual(
+            (False, 'Assuming changelog does not need to be updated, '
+             'since there are Gbp-Dch stanzas in commit messages'),
+            guess_update_changelog(tree))
