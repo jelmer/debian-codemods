@@ -14,6 +14,20 @@ of caution and not make the change.
 (Perhaps at some point in the future we could add a flag with the minimum
 certainty of fixers to run?)
 
+Performance
+===========
+
+lintian-brush should be fast when there is nothing that it can do. It currently
+(May 2020) takes 7 seconds to run on a Samba sized tree, and just over a second
+on smaller trees. That figure should ideally only go down.
+
+Any actions that do involve making changes to the tree may take longer, and may
+involve e.g. talking to other services over the network. The idea is that it's fine
+for lintian-brush to take time when it's actually providing value, and to be quick
+when it's not. In addition, any time a change is actually being made that should be
+a one-off wait - once the fix is committed, it won't have to be made again and
+the next run will be fast.
+
 Non-goals
 =========
 
