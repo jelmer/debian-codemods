@@ -3,6 +3,7 @@ lintian-brush (0.68) UNRELEASED; urgency=medium
   * missing-build-dependency-for-dh_-command: Support checking Build-
     Depends-Indep and Build-Depends-Arch.
   * Properly break lines when adding changelog entries.
+  * Improve detection of Gbp-Dch style packages, and output reasoning.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 May 2020 22:56:01 +0000
 

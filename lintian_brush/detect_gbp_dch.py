@@ -35,6 +35,10 @@ from breezy.workingtree import WorkingTree
 DEFAULT_BACKLOG = 50
 
 
+# TODO(jelmer): Check that what's added in the changelog is actually based on
+# what was in the commit messages?
+
+
 def gbp_conf_has_dch_section(tree: WorkingTree,
                              path: str = '') -> Optional[bool]:
     try:
@@ -68,6 +72,17 @@ def all_sha_prefixed(cl: Changelog) -> bool:
 _changelog_policy_noted = False
 
 
+def _note_changelog_policy(policy, msg):
+    global _changelog_policy_noted
+    if not _changelog_policy_noted:
+        if policy:
+            extra = 'Specify --no-update-changelog to override.'
+        else:
+            extra = 'Specify --update-changelog to override.'
+        note('%s %s', msg, extra)
+    _changelog_policy_noted = True
+
+
 def guess_update_changelog(tree: WorkingTree,
                            path: str = '',
                            cl: Optional[Changelog] = None) -> bool:
@@ -92,12 +107,11 @@ def guess_update_changelog(tree: WorkingTree,
 def _guess_update_changelog_from_tree(
         tree: Tree, path: str = '',
         cl: Optional[Changelog] = None) -> Optional[bool]:
-    global _changelog_policy_noted
     if gbp_conf_has_dch_section(tree, path):
-        if not _changelog_policy_noted:
-            note('Assuming changelog does not need to be updated, '
-                 'since there is a [dch] section in gbp.conf.')
-            _changelog_policy_noted = True
+        _note_changelog_policy(
+            False,
+            'Assuming changelog does not need to be updated, '
+            'since there is a [dch] section in gbp.conf.')
         return False
 
     # TODO(jelmes): Do something more clever here, perhaps looking at history
@@ -111,6 +125,11 @@ def _guess_update_changelog_from_tree(
             cl = None
     if cl:
         if all_sha_prefixed(cl[0]):
+            _note_changelog_policy(
+                False,
+                'Assuming changelog does not need to be updated, '
+                'since all entries in last changelog entry are prefixed '
+                'by git shas.')
             return False
 
     return None
@@ -179,14 +198,26 @@ def _guess_update_changelog_from_branch(
     (changelog_only, other_only, mixed, dch_references) = _changelog_stats(
             branch, history, subpath)
     if dch_references:
+        _note_changelog_policy(
+            False,
+            'Assuming changelog does not need to be updated, since '
+            'there are Gbp-Dch stanzas in commit messages')
         return False
     if changelog_only == 0:
         return True
-    if mixed == 0 and mixed == 0:
+    if mixed == 0 and changelog_only > 0 and other_only > 0:
         # changelog is *always* updated in a separate commit.
+        _note_changelog_policy(
+            False,
+            'Assuming changelog does not need to be updated, since '
+            'changelog entries are always updated in separate commits.')
         return False
-    if changelog_only > mixed:
-        # Is this a reasonable threshold?
+    # Is this a reasonable threshold?
+    if changelog_only > mixed and other_only > mixed:
+        _note_changelog_policy(
+            False,
+            'Assuming changelog does not need to be updated, since '
+            'changelog entries are usually updated in separate commits.')
         return False
     # Assume yes
     return True

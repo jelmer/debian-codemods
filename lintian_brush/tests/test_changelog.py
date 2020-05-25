@@ -305,8 +305,8 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
         self.overrideEnv('DEBEMAIL', 'joe@example.com')
         add_changelog_entry(
             tree, 'debian/changelog', [
-            'This is adding a very long sentence that is longer than '
-            'would fit on a single line in a 80-character-wide line.'])
+                'This is adding a very long sentence that is longer than '
+                'would fit on a single line in a 80-character-wide line.'])
         self.assertFileEqual("""\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
@@ -335,9 +335,9 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
         self.overrideEnv('DEBEMAIL', 'joe@example.com')
         add_changelog_entry(
             tree, 'debian/changelog', [
-            'This is the main item.',
-            '+ This is adding a very long sentence that is longer than '
-            'would fit on a single line in a 80-character-wide line.'])
+                'This is the main item.',
+                '+ This is adding a very long sentence that is longer than '
+                'would fit on a single line in a 80-character-wide line.'])
         self.assertFileEqual("""\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
