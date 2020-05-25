@@ -21,6 +21,7 @@ import shutil
 import sys
 import tempfile
 
+from debian.changelog import get_maintainer
 import distro_info
 
 from breezy.branch import Branch
@@ -169,7 +170,8 @@ def main(argv=None):
                  args.directory, e.library)
             return 1
         if args.identity:
-            print(get_committer(wt))
+            print('Committer identity: %s' % get_committer(wt))
+            print('Changelog identity: %s <%s>' % get_maintainer())
             return 0
         since_revid = wt.last_revision()
         if args.fixers:
