@@ -6,6 +6,7 @@ lintian-brush (0.68) UNRELEASED; urgency=medium
   * Improve detection of Gbp-Dch style packages, and output reasoning.
   * Only remove 'Team Upload.' lines in open changelog entries.
   * Print out both committer and changelog identity in --identity.
+  * Cache the multi-arch hints in apply-multiarch-hints.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 May 2020 22:56:01 +0000
 

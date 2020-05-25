@@ -21,7 +21,9 @@ import contextlib
 import os
 import re
 import sys
+import time
 
+from urllib.error import HTTPError
 from urllib.request import urlopen, Request
 
 from lintian_brush import (
@@ -59,9 +61,9 @@ def parse_multiarch_hints(f):
     Returns:
       dictionary mapping binary package names to lists of hints
     """
-    import ruamel.yaml
-    import ruamel.yaml.reader
-    data = ruamel.yaml.load(f, ruamel.yaml.SafeLoader)
+    from ruamel.yaml import YAML
+    yaml = YAML(typ='safe')
+    data = yaml.load(f)
     if data.get('format') != 'multiarch-hints-1.0':
         raise ValueError('invalid file format: %r' % data.get('format'))
     return data['hints']
@@ -84,15 +86,55 @@ def multiarch_hints_by_source(hints):
 
 
 @contextlib.contextmanager
-def download_multiarch_hints(url=MULTIARCH_HINTS_URL):
+def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
+    """Load multi-arch hints from a URL, but use cached version if available.
+    """
+    from breezy.trace import note, warning
+    cache_home = os.environ.get('XDG_CACHE_HOME')
+    if not cache_home:
+        cache_home = os.path.expanduser('~/.cache')
+    cache_dir = os.path.join(cache_home, 'lintian-brush')
+    try:
+        os.makedirs(cache_dir, exist_ok=True)
+    except PermissionError:
+        local_hints_path = None
+        warning('Unable to create %s; not caching.', cache_dir)
+    else:
+        local_hints_path = os.path.join(cache_dir, 'multiarch-hints.yml')
+    try:
+        last_modified = os.path.getmtime(local_hints_path)
+    except FileNotFoundError:
+        last_modified = None
+    try:
+        with download_multiarch_hints(
+                url=url, since=last_modified) as f:
+            if local_hints_path is None:
+                yield f
+                return
+            note('Downloading new version of multi-arch hints.')
+            with open(local_hints_path, 'wb') as c:
+                c.writelines(f)
+    except HTTPError as e:
+        if e.status != 304:
+            raise
+    yield open(local_hints_path, 'rb')
+
+
+@contextlib.contextmanager
+def download_multiarch_hints(url=MULTIARCH_HINTS_URL, since: int = None):
     """Load multi-arch hints from a URL.
 
     Args:
       url: URL to read from
+      since: Last modified timestamp
     Returns:
       multi-arch hints file
     """
     headers = {'User-Agent': USER_AGENT}
+    if since is not None:
+        headers['If-Modified-Since'] = time.strftime(
+            '%a, %d %b %Y %H:%M:%S GMT', time.gmtime(since))
+
     with urlopen(
             Request(url, headers=headers),
             timeout=DEFAULT_URLLIB_TIMEOUT) as f:
@@ -318,8 +360,7 @@ def main(argv=None):
     if dirty_tracker:
         dirty_tracker.mark_clean()
 
-    note("Downloading multiarch hints.")
-    with download_multiarch_hints() as f:
+    with cache_download_multiarch_hints() as f:
         hints = multiarch_hints_by_binary(parse_multiarch_hints(f))
 
     try:
