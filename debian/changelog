@@ -1,4 +1,4 @@
-lintian-brush (0.68) UNRELEASED; urgency=medium
+lintian-brush (0.68) unstable; urgency=medium
 
   * missing-build-dependency-for-dh_-command: Support checking Build-
     Depends-Indep and Build-Depends-Arch.
@@ -8,7 +8,7 @@ lintian-brush (0.68) UNRELEASED; urgency=medium
   * Print out both committer and changelog identity in --identity.
   * Cache the multi-arch hints in apply-multiarch-hints.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 May 2020 22:56:01 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 25 May 2020 21:45:25 +0000
 
 lintian-brush (0.67) unstable; urgency=medium
 
