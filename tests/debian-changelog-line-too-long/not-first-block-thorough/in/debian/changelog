@@ -1,0 +1,13 @@
+blah (2.6.1) unstable; urgency=medium
+
+  * This entry does not have any long lines.
+
+ -- Joe Example <joe@example.com>  Mon, 26 Feb 2018 11:31:48 -0800
+
+blah (2.6.0) unstable; urgency=medium
+
+  * Fix blocks/blockedby of archived bugs (Closes: #XXXXXXX). Thanks to somebody who fixed it.
+  * Provide informative error message when unarchive fails because the bug is
+    not archived.
+
+ -- Joe Example <joe@example.com>  Mon, 26 Feb 2018 11:31:48 -0800
