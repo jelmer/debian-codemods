@@ -70,17 +70,22 @@ def check_generated_file(path):
 
     Args:
       path: Path to the file to check
+    Raises:
+      GeneratedFile: when a generated file is found
     """
     for ext in ['.in', '.m4']:
         if os.path.exists(path + ext):
             raise GeneratedFile(path, path + ext)
+    DO_NOT_EDIT_SCAN_LINES = 20
     try:
         with open(path, 'rb') as f:
-            original_contents = f.read()
+            for i, line in enumerate(f):
+                if i > DO_NOT_EDIT_SCAN_LINES:
+                    break
+                if b"DO NOT EDIT" in line:
+                    raise GeneratedFile(path)
     except FileNotFoundError:
         return
-    if b"DO NOT EDIT" in original_contents:
-        raise GeneratedFile(path)
 
 
 def edit_formatted_file(
