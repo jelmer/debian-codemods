@@ -182,12 +182,18 @@ def _inc_version(version: Version) -> Version:
     if ret.debian_revision:
         # Non-native package
         m = re.match('^(.*?)([0-9]+)$', ret.debian_revision)
-        ret.debian_revision = m.group(1) + str(int(m.group(2))+1)
+        if m:
+            ret.debian_revision = m.group(1) + str(int(m.group(2))+1)
+        else:
+            ret.debian_revision += "1"
         return ret
     else:
         # Native package
         m = re.match('^(.*?)([0-9]+)$', ret.upstream_version)
-        ret.upstream_version = m.group(1) + str(int(m.group(2))+1)
+        if m:
+            ret.upstream_version = m.group(1) + str(int(m.group(2))+1)
+        else:
+            ret.upstream_version += "1"
         return ret
 
 

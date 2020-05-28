@@ -170,6 +170,7 @@ def main(argv=None):
                  args.directory, e.library)
             return 1
         if args.identity:
+            import os; print(repr(os.environ))
             print('Committer identity: %s' % get_committer(wt))
             print('Changelog identity: %s <%s>' % get_maintainer())
             return 0
