@@ -1,0 +1,4 @@
+Source: foo
+Section: python
+
+Package: python-blah

@@ -27,13 +27,7 @@ default_section = None
 fixed = []
 
 with ControlUpdater() as updater:
-    expected_section = find_expected_section(regexes, updater.source["Source"])
-    if expected_section and expected_section != updater.source.get("Section"):
-        fixed.append(
-            ('source package', updater.source.get("Section"),
-             expected_section))
-        updater.source["Section"] = expected_section
-    default_section = updater.source["Section"]
+    default_section = updater.source.get("Section")
 
     for binary in updater.binaries:
         expected_section = find_expected_section(regexes, binary["Package"])

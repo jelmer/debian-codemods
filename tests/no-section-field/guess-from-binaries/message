@@ -1,0 +1,3 @@
+Section field set in source based on binary package names.
+Certainty: certain
+Fixed-Lintian-Tags: no-section-field, no-section-field-for-source

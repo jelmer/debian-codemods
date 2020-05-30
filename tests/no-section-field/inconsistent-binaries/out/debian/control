@@ -1,0 +1,7 @@
+Source: foo
+
+Package: python-blah
+Section: python
+
+Package: node-foo
+Section: javascript

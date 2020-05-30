@@ -1,0 +1,7 @@
+Source: foo
+
+Package: python-blah
+Section: web
+
+Package: web-blah
+Section: web
