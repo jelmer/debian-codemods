@@ -8,6 +8,8 @@ lintian-brush (0.69) UNRELEASED; urgency=medium
     something that is not a digit.
   * Handle MemoryError from fixers, rather than letting them crash all
     of lintian-brush. Closes: #961810
+  * Add really basic package-has-no-description fixer. Certainty for
+    this fixer is set to 'possible', so it is not run by default.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 26 May 2020 11:51:16 +0000
 

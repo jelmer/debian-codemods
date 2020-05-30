@@ -100,6 +100,7 @@ class UpstreamDatum(object):
 # - X-SourceForge-Project
 # - X-Wiki
 # - X-Summary
+# - X-Description
 # - X-License
 # - X-Copyright
 
@@ -368,6 +369,12 @@ def guess_from_setup_py(path, trust_package):
             if url_type in ('GitHub', 'Repository', 'Source Code'):
                 yield UpstreamDatum(
                     'Repository', sanitize_vcs_url(url), 'certain')
+        if pkg_info.summary:
+            yield UpstreamDatum('X-Summary', pkg_info.summary, 'certain')
+        if pkg_info.description and pkg_info.description_content_type in (
+                None, 'text/plain'):
+            yield UpstreamDatum(
+                'X-Description', pkg_info.description, 'certain')
 
 
 def guess_from_package_json(path, trust_package):

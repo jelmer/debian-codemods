@@ -1,0 +1,10 @@
+Source: dulwich
+
+Package: python3-dulwich
+Depends: ${misc:Depends}
+Description: Python Git Library
+ Dulwich does this and that.
+ And here is a list of bullet points:
+ * a
+ * and also b
+ * and c

@@ -33,6 +33,9 @@ Lintian-Tags: desktop-entry-file-has-crs
 Fix-Script: executable-desktop-file.sh
 Lintian-Tags: executable-desktop-file
 
+Fix-Script: package-has-no-description.py
+Lintian-Tags: package-has-no-description
+
 Fix-Script: empty-debian-tests-control.py
 Lintian-Tags: empty-debian-tests-control
 

@@ -1,0 +1,4 @@
+Source: dulwich
+
+Package: python3-dulwich
+Depends: ${misc:Depends}

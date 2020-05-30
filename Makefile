@@ -5,7 +5,7 @@ check:: style testsuite
 FIXERS = $(patsubst fixers/%.sh,%,$(wildcard fixers/*.sh)) $(patsubst fixers/%.py,%,$(wildcard fixers/*.py))
 
 $(patsubst %,check-fixer-%,$(FIXERS)): check-fixer-%:
-	PYTHONPATH=. python3 -m lintian_brush.tests.fixers --fixer=$*
+	PYTHONPATH=$(PWD) python3 -m lintian_brush.tests.fixers --fixer=$*
 
 .PHONY: style testsuite unsupported
 
@@ -19,11 +19,11 @@ testsuite::
 	python3 setup.py test
 
 README.md::
-	PYTHONPATH=. ./buildtools/update-readme.py
+	PYTHONPATH=$(PWD) ./buildtools/update-readme.py
 
 unsupported:
 	lintian-info --list-tags > lintian-tags
-	PYTHONPATH=. python3 -m lintian_brush --list-tags 2> lintian-brush-tags
+	PYTHONPATH=$(PWD) python3 -m lintian_brush --list-tags 2> lintian-brush-tags
 	awk 'NR==FNR{a[$$0]=1;next}!a[$$0]' lintian-brush-tags lintian-tags
 
 update-readme:
