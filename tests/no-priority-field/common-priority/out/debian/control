@@ -1,0 +1,6 @@
+Source: foo
+Priority: optional
+
+Package: foo
+
+Package: foo-doc

@@ -356,6 +356,10 @@ Lintian-Tags: font-package-not-multi-arch-foreign
 Fix-Script: debian-rules-not-executable.py
 Lintian-Tags: debian-rules-not-executable
 
+Fix-Script: no-priority-field.py
+Lintian-Tags:
+  no-priority-field
+
 Fix-Script: no-section-field.py
 Lintian-Tags:
   no-section-field,
