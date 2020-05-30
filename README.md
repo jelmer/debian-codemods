@@ -98,6 +98,10 @@ subset of the issues:
 * missing-vcs-browser-field
 * misspelled-closes-bug
 * no-homepage-field
+* no-maintainer-field
+* no-priority-field
+* no-section-field
+* no-section-field-for-source
 * obsolete-field-in-dep5-copyright
 * obsolete-runtime-tests-restriction
 * old-fsf-address-in-copyright-file
@@ -106,6 +110,7 @@ subset of the issues:
 * out-of-date-copyright-format-uri
 * out-of-date-standards-version
 * package-contains-linda-override
+* package-has-no-description
 * package-needs-versioned-debhelper-build-depends
 * package-uses-deprecated-debhelper-compat-version
 * package-uses-deprecated-source-override-location
