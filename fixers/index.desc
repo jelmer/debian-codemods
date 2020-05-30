@@ -361,6 +361,9 @@ Lintian-Tags:
   no-section-field,
   no-section-field-for-source
 
+Fix-Script: no-maintainer-field.py
+Lintian-Tags: no-maintainer-field
+
 Fix-Script: wrong-section-according-to-package-name.py
 Lintian-Tags: wrong-section-according-to-package-name
 

@@ -11,6 +11,7 @@ lintian-brush (0.69) UNRELEASED; urgency=medium
   * Add really basic package-has-no-description fixer. Certainty for
     this fixer is set to 'possible', so it is not run by default.
   * Add fixer for no-section-field and no-section-field-for-source.
+  * Add fixer for no-maintainer-field.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 26 May 2020 11:51:16 +0000
 

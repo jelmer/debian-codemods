@@ -1,0 +1,3 @@
+Set the maintainer field to: Joe <joe@example.com>.
+Certainty: possible
+Fixed-Lintian-Tags: no-maintainer-field
