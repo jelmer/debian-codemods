@@ -346,9 +346,14 @@ class ScriptFixer(Fixer):
             opinionated=opinionated,
             diligence=diligence)
         with tempfile.SpooledTemporaryFile() as stderr:
-            p = subprocess.Popen(self.script_path, cwd=basedir,
-                                 stdout=subprocess.PIPE, stderr=stderr,
-                                 env=env)
+            try:
+                p = subprocess.Popen(self.script_path, cwd=basedir,
+                                     stdout=subprocess.PIPE, stderr=stderr,
+                                     env=env)
+            except OSError as e:
+                if e.errno == errno.ENOMEM:
+                    raise MemoryError
+                raise
             (description, err) = p.communicate(b"")
             if p.returncode == 2:
                 raise NoChanges(self)
@@ -911,6 +916,11 @@ def run_lintian_fixers(local_tree: WorkingTree,
                 if verbose:
                     note('Fixer %r failed to run.', fixer.name)
                     sys.stderr.write(str(e))
+            except MemoryError as e:
+                ret.failed_fixers[fixer.name] = e
+                if verbose:
+                    note('Run out of memory while running fixer %r.',
+                         fixer.name)
             except NotCertainEnough as e:
                 if verbose:
                     note('Fixer %r made changes but not high enough '

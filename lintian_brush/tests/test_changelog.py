@@ -362,4 +362,5 @@ class IncVersionTests(TestCase):
     def test_non_native(self):
         self.assertEqual(Version('1.1-2'), _inc_version(Version('1.1-1')))
         self.assertEqual(Version('9.11-1~1'), _inc_version(Version('9.11-1~')))
-        self.assertEqual(Version('9.11-1~2'), _inc_version(Version('9.11-1~1')))
+        self.assertEqual(
+            Version('9.11-1~2'), _inc_version(Version('9.11-1~1')))
