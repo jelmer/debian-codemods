@@ -1,0 +1,6 @@
+Source: dulwich
+
+Package: python3-dulwich
+Depends: ${misc:Depends}
+Description: This is a python package
+ And it has a description

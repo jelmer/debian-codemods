@@ -1,0 +1,15 @@
+Metadata-Version: 1.0
+Name: dulwich
+Version: 0.1.1
+Summary: Python Git Library
+Home-page: https://www.dulwich.io/
+Author: Jelmer Vernooij
+Author-email: jelmer@jelmer.uk
+License: UNKNOWN
+Description: Dulwich does this and that.
+        And here is a list of bullet points:
+        * a
+        * and also b
+        * and c
+        
+Platform: UNKNOWN
