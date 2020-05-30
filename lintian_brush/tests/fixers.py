@@ -26,6 +26,7 @@ import unittest
 
 from lintian_brush import (
     available_lintian_fixers,
+    select_fixers,
     increment_version,
     )
 
@@ -113,17 +114,45 @@ class FixerTestCase(unittest.TestCase):
                     f.read().strip())
 
 
-def test_suite():
-    suite = unittest.TestSuite()
+def iter_test_cases(fixers):
     test_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'tests')
-    for fixer in available_lintian_fixers():
+    for fixer in fixers:
         testpath = os.path.join(test_dir, fixer.name)
         if not os.path.isdir(testpath):
             continue
         for testname in os.listdir(testpath):
-            suite.addTest(FixerTestCase(
+            yield FixerTestCase(
                 fixer_name=fixer.name,
                 fixer=fixer,
                 name=testname,
-                path=os.path.join(test_dir, fixer.name, testname)))
+                path=os.path.join(test_dir, fixer.name, testname))
+
+
+def test_suite():
+    suite = unittest.TestSuite()
+    for test_case in iter_test_cases(available_lintian_fixers()):
+        suite.addTest(test_case)
     return suite
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--fixer', type=str, default=None,
+        action='append', help='Fixer for which to run tests.')
+    parser.add_argument(
+        '--exclude', type=str, action='append',
+        help='Exclude a fixer.')
+    args = parser.parse_args()
+
+    fixers = list(available_lintian_fixers())
+    if args.fixer:
+        fixers = select_fixers(fixers, args.fixer, args.exclude)
+
+    suite = unittest.TestSuite()
+    for test_case in iter_test_cases(fixers):
+        suite.addTest(test_case)
+
+    runner = unittest.TextTestRunner()
+    runner.run(suite)

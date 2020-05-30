@@ -196,4 +196,5 @@ The easiest way to test fixers is to create a skeleton *in* and *out* source tre
 ``tests/FIXER-NAME/TEST-NAME``. The ``in`` directory should contain the tree to
 run the fixer on,and ``out`` contains the directory after it has run. It's fine
 to create directories with only one or two control files, if the fixer only
-needs those.
+needs those. To run the tests for a single fixer,
+you can use "make check-fixer-$NAME".

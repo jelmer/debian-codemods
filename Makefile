@@ -2,6 +2,11 @@ VERSION=$(shell dpkg-parsechangelog | grep Version: | cut -d " " -f 2)
 
 check:: style testsuite
 
+FIXERS = $(patsubst fixers/%.sh,%,$(wildcard fixers/*.sh)) $(patsubst fixers/%.py,%,$(wildcard fixers/*.py))
+
+$(patsubst %,check-fixer-%,$(FIXERS)): check-fixer-%:
+	PYTHONPATH=. python3 -m lintian_brush.tests.fixers --fixer=$*
+
 .PHONY: style testsuite unsupported
 
 style::
