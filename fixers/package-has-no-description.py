@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import sys
+
 from lintian_brush.control import ControlUpdater
 from lintian_brush.fixer import (
     meets_minimum_certainty,
