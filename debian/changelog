@@ -1,4 +1,4 @@
-lintian-brush (0.69) UNRELEASED; urgency=medium
+lintian-brush (0.69) unstable; urgency=medium
 
   * debian-changelog-line-too-long: Only claim lintian tags were fixed
     when fixing long lines in the last changelog entry.
@@ -14,7 +14,7 @@ lintian-brush (0.69) UNRELEASED; urgency=medium
   * Add fixer for no-maintainer-field.
   * Add fixer for no-priority-field.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 26 May 2020 11:51:16 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 31 May 2020 00:23:09 +0000
 
 lintian-brush (0.68) unstable; urgency=medium
 
