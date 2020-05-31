@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import sys
+
 from lintian_brush.control import (
     ControlUpdater,
     add_dependency,
@@ -7,6 +9,7 @@ from lintian_brush.control import (
     get_relation,
     iter_relations,
     )
+from lintian_brush.fixer import report_result
 
 added = []
 removed = []
@@ -21,6 +24,9 @@ with ControlUpdater() as updater:
     if any(iter_relations(updater.source.get('Build-Depends', ''),
                           'golang-any')):
         go_package = True
+    if not go_package:
+        sys.exit(0)
+
     default_architecture = updater.source.get('Architecture')
 
     for binary in updater.binaries:
@@ -32,20 +38,30 @@ with ControlUpdater() as updater:
                     del binary['Built-Using']
                 removed.append(binary['Package'])
         else:
-            if go_package:
-                built_using = binary.get('Built-Using', '')
-                try:
-                    get_relation(built_using, "${misc:Built-Using}")
-                except KeyError:
-                    binary["Built-Using"] = add_dependency(
-                        built_using, "${misc:Built-Using}")
-                    added.append(binary['Package'])
+            built_using = binary.get('Built-Using', '')
+            try:
+                get_relation(built_using, "${misc:Built-Using}")
+            except KeyError:
+                binary["Built-Using"] = add_dependency(
+                    built_using, "${misc:Built-Using}")
+                added.append(binary['Package'])
+
+if added and removed:
+    report_result(
+        'Added ${misc:Built-Using} to %s and removed it from %s.' %
+        (', '.join(added), ', '.join(removed)),
+        fixed_lintian_tags=[
+            'missing-built-using-field-for-golang-package',
+            'built-using-field-on-arch-all-package'
+            ])
 
 if added:
-    print('Add missing ${misc:Built-Using} to Built-Using on %s.' %
-          ', '.join(added))
+    report_result(
+        'Add missing ${misc:Built-Using} to Built-Using on %s.' %
+        ', '.join(added),
+        fixed_lintian_tags=['missing-built-using-field-for-golang-package'])
 if removed:
-    print('Remove unnecessary ${misc:Built-Using} for %s' %
-          ', '.join(removed))
-print('Fixed-Lintian-Tags: '
-      'missing-built-using-field-for-golang-package')
+    report_result(
+        'Remove unnecessary ${misc:Built-Using} for %s' %
+        ', '.join(removed),
+        fixed_lintian_tags=['built-using-field-on-arch-all-package'])

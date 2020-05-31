@@ -2,6 +2,8 @@ lintian-brush (0.70) UNRELEASED; urgency=medium
 
   * systemd-service-file-pidfile-refers-to-var-run: Also update other
     references to pid file.
+  * built-using-field-on-arch-all-package: Only fix for golang packages
+    for now.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 31 May 2020 02:21:51 +0000
 
