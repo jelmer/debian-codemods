@@ -11,6 +11,7 @@ from lintian_brush.control import (
     read_debian_compat_file,
     ControlUpdater,
     )
+from lintian_brush.fixer import report_result
 from lintian_brush.rules import (
     check_cdbs,
     )
@@ -60,5 +61,6 @@ if os.path.exists('debian/compat'):
                 if updater.source.get("Build-Depends") == "":
                     del updater.source["Build-Depends"]
 
-print("Set debhelper-compat version in Build-Depends.")
-print("Fixed-Lintian-Tags: uses-debhelper-compat-file")
+report_result(
+    "Set debhelper-compat version in Build-Depends.",
+    fixed_lintian_tags=['uses-debhelper-compat-file'])
