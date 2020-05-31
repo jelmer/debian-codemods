@@ -21,6 +21,8 @@ Lintian-Tags: unversioned-copyright-format-uri
 Fix-Script: debian-control-has-unusual-field-spacing.py
 Lintian-Tags: debian-control-has-unusual-field-spacing
 
+Fix-Script: rules-not-executable.py
+
 Fix-Script: copyright-has-crs.sh
 Lintian-Tags: copyright-has-crs
 
