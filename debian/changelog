@@ -1,3 +1,10 @@
+lintian-brush (0.70) UNRELEASED; urgency=medium
+
+  * systemd-service-file-pidfile-refers-to-var-run: Also update other
+    references to pid file.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 31 May 2020 02:21:51 +0000
+
 lintian-brush (0.69) unstable; urgency=medium
 
   * debian-changelog-line-too-long: Only claim lintian tags were fixed
