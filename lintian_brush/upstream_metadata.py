@@ -299,6 +299,12 @@ def guess_from_debian_rules(path, trust_package):
     else:
         yield UpstreamDatum(
             "Repository", sanitize_vcs_url(upstream_git.decode()), "certain")
+    try:
+        upstream_url = mf.get_variable(b'DEB_UPSTREAM_URL')
+    except KeyError:
+        pass
+    else:
+        yield UpstreamDatum("X-Download", upstream_url.decode(), "certain")
 
 
 def guess_from_debian_watch(path, trust_package):
