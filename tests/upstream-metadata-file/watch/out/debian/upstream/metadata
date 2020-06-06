@@ -1,4 +1,5 @@
 ---
+Name: example
 Bug-Database: https://github.com/example/example/issues
 Bug-Submit: https://github.com/example/example/issues/new
 Repository: https://github.com/example/example.git
