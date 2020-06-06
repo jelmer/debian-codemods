@@ -558,7 +558,7 @@ def only_changes_last_changelog_block(
 
 
 def reset_tree(local_tree: WorkingTree, dirty_tracker=None,
-               subpath: str = '.') -> None:
+               subpath: str = '') -> None:
     """Reset a tree back to its basis tree.
 
     This will leave ignored and detritus files alone.
@@ -571,7 +571,7 @@ def reset_tree(local_tree: WorkingTree, dirty_tracker=None,
     if dirty_tracker and not dirty_tracker.is_dirty():
         return
     revert(local_tree, local_tree.branch.basis_tree(),
-           [subpath] if subpath != '.' else None)
+           [subpath] if subpath not in ('.', '') else None)
     deletables = list(iter_deletables(
         local_tree, unknown=True, ignored=False, detritus=False))
     delete_items(deletables)
