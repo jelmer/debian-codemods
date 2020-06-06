@@ -17,5 +17,6 @@
 
 """Utility functions for dealing with licenses."""
 
+
 def test():
     pass
