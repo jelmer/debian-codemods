@@ -32,6 +32,7 @@ setup(
     requires=['breezy', 'debian'],
     entry_points={
         'console_scripts': [
+            'debianize=lintian_brush.debianize:main',
             'lintian-brush=lintian_brush.__main__:main',
             'apply-multiarch-hints=lintian_brush.multiarch_hints:main',
             'guess-upstream-metadata=lintian_brush.upstream_metadata:main',
