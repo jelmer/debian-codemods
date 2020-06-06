@@ -283,12 +283,6 @@ def main(argv=None):
     import argparse
     import sys
     from breezy.workingtree import WorkingTree
-    import locale
-    locale.setlocale(locale.LC_ALL, '')
-    # Use better default than ascii with posix filesystems that deal in bytes
-    # natively even when the C locale or no locale at all is given. Note that
-    # we need an immortal string for the hack, hence the lack of a hyphen.
-    sys._brz_default_fs_enc = "utf8"
 
     import breezy  # noqa: E402
     breezy.initialize()
