@@ -42,9 +42,9 @@ def write_control_template(path, source, binaries):
             binary.dump(f)
 
 
-def write_changelog_template(path, source_name, version, itp_bug=None):
-    if itp_bug:
-        closes = ' Closes: #%d' % itp_bug
+def write_changelog_template(path, source_name, version, wnpp_bugs=None):
+    if wnpp_bugs:
+        closes = ' Closes: ' % ', '.join(['#%d' for bug in wnpp_bugs])
     else:
         closes = ''
     cl = Changelog()
@@ -58,6 +58,14 @@ def write_changelog_template(path, source_name, version, itp_bug=None):
         date=format_date())
     with open(path, 'w') as f:
         cl.write_to_open_file(f)
+
+
+async def find_wnpp_bugs(source_name):
+    from .udd import connect_udd_mirror
+    conn = await connect_udd_mirror()
+    return [row[0] for row in await conn.fetch("""\
+select id from wnpp where source = $1 and type in ('ITP', 'RFP') LIMIT 1
+""", source_name)]
 
 
 def main(argv=None):
@@ -80,6 +88,7 @@ def main(argv=None):
         get_dirty_tracker,
         run_lintian_fixers,
         get_committer,
+        reset_tree,
         )
     from lintian_brush.debhelper import maximum_debhelper_compat_version
     from lintian_brush.upstream_metadata import guess_upstream_metadata
@@ -162,6 +171,13 @@ def main(argv=None):
 
     source_name = upstream_name
 
+    if not args.disable_net_access:
+        import asyncio
+        note('Searching for WNPP bug for %s', source_name)
+        wnpp_bugs = asyncio.run(find_wnpp_bugs(source_name))
+    else:
+        wnpp_bugs = None
+
     upstream_version = upstream_branch_version(
         wt.branch, wt.last_revision(), source_name)
 
@@ -177,12 +193,14 @@ def main(argv=None):
     try:
         write_debhelper_rules_template('debian/rules')
         write_control_template('debian/control', source, binaries)
-        write_changelog_template('debian/changelog', source_name, version)
+        write_changelog_template(
+            'debian/changelog', source_name, version, wnpp_bugs)
 
         initial_files = [
             osutils.pathjoin(subpath, p)
             for p in [
-                'debian', 'debian/changelog', 'debian/control', 'debian/rules']]
+                'debian', 'debian/changelog', 'debian/control',
+                'debian/rules']]
         wt.add(initial_files)
 
         wt.commit(
@@ -190,7 +208,7 @@ def main(argv=None):
             committer=get_committer(wt),
             specific_files=initial_files,
             reporter=NullCommitReporter())
-    except:
+    except BaseException:
         reset_tree(wt, dirty_tracker, subpath)
         raise
 
