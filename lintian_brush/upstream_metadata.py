@@ -252,41 +252,13 @@ def update_from_guesses(upstream_metadata, guessed_items):
 
 def read_python_pkg_info(path):
     """Get the metadata from a python setup.py file."""
-    from pkginfo.utils import get_metadata
-    return get_metadata(path)
-
-
-def get_python_pkg_info(path, trust_package=False):
-    pkg_info = read_python_pkg_info(path)
-    if pkg_info.name:
-        return pkg_info
-    if not trust_package:
-        return pkg_info
-    filename = os.path.join(path, 'setup.py')
-    args = [os.path.abspath(filename), 'dist_info']
-    with open(filename, 'rb') as f:
-        has_shebang = f.readline().startswith(b'#!')
-    is_executable = (os.stat(filename).st_mode & 0o100 != 0)
-    if not has_shebang or not is_executable:
-        # TODO(jelmer): Why python3 and not e.g. python?
-        args.insert(0, 'python3')
-
-    with tempfile.TemporaryDirectory() as td:
-        try:
-            subprocess.call(
-                args, cwd=td, stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE)
-        except FileNotFoundError:
-            pass
-        except subprocess.CalledProcessError:
-            if args[0] == 'python3':
-                args[0] = 'python2'
-            else:
-                raise
-            subprocess.call(
-                args, cwd=td, stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE)
-        return read_python_pkg_info(td)
+    from email.parser import Parser
+    from email.message import Message
+    try:
+        with open(os.path.join(path, 'PKG-INFO'), 'r') as f:
+            return Parser().parse(f)
+    except FileNotFoundError:
+        return Message()
 
 
 def guess_from_debian_rules(path, trust_package):
@@ -356,31 +328,79 @@ def guess_from_debian_control(path, trust_package):
                 'likely'))
 
 
-def guess_from_setup_py(path, trust_package):
-    try:
-        pkg_info = get_python_pkg_info(
-            os.path.dirname(path), trust_package=trust_package)
-    except FileNotFoundError:
-        pass
-    else:
-        if pkg_info.name:
-            yield UpstreamDatum('Name', pkg_info.name, 'certain')
-        if pkg_info.home_page:
-            repo = guess_repo_from_url(pkg_info.home_page)
-            if repo:
-                yield UpstreamDatum(
-                    'Repository', sanitize_vcs_url(repo), 'likely')
-        for value in pkg_info.project_urls:
-            url_type, url = value.split(', ')
-            if url_type in ('GitHub', 'Repository', 'Source Code'):
-                yield UpstreamDatum(
-                    'Repository', sanitize_vcs_url(url), 'certain')
-        if pkg_info.summary:
-            yield UpstreamDatum('X-Summary', pkg_info.summary, 'certain')
-        if pkg_info.description and pkg_info.description_content_type in (
-                None, 'text/plain'):
+def guess_from_python_metadata(pkg_info):
+    if 'Name' in pkg_info:
+        yield UpstreamDatum('Name', pkg_info['name'], 'certain')
+    if 'Home-Page' in pkg_info:
+        repo = guess_repo_from_url(pkg_info['Home-Page'])
+        if repo:
             yield UpstreamDatum(
-                'X-Description', pkg_info.description, 'certain')
+                'Repository', sanitize_vcs_url(repo), 'likely')
+    for value in pkg_info.get_all('Project-URL', []):
+        url_type, url = value.split(', ')
+        if url_type in ('GitHub', 'Repository', 'Source Code'):
+            yield UpstreamDatum(
+                'Repository', sanitize_vcs_url(url), 'certain')
+        if url_type in ('Bug Tracker', ):
+            yield UpstreamDatum(
+                'Bug-Database', url, 'certain')
+    if 'Summary' in pkg_info:
+        yield UpstreamDatum('X-Summary', pkg_info['Summary'], 'certain')
+    payload = pkg_info.get_payload()
+    if payload.strip() and pkg_info.get_content_type() in (None, 'text/plain'):
+        yield UpstreamDatum(
+            'X-Description', pkg_info.get_payload(), 'possible')
+
+
+def guess_from_pkg_info(path, trust_package):
+    """Get the metadata from a python setup.py file."""
+    from email.parser import Parser
+    try:
+        with open(path, 'r') as f:
+            pkg_info = Parser().parse(f)
+    except FileNotFoundError:
+        return
+    yield from guess_from_python_metadata(pkg_info)
+
+
+def guess_from_setup_py(path, trust_package):
+    if not trust_package:
+        return
+    args = [os.path.abspath(path), 'dist_info']
+    with open(path, 'rb') as f:
+        has_shebang = f.readline().startswith(b'#!')
+    is_executable = (os.stat(path).st_mode & 0o100 != 0)
+    if not has_shebang or not is_executable:
+        # TODO(jelmer): Why python3 and not e.g. python?
+        args.insert(0, 'python3')
+
+    with tempfile.TemporaryDirectory() as td:
+        try:
+            subprocess.call(
+                args, cwd=td, stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE)
+        except FileNotFoundError:
+            pass
+        except subprocess.CalledProcessError:
+            if args[0] == 'python3':
+                args[0] = 'python2'
+            else:
+                raise
+            subprocess.call(
+                args, cwd=td, stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE)
+        try:
+            [result_entry] = os.listdir(td)
+        except ValueError:
+            return
+        if result_entry.endswith('.egg-info'):
+            yield from guess_from_pkg_info(
+                os.path.join(td, result_entry, 'PKG-INFO'),
+                trust_package)
+        if result_entry.endswith('.dist-info'):
+            return read_python_pkg_info(
+                os.path.join(td, result_entry, 'METADATA'),
+                trust_package)
 
 
 def guess_from_package_json(path, trust_package):
@@ -884,7 +904,7 @@ def _get_guessers(path, trust_package=False):
         ('debian/watch', guess_from_debian_watch),
         ('debian/control', guess_from_debian_control),
         ('debian/rules', guess_from_debian_rules),
-        ('setup.py', guess_from_setup_py),
+        ('PKG-INFO', guess_from_pkg_info),
         ('package.json', guess_from_package_json),
         ('package.xml', guess_from_package_xml),
         ('dist.ini', guess_from_dist_ini),
@@ -894,6 +914,20 @@ def _get_guessers(path, trust_package=False):
         ('configure', guess_from_configure),
         ('DESCRIPTION', guess_from_r_description),
         ]
+
+    # Search for something Python-y
+    found_pkg_info = os.path.exists(os.path.join(path, 'PKG-INFO'))
+    for entry in os.scandir(path):
+        if entry.name.endswith('.egg-info'):
+            CANDIDATES.append(
+                (os.path.join(entry.name, 'PKG-INFO'), guess_from_pkg_info))
+            found_pkg_info = True
+        if entry.name.endswith('.dist-info'):
+            CANDIDATES.append(
+                (os.path.join(entry.name, 'METADATA'), guess_from_pkg_info))
+            found_pkg_info = True
+    if not found_pkg_info and os.path.exists(os.path.join(path, 'setup.py')):
+        CANDIDATES.append(('setup.py', guess_from_setup_py))
 
     doap_filenames = [
         n for n in os.listdir(path)
