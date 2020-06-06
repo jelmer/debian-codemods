@@ -3,29 +3,20 @@
 import sys
 
 from lintian_brush.control import ControlUpdater
+from lintian_brush.standards_version import (
+    parse_standards_version,
+    iter_standards_versions,
+    )
 
-
-def parse_version(v):
-    return tuple([int(k) for k in v.split('.')])
-
-
-RELEASE_DATES_PATH = '/usr/share/lintian/data/standards-version/release-dates'
-
-release_dates = {}
 try:
-    with open(RELEASE_DATES_PATH, 'r') as f:
-        for line in f:
-            if line.startswith('#') or not line.strip():
-                continue
-            (version, ts) = line.split()
-            release_dates[parse_version(version)] = ts
+    release_dates = dict(iter_standards_versions())
 except FileNotFoundError:
     sys.exit(2)
 
 
 with ControlUpdater() as updater:
     try:
-        sv = parse_version(updater.source['Standards-Version'])
+        sv = parse_standards_version(updater.source['Standards-Version'])
     except KeyError:
         sys.exit(0)
     if sv[:3] in release_dates:
