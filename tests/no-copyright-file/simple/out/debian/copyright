@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+Files: *
+Copyright: 1989-1991, Free Software Foundation, Inc
+           2020, Jelmer Vernooij
+License: GPL-2+
+
+Files: debian/*
+License: GPL-2+
+Comment: No explicit license found, using license(s) from:
+ LICENSE
+
+License: GPL-2+
+Comment: Add the corresponding license text here
+

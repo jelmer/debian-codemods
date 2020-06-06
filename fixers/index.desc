@@ -29,6 +29,9 @@ Lintian-Tags: copyright-has-crs
 Fix-Script: copyright-continued-lines-with-space.py
 Lintian-Tags: tab-in-license-text
 
+Fix-Script: no-copyright-file.py
+Lintian-Tags: no-copyright-file
+
 Fix-Script: desktop-entry-file-has-crs.sh
 Lintian-Tags: desktop-entry-file-has-crs
 
