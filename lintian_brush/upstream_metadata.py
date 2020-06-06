@@ -1349,6 +1349,18 @@ def _extrapolate_repository_from_bug_db(upstream_metadata, net_access):
                 ['likely', upstream_metadata['Bug-Database'].certainty]))
 
 
+def _extrapolate_name_from_repository(upstream_metadata, net_access):
+    repo = guess_repo_from_url(
+            upstream_metadata['Repository'].value, net_access=net_access)
+    if repo:
+        parsed = urlparse(repo)
+        name = parsed.path.split('/')[-1]
+        if name.endswith('.git'):
+            name = name[:-4]
+        return UpstreamDatum('Name', name, min_certainty(
+                ['likely', upstream_metadata['Repository'].certainty]))
+
+
 def _extrapolate_repository_browse_from_repository(
         upstream_metadata, net_access):
     browse_url = browse_url_from_repo_url(
@@ -1424,6 +1436,7 @@ EXTRAPOLATE_FNS = [
     ('Bug-Database', 'Bug-Submit', _extrapolate_bug_submit_from_bug_db),
     ('Bug-Submit', 'Bug-Database', _extrapolate_bug_db_from_bug_submit),
     ('X-Download', 'Repository', _extrapolate_repository_from_download),
+    ('Repository', 'Name', _extrapolate_name_from_repository),
 ]
 
 
