@@ -5,6 +5,8 @@ from lintian_brush.fixer import report_result
 
 import sys
 
+# TODO(jelmer): Support unknown-priority tag
+
 certainty = 'certain'
 updated = {}
 
