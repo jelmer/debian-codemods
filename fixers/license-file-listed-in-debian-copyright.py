@@ -4,6 +4,7 @@ from lintian_brush.copyright import CopyrightUpdater, NotMachineReadableError
 from lintian_brush.fixer import report_result
 import sys
 import re
+from typing import List
 
 deleted = set()
 certainty = 'certain'
@@ -15,7 +16,7 @@ re_license = re.compile(r'(^|/)(COPYING[^/]*|LICENSE)$')
 try:
     with CopyrightUpdater() as updater:
         for paragraph in updater.copyright.all_files_paragraphs():
-            files = list()
+            files: List[str] = list()
             # access the private member because of #960278
             for f in paragraph._RestrictedWrapper__data['Files'].splitlines():
                 if re_license.search(f.strip()):

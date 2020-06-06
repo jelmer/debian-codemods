@@ -92,7 +92,7 @@ def guess_update_changelog(
 
 def _guess_update_changelog_from_tree(
         tree: Tree, path: str = '',
-        cl: Optional[Changelog] = None) -> Optional[bool]:
+        cl: Optional[Changelog] = None) -> Optional[Tuple[bool, str]]:
     if gbp_conf_has_dch_section(tree, path):
         return (
             False, 'Assuming changelog does not need to be updated, '
@@ -164,7 +164,7 @@ def _changelog_stats(branch, history, subpath):
 
 def _guess_update_changelog_from_branch(
         branch: Branch, subpath: str = '',
-        history: int = DEFAULT_BACKLOG) -> Optional[bool]:
+        history: int = DEFAULT_BACKLOG) -> Optional[Tuple[bool, str]]:
     """Guess whether the changelog should be updated manually.
 
     Args:
@@ -202,7 +202,6 @@ def _guess_update_changelog_from_branch(
             False,
             'Assuming changelog does not need to be updated, since '
             'changelog entries are usually updated in separate commits.')
-        return False
     return None
 
 

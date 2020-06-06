@@ -201,7 +201,8 @@ def main(argv=None):
     source['Source'] = source_name
     source['Standards-Version'] = '.'.join(
         map(str, next(iter_standards_versions())[0]))
-    # TODO(jelmer): Autodetect binaries rather than letting the user specify them.
+    # TODO(jelmer): Autodetect binaries rather than letting the user specify
+    # them.
     binaries = []
     for name in args.binary:
         try:

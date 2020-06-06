@@ -18,18 +18,26 @@
 """Standards-Version handling."""
 
 
+from typing import Tuple, Iterator
+
+
 RELEASE_DATES_PATH = '/usr/share/lintian/data/standards-version/release-dates'
 
 
-def parse_standards_version(v):
+def parse_standards_version(v: str) -> Tuple[int, ...]:
+    """Parse a standards version.
+
+    Args:
+      v: Version string
+    Returns: Tuple with version
+    """
     return tuple([int(k) for k in v.split('.')])
 
 
-def iter_standards_versions():
+def iter_standards_versions() -> Iterator[Tuple[Tuple[int, ...], int]]:
     with open(RELEASE_DATES_PATH, 'r') as f:
         for line in f:
             if line.startswith('#') or not line.strip():
                 continue
             (version, ts) = line.split()
-            yield parse_standards_version(version), ts
-
+            yield parse_standards_version(version), int(ts)
