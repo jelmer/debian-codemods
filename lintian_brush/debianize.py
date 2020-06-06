@@ -94,6 +94,7 @@ def main(argv=None):
         reset_tree,
         )
     from lintian_brush.debhelper import maximum_debhelper_compat_version
+    from lintian_brush.standards_version import iter_standards_versions
     from lintian_brush.upstream_metadata import guess_upstream_metadata
     from breezy.trace import note  # noqa: E402
 
@@ -127,6 +128,7 @@ def main(argv=None):
     parser.add_argument(
         '--check', action='store_true',
         help='Check guessed metadata against external sources.')
+    parser.add_argument('binary', type=str, nargs='*')
 
     minimum_certainty = 'possible'  # For now..
 
@@ -197,8 +199,17 @@ def main(argv=None):
     version = Version(upstream_version + '-1')
     source = Deb822()
     source['Source'] = source_name
-    # TODO(jelmer) Fill in binaries
-    binaries = [Deb822({'Package': 'python-%s' % source_name})]
+    source['Standards-Version'] = '.'.join(
+        map(str, next(iter_standards_versions())[0]))
+    # TODO(jelmer): Autodetect binaries rather than letting the user specify them.
+    binaries = []
+    for name in args.binary:
+        try:
+            binary_name, arch = name.split(':')
+        except ValueError:
+            binary_name = name
+            arch = 'any'
+        binaries.append(Deb822({'Package': binary_name, 'Architecture': arch}))
     source['Build-Depends'] = (
         'debhelper-compat (= %d)' % maximum_debhelper_compat_version(
             compat_release))
