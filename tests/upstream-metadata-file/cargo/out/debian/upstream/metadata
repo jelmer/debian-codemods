@@ -1,0 +1,6 @@
+---
+Name: something
+Bug-Database: https://github.com/jelmer/example/issues
+Bug-Submit: https://github.com/jelmer/example/issues/new
+Repository: https://github.com/jelmer/example.git
+Repository-Browse: https://github.com/jelmer/example

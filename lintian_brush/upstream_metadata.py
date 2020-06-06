@@ -899,6 +899,38 @@ def guess_from_environment():
         pass
 
 
+def guess_from_cargo(path, trust_package):
+    try:
+        from toml.decoder import load, TomlDecodeError
+    except ImportError:
+        return
+    try:
+        with open(path, 'r') as f:
+            cargo = load(f)
+    except FileNotFoundError:
+        return
+    except TomlDecodeError as e:
+        warn('Error parsing toml file %s: %s' % (path, e))
+        return
+    try:
+        package = cargo['package']
+    except KeyError:
+        pass
+    else:
+        if 'name' in package:
+            yield UpstreamDatum('Name', package['name'], 'certain')
+        if 'description' in package:
+            yield UpstreamDatum('X-Summary', package['description'], 'certain')
+        if 'homepage' in package:
+            yield UpstreamDatum('Homepage', package['homepage'], 'certain')
+        if 'license' in package:
+            yield UpstreamDatum('X-License', package['license'], 'certain')
+        if 'repository' in package:
+            yield UpstreamDatum('Repository', package['repository'], 'certain')
+        if 'version' in package:
+            yield UpstreamDatum('X-Version', package['version'], 'confident')
+
+
 def _get_guessers(path, trust_package=False):
     CANDIDATES = [
         ('debian/watch', guess_from_debian_watch),
@@ -913,6 +945,7 @@ def _get_guessers(path, trust_package=False):
         ('META.yml', guess_from_meta_yml),
         ('configure', guess_from_configure),
         ('DESCRIPTION', guess_from_r_description),
+        ('Cargo.toml', guess_from_cargo),
         ]
 
     # Search for something Python-y
