@@ -281,7 +281,6 @@ APPLIERS = [
 
 def main(argv=None):
     import argparse
-    import sys
     from breezy.workingtree import WorkingTree
 
     import breezy  # noqa: E402
