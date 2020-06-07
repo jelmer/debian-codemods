@@ -2,7 +2,7 @@
 
 import os
 from debmutate.changelog import (
-    ChangelogUpdater,
+    ChangelogEditor,
     rewrap_changes,
     any_long_lines,
     )
@@ -34,7 +34,7 @@ def wrap_block(changelog, i):
     return False
 
 
-with ChangelogUpdater() as updater:
+with ChangelogEditor() as updater:
     if 'CHANGELOG_THOROUGH' not in os.environ:
         wrap_block(updater.changelog, 0)
     else:

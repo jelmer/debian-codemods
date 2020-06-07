@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from debmutate.changelog import ChangelogUpdater
+from debmutate.changelog import ChangelogEditor
 from debmutate.control import (
     ControlEditor,
     )
@@ -18,7 +18,7 @@ with ControlEditor() as updater:
         uploader_emails.append(parseaddr(entry)[1])
 
 
-with ChangelogUpdater() as updater:
+with ChangelogEditor() as updater:
     last_change = updater.changelog[0]
     if last_change.distributions != 'UNRELEASED':
         sys.exit(0)

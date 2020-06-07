@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-from debmutate.changelog import ChangelogUpdater, changes_sections
+from debmutate.changelog import ChangelogEditor, changes_sections
 from lintian_brush.fixer import report_result
 
-with ChangelogUpdater() as updater:
+with ChangelogEditor() as updater:
     block = updater.changelog[0]
     to_delete = set()
     if block.distributions == 'UNRELEASED':

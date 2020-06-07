@@ -20,7 +20,7 @@
 __all__ = [
     'ChangelogParseError',
     'ChangelogCreateError',
-    'ChangelogUpdater',
+    'ChangelogEditor',
     ]
 
 from datetime import datetime
@@ -44,14 +44,14 @@ WIDTH = 80
 INITIAL_INDENT = '  * '
 
 
-class ChangelogUpdater(Updater):
+class ChangelogEditor(Updater):
     """Update a changelog file.
 
     This will only write out the changelog file if it has been changed.
     """
 
     def __init__(self, path='debian/changelog'):
-        super(ChangelogUpdater, self).__init__(path)
+        super(ChangelogEditor, self).__init__(path)
 
     def _parse(self, content):
         return Changelog(content)

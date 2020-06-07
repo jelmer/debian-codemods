@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 
 import email.utils
-from debmutate.changelog import ChangelogUpdater
+from debmutate.changelog import ChangelogEditor
 
 versions = []
 
 
-with ChangelogUpdater() as updater:
+with ChangelogEditor() as updater:
     for block in updater.changelog:
         try:
             dt = email.utils.parsedate_to_datetime(block.date)

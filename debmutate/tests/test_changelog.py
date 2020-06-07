@@ -23,7 +23,7 @@ import tempfile
 
 from debmutate.changelog import (
     ChangelogCreateError,
-    ChangelogUpdater,
+    ChangelogEditor,
     TextWrapper,
     rewrap_change,
     _inc_version,
@@ -54,7 +54,7 @@ lintian-brush (0.28) UNRELEASED; urgency=medium
  -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Sep 2019 00:23:11 +0000
 """)
 
-        with ChangelogUpdater() as updater:
+        with ChangelogEditor() as updater:
             updater.changelog.version = '0.29'
         with open('debian/changelog', 'r') as f:
             self.assertEqual("""\
@@ -71,7 +71,7 @@ lintian-brush (0.29) UNRELEASED; urgency=medium
             f.write("""\
 lalalalala
 """)
-        self.assertRaises(ChangelogCreateError, ChangelogUpdater().__enter__)
+        self.assertRaises(ChangelogCreateError, ChangelogEditor().__enter__)
 
 
 class TextWrapperTests(TestCase):

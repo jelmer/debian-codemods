@@ -2,7 +2,7 @@
 
 import asyncio
 from functools import partial
-from debmutate.changelog import ChangelogUpdater
+from debmutate.changelog import ChangelogEditor
 from lintian_brush import min_certainty
 from lintian_brush.fixer import (
     net_access_allowed,
@@ -76,7 +76,7 @@ def fix_close_typo(package, m):
         return m.group(0)
 
 
-with ChangelogUpdater() as updater:
+with ChangelogEditor() as updater:
     for block in updater.changelog:
         for i, change in enumerate(block._changes):
             change = re.sub(
