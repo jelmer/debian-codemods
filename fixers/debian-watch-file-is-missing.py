@@ -18,7 +18,7 @@ from lintian_brush.fixer import (
     report_result,
     package_is_native,
     )
-from lintian_brush.watch import WatchFile, Watch
+from debmutate.watch import WatchFile, Watch
 
 
 if os.path.exists('debian/watch') or package_is_native():

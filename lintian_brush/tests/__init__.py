@@ -35,7 +35,6 @@ def test_suite():
         'systemd',
         'upstream_metadata',
         'vcs',
-        'watch',
         'xdg',
         'yaml',
         ]

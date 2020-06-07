@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 from lintian_brush.fixer import net_access_allowed
-from lintian_brush.watch import parse_watch_file
+from debmutate.watch import parse_watch_file
 
 if not os.path.exists('debian/watch'):
     sys.exit(0)

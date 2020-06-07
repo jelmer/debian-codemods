@@ -22,7 +22,7 @@ import re
 from typing import Iterable, List, Union, Callable, Optional, TextIO, Iterator
 from warnings import warn
 
-from debmutate.reformatting import (
+from .reformatting import (
     Updater,
     )
 

@@ -279,7 +279,7 @@ def guess_from_debian_rules(path, trust_package):
 
 
 def guess_from_debian_watch(path, trust_package):
-    from ..watch import (
+    from debmutate.watch import (
         parse_watch_file,
         MissingVersion,
         )

@@ -15,16 +15,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for lintian_brush.watch."""
-
-from breezy.tests import (
-    TestCase,
-    TestCaseWithTransport,
-    )
+"""Tests for debmutate.watch."""
 
 from io import StringIO
+import os
+import shutil
+import tempfile
+from unittest import TestCase
 
-from lintian_brush.watch import (
+from ..watch import (
     parse_watch_file,
     MissingVersion,
     Watch,
@@ -185,22 +184,32 @@ https://samba.org/~jelmer/@PACKAGE@ blah-(\\d+).tar.gz
             wf.entries[0].format_url('blah'))
 
 
-class WatchUpdaterTests(TestCaseWithTransport):
+class WatchUpdaterTests(TestCase):
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.test_dir)
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(self.test_dir)
 
     def test_file_with_just_comments(self):
-        self.build_tree_contents([('watch', '# tests\n')])
+        with open('watch', 'w') as f:
+            f.write('# tests\n')
         with WatchUpdater('watch') as updater:
             self.assertEqual(WatchFile([]), updater.watch_file)
-        self.assertFileEqual('# tests\n', 'watch')
+        with open('watch', 'r') as f:
+            self.assertEqual('# tests\n', f.read())
 
     def test_version_change(self):
-        self.build_tree_contents([('watch', """\
+        with open('watch', 'w') as f:
+            f.write("""\
 version=3
 https://pypi.debian.net/case case-(.+)\\.tar.gz
-""")])
+""")
         with WatchUpdater('watch') as updater:
             updater.watch_file.version = 4
-        self.assertFileEqual("""\
+        with open('watch', 'r') as f:
+            self.assertEqual("""\
 version=4
 https://pypi.debian.net/case case-(.+)\\.tar.gz
-""", 'watch')
+""", f.read())

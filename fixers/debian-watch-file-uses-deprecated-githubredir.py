@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.watch import WatchUpdater
+from debmutate.watch import WatchUpdater
 from urllib.parse import urlparse
 
 

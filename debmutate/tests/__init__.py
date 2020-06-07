@@ -24,6 +24,7 @@ def test_suite():
         'changelog',
         'control',
         'deb822',
+        'watch',
         ]
     module_names = [__name__ + '.test_' + name for name in names]
     loader = unittest.TestLoader()
