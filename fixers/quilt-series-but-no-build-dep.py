@@ -3,7 +3,7 @@
 import os
 from typing import Optional
 
-from lintian_brush.control import ensure_some_version, ControlUpdater
+from debmutate.control import ensure_some_version, ControlUpdater
 from lintian_brush.fixer import report_result
 
 format: Optional[str]

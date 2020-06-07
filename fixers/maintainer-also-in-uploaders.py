@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import ControlUpdater, delete_from_list
+from debmutate.control import ControlUpdater, delete_from_list
 from lintian_brush.fixer import report_result
 
 

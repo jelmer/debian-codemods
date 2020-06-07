@@ -5,7 +5,7 @@ import sys
 
 from typing import List
 
-from lintian_brush.control import (
+from debmutate.control import (
     ensure_exact_version,
     iter_relations,
     is_relation_implied,

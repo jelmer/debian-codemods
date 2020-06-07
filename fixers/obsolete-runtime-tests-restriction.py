@@ -3,8 +3,9 @@
 import os
 import sys
 
-from lintian_brush.deb822 import Deb822Updater
-from lintian_brush.control import delete_from_list
+from debmutate.deb822 import Deb822Updater
+from debmutate.control import delete_from_list
+
 from lintian_brush.fixer import report_result
 
 

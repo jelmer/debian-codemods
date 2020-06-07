@@ -3,7 +3,7 @@
 import os
 import re
 from debian.changelog import Changelog
-from lintian_brush.control import ControlUpdater, get_relation
+from debmutate.control import ControlUpdater, get_relation
 from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
 

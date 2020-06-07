@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 from email.utils import parseaddr
-from lintian_brush.control import ControlUpdater
+from debmutate.control import ControlUpdater
+
 from lintian_brush.fixer import report_result
 
 

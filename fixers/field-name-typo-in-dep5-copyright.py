@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.deb822 import Deb822Updater
+from debmutate.deb822 import Deb822Updater
 from lintian_brush.fixer import report_result
 import sys
 

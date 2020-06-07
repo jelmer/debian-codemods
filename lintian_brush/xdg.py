@@ -20,7 +20,7 @@
 from iniparse.ini import INIConfig, LineContainer, OptionLine
 from io import StringIO
 
-from .reformatting import edit_formatted_file
+from debmutate.reformatting import edit_formatted_file
 
 
 class DesktopEntryUpdater(object):

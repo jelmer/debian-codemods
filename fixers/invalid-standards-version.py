@@ -2,7 +2,7 @@
 
 import sys
 
-from lintian_brush.control import ControlUpdater
+from debmutate.control import ControlUpdater
 from lintian_brush.standards_version import (
     parse_standards_version,
     iter_standards_versions,

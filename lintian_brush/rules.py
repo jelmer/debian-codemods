@@ -21,7 +21,7 @@ import os
 import re
 from typing import Iterator, Optional, List
 
-from .reformatting import Updater
+from debmutate.reformatting import Updater
 
 
 def wildcard_to_re(wildcard: str) -> re.Pattern:

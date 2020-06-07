@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import drop_dependency, ControlUpdater
+from debmutate.control import drop_dependency, ControlUpdater
 
 with open('debian/rules', 'rb') as f:
     for line in f:

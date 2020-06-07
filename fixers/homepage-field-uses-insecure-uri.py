@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.fixer import net_access_allowed
-from lintian_brush.control import ControlUpdater
+from debmutate.control import ControlUpdater
 import socket
 import sys
 import urllib.error

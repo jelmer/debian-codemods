@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debian.changelog import get_maintainer
-from lintian_brush.control import ControlUpdater
+from debmutate.control import ControlUpdater
 from lintian_brush.fixer import report_result, meets_minimum_certainty
 import sys
 

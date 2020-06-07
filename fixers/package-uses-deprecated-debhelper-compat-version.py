@@ -5,7 +5,7 @@ import shlex
 import sys
 import warnings
 
-from lintian_brush.control import (
+from debmutate.control import (
     ensure_exact_version,
     ensure_minimum_version,
     get_relation,

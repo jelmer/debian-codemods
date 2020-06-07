@@ -2,7 +2,7 @@
 
 import sys
 
-from lintian_brush.control import (
+from debmutate.control import (
     ControlUpdater,
     add_dependency,
     drop_dependency,

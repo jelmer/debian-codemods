@@ -29,7 +29,7 @@ from debian.copyright import (
     NotMachineReadableError,
     )
 
-from .reformatting import Updater
+from debmutate.reformatting import Updater
 
 
 class CopyrightUpdater(Updater):

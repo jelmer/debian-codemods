@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.reformatting import check_generated_file
+from debmutate.reformatting import check_generated_file
 from lintian_brush.fixer import report_result
 
 check_generated_file('debian/rules')

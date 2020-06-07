@@ -31,7 +31,7 @@ from lintian_brush.copyright import (
     NotMachineReadableError,
     CopyrightUpdater,
     )
-from lintian_brush.reformatting import (
+from debmutate.reformatting import (
     FormattingUnpreservable,
     )
 

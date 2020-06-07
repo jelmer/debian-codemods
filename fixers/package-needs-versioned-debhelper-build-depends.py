@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 
 import sys
-from lintian_brush.control import (
+from debmutate.control import (
+    ensure_minimum_version,
+    get_relation,
     ControlUpdater,
     )
 from lintian_brush.debhelper import (

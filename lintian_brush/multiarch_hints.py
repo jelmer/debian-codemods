@@ -43,7 +43,7 @@ from lintian_brush import (
     run_lintian_fixer,
     version_string,
     )
-from .control import (
+from debmutate.control import (
     update_control,
     format_relations,
     parse_relations,

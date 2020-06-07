@@ -49,7 +49,7 @@ from breezy.workingtree import WorkingTree
 from debian.deb822 import Deb822
 
 
-from .reformatting import FormattingUnpreservable
+from debmutate.reformatting import FormattingUnpreservable
 
 
 __version__ = (0, 72)

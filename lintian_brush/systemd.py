@@ -48,7 +48,7 @@ from iniparse.ini import (
     readline_iterator,
     )
 
-from .reformatting import Updater
+from debmutate.reformatting import Updater
 
 import os
 

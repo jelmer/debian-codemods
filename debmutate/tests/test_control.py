@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # Copyright (C) 2018 Jelmer Vernooij
+# This file is a part of lintian-brush.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +23,7 @@ from breezy.tests import (
     TestCaseWithTransport,
     )
 
-from lintian_brush.control import (
+from ..control import (
     add_dependency,
     drop_dependency,
     ensure_exact_version,
@@ -39,7 +40,7 @@ from lintian_brush.control import (
     delete_from_list,
     ControlUpdater,
     )
-from lintian_brush.reformatting import (
+from ..reformatting import (
     GeneratedFile,
     FormattingUnpreservable,
     )

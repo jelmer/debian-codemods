@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import ControlUpdater
+from debmutate.control import ControlUpdater
 from urllib.parse import urlparse
 
 HOST_TO_VCS = {

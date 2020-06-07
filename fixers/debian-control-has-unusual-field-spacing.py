@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import (
+from debmutate.control import (
     guess_template_type,
     )
-from lintian_brush.reformatting import (
+from debmutate.reformatting import (
     check_generated_file,
     GeneratedFile,
     )

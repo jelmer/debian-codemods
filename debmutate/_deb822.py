@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # PkgRelation from python-debian, lib/debian/deb822.py (GPL-2+).
+# This file is a part of lintian-brush.
 # Local changes to add support for preserving whitespace
 # Copyright (C) 2005-2006  dann frazier <dannf@dannf.org>
 # Copyright (C) 2006-2010  John Wright <john@johnwright.org>

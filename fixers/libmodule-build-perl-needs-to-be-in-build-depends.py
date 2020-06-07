@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import (
+from debmutate.control import (
     ControlUpdater,
     get_relation,
     drop_dependency,

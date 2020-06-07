@@ -37,7 +37,7 @@ from email.utils import parseaddr
 import re
 import textwrap
 from typing import List, Iterator, Tuple, Optional
-from .reformatting import Updater
+from debmutate.reformatting import Updater
 
 from breezy.mutabletree import MutableTree
 

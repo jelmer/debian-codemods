@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import sys
-from lintian_brush.control import (
+from debmutate.control import (
     ControlUpdater,
     )
 from lintian_brush.debhelper import (

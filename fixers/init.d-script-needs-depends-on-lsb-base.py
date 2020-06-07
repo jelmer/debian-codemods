@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import ensure_some_version, ControlUpdater
-from lintian_brush.fixer import report_result
 import os
+
+from debmutate.control import ensure_some_version, ControlUpdater
+
+from lintian_brush.fixer import report_result
 
 needs_lsb_base = set()
 other_service_present = set()

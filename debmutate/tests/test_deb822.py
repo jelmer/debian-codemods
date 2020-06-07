@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # Copyright (C) 2018 Jelmer Vernooij
+# This file ias a part of lintian-brush.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,13 +25,13 @@ from breezy.tests import (
 
 from debian.deb822 import Deb822
 
-from lintian_brush.deb822 import (
+from ..deb822 import (
     ChangeConflict,
     Deb822Updater,
     dump_paragraphs,
     reformat_deb822,
     )
-from lintian_brush.reformatting import (
+from ..reformatting import (
     FormattingUnpreservable,
     GeneratedFile,
     )

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.rules import update_rules
-from lintian_brush.control import ControlUpdater
+from debmutate.control import ControlUpdater
 
 
 def get_archs():

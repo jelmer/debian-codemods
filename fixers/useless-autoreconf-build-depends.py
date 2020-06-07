@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import sys
 
-from lintian_brush.control import (
+from debmutate.control import (
     drop_dependency,
     ControlUpdater,
     )

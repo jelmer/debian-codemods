@@ -2,7 +2,7 @@
 
 import sys
 
-from lintian_brush.control import ControlUpdater
+from debmutate.control import ControlUpdater
 from lintian_brush.fixer import (
     meets_minimum_certainty,
     net_access_allowed,

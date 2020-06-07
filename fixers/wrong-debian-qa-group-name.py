@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import ControlUpdater
+from debmutate.control import ControlUpdater
 from email.utils import parseaddr
 
 QA_MAINTAINER = "Debian QA Group <packages@qa.debian.org>"

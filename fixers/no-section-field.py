@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.control import ControlUpdater
+from debmutate.control import ControlUpdater
 from lintian_brush.fixer import report_result
 from lintian_brush.section import (
     find_expected_section,
