@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 
-from debmutate.copyright import CopyrightUpdater, NotMachineReadableError
+from debmutate.copyright import CopyrightEditor, NotMachineReadableError
 from lintian_brush.fixer import report_result
 
 
@@ -16,7 +16,7 @@ def swap_files_glob(copyright):
 
 
 try:
-    with CopyrightUpdater() as updater:
+    with CopyrightEditor() as updater:
         swap_files_glob(updater.copyright)
 except (FileNotFoundError, NotMachineReadableError):
     pass

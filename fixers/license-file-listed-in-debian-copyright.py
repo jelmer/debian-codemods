@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from debmutate.copyright import CopyrightUpdater, NotMachineReadableError
+from debmutate.copyright import CopyrightEditor, NotMachineReadableError
 from lintian_brush.fixer import report_result
 import sys
 import re
@@ -14,7 +14,7 @@ message = "Remove listed license files (%s) from copyright."
 re_license = re.compile(r'(^|/)(COPYING[^/]*|LICENSE)$')
 
 try:
-    with CopyrightUpdater() as updater:
+    with CopyrightEditor() as updater:
         for paragraph in updater.copyright.all_files_paragraphs():
             files: List[str] = list()
             # access the private member because of #960278

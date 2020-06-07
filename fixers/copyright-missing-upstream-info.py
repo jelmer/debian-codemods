@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush import certainty_to_confidence
-from debmutate.copyright import CopyrightUpdater, NotMachineReadableError
+from debmutate.copyright import CopyrightEditor, NotMachineReadableError
 from lintian_brush.fixer import (
     meets_minimum_certainty,
     trust_package,
@@ -64,7 +64,7 @@ def add_upstream_metadata(copyright):
 
 
 try:
-    with CopyrightUpdater() as updater:
+    with CopyrightEditor() as updater:
         add_upstream_metadata(updater.copyright)
 except (FileNotFoundError, NotMachineReadableError):
     pass

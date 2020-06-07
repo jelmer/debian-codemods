@@ -20,7 +20,7 @@
 __all__ = [
     'NotMachineReadableError',
     'MachineReadableFormatError',
-    'CopyrightUpdater',
+    'CopyrightEditor',
     ]
 
 from debian.copyright import (
@@ -32,12 +32,12 @@ from debian.copyright import (
 from .reformatting import Updater
 
 
-class CopyrightUpdater(Updater):
+class CopyrightEditor(Updater):
     """Update a machine-readable copyright file.
     """
 
     def __init__(self, path='debian/copyright'):
-        super(CopyrightUpdater, self).__init__(path)
+        super(CopyrightEditor, self).__init__(path)
 
     def _parse(self, content):
         return Copyright(content, strict=False)

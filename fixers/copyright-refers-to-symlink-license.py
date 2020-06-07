@@ -7,7 +7,7 @@ from typing import Dict
 
 from debian.copyright import License, NotMachineReadableError
 
-from debmutate.copyright import CopyrightUpdater
+from debmutate.copyright import CopyrightEditor
 from lintian_brush.fixer import report_result
 
 SYNOPSIS_ALIAS: Dict[str, str] = {}
@@ -32,7 +32,7 @@ def replace_symlink_path(synopsis, m):
 
 
 try:
-    with CopyrightUpdater() as updater:
+    with CopyrightEditor() as updater:
         for para in updater.copyright.all_paragraphs():
             license = para.license
             if not license or not license.text:

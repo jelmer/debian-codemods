@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debian.copyright import License, NotMachineReadableError
-from debmutate.copyright import CopyrightUpdater
+from debmutate.copyright import CopyrightEditor
 from lintian_brush.fixer import report_result
 from lintian_brush.licenses import (
     COMMON_LICENSES_DIR,
@@ -228,7 +228,7 @@ def reference_common_license(para):
 
 
 try:
-    with CopyrightUpdater() as updater:
+    with CopyrightEditor() as updater:
         for para in updater.copyright.all_paragraphs():
             license = para.license
             if not license or not license.text:

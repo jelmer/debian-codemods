@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from debmutate.copyright import CopyrightUpdater, NotMachineReadableError
+from debmutate.copyright import CopyrightEditor, NotMachineReadableError
 from lintian_brush.fixer import report_result
 
 renames = [
@@ -33,7 +33,7 @@ def obsolete_field(copyright):
 
 
 try:
-    with CopyrightUpdater() as updater:
+    with CopyrightEditor() as updater:
         obsolete_field(updater.copyright)
 except (FileNotFoundError, NotMachineReadableError):
     pass

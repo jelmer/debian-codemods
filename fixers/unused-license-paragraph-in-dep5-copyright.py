@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from debmutate.copyright import CopyrightUpdater, NotMachineReadableError
+from debmutate.copyright import CopyrightEditor, NotMachineReadableError
 from lintian_brush.fixer import report_result
 from lintian_brush.lintian_overrides import override_exists
 import sys
@@ -30,7 +30,7 @@ def extract_licenses(synopsis):
 
 
 try:
-    with CopyrightUpdater() as updater:
+    with CopyrightEditor() as updater:
         if updater.copyright.header.license:
             if updater.copyright.header.license.text:
                 defined.add(updater.copyright.header.license.synopsis)

@@ -31,7 +31,7 @@ from debian.copyright import (
 
 from ..copyright import (
     NotMachineReadableError,
-    CopyrightUpdater,
+    CopyrightEditor,
     )
 from ..reformatting import (
     FormattingUnpreservable,
@@ -61,7 +61,7 @@ Copyright: 2012...
 """)
 
         def dummy():
-            with CopyrightUpdater() as updater:
+            with CopyrightEditor() as updater:
                 updater.copyright.header.upstream_name = 'llintian-brush'
         self.assertRaises(FormattingUnpreservable, dummy)
 
@@ -74,7 +74,7 @@ It was downloaded from ftp://ftp.example.com/pub/blah.
 """)
 
         def dummy():
-            with CopyrightUpdater():
+            with CopyrightEditor():
                 pass
         self.assertRaises(NotMachineReadableError, dummy)
 
@@ -90,7 +90,7 @@ License: GPL
 Copyright: 2012...
 """)
 
-        with CopyrightUpdater() as updater:
+        with CopyrightEditor() as updater:
             updater.copyright.add_files_paragraph(FilesParagraph.create(
                 ['foo.c'], "2012 Joe Example",
                 License("Apache")))
@@ -118,7 +118,7 @@ Upstream-Name: lintian-brush
 Upstream-Contact: Jelmer <jelmer@samba.org>
 """)
 
-        with CopyrightUpdater() as updater:
+        with CopyrightEditor() as updater:
             updater.copyright.add_license_paragraph(LicenseParagraph.create(
                 License("Blah", 'Blah\nblah blah\nblah\n\n')))
         self.assertTrue(updater.changed)
@@ -147,7 +147,7 @@ License: Blah
  .
 """)
 
-        with CopyrightUpdater() as updater:
+        with CopyrightEditor() as updater:
             license_para = list(updater.copyright.all_license_paragraphs())[0]
             self.assertEqual(
                 'License: Blah\n blah\n .\n',

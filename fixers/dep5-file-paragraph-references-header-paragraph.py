@@ -4,7 +4,7 @@ from debian.copyright import (
     LicenseParagraph,
     NotMachineReadableError,
     )
-from debmutate.copyright import CopyrightUpdater
+from debmutate.copyright import CopyrightEditor
 from lintian_brush.fixer import report_result
 
 
@@ -32,7 +32,7 @@ def fix_header_license_references(copyright):
 
 
 try:
-    with CopyrightUpdater() as updater:
+    with CopyrightEditor() as updater:
         license = fix_header_license_references(updater.copyright)
 except (FileNotFoundError, NotMachineReadableError):
     pass

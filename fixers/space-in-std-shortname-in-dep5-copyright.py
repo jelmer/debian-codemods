@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debian.copyright import License
-from debmutate.copyright import CopyrightUpdater, NotMachineReadableError
+from debmutate.copyright import CopyrightEditor, NotMachineReadableError
 from lintian_brush.fixer import report_result
 from lintian_brush.licenses import load_spdx_data
 
@@ -50,7 +50,7 @@ def fix_spaces(copyright):
 
 
 try:
-    with CopyrightUpdater() as updater:
+    with CopyrightEditor() as updater:
         fix_spaces(updater.copyright)
 except (FileNotFoundError, NotMachineReadableError):
     pass
