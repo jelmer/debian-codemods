@@ -39,6 +39,6 @@ except (FileNotFoundError, NotMachineReadableError):
     pass
 else:
     report_result(
-        message % ', '.join(deleted),
+        message % ', '.join(sorted(deleted)),
         fixed_lintian_tags=['license-file-listed-in-debian-copyright'],
         certainty=certainty)
