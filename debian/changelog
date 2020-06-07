@@ -7,6 +7,8 @@ lintian-brush (0.70) UNRELEASED; urgency=medium
   * Drop use of pkginfo and just use email.message to parse PKG-INFO
     files.
   * Add support for retrieving upstream metadata from Cargo.toml.
+  * license-file-listed-in-debian-copyright: Properly remove Files
+    entries with just newlines.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 31 May 2020 02:21:51 +0000
 

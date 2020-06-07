@@ -1,0 +1,3 @@
+Remove listed license files (COPYING.GPL-3.0+, COPYING.LGPL-2.1+, ui/COPYING.LGPL-2.1+) from copyright.
+Certainty: certain
+Fixed-Lintian-Tags: license-file-listed-in-debian-copyright
