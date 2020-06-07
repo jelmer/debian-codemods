@@ -83,7 +83,7 @@ with YamlUpdater('debian/upstream/metadata') as code:
     # not need to set the Name/Contact information in the
     # debian/upstream/metadata file.
     if 'Name' in upstream_metadata or 'Contact' in upstream_metadata:
-        from lintian_brush.copyright import upstream_fields_in_copyright
+        from debmutate.copyright import upstream_fields_in_copyright
         external_present_fields.update(upstream_fields_in_copyright().keys())
 
     for key, datum in list(upstream_metadata.items()):

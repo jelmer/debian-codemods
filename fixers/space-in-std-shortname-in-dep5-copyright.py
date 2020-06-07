@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debian.copyright import License
-from lintian_brush.copyright import CopyrightUpdater, NotMachineReadableError
+from debmutate.copyright import CopyrightUpdater, NotMachineReadableError
 from lintian_brush.fixer import report_result
 from lintian_brush.licenses import load_spdx_data
 

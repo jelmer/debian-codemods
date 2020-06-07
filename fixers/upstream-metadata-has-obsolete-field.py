@@ -15,7 +15,7 @@ with YamlUpdater('debian/upstream/metadata') as code:
     # If the debian/copyright file is machine-readable, then we can drop the
     # Name/Contact information from the debian/upstream/metadata file.
     if 'Name' in code or 'Contact' in code:
-        from lintian_brush.copyright import upstream_fields_in_copyright
+        from debmutate.copyright import upstream_fields_in_copyright
         obsolete_fields.update(
             upstream_fields_in_copyright('debian/copyright'))
 

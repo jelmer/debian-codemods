@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.copyright import CopyrightUpdater, NotMachineReadableError
+from debmutate.copyright import CopyrightUpdater, NotMachineReadableError
 from lintian_brush.fixer import report_result
 import sys
 import re

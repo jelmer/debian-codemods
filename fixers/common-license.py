@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debian.copyright import License, NotMachineReadableError
-from lintian_brush.copyright import CopyrightUpdater
+from debmutate.copyright import CopyrightUpdater
 from lintian_brush.fixer import report_result
 from lintian_brush.licenses import (
     COMMON_LICENSES_DIR,

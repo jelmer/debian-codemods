@@ -22,7 +22,6 @@ def test_suite():
     names = [
         'changelog',
         'config',
-        'copyright',
         'debhelper',
         'detect_gbp_dch',
         'dirty_tracker',

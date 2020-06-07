@@ -4,7 +4,7 @@ from debian.copyright import (
     LicenseParagraph,
     NotMachineReadableError,
     )
-from lintian_brush.copyright import CopyrightUpdater
+from debmutate.copyright import CopyrightUpdater
 from lintian_brush.fixer import report_result
 
 

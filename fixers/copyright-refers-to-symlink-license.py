@@ -7,7 +7,7 @@ from typing import Dict
 
 from debian.copyright import License, NotMachineReadableError
 
-from lintian_brush.copyright import CopyrightUpdater
+from debmutate.copyright import CopyrightUpdater
 from lintian_brush.fixer import report_result
 
 SYNOPSIS_ALIAS: Dict[str, str] = {}

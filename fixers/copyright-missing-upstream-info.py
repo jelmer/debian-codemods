@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush import certainty_to_confidence
-from lintian_brush.copyright import CopyrightUpdater, NotMachineReadableError
+from debmutate.copyright import CopyrightUpdater, NotMachineReadableError
 from lintian_brush.fixer import (
     meets_minimum_certainty,
     trust_package,

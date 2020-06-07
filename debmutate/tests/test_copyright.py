@@ -17,29 +17,39 @@
 
 """Tests for lintian_brush.copyright."""
 
+import os
+import shutil
+import tempfile
+
+from unittest import TestCase
+
 from debian.copyright import (
     FilesParagraph,
     LicenseParagraph,
     License,
     )
 
-from breezy.tests import (
-    TestCaseWithTransport,
-    )
-
-from lintian_brush.copyright import (
+from ..copyright import (
     NotMachineReadableError,
     CopyrightUpdater,
     )
-from debmutate.reformatting import (
+from ..reformatting import (
     FormattingUnpreservable,
     )
 
 
-class UpdateControlTests(TestCaseWithTransport):
+class UpdateCopyrightTests(TestCase):
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.test_dir)
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(self.test_dir)
+        os.mkdir('debian')
 
     def test_unpreservable(self):
-        self.build_tree_contents([('debian/', ), ('debian/copyright', """\
+        with open('debian/copyright', 'w') as f:
+            f.write("""\
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: lintian-brush
 Upstream-Contact: Jelmer <jelmer@samba.org>
@@ -48,7 +58,7 @@ Upstream-Contact: Jelmer <jelmer@samba.org>
 Files: *
 License: GPL
 Copyright: 2012...
-""")])
+""")
 
         def dummy():
             with CopyrightUpdater() as updater:
@@ -56,11 +66,12 @@ Copyright: 2012...
         self.assertRaises(FormattingUnpreservable, dummy)
 
     def test_old_style(self):
-        self.build_tree_contents([('debian/', ), ('debian/copyright', """\
+        with open('debian/copyright', 'w') as f:
+            f.write("""\
 This package was debianized in 1995 by Joe Example <joe@example.com>
 
 It was downloaded from ftp://ftp.example.com/pub/blah.
-""")])
+""")
 
         def dummy():
             with CopyrightUpdater():
@@ -68,7 +79,8 @@ It was downloaded from ftp://ftp.example.com/pub/blah.
         self.assertRaises(NotMachineReadableError, dummy)
 
     def test_modify(self):
-        self.build_tree_contents([('debian/', ), ('debian/copyright', """\
+        with open('debian/copyright', 'w') as f:
+            f.write("""\
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: lintian-brush
 Upstream-Contact: Jelmer <jelmer@samba.org>
@@ -76,14 +88,15 @@ Upstream-Contact: Jelmer <jelmer@samba.org>
 Files: *
 License: GPL
 Copyright: 2012...
-""")])
+""")
 
         with CopyrightUpdater() as updater:
             updater.copyright.add_files_paragraph(FilesParagraph.create(
                 ['foo.c'], "2012 Joe Example",
                 License("Apache")))
         self.assertTrue(updater.changed)
-        self.assertFileEqual("""\
+        with open('debian/copyright', 'r') as f:
+            self.assertEqual("""\
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: lintian-brush
 Upstream-Contact: Jelmer <jelmer@samba.org>
@@ -95,20 +108,22 @@ Copyright: 2012...
 Files: foo.c
 Copyright: 2012 Joe Example
 License: Apache
-""", 'debian/copyright')
+""", f.read())
 
     def test_add_paragraph(self):
-        self.build_tree_contents([('debian/', ), ('debian/copyright', """\
+        with open('debian/copyright', 'w') as f:
+            f.write("""\
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: lintian-brush
 Upstream-Contact: Jelmer <jelmer@samba.org>
-""")])
+""")
 
         with CopyrightUpdater() as updater:
             updater.copyright.add_license_paragraph(LicenseParagraph.create(
                 License("Blah", 'Blah\nblah blah\nblah\n\n')))
         self.assertTrue(updater.changed)
-        self.assertFileEqual("""\
+        with open('debian/copyright', 'r') as f:
+            self.assertEqual("""\
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: lintian-brush
 Upstream-Contact: Jelmer <jelmer@samba.org>
@@ -118,10 +133,11 @@ License: Blah
  blah blah
  blah
  .
-""", 'debian/copyright')
+""", f.read())
 
     def test_preserve_whitespace(self):
-        self.build_tree_contents([('debian/', ), ('debian/copyright', """\
+        with open('debian/copyright', 'w') as f:
+            f.write("""\
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: lintian-brush
 Upstream-Contact: Jelmer <jelmer@samba.org>
@@ -129,7 +145,7 @@ Upstream-Contact: Jelmer <jelmer@samba.org>
 License: Blah
  blah
  .
-""")])
+""")
 
         with CopyrightUpdater() as updater:
             license_para = list(updater.copyright.all_license_paragraphs())[0]
