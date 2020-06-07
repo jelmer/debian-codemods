@@ -1,10 +1,10 @@
 #!/usr/bin/python3
 
-from debmutate.watch import WatchUpdater
+from debmutate.watch import WatchEditor
 from urllib.parse import urlparse
 
 
-with WatchUpdater() as updater:
+with WatchEditor() as updater:
     for w in getattr(updater.watch_file, 'entries', []):
         parsed_url = urlparse(w.url)
         if parsed_url.netloc != 'githubredir.debian.net':

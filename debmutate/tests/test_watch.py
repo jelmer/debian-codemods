@@ -28,7 +28,7 @@ from ..watch import (
     MissingVersion,
     Watch,
     WatchFile,
-    WatchUpdater,
+    WatchEditor,
     )
 
 
@@ -184,7 +184,7 @@ https://samba.org/~jelmer/@PACKAGE@ blah-(\\d+).tar.gz
             wf.entries[0].format_url('blah'))
 
 
-class WatchUpdaterTests(TestCase):
+class WatchEditorTests(TestCase):
 
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
@@ -195,7 +195,7 @@ class WatchUpdaterTests(TestCase):
     def test_file_with_just_comments(self):
         with open('watch', 'w') as f:
             f.write('# tests\n')
-        with WatchUpdater('watch') as updater:
+        with WatchEditor('watch') as updater:
             self.assertEqual(WatchFile([]), updater.watch_file)
         with open('watch', 'r') as f:
             self.assertEqual('# tests\n', f.read())
@@ -206,7 +206,7 @@ class WatchUpdaterTests(TestCase):
 version=3
 https://pypi.debian.net/case case-(.+)\\.tar.gz
 """)
-        with WatchUpdater('watch') as updater:
+        with WatchEditor('watch') as updater:
             updater.watch_file.version = 4
         with open('watch', 'r') as f:
             self.assertEqual("""\

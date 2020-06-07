@@ -217,12 +217,12 @@ def parse_watch_file(f: Iterable[str]) -> Optional[WatchFile]:
         entries=entries, options=persistent_options, version=version)
 
 
-class WatchUpdater(Updater):
+class WatchEditor(Updater):
 
     _parsed: WatchFile
 
     def __init__(self, path: str = 'debian/watch') -> None:
-        super(WatchUpdater, self).__init__(path)
+        super(WatchEditor, self).__init__(path)
 
     @property
     def watch_file(self) -> WatchFile:
