@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.fixer import net_access_allowed
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 import socket
 import sys
 import urllib.error
@@ -60,7 +60,7 @@ def fix_homepage(http_url):
     return http_url
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     try:
         homepage = updater.source["Homepage"]
     except KeyError:

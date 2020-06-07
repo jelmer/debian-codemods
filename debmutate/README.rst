@@ -9,7 +9,8 @@ To modify one of the control files, use one of the context managers to edit the 
 
     from debmutate.control import ControlMutator
 
-    with ControlEditor() as control:
+    with ControlEditor(path='debian/control') as control:
+        print(control.source['Maintainer'])
         control.source['Maintainer'] = "Jelmer Vernooĳ <jelmer@debian.org>"
 
 Once you leave the context manager, the changes will be written to disk if

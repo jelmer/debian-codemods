@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 from lintian_brush.fixer import report_result
 
 FIXABLE_HOSTS = [
@@ -8,7 +8,7 @@ FIXABLE_HOSTS = [
     'gitorious.org']
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     vcs_git = updater.source.get("Vcs-Git")
     if vcs_git and ':' in vcs_git:
         (netloc, path) = vcs_git.split(':', 1)

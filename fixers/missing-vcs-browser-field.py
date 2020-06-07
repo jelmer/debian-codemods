@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 
 from lintian_brush.fixer import report_result
 from lintian_brush.vcs import determine_browser_url
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     if "Vcs-Browser" not in updater.source:
         try:
             vcs_git = updater.source["Vcs-Git"]

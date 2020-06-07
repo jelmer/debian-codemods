@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     for para in updater.paragraphs:
         if para.get("Priority") == "extra":
             para["Priority"] = "optional"

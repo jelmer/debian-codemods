@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 
 binary_homepages = set()
 source_homepage = None
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     source_homepage = updater.source.get('Homepage')
     for binary in updater.binaries:
         if 'Homepage' not in binary:

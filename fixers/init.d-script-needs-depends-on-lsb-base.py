@@ -2,7 +2,7 @@
 
 import os
 
-from debmutate.control import ensure_some_version, ControlUpdater
+from debmutate.control import ensure_some_version, ControlEditor
 
 from lintian_brush.fixer import report_result
 
@@ -25,7 +25,7 @@ for n in os.listdir('debian'):
 needs_lsb_base -= other_service_present
 
 if needs_lsb_base:
-    with ControlUpdater() as updater:
+    with ControlEditor() as updater:
         for binary in updater.binaries:
             if binary['Package'] not in needs_lsb_base:
                 continue

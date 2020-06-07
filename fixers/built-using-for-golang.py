@@ -3,7 +3,7 @@
 import sys
 
 from debmutate.control import (
-    ControlUpdater,
+    ControlEditor,
     add_dependency,
     drop_dependency,
     get_relation,
@@ -17,7 +17,7 @@ go_package = False
 default_architecture = None
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     if any(iter_relations(updater.source.get('Build-Depends', ''),
                           'golang-go')):
         go_package = True

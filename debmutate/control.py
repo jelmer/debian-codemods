@@ -165,13 +165,13 @@ def update_control(path='debian/control', source_package_cb=None,
             if binary_package_cb is not None:
                 binary_package_cb(paragraph)
 
-    with ControlUpdater(path) as updater:
+    with ControlEditor(path) as updater:
         for paragraph in updater.paragraphs:
             paragraph_cb(paragraph)
     return updater.changed
 
 
-class ControlUpdater(object):
+class ControlEditor(object):
 
     changed: bool
 

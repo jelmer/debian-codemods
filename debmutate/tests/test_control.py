@@ -38,7 +38,7 @@ from ..control import (
     format_relations,
     parse_relations,
     delete_from_list,
-    ControlUpdater,
+    ControlEditor,
     )
 from ..reformatting import (
     GeneratedFile,
@@ -155,7 +155,7 @@ Uploaders: @lintian-brush-test@
 
 """)])
 
-        with ControlUpdater() as updater:
+        with ControlEditor() as updater:
             updater.source['Testsuite'] = 'autopkgtest8'
             updater.changes()
         self.assertFileEqual("""\
@@ -182,7 +182,7 @@ Build-Depends: @cdbs@, libc6
 
 """)])
 
-        with ControlUpdater() as updater:
+        with ControlEditor() as updater:
             updater.source['Build-Depends'] = 'some-foo, libc6, some-bar'
         self.assertFileEqual("""\
 Source: blah

@@ -1,12 +1,13 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
+
 from lintian_brush.fixer import report_result
 
 updated_packages = set()
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     for binary in updater.binaries:
         package = binary['Package']
         if (not package.startswith('fonts-') and

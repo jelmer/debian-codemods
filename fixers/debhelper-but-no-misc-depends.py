@@ -3,7 +3,7 @@
 from debmutate.control import (
     add_dependency,
     parse_relations,
-    ControlUpdater,
+    ControlEditor,
     )
 from lintian_brush.fixer import report_result
 
@@ -12,7 +12,7 @@ uses_debhelper = False
 misc_depends_added = []
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     for entry in parse_relations(updater.source.get("Build-Depends", '')):
         (head_whitespace, relation, tail_whitespace) = entry
         if any(r.name == 'debhelper' for r in relation):

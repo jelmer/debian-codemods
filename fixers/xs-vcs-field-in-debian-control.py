@@ -1,9 +1,9 @@
 #!/usr/bin/python3
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 from lintian_brush.fixer import report_result
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     for key in list(updater.source):
         if key.startswith('XS-Vcs-'):
             updater.source[key[3:]] = updater.source[key]

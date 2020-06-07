@@ -9,7 +9,7 @@ from debmutate.control import (
     ensure_exact_version,
     iter_relations,
     is_relation_implied,
-    ControlUpdater,
+    ControlEditor,
     parse_relations,
     format_relations,
     )
@@ -40,7 +40,7 @@ if debhelper_compat_version < 11 or check_cdbs():
 os.unlink('debian/compat')
 
 # Assume that the compat version is set in Build-Depends
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     insert_position = None
     changed_fields = []
     for field in ['Build-Depends', 'Build-Depends-Indep',

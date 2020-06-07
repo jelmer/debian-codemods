@@ -4,7 +4,7 @@ import sys
 from debmutate.control import (
     ensure_minimum_version,
     get_relation,
-    ControlUpdater,
+    ControlEditor,
     )
 from lintian_brush.debhelper import (
     ensure_minimum_debhelper_version,
@@ -27,12 +27,13 @@ try:
 except FileNotFoundError:
     sys.exit(0)
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     if ensure_minimum_debhelper_version(
             updater.source, "%s~" % minimum_version):
         tags.append('package-lacks-versioned-build-depends-on-debhelper')
         if minimum_version > pedantic_compat_level():
             tags.append('package-needs-versioned-debhelper-build-depends')
+
 
 report_result(
     "Bump debhelper dependency to >= %s, since that's what is "

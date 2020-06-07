@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 
 from lintian_brush.rules import update_rules
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 
 
 def get_archs():
     archs = set()
 
     # TODO(jelmer): Not really an 'update'
-    with ControlUpdater() as updater:
+    with ControlEditor() as updater:
         for binary in updater.binaries:
             archs.add(binary['Architecture'])
     return archs

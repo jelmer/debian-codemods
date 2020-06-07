@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 from lintian_brush.fixer import report_result
 from lintian_brush.section import (
     find_expected_section,
@@ -12,7 +12,7 @@ binary_sections_set = set()
 source_section_set = False
 regexes = None
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     if updater.source.get('Section'):
         sys.exit(0)
     binary_sections = set()

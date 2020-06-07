@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 from urllib.parse import urlparse
 
 HOST_TO_VCS = {
@@ -10,7 +10,7 @@ HOST_TO_VCS = {
     }
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     for field in list(updater.source):
         if not field.startswith('Vcs-') or field.lower() == 'vcs-browser':
             continue

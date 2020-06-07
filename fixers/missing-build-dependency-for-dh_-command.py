@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.control import (
-    ControlUpdater,
+    ControlEditor,
     PkgRelation,
     parse_relations,
     add_dependency,
@@ -84,7 +84,7 @@ if not need:
 fixed_tags = set()
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     for deps, tags in need:
         parsed = PkgRelation.parse(deps)
         is_implied = False

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from debmutate.control import (
     drop_dependency,
-    ControlUpdater,
+    ControlEditor,
     )
 from lintian_brush.debhelper import (
     ensure_minimum_debhelper_version,
@@ -10,7 +10,7 @@ from lintian_brush.fixer import report_result
 import sys
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     try:
         old_build_depends = updater.source["Build-Depends"]
     except KeyError:

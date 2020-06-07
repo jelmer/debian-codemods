@@ -3,7 +3,7 @@
 import os
 import re
 from debian.changelog import Changelog
-from debmutate.control import ControlUpdater, get_relation
+from debmutate.control import ControlEditor, get_relation
 from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
 
@@ -135,7 +135,7 @@ check_requirements = {
 current_version = None
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     try:
         current_version = updater.source["Standards-Version"]
     except KeyError:

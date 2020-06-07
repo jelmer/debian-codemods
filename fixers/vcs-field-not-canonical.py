@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 from lintian_brush.fixer import report_result
 from lintian_brush.vcs import canonicalize_vcs_url
 
@@ -8,7 +8,7 @@ from lintian_brush.vcs import canonicalize_vcs_url
 fields = set()
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     for name in updater.source:
         if not name.startswith("Vcs-"):
             continue

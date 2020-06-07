@@ -2,12 +2,12 @@
 
 from debmutate.control import (
     drop_dependency,
-    ControlUpdater,
+    ControlEditor,
     )
 from lintian_brush.fixer import report_result
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     try:
         updater.source["Build-Depends"] = drop_dependency(
             updater.source["Build-Depends"], "build-essential")

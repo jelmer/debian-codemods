@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.control import (
-    ControlUpdater,
+    ControlEditor,
     get_relation,
     add_dependency,
     drop_dependency,
@@ -9,7 +9,7 @@ from debmutate.control import (
 from lintian_brush.fixer import report_result
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     try:
         pos, old = get_relation(
             updater.source.get('Build-Depends-Indep', ''), 'debhelper-compat')

@@ -2,7 +2,7 @@
 
 from debmutate.changelog import ChangelogUpdater
 from debmutate.control import (
-    ControlUpdater,
+    ControlEditor,
     )
 from lintian_brush.fixer import report_result
 
@@ -13,7 +13,7 @@ TEAM_UPLOAD_LINE = '  * Team upload.'
 uploader_emails = []
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     for entry in updater.source.get('Uploaders', '').split(','):
         uploader_emails.append(parseaddr(entry)[1])
 

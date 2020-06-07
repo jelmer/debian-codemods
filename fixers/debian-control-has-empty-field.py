@@ -1,11 +1,11 @@
 #!/usr/bin/python3
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 from lintian_brush.fixer import report_result
 fields = []
 packages = []
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     for para in updater.paragraphs:
         for k, v in para.items():
             if not v.strip():

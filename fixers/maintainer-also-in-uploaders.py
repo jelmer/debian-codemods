@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlUpdater, delete_from_list
+from debmutate.control import ControlEditor, delete_from_list
+
 from lintian_brush.fixer import report_result
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     if 'Uploaders' in updater.source:
         uploaders = updater.source['Uploaders'].split(',')
         maintainer = updater.source['Maintainer']

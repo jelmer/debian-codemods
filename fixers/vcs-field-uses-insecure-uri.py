@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 from lintian_brush.fixer import net_access_allowed
 from lintian_brush.vcs import find_secure_vcs_url
 
@@ -8,7 +8,7 @@ updated = set()
 lp_note = False
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     for key, value in updater.source.items():
         if not key.startswith('Vcs-'):
             continue

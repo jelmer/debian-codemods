@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 from lintian_brush.fixer import report_result
 
 removed = []
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     for binary in updater.binaries:
         for field, value in binary.items():
             if updater.source.get(field) == value:

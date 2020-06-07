@@ -5,7 +5,7 @@ import re
 import socket
 import sys
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 from lintian_brush.fixer import net_access_allowed
 from lintian_brush.salsa import (
     determine_browser_url as determine_salsa_browser_url,
@@ -187,7 +187,7 @@ def migrate_from_obsolete_infra(control):
             pass
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     migrate_from_obsolete_infra(updater.source)
 if fixed_tags:
     print("Fixed-Lintian-Tags: " + ", ".join(sorted(fixed_tags)))

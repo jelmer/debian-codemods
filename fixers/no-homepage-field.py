@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 from lintian_brush.fixer import (
     meets_minimum_certainty,
     report_result,
@@ -10,7 +10,7 @@ from lintian_brush.upstream_metadata import guess_upstream_metadata_items
 
 current_certainty = None
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     if 'Homepage' not in updater.source:
         for datum in guess_upstream_metadata_items(
                 '.', trust_package=trust_package()):

@@ -2,7 +2,7 @@
 
 import sys
 
-from debmutate.control import ControlUpdater
+from debmutate.control import ControlEditor
 from lintian_brush.standards_version import (
     parse_standards_version,
     iter_standards_versions,
@@ -14,7 +14,7 @@ except FileNotFoundError:
     sys.exit(2)
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     try:
         sv = parse_standards_version(updater.source['Standards-Version'])
     except KeyError:

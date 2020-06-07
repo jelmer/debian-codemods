@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import sys
 from debmutate.control import (
-    ControlUpdater,
+    ControlEditor,
     )
 from lintian_brush.debhelper import (
     ensure_minimum_debhelper_version,
@@ -22,7 +22,7 @@ dbg_packages = set()
 dbg_migration_done = set()
 
 
-with ControlUpdater() as updater:
+with ControlEditor() as updater:
     for control in updater.binaries:
         # Delete the freeradius-dbg package from debian/control
         package = control["Package"]

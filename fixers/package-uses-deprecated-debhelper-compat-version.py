@@ -9,7 +9,7 @@ from debmutate.control import (
     ensure_exact_version,
     ensure_minimum_version,
     get_relation,
-    ControlUpdater,
+    ControlEditor,
     )
 from lintian_brush.debhelper import (
     detect_debhelper_buildsystem,
@@ -97,14 +97,14 @@ if os.path.exists('debian/compat'):
         # Nothing to do
         sys.exit(2)
 
-    with ControlUpdater() as updater:
+    with ControlEditor() as updater:
         updater.source["Build-Depends"] = ensure_minimum_version(
             updater.source.get("Build-Depends", ""),
             "debhelper",
             "%d~" % new_debhelper_compat_version)
 else:
     # Assume that the compat version is set in Build-Depends
-    with ControlUpdater() as updater:
+    with ControlEditor() as updater:
         try:
             offset, debhelper_compat_relation = get_relation(
                 updater.source.get("Build-Depends", ""), "debhelper-compat")
@@ -357,7 +357,7 @@ def upgrade_to_debhelper_10():
     # dh_installinit will no longer install a file named debian/package as an
     # init script.
 
-    with ControlUpdater() as updater:
+    with ControlEditor() as updater:
         for binary in updater.binaries:
             name = binary['Package']
             if os.path.isfile(os.path.join('debian', name)):
@@ -420,7 +420,7 @@ def upgrade_to_debhelper_13():
     # dh_installtempfiles will handle d/tmpfile{,s}.  It prefer the latter
     # and warns about the former.
 
-    with ControlUpdater() as updater:
+    with ControlEditor() as updater:
         for binary in updater.binaries:
             name = binary['Package']
             tmpfile = os.path.join('debian', name + ".tmpfile")
