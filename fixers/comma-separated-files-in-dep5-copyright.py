@@ -1,10 +1,10 @@
 #!/usr/bin/python3
 
-from debmutate.deb822 import Deb822Updater
+from debmutate.deb822 import Deb822Editor
 from lintian_brush.fixer import report_result
 
 try:
-    with Deb822Updater(path='debian/copyright') as updater:
+    with Deb822Editor(path='debian/copyright') as updater:
         for paragraph in updater.paragraphs:
             if 'Files' not in paragraph:
                 continue

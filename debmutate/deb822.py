@@ -69,13 +69,13 @@ class ChangeConflict(Exception):
         self.new_value = new_value
 
 
-class Deb822Updater(Updater):
+class Deb822Editor(Updater):
     """Update the contents of a Deb822-style file.
 
     """
 
     def __init__(self, path, allow_generated=False):
-        super(Deb822Updater, self).__init__(
+        super(Deb822Editor, self).__init__(
             path, allow_generated=allow_generated, mode='b')
 
     def apply_changes(self, changes, resolve_conflict=None):

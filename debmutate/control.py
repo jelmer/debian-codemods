@@ -29,7 +29,7 @@ from debian.deb822 import Deb822
 import subprocess
 
 from ._deb822 import PkgRelation
-from .deb822 import Deb822Updater, ChangeConflict
+from .deb822 import Deb822Editor, ChangeConflict
 from .reformatting import GeneratedFile
 
 
@@ -106,7 +106,7 @@ def _update_control_template(template_path: str, path: str, changes):
     template_type = guess_template_type(template_path)
     if template_type is None or template_type == 'rules':
         raise GeneratedFile(path, template_path)
-    with Deb822Updater(template_path) as updater:
+    with Deb822Editor(template_path) as updater:
         resolve_conflict: Optional[Callable[[
             str, str, Optional[str], Optional[str], Optional[str]],
             Optional[str]]]
@@ -120,7 +120,7 @@ def _update_control_template(template_path: str, path: str, changes):
         return False
     package_root = os.path.dirname(os.path.dirname(path)) or '.'
     if template_type == 'cdbs':
-        with Deb822Updater(path, allow_generated=True) as updater:
+        with Deb822Editor(path, allow_generated=True) as updater:
             updater.apply_changes(changes)
     elif template_type == 'gnome':
         dh_gnome_clean(package_root)
@@ -177,7 +177,7 @@ class ControlEditor(object):
 
     def __init__(self, path: str = 'debian/control'):
         self.path = path
-        self._primary = Deb822Updater(path)
+        self._primary = Deb822Editor(path)
 
     @classmethod
     def from_tree(cls, tree, subpath=None):

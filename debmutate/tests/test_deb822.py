@@ -27,7 +27,7 @@ from debian.deb822 import Deb822
 
 from ..deb822 import (
     ChangeConflict,
-    Deb822Updater,
+    Deb822Editor,
     dump_paragraphs,
     reformat_deb822,
     )
@@ -100,7 +100,7 @@ Testsuite: autopkgtest
 """)])
 
         def change():
-            with Deb822Updater('controlfile') as updater:
+            with Deb822Editor('controlfile') as updater:
                 for c in updater.paragraphs:
                     c['Source'] = 'blah1'
         self.assertRaises(GeneratedFile, change)
@@ -112,7 +112,7 @@ Testsuite: autopkgtest
 
 """), ('controlfile.in', 'bar')])
 
-        with Deb822Updater('controlfile', allow_generated=True) as updater:
+        with Deb822Editor('controlfile', allow_generated=True) as updater:
             for c in updater.paragraphs:
                 c['Source'] = 'blah1'
 
@@ -125,7 +125,7 @@ Source: blah
 Testsuite: autopkgtest
 
 """)])
-        with Deb822Updater('controlfile'):
+        with Deb822Editor('controlfile'):
             pass
 
     def test_unpreservable(self):
@@ -137,7 +137,7 @@ Testsuite: autopkgtest
 """)])
 
         def change():
-            with Deb822Updater('controlfile') as updater:
+            with Deb822Editor('controlfile') as updater:
                 for control in updater.paragraphs:
                     control["NewField"] = "New Field"
 
@@ -150,7 +150,7 @@ Testsuite: autopkgtest
 
 """)])
 
-        with Deb822Updater('controlfile') as updater:
+        with Deb822Editor('controlfile') as updater:
             for control in updater.paragraphs:
                 control["XS-Vcs-Git"] = "git://github.com/example/example"
         self.assertTrue(updater.changed)
@@ -166,7 +166,7 @@ Source: blah
 Testsuite: autopkgtest
 
 """)])
-        with Deb822Updater('controlfile') as updater:
+        with Deb822Editor('controlfile') as updater:
             pass
         self.assertFalse(updater.changed)
         self.assertFileEqual("""\
@@ -187,7 +187,7 @@ Testsuite: autopkgtest
 """)])
 
     def test_simple_set(self):
-        with Deb822Updater('controlfile') as updater:
+        with Deb822Editor('controlfile') as updater:
             updater.apply_changes(
                 {('Source', 'blah'): [('Build-Depends', None, 'foo')]})
         self.assertFileEqual("""\
@@ -197,7 +197,7 @@ Build-Depends: foo
 """, 'controlfile')
 
     def test_simple_change(self):
-        with Deb822Updater('controlfile') as updater:
+        with Deb822Editor('controlfile') as updater:
             updater.apply_changes(
                 {('Source', 'blah'): [('Testsuite', 'autopkgtest', 'foo')]})
         self.assertFileEqual("""\
@@ -206,13 +206,13 @@ Testsuite: foo
 """, 'controlfile')
 
     def test_change_conflict(self):
-        with Deb822Updater('controlfile') as updater:
+        with Deb822Editor('controlfile') as updater:
             self.assertRaises(
                 ChangeConflict, updater.apply_changes,
                 {('Source', 'blah'): [('Testsuite', 'different', 'foo')]})
 
     def test_simple_delete(self):
-        with Deb822Updater('controlfile') as updater:
+        with Deb822Editor('controlfile') as updater:
             updater.apply_changes(
                 {('Source', 'blah'): [('Testsuite', 'autopkgtest', None)]})
         self.assertFileEqual("""\
@@ -220,13 +220,13 @@ Source: blah
 """, 'controlfile')
 
     def test_delete_conflict(self):
-        with Deb822Updater('controlfile') as updater:
+        with Deb822Editor('controlfile') as updater:
             self.assertRaises(
                 ChangeConflict, updater.apply_changes,
                 {('Source', 'blah'): [('Nonexistent', 'autopkgtest', None)]})
 
     def test_simple_add_para(self):
-        with Deb822Updater('controlfile') as updater:
+        with Deb822Editor('controlfile') as updater:
             updater.apply_changes(
                 {('Source', 'new'): [
                     ('Source', None, 'new'),
@@ -240,7 +240,7 @@ Build-Depends: bar
 """, 'controlfile')
 
     def test_simple_add_para_conflict(self):
-        with Deb822Updater('controlfile') as updater:
+        with Deb822Editor('controlfile') as updater:
             self.assertRaises(
                 ChangeConflict,
                 updater.apply_changes,

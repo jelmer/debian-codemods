@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from debmutate.deb822 import Deb822Updater
+from debmutate.deb822 import Deb822Editor
 from lintian_brush.fixer import report_result
 import sys
 
@@ -18,7 +18,7 @@ typo_fixed = set()
 case_fixed = set()
 
 try:
-    with Deb822Updater('debian/copyright') as updater:
+    with Deb822Editor('debian/copyright') as updater:
         for paragraph in updater.paragraphs:
             for field in paragraph:
                 if field in valid_field_names:

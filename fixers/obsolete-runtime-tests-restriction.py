@@ -3,7 +3,7 @@
 import os
 import sys
 
-from debmutate.deb822 import Deb822Updater
+from debmutate.deb822 import Deb822Editor
 from debmutate.control import delete_from_list
 
 from lintian_brush.fixer import report_result
@@ -30,7 +30,7 @@ try:
 except FileNotFoundError:
     sys.exit(2)
 
-with Deb822Updater('debian/tests/control') as updater:
+with Deb822Editor('debian/tests/control') as updater:
     for paragraph in updater.paragraphs:
         restrictions = paragraph.get('Restrictions', '').split(',')
         if restrictions == ['']:
