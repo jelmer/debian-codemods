@@ -8,7 +8,7 @@ from lintian_brush.control import (
     drop_dependency,
     ensure_exact_version,
     get_relation,
-    read_debian_compat_file,
+    read_debhelper_compat_file,
     ControlUpdater,
     )
 from lintian_brush.fixer import report_result
@@ -20,7 +20,7 @@ from lintian_brush.rules import (
 if os.path.exists('debian/compat'):
     # Package currently stores compat version in debian/compat..
 
-    debhelper_compat_version = read_debian_compat_file('debian/compat')
+    debhelper_compat_version = read_debhelper_compat_file('debian/compat')
 
     # debhelper >= 11 supports the magic debhelper-compat build-dependency.
     # Exclude cdbs, since it only knows to get the debhelper compat version

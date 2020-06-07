@@ -626,7 +626,7 @@ def delete_from_list(liststr, item_to_delete):
     return ','.join(items)
 
 
-def read_debian_compat_file(path):
+def read_debhelper_compat_file(path):
     """Read a debian/compat file.
 
     Args:
@@ -639,7 +639,7 @@ def read_debian_compat_file(path):
 
 def get_debhelper_compat_version(path='.'):
     try:
-        return read_debian_compat_file(os.path.join(path, 'debian/compat'))
+        return read_debhelper_compat_file(os.path.join(path, 'debian/compat'))
     except FileNotFoundError:
         pass
 

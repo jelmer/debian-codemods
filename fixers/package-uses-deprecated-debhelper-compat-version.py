@@ -9,7 +9,7 @@ from lintian_brush.control import (
     ensure_exact_version,
     ensure_minimum_version,
     get_relation,
-    read_debian_compat_file,
+    read_debhelper_compat_file,
     ControlUpdater,
     )
 from lintian_brush.debhelper import (
@@ -88,7 +88,8 @@ if autoreconf_disabled():
 if os.path.exists('debian/compat'):
     # Package currently stores compat version in debian/compat..
 
-    current_debhelper_compat_version = read_debian_compat_file('debian/compat')
+    current_debhelper_compat_version = read_debhelper_compat_file(
+        'debian/compat')
     if current_debhelper_compat_version < new_debhelper_compat_version:
         with open('debian/compat', 'w') as cf:
             cf.write('%s\n' % new_debhelper_compat_version)

@@ -4,7 +4,7 @@ import sys
 from lintian_brush.control import (
     ensure_minimum_version,
     get_relation,
-    read_debian_compat_file,
+    read_debhelper_compat_file,
     ControlUpdater,
     )
 from lintian_brush.fixer import report_result
@@ -16,7 +16,7 @@ from lintian_brush.fixer import report_result
 
 
 try:
-    minimum_version = read_debian_compat_file('debian/compat')
+    minimum_version = read_debhelper_compat_file('debian/compat')
 except FileNotFoundError:
     sys.exit(0)
 
