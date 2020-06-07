@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import os
-from lintian_brush.changelog import (
+from debmutate.changelog import (
     ChangelogUpdater,
     rewrap_changes,
     any_long_lines,

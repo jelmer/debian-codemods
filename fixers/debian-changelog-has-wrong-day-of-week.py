@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import email.utils
-from lintian_brush.changelog import ChangelogUpdater
+from debmutate.changelog import ChangelogUpdater
 
 versions = []
 

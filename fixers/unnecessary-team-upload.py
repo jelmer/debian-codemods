@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.changelog import ChangelogUpdater
+from debmutate.changelog import ChangelogUpdater
 from debmutate.control import (
     ControlUpdater,
     )

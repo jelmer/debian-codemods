@@ -20,113 +20,13 @@
 from datetime import datetime
 
 from breezy.tests import (
-    TestCase,
     TestCaseWithTransport,
     )
 
+
 from lintian_brush.changelog import (
-    ChangelogCreateError,
-    ChangelogUpdater,
-    TextWrapper,
-    rewrap_change,
     add_changelog_entry,
-    _inc_version,
-    changes_sections,
     )
-
-from debian.changelog import Version
-
-
-class UpdateChangelogTests(TestCaseWithTransport):
-
-    def test_edit_simple(self):
-        self.build_tree_contents([('debian/', ), ('debian/changelog', """\
-lintian-brush (0.28) UNRELEASED; urgency=medium
-
-  * Add fixer for obsolete-runtime-tests-restriction.
-
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Sep 2019 00:23:11 +0000
-""")])
-
-        with ChangelogUpdater() as updater:
-            updater.changelog.version = '0.29'
-        self.assertFileEqual("""\
-lintian-brush (0.29) UNRELEASED; urgency=medium
-
-  * Add fixer for obsolete-runtime-tests-restriction.
-
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Sep 2019 00:23:11 +0000
-""", 'debian/changelog')
-
-    def test_invalid(self):
-        self.build_tree_contents([('debian/', ), ('debian/changelog', """\
-lalalalala
-""")])
-        self.assertRaises(ChangelogCreateError, ChangelogUpdater().__enter__)
-
-
-class TextWrapperTests(TestCase):
-
-    def setUp(self):
-        super(TextWrapperTests, self).setUp()
-        self.wrapper = TextWrapper()
-
-    def test_wrap_closes(self):
-        self.assertEqual(
-            ['And', ' ', 'this', ' ', 'fixes', ' ', 'something.', ' ',
-             'Closes: #123456'],
-            self.wrapper._split('And this fixes something. Closes: #123456'))
-
-
-LONG_LINE = (
-    "This is a very long line that could have been broken "
-    "and should have been broken but was not broken.")
-
-
-class RewrapChangeTests(TestCase):
-
-    def test_too_short(self):
-        self.assertEqual([], rewrap_change([]))
-        self.assertEqual(['Foo bar'], rewrap_change(['Foo bar']))
-        self.assertEqual(['Foo', 'bar'], rewrap_change(['Foo', 'bar']))
-        self.assertEqual(
-            ['  * Beginning', '  next line'],
-            rewrap_change(
-                ['  * Beginning', '  next line']))
-
-    def test_no_initial(self):
-        self.assertEqual(['x' * 100], rewrap_change(['x' * 100]))
-
-    def test_wrap(self):
-        self.assertEqual(
-            ['  * This is a very long line that could have been '
-             'broken and should have been',
-             '    broken but was not broken.'],
-            rewrap_change(['  * ' + LONG_LINE]))
-        self.assertEqual("""\
-  * Build-Depend on libsdl1.2-dev, libsdl-ttf2.0-dev and libsdl-mixer1.2-dev
-    instead of with the embedded version, add -lSDL_ttf to --with-py-libs in
-    debian/rules and rebootstrap (Closes: #382202)
-""".splitlines(), rewrap_change("""\
-  * Build-Depend on libsdl1.2-dev, libsdl-ttf2.0-dev and libsdl-mixer1.2-dev \
-instead
-    of with the embedded version, add -lSDL_ttf to --with-py-libs in \
-debian/rules
-    and rebootstrap (Closes: #382202)
-""".splitlines()))
-
-    def test_no_join(self):
-        self.assertEqual("""\
-    - Translators know why this sign has been put here:
-        _Choices: ${FOO}, !Other[ You only have to translate Other, remove the
-      exclamation mark and this comment between brackets]
-      Currently text, newt, slang and gtk frontends support this feature.
-""".splitlines(), rewrap_change("""\
-    - Translators know why this sign has been put here:
-        _Choices: ${FOO}, !Other[ You only have to translate Other, remove \
-the exclamation mark and this comment between brackets]
-      Currently text, newt, slang and gtk frontends support this feature.
-""".splitlines()))
 
 
 class ChangelogAddEntryTests(TestCaseWithTransport):
@@ -418,50 +318,3 @@ lintian-brush (0.35) unstable; urgency=medium
 
  --
 """, 'debian/changelog')
-
-
-class IncVersionTests(TestCase):
-
-    def test_native(self):
-        self.assertEqual(Version('1.1'), _inc_version(Version('1.0')))
-        self.assertEqual(Version('1a1.1'), _inc_version(Version('1a1.0')))
-        self.assertEqual(Version('9.11~2'), _inc_version(Version('9.11~1')))
-        self.assertEqual(Version('9.11~1'), _inc_version(Version('9.11~')))
-
-    def test_non_native(self):
-        self.assertEqual(Version('1.1-2'), _inc_version(Version('1.1-1')))
-        self.assertEqual(Version('9.11-1~1'), _inc_version(Version('9.11-1~')))
-        self.assertEqual(
-            Version('9.11-1~2'), _inc_version(Version('9.11-1~1')))
-
-
-class ChangesSectionsTests(TestCase):
-
-    def test_simple(self):
-        self.assertEqual([
-            (None, [1, 2, 3, 4], [
-                ([(1, '  * Change 1')]),
-                ([(2, '  * Change 2'), (3, '    rest')]),
-            ])], list(changes_sections([
-                '',
-                '  * Change 1',
-                '  * Change 2',
-                '    rest',
-                ''
-                ])))
-
-    def test_with_header(self):
-        self.assertEqual([
-            ('Author 1', [1, 2, 3], [([(2, '  * Change 1')])]),
-            ('Author 2', [4, 5, 6, 7], [([(5, '  * Change 2'),
-                                          (6, '    rest')])]),
-            ], list(changes_sections([
-                '',
-                '  [ Author 1 ]',
-                '  * Change 1',
-                '',
-                '  [ Author 2 ]',
-                '  * Change 2',
-                '    rest',
-                '',
-                ])))

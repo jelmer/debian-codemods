@@ -2,7 +2,7 @@
 
 import asyncio
 from functools import partial
-from lintian_brush.changelog import ChangelogUpdater
+from debmutate.changelog import ChangelogUpdater
 from lintian_brush import min_certainty
 from lintian_brush.fixer import (
     net_access_allowed,
