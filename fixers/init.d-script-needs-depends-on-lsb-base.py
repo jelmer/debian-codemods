@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.control import ensure_some_version, ControlUpdater
+from lintian_brush.fixer import report_result
 import os
 
 needs_lsb_base = set()
@@ -29,6 +30,7 @@ if needs_lsb_base:
             binary['Depends'] = ensure_some_version(
                 binary['Depends'], 'lsb-base')
 
-print('Add missing dependency on lsb-base.')
-print('Fixed-Lintian-Tags: init.d-script-needs-depends-on-lsb-base')
-print('Certainty: possible')
+report_result(
+    'Add missing dependency on lsb-base.',
+    fixed_lintian_tags=['init.d-script-needs-depends-on-lsb-base'],
+    certainty='possible')

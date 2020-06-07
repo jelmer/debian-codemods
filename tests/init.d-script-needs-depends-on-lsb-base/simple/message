@@ -1,3 +1,3 @@
 Add missing dependency on lsb-base.
-Fixed-Lintian-Tags: init.d-script-needs-depends-on-lsb-base
 Certainty: possible
+Fixed-Lintian-Tags: init.d-script-needs-depends-on-lsb-base
