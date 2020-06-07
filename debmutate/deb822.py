@@ -21,7 +21,7 @@
 from debian.deb822 import Deb822
 from io import BytesIO
 from .reformatting import (
-    Updater,
+    Editor,
     )
 
 
@@ -69,7 +69,7 @@ class ChangeConflict(Exception):
         self.new_value = new_value
 
 
-class Deb822Editor(Updater):
+class Deb822Editor(Editor):
     """Update the contents of a Deb822-style file.
 
     """

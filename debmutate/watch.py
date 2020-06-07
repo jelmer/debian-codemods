@@ -23,7 +23,7 @@ from typing import Iterable, List, Union, Callable, Optional, TextIO, Iterator
 from warnings import warn
 
 from .reformatting import (
-    Updater,
+    Editor,
     )
 
 
@@ -217,7 +217,7 @@ def parse_watch_file(f: Iterable[str]) -> Optional[WatchFile]:
         entries=entries, options=persistent_options, version=version)
 
 
-class WatchEditor(Updater):
+class WatchEditor(Editor):
 
     _parsed: WatchFile
 

@@ -37,14 +37,14 @@ from email.utils import parseaddr
 import re
 import textwrap
 from typing import List, Iterator, Tuple, Optional
-from debmutate.reformatting import Updater
+from debmutate.reformatting import Editor
 
 
 WIDTH = 80
 INITIAL_INDENT = '  * '
 
 
-class ChangelogEditor(Updater):
+class ChangelogEditor(Editor):
     """Update a changelog file.
 
     This will only write out the changelog file if it has been changed.

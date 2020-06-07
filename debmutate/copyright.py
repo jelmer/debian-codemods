@@ -29,10 +29,10 @@ from debian.copyright import (
     NotMachineReadableError,
     )
 
-from .reformatting import Updater
+from .reformatting import Editor
 
 
-class CopyrightEditor(Updater):
+class CopyrightEditor(Editor):
     """Update a machine-readable copyright file.
     """
 

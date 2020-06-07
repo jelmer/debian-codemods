@@ -20,7 +20,7 @@ __all__ = [
     'check_preserve_formatting',
     'check_generated_file',
     'edit_formatted_file',
-    'Updater',
+    'Editor',
     ]
 
 
@@ -119,8 +119,8 @@ def edit_formatted_file(
     return True
 
 
-class Updater(object):
-    """Context object for updating a file, preserving formatting."""
+class Editor(object):
+    """Context object for editing a file, preserving formatting."""
 
     def __init__(self, path: str, mode='', allow_generated=False):
         self.path = path
