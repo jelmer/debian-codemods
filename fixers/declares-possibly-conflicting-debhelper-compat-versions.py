@@ -4,6 +4,7 @@ import re
 import sys
 
 from lintian_brush.control import get_debhelper_compat_version
+from lintian_brush.fixer import report_result
 from lintian_brush.rules import update_rules
 
 compat_version = get_debhelper_compat_version()
@@ -18,7 +19,8 @@ def drop_explicit_dh_compat(line):
 
 
 update_rules(global_line_cb=drop_explicit_dh_compat)
-print('Avoid setting debhelper compat version in debian/rules '
-      'and debian/compat.')
-print('Fixed-Lintian-Tags: '
-      'declares-possibly-conflicting-debhelper-compat-versions')
+report_result(
+    'Avoid setting debhelper compat version in debian/rules '
+    'and debian/compat.',
+    fixed_lintian_tags=[
+        'declares-possibly-conflicting-debhelper-compat-versions'])
