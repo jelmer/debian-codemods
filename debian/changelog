@@ -1,4 +1,4 @@
-lintian-brush (0.70) UNRELEASED; urgency=medium
+lintian-brush (0.70) unstable; urgency=medium
 
   * systemd-service-file-pidfile-refers-to-var-run: Also update other
     references to pid file.
@@ -11,7 +11,7 @@ lintian-brush (0.70) UNRELEASED; urgency=medium
     entries with just newlines.
   * Update to follow renames of tags in lintian 2.80.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 31 May 2020 02:21:51 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 08 Jun 2020 22:43:10 +0000
 
 lintian-brush (0.69) unstable; urgency=medium
 
