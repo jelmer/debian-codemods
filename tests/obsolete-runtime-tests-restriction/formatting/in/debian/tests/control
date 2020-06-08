@@ -1,0 +1,9 @@
+Test-Command: find /usr/share/blah/models/ -type f -exec ./debian/tests/blah-info {} +
+Depends: blah-utils,
+ blah-testmodels,
+
+Test-Command: ./debian/tests/quicktest.py /usr/share/blah/models/
+Restrictions:
+ allow-stderr,
+Depends: python3-pyblah,
+ blah-testmodels,
