@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 from lintian_brush.control import ControlUpdater
+from lintian_brush.fixer import report_result
 from lintian_brush.vcs import determine_browser_url
 
 
@@ -15,5 +16,6 @@ with ControlUpdater() as updater:
                 updater.source["Vcs-Browser"] = browser_url
 
 
-print("debian/control: Add Vcs-Browser field")
-print("Fixed-Lintian-Tags: missing-vcs-browser-field")
+report_result(
+    "debian/control: Add Vcs-Browser field",
+    fixed_lintian_tags=['missing-vcs-browser-field'])
