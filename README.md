@@ -88,7 +88,7 @@ subset of the issues:
 * invalid-standards-version
 * libmodule-build-perl-needs-to-be-in-build-depends
 * license-file-listed-in-debian-copyright
-* maintainer-also-in-uploaders.
+* maintainer-also-in-uploaders
 * maintainer-script-without-set-e
 * malformed-dm-upload-allowed
 * missing-build-dependency-for-dh-addon
@@ -111,6 +111,7 @@ subset of the issues:
 * out-of-date-standards-version
 * package-contains-linda-override
 * package-has-no-description
+* package-lacks-versioned-build-depends-on-debhelper
 * package-needs-versioned-debhelper-build-depends
 * package-uses-deprecated-debhelper-compat-version
 * package-uses-deprecated-source-override-location
