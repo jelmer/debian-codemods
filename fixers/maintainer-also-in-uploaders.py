@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.control import ControlUpdater, delete_from_list
+from lintian_brush.fixer import report_result
 
 
 with ControlUpdater() as updater:
@@ -12,5 +13,6 @@ with ControlUpdater() as updater:
                 updater.source['Uploaders'], maintainer)
 
 
-print("Remove maintainer from uploaders.")
-print("Fixed-Lintian-Tags: maintainer-also-in-uploaders")
+report_result(
+    "Remove maintainer from uploaders.",
+    fixed_lintian_tags=['maintainer-also-in-uploaders'])
