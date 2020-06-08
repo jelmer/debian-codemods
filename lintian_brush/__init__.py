@@ -958,3 +958,18 @@ def min_certainty(certainties: Sequence[str]) -> str:
     return confidence_to_certainty(
         max([certainty_to_confidence(c)
             for c in certainties] + [0]))
+
+
+def load_renamed_tags():
+    import json
+    path = os.path.abspath(os.path.join(
+        os.path.dirname(__file__), '..', 'renamed-tags.json'))
+    if not os.path.isfile(path):
+        import pkg_resources
+        path = pkg_resources.resource_filename(
+            __name__, 'lintian-brush/renamed-tags.json')
+        if not os.path.isfile(path):
+            # Urgh.
+            path = '/usr/share/lintian-brush/renamed-tags.json'
+    with open(path, 'rb') as f:
+        return json.load(f)
