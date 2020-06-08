@@ -147,7 +147,7 @@ Fix-Script: init.d-script-needs-depends-on-lsb-base.py
 Lintian-Tags: init.d-script-needs-depends-on-lsb-base
 
 Fix-Script: maintainer-also-in-uploaders.py
-Lintian-Tags: maintainer-also-in-uploaders.
+Lintian-Tags: maintainer-also-in-uploaders
 
 Fix-Script: source-format.py
 Lintian-Tags:
@@ -179,7 +179,9 @@ Lintian-Tags: declares-possibly-conflicting-debhelper-compat-versions
 Fix-Script: debhelper-compat-wrong-field.py
 
 Fix-Script: package-needs-versioned-debhelper-build-depends.py
-Lintian-Tags: package-needs-versioned-debhelper-build-depends
+Lintian-Tags:
+  package-needs-versioned-debhelper-build-depends,
+  package-lacks-versioned-build-depends-on-debhelper
 
 Fix-Script: package-uses-deprecated-source-override-location.sh
 Lintian-Tags: package-uses-deprecated-source-override-location

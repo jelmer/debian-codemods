@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
 from lintian_brush.control import (
-    ensure_minimum_debhelper_version,
     ControlUpdater,
+    )
+from lintian_brush.debhelper import (
+    ensure_minimum_debhelper_version,
     )
 from lintian_brush.fixer import report_result
 from lintian_brush.rules import (
@@ -23,8 +25,7 @@ def cb(line, target):
 
 if update_rules(cb):
     with ControlUpdater() as updater:
-        updater.source["Build-Depends"] = ensure_minimum_debhelper_version(
-            updater.source.get("Build-Depends", ""), "9.20160114")
+        ensure_minimum_debhelper_version(updater.source, "9.20160114")
 
 
 report_result(

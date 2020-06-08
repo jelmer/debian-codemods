@@ -5,13 +5,15 @@ import sys
 
 from lintian_brush.control import (
     add_dependency,
-    get_debhelper_compat_version,
     ControlUpdater,
+    )
+from lintian_brush.debhelper import (
+    get_debhelper_compat_level,
     )
 from lintian_brush.fixer import report_result
 
 
-compat_version = get_debhelper_compat_version()
+compat_version = get_debhelper_compat_level()
 if compat_version is None or compat_version <= 11:
     # N/A
     sys.exit(0)

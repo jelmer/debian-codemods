@@ -3,6 +3,7 @@
 import json
 import os
 
+from lintian_brush.fixer import report_result
 from lintian_brush.lintian_overrides import (
     update_overrides,
     Override,
@@ -36,5 +37,6 @@ def rename_override_tags(override):
 
 update_overrides(rename_override_tags)
 
-print("Update renamed lintian tag names in lintian overrides.")
-print("Fixed-Lintian-Tags: renamed-tag")
+report_result(
+    "Update renamed lintian tag names in lintian overrides.",
+    fixed_lintian_tags=['renamed-tag'])

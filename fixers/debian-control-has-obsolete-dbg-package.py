@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 import sys
 from lintian_brush.control import (
-    ensure_minimum_debhelper_version,
     ControlUpdater,
+    )
+from lintian_brush.debhelper import (
+    ensure_minimum_debhelper_version,
     )
 from lintian_brush.fixer import (
     current_package_version,
@@ -36,8 +38,7 @@ with ControlUpdater() as updater:
         # no debug packages found to remove
         sys.exit(0)
 
-    updater.source["Build-Depends"] = ensure_minimum_debhelper_version(
-        updater.source.get("Build-Depends", ""), minimum_version)
+    ensure_minimum_debhelper_version(updater.source, minimum_version)
 
 
 current_version = str(current_package_version())

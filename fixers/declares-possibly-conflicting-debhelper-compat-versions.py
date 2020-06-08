@@ -3,11 +3,11 @@
 import re
 import sys
 
-from lintian_brush.control import get_debhelper_compat_version
+from lintian_brush.debhelper import get_debhelper_compat_level
 from lintian_brush.fixer import report_result
 from lintian_brush.rules import update_rules
 
-compat_version = get_debhelper_compat_version()
+compat_version = get_debhelper_compat_level()
 if compat_version is None:
     sys.exit(0)
 

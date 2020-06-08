@@ -24,6 +24,7 @@ from breezy.tests import (
 from ..debhelper import (
     lowest_non_deprecated_compat_level,
     highest_stable_compat_level,
+    ensure_minimum_debhelper_version,
     )
 
 
@@ -37,3 +38,47 @@ class HighestStableCompatLevelTests(TestCase):
 
     def test_is_valid(self):
         self.assertIsInstance(highest_stable_compat_level(), int)
+
+
+class EnsureMinumumDebhelperVersionTests(TestCase):
+
+    def test_already(self):
+        d = {
+            'Build-Depends': 'debhelper (>= 10)',
+            }
+        self.assertFalse(ensure_minimum_debhelper_version(d, '10'))
+        self.assertEqual(d, {'Build-Depends': 'debhelper (>= 10)'})
+        self.assertFalse(ensure_minimum_debhelper_version(d, '9'))
+        self.assertEqual(d, {'Build-Depends': 'debhelper (>= 10)'})
+
+    def test_already_compat(self):
+        d = {
+            'Build-Depends': 'debhelper-compat (= 10)',
+            }
+        self.assertFalse(ensure_minimum_debhelper_version(d, '10'))
+        self.assertEqual(d, {'Build-Depends': 'debhelper-compat (= 10)'})
+        self.assertFalse(ensure_minimum_debhelper_version(d, '9'))
+        self.assertEqual(d, {'Build-Depends': 'debhelper-compat (= 10)'})
+
+    def test_bump(self):
+        d = {
+            'Build-Depends': 'debhelper (>= 10)',
+            }
+        self.assertTrue(ensure_minimum_debhelper_version(d, '11'))
+        self.assertEqual(d, {'Build-Depends': 'debhelper (>= 11)'})
+
+    def test_bump_compat(self):
+        d = {
+            'Build-Depends': 'debhelper-compat (= 10)',
+            }
+        self.assertTrue(ensure_minimum_debhelper_version(d, '11'))
+        self.assertEqual(d, {
+            'Build-Depends': 'debhelper-compat (= 10), debhelper (>= 11)'})
+        self.assertTrue(ensure_minimum_debhelper_version(d, '11.1'))
+        self.assertEqual(d, {
+            'Build-Depends': 'debhelper-compat (= 10), debhelper (>= 11.1)'})
+
+    def test_not_set(self):
+        d = {}
+        self.assertTrue(ensure_minimum_debhelper_version(d, '10'))
+        self.assertEqual(d, {'Build-Depends': 'debhelper (>= 10)'})

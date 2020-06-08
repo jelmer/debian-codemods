@@ -1,0 +1,2 @@
+Bump debhelper dependency to >= 8, since that's what is used in debian/compat.
+Fixed-Lintian-Tags: package-lacks-versioned-build-depends-on-debhelper

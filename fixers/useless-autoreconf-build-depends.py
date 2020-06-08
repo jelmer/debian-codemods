@@ -3,8 +3,10 @@ import sys
 
 from lintian_brush.control import (
     drop_dependency,
-    ensure_minimum_debhelper_version,
     ControlUpdater,
+    )
+from lintian_brush.debhelper import (
+    ensure_minimum_debhelper_version,
     )
 from lintian_brush.debhelper import maximum_debhelper_compat_version
 from lintian_brush.fixer import compat_release, report_result
@@ -26,8 +28,7 @@ if not update_rules(drop_with_autoreconf):
 
 
 with ControlUpdater() as updater:
-    updater.source["Build-Depends"] = ensure_minimum_debhelper_version(
-        updater.source.get("Build-Depends", ""), "10~")
+    ensure_minimum_debhelper_version(updater.source, "10~")
     updater.source["Build-Depends"] = drop_dependency(
         updater.source["Build-Depends"], "dh-autoreconf")
 

@@ -578,41 +578,18 @@ def drop_dependency(relationstr, package):
     return relationstr
 
 
-def ensure_minimum_debhelper_version(build_depends, minimum_version):
-    """Ensure that the pakcage is at least using version x of debhelper.
-
-    This is a dedicated helper, since debhelper can now also be pulled in
-    with a debhelper-compat dependency.
-
-    Args:
-      build_depends: Build depends relation
-      version: The minimum version
-    """
-    minimum_version = Version(minimum_version)
-    try:
-        offset, debhelper_compat = get_relation(
-            build_depends, "debhelper-compat")
-    except KeyError:
-        pass
-    else:
-        if len(debhelper_compat) > 1:
-            raise Exception("Complex rule for debhelper-compat, aborting")
-        if debhelper_compat[0].version[0] != '=':
-            raise Exception("Complex rule for debhelper-compat, aborting")
-        if Version(debhelper_compat[0].version[1]) >= minimum_version:
-            return build_depends
-    return ensure_minimum_version(
-            build_depends,
-            "debhelper", minimum_version)
-
-
 def delete_from_list(liststr, item_to_delete):
-    items = liststr.split(',')
-    item_to_delete = item_to_delete.strip()
     if not item_to_delete:
-        return liststr
+        raise ValueError(item_to_delete)
+    if isinstance(item_to_delete, str):
+        items_to_delete = [item_to_delete.strip()]
+    elif isinstance(item_to_delete, list):
+        items_to_delete = [item.strip() for item in item_to_delete]
+    else:
+        raise TypeError(item_to_delete)
+    items = liststr.split(',')
     for i, item in enumerate(items):
-        if item.strip() == item_to_delete:
+        if item.strip() in items_to_delete:
             deleted_item = items.pop(i)
             head_whitespace = ''.join(
                 takewhile(lambda x: x.isspace(), deleted_item))
@@ -624,38 +601,6 @@ def delete_from_list(liststr, item_to_delete):
                 if i > 1:
                     items[i-1] = items[i-1].rstrip()
     return ','.join(items)
-
-
-def read_debhelper_compat_file(path):
-    """Read a debian/compat file.
-
-    Args:
-      path: Path to read from
-    """
-    with open(path, 'r') as f:
-        line = f.readline().split('#', 1)[0]
-        return int(line.strip())
-
-
-def get_debhelper_compat_version(path='.'):
-    try:
-        return read_debhelper_compat_file(os.path.join(path, 'debian/compat'))
-    except FileNotFoundError:
-        pass
-
-    try:
-        with open(os.path.join(path, 'debian/control'), 'r') as f:
-            control = Deb822(f)
-    except FileNotFoundError:
-        return None
-
-    try:
-        offset, [relation] = get_relation(
-            control.get("Build-Depends", ""), "debhelper-compat")
-    except (IndexError, KeyError):
-        return None
-    else:
-        return int(str(relation.version[1]))
 
 
 def is_dep_implied(dep, outer):

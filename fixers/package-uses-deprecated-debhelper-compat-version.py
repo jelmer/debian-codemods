@@ -9,13 +9,13 @@ from lintian_brush.control import (
     ensure_exact_version,
     ensure_minimum_version,
     get_relation,
-    read_debhelper_compat_file,
     ControlUpdater,
     )
 from lintian_brush.debhelper import (
     detect_debhelper_buildsystem,
     lowest_non_deprecated_compat_level,
     maximum_debhelper_compat_version,
+    read_debhelper_compat_file,
     DEBHELPER_BUILD_STEPS,
     )
 from lintian_brush.fixer import (

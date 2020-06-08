@@ -8,8 +8,10 @@ from lintian_brush.control import (
     drop_dependency,
     ensure_exact_version,
     get_relation,
-    read_debhelper_compat_file,
     ControlUpdater,
+    )
+from lintian_brush.debhelper import (
+    read_debhelper_compat_file,
     )
 from lintian_brush.fixer import report_result
 from lintian_brush.rules import (
