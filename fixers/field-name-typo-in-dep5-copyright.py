@@ -53,4 +53,4 @@ fixed_str = ', '.join(
 report_result(
     'Fix field name %s in debian/copyright (%s).' % (kind, fixed_str),
     fixed_lintian_tags=(
-        ['field-name-typo-dep5-copyright'] if typo_fixed else []))
+        ['field-name-typo-in-dep5-copyright'] if typo_fixed else []))

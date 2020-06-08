@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.control import ControlUpdater
+from lintian_brush.fixer import report_result
 
 packages = []
 
@@ -19,6 +20,7 @@ with ControlUpdater() as updater:
                 del binary["Priority"]
 
 
-print("Move transitional package%s %s to oldlibs/optional per policy 4.0.1." %
-      (("s" if len(packages) > 1 else ""), ", ".join(packages)))
-print("Fixed-Lintian-Tags: transitional-package-should-be-oldlibs-optional")
+report_result(
+    "Move transitional package%s %s to oldlibs/optional per policy 4.0.1." %
+    (("s" if len(packages) > 1 else ""), ", ".join(packages)),
+    fixed_lintian_tags=['transitional-package-not-oldlibs-optional'])

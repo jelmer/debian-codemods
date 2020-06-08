@@ -19,4 +19,4 @@ for path in systemd_service_files():
 
 report_result(
     "Replace /var/run with /run for the Service PIDFile.",
-    fixed_lintian_tags=['systemd-service-file-pidfile-refers-to-var-run'])
+    fixed_lintian_tags=['systemd-service-file-refers-to-var-run'])

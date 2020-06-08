@@ -2,6 +2,7 @@
 
 from email.utils import parseaddr
 from lintian_brush.control import ControlUpdater
+from lintian_brush.fixer import report_result
 
 
 with ControlUpdater() as updater:
@@ -13,6 +14,6 @@ with ControlUpdater() as updater:
         except KeyError:
             pass
 
-
-print("Remove uploaders from orphaned package.")
-print("Fixed-Lintian-Tags: orphaned-package-should-not-have-uploaders")
+report_result(
+    "Remove uploaders from orphaned package.",
+    fixed_lintian_tags=['uploaders-in-orphan'])

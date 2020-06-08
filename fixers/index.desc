@@ -53,10 +53,10 @@ Lintian-Tags: comma-separated-files-in-dep5-copyright
 Fix-Script: common-license.py
 Lintian-Tags:
   copyright-does-not-refer-to-common-license-file,
-  copyright-should-refer-to-common-license-file-for-apache-2,
-  copyright-should-refer-to-common-license-file-for-gpl,
-  copyright-should-refer-to-common-license-file-for-gfdl,
-  copyright-should-refer-to-common-license-file-for-lgpl,
+  copyright-not-using-common-license-for-apache2,
+  copyright-not-using-common-license-for-gpl,
+  copyright-not-using-common-license-for-gfdl,
+  copyright-not-using-common-license-for-lgpl,
   copyright-file-contains-full-apache-2-license,
   copyright-file-contains-full-gfdl-license,
   copyright-file-contains-full-gpl-license
@@ -100,7 +100,7 @@ Fix-Script: debian-pyversions-is-obsolete.py
 Lintian-Tags: debian-pyversions-is-obsolete
 
 Fix-Script: debian-rules-should-not-use-pwd.py
-Lintian-Tags: debian-rules-should-not-use-pwd
+Lintian-Tags: debian-rules-calls-pwd
 
 Fix-Script: debian-source-options-has-custom-compression-settings.py
 Lintian-Tags: debian-source-options-has-custom-compression-settings
@@ -171,7 +171,7 @@ Fix-Script: no-homepage-field.py
 Lintian-Tags: no-homepage-field
 
 Fix-Script: orphaned-package-should-not-have-uploaders.py
-Lintian-Tags: orphaned-package-should-not-have-uploaders
+Lintian-Tags: uploaders-in-orphan
 
 Fix-Script: declares-possibly-conflicting-debhelper-compat-versions.py
 Lintian-Tags: declares-possibly-conflicting-debhelper-compat-versions
@@ -226,7 +226,7 @@ Fix-Script: space-in-std-shortname-in-dep5-copyright.py
 Lintian-Tags: space-in-std-shortname-in-dep5-copyright
 
 Fix-Script: systemd-service-file-pidfile-refers-to-var-run.py
-Lintian-Tags: systemd-service-file-pidfile-refers-to-var-run
+Lintian-Tags: systemd-service-file-refers-to-var-run
 
 Fix-Script: systemd-service-file-shutdown-problems.py
 Lintian-Tags: systemd-service-file-shutdown-problems
@@ -241,7 +241,7 @@ Fix-Script: systemd-service-file-refers-to-obsolete-target.py
 Lintian-Tags: systemd-service-file-refers-to-obsolete-target
 
 Fix-Script: transitional-package-should-be-oldlibs-optional.py
-Lintian-Tags: transitional-package-should-be-oldlibs-optional
+Lintian-Tags: transitional-package-not-oldlibs-optional
 
 Fix-Script: unnecessary-team-upload.py
 Lintian-Tags: unnecessary-team-upload

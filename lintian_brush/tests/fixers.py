@@ -26,6 +26,8 @@ import unittest
 
 from lintian_brush import (
     available_lintian_fixers,
+    load_renamed_tags,
+    parse_script_fixer_output,
     select_fixers,
     increment_version,
     )
@@ -112,26 +114,61 @@ class FixerTestCase(unittest.TestCase):
                 self.assertEqual(
                     result.decode().strip(),
                     f.read().strip())
+            result = parse_script_fixer_output(result.decode())
+            self.assertTrue(
+                set(result.fixed_lintian_tags).issubset(
+                    self._fixer.lintian_tags),
+                'fixer %s claims to fix tags (%r) not declared '
+                'in index.desc (%r)' % (
+                    self._fixer_name, result.fixed_lintian_tags,
+                    self._fixer.lintian_tags))
 
 
-def iter_test_cases(fixers):
+class SaneFixerTests(unittest.TestCase):
+    """Check that the test is sensible."""
+
+    def id(self):
+        return "%s.%s.sane" % (__name__, self.fixer.name)
+
+    def __str__(self):
+        return 'fixer sanity test: %s' % (self.fixer.name)
+
+    def __init__(self, fixer):
+        self.fixer = fixer
+        super(SaneFixerTests, self).__init__()
+
+    def runTest(self):
+        self.assertTrue(
+            os.path.exists(self.fixer.script_path),
+            'Script %s missing' % self.fixer.script_path)
+
+        renames = load_renamed_tags()
+        for tag in self.fixer.lintian_tags:
+            self.assertNotIn(
+                tag, renames,
+                'Tag %s has been renamed to %s' % (tag, renames.get(tag)))
+
+
+def iter_test_cases(fixer):
     test_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'tests')
-    for fixer in fixers:
-        testpath = os.path.join(test_dir, fixer.name)
-        if not os.path.isdir(testpath):
-            continue
-        for testname in os.listdir(testpath):
-            yield FixerTestCase(
-                fixer_name=fixer.name,
-                fixer=fixer,
-                name=testname,
-                path=os.path.join(test_dir, fixer.name, testname))
+    testpath = os.path.join(test_dir, fixer.name)
+    if not os.path.isdir(testpath):
+        return
+    for testname in os.listdir(testpath):
+        yield FixerTestCase(
+            fixer_name=fixer.name,
+            fixer=fixer,
+            name=testname,
+            path=os.path.join(test_dir, fixer.name, testname))
 
 
 def test_suite():
     suite = unittest.TestSuite()
-    for test_case in iter_test_cases(available_lintian_fixers()):
-        suite.addTest(test_case)
+    fixers = available_lintian_fixers()
+    for fixer in fixers:
+        for test_case in iter_test_cases(fixer):
+            suite.addTest(test_case)
+        suite.addTest(SaneFixerTests(fixer))
     return suite
 
 

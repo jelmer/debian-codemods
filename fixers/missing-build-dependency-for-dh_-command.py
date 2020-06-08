@@ -64,7 +64,8 @@ for entry in mf.contents:
                     'missing-build-dependency-for-dh_-command',
                         package='source', info='%s => %s' % (executable, dep)):
                     continue
-                need.append((dep, ['missing-build-dependency-for-dh_command']))
+                need.append(
+                    (dep, ['missing-build-dependency-for-dh_-command']))
             if executable == 'dh' or executable.startswith('dh_'):
                 for addon in dh_invoke_get_with(command):
                     try:

@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.reformatting import check_generated_file
+from lintian_brush.fixer import report_result
 
 check_generated_file('debian/rules')
 
@@ -13,5 +14,6 @@ if oldcontents != newcontents:
     with open('debian/rules', 'wb') as f:
         f.write(newcontents)
 
-print("debian/rules: Avoid using $(PWD) variable.")
-print("Fixed-Lintian-Tags: debian-rules-should-not-use-pwd")
+report_result(
+    "debian/rules: Avoid using $(PWD) variable.",
+    fixed_lintian_tags=['debian-rules-calls-pwd'])

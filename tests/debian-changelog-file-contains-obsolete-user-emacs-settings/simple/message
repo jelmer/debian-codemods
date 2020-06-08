@@ -1,2 +1,2 @@
 Drop no longer supported add-log-mailing-address setting from debian/changelog.
-Fixed-Lintian-Tags: debian-changelog-file-contains-obsolete-user-emacs-setting
+Fixed-Lintian-Tags: debian-changelog-file-contains-obsolete-user-emacs-settings

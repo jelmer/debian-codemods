@@ -25,4 +25,4 @@ with ControlUpdater() as updater:
 
 report_result(
     'Move libmodule-build-perl from Build-Depends-Indep to Build-Depends.',
-    fixed_lintian_tags=['libmodule-build-perl-needs-to-be-in-build-depend'])
+    fixed_lintian_tags=['libmodule-build-perl-needs-to-be-in-build-depends'])

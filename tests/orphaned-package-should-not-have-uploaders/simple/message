@@ -1,2 +1,2 @@
 Remove uploaders from orphaned package.
-Fixed-Lintian-Tags: orphaned-package-should-not-have-uploaders
+Fixed-Lintian-Tags: uploaders-in-orphan

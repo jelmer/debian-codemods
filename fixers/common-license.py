@@ -214,18 +214,13 @@ def reference_common_license(para):
             FULL_LICENSE_NAME.get(common_license, common_license),
             common_license))
     if common_license in ('Apache-2.0', 'Apache-2'):
-        tags.add(
-            'copyright-should-refer-to-common-license-file-'
-            'for-apache-2')
+        tags.add('copyright-not-using-common-license-for-apache2')
     elif common_license.startswith('GPL-'):
-        tags.add(
-            'copyright-should-refer-to-common-license-file-for-gpl')
+        tags.add('copyright-not-using-common-license-for-gpl')
     elif common_license.startswith('LGPL-'):
-        tags.add(
-            'copyright-should-refer-to-common-license-file-for-lgpl')
+        tags.add('copyright-not-using-common-license-for-lgpl')
     elif common_license.startswith('GFDL-'):
-        tags.add(
-            'copyright-should-refer-to-common-license-file-for-gfdl')
+        tags.add('copyright-not-using-common-license-for-gfdl')
     tags.add('copyright-does-not-refer-to-common-license-file')
     if license.synopsis != common_license:
         renames[license.synopsis] = common_license

@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.control import ControlUpdater
+from lintian_brush.fixer import report_result
 
 updated_packages = set()
 
@@ -19,6 +20,7 @@ with ControlUpdater() as updater:
         updated_packages.add(package)
 
 
-print('Set Multi-Arch: foreign on package%s %s.' % (
-    's' if len(updated_packages) > 1 else '', ', '.join(updated_packages)))
-print("Fixed-Lintian-Tags: font-packge-not-multi-arch-foreign")
+report_result(
+    'Set Multi-Arch: foreign on package%s %s.' % (
+        's' if len(updated_packages) > 1 else '', ', '.join(updated_packages)),
+    fixed_lintian_tags=['font-package-not-multi-arch-foreign'])

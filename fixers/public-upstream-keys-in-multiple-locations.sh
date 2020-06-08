@@ -36,4 +36,4 @@ do
 done
 
 echo "Merge upstream signing key files."
-echo "Fixed-Lintian-Tags: public-upstream-keys-in-multiple-locations."
+echo "Fixed-Lintian-Tags: public-upstream-keys-in-multiple-locations"
