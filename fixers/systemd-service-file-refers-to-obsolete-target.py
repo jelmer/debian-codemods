@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 
-from lintian_brush.systemd import systemd_service_files, SystemdServiceUpdater
+from lintian_brush.systemd import systemd_service_files, SystemdServiceEditor
 
 DEPRECATED_TARGETS = ['syslog.target']
 
 removed = []
 
 for path in systemd_service_files():
-    with SystemdServiceUpdater(path) as updater:
+    with SystemdServiceEditor(path) as updater:
         for target in DEPRECATED_TARGETS:
             try:
                 updater.file['Unit']['After'].remove(target)

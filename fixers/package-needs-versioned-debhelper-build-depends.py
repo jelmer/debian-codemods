@@ -2,14 +2,14 @@
 
 import sys
 from debmutate.control import (
-    ensure_minimum_version,
-    get_relation,
     ControlEditor,
     )
-from lintian_brush.debhelper import (
+from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
-    pedantic_compat_level,
     read_debhelper_compat_file,
+    )
+from lintian_brush.debhelper import (
+    pedantic_compat_level,
     )
 from lintian_brush.fixer import report_result
 

@@ -1,10 +1,10 @@
 #!/usr/bin/python3
 
-from lintian_brush.systemd import SystemdServiceUpdater, systemd_service_files
+from lintian_brush.systemd import SystemdServiceEditor, systemd_service_files
 
 
 for path in systemd_service_files():
-    with SystemdServiceUpdater(path) as updater:
+    with SystemdServiceEditor(path) as updater:
         try:
             if (updater.file['Unit']['DefaultDependencies'] == 'no' and
                     'shutdown.target' in updater.file['Unit']['Conflicts'] and

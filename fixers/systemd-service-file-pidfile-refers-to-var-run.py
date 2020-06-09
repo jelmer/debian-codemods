@@ -2,12 +2,12 @@
 
 from lintian_brush.fixer import report_result
 from lintian_brush.systemd import (
-    systemd_service_files, SystemdServiceUpdater, Undefined
+    systemd_service_files, SystemdServiceEditor, Undefined
     )
 
 
 for path in systemd_service_files():
-    with SystemdServiceUpdater(path) as updater:
+    with SystemdServiceEditor(path) as updater:
         old_pidfile = updater.file['Service']['PIDFile']
         if isinstance(old_pidfile, str):
             new_pidfile = old_pidfile.replace("/var/run/", "/run/")

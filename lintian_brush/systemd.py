@@ -48,7 +48,7 @@ from iniparse.ini import (
     readline_iterator,
     )
 
-from debmutate.reformatting import Updater
+from debmutate.reformatting import Editor
 
 import os
 
@@ -364,7 +364,7 @@ def systemd_service_files(path='debian', exclude_links=True):
         yield subpath
 
 
-class SystemdServiceUpdater(Updater):
+class SystemdServiceEditor(Editor):
 
     def _parse(self, content):
         return UnitFile(StringIO(self._orig_content))
@@ -389,7 +389,7 @@ def update_service_file(path, cb):
       path: Path to the service file
       cb: Callback called with a config.ConfigObj object
     """
-    with SystemdServiceUpdater(path) as updater:
+    with SystemdServiceEditor(path) as updater:
         for section in updater.file:
             for name in updater.file[section]:
                 oldval = updater.file[section][name]

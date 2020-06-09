@@ -2,12 +2,12 @@
 
 import shlex
 
-from lintian_brush.debhelper import get_debhelper_compat_level
+from debmutate.debhelper import get_debhelper_compat_level
 from lintian_brush.fixer import report_result
 from lintian_brush.rules import (
     dh_invoke_drop_argument,
     dh_invoke_drop_with,
-    RulesUpdater,
+    RulesEditor,
     )
 
 removed_args = []
@@ -38,7 +38,7 @@ def drop_unnecessary_args(line, target):
 
 
 try:
-    with RulesUpdater() as updater:
+    with RulesEditor() as updater:
         for rule in updater.makefile.iter_rules(b'%'):
             for command in rule.commands():
                 if not command.startswith(b'dh'):

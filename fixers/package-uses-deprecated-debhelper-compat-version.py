@@ -11,11 +11,13 @@ from debmutate.control import (
     get_relation,
     ControlEditor,
     )
+from debmutate.debhelper import (
+    read_debhelper_compat_file,
+    )
 from lintian_brush.debhelper import (
     detect_debhelper_buildsystem,
     lowest_non_deprecated_compat_level,
     maximum_debhelper_compat_version,
-    read_debhelper_compat_file,
     DEBHELPER_BUILD_STEPS,
     )
 from lintian_brush.fixer import (

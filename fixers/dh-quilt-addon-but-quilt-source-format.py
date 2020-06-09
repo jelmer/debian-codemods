@@ -3,7 +3,7 @@
 
 from lintian_brush.rules import (
     dh_invoke_drop_with,
-    RulesUpdater,
+    RulesEditor,
     )
 from lintian_brush.patches import rules_find_patches_directory
 
@@ -15,7 +15,7 @@ def drop_quilt_with(line, target):
 try:
     with open('debian/source/format', 'r') as f:
         if f.read().strip() == '3.0 (quilt)':
-            with RulesUpdater() as updater:
+            with RulesEditor() as updater:
                 if rules_find_patches_directory(
                         updater.makefile) in ('debian/patches', None):
                     updater.legacy_update(command_line_cb=drop_quilt_with)

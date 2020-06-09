@@ -3,7 +3,7 @@
 import re
 import sys
 
-from lintian_brush.debhelper import get_debhelper_compat_level
+from debmutate.debhelper import get_debhelper_compat_level
 from lintian_brush.fixer import report_result
 from lintian_brush.rules import update_rules
 

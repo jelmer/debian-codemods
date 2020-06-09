@@ -13,7 +13,7 @@ from debmutate.control import (
     parse_relations,
     format_relations,
     )
-from lintian_brush.debhelper import (
+from debmutate.debhelper import (
     read_debhelper_compat_file,
     )
 from lintian_brush.fixer import report_result

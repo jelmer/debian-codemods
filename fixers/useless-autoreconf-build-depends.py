@@ -5,7 +5,7 @@ from debmutate.control import (
     drop_dependency,
     ControlEditor,
     )
-from lintian_brush.debhelper import (
+from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
     )
 from lintian_brush.debhelper import maximum_debhelper_compat_version

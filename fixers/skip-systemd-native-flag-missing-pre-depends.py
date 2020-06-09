@@ -7,7 +7,7 @@ from debmutate.control import (
     add_dependency,
     ControlEditor,
     )
-from lintian_brush.debhelper import (
+from debmutate.debhelper import (
     get_debhelper_compat_level,
     )
 from lintian_brush.fixer import report_result

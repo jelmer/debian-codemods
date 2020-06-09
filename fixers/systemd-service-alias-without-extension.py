@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
-from lintian_brush.systemd import systemd_service_files, SystemdServiceUpdater
+from lintian_brush.systemd import systemd_service_files, SystemdServiceEditor
 import os
 
 for path in systemd_service_files():
     base, required_ext = os.path.splitext(path)
-    with SystemdServiceUpdater(path) as updater:
+    with SystemdServiceEditor(path) as updater:
         for i, alias in enumerate(updater.file['Unit']['Alias']):
             base, ext = os.path.splitext(alias)
             if ext != required_ext:

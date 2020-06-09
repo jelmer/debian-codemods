@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-from lintian_brush.systemd import systemd_service_files, SystemdServiceUpdater
+from lintian_brush.systemd import systemd_service_files, SystemdServiceEditor
 
 for path in systemd_service_files():
-    with SystemdServiceUpdater(path) as updater:
+    with SystemdServiceEditor(path) as updater:
         unit = updater.file['Unit']
         try:
             unit.rename('BindTo', 'BindsTo')

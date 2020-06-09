@@ -3,7 +3,7 @@ import sys
 from debmutate.control import (
     ControlEditor,
     )
-from lintian_brush.debhelper import (
+from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
     )
 from lintian_brush.fixer import (

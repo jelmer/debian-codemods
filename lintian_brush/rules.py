@@ -21,7 +21,7 @@ import os
 import re
 from typing import Iterator, Optional, List
 
-from debmutate.reformatting import Updater
+from debmutate.reformatting import Editor
 
 
 def wildcard_to_re(wildcard: str) -> re.Pattern:
@@ -273,10 +273,10 @@ class Makefile(object):
                 r.clear()
 
 
-class MakefileUpdater(Updater):
+class MakefileEditor(Editor):
 
     def __init__(self, path):
-        super(MakefileUpdater, self).__init__(path, mode='b')
+        super(MakefileEditor, self).__init__(path, mode='b')
 
     def _parse(self, content):
         return Makefile.from_bytes(content)
@@ -289,10 +289,10 @@ class MakefileUpdater(Updater):
         return self._parsed
 
 
-class RulesUpdater(MakefileUpdater):
+class RulesEditor(MakefileEditor):
 
     def __init__(self, path='debian/rules'):
-        super(RulesUpdater, self).__init__(path)
+        super(RulesEditor, self).__init__(path)
 
     def legacy_update(self, command_line_cb=None, global_line_cb=None,
                       rule_cb=None, makefile_cb=None):
@@ -387,7 +387,7 @@ def update_rules(command_line_cb=None, global_line_cb=None,
     """
     if not os.path.exists(path):
         return False
-    with RulesUpdater(path) as updater:
+    with RulesEditor(path) as updater:
         updater.legacy_update(
             command_line_cb=command_line_cb,
             global_line_cb=global_line_cb,
