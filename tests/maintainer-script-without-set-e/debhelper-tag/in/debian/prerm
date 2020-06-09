@@ -1,0 +1,8 @@
+#!/bin/sh -e
+# Foo
+
+#DEBHELPER#
+
+# bar
+
+echo "blah"
