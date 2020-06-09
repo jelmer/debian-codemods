@@ -107,6 +107,11 @@ class Rule(object):
         self._component_str = b' ' + b' '.join(self.components)
         self.lines[0] = b'%s:%s' % (self.target, self._component_str)
 
+    def remove_component(self, component: bytes) -> None:
+        self.components.remove(component)
+        self._component_str = b' ' + b' '.join(self.components)
+        self.lines[0] = b'%s:%s' % (self.target, self._component_str)
+
     def dump_lines(self) -> Iterator[bytes]:
         for line in self.precomment:
             yield line + b'\n'
@@ -259,6 +264,11 @@ class Makefile(object):
         rule = Rule._from_first_line(line, precomment=precomment)
         self.contents.append(rule)
         return rule
+
+    def drop_phony(self, rule):
+        for r in self.iter_rules(b'.PHONY'):
+            if rule in r.components:
+                r.remove_component(rule)
 
 
 class MakefileUpdater(Updater):

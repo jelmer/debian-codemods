@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+get-orig-source:
+	uscan --verbose
+
+.PHONY: override_dh_install get-orig-source
+
+override_dh_install:
+	dh_install --blah

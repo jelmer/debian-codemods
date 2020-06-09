@@ -188,8 +188,9 @@ if __name__ == '__main__':
         fixers = select_fixers(fixers, args.fixer, args.exclude)
 
     suite = unittest.TestSuite()
-    for test_case in iter_test_cases(fixers):
-        suite.addTest(test_case)
+    for fixer in fixers:
+        for test_case in iter_test_cases(fixer):
+            suite.addTest(test_case)
 
     runner = unittest.TextTestRunner()
     runner.run(suite)
