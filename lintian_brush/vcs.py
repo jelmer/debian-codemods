@@ -20,15 +20,16 @@
 __all__ = [
     'fixup_broken_git_url',
     'sanitize_url',
-    'split_vcs_url',
     'determine_browser_url',
     ]
 
 
 import posixpath
 import re
-from typing import Optional, Tuple
+from typing import Optional
 from urllib.parse import urlparse, urlunparse, ParseResult
+
+from debmutate.vcs import split_vcs_url, unsplit_vcs_url
 
 
 KNOWN_GITLAB_SITES = [
@@ -43,34 +44,6 @@ KNOWN_GITLAB_SITES = [
 def is_gitlab_site(hostname: str, net_access: bool = False) -> bool:
     # TODO(jelmer): Try API to see if this is a gitlab site
     return hostname in KNOWN_GITLAB_SITES
-
-
-def split_vcs_url(url: str) -> Tuple[str, Optional[str], Optional[str]]:
-    subpath: Optional[str]
-    branch: Optional[str]
-    m = re.search(r' \[([^] ]+)\]', url)
-    if m:
-        url = url[:m.start()] + url[m.end():]
-        subpath = m.group(1)
-    else:
-        subpath = None
-    try:
-        (repo_url, branch) = url.split(' -b ', 1)
-    except ValueError:
-        branch = None
-        repo_url = url
-    return (repo_url, branch, subpath)
-
-
-def unsplit_vcs_url(repo_url: str,
-                    branch: Optional[str] = None,
-                    subpath: Optional[str] = None) -> str:
-    url = repo_url
-    if branch:
-        url = '%s -b %s' % (url, branch)
-    if subpath:
-        url = '%s [%s]' % (url, subpath)
-    return url
 
 
 def find_public_vcs_url(url: str) -> Optional[str]:

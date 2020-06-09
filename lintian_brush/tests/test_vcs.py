@@ -26,8 +26,6 @@ from lintian_brush.vcs import (
     fixup_rcp_style_git_url,
     plausible_url,
     sanitize_url,
-    split_vcs_url,
-    unsplit_vcs_url,
     find_public_vcs_url,
     )
 
@@ -176,61 +174,6 @@ class PlausibleUrlTests(TestCase):
         self.assertTrue(plausible_url('git@foo:blah'))
         self.assertTrue(plausible_url('git+ssh://git@foo/blah'))
         self.assertTrue(plausible_url('https://foo/blah'))
-
-
-class SplitVcsUrlTests(TestCase):
-
-    def test_none(self):
-        self.assertEqual(
-            ('https://github.com/jelmer/example', None, None),
-            split_vcs_url('https://github.com/jelmer/example'))
-        self.assertEqual(
-            ('https://github.com/jelmer/example', None, 'path/to/packaging'),
-            split_vcs_url(
-                'https://github.com/jelmer/example [path/to/packaging]'))
-
-    def test_branch(self):
-        self.assertEqual(
-            ('https://github.com/jelmer/example',
-                'master', 'path/to/packaging'),
-            split_vcs_url(
-                'https://github.com/jelmer/example [path/to/packaging] '
-                '-b master'))
-        self.assertEqual(
-            ('https://github.com/jelmer/example',
-                'master', 'path/to/packaging'),
-            split_vcs_url(
-                'https://github.com/jelmer/example -b master '
-                '[path/to/packaging]'))
-        self.assertEqual(
-            ('https://github.com/jelmer/example', 'master', None),
-            split_vcs_url(
-                'https://github.com/jelmer/example -b master'))
-
-
-class UnsplitVcsUrlTests(TestCase):
-
-    def test_none(self):
-        self.assertEqual(
-            'https://github.com/jelmer/example',
-            unsplit_vcs_url('https://github.com/jelmer/example', None, None))
-        self.assertEqual(
-            'https://github.com/jelmer/example [path/to/packaging]',
-            unsplit_vcs_url(
-                'https://github.com/jelmer/example', None,
-                'path/to/packaging'))
-
-    def test_branch(self):
-        self.assertEqual(
-            'https://github.com/jelmer/example -b master '
-            '[path/to/packaging]',
-            unsplit_vcs_url(
-                'https://github.com/jelmer/example', 'master',
-                'path/to/packaging'))
-        self.assertEqual(
-            'https://github.com/jelmer/example -b master',
-            unsplit_vcs_url(
-                'https://github.com/jelmer/example', 'master', None))
 
 
 class CanonicalizeVcsUrlTests(TestCase):

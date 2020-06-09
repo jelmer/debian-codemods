@@ -6,6 +6,9 @@ import socket
 import sys
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from debmutate.control import ControlEditor
+from debmutate.vcs import (
+    get_vcs_info,
+    )
 from lintian_brush.fixer import net_access_allowed
 from lintian_brush.salsa import (
     determine_browser_url as determine_salsa_browser_url,
@@ -14,7 +17,6 @@ from lintian_brush.salsa import (
     )
 from lintian_brush.vcs import (
     determine_browser_url,
-    split_vcs_url,
     )
 from lintian_brush.vcswatch import VcsWatch, VcsWatchError
 from email.utils import parseaddr
@@ -32,24 +34,6 @@ def is_on_obsolete_host(url):
     parsed_url = urlparse(url)
     host = parsed_url.netloc.split('@')[-1]
     return host in OBSOLETE_HOSTS
-
-
-def get_vcs_info(control):
-    if "Vcs-Git" in control:
-        repo_url, branch, subpath = split_vcs_url(control["Vcs-Git"])
-        return ("Git", repo_url)
-
-    if "Vcs-Bzr" in control:
-        return ("Bzr", control["Vcs-Bzr"])
-
-    if "Vcs-Svn" in control:
-        return ("Svn", control["Vcs-Svn"])
-
-    if "Vcs-Hg" in control:
-        repo_url, branch, subpath = split_vcs_url(control["Vcs-Hg"])
-        return ("Hg", repo_url)
-
-    return None, None
 
 
 def verify_salsa_repository(url):
@@ -144,7 +128,7 @@ fixed_tags = set()
 
 
 def migrate_from_obsolete_infra(control):
-    vcs_type, vcs_url = get_vcs_info(control)
+    vcs_type, vcs_url, unused_subpath = get_vcs_info(control)
     if vcs_type is None:
         return
     if not is_on_obsolete_host(vcs_url):

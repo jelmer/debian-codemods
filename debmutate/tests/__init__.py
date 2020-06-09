@@ -24,6 +24,9 @@ def test_suite():
         'changelog',
         'control',
         'deb822',
+        'debhelper',
+        'reformatting',
+        'vcs',
         'watch',
         ]
     module_names = [__name__ + '.test_' + name for name in names]
