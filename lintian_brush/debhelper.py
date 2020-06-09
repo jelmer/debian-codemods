@@ -122,6 +122,23 @@ def ensure_minimum_debhelper_version(source, minimum_version):
       version: The minimum version
     """
     # TODO(jelmer): Also check Build-Depends-Indep and Build-Depends-Arch?
+    for field in ['Build-Depends-Arch', 'Build-Depends-Indep']:
+        value = source.get(field, '')
+        try:
+            offset, debhelper_compat = get_relation(
+                value, "debhelper-compat")
+        except KeyError:
+            pass
+        else:
+            raise Exception('debhelper-compat in %s' % field)
+        try:
+            offset, debhelper_compat = get_relation(
+                value, "debhelper")
+        except KeyError:
+            pass
+        else:
+            raise Exception('debhelper compat in %s' % field)
+
     build_depends = source.get('Build-Depends', '')
     minimum_version = Version(minimum_version)
     try:

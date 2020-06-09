@@ -82,3 +82,7 @@ class EnsureMinumumDebhelperVersionTests(TestCase):
         d = {}
         self.assertTrue(ensure_minimum_debhelper_version(d, '10'))
         self.assertEqual(d, {'Build-Depends': 'debhelper (>= 10)'})
+
+    def test_in_indep(self):
+        d = {'Build-Depends-Indep': 'debhelper (>= 9)'}
+        self.assertRaises(Exception, ensure_minimum_debhelper_version, d, '10')
