@@ -153,9 +153,7 @@ def main(argv=None):
     if dirty_tracker:
         dirty_tracker.mark_clean()
 
-    try:
-        os.mkdir('debian')
-    except FileExistsError:
+    if os.path.exists('debian'):
         note('%s: A debian directory already exists.', wt.abspath(subpath))
         return 1
 
@@ -169,6 +167,9 @@ def main(argv=None):
     except KeyError:
         note('%s: Unable to determine upstream package name.',
              wt.abspath(subpath))
+        if not args.trust:
+            note('Run with --trust if you are okay running code '
+                 'from the package?')
         return 1
 
     # TODO(jelmer): Check that there are no unallowed characters in
@@ -183,63 +184,64 @@ def main(argv=None):
     else:
         wnpp_bugs = None
 
-    upstream_version = upstream_branch_version(
-        wt.branch, wt.last_revision(), source_name)
-    if upstream_version is None and 'X-Version' in metadata:
-        # They haven't done any releases yet. Assume we're ahead of the next
-        # announced release?
-        next_upstream_version = metadata['X-Version']
-        upstream_version = upstream_version_add_revision(
-            wt.branch, next_upstream_version, wt.last_revision(),
-            '~')
-    if upstream_version is None:
-        note('Unable to determine upstream version.')
-        return 1
-
-    version = Version(upstream_version + '-1')
-    source = Deb822()
-    source['Source'] = source_name
-    source['Standards-Version'] = '.'.join(
-        map(str, next(iter_standards_versions())[0]))
-    # TODO(jelmer): Autodetect binaries rather than letting the user specify
-    # them.
-    binaries = []
-    for name in args.binary:
-        try:
-            binary_name, arch = name.split(':')
-        except ValueError:
-            binary_name = name
-            arch = 'any'
-        binaries.append(Deb822({'Package': binary_name, 'Architecture': arch}))
-    source['Build-Depends'] = (
-        'debhelper-compat (= %d)' % maximum_debhelper_compat_version(
-            compat_release))
-
-    try:
-        write_debhelper_rules_template('debian/rules')
-        write_control_template('debian/control', source, binaries)
-        write_changelog_template(
-            'debian/changelog', source_name, version, wnpp_bugs)
-
-        initial_files = [
-            osutils.pathjoin(subpath, p)
-            for p in [
-                'debian', 'debian/changelog', 'debian/control',
-                'debian/rules']]
-        wt.add(initial_files)
-
-        wt.commit(
-            'Create debian/ directory', allow_pointless=False,
-            committer=get_committer(wt),
-            specific_files=initial_files,
-            reporter=NullCommitReporter())
-    except BaseException:
-        reset_tree(wt, dirty_tracker, subpath)
-        raise
-
-    fixers = available_lintian_fixers()
-
     with wt.lock_write():
+        upstream_version = upstream_branch_version(
+            wt.branch, wt.last_revision(), source_name)
+        if upstream_version is None and 'X-Version' in metadata:
+            # They haven't done any releases yet. Assume we're ahead of the next
+            # announced release?
+            next_upstream_version = metadata['X-Version']
+            upstream_version = upstream_version_add_revision(
+                wt.branch, next_upstream_version, wt.last_revision(),
+                '~')
+        if upstream_version is None:
+            note('Unable to determine upstream version.')
+            return 1
+
+        version = Version(upstream_version + '-1')
+        source = Deb822()
+        source['Source'] = source_name
+        source['Standards-Version'] = '.'.join(
+            map(str, next(iter_standards_versions())[0]))
+        # TODO(jelmer): Autodetect binaries rather than letting the user specify
+        # them.
+        binaries = []
+        for name in args.binary:
+            try:
+                binary_name, arch = name.split(':')
+            except ValueError:
+                binary_name = name
+                arch = 'any'
+            binaries.append(Deb822({'Package': binary_name, 'Architecture': arch}))
+        source['Build-Depends'] = (
+            'debhelper-compat (= %d)' % maximum_debhelper_compat_version(
+                compat_release))
+
+        try:
+            wt.mkdir(osutils.pathjoin(subpath, 'debian'))
+            write_debhelper_rules_template('debian/rules')
+            write_control_template('debian/control', source, binaries)
+            write_changelog_template(
+                'debian/changelog', source_name, version, wnpp_bugs)
+
+            initial_files = [
+                osutils.pathjoin(subpath, p)
+                for p in [
+                    'debian/changelog', 'debian/control',
+                    'debian/rules']]
+            wt.add(initial_files)
+
+            wt.commit(
+                'Create debian/ directory', allow_pointless=False,
+                committer=get_committer(wt),
+                specific_files=initial_files,
+                reporter=NullCommitReporter())
+        except BaseException:
+            reset_tree(wt, dirty_tracker, subpath)
+            raise
+
+        fixers = available_lintian_fixers()
+
         run_lintian_fixers(
             wt, fixers,
             update_changelog=False,
