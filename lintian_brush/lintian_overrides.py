@@ -236,7 +236,9 @@ def remove_unused():
         global unused_overrides
         if unused_overrides is None:
             import asyncio
-            unused_overrides = asyncio.run(get_unused_overrides(packages))
+            loop = asyncio.get_event_loop()
+            unused_overrides = loop.run_until_complete(
+                get_unused_overrides(packages))
         if is_unused(override, unused_overrides):
             removed.append(override)
             return None

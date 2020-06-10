@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 
 from lintian_brush.fixer import report_result
-from lintian_brush.systemd import systemd_service_files, SystemdServiceUpdater
+from lintian_brush.systemd import (
+    systemd_service_files, SystemdServiceUpdater, Undefined
+    )
 
 
 for path in systemd_service_files():
@@ -12,7 +14,7 @@ for path in systemd_service_files():
             updater.file['Service']['PIDFile'] = new_pidfile
         for key in updater.file['Service']:
             val = updater.file['Service'][key]
-            if old_pidfile not in val:
+            if isinstance(old_pidfile, Undefined) or old_pidfile not in val:
                 continue
             updater.file['Service'][key] = val.replace(
                 old_pidfile, new_pidfile)

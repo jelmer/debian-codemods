@@ -180,7 +180,8 @@ def main(argv=None):
     if not args.disable_net_access:
         import asyncio
         note('Searching for WNPP bug for %s', source_name)
-        wnpp_bugs = asyncio.run(find_wnpp_bugs(source_name))
+        loop = asyncio.get_event_loop()
+        wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
     else:
         wnpp_bugs = None
 
@@ -188,8 +189,8 @@ def main(argv=None):
         upstream_version = upstream_branch_version(
             wt.branch, wt.last_revision(), source_name)
         if upstream_version is None and 'X-Version' in metadata:
-            # They haven't done any releases yet. Assume we're ahead of the next
-            # announced release?
+            # They haven't done any releases yet. Assume we're ahead of the
+            # next announced release?
             next_upstream_version = metadata['X-Version']
             upstream_version = upstream_version_add_revision(
                 wt.branch, next_upstream_version, wt.last_revision(),
@@ -203,8 +204,8 @@ def main(argv=None):
         source['Source'] = source_name
         source['Standards-Version'] = '.'.join(
             map(str, next(iter_standards_versions())[0]))
-        # TODO(jelmer): Autodetect binaries rather than letting the user specify
-        # them.
+        # TODO(jelmer): Autodetect binaries rather than letting the user
+        # specify them.
         binaries = []
         for name in args.binary:
             try:
@@ -212,7 +213,8 @@ def main(argv=None):
             except ValueError:
                 binary_name = name
                 arch = 'any'
-            binaries.append(Deb822({'Package': binary_name, 'Architecture': arch}))
+            binaries.append(
+                Deb822({'Package': binary_name, 'Architecture': arch}))
         source['Build-Depends'] = (
             'debhelper-compat (= %d)' % maximum_debhelper_compat_version(
                 compat_release))

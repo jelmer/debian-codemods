@@ -23,9 +23,18 @@
 
 """Utility functions for dealing with systemd files."""
 
+__all__ = [
+    'Undefined',
+    'SystemdServiceUpdater',
+    'update_service_file',
+    ]
+
 from io import StringIO
 
-from iniparse.config import ConfigNamespace
+from iniparse.config import (
+    ConfigNamespace,
+    Undefined,
+    )
 from iniparse.ini import (
     LineContainer,
     SectionLine,

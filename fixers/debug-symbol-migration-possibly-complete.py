@@ -56,6 +56,7 @@ async def package_exists(package, release, version_info):
 
 def migration_done(rels):
     import asyncio
+    loop = asyncio.get_event_loop()
     previous = previous_release(compat_release)
     if previous is None:
         # We can't determine if the migration is done
@@ -64,7 +65,7 @@ def migration_done(rels):
         if len(rel) > 1:
             # Not sure how to handle | Replaces
             return False
-        if asyncio.run(package_exists(
+        if loop.run_until_complete(package_exists(
                 rel[0]['name'], previous, rel[0]['version'])) is not False:
             return False
     return True
