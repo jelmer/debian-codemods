@@ -269,6 +269,8 @@ class Makefile(object):
         for r in self.iter_rules(b'.PHONY'):
             if rule in r.components:
                 r.remove_component(rule)
+            if not r.components:
+                r.clear()
 
 
 class MakefileUpdater(Updater):
