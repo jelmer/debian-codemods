@@ -439,18 +439,25 @@ def guess_from_package_json(path, trust_package):
             yield UpstreamDatum('Bug-Database', url, 'certain')
 
 
-def guess_from_package_xml(path, trust_package):
+def xmlparse_simplify_namespaces(path, namespaces):
     import xml.etree.ElementTree as ET
+    namespaces = ['{%s}' % ns for ns in namespaces]
+    tree = ET.iterparse(path)
+    for _, el in tree:
+        for namespace in namespaces:
+            el.tag = el.tag.replace(namespace, '')
+    return tree.root
+
+
+def guess_from_package_xml(path, trust_package):
     try:
-        tree = ET.parse(path)
+        root = xmlparse_simplify_namespaces(path, [
+            'http://pear.php.net/dtd/package-2.0',
+            'http://pear.php.net/dtd/package-2.1'])
     except ET.ParseError as e:
         warn('Unable to parse package.xml: %s' % e)
         return
-    root = tree.getroot()
-    assert root.tag in (
-        'package', '{http://pear.php.net/dtd/package-2.0}package',
-        '{http://pear.php.net/dtd/package-2.1}package',
-        ), 'root tag is %r' % root.tag
+    assert root.tag == 'package', 'root tag is %r' % root.tag
     name_tag = root.find('name')
     if name_tag is not None:
         yield UpstreamDatum('Name', name_tag.text, 'certain')
@@ -933,6 +940,62 @@ def guess_from_cargo(path, trust_package):
             yield UpstreamDatum('X-Version', package['version'], 'confident')
 
 
+def guess_from_pom_xml(path, trust_package=False):
+    # Documentation: https://maven.apache.org/pom.html
+
+    import xml.etree.ElementTree as ET
+    try:
+        root = xmlparse_simplify_namespaces(path, [
+            'http://maven.apache.org/POM/4.0.0'])
+    except ET.ParseError as e:
+        warn('Unable to parse package.xml: %s' % e)
+        return
+    assert root.tag == 'project', 'root tag is %r' % root.tag
+    name_tag = root.find('name')
+    if name_tag is not None:
+        yield UpstreamDatum('Name', name_tag.text, 'certain')
+    description_tag = root.find('description')
+    if description_tag is not None:
+        yield UpstreamDatum('X-Summary', description_tag.text, 'certain')
+    version_tag = root.find('version')
+    if version_tag is not None and not '$' in version_tag.text:
+        yield UpstreamDatum('X-Version', version_tag.text, 'certain')
+    licenses_tag = root.find('licenses')
+    if licenses_tag is not None:
+        licenses = []
+        for license_tag in licenses_tag.findall('license'):
+            name_tag = license_tag.find('name')
+            if name_tag is not None:
+                licenses.append(name_tag.text)
+    for scm_tag in root.findall('scm'):
+        url_tag = scm_tag.find('url')
+        if url_tag is not None:
+            yield UpstreamDatum('Repository-Browse', url_tag.text, 'certain')
+        connection_tag = scm_tag.find('connection')
+        if connection_tag is not None:
+            try:
+                (scm, provider, provider_specific) = connection_tag.text.split(
+                    ':', 2)
+            except ValueError:
+                warn('Invalid format for SCM connection: %s', connection)
+                continue
+            if scm != 'scm':
+                warn('SCM connection does not start with scm: prefix: %s',
+                     connection)
+                continue
+            yield UpstreamDatum(
+                'Repository', sanitize_vcs_url(provider_specific), 'certain')
+    for issue_mgmt_tag in root.findall('issueManagement'):
+        yield UpstreamDatum('Bug-Database', issue_mgmt_tag.text, 'certain')
+    url_tag = root.find('url')
+    if url_tag:
+        if not url_tag.text.startswith('scm:'):
+            # Yeah, uh, not a URL.
+            pass
+        else:
+            yield UpstreamDatum('Homepage', url_tag.text, 'certain')
+
+
 def _get_guessers(path, trust_package=False):
     CANDIDATES = [
         ('debian/watch', guess_from_debian_watch),
@@ -948,6 +1011,7 @@ def _get_guessers(path, trust_package=False):
         ('configure', guess_from_configure),
         ('DESCRIPTION', guess_from_r_description),
         ('Cargo.toml', guess_from_cargo),
+        ('pom.xml', guess_from_pom_xml),
         ]
 
     # Search for something Python-y

@@ -2,6 +2,7 @@ lintian-brush (0.71) UNRELEASED; urgency=medium
 
   * When dropping get-orig-source target, also update .PHONY.
   * Remove .PHONY when removing a component from it leaves it empty.
+  * Add support for reading upstream metadata from pom.xml.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 09 Jun 2020 18:18:59 +0000
 
