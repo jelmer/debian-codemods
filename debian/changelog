@@ -4,6 +4,7 @@ lintian-brush (0.71) UNRELEASED; urgency=medium
   * Remove .PHONY when removing a component from it leaves it empty.
   * Add support for reading upstream metadata from pom.xml.
   * Convert private VCS URLs to public URLs, e.gg. on salsa or GitHub.
+  * maintainer-script-without-set-e: Improve spacing.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 09 Jun 2020 18:18:59 +0000
 
