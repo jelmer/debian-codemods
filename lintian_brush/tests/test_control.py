@@ -575,6 +575,8 @@ class IsRelationImpliedTests(TestCase):
 
     def test_implied(self):
         self.assertTrue(is_relation_implied('bzr (= 3)', 'bzr (= 3)'))
+        self.assertTrue(is_relation_implied('bzr (>= 3)', 'bzr (>= 4)'))
+        self.assertTrue(is_relation_implied('bzr (>= 4)', 'bzr (>= 4)'))
         self.assertTrue(is_relation_implied('bzr', 'bzr'))
         self.assertTrue(is_relation_implied('bzr | foo', 'bzr'))
         self.assertFalse(is_relation_implied('bzr (= 3)', 'bzr (>= 3)'))

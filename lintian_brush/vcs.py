@@ -73,7 +73,7 @@ def unsplit_vcs_url(repo_url: str,
     return url
 
 
-def find_public_vcs_url(url: str) -> str:
+def find_public_vcs_url(url: str) -> Optional[str]:
     (repo_url, branch, subpath) = split_vcs_url(url)
     parsed = urlparse(repo_url)
     revised_url = None
@@ -82,7 +82,7 @@ def find_public_vcs_url(url: str) -> str:
             return url
         revised_url = urlunparse(
                 ('https', 'github.com', parsed.path, None, None, None))
-    if is_gitlab_site(parsed.hostname):
+    if parsed.hostname and is_gitlab_site(parsed.hostname):
         # Not sure if gitlab even support plain http?
         if parsed.scheme in ('https', 'http'):
             return url

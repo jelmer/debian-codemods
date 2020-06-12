@@ -1,14 +1,17 @@
 #!/usr/bin/python3
 
 import os
+import sys
 
-from debian.changelog import Version
+from typing import List
 
 from lintian_brush.control import (
-    drop_dependency,
     ensure_exact_version,
-    get_relation,
+    iter_relations,
+    is_relation_implied,
     ControlUpdater,
+    parse_relations,
+    format_relations,
     )
 from lintian_brush.debhelper import (
     read_debhelper_compat_file,
@@ -19,49 +22,60 @@ from lintian_brush.rules import (
     )
 
 
-if os.path.exists('debian/compat'):
-    # Package currently stores compat version in debian/compat..
+if not os.path.exists('debian/compat'):
+    sys.exit(0)
 
-    debhelper_compat_version = read_debhelper_compat_file('debian/compat')
+# Package currently stores compat version in debian/compat..
 
-    # debhelper >= 11 supports the magic debhelper-compat build-dependency.
-    # Exclude cdbs, since it only knows to get the debhelper compat version
-    # from debian/compat.
+debhelper_compat_version = read_debhelper_compat_file('debian/compat')
 
-    if debhelper_compat_version >= 11 and not check_cdbs():
-        # Upgrade to using debhelper-compat, drop debian/compat file.
-        os.unlink('debian/compat')
+# debhelper >= 11 supports the magic debhelper-compat build-dependency.
+# Exclude cdbs, since it only knows to get the debhelper compat version
+# from debian/compat.
 
-        # Assume that the compat version is set in Build-Depends
-        with ControlUpdater() as updater:
-            # TODO(jelmer): Use iter_relations rather than get_relation,
-            # since that allows for complex debhelper rules.
-            try:
-                position, debhelper_relation = get_relation(
-                    updater.source.get("Build-Depends", ""), "debhelper")
-            except KeyError:
-                position = None
-                debhelper_relation = []
-            updater.source["Build-Depends"] = ensure_exact_version(
-                updater.source.get("Build-Depends", ""), "debhelper-compat",
-                "%d" % debhelper_compat_version, position=position)
-            current_compat_version = Version("%d" % debhelper_compat_version)
-            # If there are debhelper dependencies >> new debhelper compat
-            # version, then keep them.
-            for rel in debhelper_relation:
-                if not rel.version:
-                    continue
-                if rel.version[0] in ('=', '>=') and Version(
-                        rel.version[1]) > current_compat_version:
-                    break
-                if rel.version[0] == '>>' and Version(
-                        rel.version[1]) >= current_compat_version:
-                    break
-            else:
-                updater.source["Build-Depends"] = drop_dependency(
-                    updater.source.get("Build-Depends", ""), "debhelper")
-                if updater.source.get("Build-Depends") == "":
-                    del updater.source["Build-Depends"]
+if debhelper_compat_version < 11 or check_cdbs():
+    sys.exit(0)
+
+# Upgrade to using debhelper-compat, drop debian/compat file.
+os.unlink('debian/compat')
+
+# Assume that the compat version is set in Build-Depends
+with ControlUpdater() as updater:
+    insert_position = None
+    for field in ['Build-Depends', 'Build-Depends-Indep',
+                  'Build-Depends-Arch']:
+        to_delete: List[int] = []
+        for offset, relation in iter_relations(
+                updater.source.get(field, ''), 'debhelper'):
+            if (field == 'Build-Depends' and
+                    set([r.name for r in relation]) == set(['debhelper'])):
+                # In the simple case, we'd just replace the debhelper
+                # dependency with a debhelper-compat one, so remember the
+                # location.
+                insert_position = offset - len(to_delete)
+            if is_relation_implied(
+                    relation, 'debhelper (>= %d)' % debhelper_compat_version):
+                to_delete.append(offset)
+
+        if to_delete:
+            # TODO(jelmer): Move this into a helper function in
+            # lintian_brush.control.
+            relations = parse_relations(updater.source[field])
+            for i in reversed(to_delete):
+                if i == 0 and len(relations) > 1:
+                    # If the first item is removed, then copy the spacing to
+                    # the next item
+                    relations[1] = (
+                        relations[0][0], relations[1][1], relations[0][2])
+                del relations[i]
+
+            updater.source[field] = format_relations(relations)
+            if updater.source.get(field) == "":
+                del updater.source[field]
+
+    updater.source["Build-Depends"] = ensure_exact_version(
+        updater.source.get("Build-Depends", ""), "debhelper-compat",
+        "%d" % debhelper_compat_version, position=insert_position)
 
 report_result(
     "Set debhelper-compat version in Build-Depends.",

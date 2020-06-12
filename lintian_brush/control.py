@@ -21,12 +21,11 @@ import collections
 import contextlib
 from itertools import takewhile
 import os
-from typing import Optional, Callable
+from typing import Optional, Callable, Tuple, Union, List
 
 from debian.changelog import Version
 from debian.deb822 import Deb822
 import subprocess
-from typing import List
 
 from ._deb822 import PkgRelation
 from .deb822 import Deb822Updater, ChangeConflict
@@ -548,6 +547,34 @@ def ensure_some_version(relationstr, package):
     return format_relations(relations)
 
 
+def filter_dependencies(
+        relations: List[Tuple[str, List[PkgRelation], str]],
+        keep: Callable[[List[PkgRelation]], bool]
+        ) -> List[Tuple[str, List[PkgRelation], str]]:
+    """Filter out some dependencies.
+
+    Args:
+      relations: List of relations
+      keep: callback that receives a relation and returns a boolean
+    Returns:
+      Updated list of relations
+    """
+    ret = []
+    for i, entry in enumerate(relations):
+        (head_whitespace, relation, tail_whitespace) = entry
+        if isinstance(relation, str):  # formatting
+            ret.append(entry)
+            continue
+        if keep(relation):
+            ret.append(entry)
+            continue
+        elif i == 0 and len(relations) > 1:
+            # If the first item is removed, then copy the spacing to the next
+            # item
+            relations[1] = (head_whitespace, relations[1][1], tail_whitespace)
+    return ret
+
+
 def drop_dependency(relationstr, package):
     """Drop a dependency from a depends line.
 
@@ -558,20 +585,11 @@ def drop_dependency(relationstr, package):
       updated relation string
     """
     relations = parse_relations(relationstr)
-    ret = []
-    for i, entry in enumerate(relations):
-        (head_whitespace, relation, tail_whitespace) = entry
-        if isinstance(relation, str):  # formatting
-            ret.append(entry)
-            continue
+
+    def keep(relation):
         names = [r.name for r in relation]
-        if set(names) != set([package]):
-            ret.append(entry)
-            continue
-        elif i == 0 and len(relations) > 1:
-            # If the first item is removed, then copy the spacing to the next
-            # item
-            relations[1] = (head_whitespace, relations[1][1], tail_whitespace)
+        return set(names) != set([package])
+    ret = filter_dependencies(relations, keep)
     if relations != ret:
         return format_relations(ret)
     # Just return the original; we don't preserve all formatting yet.
@@ -603,7 +621,7 @@ def delete_from_list(liststr, item_to_delete):
     return ','.join(items)
 
 
-def is_dep_implied(dep, outer):
+def is_dep_implied(dep: PkgRelation, outer: PkgRelation) -> bool:
     """Check if one dependency is implied by another.
     """
     if dep.name != outer.name:
@@ -632,7 +650,9 @@ def is_dep_implied(dep, outer):
         raise AssertionError('unable to handle checks for %s' % dep.version[0])
 
 
-def is_relation_implied(inner, outer):
+def is_relation_implied(
+        inner: Union[str, List[PkgRelation]],
+        outer: Union[str, List[PkgRelation]]) -> bool:
     """Check if one relation implies another.
 
     Args:
@@ -641,15 +661,20 @@ def is_relation_implied(inner, outer):
     Return: boolean
     """
     if isinstance(inner, str):
-        inner = PkgRelation.parse(inner)
+        inner_rel = PkgRelation.parse(inner)
+    else:
+        inner_rel = inner
     if isinstance(outer, str):
-        outer = PkgRelation.parse(outer)
+        outer_rel = PkgRelation.parse(outer)
+    else:
+        outer_rel = outer
 
-    if inner == outer:
+    if inner_rel == outer_rel:
         return True
 
     # "bzr >= 1.3" implied by "bzr >= 1.3 | libc6"
-    for inner_dep in inner:
-        if all(is_dep_implied(inner_dep, outer_dep) for outer_dep in outer):
+    for inner_dep in inner_rel:
+        if all(is_dep_implied(inner_dep, outer_dep)
+               for outer_dep in outer_rel):
             return True
     return False
