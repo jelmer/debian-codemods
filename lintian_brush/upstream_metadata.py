@@ -450,6 +450,7 @@ def xmlparse_simplify_namespaces(path, namespaces):
 
 
 def guess_from_package_xml(path, trust_package):
+    import xml.etree.ElementTree as ET
     try:
         root = xmlparse_simplify_namespaces(path, [
             'http://pear.php.net/dtd/package-2.0',
@@ -958,7 +959,7 @@ def guess_from_pom_xml(path, trust_package=False):
     if description_tag is not None:
         yield UpstreamDatum('X-Summary', description_tag.text, 'certain')
     version_tag = root.find('version')
-    if version_tag is not None and not '$' in version_tag.text:
+    if version_tag is not None and '$' not in version_tag.text:
         yield UpstreamDatum('X-Version', version_tag.text, 'certain')
     licenses_tag = root.find('licenses')
     if licenses_tag is not None:
@@ -973,14 +974,14 @@ def guess_from_pom_xml(path, trust_package=False):
             yield UpstreamDatum('Repository-Browse', url_tag.text, 'certain')
         connection_tag = scm_tag.find('connection')
         if connection_tag is not None:
+            connection = connection_tag.text
             try:
-                (scm, provider, provider_specific) = connection_tag.text.split(
-                    ':', 2)
+                (scm, provider, provider_specific) = connection.split(':', 2)
             except ValueError:
-                warn('Invalid format for SCM connection: %s', connection)
+                warn('Invalid format for SCM connection: %s' % connection)
                 continue
             if scm != 'scm':
-                warn('SCM connection does not start with scm: prefix: %s',
+                warn('SCM connection does not start with scm: prefix: %s' %
                      connection)
                 continue
             yield UpstreamDatum(

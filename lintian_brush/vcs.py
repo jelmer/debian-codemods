@@ -73,6 +73,46 @@ def unsplit_vcs_url(repo_url: str,
     return url
 
 
+def find_public_vcs_url(url: str) -> str:
+    (repo_url, branch, subpath) = split_vcs_url(url)
+    parsed = urlparse(repo_url)
+    revised_url = None
+    if parsed.hostname == 'github.com':
+        if parsed.scheme in ('https', 'http', 'git'):
+            return url
+        revised_url = urlunparse(
+                ('https', 'github.com', parsed.path, None, None, None))
+    if is_gitlab_site(parsed.hostname):
+        # Not sure if gitlab even support plain http?
+        if parsed.scheme in ('https', 'http'):
+            return url
+        if parsed.scheme == 'ssh':
+            revised_url = urlunparse(
+                ('https', parsed.hostname, parsed.path, None, None, None))
+    if parsed.hostname in (
+            'code.launchpad.net', 'bazaar.launchpad.net', 'git.launchpad.net'):
+        if parsed.scheme.startswith('http') or parsed.scheme == 'lp':
+            return url
+        if parsed.scheme in ('ssh', 'bzr+ssh'):
+            revised_url = urlunparse(
+                ('https', parsed.hostname, parsed.path, None, None, None))
+
+    if revised_url:
+        return unsplit_vcs_url(revised_url, branch, subpath)
+
+    return None
+
+
+def fixup_rcp_style_git_url(url: str) -> str:
+    (repo_url, branch, subpath) = split_vcs_url(url)
+    from breezy.location import rcp_location_to_url
+    try:
+        repo_url = rcp_location_to_url(repo_url)
+    except ValueError:
+        return url
+    return unsplit_vcs_url(repo_url, branch, subpath)
+
+
 def sanitize_url(url: str) -> str:
     url = url.strip()
     if url.startswith('git+http:') or url.startswith('git+https:'):
@@ -82,6 +122,8 @@ def sanitize_url(url: str) -> str:
     if url.startswith('bzr+lp:') or url.startswith('bzr+http'):
         url = url.split('+', 1)[1]
     url = fixup_broken_git_url(url)
+    url = fixup_rcp_style_git_url(url)
+    url = find_public_vcs_url(url) or url
     url = canonical_vcs_git_url(url)
     url = find_secure_vcs_url(url, net_access=False) or url
     return url
