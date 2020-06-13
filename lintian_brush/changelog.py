@@ -68,6 +68,43 @@ class ChangelogUpdater(Updater):
         return self._parsed
 
 
+def changes_sections(
+        changes: List[str]
+        ) -> Iterator[
+            Tuple[Optional[str], List[int], List[Tuple[List[int], List[str]]]]
+        ]:
+    section = (None, [], [])
+    change = []
+    for i, line in enumerate(changes):
+        if not line and i == 0:
+            # Skip the first line
+            continue
+        if not line:
+            section[1].append(i)
+            continue
+        m = re.fullmatch(r'  \[ (.*) \]', line)
+        if m:
+            if change:
+                section[2].append(change)
+                change = []
+            if section[1]:
+                yield section
+            section = (m.group(1), [i], [])
+            continue
+        if not line.startswith(INITIAL_INDENT):
+            change.append((i, line))
+            section[1].append(i)
+        else:
+            if change:
+                section[2].append(change)
+            change = [(i, line)]
+            section[1].append(i)
+    if change:
+        section[2].append(change)
+    if section[1]:
+        yield section
+
+
 def changes_by_author(
         changes: List[str]
         ) -> Iterator[Tuple[Optional[str], List[int], List[str]]]:
@@ -78,26 +115,10 @@ def changes_by_author(
     Returns:
       Iterator over items by author (maintainer, offsets, changes)
     """
-    linenos = []
-    change = []
-    author = None
-    for i, line in enumerate(changes):
-        if not line:
-            continue
-        m = re.fullmatch(r'  \[ (.*) \]', line)
-        if m:
-            author = m.group(1)
-            continue
-        if not line.startswith(INITIAL_INDENT):
-            change.append(line)
-            linenos.append(i)
-        else:
-            if change:
-                yield (author, linenos, change)
-            change = [line]
-            linenos = [i]
-    if change:
-        yield (author, linenos, change)
+    for (author, linenos, contents) in changes_sections(changes):
+        for change_entries in contents:
+            linenos, change_lines = zip(*change_entries)
+            yield (author, linenos, change_lines)
 
 
 class TextWrapper(textwrap.TextWrapper):

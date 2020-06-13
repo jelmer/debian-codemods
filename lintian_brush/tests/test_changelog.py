@@ -31,6 +31,7 @@ from lintian_brush.changelog import (
     rewrap_change,
     add_changelog_entry,
     _inc_version,
+    changes_sections,
     )
 
 from debian.changelog import Version
@@ -364,3 +365,35 @@ class IncVersionTests(TestCase):
         self.assertEqual(Version('9.11-1~1'), _inc_version(Version('9.11-1~')))
         self.assertEqual(
             Version('9.11-1~2'), _inc_version(Version('9.11-1~1')))
+
+
+class ChangesSectionsTests(TestCase):
+
+    def test_simple(self):
+        self.assertEqual([
+            (None, [1, 2, 3, 4], [
+                ([(1, '  * Change 1')]),
+                ([(2, '  * Change 2'), (3, '    rest')]),
+            ])], list(changes_sections([
+                '',
+                '  * Change 1',
+                '  * Change 2',
+                '    rest',
+                ''
+                ])))
+
+    def test_with_header(self):
+        self.assertEqual([
+            ('Author 1', [1, 2, 3], [([(2, '  * Change 1')])]),
+            ('Author 2', [4, 5, 6, 7], [([(5, '  * Change 2'),
+                                          (6, '    rest')])]),
+            ], list(changes_sections([
+                '',
+                '  [ Author 1 ]',
+                '  * Change 1',
+                '',
+                '  [ Author 2 ]',
+                '  * Change 2',
+                '    rest',
+                '',
+                ])))
