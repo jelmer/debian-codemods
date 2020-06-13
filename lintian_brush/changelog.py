@@ -71,10 +71,12 @@ class ChangelogUpdater(Updater):
 def changes_sections(
         changes: List[str]
         ) -> Iterator[
-            Tuple[Optional[str], List[int], List[Tuple[List[int], List[str]]]]
+            Tuple[Optional[str], List[int], List[List[Tuple[int, str]]]]
         ]:
-    section = (None, [], [])
-    change = []
+    section: Tuple[
+        Optional[str], List[int],
+        List[List[Tuple[int, str]]]] = (None, [], [])
+    change: List[Tuple[int, str]] = []
     for i, line in enumerate(changes):
         if not line and i == 0:
             # Skip the first line
@@ -117,8 +119,8 @@ def changes_by_author(
     """
     for (author, linenos, contents) in changes_sections(changes):
         for change_entries in contents:
-            linenos, change_lines = zip(*change_entries)
-            yield (author, linenos, change_lines)
+            change_linenos, change_lines = zip(*change_entries)
+            yield (author, change_linenos, change_lines)  # type: ignore
 
 
 class TextWrapper(textwrap.TextWrapper):
