@@ -42,6 +42,7 @@ os.unlink('debian/compat')
 # Assume that the compat version is set in Build-Depends
 with ControlUpdater() as updater:
     insert_position = None
+    changed_fields = []
     for field in ['Build-Depends', 'Build-Depends-Indep',
                   'Build-Depends-Arch']:
         to_delete: List[int] = []
@@ -70,12 +71,15 @@ with ControlUpdater() as updater:
                 del relations[i]
 
             updater.source[field] = format_relations(relations)
-            if updater.source.get(field) == "":
-                del updater.source[field]
+            changed_fields.append(field)
 
     updater.source["Build-Depends"] = ensure_exact_version(
         updater.source.get("Build-Depends", ""), "debhelper-compat",
         "%d" % debhelper_compat_version, position=insert_position)
+
+    for field in changed_fields:
+        if updater.source.get(field) == "":
+            del updater.source[field]
 
 report_result(
     "Set debhelper-compat version in Build-Depends.",

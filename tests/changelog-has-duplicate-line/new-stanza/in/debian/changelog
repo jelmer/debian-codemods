@@ -1,0 +1,13 @@
+blah (5.42+dfsg1-2) UNRELEASED; urgency=medium
+
+  [ Jelmer Vernooij ]
+  * New upstream release.
+  * Fix day-of-week for changelog entry 4.23-1.
+
+  [ Joe Somebody ]
+  * New upstream release.
+
+  [ Jelmer Vernooij ]
+  * Fix day-of-week for changelog entry 4.23-1.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:25:35 +0000

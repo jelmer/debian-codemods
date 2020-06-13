@@ -68,7 +68,16 @@ class ChangelogUpdater(Updater):
         return self._parsed
 
 
-def changes_by_author(changes):
+def changes_by_author(
+        changes: List[str]
+        ) -> Iterator[Tuple[Optional[str], List[int], List[str]]]:
+    """Changes by author.
+
+    Args:
+      changes: Find changes by author from a list of lines
+    Returns:
+      Iterator over items by author (maintainer, offsets, changes)
+    """
     linenos = []
     change = []
     author = None
