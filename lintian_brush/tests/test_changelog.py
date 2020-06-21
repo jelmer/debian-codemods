@@ -366,7 +366,8 @@ lintian-brush (0.35) unstable; urgency=medium
         self.overrideEnv('DEBFULLNAME', 'Joe Example')
         self.overrideEnv('DEBEMAIL', 'joe@example.com')
         try:
-            add_changelog_entry(tree, 'debian/changelog', ['And this one is new.'])
+            add_changelog_entry(
+                tree, 'debian/changelog', ['And this one is new.'])
         except ChangelogCreateError:
             self.skipTest(
                 'python-debian does not allow serializing changelog '
@@ -398,7 +399,8 @@ lintian-brush (0.35) unstable; urgency=medium
         self.overrideEnv('DEBFULLNAME', 'Joe Example')
         self.overrideEnv('DEBEMAIL', 'joe@example.com')
         try:
-            add_changelog_entry(tree, 'debian/changelog', ['And this one is new.'])
+            add_changelog_entry(
+                tree, 'debian/changelog', ['And this one is new.'])
         except ChangelogCreateError:
             self.skipTest(
                 'python-debian does not allow serializing changelog '
