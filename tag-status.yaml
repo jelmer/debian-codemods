@@ -1339,6 +1339,8 @@
 - tag: web-application-depends-on-apache2-data-package
 - tag: web-application-works-only-with-apache
 - tag: whitespace-after-continuation-character
+- tag: wiki-copyright-format-uri
+  comment: should be integrated into copyright-format-uri
 - tag: wildcard-matches-nothing-in-dep5-copyright
 - tag: windows-devel-file-in-package
 - tag: windows-thumbnail-database-in-package
