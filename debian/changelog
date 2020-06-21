@@ -10,6 +10,8 @@ lintian-brush (0.71) UNRELEASED; urgency=medium
   * When removing duplicate lines from a changelog, also drop any
     sections that may be left empty.
   * Properly update changelog entries without trailer.
+  * When removing debug symbol migration commands, be more aggressive
+    cleaning up commands.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 09 Jun 2020 18:18:59 +0000
 

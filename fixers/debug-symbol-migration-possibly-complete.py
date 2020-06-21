@@ -89,6 +89,9 @@ def eliminate_dbgsym_migration(line, target):
         b'([ \t]+)--dbgsym-migration[= ](\'[^\']+\'|\"[^\"]+\"|[^ ]+)',
         rep_dbgsym_migration, line)
 
+    if line == b'dh_strip || dh_strip':
+        line = b'dh_strip'
+
     return line
 
 
