@@ -351,6 +351,62 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
 """, 'debian/changelog')
 
+    def test_trailer_only(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+lintian-brush (0.35) unstable; urgency=medium
+
+  * This line already existed.
+
+ --
+""")])
+        tree.add(['debian', 'debian/changelog'])
+        self.overrideEnv('DEBFULLNAME', 'Joe Example')
+        self.overrideEnv('DEBEMAIL', 'joe@example.com')
+        add_changelog_entry(tree, 'debian/changelog', ['And this one is new.'])
+        self.assertFileEqual("""\
+lintian-brush (0.35) unstable; urgency=medium
+
+  * This line already existed.
+  * And this one is new.
+
+ --
+""", 'debian/changelog')
+
+    def test_trailer_only_existing_author(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+lintian-brush (0.35) unstable; urgency=medium
+
+  * This line already existed.
+
+  [ Jane Example ]
+  * And this one has an existing author.
+
+ --
+""")])
+        tree.add(['debian', 'debian/changelog'])
+        self.overrideEnv('DEBFULLNAME', 'Joe Example')
+        self.overrideEnv('DEBEMAIL', 'joe@example.com')
+        add_changelog_entry(tree, 'debian/changelog', ['And this one is new.'])
+        self.assertFileEqual("""\
+lintian-brush (0.35) unstable; urgency=medium
+
+  * This line already existed.
+
+  [ Jane Example ]
+  * And this one has an existing author.
+
+  [ Joe Example ]
+  * And this one is new.
+
+ --
+""", 'debian/changelog')
+
 
 class IncVersionTests(TestCase):
 

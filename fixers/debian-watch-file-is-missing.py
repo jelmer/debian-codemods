@@ -159,7 +159,6 @@ wf = WatchFile()
 (entry, site, certainty) = winner
 wf.entries.append(winner[0])
 
-# TODO(jelmer): Find candidate with highest certainty
 with open('debian/watch', 'w') as f:
     wf.dump(f)
 

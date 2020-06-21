@@ -240,15 +240,17 @@ def _changelog_add_entry(
         timestamp = datetime.now()
     if maintainer is None:
         maintainer = get_maintainer()
-    if cl[0].distributions == 'UNRELEASED':
+    if (cl[0].distributions == 'UNRELEASED' or (
+            cl[0].author is None and cl[0].date is None)):
         by_author = list(changes_by_author(cl[0].changes()))
         if all([author is None for (author, linenos, change) in by_author]):
-            entry_maintainer = parseaddr(cl[0].author)
-            if entry_maintainer != maintainer:
-                cl[0]._changes.insert(1, '  [ %s ]' % entry_maintainer[0])
-                if cl[0]._changes[-1]:
-                    cl[0]._changes.append('')
-                cl[0]._changes.append('  [ %s ]' % maintainer[0])
+            if cl[0].author is not None:
+                entry_maintainer = parseaddr(cl[0].author)
+                if entry_maintainer != maintainer:
+                    cl[0]._changes.insert(1, '  [ %s ]' % entry_maintainer[0])
+                    if cl[0]._changes[-1]:
+                        cl[0]._changes.append('')
+                    cl[0]._changes.append('  [ %s ]' % maintainer[0])
         else:
             if by_author[-1][0] != maintainer[0]:
                 if cl[0]._changes[-1]:
