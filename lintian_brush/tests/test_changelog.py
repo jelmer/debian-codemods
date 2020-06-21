@@ -365,7 +365,12 @@ lintian-brush (0.35) unstable; urgency=medium
         tree.add(['debian', 'debian/changelog'])
         self.overrideEnv('DEBFULLNAME', 'Joe Example')
         self.overrideEnv('DEBEMAIL', 'joe@example.com')
-        add_changelog_entry(tree, 'debian/changelog', ['And this one is new.'])
+        try:
+            add_changelog_entry(tree, 'debian/changelog', ['And this one is new.'])
+        except ChangelogCreateError:
+            self.skipTest(
+                'python-debian does not allow serializing changelog '
+                'with empty trailer')
         self.assertFileEqual("""\
 lintian-brush (0.35) unstable; urgency=medium
 
@@ -392,7 +397,12 @@ lintian-brush (0.35) unstable; urgency=medium
         tree.add(['debian', 'debian/changelog'])
         self.overrideEnv('DEBFULLNAME', 'Joe Example')
         self.overrideEnv('DEBEMAIL', 'joe@example.com')
-        add_changelog_entry(tree, 'debian/changelog', ['And this one is new.'])
+        try:
+            add_changelog_entry(tree, 'debian/changelog', ['And this one is new.'])
+        except ChangelogCreateError:
+            self.skipTest(
+                'python-debian does not allow serializing changelog '
+                'with empty trailer')
         self.assertFileEqual("""\
 lintian-brush (0.35) unstable; urgency=medium
 
