@@ -997,6 +997,22 @@ def guess_from_pom_xml(path, trust_package=False):
             yield UpstreamDatum('Homepage', url_tag.text, 'certain')
 
 
+def guess_from_git_config(path, trust_package=False):
+    from dulwich.config import ConfigFile
+
+    cfg = ConfigFile.from_path(path)
+    # If there's a remote named upstream, that's a plausible source..
+    try:
+        urlb = cfg.get((b'remote', b'upstream'), b'url')
+    except KeyError:
+        pass
+    else:
+        url = urlb.decode('utf-8')
+        yield UpstreamDatum('Repository', url, 'likely')
+
+    # TODO(jelmer): Try origin?
+
+
 def _get_guessers(path, trust_package=False):
     CANDIDATES = [
         ('debian/watch', guess_from_debian_watch),
@@ -1013,6 +1029,7 @@ def _get_guessers(path, trust_package=False):
         ('DESCRIPTION', guess_from_r_description),
         ('Cargo.toml', guess_from_cargo),
         ('pom.xml', guess_from_pom_xml),
+        ('.git/config', guess_from_git_config),
         ]
 
     # Search for something Python-y
