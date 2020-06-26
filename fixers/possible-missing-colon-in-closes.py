@@ -23,15 +23,16 @@ async def valid_bug(package, bug):
     global debbugs
     if debbugs is None:
         from lintian_brush.debbugs import DebBugs
-        debbugs = DebBugs()
+        _debbugs = DebBugs()
         try:
-            await debbugs.connect()
+            await _debbugs.connect()
         except ImportError:
             # No asynpcg?
             return None
         except socket.gaierror as e:
             warn('Unable to connect to debbugs: %s' % e)
             return None
+        debbugs = _debbugs
     return await debbugs.check_bug(package, bug)
 
 
