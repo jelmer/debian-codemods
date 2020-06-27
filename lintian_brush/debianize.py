@@ -57,6 +57,7 @@ def write_changelog_template(path, source_name, version, wnpp_bugs=None):
         author='%s <%s>' % get_maintainer(),
         date=format_date())
     with open(path, 'w') as f:
+        f.write(cl.__str__().strip('\n') + '\n')
         cl.write_to_open_file(f)
 
 
@@ -154,7 +155,8 @@ def main(argv=None):
         dirty_tracker.mark_clean()
 
     if os.path.exists('debian'):
-        note('%s: A debian directory already exists.', wt.abspath(subpath))
+        note('%s: A debian directory already exists. '
+             'Run lintian-brush instead?', wt.abspath(subpath))
         return 1
 
     metadata = guess_upstream_metadata(
@@ -202,12 +204,13 @@ def main(argv=None):
         version = Version(upstream_version + '-1')
         source = Deb822()
         source['Source'] = source_name
+        source['Rules-Requires-Root'] = 'no'
         source['Standards-Version'] = '.'.join(
             map(str, next(iter_standards_versions())[0]))
         # TODO(jelmer): Autodetect binaries rather than letting the user
         # specify them.
         binaries = []
-        for name in args.binary:
+        for name in (args.binary or [source_name]):
             try:
                 binary_name, arch = name.split(':')
             except ValueError:
