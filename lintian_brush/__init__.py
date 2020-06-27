@@ -788,9 +788,10 @@ def run_lintian_fixer(local_tree: WorkingTree,
         if specific_files:
             specific_files.append(changelog_path)
 
-    description = result.description
+    description = result.description + "\n"
+    description += "\n"
+    description += "Changes-By: lintian-brush\n"
     for tag in result.fixed_lintian_tags:
-        description += "\n"
         description += "\n"
         description += "Fixes: lintian: %s\n" % tag
         description += (
