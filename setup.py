@@ -35,7 +35,7 @@ setup(
             'debianize=lintian_brush.debianize:main',
             'lintian-brush=lintian_brush.__main__:main',
             'apply-multiarch-hints=lintian_brush.multiarch_hints:main',
-            'guess-upstream-metadata=lintian_brush.upstream_metadata:main',
+            'guess-upstream-metadata=lintian_brush.upstream_metadata.__main__:main',
             ]
     },
     test_suite='lintian_brush.tests.test_suite',

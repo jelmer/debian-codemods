@@ -35,7 +35,6 @@ from lintian_brush import (
     SUPPORTED_CERTAINTIES,
     certainty_sufficient,
     certainty_to_confidence,
-    version_string,
     min_certainty,
     )
 from lintian_brush.vcs import (
@@ -262,7 +261,7 @@ def read_python_pkg_info(path):
 
 
 def guess_from_debian_rules(path, trust_package):
-    from .rules import Makefile
+    from ..rules import Makefile
     mf = Makefile.from_path(path)
     try:
         upstream_git = mf.get_variable(b'UPSTREAM_GIT')
@@ -280,7 +279,7 @@ def guess_from_debian_rules(path, trust_package):
 
 
 def guess_from_debian_watch(path, trust_package):
-    from lintian_brush.watch import (
+    from ..watch import (
         parse_watch_file,
         MissingVersion,
         )
@@ -1985,41 +1984,3 @@ def upstream_version(version):
     """Drop debian-specific modifiers from an upstream version string.
     """
     return version.upstream_version.split("+dfsg")[0]
-
-
-def main(argv=None):
-    import argparse
-    import sys
-    import ruamel.yaml
-    parser = argparse.ArgumentParser(sys.argv[0])
-    parser.add_argument('path', default='.', nargs='?')
-    parser.add_argument(
-        '--trust',
-        action='store_true',
-        help='Whether to allow running code from the package.')
-    parser.add_argument(
-        '--disable-net-access',
-        help='Do not probe external services.',
-        action='store_true', default=False)
-    parser.add_argument(
-        '--check', action='store_true',
-        help='Check guessed metadata against external sources.')
-    parser.add_argument(
-        '--consult-external-directory',
-        action='store_true',
-        help='Pull in external (not maintained by upstream) directory data')
-    parser.add_argument(
-        '--version', action='version', version='%(prog)s ' + version_string)
-    args = parser.parse_args(argv)
-
-    metadata = guess_upstream_metadata(
-        args.path, args.trust, not args.disable_net_access,
-        consult_external_directory=args.consult_external_directory,
-        check=args.check)
-
-    sys.stdout.write(ruamel.yaml.round_trip_dump(metadata))
-
-
-if __name__ == '__main__':
-    import sys
-    sys.exit(main())
