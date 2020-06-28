@@ -135,7 +135,11 @@ def _changelog_stats(branch, history, subpath):
             if 'Git-Dch: ' in rev.message:
                 dch_references += 1
             revs.append(rev)
-        for delta in branch.repository.get_deltas_for_revisions(revs):
+        try:
+            get_deltas = branch.repository.get_revision_deltas
+        except AttributeError:  # breezy <= 3.1.1
+            get_deltas = branch.repository.get_deltas_for_revisions
+        for delta in get_deltas(revs):
             if breezy_version >= (3, 1):
                 filenames = set(
                     [a.path[1] for a in delta.added] +
