@@ -272,6 +272,7 @@ Arch: all
         self.assertEqual(rev.message, (
             'Created new file.\n'
             '\n'
+            'Changes-By: lintian-brush\n'
             'Fixes: lintian: some-tag\n'
             'See-also: https://lintian.debian.org/tags/some-tag.html\n'))
         self.assertEqual(2, tree.branch.revno())

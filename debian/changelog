@@ -12,6 +12,7 @@ lintian-brush (0.71) UNRELEASED; urgency=medium
   * Properly update changelog entries without trailer.
   * When removing debug symbol migration commands, be more aggressive
     cleaning up commands.
+  * Add Changes-By in commit message. Related to #946801
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 09 Jun 2020 18:18:59 +0000
 
