@@ -97,6 +97,7 @@ subset of the issues:
 * missing-debian-source-format
 * missing-vcs-browser-field
 * misspelled-closes-bug
+* no-copyright-file
 * no-homepage-field
 * no-maintainer-field
 * no-priority-field
