@@ -9,7 +9,7 @@
 # while preserving formatting.
 
 Fix-Script: file-contains-trailing-whitespace.sh
-Lintian-Tags: file-contains-trailing-whitespace
+Lintian-Tags: trailing-whitespace
 
 # Copyright related fixers. Fix format URL before semantic fixes.
 Fix-Script: insecure-copyright-format-uri.sh
@@ -39,7 +39,7 @@ Fix-Script: executable-desktop-file.sh
 Lintian-Tags: executable-desktop-file
 
 Fix-Script: package-has-no-description.py
-Lintian-Tags: package-has-no-description
+Lintian-Tags: required-field
 
 Fix-Script: empty-debian-tests-control.py
 Lintian-Tags: empty-debian-tests-control
@@ -74,7 +74,7 @@ Fix-Script: build-depends-on-obsolete-package.py
 Lintian-Tags: build-depends-on-obsolete-package
 
 Fix-Script: control-file-with-CRLF-EOLs.sh
-Lintian-Tags: control-file-with-CRLF-EOLs
+Lintian-Tags: carriage-return-line-feed
 
 Fix-Script: debhelper-but-no-misc-depends.py
 Lintian-Tags: debhelper-but-no-misc-depends
@@ -106,7 +106,7 @@ Fix-Script: debian-rules-should-not-use-pwd.py
 Lintian-Tags: debian-rules-calls-pwd
 
 Fix-Script: debian-source-options-has-custom-compression-settings.py
-Lintian-Tags: debian-source-options-has-custom-compression-settings
+Lintian-Tags: custom-compression-in-debian-source-options
 
 Fix-Script: debian-tests-control-autodep8-is-obsolete.py
 Lintian-Tags:
@@ -187,7 +187,7 @@ Lintian-Tags:
   package-lacks-versioned-build-depends-on-debhelper
 
 Fix-Script: package-uses-deprecated-source-override-location.sh
-Lintian-Tags: package-uses-deprecated-source-override-location
+Lintian-Tags: old-source-override-location
 
 Fix-Script: package-uses-deprecated-debhelper-compat-version.py
 Lintian-Tags:

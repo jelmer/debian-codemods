@@ -48,5 +48,5 @@ elif dropped:
 report_result(
     'Drop %s.' % ', '.join(sorted(dropped)),
     fixed_lintian_tags=[
-        'debian-source-options-has-custom-compression-settings'],
+        'custom-compression-in-debian-source-options'],
     )

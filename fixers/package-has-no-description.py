@@ -52,4 +52,4 @@ report_result(
     description='Add description for binary packages: %s' %
     ', '.join(sorted(updated)),
     certainty=CERTAINTY,
-    fixed_lintian_tags=['package-has-no-description'])
+    fixed_lintian_tags=['required-field'])

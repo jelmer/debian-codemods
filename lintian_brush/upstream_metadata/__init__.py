@@ -986,7 +986,9 @@ def guess_from_pom_xml(path, trust_package=False):
             yield UpstreamDatum(
                 'Repository', sanitize_vcs_url(provider_specific), 'certain')
     for issue_mgmt_tag in root.findall('issueManagement'):
-        yield UpstreamDatum('Bug-Database', issue_mgmt_tag.text, 'certain')
+        url_tag = issue_mgmt_tag.find('url')
+        if url_tag is not None:
+            yield UpstreamDatum('Bug-Database', url_tag.text, 'certain')
     url_tag = root.find('url')
     if url_tag:
         if not url_tag.text.startswith('scm:'):
