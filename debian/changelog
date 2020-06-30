@@ -1,4 +1,4 @@
-lintian-brush (0.71) UNRELEASED; urgency=medium
+lintian-brush (0.71) unstable; urgency=medium
 
   * When dropping get-orig-source target, also update .PHONY.
   * Remove .PHONY when removing a component from it leaves it empty.
@@ -16,7 +16,7 @@ lintian-brush (0.71) UNRELEASED; urgency=medium
   * Add basic fixer for generating copyright files using decopy, not run
     by default.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 09 Jun 2020 18:18:59 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 30 Jun 2020 17:34:59 +0000
 
 lintian-brush (0.70) unstable; urgency=medium
 
