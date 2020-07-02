@@ -970,7 +970,12 @@ def guess_from_pom_xml(path, trust_package=False):
     for scm_tag in root.findall('scm'):
         url_tag = scm_tag.find('url')
         if url_tag is not None:
-            yield UpstreamDatum('Repository-Browse', url_tag.text, 'certain')
+            if (url_tag.text.startswith('scm:') and
+                    url_tag.text.count(':') >= 3):
+                url = url_tag.text.split(':', 2)[2]
+            else:
+                url = url_tag.text
+            yield UpstreamDatum('Repository-Browse', url, 'certain')
         connection_tag = scm_tag.find('connection')
         if connection_tag is not None:
             connection = connection_tag.text

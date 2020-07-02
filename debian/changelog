@@ -1,3 +1,10 @@
+lintian-brush (0.72) UNRELEASED; urgency=medium
+
+  * Handle accidental scm: location strings in repository browse tags in
+    pom.xml files.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 02 Jul 2020 22:22:23 +0000
+
 lintian-brush (0.71) unstable; urgency=medium
 
   * When dropping get-orig-source target, also update .PHONY.
