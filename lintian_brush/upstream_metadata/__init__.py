@@ -1160,7 +1160,11 @@ def _possible_fields_missing(upstream_metadata, fields, field_certainty):
 
 
 def _sf_git_extract_url(page):
-    from bs4 import BeautifulSoup
+    try:
+        from bs4 import BeautifulSoup
+    except ModuleNotFoundError:
+        warn('Not scanning sourceforge page, since python3-bs4 is missing')
+        return None
     bs = BeautifulSoup(page, features='lxml')
     el = bs.find(id='access_url')
     if not el:
@@ -1820,7 +1824,11 @@ def guess_from_pecl_url(url):
     except socket.timeout:
         warn('timeout contacting pecl, ignoring: %s' % url)
         return
-    from bs4 import BeautifulSoup
+    try:
+        from bs4 import BeautifulSoup
+    except ModuleNotFoundError:
+        warn('bs4 missing so unable to scan pecl page, ignoring %s' % url)
+        return
     bs = BeautifulSoup(f.read(), features='lxml')
     tag = bs.find('a', text='Browse Source')
     if tag is not None:
