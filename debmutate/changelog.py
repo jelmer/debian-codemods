@@ -275,4 +275,3 @@ def changelog_add_entry(
             line = line[len(m.group(0)):]
         cl[0]._changes.extend(TextWrapper(prefix).wrap(line))
     cl[0]._changes.append('')
-

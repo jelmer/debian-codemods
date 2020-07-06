@@ -25,7 +25,7 @@
 
 __all__ = [
     'Undefined',
-    'SystemdServiceUpdater',
+    'SystemdServiceEditor',
     'update_service_file',
     ]
 
