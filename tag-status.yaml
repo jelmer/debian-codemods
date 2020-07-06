@@ -792,6 +792,7 @@
 - tag: no-changelog
 - tag: no-complete-debconf-translation
 - tag: no-copyright-file
+  status: implemented
 - tag: no-ctrl-scripts
 - tag: no-debconf-config
 - tag: no-debconf-templates
@@ -1369,9 +1370,11 @@
 - tag: build-path-in-manual
 - tag: capitalization-in-override-comment
 - tag: carriage-return-line-feed
+  status: implemented
 - tag: country-in-manual
 - tag: custom-compression-in-debian-rules
 - tag: custom-compression-in-debian-source-options
+  status: implemented
 - tag: cute-field
 - tag: duplicate-contact
 - tag: executable-manual-page
@@ -1397,12 +1400,14 @@
 - tag: odd-mark-in-description
 - tag: odd-place-for-manual-page
 - tag: old-source-override-location
+  status: implemented
 - tag: pod-conversion-message
 - tag: poor-compression-in-manual-page
 - tag: recommended-field
 - tag: recursive-privilege-change
 - tag: repeated-path-segment
 - tag: required-field
+  status: implemented
 - tag: requires-r-api
 - tag: root-in-contact
 - tag: ships-r-site-library
@@ -1411,6 +1416,7 @@
 - tag: stray-folder-in-manual
 - tag: too-many-contacts
 - tag: trailing-whitespace
+  status: implemented
 - tag: trimmed-field
 - tag: typo-in-manual-page
 - tag: uncompressed-manual-page

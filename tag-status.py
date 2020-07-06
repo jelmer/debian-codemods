@@ -33,10 +33,10 @@ for entry in tag_status or []:
 
 for tag in supported_tags:
     existing = per_tag_status.get(tag)
-    if existing and existing['status'] != 'implemented':
+    if existing and existing.get('status') != 'implemented':
         raise Exception(
             'tag %s is marked as %s in tag-status.yaml, but implemented' %
-            (tag, existing['status']))
+            (tag, existing.get('status')))
     per_tag_status[tag] = {'status': 'implemented'}
 
 
