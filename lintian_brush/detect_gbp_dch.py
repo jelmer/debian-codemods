@@ -140,18 +140,12 @@ def _changelog_stats(branch, history, subpath):
         except AttributeError:  # breezy <= 3.1.1
             get_deltas = branch.repository.get_deltas_for_revisions
         for delta in get_deltas(revs):
-            if breezy_version >= (3, 1):
-                filenames = set(
-                    [a.path[1] for a in delta.added] +
-                    [r.path[0] for r in delta.removed] +
-                    [r.path[0] for r in delta.renamed] +
-                    [r.path[1] for r in delta.renamed] +
-                    [m.path[0] for m in delta.modified])
-            else:
-                filenames = set([a[0] for a in delta.added] +
-                                [r[0] for r in delta.removed] +
-                                [r[1] for r in delta.renamed] +
-                                [m[0] for m in delta.modified])
+            filenames = set(
+                [a.path[1] for a in delta.added] +
+                [r.path[0] for r in delta.removed] +
+                [r.path[0] for r in delta.renamed] +
+                [r.path[1] for r in delta.renamed] +
+                [m.path[0] for m in delta.modified])
             if not set([
                     f for f in filenames
                     if f.startswith(osutils.pathjoin(subpath, 'debian/'))]):

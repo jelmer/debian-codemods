@@ -537,13 +537,9 @@ def only_changes_last_changelog_block(
     basis_tree = tree.basis_tree()
     with tree.lock_read(), basis_tree.lock_read():
         for change in changes:
-            try:
-                change_paths = change.path
-            except AttributeError:  # brz < 3.1
-                change_paths = change[1]
-            if change_paths == ('', ''):
+            if change.path == ('', ''):
                 continue
-            if change_paths != (changelog_path, changelog_path):
+            if change.path != (changelog_path, changelog_path):
                 return False
             break
         else:
@@ -615,11 +611,7 @@ def check_clean_tree(local_tree: WorkingTree) -> None:
 
 def has_non_debian_changes(changes):
     for change in changes:
-        try:
-            change_paths = change.path
-        except AttributeError:  # brz < 3.1
-            change_paths = change[1]
-        for path in change_paths:
+        for path in change.path:
             if path and not is_inside('debian', path):
                 return True
     return False
