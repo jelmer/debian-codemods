@@ -23,7 +23,7 @@ import itertools
 import re
 from typing import Optional, Tuple
 
-from breezy import osutils, version_info as breezy_version
+from breezy import osutils
 from breezy.branch import Branch
 from breezy.errors import NoSuchFile
 from breezy.tree import Tree

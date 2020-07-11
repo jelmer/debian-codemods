@@ -21,8 +21,6 @@ import json
 import os
 import re
 import socket
-import subprocess
-import tempfile
 import urllib.error
 from urllib.parse import quote, urlparse, urlunparse, urljoin, parse_qs
 from warnings import warn
@@ -367,41 +365,38 @@ def guess_from_pkg_info(path, trust_package):
 def guess_from_setup_py(path, trust_package):
     if not trust_package:
         return
-    args = [os.path.abspath(path), 'dist_info']
-    with open(path, 'rb') as f:
-        has_shebang = f.readline().startswith(b'#!')
-    is_executable = (os.stat(path).st_mode & 0o100 != 0)
-    if not has_shebang or not is_executable:
-        # TODO(jelmer): Why python3 and not e.g. python?
-        args.insert(0, 'python3')
-
-    with tempfile.TemporaryDirectory() as td:
-        try:
-            subprocess.call(
-                args, cwd=td, stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE)
-        except FileNotFoundError:
-            pass
-        except subprocess.CalledProcessError:
-            if args[0] == 'python3':
-                args[0] = 'python2'
-            else:
-                raise
-            subprocess.call(
-                args, cwd=td, stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE)
-        try:
-            [result_entry] = os.listdir(td)
-        except ValueError:
-            return
-        if result_entry.endswith('.egg-info'):
-            yield from guess_from_pkg_info(
-                os.path.join(td, result_entry, 'PKG-INFO'),
-                trust_package)
-        if result_entry.endswith('.dist-info'):
-            return read_python_pkg_info(
-                os.path.join(td, result_entry, 'METADATA'),
-                trust_package)
+    from distutils.core import run_setup
+    result = run_setup(os.path.abspath(path), stop_after="init")
+    if result.get_name() not in (None, '', 'UNKNOWN'):
+        yield UpstreamDatum('Name', result.get_name(), 'certain')
+    if result.get_version() not in (None, '', 'UNKNOWN'):
+        yield UpstreamDatum('X-Version', result.get_version(), 'certain')
+    if result.get_url() not in (None, '', 'UNKNOWN'):
+        repo = guess_repo_from_url(result.get_url())
+        if repo:
+            yield UpstreamDatum(
+                'Repository', sanitize_vcs_url(repo), 'likely')
+    if result.get_download_url() not in (None, '', 'UNKNOWN'):
+        yield UpstreamDatum(
+            'X-Download', result.get_download_url(), 'likely')
+    if result.get_contact() not in (None, '', 'UNKNOWN'):
+        contact = result.get_contact()
+        if result.get_contact_email() not in (None, '', 'UNKNOWN'):
+            contact += " <%s>" % result.get_contact_email()
+        yield UpstreamDatum('Contact', contact, 'likely')
+    if result.get_description() not in (None, '', 'UNKNOWN'):
+        yield UpstreamDatum('X-Summary', result.get_description(), 'certain')
+    if (result.metadata.long_description_content_type in (None, 'text/plain')
+            and result.metadata.long_description not in (None, '', 'UNKNOWN')):
+        yield UpstreamDatum(
+            'X-Description', result.metadata.long_description, 'possible')
+    for url_type, url in result.metadata.project_urls.items():
+        if url_type in ('GitHub', 'Repository', 'Source Code'):
+            yield UpstreamDatum(
+                'Repository', sanitize_vcs_url(url), 'certain')
+        if url_type in ('Bug Tracker', ):
+            yield UpstreamDatum(
+                'Bug-Database', url, 'certain')
 
 
 def guess_from_package_json(path, trust_package):
