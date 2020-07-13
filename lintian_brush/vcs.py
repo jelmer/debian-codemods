@@ -28,7 +28,7 @@ __all__ = [
 import posixpath
 import re
 from typing import Optional, Tuple
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse, urlunparse, ParseResult
 
 
 KNOWN_GITLAB_SITES = [
@@ -133,7 +133,7 @@ def plausible_url(url: str) -> bool:
     return ':' in url
 
 
-def fix_path_in_port(parsed, branch):
+def fix_path_in_port(parsed: ParseResult, branch: Optional[str]):
     if ':' not in parsed.netloc or parsed.netloc.endswith(']'):
         return None, None
     host, port = parsed.netloc.rsplit(':', 1)
@@ -212,7 +212,7 @@ def fix_git_gnome_org_url(parsed, branch):
     return None, None
 
 
-def fix_freedesktop_org_url(parsed, branch):
+def fix_freedesktop_org_url(parsed: ParseResult, branch: Optional[str]):
     if parsed.netloc == 'anongit.freedesktop.org':
         path = parsed.path
         if path.startswith('/git/'):
@@ -224,7 +224,7 @@ def fix_freedesktop_org_url(parsed, branch):
     return None, None
 
 
-def fixup_broken_git_url(url):
+def fixup_broken_git_url(url: str) -> str:
     """Attempt to fix up broken Git URLs.
 
     A common misspelling is to add an extra ":" after the hostname
@@ -288,7 +288,7 @@ def browse_url_from_repo_url(url: str) -> Optional[str]:
     return None
 
 
-def determine_gitlab_browser_url(url):
+def determine_gitlab_browser_url(url: str) -> str:
     (url, branch, subpath) = split_vcs_url(url)
     parsed_url = urlparse(url.rstrip('/'))
     # TODO(jelmer): Add support for branches
@@ -339,7 +339,7 @@ def determine_browser_url(vcs_type, vcs_url: str) -> Optional[str]:
     return None
 
 
-def canonicalize_vcs_browser_url(url):
+def canonicalize_vcs_browser_url(url: str) -> str:
     url = url.replace(
         "https://svn.debian.org/wsvn/",
         "https://anonscm.debian.org/viewvc/")
@@ -365,7 +365,7 @@ def canonicalize_vcs_browser_url(url):
     return url
 
 
-def canonical_vcs_git_url(url):
+def canonical_vcs_git_url(url: str) -> str:
     (repo_url, branch, subpath) = split_vcs_url(url)
     parsed_url = urlparse(repo_url)
     if (is_gitlab_site(parsed_url.netloc) or
@@ -390,7 +390,7 @@ def canonicalize_vcs_url(vcs_type: str, url: str) -> str:
         return url
 
 
-def try_open_branch(url, branch_name=None):
+def try_open_branch(url: str, branch_name: Optional[str] = None):
     import breezy.ui
     from breezy.controldir import ControlDir
     old_ui = breezy.ui.ui_factory
@@ -410,17 +410,18 @@ def try_open_branch(url, branch_name=None):
 SECURE_SCHEMES = ['https', 'git+ssh', 'bzr+ssh', 'hg+ssh', 'ssh', 'svn+ssh']
 
 
-def find_secure_vcs_url(url, net_access=True):
+def find_secure_vcs_url(url: str, net_access: bool = True) -> Optional[str]:
     (repo_url, branch, subpath) = split_vcs_url(url)
     parsed_repo_url = urlparse(repo_url)
     if parsed_repo_url.scheme in SECURE_SCHEMES:
         return url
 
     # Sites we know to be available over https
-    if (is_gitlab_site(parsed_repo_url.hostname, net_access) or
+    if (parsed_repo_url.hostname and (
+            is_gitlab_site(parsed_repo_url.hostname, net_access) or
             parsed_repo_url.hostname in [
                 'github.com', 'git.launchpad.net', 'bazaar.launchpad.net',
-                'code.launchpad.net']):
+                'code.launchpad.net'])):
         parsed_repo_url = parsed_repo_url._replace(scheme='https')
 
     if parsed_repo_url.scheme == 'lp':
