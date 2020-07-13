@@ -20,6 +20,7 @@
 __all__ = ['guess_repository_url', 'determine_browser_url']
 
 import re
+from typing import Optional
 from urllib.parse import urlparse
 
 from .vcs import determine_gitlab_browser_url
@@ -130,7 +131,7 @@ GIT_PATH_RENAMES = {
 }
 
 
-def guess_repository_url(package, maintainer_email):
+def guess_repository_url(package: str, maintainer_email: str) -> Optional[str]:
     """Guess the repository URL for a package hosted on Salsa.
 
     Args:
@@ -150,7 +151,7 @@ def guess_repository_url(package, maintainer_email):
     return 'https://salsa.debian.org/%s/%s.git' % (team_name, package)
 
 
-def determine_browser_url(url):
+def determine_browser_url(url: str) -> str:
     """Determine the browser URL from a regular Git URL.
 
     Args:
@@ -161,19 +162,20 @@ def determine_browser_url(url):
     return determine_gitlab_browser_url(url)
 
 
-def _salsa_path_from_alioth_url(vcs_type, alioth_url):
+def _salsa_path_from_alioth_url(
+        vcs_type: Optional[str], alioth_url: str) -> Optional[str]:
     if vcs_type is None:
         return None
     # These two regular expressions come from vcswatch:
     # https://salsa.debian.org/qa/qa/blob/master/data/vcswatch/vcswatch#L165
     if vcs_type.lower() == 'git':
-        m = ("(https?|git)://(anonscm|git).debian.org/"
-             "(cgit/|git/)?collab-maint/")
-        if re.match(m, alioth_url):
-            return re.sub(m, 'debian/', alioth_url)
-        m = "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?users/"
-        if re.match(m, alioth_url):
-            return re.sub(m, '', alioth_url)
+        pat = ("(https?|git)://(anonscm|git).debian.org/"
+               "(cgit/|git/)?collab-maint/")
+        if re.match(pat, alioth_url):
+            return re.sub(pat, 'debian/', alioth_url)
+        pat = "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?users/"
+        if re.match(pat, alioth_url):
+            return re.sub(pat, '', alioth_url)
         m = re.match(
             "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?(.+)",
             alioth_url)
@@ -246,7 +248,7 @@ def _salsa_path_from_alioth_url(vcs_type, alioth_url):
     return None
 
 
-def salsa_url_from_alioth_url(vcs_type, alioth_url):
+def salsa_url_from_alioth_url(vcs_type: str, alioth_url: str) -> Optional[str]:
     """Guess the salsa URL from an alioth URL.
 
     Args:
