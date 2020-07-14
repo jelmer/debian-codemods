@@ -567,14 +567,15 @@ def guess_from_readme(path, trust_package):
                         url = args[0]
                     if plausible_vcs_url(url):
                         urls.append(sanitize_vcs_url(url))
+                project_re = b'([^/]+)/([^/?.()">\\s]*[^/?.()">\\s-])'
                 for m in re.finditer(
-                        b'https://travis-ci.org/([^/]+)/([^/?.()>]+)', line):
+                        b'https://travis-ci.org/' + project_re, line):
                     yield UpstreamDatum(
                         'Repository', 'https://github.com/%s/%s' % (
                             m.group(1).decode(), m.group(2).decode().rstrip()),
                         'possible')
                 for m in re.finditer(
-                        b'https://coveralls.io/r/([^/]+)/([^/?.]+)', line):
+                        b'https://coveralls.io/r/' + project_re, line):
                     yield UpstreamDatum(
                         'Repository', 'https://github.com/%s/%s' % (
                             m.group(1).decode(), m.group(2).decode().rstrip()),
@@ -585,14 +586,14 @@ def guess_from_readme(path, trust_package):
                         'Bug-Database',
                         m.group(0).decode().rstrip(), 'possible')
                 for m in re.finditer(
-                        b'https://github.com/([^/]+)/([^/\\s()>]+)(.git)?',
+                        b'https://github.com/' + project_re + b'(.git)?',
                         line):
                     yield UpstreamDatum(
                         'Repository',
                         m.group(0).rstrip(b'.').decode().rstrip(),
                         'possible')
                 m = re.fullmatch(
-                    b'https://github.com/([^/]+)/([^/?.()>]+)', line)
+                    b'https://github.com/' + project_re, line)
                 if m:
                     yield UpstreamDatum(
                         'Repository',
@@ -603,7 +604,7 @@ def guess_from_readme(path, trust_package):
                         'Repository',
                         line.strip().rstrip(b'.').decode(), 'possible')
                 for m in re.finditer(
-                        b'https://([^/]+)/([^\\s()]+)', line):
+                        b'https://([^/]+)/([^\\s()"]+)', line):
                     if is_gitlab_site(m.group(1).decode()):
                         yield UpstreamDatum(
                             'Repository',
@@ -832,6 +833,9 @@ def guess_from_configure(path, trust_package=False):
             if key == b'PACKAGE_NAME':
                 yield UpstreamDatum(
                     'Name', value.decode(), 'certain', './configure')
+            elif key == b'PACKAGE_VERSION':
+                yield UpstreamDatum(
+                    'X-Version', value.decode(), 'certain', './configure')
             elif key == b'PACKAGE_BUGREPORT':
                 if value in (b'BUG-REPORT-ADDRESS', ):
                     certainty = 'invalid'
