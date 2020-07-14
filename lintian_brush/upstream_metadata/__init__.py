@@ -196,6 +196,8 @@ def guess_repo_from_url(url, net_access=False):
         parts = parsed_url.path.split('/')
         if 'tags' in parts:
             parts = parts[:parts.index('tags')]
+        if parts[-1] == '-':
+            parts.pop(-1)
         return urlunparse(
             parsed_url._replace(path='/'.join(parts), query=''))
     if parsed_url.hostname == 'git.php.net':
@@ -567,7 +569,7 @@ def guess_from_readme(path, trust_package):
                         url = args[0]
                     if plausible_vcs_url(url):
                         urls.append(sanitize_vcs_url(url))
-                project_re = b'([^/]+)/([^/?.()">\\s]*[^/?.()">\\s-])'
+                project_re = b'([^/]+)/([^/?.()">\\s]*[^-/?.()">\\s])'
                 for m in re.finditer(
                         b'https://travis-ci.org/' + project_re, line):
                     yield UpstreamDatum(
