@@ -20,6 +20,7 @@
 from debian.changelog import Changelog, Version, get_maintainer, format_date
 from debian.deb822 import Deb822
 import os
+import re
 import sys
 
 
@@ -67,6 +68,15 @@ async def find_wnpp_bugs(source_name):
     return [row[0] for row in await conn.fetch("""\
 select id from wnpp where source = $1 and type in ('ITP', 'RFP') LIMIT 1
 """, source_name)]
+
+
+def source_name_from_upstream_name(upstream_name: str) -> str:
+    if upstream_name.startswith('GNU '):
+        upstream_name = upstream_name[len('GNU '):]
+    return upstream_name.lower()
+
+
+package_name_re = re.compile('[a-z0-9][a-z0-9+-.]+')
 
 
 def main(argv=None):
@@ -174,10 +184,11 @@ def main(argv=None):
                  'from the package?')
         return 1
 
-    # TODO(jelmer): Check that there are no unallowed characters in
-    # upstream_name
-
-    source_name = upstream_name
+    source_name = source_name_from_upstream_name(upstream_name)
+    if not package_name_re.fullmatch(source_name):
+        note('Unable to sanitize source package name: %s',
+             source_name)
+        return 1
 
     if not args.disable_net_access:
         import asyncio
