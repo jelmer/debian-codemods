@@ -29,8 +29,8 @@ subset of the issues:
 * build-depends-on-build-essential
 * build-depends-on-obsolete-package
 * built-using-field-on-arch-all-package
+* carriage-return-line-feed
 * comma-separated-files-in-dep5-copyright
-* control-file-with-CRLF-EOLs
 * copyright-does-not-refer-to-common-license-file
 * copyright-file-contains-full-apache-2-license
 * copyright-file-contains-full-gfdl-license
@@ -42,6 +42,7 @@ subset of the issues:
 * copyright-not-using-common-license-for-lgpl
 * copyright-refers-to-symlink-license
 * copyright-refers-to-versionless-license-file
+* custom-compression-in-debian-source-options
 * debhelper-but-no-misc-depends
 * debhelper-tools-from-autotools-dev-are-deprecated
 * debian-changelog-file-contains-obsolete-user-emacs-settings
@@ -58,7 +59,6 @@ subset of the issues:
 * debian-rules-not-executable
 * debian-rules-sets-dpkg-architecture-variable
 * debian-rules-uses-unnecessary-dh-argument
-* debian-source-options-has-custom-compression-settings
 * debian-tests-control-and-control-autodep8
 * debian-tests-control-autodep8-is-obsolete
 * debian-upstream-obsolete-path
@@ -77,7 +77,6 @@ subset of the issues:
 * excessive-priority-for-library-package
 * executable-desktop-file
 * field-name-typo-in-dep5-copyright
-* file-contains-trailing-whitespace
 * font-package-not-multi-arch-foreign
 * global-files-wildcard-not-first-paragraph-in-dep5-copyright
 * homepage-field-uses-insecure-uri
@@ -106,15 +105,14 @@ subset of the issues:
 * obsolete-field-in-dep5-copyright
 * obsolete-runtime-tests-restriction
 * old-fsf-address-in-copyright-file
+* old-source-override-location
 * older-source-format
 * out-of-date-copyright-format-uri
 * out-of-date-standards-version
 * package-contains-linda-override
-* package-has-no-description
 * package-lacks-versioned-build-depends-on-debhelper
 * package-needs-versioned-debhelper-build-depends
 * package-uses-deprecated-debhelper-compat-version
-* package-uses-deprecated-source-override-location
 * package-uses-old-debhelper-compat-version
 * patch-file-present-but-not-mentioned-in-series
 * possible-missing-colon-in-closes
@@ -124,6 +122,7 @@ subset of the issues:
 * quilt-series-but-no-build-dep
 * quilt-series-without-trailing-newline
 * renamed-tag
+* required-field
 * space-in-std-shortname-in-dep5-copyright
 * systemd-service-alias-without-extension
 * systemd-service-file-refers-to-obsolete-bindto
@@ -131,6 +130,7 @@ subset of the issues:
 * systemd-service-file-refers-to-var-run
 * systemd-service-file-shutdown-problems
 * tab-in-license-text
+* trailing-whitespace
 * transitional-package-not-oldlibs-optional
 * unnecessary-team-upload
 * unnecessary-testsuite-autopkgtest-field
