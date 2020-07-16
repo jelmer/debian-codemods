@@ -23,7 +23,7 @@ from io import StringIO
 from debmutate.reformatting import edit_formatted_file
 
 
-class DesktopEntryUpdater(object):
+class DesktopEntryEditor(object):
 
     def __init__(self, path):
         self.path = path

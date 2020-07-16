@@ -18,7 +18,7 @@
 """Tests for lintian_brush.xdg."""
 
 from ..xdg import (
-    DesktopEntryUpdater,
+    DesktopEntryEditor,
     )
 
 from breezy.tests import (
@@ -33,7 +33,7 @@ class UpdateDesktopEntryTests(TestCaseWithTransport):
 [Desktop Entry]
 Name= foo
 """)])
-        with DesktopEntryUpdater('foo.desktop') as updater:
+        with DesktopEntryEditor('foo.desktop') as updater:
             updater['NewField'] = 'foo'
         self.assertFileEqual("""\
 [Desktop Entry]
@@ -46,7 +46,7 @@ NewField=foo
 [Desktop Entry]
 Name=Foo
 """)])
-        with DesktopEntryUpdater('foo.desktop') as updater:
+        with DesktopEntryEditor('foo.desktop') as updater:
             updater['NewField'] = 'foo'
 
         self.assertFileEqual("""\

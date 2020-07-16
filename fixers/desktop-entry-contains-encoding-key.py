@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.xdg import DesktopEntryUpdater
+from lintian_brush.xdg import DesktopEntryEditor
 
 import os
 
@@ -9,7 +9,7 @@ paths = []
 for name in os.listdir('debian'):
     if name.endswith('.desktop'):
         path = os.path.join('debian', name)
-        with DesktopEntryUpdater(path) as updater:
+        with DesktopEntryEditor(path) as updater:
             if updater.get('Encoding') == 'UTF-8':
                 del updater.entry['Encoding']
                 paths.append(path)
