@@ -247,6 +247,9 @@
         "CC-BY-3.0": {
             "name": "Creative Commons Attribution 3.0 Unported"
         },
+        "CC-BY-3.0-AT": {
+            "name": "Creative Commons Attribution 3.0 Austria"
+        },
         "CC-BY-4.0": {
             "name": "Creative Commons Attribution 4.0 International"
         },
@@ -321,6 +324,9 @@
         },
         "CC-BY-SA-3.0": {
             "name": "Creative Commons Attribution Share Alike 3.0 Unported"
+        },
+        "CC-BY-SA-3.0-AT": {
+            "name": "Creative Commons Attribution-Share Alike 3.0 Austria"
         },
         "CC-BY-SA-4.0": {
             "name": "Creative Commons Attribution Share Alike 4.0 International"
@@ -439,6 +445,9 @@
         "EFL-2.0": {
             "name": "Eiffel Forum License v2.0"
         },
+        "EPICS": {
+            "name": "EPICS Open License"
+        },
         "EPL-1.0": {
             "name": "Eclipse Public License 1.0"
         },
@@ -490,6 +499,18 @@
         "GFDL-1.1": {
             "name": "GNU Free Documentation License v1.1"
         },
+        "GFDL-1.1-invariants-only": {
+            "name": "GNU Free Documentation License v1.1 only - invariants"
+        },
+        "GFDL-1.1-invariants-or-later": {
+            "name": "GNU Free Documentation License v1.1 or later - invariants"
+        },
+        "GFDL-1.1-no-invariants-only": {
+            "name": "GNU Free Documentation License v1.1 only - no invariants"
+        },
+        "GFDL-1.1-no-invariants-or-later": {
+            "name": "GNU Free Documentation License v1.1 or later - no invariants"
+        },
         "GFDL-1.1-only": {
             "name": "GNU Free Documentation License v1.1 only"
         },
@@ -498,6 +519,18 @@
         },
         "GFDL-1.2": {
             "name": "GNU Free Documentation License v1.2"
+        },
+        "GFDL-1.2-invariants-only": {
+            "name": "GNU Free Documentation License v1.2 only - invariants"
+        },
+        "GFDL-1.2-invariants-or-later": {
+            "name": "GNU Free Documentation License v1.2 or later - invariants"
+        },
+        "GFDL-1.2-no-invariants-only": {
+            "name": "GNU Free Documentation License v1.2 only - no invariants"
+        },
+        "GFDL-1.2-no-invariants-or-later": {
+            "name": "GNU Free Documentation License v1.2 or later - no invariants"
         },
         "GFDL-1.2-only": {
             "name": "GNU Free Documentation License v1.2 only"
@@ -508,6 +541,18 @@
         "GFDL-1.3": {
             "name": "GNU Free Documentation License v1.3"
         },
+        "GFDL-1.3-invariants-only": {
+            "name": "GNU Free Documentation License v1.3 only - invariants"
+        },
+        "GFDL-1.3-invariants-or-later": {
+            "name": "GNU Free Documentation License v1.3 or later - invariants"
+        },
+        "GFDL-1.3-no-invariants-only": {
+            "name": "GNU Free Documentation License v1.3 only - no invariants"
+        },
+        "GFDL-1.3-no-invariants-or-later": {
+            "name": "GNU Free Documentation License v1.3 or later - no invariants"
+        },
         "GFDL-1.3-only": {
             "name": "GNU Free Documentation License v1.3 only"
         },
@@ -516,6 +561,9 @@
         },
         "GL2PS": {
             "name": "GL2PS License"
+        },
+        "GLWTPL": {
+            "name": "Good Luck With That Public License"
         },
         "GPL-1.0": {
             "name": "GNU General Public License v1.0 only"
