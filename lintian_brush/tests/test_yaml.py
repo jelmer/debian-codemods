@@ -90,6 +90,21 @@ Somekey: origvalue
 Newkey: newvalue
 """, "newfile.yaml")
 
+    def test_interrupted_line(self):
+        with open('newfile.yaml', 'w') as f:
+            f.write("""\
+---
+Origkey: origvalue
+Somekey: origvalue""")
+        with YamlUpdater('newfile.yaml') as code:
+            code['Newkey'] = 'newvalue'
+        self.assertFileEqual("""\
+---
+Origkey: origvalue
+Somekey: origvalue
+Newkey: newvalue
+""", "newfile.yaml")
+
 
 class UpdateOrderedDict(TestCase):
 

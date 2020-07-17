@@ -1,0 +1,9 @@
+Name: tsne
+Archive: CRAN
+Bug-Database: https://github.com/jdonaldson/rtsne/issues
+Bug-Submit: https://github.com/jdonaldson/rtsne/issues/new
+Registry:
+ - Name: conda:conda-forge
+   Entry: r-tsne
+Repository: https://github.com/jdonaldson/rtsne.git
+Repository-Browse: https://github.com/jdonaldson/rtsne

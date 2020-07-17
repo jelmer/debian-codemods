@@ -90,6 +90,8 @@ class YamlUpdater(object):
                 o += 1
             else:
                 f.write(line)
+        if cs and not line.endswith('\n'):
+            f.write('\n')
         while cs:
             key = cs.pop(0)
             self.yaml.dump({key: self._code[key]}, f)
