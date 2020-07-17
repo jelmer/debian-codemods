@@ -6,6 +6,7 @@ from debian.changelog import Changelog
 from debmutate.control import ControlEditor, get_relation
 from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
+from lintian_brush.fixer import report_result
 
 # Dictionary mapping source and target versions
 upgrade_path = {
@@ -156,7 +157,7 @@ with ControlEditor() as updater:
 
 
 if current_version:
-    print('Update standards version to %s, no changes needed.' %
-          current_version)
-print('Certainty: certain')
-print('Fixed-Lintian-Tags: out-of-date-standards-version')
+    report_result(
+        'Update standards version to %s, no changes needed.' % current_version,
+        certainty='certain',
+        fixed_lintian_tags=['out-of-date-standards-version'])
