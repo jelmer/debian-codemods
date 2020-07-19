@@ -86,19 +86,13 @@ def fixup_rcp_style_git_url(url: str) -> str:
     return unsplit_vcs_url(repo_url, branch, subpath)
 
 
-def sanitize_url(url: str) -> str:
-    url = url.strip()
+def drop_vcs_in_scheme(url: str) -> str:
     if url.startswith('git+http:') or url.startswith('git+https:'):
         url = url[4:]
     if url.startswith('hg+https:') or url.startswith('hg+http'):
         url = url[3:]
     if url.startswith('bzr+lp:') or url.startswith('bzr+http'):
         url = url.split('+', 1)[1]
-    url = fixup_broken_git_url(url)
-    url = fixup_rcp_style_git_url(url)
-    url = find_public_vcs_url(url) or url
-    url = canonical_vcs_git_url(url)
-    url = find_secure_vcs_url(url, net_access=False) or url
     return url
 
 
@@ -197,6 +191,20 @@ def fix_freedesktop_org_url(parsed: ParseResult, branch: Optional[str]):
     return None, None
 
 
+FIXERS = [
+    fix_path_in_port,
+    fix_gitlab_scheme,
+    fix_salsa_cgit_url,
+    fix_gitlab_tree_in_url,
+    fix_double_slash,
+    fix_extra_colon,
+    drop_git_username,
+    fix_branch_argument,
+    fix_git_gnome_org_url,
+    fix_freedesktop_org_url,
+    ]
+
+
 def fixup_broken_git_url(url: str) -> str:
     """Attempt to fix up broken Git URLs.
 
@@ -206,10 +214,7 @@ def fixup_broken_git_url(url: str) -> str:
 
     parsed = urlparse(repo_url)
     changed = False
-    for fn in [fix_path_in_port, fix_gitlab_scheme, fix_salsa_cgit_url,
-               fix_gitlab_tree_in_url, fix_double_slash, fix_extra_colon,
-               drop_git_username, fix_branch_argument, fix_git_gnome_org_url,
-               fix_freedesktop_org_url]:
+    for fn in FIXERS:
         newparsed, newbranch = fn(parsed, branch)
         if newparsed:
             changed = True
@@ -420,3 +425,20 @@ def find_secure_vcs_url(url: str, net_access: bool = True) -> Optional[str]:
 
     # Can't find a secure URI :(
     return None
+
+
+SANITIZERS = [
+    drop_vcs_in_scheme,
+    fixup_broken_git_url,
+    fixup_rcp_style_git_url,
+    lambda url: find_public_vcs_url(url) or url,
+    canonical_vcs_git_url,
+    lambda url: find_secure_vcs_url(url, net_access=False) or url,
+]
+
+
+def sanitize_url(url: str) -> str:
+    url = url.strip()
+    for sanitizer in SANITIZERS:
+        url = sanitizer(url)
+    return url
