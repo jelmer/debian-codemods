@@ -21,7 +21,6 @@ import contextlib
 from email.message import Message
 from io import BytesIO
 import os
-import tempfile
 
 from breezy.diff import show_diff_trees
 from breezy import osutils
@@ -30,7 +29,7 @@ import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy.errors import NotBranchError, NoSuchFile
 from breezy.patches import parse_patches
-from breezy.patch import write_to_cmd
+from breezy.patch import iter_patched_from_hunks
 
 from debian.changelog import Changelog
 
@@ -156,6 +155,7 @@ class AppliedPatches(object):
         return False
 
 
+# TODO(jelmer): Use debmutate version
 def read_quilt_series(f):
     for line in f:
         if line.startswith(b'#'):
@@ -299,40 +299,13 @@ def tree_non_patches_changes(tree, patches_directory):
         for change in filter_excluded(
                 patches_tree.iter_changes(upstream_patches_tree),
                 exclude=['debian']):
-            try:
-                path = change.path[1]
-            except AttributeError:  # breezy < 3.1
-                path = change[1][1]
+            path = change.path[1]
             if path == '':
                 continue
             yield change
 
 
-# Copied from lp:~jelmer/brz/patch-api
-def iter_patched_from_hunks(orig_lines, hunks):
-    """Iterate through a series of lines with a patch applied.
-    This handles a single file, and does exact, not fuzzy patching.
-
-    :param orig_lines: The unpatched lines.
-    :param hunks: An iterable of Hunk instances.
-
-    This is different from breezy.patches in that it invokes the patch
-    command.
-    """
-    with tempfile.NamedTemporaryFile() as f:
-        f.writelines(orig_lines)
-        f.flush()
-        # TODO(jelmer): Stream patch contents to command, rather than
-        # serializing the entire patch upfront.
-        serialized = b''.join([hunk.as_bytes() for hunk in hunks])
-        args = ["patch", "-f", "-s", "--posix", "--binary",
-                "-o", "-", f.name, "-r", "-"]
-        stdout, stderr, status = write_to_cmd(args, serialized)
-    if status == 0:
-        return [stdout]
-    raise Exception(stderr)
-
-
+# TODO(jelmer): Use debmutate version
 def find_common_patch_suffix(names, default='.patch'):
     """Find the common prefix to use for patches.
 
@@ -384,6 +357,7 @@ def add_patch(tree, patches_directory, name, contents, header=None):
 
     # TODO(jelmer): Write to patches branch if applicable
 
+    # TODO(jelmer): Use debmutate SeriesEditor
     series_path = os.path.join(patches_directory, 'series')
     with open(tree.abspath(series_path, 'a')) as f:
         f.write('%s\n' % patchname)
