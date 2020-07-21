@@ -58,6 +58,9 @@ def main(argv=None):
 
     fixer_group = parser.add_argument_group('fixer selection')
     fixer_group.add_argument(
+        'fixers', metavar='FIXER', nargs='*',
+        help='specific fixer to run')
+    fixer_group.add_argument(
         '--fixers-dir', type=str, help='path to fixer scripts. [%(default)s]',
         default=find_fixers_dir())
     fixer_group.add_argument(
@@ -68,9 +71,6 @@ def main(argv=None):
             'Use features/compatibility levels that are not available in '
             'stable. (makes backporting harder)'),
         action='store_true', default=False)
-    fixer_group.add_argument(
-        'fixers', metavar='FIXER', nargs='*',
-        help='specific fixer to run')
     fixer_group.add_argument(
         '--compat-release', type=str, help=argparse.SUPPRESS)
     # Hide the minimum-certainty option for the moment.
