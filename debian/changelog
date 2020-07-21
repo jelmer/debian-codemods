@@ -1,4 +1,4 @@
-lintian-brush (0.73) UNRELEASED; urgency=medium
+lintian-brush (0.73) unstable; urgency=medium
 
   * Fix handling of interrupted lines.
   * Group arguments in help output.
@@ -6,7 +6,7 @@ lintian-brush (0.73) UNRELEASED; urgency=medium
     Closes: #965934
   * Add --uncertain option which makes changes with lower certainty.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 17 Jul 2020 17:45:29 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 21 Jul 2020 00:50:12 +0000
 
 lintian-brush (0.72) unstable; urgency=medium
 
