@@ -1,8 +1,8 @@
-lintian-brush (0.74) UNRELEASED; urgency=medium
+lintian-brush (0.74) unstable; urgency=medium
 
   * Fix regression: allow fixers without declared certainty.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 21 Jul 2020 01:01:56 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 21 Jul 2020 01:02:35 +0000
 
 lintian-brush (0.73) unstable; urgency=medium
 
