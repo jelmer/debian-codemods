@@ -73,6 +73,22 @@ def main(argv=None):
         help='specific fixer to run')
     fixer_group.add_argument(
         '--compat-release', type=str, help=argparse.SUPPRESS)
+    # Hide the minimum-certainty option for the moment.
+    fixer_group.add_argument(
+        '--minimum-certainty',
+        type=str,
+        choices=SUPPORTED_CERTAINTIES,
+        default=None,
+        help=argparse.SUPPRESS)
+    fixer_group.add_argument(
+        '--opinionated', action='store_true',
+        help=argparse.SUPPRESS)
+    fixer_group.add_argument(
+        '--diligent', action='count', default=0, dest='diligence',
+        help=argparse.SUPPRESS)
+    fixer_group.add_argument(
+        '--uncertain', action='store_true',
+        help='Include changes with lower certainty.')
 
     package_group = parser.add_argument_group('package preferences')
     package_group.add_argument(
@@ -84,6 +100,10 @@ def main(argv=None):
     package_group.add_argument(
         '--update-changelog', action="store_true", dest="update_changelog",
         help="force updating of the changelog", default=None)
+    package_group.add_argument(
+        '--trust',
+        action='store_true',
+        help=argparse.SUPPRESS)
 
     output_group = parser.add_argument_group('output')
     output_group.add_argument(
@@ -108,32 +128,15 @@ def main(argv=None):
         action='store_true', default=False)
 
     parser.add_argument(
-        '--directory', metavar='DIRECTORY', help='directory to run in',
+        '-d', '--directory', metavar='DIRECTORY', help='directory to run in',
         type=str, default='.')
     parser.add_argument(
         '--disable-net-access',
         help='Do not probe external services.',
         action='store_true', default=False)
 
-    # Hide the minimum-certainty option for the moment.
-    parser.add_argument(
-        '--minimum-certainty',
-        type=str,
-        choices=SUPPORTED_CERTAINTIES,
-        default=None,
-        help=argparse.SUPPRESS)
-    parser.add_argument(
-        '--trust',
-        action='store_true',
-        help=argparse.SUPPRESS)
     parser.add_argument(
         '--disable-inotify', action='store_true', default=False,
-        help=argparse.SUPPRESS)
-    parser.add_argument(
-        '--opinionated', action='store_true',
-        help=argparse.SUPPRESS)
-    parser.add_argument(
-        '--diligent', action='count', default=0, dest='diligence',
         help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
@@ -208,7 +211,10 @@ def main(argv=None):
             if update_changelog is None:
                 update_changelog = cfg.update_changelog()
         if minimum_certainty is None:
-            minimum_certainty = DEFAULT_MINIMUM_CERTAINTY
+            if args.uncertain:
+                minimum_certainty = 'possible'
+            else:
+                minimum_certainty = DEFAULT_MINIMUM_CERTAINTY
         if compat_release is None:
             compat_release = debian_info.stable()
         if allow_reformatting is None:
@@ -220,7 +226,7 @@ def main(argv=None):
                     update_changelog=update_changelog,
                     compat_release=compat_release,
                     verbose=args.verbose,
-                    minimum_certainty=args.minimum_certainty,
+                    minimum_certainty=minimum_certainty,
                     trust_package=args.trust,
                     allow_reformatting=allow_reformatting,
                     use_inotify=(False if args.disable_inotify else None),
@@ -246,6 +252,10 @@ def main(argv=None):
             else:
                 note("Some changes were made, "
                      "but there are no affected lintian tags.")
+            min_certainty = overall_result.minimum_success_certainty()
+            if min_certainty != 'certain':
+                note('Some changes were made with lower certainty (%s); '
+                     'please double check the changes.', min_certainty)
         else:
             note("No changes made.")
         if overall_result.failed_fixers and not args.verbose:

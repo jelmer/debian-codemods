@@ -808,6 +808,11 @@ class ManyResult(object):
         self.failed_fixers = {}
         self.formatting_unpreservable = {}
 
+    def minimum_success_certainty(self) -> str:
+        """Return the minimum certainty of any successfully made change."""
+        return min_certainty(
+            [r.certainty for r, unused_summary in self.success])
+
     def __tuple__(self):
         return (self.success, self.failed_fixers)
 

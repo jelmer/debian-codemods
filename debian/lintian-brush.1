@@ -54,6 +54,11 @@ Note that this currently will create a temporary clone of the repository, which 
 .TP
 \fB\-\-verbose\fR
 Print list of fixers that was run and print tracebacks for failed fixers.
+.TP
+\fB\-\-uncertain\fR
+Make changes with lower certain than normal. This will potentially fix more
+issues, but is more likely to get things wrong. If changes with lower certainty were made,
+lintian-brush will let you know in its output.
 .SH EXAMPLES
 .IP "\fB$ lintian-brush\fR --list-tags"
 List all lintian tags for which fixers are available.

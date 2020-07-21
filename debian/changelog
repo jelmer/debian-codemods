@@ -4,6 +4,7 @@ lintian-brush (0.73) UNRELEASED; urgency=medium
   * Group arguments in help output.
   * Add fixer for rules-requires-root-missing. Thanks, Guilhem.
     Closes: #965934
+  * Add --uncertain option which makes changes with lower certainty.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 17 Jul 2020 17:45:29 +0000
 
