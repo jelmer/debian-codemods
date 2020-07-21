@@ -407,3 +407,6 @@ Lintian-Tags: uses-deprecated-adttmp
 
 Fix-Script: binary-control-field-duplicates-source.py
 Lintian-Tags: binary-control-field-duplicates-source
+
+Fix-Script: rules-requires-root-missing.py
+Lintian-Tags: rules-requires-root-missing

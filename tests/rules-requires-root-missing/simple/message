@@ -1,0 +1,3 @@
+Set Rules-Requires-Root: no.
+Certainty: possible
+Fixed-Lintian-Tags: rules-requires-root-missing

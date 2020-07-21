@@ -1081,6 +1081,7 @@
 - tag: rules-does-not-require-root
 - tag: rules-requires-root-explicitly
 - tag: rules-requires-root-missing
+  status: implemented
 - tag: run-parts-cron-filename-contains-illegal-chars
 - tag: runtime-test-file-is-not-a-regular-file
 - tag: runtime-test-file-uses-installed-python-versions

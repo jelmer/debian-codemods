@@ -1,0 +1,6 @@
+Source: blah
+Section: net
+Priority: optional
+Rules-Requires-Root: no
+
+Package: foo
