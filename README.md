@@ -123,6 +123,7 @@ subset of the issues:
 * quilt-series-without-trailing-newline
 * renamed-tag
 * required-field
+* rules-requires-root-missing
 * space-in-std-shortname-in-dep5-copyright
 * systemd-service-alias-without-extension
 * systemd-service-file-refers-to-obsolete-bindto
