@@ -1,6 +1,9 @@
 lintian-brush (0.73) UNRELEASED; urgency=medium
 
   * Fix handling of interrupted lines.
+  * Group arguments in help output.
+  * Add fixer for rules-requires-root-missing. Thanks, Guilhem.
+    Closes: #965934
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 17 Jul 2020 17:45:29 +0000
 

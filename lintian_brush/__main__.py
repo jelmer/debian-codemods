@@ -55,47 +55,66 @@ from .config import Config   # noqa: E402
 
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='lintian-brush')
-    parser.add_argument(
-        '--no-update-changelog', action="store_false", default=None,
-        dest="update_changelog", help="do not update the changelog")
-    parser.add_argument(
-        '--update-changelog', action="store_true", dest="update_changelog",
-        help="force updating of the changelog", default=None)
-    parser.add_argument(
-        '--version', action='version', version='%(prog)s ' + version_string)
-    parser.add_argument(
-        '--list-fixers', action="store_true", help="list available fixers")
-    parser.add_argument(
-        '--list-tags', action="store_true",
-        help="list lintian tags for which fixers are available")
-    parser.add_argument(
+
+    fixer_group = parser.add_argument_group('fixer selection')
+    fixer_group.add_argument(
         '--fixers-dir', type=str, help='path to fixer scripts. [%(default)s]',
         default=find_fixers_dir())
-    parser.add_argument(
-        '--verbose', help='be verbose', action='store_true', default=False)
-    parser.add_argument(
-        '--directory', metavar='DIRECTORY', help='directory to run in',
-        type=str, default='.')
-    parser.add_argument(
-        '--diff', help='Print resulting diff afterwards.', action='store_true')
-    parser.add_argument(
-        '--dry-run', help=(
-            'Do not make any changes to the current repository. '
-            'Note: currently creates a temporary clone of the repository.'),
-        action='store_true')
-    parser.add_argument(
+    fixer_group.add_argument(
+        '--exclude', metavar='EXCLUDE', type=str, action='append',
+        help='Exclude a fixer.')
+    fixer_group.add_argument(
         '--modern', help=(
             'Use features/compatibility levels that are not available in '
             'stable. (makes backporting harder)'),
         action='store_true', default=False)
-    parser.add_argument(
+    fixer_group.add_argument(
+        'fixers', metavar='FIXER', nargs='*',
+        help='specific fixer to run')
+    fixer_group.add_argument(
+        '--compat-release', type=str, help=argparse.SUPPRESS)
+
+    package_group = parser.add_argument_group('package preferences')
+    package_group.add_argument(
+        '--allow-reformatting', default=None, action='store_true',
+        help=argparse.SUPPRESS)
+    package_group.add_argument(
+        '--no-update-changelog', action="store_false", default=None,
+        dest="update_changelog", help="do not update the changelog")
+    package_group.add_argument(
+        '--update-changelog', action="store_true", dest="update_changelog",
+        help="force updating of the changelog", default=None)
+
+    output_group = parser.add_argument_group('output')
+    output_group.add_argument(
+        '--verbose', help='be verbose', action='store_true', default=False)
+    output_group.add_argument(
+        '--diff', help='Print resulting diff afterwards.', action='store_true')
+    output_group.add_argument(
+        '--version', action='version', version='%(prog)s ' + version_string)
+    output_group.add_argument(
+        '--list-fixers', action="store_true", help="list available fixers")
+    output_group.add_argument(
+        '--list-tags', action="store_true",
+        help="list lintian tags for which fixers are available")
+    output_group.add_argument(
+        '--dry-run', help=(
+            'Do not make any changes to the current repository. '
+            'Note: currently creates a temporary clone of the repository.'),
+        action='store_true')
+    output_group.add_argument(
         '--identity',
         help='Print user identity that would be used when committing',
         action='store_true', default=False)
+
+    parser.add_argument(
+        '--directory', metavar='DIRECTORY', help='directory to run in',
+        type=str, default='.')
     parser.add_argument(
         '--disable-net-access',
         help='Do not probe external services.',
         action='store_true', default=False)
+
     # Hide the minimum-certainty option for the moment.
     parser.add_argument(
         '--minimum-certainty',
@@ -108,24 +127,14 @@ def main(argv=None):
         action='store_true',
         help=argparse.SUPPRESS)
     parser.add_argument(
-        '--allow-reformatting', default=None, action='store_true',
-        help=argparse.SUPPRESS)
-    parser.add_argument(
         '--disable-inotify', action='store_true', default=False,
         help=argparse.SUPPRESS)
-    parser.add_argument('--compat-release', type=str, help=argparse.SUPPRESS)
-    parser.add_argument(
-        '--exclude', metavar='EXCLUDE', type=str, action='append',
-        help='Exclude a fixer.')
     parser.add_argument(
         '--opinionated', action='store_true',
         help=argparse.SUPPRESS)
     parser.add_argument(
         '--diligent', action='count', default=0, dest='diligence',
         help=argparse.SUPPRESS)
-    parser.add_argument(
-        'fixers', metavar='FIXER', nargs='*',
-        help='specific fixer to run')
     args = parser.parse_args(argv)
 
     if args.list_fixers and args.list_tags:
