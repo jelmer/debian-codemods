@@ -811,7 +811,8 @@ class ManyResult(object):
     def minimum_success_certainty(self) -> str:
         """Return the minimum certainty of any successfully made change."""
         return min_certainty(
-            [r.certainty for r, unused_summary in self.success])
+            [r.certainty for r, unused_summary in self.success
+             if r.certainty is not None])
 
     def __tuple__(self):
         return (self.success, self.failed_fixers)

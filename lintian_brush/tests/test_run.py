@@ -58,6 +58,7 @@ from lintian_brush import (
     run_lintian_fixers,
     select_fixers,
     version_string,
+    ManyResult,
     )
 
 
@@ -858,3 +859,26 @@ class SelectFixersTests(TestCase):
                 [DummyFixer('dummy1', 'some-tag'),
                  DummyFixer('dummy2', 'other-tag')],
                 ['dummy1', 'dummy2'], ['dummy2'])])
+
+
+class ManyResultTests(TestCase):
+
+    def test_empty(self):
+        result = ManyResult()
+        self.assertEqual('certain', result.minimum_success_certainty())
+        self.assertEqual(([], {}), tuple(result))
+
+    def test_no_certainty(self):
+        result = ManyResult()
+        result.success.append(
+            (FixerResult('Do bla', ['tag-a'], None), 'summary'))
+        self.assertEqual('certain', result.minimum_success_certainty())
+        self.assertEqual((result.success, {}), tuple(result))
+
+    def test_possible(self):
+        result = ManyResult()
+        result.success.append(
+            (FixerResult('Do bla', ['tag-a'], 'possible'), 'summary'))
+        result.success.append(
+            (FixerResult('Do bloeh', ['tag-b'], 'certain'), 'summary'))
+        self.assertEqual('possible', result.minimum_success_certainty())
