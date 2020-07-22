@@ -128,6 +128,7 @@ GIT_PATH_RENAMES = {
     'debian-islamic/packages': 'islamic-team',
     'debichem/packages': 'debichem-team',
     'pkg-privacy/packages': 'pkg-privacy-team',
+    'pkg-cli-libs/packages': 'dotnet-team',
 }
 
 
