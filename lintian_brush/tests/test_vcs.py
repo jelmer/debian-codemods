@@ -100,6 +100,12 @@ class FixUpGitUrlTests(TestCase):
             fixup_broken_git_url(
                 'git://anongit.freedesktop.org/git/xorg/lib/libSM'))
 
+    def test_anongit(self):
+        self.assertEqual(
+            'https://anongit.kde.org/kdev-php.git',
+            fixup_broken_git_url(
+                'git://anongit.kde.org/kdev-php.git'))
+
     def test_gnome(self):
         self.assertEqual(
             'https://gitlab.gnome.org/GNOME/alacarte',

@@ -1178,7 +1178,7 @@
 - tag: star-file
 - tag: static-library-has-unneeded-section
 - tag: statically-linked-binary
-  difficultY: hard
+  difficulty: hard
 - tag: stray-directory-in-manpage-directory
 - tag: stray-translated-debconf-templates
 - tag: stripped-library

@@ -1,3 +1,9 @@
+lintian-brush (0.75) UNRELEASED; urgency=medium
+
+  * Fix anongit.kde.org URLs to use https:.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jul 2020 20:06:29 +0000
+
 lintian-brush (0.74) unstable; urgency=medium
 
   * Fix regression: allow fixers without declared certainty.

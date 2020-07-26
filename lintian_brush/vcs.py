@@ -179,6 +179,13 @@ def fix_git_gnome_org_url(parsed, branch):
     return None, None
 
 
+def fix_anongit_url(parsed, branch):
+    if parsed.netloc == 'anongit.kde.org' and parsed.scheme == 'git':
+        parsed = parsed._replace(scheme='https')
+        return parsed, branch
+    return None, None
+
+
 def fix_freedesktop_org_url(parsed: ParseResult, branch: Optional[str]):
     if parsed.netloc == 'anongit.freedesktop.org':
         path = parsed.path
@@ -201,6 +208,7 @@ FIXERS = [
     drop_git_username,
     fix_branch_argument,
     fix_git_gnome_org_url,
+    fix_anongit_url,
     fix_freedesktop_org_url,
     ]
 
