@@ -42,7 +42,7 @@ for patch in os.listdir('debian/patches'):
         continue
     if override_exists(
             'patch-file-present-but-not-mentioned-in-series',
-            package='source', info=patch):
+            type='source', info=patch):
         continue
     removed.add(patch)
     os.unlink(path)

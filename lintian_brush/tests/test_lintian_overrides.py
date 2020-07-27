@@ -18,16 +18,13 @@
 """Tests for lintian_brush.lintian_overrides."""
 
 from breezy.tests import (
-    TestCase,
     TestCaseWithTransport,
     )
 
 from lintian_brush.lintian_overrides import (
-    Override,
+    LintianOverride,
     overrides_paths,
     override_exists,
-    parse_override,
-    serialize_override,
     update_overrides_file,
     _get_overrides,
     )
@@ -68,52 +65,16 @@ foo binary: another-tag optional-extra
 """)])
 
         def cb(override):
-            return Override(
+            return LintianOverride(
                 tag=override.tag, package=override.package,
                 type=override.type, info=override.info,
-                archlist='any-i386')
+                archlist=['any-i386'])
 
         self.assertTrue(update_overrides_file(cb=cb, path='overrides'))
         self.assertFileEqual("""\
 # An architecture wildcard would look like:
 foo [any-i386] binary: another-tag optional-extra
 """, 'overrides')
-
-
-class ParseOverrideTests(TestCase):
-
-    def test_tag_only(self):
-        self.assertEqual(
-            Override(tag='sometag'),
-            parse_override('sometag\n'))
-
-    def test_origin(self):
-        self.assertEqual(
-            Override(tag='sometag', package='mypkg'),
-            parse_override('mypkg: sometag\n'))
-
-    def test_archlist(self):
-        self.assertEqual(
-            Override(tag='sometag', archlist='i386 amd64'),
-            parse_override('[i386 amd64]: sometag\n'))
-
-
-class SerializeOverrideTests(TestCase):
-
-    def test_tag_only(self):
-        self.assertEqual(
-            serialize_override(Override(tag='sometag')),
-            'sometag\n')
-
-    def test_origin(self):
-        self.assertEqual(
-            serialize_override(Override(tag='sometag', package='mypkg')),
-            'mypkg: sometag\n')
-
-    def test_archlist(self):
-        self.assertEqual(
-            serialize_override(Override(tag='sometag', archlist='i386')),
-            '[i386]: sometag\n')
 
 
 class OverrideExistsTests(TestCaseWithTransport):
@@ -126,10 +87,11 @@ class OverrideExistsTests(TestCaseWithTransport):
 blah source: patch-file-exists-but info
 """)])
         self.assertEqual([
-            Override(package='blah', archlist=None, type='source',
-                     tag='patch-file-exists-but', info='info')],
+            LintianOverride(
+                package='blah', archlist=None, type='source',
+                tag='patch-file-exists-but', info='info')],
             list(_get_overrides()))
         self.assertTrue(override_exists('patch-file-exists-but', info='info'))
         self.assertFalse(override_exists('patch-file-exists-but', info='no'))
         self.assertTrue(override_exists(
-            'patch-file-exists-but', info='info', package='source'))
+            tag='patch-file-exists-but', info='info', package='blah'))

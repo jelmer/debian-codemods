@@ -62,7 +62,7 @@ for entry in mf.contents:
             else:
                 if override_exists(
                     'missing-build-dependency-for-dh_-command',
-                        package='source', info='%s => %s' % (executable, dep)):
+                        type='source', info='%s => %s' % (executable, dep)):
                     continue
                 need.append(
                     (dep, ['missing-build-dependency-for-dh_-command']))

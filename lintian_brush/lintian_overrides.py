@@ -17,19 +17,14 @@
 
 """Utility functions for dealing with lintian overrides files."""
 
-import collections
 import os
+from typing import Optional
 
-
-# https://lintian.debian.org/manual/section-2.4.html
-# File format (as documented in policy 2.4.1):
-# [[<package>][ <archlist>][ <type>]: ]<lintian-tag>[ [*]<lintian-info>[*]]
-
-
-VALID_TYPES = ['udeb', 'source', 'binary']
-Override = collections.namedtuple(
-    'Override', ['package', 'archlist', 'type', 'tag', 'info'])
-Override.__new__.__defaults__ = (None,) * len(Override._fields)  # type: ignore
+from debmutate.lintian_overrides import (
+    LintianOverridesEditor,
+    LintianOverride,
+    iter_overrides,
+    )
 
 
 def overrides_paths():
@@ -48,71 +43,6 @@ def update_overrides(cb):
         update_overrides_file(cb, path=path)
 
 
-def parse_override(line):
-    """Parse an override line
-
-    Args:
-      line: Line to parse
-    Returns:
-      An Override object
-    Raises:
-      ValueError: when encountering invalid syntax
-    """
-    line = line.strip()
-    archlist = None
-    package = None
-    type = None
-    if ': ' in line:
-        origin, issue = line.split(': ', 1)
-        while origin:
-            origin = origin.strip()
-            if origin.startswith('['):
-                archlist, origin = origin[1:].split(']', 1)
-            else:
-                try:
-                    field, origin = origin.split(' ', 1)
-                except ValueError:
-                    field = origin
-                    origin = ''
-                if field in VALID_TYPES:
-                    type = field
-                else:
-                    package = field
-    else:
-        issue = line
-    try:
-        tag, info = issue.split(None, 1)
-    except ValueError:
-        tag = issue
-        info = None
-    return Override(
-        package=package, archlist=archlist, type=type, tag=tag, info=info)
-
-
-def serialize_override(override):
-    """Serialize an override.
-
-    Args:
-      override: An Override object
-    Returns:
-      serialized override, including newline
-    """
-    origin = []
-    if override.package:
-        origin.append(override.package)
-    if override.archlist:
-        origin.append('[' + override.archlist + ']')
-    if override.type:
-        origin.append(override.type)
-    if origin:
-        line = ' '.join(origin) + ': ' + override.tag
-    else:
-        line = override.tag
-    if override.info:
-        line += ' ' + override.info
-    return line + '\n'
-
-
 def update_overrides_file(cb, path='debian/source/lintian-overrides'):
     """Modify the overrides in a file.
 
@@ -122,67 +52,57 @@ def update_overrides_file(cb, path='debian/source/lintian-overrides'):
     Returns:
         Whether the file was modified
     """
-    changed = False
-    lines = []
-    with open(path, 'r') as f:
-        for line in f.readlines():
-            if line.startswith('#') or not line.strip():
-                lines.append(line)
-            else:
-                old = parse_override(line)
-                new = cb(old)
-                if old != new:
-                    changed = True
-                    if new is not None:
-                        lines.append(serialize_override(new))
-                else:
-                    lines.append(line)
-
-    if not changed:
-        return False
-
-    if lines:
-        with open(path, 'w') as f:
-            f.writelines(lines)
-    else:
-        os.unlink(path)
-
-    return True
+    with LintianOverridesEditor(path=path) as editor:
+        new_lines = []
+        for entry in editor.lines:
+            if isinstance(entry, LintianOverride):
+                entry = cb(entry)
+            if entry is not None:
+                new_lines.append(entry)
+        editor._parsed = new_lines
+        return editor.has_changed()
 
 
-def _get_overrides(package=None):
-    if package in ('source', None):
-        paths = ['debian/source/lintian-overrides',
-                 'debian/source.lintian-overrides']
-    else:
-        paths = ['debian/%s.lintian-overrides' % package]
+def _get_overrides(type=None, package=None):
+    paths = []
+    if type in ('source', None):
+        paths.extend(
+            ['debian/source/lintian-overrides',
+             'debian/source.lintian-overrides'])
+    if type in ('binary', None):
+        if package is not None:
+            paths.extend(['debian/%s.lintian-overrides' % package])
+        else:
+            paths.extend(
+                ['debian/%s' % n for n in os.listdir('debian')
+                 if n.endswith('.lintian-overrides')])
 
     for path in paths:
         try:
             with open(path, 'r') as f:
-                for line in f.readlines():
-                    if line.startswith('#') or not line.strip():
-                        pass
-                    else:
-                        yield parse_override(line)
+                yield from iter_overrides(f)
         except FileNotFoundError:
             pass
 
 
-def override_exists(tag, info=None, package=None):
+def override_exists(
+        tag: str, info: Optional[str] = None,
+        package: Optional[str] = None,
+        type: Optional[str] = None,
+        arch: Optional[str] = None) -> bool:
     """Check if a particular override exists.
 
     Args:
       tag: Tag name
       info: Optional info
-      package: Package (as type, name tuple)
+      package: Package
+      type: package type (source, binary)
+      arch: Architecture
     """
-    for override in _get_overrides(package):
-        if override.tag != tag:
-            continue
-        if override.info and info != override.info:
-            continue
-        return True
+    for override in _get_overrides(type=type, package=package):
+        if override.matches(package=package, info=info, tag=tag, arch=arch,
+                            type=type):
+            return True
     return False
 
 

@@ -92,7 +92,7 @@ try:
                     continue
                 if override_exists(
                         'unused-license-paragraph-in-dep5-copyright',
-                        package='source',
+                        type='source',
                         info=paragraph.license.synopsis.lower()):
                     continue
                 if paragraph.license.synopsis in extra_defined:
