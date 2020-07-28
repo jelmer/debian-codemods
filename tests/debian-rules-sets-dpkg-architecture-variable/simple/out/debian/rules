@@ -9,7 +9,7 @@ CONFIGURE_FLAGS := \
 	--without-grape \
 	--without-silo
 
-include /usr/share/dpkg/architecture.mk
+DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
 ifneq (,$(filter powerpc ppc64 ppc64el,$(DEB_HOST_ARCH)))
   export DEB_BUILD_MAINT_OPTIONS=hardening=-stackprotector
   CONFIGURE_FLAGS += CC=clang
