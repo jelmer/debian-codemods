@@ -280,6 +280,9 @@
         "CC-BY-NC-ND-3.0": {
             "name": "Creative Commons Attribution Non Commercial No Derivatives 3.0 Unported"
         },
+        "CC-BY-NC-ND-3.0-IGO": {
+            "name": "Creative Commons Attribution Non Commercial No Derivatives 3.0 IGO"
+        },
         "CC-BY-NC-ND-4.0": {
             "name": "Creative Commons Attribution Non Commercial No Derivatives 4.0 International"
         },
@@ -853,6 +856,12 @@
         "NGPL": {
             "name": "Nethack General Public License"
         },
+        "NIST-PD": {
+            "name": "NIST Public Domain Notice"
+        },
+        "NIST-PD-fallback": {
+            "name": "NIST Public Domain Notice with license fallback"
+        },
         "NLOD-1.0": {
             "name": "Norwegian Licence for Open Government Data"
         },
@@ -1079,7 +1088,7 @@
             "name": "RealNetworks Public Source License v1.0"
         },
         "RSA-MD": {
-            "name": "RSA Message-Digest License "
+            "name": "RSA Message-Digest License"
         },
         "RSCPL": {
             "name": "Ricoh Source Code Public License"
