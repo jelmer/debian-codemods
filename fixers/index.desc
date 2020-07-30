@@ -219,6 +219,8 @@ Lintian-Tags: public-upstream-key-not-minimal
 Fix-Script: public-upstream-keys-in-multiple-locations.sh
 Lintian-Tags: public-upstream-keys-in-multiple-locations
 
+Fix-Script: public-upstream-key-binary.sh
+
 Fix-Script: quilt-series-without-trailing-newline.sh
 Lintian-Tags: quilt-series-without-trailing-newline
 
@@ -251,6 +253,11 @@ Lintian-Tags: unnecessary-team-upload
 
 Fix-Script: unnecessary-testsuite-autopkgtest-field.py
 Lintian-Tags: unnecessary-testsuite-autopkgtest-field
+
+Fix-Script: upstream-metadata-invalid.py
+Lintian-Tags:
+  upstream-metadata-yaml-invalid,
+  upstream-metadata-not-yaml-mapping
 
 Fix-Script: copyright-missing-upstream-info.py
 

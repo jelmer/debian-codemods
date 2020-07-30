@@ -33,8 +33,8 @@ from lintian_brush.yaml import (
 class YamlUpdaterTests(TestCaseInTempDir):
 
     def test_new(self):
-        with YamlUpdater('newfile.yaml') as code:
-            code['Somekey'] = 'Somevalue'
+        with YamlUpdater('newfile.yaml') as editor:
+            editor.code['Somekey'] = 'Somevalue'
         self.assertFileEqual("---\nSomekey: Somevalue\n", "newfile.yaml")
 
     def test_update(self):
@@ -43,8 +43,8 @@ class YamlUpdaterTests(TestCaseInTempDir):
 Origkey: origvalue
 Somekey: origvalue
 """)
-        with YamlUpdater('newfile.yaml') as code:
-            code['Somekey'] = 'Somevalue'
+        with YamlUpdater('newfile.yaml') as editor:
+            editor.code['Somekey'] = 'Somevalue'
         self.assertFileEqual("""\
 Origkey: origvalue
 Somekey: Somevalue
@@ -56,9 +56,9 @@ Somekey: Somevalue
 Origkey: origvalue
 Somekey: origvalue
 """)
-        with YamlUpdater('newfile.yaml') as code:
-            del code['Origkey']
-            del code['Somekey']
+        with YamlUpdater('newfile.yaml') as editor:
+            del editor.code['Origkey']
+            del editor.code['Somekey']
         self.assertPathDoesNotExist('newfile.yaml')
 
     def test_no_change(self):
@@ -81,8 +81,8 @@ Somekey: origvalue
 Origkey: origvalue
 Somekey: origvalue
 """)
-        with YamlUpdater('newfile.yaml') as code:
-            code['Newkey'] = 'newvalue'
+        with YamlUpdater('newfile.yaml') as editor:
+            editor.code['Newkey'] = 'newvalue'
         self.assertFileEqual("""\
 ---
 Origkey: origvalue
@@ -96,8 +96,8 @@ Newkey: newvalue
 ---
 Origkey: origvalue
 Somekey: origvalue""")
-        with YamlUpdater('newfile.yaml') as code:
-            code['Newkey'] = 'newvalue'
+        with YamlUpdater('newfile.yaml') as editor:
+            editor.code['Newkey'] = 'newvalue'
         self.assertFileEqual("""\
 ---
 Origkey: origvalue

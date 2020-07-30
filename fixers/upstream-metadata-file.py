@@ -45,9 +45,9 @@ if package_is_native():
 current_version = current_package_version()
 
 
-with YamlUpdater('debian/upstream/metadata') as code:
+with YamlUpdater('debian/upstream/metadata') as editor:
     upstream_metadata = {
-        k: UpstreamDatum(k, v, 'certain') for (k, v) in code.items()}
+        k: UpstreamDatum(k, v, 'certain') for (k, v) in editor.code.items()}
 
     minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
     net_access = net_access_allowed()
@@ -103,18 +103,18 @@ with YamlUpdater('debian/upstream/metadata') as code:
     changed = {
         k: v
         for k, v in upstream_metadata.items()
-        if v.value != code.get(k)}
+        if v.value != editor.code.get(k)}
 
     if not changed:
         sys.exit(0)
 
-    if (('Repository' in changed and 'Repository' not in code) or
+    if (('Repository' in changed and 'Repository' not in editor.code) or
             ('Repository-Browse' in changed and
-                'Repository-Browse' not in code)):
+                'Repository-Browse' not in editor.code)):
         fixed_tags.append('upstream-metadata-missing-repository')
 
-    if (('Bug-Database' in changed and 'Bug-Database' not in code) or
-            ('Bug-Submit' in changed and 'But-Submit' not in code)):
+    if (('Bug-Database' in changed and 'Bug-Database' not in editor.code) or
+            ('Bug-Submit' in changed and 'But-Submit' not in editor.code)):
         fixed_tags.append('upstream-metadata-missing-bug-tracking')
 
     # A change that just says the "Name" field is a bit silly
@@ -125,14 +125,14 @@ with YamlUpdater('debian/upstream/metadata') as code:
         fixed_tags.append('upstream-metadata-file-is-missing')
 
     update_ordered_dict(
-        code, [(k, v.value) for (k, v) in changed.items()],
+        editor.code, [(k, v.value) for (k, v) in changed.items()],
         key=upstream_metadata_sort_key)
 
     # If there are only add-on-only fields, then just remove the file.
-    if not (set(code.keys()) - set(ADDON_ONLY_FIELDS)):
-        code.clear()
+    if not (set(editor.code.keys()) - set(ADDON_ONLY_FIELDS)):
+        editor.code.clear()
 
-    if code and not os.path.isdir('debian/upstream'):
+    if editor.code and not os.path.isdir('debian/upstream'):
         os.makedirs('debian/upstream', exist_ok=True)
 
 

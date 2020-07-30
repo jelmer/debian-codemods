@@ -46,9 +46,20 @@ class YamlUpdater(object):
                         break
             self._code = self.yaml.load(''.join(inp))
         self._orig = copy.deepcopy(self._code)
+        return self
+
+    def _get_code(self):
         return self._code
 
+    def _set_code(self, v):
+        self._code = v
+
+    code = property(_get_code, _set_code)
+
     def _only_simple_changes(self):
+        if not isinstance(self._orig, dict):
+            return False
+
         def is_one_line(k, v):
             f = StringIO()
             self.yaml.dump({k: v}, f)

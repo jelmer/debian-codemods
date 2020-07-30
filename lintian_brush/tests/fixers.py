@@ -174,6 +174,7 @@ def test_suite():
 
 if __name__ == '__main__':
     import argparse
+    import sys
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--fixer', type=str, default=None,
@@ -185,7 +186,12 @@ if __name__ == '__main__':
 
     fixers = list(available_lintian_fixers())
     if args.fixer:
-        fixers = select_fixers(fixers, args.fixer, args.exclude)
+        try:
+            fixers = select_fixers(fixers, args.fixer, args.exclude)
+        except KeyError as e:
+            print("Selected fixer %s does not exist." % (e.args[0]),
+                  file=sys.stderr)
+            sys.exit(0)
 
     suite = unittest.TestSuite()
     for fixer in fixers:
