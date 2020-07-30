@@ -144,6 +144,8 @@ subset of the issues:
 * upstream-metadata-in-native-source
 * upstream-metadata-missing-bug-tracking
 * upstream-metadata-missing-repository
+* upstream-metadata-not-yaml-mapping
+* upstream-metadata-yaml-invalid
 * useless-autoreconf-build-depends
 * uses-debhelper-compat-file
 * uses-deprecated-adttmp
