@@ -27,9 +27,16 @@ __all__ = [
 import posixpath
 import re
 from typing import Optional
+import urllib.error
 from urllib.parse import urlparse, urlunparse, ParseResult
+from urllib.request import urlopen, Request
 
 from debmutate.vcs import split_vcs_url, unsplit_vcs_url
+
+from lintian_brush import (
+    USER_AGENT,
+    DEFAULT_URLLIB_TIMEOUT,
+    )
 
 
 KNOWN_GITLAB_SITES = [
@@ -41,9 +48,28 @@ KNOWN_GITLAB_SITES = [
     ]
 
 
+def probe_gitlab_host(hostname: str):
+    headers = {'User-Agent': USER_AGENT, 'Accept': 'application/json'}
+    try:
+        urlopen(
+            Request('https://%s/api/v4/version' % hostname, headers=headers),
+            timeout=DEFAULT_URLLIB_TIMEOUT)
+    except urllib.error.HTTPError as e:
+        if e.status == 401:
+            import json
+            if json.loads(e.read()) == {"message": "401 Unauthorized"}:
+                return True
+    return False
+
+
 def is_gitlab_site(hostname: str, net_access: bool = False) -> bool:
-    # TODO(jelmer): Try API to see if this is a gitlab site
-    return hostname in KNOWN_GITLAB_SITES
+    if hostname in KNOWN_GITLAB_SITES:
+        return True
+    if hostname.startswith('gitlab.'):
+        return True
+    if net_access:
+        return probe_gitlab_host(hostname)
+    return False
 
 
 def find_public_vcs_url(url: str) -> Optional[str]:

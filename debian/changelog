@@ -6,6 +6,7 @@ lintian-brush (0.75) UNRELEASED; urgency=medium
     default.
   * Add fixer public-upsteam-key-binary.
   * Add fixer for upstream-metadata-not-yaml-mapping.
+  * Probe for gitlab URLs.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jul 2020 20:06:29 +0000
 
