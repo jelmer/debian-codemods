@@ -29,19 +29,19 @@ candidates = []
 
 if os.path.exists('setup.py'):
     certainty = 'likely'
+    from distutils.core import run_setup
     try:
-        lines = subprocess.check_output(
-            ['python3', 'setup.py', '--name', '--version']).splitlines()
-    except subprocess.CalledProcessError:
-        # Worth a shot..
-        lines = subprocess.check_output(
-            ['python2', 'setup.py', '--name', '--version']).splitlines()
-    lines = [line for line in lines if not line.startswith(b'W: ')]
-    (project_bytes, version_bytes) = lines
-    project = project_bytes.decode()
-    version = version_bytes.decode()
+        result = run_setup(os.path.abspath('setup.py'), stop_after="init")
+    except BaseException:
+        import traceback
+        traceback.print_exc()
+        project = None
+        version = None
+    else:
+        project = result.get_name()
+        version = result.get_version()
     current_version_filenames = None
-    if net_access_allowed():
+    if net_access_allowed() and project:
         json_url = 'https://pypi.python.org/pypi/%s/json' % project
         headers = {'User-Agent': USER_AGENT}
         response = urlopen(
@@ -52,23 +52,24 @@ if os.path.exists('setup.py'):
             current_version_filenames = [
                 (d['filename'], d['has_sig'])
                 for d in release if d['packagetype'] == 'sdist']
-    filename_regex = (
-        r'%(project)s-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))' % {
-            'project': project})
-    opts = []
-    # TODO(jelmer): Set uversionmangle?
-    # opts.append('uversionmangle=s/(rc|a|b|c)/~$1/')
-    if current_version_filenames:
-        for (fn, has_sig) in current_version_filenames:
-            if re.match(filename_regex, fn):
-                certainty = 'certain'
-                if has_sig:
-                    opts.append('pgpsigurlmangle=s/$/.asc/')
-    url = (r'https://pypi.debian.net/%(project)s/%(fname_regex)s' % {
-        'project': project, 'fname_regex': filename_regex})
-    # TODO(jelmer): Add pgpsigurlmangle if has_sig==True
-    w = Watch(url, opts=opts)
-    candidates.append((w, 'pypi', certainty))
+    if project:
+        filename_regex = (
+            r'%(project)s-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))' % {
+                'project': project})
+        opts = []
+        # TODO(jelmer): Set uversionmangle?
+        # opts.append('uversionmangle=s/(rc|a|b|c)/~$1/')
+        if current_version_filenames:
+            for (fn, has_sig) in current_version_filenames:
+                if re.match(filename_regex, fn):
+                    certainty = 'certain'
+                    if has_sig:
+                        opts.append('pgpsigurlmangle=s/$/.asc/')
+        url = (r'https://pypi.debian.net/%(project)s/%(fname_regex)s' % {
+            'project': project, 'fname_regex': filename_regex})
+        # TODO(jelmer): Add pgpsigurlmangle if has_sig==True
+        w = Watch(url, opts=opts)
+        candidates.append((w, 'pypi', certainty))
 
 
 def guess_github_watch_entry(parsed_url, upstream_version):
