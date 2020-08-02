@@ -30,7 +30,6 @@ from typing import Optional
 import urllib.error
 from urllib.parse import urlparse, urlunparse, ParseResult
 from urllib.request import urlopen, Request
-import warnings
 
 from debmutate.vcs import split_vcs_url, unsplit_vcs_url
 
