@@ -22,6 +22,7 @@ from debian.deb822 import Deb822
 import os
 import re
 import sys
+import warnings
 
 
 def write_debhelper_rules_template(path):
@@ -63,7 +64,11 @@ def write_changelog_template(path, source_name, version, wnpp_bugs=None):
 
 
 async def find_wnpp_bugs(source_name):
-    from .udd import connect_udd_mirror
+    try:
+        from .udd import connect_udd_mirror
+    except ModuleNotFoundError:
+        warnings.warn('asyncpg not available, unable to find wnpp bugs.')
+        return []
     conn = await connect_udd_mirror()
     return [row[0] for row in await conn.fetch("""\
 select id from wnpp where source = $1 and type in ('ITP', 'RFP') LIMIT 1
