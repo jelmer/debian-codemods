@@ -38,6 +38,7 @@ if os.path.exists('debian/upstream/metadata'):
         'debian/upstream/metadata', good_upstream_versions,
         net_access=net_access_allowed()))
 
+# TODO(jelmer): parse cabal file and call candidates_from_hackage
 
 if not candidates:
     sys.exit(0)

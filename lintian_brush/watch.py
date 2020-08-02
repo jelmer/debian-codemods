@@ -151,3 +151,29 @@ def guess_github_watch_entry(
     #    version_pattern)
     w = Watch(download_url, matching_pattern, opts=opts)
     yield w, 'github', 'certain'
+
+
+def candidates_from_hackage(
+        package, good_upstream_versions, net_access=False):
+    if not net_access:
+        return
+    url = 'https://hackage.haskell.org/package/%s/preferred' % package
+    headers = {'User-Agent': USER_AGENT, 'Accept': 'application/json'}
+    try:
+        response = urlopen(
+            Request(url, headers=headers),
+            timeout=DEFAULT_URLLIB_TIMEOUT)
+    except urllib.error.HTTPError as e:
+        if e.status == 404:
+            return
+        raise
+    versions = json.load(response)
+    for version in versions['normal-version']:
+        if version in good_upstream_versions:
+            break
+    else:
+        return
+    download_url = 'https://hackage.haskell.org/package/' + package
+    matching_pattern = r'.*/%s-(.*).tar.gz' % package
+    w = Watch(download_url, matching_pattern)
+    yield w, 'hackage', 'certain'
