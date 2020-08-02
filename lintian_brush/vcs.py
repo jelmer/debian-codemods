@@ -30,6 +30,7 @@ from typing import Optional
 import urllib.error
 from urllib.parse import urlparse, urlunparse, ParseResult
 from urllib.request import urlopen, Request
+import warnings
 
 from debmutate.vcs import split_vcs_url, unsplit_vcs_url
 
@@ -59,6 +60,9 @@ def probe_gitlab_host(hostname: str):
             import json
             if json.loads(e.read()) == {"message": "401 Unauthorized"}:
                 return True
+    except urllib.error.URLError:
+        # Probably not?
+        return False
     return False
 
 
