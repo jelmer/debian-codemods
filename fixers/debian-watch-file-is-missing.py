@@ -2,7 +2,6 @@
 import json
 import os
 import re
-import subprocess
 import sys
 from typing import Optional, Tuple
 from urllib.request import urlopen, Request
