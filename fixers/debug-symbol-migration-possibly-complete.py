@@ -42,7 +42,10 @@ async def package_exists(package, release, version_info):
                 os.environ['%s_PACKAGES' % release.upper()].split(','))
         except KeyError:
             return None
-    from lintian_brush.udd import connect_udd_mirror
+    try:
+        from lintian_brush.udd import connect_udd_mirror
+    except ModuleNotFoundError:
+        return None
     udd = await connect_udd_mirror()
     query = 'SELECT True FROM packages WHERE release = $2 AND package = $1'
     args = [package, release]
