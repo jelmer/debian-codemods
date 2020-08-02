@@ -63,6 +63,8 @@ def probe_gitlab_host(hostname: str):
 
 
 def is_gitlab_site(hostname: str, net_access: bool = False) -> bool:
+    if hostname is None:
+        return False
     if hostname in KNOWN_GITLAB_SITES:
         return True
     if hostname.startswith('gitlab.'):

@@ -27,6 +27,7 @@ from lintian_brush.vcs import (
     plausible_url,
     sanitize_url,
     find_public_vcs_url,
+    is_gitlab_site,
     )
 
 
@@ -237,3 +238,15 @@ class FixupRcpStyleUrlTests(TestCase):
             'ssh://git@salsa.debian.org/jelmer/example',
             fixup_rcp_style_git_url(
                 'ssh://git@salsa.debian.org/jelmer/example'))
+
+
+class TestIsGitLabSite(TestCase):
+
+    def test_not_gitlab(self):
+        self.assertFalse(is_gitlab_site('foo.example.com'))
+        self.assertFalse(is_gitlab_site('github.com'))
+        self.assertFalse(is_gitlab_site(None))
+
+    def test_gitlab(self):
+        self.assertTrue(is_gitlab_site('gitlab.somehost.com'))
+        self.assertTrue(is_gitlab_site('salsa.debian.org'))
