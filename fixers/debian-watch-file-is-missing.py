@@ -4,6 +4,7 @@ import os
 import re
 import sys
 from typing import Optional, Tuple
+import urllib.error
 from urllib.request import urlopen, Request
 
 from lintian_brush import (
@@ -26,49 +27,55 @@ if os.path.exists('debian/watch') or package_is_native():
 
 candidates = []
 
-if os.path.exists('setup.py'):
+
+def candidates_from_setup_py(path):
     certainty = 'likely'
     from distutils.core import run_setup
     try:
-        result = run_setup(os.path.abspath('setup.py'), stop_after="init")
+        result = run_setup(os.path.abspath(path), stop_after="init")
     except BaseException:
         import traceback
         traceback.print_exc()
-        project = None
-        version = None
-    else:
-        project = result.get_name()
-        version = result.get_version()
+        return
+    project = result.get_name()
+    version = result.get_version()
+    if not project:
+        return
     current_version_filenames = None
-    if net_access_allowed() and project:
+    if net_access_allowed():
         json_url = 'https://pypi.python.org/pypi/%s/json' % project
         headers = {'User-Agent': USER_AGENT}
-        response = urlopen(
-            Request(json_url, headers=headers), timeout=DEFAULT_URLLIB_TIMEOUT)
+        try:
+            response = urlopen(
+                Request(json_url, headers=headers),
+                timeout=DEFAULT_URLLIB_TIMEOUT)
+        except urllib.error.HTTPError as e:
+            if e.status == 404:
+                return
+            raise
         pypi_data = json.load(response)
         if version in pypi_data['releases']:
             release = pypi_data['releases'][version]
             current_version_filenames = [
                 (d['filename'], d['has_sig'])
                 for d in release if d['packagetype'] == 'sdist']
-    if project:
-        filename_regex = (
-            r'%(project)s-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))' % {
-                'project': project})
-        opts = []
-        # TODO(jelmer): Set uversionmangle?
-        # opts.append('uversionmangle=s/(rc|a|b|c)/~$1/')
-        if current_version_filenames:
-            for (fn, has_sig) in current_version_filenames:
-                if re.match(filename_regex, fn):
-                    certainty = 'certain'
-                    if has_sig:
-                        opts.append('pgpsigurlmangle=s/$/.asc/')
-        url = (r'https://pypi.debian.net/%(project)s/%(fname_regex)s' % {
-            'project': project, 'fname_regex': filename_regex})
-        # TODO(jelmer): Add pgpsigurlmangle if has_sig==True
-        w = Watch(url, opts=opts)
-        candidates.append((w, 'pypi', certainty))
+    filename_regex = (
+        r'%(project)s-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))' % {
+            'project': project})
+    opts = []
+    # TODO(jelmer): Set uversionmangle?
+    # opts.append('uversionmangle=s/(rc|a|b|c)/~$1/')
+    if current_version_filenames:
+        for (fn, has_sig) in current_version_filenames:
+            if re.match(filename_regex, fn):
+                certainty = 'certain'
+                if has_sig:
+                    opts.append('pgpsigurlmangle=s/$/.asc/')
+    url = (r'https://pypi.debian.net/%(project)s/%(fname_regex)s' % {
+        'project': project, 'fname_regex': filename_regex})
+    # TODO(jelmer): Add pgpsigurlmangle if has_sig==True
+    w = Watch(url, opts=opts)
+    yield (w, 'pypi', certainty)
 
 
 def guess_github_watch_entry(parsed_url, upstream_version):
@@ -114,7 +121,12 @@ def guess_github_watch_entry(parsed_url, upstream_version):
     #    r'pgpsigurlmangle='
     #    r's/archive\/%s\.tar\.gz/releases\/download\/$1\/$1\.tar\.gz\.asc/' %
     #    version_pattern)
-    return Watch(download_url, matching_pattern, opts=opts), 'certain'
+    w = Watch(download_url, matching_pattern, opts=opts)
+    yield w, 'github', 'certain'
+
+
+if os.path.exists('setup.py'):
+    candidates.extend(candidates_from_setup_py('setup.py'))
 
 
 try:
@@ -135,10 +147,8 @@ else:
     else:
         upstream_version = current_package_version().upstream_version
         if parsed_url.hostname == 'github.com':
-            w, certainty = guess_github_watch_entry(
-                parsed_url, upstream_version)
-            if w:
-                candidates.append((w, 'github', certainty))
+            candidates.extend(guess_github_watch_entry(
+                parsed_url, upstream_version))
 
 
 if not candidates:
