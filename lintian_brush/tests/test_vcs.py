@@ -133,6 +133,11 @@ class SanitizeUrlTests(TestCase):
             'https://github.com/jelmer/blah.git',
             sanitize_url('github.com:jelmer/blah'))
 
+    def test_insecure_savannah(self):
+        self.assertEqual(
+            'https://git.savannah.gnu.org/cgit/gforth.git',
+            sanitize_url('http://git.savannah.gnu.org/cgit/gforth.git'))
+
 
 class DetermineBrowserUrlTests(TestCase):
 

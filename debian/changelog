@@ -11,6 +11,8 @@ lintian-brush (0.75) UNRELEASED; urgency=medium
     fixers/unused-override.py
   * debian-watch-file-is-missing: Cope with the fact that a python
     package may not be on pypi.
+  * Avoid inserting extra /git/ when converting savannah Git URLs from
+    http to https.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jul 2020 20:06:29 +0000
 
