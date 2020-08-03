@@ -26,6 +26,7 @@ __all__ = [
 
 import posixpath
 import re
+import socket
 from typing import Optional
 import urllib.error
 from urllib.parse import urlparse, urlunparse, ParseResult
@@ -59,7 +60,7 @@ def probe_gitlab_host(hostname: str):
             import json
             if json.loads(e.read()) == {"message": "401 Unauthorized"}:
                 return True
-    except urllib.error.URLError:
+    except (socket.timeout, urllib.error.URLError):
         # Probably not?
         return False
     return False
