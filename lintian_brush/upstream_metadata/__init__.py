@@ -1078,7 +1078,7 @@ def _get_guessers(path, trust_package=False):
     readme_filenames = [
         n for n in os.listdir(path)
         if any([n.startswith(p)
-                for p in ['README', 'HACKING', 'CONTRIBUTING']])
+                for p in ['readme', 'README', 'HACKING', 'CONTRIBUTING']])
         and os.path.splitext(n)[1] not in ('.html', '.pdf', '.xml')]
     CANDIDATES.extend([(n, guess_from_readme) for n in readme_filenames])
 

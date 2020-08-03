@@ -13,6 +13,8 @@ lintian-brush (0.75) UNRELEASED; urgency=medium
     package may not be on pypi.
   * Avoid inserting extra /git/ when converting savannah Git URLs from
     http to https.
+  * Scan lowercase readme files as well, when looking for upstream
+    metadata.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jul 2020 20:06:29 +0000
 
