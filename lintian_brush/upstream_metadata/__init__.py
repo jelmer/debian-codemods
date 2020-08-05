@@ -113,11 +113,11 @@ class UpstreamDatum(object):
 # - Webservice
 
 
-def _load_json_url(http_url):
+def _load_json_url(http_url: str, timeout: int = DEFAULT_URLLIB_TIMEOUT):
     headers = {'User-Agent': USER_AGENT, 'Accept': 'application/json'}
     http_contents = urlopen(
         Request(http_url, headers=headers),
-        timeout=DEFAULT_URLLIB_TIMEOUT).read()
+        timeout=timeout).read()
     return json.loads(http_contents)
 
 
@@ -572,7 +572,7 @@ def guess_from_readme(path, trust_package):
                         url = args[0]
                     if plausible_vcs_url(url):
                         urls.append(sanitize_vcs_url(url))
-                project_re = b'([^/]+)/([^/?.()">\\s]*[^-/?.()">\\s])'
+                project_re = b'([^/]+)/([^/?.()"#>\\s]*[^-/?.()"#>\\s])'
                 for m in re.finditer(
                         b'https://travis-ci.org/' + project_re, line):
                     yield UpstreamDatum(
@@ -609,7 +609,7 @@ def guess_from_readme(path, trust_package):
                         'Repository',
                         line.strip().rstrip(b'.').decode(), 'possible')
                 for m in re.finditer(
-                        b'https://([^/]+)/([^\\s()"]+)', line):
+                        b'https://([^/]+)/([^\\s()"#]+)', line):
                     if is_gitlab_site(m.group(1).decode()):
                         yield UpstreamDatum(
                             'Repository',
@@ -821,6 +821,8 @@ def is_email_address(value):
 
 
 def guess_from_configure(path, trust_package=False):
+    if os.path.isdir(path):
+        return
     with open(path, 'rb') as f:
         for line in f:
             if b'=' not in line:
@@ -1404,10 +1406,10 @@ def verify_repository_url(url, version=None):
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
         path_elements = parsed_url.path.strip('/').split('/')
-        if path_elements[1].endswith('.git'):
-            path_elements[1] = path_elements[1][:-4]
         if len(path_elements) < 2:
             return False
+        if path_elements[1].endswith('.git'):
+            path_elements[1] = path_elements[1][:-4]
         api_url = 'https://api.github.com/repos/%s/%s' % (
             path_elements[0], path_elements[1])
         try:
@@ -1776,7 +1778,14 @@ def parse_pkgbuild_variables(f):
     import shlex
     variables = {}
     keep = None
+    existing = None
     for line in f:
+        if existing:
+            line = existing + line
+        if line.endswith(b'\\\n'):
+            existing = line[:-2]
+            continue
+        existing = None
         if (line.startswith(b'\t') or line.startswith(b' ') or
                 line.startswith(b'#')):
             continue
@@ -1847,7 +1856,7 @@ def guess_from_pecl_url(url):
             yield 'Homepage', tag.attrs['href']
 
 
-def guess_from_aur(package):
+def guess_from_aur(package: str):
     vcses = ['git', 'bzr', 'hg']
     for vcs in vcses:
         url = (
