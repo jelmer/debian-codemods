@@ -46,6 +46,9 @@ current_version = current_package_version()
 
 
 with YamlUpdater('debian/upstream/metadata') as editor:
+    if isinstance(editor.code, str):
+        sys.exit(0)
+
     upstream_metadata = {
         k: UpstreamDatum(k, v, 'certain') for (k, v) in editor.code.items()}
 
