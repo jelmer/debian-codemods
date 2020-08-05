@@ -543,10 +543,9 @@ def guess_from_debian_copyright(path, trust_package):
             yield UpstreamDatum(
                 "Bug-Database", header["X-Upstream-Bugs"], 'certain')
         if "X-Source-Downloaded-From" in header:
-            yield UpstreamDatum(
-                "Repository",
-                guess_repo_from_url(header["X-Source-Downloaded-From"]),
-                'certain')
+            url = guess_repo_from_url(header["X-Source-Downloaded-From"])
+            if url is not None:
+                yield UpstreamDatum("Repository", url, 'certain')
 
 
 def guess_from_readme(path, trust_package):
