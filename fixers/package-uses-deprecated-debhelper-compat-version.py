@@ -83,7 +83,7 @@ if autoreconf_disabled():
                     'Not upgrading beyond debhelper %d, since the package '
                     'disables autoreconf but its configure does not provide '
                     '--runstatedir.' % new_debhelper_compat_version)
-    except FileNotFoundError:
+    except (IsADirectoryError, FileNotFoundError):
         pass
 
 
