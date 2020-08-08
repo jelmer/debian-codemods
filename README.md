@@ -98,10 +98,6 @@ subset of the issues:
 * misspelled-closes-bug
 * no-copyright-file
 * no-homepage-field
-* no-maintainer-field
-* no-priority-field
-* no-section-field
-* no-section-field-for-source
 * obsolete-field-in-dep5-copyright
 * obsolete-runtime-tests-restriction
 * old-fsf-address-in-copyright-file
@@ -121,6 +117,7 @@ subset of the issues:
 * public-upstream-keys-in-multiple-locations
 * quilt-series-but-no-build-dep
 * quilt-series-without-trailing-newline
+* recommended-field
 * renamed-tag
 * required-field
 * rules-requires-root-missing
