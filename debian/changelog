@@ -17,6 +17,8 @@ lintian-brush (0.75) UNRELEASED; urgency=medium
     metadata.
   * package-uses-deprecated-debhelper-compat-version: when
     './configure' is a directory, don't attempt to scan it.
+  * Stop suggesting cgit.kde.org and anongit.kde.org URLs in
+    debian/upstream/metadata; they've been replaced by invent.kde.org.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jul 2020 20:06:29 +0000
 

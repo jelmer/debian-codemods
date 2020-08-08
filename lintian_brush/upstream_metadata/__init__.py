@@ -22,6 +22,7 @@ import os
 import re
 import socket
 import urllib.error
+from typing import Optional
 from urllib.parse import quote, urlparse, urlunparse, urljoin, parse_qs
 from warnings import warn
 
@@ -230,6 +231,14 @@ def known_bad_guess(datum):
         if parsed_url.hostname == 'bugzilla.gnome.org':
             return True
         if parsed_url.hostname == 'bugs.freedesktop.org':
+            return True
+    if datum.field == 'Repository':
+        parsed_url = urlparse(datum.value)
+        if parsed_url.hostname == 'anongit.kde.org':
+            return True
+    if datum.field == 'Repository-Browse':
+        parsed_url = urlparse(datum.value)
+        if parsed_url.hostname == 'cgit.kde.org':
             return True
     if datum.value.lower() == 'unknown':
         return True
@@ -1401,7 +1410,8 @@ def bug_submit_url_from_bug_database_url(url):
     return None
 
 
-def verify_repository_url(url, version=None):
+def verify_repository_url(url: str, version: Optional[str] = None) -> bool:
+    """Verify whether a repository URL is valid."""
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
         path_elements = parsed_url.path.strip('/').split('/')
