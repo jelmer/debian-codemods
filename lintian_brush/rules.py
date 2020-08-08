@@ -74,15 +74,17 @@ class Rule(object):
     def __repr__(self):
         return "<%s(%r)>" % (type(self).__name__, self.target)
 
+    @property
+    def targets(self):
+        return self.target.split()
+
     def has_target(self, target: bytes, exact: bool = True) -> bool:
-        if not self.target:
-            return False
         if exact:
-            # TODO(jelmer): Handle multiple targets
-            return self.target == target
+            return target in self.targets
         else:
-            # TODO(jelmer): Handle multiple targets
-            return matches_wildcard(target.decode(), self.target.decode())
+            return any(
+                [matches_wildcard(
+                    target.decode(), t.decode()) for t in self.targets])
 
     def rename_target(self, oldname: bytes, newname: bytes) -> bool:
         # TODO(jelmer): Handle multiple targets
@@ -208,7 +210,7 @@ class Makefile(object):
                     rule.append_line(line)
                 else:
                     mf.contents.append(line)
-            elif b':' in line and b' ' not in line.split(b':')[0]:
+            elif b':' in line:
                 if rule:
                     mf.contents.extend(rule._finish())
                 precomment = []
