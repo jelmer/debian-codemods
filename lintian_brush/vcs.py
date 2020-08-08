@@ -46,6 +46,7 @@ KNOWN_GITLAB_SITES = [
     'gitlab.gnome.org',
     'gitlab.freedesktop.org',
     'gitlab.labs.nic.cz',
+    'invent.kde.org',
     ]
 
 
