@@ -19,6 +19,12 @@ lintian-brush (0.75) UNRELEASED; urgency=medium
     './configure' is a directory, don't attempt to scan it.
   * Stop suggesting cgit.kde.org and anongit.kde.org URLs in
     debian/upstream/metadata; they've been replaced by invent.kde.org.
+  * Update tag names to match changes in lintian:
+   + Rename no-maintainer-field and package-has-no-description to
+     required-field
+   + Rename no-section-field, no-section-field-for-source and
+     no-priority-field to recommended-field
+   + Rename rules-requires-root-missing to silent-on-rules-requiring-root
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jul 2020 20:06:29 +0000
 

@@ -371,16 +371,13 @@ Fix-Script: debian-rules-not-executable.py
 Lintian-Tags: debian-rules-not-executable
 
 Fix-Script: no-priority-field.py
-Lintian-Tags:
-  no-priority-field
+Lintian-Tags: recommended-field
 
 Fix-Script: no-section-field.py
-Lintian-Tags:
-  no-section-field,
-  no-section-field-for-source
+Lintian-Tags: recommended-field
 
 Fix-Script: no-maintainer-field.py
-Lintian-Tags: no-maintainer-field
+Lintian-Tags: required-field
 
 Fix-Script: wrong-section-according-to-package-name.py
 Lintian-Tags: wrong-section-according-to-package-name
@@ -416,4 +413,4 @@ Fix-Script: binary-control-field-duplicates-source.py
 Lintian-Tags: binary-control-field-duplicates-source
 
 Fix-Script: rules-requires-root-missing.py
-Lintian-Tags: rules-requires-root-missing
+Lintian-Tags: silent-on-rules-requiring-root

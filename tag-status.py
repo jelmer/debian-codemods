@@ -55,6 +55,6 @@ elif args.check:
     retcode = 0
     for tag in sorted(all_tags):
         if tag not in per_tag_status:
-            print(tag)
+            print('Missing tag: %s' % tag)
             retcode = 1
     sys.exit(retcode)

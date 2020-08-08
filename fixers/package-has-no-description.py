@@ -4,6 +4,7 @@ import sys
 
 from debmutate.control import ControlEditor
 from lintian_brush.fixer import (
+    fixed_lintian_tag,
     meets_minimum_certainty,
     net_access_allowed,
     report_result,
@@ -46,10 +47,10 @@ with ControlEditor() as updater:
         if description:
             binary['Description'] = description
             updated.append(binary['Package'])
+            fixed_lintian_tag(binary, 'required-field', 'Description')
 
 
 report_result(
     description='Add description for binary packages: %s' %
     ', '.join(sorted(updated)),
-    certainty=CERTAINTY,
-    fixed_lintian_tags=['required-field'])
+    certainty=CERTAINTY)

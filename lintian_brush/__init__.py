@@ -305,6 +305,8 @@ class PythonScriptFixer(Fixer):
             sys.stderr = old_stderr
             sys.stdout = old_stdout
             os.chdir(old_cwd)
+            from . import fixer
+            fixer.reset()
 
         if retcode == 2:
             raise NoChanges(self)

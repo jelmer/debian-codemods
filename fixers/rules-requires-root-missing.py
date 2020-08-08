@@ -1,7 +1,11 @@
 #!/usr/bin/python3
 
 from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result, meets_minimum_certainty
+from lintian_brush.fixer import (
+    report_result,
+    meets_minimum_certainty,
+    fixed_lintian_tag,
+    )
 import sys
 
 require_root = "no"
@@ -15,8 +19,8 @@ with ControlEditor() as updater:
         # TODO: add some heuristics to set require_root = "yes" in common
         # cases, like `debian/rules binary` chown(1)'ing stuff
         updater.source["Rules-Requires-Root"] = require_root
+        fixed_lintian_tag(updater.source, 'silent-on-rules-requiring-root')
 
 report_result(
     "Set Rules-Requires-Root: %s." % require_root,
-    fixed_lintian_tags=["rules-requires-root-missing"],
     certainty=CERTAINTY)

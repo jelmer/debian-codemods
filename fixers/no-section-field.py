@@ -1,7 +1,10 @@
 #!/usr/bin/python3
 
 from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import (
+    fixed_lintian_tag,
+    report_result,
+    )
 from lintian_brush.section import (
     find_expected_section,
     get_name_section_mappings,
@@ -24,6 +27,7 @@ with ControlEditor() as updater:
             if section:
                 binary['Section'] = section
                 binary_sections_set.add(binary['Package'])
+                fixed_lintian_tag(binary, 'recommended-field', 'Section')
         if binary.get('Section'):
             binary_sections.add(binary['Section'])
     if len(binary_sections) == 1:
@@ -33,21 +37,18 @@ with ControlEditor() as updater:
                 del binary['Section']
             except KeyError:
                 pass
+        fixed_lintian_tag(updater.source, 'recommended-field', 'Section')
         source_section_set = True
     if source_section_set and binary_sections_set:
         report_result(
             'Section field set in source based on binary package names.',
-            certainty='certain',
-            fixed_lintian_tags=[
-                'no-section-field-for-source', 'no-section-field'])
+            certainty='certain')
     elif source_section_set:
         report_result(
             'Section field set in source stanza rather than binary packages.',
-            certainty='certain',
-            fixed_lintian_tags=['no-section-field-for-source'])
+            certainty='certain')
     elif binary_sections_set:
         report_result(
             'Section field set for binary packages %s based on name.'
             % ', '.join(sorted(binary_sections_set)),
-            certainty='certain',
-            fixed_lintian_tags=['no-section-field'])
+            certainty='certain')

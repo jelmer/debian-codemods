@@ -1,7 +1,10 @@
 #!/usr/bin/python3
 
 from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import (
+    fixed_lintian_tag,
+    report_result,
+    )
 
 import sys
 
@@ -22,6 +25,7 @@ with ControlEditor() as updater:
             binary['Priority'] = 'optional'
             certainty = 'confident'
             updated[binary['Package']] = binary['Priority']
+            fixed_lintian_tag(binary, 'recommended-field', 'Priority')
         if binary.get('Priority'):
             binary_priorities.add(binary['Priority'])
     if len(binary_priorities) == 1:
@@ -34,10 +38,8 @@ with ControlEditor() as updater:
         report_result(
             'Set priority in source stanza, since it is the same '
             'for all packages.',
-            certainty='confident',
-            fixed_lintian_tags=(['no-priority-field'] if updated else []))
+            certainty='confident')
     elif updated:
         report_result(
             'Set priority for binary packages %s.' % (
-                ['%s (%s)' % item for item in updated.items()]),
-            fixed_lintian_tags=['no-priority-field'])
+                ['%s (%s)' % item for item in updated.items()]))

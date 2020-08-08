@@ -17,6 +17,9 @@
 
 """Helper functions for fixers."""
 
+from debmutate.deb822 import Deb822
+from typing import Optional, Tuple, Union
+
 from . import (
     DEFAULT_MINIMUM_CERTAINTY,
     certainty_sufficient,
@@ -25,6 +28,30 @@ from . import (
 
 from debian.changelog import Version
 import os
+
+
+_fixed_lintian_tags = []
+
+
+def fixed_lintian_tag(
+        target: Union[Deb822, Tuple[str, str]],
+        tag: str, info: Optional[str] = None):
+    """Register a lintian tag as being fixed."""
+    if isinstance(target, Deb822):
+        if 'Source' in target:
+            target = ('source', target['Source'])
+        elif 'Package' in target:
+            target = ('binary', target['Package'])
+        else:
+            raise ValueError(
+                'unable to determine source/binary package from target')
+    _fixed_lintian_tags.append((target, tag, info))
+
+
+def reset() -> None:
+    """Reset any global state that may exist."""
+    global _fixed_lintian_tags
+    _fixed_lintian_tags = []
 
 
 def report_result(description, fixed_lintian_tags=None, certainty=None,
@@ -40,10 +67,14 @@ def report_result(description, fixed_lintian_tags=None, certainty=None,
     print(description)
     if certainty:
         print('Certainty: %s' % certainty)
+    fixed_lintian_tags = set(fixed_lintian_tags or [])
+    fixed_lintian_tags.update(
+        [tag for (target, tag, info) in _fixed_lintian_tags])
     if fixed_lintian_tags:
         print('Fixed-Lintian-Tags: %s' % ', '.join(sorted(fixed_lintian_tags)))
     if patch_name:
         print('Patch-Name: %s' % patch_name)
+    reset()
 
 
 def net_access_allowed():
