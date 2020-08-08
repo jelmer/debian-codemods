@@ -380,11 +380,13 @@ def find_fixers_dir() -> str:
     return '/usr/share/lintian-brush/fixers'
 
 
-def read_desc_file(path: str) -> Iterator[Fixer]:
+def read_desc_file(
+        path: str, force_subprocess: bool = False) -> Iterator[Fixer]:
     """Read a description file.
 
     Args:
       path: Path to read from.
+      force_subprocess: Force running as subprocess
     Yields:
       Fixer objects
     """
@@ -398,7 +400,7 @@ def read_desc_file(path: str) -> Iterator[Fixer]:
                         for tag in paragraph['Lintian-Tags'].split(',')]
             else:
                 tags = []
-            if script_path.endswith('.py'):
+            if script_path.endswith('.py') and not force_subprocess:
                 yield PythonScriptFixer(name, tags, script_path)
             else:
                 yield ScriptFixer(name, tags, script_path)
@@ -431,11 +433,13 @@ def select_fixers(fixers: List[Fixer],
 
 
 def available_lintian_fixers(
-        fixers_dir: Optional[str] = None) -> Iterator[Fixer]:
+        fixers_dir: Optional[str] = None,
+        force_subprocess: bool = False) -> Iterator[Fixer]:
     """Return a list of available lintian fixers.
 
     Args:
       fixers_dir: Fixers directory to browse
+      force_subprocess: Force running fixers from subprocess
     Returns:
       Iterator over Fixer objects
     """
@@ -444,7 +448,9 @@ def available_lintian_fixers(
     for n in os.listdir(fixers_dir):
         if not n.endswith(".desc"):
             continue
-        for fixer in read_desc_file(os.path.join(fixers_dir, n)):
+        for fixer in read_desc_file(
+                os.path.join(fixers_dir, n),
+                force_subprocess=force_subprocess):
             yield fixer
 
 

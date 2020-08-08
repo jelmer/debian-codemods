@@ -144,6 +144,9 @@ def main(argv=None):
     parser.add_argument(
         '--check', action='store_true',
         help='Check guessed metadata against external sources.')
+    parser.add_argument(
+        '--force-subprocess', action='store_true',
+        help=argparse.SUPPRESS)
     parser.add_argument('binary', type=str, nargs='*')
 
     minimum_certainty = 'possible'  # For now..
@@ -261,7 +264,8 @@ def main(argv=None):
             reset_tree(wt, dirty_tracker, subpath)
             raise
 
-        fixers = available_lintian_fixers()
+        fixers = available_lintian_fixers(
+            force_subprocess=args.force_subprocess)
 
         run_lintian_fixers(
             wt, fixers,

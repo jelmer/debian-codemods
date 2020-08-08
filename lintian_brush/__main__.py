@@ -89,6 +89,9 @@ def main(argv=None):
     fixer_group.add_argument(
         '--uncertain', action='store_true',
         help='Include changes with lower certainty.')
+    fixer_group.add_argument(
+        '--force-subprocess', action='store_true', default=False,
+        help=argparse.SUPPRESS)
 
     package_group = parser.add_argument_group('package preferences')
     package_group.add_argument(
@@ -144,7 +147,8 @@ def main(argv=None):
         parser.print_usage()
         return 1
 
-    fixers = available_lintian_fixers(args.fixers_dir)
+    fixers = available_lintian_fixers(
+        args.fixers_dir, force_subprocess=args.force_subprocess)
     if args.list_fixers:
         for script in sorted([fixer.name for fixer in fixers]):
             note(script)
