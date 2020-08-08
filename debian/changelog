@@ -26,6 +26,8 @@ lintian-brush (0.75) UNRELEASED; urgency=medium
      no-priority-field to recommended-field
    + Rename rules-requires-root-missing to silent-on-rules-requiring-root
   * Fix handling of multiple targets in Makefile rules.
+  * upstream-metadata-invalid: Fix duplicate fields in
+    debian/upstream/metadata.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jul 2020 20:06:29 +0000
 

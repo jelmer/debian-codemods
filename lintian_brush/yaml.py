@@ -26,12 +26,19 @@ from typing import List
 
 class YamlUpdater(object):
 
-    def __init__(self, path: str, remove_empty: bool = True):
+    def __init__(
+            self, path: str, remove_empty: bool = True,
+            allow_duplicate_keys: bool = False):
         self.yaml = YAML()
+        self.yaml.allow_duplicate_keys = allow_duplicate_keys
         self.path = path
         self._dirpath = os.path.dirname(path)
         self.remove_empty = remove_empty
         self._directives: List[str] = []
+        self._force_rewrite = False
+
+    def force_rewrite(self):
+        self._force_rewrite = True
 
     def __enter__(self):
         try:
@@ -116,10 +123,10 @@ class YamlUpdater(object):
                     if self._dirpath and not os.listdir(self._dirpath):
                         os.rmdir(self._dirpath)
             else:
-                if self._code != self._orig:
+                if self._force_rewrite or self._code != self._orig:
                     if not os.path.exists(self._dirpath) and self._dirpath:
                         os.mkdir(self._dirpath)
-                    if self._only_simple_changes():
+                    if not self._force_rewrite and self._only_simple_changes():
                         try:
                             with open(self.path, 'r') as f:
                                 lines = list(f.readlines())
