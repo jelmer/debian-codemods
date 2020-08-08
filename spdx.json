@@ -166,6 +166,9 @@
         "BSD-2-Clause-Patent": {
             "name": "BSD-2-Clause Plus Patent License"
         },
+        "BSD-2-Clause-Views": {
+            "name": "BSD 2-Clause with views sentence"
+        },
         "BSD-3-Clause": {
             "name": "BSD 3-Clause \"New\" or \"Revised\" License"
         },
