@@ -21,19 +21,17 @@ import copy
 from io import StringIO
 import os
 from ruamel.yaml import YAML
+from typing import List
 
 
 class YamlUpdater(object):
 
-    def __init__(
-            self, path: str, remove_empty: bool = True,
-            allow_duplicate_keys: bool = False):
+    def __init__(self, path: str, remove_empty: bool = True):
         self.yaml = YAML()
-        self.yaml.allow_duplicate_keys = allow_duplicate_keys
         self.path = path
         self._dirpath = os.path.dirname(path)
         self.remove_empty = remove_empty
-        self._directives = []
+        self._directives: List[str] = []
 
     def __enter__(self):
         try:
