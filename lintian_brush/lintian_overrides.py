@@ -17,8 +17,9 @@
 
 """Utility functions for dealing with lintian overrides files."""
 
+from debian.changelog import Version
 import os
-from typing import Optional
+from typing import Optional, Iterator, Callable, List, Tuple
 
 from debmutate.lintian_overrides import (
     LintianOverridesEditor,
@@ -27,13 +28,13 @@ from debmutate.lintian_overrides import (
     )
 
 
-def overrides_paths():
+def overrides_paths() -> Iterator[str]:
     for path in ['debian/source/lintian-overrides']:
         if os.path.exists(path):
             yield path
 
 
-def update_overrides(cb):
+def update_overrides(cb: Callable[[LintianOverride], LintianOverride]) -> None:
     """"Call update_overrides_file on all overrides files.
 
     Args:
@@ -43,7 +44,9 @@ def update_overrides(cb):
         update_overrides_file(cb, path=path)
 
 
-def update_overrides_file(cb, path='debian/source/lintian-overrides'):
+def update_overrides_file(
+        cb: Callable[[LintianOverride], LintianOverride],
+        path: str = 'debian/source/lintian-overrides') -> bool:
     """Modify the overrides in a file.
 
     Args:
@@ -63,7 +66,9 @@ def update_overrides_file(cb, path='debian/source/lintian-overrides'):
         return editor.has_changed()
 
 
-def _get_overrides(type=None, package=None):
+def _get_overrides(
+        type: Optional[str] = None,
+        package: Optional[str] = None) -> Iterator[LintianOverride]:
     paths = []
     if type in ('source', None):
         paths.extend(
@@ -106,11 +111,13 @@ def override_exists(
     return False
 
 
-async def get_unused_overrides(packages):
+async def get_unused_overrides(
+        packages: List[Tuple[str, str]]
+        ) -> List[Tuple[str, str, Version, str]]:
     from .udd import connect_udd_mirror
     udd = await connect_udd_mirror()
 
-    args = []
+    args: List[str] = []
     extra = []
     for (type, name) in packages:
         extra.append('package = $%d AND package_type = $%d' % (
@@ -124,7 +131,10 @@ from lintian where tag = 'unused-override' AND (%s)""" % " OR ".join(extra),
         *args))
 
 
-def remove_unused():
+unused_overrides = None
+
+
+def remove_unused() -> List[LintianOverride]:
     from debian.deb822 import Deb822
     packages = []
     with open('debian/control', 'r') as f:
