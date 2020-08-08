@@ -1,0 +1,8 @@
+#!/usr/bin/make -f
+
+build build-indep: $(BUILD_TARGETS)
+
+build-arch install-arch binary-arch:
+# nothing
+
+.PHONY: build build-indep build-arch clean binary binary-indep binary-arch install install-indep install-arch

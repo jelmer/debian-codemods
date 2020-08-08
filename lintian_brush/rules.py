@@ -76,7 +76,7 @@ class Rule(object):
 
     @property
     def targets(self):
-        return self.target.split()
+        return self.target.split(b' ')
 
     def has_target(self, target: bytes, exact: bool = True) -> bool:
         if exact:
@@ -140,7 +140,7 @@ class Rule(object):
         return rest
 
 
-def is_conditional(line):
+def _is_conditional(line):
     line = line.lstrip(b' ')
     return (
         line.startswith(b'ifeq') or
@@ -149,6 +149,17 @@ def is_conditional(line):
         line.startswith(b'endif') or
         line.startswith(b'include') or
         line.startswith(b'-include'))
+
+
+def _is_rule(line):
+    before, sep, after = line.partition(b':')
+    if sep != b':':
+        return False
+    if b'=' in before:
+        return False
+    if after.startswith(b'='):
+        return False
+    return True
 
 
 class Makefile(object):
@@ -205,12 +216,12 @@ class Makefile(object):
         for line in joinedlines:
             if line.startswith(b'\t') and rule:
                 rule.append_line(line)
-            elif is_conditional(line) or line.lstrip(b' ').startswith(b'#'):
+            elif _is_conditional(line) or line.lstrip(b' ').startswith(b'#'):
                 if rule:
                     rule.append_line(line)
                 else:
                     mf.contents.append(line)
-            elif b':' in line:
+            elif _is_rule(line):
                 if rule:
                     mf.contents.extend(rule._finish())
                 precomment = []

@@ -25,6 +25,7 @@ lintian-brush (0.75) UNRELEASED; urgency=medium
    + Rename no-section-field, no-section-field-for-source and
      no-priority-field to recommended-field
    + Rename rules-requires-root-missing to silent-on-rules-requiring-root
+  * Fix handling of multiple targets in Makefile rules.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jul 2020 20:06:29 +0000
 
