@@ -120,7 +120,7 @@ subset of the issues:
 * recommended-field
 * renamed-tag
 * required-field
-* rules-requires-root-missing
+* silent-on-rules-requiring-root
 * space-in-std-shortname-in-dep5-copyright
 * systemd-service-alias-without-extension
 * systemd-service-file-refers-to-obsolete-bindto
