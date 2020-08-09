@@ -13,10 +13,11 @@ KEY_BLOCK_START = b'-----BEGIN PGP PUBLIC KEY BLOCK-----'
 KEY_BLOCK_END = b'-----END PGP PUBLIC KEY BLOCK-----'
 
 
-def gpg_import_export(options, stdin):
+def gpg_import_export(import_options, export_options, stdin):
     argv = gpg + [
             '--armor', '--quiet', '--no-default-keyring',
-            '--import-options', ','.join(['import-export'] + options)]
+            '--export-options', ','.join(export_options),
+            '--import-options', ','.join(['import-export'] + import_options)]
     try:
         p = subprocess.Popen(
             argv, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
@@ -31,8 +32,11 @@ def gpg_import_export(options, stdin):
 
 def minimize_key_block(key):
     minimal = gpg_import_export(
-        ['import-minimal', 'import-clean', 'self-sigs-only'], key)
-    full = gpg_import_export([], key)
+        ['import-minimal', 'import-clean', 'self-sigs-only', 'repair-keys'],
+        ['export-clean'], key)
+    full = gpg_import_export(
+        ['no-import-minimal', 'no-import-clean', 'no-self-sigs-only',
+         'no-repair-keys', 'import-restore'], [], key)
     if minimal == full:
         return key
     else:
