@@ -1,4 +1,4 @@
-lintian-brush (0.75) UNRELEASED; urgency=medium
+lintian-brush (0.75) unstable; urgency=medium
 
   * Fix anongit.kde.org URLs to use https:.
   * debian-rules-sets-dpkg-architecture-variable: Rather than including
@@ -29,7 +29,7 @@ lintian-brush (0.75) UNRELEASED; urgency=medium
   * upstream-metadata-invalid: Fix duplicate fields in
     debian/upstream/metadata.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jul 2020 20:06:29 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 09 Aug 2020 13:39:19 +0000
 
 lintian-brush (0.74) unstable; urgency=medium
 
