@@ -7,10 +7,10 @@ from lintian_brush import min_certainty
 from lintian_brush.fixer import (
     net_access_allowed,
     meets_minimum_certainty,
+    warn,
     )
 import re
 import socket
-from warnings import warn
 
 certainty = 'certain'
 debbugs = None

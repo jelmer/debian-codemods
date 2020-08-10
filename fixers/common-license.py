@@ -2,7 +2,7 @@
 
 from debian.copyright import License, NotMachineReadableError
 from debmutate.copyright import CopyrightEditor
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, warn
 from lintian_brush.licenses import (
     COMMON_LICENSES_DIR,
     FULL_LICENSE_NAME,
@@ -12,7 +12,6 @@ import os
 import re
 import textwrap
 from typing import Dict
-from warnings import warn
 
 
 # In reality, what debian ships as "/usr/share/common-licenses/BSD" is
@@ -175,7 +174,7 @@ def replace_full_license(para):
         if os.path.exists(os.path.join(COMMON_LICENSES_DIR, license.synopsis)):
             warn(
                 'A common license shortname (%s) is used, but license '
-                'text not recognized.' % license.synopsis, UserWarning)
+                'text not recognized.' % license.synopsis)
         return
     # The full license text was found. Replace it with a blurb.
     canonical_id = canonical_license_id(license.synopsis)

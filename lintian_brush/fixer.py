@@ -18,6 +18,7 @@
 """Helper functions for fixers."""
 
 from debmutate.deb822 import Deb822
+import sys
 from typing import Optional, Tuple, Union
 
 from . import (
@@ -106,3 +107,7 @@ def trust_package():
 
 def opinionated():
     return os.environ.get('OPINIONATED', 'no') == 'yes'
+
+
+def warn(msg):
+    sys.stderr.write('%s\n' % msg)

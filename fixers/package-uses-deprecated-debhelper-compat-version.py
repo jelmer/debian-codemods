@@ -3,7 +3,6 @@ import os
 import re
 import shlex
 import sys
-import warnings
 
 from debmutate.control import (
     ensure_exact_version,
@@ -24,6 +23,7 @@ from lintian_brush.fixer import (
     compat_release,
     current_package_version,
     report_result,
+    warn,
     )
 from lintian_brush.rules import (
     check_cdbs,
@@ -79,7 +79,7 @@ if autoreconf_disabled():
             else:
                 new_debhelper_compat_version = min(
                     new_debhelper_compat_version, 10)
-                warnings.warn(
+                warn(
                     'Not upgrading beyond debhelper %d, since the package '
                     'disables autoreconf but its configure does not provide '
                     '--runstatedir.' % new_debhelper_compat_version)
