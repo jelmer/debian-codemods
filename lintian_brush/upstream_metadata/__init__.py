@@ -44,6 +44,7 @@ from lintian_brush import (
 from lintian_brush.vcs import (
     browse_url_from_repo_url,
     plausible_url as plausible_vcs_url,
+    plausible_browse_url as plausible_vcs_browse_url,
     sanitize_url as sanitize_vcs_url,
     is_gitlab_site,
     )
@@ -989,7 +990,8 @@ def guess_from_pom_xml(path, trust_package=False):
                 url = url_tag.text.split(':', 2)[2]
             else:
                 url = url_tag.text
-            yield UpstreamDatum('Repository-Browse', url, 'certain')
+            if plausible_vcs_browse_url(url):
+                yield UpstreamDatum('Repository-Browse', url, 'certain')
         connection_tag = scm_tag.find('connection')
         if connection_tag is not None:
             connection = connection_tag.text

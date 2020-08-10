@@ -133,6 +133,10 @@ def plausible_url(url: str) -> bool:
     return ':' in url
 
 
+def plausible_browse_url(url: str) -> bool:
+    return url.startswith('https://') or url.startswith('http://')
+
+
 def fix_path_in_port(parsed: ParseResult, branch: Optional[str]):
     if ':' not in parsed.netloc or parsed.netloc.endswith(']'):
         return None, None
