@@ -24,6 +24,7 @@ from typing import Tuple, Iterator
 RELEASE_DATES_PATH = '/usr/share/lintian/data/standards-version/release-dates'
 
 
+# TODO(jelmer): Use copy from debmutate
 def parse_standards_version(v: str) -> Tuple[int, ...]:
     """Parse a standards version.
 
