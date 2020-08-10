@@ -5,16 +5,18 @@ from functools import partial
 from debmutate.changelog import ChangelogEditor
 from lintian_brush import min_certainty
 from lintian_brush.fixer import (
+    fixed_lintian_tag,
     net_access_allowed,
     meets_minimum_certainty,
     warn,
+    fixed_lintian_tags,
+    report_result,
     )
 import re
 import socket
 
 certainty = 'certain'
 debbugs = None
-tags = set()
 
 
 async def valid_bug(package, bug):
@@ -58,7 +60,9 @@ def fix_close_colon(package, m):
     (valid, bug_certainty) = check_bug(package, bugno)
     if meets_minimum_certainty(bug_certainty) and valid:
         certainty = min_certainty([certainty, bug_certainty])
-        tags.add("possible-missing-colon-in-closes")
+        fixed_lintian_tag(
+            'all', "possible-missing-colon-in-closes",
+            info='%s #%d' % (m.group('closes'), bugno))
         return '%s: #%d' % (m.group('closes'), bugno)
     else:
         return m.group(0)
@@ -70,7 +74,9 @@ def fix_close_typo(package, m):
     (valid, bug_certainty) = check_bug(package, bugno)
     if meets_minimum_certainty(bug_certainty) and valid:
         certainty = min_certainty([certainty, bug_certainty])
-        tags.add('misspelled-closes-bug')
+        fixed_lintian_tag(
+            'all', 'misspelled-closes-bug',
+            info='#%s' % m.group('bug'))
         return '%ss: #%s' % (m.group('close'), m.group('bug'))
     else:
         return m.group(0)
@@ -91,11 +97,10 @@ with ChangelogEditor() as updater:
             block._changes[i] = change
 
 
-if tags == set(['possible-missing-colon-in-closes']):
+if fixed_lintian_tags() == set(['possible-missing-colon-in-closes']):
     print("Add missing colon in closes line.")
-elif tags == set(['misspelled-closes-bug']):
+elif fixed_lintian_tags() == set(['misspelled-closes-bug']):
     print("Fix misspelling of Close => Closes.")
 else:
     print("Fix formatting of bug closes.")
-print("Fixed-Lintian-Tags: %s" % ", ".join(sorted(tags)))
-print("Certainty: %s" % certainty)
+report_result(certainty=certainty)

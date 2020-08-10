@@ -9,7 +9,11 @@ from debmutate.control import ControlEditor
 from debmutate.vcs import (
     get_vcs_info,
     )
-from lintian_brush.fixer import net_access_allowed
+from lintian_brush.fixer import (
+    net_access_allowed,
+    fixed_lintian_tag,
+    report_result,
+    )
 from lintian_brush.salsa import (
     determine_browser_url as determine_salsa_browser_url,
     guess_repository_url,
@@ -39,8 +43,12 @@ def is_on_obsolete_host(url):
 def verify_salsa_repository(url):
     headers = {'User-Agent': USER_AGENT}
     browser_url = determine_salsa_browser_url(url)
-    response = urlopen(
-        Request(browser_url, headers=headers), timeout=DEFAULT_URLLIB_TIMEOUT)
+    try:
+        response = urlopen(
+            Request(browser_url, headers=headers),
+            timeout=DEFAULT_URLLIB_TIMEOUT)
+    except socket.timeout:
+        return None
     return response.status == 200
 
 
@@ -115,16 +123,13 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
         vcs_type = "Git"
     # Verify that there is actually a repository there
     if net_access:
-        if not verify_salsa_repository(vcs_url):
+        if verify_salsa_repository(vcs_url) is False:
             raise NewRepositoryURLUnknown(vcs_type, vcs_url)
 
     print("Update Vcs-* headers to use salsa repository.")
 
     vcs_browser = determine_salsa_browser_url(vcs_url)
     return (vcs_type, vcs_url, vcs_browser)
-
-
-fixed_tags = set()
 
 
 def migrate_from_obsolete_infra(control):
@@ -137,6 +142,9 @@ def migrate_from_obsolete_infra(control):
     package = control["Source"]
     maintainer_email = parseaddr(control["Maintainer"])[1]
 
+    old_vcs_browser = control.get('Vcs-Browser')
+    old_vcs_type = vcs_type
+    old_vcs_url = vcs_url
     try:
         (vcs_type, vcs_url, vcs_browser) = find_new_urls(
             vcs_type, vcs_url, package, maintainer_email,
@@ -144,15 +152,18 @@ def migrate_from_obsolete_infra(control):
     except NewRepositoryURLUnknown:
         return
 
-    fixed_tags.add("vcs-obsolete-in-debian-infrastructure")
+    fixed_lintian_tag(
+        'source', "vcs-obsolete-in-debian-infrastructure",
+        info='vcs-%s %s' % (old_vcs_type.lower(), old_vcs_url))
 
-    if "Vcs-Cvs" in control and re.match(
+    if (("Vcs-Cvs" in control and re.match(
             r"\@(?:cvs\.alioth|anonscm)\.debian\.org:/cvsroot/",
-            control["Vcs-Cvs"]):
-        fixed_tags.add("vcs-field-bitrotted")
-
-    if "Vcs-Svn" in control and "viewvc" in control["Vcs-Browser"]:
-        fixed_tags.add("vcs-field-bitrotted")
+            control["Vcs-Cvs"])) or 
+        ("Vcs-Svn" in control and
+            "viewvc" in control["Vcs-Browser"])):
+        fixed_lintian_tag(
+            'source', "vcs-field-bitrotted",
+            info='%s %s' % (old_vcs_url or '', old_vcs_browser or ''))
 
     for hdr in ["Vcs-Git", "Vcs-Bzr", "Vcs-Hg", "Vcs-Svn"]:
         if hdr == "Vcs-" + vcs_type:
@@ -173,5 +184,5 @@ def migrate_from_obsolete_infra(control):
 
 with ControlEditor() as updater:
     migrate_from_obsolete_infra(updater.source)
-if fixed_tags:
-    print("Fixed-Lintian-Tags: " + ", ".join(sorted(fixed_tags)))
+
+report_result()

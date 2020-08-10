@@ -8,11 +8,10 @@ from typing import Dict
 from debian.copyright import License, NotMachineReadableError
 
 from debmutate.copyright import CopyrightEditor
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 SYNOPSIS_ALIAS: Dict[str, str] = {}
 updated = set()
-tags = set()
 
 
 def replace_symlink_path(synopsis, m):
@@ -26,8 +25,12 @@ def replace_symlink_path(synopsis, m):
         return path
     updated.add(synopsis)
     if waslink:
-        tags.add('copyright-refers-to-symlink-license')
-    tags.add('copyright-refers-to-versionless-license-file')
+        fixed_lintian_tag(
+            'all', 'copyright-refers-to-symlink-license',
+            info=path.lstrip('/'))
+    fixed_lintian_tag(
+        'all', 'copyright-refers-to-versionless-license-file',
+        info=path.lstrip('/'))
     return newpath
 
 
@@ -47,5 +50,4 @@ except (FileNotFoundError, NotMachineReadableError):
 
 
 report_result(
-    'Refer to specific version of license %s.' % ', '.join(sorted(updated)),
-    fixed_lintian_tags=tags)
+    'Refer to specific version of license %s.' % ', '.join(sorted(updated)))

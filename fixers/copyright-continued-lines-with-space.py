@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+from lintian_brush.fixer import fixed_lintian_tag, report_result
+
 import re
 import sys
 
@@ -56,7 +58,7 @@ try:
             sys.exit(0)
         lines.append(line)
         prev_value_offset = None
-        for line in f:
+        for lineno, line in enumerate(f, start=2):
             if line.startswith(b'\t'):
                 for option in [
                         b' \t' + line[1:], b' \t' + line[2:],
@@ -67,6 +69,9 @@ try:
                 else:
                     line = b' \t' + line[1:]
                 tabs_replaced = True
+                fixed_lintian_tag(
+                    'source', 'tab-in-license-text',
+                    info='debian/copyright (paragraph at line %d)' % lineno)
             if UNICODE_PARAGRAPH_SEPARATOR in line:
                 # Not quite the same thing, but close enough..
                 line = line.replace(
@@ -87,15 +92,12 @@ else:
     with open('debian/copyright', 'wb') as f:
         f.writelines(lines)
 
-tags = set()
 sys.stdout.write('debian/copyright: ')
 if tabs_replaced:
     sys.stdout.write('use spaces rather than tabs to start continuation lines')
     if unicode_linebreaks_replaced:
         sys.stdout.write(', ')
-    tags.add('tab-in-license-text')
 if unicode_linebreaks_replaced:
     sys.stdout.write('replace unicode linebreaks with regular linebreaks')
 sys.stdout.write('.\n')
-if tags:
-    print('Fixed-Lintian-Tags: %s' % ', '.join(sorted(tags)))
+report_result()

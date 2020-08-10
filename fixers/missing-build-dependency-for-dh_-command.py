@@ -7,7 +7,7 @@ from debmutate.control import (
     add_dependency,
     is_relation_implied,
     )
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 from lintian_brush.lintian import read_debhelper_lintian_data_file
 from lintian_brush.lintian_overrides import override_exists
 from lintian_brush.rules import Makefile, Rule, dh_invoke_get_with
@@ -60,12 +60,14 @@ for entry in mf.contents:
             except KeyError:
                 pass
             else:
+                info = '%s => %s' % (executable, dep)
                 if override_exists(
                     'missing-build-dependency-for-dh_-command',
-                        type='source', info='%s => %s' % (executable, dep)):
+                        type='source', info=info):
                     continue
                 need.append(
-                    (dep, ['missing-build-dependency-for-dh_-command']))
+                    (dep, [('missing-build-dependency-for-dh_-command', info)])
+                    )
             if executable == 'dh' or executable.startswith('dh_'):
                 for addon in dh_invoke_get_with(command):
                     try:
@@ -74,14 +76,12 @@ for entry in mf.contents:
                         pass
                     else:
                         need.append(
-                            (dep, ['missing-build-dependency-for-dh-addon']))
+                            (dep, [('missing-build-dependency-for-dh-addon',
+                                    '%s => %s' % (addon, dep))]))
 
 
 if not need:
     sys.exit(0)
-
-
-fixed_tags = set()
 
 
 with ControlEditor() as updater:
@@ -99,8 +99,7 @@ with ControlEditor() as updater:
         if not is_implied:
             build_deps = updater.source.get('Build-Depends', '')
             updater.source['Build-Depends'] = add_dependency(build_deps, deps)
-            fixed_tags.update(tags)
+            for tag, info in tags:
+                fixed_lintian_tag('source', tag, info=info)
 
-report_result(
-    'Add missing build dependency on dh addon.',
-    fixed_lintian_tags=fixed_tags)
+report_result('Add missing build dependency on dh addon.')

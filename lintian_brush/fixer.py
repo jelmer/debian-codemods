@@ -51,13 +51,18 @@ def fixed_lintian_tag(
     _fixed_lintian_tags.append((target, tag, info))
 
 
+def fixed_lintian_tags():
+    return set([
+        tag for (target, tag, info) in _fixed_lintian_tags])
+
+
 def reset() -> None:
     """Reset any global state that may exist."""
     global _fixed_lintian_tags
     _fixed_lintian_tags = []
 
 
-def report_result(description, fixed_lintian_tags=None, certainty=None,
+def report_result(description=None, fixed_lintian_tags=None, certainty=None,
                   patch_name=None):
     """Report the result of a fixer.
 
@@ -67,7 +72,8 @@ def report_result(description, fixed_lintian_tags=None, certainty=None,
       certainty: Certainty of the fix
       patch_name: Suggested patch name, if there are upstream changes
     """
-    print(description)
+    if description:
+        print(description)
     if certainty:
         print('Certainty: %s' % certainty)
     fixed_lintian_tags = set(fixed_lintian_tags or [])
