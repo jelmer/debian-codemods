@@ -15,7 +15,41 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Functions for working with upstream metadata."""
+"""Functions for working with upstream metadata.
+
+This gathers information about upstreams from various places.
+Each bit of information gathered is wrapped in a UpstreamDatum
+object, which contains the field name.
+
+The fields used here match those in https://wiki.debian.org/UpstreamMetadata
+
+Supported fields:
+- Homepage
+- Name
+- Contact
+- Repository
+- Repository-Browse
+- Bug-Database
+- Bug-Submit
+- Screenshots
+- Archive
+
+Extensions for lintian-brush.
+- X-SourceForge-Project
+- X-Wiki
+- X-Summary
+- X-Description
+- X-License
+- X-Copyright
+
+Supported, but unused.
+- FAQ
+- Donation
+- Documentation
+- Registration
+- Security-Contact
+- Webservice
+"""
 
 import json
 import os
@@ -87,32 +121,6 @@ class UpstreamDatum(object):
             type(self).__name__, self.field, self.value, self.certainty,
             self.origin)
 
-
-# See https://wiki.debian.org/UpstreamMetadata
-# Supported fields:
-# - Homepage
-# - Name
-# - Contact
-# - Repository
-# - Repository-Browse
-# - Bug-Database
-# - Bug-Submit
-# - Screenshots
-# - Archive
-# - X-SourceForge-Project
-# - X-Wiki
-# - X-Summary
-# - X-Description
-# - X-License
-# - X-Copyright
-
-# Supported, but unused.
-# - FAQ
-# - Donation
-# - Documentation
-# - Registration
-# - Security-Contact
-# - Webservice
 
 
 def _load_json_url(http_url: str, timeout: int = DEFAULT_URLLIB_TIMEOUT):
