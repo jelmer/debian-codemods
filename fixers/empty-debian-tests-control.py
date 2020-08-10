@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os
+from lintian_brush.fixer import report_result
 
 try:
     with open('debian/tests/control', 'r') as f:
@@ -8,8 +9,9 @@ try:
             os.unlink('debian/tests/control')
             if not os.listdir('debian/tests'):
                 os.rmdir('debian/tests')
-except FileNotFoundError:
+except (FileNotFoundError, NotADirectoryError):
     pass
 
-print('Remove empty debian/tests/control.')
-print('Fixed-Lintian-Tags: empty-debian-tests-control')
+report_result(
+    'Remove empty debian/tests/control.',
+    fixed_lintian_tags=['empty-debian-tests-control'])
