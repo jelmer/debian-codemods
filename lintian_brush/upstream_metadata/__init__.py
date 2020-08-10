@@ -122,7 +122,6 @@ class UpstreamDatum(object):
             self.origin)
 
 
-
 def _load_json_url(http_url: str, timeout: int = DEFAULT_URLLIB_TIMEOUT):
     headers = {'User-Agent': USER_AGENT, 'Accept': 'application/json'}
     http_contents = urlopen(
