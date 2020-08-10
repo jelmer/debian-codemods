@@ -93,7 +93,7 @@ class YamlUpdater(object):
                 key = os[o]
             except IndexError:
                 key = None
-            if key and line.startswith(key + ':'):
+            if key and ':' in line and line.split(':', 1)[0].strip() == key:
                 while cs and cs[0] not in os:
                     self.yaml.dump({cs[0]: self._code[cs[0]]}, f)
                     cs.pop(0)

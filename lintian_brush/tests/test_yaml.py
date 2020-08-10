@@ -50,6 +50,19 @@ Origkey: origvalue
 Somekey: Somevalue
 """, "newfile.yaml")
 
+    def test_update_with_spaces(self):
+        with open('newfile.yaml', 'w') as f:
+            f.write("""\
+Origkey : origvalue
+Somekey: origvalue
+""")
+        with YamlUpdater('newfile.yaml') as editor:
+            editor.code['Somekey'] = 'Somevalue'
+        self.assertFileEqual("""\
+Origkey : origvalue
+Somekey: Somevalue
+""", "newfile.yaml")
+
     def test_delete(self):
         with open('newfile.yaml', 'w') as f:
             f.write("""\
