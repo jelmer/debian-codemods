@@ -1,3 +1,9 @@
+lintian-brush (0.76) UNRELEASED; urgency=medium
+
+  * Add some notes about debugging fixer scripts to manual page.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 10 Aug 2020 00:39:32 +0000
+
 lintian-brush (0.75) unstable; urgency=medium
 
   * Fix anongit.kde.org URLs to use https:.

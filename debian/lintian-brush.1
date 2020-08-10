@@ -14,7 +14,7 @@ and to back off if it does not.
 .SS "positional arguments:"
 .TP
 TAGS
-Lintian tag for which to apply fixer.
+Lintian tag for which to apply fixers.
 .SS "optional arguments:"
 .TP
 \fB\-h\fR, \fB\-\-help\fR
@@ -59,6 +59,16 @@ Print list of fixers that was run and print tracebacks for failed fixers.
 Make changes with lower certain than normal. This will potentially fix more
 issues, but is more likely to get things wrong. If changes with lower certainty were made,
 lintian-brush will let you know in its output.
+.SH WRITING AND DEBUGGING FIXERS
+Fixer scripts for lintian-brush can be found under \fI/usr/share/lintian-brush/fixers\fR.
+.PP
+Lintian-brush normally takes care of making sure that the working tree doesn't
+contain any pending changes, of reverting changes when a fixer fails and of committing the
+changes and updating debian/changelog if necessary.
+.PP
+However, for testing purposes, you can also run the scripts directly in a
+packaging repository. See /usr/share/doc/lintian-brush/README.md.gz (section
+"Writing new fixers") for details about the expected behaviour from fixer scripts.
 .SH EXAMPLES
 .IP "\fB$ lintian-brush\fR --list-tags"
 List all lintian tags for which fixers are available.
