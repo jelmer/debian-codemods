@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.deb822 import Deb822Editor
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, warn
 import sys
 
 try:
@@ -23,6 +23,18 @@ try:
             for field in paragraph:
                 if field in valid_field_names:
                     continue
+                if (field.startswith('X-') and
+                        field[2:] in valid_field_names):
+                    if field[2:] in paragraph:
+                        warn('Both %s and %s exist.' % (
+                             field, field[2:]))
+                        continue
+                    value = paragraph[field]
+                    del paragraph[field]
+                    paragraph[field[2:]] = value
+                    typo_fixed.add((field, field[2:]))
+                    continue
+
                 for option in valid_field_names:
                     if distance(field, option) == 1:
                         value = paragraph[field]

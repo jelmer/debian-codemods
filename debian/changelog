@@ -3,6 +3,8 @@ lintian-brush (0.76) UNRELEASED; urgency=medium
   * Add some notes about debugging fixer scripts to manual page.
   * empty-debian-tests-control: Cope with NotADirectory errors.
   * Handle spacing around field names in Yaml files.
+  * field-name-typo-in-dep5-copyright: Rename X- fields where
+    appropriate in debian/copyright.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 10 Aug 2020 00:39:32 +0000
 
