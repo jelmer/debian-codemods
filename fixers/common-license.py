@@ -2,7 +2,11 @@
 
 from debian.copyright import License, NotMachineReadableError
 from debmutate.copyright import CopyrightEditor
-from lintian_brush.fixer import report_result, warn
+from lintian_brush.fixer import (
+    report_result,
+    warn,
+    fixed_lintian_tag,
+    )
 from lintian_brush.licenses import (
     COMMON_LICENSES_DIR,
     FULL_LICENSE_NAME,
@@ -23,7 +27,6 @@ CANONICAL_NAMES = {
     'CC0': 'CC0-1.0',
 }
 updated = set()
-tags = set()
 _common_licenses: Dict[str, str] = {}
 
 
@@ -190,11 +193,14 @@ def replace_full_license(para):
                  % (license_matched, license.synopsis, canonical_id))
         return
     if license_matched == 'Apache-2.0':
-        tags.add('copyright-file-contains-full-apache-2-license')
+        fixed_lintian_tag(
+            'source', 'copyright-file-contains-full-apache-2-license')
     if license_matched.startswith('GFDL-'):
-        tags.add('copyright-file-contains-full-gfdl-license')
+        fixed_lintian_tag(
+            'source', 'copyright-file-contains-full-gfdl-license')
     if license_matched.startswith('GPL-'):
-        tags.add('copyright-file-contains-full-gpl-license')
+        fixed_lintian_tag(
+            'source', 'copyright-file-contains-full-gpl-license')
     para.license = License(license.synopsis, blurb)
     return license_matched
 
@@ -213,14 +219,19 @@ def reference_common_license(para):
             FULL_LICENSE_NAME.get(common_license, common_license),
             common_license))
     if common_license in ('Apache-2.0', 'Apache-2'):
-        tags.add('copyright-not-using-common-license-for-apache2')
+        fixed_lintian_tag(
+            'source', 'copyright-not-using-common-license-for-apache2')
     elif common_license.startswith('GPL-'):
-        tags.add('copyright-not-using-common-license-for-gpl')
+        fixed_lintian_tag(
+            'source', 'copyright-not-using-common-license-for-gpl')
     elif common_license.startswith('LGPL-'):
-        tags.add('copyright-not-using-common-license-for-lgpl')
+        fixed_lintian_tag(
+            'source', 'copyright-not-using-common-license-for-lgpl')
     elif common_license.startswith('GFDL-'):
-        tags.add('copyright-not-using-common-license-for-gfdl')
-    tags.add('copyright-does-not-refer-to-common-license-file')
+        fixed_lintian_tag(
+            'source', 'copyright-not-using-common-license-for-gfdl')
+    fixed_lintian_tag(
+        'source', 'copyright-does-not-refer-to-common-license-file')
     if license.synopsis != common_license:
         renames[license.synopsis] = common_license
     return common_license
@@ -262,5 +273,4 @@ if set(renames.values()) - set(updated):
 
 if done:
     report_result(
-        done[0][0].capitalize() + ('; '.join(done) + '.')[1:],
-        fixed_lintian_tags=tags)
+        done[0][0].capitalize() + ('; '.join(done) + '.')[1:])

@@ -46,6 +46,8 @@ def fixed_lintian_tag(
         else:
             raise ValueError(
                 'unable to determine source/binary package from target')
+    elif target == 'source':
+        target = ('source', )
     _fixed_lintian_tags.append((target, tag, info))
 
 
