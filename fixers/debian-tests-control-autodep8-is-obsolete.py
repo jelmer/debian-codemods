@@ -2,25 +2,29 @@
 
 import os
 import sys
+from lintian_brush.fixer import fixed_lintian_tag, report_result
 
-if not os.path.exists('debian/tests/control.autodep8'):
+OLD_PATH = 'debian/tests/control.autodep8'
+NEW_PATH = 'debian/tests/control'
+
+if not os.path.exists(OLD_PATH):
     sys.exit(0)
 
 
-tags = ['debian-tests-control-autodep8-is-obsolete']
+fixed_lintian_tag(
+    'source', 'debian-tests-control-autodep8-is-obsolete',
+    info=OLD_PATH)
 
-if not os.path.exists('debian/tests/control'):
-    os.rename('debian/tests/control.autodep8', 'debian/tests/control')
-    print(
-        "Rename obsolete path debian/tests/control.autodep8 "
-        "to debian/tests/control.")
+if not os.path.exists(NEW_PATH):
+    os.rename(OLD_PATH, 'debian/tests/control')
+    report_result("Rename obsolete path %s to %s." % (OLD_PATH, NEW_PATH))
 else:
-    with open('debian/tests/control', 'ab') as outf:
+    with open(NEW_PATH, 'ab') as outf:
         outf.write(b'\n')
-        with open('debian/tests/control.autodep8', 'rb') as inf:
+        with open(OLD_PATH, 'rb') as inf:
             outf.writelines(inf.readlines())
-    print("Merge debian/tests/control.autodep8 into debian/tests/control.")
-    os.unlink("debian/tests/control.autodep8")
-    tags.append('debian-tests-control-and-control-autodep8')
-
-print("Fixed-Lintian-Tags: " + ', '.join(tags))
+    os.unlink(OLD_PATH)
+    fixed_lintian_tag(
+        'source', 'debian-tests-control-and-control-autodep8',
+        info='%s %s' % (OLD_PATH, NEW_PATH))
+    report_result("Merge %s into %s." % (OLD_PATH, NEW_PATH))

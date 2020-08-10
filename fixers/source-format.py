@@ -3,17 +3,17 @@ from lintian_brush.fixer import (
     report_result,
     opinionated,
     package_is_native,
+    fixed_lintian_tag,
     )
 import os
 import sys
 
-tags = []
 description = None
 
 if not os.path.exists('debian/source/format'):
     orig_format = None
     format = '1.0'
-    tags.append('missing-debian-source-format')
+    fixed_lintian_tag('source', 'missing-debian-source-format')
     description = "Explicitly specify source format."
 else:
     with open('debian/source/format', 'r') as f:
@@ -77,8 +77,7 @@ with open('debian/source/format', 'w') as f:
     f.write('%s\n' % format)
 
 if format != '1.0':
-    tags.append('older-source-format')
+    fixed_lintian_tag(
+        'source', 'older-source-format', info=(orig_format or '1.0'))
 
-report_result(
-    description=description,
-    fixed_lintian_tags=tags)
+report_result(description=description)

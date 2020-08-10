@@ -15,6 +15,7 @@ from lintian_brush.fixer import (
     net_access_allowed,
     report_result,
     trust_package,
+    fixed_lintian_tag,
     )
 from lintian_brush.upstream_metadata import (
     UpstreamDatum,
@@ -32,9 +33,6 @@ from lintian_brush.yaml import (
     YamlUpdater,
     update_ordered_dict,
     )
-
-
-fixed_tags = []
 
 
 if package_is_native():
@@ -114,18 +112,18 @@ with YamlUpdater('debian/upstream/metadata') as editor:
     if (('Repository' in changed and 'Repository' not in editor.code) or
             ('Repository-Browse' in changed and
                 'Repository-Browse' not in editor.code)):
-        fixed_tags.append('upstream-metadata-missing-repository')
+        fixed_lintian_tag('source', 'upstream-metadata-missing-repository')
 
     if (('Bug-Database' in changed and 'Bug-Database' not in editor.code) or
             ('Bug-Submit' in changed and 'But-Submit' not in editor.code)):
-        fixed_tags.append('upstream-metadata-missing-bug-tracking')
+        fixed_lintian_tag('source', 'upstream-metadata-missing-bug-tracking')
 
     # A change that just says the "Name" field is a bit silly
     if set(changed.keys()) - set(ADDON_ONLY_FIELDS) == set(['Name']):
         sys.exit(0)
 
     if not os.path.exists('debian/upstream/metadata'):
-        fixed_tags.append('upstream-metadata-file-is-missing')
+        fixed_lintian_tag('source', 'upstream-metadata-file-is-missing')
 
     update_ordered_dict(
         editor.code, [(k, v.value) for (k, v) in changed.items()],
@@ -146,5 +144,4 @@ fields = [
 
 report_result(
     'Set upstream metadata fields: %s.' % ', '.join(sorted(fields)),
-    fixed_lintian_tags=fixed_tags,
     certainty=achieved_certainty)

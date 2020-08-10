@@ -11,10 +11,10 @@ from debmutate.debhelper import (
 from lintian_brush.debhelper import (
     pedantic_compat_level,
     )
-from lintian_brush.fixer import report_result
-
-
-tags = []
+from lintian_brush.fixer import (
+    report_result,
+    fixed_lintian_tag,
+    )
 
 
 # Debian source package is not obliged to contain `debian/compat'.
@@ -30,12 +30,17 @@ except FileNotFoundError:
 with ControlEditor() as updater:
     if ensure_minimum_debhelper_version(
             updater.source, "%s~" % minimum_version):
-        tags.append('package-lacks-versioned-build-depends-on-debhelper')
+        fixed_lintian_tag(
+            'source',
+            'package-lacks-versioned-build-depends-on-debhelper',
+            info='%d' % minimum_version)
         if minimum_version > pedantic_compat_level():
-            tags.append('package-needs-versioned-debhelper-build-depends')
+            fixed_lintian_tag(
+                'source',
+                'package-needs-versioned-debhelper-build-depends',
+                info='%d' % minimum_version)
 
 
 report_result(
     "Bump debhelper dependency to >= %s, since that's what is "
-    "used in debian/compat." % minimum_version,
-    fixed_lintian_tags=tags)
+    "used in debian/compat." % minimum_version)

@@ -158,7 +158,7 @@ def migrate_from_obsolete_infra(control):
 
     if (("Vcs-Cvs" in control and re.match(
             r"\@(?:cvs\.alioth|anonscm)\.debian\.org:/cvsroot/",
-            control["Vcs-Cvs"])) or 
+            control["Vcs-Cvs"])) or
         ("Vcs-Svn" in control and
             "viewvc" in control["Vcs-Browser"])):
         fixed_lintian_tag(
