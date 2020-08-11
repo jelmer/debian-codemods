@@ -29,6 +29,7 @@ from lintian_brush.upstream_metadata import (
     guess_from_package_json,
     guess_from_debian_watch,
     guess_from_r_description,
+    bug_database_url_from_bug_submit_url,
     )
 
 
@@ -202,3 +203,18 @@ class GuessRepoFromUrlTests(TestCase):
             'https://bitbucket.org/fenics-project/dolfin',
             guess_repo_from_url(
                 'https://bitbucket.org/fenics-project/dolfin/downloads/'))
+
+
+class BugDbFromBugSubmitUrlTests(TestCase):
+
+    def test_github(self):
+        self.assertEqual(
+            'https://github.com/dulwich/dulwich/issues',
+            bug_database_url_from_bug_submit_url(
+                'https://github.com/dulwich/dulwich/issues/new'))
+
+    def test_sf(self):
+        self.assertEqual(
+            'https://sourceforge.net/p/dulwich/bugs',
+            bug_database_url_from_bug_submit_url(
+                'https://sourceforge.net/p/dulwich/bugs/new'))

@@ -1304,9 +1304,9 @@ def extract_sf_project_name(url):
     m = re.fullmatch('https?://(.*).(sf|sourceforge).net/?', url)
     if m:
         return m.group(1)
-    m = re.match('https://sourceforge.net/projects/([^/]+)', url)
+    m = re.match('https://sourceforge.net/(projects|p)/([^/]+)', url)
     if m:
-        return m.group(1)
+        return m.group(2)
 
 
 def repo_url_from_merge_request_url(url):
@@ -1388,6 +1388,15 @@ def bug_database_url_from_bug_submit_url(url):
         if path_elements[-2] != 'issues':
             return None
         if path_elements[-1] == 'new':
+            path_elements.pop(-1)
+        return urlunparse(
+            parsed_url._replace(path='/'.join(path_elements)))
+    if parsed_url.hostname == 'sourceforge.net':
+        if len(path_elements) < 3:
+            return None
+        if path_elements[0] != 'p' or path_elements[2] != 'bugs':
+            return None
+        if len(path_elements) > 3:
             path_elements.pop(-1)
         return urlunparse(
             parsed_url._replace(path='/'.join(path_elements)))
@@ -1630,13 +1639,20 @@ def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
                              consult_external_directory=False):
     """Extend a set of upstream metadata.
     """
-    if 'Homepage' in upstream_metadata:
-        project = extract_sf_project_name(upstream_metadata['Homepage'].value)
+    # TODO(jelmer): Use EXTRAPOLATE_FNS mechanism for this?
+    for field in ['Homepage', 'Bug-Database', 'Bug-Submit', 'Repository',
+                  'Repository-Browse', 'X-Download']:
+        if field not in upstream_metadata:
+            continue
+        project = extract_sf_project_name(upstream_metadata[field].value)
         if project:
+            certainty = min_certainty(
+                ['likely', upstream_metadata[field].certainty])
             upstream_metadata['Archive'] = UpstreamDatum(
-                'Archive', 'SourceForge', 'likely')
+                'Archive', 'SourceForge', certainty)
             upstream_metadata['X-SourceForge-Project'] = UpstreamDatum(
-                'X-SourceForge-Project', project, 'likely')
+                'X-SourceForge-Project', project, certainty)
+            break
 
     archive = upstream_metadata.get('Archive')
     if (archive and archive.value == 'SourceForge' and
