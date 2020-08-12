@@ -1469,3 +1469,5 @@
   difficulty: medium
 - tag: trimmed-deb822-field
   difficulty: easy
+- tag: systemd-service-file-uses-deprecated-syslog-facility
+- tag: systemd-service-file-uses-nobody-or-nogroup
