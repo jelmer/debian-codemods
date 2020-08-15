@@ -118,6 +118,30 @@ Somekey: origvalue
 Newkey: newvalue
 """, "newfile.yaml")
 
+    def test_json(self):
+        with open('newfile.yaml', 'w') as f:
+            f.write("""\
+{
+  "Archive": "GitHub",
+  "Bug-Database": "https://github.com/fabiang/sasl/issues",
+  "Bug-Submit": "https://github.com/fabiang/sasl/issues/new",
+  "Documentation": "https://github.com/fabiang/sasl#usage",
+  "Name": "The PHP SASL2 Authentification Library",
+}
+""")
+        with YamlUpdater('newfile.yaml') as editor:
+            editor.code["Repository"] = "git@github.com:fabiang/sasl.git"
+        self.assertFileEqual("""\
+{
+  "Archive": "GitHub",
+  "Bug-Database": "https://github.com/fabiang/sasl/issues",
+  "Bug-Submit": "https://github.com/fabiang/sasl/issues/new",
+  "Documentation": "https://github.com/fabiang/sasl#usage",
+  "Name": "The PHP SASL2 Authentification Library",
+  "Repository": "git@github.com:fabiang/sasl.git"
+}
+""", "newfile.yaml")
+
 
 class UpdateOrderedDict(TestCase):
 

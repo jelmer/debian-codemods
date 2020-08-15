@@ -17,8 +17,8 @@
 
 """Utility functions for dealing with YAML files."""
 
-import copy
 from io import StringIO
+import json
 import os
 from ruamel.yaml import YAML
 from typing import List
@@ -45,15 +45,17 @@ class YamlUpdater(object):
             with open(self.path, 'r') as f:
                 inp = list(f)
         except FileNotFoundError:
-            self._code = {}
+            self._orig = {}
+            self._orig_text = ''
         else:
             if '---\n' in inp:
                 for i, line in enumerate(inp):
                     if line == '---\n':
                         self._directives = inp[:i+1]
                         break
-            self._code = self.yaml.load(''.join(inp))
-        self._orig = copy.deepcopy(self._code)
+            self._orig_text = ''.join(inp)
+            self._orig = self.yaml.load(self._orig_text)
+        self._code = self._orig.copy()
         return self
 
     def _get_code(self):
@@ -85,35 +87,14 @@ class YamlUpdater(object):
     def _update_lines(self, lines, f):
         for line in self._directives:
             f.write(line)
-        os = list(self._orig.keys())
-        cs = list(self._code.keys())
-        o = 0
-        for line in lines[len(self._directives):]:
-            try:
-                key = os[o]
-            except IndexError:
-                key = None
-            if key and ':' in line and line.split(':', 1)[0].strip() == key:
-                while cs and cs[0] not in os:
-                    self.yaml.dump({cs[0]: self._code[cs[0]]}, f)
-                    cs.pop(0)
-                if key not in self._code:
-                    pass  # Line was removed
-                elif self._code[key] == self._orig[key]:
-                    # Line stayed the same
-                    f.write(line)
-                    cs.remove(key)
-                else:
-                    self.yaml.dump({key: self._code[key]}, f)
-                    cs.remove(key)
-                o += 1
-            else:
-                f.write(line)
-        if cs and not line.endswith('\n'):
-            f.write('\n')
-        while cs:
-            key = cs.pop(0)
-            self.yaml.dump({key: self._code[key]}, f)
+        if ''.join(lines).startswith('{'):
+            _update_json_lines(
+                self._directives, self._orig, self._code,
+                lines, f)
+        else:
+            _update_yaml_lines(
+                self.yaml, self._directives, self._orig, self._code,
+                lines, f)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if not exc_type:
@@ -164,3 +145,45 @@ def update_ordered_dict(code, changed, key=None):
     while to_insert:
         k, v = to_insert.pop(0)
         code[k] = v
+
+
+def _update_json_lines(directives, orig, code, lines, f):
+    indent = 0
+    for c in lines[1][0:]:
+        if c != ' ':
+            break
+        indent += 1
+    json.dump(code, f, indent=indent)
+    f.write('\n')
+
+
+def _update_yaml_lines(yaml, directives, orig, code, lines, f):
+    os = list(orig.keys())
+    cs = list(code.keys())
+    o = 0
+    for line in lines[len(directives):]:
+        try:
+            key = os[o]
+        except IndexError:
+            key = None
+        if key and ':' in line and line.split(':', 1)[0].strip() == key:
+            while cs and cs[0] not in os:
+                yaml.dump({cs[0]: code[cs[0]]}, f)
+                cs.pop(0)
+            if key not in code:
+                pass  # Line was removed
+            elif code[key] == orig[key]:
+                # Line stayed the same
+                f.write(line)
+                cs.remove(key)
+            else:
+                yaml.dump({key: code[key]}, f)
+                cs.remove(key)
+            o += 1
+        else:
+            f.write(line)
+    if cs and not line.endswith('\n'):
+        f.write('\n')
+    while cs:
+        key = cs.pop(0)
+        yaml.dump({key: code[key]}, f)

@@ -5,6 +5,7 @@ lintian-brush (0.76) UNRELEASED; urgency=medium
   * Handle spacing around field names in Yaml files.
   * field-name-typo-in-dep5-copyright: Rename X- fields where
     appropriate in debian/copyright.
+  * Add support for JSON style debian/upstream/metadata files.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 10 Aug 2020 00:39:32 +0000
 
