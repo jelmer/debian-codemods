@@ -56,6 +56,7 @@ def gbp_conf_has_dch_section(tree: WorkingTree,
         return parser.has_section('dch')
 
 
+# TODO(jelmer): Use copy from debmutate.changelog
 def all_sha_prefixed(cl: Changelog) -> bool:
     sha_prefixed = 0
     for change in cl.changes():
