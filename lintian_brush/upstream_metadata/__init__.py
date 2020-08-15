@@ -832,7 +832,7 @@ def guess_from_cabal(path, trust_package=False):
             'certain')
 
 
-def is_email_address(value):
+def is_email_address(value: str) -> bool:
     return '@' in value or ' (at) ' in value
 
 
