@@ -36,6 +36,20 @@ from lintian_brush.yaml import (
     )
 
 
+def filter_by_tag(orig, changed, fields, tag):
+    if all(field in orig for field in fields):
+        return
+
+    if (not all(field in orig for field in fields) and
+            override_exists('source', tag)):
+        for field in fields:
+            if field in changed:
+                del changed[field]
+
+    if all(field in orig or field in changed for field in fields):
+        fixed_lintian_tag('source', tag)
+
+
 if package_is_native():
     # Native package
     sys.exit(0)
@@ -114,14 +128,15 @@ with YamlUpdater('debian/upstream/metadata') as editor:
     if not changed:
         sys.exit(0)
 
-    if (('Repository' in changed and 'Repository' not in editor.code) or
-            ('Repository-Browse' in changed and
-                'Repository-Browse' not in editor.code)):
-        fixed_lintian_tag('source', 'upstream-metadata-missing-repository')
+    filter_by_tag(
+        editor.code, changed,
+        ['Repository', 'Repository-Browse'],
+        'upstream-metadata-missing-repository')
 
-    if (('Bug-Database' in changed and 'Bug-Database' not in editor.code) or
-            ('Bug-Submit' in changed and 'But-Submit' not in editor.code)):
-        fixed_lintian_tag('source', 'upstream-metadata-missing-bug-tracking')
+    filter_by_tag(
+        editor.code, changed,
+        ['Bug-Database', 'Bug-Submit'],
+        'upstream-metadata-missing-bug-tracking')
 
     # A change that just says the "Name" field is a bit silly
     if set(changed.keys()) - set(ADDON_ONLY_FIELDS) == set(['Name']):
