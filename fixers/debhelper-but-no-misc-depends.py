@@ -5,7 +5,7 @@ from debmutate.control import (
     parse_relations,
     ControlEditor,
     )
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 
 uses_debhelper = False
@@ -28,9 +28,11 @@ with ControlEditor() as updater:
                 binary["Depends"] = add_dependency(
                     binary.get("Depends", ''), "${misc:Depends}")
                 misc_depends_added.append(binary["Package"])
+                fixed_lintian_tag(
+                    updater.source, 'debhelper-but-no-misc-depends',
+                    info=binary['Package'])
 
 
 report_result(
     "Add missing ${misc:Depends} to Depends for %s." %
-    ", ".join(misc_depends_added),
-    fixed_lintian_tags=['debhelper-but-no-misc-depends'])
+    ", ".join(misc_depends_added))

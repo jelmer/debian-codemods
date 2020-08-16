@@ -9,7 +9,7 @@ from debmutate.control import (
     get_relation,
     iter_relations,
     )
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 added = []
 removed = []
@@ -37,6 +37,10 @@ with ControlEditor() as updater:
                 if not binary['Built-Using']:
                     del binary['Built-Using']
                 removed.append(binary['Package'])
+                fixed_lintian_tag(
+                    updater.source,
+                    'built-using-field-on-arch-all-package',
+                    binary['Package'])
         else:
             built_using = binary.get('Built-Using', '')
             try:
@@ -45,23 +49,21 @@ with ControlEditor() as updater:
                 binary["Built-Using"] = add_dependency(
                     built_using, "${misc:Built-Using}")
                 added.append(binary['Package'])
+                fixed_lintian_tag(
+                    updater.source,
+                    'missing-built-using-field-for-golang-package',
+                    binary['Package'])
 
 if added and removed:
     report_result(
         'Added ${misc:Built-Using} to %s and removed it from %s.' %
-        (', '.join(added), ', '.join(removed)),
-        fixed_lintian_tags=[
-            'missing-built-using-field-for-golang-package',
-            'built-using-field-on-arch-all-package'
-            ])
+        (', '.join(added), ', '.join(removed)))
 
 if added:
     report_result(
         'Add missing ${misc:Built-Using} to Built-Using on %s.' %
-        ', '.join(added),
-        fixed_lintian_tags=['missing-built-using-field-for-golang-package'])
+        ', '.join(added))
 if removed:
     report_result(
         'Remove unnecessary ${misc:Built-Using} for %s' %
-        ', '.join(removed),
-        fixed_lintian_tags=['built-using-field-on-arch-all-package'])
+        ', '.join(removed))

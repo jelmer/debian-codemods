@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 
 with ControlEditor() as updater:
@@ -8,8 +8,10 @@ with ControlEditor() as updater:
         if key.startswith('XS-Vcs-'):
             updater.source[key[3:]] = updater.source[key]
             del updater.source[key]
+            fixed_lintian_tag(
+                updater.source, 'xs-vcs-field-in-debian-control',
+                info=key)
 
 
 report_result(
-    "Remove unnecessary XS- prefix for Vcs- fields in debian/control.",
-    fixed_lintian_tags=['xs-vcs-field-in-debian-control'])
+    "Remove unnecessary XS- prefix for Vcs- fields in debian/control.")

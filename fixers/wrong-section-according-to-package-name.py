@@ -4,6 +4,7 @@ from debmutate.control import ControlEditor
 from lintian_brush.fixer import (
     meets_minimum_certainty,
     report_result,
+    fixed_lintian_tag,
     )
 from lintian_brush.section import (
     get_name_section_mappings,
@@ -37,11 +38,13 @@ with ControlEditor() as updater:
                 ('binary package %s' % binary["Package"],
                  section, expected_section))
             binary["Section"] = expected_section
+            fixed_lintian_tag(
+                binary, 'wrong-section-according-to-package-name',
+                info='%s => %s' % (binary['Package'], expected_section))
 
 
 # TODO(jelmer): If there is only a single binary package without section, just
 # set the section of the source package?
 report_result(
     "Fix sections for %s." % ', '.join(['%s (%s => %s)' % v for v in fixed]),
-    certainty=CERTAINTY,
-    fixed_lintian_tags=['wrong-section-according-to-package-name'])
+    certainty=CERTAINTY)

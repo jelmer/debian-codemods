@@ -22,6 +22,7 @@ from lintian_brush.debhelper import (
 from lintian_brush.fixer import (
     compat_release,
     current_package_version,
+    fixed_lintian_tag,
     report_result,
     warn,
     )
@@ -462,15 +463,17 @@ for version in range(int(str(current_debhelper_compat_version))+1,
 if new_debhelper_compat_version > current_debhelper_compat_version:
     if current_debhelper_compat_version < lowest_non_deprecated_compat_level():
         kind = "deprecated"
-        tag = "package-uses-deprecated-debhelper-compat-version"
+        fixed_lintian_tag(
+            'source', "package-uses-deprecated-debhelper-compat-version",
+            info='%s' % (current_debhelper_compat_version, ))
     else:
         kind = "old"
-        tag = "package-uses-old-debhelper-compat-version"
+        fixed_lintian_tag(
+            'source', "package-uses-old-debhelper-compat-version",
+            info='%s' % (current_debhelper_compat_version, ))
     lines = ["Bump debhelper from %s %s to %s." % (
         kind, current_debhelper_compat_version, new_debhelper_compat_version)]
     for subitem in sorted(subitems):
         lines.append("+ " + subitem)
 
-    report_result(
-        description='\n'.join(lines),
-        fixed_lintian_tags=[tag])
+    report_result(description='\n'.join(lines))

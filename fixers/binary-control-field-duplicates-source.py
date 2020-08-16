@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 removed = []
 
@@ -11,6 +11,11 @@ with ControlEditor() as updater:
             if updater.source.get(field) == value:
                 del binary[field]
                 removed.append((binary['Package'], field, value))
+                fixed_lintian_tag(
+                    updater.source,
+                    'binary-control-field-duplicates-source',
+                    info='field "%s" in package %s' % (
+                        field, binary['Package']))
 
 
 report_result(
@@ -18,5 +23,4 @@ report_result(
         ', '.join(
             ['%s on %s' % (field, package)
              for (package, field, value) in removed]),
-        's' if len(removed) == 1 else ''),
-    fixed_lintian_tags=['binary-control-field-duplicates-source'])
+        's' if len(removed) == 1 else ''))
