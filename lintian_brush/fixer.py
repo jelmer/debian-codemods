@@ -25,6 +25,7 @@ from . import (
     DEFAULT_MINIMUM_CERTAINTY,
     certainty_sufficient,
     )
+from .lintian_overrides import override_exists as _override_exists
 
 
 from debian.changelog import Version
@@ -119,3 +120,20 @@ def opinionated():
 
 def warn(msg):
     sys.stderr.write('%s\n' % msg)
+
+
+def override_exists(
+        target: Union[Deb822, Tuple[str, str]],
+        tag: str, info: Optional[str] = None):
+    if isinstance(target, Deb822):
+        if 'Source' in target:
+            target = ('source', target['Source'])
+        elif 'Package' in target:
+            target = ('binary', target['Package'])
+        else:
+            raise ValueError(
+                'unable to determine source/binary package from target')
+    elif target == 'source':
+        target = ('source', None)
+    return _override_exists(
+        tag=tag, info=info, type=target[0], package=target[1])

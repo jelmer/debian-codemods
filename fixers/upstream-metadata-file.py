@@ -13,6 +13,7 @@ from lintian_brush.fixer import (
     package_is_native,
     meets_minimum_certainty,
     net_access_allowed,
+    override_exists,
     report_result,
     trust_package,
     fixed_lintian_tag,
@@ -41,6 +42,10 @@ if package_is_native():
 
 
 current_version = current_package_version()
+
+if not os.path.exists('debian/upstream/metadata') and override_exists(
+        'source', tag='upstream-metadata-file-is-missing'):
+    sys.exit(0)
 
 
 with YamlUpdater('debian/upstream/metadata') as editor:
