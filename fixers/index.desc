@@ -12,7 +12,7 @@ Fix-Script: file-contains-trailing-whitespace.sh
 Lintian-Tags: trailing-whitespace
 
 # Copyright related fixers. Fix format URL before semantic fixes.
-Fix-Script: insecure-copyright-format-uri.sh
+Fix-Script: insecure-copyright-format-uri.py
 Lintian-Tags: insecure-copyright-format-uri
 
 Fix-Script: unversioned-copyright-format-uri.py
