@@ -3,7 +3,7 @@
 import os
 import sys
 
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 try:
     with open('debian/source/options', 'r') as f:
@@ -20,7 +20,7 @@ def drop_prior_comments(lines):
 dropped = set()
 
 newlines = []
-for line in oldlines:
+for lineno, line in enumerate(oldlines, 1):
     if line.lstrip().startswith('#'):
         newlines.append(line)
         continue
@@ -32,10 +32,16 @@ for line in oldlines:
         if key.strip() == 'compression':
             drop_prior_comments(newlines)
             dropped.add("custom source compression")
+            fixed_lintian_tag(
+                'source', 'custom-compression-in-debian-source-options',
+                '%s (line %d)' % (line, lineno))
             continue
         if key.strip() == 'compression-level':
             drop_prior_comments(newlines)
             dropped.add("custom source compression level")
+            fixed_lintian_tag(
+                'source', 'custom-compression-in-debian-source-options',
+                '%s (line %d)' % (line, lineno))
             continue
         newlines.append(line)
 
@@ -45,8 +51,4 @@ if newlines:
 elif dropped:
     os.unlink('debian/source/options')
 
-report_result(
-    'Drop %s.' % ', '.join(sorted(dropped)),
-    fixed_lintian_tags=[
-        'custom-compression-in-debian-source-options'],
-    )
+report_result('Drop %s.' % ', '.join(sorted(dropped)))

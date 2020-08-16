@@ -13,6 +13,8 @@ from lintian_brush.fixer import (
     net_access_allowed,
     report_result,
     package_is_native,
+    fixed_lintian_tag,
+    override_exists,
     )
 from lintian_brush.watch import (
     candidates_from_setup_py,
@@ -22,6 +24,9 @@ from lintian_brush.watch import (
 
 if os.path.exists('debian/watch') or package_is_native():
     # Nothing to do here..
+    sys.exit(0)
+
+if override_exists('source', 'debian-watch-file-is-missing', info=''):
     sys.exit(0)
 
 candidates = []
@@ -60,8 +65,8 @@ wf.entries.append(winner[0])
 
 with open('debian/watch', 'w') as f:
     wf.dump(f)
+    fixed_lintian_tag('source', 'debian-watch-file-is-missing')
 
 report_result(
     "Add debian/watch file, using %s." % site,
-    certainty=certainty,
-    fixed_lintian_tags=['debian-watch-file-is-missing'])
+    certainty=certainty)
