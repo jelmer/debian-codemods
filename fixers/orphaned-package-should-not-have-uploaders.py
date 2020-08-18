@@ -3,7 +3,7 @@
 from email.utils import parseaddr
 from debmutate.control import ControlEditor
 
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 
 with ControlEditor() as updater:
@@ -14,7 +14,8 @@ with ControlEditor() as updater:
             del updater.source["Uploaders"]
         except KeyError:
             pass
+        else:
+            fixed_lintian_tag(updater.source, 'uploaders-in-orphan')
 
-report_result(
-    "Remove uploaders from orphaned package.",
-    fixed_lintian_tags=['uploaders-in-orphan'])
+
+report_result("Remove uploaders from orphaned package.")

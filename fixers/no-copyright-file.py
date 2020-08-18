@@ -6,7 +6,11 @@ from debian.copyright import (
     LicenseParagraph,
     License,
     )
-from lintian_brush.fixer import report_result, meets_minimum_certainty
+from lintian_brush.fixer import (
+    report_result,
+    meets_minimum_certainty,
+    fixed_lintian_tag,
+    )
 
 import os
 import sys
@@ -99,8 +103,6 @@ for key in sorted(licenses):
 with open('debian/copyright', 'w') as f:
     c.dump(f)
 
+fixed_lintian_tag('source', 'no-copyright-file')
 
-report_result(
-    'Create a debian/copyright file.',
-    certainty=CERTAINTY,
-    fixed_lintian_tags=['no-copyright-file'])
+report_result('Create a debian/copyright file.', certainty=CERTAINTY)

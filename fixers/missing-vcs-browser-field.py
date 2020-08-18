@@ -2,7 +2,7 @@
 
 from debmutate.control import ControlEditor
 
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 from lintian_brush.vcs import determine_browser_url
 
 
@@ -16,8 +16,9 @@ with ControlEditor() as updater:
             browser_url = determine_browser_url('git', vcs_git)
             if browser_url is not None:
                 updater.source["Vcs-Browser"] = browser_url
+                fixed_lintian_tag(
+                    updater.source, 'missing-vcs-browser-field',
+                    info='Vcs-Git %s' % vcs_git)
 
 
-report_result(
-    "debian/control: Add Vcs-Browser field",
-    fixed_lintian_tags=['missing-vcs-browser-field'])
+report_result("debian/control: Add Vcs-Browser field")

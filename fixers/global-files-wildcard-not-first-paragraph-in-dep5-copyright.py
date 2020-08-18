@@ -2,7 +2,7 @@
 
 
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 
 def swap_files_glob(copyright):
@@ -12,6 +12,10 @@ def swap_files_glob(copyright):
             if paragraph["Files"] == "*" and files_i > 0:
                 copyright._Copyright__paragraphs.insert(
                     0, copyright._Copyright__paragraphs.pop(i))
+                fixed_lintian_tag(
+                    'source',
+                    'global-files-wildcard-not-first-paragraph-in-'
+                    'dep5-copyright')
             files_i += 1
 
 
@@ -21,7 +25,4 @@ try:
 except (FileNotFoundError, NotMachineReadableError):
     pass
 
-report_result(
-    'Make "Files: *" paragraph the first in the copyright file.',
-    fixed_lintian_tags=[
-        'global-files-wildcard-not-first-paragraph-in-dep5-copyright'])
+report_result('Make "Files: *" paragraph the first in the copyright file.')

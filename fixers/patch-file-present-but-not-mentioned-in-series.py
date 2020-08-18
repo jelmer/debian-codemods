@@ -3,8 +3,12 @@
 import os
 import sys
 
-from lintian_brush.fixer import opinionated, report_result
-from lintian_brush.lintian_overrides import override_exists
+from lintian_brush.fixer import (
+    opinionated,
+    report_result,
+    fixed_lintian_tag,
+    override_exists,
+    )
 from lintian_brush.patches import read_quilt_series
 
 
@@ -41,17 +45,18 @@ for patch in os.listdir('debian/patches'):
     if patch in patches:
         continue
     if override_exists(
-            'patch-file-present-but-not-mentioned-in-series',
-            type='source', info=patch):
+            'source', 'patch-file-present-but-not-mentioned-in-series',
+            patch):
         continue
     removed.add(patch)
     os.unlink(path)
+    fixed_lintian_tag(
+        'source', "patch-file-present-but-not-mentioned-in-series",
+        info=patch)
 
 
 description = (
       "Remove patch%s %s that %s missing from debian/patches/series." %
       ('es' if len(removed) > 1 else '', ', '.join(sorted(removed)),
        'is' if len(removed) == 1 else 'are'))
-report_result(
-    description,
-    fixed_lintian_tags=["patch-file-present-but-not-mentioned-in-series"])
+report_result(description)

@@ -9,6 +9,7 @@ from debmutate.debhelper import (
 from lintian_brush.fixer import (
     current_package_version,
     report_result,
+    fixed_lintian_tag,
     )
 from lintian_brush.rules import (
     check_cdbs,
@@ -59,6 +60,9 @@ def migrate_dh_strip(line, target):
                         ("--dbgsym-migration='%s (%s)'" % (
                             dbg_pkg, migrate_version)).encode('utf-8'))
                 dbg_migration_done.add(dbg_pkg)
+            fixed_lintian_tag(
+                'source',
+                'debian-control-has-obsolete-dbg-package', info=dbg_pkg)
         if b'$' in line:
             rules_uses_variables = True
     return line
@@ -79,5 +83,4 @@ if difference:
 
 report_result(
     "Transition to automatic debug package%s (from: %s)." %
-    (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages)),
-    fixed_lintian_tags=['debian-control-has-obsolete-dbg-package'])
+    (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages)))

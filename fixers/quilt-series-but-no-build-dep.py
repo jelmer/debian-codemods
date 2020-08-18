@@ -4,7 +4,7 @@ import os
 from typing import Optional
 
 from debmutate.control import ensure_some_version, ControlEditor
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 format: Optional[str]
 try:
@@ -17,8 +17,8 @@ if format != '3.0 (quilt)' and os.path.exists('debian/patches/series'):
     with ControlEditor() as updater:
         updater.source['Build-Depends'] = ensure_some_version(
             updater.source['Build-Depends'], 'quilt')
+    if updater.changed:
+        fixed_lintian_tag(updater.source, 'quilt-series-but-no-build-dep')
 
 
-report_result(
-    'Add missing dependency on quilt.',
-    fixed_lintian_tags=['quilt-series-but-no-build-dep'])
+report_result('Add missing dependency on quilt.')

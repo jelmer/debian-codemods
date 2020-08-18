@@ -2,6 +2,7 @@
 
 from debmutate.control import ControlEditor
 from lintian_brush.fixer import (
+    fixed_lintian_tag,
     meets_minimum_certainty,
     report_result,
     trust_package,
@@ -21,8 +22,6 @@ with ControlEditor() as updater:
             if current_certainty != 'certain':
                 updater.source["Homepage"] = datum.value
                 current_certainty = datum.certainty
+                fixed_lintian_tag('source', 'no-homepage-field')
 
-report_result(
-    'Fill in Homepage field.',
-    fixed_lintian_tags=['no-homepage-field'],
-    certainty=current_certainty)
+report_result('Fill in Homepage field.', certainty=current_certainty)

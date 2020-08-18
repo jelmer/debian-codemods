@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 import sys
 import re
 from typing import List
@@ -21,6 +21,9 @@ try:
             for f in paragraph._RestrictedWrapper__data['Files'].splitlines():
                 if re_license.search(f.strip()):
                     deleted.add(f.strip())
+                    fixed_lintian_tag(
+                        'source', 'license-file-listed-in-debian-copyright',
+                        info=f.strip())
                 else:
                     if files:
                         files.append(f)
@@ -40,5 +43,4 @@ except (FileNotFoundError, NotMachineReadableError):
 else:
     report_result(
         message % ', '.join(sorted(deleted)),
-        fixed_lintian_tags=['license-file-listed-in-debian-copyright'],
         certainty=certainty)

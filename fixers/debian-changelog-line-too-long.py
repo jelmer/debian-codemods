@@ -5,31 +5,32 @@ from debmutate.changelog import (
     ChangelogEditor,
     rewrap_changes,
     any_long_lines,
+    WIDTH,
     )
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
-fixed_lintian_tags = set()
 updated = []
 
 
-def wrap_block_lines(block):
-    if not any_long_lines(block.changes()):
-        return False
-    old_changes = list(block._changes)
-    new_changes = rewrap_changes(block._changes)
-    if old_changes != new_changes:
-        block._changes = new_changes
-        return True
-    else:
-        return False
+def wrap_block_lines(changes):
+    if not any_long_lines(changes):
+        return changes
+    return rewrap_changes(changes)
 
 
 def wrap_block(changelog, i):
-    if wrap_block_lines(changelog[i]):
-        updated.append(changelog[i].version)
+    new_changes = wrap_block_lines(changelog[i].changes())
+    if new_changes != changelog[i].changes():
         if i == 0:
-            # Lintian only warns about the first block.
-            fixed_lintian_tags.add('debian-changelog-line-too-long')
+            for lineno, change in enumerate(changelog[i].changes(), 2):
+                if len(change) <= WIDTH:
+                    continue
+                # Lintian only warns about the first block.
+                fixed_lintian_tag(
+                    'source', 'debian-changelog-line-too-long',
+                    info='line %d' % lineno)
+        changelog[i]._changes = new_changes
+        updated.append(changelog[i].version)
         return True
     return False
 
@@ -44,5 +45,4 @@ with ChangelogEditor() as updater:
 
 report_result(
     'Wrap long lines in changelog entries: %s.' % (
-     ', '.join([str(v) for v in updated])),
-    fixed_lintian_tags=fixed_lintian_tags)
+     ', '.join([str(v) for v in updated])))

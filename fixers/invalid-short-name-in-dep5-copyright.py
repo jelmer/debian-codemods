@@ -2,7 +2,7 @@
 
 from debian.copyright import License
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 typos = {
     'bsd-2': 'BSD-2-Clause',
@@ -33,6 +33,9 @@ def fix_shortname(copyright):
             continue
         renames[paragraph.license.synopsis] = new_name
         paragraph.license = License(new_name, paragraph.license.text)
+        fixed_lintian_tag(
+            'source', 'invalid-short-name-in-dep5-copyright',
+            info=paragraph.license.synopsis)
 
 
 try:
@@ -44,5 +47,4 @@ except (FileNotFoundError, NotMachineReadableError):
 report_result(
     "Fix invalid short license name in debian/copyright (%s)" % (
         ', '.join(
-            ['%s => %s' % (old, new) for (old, new) in renames.items()])),
-    fixed_lintian_tags=['invalid-short-name-in-dep5-copyright'])
+            ['%s => %s' % (old, new) for (old, new) in renames.items()])))

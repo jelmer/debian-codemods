@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 renames = [
     ("Name", "Upstream-Name", "upstream_name", False),
@@ -30,6 +30,9 @@ def obsolete_field(copyright):
                     setattr(copyright.header, field_name, value)
                 applied_renames.append((old_name, new_name))
             del copyright.header[old_name]
+            fixed_lintian_tag(
+                'source', 'obsolete-field-in-dep5-copyright',
+                info='%s %s' % (old_name, new_name))
 
 
 try:
@@ -39,5 +42,4 @@ except (FileNotFoundError, NotMachineReadableError):
     pass
 report_result(
     "Update copyright file header to use current field names (%s)" %
-    ', '.join("%s => %s" % (key, value) for (key, value) in applied_renames),
-    fixed_lintian_tags=['obsolete-field-in-dep5-copyright'])
+    ', '.join("%s => %s" % (key, value) for (key, value) in applied_renames))

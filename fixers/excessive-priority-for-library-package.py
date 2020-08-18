@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 changed = []
 
@@ -16,9 +16,11 @@ with ControlEditor() as updater:
         if priority in ("required", "important", "standard"):
             binary['Priority'] = 'optional'
             changed.append(binary['Package'])
+            fixed_lintian_tag(
+                binary, 'excessive-priority-for-library-package',
+                info=priority)
 
 
 report_result(
     'Set priority for library package%s %s to optional.' % (
-      's' if len(changed) > 1 else '', ', '.join(changed)),
-    fixed_lintian_tags=['excessive-priority-for-library-package'])
+      's' if len(changed) > 1 else '', ', '.join(changed)))

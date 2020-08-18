@@ -1,2 +1,0 @@
-Remove patch  that are missing from debian/patches/series.
-Fixed-Lintian-Tags: patch-file-present-but-not-mentioned-in-series
