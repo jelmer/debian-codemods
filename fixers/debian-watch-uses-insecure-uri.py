@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 
-from lintian_brush.fixer import net_access_allowed
+from lintian_brush.fixer import net_access_allowed, report_result
 from debmutate.watch import parse_watch_file
 
 if not os.path.exists('debian/watch'):
@@ -62,8 +62,10 @@ def stock_replace(line):
 update_watchfile(stock_replace)
 
 
-print("Use secure URI in debian/watch.")
-print("Fixed-Lintian-Tags: debian-watch-uses-insecure-uri")
+report_result(
+    "Use secure URI in debian/watch.",
+    fixed_lintian_tags=['debian-watch-uses-insecure-uri'])
+
 
 if not watchfile_has_http():
     sys.exit(0)

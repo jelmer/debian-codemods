@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
-from lintian_brush.fixer import net_access_allowed
+from lintian_brush.fixer import (
+    net_access_allowed, report_result, fixed_lintian_tag)
 from debmutate.control import ControlEditor
 import socket
 import sys
@@ -66,8 +67,12 @@ with ControlEditor() as updater:
     except KeyError:
         pass
     else:
-        updater.source["Homepage"] = fix_homepage(homepage)
+        new_homepage = fix_homepage(homepage)
+        if new_homepage != updater.source['Homepage']:
+            fixed_lintian_tag(
+                'source', 'homepage-field-uses-insecure-uri',
+                updater.source['Homepage'])
+        updater.source["Homepage"] = new_homepage
 
 
-print("Use secure URI in Homepage field.")
-print("Fixed-Lintian-Tags: homepage-field-uses-insecure-uri")
+report_result("Use secure URI in Homepage field.")

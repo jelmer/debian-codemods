@@ -6,6 +6,8 @@ import shlex
 import sys
 from typing import List, Optional
 
+from lintian_brush.fixer import report_result
+
 gpg = shlex.split(os.environ.get('GPG', 'gpg'))
 
 
@@ -69,5 +71,6 @@ for p in [
             f.writelines(out)
 
 
-print("Re-export upstream signing key without extra signatures.")
-print("Fixed-Lintian-Tags: public-upstream-key-not-minimal")
+report_result(
+    "Re-export upstream signing key without extra signatures.",
+    fixed_lintian_tags=['public-upstream-key-not-minimal'])

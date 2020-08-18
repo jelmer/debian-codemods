@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.control import drop_dependency, ControlEditor
+from lintian_brush.fixer import report_result
 
 with open('debian/rules', 'rb') as f:
     for line in f:
@@ -17,5 +18,6 @@ if not uses_cdbs:
         if not updater.source["Build-Depends"]:
             del updater.source["Build-Depends"]
 
-print("Drop unused build-dependency on cdbs.")
-print("Fixed-Lintian-Tags: unused-build-dependency-on-cdbs")
+report_result(
+    "Drop unused build-dependency on cdbs.",
+    fixed_lintian_tags=['unused-build-dependency-on-cdbs'])

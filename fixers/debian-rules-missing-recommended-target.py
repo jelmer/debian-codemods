@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 from lintian_brush.rules import update_rules
 from debmutate.control import ControlEditor
 
@@ -32,11 +33,17 @@ def process_makefile(mf):
     archs = get_archs()
     if not has_build_indep:
         added.append('build-indep')
+        fixed_lintian_tag(
+            'source', 'debian-rules-missing-recommended-target',
+            info='build-indep')
         mf.add_rule(
             b'build-indep',
             components=([b'build'] if 'all' in archs else None))
     if not has_build_arch:
         added.append('build-arch')
+        fixed_lintian_tag(
+            'source', 'debian-rules-missing-recommended-target',
+            info='build-arch')
         mf.add_rule(
             b'build-arch',
             components=([b'build'] if (archs - set(['all'])) else None))
@@ -56,7 +63,6 @@ def process_makefile(mf):
 update_rules(makefile_cb=process_makefile)
 
 if len(added) == 1:
-    print('Add missing debian/rules target %s.' % added[0])
+    report_result('Add missing debian/rules target %s.' % added[0])
 else:
-    print('Add missing debian/rules targets %s.' % ', '.join(added))
-print('Fixed-Lintian-Tags: debian-rules-missing-recommended-target')
+    report_result('Add missing debian/rules targets %s.' % ', '.join(added))

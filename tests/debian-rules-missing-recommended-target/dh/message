@@ -1,2 +1,0 @@
-Add missing debian/rules targets .
-Fixed-Lintian-Tags: debian-rules-missing-recommended-target

@@ -8,6 +8,8 @@ from debmutate.reformatting import (
     GeneratedFile,
     )
 
+from lintian_brush.fixer import report_result, fixed_lintian_tag
+
 
 def rewrite_line(line):
     if not line.split(b'#', 1)[0].strip():
@@ -24,10 +26,14 @@ def fix_field_spacing(path):
     lines = []
     changed = False
     with open(path, 'rb') as f:
-        for oldline in f:
+        for lineno, oldline in enumerate(f, 1):
             newline = rewrite_line(oldline)
             if newline != oldline:
                 changed = True
+                if path == 'debian/control':
+                    fixed_lintian_tag(
+                        'source', 'debian-control-has-unusual-field-spacing',
+                        info='line %d' % lineno)
             lines.append(newline)
     if not changed:
         return False
@@ -52,5 +58,4 @@ else:
     changed = fix_field_spacing('debian/control')
 
 if changed:
-    print('Strip unusual field spacing from debian/control.')
-    print('Fixed-Lintian-Tags: debian-control-has-unusual-field-spacing')
+    report_result('Strip unusual field spacing from debian/control.')

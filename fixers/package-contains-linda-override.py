@@ -1,12 +1,17 @@
 #!/usr/bin/python3
 
 import os
+
+from lintian_brush.fixer import report_result, fixed_lintian_tag
+
 removed = []
 
 for name in os.listdir('debian'):
     if name.endswith('.linda-overrides'):
         os.unlink(os.path.join('debian', name))
         removed.append(name)
+        fixed_lintian_tag(
+            'source', 'package-contains-linda-override',
+            'usr/share/linda/overrides/%s' % name[:-len('.linda-overrides')])
 
-print('Remove obsolete linda overrides: ' + ', '.join(removed))
-print('Fixed-Lintian-Tags: package-contains-linda-override')
+report_result('Remove obsolete linda overrides: ' + ', '.join(removed))

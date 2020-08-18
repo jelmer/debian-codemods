@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 from lintian_brush.yaml import YamlUpdater
 from ruamel.yaml.reader import ReaderError  # noqa: E402
 from ruamel.yaml.nodes import MappingNode
@@ -31,11 +31,11 @@ try:
         for i, k in sorted(to_remove, reverse=True):
             editor.force_rewrite()
             del node.value[i]
+        fixed_lintian_tag('source', 'upstream-metadata-yaml-invalid')
         report_result(
             'Remove duplicate values for fields %s '
             'in debian/upstream/metadata.' % ', '.join(
-                [k for (i, k) in sorted(to_remove)]),
-            fixed_lintian_tags=['upstream-metadata-yaml-invalid'])
+                [k for (i, k) in sorted(to_remove)]))
 
     editor.yaml.constructor.flatten_mapping = flatten_mapping
     with editor:
@@ -44,9 +44,9 @@ try:
         elif isinstance(editor.code, list):
             if len(editor.code) == 1:
                 editor.code = editor.code[0]
-                report_result(
-                    'Use YAML mapping in debian/upstream/metadata.',
-                    fixed_lintian_tags=['upstream-metadata-not-yaml-mapping'])
+                fixed_lintian_tag(
+                    'source', 'upstream-metadata-not-yaml-mapping')
+                report_result('Use YAML mapping in debian/upstream/metadata.')
             elif all([
                     isinstance(m, dict) and len(m) == 1
                     for m in editor.code]):
@@ -54,9 +54,9 @@ try:
                 editor.code = {}
                 for entry in old:
                     editor.code.update(entry)
-                report_result(
-                    'Use YAML mapping in debian/upstream/metadata.',
-                    fixed_lintian_tags=['upstream-metadata-not-yaml-mapping'])
+                    fixed_lintian_tag(
+                        'source', 'upstream-metadata-not-yaml-mapping')
+                report_result('Use YAML mapping in debian/upstream/metadata.')
 except FileNotFoundError:
     sys.exit(0)
 except ReaderError:

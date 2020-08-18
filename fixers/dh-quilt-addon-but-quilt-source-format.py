@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 
+from lintian_brush.fixer import report_result
 from lintian_brush.rules import (
     dh_invoke_drop_with,
     RulesEditor,
@@ -23,6 +24,7 @@ except FileNotFoundError:
     pass
 
 
-print("Don't specify --with=quilt, since package uses "
-      "'3.0 (quilt)' source format.")
-print("Fixed-Lintian-Tags: dh-quilt-addon-but-quilt-source-format")
+report_result(
+    "Don't specify --with=quilt, since package uses "
+    "'3.0 (quilt)' source format.",
+    fixed_lintian_tags=['dh-quilt-addon-but-quilt-source-format'])

@@ -2,6 +2,7 @@
 
 from debmutate.control import ControlEditor
 from email.utils import parseaddr
+from lintian_brush.fixer import report_result
 
 QA_MAINTAINER = "Debian QA Group <packages@qa.debian.org>"
 
@@ -15,5 +16,6 @@ with ControlEditor() as updater:
         if email == "packages@qa.debian.org":
             updater.source["Maintainer"] = QA_MAINTAINER
 
-print("Fix Debian QA group name.")
-print("Fixed-Lintian-Tags: wrong-debian-qa-group-name")
+report_result(
+    "Fix Debian QA group name.",
+    fixed_lintian_tags=['wrong-debian-qa-group-name'])

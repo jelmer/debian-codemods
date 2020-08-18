@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from lintian_brush.fixer import report_result
 from lintian_brush.systemd import systemd_service_files, SystemdServiceEditor
 import os
 
@@ -11,5 +12,7 @@ for path in systemd_service_files():
             if ext != required_ext:
                 updater.file['Unit']['Alias'][i] = base + required_ext
 
-print('Use proper extensions in Alias in systemd files.')
-print('Fixed-Lintian-Tags: systemd-service-alias-without-extension')
+
+report_result(
+    'Use proper extensions in Alias in systemd files.',
+    fixed_lintian_tags=['systemd-service-alias-without-extension'])

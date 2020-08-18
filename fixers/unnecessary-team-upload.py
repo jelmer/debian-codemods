@@ -4,7 +4,7 @@ from debmutate.changelog import ChangelogEditor
 from debmutate.control import (
     ControlEditor,
     )
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 from email.utils import parseaddr
 import sys
@@ -33,7 +33,6 @@ with ChangelogEditor() as updater:
             last_change._changes[i] == ''):
         # Also remove the next line, if it's empty
         del last_change._changes[i]
+        fixed_lintian_tag('source', 'unnecessary-team-upload')
 
-report_result(
-    "Remove unnecessary Team Upload line in changelog.",
-    fixed_lintian_tags=['unnecessary-team-upload'])
+report_result("Remove unnecessary Team Upload line in changelog.")

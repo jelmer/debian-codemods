@@ -1,7 +1,11 @@
 #!/usr/bin/python3
 
 from debian.deb822 import PkgRelation
-from lintian_brush.fixer import net_access_allowed, compat_release
+from lintian_brush.fixer import (
+    net_access_allowed,
+    compat_release,
+    report_result,
+    )
 from lintian_brush.rules import update_rules
 import os
 
@@ -100,5 +104,6 @@ def eliminate_dbgsym_migration(line, target):
 
 update_rules(eliminate_dbgsym_migration)
 
-print('Drop transition for old debug package migration.')
-print('Fixed-Lintian-Tags: debug-symbol-migration-possibly-complete')
+report_result(
+    'Drop transition for old debug package migration.',
+    fixed_lintian_tags=['debug-symbol-migration-possibly-complete'])

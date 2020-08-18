@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.rules import update_rules
+from lintian_brush.fixer import report_result
 
 
 def update_line(line, target):
@@ -10,5 +11,6 @@ def update_line(line, target):
 
 
 update_rules(update_line)
-print("debian/rules: Use dh_prep rather than \"dh_clean -k\".")
-print("Fixed-Lintian-Tags: dh-clean-k-is-deprecated")
+report_result(
+    "debian/rules: Use dh_prep rather than \"dh_clean -k\".",
+    fixed_lintian_tags=["dh-clean-k-is-deprecated"])

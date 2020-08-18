@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.xdg import DesktopEntryEditor
+from lintian_brush.fixer import report_result
 
 import os
 
@@ -17,9 +18,11 @@ for name in os.listdir('debian'):
 
 
 if len(paths) == 1:
-    print('Remove deprecated Encoding key from desktop file %s.' %
-          paths[0])
+    report_result(
+        'Remove deprecated Encoding key from desktop file %s.' % paths[0],
+        fixed_lintian_tags=['desktop-entry-contains-encoding-key'])
 else:
-    print('Remove deprecated Encoding key from desktop files: %s.' % (
-          ', '.join(sorted(paths))))
-print('Fixed-Lintian-Tags: desktop-entry-contains-encoding-key')
+    report_result(
+        'Remove deprecated Encoding key from desktop files: %s.' % (
+            ', '.join(sorted(paths))),
+        fixed_lintian_tags=['desktop-entry-contains-encoding-key'])

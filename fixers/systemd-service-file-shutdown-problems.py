@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.systemd import SystemdServiceEditor, systemd_service_files
+from lintian_brush.fixer import report_result
 
 
 for path in systemd_service_files():
@@ -13,5 +14,6 @@ for path in systemd_service_files():
         except KeyError:
             pass
 
-print("Add Before=shutdown.target to Unit section.")
-print("Fixed-Lintian-Tags: systemd-service-file-shutdown-problems")
+report_result(
+    "Add Before=shutdown.target to Unit section.",
+    fixed_lintian_tags=['systemd-service-file-shutdown-problems'])

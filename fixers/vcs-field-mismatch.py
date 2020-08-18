@@ -2,6 +2,7 @@
 
 from debmutate.control import ControlEditor
 from urllib.parse import urlparse
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 HOST_TO_VCS = {
     'github.com': 'Git',
@@ -21,11 +22,11 @@ with ControlEditor() as updater:
             continue
         actual_vcs = HOST_TO_VCS[host]
         if actual_vcs != vcs:
-            print(
-                "Changed vcs type from %s to %s based on URL." % (
-                    vcs, actual_vcs))
+            fixed_lintian_tag(
+                'source', 'vcs-field-mismatch',
+                '%s != Vcs-%s %s' % (field, actual_vcs, vcs_url))
             del updater.source["Vcs-" + vcs]
             updater.source["Vcs-" + actual_vcs] = vcs_url
-
-
-print("Fixed-Lintian-Tags: vcs-field-mismatch")
+            report_result(
+                "Changed vcs type from %s to %s based on URL." % (
+                    vcs, actual_vcs))
