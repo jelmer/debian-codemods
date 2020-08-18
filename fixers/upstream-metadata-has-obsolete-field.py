@@ -2,6 +2,7 @@
 
 import re
 
+from lintian_brush.fixer import report_result
 from lintian_brush.upstream_metadata import ADDON_ONLY_FIELDS
 from lintian_brush.yaml import YamlUpdater
 
@@ -18,6 +19,17 @@ with YamlUpdater('debian/upstream/metadata') as editor:
         from debmutate.copyright import upstream_fields_in_copyright
         obsolete_fields.update(
             upstream_fields_in_copyright('debian/copyright'))
+
+    for field in ['Name', 'Contact']:
+        try:
+            um_value = editor.code[field]
+        except KeyError:
+            continue
+
+        if um_value is None:
+            del editor.code[field]
+            removed_fields.append(field)
+            continue
 
     for field, copyright_value in obsolete_fields.items():
         try:
@@ -40,7 +52,8 @@ with YamlUpdater('debian/upstream/metadata') as editor:
             editor.code.clear()
 
 
-print('Remove obsolete field%s %s from debian/upstream/metadata '
-      '(already present in machine-readable debian/copyright).' %
-      ('s' if len(removed_fields) > 1 else '',
-       ', '.join(sorted(removed_fields))))
+report_result(
+    'Remove obsolete field%s %s from debian/upstream/metadata '
+    '(already present in machine-readable debian/copyright).' %
+    ('s' if len(removed_fields) > 1 else '',
+     ', '.join(sorted(removed_fields))))

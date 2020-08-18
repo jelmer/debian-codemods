@@ -565,29 +565,49 @@ def guess_from_debian_copyright(path, trust_package):
                 yield UpstreamDatum("Repository", url, 'certain')
 
 
-def guess_from_readme(path, trust_package):
+def url_from_git_clone_command(command):
     import shlex
+    argv = shlex.split(command.decode('utf-8', 'replace'))
+    args = [arg for arg in argv if arg.strip()]
+    i = 0
+    while i < len(args):
+        if not args[i].startswith('-'):
+            i += 1
+            continue
+        if '=' in args[i]:
+            del args[i]
+            continue
+        # arguments that take a parameter
+        if args[i] in ('-b', '--depth', '--branch'):
+            del args[i]
+            del args[i]
+            continue
+        del args[i]
+    try:
+        url = args[2]
+    except IndexError:
+        url = args[0]
+    if plausible_vcs_url(url):
+        return sanitize_vcs_url(url)
+    return None
+
+
+def guess_from_readme(path, trust_package):
     urls = []
     try:
         with open(path, 'rb') as f:
             lines = list(f.readlines())
             for i, line in enumerate(lines):
                 line = line.strip()
-                if line.strip().lstrip(b'$').strip().startswith(b'git clone'):
+                if line.strip().lstrip(b'$').strip().startswith(b'git clone '):
                     line = line.strip().lstrip(b'$').strip()
                     while line.endswith(b'\\'):
                         line += lines[i+1]
                         line = line.strip()
                         i += 1
-                    argv = shlex.split(line.decode('utf-8', 'replace'))
-                    args = [arg for arg in argv[2:]
-                            if not arg.startswith('-') and arg.strip()]
-                    try:
-                        url = args[-2]
-                    except IndexError:
-                        url = args[0]
-                    if plausible_vcs_url(url):
-                        urls.append(sanitize_vcs_url(url))
+                    url = url_from_git_clone_command(line)
+                    if url:
+                        urls.append(url)
                 project_re = b'([^/]+)/([^/?.()"#>\\s]*[^-/?.()"#>\\s])'
                 for m in re.finditer(
                         b'https://travis-ci.org/' + project_re, line):
@@ -1042,6 +1062,15 @@ def guess_from_git_config(path, trust_package=False):
     # TODO(jelmer): Try origin?
 
 
+def guess_from_get_orig_source(path, trust_package=False):
+    with open(path, 'rb') as f:
+        for line in f:
+            if line.startswith(b'git clone'):
+                url = url_from_git_clone_command(line)
+                if url:
+                    yield UpstreamDatum('Repository', url, 'likely')
+
+
 def _get_guessers(path, trust_package=False):
     CANDIDATES = [
         ('debian/watch', guess_from_debian_watch),
@@ -1059,6 +1088,7 @@ def _get_guessers(path, trust_package=False):
         ('Cargo.toml', guess_from_cargo),
         ('pom.xml', guess_from_pom_xml),
         ('.git/config', guess_from_git_config),
+        ('debian/get-orig-source.sh', guess_from_get_orig_source),
         ]
 
     # Search for something Python-y

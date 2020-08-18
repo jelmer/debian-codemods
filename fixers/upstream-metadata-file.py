@@ -67,7 +67,9 @@ with YamlUpdater('debian/upstream/metadata') as editor:
         sys.exit(0)
 
     upstream_metadata = {
-        k: UpstreamDatum(k, v, 'certain') for (k, v) in editor.code.items()}
+        k: UpstreamDatum(k, v, 'certain')
+        for (k, v) in editor.code.items()
+        if v is not None}
 
     minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
     net_access = net_access_allowed()

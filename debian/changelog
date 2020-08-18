@@ -6,6 +6,7 @@ lintian-brush (0.76) UNRELEASED; urgency=medium
   * field-name-typo-in-dep5-copyright: Rename X- fields where
     appropriate in debian/copyright.
   * Add support for JSON style debian/upstream/metadata files.
+  * Scan debian/get-orig-source.sh for upstream metadata.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 10 Aug 2020 00:39:32 +0000
 

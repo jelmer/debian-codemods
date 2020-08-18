@@ -30,6 +30,7 @@ from lintian_brush.upstream_metadata import (
     guess_from_debian_watch,
     guess_from_r_description,
     bug_database_url_from_bug_submit_url,
+    url_from_git_clone_command,
     )
 
 
@@ -218,3 +219,22 @@ class BugDbFromBugSubmitUrlTests(TestCase):
             'https://sourceforge.net/p/dulwich/bugs',
             bug_database_url_from_bug_submit_url(
                 'https://sourceforge.net/p/dulwich/bugs/new'))
+
+
+class UrlFromGitCloneTests(TestCase):
+
+    def test_guess_simple(self):
+        self.assertEqual(
+            'https://github.com/jelmer/blah.git',
+            url_from_git_clone_command(
+                b'git clone https://github.com/jelmer/blah'))
+        self.assertEqual(
+            'https://github.com/jelmer/blah.git',
+            url_from_git_clone_command(
+                b'git clone https://github.com/jelmer/blah target'))
+
+    def test_args(self):
+        self.assertEqual(
+            'https://github.com/jelmer/blah.git',
+            url_from_git_clone_command(
+                b'git clone -b foo https://github.com/jelmer/blah target'))
