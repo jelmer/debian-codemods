@@ -31,6 +31,7 @@ from lintian_brush.upstream_metadata import (
     guess_from_r_description,
     bug_database_url_from_bug_submit_url,
     url_from_git_clone_command,
+    url_from_fossil_clone_command,
     )
 
 
@@ -238,3 +239,12 @@ class UrlFromGitCloneTests(TestCase):
             'https://github.com/jelmer/blah.git',
             url_from_git_clone_command(
                 b'git clone -b foo https://github.com/jelmer/blah target'))
+
+
+class UrlFromFossilCloneTests(TestCase):
+
+    def test_guess_simple(self):
+        self.assertEqual(
+            'https://example.com/repo/blah',
+            url_from_fossil_clone_command(
+                b'fossil clone https://example.com/repo/blah blah.fossil'))

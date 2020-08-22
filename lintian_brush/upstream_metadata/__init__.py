@@ -592,6 +592,28 @@ def url_from_git_clone_command(command):
     return None
 
 
+def url_from_fossil_clone_command(command):
+    import shlex
+    argv = shlex.split(command.decode('utf-8', 'replace'))
+    args = [arg for arg in argv if arg.strip()]
+    i = 0
+    while i < len(args):
+        if not args[i].startswith('-'):
+            i += 1
+            continue
+        if '=' in args[i]:
+            del args[i]
+            continue
+        del args[i]
+    try:
+        url = args[2]
+    except IndexError:
+        url = args[0]
+    if plausible_vcs_url(url):
+        return sanitize_vcs_url(url)
+    return None
+
+
 def guess_from_readme(path, trust_package):
     urls = []
     try:
@@ -599,13 +621,17 @@ def guess_from_readme(path, trust_package):
             lines = list(f.readlines())
             for i, line in enumerate(lines):
                 line = line.strip()
-                if line.strip().lstrip(b'$').strip().startswith(b'git clone '):
-                    line = line.strip().lstrip(b'$').strip()
-                    while line.endswith(b'\\'):
-                        line += lines[i+1]
-                        line = line.strip()
+                cmdline = line.strip().lstrip(b'$').strip()
+                if (cmdline.startswith(b'git clone ') or
+                        cmdline.startswith(b'fossil clone ')):
+                    while cmdline.endswith(b'\\'):
+                        cmdline += lines[i+1]
+                        cmdline = cmdline.strip()
                         i += 1
-                    url = url_from_git_clone_command(line)
+                    if cmdline.startswith(b'git clone '):
+                        url = url_from_git_clone_command(cmdline)
+                    elif cmdline.startswith(b'fossil clone '):
+                        url = url_from_fossil_clone_command(cmdline)
                     if url:
                         urls.append(url)
                 project_re = b'([^/]+)/([^/?.()"#>\\s]*[^-/?.()"#>\\s])'

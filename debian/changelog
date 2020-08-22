@@ -1,3 +1,9 @@
+lintian-brush (0.77) UNRELEASED; urgency=medium
+
+  * Scan for 'fossil clone' commands in README.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 22 Aug 2020 17:33:30 +0000
+
 lintian-brush (0.76) unstable; urgency=medium
 
   * Add some notes about debugging fixer scripts to manual page.
