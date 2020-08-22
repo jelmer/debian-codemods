@@ -1,4 +1,4 @@
-lintian-brush (0.76) UNRELEASED; urgency=medium
+lintian-brush (0.76) unstable; urgency=medium
 
   * Add some notes about debugging fixer scripts to manual page.
   * empty-debian-tests-control: Cope with NotADirectory errors.
@@ -8,7 +8,7 @@ lintian-brush (0.76) UNRELEASED; urgency=medium
   * Add support for JSON style debian/upstream/metadata files.
   * Scan debian/get-orig-source.sh for upstream metadata.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 10 Aug 2020 00:39:32 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 22 Aug 2020 02:30:11 +0000
 
 lintian-brush (0.75) unstable; urgency=medium
 
