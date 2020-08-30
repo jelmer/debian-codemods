@@ -85,11 +85,15 @@ debhelper_compat_version: Dict[str, int] = {
     'buster': 12,
 
     # Ubuntu
+    'precise': 9,
+    'trusty': 9,
     'xenial': 9,
     'bionic': 11,
     'cosmic': 11,
     'disco': 12,
     'eoan': 12,
+    'focal': 12,
+    'groovy': 13,
     }
 
 
