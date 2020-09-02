@@ -238,6 +238,14 @@ def apply_multiarch_hints(hints, minimum_certainty='certain'):
     return changes
 
 
+def changes_by_description(changes):
+    by_description = {}
+    for (binary, hint, description, certainty) in changes:
+        by_description.setdefault(description, []).append(
+            binary['Package'])
+    return by_description
+
+
 class MultiArchHintFixer(Fixer):
 
     def __init__(self, hints):
@@ -261,9 +269,12 @@ class MultiArchHintFixer(Fixer):
 
         overall_certainty = min_certainty(
             [certainty for (binary, hint, description, certainty) in changes])
-        overall_description = "Apply multi-arch hints.\n" + "\n".join(
-            ["+ %s: %s" % (binary['Package'], description)
-             for (binary, hint, description, certainty) in changes])
+        by_description = changes_by_description(changes)
+        overall_description = "Apply multi-arch hints.\n"
+        for description, binaries in by_description.items():
+            overall_description += "+ %s: %s" % (
+                ', '.join(sorted(binaries)),
+                description)
         return MultiArchFixerResult(
             overall_description, certainty=overall_certainty, changes=changes)
 
