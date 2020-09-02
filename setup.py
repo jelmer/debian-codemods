@@ -20,7 +20,7 @@ from setuptools import setup
 
 setup(
     name="lintian-brush",
-    version="0.76",
+    version="0.77",
     author="Jelmer Vernooij",
     author_email="jelmer@debian.org",
     packages=["lintian_brush", "lintian_brush.upstream_metadata"],
