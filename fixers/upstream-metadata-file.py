@@ -109,7 +109,7 @@ with YamlUpdater('debian/upstream/metadata') as editor:
         external_present_fields.update(upstream_fields_in_copyright().keys())
 
     for key, datum in list(upstream_metadata.items()):
-        # Drop keys that don't need to be in debian/upsteam/metadata
+        # Drop keys that don't need to be in debian/upstream/metadata
         if key.startswith('X-') or key in external_present_fields:
             del upstream_metadata[key]
 

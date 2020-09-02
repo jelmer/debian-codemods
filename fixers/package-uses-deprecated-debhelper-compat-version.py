@@ -129,7 +129,7 @@ else:
                     "%d" % new_debhelper_compat_version)
 
 
-# For a list of behavior changes between debhelper compat verisons, see
+# For a list of behavior changes between debhelper compat versions, see
 # https://manpages.debian.org/testing/debhelper/debhelper.7.en.html#Supported_compatibility_levels
 
 

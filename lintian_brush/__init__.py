@@ -205,7 +205,7 @@ def parse_script_fixer_output(text):
     certainty = None
     patch_name = None
     for line in text.splitlines():
-        # TODO(jelmer): Do this in a slighly less hackish manner
+        # TODO(jelmer): Do this in a slightly less hackish manner
         try:
             (key, value) = line.split(':', 1)
         except ValueError:
