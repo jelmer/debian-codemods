@@ -1,7 +1,11 @@
 lintian-brush (0.77) UNRELEASED; urgency=medium
 
+  [ Jelmer Vernooĳ ]
   * Scan for 'fossil clone' commands in README.
   * Add debhelper compat versions for some more ubuntu releases.
+
+  [ Edwards Betts ]
+  * Correct several spelling mistakes.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 22 Aug 2020 17:33:30 +0000
 
@@ -692,7 +696,7 @@ lintian-brush (0.28) unstable; urgency=medium
 
   * Add fixer for obsolete-runtime-tests-restriction.
   * Add fixer for debian-changelog-has-wrong-day-of-week.
-  * Seperately report when fixers can't preserve formatting.
+  * Separately report when fixers can't preserve formatting.
   * field-name-typo-in-dep5-copyright: Fix preservation of fields when
     the only change is in the case.
 
