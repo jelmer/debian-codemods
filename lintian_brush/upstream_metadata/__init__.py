@@ -206,6 +206,8 @@ def guess_repo_from_url(url, net_access=False):
         if parsed_url.path.strip('/').count('/') < 1:
             return None
         parts = parsed_url.path.split('/')
+        if 'issues' in parts:
+            parts = parts[:parts.index('issues')]
         if 'tags' in parts:
             parts = parts[:parts.index('tags')]
         if parts[-1] == '-':
@@ -673,10 +675,9 @@ def guess_from_readme(path, trust_package):
                 for m in re.finditer(
                         b'https://([^/]+)/([^\\s()"#]+)', line):
                     if is_gitlab_site(m.group(1).decode()):
-                        yield UpstreamDatum(
-                            'Repository',
-                            m.group(0).rstrip(b'.').decode().rstrip(),
-                            'possible')
+                        url = m.group(0).rstrip(b'.').decode().rstrip()
+                        repo_url = guess_repo_from_url(url)
+                        yield UpstreamDatum('Repository', repo_url, 'possible')
     except IsADirectoryError:
         pass
 
