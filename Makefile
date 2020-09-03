@@ -25,7 +25,7 @@ README.md::
 	PYTHONPATH=$(PWD) ./buildtools/update-readme.py
 
 lintian-tags:
-	lintian-info --list-tags > lintian-tags
+	explain-lintian-tags --list-tags > lintian-tags
 
 .PHONY: lintian-tags lintian-brush-tags
 

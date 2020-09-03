@@ -14,7 +14,7 @@ all_tags = set([
     tag.decode()
     for tag in
     subprocess.check_output(
-        ['lintian-info', '--list-tags']).splitlines()])
+        ['explain-lintian-tags', '--list-tags']).splitlines()])
 
 supported_tags = set()
 for fixer in available_lintian_fixers():
