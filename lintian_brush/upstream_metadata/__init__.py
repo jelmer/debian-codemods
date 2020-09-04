@@ -125,42 +125,46 @@ class UpstreamDatum(object):
 class UpstreamRequirement(object):
     """Upstream dependency."""
 
-    def __init__(self, stage, kind, name):
+    def __init__(self, stage, kind, name, origin=None):
         self.stage = stage
         self.kind = kind
         self.name = name
+        self.origin = origin
 
     def __str__(self):
         return "%s Upstream Requirement (%s): %s" % (
             self.stage, self.kind, self.name)
 
     def __repr__(self):
-        return "%s(%r, %r, %r)" % (
-            type(self).__name__, self.stage, self.kind, self.name)
+        return "%s(%r, %r, %r, origin=%r)" % (
+            type(self).__name__, self.stage, self.kind, self.name, self.origin)
 
     def __eq__(self, other):
         return (
             isinstance(other, type(self)) and self.stage == other.stage and
-            self.kind == other.kind and self.name == other.name)
+            self.kind == other.kind and self.name == other.name and
+            self.origin == other.origin)
 
 
 class UpstreamOutput(object):
     """Upstream output."""
 
-    def __init__(self, kind, name):
+    def __init__(self, kind, name, origin=None):
         self.kind = kind
         self.name = name
+        self.origin = origin
 
     def __str__(self):
         return "%s: %s" % (self.kind, self.name)
 
     def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.kind, self.name)
+        return "%s(%r, %r, origin=%r)" % (
+            type(self).__name__, self.kind, self.name, self.origin)
 
     def __eq__(self, other):
         return (
             isinstance(other, type(self)) and self.kind == other.kind and
-            self.name == other.name)
+            self.name == other.name and self.origin == other.origin)
 
 
 def _load_json_url(http_url: str, timeout: int = DEFAULT_URLLIB_TIMEOUT):
@@ -313,17 +317,6 @@ def update_from_guesses(upstream_metadata, guessed_items):
     return changed
 
 
-def read_python_pkg_info(path):
-    """Get the metadata from a python setup.py file."""
-    from email.parser import Parser
-    from email.message import Message
-    try:
-        with open(os.path.join(path, 'PKG-INFO'), 'r') as f:
-            return Parser().parse(f)
-    except FileNotFoundError:
-        return Message()
-
-
 def guess_from_debian_rules(path, trust_package):
     from ..rules import Makefile
     mf = Makefile.from_path(path)
@@ -415,6 +408,8 @@ def guess_from_python_metadata(pkg_info):
     if payload.strip() and pkg_info.get_content_type() in (None, 'text/plain'):
         yield UpstreamDatum(
             'X-Description', pkg_info.get_payload(), 'possible')
+    for require in pkg_info.get_all('Requires', []):
+        yield UpstreamRequirement('build', 'python-package', require)
 
 
 def guess_from_pkg_info(path, trust_package):
@@ -464,12 +459,14 @@ def guess_from_setup_py(path, trust_package):
             yield UpstreamDatum(
                 'Bug-Database', url, 'certain')
     for require in result.get_requires():
-        yield UpstreamRequirement('build', 'python', require)
+        yield UpstreamRequirement('build', 'python-package', require)
     for script in (result.scripts or []):
         yield UpstreamOutput('binary', os.path.basename(script))
     entry_points = result.entry_points or {}
     for script in entry_points.get('console_scripts', []):
         yield UpstreamOutput('binary', script.split('=')[0])
+    for package in result.packages or []:
+        yield UpstreamOutput('python-package', package)
 
 
 def guess_from_package_json(path, trust_package):
@@ -1058,6 +1055,9 @@ def guess_from_cargo(path, trust_package):
             yield UpstreamDatum('Repository', package['repository'], 'certain')
         if 'version' in package:
             yield UpstreamDatum('X-Version', package['version'], 'confident')
+    for name, details in cargo['dependencies'].items():
+        # TODO(jelmer): Look at details['features'], details['version']
+        yield UpstreamRequirement('build', 'cargo-crate', name)
 
 
 def guess_from_pom_xml(path, trust_package=False):
@@ -1206,7 +1206,8 @@ def _get_guessers(path, trust_package=False):
         n for n in os.listdir(path)
         if any([n.startswith(p)
                 for p in ['readme', 'README', 'HACKING', 'CONTRIBUTING']])
-        and os.path.splitext(n)[1] not in ('.html', '.pdf', '.xml')]
+        and os.path.splitext(n)[1] not in ('.html', '.pdf', '.xml')
+        and not n.endswith('~')]
     CANDIDATES.extend([(n, guess_from_readme) for n in readme_filenames])
 
     try:
@@ -1220,13 +1221,13 @@ def _get_guessers(path, trust_package=False):
         CANDIDATES.extend(
             [(p, guess_from_debian_patch) for p in debian_patches])
 
-    yield guess_from_environment()
+    yield 'environment', guess_from_environment()
 
     for relpath, guesser in CANDIDATES:
         abspath = os.path.join(path, relpath)
         if not os.path.exists(abspath):
             continue
-        yield guesser(abspath, trust_package=trust_package)
+        yield relpath, guesser(abspath, trust_package=trust_package)
 
 
 def guess_upstream_metadata_items(
@@ -1252,8 +1253,11 @@ def guess_upstream_info(
         path: str, trust_package: bool = False) -> Iterable[
             Union[UpstreamDatum, UpstreamRequirement, UpstreamOutput]]:
     guessers = _get_guessers(path, trust_package=trust_package)
-    for guesser in guessers:
-        yield from guesser
+    for name, guesser in guessers:
+        for entry in guesser:
+            if entry.origin is None:
+                entry.origin = name
+            yield entry
 
 
 def guess_upstream_metadata(

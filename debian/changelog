@@ -7,6 +7,9 @@ lintian-brush (0.77) UNRELEASED; urgency=medium
   [ Edwards Betts ]
   * Correct several spelling mistakes.
 
+  [ Jelmer Vernooĳ ]
+  * Add --scan option to guess-upstream-metadata.
+
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 22 Aug 2020 17:33:30 +0000
 
 lintian-brush (0.76) unstable; urgency=medium

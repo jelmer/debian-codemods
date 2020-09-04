@@ -19,7 +19,13 @@
 
 from .. import version_string
 
-from . import guess_upstream_metadata
+from . import (
+    guess_upstream_metadata,
+    guess_upstream_info,
+    UpstreamDatum,
+    UpstreamRequirement,
+    UpstreamOutput,
+    )
 
 
 def main(argv=None):
@@ -40,6 +46,9 @@ def main(argv=None):
         '--check', action='store_true',
         help='Check guessed metadata against external sources.')
     parser.add_argument(
+        '--scan', action='store_true',
+        help='Scan for metadata rather than printing results.')
+    parser.add_argument(
         '--consult-external-directory',
         action='store_true',
         help='Pull in external (not maintained by upstream) directory data')
@@ -47,12 +56,25 @@ def main(argv=None):
         '--version', action='version', version='%(prog)s ' + version_string)
     args = parser.parse_args(argv)
 
-    metadata = guess_upstream_metadata(
-        args.path, args.trust, not args.disable_net_access,
-        consult_external_directory=args.consult_external_directory,
-        check=args.check)
+    if args.scan:
+        for entry in guess_upstream_info(args.path, args.trust):
+            if isinstance(entry, UpstreamDatum):
+                print('%s: %r - certainty %s (from %s)' % (
+                    entry.field, entry.value, entry.certainty, entry.origin))
+            elif isinstance(entry, UpstreamRequirement):
+                print('%s requires %s (%s)' % (
+                    entry.stage, entry.name, entry.kind))
+            elif isinstance(entry, UpstreamOutput):
+                print('outputs %s (%s)' % (entry.name, entry.kind))
+            else:
+                raise TypeError(entry)
+    else:
+        metadata = guess_upstream_metadata(
+            args.path, args.trust, not args.disable_net_access,
+            consult_external_directory=args.consult_external_directory,
+            check=args.check)
 
-    sys.stdout.write(ruamel.yaml.round_trip_dump(metadata))
+        sys.stdout.write(ruamel.yaml.round_trip_dump(metadata))
 
 
 if __name__ == '__main__':

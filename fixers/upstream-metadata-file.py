@@ -159,8 +159,10 @@ with YamlUpdater('debian/upstream/metadata') as editor:
         os.makedirs('debian/upstream', exist_ok=True)
 
 
+# TODO(jelmer): Add note about other origin fields?
 fields = [
-    ('%s (from %s)' % (v.field, v.origin)) if v.origin else v.field
+    ('%s (from %s)' % (v.field, v.origin)) if v.origin == './configure'
+    else v.field
     for k, v in sorted(changed.items())
     ]
 
