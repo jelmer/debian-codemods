@@ -56,7 +56,7 @@ import os
 import re
 import socket
 import urllib.error
-from typing import Optional
+from typing import Optional, Union, Iterable
 from urllib.parse import quote, urlparse, urlunparse, urljoin, parse_qs
 from warnings import warn
 
@@ -120,6 +120,47 @@ class UpstreamDatum(object):
         return "%s(%r, %r, %r, %r)" % (
             type(self).__name__, self.field, self.value, self.certainty,
             self.origin)
+
+
+class UpstreamRequirement(object):
+    """Upstream dependency."""
+
+    def __init__(self, stage, kind, name):
+        self.stage = stage
+        self.kind = kind
+        self.name = name
+
+    def __str__(self):
+        return "%s Upstream Requirement (%s): %s" % (
+            self.stage, self.kind, self.name)
+
+    def __repr__(self):
+        return "%s(%r, %r, %r)" % (
+            type(self).__name__, self.stage, self.kind, self.name)
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, type(self)) and self.stage == other.stage and
+            self.kind == other.kind and self.name == other.name)
+
+
+class UpstreamOutput(object):
+    """Upstream output."""
+
+    def __init__(self, kind, name):
+        self.kind = kind
+        self.name = name
+
+    def __str__(self):
+        return "%s: %s" % (self.kind, self.name)
+
+    def __repr__(self):
+        return "%s(%r, %r)" % (type(self).__name__, self.kind, self.name)
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, type(self)) and self.kind == other.kind and
+            self.name == other.name)
 
 
 def _load_json_url(http_url: str, timeout: int = DEFAULT_URLLIB_TIMEOUT):
@@ -255,7 +296,8 @@ def known_bad_guess(datum):
     return False
 
 
-def filter_bad_guesses(guessed_items):
+def filter_bad_guesses(
+        guessed_items: Iterable[UpstreamDatum]) -> Iterable[UpstreamDatum]:
     return filter(lambda x: not known_bad_guess(x), guessed_items)
 
 
@@ -421,6 +463,13 @@ def guess_from_setup_py(path, trust_package):
         if url_type in ('Bug Tracker', ):
             yield UpstreamDatum(
                 'Bug-Database', url, 'certain')
+    for require in result.get_requires():
+        yield UpstreamRequirement('build', 'python', require)
+    for script in (result.scripts or []):
+        yield UpstreamOutput('binary', os.path.basename(script))
+    entry_points = result.entry_points or {}
+    for script in entry_points.get('console_scripts', []):
+        yield UpstreamOutput('binary', script.split('=')[0])
 
 
 def guess_from_package_json(path, trust_package):
@@ -762,6 +811,8 @@ def guess_from_meta_yml(path, trust_package):
                 if url:
                     yield UpstreamDatum(
                         'Repository', sanitize_vcs_url(url), 'certain')
+            for require in data.get('requires', []):
+                yield UpstreamRequirement('build', 'perl', require)
 
 
 def guess_from_doap(path, trust_package):
@@ -1178,8 +1229,10 @@ def _get_guessers(path, trust_package=False):
         yield guesser(abspath, trust_package=trust_package)
 
 
-def guess_upstream_metadata_items(path, trust_package=False,
-                                  minimum_certainty=None):
+def guess_upstream_metadata_items(
+        path: str, trust_package: bool = False,
+        minimum_certainty: Optional[str] = None
+        ) -> Iterable[UpstreamDatum]:
     """Guess upstream metadata items, in no particular order.
 
     Args:
@@ -1187,14 +1240,20 @@ def guess_upstream_metadata_items(path, trust_package=False,
       trust: Whether to trust the package contents and i.e. run
       executables in it
     Yields:
-      Tuples with (key, value, certainty)
+      UpstreamDatum
     """
+    for entry in guess_upstream_info(path, trust_package=trust_package):
+        if isinstance(entry, UpstreamDatum):
+            if certainty_sufficient(entry.certainty, minimum_certainty):
+                yield entry
+
+
+def guess_upstream_info(
+        path: str, trust_package: bool = False) -> Iterable[
+            Union[UpstreamDatum, UpstreamRequirement, UpstreamOutput]]:
     guessers = _get_guessers(path, trust_package=trust_package)
     for guesser in guessers:
-        for datum in guesser:
-            if not certainty_sufficient(datum.certainty, minimum_certainty):
-                continue
-            yield datum
+        yield from guesser
 
 
 def guess_upstream_metadata(
@@ -1214,8 +1273,7 @@ def guess_upstream_metadata(
     update_from_guesses(
         upstream_metadata,
         filter_bad_guesses(
-            guess_upstream_metadata_items(
-                path, trust_package=trust_package)))
+            guess_upstream_metadata_items(path, trust_package=trust_package)))
 
     extend_upstream_metadata(
         upstream_metadata, path, net_access=net_access,
