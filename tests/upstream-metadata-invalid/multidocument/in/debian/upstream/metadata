@@ -1,0 +1,13 @@
+# debian/upstream/metadata
+
+%YAML 1.1
+---
+%YAML 1.1
+---
+# <URL:https://wiki.debian.org/UpstreamMetadata>
+Homepage: https://pypi.org/project/irc/
+Archive: PyPI
+Bug-Database: https://github.com/example/irc/issues/
+Bug-Submit: https://github.com/example/irc/issues/new
+Repository: https://github.com/example/irc.git
+Repository-Browse: https://github.com/example/irc/

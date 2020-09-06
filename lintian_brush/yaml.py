@@ -24,6 +24,74 @@ from ruamel.yaml import YAML
 from typing import List
 
 
+class MultiYamlUpdater(object):
+
+    def __init__(self, path: str, remove_empty: bool = False):
+        self.yaml = YAML()
+        self.path = path
+        self.remove_empty = remove_empty
+        self._preamble: List[str] = []
+        self._dirpath = os.path.dirname(path)
+        self._force_rewrite = False
+
+    def __getitem__(self, i):
+        return self._code[i]
+
+    def __setitem__(self, i, val):
+        self._code[i] = val
+
+    def __iter__(self):
+        for m in self._code:
+            yield m
+
+    def __delitem__(self, i):
+        del self._code[i]
+
+    def __len__(self):
+        return len(self._code)
+
+    def __enter__(self):
+        try:
+            with open(self.path, 'r') as f:
+                inp = list(f)
+        except FileNotFoundError:
+            self._orig = {}
+            self._orig_text = ''
+        else:
+            for line in inp:
+                if line != '\n' and not line.startswith('#'):
+                    break
+                self._preamble.append(line)
+            self._orig_text = ''.join(inp)
+            self._orig = list(self.yaml.load_all(self._orig_text))
+        self._code = self._orig.copy()
+        return self
+
+    def _get_code(self):
+        return self._code
+
+    def _set_code(self, v):
+        self._code = v
+
+    code = property(_get_code, _set_code)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not exc_type:
+            if not self._code and self.remove_empty:
+                if os.path.exists(self.path):
+                    os.unlink(self.path)
+                    if self._dirpath and not os.listdir(self._dirpath):
+                        os.rmdir(self._dirpath)
+            else:
+                if self._force_rewrite or self._code != self._orig:
+                    if not os.path.exists(self._dirpath) and self._dirpath:
+                        os.mkdir(self._dirpath)
+                    with open(self.path, 'w') as f:
+                        f.writelines(self._preamble)
+                        self.yaml.dump_all(self._code, f)
+        return False
+
+
 class YamlUpdater(object):
 
     def __init__(
