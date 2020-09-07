@@ -1,4 +1,4 @@
-lintian-brush (0.77) UNRELEASED; urgency=medium
+lintian-brush (0.77) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * Scan for 'fossil clone' commands in README.
@@ -13,7 +13,7 @@ lintian-brush (0.77) UNRELEASED; urgency=medium
     document.
   * Add fixer field-name-typo-in-upstream-metadata.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 22 Aug 2020 17:33:30 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 07 Sep 2020 22:26:31 +0000
 
 lintian-brush (0.76) unstable; urgency=medium
 
