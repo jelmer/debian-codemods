@@ -118,6 +118,18 @@ Somekey: origvalue
 Newkey: newvalue
 """, "newfile.yaml")
 
+    def test_replace_only_line(self):
+        with open('newfile.yaml', 'w') as f:
+            f.write("""\
+Origkey: origvalue
+""")
+        with YamlUpdater('newfile.yaml') as editor:
+            del editor.code['Origkey']
+            editor.code['Newkey'] = 'newvalue'
+        self.assertFileEqual("""\
+Newkey: newvalue
+""", "newfile.yaml")
+
     def test_json(self):
         with open('newfile.yaml', 'w') as f:
             f.write("""\

@@ -150,19 +150,21 @@ class YamlUpdater(object):
         for k, v in self._orig.items():
             if k not in self._code and not is_one_line(k, v):
                 return False
+            if ':' in k:
+                return False
         return True
 
     def _update_lines(self, lines, f):
         for line in self._directives:
             f.write(line)
-        if ''.join(lines).startswith('{'):
+        if ''.join(lines[len(self._directives):]).startswith('{'):
             _update_json_lines(
-                self._directives, self._orig, self._code,
-                lines, f)
+                self._orig, self._code,
+                lines[len(self._directives):], f)
         else:
             _update_yaml_lines(
-                self.yaml, self._directives, self._orig, self._code,
-                lines, f)
+                self.yaml, self._orig, self._code,
+                lines[len(self._directives):], f)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if not exc_type:
@@ -215,7 +217,7 @@ def update_ordered_dict(code, changed, key=None):
         code[k] = v
 
 
-def _update_json_lines(directives, orig, code, lines, f):
+def _update_json_lines(orig, code, lines, f):
     indent = 0
     for c in lines[1][0:]:
         if c != ' ':
@@ -225,11 +227,11 @@ def _update_json_lines(directives, orig, code, lines, f):
     f.write('\n')
 
 
-def _update_yaml_lines(yaml, directives, orig, code, lines, f):
+def _update_yaml_lines(yaml, orig, code, lines, f):
     os = list(orig.keys())
     cs = list(code.keys())
     o = 0
-    for line in lines[len(directives):]:
+    for line in lines:
         try:
             key = os[o]
         except IndexError:

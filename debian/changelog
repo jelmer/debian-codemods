@@ -11,6 +11,7 @@ lintian-brush (0.77) UNRELEASED; urgency=medium
   * Add --scan option to guess-upstream-metadata.
   * Convert debian/upstream/metadata with multiple documents to a single
     document.
+  * Add fixer field-name-typo-in-upstream-metadata.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 22 Aug 2020 17:33:30 +0000
 

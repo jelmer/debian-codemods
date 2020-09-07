@@ -259,6 +259,9 @@ Lintian-Tags:
   upstream-metadata-yaml-invalid,
   upstream-metadata-not-yaml-mapping
 
+Fix-Script: field-name-typo-in-upstream-metadata.py
+# Lintian-Tags: tracked in bug https://bugs.debian.org/969762
+
 Fix-Script: copyright-missing-upstream-info.py
 
 Fix-Script: upstream-metadata-file.py
