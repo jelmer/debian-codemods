@@ -17,6 +17,21 @@
 
 """Handling of quilt patches."""
 
+__all__ = [
+    'PatchSyntax',
+    'find_patch_base',
+    'find_patches_branch',
+    'AppliedPatches',
+    'read_quilt_patches',
+    'PatchApplicationBaseNotFound',
+    'upstream_with_applied_patches',
+    'find_patches_directory',
+    'rules_find_patches_directory',
+    'tree_patches_directory',
+    'add_patch',
+    'move_upstream_changes_to_patch',
+    ]
+
 import contextlib
 from datetime import datetime
 from email.message import Message
@@ -29,7 +44,11 @@ from breezy.commit import filter_excluded
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy.errors import NotBranchError, NoSuchFile
-from breezy.patches import parse_patches, apply_patches
+from breezy.patches import (
+    parse_patches,
+    apply_patches,
+    PatchSyntax,
+    )
 
 from debian.changelog import Changelog
 
@@ -277,7 +296,6 @@ def add_patch(tree, patches_directory, name, contents, header=None):
     with open(tree.abspath(path), 'wb') as f:
         if header is not None:
             f.write(header.as_string().encode('utf-8'))
-            f.write(b'\n')
         f.write(contents)
 
     # TODO(jelmer): Write to patches branch if applicable

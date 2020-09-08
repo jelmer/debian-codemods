@@ -376,10 +376,9 @@ Arch: all
         self.assertEqual(lines[1], b'Origin: other\n')
         self.assertEqual(lines[2], b'Last-Update: 2020-09-08\n')
         self.assertEqual(lines[3], b'\n')
-        self.assertEqual(lines[4], b'\n')
-        self.assertEqual(lines[5], b'=== added file \'configure.ac\'\n')
-        self.assertEqual(lines[8], b'@@ -0,0 +1,1 @@\n')
-        self.assertEqual(lines[9], b'+AC_INIT(foo, bar)\n')
+        self.assertEqual(lines[4], b'=== added file \'configure.ac\'\n')
+        self.assertEqual(lines[7], b'@@ -0,0 +1,1 @@\n')
+        self.assertEqual(lines[8], b'+AC_INIT(foo, bar)\n')
 
     def test_upstream_change_stacked(self):
         tree = self.make_test_tree(version='0.1-1')
