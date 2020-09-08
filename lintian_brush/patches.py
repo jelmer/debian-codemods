@@ -288,9 +288,10 @@ def add_patch(tree, patches_directory, name, contents, header=None):
     """
     if not tree.has_filename(patches_directory):
         tree.mkdir(patches_directory)
-    patch_suffix = find_common_patch_suffix(os.listdir(patches_directory))
+    abs_patches_dir = tree.abspath(patches_directory)
+    patch_suffix = find_common_patch_suffix(os.listdir(abs_patches_dir))
     patchname = name + patch_suffix
-    path = os.path.join(patches_directory, patchname)
+    path = os.path.join(abs_patches_dir, patchname)
     if tree.has_filename(path):
         raise FileExistsError(path)
     with open(tree.abspath(path), 'wb') as f:
@@ -300,7 +301,7 @@ def add_patch(tree, patches_directory, name, contents, header=None):
 
     # TODO(jelmer): Write to patches branch if applicable
 
-    series_path = os.path.join(patches_directory, 'series')
+    series_path = os.path.join(abs_patches_dir, 'series')
     with QuiltSeriesEditor(series_path) as editor:
         editor.append(patchname)
 
