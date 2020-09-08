@@ -7,24 +7,40 @@ from lintian_brush.fixer import (
 import re
 from typing import List
 
+resolution = ""
+
 
 for name in ['configure.ac', 'configure.in']:
     oldlines: List[bytes] = []
     newlines: List[bytes] = []
+
     try:
         with open(name, 'rb') as f:
             for lineno, line in enumerate(f, 1):
-                newline = re.sub(
-                    b'(AC_PATH_PROG|AC_PATH_TOOL)\\s*'
-                    b'\\(\\s*(\\[)?PKG_CONFIG(\\])?\\s*'
-                    b',\\s*(\\[)?pkg-config(\\])?\\s*(,\\s*.*\\s*?)\\)',
-                    b'PKG_PROG_PKG_CONFIG', line)
-                if line != newline:
+                m = re.fullmatch(
+                    b'\\s*AC_PATH_PROG\\s*'
+                    b'\\(\\s*(\\[)?(?P<variable>[A-Z_]+)(\\])?\\s*'
+                    b',\\s*(\\[)?pkg-config(\\])?\\s*'
+                    b'(,\\s*(\\[)?(?P<default>.*)(\\])?\\s*)?\\)\n', line)
+                if m:
                     fixed_lintian_tag(
                         'source',
                         'autotools-pkg-config-macro-not-cross-compilation-'
                         'safe', info='%s (line %d)' % (name, lineno))
-                newlines.append(newline)
+                    if (m.group('variable') == b'PKG_CONFIG' and
+                            not m.group('default')):
+                        newlines.append(b'PKG_PROG_PKG_CONFIG\n')
+                        resolution = (
+                            "This patch changes it to use "
+                            "PKG_PROG_PKG_CONFIG macro from pkg.m4.")
+                    else:
+                        newlines.append(
+                            line.replace(b'AC_PATH_PROG', b'AC_PATH_TOOL'))
+                        resolution = (
+                            "This patch changes it to use AC_PATH_TOOL.")
+                    continue
+
+                newlines.append(line)
     except FileNotFoundError:
         continue
     if oldlines != newlines:
@@ -38,7 +54,8 @@ report_result(
 The package uses AC_PATH_PROG to discover the location of pkg-config(1). This
 macro fails to select the correct version to support cross-compilation.
 
-This patch changes it to use PKG_PROG_PKG_CONFIG macro from pkg.m4.
+%s
 
-Refer to https://bugs.debian.org/884798 for details.""",
+Refer to https://bugs.debian.org/884798 for details.
+""" % resolution,
     patch_name='ac-path-pkgconfig')

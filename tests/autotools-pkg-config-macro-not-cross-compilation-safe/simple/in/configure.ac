@@ -7,9 +7,9 @@ AM_INIT_AUTOMAKE
 #
 # Check for programs.
 #
-AC_PATH_PROG(PKG_CONFIG,pkg-config, no)
+AC_PATH_PROG(PKG_CONFIG,pkg-config)
 
-if test "x$PKG_CONFIG" = "xno"; then
+if test "x$PKG_CONFIG" = "x"; then
 	AC_MSG_ERROR([You need to install pkg-config])
 fi
 
