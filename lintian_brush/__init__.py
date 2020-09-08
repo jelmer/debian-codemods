@@ -17,9 +17,11 @@
 
 """Automatically fix lintian issues."""
 
+from datetime import datetime
 from debian.changelog import Changelog, Version
 import errno
 import io
+import itertools
 import os
 import re
 import shutil
@@ -42,7 +44,7 @@ from breezy.commit import NullCommitReporter
 from breezy.errors import NoSuchFile
 from breezy.osutils import is_inside
 from breezy.rename_map import RenameMap
-from breezy.trace import note
+from breezy.trace import note, mutter
 from breezy.transform import revert
 from breezy.workingtree import WorkingTree
 
@@ -639,6 +641,36 @@ def _note_changelog_policy(policy, msg):
     _changelog_policy_noted = True
 
 
+def _upstream_changes_to_patch(
+        local_tree, dirty_tracker, subpath,
+        patch_name, patch_description, timestamp=None):
+    from .patches import (
+        move_upstream_changes_to_patch,
+        read_quilt_patches,
+        tree_patches_directory,
+        )
+    # TODO(jelmer): Apply all patches before generating a diff.
+
+    patches_directory = tree_patches_directory(local_tree)
+    quilt_patches = list(read_quilt_patches(local_tree, patches_directory))
+    if len(quilt_patches) > 0:
+        reset_tree(local_tree, dirty_tracker, subpath)
+        raise NoChanges(
+            "Creating patch on top of existing upstream patches "
+            "not supported yet")
+
+    mutter('Moving upstream changes to patch %s', patch_name)
+    try:
+        specific_files, patch_name = move_upstream_changes_to_patch(
+            local_tree, subpath, patch_name, patch_description,
+            dirty_tracker, timestamp=timestamp)
+    except FileExistsError as e:
+        reset_tree(local_tree, dirty_tracker, subpath)
+        raise NoChanges('patch path %s already exists\n' % e.args[0])
+
+    return patch_name, specific_files
+
+
 def run_lintian_fixer(local_tree: WorkingTree,
                       fixer: Fixer,
                       committer: Optional[str] = None,
@@ -648,10 +680,11 @@ def run_lintian_fixer(local_tree: WorkingTree,
                       trust_package: bool = False,
                       allow_reformatting: bool = False,
                       dirty_tracker=None,
-                      subpath: str = '.',
+                      subpath: str = '',
                       net_access: bool = True,
                       opinionated: Optional[bool] = None,
-                      diligence: int = 0):
+                      diligence: int = 0,
+                      timestamp: Optional[datetime] = None):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -728,7 +761,7 @@ def run_lintian_fixer(local_tree: WorkingTree,
             raise NoChanges(fixer, "Script didn't make any changes")
     else:
         local_tree.smart_add([local_tree.abspath(subpath)])
-        specific_files = [subpath] if subpath != '.' else None
+        specific_files = [subpath] if subpath else None
 
     basis_tree = local_tree.basis_tree()
     if local_tree.supports_setting_file_ids():
@@ -747,23 +780,14 @@ def run_lintian_fixer(local_tree: WorkingTree,
 
     lines = result.description.splitlines()
     summary = lines[0]
-    details = lines[1:]
+    details = list(itertools.takewhile(lambda line: line, lines[1:]))
 
     # If there are upstream changes in a non-native package, perhaps
     # export them to debian/patches
     if has_non_debian_changes(changes) and current_version.debian_revision:
-        # TODO(jelmer): Apply all patches before generating a diff.
-        reset_tree(local_tree, dirty_tracker, subpath)
-        raise NoChanges("Creating upstream patches not supported yet")
-
-        from .patches import move_upstream_changes_to_patch
-        try:
-            specific_files, patch_name = move_upstream_changes_to_patch(
-                local_tree, subpath, result.patch_name, result.description,
-                dirty_tracker)
-        except FileExistsError as e:
-            raise NoChanges('patch path %s already exists\n' % e.args[0])
-
+        patch_name, specific_files = _upstream_changes_to_patch(
+            local_tree, dirty_tracker, subpath, result.patch_name,
+            result.description, timestamp=timestamp)
         summary = 'Add patch %s: %s' % (patch_name, summary)
 
     if update_changelog is None:
@@ -857,7 +881,7 @@ def run_lintian_fixers(local_tree: WorkingTree,
                        trust_package: bool = False,
                        allow_reformatting: bool = False,
                        use_inotify: Optional[bool] = None,
-                       subpath: str = '.',
+                       subpath: str = '',
                        net_access: bool = True,
                        opinionated: Optional[bool] = None,
                        diligence: int = 0):

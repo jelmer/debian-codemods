@@ -18,6 +18,7 @@
 """Handling of quilt patches."""
 
 import contextlib
+from datetime import datetime
 from email.message import Message
 from io import BytesIO
 import os
@@ -32,9 +33,15 @@ from breezy.patches import parse_patches, apply_patches
 
 from debian.changelog import Changelog
 
+from debmutate.patch import (
+    QuiltSeriesEditor,
+    read_quilt_series,
+    find_common_patch_suffix,
+    )
+
 from . import reset_tree
 
-
+# TODO(jelmer): Use debmutate version
 DEFAULT_DEBIAN_PATCHES_DIR = 'debian/patches'
 
 
@@ -116,24 +123,6 @@ class AppliedPatches(object):
         return False
 
 
-# TODO(jelmer): Use debmutate version
-def read_quilt_series(f):
-    for line in f:
-        if line.startswith(b'#'):
-            quoted = True
-            line = line.split(b'#')[1].strip()
-        else:
-            quoted = False
-        args = line.decode().split()
-        if not args:
-            continue
-        patch = args[0]
-        if not patch:
-            continue
-        options = args[1:]
-        yield patch, quoted, options
-
-
 def read_quilt_patches(tree, directory=DEFAULT_DEBIAN_PATCHES_DIR):
     """Read patch contents from quilt directory.
 
@@ -148,11 +137,11 @@ def read_quilt_patches(tree, directory=DEFAULT_DEBIAN_PATCHES_DIR):
         series_lines = tree.get_file_lines(series_path)
     except NoSuchFile:
         return []
-    for patchname, quoted, options in read_quilt_series(series_lines):
-        if quoted:
+    for entry in read_quilt_series(series_lines):
+        if entry.quoted:
             continue
         # TODO(jelmer): Pass on options?
-        with tree.get_file(osutils.pathjoin(directory, patchname)) as f:
+        with tree.get_file(osutils.pathjoin(directory, entry.name)) as f:
             for patch in parse_patches(f, allow_dirty=True, keep_dirty=False):
                 yield patch
 
@@ -266,31 +255,6 @@ def tree_non_patches_changes(tree, patches_directory):
             yield change
 
 
-# TODO(jelmer): Use debmutate version
-def find_common_patch_suffix(names, default='.patch'):
-    """Find the common prefix to use for patches.
-
-    Args:
-      names: List of filenames in debian/patches/
-      default: Default suffix if no default can be found
-    Returns:
-      a suffix
-    """
-    suffix_count = {}
-    for name in names:
-        if name in ('series', '00list'):
-            continue
-        if name.startswith('README'):
-            continue
-        suffix = os.path.splitext(name)[1]
-        if suffix not in suffix_count:
-            suffix_count[suffix] = 0
-        suffix_count[suffix] += 1
-    if not suffix_count:
-        return default
-    return max(suffix_count.items(), key=lambda v: v[1])[0]
-
-
 def add_patch(tree, patches_directory, name, contents, header=None):
     """Add a new patch.
 
@@ -318,17 +282,16 @@ def add_patch(tree, patches_directory, name, contents, header=None):
 
     # TODO(jelmer): Write to patches branch if applicable
 
-    # TODO(jelmer): Use debmutate SeriesEditor
     series_path = os.path.join(patches_directory, 'series')
-    with open(tree.abspath(series_path, 'a')) as f:
-        f.write('%s\n' % patchname)
+    with QuiltSeriesEditor(series_path) as editor:
+        editor.append(patchname)
 
     return patchname
 
 
 def move_upstream_changes_to_patch(
         local_tree, subpath, patch_name, description,
-        dirty_tracker=None):
+        dirty_tracker=None, timestamp=None):
     """Move upstream changes to patch.
 
     Args:
@@ -338,14 +301,19 @@ def move_upstream_changes_to_patch(
       description: Description
       dirty_tracker: Dirty tracker
     """
+    if timestamp is None:
+        timestamp = datetime.now()
     diff = BytesIO()
     basis_tree = local_tree.basis_tree()
     show_diff_trees(basis_tree, local_tree, diff)
     reset_tree(local_tree, dirty_tracker, subpath)
     header = Message()
     lines = description.splitlines()
-    header['Description'] = lines[0].rstrip('\n')
-    header.set_payload(''.join([line + '\n' for line in lines[1:]]).lstrip())
+    # See https://dep-team.pages.debian.net/deps/dep3/ for fields.
+    header['Description'] = lines[0] + '\n' + '\n'.join(
+            [(' ' + line) if line else ' .' for line in lines[1:]])
+    header['Origin'] = 'other'
+    header['Last-Update'] = timestamp.strftime('%Y-%m-%d')
     patches_directory = tree_patches_directory(local_tree)
     patchname = add_patch(
         local_tree, patches_directory, patch_name, diff.getvalue(), header)

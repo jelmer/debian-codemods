@@ -15,8 +15,9 @@ for name in ['configure.ac', 'configure.in']:
         with open(name, 'rb') as f:
             for lineno, line in enumerate(f, 1):
                 newline = re.sub(
-                    b'AC_PATH_PROG\\s*\\(\\s*PKG_CONFIG\\s*'
-                    b',\\s*pkg-config\\s*(,\\s*.*\\s*?)\\)',
+                    b'(AC_PATH_PROG|AC_PATH_TOOL)\\s*'
+                    b'\\(\\s*(\\[)?PKG_CONFIG(\\])?\\s*'
+                    b',\\s*(\\[)?pkg-config(\\])?\\s*(,\\s*.*\\s*?)\\)',
                     b'PKG_PROG_PKG_CONFIG', line)
                 if line != newline:
                     fixed_lintian_tag(

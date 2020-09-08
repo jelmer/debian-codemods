@@ -17,6 +17,7 @@
 
 """Tests for lintian_brush."""
 
+from datetime import datetime
 import os
 import re
 import sys
@@ -63,7 +64,7 @@ from lintian_brush import (
 
 
 CHANGELOG_FILE = ('debian/changelog', """\
-blah (0.1) UNRELEASED; urgency=medium
+blah (%(version)s) UNRELEASED; urgency=medium
 
   * Initial release. (Closes: #911016)
 
@@ -98,7 +99,7 @@ Lintian-Tags: i-fix-another-tag, no-extension
 
 class CheckCleanTreeTests(TestCaseWithTransport):
 
-    def make_test_tree(self, format=None):
+    def make_test_tree(self, format=None, version='0.1'):
         tree = self.make_branch_and_tree('.', format=format)
         self.build_tree_contents([
             ('debian/', ),
@@ -111,7 +112,7 @@ Binary: blah
 Arch: all
 
 """),
-            CHANGELOG_FILE])
+            (CHANGELOG_FILE[0], CHANGELOG_FILE[1] % {'version': version})])
         tree.add(['debian', 'debian/changelog', 'debian/control'])
         tree.commit('Initial thingy.')
         return tree
@@ -181,7 +182,7 @@ class FailingFixer(Fixer):
 
 class RunLintianFixerTests(TestCaseWithTransport):
 
-    def make_test_tree(self, format=None):
+    def make_test_tree(self, format=None, version='0.1'):
         tree = self.make_branch_and_tree('.', format=format)
         self.build_tree_contents([
             ('debian/', ),
@@ -194,7 +195,7 @@ Binary: blah
 Arch: all
 
 """),
-            CHANGELOG_FILE])
+            (CHANGELOG_FILE[0], CHANGELOG_FILE[1] % {'version': version})])
         tree.add(['debian', 'debian/changelog', 'debian/control'])
         tree.commit('Initial thingy.')
         return tree
@@ -337,6 +338,48 @@ Arch: all
             self.assertEqual(
                 [], list(tree.iter_changes(tree.basis_tree())))
 
+    def test_upstream_change(self):
+        tree = self.make_test_tree(version='0.1-1')
+
+        class NewFileFixer(Fixer):
+            def run(self, basedir, package, *args, **kwargs):
+                with open(os.path.join(basedir, 'configure.ac'), 'w') as f:
+                    f.write("AC_INIT(foo, bar)\n")
+                return FixerResult(
+                    "Created new configure.ac.", [],
+                    patch_name='add-config')
+        with tree.lock_write():
+            result, summary = run_lintian_fixer(
+                tree, NewFileFixer('add-config', 'add-config'),
+                update_changelog=False,
+                timestamp=datetime(2020, 9, 8, 0, 36, 35, 857836))
+        self.assertEqual(
+            summary,
+            'Add patch add-config.patch: Created new configure.ac.')
+        self.assertIs(None, result.certainty)
+        self.assertEqual([], result.fixed_lintian_tags)
+        rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual(rev.message, (
+            'Created new configure.ac.\n'
+            '\n'
+            'Changes-By: lintian-brush\n'))
+        self.assertEqual(2, tree.branch.revno())
+        basis_tree = tree.branch.basis_tree()
+        with basis_tree.lock_read():
+            self.assertEqual(
+                basis_tree.get_file_text('debian/patches/series'),
+                b'add-config.patch\n')
+            lines = basis_tree.get_file_lines(
+                'debian/patches/add-config.patch')
+        self.assertEqual(lines[0], b'Description: Created new configure.ac.\n')
+        self.assertEqual(lines[1], b'Origin: other\n')
+        self.assertEqual(lines[2], b'Last-Update: 2020-09-08\n')
+        self.assertEqual(lines[3], b'\n')
+        self.assertEqual(lines[4], b'\n')
+        self.assertEqual(lines[5], b'=== added file \'configure.ac\'\n')
+        self.assertEqual(lines[8], b'@@ -0,0 +1,1 @@\n')
+        self.assertEqual(lines[9], b'+AC_INIT(foo, bar)\n')
+
 
 class RunLintianFixersTests(TestCaseWithTransport):
 
@@ -354,7 +397,7 @@ Binary: blah
 Arch: all
 
 """),
-            CHANGELOG_FILE])
+            (CHANGELOG_FILE[0], CHANGELOG_FILE[1] % {'version': '0.1'})])
         self.tree.add(['debian', 'debian/changelog', 'debian/control'])
         self.tree.commit('Initial thingy.')
 
@@ -399,7 +442,7 @@ Arch: all
 
 class HonorsVcsCommitter(TestCaseWithTransport):
 
-    def make_package_tree(self, format):
+    def make_package_tree(self, format, version='0.1'):
         tree = self.make_branch_and_tree('.', format=format)
         self.build_tree_contents([
             ('debian/', ),
@@ -412,7 +455,7 @@ Binary: blah
 Arch: all
 
 """),
-            CHANGELOG_FILE])
+            (CHANGELOG_FILE[0], CHANGELOG_FILE[1] % {'version': version})])
         tree.add(['debian', 'debian/changelog', 'debian/control'])
         tree.commit('Initial thingy.')
         return tree
