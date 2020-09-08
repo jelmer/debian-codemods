@@ -17,6 +17,8 @@
 
 """Tests for lintian_brush.lintian_overrides."""
 
+import os
+
 from breezy.tests import (
     TestCaseWithTransport,
     )
@@ -57,6 +59,33 @@ foo [any-i386] binary: another-tag optional-extra
 
         self.assertFalse(update_overrides_file(cb=cb, path='overrides'))
         self.assertFileEqual(CONTENT, 'overrides')
+
+    def test_delete_last(self):
+        CONTENT = """\
+# An architecture wildcard would look like:
+foo [any-i386] binary: another-tag optional-extra
+"""
+        self.build_tree_contents([('overrides', CONTENT)])
+
+        def cb(override):
+            return None
+
+        self.assertTrue(update_overrides_file(cb=cb, path='overrides'))
+        self.assertFalse(os.path.exists('overrides'))
+
+    def test_delete(self):
+        CONTENT = """\
+# An architecture wildcard would look like:
+foo [any-i386] binary: another-tag optional-extra
+bar binary: onetag
+"""
+        self.build_tree_contents([('overrides', CONTENT)])
+
+        def cb(override):
+            return override if override.tag != 'another-tag' else None
+
+        self.assertTrue(update_overrides_file(cb=cb, path='overrides'))
+        self.assertFileEqual('bar binary: onetag\n', 'overrides')
 
     def test_change_set_archlist(self):
         self.build_tree_contents([('overrides', """\

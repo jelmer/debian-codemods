@@ -57,12 +57,17 @@ def update_overrides_file(
     """
     with LintianOverridesEditor(path=path) as editor:
         new_lines = []
+        comments: List[str] = []
         for entry in editor.lines:
             if isinstance(entry, LintianOverride):
                 entry = cb(entry)
-            if entry is not None:
-                new_lines.append(entry)
-        editor._parsed = new_lines
+                if entry is not None:
+                    new_lines.extend(comments)
+                    new_lines.append(entry)
+                comments = []
+            else:
+                comments.append(entry)
+        editor._parsed = new_lines + comments
         return editor.has_changed()
 
 

@@ -3,6 +3,7 @@ lintian-brush (0.78) UNRELEASED; urgency=medium
   * Support creating patches to upstreams in the case when there are no
     existing upstream patches.
   * Depend on newer debmutate (>= 0.6).
+  * When removing lintian overrides, also drop the associated comments.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 08 Sep 2020 00:52:37 +0000
 
