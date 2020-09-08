@@ -39,7 +39,7 @@ for name in ['configure.ac', 'configure.in']:
                             control.source['Build-Depends'] = (
                                 ensure_some_version(
                                     control.source.get('Build-Depends', ''),
-                                    'pkgconf'))
+                                    'pkg-config'))
                     else:
                         newlines.append(
                             line.replace(b'AC_PATH_PROG', b'AC_PATH_TOOL'))

@@ -1,2 +1,2 @@
 Source: foo
-Build-Depends: pkgconf
+Build-Depends: pkg-config
