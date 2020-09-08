@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from debmutate.control import ControlEditor, ensure_some_version
 from lintian_brush.fixer import (
     report_result,
     fixed_lintian_tag,
@@ -33,6 +34,12 @@ for name in ['configure.ac', 'configure.in']:
                         resolution = (
                             "This patch changes it to use "
                             "PKG_PROG_PKG_CONFIG macro from pkg.m4.")
+                        # Build-Depend on pkg-config for pkg.m4
+                        with ControlEditor() as control:
+                            control.source['Build-Depends'] = (
+                                ensure_some_version(
+                                    control.source.get('Build-Depends', ''),
+                                    'pkgconf'))
                     else:
                         newlines.append(
                             line.replace(b'AC_PATH_PROG', b'AC_PATH_TOOL'))
