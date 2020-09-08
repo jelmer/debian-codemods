@@ -44,6 +44,7 @@ from lintian_brush import (
     PendingChanges,
     PythonScriptFixer,
     ScriptFixer,
+    StackingPatchesUnsupported,
     UnsupportedCertainty,
     available_lintian_fixers,
     check_clean_tree,
@@ -379,6 +380,37 @@ Arch: all
         self.assertEqual(lines[5], b'=== added file \'configure.ac\'\n')
         self.assertEqual(lines[8], b'@@ -0,0 +1,1 @@\n')
         self.assertEqual(lines[9], b'+AC_INIT(foo, bar)\n')
+
+    def test_upstream_change_stacked(self):
+        tree = self.make_test_tree(version='0.1-1')
+
+        self.build_tree_contents([
+            ('debian/patches/', ),
+            ('debian/patches/series', 'foo\n'),
+            ('debian/patches/foo', """\
+--- /dev/null	2020-09-07 13:26:27.546468905 +0000
++++ a	2020-09-08 01:26:25.811742671 +0000
+@@ -0,0 +1 @@
++foo
+""")])
+        tree.add(
+            ['debian/patches', 'debian/patches/series', 'debian/patches/foo'])
+        tree.commit('Add patches')
+
+        class NewFileFixer(Fixer):
+            def run(self, basedir, package, *args, **kwargs):
+                with open(os.path.join(basedir, 'configure.ac'), 'w') as f:
+                    f.write("AC_INIT(foo, bar)\n")
+                return FixerResult(
+                    "Created new configure.ac.", [],
+                    patch_name='add-config')
+        with tree.lock_write():
+            self.assertRaises(
+                StackingPatchesUnsupported,
+                run_lintian_fixer,
+                tree, NewFileFixer('add-config', 'add-config'),
+                update_changelog=False,
+                timestamp=datetime(2020, 9, 8, 0, 36, 35, 857836))
 
 
 class RunLintianFixersTests(TestCaseWithTransport):

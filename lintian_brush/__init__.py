@@ -54,7 +54,7 @@ from debian.deb822 import Deb822
 from debmutate.reformatting import FormattingUnpreservable
 
 
-__version__ = (0, 77)
+__version__ = (0, 78)
 version_string = '.'.join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ['certain', 'confident', 'likely', 'possible', None]
 DEFAULT_MINIMUM_CERTAINTY = 'certain'
@@ -641,6 +641,14 @@ def _note_changelog_policy(policy, msg):
     _changelog_policy_noted = True
 
 
+class StackingPatchesUnsupported(NotImplementedError):
+    """Creating patch on top of existing upstream patches not supported."""
+
+    def __init__(self, tree, patches_directory):
+        super(StackingPatchesUnsupported, self).__init__(
+            tree, patches_directory)
+
+
 def _upstream_changes_to_patch(
         local_tree, dirty_tracker, subpath,
         patch_name, patch_description, timestamp=None):
@@ -651,13 +659,10 @@ def _upstream_changes_to_patch(
         )
     # TODO(jelmer): Apply all patches before generating a diff.
 
-    patches_directory = tree_patches_directory(local_tree)
+    patches_directory = tree_patches_directory(local_tree, subpath)
     quilt_patches = list(read_quilt_patches(local_tree, patches_directory))
     if len(quilt_patches) > 0:
-        reset_tree(local_tree, dirty_tracker, subpath)
-        raise NoChanges(
-            "Creating patch on top of existing upstream patches "
-            "not supported yet")
+        raise StackingPatchesUnsupported(local_tree, patches_directory)
 
     mutter('Moving upstream changes to patch %s', patch_name)
     try:
@@ -785,9 +790,14 @@ def run_lintian_fixer(local_tree: WorkingTree,
     # If there are upstream changes in a non-native package, perhaps
     # export them to debian/patches
     if has_non_debian_changes(changes) and current_version.debian_revision:
-        patch_name, specific_files = _upstream_changes_to_patch(
-            local_tree, dirty_tracker, subpath, result.patch_name,
-            result.description, timestamp=timestamp)
+        try:
+            patch_name, specific_files = _upstream_changes_to_patch(
+                local_tree, dirty_tracker, subpath, result.patch_name,
+                result.description, timestamp=timestamp)
+        except BaseException:
+            reset_tree(local_tree, dirty_tracker, subpath)
+            raise
+
         summary = 'Add patch %s: %s' % (patch_name, summary)
 
     if update_changelog is None:
@@ -957,6 +967,10 @@ def run_lintian_fixers(local_tree: WorkingTree,
                          'certainty (was %r, needed %r). (took: %.2fs)',
                          fixer.name, e.certainty, e.minimum_certainty,
                          time.time() - start)
+            except StackingPatchesUnsupported:
+                if verbose:
+                    note('Currently unable to stack upstream changes on top '
+                         'of existing patches.')
             except NoChanges:
                 if verbose:
                     note('Fixer %r made no changes. (took: %.2fs)',

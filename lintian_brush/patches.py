@@ -212,7 +212,7 @@ def find_patches_directory(path):
     return directory
 
 
-def tree_patches_directory(tree):
+def tree_patches_directory(tree, subpath=''):
     """Find the name of the patches directory.
 
     This will always return a path, even if the patches
@@ -223,7 +223,7 @@ def tree_patches_directory(tree):
     Returns:
       path to patches directory, or what it should be
     """
-    directory = find_patches_directory(tree.abspath('.'))
+    directory = find_patches_directory(tree.abspath(subpath))
     if directory is None:
         return DEFAULT_DEBIAN_PATCHES_DIR
     return directory
@@ -314,7 +314,7 @@ def move_upstream_changes_to_patch(
             [(' ' + line) if line else ' .' for line in lines[1:]])
     header['Origin'] = 'other'
     header['Last-Update'] = timestamp.strftime('%Y-%m-%d')
-    patches_directory = tree_patches_directory(local_tree)
+    patches_directory = tree_patches_directory(local_tree, subpath)
     patchname = add_patch(
         local_tree, patches_directory, patch_name, diff.getvalue(), header)
     specific_files = [
