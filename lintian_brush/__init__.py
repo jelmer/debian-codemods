@@ -641,12 +641,11 @@ def _note_changelog_policy(policy, msg):
     _changelog_policy_noted = True
 
 
-class StackingPatchesUnsupported(NotImplementedError):
-    """Creating patch on top of existing upstream patches not supported."""
+class FailedPatchManipulation(Exception):
 
-    def __init__(self, tree, patches_directory):
-        super(StackingPatchesUnsupported, self).__init__(
-            tree, patches_directory)
+    def __init__(self, tree, patches_directory, reason):
+        super(FailedPatchManipulation, self).__init__(
+            tree, patches_directory, reason)
 
 
 def _upstream_changes_to_patch(
@@ -656,13 +655,22 @@ def _upstream_changes_to_patch(
         move_upstream_changes_to_patch,
         read_quilt_patches,
         tree_patches_directory,
+        PatchSyntax,
         )
     # TODO(jelmer): Apply all patches before generating a diff.
 
     patches_directory = tree_patches_directory(local_tree, subpath)
-    quilt_patches = list(read_quilt_patches(local_tree, patches_directory))
+    try:
+        quilt_patches = list(read_quilt_patches(local_tree, patches_directory))
+    except PatchSyntax as e:
+        raise FailedPatchManipulation(
+            local_tree, patches_directory,
+            "Unable to parse some patches: %s" % e)
     if len(quilt_patches) > 0:
-        raise StackingPatchesUnsupported(local_tree, patches_directory)
+        raise FailedPatchManipulation(
+            local_tree, patches_directory,
+            "Creating patch on top of existing upstream "
+            "patches not supported.")
 
     mutter('Moving upstream changes to patch %s', patch_name)
     try:
@@ -967,10 +975,11 @@ def run_lintian_fixers(local_tree: WorkingTree,
                          'certainty (was %r, needed %r). (took: %.2fs)',
                          fixer.name, e.certainty, e.minimum_certainty,
                          time.time() - start)
-            except StackingPatchesUnsupported:
+            except FailedPatchManipulation as e:
                 if verbose:
-                    note('Currently unable to stack upstream changes on top '
-                         'of existing patches.')
+                    note('Unable to manipulate upstream patches: %s',
+                         e.args[2])
+                ret.failed_fixers[fixer.name] = e
             except NoChanges:
                 if verbose:
                     note('Fixer %r made no changes. (took: %.2fs)',
