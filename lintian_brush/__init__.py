@@ -31,7 +31,6 @@ import tempfile
 import time
 import traceback
 from typing import Optional, List, Sequence, Iterator, Iterable
-import warnings
 
 from breezy import ui
 
@@ -44,7 +43,7 @@ from breezy.commit import NullCommitReporter
 from breezy.errors import NoSuchFile
 from breezy.osutils import is_inside
 from breezy.rename_map import RenameMap
-from breezy.trace import note, mutter
+from breezy.trace import note, mutter, warning
 from breezy.transform import revert
 from breezy.workingtree import WorkingTree
 
@@ -484,7 +483,7 @@ def delete_items(deletables, dry_run: bool = False):
         # Other errors are re-raised.
         if function is not os.remove or excinfo[1].errno != errno.EACCES:
             raise
-        warnings.warn('unable to remove %s' % path)
+        warning('unable to remove %s', path)
     for path, subp in deletables:
         if os.path.isdir(path):
             shutil.rmtree(path, onerror=onerror)
@@ -495,8 +494,7 @@ def delete_items(deletables, dry_run: bool = False):
                 # We handle only permission error here
                 if e.errno != errno.EACCES:
                     raise e
-                warnings.warn(
-                    'unable to remove "{0}": {1}.'.format(path, e.strerror))
+                warning('unable to remove "%s": %s.', path, e.strerror)
 
 
 def get_committer(tree: WorkingTree) -> str:
