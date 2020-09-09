@@ -348,7 +348,7 @@ def determine_browser_url(vcs_type, vcs_url: str) -> Optional[str]:
     if (parsed.netloc in ('code.launchpad.net', 'launchpad.net') and
             not branch and not subpath):
         return urlunparse(
-            ('https', 'code.launchpad.net', path,
+            ('https', 'code.launchpad.net', parsed.path,
              parsed.query, parsed.params, parsed.fragment))
     if parsed.hostname in ('git.savannah.gnu.org', 'git.sv.gnu.org'):
         path_elements = parsed.path.strip('/').split('/')
