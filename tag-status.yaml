@@ -445,12 +445,15 @@
 - tag: executable-not-elf-or-script
 - tag: executable-stack-in-shared-library
 - tag: exit-in-shared-library
+  difficulty: hard
 - tag: experimental-to-unstable-without-comment
+  difficulty: easy
 - tag: explicit-default-in-package-type
 - tag: explicitly-armored-upstream-signature
 - tag: extended-description-contains-empty-paragraph
 - tag: extended-description-is-empty
 - tag: extended-description-is-probably-too-short
+  difficulty: hard
 - tag: extended-description-line-too-long
 - tag: extra-license-file
 - tag: extra-whitespace-around-name-in-changelog-trailer
@@ -492,6 +495,9 @@
 - tag: gobject-introspection-package-missing-depends-on-gir-depends
 - tag: gzip-file-is-not-multi-arch-same-safe
 - tag: hardening-no-bindnow
+  difficulty: hard
+  comment: |
+    requires judgement (tradeoff between start-up time and improved security)
 - tag: hardening-no-fortify-functions
 - tag: hardening-no-pie
 - tag: hardening-no-relro
@@ -826,6 +832,9 @@
 - tag: nodejs-module-not-declared
 - tag: non-conf-file-in-modprobe.d
 - tag: non-consecutive-debian-revision
+  difficulty: medium
+  comment: |
+    easy to detect and fix; might be hard to find false positives though
 - tag: non-debug-file-in-debug-package
 - tag: non-empty-dependency_libs-in-la-file
 - tag: non-etc-file-marked-as-conffile
@@ -898,6 +907,9 @@
 - tag: package-contains-devhelp-file-without-symlink
 - tag: package-contains-documentation-outside-usr-share-doc
 - tag: package-contains-empty-directory
+  difficulty: medium
+  comment: |
+    easy to fix in some cases, but hard to detect
 - tag: package-contains-eslint-config-file
 - tag: package-contains-file-in-etc-skel
 - tag: package-contains-file-in-usr-share-hal
@@ -1163,6 +1175,7 @@
 - tag: special-file
 - tag: specific-address-in-shared-library
 - tag: spelling-error-in-binary
+  difficulty: hard
 - tag: spelling-error-in-changelog
 - tag: spelling-error-in-copyright
 - tag: spelling-error-in-description
@@ -1294,6 +1307,7 @@
 - tag: unused-debconf-template
 - tag: unused-entry-in-debian-source-include-binaries
 - tag: unused-file-paragraph-in-dep5-copyright
+  difficulty: medium
 - tag: unusual-control-interpreter
 - tag: unusual-documentation-package-name
 - tag: unusual-interpreter
@@ -1397,6 +1411,8 @@
 - tag: mail-contact
 - tag: mailing-list-on-alioth
 - tag: maintainer-desktop-entry
+  difficulaty: hard
+  comment: involves forwarding upstream
 - tag: maintainer-manual-page
 - tag: malformed-contact
 - tag: manual-page-for-system-command
@@ -1418,6 +1434,7 @@
   status: implemented
 - tag: recursive-privilege-change
 - tag: repeated-path-segment
+  difficulty: hard
 - tag: required-field
   status: implemented
 - tag: requires-r-api
@@ -1458,7 +1475,13 @@
 - tag: team/pkg-perl/testsuite/no-team-tests
 - tag: team/pkg-perl/testsuite/no-testsuite-header
 - tag: team/pkg-perl/vcs/no-git
+  difficulty: easy
+  comment: |
+    can be done when updating vcs-git/vcs-browser URL
 - tag: team/pkg-perl/vcs/no-team-url
+  difficulty: easy
+  comment: |
+    can be done when updating vcs-git/vcs-browser URL
 - tag: team/pkg-perl/xs-abi/legacy-vendorarch-directory
 - tag: duplicate-globbing-patterns
 - tag: globbing-patterns-out-of-order
