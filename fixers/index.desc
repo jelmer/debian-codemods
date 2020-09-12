@@ -4,11 +4,11 @@
 # Note that the order of this file is significant. Fixers mentioned earlier in
 # this file will always be run before later fixers.
 
-# file-contains-trailing-whitrspace and obsolete-field-in-dep5-copyright are
+# file-contains-trailing-whitespace and obsolete-field-in-dep5-copyright are
 # processed first, since they make it for other fixers to change the file
 # while preserving formatting.
 
-Fix-Script: file-contains-trailing-whitespace.sh
+Fix-Script: file-contains-trailing-whitespace.py
 Lintian-Tags: trailing-whitespace
 
 # Copyright related fixers. Fix format URL before semantic fixes.
