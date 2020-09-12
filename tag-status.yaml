@@ -278,6 +278,8 @@
 - tag: depends-on-python2-and-python3
 - tag: depends-on-specific-java-doc-package
 - tag: deprecated-configure-filename
+  difficulty: mixed
+  comment: easy to fix, not necessarily appropriate for including
 - tag: description-contains-dh-make-perl-template
 - tag: description-contains-homepage
 - tag: description-contains-invalid-control-statement
