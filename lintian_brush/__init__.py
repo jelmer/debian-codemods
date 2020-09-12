@@ -676,8 +676,9 @@ def _upstream_changes_to_patch(
             local_tree, subpath, patch_name, patch_description,
             dirty_tracker, timestamp=timestamp)
     except FileExistsError as e:
-        reset_tree(local_tree, dirty_tracker, subpath)
-        raise NoChanges('patch path %s already exists\n' % e.args[0])
+        raise FailedPatchManipulation(
+            local_tree, patches_directory,
+            'patch path %s already exists\n' % e.args[0])
 
     return patch_name, specific_files
 
