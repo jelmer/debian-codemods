@@ -44,7 +44,7 @@ from lintian_brush import (
     PendingChanges,
     PythonScriptFixer,
     ScriptFixer,
-    StackingPatchesUnsupported,
+    FailedPatchManipulation,
     UnsupportedCertainty,
     available_lintian_fixers,
     check_clean_tree,
@@ -405,7 +405,7 @@ Arch: all
                     patch_name='add-config')
         with tree.lock_write():
             self.assertRaises(
-                StackingPatchesUnsupported,
+                FailedPatchManipulation,
                 run_lintian_fixer,
                 tree, NewFileFixer('add-config', 'add-config'),
                 update_changelog=False,
