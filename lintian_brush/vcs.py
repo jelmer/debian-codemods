@@ -359,6 +359,22 @@ def determine_browser_url(vcs_type, vcs_url: str) -> Optional[str]:
         return urlunparse(
             ('https', parsed.netloc, '/'.join(path_elements), None,
              None, None))
+    if parsed.hostname in ('git.code.sf.net', 'git.code.sourceforge.net'):
+        path_elements = parsed.path.strip('/').split('/')
+        if path_elements[0] != 'p':
+            return None
+        project = path_elements[1]
+        repository = path_elements[2]
+        path_elements = ['p', project, repository, 'ci']
+        if branch is not None:
+            path_elements.extend(['ci', branch, 'tree'])
+        elif subpath is not None:
+            path_elements.extend(['ci', 'HEAD', 'tree'])
+        if subpath is not None:
+            path_elements.append(subpath)
+        return urlunparse(
+            ('https', 'sourceforge.net', '/'.join(path_elements), None, None,
+             None))
     return None
 
 

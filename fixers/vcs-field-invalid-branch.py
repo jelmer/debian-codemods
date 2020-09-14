@@ -13,9 +13,9 @@ from debmutate.vcs import (
     split_vcs_url, unsplit_vcs_url,
     )
 from lintian_brush.fixer import (
-    report_result, fixed_lintian_tag, diligence, warn,
+    report_result, diligence, warn,
     )
-from lintian_brush.vcs import canonicalize_vcs_url, determine_browser_url
+from lintian_brush.vcs import determine_browser_url
 
 
 if diligence() < 1:

@@ -176,6 +176,18 @@ class DetermineBrowserUrlTests(TestCase):
             'https://git.savannah.gnu.org/cgit/rcs.git',
             determine_browser_url(
                 'git', 'git://git.savannah.gnu.org/rcs.git'))
+        self.assertEqual(
+            'https://sourceforge.net/p/shorewall/debian',
+            determine_browser_url(
+                'git', 'git://git.code.sf.net/p/shorewall/debian'))
+        self.assertEqual(
+            'https://sourceforge.net/p/shorewall/debian/ci/foo/tree',
+            determine_browser_url(
+                'git', 'git://git.code.sf.net/p/shorewall/debian -b foo'))
+        self.assertEqual(
+            'https://sourceforge.net/p/shorewall/debian/ci/HEAD/tree/sp',
+            determine_browser_url(
+                'git', 'git://git.code.sf.net/p/shorewall/debian -b foo [sp]'))
 
 
 class PlausibleUrlTests(TestCase):

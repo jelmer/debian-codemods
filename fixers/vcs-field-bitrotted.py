@@ -3,7 +3,6 @@
 import asyncio
 import re
 import socket
-import sys
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from debmutate.control import ControlEditor
 from debmutate.vcs import (
