@@ -365,7 +365,7 @@ def determine_browser_url(vcs_type, vcs_url: str) -> Optional[str]:
             return None
         project = path_elements[1]
         repository = path_elements[2]
-        path_elements = ['p', project, repository, 'ci']
+        path_elements = ['p', project, repository]
         if branch is not None:
             path_elements.extend(['ci', branch, 'tree'])
         elif subpath is not None:

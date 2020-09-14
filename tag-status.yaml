@@ -1496,3 +1496,8 @@
   difficulty: easy
 - tag: systemd-service-file-uses-deprecated-syslog-facility
 - tag: systemd-service-file-uses-nobody-or-nogroup
+- tag: number-of-patches
+- tag: unpack-message-for-deb-control
+- tag: unpack-message-for-deb-data
+- tag: unpack-message-for-orig
+- tag: unpack-message-for-source

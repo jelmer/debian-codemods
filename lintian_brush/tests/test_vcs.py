@@ -187,6 +187,10 @@ class DetermineBrowserUrlTests(TestCase):
         self.assertEqual(
             'https://sourceforge.net/p/shorewall/debian/ci/HEAD/tree/sp',
             determine_browser_url(
+                'git', 'git://git.code.sf.net/p/shorewall/debian [sp]'))
+        self.assertEqual(
+            'https://sourceforge.net/p/shorewall/debian/ci/foo/tree/sp',
+            determine_browser_url(
                 'git', 'git://git.code.sf.net/p/shorewall/debian -b foo [sp]'))
 
 
