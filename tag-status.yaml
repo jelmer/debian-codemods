@@ -1411,7 +1411,7 @@
 - tag: mail-contact
 - tag: mailing-list-on-alioth
 - tag: maintainer-desktop-entry
-  difficulaty: hard
+  difficulty: hard
   comment: involves forwarding upstream
 - tag: maintainer-manual-page
 - tag: malformed-contact

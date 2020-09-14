@@ -146,7 +146,7 @@ lintian-brush (0.35) unstable; urgency=medium
         add_changelog_entry(tree, 'debian/changelog', ['Add a foo'],
                             timestamp=datetime(2020, 5, 24, 15, 27, 26))
         self.assertFileEqual("""\
-lintian-brush (0.36) UNRELEASED; urgency=low
+lintian-brush (0.36) UNRELEASED; urgency=medium
 
   * Add a foo
 
