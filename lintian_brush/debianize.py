@@ -60,7 +60,6 @@ def write_changelog_template(path, source_name, version, wnpp_bugs=None):
         date=format_date())
     with open(path, 'w') as f:
         f.write(cl.__str__().strip('\n') + '\n')
-        cl.write_to_open_file(f)
 
 
 async def find_wnpp_bugs(source_name):
