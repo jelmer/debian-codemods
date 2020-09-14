@@ -6,6 +6,8 @@ lintian-brush (0.78) UNRELEASED; urgency=medium
   * When removing lintian overrides, also drop the associated comments.
   * In control files, don't create new empty lines when stripping
     whitespace.
+  * Bump default urgency to medium. See
+    https://salsa.debian.org/jelmer/debian-janitor/-/issues/138
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 08 Sep 2020 00:52:37 +0000
 

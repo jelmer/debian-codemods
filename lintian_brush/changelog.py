@@ -29,14 +29,14 @@ from debmutate.changelog import (
     )
 
 
-URGENCY_LOW = 'low'
+DEFAULT_URGENCY = 'medium'
 
 
 def add_changelog_entry(
         tree: MutableTree, path: str, summary: List[str],
         maintainer: Optional[Tuple[str, str]] = None,
         timestamp: Optional[datetime] = None,
-        urgency: str = URGENCY_LOW) -> None:
+        urgency: str = DEFAULT_URGENCY) -> None:
     """Add a changelog entry.
 
     Args:
