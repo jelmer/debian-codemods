@@ -12,6 +12,7 @@ from debmutate.vcs import (
 from lintian_brush.fixer import (
     net_access_allowed,
     fixed_lintian_tag,
+    warn,
     report_result,
     )
 from lintian_brush.salsa import (
@@ -97,7 +98,7 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
             (vcs_type, vcs_url, vcs_browser) = loop.run_until_complete(
                 retrieve_vcswatch_urls(package))
         except VcsWatchError as e:
-            sys.stderr.write('vcswatch URL unusable: %s\n' % e.args[0])
+            warn('vcswatch URL unusable: %s' % e.args[0])
         except KeyError:
             pass
         else:
@@ -108,8 +109,7 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
                         determine_browser_url(vcs_type, vcs_url) or
                         vcs_browser)
                 return (vcs_type, vcs_url, vcs_browser)
-            sys.stderr.write(
-                'vcswatch URL %s is still on old infrastructure.' % vcs_url)
+            warn('vcswatch URL %s is still on old infrastructure.' % vcs_url)
 
     # Otherwise, attempt to guess based on maintainer email.
     guessed_url = guess_repository_url(package, maintainer_email)

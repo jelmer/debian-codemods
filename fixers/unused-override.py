@@ -9,9 +9,9 @@ except ModuleNotFoundError:
     sys.exit(2)
 
 from lintian_brush.lintian_overrides import remove_unused
-from lintian_brush.fixer import net_access_allowed, report_result
+from lintian_brush.fixer import net_access_allowed, report_result, diligence
 
-if int(os.environ.get('DILIGENCE', '0')) < 1:
+if diligence() < 1:
     # Removing unused overrides requires pro-actively contacting UDD.
     sys.exit(0)
 

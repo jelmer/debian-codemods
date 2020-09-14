@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.control import ControlEditor
+from lintian_brush.fixer import report_result
 from lintian_brush.vcs import fixup_broken_git_url
 
 
@@ -10,4 +11,4 @@ with ControlEditor() as updater:
             updater.source["Vcs-Git"])
 
 
-print("Fix broken Vcs URL.")
+report_result("Fix broken Vcs URL.")

@@ -8,6 +8,7 @@ lintian-brush (0.78) UNRELEASED; urgency=medium
     whitespace.
   * Bump default urgency to medium. See
     https://salsa.debian.org/jelmer/debian-janitor/-/issues/138
+  * Fix branch from vcswatch in --diligent mode.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 08 Sep 2020 00:52:37 +0000
 

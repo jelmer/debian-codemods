@@ -49,3 +49,15 @@ where source = $1""", name)
         if row[3] == 'ERROR':
             raise VcsWatchError(row[4])
         return row[:3]
+
+    async def get_branch_from_url(self, vcs, url):
+        """Get the branch for a VCS URL."""
+        assert self._conn is not None, "call connect() first"
+        row = await self._conn.fetchrow("""
+select branch, status, error from vcswatch where url = $1 and vcs = $2""",
+                                        url, vcs)
+        if row is None:
+            raise KeyError(url)
+        if row[1] == 'ERROR':
+            raise VcsWatchError(row[2])
+        return row[0]

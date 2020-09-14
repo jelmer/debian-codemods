@@ -276,6 +276,10 @@ Lintian-Tags: debian-watch-file-is-missing
 Fix-Script: useless-autoreconf-build-depends.py
 Lintian-Tags: useless-autoreconf-build-depends
 
+# Lookups in vcswatch are by original URL, so fix branches before
+# making any other changes to the Vcs field.
+Fix-Script: vcs-field-invalid-branch.py
+
 Fix-Script: vcs-field-uses-insecure-uri.py
 Lintian-Tags: vcs-field-uses-insecure-uri
 

@@ -137,3 +137,7 @@ def override_exists(
         target = ('source', None)
     return _override_exists(
         tag=tag, info=info, type=target[0], package=target[1])
+
+
+def diligence():
+    return int(os.environ.get('DILIGENCE', '0'))
