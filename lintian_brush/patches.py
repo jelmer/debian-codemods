@@ -287,6 +287,8 @@ def add_patch(tree, patches_directory, name, contents, header=None):
       Name of the patch that was written (including suffix)
     """
     if not tree.has_filename(patches_directory):
+        if not tree.has_filename(os.path.dirname(patches_directory)):
+            tree.mkdir(os.path.dirname(patches_directory))
         tree.mkdir(patches_directory)
     abs_patches_dir = tree.abspath(patches_directory)
     patch_suffix = find_common_patch_suffix(os.listdir(abs_patches_dir))
