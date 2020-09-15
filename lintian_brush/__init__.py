@@ -529,6 +529,7 @@ def get_committer(tree: WorkingTree) -> str:
 
 def only_changes_last_changelog_block(
         tree: WorkingTree,
+        basis_tree: Tree,
         changelog_path: str,
         changes) -> bool:
     """Check whether the only change in a tree is to the last changelog entry.
@@ -540,7 +541,6 @@ def only_changes_last_changelog_block(
     Returns:
       boolean
     """
-    basis_tree = tree.basis_tree()
     with tree.lock_read(), basis_tree.lock_read():
         for change in changes:
             if change.path == ('', ''):
@@ -560,7 +560,8 @@ def only_changes_last_changelog_block(
 
 
 def reset_tree(local_tree: WorkingTree, dirty_tracker=None,
-               subpath: str = '', basis_tree: Optional[Tree] = None) -> None:
+               subpath: str = '', basis_tree: Optional[Tree] = None,
+               check: bool = False) -> None:
     """Reset a tree back to its basis tree.
 
     This will leave ignored and detritus files alone.
@@ -721,11 +722,13 @@ def run_lintian_fixer(local_tree: WorkingTree,
                       net_access: bool = True,
                       opinionated: Optional[bool] = None,
                       diligence: int = 0,
-                      timestamp: Optional[datetime] = None):
+                      timestamp: Optional[datetime] = None,
+                      basis_tree: Optional[Tree] = None):
     """Run a lintian fixer on a tree.
 
     Args:
       local_tree: WorkingTree object
+      basis_tree: Tree
       fixer: Fixer object to apply
       committer: Optional committer (name and email)
       update_changelog: Whether to add a new entry to the changelog
@@ -744,6 +747,9 @@ def run_lintian_fixer(local_tree: WorkingTree,
     Returns:
       tuple with set of FixerResult, summary of the changes
     """
+    if basis_tree is None:
+        basis_tree = local_tree.basis_tree()
+
     if subpath == '.':
         changelog_path = 'debian/changelog'
     else:
@@ -777,10 +783,13 @@ def run_lintian_fixer(local_tree: WorkingTree,
             opinionated=opinionated,
             diligence=diligence)
     except BaseException:
-        reset_tree(local_tree, dirty_tracker, subpath)
+        reset_tree(local_tree, dirty_tracker, subpath,
+                   basis_tree=basis_tree)
         raise
     if not certainty_sufficient(result.certainty, minimum_certainty):
-        reset_tree(local_tree, dirty_tracker, subpath)
+        reset_tree(
+            local_tree, dirty_tracker, subpath,
+            basis_tree=basis_tree)
         raise NotCertainEnough(fixer, result.certainty, minimum_certainty)
     specific_files: Optional[List[str]]
     if dirty_tracker:
@@ -800,7 +809,6 @@ def run_lintian_fixer(local_tree: WorkingTree,
         local_tree.smart_add([local_tree.abspath(subpath)])
         specific_files = [subpath] if subpath else None
 
-    basis_tree = local_tree.basis_tree()
     if local_tree.supports_setting_file_ids():
         RenameMap.guess_renames(
             basis_tree, local_tree, dry_run=False)
@@ -828,7 +836,8 @@ def run_lintian_fixer(local_tree: WorkingTree,
                 result.patch_name or fixer.name,
                 result.description, timestamp=timestamp)
         except BaseException:
-            reset_tree(local_tree, dirty_tracker, subpath)
+            reset_tree(local_tree, dirty_tracker, subpath,
+                       basis_tree=basis_tree)
             raise
 
         summary = 'Add patch %s: %s' % (patch_name, summary)
@@ -844,7 +853,7 @@ def run_lintian_fixer(local_tree: WorkingTree,
             update_changelog = True
 
     if update_changelog and only_changes_last_changelog_block(
-            local_tree, changelog_path, changes):
+            local_tree, basis_tree, changelog_path, changes):
         # If the script only changed the last entry in the changelog,
         # don't update the changelog
         update_changelog = False
@@ -872,7 +881,7 @@ def run_lintian_fixer(local_tree: WorkingTree,
         committer=committer,
         specific_files=specific_files)
     result.revision_id = revid
-    # TODO(jelmer): Run sbuild & verify lintian warning is gone?
+    # TODO(jelmer): Support running sbuild & verify lintian warning is gone?
     return result, summary
 
 
@@ -971,7 +980,8 @@ def run_lintian_fixers(local_tree: WorkingTree,
                 dirty_tracker.mark_clean()
             try:
                 result, summary = run_lintian_fixer(
-                        local_tree, fixer, update_changelog=update_changelog,
+                        local_tree, fixer,
+                        update_changelog=update_changelog,
                         committer=committer, compat_release=compat_release,
                         minimum_certainty=minimum_certainty,
                         trust_package=trust_package,
@@ -979,7 +989,8 @@ def run_lintian_fixers(local_tree: WorkingTree,
                         dirty_tracker=dirty_tracker,
                         subpath=subpath, net_access=net_access,
                         opinionated=opinionated,
-                        diligence=diligence)
+                        diligence=diligence,
+                        basis_tree=basis_tree)
             except FormattingUnpreservable as e:
                 ret.formatting_unpreservable[fixer.name] = e.path
                 if verbose:
@@ -1015,6 +1026,7 @@ def run_lintian_fixers(local_tree: WorkingTree,
                     note('Fixer %r made changes. (took %.2fs)',
                          fixer.name, time.time() - start)
                 ret.success.append((result, summary))
+                basis_tree = local_tree.basis_tree()
     return ret
 
 
