@@ -130,8 +130,8 @@ class NotDebianPackage(Exception):
 class PendingChanges(Exception):
     """The directory has pending changes."""
 
-    def __init__(self, tree):
-        super(PendingChanges, self).__init__(tree.basedir)
+    def __init__(self, tree, subpath=''):
+        super(PendingChanges, self).__init__(tree.abspath(subpath))
 
 
 class FixerResult(object):
@@ -616,10 +616,27 @@ def check_clean_tree(local_tree: WorkingTree, subpath: str = '') -> None:
       PendingChanges: When there are pending changes
     """
     # Just check there are no changes to begin with
-    if local_tree.has_changes():
-        raise PendingChanges(local_tree)
-    if list(local_tree.unknowns()):
-        raise PendingChanges(local_tree)
+    basis_tree = local_tree.basis_tree()
+    changes = local_tree.iter_changes(
+        basis_tree, include_unchanged=False,
+        require_versioned=False, want_unversioned=True,
+        specific_files=[subpath])
+
+    def relevant(p, t):
+        if not p:
+            return False
+        if not is_inside(subpath, p):
+            return False
+        if t.is_ignored(p):
+            return False
+        if not t.has_versioned_directories() and t.kind(p) == 'directory':
+            return False
+        return True
+
+    if any(change for change in changes if
+           relevant(change.path[0], basis_tree) or
+           relevant(change.path[1], local_tree)):
+        raise PendingChanges(local_tree, subpath)
 
 
 def has_non_debian_changes(changes):

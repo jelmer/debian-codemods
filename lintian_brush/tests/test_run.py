@@ -161,6 +161,30 @@ Arch: all
                 PendingChanges, check_clean_tree,
                 tree)
 
+    def test_subpath(self):
+        tree = self.make_test_tree()
+        self.build_tree_contents(
+            [('debian/foo', 'blah'), ('foo/', )])
+        tree.add('foo')
+        tree.commit('add foo')
+        with tree.lock_write():
+            check_clean_tree(tree, subpath='foo')
+            self.assertRaises(
+                PendingChanges, check_clean_tree,
+                tree, subpath='')
+
+    def test_subpath_changed(self):
+        tree = self.make_test_tree()
+        self.build_tree_contents([('foo/', )])
+        tree.add('foo')
+        tree.commit('add foo')
+        self.build_tree_contents([('debian/control', 'blah')])
+        with tree.lock_write():
+            check_clean_tree(tree, subpath='foo')
+            self.assertRaises(
+                PendingChanges, check_clean_tree,
+                tree, subpath='')
+
 
 class DummyFixer(Fixer):
 
