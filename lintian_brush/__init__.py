@@ -36,15 +36,13 @@ from breezy import ui
 
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
-from breezy.clean_tree import (
-    iter_deletables,
-    )
 from breezy.commit import NullCommitReporter
 from breezy.errors import NoSuchFile
 from breezy.osutils import is_inside
 from breezy.rename_map import RenameMap
 from breezy.trace import note, mutter, warning
 from breezy.transform import revert
+from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 
 from debian.deb822 import Deb822
@@ -484,7 +482,7 @@ def delete_items(deletables, dry_run: bool = False):
         if function is not os.remove or excinfo[1].errno != errno.EACCES:
             raise
         warning('unable to remove %s', path)
-    for path, subp in deletables:
+    for path in deletables:
         if os.path.isdir(path):
             shutil.rmtree(path, onerror=onerror)
         else:
@@ -562,7 +560,7 @@ def only_changes_last_changelog_block(
 
 
 def reset_tree(local_tree: WorkingTree, dirty_tracker=None,
-               subpath: str = '') -> None:
+               subpath: str = '', basis_tree: Optional[Tree] = None) -> None:
     """Reset a tree back to its basis tree.
 
     This will leave ignored and detritus files alone.
@@ -574,10 +572,17 @@ def reset_tree(local_tree: WorkingTree, dirty_tracker=None,
     """
     if dirty_tracker and not dirty_tracker.is_dirty():
         return
-    revert(local_tree, local_tree.branch.basis_tree(),
+    if basis_tree is None:
+        basis_tree = local_tree.branch.basis_tree()
+    revert(local_tree, basis_tree,
            [subpath] if subpath not in ('.', '') else None)
-    deletables = list(iter_deletables(
-        local_tree, unknown=True, ignored=False, detritus=False))
+    deletables: List[str] = []
+    # TODO(jelmer): Use basis tree
+    for p in local_tree.extras():
+        if not is_inside(subpath, p):
+            continue
+        if not local_tree.is_ignored(p):
+            deletables.append(local_tree.abspath(p))
     delete_items(deletables)
 
 
@@ -602,7 +607,7 @@ def certainty_sufficient(actual_certainty: str,
     return actual_confidence <= minimum_confidence
 
 
-def check_clean_tree(local_tree: WorkingTree) -> None:
+def check_clean_tree(local_tree: WorkingTree, subpath: str = '') -> None:
     """Check that a tree is clean and has no pending changes or unknown files.
 
     Args:
@@ -931,7 +936,7 @@ def run_lintian_fixers(local_tree: WorkingTree,
         2. dictionary mapping fixer names for fixers that failed to run to the
            error that occurred
     """
-    check_clean_tree(local_tree)
+    check_clean_tree(local_tree, subpath)
     fixers = list(fixers)
     dirty_tracker = get_dirty_tracker(
         local_tree, subpath=subpath, use_inotify=use_inotify)
