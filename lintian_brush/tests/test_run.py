@@ -123,7 +123,7 @@ Arch: all
         self.build_tree_contents([('debian/changelog', 'blah')])
         with tree.lock_write():
             self.assertRaises(
-                PendingChanges, check_clean_tree, tree)
+                PendingChanges, check_clean_tree, tree, tree.basis_tree())
 
     def test_pending_changes_bzr_empty_dir(self):
         # See https://bugs.debian.org/914038
@@ -131,14 +131,14 @@ Arch: all
         self.build_tree_contents([('debian/upstream/', )])
         with tree.lock_write():
             self.assertRaises(
-                PendingChanges, check_clean_tree, tree)
+                PendingChanges, check_clean_tree, tree, tree.basis_tree())
 
     def test_pending_changes_git_empty_dir(self):
         # See https://bugs.debian.org/914038
         tree = self.make_test_tree(format='git')
         self.build_tree_contents([('debian/upstream/', )])
         with tree.lock_write():
-            check_clean_tree(tree)
+            check_clean_tree(tree, tree.basis_tree())
 
     def test_pending_changes_git_dir_with_ignored(self):
         # See https://bugs.debian.org/914038
@@ -151,7 +151,7 @@ Arch: all
         tree.add('.gitignore')
         tree.commit('add gitignore')
         with tree.lock_write():
-            check_clean_tree(tree)
+            check_clean_tree(tree, tree.basis_tree())
 
     def test_extra(self):
         tree = self.make_test_tree()
@@ -159,7 +159,7 @@ Arch: all
         with tree.lock_write():
             self.assertRaises(
                 PendingChanges, check_clean_tree,
-                tree)
+                tree, tree.basis_tree())
 
     def test_subpath(self):
         tree = self.make_test_tree()
@@ -168,10 +168,10 @@ Arch: all
         tree.add('foo')
         tree.commit('add foo')
         with tree.lock_write():
-            check_clean_tree(tree, subpath='foo')
+            check_clean_tree(tree, tree.basis_tree(), subpath='foo')
             self.assertRaises(
                 PendingChanges, check_clean_tree,
-                tree, subpath='')
+                tree, tree.basis_tree(), subpath='')
 
     def test_subpath_changed(self):
         tree = self.make_test_tree()
@@ -180,10 +180,10 @@ Arch: all
         tree.commit('add foo')
         self.build_tree_contents([('debian/control', 'blah')])
         with tree.lock_write():
-            check_clean_tree(tree, subpath='foo')
+            check_clean_tree(tree, tree.basis_tree(), subpath='foo')
             self.assertRaises(
                 PendingChanges, check_clean_tree,
-                tree, subpath='')
+                tree, tree.basis_tree(), subpath='')
 
 
 class DummyFixer(Fixer):

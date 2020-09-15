@@ -607,16 +607,18 @@ def certainty_sufficient(actual_certainty: str,
     return actual_confidence <= minimum_confidence
 
 
-def check_clean_tree(local_tree: WorkingTree, subpath: str = '') -> None:
+def check_clean_tree(
+        local_tree: WorkingTree, basis_tree: Tree, subpath: str = '') -> None:
     """Check that a tree is clean and has no pending changes or unknown files.
 
     Args:
       local_tree: The tree to check
+      basis_tree: Tree to check against
+      subpath: Subpath of the tree to check
     Raises:
       PendingChanges: When there are pending changes
     """
     # Just check there are no changes to begin with
-    basis_tree = local_tree.basis_tree()
     changes = local_tree.iter_changes(
         basis_tree, include_unchanged=False,
         require_versioned=False, want_unversioned=True,
@@ -953,7 +955,8 @@ def run_lintian_fixers(local_tree: WorkingTree,
         2. dictionary mapping fixer names for fixers that failed to run to the
            error that occurred
     """
-    check_clean_tree(local_tree, subpath)
+    basis_tree = local_tree.basis_tree()
+    check_clean_tree(local_tree, basis_tree, subpath)
     fixers = list(fixers)
     dirty_tracker = get_dirty_tracker(
         local_tree, subpath=subpath, use_inotify=use_inotify)
