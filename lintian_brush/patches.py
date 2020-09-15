@@ -37,6 +37,7 @@ from datetime import datetime
 from email.message import Message
 from io import BytesIO
 import os
+from typing import Optional, Tuple, List
 
 from breezy.diff import show_diff_trees
 from breezy import osutils
@@ -49,6 +50,7 @@ from breezy.patches import (
     apply_patches,
     PatchSyntax,
     )
+from breezy.workingtree import WorkingTree
 
 from debian.changelog import Changelog
 
@@ -311,8 +313,10 @@ def add_patch(tree, patches_directory, name, contents, header=None):
 
 
 def move_upstream_changes_to_patch(
-        local_tree, subpath, patch_name, description,
-        dirty_tracker=None, timestamp=None):
+        local_tree: WorkingTree,
+        subpath: str, patch_name: str, description: str,
+        dirty_tracker=None,
+        timestamp: Optional[datetime] = None) -> Tuple[List[str], str]:
     """Move upstream changes to patch.
 
     Args:
@@ -337,7 +341,8 @@ def move_upstream_changes_to_patch(
     header['Last-Update'] = timestamp.strftime('%Y-%m-%d')
     patches_directory = tree_patches_directory(local_tree, subpath)
     patchname = add_patch(
-        local_tree, patches_directory, patch_name, diff.getvalue(), header)
+        local_tree, os.path.join(subpath, patches_directory),
+        patch_name, diff.getvalue(), header)
     specific_files = [
         os.path.join(subpath, patches_directory),
         os.path.join(subpath, patches_directory, 'series'),

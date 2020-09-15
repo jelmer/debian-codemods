@@ -30,7 +30,7 @@ import sys
 import tempfile
 import time
 import traceback
-from typing import Optional, List, Sequence, Iterator, Iterable
+from typing import Optional, List, Sequence, Iterator, Iterable, Tuple
 
 from breezy import ui
 
@@ -647,8 +647,9 @@ class FailedPatchManipulation(Exception):
 
 
 def _upstream_changes_to_patch(
-        local_tree, dirty_tracker, subpath,
-        patch_name, patch_description, timestamp=None):
+        local_tree: WorkingTree, dirty_tracker,
+        subpath: str, patch_name: str, patch_description: str,
+        timestamp: Optional[datetime] = None) -> Tuple[str, List[str]]:
     from .patches import (
         move_upstream_changes_to_patch,
         read_quilt_patches,
@@ -799,7 +800,8 @@ def run_lintian_fixer(local_tree: WorkingTree,
     if has_non_debian_changes(changes) and current_version.debian_revision:
         try:
             patch_name, specific_files = _upstream_changes_to_patch(
-                local_tree, dirty_tracker, subpath, result.patch_name,
+                local_tree, dirty_tracker, subpath,
+                result.patch_name or fixer.name,
                 result.description, timestamp=timestamp)
         except BaseException:
             reset_tree(local_tree, dirty_tracker, subpath)
