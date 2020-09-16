@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 from lintian_brush.lintian_overrides import override_exists
 import sys
 import re
@@ -90,17 +90,20 @@ try:
             for paragraph in list(updater.copyright._Copyright__paragraphs):
                 if not paragraph.license:
                     continue
+                info = paragraph.license.synopsis.lower()
                 if override_exists(
                         'unused-license-paragraph-in-dep5-copyright',
                         type='source',
-                        info=paragraph.license.synopsis.lower()):
+                        info=info):
                     continue
                 if paragraph.license.synopsis in extra_defined:
+                    fixed_lintian_tag(
+                        'source', 'unused-license-paragraph-in-dep5-copyright',
+                        info)
                     updater.copyright._Copyright__paragraphs.remove(paragraph)
 except (FileNotFoundError, NotMachineReadableError):
     pass
 else:
     report_result(
         "Remove unused license definitions for %s." % ', '.join(extra_defined),
-        fixed_lintian_tags=['unused-license-paragraph-in-dep5-copyright'],
         certainty=certainty)

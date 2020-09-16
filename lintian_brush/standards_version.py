@@ -18,21 +18,11 @@
 """Standards-Version handling."""
 
 
+from debmutate.control import parse_standards_version
 from typing import Tuple, Iterator
 
 
 RELEASE_DATES_PATH = '/usr/share/lintian/data/standards-version/release-dates'
-
-
-# TODO(jelmer): Use copy from debmutate
-def parse_standards_version(v: str) -> Tuple[int, ...]:
-    """Parse a standards version.
-
-    Args:
-      v: Version string
-    Returns: Tuple with version
-    """
-    return tuple([int(k) for k in v.split('.')])
 
 
 def iter_standards_versions() -> Iterator[Tuple[Tuple[int, ...], int]]:

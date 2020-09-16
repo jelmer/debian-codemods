@@ -6,7 +6,7 @@ import shlex
 import sys
 from typing import List, Optional
 
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 gpg = shlex.split(os.environ.get('GPG', 'gpg'))
 
@@ -50,27 +50,29 @@ for p in [
         'debian/upstream/signing-key.pgp',
         'debian/upstream-signing-key.pgp']:
     if os.path.exists(p):
-        out: List[bytes] = []
+        outlines: List[bytes] = []
         key: Optional[List[bytes]] = None
         with open(p, 'rb') as f:
-            for line in f:
-                if line.strip() == KEY_BLOCK_START:
-                    key = [line]
-                elif line.strip() == KEY_BLOCK_END and key is not None:
-                    key.append(line)
-                    out.extend(minimize_key_block(
-                        b''.join(key)).splitlines(True))
-                    key = None
-                elif key is not None:
-                    key.append(line)
-                else:
-                    out.append(line)
-            if key:
-                raise Exception('Key block without end')
-        with open(p, 'wb') as f:
-            f.writelines(out)
+            inlines = list(f.readlines())
+        for line in inlines:
+            if line.strip() == KEY_BLOCK_START:
+                key = [line]
+            elif line.strip() == KEY_BLOCK_END and key is not None:
+                key.append(line)
+                outlines.extend(minimize_key_block(
+                    b''.join(key)).splitlines(True))
+                key = None
+            elif key is not None:
+                key.append(line)
+            else:
+                outlines.append(line)
+        if key:
+            raise Exception('Key block without end')
+        if inlines != outlines:
+            fixed_lintian_tag(
+                'source', 'public-upstream-key-not-minimal')
+            with open(p, 'wb') as f:
+                f.writelines(outlines)
 
 
-report_result(
-    "Re-export upstream signing key without extra signatures.",
-    fixed_lintian_tags=['public-upstream-key-not-minimal'])
+report_result("Re-export upstream signing key without extra signatures.")

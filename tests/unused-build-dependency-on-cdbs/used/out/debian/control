@@ -1,6 +1,0 @@
-Source: blah
-Build-Depends: cdbs, debhelper
-
-Package: blah
-Description: blah blah
- blah

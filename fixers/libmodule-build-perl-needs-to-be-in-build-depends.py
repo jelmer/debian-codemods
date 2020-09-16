@@ -6,7 +6,7 @@ from debmutate.control import (
     drop_dependency,
     add_dependency,
     )
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 
 with ControlEditor() as updater:
@@ -21,8 +21,10 @@ with ControlEditor() as updater:
             updater.source['Build-Depends-Indep'], 'libmodule-build-perl')
         updater.source['Build-Depends'] = add_dependency(
             updater.source.get('Build-Depends', ''), 'libmodule-build-perl')
+        fixed_lintian_tag(
+            updater.source,
+            'libmodule-build-perl-needs-to-be-in-build-depends', '')
 
 
 report_result(
-    'Move libmodule-build-perl from Build-Depends-Indep to Build-Depends.',
-    fixed_lintian_tags=['libmodule-build-perl-needs-to-be-in-build-depends'])
+    'Move libmodule-build-perl from Build-Depends-Indep to Build-Depends.')

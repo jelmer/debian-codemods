@@ -1,12 +1,18 @@
 #!/usr/bin/python3
 
+from datetime import datetime
 import os
 import re
 from debian.changelog import Changelog
-from debmutate.control import ControlEditor, get_relation
+from debmutate.control import (
+    ControlEditor,
+    get_relation,
+    parse_standards_version,
+    )
 from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.standards_version import iter_standards_versions
 
 # Dictionary mapping source and target versions
 upgrade_path = {
@@ -143,6 +149,30 @@ with ControlEditor() as updater:
         # Huh, no standards version?
         pass
     else:
+        try:
+            svs = dict(iter_standards_versions())
+        except FileNotFoundError:
+            dt = None
+            last = None
+        else:
+            last = max(svs.items())[0]
+            try:
+                ts = svs[parse_standards_version(current_version)]
+            except KeyError:
+                dt = None
+            else:
+                dt = datetime.fromtimestamp(ts)
+        fixed_lintian_tag(
+            updater.source,
+            'out-of-date-standards-version',
+            '%s%s%s' % (
+                current_version,
+                (' (released %s)' % dt.strftime('%Y-%m-%d')) if dt else '',
+                (' (current is %s)' %
+                 '.'.join([str(x) for x in last]))
+                if last is not None else '',
+                ))
+
         while current_version in upgrade_path:
             target_version = upgrade_path[current_version]
             try:
@@ -159,5 +189,4 @@ with ControlEditor() as updater:
 if current_version:
     report_result(
         'Update standards version to %s, no changes needed.' % current_version,
-        certainty='certain',
-        fixed_lintian_tags=['out-of-date-standards-version'])
+        certainty='certain')

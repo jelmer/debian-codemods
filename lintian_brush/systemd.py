@@ -206,7 +206,7 @@ class OptionList(object):
         option = OptionLine(self._key, v, separator='=')
         obj = LineContainer(option)
         self._section._lines[-1].add(obj)
-        self._section._options[v].append(obj)
+        self._section._options.setdefault(v, []).append(obj)
         self._options.append(option)
 
 

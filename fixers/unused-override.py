@@ -8,7 +8,9 @@ except ModuleNotFoundError:
     sys.exit(2)
 
 from lintian_brush.lintian_overrides import remove_unused
-from lintian_brush.fixer import net_access_allowed, report_result, diligence
+from lintian_brush.fixer import (
+    net_access_allowed, report_result, diligence, fixed_lintian_tag,
+    )
 
 if diligence() < 1:
     # Removing unused overrides requires pro-actively contacting UDD.
@@ -25,8 +27,7 @@ description = [
     ]
 for override in removed:
     description.append('* %s\n' % override.tag)
+    fixed_lintian_tag(
+        'source', 'unused-override', (override.tag, override.info))
 
-report_result(
-    ''.join(description),
-    fixed_lintian_tags=['unused-override'],
-    certainty='certain')
+report_result(''.join(description), certainty='certain')

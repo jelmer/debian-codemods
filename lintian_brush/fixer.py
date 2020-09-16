@@ -37,7 +37,7 @@ _fixed_lintian_tags = []
 
 def fixed_lintian_tag(
         target: Union[Deb822, Tuple[str, str]],
-        tag: str, info: Optional[str] = None):
+        tag: str, info: Optional[Union[str, Tuple[str, ...]]] = None):
     """Register a lintian tag as being fixed."""
     if isinstance(target, Deb822):
         if 'Source' in target:
@@ -49,6 +49,8 @@ def fixed_lintian_tag(
                 'unable to determine source/binary package from target')
     elif target == 'source':
         target = ('source', )
+    if isinstance(info, tuple):
+        info = ' '.join(info)
     _fixed_lintian_tags.append((target, tag, info))
 
 
@@ -63,8 +65,7 @@ def reset() -> None:
     _fixed_lintian_tags = []
 
 
-def report_result(description=None, fixed_lintian_tags=None, certainty=None,
-                  patch_name=None):
+def report_result(description=None, certainty=None, patch_name=None):
     """Report the result of a fixer.
 
     Args:
@@ -77,8 +78,7 @@ def report_result(description=None, fixed_lintian_tags=None, certainty=None,
         print(description)
     if certainty:
         print('Certainty: %s' % certainty)
-    fixed_lintian_tags = set(fixed_lintian_tags or [])
-    fixed_lintian_tags.update(
+    fixed_lintian_tags = set(
         [tag for (target, tag, info) in _fixed_lintian_tags])
     if fixed_lintian_tags:
         print('Fixed-Lintian-Tags: %s' % ', '.join(sorted(fixed_lintian_tags)))

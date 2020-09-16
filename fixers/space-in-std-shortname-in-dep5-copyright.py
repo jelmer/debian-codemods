@@ -2,7 +2,7 @@
 
 from debian.copyright import License
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 from lintian_brush.licenses import load_spdx_data
 
 RENAMES = {k.lower(): v for k, v in {
@@ -46,6 +46,9 @@ def fix_spaces(copyright):
             names.append(name)
         newsynopsis = ' or '.join(names)
         if newsynopsis != paragraph.license.synopsis:
+            fixed_lintian_tag(
+                'source', 'space-in-std-shortname-in-dep5-copyright',
+                '%s (line XX)' % paragraph.license.synopsis)
             paragraph.license = License(newsynopsis, paragraph.license.text)
 
 
@@ -56,5 +59,4 @@ except (FileNotFoundError, NotMachineReadableError):
     pass
 
 report_result(
-    'Replace spaces in short license names with dashes.',
-    fixed_lintian_tags=['space-in-std-shortname-in-dep5-copyright'])
+    'Replace spaces in short license names with dashes.')

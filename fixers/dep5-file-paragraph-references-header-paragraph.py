@@ -5,7 +5,7 @@ from debian.copyright import (
     NotMachineReadableError,
     )
 from debmutate.copyright import CopyrightEditor
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 
 def fix_header_license_references(copyright):
@@ -28,6 +28,10 @@ def fix_header_license_references(copyright):
             copyright.add_license_paragraph(
                 LicenseParagraph.create(
                     copyright.header.license))
+    fixed_lintian_tag(
+        'source',
+        'dep5-file-paragraph-references-header-paragraph',
+        '%s (line XX)' % (copyright.header.license.synopsis, ))
     return copyright.header.license
 
 
@@ -39,6 +43,4 @@ except (FileNotFoundError, NotMachineReadableError):
 else:
     if license:
         report_result(
-            'Add missing license paragraph for %s' % license.synopsis,
-            fixed_lintian_tags=[
-                'dep5-file-paragraph-references-header-paragraph'])
+            'Add missing license paragraph for %s' % license.synopsis)

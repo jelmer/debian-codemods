@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.rules import RulesEditor
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 certainty = None
 
@@ -14,10 +14,12 @@ with RulesEditor() as updater:
             certainty = 'possible'
         rule.clear()
         updater.makefile.drop_phony(b'get-orig-source')
+        fixed_lintian_tag(
+            'source',
+            'debian-rules-contains-unnecessary-get-orig-source-target',
+            '')
 
 
 report_result(
     'Remove unnecessary get-orig-source-target.',
-    fixed_lintian_tags=[
-        'debian-rules-contains-unnecessary-get-orig-source-target'],
     certainty=certainty)

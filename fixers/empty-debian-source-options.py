@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+from lintian_brush.fixer import report_result
+
 import os
 try:
     with open('debian/source/options', 'r') as f:
@@ -8,4 +10,4 @@ try:
 except FileNotFoundError:
     pass
 
-print('Remove empty debian/source/options.')
+report_result('Remove empty debian/source/options.')

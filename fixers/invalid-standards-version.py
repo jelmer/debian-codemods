@@ -2,12 +2,9 @@
 
 import sys
 
-from debmutate.control import ControlEditor
+from debmutate.control import ControlEditor, parse_standards_version
 from lintian_brush.fixer import report_result, fixed_lintian_tag
-from lintian_brush.standards_version import (
-    parse_standards_version,
-    iter_standards_versions,
-    )
+from lintian_brush.standards_version import iter_standards_versions
 
 try:
     release_dates = dict(iter_standards_versions())

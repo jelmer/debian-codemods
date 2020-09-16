@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.systemd import systemd_service_files, SystemdServiceEditor
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 DEPRECATED_TARGETS = ['syslog.target']
 
@@ -16,11 +16,14 @@ for path in systemd_service_files():
                 pass
             else:
                 removed.append((path, target))
+                fixed_lintian_tag(
+                    'source',
+                    'systemd-service-file-refers-to-obsolete-target',
+                    (path, target))
 
 removed.sort()
 
 report_result(
     'Remove references to obsolete targets in systemd unit files: %s.' %
     ', '.join(['%s (%s)' % (filename, target)
-               for (filename, target) in removed]),
-    fixed_lintian_tags=['systemd-service-file-refers-to-obsolete-target'])
+               for (filename, target) in removed]))

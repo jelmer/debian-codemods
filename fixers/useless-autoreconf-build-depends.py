@@ -9,7 +9,11 @@ from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
     )
 from lintian_brush.debhelper import maximum_debhelper_compat_version
-from lintian_brush.fixer import compat_release, report_result
+from lintian_brush.fixer import (
+    compat_release,
+    report_result,
+    fixed_lintian_tag,
+    )
 from lintian_brush.rules import (
     dh_invoke_drop_with,
     update_rules,
@@ -29,9 +33,12 @@ if not update_rules(drop_with_autoreconf):
 
 with ControlEditor() as updater:
     ensure_minimum_debhelper_version(updater.source, "10~")
-    updater.source["Build-Depends"] = drop_dependency(
+    new_depends = drop_dependency(
         updater.source["Build-Depends"], "dh-autoreconf")
+    if new_depends != updater.source['Build-Depends']:
+        fixed_lintian_tag(
+            updater.source, 'useless-autoreconf-build-depends',
+            'dh-autoreconf')
+        updater.source['Build-Depends'] = new_depends
 
-report_result(
-    "Drop unnecessary dependency on dh-autoreconf.",
-    fixed_lintian_tags=['useless-autoreconf-build-depends'])
+report_result("Drop unnecessary dependency on dh-autoreconf.")

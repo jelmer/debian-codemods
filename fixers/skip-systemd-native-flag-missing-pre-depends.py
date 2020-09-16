@@ -10,7 +10,7 @@ from debmutate.control import (
 from debmutate.debhelper import (
     get_debhelper_compat_level,
     )
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 
 compat_version = get_debhelper_compat_level()
@@ -39,9 +39,10 @@ with ControlEditor() as updater:
             binary.get("Pre-Depends", ""),
             "${misc:Pre-Depends}")
         added.add(name)
+        fixed_lintian_tag(
+            updater.source, 'skip-systemd-native-flag-missing-pre-depends')
 
 
 report_result(
     "Add missing Pre-Depends: ${misc:Pre-Depends} in %s." %
-    ", ".join(sorted(added)),
-    fixed_lintian_tags=['skip-systemd-native-flag-missing-pre-depends'])
+    ", ".join(sorted(added)))

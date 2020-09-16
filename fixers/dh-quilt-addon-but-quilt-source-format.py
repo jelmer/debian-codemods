@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 from lintian_brush.rules import (
     dh_invoke_drop_with,
     RulesEditor,
@@ -10,7 +10,12 @@ from lintian_brush.patches import rules_find_patches_directory
 
 
 def drop_quilt_with(line, target):
-    return dh_invoke_drop_with(line, b'quilt')
+    newline = dh_invoke_drop_with(line, b'quilt')
+    if line != newline:
+        fixed_lintian_tag(
+            'source', 'dh-quilt-addon-but-quilt-source-format',
+            'dh ... --with quilt (line XX)')
+    return newline
 
 
 try:
@@ -26,5 +31,4 @@ except FileNotFoundError:
 
 report_result(
     "Don't specify --with=quilt, since package uses "
-    "'3.0 (quilt)' source format.",
-    fixed_lintian_tags=['dh-quilt-addon-but-quilt-source-format'])
+    "'3.0 (quilt)' source format.")

@@ -4,7 +4,7 @@ import os
 
 from debmutate.control import ensure_some_version, ControlEditor
 
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 needs_lsb_base = set()
 other_service_present = set()
@@ -29,10 +29,13 @@ if needs_lsb_base:
         for binary in updater.binaries:
             if binary['Package'] not in needs_lsb_base:
                 continue
-            binary['Depends'] = ensure_some_version(
-                binary['Depends'], 'lsb-base')
+            new_depends = ensure_some_version(binary['Depends'], 'lsb-base')
+            if new_depends != binary['Depends']:
+                fixed_lintian_tag(
+                    updater.source, 'init.d-script-needs-depends-on-lsb-base',
+                    'XX (line YY)')
+                binary['Depends'] = new_depends
 
 report_result(
     'Add missing dependency on lsb-base.',
-    fixed_lintian_tags=['init.d-script-needs-depends-on-lsb-base'],
     certainty='possible')

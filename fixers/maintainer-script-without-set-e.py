@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 import os
 
 
-SCRIPTS = ['prerm', 'postinst', 'config']
+SCRIPTS = ['preinst', 'prerm', 'postinst', 'config']
 
 
 def replace_set_e(path):
@@ -28,6 +28,9 @@ def replace_set_e(path):
             return
         if (not (line.startswith(b'#') or line == b'\n') or
                 line.strip() == b'#DEBHELPER#'):
+            fixed_lintian_tag(
+                'source', 'maintainer-script-without-set-e',
+                os.path.basename(path))
             if not lines[i-1].strip():
                 lines.insert(i, b'set -e\n')
                 lines.insert(i+1, b'\n')
@@ -44,6 +47,4 @@ for name in SCRIPTS:
     replace_set_e(os.path.join('debian', name))
 
 
-report_result(
-    'Use set -e rather than passing -e on the shebang-line.',
-    fixed_lintian_tags=['maintainer-script-without-set-e'])
+report_result('Use set -e rather than passing -e on the shebang-line.')

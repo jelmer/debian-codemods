@@ -4,6 +4,7 @@ from lintian_brush.fixer import report_result, fixed_lintian_tag
 import os
 import re
 import sys
+from typing import List
 
 if not os.path.exists('debian/tests'):
     sys.exit(0)
@@ -11,7 +12,7 @@ if not os.path.exists('debian/tests'):
 for entry in os.scandir('debian/tests'):
     if not entry.is_file():
         continue
-    newlines = []
+    newlines: List[bytes] = []
     oldlines = []
     with open(entry.path, 'rb') as f:
         oldlines = list(f.readlines())

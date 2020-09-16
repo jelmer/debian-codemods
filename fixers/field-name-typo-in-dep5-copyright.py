@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.deb822 import Deb822Editor
-from lintian_brush.fixer import report_result, warn
+from lintian_brush.fixer import report_result, warn, fixed_lintian_tag
 import sys
 
 try:
@@ -33,6 +33,9 @@ try:
                     del paragraph[field]
                     paragraph[field[2:]] = value
                     typo_fixed.add((field, field[2:]))
+                    fixed_lintian_tag(
+                        'source', 'field-name-typo-in-dep5-copyright',
+                        '%s (line XX)' % field)
                     continue
 
                 for option in valid_field_names:
@@ -44,6 +47,9 @@ try:
                             case_fixed.add((field, option))
                         else:
                             typo_fixed.add((field, option))
+                            fixed_lintian_tag(
+                                'source', 'field-name-typo-in-dep5-copyright',
+                                '%s (line XX)' % field)
                         break
 except FileNotFoundError:
     pass
@@ -63,6 +69,4 @@ fixed_str = ', '.join(
      for (old, new) in sorted(list(case_fixed) + list(typo_fixed))])
 
 report_result(
-    'Fix field name %s in debian/copyright (%s).' % (kind, fixed_str),
-    fixed_lintian_tags=(
-        ['field-name-typo-in-dep5-copyright'] if typo_fixed else []))
+    'Fix field name %s in debian/copyright (%s).' % (kind, fixed_str))

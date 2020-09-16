@@ -6,7 +6,7 @@ import sys
 from debmutate.deb822 import Deb822Editor
 from debmutate.control import delete_from_list
 
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 
 
 removed_restrictions = []
@@ -39,6 +39,9 @@ with Deb822Editor('debian/tests/control') as updater:
         for i, restriction in enumerate(list(restrictions)):
             if restriction.strip() in DEPRECATED_RESTRICTIONS:
                 to_delete.append(restriction.strip())
+                fixed_lintian_tag(
+                    'source', 'obsolete-runtime-tests-restriction',
+                    '%s in line XX' % restriction.strip())
         if to_delete:
             removed_restrictions.extend(to_delete)
             paragraph['Restrictions'] = delete_from_list(
@@ -62,5 +65,4 @@ report_result(
     'master/doc/README.package-tests.rst' % (
        's' if len(removed_restrictions) > 1 else '',
        ', ' .join(removed_restrictions)),
-    fixed_lintian_tags=['obsolete-runtime-tests-restriction'],
     certainty=certainty)

@@ -16,7 +16,7 @@ from debmutate.control import (
 from debmutate.debhelper import (
     read_debhelper_compat_file,
     )
-from lintian_brush.fixer import report_result
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 from lintian_brush.rules import (
     check_cdbs,
     )
@@ -76,11 +76,10 @@ with ControlEditor() as updater:
     updater.source["Build-Depends"] = ensure_exact_version(
         updater.source.get("Build-Depends", ""), "debhelper-compat",
         "%d" % debhelper_compat_version, position=insert_position)
+    fixed_lintian_tag(updater.source, 'uses-debhelper-compat-file', ())
 
     for field in changed_fields:
         if updater.source.get(field) == "":
             del updater.source[field]
 
-report_result(
-    "Set debhelper-compat version in Build-Depends.",
-    fixed_lintian_tags=['uses-debhelper-compat-file'])
+report_result("Set debhelper-compat version in Build-Depends.")
