@@ -14,6 +14,7 @@ from debmutate.vcs import (
     )
 from lintian_brush.fixer import (
     report_result, diligence, warn,
+    opinionated,
     )
 from lintian_brush.vcs import determine_browser_url
 
@@ -23,6 +24,19 @@ if diligence() < 1:
     sys.exit(0)
 
 from lintian_brush.vcswatch import VcsWatch, VcsWatchError
+
+
+def get_default_branch(url):
+    from dulwich.client import get_transport_and_path
+    c, p = get_transport_and_path(url)
+    result = c.fetch_pack(p, lambda rs: [], None, None)
+    try:
+        head = result.symrefs[b'HEAD']
+    except KeyError:
+        return None
+    if not head.startswith(b'refs/heads/'):
+        return head.decode('utf-8')
+    return head[len(b'refs/heads/'):].decode('utf-8')
 
 
 async def find_branch(vcs_type, url):
@@ -47,10 +61,13 @@ with ControlEditor() as updater:
             warn('vcswatch URL unusable: %s' % e.args[0])
         else:
             if branch != new_branch:
-                updater.source['Vcs-Git'] = unsplit_vcs_url(
-                    repo_url, new_branch, subpath)
-                vcs_browser = determine_browser_url(
-                    'Git', updater.source['Vcs-Git'])
-                if vcs_browser is not None:
-                    updater.source['Vcs-Browser'] = vcs_browser
-                report_result("Set branch from vcswatch in Vcs-Git URL.")
+                default_branch = get_default_branch(repo_url)
+                raise ValueError(default_branch)
+                if opinionated() or default_branch != branch:
+                    updater.source['Vcs-Git'] = unsplit_vcs_url(
+                        repo_url, new_branch, subpath)
+                    vcs_browser = determine_browser_url(
+                        'Git', updater.source['Vcs-Git'])
+                    if vcs_browser is not None:
+                        updater.source['Vcs-Browser'] = vcs_browser
+                    report_result("Set branch from vcswatch in Vcs-Git URL.")
