@@ -270,13 +270,14 @@ class MultiArchHintFixer(Fixer):
         overall_certainty = min_certainty(
             [certainty for (binary, hint, description, certainty) in changes])
         by_description = changes_by_description(changes)
-        overall_description = "Apply multi-arch hints.\n"
+        overall_description = ["Apply multi-arch hints."]
         for description, binaries in by_description.items():
-            overall_description += "+ %s: %s" % (
+            overall_description.append("+ %s: %s" % (
                 ', '.join(sorted(binaries)),
-                description)
+                description))
         return MultiArchFixerResult(
-            overall_description, certainty=overall_certainty, changes=changes)
+            "\n".join(overall_description),
+            certainty=overall_certainty, changes=changes)
 
 
 APPLIERS = [
@@ -355,7 +356,7 @@ def main(argv=None):
 
     use_inotify = (False if args.disable_inotify else None),
     try:
-        check_clean_tree(wt)
+        check_clean_tree(wt, wt.basis_tree(), subpath)
     except PendingChanges:
         note("%s: Please commit pending changes first.", wt.basedir)
         return 1
