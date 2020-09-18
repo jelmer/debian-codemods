@@ -50,6 +50,7 @@ from breezy.patches import (
     apply_patches,
     PatchSyntax,
     )
+from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 
 from debian.changelog import Changelog
@@ -314,6 +315,7 @@ def add_patch(tree, patches_directory, name, contents, header=None):
 
 def move_upstream_changes_to_patch(
         local_tree: WorkingTree,
+        basis_tree: Tree,
         subpath: str, patch_name: str, description: str,
         dirty_tracker=None,
         timestamp: Optional[datetime] = None) -> Tuple[List[str], str]:
@@ -329,9 +331,8 @@ def move_upstream_changes_to_patch(
     if timestamp is None:
         timestamp = datetime.now()
     diff = BytesIO()
-    basis_tree = local_tree.basis_tree()
     show_diff_trees(basis_tree, local_tree, diff)
-    reset_tree(local_tree, dirty_tracker, subpath)
+    reset_tree(local_tree, basis_tree, subpath, dirty_tracker)
     header = Message()
     lines = description.splitlines()
     # See https://dep-team.pages.debian.net/deps/dep3/ for fields.

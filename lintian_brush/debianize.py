@@ -260,7 +260,8 @@ def main(argv=None):
                 specific_files=initial_files,
                 reporter=NullCommitReporter())
         except BaseException:
-            reset_tree(wt, dirty_tracker, subpath)
+            reset_tree(
+                wt, wt.basis_tree(), subpath, dirty_tracker=dirty_tracker)
             raise
 
         fixers = available_lintian_fixers(

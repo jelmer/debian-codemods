@@ -559,9 +559,8 @@ def only_changes_last_changelog_block(
         return str(new_cl) == str(old_cl)
 
 
-def reset_tree(local_tree: WorkingTree, dirty_tracker=None,
-               subpath: str = '', basis_tree: Optional[Tree] = None,
-               check: bool = False) -> None:
+def reset_tree(local_tree: WorkingTree, basis_tree: Optional[Tree] = None,
+               subpath: str = '', dirty_tracker=None) -> None:
     """Reset a tree back to its basis tree.
 
     This will leave ignored and detritus files alone.
@@ -672,7 +671,9 @@ class FailedPatchManipulation(Exception):
 
 
 def _upstream_changes_to_patch(
-        local_tree: WorkingTree, dirty_tracker,
+        local_tree: WorkingTree,
+        basis_tree: Tree,
+        dirty_tracker,
         subpath: str, patch_name: str, patch_description: str,
         timestamp: Optional[datetime] = None) -> Tuple[str, List[str]]:
     from .patches import (
@@ -699,7 +700,7 @@ def _upstream_changes_to_patch(
     mutter('Moving upstream changes to patch %s', patch_name)
     try:
         specific_files, patch_name = move_upstream_changes_to_patch(
-            local_tree, subpath, patch_name, patch_description,
+            local_tree, basis_tree, subpath, patch_name, patch_description,
             dirty_tracker, timestamp=timestamp)
     except FileExistsError as e:
         raise FailedPatchManipulation(
@@ -783,13 +784,13 @@ def run_lintian_fixer(local_tree: WorkingTree,
             opinionated=opinionated,
             diligence=diligence)
     except BaseException:
-        reset_tree(local_tree, dirty_tracker, subpath,
-                   basis_tree=basis_tree)
+        reset_tree(local_tree, basis_tree, subpath,
+                   dirty_tracker=dirty_tracker)
         raise
     if not certainty_sufficient(result.certainty, minimum_certainty):
         reset_tree(
-            local_tree, dirty_tracker, subpath,
-            basis_tree=basis_tree)
+            local_tree, basis_tree, subpath,
+            dirty_tracker=dirty_tracker)
         raise NotCertainEnough(fixer, result.certainty, minimum_certainty)
     specific_files: Optional[List[str]]
     if dirty_tracker:
@@ -832,12 +833,12 @@ def run_lintian_fixer(local_tree: WorkingTree,
     if has_non_debian_changes(changes) and current_version.debian_revision:
         try:
             patch_name, specific_files = _upstream_changes_to_patch(
-                local_tree, dirty_tracker, subpath,
+                local_tree, basis_tree, dirty_tracker, subpath,
                 result.patch_name or fixer.name,
                 result.description, timestamp=timestamp)
         except BaseException:
-            reset_tree(local_tree, dirty_tracker, subpath,
-                       basis_tree=basis_tree)
+            reset_tree(local_tree, basis_tree, subpath,
+                       dirty_tracker=dirty_tracker)
             raise
 
         summary = 'Add patch %s: %s' % (patch_name, summary)
