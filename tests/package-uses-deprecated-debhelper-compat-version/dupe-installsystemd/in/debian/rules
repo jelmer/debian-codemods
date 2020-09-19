@@ -1,0 +1,9 @@
+all:
+	dh_clean -k
+	dh --with=systemd,blah --buildsystem=python_distutils
+
+override_dh_systemd_start:
+	dh_systemd_start -pracoon
+
+override_dh_systemd_enable:
+	dh_systemd_enable -pracoon

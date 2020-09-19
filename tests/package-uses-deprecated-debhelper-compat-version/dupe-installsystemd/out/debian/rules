@@ -1,0 +1,5 @@
+all:
+	dh --with=blah --buildsystem=python_distutils
+
+override_dh_installsystemd:
+	dh_installsystemd -pracoon

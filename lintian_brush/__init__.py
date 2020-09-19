@@ -843,7 +843,8 @@ def run_lintian_fixer(local_tree: WorkingTree,
 
     # If there are upstream changes in a non-native package, perhaps
     # export them to debian/patches
-    if has_non_debian_changes(changes, subpath) and current_version.debian_revision:
+    if (has_non_debian_changes(changes, subpath) and
+            current_version.debian_revision):
         try:
             patch_name, specific_files = _upstream_changes_to_patch(
                 local_tree, basis_tree, dirty_tracker, subpath,

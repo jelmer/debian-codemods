@@ -1,0 +1,7 @@
+all:
+	dh_prep
+	dh --with=blah --buildsystem=pybuild
+
+override_dh_clean:
+	dh_clean -O--buildsystem=pybuild
+	rm -rf build

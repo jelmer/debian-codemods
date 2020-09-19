@@ -1,0 +1,21 @@
+all:
+	dh_prep
+	dh --with=blah --buildsystem=pybuild
+
+
+override_dh_clean:
+	dh_clean -O--buildsystem=pybuild
+	rm -rf build
+
+override_dh_install_changelogs:
+	dh_install_changelogs -a
+
+override_dh_installinit:
+	dh_installinit -R -pracoon -- start 40 S . stop 07 0 1 6 .
+	dh_installinit -R -pipsec-tools --name=setkey --no-start -- start 14 S .
+
+override_dh_installsystemd:
+	dh_installsystemd -pracoon
+
+override_dh_missing:
+	dh_missing --fail-missing

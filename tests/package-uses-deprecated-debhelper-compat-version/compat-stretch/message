@@ -1,0 +1,2 @@
+Bump debhelper from deprecated 8 to 10.
+Fixed-Lintian-Tags: package-uses-deprecated-debhelper-compat-version

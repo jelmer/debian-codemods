@@ -1,0 +1,22 @@
+all:
+	dh_clean -k
+	dh --with=systemd,blah --buildsystem=python_distutils
+
+
+# This comment will also be removed, since it relates to override_dh_install.
+override_dh_install:
+	dh_install --fail-missing --list-missing
+
+override_dh_clean:
+	dh_clean -O--buildsystem=python_distutils
+	rm -rf build
+
+override_dh_install_changelogs:
+	dh_install_changelogs -s
+
+override_dh_installinit:
+	dh_installinit -R -pracoon -- start 40 S . stop 07 0 1 6 .
+	dh_installinit -R -pipsec-tools --name=setkey --no-start -- start 14 S .
+
+override_dh_systemd_enable:
+	dh_systemd_enable -pracoon

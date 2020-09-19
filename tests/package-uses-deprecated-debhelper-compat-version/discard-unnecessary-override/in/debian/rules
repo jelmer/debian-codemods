@@ -1,0 +1,10 @@
+all:
+	dh_clean -k
+	dh --with=systemd,blah --buildsystem=python_distutils
+
+override_dh_install:
+	dh_install --list-missing
+
+override_dh_clean:
+	dh_clean -O--buildsystem=python_distutils
+	rm -rf build

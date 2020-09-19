@@ -1,0 +1,8 @@
+Bump debhelper from deprecated 8 to 12.
++ Replace deprecated -s with -a.
++ Replace python_distutils buildsystem with pybuild.
++ Use dh_installsystemd rather than deprecated dh_systemd_enable.
++ debian/rules: Move --fail-missing argument to dh_missing.
++ debian/rules: Rely on default use of dh_missing rather than using dh_install --list-missing.
++ debian/rules: Replace dh_clean -k with dh_prep.
+Fixed-Lintian-Tags: package-uses-deprecated-debhelper-compat-version

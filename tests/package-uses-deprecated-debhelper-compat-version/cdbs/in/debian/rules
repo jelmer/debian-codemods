@@ -1,0 +1,14 @@
+include /usr/share/cdbs/1/class/autotools.mk
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/rules/utils.mk
+
+all:
+	dh_clean -k
+	dh --with=systemd,blah --buildsystem=python_distutils
+
+override_dh_install:
+	dh_install --fail-missing --list-missing
+
+override_dh_clean:
+	dh_clean -O--buildsystem=python_distutils
+	rm -rf build
