@@ -542,16 +542,27 @@ def only_changes_last_changelog_block(
       boolean
     """
     with tree.lock_read(), basis_tree.lock_read():
+        changes_seen = False
         for change in changes:
-            if change.path == ('', ''):
+            if change.path[1] == '':
                 continue
-            if change.path != (changelog_path, changelog_path):
-                return False
-            break
-        else:
+            if change.path[1] == changelog_path:
+                changes_seen = True
+                continue
+            if (not tree.has_versioned_directories() and
+                    is_inside(change.path[1], changelog_path)):
+                continue
             return False
-        new_cl = Changelog(tree.get_file_text(changelog_path))
-        old_cl = Changelog(basis_tree.get_file_text(changelog_path))
+        if not changes_seen:
+            return False
+        try:
+            new_cl = Changelog(tree.get_file_text(changelog_path))
+        except NoSuchFile:
+            return False
+        try:
+            old_cl = Changelog(basis_tree.get_file_text(changelog_path))
+        except NoSuchFile:
+            return True
         if old_cl.distributions != "UNRELEASED":
             return False
         del new_cl._blocks[0]

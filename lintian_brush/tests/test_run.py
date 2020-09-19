@@ -692,6 +692,24 @@ blah (0.1) unstable; urgency=medium
         self.assertTrue(only_changes_last_changelog_block(
             tree, tree.basis_tree(), 'debian/changelog', changes))
 
+    def test_only_new_changelog(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/changelog', """\
+blah (0.1) unstable; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+""")])
+        basis_tree = tree.basis_tree()
+        with tree.lock_write(), basis_tree.lock_read():
+            tree.add(['debian', 'debian/changelog'])
+            changes = tree.iter_changes(basis_tree)
+            self.assertTrue(only_changes_last_changelog_block(
+                tree, basis_tree, 'debian/changelog', changes))
+
     def test_changes_to_last_only_but_released(self):
         tree = self.make_package_tree()
         self.build_tree_contents([
