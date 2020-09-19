@@ -375,7 +375,7 @@ def main(argv=None):
             minimum_certainty=minimum_certainty,
             dirty_tracker=dirty_tracker,
             subpath=subpath, allow_reformatting=allow_reformatting,
-            net_access=True)
+            net_access=True, changes_by="apply-multiarch-hints")
     except NoChanges:
         note('Nothing to do.')
     except NotDebianPackage:

@@ -724,7 +724,8 @@ def run_lintian_fixer(local_tree: WorkingTree,
                       opinionated: Optional[bool] = None,
                       diligence: int = 0,
                       timestamp: Optional[datetime] = None,
-                      basis_tree: Optional[Tree] = None):
+                      basis_tree: Optional[Tree] = None,
+                      changes_by: str = "lintian-brush"):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -867,7 +868,7 @@ def run_lintian_fixer(local_tree: WorkingTree,
 
     description = result.description + "\n"
     description += "\n"
-    description += "Changes-By: lintian-brush\n"
+    description += "Changes-By: %s\n" % changes_by
     for tag in result.fixed_lintian_tags:
         description += "Fixes: lintian: %s\n" % tag
         description += (

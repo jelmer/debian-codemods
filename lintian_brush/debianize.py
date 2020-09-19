@@ -162,7 +162,7 @@ def main(argv=None):
 
     use_inotify = (False if args.disable_inotify else None),
     try:
-        check_clean_tree(wt)
+        check_clean_tree(wt, wt.basis_tree(), subpath)
     except PendingChanges:
         note("%s: Please commit pending changes first.", wt.basedir)
         return 1
