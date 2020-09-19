@@ -91,10 +91,6 @@ def main(argv=None):
     breezy.initialize()
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
-    from breezy.plugins.debian.upstream.branch import (
-        upstream_branch_version,
-        upstream_version_add_revision,
-        )
     from breezy import osutils
     from breezy.commit import NullCommitReporter
 
@@ -206,18 +202,25 @@ def main(argv=None):
         wnpp_bugs = None
 
     with wt.lock_write():
-        upstream_version = upstream_branch_version(
-            wt.branch, wt.last_revision(), source_name)
-        if upstream_version is None and 'X-Version' in metadata:
-            # They haven't done any releases yet. Assume we're ahead of the
-            # next announced release?
-            next_upstream_version = metadata['X-Version']
-            upstream_version = upstream_version_add_revision(
-                wt.branch, next_upstream_version, wt.last_revision(),
-                '~')
+        try:
+            from breezy.plugins.debian.upstream.branch import (
+                upstream_branch_version,
+                upstream_version_add_revision,
+                )
+        except ModuleNotFoundError:
+            note('Install breezy-debian for upstream version guessing.')
+        else:
+            upstream_version = upstream_branch_version(
+                wt.branch, wt.last_revision(), source_name)
+            if upstream_version is None and 'X-Version' in metadata:
+                # They haven't done any releases yet. Assume we're ahead of the
+                # next announced release?
+                next_upstream_version = metadata['X-Version']
+                upstream_version = upstream_version_add_revision(
+                    wt.branch, next_upstream_version, wt.last_revision(),
+                    '~')
         if upstream_version is None:
-            note('Unable to determine upstream version.')
-            return 1
+            note('Unable to determine upstream version, using 0.')
 
         version = Version(upstream_version + '-1')
         source = Deb822()
