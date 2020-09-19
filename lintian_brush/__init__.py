@@ -652,10 +652,11 @@ def check_clean_tree(
         raise PendingChanges(local_tree, subpath)
 
 
-def has_non_debian_changes(changes):
+def has_non_debian_changes(changes, subpath):
     for change in changes:
         for path in change.path:
-            if path and not is_inside('debian', path):
+            if path and not is_inside(
+                    os.path.join(subpath, 'debian'), path):
                 return True
     return False
 
@@ -842,7 +843,7 @@ def run_lintian_fixer(local_tree: WorkingTree,
 
     # If there are upstream changes in a non-native package, perhaps
     # export them to debian/patches
-    if has_non_debian_changes(changes) and current_version.debian_revision:
+    if has_non_debian_changes(changes, subpath) and current_version.debian_revision:
         try:
             patch_name, specific_files = _upstream_changes_to_patch(
                 local_tree, basis_tree, dirty_tracker, subpath,
