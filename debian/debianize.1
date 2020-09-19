@@ -1,0 +1,30 @@
+.TH debianize "1" "September 2020" "lintian-brush 0.1" "User Commands"
+.SH NAME
+debianize \- generate a Debian directory for a package
+.SH SYNOPSIS
+debianize
+.SH DESCRIPTION
+This experimental command gathers information about a package and generates
+skeleton Debian control files for it. It will fill in the fields for which it
+can find a reasonable value, and leave the other fields unset.
+.PP
+Most of the heavy-lifting is done by the scripts that power lintian-brush\fB(1)\fR.
+.IP
+.SS "optional arguments:"
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+show this help message and exit
+.TP
+\fB\-\-no\-update\-changelog\fR
+Whether to update the changelog.
+.TP
+\fB\-\-version\fR
+show program's version number and exit
+.TP
+\fB\-\-verbose\fR
+Print list of fixers that was run and print tracebacks for failed fixers.
+.SH "SEE ALSO"
+\&\fIlintian-brush.conf\fR\|(5)
+\&\fIlintian-brush\fR\|(1)
+.SH AUTHORS
+Jelmer Vernooij <jelmer@debian.org>

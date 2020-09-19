@@ -11,6 +11,7 @@ lintian-brush (0.78) UNRELEASED; urgency=medium
   * Fix branch from vcswatch in --diligent mode.
   * apply-multiarch-hints: fix Changes-by field.
   * debianize: Make breezy-debian optional.
+  * Add debianize(1) manpage.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 08 Sep 2020 00:52:37 +0000
 
