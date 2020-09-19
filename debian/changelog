@@ -1,4 +1,4 @@
-lintian-brush (0.78) UNRELEASED; urgency=medium
+lintian-brush (0.78) unstable; urgency=medium
 
   * Support creating patches to upstreams in the case when there are no
     existing upstream patches.
@@ -13,7 +13,7 @@ lintian-brush (0.78) UNRELEASED; urgency=medium
   * debianize: Make breezy-debian optional.
   * Add debianize(1) manpage.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 08 Sep 2020 00:52:37 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 19 Sep 2020 18:01:20 +0000
 
 lintian-brush (0.77) unstable; urgency=medium
 

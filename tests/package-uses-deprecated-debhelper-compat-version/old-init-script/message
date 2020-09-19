@@ -1,3 +1,0 @@
-Bump debhelper from deprecated 9 to 13.
-+ Rename debian/blah to debian/blah.init.
-Fixed-Lintian-Tags: package-uses-deprecated-debhelper-compat-version
