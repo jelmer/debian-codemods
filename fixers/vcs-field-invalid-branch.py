@@ -26,12 +26,16 @@ if diligence() < 1:
 from lintian_brush.vcswatch import VcsWatch, VcsWatchError
 
 
-def get_default_branch(url):
+def get_default_branch(url, branch=None):
     from dulwich.client import get_transport_and_path
     c, p = get_transport_and_path(url)
     result = c.fetch_pack(p, lambda rs: [], None, None)
+    if branch is not None:
+        ref = b'refs/headss' + branch.encode('utf-8')
+    else:
+        ref = b'HEAD'
     try:
-        head = result.symrefs[b'HEAD']
+        head = result.symrefs[ref]
     except KeyError:
         return None
     if not head.startswith(b'refs/heads/'):
@@ -62,8 +66,7 @@ with ControlEditor() as updater:
         else:
             if branch != new_branch:
                 default_branch = get_default_branch(repo_url)
-                raise ValueError(default_branch)
-                if opinionated() or default_branch != branch:
+                if opinionated() or new_branch not in (default_branch, branch):
                     updater.source['Vcs-Git'] = unsplit_vcs_url(
                         repo_url, new_branch, subpath)
                     vcs_browser = determine_browser_url(
