@@ -52,6 +52,7 @@ Supported, but unused.
 """
 
 import json
+import operator
 import os
 import re
 import socket
@@ -189,6 +190,23 @@ def get_sf_metadata(project):
         if e.status != 404:
             raise
         raise NoSuchSourceForgeProject(project)
+
+
+class NoSuchRepologyProject(Exception):
+
+    def __init__(self, project):
+        self.project = project
+
+
+def get_repology_metadata(srcname, repo='debian_unstable'):
+    url = ('https://repology.org/tools/project-by?repo=%s&name_type=srcname'
+           '&target_page=api_v1_project&name=%s' % (repo, srcname))
+    try:
+        return _load_json_url(url)
+    except urllib.error.HTTPError as e:
+        if e.status != 404:
+            raise
+        raise NoSuchRepologyProject(srcname)
 
 
 def guess_repo_from_url(url, net_access=False):
@@ -1365,6 +1383,45 @@ def guess_from_sf(sf_project):
             yield 'Repository', url
 
 
+def guess_from_repology(repology_project):
+    try:
+        metadata = get_repology_metadata(repology_project)
+    except socket.timeout:
+        warn('timeout contacting repology, ignoring: %s' % repology_project)
+        return
+
+    fields = {}
+
+    def _add_field(name, value, add):
+        fields.setdefault(name, {})
+        fields[name].setdefault(value, 0)
+        fields[name][value] += add
+
+    for entry in metadata:
+        if entry.get('status') == 'outdated':
+            score = 1
+        else:
+            score = 10
+
+        if 'www' in entry:
+            for www in entry['www']:
+                _add_field('Homepage', www, score)
+
+        if 'licenses' in entry:
+            for license in entry['licenses']:
+                _add_field('X-License', license, score)
+
+        if 'summary' in entry:
+            _add_field('X-Summary', entry['summary'], score)
+
+        if 'downloads' in entry:
+            for download in entry['downloads']:
+                _add_field('X-Download', download, score)
+
+    for field, scores in fields.items():
+        yield field, max(scores, key=operator.itemgetter(1))
+
+
 def extend_from_external_guesser(
         upstream_metadata, guesser_certainty, guesser_fields, guesser):
     if not _possible_fields_missing(
@@ -1375,6 +1432,21 @@ def extend_from_external_guesser(
         upstream_metadata,
         [UpstreamDatum(key, value, guesser_certainty)
          for (key, value) in guesser])
+
+
+def extend_from_repology(upstream_metadata, minimum_certainty, source_package):
+    # The set of fields that sf can possibly provide:
+    repology_fields = ['Homepage', 'X-License', 'X-Summary', 'X-Download']
+    certainty = 'confident'
+
+    if certainty_sufficient(certainty, minimum_certainty):
+        # Don't bother talking to repology if we're not
+        # speculating.
+        return
+
+    return extend_from_external_guesser(
+        upstream_metadata, certainty, repology_fields,
+        guess_from_repology(source_package))
 
 
 def extend_from_sf(upstream_metadata, sf_project):
@@ -1797,6 +1869,7 @@ def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
         else:
             extend_from_lp(upstream_metadata, minimum_certainty, package)
             extend_from_aur(upstream_metadata, minimum_certainty, package)
+            extend_from_repology(upstream_metadata, minimum_certainty, package)
     pecl_url = upstream_metadata.get('X-Pecl-URL')
     if net_access and pecl_url:
         extend_from_pecl(upstream_metadata, pecl_url.value, pecl_url.certainty)
