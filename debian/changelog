@@ -1,6 +1,7 @@
 lintian-brush (0.79) UNRELEASED; urgency=medium
 
   * Add fixer for papt-dpmt-merged.
+  * Add fixers for old-dpmt-vcs and old-papt-vcs.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 25 Sep 2020 13:22:41 +0000
 

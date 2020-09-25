@@ -1380,8 +1380,6 @@
 - tag: wrong-name-for-upstream-changelog
 - tag: wrong-path-for-interpreter
 - tag: wrong-section-for-udeb
-- tag: wrong-vcs-location-for-dpmt
-- tag: wrong-vcs-location-for-papt
 - tag: zero-byte-executable-in-path
 - tag: zero-byte-file-in-doc-directory
 - tag: zip-parse-error
