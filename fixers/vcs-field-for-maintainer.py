@@ -26,12 +26,11 @@ with ControlEditor() as editor:
         for field in [f for f in editor.source if f.startswith('Vcs-')]:
             url = editor.source[field]
             for old, new in replacements:
-                newurl = url.replace(old, new)
-                if newurl != url:
-                    editor.source[field] = newurl
-                    changed_fields.add(field)
-                    fixed_lintian_tag(editor.source, tag, info='')
-                url = newurl
+                url = url.replace(old, new)
+            if url != editor.source[field]:
+                editor.source[field] = url
+                changed_fields.add(field)
+                fixed_lintian_tag(editor.source, tag, info='')
 
     report_result('Update fields %s for maintainer %s.' % (
                   ', '.join(sorted(changed_fields)), maint))

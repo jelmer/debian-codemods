@@ -1844,7 +1844,7 @@ def _version_in_tags(version, tag_names):
     return False
 
 
-def probe_upstream_branch_url(url, version=None):
+def probe_upstream_branch_url(url: str, version=None):
     parsed = urlparse(url)
     if parsed.scheme in ('git+ssh', 'ssh', 'bzr+ssh'):
         # Let's not probe anything possibly non-public.
