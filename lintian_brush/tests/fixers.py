@@ -70,7 +70,7 @@ class FixerTestCase(unittest.TestCase):
         xfail_path = os.path.join(self._path, 'xfail')
         if os.path.exists(xfail_path):
             with open(xfail_path, 'r') as f:
-                reason = f.read()
+                reason = f.read()  # noqa: F841
             unittest.expectedFailure(self)
             return
         env = dict(os.environ.items())
