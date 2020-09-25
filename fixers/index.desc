@@ -152,6 +152,9 @@ Lintian-Tags: init.d-script-needs-depends-on-lsb-base
 Fix-Script: maintainer-also-in-uploaders.py
 Lintian-Tags: maintainer-also-in-uploaders
 
+Fix-Script: papt-dpmt-merged.py
+Lintian-Tags: papt-dpmt-merged
+
 Fix-Script: source-format.py
 Lintian-Tags:
   older-source-format,
