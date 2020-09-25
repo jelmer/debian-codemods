@@ -1,3 +1,10 @@
+lintian-brush (0.80) UNRELEASED; urgency=medium
+
+  * Fix changelog update detection when running lintian-brush in shallow
+    git repositories.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 25 Sep 2020 14:34:27 +0000
+
 lintian-brush (0.79) unstable; urgency=medium
 
   * Add fixer for papt-dpmt-merged.

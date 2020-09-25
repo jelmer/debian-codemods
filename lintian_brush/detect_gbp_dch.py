@@ -21,11 +21,11 @@
 from debian.changelog import Changelog
 import itertools
 import re
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 from breezy import osutils
 from breezy.branch import Branch
-from breezy.errors import NoSuchFile
+from breezy.errors import NoSuchFile, RevisionNotPresent
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 
@@ -119,6 +119,22 @@ def _guess_update_changelog_from_tree(
     return None
 
 
+def _greedy_revisions(graph, revid, length) -> Tuple[List[bytes], bool]:
+    ret: List[bytes] = []
+    it = graph.iter_lefthand_ancestry(revid)
+    while it and len(ret) < length:
+        try:
+            ret.append(next(it))
+        except StopIteration:
+            break
+        except RevisionNotPresent:
+            if ret:
+                ret.pop(-1)
+            # Shallow history
+            return ret, True
+    return ret, False
+
+
 def _changelog_stats(branch, history, subpath):
     mixed = 0
     changelog_only = 0
@@ -126,13 +142,13 @@ def _changelog_stats(branch, history, subpath):
     dch_references = 0
     with branch.lock_read():
         graph = branch.repository.get_graph()
-        revids = list(itertools.islice(
-            graph.iter_lefthand_ancestry(branch.last_revision()), history))
+        revids, truncated = _greedy_revisions(
+            graph, branch.last_revision(), history)
         revs = []
         for revid, rev in branch.repository.iter_revisions(revids):
             if rev is None:
                 # Ghost
-                continue
+                break
             if 'Git-Dch: ' in rev.message:
                 dch_references += 1
             revs.append(rev)
