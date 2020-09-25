@@ -67,6 +67,12 @@ class FixerTestCase(unittest.TestCase):
         self._tempdir = None
 
     def runTest(self):
+        xfail_path = os.path.join(self._path, 'xfail')
+        if os.path.exists(xfail_path):
+            with open(xfail_path, 'r') as f:
+                reason = f.read()
+            unittest.expectedFailure(self)
+            return
         env = dict(os.environ.items())
         cl_path = os.path.join(self._testdir, 'debian/changelog')
         if os.path.exists(cl_path):
