@@ -141,3 +141,7 @@ def override_exists(
 
 def diligence():
     return int(os.environ.get('DILIGENCE', '0'))
+
+
+def source_package_name():
+    return os.environ.get('PACKAGE')
