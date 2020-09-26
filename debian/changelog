@@ -4,6 +4,7 @@ lintian-brush (0.80) UNRELEASED; urgency=medium
     git repositories.
   * Add guessing from repology. Closes: #959827
   * Add fixer for maintainer-script-empty.
+  * Add deb-scrub-obsolete script for removing obsolete version constraints.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 25 Sep 2020 14:34:27 +0000
 

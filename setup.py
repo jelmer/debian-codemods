@@ -37,6 +37,8 @@ setup(
             'apply-multiarch-hints=lintian_brush.multiarch_hints:main',
             ('guess-upstream-metadata='
              'lintian_brush.upstream_metadata.__main__:main'),
+            ('deb-scrub-obsolete='
+             'lintian_brush.scrub_obsolete.main'),
             ]
     },
     test_suite='lintian_brush.tests.test_suite',
