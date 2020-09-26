@@ -19,7 +19,6 @@
 
 
 from debian.changelog import Changelog
-import itertools
 import re
 from typing import Optional, Tuple, List
 
