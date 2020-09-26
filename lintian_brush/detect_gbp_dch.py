@@ -118,10 +118,11 @@ def _guess_update_changelog_from_tree(
     return None
 
 
-def _greedy_revisions(graph, revid, length) -> Tuple[List[bytes], bool]:
+def _greedy_revisions(
+        graph, revid: bytes, length: int) -> Tuple[List[bytes], bool]:
     ret: List[bytes] = []
     it = graph.iter_lefthand_ancestry(revid)
-    while it and len(ret) < length:
+    while len(ret) < length:
         try:
             ret.append(next(it))
         except StopIteration:
@@ -134,7 +135,7 @@ def _greedy_revisions(graph, revid, length) -> Tuple[List[bytes], bool]:
     return ret, False
 
 
-def _changelog_stats(branch, history, subpath):
+def _changelog_stats(branch: Branch, history: int, subpath: str):
     mixed = 0
     changelog_only = 0
     other_only = 0
@@ -147,7 +148,7 @@ def _changelog_stats(branch, history, subpath):
         for revid, rev in branch.repository.iter_revisions(revids):
             if rev is None:
                 # Ghost
-                break
+                continue
             if 'Git-Dch: ' in rev.message:
                 dch_references += 1
             revs.append(rev)
