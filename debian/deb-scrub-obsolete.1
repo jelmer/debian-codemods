@@ -1,0 +1,32 @@
+.TH deb-scrub-obsolete "1" "September 2020" "deb-scrub-obsolete 0.1" "User Commands"
+.SH NAME
+deb-scrub-obsolete \- scrub a Debian package of no longer necessary configuration
+.SH SYNOPSIS
+deb\-scrub\-obsolete [\-h] [\-\-no\-update\-changelog] [\-\-version] [\-\-upgrade\-release=RELEASE]
+.SH DESCRIPTION
+Scrub a Debian source package from unnecessary versioned depends, conflicts and maintscripts.
+.IP
+.SS "optional arguments:"
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+show this help message and exit
+.TP
+\fB\-\-no\-update\-changelog\fR
+Whether to update the changelog.
+.TP
+\fB\-\-version\fR
+show program's version number and exit
+.TP
+\fB\-\-upgrade\-release=RELEASE\fR
+Don't remove any constraints that are necessary for upgrading from RELEASE or newer releases.
+.TP
+\fB\-\-identity\fR
+Print the identity (name and e\-mailaddress) that apply-multiarch-hints will use when committing changes, and exit.
+.TP
+\fB\-\-verbose\fR
+Print list of fixers that was run and print tracebacks for failed fixers.
+.SH "SEE ALSO"
+\&\fIlintian-brush.conf\fR\|(5)
+\&\fIlintian-brush\fR\|(1)
+.SH AUTHORS
+Jelmer Vernooij <jelmer@debian.org>

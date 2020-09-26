@@ -21,6 +21,8 @@
 import asyncio
 import os
 
+from breezy.trace import note
+
 try:
     from debmutate.debhelper import MaintscriptEditor
 except ImportError:
@@ -36,6 +38,20 @@ from debmutate.control import (
     )
 
 from .changelog import add_changelog_entry
+
+
+_changelog_policy_noted = False
+
+
+def _note_changelog_policy(policy, msg):
+    global _changelog_policy_noted
+    if not _changelog_policy_noted:
+        if policy:
+            extra = 'Specify --no-update-changelog to override.'
+        else:
+            extra = 'Specify --update-changelog to override.'
+        note('%s %s', msg, extra)
+    _changelog_policy_noted = True
 
 
 def drop_old_maintscript(editor, package_name, upgrade_release):
@@ -214,10 +230,13 @@ def drop_old_relations(editor, upgrade_release):
 def update_maintscripts(wt, path, package, upgrade_release):
     ret = []
     for entry in os.scandir(wt.abspath(os.path.join(path, 'debian'))):
-        with MaintscriptEditor(path) as editor:
+        if not (entry.name == 'maintscript' or
+                entry.name.endswith('.maintscript')):
+            continue
+        with MaintscriptEditor(entry.path) as editor:
             removed = drop_old_maintscript(editor, package, upgrade_release)
             if removed:
-                ret.append((path, removed))
+                ret.append((os.path.join(path, 'debian', entry.name), removed))
     return ret
 
 
@@ -277,8 +296,7 @@ def main():
     debian_info = distro_info.DebianDistroInfo()
     upgrade_release = debian_info.codename(args.upgrade_release)
 
-    summary = ['Remove unnecessary constraints unnecessary since %s:' %
-               upgrade_release]
+    summary = []
 
     specific_files = []
 
@@ -291,20 +309,24 @@ def main():
             for field, packages in changes:
                 if para:
                     summary.append(
-                        '+ %s: Drop versioned constraint on %s in %s.' % (
-                            para, ', '.join(packages), field))
+                        '%s: Drop versioned constraint on %s in %s.' % (
+                         para, ', '.join(packages), field))
                 else:
                     summary.append(
-                        '+ %s: Drop versioned constraint on %s.' % (
-                            field, ', '.join(packages)))
+                        '%s: Drop versioned constraint on %s.' % (
+                         field, ', '.join(packages)))
 
     if MaintscriptEditor:
         for path, removed in update_maintscripts(
                 wt, subpath, package, upgrade_release):
             if removed:
                 summary.append(
-                    '+ Remove %d maintscript entries.' % len(removed))
+                    'Remove %d maintscript entries.' % len(removed))
                 specific_files.append(path)
+
+    if not specific_files:
+        raise ValueError(specific_files)
+        return 0
 
     update_changelog = args.update_changelog
     try:
@@ -314,13 +336,33 @@ def main():
     else:
         if update_changelog is None:
             update_changelog = cfg.update_changelog()
+    changelog_path = os.path.join(subpath, 'debian/changelog')
+
+    if update_changelog is None:
+        from .detect_gbp_dch import guess_update_changelog
+        from debian.changelog import Changelog
+        with wt.get_file(changelog_path) as f:
+            cl = Changelog(f, max_blocks=1)
+
+        dch_guess = guess_update_changelog(wt, subpath, cl)
+        if dch_guess:
+            update_changelog = dch_guess[0]
+            _note_changelog_policy(update_changelog, dch_guess[1])
+        else:
+            # Assume we should update changelog
+            update_changelog = True
 
     if update_changelog:
-        changelog_path = os.path.join(subpath, 'debian/changelog')
-        add_changelog_entry(wt, changelog_path, summary)
+        add_changelog_entry(
+            wt, changelog_path,
+            ['Remove constraints unnecessary since %s:' %
+             upgrade_release] + ['+ ' + line for line in summary])
         specific_files.append(changelog_path)
 
-    message = '\n'.join(summary + ['', 'Changes-By: deb-scrub-deprecated'])
+    message = '\n'.join([
+        'Remove constraints unnecessary since %s.' % upgrade_release, ''] +
+        ['* ' + line for line in summary] +
+        ['', 'Changes-By: deb-scrub-obsolete'])
 
     committer = get_committer(wt)
 
