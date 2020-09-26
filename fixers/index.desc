@@ -427,3 +427,6 @@ Lintian-Tags: binary-control-field-duplicates-source
 
 Fix-Script: rules-requires-root-missing.py
 Lintian-Tags: silent-on-rules-requiring-root
+
+Fix-Script: maintainer-script-empty.py
+Lintian-Tags: maintainer-script-empty

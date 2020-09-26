@@ -3,6 +3,7 @@ lintian-brush (0.80) UNRELEASED; urgency=medium
   * Fix changelog update detection when running lintian-brush in shallow
     git repositories.
   * Add guessing from repology. Closes: #959827
+  * Add fixer for maintainer-script-empty.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 25 Sep 2020 14:34:27 +0000
 

@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# ###  Username availability is checked on install step.
+#
+
+set -e
+
+##echo "----------------------------------------------"
+##echo " debian/prerm: $1"
+##echo "----------------------------------------------"
+
+#DEBHELPER#
+

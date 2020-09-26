@@ -1,0 +1,2 @@
+Remove empty maintainer scripts: mon (prerm)
+Fixed-Lintian-Tags: maintainer-script-empty
