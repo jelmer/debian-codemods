@@ -62,6 +62,7 @@ subset of the issues:
 * debian-tests-control-and-control-autodep8
 * debian-tests-control-autodep8-is-obsolete
 * debian-upstream-obsolete-path
+* debian-watch-contains-dh_make-template
 * debian-watch-file-is-missing
 * debian-watch-file-uses-deprecated-githubredir
 * debian-watch-uses-insecure-uri
