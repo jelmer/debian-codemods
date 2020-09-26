@@ -88,6 +88,7 @@ subset of the issues:
 * libmodule-build-perl-needs-to-be-in-build-depends
 * license-file-listed-in-debian-copyright
 * maintainer-also-in-uploaders
+* maintainer-script-empty
 * maintainer-script-without-set-e
 * malformed-dm-upload-allowed
 * missing-build-dependency-for-dh-addon
@@ -100,7 +101,9 @@ subset of the issues:
 * no-homepage-field
 * obsolete-field-in-dep5-copyright
 * obsolete-runtime-tests-restriction
+* old-dpmt-vcs
 * old-fsf-address-in-copyright-file
+* old-papt-vcs
 * old-source-override-location
 * older-source-format
 * out-of-date-copyright-format-uri
@@ -110,6 +113,7 @@ subset of the issues:
 * package-needs-versioned-debhelper-build-depends
 * package-uses-deprecated-debhelper-compat-version
 * package-uses-old-debhelper-compat-version
+* papt-dpmt-merged
 * patch-file-present-but-not-mentioned-in-series
 * possible-missing-colon-in-closes
 * priority-extra-is-replaced-by-priority-optional
