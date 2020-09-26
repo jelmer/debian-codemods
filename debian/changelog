@@ -5,6 +5,7 @@ lintian-brush (0.80) UNRELEASED; urgency=medium
   * Add guessing from repology. Closes: #959827
   * Add fixer for maintainer-script-empty.
   * Add deb-scrub-obsolete script for removing obsolete version constraints.
+  * Add fixer for debian-watch-contains-dh_make-template.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 25 Sep 2020 14:34:27 +0000
 

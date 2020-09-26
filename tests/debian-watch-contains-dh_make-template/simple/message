@@ -1,0 +1,2 @@
+Remove dh_make template from debian watch.
+Fixed-Lintian-Tags: debian-watch-contains-dh_make-template

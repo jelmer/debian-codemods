@@ -119,6 +119,9 @@ Lintian-Tags: debian-upstream-obsolete-path
 Fix-Script: debian-watch-uses-insecure-uri.py
 Lintian-Tags: debian-watch-uses-insecure-uri
 
+Fix-Script: debian-watch-contains-dh_make-template.py
+Lintian-Tags: debian-watch-contains-dh_make-template
+
 Fix-Script: dep5-file-paragraph-references-header-paragraph.py
 Lintian-Tags: dep5-file-paragraph-references-header-paragraph
 
