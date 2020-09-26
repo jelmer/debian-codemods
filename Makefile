@@ -5,7 +5,7 @@ check:: style testsuite tag-status
 FIXERS = $(patsubst fixers/%.sh,%,$(wildcard fixers/*.sh)) $(patsubst fixers/%.py,%,$(wildcard fixers/*.py))
 
 $(patsubst %,check-fixer-%,$(FIXERS)): check-fixer-%:
-	PYTHONPATH=$(PWD) python3 -m lintian_brush.tests.fixers --fixer=$*
+	PYTHONPATH=$(PWD):$(PYTHONPATH) python3 -m lintian_brush.tests.fixers --fixer=$*
 
 .PHONY: style testsuite unsupported
 
