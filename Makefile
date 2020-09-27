@@ -33,11 +33,7 @@ lintian-brush-tags:
 	PYTHONPATH=$(PWD) python3 -m lintian_brush --list-tags 2> lintian-brush-tags
 
 unsupported: lintian-tags lintian-brush-tags
-	awk 'NR==FNR{a[$$0]=1;next}!a[$$0]' lintian-brush-tags lintian-tags $@
-
-candidates: lintian-tags lintian-brush-tags
-	awk 'NR==FNR{a[$$0]=1;next}!a[$$0]' lintian-brush-tags lintian-tags > unsupported
-	awk 'NR==FNR{a[$$0]=1;next}!a[$$0]' hard unsupported
+	awk 'NR==FNR{a[$$0]=1;next}!a[$$0]' lintian-brush-tags lintian-tags
 
 update-readme:
 	brz diff README.md
