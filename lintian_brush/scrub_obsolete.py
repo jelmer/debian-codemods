@@ -240,6 +240,56 @@ def update_maintscripts(wt, path, package, upgrade_release):
     return ret
 
 
+class ScrubObsoleteResult(object):
+
+    def __init__(self, specific_files, maintscript_removed,
+                 control_removed):
+        self.specific_files = specific_files
+        self.maintscript_removed = maintscript_removed
+        self.control_removed = control_removed
+
+    def __bool__(self):
+        return bool(self.control_removed) or bool(self.maintscript_removed)
+
+    def itemized(self):
+        summary = []
+        for para, changes in self.control_removed:
+            for field, packages in changes:
+                if para:
+                    summary.append(
+                        '%s: Drop versioned constraint on %s in %s.' % (
+                         para, ', '.join(packages), field))
+                else:
+                    summary.append(
+                        '%s: Drop versioned constraint on %s.' % (
+                         field, ', '.join(packages)))
+        if self.maintscript_removed:
+            summary.append('Remove %d maintscript entries.' %
+                           len(self.maintscript_removed))
+        return summary
+
+
+def scrub_obsolete(wt, subpath, upgrade_release):
+    specific_files = []
+    control_path = os.path.join(subpath, 'debian/control')
+    with ControlEditor(wt.abspath(control_path)) as editor:
+        specific_files.append(control_path)
+        package = editor.source['Source']
+        control_removed = drop_old_relations(editor, upgrade_release)
+
+    maintscript_removed = []
+    for path, removed in update_maintscripts(
+            wt, subpath, package, upgrade_release):
+        if removed:
+            maintscript_removed.append((path, removed))
+            specific_files.append(path)
+
+    return ScrubObsoleteResult(
+        specific_files=specific_files,
+        control_removed=control_removed,
+        maintscript_removed=maintscript_removed)
+
+
 def main():
     import argparse
     import os
@@ -296,37 +346,12 @@ def main():
     debian_info = distro_info.DebianDistroInfo()
     upgrade_release = debian_info.codename(args.upgrade_release)
 
-    summary = []
-
-    specific_files = []
-
-    control_path = os.path.join(subpath, 'debian/control')
-    with ControlEditor(wt.abspath(control_path)) as editor:
-        specific_files.append(control_path)
-        package = editor.source['Source']
-        dropped = drop_old_relations(editor, upgrade_release)
-        for para, changes in dropped:
-            for field, packages in changes:
-                if para:
-                    summary.append(
-                        '%s: Drop versioned constraint on %s in %s.' % (
-                         para, ', '.join(packages), field))
-                else:
-                    summary.append(
-                        '%s: Drop versioned constraint on %s.' % (
-                         field, ', '.join(packages)))
-
-    if MaintscriptEditor:
-        for path, removed in update_maintscripts(
-                wt, subpath, package, upgrade_release):
-            if removed:
-                summary.append(
-                    'Remove %d maintscript entries.' % len(removed))
-                specific_files.append(path)
-
-    if not specific_files:
-        raise ValueError(specific_files)
+    result = scrub_obsolete(wt, subpath, upgrade_release)
+    if not result:
         return 0
+
+    specific_files = list(result.specific_files)
+    summary = result.itemized()
 
     update_changelog = args.update_changelog
     try:
