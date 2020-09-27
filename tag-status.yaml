@@ -23,7 +23,6 @@
 - tag: alternatively-build-depends-on-python-sphinx-and-python3-sphinx
 - tag: ambiguous-paragraph-in-dep5-copyright
 - tag: ancient-libtool
-- tag: ancient-standards-version
 - tag: apache2-configuration-files-need-conf-suffix
 - tag: apache2-deprecated-auth-config
 - tag: apache2-module-does-not-depend-on-apache2-api
@@ -1021,6 +1020,7 @@
 - tag: package-placeholder-in-symbols-file
 - tag: package-relation-with-perl-modules
 - tag: package-relation-with-self
+  difficulty: hard
 - tag: package-section-games-but-contains-no-game
 - tag: package-section-games-but-has-usr-bin
 - tag: package-superseded-by-perl
@@ -1122,6 +1122,7 @@
 - tag: python-debug-in-wrong-location
 - tag: python-depends-but-no-python-helper
 - tag: python-foo-but-no-python3-foo
+  difficulty: hard
 - tag: python-module-has-overly-generic-name
 - tag: python-module-in-wrong-location
 - tag: python-package-depends-on-package-from-other-python-variant
@@ -1252,6 +1253,7 @@
 - tag: sphinxdoc-but-no-sphinxdoc-depends
 - tag: spurious-fields-in-upstream-signature
 - tag: standards-version
+  status: classification
 - tag: star-file
 - tag: static-library-has-unneeded-section
 - tag: statically-linked-binary
@@ -1285,10 +1287,15 @@
 - tag: synopsis-is-a-sentence
 - tag: synopsis-too-long
 - tag: syntax-error-in-debconf-template
+  difficulty: hard
 - tag: syntax-error-in-debian-changelog
+  difficulty: hard
 - tag: syntax-error-in-debian-news-file
+  difficulty: hard
 - tag: syntax-error-in-dep5-copyright
+  difficulty: hard
 - tag: syntax-error-in-symbols-file
+  difficulty: hard
 - tag: systemd-service-file-missing-documentation-key
 - tag: systemd-service-file-missing-hardening-features
 - tag: systemd-service-file-missing-install-key

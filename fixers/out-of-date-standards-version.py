@@ -154,17 +154,25 @@ with ControlEditor() as updater:
         except FileNotFoundError:
             dt = None
             last = None
+            tag = 'out-of-date-standards-version'
         else:
-            last = max(svs.items())[0]
+            last, last_ts = max(svs.items())
+            last_dt = datetime.fromtimestamp(last_ts)
             try:
                 ts = svs[parse_standards_version(current_version)]
             except KeyError:
                 dt = None
+                tag = 'out-of-date-standards-version'
             else:
                 dt = datetime.fromtimestamp(ts)
+                age = last_dt - dt
+                if age.days > 365 * 2:
+                    tag = 'ancient-standards-version'
+                else:
+                    tag = 'out-of-date-standards-version'
         fixed_lintian_tag(
             updater.source,
-            'out-of-date-standards-version',
+            tag,
             '%s%s%s' % (
                 current_version,
                 (' (released %s)' % dt.strftime('%Y-%m-%d')) if dt else '',
