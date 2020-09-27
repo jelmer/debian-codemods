@@ -7,7 +7,7 @@ from lintian_brush.fixer import report_result, fixed_lintian_tag
 # TODO(jelmer): Remove dh_make pattern:
 
 TEMPLATE_PATTERNS = [
-    '^\s*#\s*(Example watch control file for uscan)'
+    r'^\s*#\s*(Example watch control file for uscan)'
     ]
 
 
@@ -17,8 +17,8 @@ with WatchEditor() as editor:
             filenamemangle = entry.get_option('filenamemangle')
         except KeyError:
             continue
-        if (filenamemangle == 
-                's/.+\/v?(\d\S+)\.tar\.gz/<project>-$1\.tar\.gz/'):
+        if (filenamemangle ==
+                r's/.+\/v?(\d\S+)\.tar\.gz/<project>-$1\.tar\.gz/'):
             entry.del_option('filenamemangle')
             fixed_lintian_tag(
                 'source', 'debian-watch-contains-dh_make-template',
