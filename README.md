@@ -24,6 +24,7 @@ The current set of lintian tags for which a fixer is available that can fix a
 subset of the issues:
 
 * ancient-python-version-field
+* ancient-standards-version
 * autotools-pkg-config-macro-not-cross-compilation-safe
 * binary-control-field-duplicates-source
 * build-depends-on-build-essential
