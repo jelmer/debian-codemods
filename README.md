@@ -115,7 +115,7 @@ subset of the issues:
 * package-needs-versioned-debhelper-build-depends
 * package-uses-deprecated-debhelper-compat-version
 * package-uses-old-debhelper-compat-version
-* papt-dpmt-merged
+* python-teams-merged
 * patch-file-present-but-not-mentioned-in-series
 * possible-missing-colon-in-closes
 * priority-extra-is-replaced-by-priority-optional
