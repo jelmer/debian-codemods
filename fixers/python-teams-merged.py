@@ -11,6 +11,6 @@ with ControlEditor() as editor:
             'python-apps-team@lists.alioth.debian.org'):
         editor.source['Maintainer'] = (
             'Debian Python Team <team+python@tracker.debian.org>')
-        fixed_lintian_tag(editor.source, 'papt-dpmt-merged', info=())
+        fixed_lintian_tag(editor.source, 'python-teams-merged', info=())
 
 report_result('Update maintainer email for merge of DPMT and PAPT.')

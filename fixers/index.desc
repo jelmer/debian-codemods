@@ -158,8 +158,8 @@ Lintian-Tags: maintainer-also-in-uploaders
 Fix-Script: vcs-field-for-maintainer.py
 Lintian-Tags: old-dpmt-vcs, old-papt-vcs
 
-Fix-Script: papt-dpmt-merged.py
-Lintian-Tags: papt-dpmt-merged
+Fix-Script: python-teams-merged.py
+Lintian-Tags: python-teams-merged
 
 Fix-Script: source-format.py
 Lintian-Tags:
