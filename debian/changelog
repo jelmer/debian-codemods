@@ -1,9 +1,9 @@
-lintian-brush (0.81) UNRELEASED; urgency=medium
+lintian-brush (0.81) unstable; urgency=medium
 
   [ Louis-Philippe Véronneau ]
   * Rename papt-dpmt-merged to python-teams-merged.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 01 Oct 2020 23:01:13 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 04 Oct 2020 10:20:56 +0000
 
 lintian-brush (0.80) unstable; urgency=medium
 
