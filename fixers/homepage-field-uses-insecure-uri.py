@@ -4,6 +4,7 @@ from lintian_brush.fixer import (
     net_access_allowed, report_result, fixed_lintian_tag)
 from debmutate.control import ControlEditor
 import socket
+import http.client
 import sys
 import urllib.error
 import urllib.parse
@@ -15,7 +16,7 @@ known_https = [
     'cran.r-project.org', 'wiki.debian.org']
 
 ERRORS = (urllib.error.URLError, urllib.error.HTTPError, ConnectionResetError,
-          socket.timeout)
+          socket.timeout, http.client.BadStatusLine)
 
 
 def same_page(http_contents, https_contents):
