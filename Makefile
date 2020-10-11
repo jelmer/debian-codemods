@@ -53,3 +53,6 @@ update-renamed-tags:
 	brz diff renamed-tags.json || brz commit -m "Update renamed tags." renamed-tags.json
 
 update: update-spdx update-readme update-renamed-tags
+
+next:
+	python3 next.py
