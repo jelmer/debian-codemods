@@ -1,1 +1,2 @@
-team/perl/vcs/no-git
+libblah-perl source: team/pkg-perl/vcs/no-git
+libblah-perl source: team/pkg-perl/vcs/no-team-url

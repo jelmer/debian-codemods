@@ -22,7 +22,7 @@ with ControlEditor() as e:
         if not field.lower().startswith('vcs-'):
             # Ignore non-Vcs fields
             continue
-        issue = LintianIssue(e.source, 'team/pkg-perl/vcs/no-git', field)
+        issue = LintianIssue(e.source, 'team/pkg-perl/vcs/no-git', info=field)
         if field.lower() not in ('vcs-git', 'vcs-browser'):
             if not issue.should_fix():
                 continue

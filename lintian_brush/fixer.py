@@ -66,6 +66,10 @@ class LintianIssue(object):
     def report_fixed(self):
         _fixed_lintian_tags.append((self.target, self.tag, self.info))
 
+    def __repr__(self):
+        return "%s(target=%r, tag=%r, info=%r)" % (
+            type(self).__name__, self.target, self.tag, self.info)
+
 
 _fixed_lintian_tags = []
 
@@ -143,12 +147,6 @@ def opinionated():
 
 def warn(msg):
     sys.stderr.write('%s\n' % msg)
-
-
-def override_exists(
-        target: Union[Deb822, Tuple[str, str]],
-        tag: str, info: Optional[str] = None):
-    return LintianIssue(target, tag, info).override_exists()
 
 
 def diligence():

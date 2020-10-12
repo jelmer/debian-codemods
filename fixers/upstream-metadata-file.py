@@ -13,10 +13,8 @@ from lintian_brush.fixer import (
     package_is_native,
     meets_minimum_certainty,
     net_access_allowed,
-    override_exists,
     report_result,
     trust_package,
-    fixed_lintian_tag,
     LintianIssue,
     )
 from lintian_brush.upstream_metadata import (
@@ -41,14 +39,16 @@ def filter_by_tag(orig, changed, fields, tag):
     if all(field in orig for field in fields):
         return
 
+    issue = LintianIssue('source', tag, info='')
+
     if (not all(field in orig for field in fields) and
-            override_exists('source', tag)):
+            not issue.should_fix()):
         for field in fields:
             if field in changed:
                 del changed[field]
 
     if all(field in orig or field in changed for field in fields):
-        fixed_lintian_tag('source', tag)
+        issue.report_fixed()
 
 
 if package_is_native():
