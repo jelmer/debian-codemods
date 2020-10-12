@@ -32,6 +32,41 @@ from debian.changelog import Version
 import os
 
 
+class LintianIssue(object):
+    """Represents a lintian issue."""
+
+    def __init__(
+            self,
+            target: Union[Deb822, Tuple[str, str]],
+            tag: str, info: Optional[Union[str, Tuple[str, ...]]] = None):
+        if isinstance(target, Deb822):
+            if 'Source' in target:
+                target = ('source', target['Source'])
+            elif 'Package' in target:
+                target = ('binary', target['Package'])
+            else:
+                raise ValueError(
+                    'unable to determine source/binary package from target')
+        elif target == 'source':
+            target = ('source', None)
+        if isinstance(info, tuple):
+            info = ' '.join(info)
+        self.target = target
+        self.info = info
+        self.tag = tag
+
+    def override_exists(self):
+        return _override_exists(
+            tag=self.tag, info=self.info, type=self.target[0],
+            package=self.target[1])
+
+    def should_fix(self):
+        return not self.override_exists()
+
+    def report_fixed(self):
+        _fixed_lintian_tags.append((self.target, self.tag, self.info))
+
+
 _fixed_lintian_tags = []
 
 
@@ -39,19 +74,7 @@ def fixed_lintian_tag(
         target: Union[Deb822, Tuple[str, str]],
         tag: str, info: Optional[Union[str, Tuple[str, ...]]] = None):
     """Register a lintian tag as being fixed."""
-    if isinstance(target, Deb822):
-        if 'Source' in target:
-            target = ('source', target['Source'])
-        elif 'Package' in target:
-            target = ('binary', target['Package'])
-        else:
-            raise ValueError(
-                'unable to determine source/binary package from target')
-    elif target == 'source':
-        target = ('source', )
-    if isinstance(info, tuple):
-        info = ' '.join(info)
-    _fixed_lintian_tags.append((target, tag, info))
+    LintianIssue(target, tag, info).report_fixed()
 
 
 def fixed_lintian_tags():
@@ -125,18 +148,7 @@ def warn(msg):
 def override_exists(
         target: Union[Deb822, Tuple[str, str]],
         tag: str, info: Optional[str] = None):
-    if isinstance(target, Deb822):
-        if 'Source' in target:
-            target = ('source', target['Source'])
-        elif 'Package' in target:
-            target = ('binary', target['Package'])
-        else:
-            raise ValueError(
-                'unable to determine source/binary package from target')
-    elif target == 'source':
-        target = ('source', None)
-    return _override_exists(
-        tag=tag, info=info, type=target[0], package=target[1])
+    return LintianIssue(target, tag, info).override_exists()
 
 
 def diligence():

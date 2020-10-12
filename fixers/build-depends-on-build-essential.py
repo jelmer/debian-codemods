@@ -4,7 +4,7 @@ from debmutate.control import (
     drop_dependency,
     ControlEditor,
     )
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 
 with ControlEditor() as updater:
@@ -15,9 +15,11 @@ with ControlEditor() as updater:
         except KeyError:
             pass
         else:
-            fixed_lintian_tag(
+            issue = LintianIssue(
                 updater.source, 'build-depends-on-build-essential',
-                field.lower())
+                field)
+            # TODO(jelmer): Check overrides
+            issue.report_fixed()
 
 
 report_result("Drop unnecessary dependency on build-essential.")

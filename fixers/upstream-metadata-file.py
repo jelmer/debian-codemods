@@ -17,6 +17,7 @@ from lintian_brush.fixer import (
     report_result,
     trust_package,
     fixed_lintian_tag,
+    LintianIssue,
     )
 from lintian_brush.upstream_metadata import (
     UpstreamDatum,
@@ -57,8 +58,11 @@ if package_is_native():
 
 current_version = current_package_version()
 
-if not os.path.exists('debian/upstream/metadata') and override_exists(
-        'source', tag='upstream-metadata-file-is-missing'):
+missing_file_issue = LintianIssue(
+    'source', 'upstream-metadata-file-is-missing', info=())
+
+if (not os.path.exists('debian/upstream/metadata') and
+        not missing_file_issue.should_fix()):
     sys.exit(0)
 
 
@@ -145,7 +149,7 @@ with YamlUpdater('debian/upstream/metadata') as editor:
         sys.exit(0)
 
     if not os.path.exists('debian/upstream/metadata'):
-        fixed_lintian_tag('source', 'upstream-metadata-file-is-missing')
+        missing_file_issue.report_fixed()
 
     update_ordered_dict(
         editor.code, [(k, v.value) for (k, v) in changed.items()],

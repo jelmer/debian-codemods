@@ -3,7 +3,7 @@
 import sys
 
 # Import convenience functions for reporting results and checking overrides
-from lintian_brush.fixer import report_result, fixed_lintian_tag, override_exists
+from lintian_brush.fixer import report_result, LintianIssue
 
 from debmutate.control import ControlEditor
 from email.utils import parseaddr
@@ -22,18 +22,19 @@ with ControlEditor() as e:
         if not field.lower().startswith('vcs-'):
             # Ignore non-Vcs fields
             continue
+        issue = LintianIssue(e.source, 'team/pkg-perl/vcs/no-git', field)
         if field.lower() not in ('vcs-git', 'vcs-browser'):
-            if override_exists(e.source, 'team/pkg-perl/vcs/no-git', field):
+            if not issue.should_fix():
                 continue
             # Drop this field
             del e.source[field]
-            fixed_lintian_tag(e.source, 'team/pkg-perl/vcs/no-git', field)
+            issue.report_fixed()
 
     for field, template in [
             ('Vcs-Git', URL_BASE + '/%s.git'),
             ('Vcs-Browser', URL_BASE + '/%s')]:
-        if override_exists(
-                e.source, 'team/pkg-perl/vcs/no-team-url', field):
+        issue = LintianIssue(e.source, 'team/pkg-perl/vcs/no-team-url', field)
+        if not issue.should_fix():
             continue
         old_value = e.source.get(field)
         if old_value is not None and old_value.startswith(URL_BASE):
@@ -42,8 +43,7 @@ with ControlEditor() as e:
         e.source[field] = template % e.source['Source']
         # TODO(jelmer): Check that URLs actually exist, if net access is
         # allowed?
-        fixed_lintian_tag(
-            e.source, 'team/pkg-perl/vcs/no-team-url', old_value)
+        issue.report_fixed()
 
 
 report_result(

@@ -3,7 +3,7 @@
 from debmutate.control import ControlEditor, ensure_some_version
 from lintian_brush.fixer import (
     report_result,
-    fixed_lintian_tag,
+    LintianIssue,
     )
 import re
 from typing import List
@@ -24,10 +24,12 @@ for name in ['configure.ac', 'configure.in']:
                     b',\\s*(\\[)?pkg-config(\\])?\\s*'
                     b'(,\\s*(\\[)?(?P<default>.*)(\\])?\\s*)?\\)\n', line)
                 if m:
-                    fixed_lintian_tag(
+                    issue = LintianIssue(
                         'source',
                         'autotools-pkg-config-macro-not-cross-compilation-'
                         'safe', info='%s (line %d)' % (name, lineno))
+                    # TODO(jelmer): Check overrides
+                    issue.report_fixed()
                     if (m.group('variable') == b'PKG_CONFIG' and
                             not m.group('default')):
                         newlines.append(b'PKG_PROG_PKG_CONFIG\n')

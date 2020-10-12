@@ -1,0 +1,6 @@
+Source: libblah-perl
+Maintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>
+Vcs-Git: https://github.com/debian-perl-team/blah
+
+Package: libblah-perl
+Description: dummy package

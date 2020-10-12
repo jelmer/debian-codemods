@@ -7,9 +7,8 @@ from debmutate.control import (
     add_dependency,
     is_relation_implied,
     )
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 from lintian_brush.lintian import read_debhelper_lintian_data_file
-from lintian_brush.lintian_overrides import override_exists
 from lintian_brush.rules import Makefile, Rule, dh_invoke_get_with
 import os
 import shlex
@@ -60,14 +59,12 @@ for entry in mf.contents:
             except KeyError:
                 pass
             else:
-                info = '%s => %s' % (executable, dep)
-                if override_exists(
-                    'missing-build-dependency-for-dh_-command',
-                        type='source', info=info):
+                issue = LintianIssue(
+                    'source', 'missing-build-dependency-for-dh_-command',
+                    '%s => %s' % (executable, dep))
+                if not issue.should_fix():
                     continue
-                need.append(
-                    (dep, [('missing-build-dependency-for-dh_-command', info)])
-                    )
+                need.append((dep, [issue]))
             if executable == 'dh' or executable.startswith('dh_'):
                 for addon in dh_invoke_get_with(command):
                     try:
@@ -75,9 +72,10 @@ for entry in mf.contents:
                     except KeyError:
                         pass
                     else:
-                        need.append(
-                            (dep, [('missing-build-dependency-for-dh-addon',
-                                    '%s => %s' % (addon, dep))]))
+                        issue = LintianIssue(
+                            'source', 'missing-build-dependency-for-dh-addon',
+                            '%s => %s' % (addon, dep))
+                        need.append((dep, [issue]))
 
 
 if not need:
@@ -85,7 +83,7 @@ if not need:
 
 
 with ControlEditor() as updater:
-    for deps, tags in need:
+    for deps, issues in need:
         parsed = PkgRelation.parse(deps)
         is_implied = False
 
@@ -99,7 +97,7 @@ with ControlEditor() as updater:
         if not is_implied:
             build_deps = updater.source.get('Build-Depends', '')
             updater.source['Build-Depends'] = add_dependency(build_deps, deps)
-            for tag, info in tags:
-                fixed_lintian_tag('source', tag, info=info)
+            for issue in issues:
+                issue.report_fixed()
 
 report_result('Add missing build dependency on dh addon.')
