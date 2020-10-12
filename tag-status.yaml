@@ -1548,16 +1548,7 @@
 - tag: team/pkg-perl/debhelper/module-build-tiny-needs-newer-debhelper
 - tag: team/pkg-perl/testsuite/autopkgtest-needs-use-name
 - tag: team/pkg-perl/testsuite/no-team-tests
-- tag: team/pkg-perl/testsuite/no-testsuite-header
   difficulty: easy
-- tag: team/pkg-perl/vcs/no-git
-  difficulty: easy
-  comment: |
-    can be done when updating vcs-git/vcs-browser URL
-- tag: team/pkg-perl/vcs/no-team-url
-  difficulty: easy
-  comment: |
-    can be done when updating vcs-git/vcs-browser URL
 - tag: team/pkg-perl/xs-abi/legacy-vendorarch-directory
 - tag: duplicate-globbing-patterns
 - tag: globbing-patterns-out-of-order
