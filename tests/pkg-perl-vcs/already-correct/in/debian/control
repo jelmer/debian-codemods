@@ -1,0 +1,7 @@
+Source: libblah-perl
+Maintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>
+Vcs-Git: https://salsa.debian.org/perl-team/modules/packages/libblah-perl
+Vcs-Browser: https://salsa.debian.org/perl-team/modules/packages/libblah-perl.git
+
+Package: libblah-perl
+Description: dummy package

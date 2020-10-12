@@ -433,3 +433,6 @@ Lintian-Tags: silent-on-rules-requiring-root
 
 Fix-Script: maintainer-script-empty.py
 Lintian-Tags: maintainer-script-empty
+
+Fix-Script: pkg-perl-vcs.py
+Lintian-Tags: team/pkg-perl/vcs/no-team-url, team/pkg-perl/vcs/no-git

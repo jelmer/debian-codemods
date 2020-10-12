@@ -1,0 +1,6 @@
+Source: blah
+Maintainer: Jelmer Vernooij <jelmer@debian.org>
+Vcs-Git: https://salsa.debian.org/jelmer/blah
+
+Package: blah
+Description: dummy package
