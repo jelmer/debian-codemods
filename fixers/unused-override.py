@@ -28,6 +28,7 @@ description = [
 for override in removed:
     description.append('* %s\n' % override.tag)
     fixed_lintian_tag(
-        'source', 'unused-override', (override.tag, override.info))
+        'source', 'unused-override', info=(
+            override.tag, override.info if override.info else ''))
 
 report_result(''.join(description), certainty='certain')
