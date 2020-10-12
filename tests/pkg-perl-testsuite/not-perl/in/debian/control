@@ -1,0 +1,6 @@
+Source: blah
+Maintainer: Jelmer Vernooij <jelmer@debian.org>
+Testsuite: autopkgtest-pkg-lalala
+
+Package: blah
+Description: dummy package

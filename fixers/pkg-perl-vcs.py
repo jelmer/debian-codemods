@@ -33,10 +33,12 @@ with ControlEditor() as e:
     for field, template in [
             ('Vcs-Git', URL_BASE + '/%s.git'),
             ('Vcs-Browser', URL_BASE + '/%s')]:
-        issue = LintianIssue(e.source, 'team/pkg-perl/vcs/no-team-url', field)
+        old_value = e.source.get(field)
+        issue = LintianIssue(
+            e.source, 'team/pkg-perl/vcs/no-team-url',
+            (field, old_value or ''))
         if not issue.should_fix():
             continue
-        old_value = e.source.get(field)
         if old_value is not None and old_value.startswith(URL_BASE):
             continue
 

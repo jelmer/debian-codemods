@@ -1,0 +1,5 @@
+Source: libblah-perl
+Maintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>
+
+Package: libblah-perl
+Description: dummy package

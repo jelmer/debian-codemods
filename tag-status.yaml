@@ -1549,6 +1549,7 @@
 - tag: team/pkg-perl/testsuite/autopkgtest-needs-use-name
 - tag: team/pkg-perl/testsuite/no-team-tests
 - tag: team/pkg-perl/testsuite/no-testsuite-header
+  difficulty: easy
 - tag: team/pkg-perl/vcs/no-git
   difficulty: easy
   comment: |

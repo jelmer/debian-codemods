@@ -2,6 +2,7 @@ lintian-brush (0.82) UNRELEASED; urgency=medium
 
   * pkg-perl-vcs: Add fixer for team/pkg-perl/vcs/no-team-url and
     team/pkg-perl/vcs/no-git.
+  * Add fixer for team/pkg-perl/testsuite/no-testsuite-header.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 12 Oct 2020 16:18:12 +0000
 
