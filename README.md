@@ -134,6 +134,8 @@ subset of the issues:
 * systemd-service-file-refers-to-var-run
 * systemd-service-file-shutdown-problems
 * tab-in-license-text
+* team/pkg-perl/vcs/no-git
+* team/pkg-perl/vcs/no-team-url
 * trailing-whitespace
 * transitional-package-not-oldlibs-optional
 * unnecessary-team-upload
