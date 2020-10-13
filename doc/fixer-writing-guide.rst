@@ -1,10 +1,7 @@
 Lintian-Brush: Guide to writing a new fixer
 #############################################
 :date: 2020-10-12 15:39:00
-:tags: debian, lintian-brush, lintian, debmutate
 :author: Jelmer Vernooĳ
-:slug: writing-a-lintian-brush-fixer
-:status: draft
 
 lintian-brush can currently fix about 150 different issues that lintian can
 report, but that's still a small fraction of the more than thousand different
