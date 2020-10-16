@@ -256,6 +256,7 @@
 - tag: debian-watch-mangles-debian-version-improperly
 - tag: debian-watch-mangles-upstream-version-improperly
 - tag: debian-watch-not-mangling-version
+  difficulty: easy
 - tag: debian-watch-upstream-component
 - tag: debug-file-with-no-debug-symbols
 - tag: debug-package-for-multi-arch-same-pkg-not-coinstallable
@@ -603,7 +604,9 @@
 - tag: lengthy-symlink
 - tag: lib-recommends-documentation
 - tag: libapp-perl-package-name
+  difficulty: medium
 - tag: libmodule-build-tiny-perl-needs-to-be-in-build-depends
+  difficulty: easy
 - tag: library-in-root-and-usr
 - tag: library-not-linked-against-libc
 - tag: library-package-name-for-application
@@ -681,6 +684,7 @@
 - tag: maintainer-script-modifies-inetd-conf
   comment: needs-shell-parser
 - tag: maintainer-script-needs-depends-on-adduser
+  difficulty: easy
   comment: needs-shell-parser
 - tag: maintainer-script-needs-depends-on-gconf2
   comment: needs-shell-parser
@@ -699,6 +703,7 @@
 - tag: maintainer-script-should-not-parse-etc-passwd-or-group
   comment: needs-shell-parser
 - tag: maintainer-script-should-not-use-dpkg-maintscript-helper
+  difficulty: medium
   comment: needs-shell-parser
 - tag: maintainer-script-should-not-use-piuparts-variable
   comment: needs-shell-parser
