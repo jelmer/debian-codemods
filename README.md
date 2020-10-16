@@ -99,6 +99,7 @@ subset of the issues:
 * missing-debian-source-format
 * missing-vcs-browser-field
 * misspelled-closes-bug
+* newer-debconf-templates
 * no-copyright-file
 * no-homepage-field
 * obsolete-field-in-dep5-copyright
@@ -134,6 +135,7 @@ subset of the issues:
 * systemd-service-file-refers-to-var-run
 * systemd-service-file-shutdown-problems
 * tab-in-license-text
+* team/pkg-perl/testsuite/no-testsuite-header
 * team/pkg-perl/vcs/no-git
 * team/pkg-perl/vcs/no-team-url
 * trailing-whitespace
