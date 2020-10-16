@@ -383,6 +383,7 @@
 - tag: documentation-package-not-architecture-independent
 - tag: doubly-armored-upstream-signature
 - tag: dpatch-build-dep-but-no-patch-list
+  difficulty: easy
 - tag: dpatch-index-references-non-existent-patch
 - tag: dpatch-missing-description
 - tag: duplicate-changelog-files
@@ -813,6 +814,7 @@
 - tag: missing-systemd-timer-for-cron-script
 - tag: missing-templates-pot
 - tag: missing-versioned-depends-on-init-system-helpers
+  difficulty: easy
 - tag: missing-xs-go-import-path-for-golang-package
 - tag: mknod-in-maintainer-script
   comment: needs-shell-parser
@@ -1033,6 +1035,7 @@
 - tag: package-supports-alternative-init-but-no-init.d-script
 - tag: package-uses-debhelper-but-lacks-build-depends
 - tag: package-uses-deprecated-dpatch-patch-system
+  difficulty: easy
 - tag: package-uses-dh-exec-but-lacks-build-depends
 - tag: package-uses-dh-runit-but-lacks-breaks-substvar
 - tag: package-uses-experimental-debhelper-compat-version
