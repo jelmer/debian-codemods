@@ -6,7 +6,7 @@ from debmutate.control import (
 from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
     )
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 
 with ControlEditor() as updater:
@@ -16,13 +16,16 @@ with ControlEditor() as updater:
             old_build_depends = updater.source[field]
         except KeyError:
             continue
+        issue = LintianIssue(
+            updater.source, 'build-depends-on-obsolete-package',
+            info='%s: %s' % (field.lower(), 'dh-systemd'))
+        if not issue.should_fix():
+            continue
         updater.source[field] = drop_dependency(
             old_build_depends, "dh-systemd")
         if old_build_depends != updater.source[field]:
             ensure_minimum_debhelper_version(updater.source, "9.20160709")
-        fixed_lintian_tag(
-            updater.source, 'build-depends-on-obsolete-package',
-            info='%s: %s' % (field.lower(), 'dh-systemd'))
+            issue.report_fixed()
 
 
 report_result(
