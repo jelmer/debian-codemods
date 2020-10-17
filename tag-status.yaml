@@ -41,6 +41,7 @@
 - tag: appstream-metadata-malformed-modalias-provide
 - tag: appstream-metadata-missing-modalias-provide
 - tag: arch-dep-package-has-big-usr-share
+  difficulty: medium
 - tag: arch-dependent-file-in-usr-share
 - tag: arch-dependent-file-not-in-arch-specific-directory
 - tag: arch-independent-package-contains-binary-or-object
@@ -969,6 +970,7 @@
 - tag: package-contains-mimeinfo.cache-file
 - tag: package-contains-multiple-dpi-fonts
 - tag: package-contains-no-arch-dependent-files
+  difficulty: hard
 - tag: package-contains-npm-ignore-file
 - tag: package-contains-python-coverage-file
 - tag: package-contains-python-doctree-file
@@ -1027,11 +1029,13 @@
 - tag: package-not-lowercase
 - tag: package-placeholder-in-symbols-file
 - tag: package-relation-with-perl-modules
+  difficulty: easy
 - tag: package-relation-with-self
   difficulty: hard
 - tag: package-section-games-but-contains-no-game
 - tag: package-section-games-but-has-usr-bin
 - tag: package-superseded-by-perl
+  difficulty: medium
 - tag: package-supports-alternative-init-but-no-init.d-script
 - tag: package-uses-debhelper-but-lacks-build-depends
 - tag: package-uses-deprecated-dpatch-patch-system
@@ -1337,6 +1341,7 @@
 - tag: typelib-package-name-does-not-match
 - tag: typelib-section-not-introspection
 - tag: typo-in-debhelper-override-target
+  difficulty: easy
 - tag: udeb-contains-documentation-file
 - tag: udeb-postinst-calls-ldconfig
 - tag: udeb-uses-unsupported-compression-for-data-tarball
