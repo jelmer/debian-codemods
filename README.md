@@ -173,6 +173,9 @@ subset of the issues:
 Writing new fixers
 ------------------
 
+For a more extensive write-up, see the
+[guide on writing fixers](doc/fixer-writing-guide.rst).
+
 Each fixer is a simple script that lives under ``fixers``. Scripts should
 be registered in the ``index.desc`` file in the same directory.
 
