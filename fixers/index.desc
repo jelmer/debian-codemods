@@ -44,6 +44,8 @@ Lintian-Tags: required-field
 Fix-Script: empty-debian-tests-control.py
 Lintian-Tags: empty-debian-tests-control
 
+Fix-Script: field-name-typo-in-tests-control.py
+
 Fix-Script: out-of-date-copyright-format-uri.sh
 Lintian-Tags: out-of-date-copyright-format-uri
 
