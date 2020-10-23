@@ -127,6 +127,7 @@
     "manpage-section-mismatch": "wrong-manual-section",
     "manpage-without-executable": "spare-manual-page",
     "menu-method-should-include-menu-h": "menu-method-lacks-include",
+    "missing-depends-line": "undeclared-elf-prerequisites",
     "national-encoding-in-debconf-template": "national-encoding",
     "national-encoding-in-manpage": "national-encoding",
     "national-encoding-in-text-file": "national-encoding",
