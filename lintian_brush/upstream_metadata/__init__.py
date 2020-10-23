@@ -33,6 +33,7 @@ Supported fields:
 - Bug-Submit
 - Screenshots
 - Archive
+- Security-Contact
 
 Extensions for lintian-brush.
 - X-SourceForge-Project
@@ -47,7 +48,6 @@ Supported, but unused.
 - Donation
 - Documentation
 - Registration
-- Security-Contact
 - Webservice
 """
 
@@ -82,6 +82,7 @@ from lintian_brush.vcs import (
     plausible_browse_url as plausible_vcs_browse_url,
     sanitize_url as sanitize_vcs_url,
     is_gitlab_site,
+    determine_browser_url,
     )
 from urllib.request import urlopen, Request
 
@@ -1172,6 +1173,15 @@ def guess_from_get_orig_source(path, trust_package=False):
                     yield UpstreamDatum('Repository', url, 'likely')
 
 
+# https://docs.github.com/en/free-pro-team@latest/github/\
+# managing-security-vulnerabilities/adding-a-security-policy-to-your-repository
+def guess_from_security_md(path, trust_package=False):
+    if path.startswith('./'):
+        path = path[2:]
+    # TODO(jelmer): scan SECURITY.md for email addresses/URLs with instructions
+    yield UpstreamDatum('X-Security-MD', path, 'certain')
+
+
 def _get_guessers(path, trust_package=False):
     CANDIDATES = [
         ('debian/watch', guess_from_debian_watch),
@@ -1190,6 +1200,9 @@ def _get_guessers(path, trust_package=False):
         ('pom.xml', guess_from_pom_xml),
         ('.git/config', guess_from_git_config),
         ('debian/get-orig-source.sh', guess_from_get_orig_source),
+        ('SECURITY.md', guess_from_security_md),
+        ('.github/SECURITY.md', guess_from_security_md),
+        ('docs/SECURITY.md', guess_from_security_md),
         ]
 
     # Search for something Python-y
@@ -1813,20 +1826,38 @@ def _copy_bug_db_field(upstream_metadata, net_access):
     return ret
 
 
+def _extrapolate_security_contact_from_security_md(
+        upstream_metadata, net_access):
+    repository_url = upstream_metadata['Repository']
+    security_md_path = upstream_metadata['X-Security-MD']
+    vcs_url = unsplit_vcs_url(
+        repository_url.value, None, security_md_path.value)
+    security_url = determine_browser_url(None, vcs_url)
+    if security_url is None:
+        return None
+    return UpstreamDatum(
+        'Security-Contact', security_url,
+        certainty=min_certainty(
+            [repository_url.certainty, security_md_path.certainty]),
+        origin=security_md_path.origin)
+
+
 EXTRAPOLATE_FNS = [
-    ('Homepage', 'Repository', _extrapolate_repository_from_homepage),
-    ('Bugs-Database', 'Bug-Database', _copy_bug_db_field),
-    ('Bug-Database', 'Repository', _extrapolate_repository_from_bug_db),
-    ('Repository', 'Repository-Browse',
+    (['Homepage'], 'Repository', _extrapolate_repository_from_homepage),
+    (['Bugs-Database'], 'Bug-Database', _copy_bug_db_field),
+    (['Bug-Database'], 'Repository', _extrapolate_repository_from_bug_db),
+    (['Repository'], 'Repository-Browse',
      _extrapolate_repository_browse_from_repository),
-    ('Repository-Browse', 'Repository',
+    (['Repository-Browse'], 'Repository',
      _extrapolate_repository_from_repository_browse),
-    ('Repository', 'Bug-Database',
+    (['Repository'], 'Bug-Database',
      _extrapolate_bug_database_from_repository),
-    ('Bug-Database', 'Bug-Submit', _extrapolate_bug_submit_from_bug_db),
-    ('Bug-Submit', 'Bug-Database', _extrapolate_bug_db_from_bug_submit),
-    ('X-Download', 'Repository', _extrapolate_repository_from_download),
-    ('Repository', 'Name', _extrapolate_name_from_repository),
+    (['Bug-Database'], 'Bug-Submit', _extrapolate_bug_submit_from_bug_db),
+    (['Bug-Submit'], 'Bug-Database', _extrapolate_bug_db_from_bug_submit),
+    (['X-Download'], 'Repository', _extrapolate_repository_from_download),
+    (['Repository'], 'Name', _extrapolate_name_from_repository),
+    (['Repository', 'X-Security-MD'],
+     'Security-Contact', _extrapolate_security_contact_from_security_md),
 ]
 
 
@@ -1876,14 +1907,22 @@ def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
     changed = True
     while changed:
         changed = False
-        for from_field, to_field, fn in EXTRAPOLATE_FNS:
-            try:
-                from_value = upstream_metadata[from_field]
-            except KeyError:
+        for from_fields, to_field, fn in EXTRAPOLATE_FNS:
+            from_certainties = []
+            for from_field in from_fields:
+                try:
+                    from_value = upstream_metadata[from_field]
+                except KeyError:
+                    from_certainties = None
+                    break
+                from_certainties.append(from_value.certainty)
+            if not from_certainties:
+                # Nope
                 continue
+            from_certainty = min_certainty(from_certainties)
             old_to_value = upstream_metadata.get(to_field)
             if old_to_value is not None and (
-                    certainty_to_confidence(from_value.certainty) >=
+                    certainty_to_confidence(from_certainty) >=
                     certainty_to_confidence(old_to_value.certainty)):
                 continue
             result = fn(upstream_metadata, net_access)
