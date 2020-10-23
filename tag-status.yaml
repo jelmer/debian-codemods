@@ -241,6 +241,7 @@
 - tag: debian-rules-uses-wrong-environment-variable
 - tag: debian-tests-control-uses-national-encoding
 - tag: debian-watch-contains-dh_make-template
+  status: implemented
 - tag: debian-watch-could-verify-download
 - tag: debian-watch-does-not-check-gpg-signature
 - tag: debian-watch-file-declares-multiple-versions
@@ -668,7 +669,7 @@
 - tag: maintainer-script-does-not-check-for-existence-of-updatemenus
   comment: needs-shell-parser
 - tag: maintainer-script-empty
-  comment: needs-shell-parser
+  status: implemented
 - tag: maintainer-script-has-invalid-update-inetd-options
   comment: needs-shell-parser
 - tag: maintainer-script-has-unexpanded-debhelper-token
@@ -792,7 +793,6 @@
 - tag: missing-dependency-on-numpy-abi
 - tag: missing-dependency-on-perlapi
 - tag: missing-dependency-on-phpapi
-- tag: missing-depends-line
 - tag: missing-depends-on-sensible-utils
 - tag: missing-explanation-for-contrib-or-non-free-package
 - tag: missing-explanation-for-repacked-upstream-tarball
@@ -841,6 +841,7 @@
 - tag: new-package-should-not-package-python2-module
 - tag: new-package-uses-date-based-version-number
 - tag: newer-debconf-templates
+  status: implemented
 - tag: newer-standards-version
 - tag: nfs-temporary-file-in-package
 - tag: nmu-in-changelog
@@ -1581,3 +1582,26 @@
 - tag: unpack-message-for-deb-data
 - tag: unpack-message-for-orig
 - tag: unpack-message-for-source
+- tag: debian-adds-arch-control-dir
+- tag: debian-adds-arch-inventory-file
+- tag: debian-adds-bts-control-dir
+- tag: debian-adds-bzr-control-dir
+- tag: debian-adds-cvs-conflict-copy
+- tag: debian-adds-cvs-control-dir
+- tag: debian-adds-editor-backup-file
+- tag: debian-adds-git-control-dir
+- tag: debian-adds-hg-control-dir
+- tag: debian-adds-hg-tags-file
+- tag: debian-adds-patch-failure-file
+- tag: debian-adds-quilt-control-dir
+- tag: debian-adds-svk-commit-file
+- tag: debian-adds-svn-commit-file
+- tag: debian-adds-svn-conflict-file
+- tag: debian-adds-svn-control-dir
+- tag: no-debian-changes
+- tag: source-contains-cmake-cache-file
+- tag: source-contains-debian-substvars
+- tag: source-contains-editor-backup-file
+- tag: source-contains-patch-failure-file
+- tag: source-contains-quilt-control-dir
+- tag: undeclared-elf-prerequisites
