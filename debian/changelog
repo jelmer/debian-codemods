@@ -4,6 +4,7 @@ lintian-brush (0.83) UNRELEASED; urgency=medium
   * Add fixer for newer-debconf-template.
   * Add fixer for field-name-typo-in-tests-control.
   * Set Security-Contact when SECURITY.md is present.
+  * apply-multiarch-hints: Fix typo in commit message: s/:all/:any/.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 13 Oct 2020 18:26:10 +0000
 

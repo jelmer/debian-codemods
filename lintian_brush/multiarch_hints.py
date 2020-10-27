@@ -186,7 +186,7 @@ def apply_hint_dep_any(binary, hint):
     if not changed:
         return
     binary['Depends'] = format_relations(relations)
-    return ('Add :all qualifier for %s dependency.' % dep)
+    return ('Add :any qualifier for %s dependency.' % dep)
 
 
 def apply_hint_ma_same(binary, hint):
