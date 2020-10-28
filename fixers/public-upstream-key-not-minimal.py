@@ -1,35 +1,16 @@
 #!/usr/bin/python3
 
 import os
-import subprocess
-import shlex
 import sys
 from typing import List, Optional
 
 from lintian_brush.fixer import report_result, fixed_lintian_tag
-
-gpg = shlex.split(os.environ.get('GPG', 'gpg'))
-
-
-KEY_BLOCK_START = b'-----BEGIN PGP PUBLIC KEY BLOCK-----'
-KEY_BLOCK_END = b'-----END PGP PUBLIC KEY BLOCK-----'
-
-
-def gpg_import_export(import_options, export_options, stdin):
-    argv = gpg + [
-            '--armor', '--quiet', '--no-default-keyring',
-            '--export-options', ','.join(export_options),
-            '--import-options', ','.join(['import-export'] + import_options)]
-    try:
-        p = subprocess.Popen(
-            argv, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    except FileNotFoundError:
-        # No gpg, no dice.
-        sys.exit(2)
-    (stdout, stderr) = p.communicate(stdin, timeout=5)
-    if p.returncode != 0:
-        raise Exception('gpg failed')
-    return stdout
+from lintian_brush.gpg import (
+    gpg_import_export,
+    GpgMissing,
+    KEY_BLOCK_START,
+    KEY_BLOCK_END,
+    )
 
 
 def minimize_key_block(key):
@@ -59,8 +40,11 @@ for p in [
                 key = [line]
             elif line.strip() == KEY_BLOCK_END and key is not None:
                 key.append(line)
-                outlines.extend(minimize_key_block(
-                    b''.join(key)).splitlines(True))
+                try:
+                    outlines.extend(minimize_key_block(
+                        b''.join(key)).splitlines(True))
+                except GpgMissing:
+                    sys.exit(2)
                 key = None
             elif key is not None:
                 key.append(line)
