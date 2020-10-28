@@ -3,9 +3,13 @@ lintian-brush (0.83) UNRELEASED; urgency=medium
   * Add guide on writing fixers to doc/.
   * Add fixer for newer-debconf-template.
   * Add fixer for field-name-typo-in-tests-control.
-  * Set Security-Contact when SECURITY.md is present.
+  * Set Security-Contact in debian/upstream/metadata when SECURITY.md is
+    present.
   * apply-multiarch-hints: Fix typo in commit message: s/:all/:any/.
   * Require at least gpg 2.1, for import-export support.
+  * Use --armor rather than --enarmor when converting signing-key.pgp
+    files to signing-key.asc files. Thanks, Simon Josefsson, for
+    reporting.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 13 Oct 2020 18:26:10 +0000
 

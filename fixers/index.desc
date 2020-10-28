@@ -230,7 +230,7 @@ Lintian-Tags: public-upstream-key-not-minimal
 Fix-Script: public-upstream-keys-in-multiple-locations.sh
 Lintian-Tags: public-upstream-keys-in-multiple-locations
 
-Fix-Script: public-upstream-key-binary.sh
+Fix-Script: public-upstream-key-binary.py
 
 Fix-Script: quilt-series-without-trailing-newline.sh
 Lintian-Tags: quilt-series-without-trailing-newline
