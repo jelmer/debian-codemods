@@ -26,7 +26,10 @@ def read_hashes():
 
 
 def debconf_updatepo():
-    subprocess.check_call(['debconf-updatepo'])
+    try:
+        subprocess.check_call(['debconf-updatepo'])
+    except FileNotFoundError:
+        sys.exit(2)
 
 
 def update_timestamp(p, ts):
