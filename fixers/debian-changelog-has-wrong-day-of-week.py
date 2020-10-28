@@ -3,7 +3,7 @@
 import email.utils
 from debmutate.changelog import ChangelogEditor
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, fixed_lintian_tag, warn
 
 versions = []
 
@@ -12,7 +12,8 @@ with ChangelogEditor() as updater:
     for block in updater.changelog:
         try:
             dt = email.utils.parsedate_to_datetime(block.date)
-        except TypeError:
+        except (TypeError, ValueError):
+            warn('Invalid date %r for %s' % (block.date, block.version))
             # parsedate_to_datetime is buggy and raises a TypeError
             # when the date is invalid.
             continue
