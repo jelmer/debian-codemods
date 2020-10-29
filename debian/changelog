@@ -1,4 +1,4 @@
-lintian-brush (0.83) UNRELEASED; urgency=medium
+lintian-brush (0.83) unstable; urgency=medium
 
   * Add guide on writing fixers to doc/.
   * Add fixer for newer-debconf-template - disabled for now.
@@ -11,7 +11,7 @@ lintian-brush (0.83) UNRELEASED; urgency=medium
     files to signing-key.asc files. Thanks, Simon Josefsson, for
     reporting.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 13 Oct 2020 18:26:10 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 29 Oct 2020 20:40:30 +0000
 
 lintian-brush (0.82) unstable; urgency=medium
 
