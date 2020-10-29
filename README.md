@@ -99,7 +99,6 @@ subset of the issues:
 * missing-debian-source-format
 * missing-vcs-browser-field
 * misspelled-closes-bug
-* newer-debconf-templates
 * no-copyright-file
 * no-homepage-field
 * obsolete-field-in-dep5-copyright
