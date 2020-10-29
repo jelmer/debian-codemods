@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import tempfile
 
 from hashlib import sha1
 
@@ -15,6 +16,17 @@ if not issue.should_fix():
 
 if not os.path.isdir('debian/po'):
     sys.exit(0)
+
+
+with tempfile.TemporaryDirectory() as td:
+    args = [
+        '/usr/share/intltool-debian/intltool-update',
+        '--gettext-package=test', '--pot']
+    env = {
+        'INTLTOOL_EXTRACT': '/usr/share/intltool-debian/intltool-extract',
+        'srcdir': os.path.abspath('debian/po'),
+    }
+    subprocess.check_call(args, env=env, cwd=td)
 
 
 def read_hashes():
