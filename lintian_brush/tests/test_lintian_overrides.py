@@ -28,7 +28,7 @@ from lintian_brush.lintian_overrides import (
     overrides_paths,
     override_exists,
     update_overrides_file,
-    _get_overrides,
+    get_overrides,
     )
 
 
@@ -119,7 +119,7 @@ blah source: patch-file-exists-but info
             LintianOverride(
                 package='blah', archlist=None, type='source',
                 tag='patch-file-exists-but', info='info')],
-            list(_get_overrides()))
+            list(get_overrides()))
         self.assertTrue(override_exists('patch-file-exists-but', info='info'))
         self.assertFalse(override_exists('patch-file-exists-but', info='no'))
         self.assertTrue(override_exists(
