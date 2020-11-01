@@ -180,6 +180,7 @@
     "systemd-no-service-for-init-rcS-script": "missing-systemd-service-for-init.d-rcS-script",
     "systemd-no-service-for-init-script": "omitted-systemd-service-for-init.d-script",
     "systemd-service-file-pidfile-refers-to-var-run": "systemd-service-file-refers-to-var-run",
+    "testsuite-autopkgtest-missing": "missing-tests-control",
     "transitional-package-should-be-oldlibs-extra": "transitional-package-not-oldlibs-optional",
     "transitional-package-should-be-oldlibs-optional": "transitional-package-not-oldlibs-optional",
     "udeb-postinst-must-not-call-ldconfig": "udeb-postinst-calls-ldconfig",
