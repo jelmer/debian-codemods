@@ -71,7 +71,7 @@ def update_overrides_file(
         return editor.has_changed()
 
 
-def _get_overrides(
+def get_overrides(
         type: Optional[str] = None,
         package: Optional[str] = None) -> Iterator[LintianOverride]:
     paths = []
@@ -84,8 +84,8 @@ def _get_overrides(
             paths.extend(['debian/%s.lintian-overrides' % package])
         else:
             paths.extend(
-                ['debian/%s' % n for n in os.listdir('debian')
-                 if n.endswith('.lintian-overrides')])
+                [e.path for e in os.scandir('debian')
+                 if e.name.endswith('.lintian-overrides')])
 
     for path in paths:
         try:
@@ -109,7 +109,7 @@ def override_exists(
       type: package type (source, binary)
       arch: Architecture
     """
-    for override in _get_overrides(type=type, package=package):
+    for override in get_overrides(type=type, package=package):
         if override.matches(package=package, info=info, tag=tag, arch=arch,
                             type=type):
             return True
@@ -180,6 +180,21 @@ def remove_unused() -> List[LintianOverride]:
         return override
     update_overrides(drop_override)
     return removed
+
+
+def load_renamed_tags():
+    import json
+    path = os.path.abspath(os.path.join(
+        os.path.dirname(__file__), '..', 'renamed-tags.json'))
+    if not os.path.isfile(path):
+        import pkg_resources
+        path = pkg_resources.resource_filename(
+            __name__, 'lintian-brush/renamed-tags.json')
+        if not os.path.isfile(path):
+            # Urgh.
+            path = '/usr/share/lintian-brush/renamed-tags.json'
+    with open(path, 'rb') as f:
+        return json.load(f)
 
 
 if __name__ == '__main__':

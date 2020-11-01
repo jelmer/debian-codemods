@@ -26,10 +26,12 @@ import unittest
 
 from lintian_brush import (
     available_lintian_fixers,
-    load_renamed_tags,
     parse_script_fixer_output,
     select_fixers,
     increment_version,
+    )
+from lintian_brush.lintian_overrides import (
+    load_renamed_tags,
     )
 
 

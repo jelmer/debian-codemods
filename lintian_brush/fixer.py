@@ -19,13 +19,13 @@
 
 from debmutate.deb822 import Deb822
 import sys
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, List, Any
 
 from . import (
     DEFAULT_MINIMUM_CERTAINTY,
     certainty_sufficient,
     )
-from .lintian_overrides import override_exists as _override_exists
+from .lintian_overrides import get_overrides, LintianOverride, load_renamed_tags
 
 
 from debian.changelog import Version
@@ -71,7 +71,30 @@ class LintianIssue(object):
             type(self).__name__, self.target, self.tag, self.info)
 
 
-_fixed_lintian_tags = []
+_fixed_lintian_tags: List[Any] = []
+_present_overrides: Optional[List[LintianOverride]] = None
+_tag_renames = None
+
+
+def _override_exists(
+        tag: str, info: Optional[str] = None,
+        package: Optional[str] = None,
+        type: Optional[str] = None,
+        arch: Optional[str] = None) -> bool:
+    global _present_overrides, _tag_renames
+    if _present_overrides is None:
+        _present_overrides = list(get_overrides())
+    if not _present_overrides:
+        return False
+    if _tag_renames is None:
+        _tag_renames = load_renamed_tags()
+    for override in _present_overrides:
+        if _tag_renames.get(override.tag) == tag:
+            tag = override.tag
+        if override.matches(package=package, info=info, tag=tag, arch=arch,
+                            type=type):
+            return True
+    return False
 
 
 def fixed_lintian_tag(
@@ -88,8 +111,9 @@ def fixed_lintian_tags():
 
 def reset() -> None:
     """Reset any global state that may exist."""
-    global _fixed_lintian_tags
+    global _fixed_lintian_tags, _present_overrides
     _fixed_lintian_tags = []
+    _present_overrides = None
 
 
 def report_result(description=None, certainty=None, patch_name=None):

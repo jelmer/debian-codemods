@@ -2,7 +2,7 @@
 
 import os
 import re
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 trailing_whitespace_re = re.compile(b'\\s*\n$')
 trailing_space_re = re.compile(b'[ ]*\n$')
@@ -26,22 +26,28 @@ def file_strip_whitespace(
             for lineno, line in enumerate(f, 1):
                 newline = strip_whitespace(line, strip_tabs=strip_tabs)
                 if newline != line:
-                    fixed_lintian_tag(
+                    issue = LintianIssue(
                         'source', 'trailing-whitespace',
                         info='%s (line %d)' % (path, lineno))
-                    changed = True
-                    if newline == b'\n' and delete_new_empty_line:
-                        continue
+                    if issue.should_fix():
+                        issue.report_fixed()
+                        changed = True
+                        if newline == b'\n' and delete_new_empty_line:
+                            continue
                 newlines.append(newline)
     except FileNotFoundError:
         return
     if strip_trailing_empty_lines:
         while newlines and newlines[-1] == b'\n':
-            changed = True
-            fixed_lintian_tag(
+            issue = LintianIssue(
                 'source', 'trailing-whitespace',
                 info='%s (line %d)' % (path, len(newlines) - 1))
-            newlines.pop(-1)
+            if issue.should_fix():
+                issue.report_fixed()
+                changed = True
+                newlines.pop(-1)
+            else:
+                break
     if changed:
         with open(path, 'wb') as f:
             f.writelines(newlines)
