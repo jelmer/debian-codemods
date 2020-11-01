@@ -61,5 +61,10 @@ def add_changelog_entry(
     for line in cl.initial_blank_lines:
         pieces.append(line.encode(cl._encoding) + b'\n')
     for block in cl._blocks:
-        pieces.append(bytes(block))
+        try:
+            serialized = block._format(allow_missing_author=True).encode(
+                block._encoding)
+        except TypeError:  # older python-debian
+            serialized = bytes(block)
+        pieces.append(serialized)
     tree.put_file_bytes_non_atomic(path, b''.join(pieces))
