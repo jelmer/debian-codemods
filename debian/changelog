@@ -4,6 +4,8 @@ lintian-brush (0.84) UNRELEASED; urgency=medium
     overrides.
   * Don't remove the Testsuite header for packages compatible with dpkg
     < 1.17.1.
+  * Automate updating of information about key packages in different
+    releases.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 01 Nov 2020 15:40:12 +0000
 
