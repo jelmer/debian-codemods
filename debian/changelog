@@ -1,4 +1,4 @@
-lintian-brush (0.84) UNRELEASED; urgency=medium
+lintian-brush (0.84) unstable; urgency=medium
 
   * Avoid loading overrides multiple times, handle renamed tags in
     overrides.
@@ -7,7 +7,7 @@ lintian-brush (0.84) UNRELEASED; urgency=medium
   * Automate updating of information about key packages in different
     releases.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 01 Nov 2020 15:40:12 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 01 Nov 2020 17:41:16 +0000
 
 lintian-brush (0.83) unstable; urgency=medium
 
