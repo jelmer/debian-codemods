@@ -1605,3 +1605,11 @@
 - tag: source-contains-patch-failure-file
 - tag: source-contains-quilt-control-dir
 - tag: undeclared-elf-prerequisites
+- tag: bogus-python-prerequisite
+  difficulty: medium
+  comment: |
+    dropping the dependency on python-is-python{2,3} is fairly straightforward,
+    but knowing we're not breaking anything when doing that is much harder.
+    Scan every file in the package for #!/usr/bin/python lines?
+- tag: python2-script-but-no-python2-dep
+- tag: python3-script-but-no-python3-dep
