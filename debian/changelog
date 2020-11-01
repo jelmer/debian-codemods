@@ -2,6 +2,8 @@ lintian-brush (0.84) UNRELEASED; urgency=medium
 
   * Avoid loading overrides multiple times, handle renamed tags in
     overrides.
+  * Don't remove the Testsuite header for packages compatible with dpkg
+    < 1.17.1.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 01 Nov 2020 15:40:12 +0000
 

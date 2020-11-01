@@ -48,11 +48,15 @@ update-spdx:
 	python3 download-license-data.py > spdx.json
 	brz diff spdx.json || brz commit -m "Update SPDX license data." spdx.json
 
+update-key-package-versions:
+	python3 key-package-versions.py
+	brz diff key-package-versions.json || brz commit -m "Update key package versions." key-package-versions.json
+
 update-renamed-tags:
 	python3 renamed-tags.py
 	brz diff renamed-tags.json || brz commit -m "Update renamed tags." renamed-tags.json
 
-update: update-spdx update-readme update-renamed-tags
+update: update-spdx update-readme update-renamed-tags update-key-package-versions
 
 next:
 	python3 next.py

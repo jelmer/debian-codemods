@@ -105,7 +105,10 @@ def maximum_debhelper_compat_version(compat_release: str) -> int:
     Returns:
       debhelper compat version
     """
-    max_version = debhelper_compat_version.get(compat_release)
-    if max_version is None:
+    from .release_info import key_package_version
+    debhelper_version = key_package_version('debhelper', compat_release)
+    if debhelper_version is None:
         max_version = lowest_non_deprecated_compat_level()
+    else:
+        max_version = int(str(debhelper_version).split('.')[0])
     return max_version
