@@ -1,0 +1,2 @@
+manpage-has-errors-from-man usr/share/man/man1/dgit.1.gz file '<standard input>', around line 51:
+binary-without-manpage usr/bin/dgit-badcommit-fixup
