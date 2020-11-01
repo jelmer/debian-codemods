@@ -25,7 +25,11 @@ from . import (
     DEFAULT_MINIMUM_CERTAINTY,
     certainty_sufficient,
     )
-from .lintian_overrides import get_overrides, LintianOverride, load_renamed_tags
+from .lintian_overrides import (
+    get_overrides,
+    LintianOverride,
+    load_renamed_tags,
+    )
 
 
 from debian.changelog import Version
