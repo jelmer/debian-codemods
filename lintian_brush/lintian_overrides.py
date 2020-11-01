@@ -32,6 +32,10 @@ def overrides_paths() -> Iterator[str]:
     for path in ['debian/source/lintian-overrides']:
         if os.path.exists(path):
             yield path
+    if os.path.exists('debian'):
+        for entry in os.scandir('debian'):
+            if entry.name.endswith('.lintian-overrides'):
+                yield entry.path
 
 
 def update_overrides(cb: Callable[[LintianOverride], LintianOverride]) -> None:
