@@ -76,27 +76,6 @@ def pedantic_compat_level() -> int:
     return _get_lintian_compat_levels()['pedantic']
 
 
-debhelper_compat_version: Dict[str, int] = {
-    # Debian
-    'jessie': 9,
-    'stretch': 10,
-    'sid': 13,
-    'bullseye': 12,
-    'buster': 12,
-
-    # Ubuntu
-    'precise': 9,
-    'trusty': 9,
-    'xenial': 9,
-    'bionic': 11,
-    'cosmic': 11,
-    'disco': 12,
-    'eoan': 12,
-    'focal': 12,
-    'groovy': 13,
-    }
-
-
 def maximum_debhelper_compat_version(compat_release: str) -> int:
     """Retrieve the maximum supported debhelper compat version fior a release.
 

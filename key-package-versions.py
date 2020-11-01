@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from debian.changelog import Version
 import json
 from typing import Dict
 
@@ -7,10 +8,14 @@ KEY_PACKAGES = ('debhelper', 'dpkg')
 
 OUTPUT_FILENAME = 'key-package-versions.json'
 
-versions: Dict[str, Dict[str, str]] = {k: {} for k in KEY_PACKAGES}
+versions: Dict[str, Dict[str, str]]
 
 with open(OUTPUT_FILENAME, 'r') as f:
     versions = json.load(f)
+
+
+for kp in KEY_PACKAGES:
+    versions.setdefault(kp, {})
 
 
 def update_debian(versions, key_packages):
@@ -40,7 +45,10 @@ def update_ubuntu(versions, key_packages):
                 continue
             ps = archive.getPublishedSources(
                 exact_match=True, source_name=pkg, distro_series=series)
-            versions[pkg][series.name] = ps[0].source_package_version
+            versions[pkg][series.name] = str(max(
+                Version(p.source_package_version)
+                for p in ps
+                if p.pocket == 'Release'))
 
 
 print('Downloading Debian key package information')
