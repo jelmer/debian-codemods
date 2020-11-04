@@ -1,3 +1,9 @@
+lintian-brush (0.85) UNRELEASED; urgency=medium
+
+  * Add fixer debian-watch-file-old-format.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 04 Nov 2020 02:47:58 +0000
+
 lintian-brush (0.84) unstable; urgency=medium
 
   * Avoid loading overrides multiple times, handle renamed tags in

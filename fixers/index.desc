@@ -118,6 +118,8 @@ Lintian-Tags:
 Fix-Script: debian-upstream-obsolete-path.sh
 Lintian-Tags: debian-upstream-obsolete-path
 
+Fix-Script: debian-watch-file-old-format.py
+
 Fix-Script: debian-watch-uses-insecure-uri.py
 Lintian-Tags: debian-watch-uses-insecure-uri
 
