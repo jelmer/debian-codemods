@@ -101,12 +101,14 @@ subset of the issues:
 * misspelled-closes-bug
 * no-copyright-file
 * no-homepage-field
+* obsolete-debian-watch-file-standard
 * obsolete-field-in-dep5-copyright
 * obsolete-runtime-tests-restriction
 * old-dpmt-vcs
 * old-fsf-address-in-copyright-file
 * old-papt-vcs
 * old-source-override-location
+* older-debian-watch-file-standard
 * older-source-format
 * out-of-date-copyright-format-uri
 * out-of-date-standards-version
