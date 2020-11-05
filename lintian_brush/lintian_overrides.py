@@ -143,8 +143,10 @@ from lintian where tag = 'unused-override' AND (%s)""" % " OR ".join(extra),
 unused_overrides = None
 
 
-def remove_unused() -> List[LintianOverride]:
+def remove_unused(ignore_tags=None) -> List[LintianOverride]:
     from debian.deb822 import Deb822
+    if ignore_tags is None:
+        ignore_tags = set()
     packages = []
     with open('debian/control', 'r') as f:
         for para in Deb822.iter_paragraphs(f):
@@ -178,7 +180,8 @@ def remove_unused() -> List[LintianOverride]:
             loop = asyncio.get_event_loop()
             unused_overrides = loop.run_until_complete(
                 get_unused_overrides(packages))
-        if is_unused(override, unused_overrides):
+        if (is_unused(override, unused_overrides) and
+                override.tag not in ignore_tags):
             removed.append(override)
             return None
         return override

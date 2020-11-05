@@ -12,6 +12,12 @@ from lintian_brush.fixer import (
     net_access_allowed, report_result, diligence, fixed_lintian_tag,
     )
 
+
+INTERMITTENT_LINTIAN_TAGS = [
+    'rc-version-greater-than-expected-version',
+    ]
+
+
 if diligence() < 1:
     # Removing unused overrides requires pro-actively contacting UDD.
     sys.exit(0)
@@ -19,7 +25,7 @@ if diligence() < 1:
 if not net_access_allowed():
     sys.exit(0)
 
-removed = remove_unused()
+removed = remove_unused(ignore_tags=INTERMITTENT_LINTIAN_TAGS)
 
 description = [
     'Remove %d unused lintian overrides.\n' % len(removed),

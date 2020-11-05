@@ -1,6 +1,8 @@
 lintian-brush (0.85) UNRELEASED; urgency=medium
 
   * Add fixer debian-watch-file-old-format.
+  * Don't remove unused overrides for the rc-version-greater-than-
+    expected-version tag, which is intermittent.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 04 Nov 2020 02:47:58 +0000
 
