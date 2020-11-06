@@ -169,6 +169,27 @@ class UpstreamOutput(object):
             self.name == other.name and self.origin == other.origin)
 
 
+class BuildSystem(object):
+    """A build system for an upstream."""
+
+    def __init__(self, name, origin=None):
+        self.name = name
+        self.origin = origin
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return "%s(%r, origin=%r)" % (
+            type(self).__name__, self.name, self.origin)
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, type(self)) and
+            other.name == self.name and
+            other.origin == self.origin)
+
+
 def _load_json_url(http_url: str, timeout: int = DEFAULT_URLLIB_TIMEOUT):
     headers = {'User-Agent': USER_AGENT, 'Accept': 'application/json'}
     http_contents = urlopen(
@@ -448,6 +469,7 @@ def guess_from_pkg_info(path, trust_package):
 
 
 def guess_from_setup_py(path, trust_package):
+    yield BuildSystem('setup.py')
     if not trust_package:
         return
     from distutils.core import run_setup
@@ -898,6 +920,7 @@ def guess_from_doap(path, trust_package):
 
 
 def guess_from_cabal(path, trust_package=False):
+    yield BuildSystem('cabal')
     # TODO(jelmer): Perhaps use a standard cabal parser in Python?
     # The current parser is not really correct, but good enough for our needs.
     # https://www.haskell.org/cabal/release/cabal-1.10.1.0/doc/users-guide/
@@ -1062,6 +1085,7 @@ def guess_from_cargo(path, trust_package):
     except TomlDecodeError as e:
         warn('Error parsing toml file %s: %s' % (path, e))
         return
+    yield BuildSystem('cargo')
     try:
         package = cargo['package']
     except KeyError:
@@ -1085,6 +1109,7 @@ def guess_from_cargo(path, trust_package):
 
 
 def guess_from_pom_xml(path, trust_package=False):
+    yield BuildSystem('maven')
     # Documentation: https://maven.apache.org/pom.html
 
     import xml.etree.ElementTree as ET
@@ -1296,6 +1321,37 @@ def guess_upstream_info(
             yield entry
 
 
+def summarize_upstream_metadata(
+        metadata_items, path, net_access=False,
+        consult_external_directory=False, check=False):
+    """Summarize the upstream metadata into a dictionary.
+
+    Args:
+      metadata_items: Iterator over metadata items
+      path: Path to the package
+      trust_package: Whether to trust the package contents and i.e. run
+          executables in it
+      net_access: Whether to allow net access
+      consult_external_directory: Whether to pull in data
+        from external (user-maintained) directories.
+    """
+    upstream_metadata = {}
+    update_from_guesses(
+        upstream_metadata,
+        filter_bad_guesses(metadata_items))
+
+    extend_upstream_metadata(
+        upstream_metadata, path, net_access=net_access,
+        consult_external_directory=consult_external_directory)
+
+    if check:
+        check_upstream_metadata(upstream_metadata)
+
+    fix_upstream_metadata(upstream_metadata)
+
+    return {k: v.value for (k, v) in upstream_metadata.items()}
+
+
 def guess_upstream_metadata(
         path, trust_package=False, net_access=False,
         consult_external_directory=False, check=False):
@@ -1309,22 +1365,11 @@ def guess_upstream_metadata(
       consult_external_directory: Whether to pull in data
         from external (user-maintained) directories.
     """
-    upstream_metadata = {}
-    update_from_guesses(
-        upstream_metadata,
-        filter_bad_guesses(
-            guess_upstream_metadata_items(path, trust_package=trust_package)))
-
-    extend_upstream_metadata(
-        upstream_metadata, path, net_access=net_access,
-        consult_external_directory=consult_external_directory)
-
-    if check:
-        check_upstream_metadata(upstream_metadata)
-
-    fix_upstream_metadata(upstream_metadata)
-
-    return {k: v.value for (k, v) in upstream_metadata.items()}
+    metadata_items = guess_upstream_metadata_items(
+        path, trust_package=trust_package)
+    return summarize_upstream_metadata(
+        metadata_items, path, net_access=net_access,
+        consult_external_directory=consult_external_directory, check=check)
 
 
 def _possible_fields_missing(upstream_metadata, fields, field_certainty):
