@@ -8,6 +8,9 @@ from lintian_brush.fixer import (
 import os
 import sys
 
+if os.path.exists('debian/debcargo.toml'):
+    sys.exit(0)
+
 description = None
 
 if not os.path.exists('debian/source/format'):
