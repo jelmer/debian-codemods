@@ -62,6 +62,13 @@ def write_changelog_template(path, source_name, version, wnpp_bugs=None):
         f.write(cl.__str__().strip('\n') + '\n')
 
 
+def write_debcargo_file(path):
+    with open(path, 'w') as f:
+        f.write("""\
+overlay = "."
+""")
+
+
 async def find_wnpp_bugs(source_name):
     try:
         from .udd import connect_udd_mirror
@@ -106,7 +113,9 @@ def main(argv=None):
         )
     from lintian_brush.debhelper import maximum_debhelper_compat_version
     from lintian_brush.standards_version import iter_standards_versions
-    from lintian_brush.upstream_metadata import guess_upstream_metadata
+    from lintian_brush.upstream_metadata import (
+        get_upstream_info,
+        )
     from breezy.trace import note  # noqa: E402
 
     parser = argparse.ArgumentParser(prog='debianize')
@@ -172,10 +181,14 @@ def main(argv=None):
              'Run lintian-brush instead?', wt.abspath(subpath))
         return 1
 
-    metadata = guess_upstream_metadata(
-        '.', args.trust, not args.disable_net_access,
-        consult_external_directory=args.consult_external_directory,
-        check=args.check)
+    buildsystem, unused_requirements, metadata = (
+        get_upstream_info(
+            '.', trust_package=args.trust,
+            net_access=not args.disable_net_access,
+            consult_external_directory=args.consult_external_directory,
+            check=args.check))
+
+    debcargo = (buildsystem is not None and buildsystem.name == 'cargo')
 
     try:
         upstream_name = metadata['Name']
@@ -243,19 +256,22 @@ def main(argv=None):
             'debhelper-compat (= %d)' % maximum_debhelper_compat_version(
                 compat_release))
 
+        initial_files = []
         try:
             wt.mkdir(osutils.pathjoin(subpath, 'debian'))
-            write_debhelper_rules_template('debian/rules')
-            write_control_template('debian/control', source, binaries)
+            if not debcargo:
+                write_debhelper_rules_template('debian/rules')
+                initial_files.append('debian/rules')
+                write_control_template('debian/control', source, binaries)
+                initial_files.append('debian/control')
+            else:
+                write_debcargo_file('debian/debcargo.toml')
+                initial_files.append('debian/debcargo.toml')
             write_changelog_template(
                 'debian/changelog', source_name, version, wnpp_bugs)
+            initial_files.append('debian/changelog')
 
-            initial_files = [
-                osutils.pathjoin(subpath, p)
-                for p in [
-                    'debian/changelog', 'debian/control',
-                    'debian/rules']]
-            wt.add(initial_files)
+            wt.add([osutils.pathjoin(subpath, p) for p in initial_files])
 
             wt.commit(
                 'Create debian/ directory', allow_pointless=False,

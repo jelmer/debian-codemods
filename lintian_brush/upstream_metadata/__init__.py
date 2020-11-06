@@ -1321,6 +1321,25 @@ def guess_upstream_info(
             yield entry
 
 
+def get_upstream_info(path, trust_package=False, net_access=False,
+                      consult_external_directory=False, check=False):
+    metadata_items = []
+    requirements = []
+    buildsystem = None
+    for entry in guess_upstream_info(path, trust_package=trust_package):
+        if isinstance(entry, UpstreamDatum):
+            metadata_items.append(entry)
+        elif isinstance(entry, BuildSystem):
+            buildsystem = entry
+        elif isinstance(entry, UpstreamRequirement):
+            requirements.append(entry)
+    metadata = summarize_upstream_metadata(
+        metadata_items, '.', net_access=net_access,
+        consult_external_directory=consult_external_directory,
+        check=check)
+    return buildsystem, requirements, metadata
+
+
 def summarize_upstream_metadata(
         metadata_items, path, net_access=False,
         consult_external_directory=False, check=False):
