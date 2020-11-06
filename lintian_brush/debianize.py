@@ -62,13 +62,6 @@ def write_changelog_template(path, source_name, version, wnpp_bugs=None):
         f.write(cl.__str__().strip('\n') + '\n')
 
 
-def write_debcargo_file(path):
-    with open(path, 'w') as f:
-        f.write("""\
-overlay = "."
-""")
-
-
 async def find_wnpp_bugs(source_name):
     try:
         from .udd import connect_udd_mirror
@@ -188,8 +181,6 @@ def main(argv=None):
             consult_external_directory=args.consult_external_directory,
             check=args.check))
 
-    debcargo = (buildsystem is not None and buildsystem.name == 'cargo')
-
     try:
         upstream_name = metadata['Name']
     except KeyError:
@@ -259,14 +250,10 @@ def main(argv=None):
         initial_files = []
         try:
             wt.mkdir(osutils.pathjoin(subpath, 'debian'))
-            if not debcargo:
-                write_debhelper_rules_template('debian/rules')
-                initial_files.append('debian/rules')
-                write_control_template('debian/control', source, binaries)
-                initial_files.append('debian/control')
-            else:
-                write_debcargo_file('debian/debcargo.toml')
-                initial_files.append('debian/debcargo.toml')
+            write_debhelper_rules_template('debian/rules')
+            initial_files.append('debian/rules')
+            write_control_template('debian/control', source, binaries)
+            initial_files.append('debian/control')
             write_changelog_template(
                 'debian/changelog', source_name, version, wnpp_bugs)
             initial_files.append('debian/changelog')
