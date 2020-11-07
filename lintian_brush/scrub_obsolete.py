@@ -19,6 +19,7 @@
 """Utility for dropping unnecessary constraints."""
 
 import asyncio
+import logging
 import os
 
 from breezy.trace import note
@@ -38,6 +39,7 @@ from debmutate.control import (
     )
 
 from .changelog import add_changelog_entry
+from . import get_committer
 
 
 _changelog_policy_noted = False
@@ -116,6 +118,7 @@ def drop_obsolete_depends(entry, upgrade_release):
     dropped = []
     for pkgrel in entry:
         if pkgrel.version is not None:
+            logging.debug('Relation: %s', pkgrel)
             compat_version = package_version(pkgrel.name, upgrade_release)
             if (compat_version is not None and
                     depends_obsolete(compat_version, *pkgrel.version)):
@@ -269,7 +272,7 @@ class ScrubObsoleteResult(object):
         return summary
 
 
-def scrub_obsolete(wt, subpath, upgrade_release):
+def _scrub_obsolete(wt, subpath, upgrade_release):
     specific_files = []
     control_path = os.path.join(subpath, 'debian/control')
     with ControlEditor(wt.abspath(control_path)) as editor:
@@ -290,77 +293,13 @@ def scrub_obsolete(wt, subpath, upgrade_release):
         maintscript_removed=maintscript_removed)
 
 
-def main():
-    import argparse
-    import os
-    from breezy.workingtree import WorkingTree
-    import breezy  # noqa: E402
-    breezy.initialize()
-    import breezy.git  # noqa: E402
-    import breezy.bzr  # noqa: E402
-    from breezy.trace import note  # note: E402
+def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None):
     from breezy.commit import NullCommitReporter
-
-    from . import (
-        check_clean_tree,
-        PendingChanges,
-        get_committer,
-        version_string,
-        )
-    from .config import Config
-
-    parser = argparse.ArgumentParser(prog='drop-backwards-compat')
-    parser.add_argument(
-        '--directory', metavar='DIRECTORY', help='directory to run in',
-        type=str, default='.')
-    parser.add_argument(
-        '--upgrade-release', metavar='UPGRADE-RELEASE',
-        help='Release to allow upgrading from.', default='oldstable')
-    parser.add_argument(
-        '--no-update-changelog', action="store_false", default=None,
-        dest="update_changelog", help="do not update the changelog")
-    parser.add_argument(
-        '--update-changelog', action="store_true", dest="update_changelog",
-        help="force updating of the changelog", default=None)
-    parser.add_argument(
-        '--version', action='version', version='%(prog)s ' + version_string)
-    parser.add_argument(
-        '--identity',
-        help='Print user identity that would be used when committing',
-        action='store_true', default=False)
-
-    args = parser.parse_args()
-
-    wt, subpath = WorkingTree.open_containing(args.directory)
-    if args.identity:
-        note(get_committer(wt))
-        return 0
-
-    try:
-        check_clean_tree(wt, wt.basis_tree(), subpath)
-    except PendingChanges:
-        note("%s: Please commit pending changes first.", wt.basedir)
-        return 1
-
-    import distro_info
-    debian_info = distro_info.DebianDistroInfo()
-    upgrade_release = debian_info.codename(args.upgrade_release)
-
-    result = scrub_obsolete(wt, subpath, upgrade_release)
-    if not result:
-        return 0
+    result = _scrub_obsolete(wt, subpath, upgrade_release)
 
     specific_files = list(result.specific_files)
     summary = result.itemized()
 
-    update_changelog = args.update_changelog
-    try:
-        cfg = Config.from_workingtree(wt, subpath)
-    except FileNotFoundError:
-        pass
-    else:
-        if update_changelog is None:
-            update_changelog = cfg.update_changelog()
     changelog_path = os.path.join(subpath, 'debian/changelog')
 
     if update_changelog is None:
@@ -397,6 +336,87 @@ def main():
         allow_pointless=False,
         reporter=NullCommitReporter(),
         committer=committer)
+
+    return result
+
+
+def main():
+    import argparse
+    from breezy.workingtree import WorkingTree
+    import breezy  # noqa: E402
+    breezy.initialize()
+    import breezy.git  # noqa: E402
+    import breezy.bzr  # noqa: E402
+    from breezy.trace import note  # note: E402
+
+    from . import (
+        check_clean_tree,
+        PendingChanges,
+        version_string,
+        )
+    from .config import Config
+
+    parser = argparse.ArgumentParser(prog='drop-backwards-compat')
+    parser.add_argument(
+        '--directory', metavar='DIRECTORY', help='directory to run in',
+        type=str, default='.')
+    parser.add_argument(
+        '--upgrade-release', metavar='UPGRADE-RELEASE',
+        help='Release to allow upgrading from.', default='oldstable')
+    parser.add_argument(
+        '--no-update-changelog', action="store_false", default=None,
+        dest="update_changelog", help="do not update the changelog")
+    parser.add_argument(
+        '--update-changelog', action="store_true", dest="update_changelog",
+        help="force updating of the changelog", default=None)
+    parser.add_argument(
+        '--version', action='version', version='%(prog)s ' + version_string)
+    parser.add_argument(
+        '--identity',
+        help='Print user identity that would be used when committing',
+        action='store_true', default=False)
+    parser.add_argument(
+        '--debug',
+        help='Describe all considerd changes.',
+        action='store_true')
+
+    args = parser.parse_args()
+
+    wt, subpath = WorkingTree.open_containing(args.directory)
+    if args.identity:
+        note(get_committer(wt))
+        return 0
+
+    try:
+        check_clean_tree(wt, wt.basis_tree(), subpath)
+    except PendingChanges:
+        note("%s: Please commit pending changes first.", wt.basedir)
+        return 1
+
+    import distro_info
+    debian_info = distro_info.DebianDistroInfo()
+    upgrade_release = debian_info.codename(args.upgrade_release)
+
+    note('Removing constraints unnecessary since %s', upgrade_release)
+
+    if args.debug:
+        logging.basicConfig()
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    update_changelog = args.update_changelog
+    try:
+        cfg = Config.from_workingtree(wt, subpath)
+    except FileNotFoundError:
+        pass
+    else:
+        if update_changelog is None:
+            update_changelog = cfg.update_changelog()
+
+    result = scrub_obsolete(
+        wt, subpath, upgrade_release,
+        update_changelog=args.update_changelog)
+    if not result:
+        return 0
 
 
 if __name__ == '__main__':
