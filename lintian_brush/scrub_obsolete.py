@@ -82,7 +82,7 @@ def depends_obsolete(latest_version, kind, req_version):
     if kind == '>=':
         return latest_version >= req_version
     elif kind == '>>':
-        return latest_version >> req_version
+        return latest_version > req_version
     elif kind == '=':
         return False
     return False
@@ -93,7 +93,7 @@ def conflict_obsolete(latest_version, kind, req_version):
     if kind == '<<':
         return latest_version >= req_version
     elif kind in ('<=', '='):
-        return latest_version >> req_version
+        return latest_version > req_version
     return False
 
 
