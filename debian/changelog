@@ -1,3 +1,10 @@
+lintian-brush (0.86) UNRELEASED; urgency=medium
+
+  * Hide fixer for upstream-metadata-in-native-source behind --
+    opinionated.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 07 Nov 2020 22:35:52 +0000
+
 lintian-brush (0.85) unstable; urgency=medium
 
   * Add fixer debian-watch-file-old-format.

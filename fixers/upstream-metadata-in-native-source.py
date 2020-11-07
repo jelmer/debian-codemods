@@ -4,12 +4,16 @@ from lintian_brush.fixer import (
     package_is_native,
     report_result,
     fixed_lintian_tag,
+    opinionated,
     )
 import os
 import sys
 
 if not package_is_native():
     # Nothing to do
+    sys.exit(0)
+
+if not opinionated():
     sys.exit(0)
 
 try:
