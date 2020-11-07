@@ -1,0 +1,8 @@
+{
+  "Name": "yep",
+  "Repository": [
+    ":extssh:_anoncvs@anoncvs.example.org:/cvs",
+    "yep"
+  ],
+  "Repository-Browse": "http://www.example.org/cvs.cgi/contrib/code/yep/"
+}

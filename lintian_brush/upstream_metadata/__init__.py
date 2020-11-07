@@ -1574,6 +1574,8 @@ def extend_from_aur(upstream_metadata, minimum_certainty, package):
 
 
 def extract_sf_project_name(url):
+    if isinstance(url, list):
+        return None
     m = re.fullmatch('https?://(.*).(sf|sourceforge).net/?', url)
     if m:
         return m.group(1)
@@ -1851,8 +1853,10 @@ def _extrapolate_repository_from_repository_browse(
 
 def _extrapolate_bug_database_from_repository(
         upstream_metadata, net_access):
-    bug_db_url = guess_bug_database_url_from_repo_url(
-        upstream_metadata['Repository'].value)
+    repo_url = upstream_metadata['Repository'].value
+    if not isinstance(repo_url, str):
+        return
+    bug_db_url = guess_bug_database_url_from_repo_url(repo_url)
     if bug_db_url:
         return UpstreamDatum(
             'Bug-Database', bug_db_url,
@@ -2329,8 +2333,11 @@ def fix_upstream_metadata(upstream_metadata):
     if 'Repository' in upstream_metadata:
         repo = upstream_metadata['Repository']
         url = repo.value
-        url = sanitize_vcs_url(url)
-        repo.value = url
+        if isinstance(url, str):
+            url = sanitize_vcs_url(url)
+            repo.value = url
+        elif isinstance(url, list):
+            pass  # TODO(jelmer): Convert to string?
 
 
 # If we're setting them new, put Name and Contact first
