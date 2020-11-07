@@ -297,6 +297,9 @@ def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None):
     from breezy.commit import NullCommitReporter
     result = _scrub_obsolete(wt, subpath, upgrade_release)
 
+    if not result:
+        return result
+
     specific_files = list(result.specific_files)
     summary = result.itemized()
 
