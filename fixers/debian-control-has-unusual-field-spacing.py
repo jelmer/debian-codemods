@@ -54,6 +54,8 @@ except GeneratedFile as e:
             fix_field_spacing('debian/control')
     else:
         raise
+except FileNotFoundError:
+    sys.exit(0)
 else:
     changed = fix_field_spacing('debian/control')
 
