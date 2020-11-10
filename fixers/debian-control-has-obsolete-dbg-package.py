@@ -23,23 +23,26 @@ dbg_packages = set()
 dbg_migration_done = set()
 
 
-with ControlEditor() as updater:
-    for control in updater.binaries:
-        # Delete the freeradius-dbg package from debian/control
-        package = control["Package"]
-        if package.endswith('-dbg'):
-            if package.startswith('python'):
-                # -dbgsym packages don't include _d.so files for the python
-                # interpreter
-                continue
-            dbg_packages.add(control["Package"])
-            control.clear()
+try:
+    with ControlEditor() as updater:
+        for control in updater.binaries:
+            # Delete the freeradius-dbg package from debian/control
+            package = control["Package"]
+            if package.endswith('-dbg'):
+                if package.startswith('python'):
+                    # -dbgsym packages don't include _d.so files for the python
+                    # interpreter
+                    continue
+                dbg_packages.add(control["Package"])
+                control.clear()
 
-    if not dbg_packages:
-        # no debug packages found to remove
-        sys.exit(0)
+        if not dbg_packages:
+            # no debug packages found to remove
+            sys.exit(0)
 
-    ensure_minimum_debhelper_version(updater.source, minimum_version)
+        ensure_minimum_debhelper_version(updater.source, minimum_version)
+except FileNotFoundError:
+    sys.exit(0)
 
 
 current_version = str(current_package_version())

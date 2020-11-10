@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import sys
+
 from debmutate.control import ControlEditor
 from lintian_brush.fixer import (
     fixed_lintian_tag,
@@ -10,6 +12,8 @@ from lintian_brush.fixer import (
 from lintian_brush.upstream_metadata import guess_upstream_metadata_items
 
 current_certainty = None
+
+# TODO(jelmer): Support editing homepage field in debian/debcargo.toml
 
 with ControlEditor() as updater:
     if 'Homepage' not in updater.source:
@@ -23,5 +27,6 @@ with ControlEditor() as updater:
                 updater.source["Homepage"] = datum.value
                 current_certainty = datum.certainty
                 fixed_lintian_tag('source', 'no-homepage-field')
+
 
 report_result('Fill in Homepage field.', certainty=current_certainty)

@@ -1,15 +1,20 @@
 #!/usr/bin/python3
 
+import sys
 from debmutate.control import drop_dependency, ControlEditor
 from lintian_brush.fixer import report_result, fixed_lintian_tag
 
-with open('debian/rules', 'rb') as f:
-    for line in f:
-        if b'/usr/share/cdbs/' in line:
-            uses_cdbs = True
-            break
-    else:
-        uses_cdbs = False
+try:
+    with open('debian/rules', 'rb') as f:
+        for line in f:
+            if b'/usr/share/cdbs/' in line:
+                uses_cdbs = True
+                break
+        else:
+            uses_cdbs = False
+except FileNotFoundError:
+    # Unsure whether it actually needs cdbs
+    sys.exit(2)
 
 if not uses_cdbs:
     with ControlEditor() as updater:

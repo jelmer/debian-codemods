@@ -3,6 +3,7 @@
 from datetime import datetime
 import os
 import re
+import sys
 from debian.changelog import Changelog
 from debmutate.control import (
     ControlEditor,
@@ -142,56 +143,63 @@ check_requirements = {
 current_version = None
 
 
-with ControlEditor() as updater:
-    try:
-        current_version = updater.source["Standards-Version"]
-    except KeyError:
-        # Huh, no standards version?
-        pass
-    else:
+# TODO(jelmer): Support updating the settings.policy field in
+# debian/debcargo.toml
+
+
+try:
+    with ControlEditor() as updater:
         try:
-            svs = dict(iter_standards_versions())
-        except FileNotFoundError:
-            dt = None
-            last = None
-            tag = 'out-of-date-standards-version'
+            current_version = updater.source["Standards-Version"]
+        except KeyError:
+            # Huh, no standards version?
+            pass
         else:
-            last, last_ts = max(svs.items())
-            last_dt = datetime.fromtimestamp(last_ts)
             try:
-                ts = svs[parse_standards_version(current_version)]
-            except KeyError:
+                svs = dict(iter_standards_versions())
+            except FileNotFoundError:
                 dt = None
+                last = None
                 tag = 'out-of-date-standards-version'
             else:
-                dt = datetime.fromtimestamp(ts)
-                age = last_dt - dt
-                if age.days > 365 * 2:
-                    tag = 'ancient-standards-version'
-                else:
+                last, last_ts = max(svs.items())
+                last_dt = datetime.fromtimestamp(last_ts)
+                try:
+                    ts = svs[parse_standards_version(current_version)]
+                except KeyError:
+                    dt = None
                     tag = 'out-of-date-standards-version'
-        fixed_lintian_tag(
-            updater.source,
-            tag,
-            '%s%s%s' % (
-                current_version,
-                (' (released %s)' % dt.strftime('%Y-%m-%d')) if dt else '',
-                (' (current is %s)' %
-                 '.'.join([str(x) for x in last]))
-                if last is not None else '',
-                ))
+                else:
+                    dt = datetime.fromtimestamp(ts)
+                    age = last_dt - dt
+                    if age.days > 365 * 2:
+                        tag = 'ancient-standards-version'
+                    else:
+                        tag = 'out-of-date-standards-version'
+            fixed_lintian_tag(
+                updater.source,
+                tag,
+                '%s%s%s' % (
+                    current_version,
+                    (' (released %s)' % dt.strftime('%Y-%m-%d')) if dt else '',
+                    (' (current is %s)' %
+                     '.'.join([str(x) for x in last]))
+                    if last is not None else '',
+                    ))
 
-        while current_version in upgrade_path:
-            target_version = upgrade_path[current_version]
-            try:
-                check_fn = check_requirements[target_version]
-            except KeyError:
-                pass
-            else:
-                if not check_fn():
-                    break
-            current_version = target_version
-        updater.source["Standards-Version"] = current_version
+            while current_version in upgrade_path:
+                target_version = upgrade_path[current_version]
+                try:
+                    check_fn = check_requirements[target_version]
+                except KeyError:
+                    pass
+                else:
+                    if not check_fn():
+                        break
+                current_version = target_version
+            updater.source["Standards-Version"] = current_version
+except FileNotFoundError:
+    sys.exit(0)
 
 
 if current_version:

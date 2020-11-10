@@ -62,18 +62,23 @@ def fix_homepage(http_url):
     return http_url
 
 
-with ControlEditor() as updater:
-    try:
-        homepage = updater.source["Homepage"]
-    except KeyError:
-        pass
-    else:
-        new_homepage = fix_homepage(homepage)
-        if new_homepage != updater.source['Homepage']:
-            fixed_lintian_tag(
-                'source', 'homepage-field-uses-insecure-uri',
-                updater.source['Homepage'])
-        updater.source["Homepage"] = new_homepage
+# TODO(jelmer): Support editing the homepage field in debian/debcargo.toml
+
+try:
+    with ControlEditor() as updater:
+        try:
+            homepage = updater.source["Homepage"]
+        except KeyError:
+            pass
+        else:
+            new_homepage = fix_homepage(homepage)
+            if new_homepage != updater.source['Homepage']:
+                fixed_lintian_tag(
+                    'source', 'homepage-field-uses-insecure-uri',
+                    updater.source['Homepage'])
+            updater.source["Homepage"] = new_homepage
+except FileNotFoundError:
+    sys.exit(0)
 
 
 report_result("Use secure URI in Homepage field.")
