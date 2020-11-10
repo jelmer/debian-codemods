@@ -1103,9 +1103,10 @@ def guess_from_cargo(path, trust_package):
             yield UpstreamDatum('Repository', package['repository'], 'certain')
         if 'version' in package:
             yield UpstreamDatum('X-Version', package['version'], 'confident')
-    for name, details in cargo['dependencies'].items():
-        # TODO(jelmer): Look at details['features'], details['version']
-        yield UpstreamRequirement('build', 'cargo-crate', name)
+    if 'dependencies' in cargo:
+        for name, details in cargo['dependencies'].items():
+            # TODO(jelmer): Look at details['features'], details['version']
+            yield UpstreamRequirement('build', 'cargo-crate', name)
 
 
 def guess_from_pom_xml(path, trust_package=False):
