@@ -1,9 +1,9 @@
-lintian-brush (0.86) UNRELEASED; urgency=medium
+lintian-brush (0.86) unstable; urgency=medium
 
   * Hide fixer for upstream-metadata-in-native-source behind --
     opinionated.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 07 Nov 2020 22:35:52 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 10 Nov 2020 16:32:53 +0000
 
 lintian-brush (0.85) unstable; urgency=medium
 
