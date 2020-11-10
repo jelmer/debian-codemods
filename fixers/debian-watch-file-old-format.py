@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import sys
+
 from debmutate.watch import WatchEditor
 
 from lintian_brush.fixer import report_result, LintianIssue
@@ -9,6 +11,8 @@ WATCH_FILE_LATEST_VERSION = 4
 
 
 with WatchEditor() as editor:
+    if editor.watch_file is None:
+        sys.exit(0)
     if editor.watch_file.version >= WATCH_FILE_LATEST_VERSION:
         pass
     else:
