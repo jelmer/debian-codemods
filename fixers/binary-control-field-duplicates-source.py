@@ -5,18 +5,21 @@ from lintian_brush.fixer import report_result, LintianIssue
 
 removed = []
 
-with ControlEditor() as updater:
-    for binary in updater.binaries:
-        for field, value in binary.items():
-            if updater.source.get(field) == value:
-                del binary[field]
-                removed.append((binary['Package'], field, value))
-                issue = LintianIssue(
-                    updater.source,
-                    'binary-control-field-duplicates-source',
-                    info='field "%s" in package %s' % (
-                        field, binary['Package']))
-                issue.report_fixed()
+try:
+    with ControlEditor() as updater:
+        for binary in updater.binaries:
+            for field, value in binary.items():
+                if updater.source.get(field) == value:
+                    del binary[field]
+                    removed.append((binary['Package'], field, value))
+                    issue = LintianIssue(
+                        updater.source,
+                        'binary-control-field-duplicates-source',
+                        info='field "%s" in package %s' % (
+                            field, binary['Package']))
+                    issue.report_fixed()
+except FileNotFoundError:
+    sys.exit(0)
 
 
 report_result(
