@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import sys
+
 from debmutate.control import (
     guess_template_type,
     )

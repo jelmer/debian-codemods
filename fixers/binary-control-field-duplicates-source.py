@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import sys
+
 from debmutate.control import ControlEditor
 from lintian_brush.fixer import report_result, LintianIssue
 
