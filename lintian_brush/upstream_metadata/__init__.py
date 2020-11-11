@@ -331,6 +331,8 @@ def known_bad_guess(datum):
         parsed_url = urlparse(datum.value)
         if parsed_url.hostname == 'anongit.kde.org':
             return True
+        if parsed_url.hostname == 'git.gitorious.org':
+            return True
     if datum.field == 'Repository-Browse':
         parsed_url = urlparse(datum.value)
         if parsed_url.hostname == 'cgit.kde.org':
