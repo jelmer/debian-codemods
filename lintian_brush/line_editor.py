@@ -19,6 +19,7 @@
 
 
 class LineEditor(object):
+    """Edit a file line by line."""
 
     def __init__(self, path, mode=''):
         self.path = path
@@ -30,7 +31,8 @@ class LineEditor(object):
         self._newlines = list(self._oldlines)
         return self
 
-    def done(self):
+    def done(self) -> None:
+        """Write out the file if it has changed."""
         if self._oldlines != self._newlines:
             with open(self.path, 'w' + self.mode) as f:
                 f.writelines(self._newlines)
@@ -43,17 +45,18 @@ class LineEditor(object):
     def __iter__(self):
         return enumerate(self._newlines, 1)
 
-    def __setitem__(self, i, newline):
+    def __setitem__(self, i: int, newline):
         self._newlines[i - 1] = newline
 
-    def __getitem__(self, i):
+    def __getitem__(self, i: int):
         return self._newlines[i - 1]
 
-    def __delitem__(self, i):
+    def __delitem__(self, i: int):
         del self._newlines[i - 1]
 
-    def insert(self, lineno, line):
+    def insert(self, lineno: int, line):
+        """Insert a new line."""
         self._newlines.insert(lineno - 1, line)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._newlines)
