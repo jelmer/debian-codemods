@@ -45,7 +45,7 @@ Depends: devscripts,
 Recommends: lintian, dos2unix, gpg (>= 2.1), python3-pyinotify, python3-asyncpg, libdebhelper-perl, python3-toml, python3-levenshtein, decopy, python3-bs4
 Suggests: gnome-pkg-tools, postgresql-common, breezy-debian, po-debconf
 Description: automatically fix lintian problems
- This package contains a set of scripts that can automatically fix more than 80
+ This package contains a set of scripts that can automatically fix more than 140
  common lintian issues in Debian packages.
  .
  It comes with a wrapper script that invokes the scripts, updates
