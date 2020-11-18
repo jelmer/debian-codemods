@@ -93,6 +93,7 @@ subset of the issues:
 * maintainer-script-empty
 * maintainer-script-without-set-e
 * malformed-dm-upload-allowed
+* malformed-override
 * missing-build-dependency-for-dh-addon
 * missing-build-dependency-for-dh_-command
 * missing-built-using-field-for-golang-package
