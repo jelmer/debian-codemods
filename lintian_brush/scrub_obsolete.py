@@ -275,10 +275,15 @@ class ScrubObsoleteResult(object):
 def _scrub_obsolete(wt, subpath, upgrade_release):
     specific_files = []
     control_path = os.path.join(subpath, 'debian/control')
-    with ControlEditor(wt.abspath(control_path)) as editor:
-        specific_files.append(control_path)
-        package = editor.source['Source']
-        control_removed = drop_old_relations(editor, upgrade_release)
+    try:
+        with ControlEditor(wt.abspath(control_path)) as editor:
+            specific_files.append(control_path)
+            package = editor.source['Source']
+            control_removed = drop_old_relations(editor, upgrade_release)
+    except FileNotFoundError:
+        if wt.has_filename(os.path.join(subpath, 'debian/debcargo.toml')):
+            return ScrubObsoleteResult([], [], [])
+        raise
 
     maintscript_removed = []
     for path, removed in update_maintscripts(
