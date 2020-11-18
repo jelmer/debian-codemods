@@ -388,6 +388,10 @@
   difficulty: easy
 - tag: dpatch-index-references-non-existent-patch
 - tag: dpatch-missing-description
+  difficulty: hard
+  comment: |
+    in some cases, we may be able to find the description elsewhere,
+    e.g. the commit that it was derived from
 - tag: duplicate-changelog-files
 - tag: duplicate-conffile
 - tag: duplicate-entry-in-symbols-control-file

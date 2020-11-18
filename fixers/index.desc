@@ -243,6 +243,9 @@ Lintian-Tags: quilt-series-without-trailing-newline
 Fix-Script: renamed-tag.py
 Lintian-Tags: renamed-tag
 
+Fix-Script: malformed-override.py
+Lintian-Tags: malformed-override
+
 Fix-Script: space-in-std-shortname-in-dep5-copyright.py
 Lintian-Tags: space-in-std-shortname-in-dep5-copyright
 

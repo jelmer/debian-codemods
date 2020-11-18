@@ -11,7 +11,7 @@ from lintian_brush.lintian_overrides import (
 renames = load_renamed_tags()
 
 
-def rename_override_tags(override):
+def rename_override_tags(lineno, override):
     try:
         new_tag = renames[override.tag]
     except KeyError:

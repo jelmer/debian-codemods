@@ -38,7 +38,7 @@ def overrides_paths() -> Iterator[str]:
                 yield entry.path
 
 
-def update_overrides(cb: Callable[[LintianOverride], LintianOverride]) -> None:
+def update_overrides(cb: Callable[[int, LintianOverride], LintianOverride]) -> None:
     """"Call update_overrides_file on all overrides files.
 
     Args:
@@ -49,7 +49,7 @@ def update_overrides(cb: Callable[[LintianOverride], LintianOverride]) -> None:
 
 
 def update_overrides_file(
-        cb: Callable[[LintianOverride], LintianOverride],
+        cb: Callable[[int, LintianOverride], LintianOverride],
         path: str = 'debian/source/lintian-overrides') -> bool:
     """Modify the overrides in a file.
 
@@ -62,9 +62,9 @@ def update_overrides_file(
     with LintianOverridesEditor(path=path) as editor:
         new_lines = []
         comments: List[str] = []
-        for entry in editor.lines:
+        for lineno, entry in enumerate(editor.lines, 1):
             if isinstance(entry, LintianOverride):
-                entry = cb(entry)
+                entry = cb(lineno, entry)
                 if entry is not None:
                     new_lines.extend(comments)
                     new_lines.append(entry)

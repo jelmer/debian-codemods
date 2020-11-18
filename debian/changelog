@@ -1,6 +1,7 @@
 lintian-brush (0.87) UNRELEASED; urgency=medium
 
   * Cope with empty watch files. Closes: #974958
+  * Add fixer for malformed-override.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 18 Nov 2020 02:05:36 +0000
 
