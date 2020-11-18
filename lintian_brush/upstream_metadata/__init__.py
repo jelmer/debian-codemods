@@ -771,7 +771,9 @@ def guess_from_readme(path, trust_package):
                     if is_gitlab_site(m.group(1).decode()):
                         url = m.group(0).rstrip(b'.').decode().rstrip()
                         repo_url = guess_repo_from_url(url)
-                        yield UpstreamDatum('Repository', repo_url, 'possible')
+                        if repo_url:
+                            yield UpstreamDatum(
+                                'Repository', repo_url, 'possible')
     except IsADirectoryError:
         pass
 
