@@ -22,6 +22,7 @@ import asyncio
 import logging
 import os
 
+from breezy.commit import PointlessCommit
 from breezy.trace import note
 
 try:
@@ -338,12 +339,15 @@ def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None):
 
     committer = get_committer(wt)
 
-    wt.commit(
-        specific_files=specific_files,
-        message=message,
-        allow_pointless=False,
-        reporter=NullCommitReporter(),
-        committer=committer)
+    try:
+        wt.commit(
+            specific_files=specific_files,
+            message=message,
+            allow_pointless=False,
+            reporter=NullCommitReporter(),
+            committer=committer)
+    except PointlessCommit:
+        pass
 
     return result
 
