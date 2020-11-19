@@ -38,7 +38,8 @@ def overrides_paths() -> Iterator[str]:
                 yield entry.path
 
 
-def update_overrides(cb: Callable[[int, LintianOverride], LintianOverride]) -> None:
+def update_overrides(
+        cb: Callable[[int, LintianOverride], LintianOverride]) -> None:
     """"Call update_overrides_file on all overrides files.
 
     Args:

@@ -54,7 +54,7 @@ foo [any-i386] binary: another-tag optional-extra
 """
         self.build_tree_contents([('overrides', CONTENT)])
 
-        def cb(override):
+        def cb(lineno, override):
             return override
 
         self.assertFalse(update_overrides_file(cb=cb, path='overrides'))
@@ -67,7 +67,7 @@ foo [any-i386] binary: another-tag optional-extra
 """
         self.build_tree_contents([('overrides', CONTENT)])
 
-        def cb(override):
+        def cb(lineno, override):
             return None
 
         self.assertTrue(update_overrides_file(cb=cb, path='overrides'))
@@ -81,7 +81,7 @@ bar binary: onetag
 """
         self.build_tree_contents([('overrides', CONTENT)])
 
-        def cb(override):
+        def cb(lineno, override):
             return override if override.tag != 'another-tag' else None
 
         self.assertTrue(update_overrides_file(cb=cb, path='overrides'))
@@ -93,7 +93,7 @@ bar binary: onetag
 foo binary: another-tag optional-extra
 """)])
 
-        def cb(override):
+        def cb(lineno, override):
             return LintianOverride(
                 tag=override.tag, package=override.package,
                 type=override.type, info=override.info,

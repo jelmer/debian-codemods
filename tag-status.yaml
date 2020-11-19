@@ -734,6 +734,7 @@
 - tag: malformed-maintainer-field
 - tag: malformed-md5sums-control-file
 - tag: malformed-override
+  status: implemented
 - tag: malformed-prompt-in-templates
 - tag: malformed-python-version
 - tag: malformed-question-in-templates
@@ -1620,3 +1621,4 @@
 - tag: missing-debian-watch-file-standard
 - tag: multiple-debian-watch-file-standards
 - tag: unknown-debian-watch-file-standard
+- tag: empty-rust-library-declares-provides

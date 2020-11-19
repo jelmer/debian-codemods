@@ -1,10 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.fixer import report_result, LintianIssue
-from lintian_brush.lintian_overrides import (
-    update_overrides,
-    LintianOverride,
-    )
+from lintian_brush.lintian_overrides import update_overrides
 
 
 REMOVED_TAGS = [
