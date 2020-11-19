@@ -174,7 +174,7 @@ def remove_unused(ignore_tags=None) -> List[LintianOverride]:
             return True
         return False
 
-    def drop_override(override):
+    def drop_override(lineno, override):
         global unused_overrides
         if unused_overrides is None:
             import asyncio
