@@ -106,27 +106,35 @@ if os.path.exists('debian/compat'):
             "debhelper",
             "%d~" % new_debhelper_compat_version)
 else:
-    # Assume that the compat version is set in Build-Depends
-    with ControlEditor() as updater:
-        try:
-            offset, debhelper_compat_relation = get_relation(
-                updater.source.get("Build-Depends", ""), "debhelper-compat")
-        except KeyError:
-            sys.exit(2)
-        else:
-            if len(debhelper_compat_relation) > 1:
-                # Not sure how to deal with this..
+    try:
+        # Assume that the compat version is set in Build-Depends
+        with ControlEditor() as updater:
+            try:
+                offset, debhelper_compat_relation = get_relation(
+                    updater.source.get("Build-Depends", ""),
+                    "debhelper-compat")
+            except KeyError:
                 sys.exit(2)
-            if debhelper_compat_relation[0].version[0] != '=':
-                # Not sure how to deal with this..
-                sys.exit(2)
-            current_debhelper_compat_version = int(
-                debhelper_compat_relation[0].version[1])
-        if current_debhelper_compat_version < new_debhelper_compat_version:
-            updater.source["Build-Depends"] = ensure_exact_version(
-                    updater.source["Build-Depends"],
-                    "debhelper-compat",
-                    "%d" % new_debhelper_compat_version)
+            else:
+                if len(debhelper_compat_relation) > 1:
+                    # Not sure how to deal with this..
+                    sys.exit(2)
+                if debhelper_compat_relation[0].version[0] != '=':
+                    # Not sure how to deal with this..
+                    sys.exit(2)
+                current_debhelper_compat_version = int(
+                    debhelper_compat_relation[0].version[1])
+            if current_debhelper_compat_version < new_debhelper_compat_version:
+                updater.source["Build-Depends"] = ensure_exact_version(
+                        updater.source["Build-Depends"],
+                        "debhelper-compat",
+                        "%d" % new_debhelper_compat_version)
+    except FileNotFoundError:
+        # debcargo just uses the latest version and doesn't store debhelper
+        # version explicitly.
+        if os.path.exists('debian/debcargo.toml'):
+            sys.exit(0)
+        raise
 
 
 # For a list of behavior changes between debhelper compat versions, see
