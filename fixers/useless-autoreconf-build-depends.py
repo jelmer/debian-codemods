@@ -12,7 +12,7 @@ from lintian_brush.debhelper import maximum_debhelper_compat_version
 from lintian_brush.fixer import (
     compat_release,
     report_result,
-    fixed_lintian_tag,
+    LintianIssue,
     )
 from lintian_brush.rules import (
     dh_invoke_drop_with,
@@ -36,9 +36,11 @@ with ControlEditor() as updater:
     new_depends = drop_dependency(
         updater.source["Build-Depends"], "dh-autoreconf")
     if new_depends != updater.source['Build-Depends']:
-        fixed_lintian_tag(
+        issue = LintianIssue(
             updater.source, 'useless-autoreconf-build-depends',
             'dh-autoreconf')
-        updater.source['Build-Depends'] = new_depends
+        if issue.should_fix():
+            updater.source['Build-Depends'] = new_depends
+            issue.report_fixed()
 
 report_result("Drop unnecessary dependency on dh-autoreconf.")
