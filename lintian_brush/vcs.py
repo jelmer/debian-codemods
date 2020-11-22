@@ -27,7 +27,7 @@ __all__ = [
 import posixpath
 import re
 import socket
-from typing import Optional
+from typing import Optional, Union, List
 import urllib.error
 from urllib.parse import urlparse, urlunparse, ParseResult
 from urllib.request import urlopen, Request
@@ -117,6 +117,21 @@ def fixup_rcp_style_git_url(url: str) -> str:
     except ValueError:
         return url
     return unsplit_vcs_url(repo_url, branch, subpath)
+
+
+def convert_cvs_list_to_str(urls):
+    if not isinstance(urls, list):
+        return urls
+    if urls[0].startswith(':extssh:') or urls[0].startswith(':pserver:'):
+        try:
+            from breezy.location import cvs_to_url
+        except ImportError:
+            from breezy.location import pserver_to_url as cvs_to_url
+            if urls[0].startswith(':extssh:'):
+                raise NotImplementedError(
+                    'unable to deal with extssh CVS locations.')
+        return cvs_to_url(urls[0]) + '#' + urls[1]
+    return urls
 
 
 def drop_vcs_in_scheme(url: str) -> str:
@@ -492,6 +507,7 @@ def find_secure_vcs_url(url: str, net_access: bool = True) -> Optional[str]:
 
 
 SANITIZERS = [
+    convert_cvs_list_to_str,
     drop_vcs_in_scheme,
     fixup_broken_git_url,
     fixup_rcp_style_git_url,
@@ -501,8 +517,9 @@ SANITIZERS = [
 ]
 
 
-def sanitize_url(url: str) -> str:
-    url = url.strip()
+def sanitize_url(url: Union[str, List[str]]) -> str:
+    if isinstance(url, str):
+        url = url.strip()
     for sanitizer in SANITIZERS:
         url = sanitizer(url)
     return url

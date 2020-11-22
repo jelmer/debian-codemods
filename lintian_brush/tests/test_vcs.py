@@ -138,6 +138,19 @@ class SanitizeUrlTests(TestCase):
             'https://git.savannah.gnu.org/cgit/gforth.git',
             sanitize_url('http://git.savannah.gnu.org/cgit/gforth.git'))
 
+    def test_cvs(self):
+        try:
+            self.assertEqual(
+                'cvs+ssh://_anoncvs@anoncvs.mirbsd.org/cvs#jupp',
+                sanitize_url(
+                    [":extssh:_anoncvs@anoncvs.mirbsd.org:/cvs", "jupp"]))
+        except NotImplementedError:  # breezy < 3.2
+            pass
+        self.assertEqual(
+            'cvs+pserver://_anoncvs@anoncvs.mirbsd.org/cvs#jupp',
+            sanitize_url(
+                [":pserver:_anoncvs@anoncvs.mirbsd.org:/cvs", "jupp"]))
+
 
 class DetermineBrowserUrlTests(TestCase):
 
