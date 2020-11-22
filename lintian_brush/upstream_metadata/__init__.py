@@ -2338,11 +2338,8 @@ def fix_upstream_metadata(upstream_metadata):
     if 'Repository' in upstream_metadata:
         repo = upstream_metadata['Repository']
         url = repo.value
-        if isinstance(url, str):
-            url = sanitize_vcs_url(url)
-            repo.value = url
-        elif isinstance(url, list):
-            pass  # TODO(jelmer): Convert to string?
+        url = sanitize_vcs_url(url)
+        repo.value = url
 
 
 # If we're setting them new, put Name and Contact first
