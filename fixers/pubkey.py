@@ -12,7 +12,9 @@ try:
 except ImportError:
     sys.exit(2)
 
-from debmutate.watch import WatchEditor, apply_subst_expr
+import gpg.errors
+
+from debmutate.watch import WatchEditor, apply_url_mangle
 
 from lintian_brush.fixer import (
     source_package_name,
@@ -48,15 +50,22 @@ with WatchEditor() as editor:
     sigs_valid = []
     used_mangles: List[Optional[str]] = []
     for entry in wf.entries:
+        releases_without_sig = []
         if entry.has_option('pgpsigurlmangle') and has_keys:
             continue
+        try:
+            pgpmode = entry.get_option('pgpmode')
+        except KeyError:
+            pgpmode = 'default'
+        if pgpmode in ('gittag', 'previous', 'next', 'self'):
+            sys.exit(2)
         for r in sorted(entry.discover(source_package_name()), reverse=True):
             if r.pgpsigurl:
                 pgpsigurls = [
                     (entry.get_option('pgpsigurlmangle'), r.pgpsigurl)]
             else:
                 pgpsigurls = [
-                    (mangle, apply_subst_expr(mangle, r.url))
+                    (mangle, apply_url_mangle(mangle, r.url, r.url))
                     for mangle in COMMON_MANGLES]
             for mangle, pgpsigurl in pgpsigurls:
                 # Try and download signatures from some predictable locations.
@@ -66,7 +75,12 @@ with WatchEditor() as editor:
                     continue
                 sig = resp.read()
                 actual = urlopen(r.url).read()
-                gr = c.verify(actual, sig)[1]
+                try:
+                    gr = c.verify(actual, sig)[1]
+                except gpg.errors.GPGMEError as e:
+                    warn('Error verifying signature %s on %s: %s' % (
+                         pgpsigurl, r.url, e))
+                    continue
                 is_valid = True
                 for sig in gr.signatures:
                     # TODO(jelmer): Check validity
@@ -90,6 +104,8 @@ with WatchEditor() as editor:
                 'source', 'debian-watch-does-not-check-gpg-signature', ())
             if new_mangle is not None and issue.should_fix():
                 entry.set_option('pgpsigurlmangle', new_mangle)
+                if len(used_mangles) == 1:
+                    entry.set_option('pgpmode', 'mangle')
                 issue.report_fixed()
         if not has_keys and needed_keys:
             issue = LintianIssue(

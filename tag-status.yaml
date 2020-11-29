@@ -5,7 +5,7 @@
 #   - classification: tag is a classification
 #   - implemented: fixer for tag is implemented
 #   - not-implemented: fixer for tag is not implemented
-#   - not-applicable: the tag applies to the way the package is built,
+#   - build-stage: the tag applies to the way the package is built,
 #       not something that can be changed in the source
 # * comment: a free-form comment
 # * difficulty: an indication of the difficulty of implementing *some* fix for
@@ -463,6 +463,7 @@
   difficulty: easy
 - tag: explicit-default-in-package-type
 - tag: explicitly-armored-upstream-signature
+  status: build-stage
 - tag: extended-description-contains-empty-paragraph
 - tag: extended-description-is-empty
 - tag: extended-description-is-probably-too-short
@@ -944,7 +945,7 @@
 - tag: ored-build-depends-on-obsolete-package
 - tag: ored-depends-on-obsolete-package
 - tag: orig-tarball-missing-upstream-signature
-  status: not-applicable
+  status: build-stage
 - tag: orphaned-diversion
 - tag: orphaned-package-maintained-in-private-space
 - tag: orphaned-package-not-maintained-in-debian-infrastructure
