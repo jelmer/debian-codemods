@@ -1,3 +1,9 @@
+lintian-brush (0.88) UNRELEASED; urgency=medium
+
+  * Add fixer for public-upstream-key-in-native-package.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Nov 2020 14:57:07 +0000
+
 lintian-brush (0.87) unstable; urgency=medium
 
   * Cope with empty watch files. Closes: #974958

@@ -454,3 +454,6 @@ Lintian-Tags: team/pkg-perl/testsuite/no-testsuite-header
 # change.
 # Fix-Script: newer-debconf-templates.py
 # Lintian-Tags: newer-debconf-templates
+
+Fix-Script: public-upstream-key-in-native-package.py
+Lintian-Tags: public-upstream-key-in-native-package

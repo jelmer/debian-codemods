@@ -1,0 +1,3 @@
+Remove upstream signing key in native source package.
+Certainty: certain
+Fixed-Lintian-Tags: public-upstream-key-in-native-package
