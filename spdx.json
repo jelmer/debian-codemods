@@ -97,6 +97,9 @@
         "ANTLR-PD": {
             "name": "ANTLR Software Rights Notice"
         },
+        "ANTLR-PD-fallback": {
+            "name": "ANTLR Software Rights Notice with license fallback"
+        },
         "APAFML": {
             "name": "Adobe Postscript AFM License"
         },
@@ -207,6 +210,9 @@
         },
         "BSL-1.0": {
             "name": "Boost Software License 1.0"
+        },
+        "BUSL-1.1": {
+            "name": "Business Source License 1.1"
         },
         "Bahyph": {
             "name": "Bahyph License"
@@ -649,6 +655,9 @@
         "HPND-sell-variant": {
             "name": "Historical Permission Notice and Disclaimer - sell variant"
         },
+        "HTMLTIDY": {
+            "name": "HTML Tidy License"
+        },
         "HaskellReport": {
             "name": "Haskell Language Report License"
         },
@@ -804,6 +813,9 @@
         },
         "MIT-feh": {
             "name": "feh License"
+        },
+        "MIT-open-group": {
+            "name": "MIT Open Group variant"
         },
         "MITNFA": {
             "name": "MIT +no-false-attribs license"
