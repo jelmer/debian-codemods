@@ -458,7 +458,9 @@ Lintian-Tags: team/pkg-perl/testsuite/no-testsuite-header
 Fix-Script: public-upstream-key-in-native-package.py
 Lintian-Tags: public-upstream-key-in-native-package
 
-Fix-Script: pubkey.py
-Lintian-Tags:
-  debian-watch-file-pubkey-file-is-missing,
-  debian-watch-does-not-check-gpg-signature
+# Disabled for now, since debmutate's support for watch files is still
+# experimental.
+#Fix-Script: pubkey.py
+#Lintian-Tags:
+#  debian-watch-file-pubkey-file-is-missing,
+#  debian-watch-does-not-check-gpg-signature
