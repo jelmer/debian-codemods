@@ -65,7 +65,7 @@ with WatchEditor() as editor:
                     (entry.get_option('pgpsigurlmangle'), r.pgpsigurl)]
             else:
                 pgpsigurls = [
-                    (mangle, apply_url_mangle(mangle, r.url, r.url))
+                    (mangle, apply_url_mangle(mangle, r.url))
                     for mangle in COMMON_MANGLES]
             for mangle, pgpsigurl in pgpsigurls:
                 # Try and download signatures from some predictable locations.
