@@ -1,4 +1,4 @@
-lintian-brush (0.88) UNRELEASED; urgency=medium
+lintian-brush (0.88) unstable; urgency=medium
 
   * Add fixer for public-upstream-key-in-native-package.
   * Add fixers for setting pgpsigurlmangle and creating
@@ -7,7 +7,7 @@ lintian-brush (0.88) UNRELEASED; urgency=medium
     Disabled for the moment, until watch file support in debmutate stabilizes.
   * Update tag names to match lintian. Closes: #976503
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 06 Dec 2020 16:31:28 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 06 Dec 2020 21:04:32 +0000
 
 lintian-brush (0.87) unstable; urgency=medium
 
