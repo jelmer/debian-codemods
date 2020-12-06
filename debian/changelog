@@ -4,9 +4,10 @@ lintian-brush (0.88) UNRELEASED; urgency=medium
   * Add fixers for setting pgpsigurlmangle and creating
     debian/upstream/signing-key.asc. This effectively does TOFY -
     it'll at least allow catching of changes in the signing key in the future.
+    Disabled for the moment, until watch file support in debmutate stabilizes.
   * Update tag names to match lintian. Closes: #976503
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 29 Nov 2020 14:57:07 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 06 Dec 2020 16:31:28 +0000
 
 lintian-brush (0.87) unstable; urgency=medium
 
