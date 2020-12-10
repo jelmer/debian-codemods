@@ -461,6 +461,8 @@ def guess_from_python_metadata(pkg_info):
 
 def guess_from_pkg_info(path, trust_package):
     """Get the metadata from a python setup.py file."""
+    if os.path.exists('setup.py'):
+        yield BuildSystem('setup.py')
     from email.parser import Parser
     try:
         with open(path, 'r') as f:
