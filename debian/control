@@ -23,7 +23,7 @@ Build-Depends: bash-completion,
                python3-toml,
                po-debconf,
                gpg (>= 2.1),
-               lintian,
+               lintian (>= 2.104.0),
                debhelper-compat (= 12)
 Standards-Version: 4.5.0
 Rules-Requires-Root: no
