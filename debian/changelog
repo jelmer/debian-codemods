@@ -1,8 +1,8 @@
-lintian-brush (0.89) UNRELEASED; urgency=medium
+lintian-brush (0.89) unstable; urgency=medium
 
   * Add dependency on newer lintian - required for successful test runs.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 13 Dec 2020 19:59:55 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 13 Dec 2020 20:02:09 +0000
 
 lintian-brush (0.88) unstable; urgency=medium
 
