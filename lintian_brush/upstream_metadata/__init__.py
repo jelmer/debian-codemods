@@ -1833,8 +1833,9 @@ def _extrapolate_name_from_repository(upstream_metadata, net_access):
         name = parsed.path.split('/')[-1]
         if name.endswith('.git'):
             name = name[:-4]
-        return UpstreamDatum('Name', name, min_certainty(
-                ['likely', upstream_metadata['Repository'].certainty]))
+        if name:
+            return UpstreamDatum('Name', name, min_certainty(
+                    ['likely', upstream_metadata['Repository'].certainty]))
 
 
 def _extrapolate_repository_browse_from_repository(
