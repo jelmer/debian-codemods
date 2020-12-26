@@ -5,7 +5,7 @@ from debmutate.control import (
     parse_relations,
     ControlEditor,
     )
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 
 uses_debhelper = False
@@ -25,12 +25,14 @@ with ControlEditor() as updater:
                 if any(r.name == '${misc:Depends}' for r in relation):
                     break
             else:
-                binary["Depends"] = add_dependency(
-                    binary.get("Depends", ''), "${misc:Depends}")
-                misc_depends_added.append(binary["Package"])
-                fixed_lintian_tag(
+                issue = LintianIssue(
                     updater.source, 'debhelper-but-no-misc-depends',
                     info=binary['Package'])
+                if issue.should_fix():
+                    binary["Depends"] = add_dependency(
+                        binary.get("Depends", ''), "${misc:Depends}")
+                    misc_depends_added.append(binary["Package"])
+                    issue.report_fixed()
 
 
 report_result(

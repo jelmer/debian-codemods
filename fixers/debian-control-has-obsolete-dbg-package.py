@@ -8,8 +8,8 @@ from debmutate.debhelper import (
     )
 from lintian_brush.fixer import (
     current_package_version,
+    LintianIssue,
     report_result,
-    fixed_lintian_tag,
     )
 from lintian_brush.rules import (
     check_cdbs,
@@ -57,15 +57,17 @@ def migrate_dh_strip(line, target):
     global rules_uses_variables
     if line.startswith(b'dh_strip ') or line.startswith(b'dh '):
         for dbg_pkg in dbg_packages:
-            if ('--dbg-package=%s' % dbg_pkg).encode('utf-8') in line:
+            issue = LintianIssue(
+                'source',
+                'debian-control-has-obsolete-dbg-package', info=dbg_pkg)
+            if (('--dbg-package=%s' % dbg_pkg).encode('utf-8') in line and
+                    issue.should_fix()):
                 line = line.replace(
                         ('--dbg-package=%s' % dbg_pkg).encode('utf-8'),
                         ("--dbgsym-migration='%s (%s)'" % (
                             dbg_pkg, migrate_version)).encode('utf-8'))
                 dbg_migration_done.add(dbg_pkg)
-            fixed_lintian_tag(
-                'source',
-                'debian-control-has-obsolete-dbg-package', info=dbg_pkg)
+                issue.report_fixed()
         if b'$' in line:
             rules_uses_variables = True
     return line

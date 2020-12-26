@@ -9,7 +9,7 @@ from debmutate.control import (
     get_relation,
     iter_relations,
     )
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 added = []
 removed = []
@@ -32,27 +32,31 @@ with ControlEditor() as updater:
     for binary in updater.binaries:
         if binary.get('Architecture', default_architecture) == 'all':
             if 'Built-Using' in binary:
-                binary['Built-Using'] = drop_dependency(
-                    binary['Built-Using'], '${misc:Built-Using}')
-                if not binary['Built-Using']:
-                    del binary['Built-Using']
-                removed.append(binary['Package'])
-                fixed_lintian_tag(
+                issue = LintianIssue(
                     updater.source,
                     'built-using-field-on-arch-all-package',
                     binary['Package'])
+                if issue.should_fix():
+                    binary['Built-Using'] = drop_dependency(
+                        binary['Built-Using'], '${misc:Built-Using}')
+                    if not binary['Built-Using']:
+                        del binary['Built-Using']
+                    removed.append(binary['Package'])
+                    issue.report_fixed()
         else:
             built_using = binary.get('Built-Using', '')
             try:
                 get_relation(built_using, "${misc:Built-Using}")
             except KeyError:
-                binary["Built-Using"] = add_dependency(
-                    built_using, "${misc:Built-Using}")
-                added.append(binary['Package'])
-                fixed_lintian_tag(
+                issue = LintianIssue(
                     updater.source,
                     'missing-built-using-field-for-golang-package',
                     binary['Package'])
+                if issue.should_fix():
+                    binary["Built-Using"] = add_dependency(
+                        built_using, "${misc:Built-Using}")
+                    added.append(binary['Package'])
+                    issue.report_fixed()
 
 if added and removed:
     report_result(

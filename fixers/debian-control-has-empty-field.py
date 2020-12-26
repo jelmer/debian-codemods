@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 fields = []
 packages = []
 
@@ -9,17 +9,23 @@ with ControlEditor() as updater:
     for para in updater.paragraphs:
         for k, v in para.items():
             if not v.strip():
-                fields.append(k)
                 if para.get("Package"):
-                    packages.append(para["Package"])
-                    fixed_lintian_tag(
+                    issue = LintianIssue(
                         updater.source, 'debian-control-has-empty-field',
                         info='field "%s" in package %s' % (
                             k, para['Package']))
+                    if not issue.should_fix():
+                        continue
+                    issue.report_fixed()
+                    packages.append(para["Package"])
                 else:
-                    fixed_lintian_tag(
+                    issue = LintianIssue(
                         updater.source, 'debian-control-has-empty-field',
                         info='field "%s" in source paragraph' % (k, ))
+                    if not issue.should_fix():
+                        continue
+                    issue.report_fixed()
+                fields.append(k)
                 del para[k]
 
 report_result(

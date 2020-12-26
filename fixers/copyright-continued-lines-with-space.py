@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import fixed_lintian_tag, report_result
-
 import re
 import sys
+
+from lintian_brush.fixer import LintianIssue, report_result
 
 
 def expand_tabs(line, tabwidth=8):
@@ -60,18 +60,20 @@ try:
         prev_value_offset = None
         for lineno, line in enumerate(f, start=2):
             if line.startswith(b'\t'):
-                for option in [
-                        b' \t' + line[1:], b' \t' + line[2:],
-                        b' ' * 8 + line[1:]]:
-                    if value_offset(option) == prev_value_offset:
-                        line = option
-                        break
-                else:
-                    line = b' \t' + line[1:]
-                tabs_replaced = True
-                fixed_lintian_tag(
+                issue = LintianIssue(
                     'source', 'tab-in-license-text',
                     info='debian/copyright (paragraph at line %d)' % lineno)
+                if issue.should_fix():
+                    for option in [
+                            b' \t' + line[1:], b' \t' + line[2:],
+                            b' ' * 8 + line[1:]]:
+                        if value_offset(option) == prev_value_offset:
+                            line = option
+                            break
+                    else:
+                        line = b' \t' + line[1:]
+                    tabs_replaced = True
+                    issue.report_fixed()
             if UNICODE_PARAGRAPH_SEPARATOR in line:
                 # Not quite the same thing, but close enough..
                 line = line.replace(

@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 
+import os
+import re
+import textwrap
+
 from debian.copyright import License, NotMachineReadableError
 from debmutate.copyright import CopyrightEditor
 from lintian_brush.fixer import (
@@ -12,9 +16,6 @@ from lintian_brush.licenses import (
     FULL_LICENSE_NAME,
     )
 
-import os
-import re
-import textwrap
 from typing import Dict
 
 

@@ -3,7 +3,7 @@
 import email.utils
 from debmutate.changelog import ChangelogEditor
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag, warn
+from lintian_brush.fixer import report_result, LintianIssue, warn
 
 versions = []
 
@@ -21,13 +21,14 @@ with ChangelogEditor() as updater:
             # Can't interpret the date. Just ignore..
             continue
         newdate = email.utils.format_datetime(dt)
-        if newdate[:3] != block.date[:3]:
+        issue = LintianIssue(
+            'source', 'debian-changelog-has-wrong-day-of-week',
+            info='%04d-%02d-%02d is a %s' % (
+                dt.year, dt.month, dt.day, dt.strftime('%A')))
+        if newdate[:3] != block.date[:3] and issue.should_fix():
             block.date = newdate
             versions.append(block.version)
-            fixed_lintian_tag(
-                'source', 'debian-changelog-has-wrong-day-of-week',
-                info='%04d-%02d-%02d is a %s' % (
-                    dt.year, dt.month, dt.day, dt.strftime('%A')))
+            issue.report_fixed()
 
 if len(versions) == 1:
     report_result(
