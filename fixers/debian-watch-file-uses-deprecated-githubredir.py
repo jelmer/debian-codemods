@@ -3,7 +3,7 @@
 from debmutate.watch import WatchEditor
 from urllib.parse import urlparse
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 
 with WatchEditor() as updater:
@@ -15,11 +15,13 @@ with WatchEditor() as updater:
         if parts[0] != 'github':
             # Hmm.
             continue
-        fixed_lintian_tag(
+        issue = LintianIssue(
             'source', 'debian-watch-file-uses-deprecated-githubredir',
             info='%s %s' % (w.url, w.matching_pattern))
-        w.url = 'https://github.com/%s/%s/tags' % (parts[1], parts[2])
-        w.matching_pattern = '.*/' + w.matching_pattern.rsplit('/', 1)[-1]
+        if issue.should_fix():
+            w.url = 'https://github.com/%s/%s/tags' % (parts[1], parts[2])
+            w.matching_pattern = '.*/' + w.matching_pattern.rsplit('/', 1)[-1]
+            issue.report_fixed()
 
 
 report_result(

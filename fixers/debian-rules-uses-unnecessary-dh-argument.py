@@ -3,7 +3,7 @@
 import shlex
 
 from debmutate.debhelper import get_debhelper_compat_level
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 from lintian_brush.rules import (
     dh_invoke_drop_argument,
     dh_invoke_drop_with,
@@ -27,19 +27,23 @@ def drop_unnecessary_args(line, target):
     for arg in unnecessary_args:
         newline = dh_invoke_drop_argument(line, arg)
         if newline != line:
-            removed_args.append(arg)
-            line = newline
-            fixed_lintian_tag(
+            issue = LintianIssue(
                 'source', 'debian-rules-uses-unnecessary-dh-argument',
                 info='dh ... %s' % arg.decode())
+            if issue.should_fix():
+                removed_args.append(arg)
+                line = newline
+                issue.report_fixed()
     for arg in unnecessary_with:
         newline = dh_invoke_drop_with(line, arg)
         if newline != line:
-            removed_args.append(b'--with=%s' % arg)
-            line = newline
-            fixed_lintian_tag(
+            issue = LintianIssue(
                 'source', 'debian-rules-uses-unnecessary-dh-argument',
                 info='dh ... -with=%s' % arg.decode())
+            if issue.should_fix():
+                removed_args.append(b'--with=%s' % arg)
+                line = newline
+                issue.report_fixed()
     return line
 
 

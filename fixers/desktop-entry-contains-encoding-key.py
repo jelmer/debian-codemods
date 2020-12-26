@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.xdg import DesktopEntryEditor
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 import os
 
@@ -12,11 +12,13 @@ for name in os.listdir('debian'):
         path = os.path.join('debian', name)
         with DesktopEntryEditor(path) as updater:
             if updater.get('Encoding') == 'UTF-8':
-                del updater.entry['Encoding']
-                paths.append(path)
-                fixed_lintian_tag(
+                issue = LintianIssue(
                     'source', 'desktop-entry-contains-encoding-key',
                     'XX:YY Encoding')
+                if issue.should_fix():
+                    del updater.entry['Encoding']
+                    paths.append(path)
+                    issue.report_fixed()
             # TODO(jelmer): if encoding is non-UTF-8, invoke iconv.
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.fixer import (
-    net_access_allowed, report_result, fixed_lintian_tag)
+    net_access_allowed, report_result, LintianIssue)
 from debmutate.control import ControlEditor
 import socket
 import http.client
@@ -73,10 +73,12 @@ try:
         else:
             new_homepage = fix_homepage(homepage)
             if new_homepage != updater.source['Homepage']:
-                fixed_lintian_tag(
+                issue = LintianIssue(
                     'source', 'homepage-field-uses-insecure-uri',
                     updater.source['Homepage'])
-            updater.source["Homepage"] = new_homepage
+                if issue.should_fix():
+                    updater.source["Homepage"] = new_homepage
+                    issue.report_fixed()
 except FileNotFoundError:
     sys.exit(0)
 

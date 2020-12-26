@@ -2,7 +2,7 @@
 
 import sys
 from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 changed = []
 
@@ -16,11 +16,13 @@ try:
                 continue
             priority = binary.get('Priority', default_priority)
             if priority in ("required", "important", "standard"):
-                binary['Priority'] = 'optional'
-                changed.append(binary['Package'])
-                fixed_lintian_tag(
+                issue = LintianIssue(
                     binary, 'excessive-priority-for-library-package',
                     info=priority)
+                if issue.should_fix():
+                    binary['Priority'] = 'optional'
+                    changed.append(binary['Package'])
+                    issue.report_fixed()
 except FileNotFoundError:
     sys.exit(0)
 

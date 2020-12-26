@@ -6,7 +6,7 @@ from debmutate.control import (
     drop_dependency,
     add_dependency,
     )
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 
 with ControlEditor() as updater:
@@ -17,13 +17,17 @@ with ControlEditor() as updater:
     except KeyError:
         pass
     else:
-        updater.source['Build-Depends-Indep'] = drop_dependency(
-            updater.source['Build-Depends-Indep'], 'libmodule-build-perl')
-        updater.source['Build-Depends'] = add_dependency(
-            updater.source.get('Build-Depends', ''), 'libmodule-build-perl')
-        fixed_lintian_tag(
+        issue = LintianIssue(
             updater.source,
             'libmodule-build-perl-needs-to-be-in-build-depends', '')
+        if issue.should_fix():
+            updater.source['Build-Depends-Indep'] = drop_dependency(
+                updater.source['Build-Depends-Indep'],
+                'libmodule-build-perl')
+            updater.source['Build-Depends'] = add_dependency(
+                updater.source.get('Build-Depends', ''),
+                'libmodule-build-perl')
+            issue.report_fixed()
 
 
 report_result(

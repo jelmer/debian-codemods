@@ -4,7 +4,7 @@ import re
 import sys
 
 from debmutate.debhelper import get_debhelper_compat_level
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 from lintian_brush.rules import update_rules
 
 compat_version = get_debhelper_compat_level()
@@ -15,11 +15,13 @@ if compat_version is None:
 def drop_explicit_dh_compat(line):
     m = re.match(b'export DH_COMPAT[ \t]*=[ \t]*([0-9]+)', line)
     if m:
-        fixed_lintian_tag(
+        issue = LintianIssue(
             'source',
             'declares-possibly-conflicting-debhelper-compat-versions',
             info='rules=%d compat=%s' % (compat_version, m.group(1)))
-        return []
+        if issue.should_fix():
+            issue.report_fixed()
+            return []
     return line
 
 

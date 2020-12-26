@@ -5,7 +5,7 @@ from lintian_brush.fixer import (
     net_access_allowed,
     compat_release,
     report_result,
-    fixed_lintian_tag,
+    LintianIssue,
     )
 from lintian_brush.rules import update_rules
 import os
@@ -90,10 +90,12 @@ def eliminate_dbgsym_migration(line, target):
             return m.group(0)
         rep = PkgRelation.parse_relations(rep)
         if migration_done(rep):
-            fixed_lintian_tag(
+            issue = LintianIssue(
                 'source', 'debug-symbol-migration-possibly-complete',
                 '%s (line XX)' % (m.group(0).decode().strip()))
-            return b''
+            if issue.should_fix():
+                issue.report_fixed()
+                return b''
         return m.group(0)
 
     line = re.sub(

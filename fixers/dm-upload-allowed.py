@@ -2,19 +2,21 @@
 
 from debmutate.control import ControlEditor
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 
 with ControlEditor() as updater:
     try:
         old = updater.source["DM-Upload-Allowed"]
-        del updater.source["DM-Upload-Allowed"]
     except KeyError:
         pass
     else:
-        fixed_lintian_tag(
+        issue = LintianIssue(
             updater.source, 'malformed-dm-upload-allowed',
             info=old)
+        if issue.should_fix():
+            del updater.source["DM-Upload-Allowed"]
+            issue.report_fixed()
 
 
 report_result(

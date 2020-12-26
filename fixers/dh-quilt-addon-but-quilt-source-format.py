@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 from lintian_brush.rules import (
     dh_invoke_drop_with,
     RulesEditor,
@@ -12,9 +12,13 @@ from lintian_brush.patches import rules_find_patches_directory
 def drop_quilt_with(line, target):
     newline = dh_invoke_drop_with(line, b'quilt')
     if line != newline:
-        fixed_lintian_tag(
+        issue = LintianIssue(
             'source', 'dh-quilt-addon-but-quilt-source-format',
             'dh ... --with quilt (line XX)')
+        if issue.should_fix():
+            issue.report_fixed()
+        else:
+            newline = line
     return newline
 
 

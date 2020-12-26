@@ -2,7 +2,7 @@
 
 from debian.copyright import License
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 typos = {
     'bsd-2': 'BSD-2-Clause',
@@ -31,11 +31,13 @@ def fix_shortname(copyright):
             new_name = typos[paragraph.license.synopsis]
         except KeyError:
             continue
-        renames[paragraph.license.synopsis] = new_name
-        paragraph.license = License(new_name, paragraph.license.text)
-        fixed_lintian_tag(
+        issue = LintianIssue(
             'source', 'invalid-short-name-in-dep5-copyright',
             info=paragraph.license.synopsis)
+        if issue.should_fix():
+            renames[paragraph.license.synopsis] = new_name
+            paragraph.license = License(new_name, paragraph.license.text)
+            issue.report_fixed()
 
 
 try:

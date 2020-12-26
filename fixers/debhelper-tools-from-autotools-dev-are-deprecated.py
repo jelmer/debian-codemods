@@ -8,7 +8,7 @@ from debmutate.debhelper import (
     )
 from lintian_brush.fixer import (
     report_result,
-    fixed_lintian_tag,
+    LintianIssue,
     )
 from lintian_brush.rules import (
     update_rules,
@@ -18,27 +18,35 @@ from lintian_brush.rules import (
 
 def cb(line, target):
     if line.strip() == b'dh_autotools-dev_updateconfig':
-        fixed_lintian_tag(
+        issue = LintianIssue(
             'source', 'debhelper-tools-from-autotools-dev-are-deprecated',
             info='dh_autotools-dev_updateconfig')
-        return []
+        if issue.should_fix():
+            issue.report_fixed()
+            return []
     if line.strip() == b'dh_autotools-dev_restoreconfig':
-        fixed_lintian_tag(
+        issue = LintianIssue(
             'source', 'debhelper-tools-from-autotools-dev-are-deprecated',
             info='dh_autotools-dev_restoreconfig')
-        return []
+        if issue.should_fix():
+            issue.report_fixed()
+            return []
     newline = dh_invoke_drop_with(line, b'autotools-dev')
     if newline != line:
-        fixed_lintian_tag(
+        issue = LintianIssue(
             'source', 'debhelper-tools-from-autotools-dev-are-deprecated',
             info='dh ... --with autotools-dev')
-        line = newline
+        if issue.should_fix():
+            line = newline
+            issue.report_fixed()
     newline = dh_invoke_drop_with(line, b'autotools_dev')
     if newline != line:
-        fixed_lintian_tag(
+        issue = LintianIssue(
             'source', 'debhelper-tools-from-autotools-dev-are-deprecated',
             info='dh ... --with autotools_dev')
-        line = newline
+        if issue.should_fix():
+            line = newline
+            issue.report_fixed()
     return line
 
 

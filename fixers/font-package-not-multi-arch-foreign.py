@@ -2,7 +2,7 @@
 
 from debmutate.control import ControlEditor
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 updated_packages = set()
 
@@ -17,10 +17,12 @@ with ControlEditor() as updater:
             continue
         if 'Multi-Arch' in binary:
             continue
-        binary['Multi-Arch'] = 'foreign'
-        updated_packages.add(package)
-        fixed_lintian_tag(
+        issue = LintianIssue(
             updater.source, 'font-package-not-multi-arch-foreign')
+        if issue.should_fix():
+            binary['Multi-Arch'] = 'foreign'
+            updated_packages.add(package)
+            issue.report_fixed()
 
 
 report_result(

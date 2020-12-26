@@ -2,7 +2,7 @@
 
 from debmutate.watch import WatchEditor
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 # TODO(jelmer): Remove dh_make pattern:
 
@@ -20,10 +20,12 @@ with WatchEditor() as editor:
                 continue
             if (filenamemangle ==
                     r's/.+\/v?(\d\S+)\.tar\.gz/<project>-$1\.tar\.gz/'):
-                entry.del_option('filenamemangle')
-                fixed_lintian_tag(
+                issue = LintianIssue(
                     'source', 'debian-watch-contains-dh_make-template',
                     '<project>')
+                if issue.should_fix():
+                    entry.del_option('filenamemangle')
+                    issue.report_fixed()
 
 
 report_result('Remove dh_make template from debian watch.')

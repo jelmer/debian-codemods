@@ -3,7 +3,7 @@
 import os
 import sys
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 try:
     with open('debian/source/options', 'r') as f:
@@ -30,19 +30,23 @@ for lineno, line in enumerate(oldlines, 1):
         newlines.append(line)
     else:
         if key.strip() == 'compression':
-            drop_prior_comments(newlines)
-            dropped.add("custom source compression")
-            fixed_lintian_tag(
+            issue = LintianIssue(
                 'source', 'custom-compression-in-debian-source-options',
                 '%s (line %d)' % (line, lineno))
-            continue
+            if issue.should_fix():
+                drop_prior_comments(newlines)
+                dropped.add("custom source compression")
+                issue.report_fixed()
+                continue
         if key.strip() == 'compression-level':
-            drop_prior_comments(newlines)
-            dropped.add("custom source compression level")
-            fixed_lintian_tag(
+            issue = LintianIssue(
                 'source', 'custom-compression-in-debian-source-options',
                 '%s (line %d)' % (line, lineno))
-            continue
+            if issue.should_fix():
+                drop_prior_comments(newlines)
+                dropped.add("custom source compression level")
+                issue.report_fixed()
+                continue
         newlines.append(line)
 
 if newlines:

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.deb822 import Deb822Editor
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 try:
     with Deb822Editor(path='debian/copyright') as updater:
@@ -10,11 +10,14 @@ try:
                 continue
             if ',' not in paragraph['Files']:
                 continue
-            paragraph['Files'] = '\n' + '\n'.join(
-                ' ' + entry.strip() for entry in paragraph['Files'].split(','))
-            fixed_lintian_tag(
+            issue = LintianIssue(
                 'source', 'comma-separated-files-in-dep5-copyright',
                 'paragraph at line XX')
+            if issue.should_fix():
+                paragraph['Files'] = '\n' + '\n'.join(
+                    ' ' + entry.strip()
+                    for entry in paragraph['Files'].split(','))
+                issue.report_fixed()
 
 except FileNotFoundError:
     pass

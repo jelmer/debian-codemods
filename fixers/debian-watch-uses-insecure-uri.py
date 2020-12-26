@@ -7,7 +7,7 @@ import sys
 from lintian_brush.fixer import (
     net_access_allowed,
     report_result,
-    fixed_lintian_tag,
+    LintianIssue,
     )
 from debmutate.watch import parse_watch_file
 
@@ -43,13 +43,17 @@ def update_watchfile(fn):
             aft = None
         newbef = fn(bef)
         if newbef != bef:
-            if aft is not None:
-                new.append('#'.join([newbef, aft]))
-            else:
-                new.append(newbef)
-            fixed_lintian_tag(
+            issue = LintianIssue(
                 'source', 'debian-watch-uses-insecure-uri',
                 bef)
+            if issue.should_fix():
+                if aft is not None:
+                    new.append('#'.join([newbef, aft]))
+                else:
+                    new.append(newbef)
+                issue.report_fixed()
+            else:
+                new.append(line)
         else:
             new.append(line)
 

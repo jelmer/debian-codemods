@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import report_result, LintianIssue
 
 binary_homepages = set()
 source_homepage = None
@@ -13,10 +13,12 @@ with ControlEditor() as updater:
         if 'Homepage' not in binary:
             continue
         if source_homepage == binary['Homepage']:
+            issue = LintianIssue('source', 'homepage-in-binary-package')
             # Source and binary both have a homepage field, but they're the
             # same => drop the binary package Homepage field
-            del binary['Homepage']
-            fixed_lintian_tag('source', 'homepage-in-binary-package')
+            if issue.should_fix():
+                issue.report_fixed()
+                del binary['Homepage']
         else:
             binary_homepages.add(binary['Homepage'])
 
@@ -26,8 +28,11 @@ with ControlEditor() as updater:
 
             for binary in updater.binaries:
                 if 'Homepage' in binary:
-                    del binary['Homepage']
-                    fixed_lintian_tag('source', 'homepage-in-binary-package')
+                    issue = LintianIssue(
+                        'source', 'homepage-in-binary-package')
+                    if issue.should_fix():
+                        del binary['Homepage']
+                        issue.report_fixed()
 
 
 report_result('Set Homepage field in Source rather than Binary package.')
