@@ -38,7 +38,7 @@ setup(
             ('guess-upstream-metadata='
              'lintian_brush.upstream_metadata.__main__:main'),
             ('deb-scrub-obsolete='
-             'lintian_brush.scrub_obsolete.main'),
+             'lintian_brush.scrub_obsolete:main'),
             ]
     },
     test_suite='lintian_brush.tests.test_suite',

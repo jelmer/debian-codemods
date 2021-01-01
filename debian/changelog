@@ -1,3 +1,9 @@
+lintian-brush (0.90) UNRELEASED; urgency=medium
+
+  * Fix use of deb-scrub-obsolete, and add test. Closes: #978982
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 01 Jan 2021 17:56:15 +0000
+
 lintian-brush (0.89) unstable; urgency=medium
 
   * Add dependency on newer lintian - required for successful test runs.
