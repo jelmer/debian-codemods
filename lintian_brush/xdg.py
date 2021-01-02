@@ -17,8 +17,10 @@
 
 """Fix issues in XDG files."""
 
-from iniparse.ini import INIConfig, LineContainer, OptionLine
 from io import StringIO
+import os
+
+from iniparse.ini import INIConfig, LineContainer, OptionLine
 
 from debmutate.reformatting import edit_formatted_file
 
@@ -65,5 +67,6 @@ class DesktopEntryEditor(object):
 
         self.changed = edit_formatted_file(
             self.path, self._orig_content, self._rewritten_content,
-            updated_content)
+            updated_content,
+            allow_reformatting=self.allow_reformatting)
         return False
