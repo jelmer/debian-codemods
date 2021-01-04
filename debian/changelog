@@ -1,8 +1,8 @@
-lintian-brush (0.91) UNRELEASED; urgency=medium
+lintian-brush (0.91) unstable; urgency=medium
 
   * Bump minimum version of debmutate.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 04 Jan 2021 15:49:10 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 04 Jan 2021 15:49:19 +0000
 
 lintian-brush (0.90) unstable; urgency=medium
 
