@@ -27,8 +27,12 @@ from debmutate.reformatting import edit_formatted_file
 
 class DesktopEntryEditor(object):
 
-    def __init__(self, path):
+    def __init__(self, path, allow_reformatting=False):
         self.path = path
+        if allow_reformatting is None:
+            allow_reformatting = (
+                os.environ.get('REFORMATTING', 'disallow') == 'allow')
+        self.allow_reformatting = allow_reformatting
 
     def __enter__(self):
         with open(self.path, 'r') as f:
