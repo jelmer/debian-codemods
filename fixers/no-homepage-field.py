@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlEditor
 from lintian_brush.fixer import (
+    control,
     fixed_lintian_tag,
     meets_minimum_certainty,
     report_result,
@@ -13,7 +13,7 @@ current_certainty = None
 
 # TODO(jelmer): Support editing homepage field in debian/debcargo.toml
 
-with ControlEditor() as updater:
+with control as updater:
     if 'Homepage' not in updater.source:
         for datum in guess_upstream_metadata_items(
                 '.', trust_package=trust_package()):

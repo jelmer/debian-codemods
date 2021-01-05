@@ -9,14 +9,13 @@ from debmutate.control import (
     ensure_exact_version,
     iter_relations,
     is_relation_implied,
-    ControlEditor,
     parse_relations,
     format_relations,
     )
 from debmutate.debhelper import (
     read_debhelper_compat_file,
     )
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 from lintian_brush.rules import (
     check_cdbs,
     )
@@ -40,7 +39,7 @@ if debhelper_compat_version < 11 or check_cdbs():
 os.unlink('debian/compat')
 
 # Assume that the compat version is set in Build-Depends
-with ControlEditor() as updater:
+with control as updater:
     insert_position = None
     changed_fields = []
     for field in ['Build-Depends', 'Build-Depends-Indep',

@@ -1,14 +1,13 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 
 FIXABLE_HOSTS = [
     'gitlab.com', 'github.com', 'salsa.debian.org',
     'gitorious.org']
 
 
-with ControlEditor() as updater:
+with control as updater:
     vcs_git = updater.source.get("Vcs-Git")
     if vcs_git and ':' in vcs_git:
         (netloc, path) = vcs_git.split(':', 1)

@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlEditor
 from email.utils import parseaddr
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 
 REPLACEMENTS = {
     'python-modules-team@lists.alioth.debian.org':
@@ -15,7 +14,7 @@ REPLACEMENTS = {
            'https://salsa.debian.org/python-team/packages/')]),
 }
 
-with ControlEditor() as editor:
+with control as editor:
     maint, email = parseaddr(editor.source['Maintainer'])
     changed_fields = set()
     try:

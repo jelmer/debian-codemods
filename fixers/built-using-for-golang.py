@@ -3,13 +3,12 @@
 import sys
 
 from debmutate.control import (
-    ControlEditor,
     add_dependency,
     drop_dependency,
     get_relation,
     iter_relations,
     )
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import control, report_result, LintianIssue
 
 added = []
 removed = []
@@ -17,7 +16,7 @@ go_package = False
 default_architecture = None
 
 
-with ControlEditor() as updater:
+with control as updater:
     if any(iter_relations(updater.source.get('Build-Depends', ''),
                           'golang-go')):
         go_package = True

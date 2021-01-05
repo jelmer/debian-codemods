@@ -3,7 +3,6 @@ import sys
 
 from debmutate.control import (
     drop_dependency,
-    ControlEditor,
     )
 from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
@@ -11,6 +10,7 @@ from debmutate.debhelper import (
 from lintian_brush.debhelper import maximum_debhelper_compat_version
 from lintian_brush.fixer import (
     compat_release,
+    control,
     report_result,
     LintianIssue,
     )
@@ -31,7 +31,7 @@ if not update_rules(drop_with_autoreconf):
     sys.exit(2)
 
 
-with ControlEditor() as updater:
+with control as updater:
     ensure_minimum_debhelper_version(updater.source, "10~")
     new_depends = drop_dependency(
         updater.source["Build-Depends"], "dh-autoreconf")

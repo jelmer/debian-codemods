@@ -2,8 +2,8 @@
 
 import sys
 
-from debmutate.control import ControlEditor
 from lintian_brush.fixer import (
+    control,
     fixed_lintian_tag,
     meets_minimum_certainty,
     net_access_allowed,
@@ -39,7 +39,7 @@ def guess_description(binary_name, all_binaries):
 
 updated = []
 
-with ControlEditor() as updater:
+with control as updater:
     for binary in updater.binaries:
         if binary.get('Description'):
             continue

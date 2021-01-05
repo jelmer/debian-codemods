@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlEditor
 from lintian_brush.fixer import (
+    control,
     meets_minimum_certainty,
     report_result,
     fixed_lintian_tag,
@@ -27,7 +27,7 @@ except FileNotFoundError:
 default_section = None
 fixed = []
 
-with ControlEditor() as updater:
+with control as updater:
     default_section = updater.source.get("Section")
 
     for binary in updater.binaries:

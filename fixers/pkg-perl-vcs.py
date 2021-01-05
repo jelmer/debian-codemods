@@ -3,15 +3,14 @@
 import sys
 
 # Import convenience functions for reporting results and checking overrides
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import control, report_result, LintianIssue
 
-from debmutate.control import ControlEditor
 from email.utils import parseaddr
 
 PKG_PERL_EMAIL = 'pkg-perl-maintainers@lists.alioth.debian.org'
 URL_BASE = 'https://salsa.debian.org/perl-team/modules/packages'
 
-with ControlEditor() as e:
+with control as e:
     # Parse the maintainer field and extract the email address.
     (name, email) = parseaddr(e.source['Maintainer'])
     if email != PKG_PERL_EMAIL:

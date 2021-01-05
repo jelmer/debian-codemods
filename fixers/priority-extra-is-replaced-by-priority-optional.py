@@ -1,10 +1,9 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 
 
-with ControlEditor() as updater:
+with control as updater:
     for para in updater.paragraphs:
         if para.get("Priority") == "extra":
             para["Priority"] = "optional"

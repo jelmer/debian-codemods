@@ -2,13 +2,12 @@
 
 import sys
 
-from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import control, report_result, LintianIssue
 
 removed = []
 
 try:
-    with ControlEditor() as updater:
+    with control as updater:
         for binary in updater.binaries:
             for field, value in binary.items():
                 if updater.source.get(field) == value:

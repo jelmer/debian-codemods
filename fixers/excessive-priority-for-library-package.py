@@ -1,14 +1,13 @@
 #!/usr/bin/python3
 
 import sys
-from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import control, report_result, LintianIssue
 
 changed = []
 
 
 try:
-    with ControlEditor() as updater:
+    with control as updater:
         default_priority = updater.source.get('Priority')
 
         for binary in updater.binaries:

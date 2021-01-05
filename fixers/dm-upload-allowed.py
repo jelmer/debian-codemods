@@ -1,11 +1,9 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlEditor
-
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import control, report_result, LintianIssue
 
 
-with ControlEditor() as updater:
+with control as updater:
     try:
         old = updater.source["DM-Upload-Allowed"]
     except KeyError:

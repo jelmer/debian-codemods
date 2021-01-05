@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
 from lintian_brush.fixer import (
-    net_access_allowed, report_result, LintianIssue)
-from debmutate.control import ControlEditor
+    control, net_access_allowed, report_result, LintianIssue)
 import socket
 import http.client
 import sys
@@ -65,7 +64,7 @@ def fix_homepage(http_url):
 # TODO(jelmer): Support editing the homepage field in debian/debcargo.toml
 
 try:
-    with ControlEditor() as updater:
+    with control as updater:
         try:
             homepage = updater.source["Homepage"]
         except KeyError:

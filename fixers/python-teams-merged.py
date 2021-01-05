@@ -1,10 +1,9 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlEditor
 from email.utils import parseaddr
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 
-with ControlEditor() as editor:
+with control as editor:
     old_maintainer = editor.source['Maintainer']
     maint, email = parseaddr(old_maintainer)
     if email in (

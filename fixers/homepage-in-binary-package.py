@@ -1,13 +1,12 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import control, report_result, LintianIssue
 
 binary_homepages = set()
 source_homepage = None
 
 
-with ControlEditor() as updater:
+with control as updater:
     source_homepage = updater.source.get('Homepage')
     for binary in updater.binaries:
         if 'Homepage' not in binary:

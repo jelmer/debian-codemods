@@ -1,15 +1,10 @@
 #!/usr/bin/python3
-from debmutate.control import (
-    drop_dependency,
-    ControlEditor,
-    )
-from debmutate.debhelper import (
-    ensure_minimum_debhelper_version,
-    )
-from lintian_brush.fixer import report_result, LintianIssue
+from debmutate.control import drop_dependency
+from debmutate.debhelper import ensure_minimum_debhelper_version
+from lintian_brush.fixer import control, report_result, LintianIssue
 
 
-with ControlEditor() as updater:
+with control as updater:
     for field in ["Build-Depends", "Build-Depends-Indep",
                   "Build-Depends-Arch"]:
         try:

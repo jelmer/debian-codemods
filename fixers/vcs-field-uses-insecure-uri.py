@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlEditor
 from lintian_brush.fixer import (
+    control,
     net_access_allowed,
     report_result,
     fixed_lintian_tag,
@@ -12,7 +12,7 @@ updated = set()
 lp_note = False
 
 
-with ControlEditor() as updater:
+with control as updater:
     for key, value in updater.source.items():
         if not key.startswith('Vcs-'):
             continue

@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 
 from debian.changelog import get_maintainer
-from debmutate.control import ControlEditor
 from lintian_brush.fixer import (
-    report_result, meets_minimum_certainty, fixed_lintian_tag,
+    control,
+    report_result,
+    meets_minimum_certainty,
+    fixed_lintian_tag,
     )
 import sys
 
@@ -15,7 +17,7 @@ if not meets_minimum_certainty(CERTAINTY):
     sys.exit(0)
 
 
-with ControlEditor() as updater:
+with control as updater:
     if updater.source.get('Maintainer'):
         sys.exit(0)
     maintainer = get_maintainer()

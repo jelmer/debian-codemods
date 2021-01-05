@@ -8,11 +8,11 @@ try:
 except ModuleNotFoundError:
     sys.exit(2)
 
-from debmutate.control import ControlEditor
 from debmutate.vcs import (
     split_vcs_url, unsplit_vcs_url,
     )
 from lintian_brush.fixer import (
+    control,
     report_result, diligence, warn,
     opinionated,
     )
@@ -49,7 +49,7 @@ async def find_branch(vcs_type, url):
     return await vcswatch.get_branch_from_url(vcs_type, vcs_git)
 
 
-with ControlEditor() as updater:
+with control as updater:
     try:
         vcs_git = updater.source['Vcs-Git']
     except KeyError:

@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
 import sys
-from debmutate.control import drop_dependency, ControlEditor
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from debmutate.control import drop_dependency
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 
 try:
     with open('debian/rules', 'rb') as f:
@@ -17,7 +17,7 @@ except FileNotFoundError:
     sys.exit(2)
 
 if not uses_cdbs:
-    with ControlEditor() as updater:
+    with control as updater:
         new_depends = drop_dependency(
             updater.source.get("Build-Depends", ""), "cdbs")
         if new_depends != updater.source['Build-Depends']:

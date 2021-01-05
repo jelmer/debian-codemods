@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlEditor
 from lintian_brush.fixer import (
     LintianIssue,
+    control,
     report_result,
     )
 
 
-with ControlEditor() as updater:
+with control as updater:
     # Remove anything that involves python 2.6, 2.7, 3.3
     if "X-Python-Version" in updater.source:
         if updater.source["X-Python-Version"].strip().startswith(">= 2."):

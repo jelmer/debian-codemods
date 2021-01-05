@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 
+import sys
+
 from lintian_brush.fixer import report_result, fixed_lintian_tag
 from lintian_brush.yaml import YamlUpdater, MultiYamlUpdater
 import ruamel.yaml.composer
 from ruamel.yaml.reader import ReaderError  # noqa: E402
 from ruamel.yaml.nodes import MappingNode
 
-import sys
+LIST_FIELDS = ['Reference', 'Screenshots']
 
 try:
     editor = YamlUpdater(

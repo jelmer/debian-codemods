@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 
 import sys
-from debmutate.control import ControlEditor, delete_from_list
+from debmutate.control import delete_from_list
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 
 # TODO(jelmer): support checking debcargo's maintainer/uploaders fields
 
 try:
-    with ControlEditor() as updater:
+    with control as updater:
         if 'Uploaders' in updater.source:
             uploaders = updater.source['Uploaders'].split(',')
             maintainer = updater.source['Maintainer']

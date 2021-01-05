@@ -3,8 +3,8 @@
 import os
 from typing import Optional
 
-from debmutate.control import ensure_some_version, ControlEditor
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from debmutate.control import ensure_some_version
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 
 format: Optional[str]
 try:
@@ -14,7 +14,7 @@ except FileNotFoundError:
     format = None
 
 if format != '3.0 (quilt)' and os.path.exists('debian/patches/series'):
-    with ControlEditor() as updater:
+    with control as updater:
         updater.source['Build-Depends'] = ensure_some_version(
             updater.source['Build-Depends'], 'quilt')
     if updater.changed:

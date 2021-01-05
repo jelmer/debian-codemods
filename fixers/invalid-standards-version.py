@@ -2,8 +2,8 @@
 
 import sys
 
-from debmutate.control import ControlEditor, parse_standards_version
-from lintian_brush.fixer import report_result, LintianIssue
+from debmutate.control import parse_standards_version
+from lintian_brush.fixer import control, report_result, LintianIssue
 from lintian_brush.standards_version import iter_standards_versions
 
 try:
@@ -12,7 +12,7 @@ except FileNotFoundError:
     sys.exit(2)
 
 
-with ControlEditor() as updater:
+with control as updater:
     try:
         sv = parse_standards_version(updater.source['Standards-Version'])
     except KeyError:

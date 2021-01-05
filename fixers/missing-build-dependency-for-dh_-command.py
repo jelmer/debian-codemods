@@ -1,13 +1,12 @@
 #!/usr/bin/python3
 
 from debmutate.control import (
-    ControlEditor,
     PkgRelation,
     parse_relations,
     add_dependency,
     is_relation_implied,
     )
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import control, report_result, LintianIssue
 from lintian_brush.lintian import read_debhelper_lintian_data_file
 from lintian_brush.rules import Makefile, Rule, dh_invoke_get_with
 import os
@@ -82,7 +81,7 @@ if not need:
     sys.exit(0)
 
 
-with ControlEditor() as updater:
+with control as updater:
     for deps, issues in need:
         parsed = PkgRelation.parse(deps)
         is_implied = False

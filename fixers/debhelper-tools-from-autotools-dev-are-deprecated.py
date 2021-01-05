@@ -1,12 +1,10 @@
 #!/usr/bin/python3
 
-from debmutate.control import (
-    ControlEditor,
-    )
 from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
     )
 from lintian_brush.fixer import (
+    control,
     report_result,
     LintianIssue,
     )
@@ -51,7 +49,7 @@ def cb(line, target):
 
 
 if update_rules(cb):
-    with ControlEditor() as updater:
+    with control as updater:
         ensure_minimum_debhelper_version(updater.source, "9.20160114")
 
 

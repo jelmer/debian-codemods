@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlEditor
 from urllib.parse import urlparse
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 
 HOST_TO_VCS = {
     'github.com': 'Git',
@@ -11,7 +10,7 @@ HOST_TO_VCS = {
     }
 
 
-with ControlEditor() as updater:
+with control as updater:
     for field in list(updater.source):
         if not field.startswith('Vcs-') or field.lower() == 'vcs-browser':
             continue

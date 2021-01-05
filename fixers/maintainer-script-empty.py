@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
-from debmutate.control import ControlEditor
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 
 import os
 
@@ -28,8 +27,8 @@ removed = []
 for entry in os.scandir('debian'):
     if entry.name in MAINTAINER_SCRIPTS:
         script = entry.name
-        with ControlEditor() as e:
-            package = e.binaries[0]['Package']
+        with control:
+            package = control.binaries[0]['Package']
         package = None
     elif '.' not in entry.name:
         continue

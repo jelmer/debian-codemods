@@ -17,6 +17,7 @@
 
 """Helper functions for fixers."""
 
+from debmutate.control import ControlEditor
 from debmutate.deb822 import Deb822
 import sys
 from typing import Optional, Tuple, Union, List, Any
@@ -183,3 +184,6 @@ def diligence():
 
 def source_package_name():
     return os.environ.get('PACKAGE')
+
+
+control = ControlEditor()

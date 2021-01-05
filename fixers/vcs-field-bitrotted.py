@@ -4,11 +4,11 @@ import asyncio
 import re
 import socket
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
-from debmutate.control import ControlEditor
 from debmutate.vcs import (
     get_vcs_info,
     )
 from lintian_brush.fixer import (
+    control,
     net_access_allowed,
     fixed_lintian_tag,
     warn,
@@ -181,7 +181,7 @@ def migrate_from_obsolete_infra(control):
             pass
 
 
-with ControlEditor() as updater:
+with control as updater:
     migrate_from_obsolete_infra(updater.source)
 
 report_result()

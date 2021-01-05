@@ -1,12 +1,10 @@
 #!/usr/bin/python3
 import sys
-from debmutate.control import (
-    ControlEditor,
-    )
 from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
     )
 from lintian_brush.fixer import (
+    control,
     current_package_version,
     LintianIssue,
     report_result,
@@ -24,17 +22,17 @@ dbg_migration_done = set()
 
 
 try:
-    with ControlEditor() as updater:
-        for control in updater.binaries:
+    with control as updater:
+        for binary in updater.binaries:
             # Delete the freeradius-dbg package from debian/control
-            package = control["Package"]
+            package = binary["Package"]
             if package.endswith('-dbg'):
                 if package.startswith('python'):
                     # -dbgsym packages don't include _d.so files for the python
                     # interpreter
                     continue
-                dbg_packages.add(control["Package"])
-                control.clear()
+                dbg_packages.add(binary["Package"])
+                binary.clear()
 
         if not dbg_packages:
             # no debug packages found to remove

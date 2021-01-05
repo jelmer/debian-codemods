@@ -1,9 +1,6 @@
 #!/usr/bin/python3
 
 import sys
-from debmutate.control import (
-    ControlEditor,
-    )
 from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
     read_debhelper_compat_file,
@@ -12,6 +9,7 @@ from lintian_brush.debhelper import (
     pedantic_compat_level,
     )
 from lintian_brush.fixer import (
+    control,
     report_result,
     fixed_lintian_tag,
     )
@@ -27,7 +25,7 @@ try:
 except FileNotFoundError:
     sys.exit(0)
 
-with ControlEditor() as updater:
+with control as updater:
     if ensure_minimum_debhelper_version(
             updater.source, "%s~" % minimum_version):
         fixed_lintian_tag(

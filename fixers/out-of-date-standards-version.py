@@ -6,13 +6,12 @@ import re
 import sys
 from debian.changelog import Changelog
 from debmutate.control import (
-    ControlEditor,
     get_relation,
     parse_standards_version,
     )
 from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 from lintian_brush.standards_version import iter_standards_versions
 
 # Dictionary mapping source and target versions
@@ -148,7 +147,7 @@ current_version = None
 
 
 try:
-    with ControlEditor() as updater:
+    with control as updater:
         try:
             current_version = updater.source["Standards-Version"]
         except KeyError:

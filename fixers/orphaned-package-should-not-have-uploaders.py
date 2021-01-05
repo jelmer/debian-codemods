@@ -1,12 +1,11 @@
 #!/usr/bin/python3
 
 from email.utils import parseaddr
-from debmutate.control import ControlEditor
 
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import control, report_result, LintianIssue
 
 
-with ControlEditor() as updater:
+with control as updater:
     if ("Maintainer" in updater.source and
             parseaddr(updater.source["Maintainer"])[1] ==
             'packages@qa.debian.org' and 'Uploaders' in updater.source):

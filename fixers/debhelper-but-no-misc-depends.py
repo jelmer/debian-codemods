@@ -3,16 +3,15 @@
 from debmutate.control import (
     add_dependency,
     parse_relations,
-    ControlEditor,
     )
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import control, report_result, LintianIssue
 
 
 uses_debhelper = False
 misc_depends_added = []
 
 
-with ControlEditor() as updater:
+with control as updater:
     for entry in parse_relations(updater.source.get("Build-Depends", '')):
         (head_whitespace, relation, tail_whitespace) = entry
         if any(r.name == 'debhelper' for r in relation):

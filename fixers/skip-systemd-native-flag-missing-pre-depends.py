@@ -5,12 +5,11 @@ import sys
 
 from debmutate.control import (
     add_dependency,
-    ControlEditor,
     )
 from debmutate.debhelper import (
     get_debhelper_compat_level,
     )
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 
 
 compat_version = get_debhelper_compat_level()
@@ -25,7 +24,7 @@ added = set()
 # Add Pre-Depends: ${misc:Pre-Depends} iff:
 # - a package has both a init script and a (ubuntu | systemd) unit
 
-with ControlEditor() as updater:
+with control as updater:
     for binary in updater.binaries:
         name = binary["Package"]
         if not os.path.exists('debian/%s.init' % name):
