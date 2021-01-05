@@ -1,0 +1,23 @@
+---
+Bug-Submit: mailto:frank.richter@hrz.tu-chemnitz.de?subject=Dictionary
+Changelog: https://ftp.tu-chemnitz.de/pub/Local/urz/ding/CHANGES
+Documentation: https://www-user.tu-chemnitz.de/~fri/ding/
+Screenshots: https://www-user.tu-chemnitz.de/~fri/ding/ding-1.4.gif
+Webservice: https://dict.tu-chemnitz.de/
+Reference:
+- Author: Stefan Kurze
+  Title: Wörterbücher und Textdateien durchsuchen mit grafischem Frontend
+  Journal: LinuxUser
+  Year: 2003
+  Volume: 12
+  URL: https://www.linux-community.de/ausgaben/linuxuser/2003/12/woerterbuecher-und-textdateien-durchsuchen-mit-grafischem-frontend/
+- Author: Michael Vogelbacher
+  Title: Service und Informationen aus dem Netz
+  Journal: LinuxUser
+  Year: 2001
+  Volume: 01
+  URL: https://www.linux-community.de/ausgaben/linuxuser/2001/01/service-und-informationen-aus-dem-netz/
+- Author: Redaktion pcmagazin
+  Title: Ding - das Linuxlexikon
+  Journal: PC Magazin
+  URL: https://www.pc-magazin.de/ratgeber/ding-das-linuxlexikon-84663.html

@@ -6,9 +6,9 @@ from lintian_brush.fixer import report_result, fixed_lintian_tag
 from lintian_brush.yaml import YamlUpdater, MultiYamlUpdater
 import ruamel.yaml.composer
 from ruamel.yaml.reader import ReaderError  # noqa: E402
-from ruamel.yaml.nodes import MappingNode
+from ruamel.yaml.nodes import MappingNode, SequenceNode
 
-LIST_FIELDS = ['Reference', 'Screenshots']
+SEQUENCE_FIELDS = ['Reference', 'Screenshots']
 
 try:
     editor = YamlUpdater(
@@ -21,13 +21,31 @@ try:
         for i, (k, v) in enumerate(node.value):
             by_key.setdefault(k.value, []).append((i, v))
         to_remove = []
-        for (k, vs) in by_key.items():
+        for k, vs in by_key.items():
             if len(vs) == 1:
                 continue
-            # Preserve the first value.
-            # TODO(jelmer): Make a more informed choice.
-            for (i, v) in vs[1:]:
-                to_remove.append((i, k))
+            if k in SEQUENCE_FIELDS:
+                if not isinstance(vs[0], SequenceNode):
+                    node.value[vs[0][0]] = (
+                        node.value[vs[0][0]][0],
+                        SequenceNode(
+                            tag='tag:yaml.org,2002:seq', value=[vs[0][1]],
+                            start_mark=node.value[vs[0][0]][1].start_mark,
+                            end_mark=node.value[vs[0][0]][1].end_mark))
+                primary = node.value[vs[0][0]][1]
+                for i, v in vs[1:]:
+                    if isinstance(v, SequenceNode):
+                        primary.value.extend(v.value)
+                    elif isinstance(v, MappingNode):
+                        primary.value.append(v)
+                    else:
+                        primary.value.append(v)
+                    to_remove.append((i, k))
+            else:
+                # Preserve the first value.
+                # TODO(jelmer): Make a more informed choice.
+                for (i, v) in vs[1:]:
+                    to_remove.append((i, k))
         if not to_remove:
             return
         for i, k in sorted(to_remove, reverse=True):

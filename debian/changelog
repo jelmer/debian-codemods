@@ -1,3 +1,9 @@
+lintian-brush (0.92) UNRELEASED; urgency=medium
+
+  * Handle multiple instances of Reference: field.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 05 Jan 2021 22:19:03 +0000
+
 lintian-brush (0.91) unstable; urgency=medium
 
   * Bump minimum version of debmutate.
