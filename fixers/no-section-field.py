@@ -2,7 +2,7 @@
 
 from lintian_brush.fixer import (
     control,
-    fixed_lintian_tag,
+    LintianIssue,
     report_result,
     )
 from lintian_brush.section import (
@@ -24,20 +24,22 @@ with control as updater:
             if regexes is None:
                 regexes = get_name_section_mappings()
             section = find_expected_section(regexes, binary['Package'])
-            if section:
+            issue = LintianIssue(binary, 'recommended-field', 'Section')
+            if section and issue.should_fix():
                 binary['Section'] = section
                 binary_sections_set.add(binary['Package'])
-                fixed_lintian_tag(binary, 'recommended-field', 'Section')
+                issue.report_fixed()
         if binary.get('Section'):
             binary_sections.add(binary['Section'])
-    if len(binary_sections) == 1:
+    issue = LintianIssue(updater.source, 'recommended-field', 'Section')
+    if len(binary_sections) == 1 and issue.should_fix():
         updater.source['Section'] = binary_sections.pop()
         for binary in updater.binaries:
             try:
                 del binary['Section']
             except KeyError:
                 pass
-        fixed_lintian_tag(updater.source, 'recommended-field', 'Section')
+        issue.report_fixed()
         source_section_set = True
     if source_section_set and binary_sections_set:
         report_result(

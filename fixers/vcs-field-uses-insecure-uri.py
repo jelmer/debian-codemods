@@ -4,7 +4,7 @@ from lintian_brush.fixer import (
     control,
     net_access_allowed,
     report_result,
-    fixed_lintian_tag,
+    LintianIssue,
     )
 from lintian_brush.vcs import find_secure_vcs_url
 
@@ -26,11 +26,13 @@ with control as updater:
         if newvalue == value:
             # The URL was already secure
             continue
-        fixed_lintian_tag(
+        issue = LintianIssue(
             'source', "vcs-field-uses-insecure-uri",
             info='%s %s' % (key, updater.source[key]))
-        updater.source[key] = newvalue
-        updated.add(key)
+        if issue.should_fix():
+            updater.source[key] = newvalue
+            updated.add(key)
+            issue.report_fixed()
 
 
 if len(updated) == 1:
