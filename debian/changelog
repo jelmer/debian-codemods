@@ -1,8 +1,8 @@
-lintian-brush (0.93) UNRELEASED; urgency=medium
+lintian-brush (0.93) unstable; urgency=medium
 
   * Improve locking for bzr branches.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 20 Jan 2021 21:55:31 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 20 Jan 2021 21:55:38 +0000
 
 lintian-brush (0.92) unstable; urgency=medium
 
