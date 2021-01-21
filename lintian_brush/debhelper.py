@@ -91,3 +91,22 @@ def maximum_debhelper_compat_version(compat_release: str) -> int:
     else:
         max_version = int(str(debhelper_version).split('.')[0])
     return max_version
+
+
+def write_rules_template(path, buildsystem=None, addons=None):
+    if addons is None:
+        addons = []
+    dh_args = ['$@']
+    if buildsystem:
+        dh_args.append('--buildsystem=%s' % buildsystem)
+    for addon in addons:
+        dh_args.append('--wuth=%s' % addon)
+
+    with open(path, 'w') as f:
+        f.write("""\
+#!/usr/bin/make -f
+
+%:
+\tdh """ + ' '.join(dh_args) + """
+""")
+    os.chmod(path, 0o755)

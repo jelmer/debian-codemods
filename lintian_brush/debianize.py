@@ -17,32 +17,26 @@
 
 """Debianize a package."""
 
-from debian.changelog import Changelog, Version, get_maintainer, format_date
-from debmutate.control import ensure_some_version
-from debian.deb822 import Deb822
 import os
 import re
 import sys
 import warnings
 
 
-def write_debhelper_rules_template(path, buildsystem):
-    dh_args = ['$@']
-    if buildsystem:
-        dh_args.append('--buildsystem=%s' % buildsystem)
-
-    with open(path, 'w') as f:
-        f.write("""\
-#!/usr/bin/make -f
-
-%:
-\tdh """ + ' '.join(dh_args) + """
-""")
-    os.chmod(path, 0o755)
+from debian.changelog import Changelog, Version, get_maintainer, format_date
+from debmutate.control import ensure_some_version
+from debian.deb822 import Deb822
 
 
 def write_control_template(path, source, binaries):
-    with open('debian/control', 'wb') as f:
+    """Write a control file template.
+
+    Args:
+      path: Path to write to
+      source: Source stanza
+      binaries: Binary stanzas
+    """
+    with open(path, 'wb') as f:
         source.dump(f)
         for binary in binaries:
             f.write(b'\n')
@@ -110,7 +104,10 @@ def main(argv=None):
         get_committer,
         reset_tree,
         )
-    from lintian_brush.debhelper import maximum_debhelper_compat_version
+    from lintian_brush.debhelper import (
+        maximum_debhelper_compat_version,
+        write_rules_template as write_debhelper_rules_template,
+        )
     from lintian_brush.standards_version import iter_standards_versions
     from lintian_brush.upstream_metadata import (
         get_upstream_info,
