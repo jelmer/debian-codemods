@@ -233,6 +233,8 @@ def main(argv=None):
             version = Version(upstream_version + '-1')
             source = Deb822()
             source['Source'] = source_name
+            # TODO(jelmer): This is a reasonable guess, but won't always be
+            # okay.
             source['Rules-Requires-Root'] = 'no'
             source['Standards-Version'] = '.'.join(
                 map(str, next(iter_standards_versions())[0]))
@@ -250,14 +252,15 @@ def main(argv=None):
             source['Build-Depends'] = (
                 'debhelper-compat (= %d)' % maximum_debhelper_compat_version(
                     compat_release))
+            dh_addons = []
+            dh_buildsystem = None
 
             if buildsystem and buildsystem.name == 'setup.py':
                 source['Build-Depends'] = ensure_some_version(
                     source['Build-Depends'],
                     'python3-all')
                 dh_buildsystem = 'pybuild'
-            else:
-                dh_buildsystem = None
+                dh_addons.append('python3')
 
             initial_files = []
             try:
@@ -266,7 +269,7 @@ def main(argv=None):
                     wt.mkdir(debian_path)
                 write_debhelper_rules_template(
                     os.path.join(debian_path, 'rules'),
-                    dh_buildsystem)
+                    buildsystem=dh_buildsystem, addons=dh_addons)
                 initial_files.append(os.path.join(debian_path, 'rules'))
                 write_control_template('debian/control', source, binaries)
                 initial_files.append('debian/control')
