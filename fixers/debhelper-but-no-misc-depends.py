@@ -14,7 +14,7 @@ misc_depends_added = []
 with control as updater:
     for entry in parse_relations(updater.source.get("Build-Depends", '')):
         (head_whitespace, relation, tail_whitespace) = entry
-        if any(r.name == 'debhelper' for r in relation):
+        if any(r.name in ('debhelper', 'debhelper-compat') for r in relation):
             uses_debhelper = True
 
     if uses_debhelper:
