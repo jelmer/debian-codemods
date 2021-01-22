@@ -24,6 +24,7 @@ from breezy.tests import (
 
 
 from lintian_brush.upstream_metadata import (
+    BuildSystem,
     UpstreamDatum,
     guess_repo_from_url,
     guess_from_package_json,
@@ -79,9 +80,11 @@ class GuessFromPackageJsonTests(TestCaseWithTransport):
 }
 """)])
         self.assertEqual(
-            [UpstreamDatum('Name', 'autosize', 'certain'),
+            [BuildSystem('npm'),
+             UpstreamDatum('Name', 'autosize', 'certain'),
              UpstreamDatum(
                  'Homepage', 'http://www.jacklmoore.com/autosize', 'certain'),
+             UpstreamDatum('X-License', 'MIT', 'certain', None),
              UpstreamDatum(
                  'Repository', 'https://github.com/jackmoore/autosize.git',
                  'certain')],
@@ -107,7 +110,14 @@ class GuessFromPackageJsonTests(TestCaseWithTransport):
 }
 """)])
         self.assertEqual(
-            [UpstreamDatum('Name', 'mozillaeslintsetup', 'certain')],
+            [BuildSystem('npm'),
+             UpstreamDatum('Name', 'mozillaeslintsetup', 'certain'),
+             UpstreamDatum(
+                 'X-Summary',
+                 'This package file is for setup of ESLint.', 'certain', None),
+             UpstreamDatum(
+                 'X-License', 'MPL-2.0', 'certain', None)
+             ],
             list(guess_from_package_json('package.json', False)))
 
 
