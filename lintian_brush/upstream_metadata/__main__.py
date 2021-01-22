@@ -25,6 +25,7 @@ from . import (
     UpstreamDatum,
     UpstreamRequirement,
     UpstreamOutput,
+    BuildSystem,
     )
 
 
@@ -66,6 +67,8 @@ def main(argv=None):
                     entry.stage, entry.name, entry.kind))
             elif isinstance(entry, UpstreamOutput):
                 print('outputs %s (%s)' % (entry.name, entry.kind))
+            elif isinstance(entry, BuildSystem):
+                print('build system: %s' % entry.name)
             else:
                 raise TypeError(entry)
     else:
