@@ -241,40 +241,62 @@ def main(argv=None):
             # TODO(jelmer): Autodetect binaries rather than letting the user
             # specify them.
             binaries = []
-            for name in (args.binary or [source_name]):
-                try:
-                    binary_name, arch = name.split(':')
-                except ValueError:
-                    binary_name = name
-                    arch = 'any'
-                binaries.append(
-                    Deb822({'Package': binary_name, 'Architecture': arch}))
             source['Build-Depends'] = (
                 'debhelper-compat (= %d)' % maximum_debhelper_compat_version(
                     compat_release))
             dh_addons = []
+            initial_files = []
             dh_buildsystem = None
 
             if buildsystem and buildsystem.name == 'setup.py':
-                source['Build-Depends'] = ensure_some_version(
-                    source['Build-Depends'],
-                    'python3-all')
                 dh_buildsystem = 'pybuild'
                 dh_addons.append('python3')
+                source['Source'] = 'python-%s' % source_name
+                binaries.append(
+                    Deb822({'Package': 'python3-%s' % source_name,
+                            'Architecture': 'all'}))
+            elif buildsystem and buildsystem.name == 'npm':
+                dh_addons.append('nodejs')
+                source['Source'] = 'node-%s' % source_name
+                binaries.append(
+                    Deb822({'Package': 'node-%s' % source_name,
+                            'Architecture': 'all'}))
+                if os.path.exists('test/node.js'):
+                    source['Testsuite'] = 'autopkgtest-pkg-nodejs'
+                    os.makedirs('debian/tests/pkg-js', exist_ok=True)
+                    initial_files.append('debian/tests/pkg-js/test')
+                    with open('debian/tests/pkg-js/test', 'w') as f:
+                        f.write('mocha test/node.js')
+                    source['Build-Depends'] = ensure_some_version(
+                        source['Build-Depends'], 'mocha <!nocheck>')
 
-            initial_files = []
+            else:
+                for name in (args.binary or [source['Source']]):
+                    try:
+                        binary_name, arch = name.split(':')
+                    except ValueError:
+                        binary_name = name
+                        arch = 'any'
+                    binaries.append(
+                        Deb822({'Package': binary_name, 'Architecture': arch}))
+
+            for dh_addon in dh_addons:
+                source['Build-Depends'] = ensure_some_version(
+                    source['Build-Depends'],
+                    'dh-sequence-%s' % dh_addon)
+
             try:
                 debian_path = osutils.pathjoin(subpath, 'debian')
                 if not wt.has_filename(debian_path):
                     wt.mkdir(debian_path)
                 write_debhelper_rules_template(
                     os.path.join(debian_path, 'rules'),
-                    buildsystem=dh_buildsystem, addons=dh_addons)
+                    buildsystem=dh_buildsystem)
                 initial_files.append(os.path.join(debian_path, 'rules'))
                 write_control_template('debian/control', source, binaries)
                 initial_files.append('debian/control')
                 write_changelog_template(
-                    'debian/changelog', source_name, version, wnpp_bugs)
+                    'debian/changelog', source['Source'], version, wnpp_bugs)
                 initial_files.append('debian/changelog')
 
                 wt.add([osutils.pathjoin(subpath, p) for p in initial_files])
