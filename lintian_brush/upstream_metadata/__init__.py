@@ -530,6 +530,8 @@ def guess_from_package_json(path, trust_package):
         yield UpstreamDatum('Homepage', package['homepage'], 'certain')
     if 'description' in package:
         yield UpstreamDatum('X-Summary', package['description'], 'certain')
+    if 'license' in package:
+        yield UpstreamDatum('X-License', package['license'], 'certain')
     if 'repository' in package:
         if isinstance(package['repository'], dict):
             repo_url = package['repository'].get('url')
@@ -554,6 +556,10 @@ def guess_from_package_json(path, trust_package):
             url = package['bugs']
         if url:
             yield UpstreamDatum('Bug-Database', url, 'certain')
+    if 'devDependencies' in package:
+        for name, unused_version in package['devDependencies'].items():
+            # TODO(jelmer): Look at version
+            yield UpstreamRequirement('dev', 'npm', name)
 
 
 def xmlparse_simplify_namespaces(path, namespaces):
