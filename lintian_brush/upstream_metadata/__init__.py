@@ -528,6 +528,8 @@ def guess_from_package_json(path, trust_package):
         yield UpstreamDatum('Name', package['name'], 'certain')
     if 'homepage' in package:
         yield UpstreamDatum('Homepage', package['homepage'], 'certain')
+    if 'description' in package:
+        yield UpstreamDatum('X-Summary', package['description'], 'certain')
     if 'repository' in package:
         if isinstance(package['repository'], dict):
             repo_url = package['repository'].get('url')
