@@ -100,7 +100,7 @@ def write_rules_template(path, buildsystem=None, addons=None):
     if buildsystem:
         dh_args.append('--buildsystem=%s' % buildsystem)
     for addon in addons:
-        dh_args.append('--wuth=%s' % addon)
+        dh_args.append('--with=%s' % addon)
 
     with open(path, 'w') as f:
         f.write("""\
