@@ -521,6 +521,7 @@ def guess_from_setup_py(path, trust_package):
 
 def guess_from_package_json(path, trust_package):
     import json
+    yield BuildSystem('npm')
     with open(path, 'r') as f:
         package = json.load(f)
     if 'name' in package:
