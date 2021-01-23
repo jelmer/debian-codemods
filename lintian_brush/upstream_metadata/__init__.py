@@ -621,6 +621,20 @@ def guess_from_dist_ini(path, trust_package):
             'Repository', parser['MetaResources']['repository.url'], 'certain')
     except (NoSectionError, NoOptionError, KeyError):
         pass
+    try:
+        yield UpstreamDatum(
+            'X-License', parser['START']['license'], 'certain')
+    except (NoSectionError, NoOptionError, KeyError):
+        pass
+    try:
+        copyright = '%s %s' % (
+            parser['START']['copyright_year'],
+            parser['START']['copyright_holder'],
+        )
+    except (NoSectionError, NoOptionError, KeyError):
+        pass
+    else:
+        yield UpstreamDatum('X-Copyright', copyright, 'certain')
 
 
 def guess_from_debian_copyright(path, trust_package):
