@@ -269,7 +269,12 @@ def main(argv=None):
                         f.write('mocha test/node.js')
                     source['Build-Depends'] = ensure_some_version(
                         source['Build-Depends'], 'mocha <!nocheck>')
-
+            elif buildsystem and buildsystem.name == 'dist-zilla':
+                source['Source'] = 'lib%s-perl' % source_name
+                dh_addons.append('dist-zilla')
+                binaries.append(
+                    Deb822({'Package': 'lib%s-perl' % source_name,
+                            'Architecture': 'all'}))
             else:
                 for name in (args.binary or [source['Source']]):
                     try:

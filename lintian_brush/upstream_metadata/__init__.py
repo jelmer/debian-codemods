@@ -600,6 +600,7 @@ def guess_from_dist_ini(path, trust_package):
         ParsingError,
         NoOptionError,
         )
+    yield BuildSystem('dist-zilla')
     parser = RawConfigParser(strict=False)
     with open(path, 'r') as f:
         try:
