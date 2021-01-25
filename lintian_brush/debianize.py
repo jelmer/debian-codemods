@@ -27,6 +27,30 @@ from debian.changelog import Changelog, Version, get_maintainer, format_date
 from debmutate.control import ensure_some_version
 from debian.deb822 import Deb822
 
+from breezy import osutils
+from breezy.commit import NullCommitReporter
+from breezy.trace import note  # noqa: E402
+
+from . import (
+    available_lintian_fixers,
+    version_string,
+    check_clean_tree,
+    PendingChanges,
+    get_dirty_tracker,
+    run_lintian_fixers,
+    get_committer,
+    reset_tree,
+    )
+from .upstream_metadata import (
+    get_upstream_info,
+    )
+from .debhelper import (
+    maximum_debhelper_compat_version,
+    write_rules_template as write_debhelper_rules_template,
+    )
+from .standards_version import iter_standards_versions
+
+
 
 def write_control_template(path, source, binaries):
     """Write a control file template.
@@ -82,6 +106,183 @@ def source_name_from_upstream_name(upstream_name: str) -> str:
 
 package_name_re = re.compile('[a-z0-9][a-z0-9+-.]+')
 
+MINIMUM_CERTAINTY = 'possible'  # For now..
+
+
+class DebianDirectoryExists(Exception):
+    """A Debian Directory already exists."""
+
+    def __init__(self, path):
+        self.path = path
+
+
+def debianize(
+        wt, subpath, use_inotify=None, diligence=0, trust=False, check=False,
+        net_access=True, force_subprocess=False, compat_release=None,
+        minimum_certainty=MINIMUM_CERTAINTY,
+        consult_external_directory=True,
+        verbose=False):
+    dirty_tracker = get_dirty_tracker(wt, subpath, use_inotify)
+    if dirty_tracker:
+        dirty_tracker.mark_clean()
+
+    if os.path.exists('debian') and list(os.listdir('debian')):
+        raise DebianDirectoryExists(wt.abspath(subpath))
+
+    buildsystem, unused_requirements, metadata = (
+        get_upstream_info(
+            wt.abspath(subpath), trust_package=trust,
+            net_access=net_access,
+            consult_external_directory=consult_external_directory,
+            check=check))
+
+    try:
+        upstream_name = metadata['Name']
+    except KeyError:
+        note('%s: Unable to determine upstream package name.',
+             wt.abspath(subpath))
+        if not trust:
+            note('Run with --trust if you are okay running code '
+                 'from the package?')
+        return 1
+
+    source_name = source_name_from_upstream_name(upstream_name)
+    if not package_name_re.fullmatch(source_name):
+        note('Unable to sanitize source package name: %s',
+             source_name)
+        return 1
+
+    if net_access:
+        import asyncio
+        note('Searching for WNPP bug for %s', source_name)
+        loop = asyncio.get_event_loop()
+        wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
+    else:
+        wnpp_bugs = None
+
+    with wt.lock_write():
+        try:
+            from breezy.plugins.debian.upstream.branch import (
+                upstream_branch_version,
+                upstream_version_add_revision,
+                )
+        except ModuleNotFoundError:
+            note('Install breezy-debian for upstream version guessing.')
+        else:
+            upstream_version = upstream_branch_version(
+                wt.branch, wt.last_revision(), source_name)
+            if upstream_version is None and 'X-Version' in metadata:
+                # They haven't done any releases yet. Assume we're ahead of
+                # the next announced release?
+                next_upstream_version = metadata['X-Version']
+                upstream_version = upstream_version_add_revision(
+                    wt.branch, next_upstream_version, wt.last_revision(),
+                    '~')
+        if upstream_version is None:
+            note('Unable to determine upstream version, using 0.')
+
+        version = Version(upstream_version + '-1')
+        source = Deb822()
+        source['Source'] = source_name
+        # TODO(jelmer): This is a reasonable guess, but won't always be
+        # okay.
+        source['Rules-Requires-Root'] = 'no'
+        source['Standards-Version'] = '.'.join(
+            map(str, next(iter_standards_versions())[0]))
+        # TODO(jelmer): Autodetect binaries rather than letting the user
+        # specify them.
+        binaries = []
+        source['Build-Depends'] = (
+            'debhelper-compat (= %d)' % maximum_debhelper_compat_version(
+                compat_release))
+        dh_addons = []
+        initial_files = []
+        dh_buildsystem = None
+
+        if buildsystem and buildsystem.name == 'setup.py':
+            dh_buildsystem = 'pybuild'
+            dh_addons.append('python3')
+            source['Source'] = 'python-%s' % source_name
+            binaries.append(
+                Deb822({'Package': 'python3-%s' % source_name,
+                        'Architecture': 'all'}))
+        elif buildsystem and buildsystem.name == 'npm':
+            dh_addons.append('nodejs')
+            source['Source'] = 'node-%s' % source_name
+            binaries.append(
+                Deb822({'Package': 'node-%s' % source_name,
+                        'Architecture': 'all'}))
+            if os.path.exists('test/node.js'):
+                source['Testsuite'] = 'autopkgtest-pkg-nodejs'
+                os.makedirs('debian/tests/pkg-js', exist_ok=True)
+                initial_files.append('debian/tests/pkg-js/test')
+                with open('debian/tests/pkg-js/test', 'w') as f:
+                    f.write('mocha test/node.js')
+                source['Build-Depends'] = ensure_some_version(
+                    source['Build-Depends'], 'mocha <!nocheck>')
+        elif buildsystem and buildsystem.name == 'dist-zilla':
+            source['Source'] = 'lib%s-perl' % source_name
+            dh_addons.append('dist-zilla')
+            binaries.append(
+                Deb822({'Package': 'lib%s-perl' % source_name,
+                        'Architecture': 'all'}))
+        else:
+            for binary_name, arch in [(source['Source'], 'any')]:
+                binaries.append(
+                    Deb822({'Package': binary_name, 'Architecture': arch}))
+
+        for dh_addon in dh_addons:
+            source['Build-Depends'] = ensure_some_version(
+                source['Build-Depends'],
+                'dh-sequence-%s' % dh_addon)
+
+        try:
+            debian_path = osutils.pathjoin(subpath, 'debian')
+            if not wt.has_filename(debian_path):
+                wt.mkdir(debian_path)
+            write_debhelper_rules_template(
+                wt.abspath(os.path.join(debian_path, 'rules')),
+                buildsystem=dh_buildsystem)
+            initial_files.append('debian/rules')
+            write_control_template(
+                wt.abspath(os.path.join(debian_path, 'control')),
+                source, binaries)
+            initial_files.append('debian/control')
+            write_changelog_template(
+                wt.abspath(os.path.join(debian_path, 'changelog')),
+                source['Source'], version, wnpp_bugs)
+            initial_files.append('debian/changelog')
+
+            wt_paths = [osutils.pathjoin(subpath, p) for p in initial_files]
+            wt.add(wt_paths)
+
+            wt.commit(
+                'Create debian/ directory', allow_pointless=False,
+                committer=get_committer(wt),
+                specific_files=wt_paths,
+                reporter=NullCommitReporter())
+        except BaseException:
+            reset_tree(
+                wt, wt.basis_tree(), subpath, dirty_tracker=dirty_tracker)
+            raise
+
+        fixers = available_lintian_fixers(
+            force_subprocess=force_subprocess)
+
+        run_lintian_fixers(
+            wt, fixers,
+            update_changelog=False,
+            compat_release=compat_release,
+            verbose=verbose,
+            minimum_certainty=minimum_certainty,
+            trust_package=trust,
+            allow_reformatting=True,
+            use_inotify=use_inotify,
+            subpath=subpath,
+            net_access=net_access,
+            opinionated=True,
+            diligence=diligence)
+
 
 def main(argv=None):
     import argparse
@@ -91,28 +292,6 @@ def main(argv=None):
     breezy.initialize()
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
-    from breezy import osutils
-    from breezy.commit import NullCommitReporter
-
-    from lintian_brush import (
-        available_lintian_fixers,
-        version_string,
-        check_clean_tree,
-        PendingChanges,
-        get_dirty_tracker,
-        run_lintian_fixers,
-        get_committer,
-        reset_tree,
-        )
-    from lintian_brush.debhelper import (
-        maximum_debhelper_compat_version,
-        write_rules_template as write_debhelper_rules_template,
-        )
-    from lintian_brush.standards_version import iter_standards_versions
-    from lintian_brush.upstream_metadata import (
-        get_upstream_info,
-        )
-    from breezy.trace import note  # noqa: E402
 
     parser = argparse.ArgumentParser(prog='debianize')
     parser.add_argument(
@@ -149,8 +328,6 @@ def main(argv=None):
         help=argparse.SUPPRESS)
     parser.add_argument('binary', type=str, nargs='*')
 
-    minimum_certainty = 'possible'  # For now..
-
     args = parser.parse_args(argv)
 
     compat_release = args.compat_release
@@ -169,169 +346,22 @@ def main(argv=None):
             note("%s: Please commit pending changes first.", wt.basedir)
             return 1
 
-        dirty_tracker = get_dirty_tracker(wt, subpath, use_inotify)
-        if dirty_tracker:
-            dirty_tracker.mark_clean()
-
-        if os.path.exists('debian') and list(os.listdir('debian')):
-            note('%s: A debian directory already exists. '
-                 'Run lintian-brush instead?', wt.abspath(subpath))
-            return 1
-
-        buildsystem, unused_requirements, metadata = (
-            get_upstream_info(
-                '.', trust_package=args.trust,
-                net_access=not args.disable_net_access,
-                consult_external_directory=args.consult_external_directory,
-                check=args.check))
-
         try:
-            upstream_name = metadata['Name']
-        except KeyError:
-            note('%s: Unable to determine upstream package name.',
-                 wt.abspath(subpath))
-            if not args.trust:
-                note('Run with --trust if you are okay running code '
-                     'from the package?')
-            return 1
-
-        source_name = source_name_from_upstream_name(upstream_name)
-        if not package_name_re.fullmatch(source_name):
-            note('Unable to sanitize source package name: %s',
-                 source_name)
-            return 1
-
-        if not args.disable_net_access:
-            import asyncio
-            note('Searching for WNPP bug for %s', source_name)
-            loop = asyncio.get_event_loop()
-            wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
-        else:
-            wnpp_bugs = None
-
-        with wt.lock_write():
-            try:
-                from breezy.plugins.debian.upstream.branch import (
-                    upstream_branch_version,
-                    upstream_version_add_revision,
-                    )
-            except ModuleNotFoundError:
-                note('Install breezy-debian for upstream version guessing.')
-            else:
-                upstream_version = upstream_branch_version(
-                    wt.branch, wt.last_revision(), source_name)
-                if upstream_version is None and 'X-Version' in metadata:
-                    # They haven't done any releases yet. Assume we're ahead of
-                    # the next announced release?
-                    next_upstream_version = metadata['X-Version']
-                    upstream_version = upstream_version_add_revision(
-                        wt.branch, next_upstream_version, wt.last_revision(),
-                        '~')
-            if upstream_version is None:
-                note('Unable to determine upstream version, using 0.')
-
-            version = Version(upstream_version + '-1')
-            source = Deb822()
-            source['Source'] = source_name
-            # TODO(jelmer): This is a reasonable guess, but won't always be
-            # okay.
-            source['Rules-Requires-Root'] = 'no'
-            source['Standards-Version'] = '.'.join(
-                map(str, next(iter_standards_versions())[0]))
-            # TODO(jelmer): Autodetect binaries rather than letting the user
-            # specify them.
-            binaries = []
-            source['Build-Depends'] = (
-                'debhelper-compat (= %d)' % maximum_debhelper_compat_version(
-                    compat_release))
-            dh_addons = []
-            initial_files = []
-            dh_buildsystem = None
-
-            if buildsystem and buildsystem.name == 'setup.py':
-                dh_buildsystem = 'pybuild'
-                dh_addons.append('python3')
-                source['Source'] = 'python-%s' % source_name
-                binaries.append(
-                    Deb822({'Package': 'python3-%s' % source_name,
-                            'Architecture': 'all'}))
-            elif buildsystem and buildsystem.name == 'npm':
-                dh_addons.append('nodejs')
-                source['Source'] = 'node-%s' % source_name
-                binaries.append(
-                    Deb822({'Package': 'node-%s' % source_name,
-                            'Architecture': 'all'}))
-                if os.path.exists('test/node.js'):
-                    source['Testsuite'] = 'autopkgtest-pkg-nodejs'
-                    os.makedirs('debian/tests/pkg-js', exist_ok=True)
-                    initial_files.append('debian/tests/pkg-js/test')
-                    with open('debian/tests/pkg-js/test', 'w') as f:
-                        f.write('mocha test/node.js')
-                    source['Build-Depends'] = ensure_some_version(
-                        source['Build-Depends'], 'mocha <!nocheck>')
-            elif buildsystem and buildsystem.name == 'dist-zilla':
-                source['Source'] = 'lib%s-perl' % source_name
-                dh_addons.append('dist-zilla')
-                binaries.append(
-                    Deb822({'Package': 'lib%s-perl' % source_name,
-                            'Architecture': 'all'}))
-            else:
-                for name in (args.binary or [source['Source']]):
-                    try:
-                        binary_name, arch = name.split(':')
-                    except ValueError:
-                        binary_name = name
-                        arch = 'any'
-                    binaries.append(
-                        Deb822({'Package': binary_name, 'Architecture': arch}))
-
-            for dh_addon in dh_addons:
-                source['Build-Depends'] = ensure_some_version(
-                    source['Build-Depends'],
-                    'dh-sequence-%s' % dh_addon)
-
-            try:
-                debian_path = osutils.pathjoin(subpath, 'debian')
-                if not wt.has_filename(debian_path):
-                    wt.mkdir(debian_path)
-                write_debhelper_rules_template(
-                    os.path.join(debian_path, 'rules'),
-                    buildsystem=dh_buildsystem)
-                initial_files.append(os.path.join(debian_path, 'rules'))
-                write_control_template('debian/control', source, binaries)
-                initial_files.append('debian/control')
-                write_changelog_template(
-                    'debian/changelog', source['Source'], version, wnpp_bugs)
-                initial_files.append('debian/changelog')
-
-                wt.add([osutils.pathjoin(subpath, p) for p in initial_files])
-
-                wt.commit(
-                    'Create debian/ directory', allow_pointless=False,
-                    committer=get_committer(wt),
-                    specific_files=initial_files,
-                    reporter=NullCommitReporter())
-            except BaseException:
-                reset_tree(
-                    wt, wt.basis_tree(), subpath, dirty_tracker=dirty_tracker)
-                raise
-
-            fixers = available_lintian_fixers(
-                force_subprocess=args.force_subprocess)
-
-            run_lintian_fixers(
-                wt, fixers,
-                update_changelog=False,
-                compat_release=compat_release,
-                verbose=args.verbose,
-                minimum_certainty=minimum_certainty,
-                trust_package=args.trust,
-                allow_reformatting=True,
-                use_inotify=use_inotify,
-                subpath=subpath,
+            debianize(
+                wt, subpath, use_inotify=use_inotify,
+                diligence=args.diligence,
+                trust=args.trust,
+                check=args.check,
                 net_access=not args.disable_net_access,
-                opinionated=True,
-                diligence=args.diligence)
+                force_subprocess=args.force_subprocess,
+                compat_release=compat_release,
+                consult_external_directory=args.consult_external_directory,
+                verbose=args.verbose)
+        except DebianDirectoryExists as e:
+            note('%s: A debian directory already exists. '
+                 'Run lintian-brush instead?', e.path)
+            return 1
+    return 0
 
 
 if __name__ == '__main__':
