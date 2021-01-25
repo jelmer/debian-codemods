@@ -235,6 +235,14 @@ def debianize(
             binaries.append(
                 Deb822({'Package': 'lib%s-perl' % source_name,
                         'Architecture': 'all'}))
+        elif buildsystem and buildsystem.name == 'cargo':
+            source['Source'] = 'rust-%s' % source_name
+            source['Build-Depends'] = ensure_some_version(
+                source['Build-Depends'], 'dh-cargo')
+            dh_buildsystem = 'cargo'
+            binaries.append(
+                Deb822({'Package': 'rust-%s' % source_name,
+                        'Architecture': 'any'}))
         else:
             for binary_name, arch in [(source['Source'], 'any')]:
                 binaries.append(
