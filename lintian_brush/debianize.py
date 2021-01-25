@@ -28,6 +28,7 @@ from debmutate.control import ensure_some_version
 from debian.deb822 import Deb822
 
 from breezy import osutils
+from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
 from breezy.trace import note  # noqa: E402
 
@@ -128,6 +129,14 @@ def debianize(
 
     if os.path.exists('debian') and list(os.listdir('debian')):
         raise DebianDirectoryExists(wt.abspath(subpath))
+
+    try:
+        wt.controldir.create_branch('upstream').generate_revision_history(
+            wt.last_revision())
+    except AlreadyBranchError:
+        note('Upstream branch already exists; not creating.')
+    else:
+        note('Created upstream branch.')
 
     buildsystem, unused_requirements, metadata = (
         get_upstream_info(
