@@ -1,6 +1,7 @@
 lintian-brush (0.94) UNRELEASED; urgency=medium
 
   * debhelper-but-no-misc-depends: Also handle debhelper-compat.
+  * Strip superfluous commas.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 22 Jan 2021 21:37:39 +0000
 

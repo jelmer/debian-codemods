@@ -178,7 +178,7 @@ def update_conflicts(base, field, upgrade_release):
 
     if changed:
         base[field] = format_relations(newrelations)
-        if not base[field]:
+        if not base[field].strip(','):
             del base[field]
         return changed
     return []
