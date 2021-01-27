@@ -1,9 +1,9 @@
-lintian-brush (0.94) UNRELEASED; urgency=medium
+lintian-brush (0.94) unstable; urgency=medium
 
   * debhelper-but-no-misc-depends: Also handle debhelper-compat.
   * Strip superfluous commas.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 22 Jan 2021 21:37:39 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 27 Jan 2021 00:36:32 +0000
 
 lintian-brush (0.93) unstable; urgency=medium
 
