@@ -244,6 +244,13 @@ def update_maintscripts(wt, path, package, upgrade_release):
     return ret
 
 
+def name_list(packages):
+    if len(packages) == 1:
+        return packages[0]
+    std = list(sorted(set(packages)))
+    return ', '.join(std[:-1]) + ' and ' + std[-1]
+
+
 class ScrubObsoleteResult(object):
 
     def __init__(self, specific_files, maintscript_removed,
@@ -262,11 +269,11 @@ class ScrubObsoleteResult(object):
                 if para:
                     summary.append(
                         '%s: Drop versioned constraint on %s in %s.' % (
-                         para, ', '.join(packages), field))
+                         para, name_list(packages), field))
                 else:
                     summary.append(
                         '%s: Drop versioned constraint on %s.' % (
-                         field, ', '.join(packages)))
+                         field, name_list(packages)))
         if self.maintscript_removed:
             summary.append('Remove %d maintscript entries.' %
                            len(self.maintscript_removed))
