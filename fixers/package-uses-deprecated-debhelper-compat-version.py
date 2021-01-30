@@ -26,7 +26,7 @@ from lintian_brush.fixer import (
     report_result,
     warn,
     )
-from lintian_brush.rules import (
+from debmutate._rules import (
     check_cdbs,
     dh_invoke_drop_with,
     dh_invoke_drop_argument,

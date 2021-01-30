@@ -16,7 +16,7 @@ from debmutate.debhelper import (
     read_debhelper_compat_file,
     )
 from lintian_brush.fixer import control, report_result, fixed_lintian_tag
-from lintian_brush.rules import (
+from debmutate._rules import (
     check_cdbs,
     )
 

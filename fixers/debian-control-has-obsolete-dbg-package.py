@@ -9,7 +9,7 @@ from lintian_brush.fixer import (
     LintianIssue,
     report_result,
     )
-from lintian_brush.rules import (
+from debmutate._rules import (
     check_cdbs,
     update_rules,
     )

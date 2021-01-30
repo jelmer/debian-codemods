@@ -5,7 +5,7 @@ import sys
 
 from debmutate.debhelper import get_debhelper_compat_level
 from lintian_brush.fixer import report_result, LintianIssue
-from lintian_brush.rules import update_rules
+from debmutate._rules import update_rules
 
 compat_version = get_debhelper_compat_level()
 if compat_version is None:

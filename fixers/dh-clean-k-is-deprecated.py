@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.rules import update_rules
+from debmutate._rules import update_rules
 from lintian_brush.fixer import report_result, LintianIssue
 
 

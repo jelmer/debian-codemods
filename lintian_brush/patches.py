@@ -218,7 +218,7 @@ def find_patches_directory(path):
     Returns:
       relative path to patches directory, or None if none exists
     """
-    from .rules import Makefile
+    from debmutate._rules import Makefile
     directory = None
     try:
         mf = Makefile.from_path(os.path.join(path, 'debian/rules'))

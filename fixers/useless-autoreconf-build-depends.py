@@ -14,7 +14,7 @@ from lintian_brush.fixer import (
     report_result,
     LintianIssue,
     )
-from lintian_brush.rules import (
+from debmutate._rules import (
     dh_invoke_drop_with,
     update_rules,
     )

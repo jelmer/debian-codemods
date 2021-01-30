@@ -20,7 +20,7 @@ from setuptools import setup
 
 setup(
     name="lintian-brush",
-    version="0.94",
+    version="0.95",
     author="Jelmer Vernooij",
     author_email="jelmer@debian.org",
     packages=["lintian_brush", "upstream_ontologist"],
@@ -35,8 +35,6 @@ setup(
             'debianize=lintian_brush.debianize:main',
             'lintian-brush=lintian_brush.__main__:main',
             'apply-multiarch-hints=lintian_brush.multiarch_hints:main',
-            ('guess-upstream-metadata='
-             'upstream_ontologist.__main__:main'),
             ('deb-scrub-obsolete='
              'lintian_brush.scrub_obsolete:main'),
             ]

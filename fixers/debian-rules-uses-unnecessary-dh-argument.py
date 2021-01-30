@@ -4,7 +4,7 @@ import shlex
 
 from debmutate.debhelper import get_debhelper_compat_level
 from lintian_brush.fixer import report_result, LintianIssue
-from lintian_brush.rules import (
+from debmutate._rules import (
     dh_invoke_drop_argument,
     dh_invoke_drop_with,
     RulesEditor,

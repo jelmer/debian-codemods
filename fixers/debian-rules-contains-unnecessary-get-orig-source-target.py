@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.rules import RulesEditor
+from debmutate._rules import RulesEditor
 from lintian_brush.fixer import report_result, LintianIssue
 
 certainty = None

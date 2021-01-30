@@ -8,7 +8,7 @@ from debmutate.control import (
     )
 from lintian_brush.fixer import control, report_result, LintianIssue
 from lintian_brush.lintian import read_debhelper_lintian_data_file
-from lintian_brush.rules import Makefile, Rule, dh_invoke_get_with
+from debmutate._rules import Makefile, Rule, dh_invoke_get_with
 import os
 import shlex
 import sys
