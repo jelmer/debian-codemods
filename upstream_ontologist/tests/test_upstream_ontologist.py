@@ -33,6 +33,10 @@ from upstream_ontologist import (
     bug_database_url_from_bug_submit_url,
     url_from_git_clone_command,
     url_from_fossil_clone_command,
+    min_certainty,
+    certainty_to_confidence,
+    confidence_to_certainty,
+    certainty_sufficient,
     )
 
 
@@ -258,3 +262,50 @@ class UrlFromFossilCloneTests(TestCase):
             'https://example.com/repo/blah',
             url_from_fossil_clone_command(
                 b'fossil clone https://example.com/repo/blah blah.fossil'))
+
+
+class CertaintySufficientTests(TestCase):
+
+    def test_sufficient(self):
+        self.assertTrue(certainty_sufficient('certain', 'certain'))
+        self.assertTrue(certainty_sufficient('certain', 'possible'))
+        self.assertTrue(certainty_sufficient('certain', None))
+        self.assertTrue(certainty_sufficient('possible', None))
+        # TODO(jelmer): Should we really always allow unknown certainties
+        # through?
+        self.assertTrue(certainty_sufficient(None, 'certain'))
+
+    def test_insufficient(self):
+        self.assertFalse(certainty_sufficient('possible', 'certain'))
+
+
+class CertaintyVsConfidenceTests(TestCase):
+
+    def test_confidence_to_certainty(self):
+        self.assertEqual("certain", confidence_to_certainty(0))
+        self.assertEqual("confident", confidence_to_certainty(1))
+        self.assertEqual("likely", confidence_to_certainty(2))
+        self.assertEqual("possible", confidence_to_certainty(3))
+        self.assertEqual("unknown", confidence_to_certainty(None))
+        self.assertRaises(ValueError, confidence_to_certainty, 2000)
+
+    def test_certainty_to_confidence(self):
+        self.assertEqual(0, certainty_to_confidence("certain"))
+        self.assertEqual(1, certainty_to_confidence("confident"))
+        self.assertEqual(2, certainty_to_confidence("likely"))
+        self.assertEqual(3, certainty_to_confidence("possible"))
+        self.assertIs(None, certainty_to_confidence("unknown"))
+        self.assertRaises(ValueError, certainty_to_confidence, "blah")
+
+
+class MinimumCertaintyTests(TestCase):
+
+    def test_minimum(self):
+        self.assertEqual("certain", min_certainty([]))
+        self.assertEqual("certain", min_certainty(["certain"]))
+        self.assertEqual("possible", min_certainty(["possible"]))
+        self.assertEqual("possible", min_certainty(["possible", "certain"]))
+        self.assertEqual("likely", min_certainty(["likely", "certain"]))
+        self.assertEqual(
+            "possible",
+            min_certainty(["likely", "certain", "possible"]))

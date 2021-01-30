@@ -57,23 +57,13 @@ import os
 import re
 import socket
 import urllib.error
-from typing import Optional, Union, Iterable
+from typing import Optional, Union, Iterable, Sequence
 from urllib.parse import quote, urlparse, urlunparse, urljoin, parse_qs
 from warnings import warn
 
-from debian.deb822 import Deb822
-
-from debmutate.vcs import (
+from .vcs import (
     split_vcs_url,
     unsplit_vcs_url,
-    )
-
-from lintian_brush import (
-    certainty_sufficient,
-    certainty_to_confidence,
-    min_certainty,
-    )
-from lintian_brush.vcs import (
     browse_url_from_repo_url,
     plausible_url as plausible_vcs_url,
     plausible_browse_url as plausible_vcs_browse_url,
@@ -388,6 +378,7 @@ def guess_from_debian_watch(path, trust_package):
         )
 
     def get_package_name():
+        from debian.deb822 import Deb822
         with open(os.path.join(os.path.dirname(path), 'control'), 'r') as f:
             return Deb822(f)['Source']
     with open(path, 'r') as f:
@@ -424,6 +415,7 @@ def guess_from_debian_watch(path, trust_package):
 
 def guess_from_debian_control(path, trust_package):
     with open(path, 'r') as f:
+        from debian.deb822 import Deb822
         control = Deb822(f)
     if 'Homepage' in control:
         yield UpstreamDatum('Homepage', control['Homepage'], 'certain')
@@ -1063,6 +1055,9 @@ def guess_from_configure(path, trust_package=False):
 
 def guess_from_r_description(path, trust_package=False):
     with open(path, 'rb') as f:
+        # TODO(jelmer): use rfc822 instead?
+        from debian.deb822 import Deb822
+
         description = Deb822(f)
         if 'Package' in description:
             yield UpstreamDatum('Name', description['Package'], 'certain')
@@ -1995,6 +1990,9 @@ def extend_upstream_metadata(upstream_metadata, path, minimum_certainty=None,
         except NoSuchSourceForgeProject:
             del upstream_metadata['X-SourceForge-Project']
     if net_access and consult_external_directory:
+        # TODO(jelmer): Don't assume debian/control exists
+        from debian.deb822 import Deb822
+
         try:
             with open(os.path.join(path, 'debian/control'), 'r') as f:
                 package = Deb822(f)['Source']
@@ -2386,3 +2384,45 @@ def upstream_version(version):
     """Drop debian-specific modifiers from an upstream version string.
     """
     return version.upstream_version.split("+dfsg")[0]
+
+
+def min_certainty(certainties: Sequence[str]) -> str:
+    return confidence_to_certainty(
+        max([certainty_to_confidence(c)
+            for c in certainties] + [0]))
+
+
+def certainty_to_confidence(certainty: Optional[str]) -> Optional[int]:
+    if certainty in ('unknown', None):
+        return None
+    return SUPPORTED_CERTAINTIES.index(certainty)
+
+
+def confidence_to_certainty(confidence: Optional[int]) -> str:
+    if confidence is None:
+        return 'unknown'
+    try:
+        return SUPPORTED_CERTAINTIES[confidence] or 'unknown'
+    except IndexError:
+        raise ValueError(confidence)
+
+
+def certainty_sufficient(actual_certainty: str,
+                         minimum_certainty: Optional[str]) -> bool:
+    """Check if the actual certainty is sufficient.
+
+    Args:
+      actual_certainty: Actual certainty with which changes were made
+      minimum_certainty: Minimum certainty to keep changes
+    Returns:
+      boolean
+    """
+    actual_confidence = certainty_to_confidence(actual_certainty)
+    if actual_confidence is None:
+        # Actual confidence is unknown.
+        # TODO(jelmer): Should we really be ignoring this?
+        return True
+    minimum_confidence = certainty_to_confidence(minimum_certainty)
+    if minimum_confidence is None:
+        return True
+    return actual_confidence <= minimum_confidence

@@ -32,12 +32,12 @@ def test_suite():
         'run',
         'salsa',
         'systemd',
-        'upstream_metadata',
         'vcs',
         'xdg',
         'yaml',
         ]
     module_names = [__name__ + '.test_' + name for name in names]
+    module_names.append('upstream_ontologist.tests.test_upstream_ontologist')
     module_names.append(__name__ + ".fixers.test_suite")
     loader = unittest.TestLoader()
     return loader.loadTestsFromNames(module_names)
