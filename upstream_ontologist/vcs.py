@@ -25,12 +25,26 @@ __all__ = [
 
 from typing import Optional
 
+import socket
+import urllib
+from urllib.request import urlopen, Request
 
 from lintian_brush.vcs import (
     sanitize_url,
-    is_gitlab_site,
     browse_url_from_repo_url,
     )
+
+
+from . import (
+    DEFAULT_URLLIB_TIMEOUT,
+    USER_AGENT,
+    )
+
+
+KNOWN_GITLAB_SITES = [
+    'salsa.debian.org',
+    'invent.kde.org',
+    ]
 
 
 def plausible_browse_url(url: str) -> bool:
@@ -58,3 +72,32 @@ def unsplit_vcs_url(repo_url: str,
     if subpath:
         url = '%s [%s]' % (url, subpath)
     return url
+
+
+def probe_gitlab_host(hostname: str):
+    headers = {'User-Agent': USER_AGENT, 'Accept': 'application/json'}
+    try:
+        urlopen(
+            Request('https://%s/api/v4/version' % hostname, headers=headers),
+            timeout=DEFAULT_URLLIB_TIMEOUT)
+    except urllib.error.HTTPError as e:
+        if e.status == 401:
+            import json
+            if json.loads(e.read()) == {"message": "401 Unauthorized"}:
+                return True
+    except (socket.timeout, urllib.error.URLError):
+        # Probably not?
+        return False
+    return False
+
+
+def is_gitlab_site(hostname: str, net_access: bool = False) -> bool:
+    if hostname is None:
+        return False
+    if hostname in KNOWN_GITLAB_SITES:
+        return True
+    if hostname.startswith('gitlab.'):
+        return True
+    if net_access:
+        return probe_gitlab_host(hostname)
+    return False

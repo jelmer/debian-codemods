@@ -41,11 +41,7 @@ from lintian_brush import (
 
 
 KNOWN_GITLAB_SITES = [
-    'gitlab.com',
     'salsa.debian.org',
-    'gitlab.gnome.org',
-    'gitlab.freedesktop.org',
-    'gitlab.labs.nic.cz',
     'invent.kde.org',
     ]
 
