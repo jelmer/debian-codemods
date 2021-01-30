@@ -24,7 +24,6 @@ from lintian_brush.vcs import (
     determine_browser_url,
     fixup_broken_git_url,
     fixup_rcp_style_git_url,
-    plausible_url,
     sanitize_url,
     find_public_vcs_url,
     is_gitlab_site,
@@ -205,16 +204,6 @@ class DetermineBrowserUrlTests(TestCase):
             'https://sourceforge.net/p/shorewall/debian/ci/foo/tree/sp',
             determine_browser_url(
                 'git', 'git://git.code.sf.net/p/shorewall/debian -b foo [sp]'))
-
-
-class PlausibleUrlTests(TestCase):
-
-    def test_url(self):
-        self.assertFalse(plausible_url('the'))
-        self.assertFalse(plausible_url('1'))
-        self.assertTrue(plausible_url('git@foo:blah'))
-        self.assertTrue(plausible_url('git+ssh://git@foo/blah'))
-        self.assertTrue(plausible_url('https://foo/blah'))
 
 
 class CanonicalizeVcsUrlTests(TestCase):

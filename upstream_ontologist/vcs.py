@@ -34,9 +34,15 @@ from debmutate.vcs import (
 
 from lintian_brush.vcs import (
     browse_url_from_repo_url,
-    plausible_url,
-    plausible_browse_url,
     sanitize_url,
     is_gitlab_site,
     determine_browser_url,
     )
+
+
+def plausible_browse_url(url: str) -> bool:
+    return url.startswith('https://') or url.startswith('http://')
+
+
+def plausible_url(url: str) -> bool:
+    return ':' in url
