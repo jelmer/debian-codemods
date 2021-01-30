@@ -22,14 +22,18 @@ from lintian_brush.upstream_metadata import (
     )
 from upstream_ontologist import (
     UpstreamDatum,
+    upstream_metadata_sort_key,
+    )
+from upstream_ontologist.guess import (
     check_upstream_metadata,
     extend_upstream_metadata,
     fix_upstream_metadata,
     guess_upstream_metadata_items,
     update_from_guesses,
     filter_bad_guesses,
-    upstream_metadata_sort_key,
-    upstream_version,
+    )
+from upstream_ontologist.debian import (
+    debian_to_upstream_version,
     )
 from lintian_brush.yaml import (
     YamlUpdater,
@@ -100,7 +104,7 @@ with YamlUpdater('debian/upstream/metadata') as editor:
     if net_access:
         # Verify that online resources actually exist and adjust certainty
         # accordingly.
-        upstream_version = upstream_version(current_version)
+        upstream_version = debian_to_upstream_version(current_version)
         check_upstream_metadata(upstream_metadata, version=upstream_version)
 
     # Homepage is set in debian/control, so don't add it to

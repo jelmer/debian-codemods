@@ -10,7 +10,7 @@ from lintian_brush.fixer import (
     report_result,
     trust_package,
     )
-from upstream_ontologist import guess_upstream_metadata
+from upstream_ontologist.guess import guess_upstream_metadata
 
 CERTAINTY = 'possible'
 

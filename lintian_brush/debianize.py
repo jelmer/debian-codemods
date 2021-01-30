@@ -32,6 +32,14 @@ from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
 from breezy.trace import note  # noqa: E402
 
+from upstream_ontologist.guess import (
+    get_upstream_info,
+    )
+from upstream_ontologist.debian import (
+    upstream_name_to_debian_source_name as source_name_from_upstream_name,
+    upstream_version_to_debian_upstream_version as debian_upstream_version,
+    )
+
 from . import (
     available_lintian_fixers,
     version_string,
@@ -41,9 +49,6 @@ from . import (
     run_lintian_fixers,
     get_committer,
     reset_tree,
-    )
-from upstream_ontologist import (
-    get_upstream_info,
     )
 from .debhelper import (
     maximum_debhelper_compat_version,
@@ -96,12 +101,6 @@ async def find_wnpp_bugs(source_name):
     return [row[0] for row in await conn.fetch("""\
 select id from wnpp where source = $1 and type in ('ITP', 'RFP') LIMIT 1
 """, source_name)]
-
-
-def source_name_from_upstream_name(upstream_name: str) -> str:
-    if upstream_name.startswith('GNU '):
-        upstream_name = upstream_name[len('GNU '):]
-    return upstream_name.lower()
 
 
 package_name_re = re.compile('[a-z0-9][a-z0-9+-.]+')
@@ -182,7 +181,8 @@ def debianize(
             if upstream_version is None and 'X-Version' in metadata:
                 # They haven't done any releases yet. Assume we're ahead of
                 # the next announced release?
-                next_upstream_version = metadata['X-Version']
+                next_upstream_version = debian_upstream_version(
+                    metadata['X-Version'])
                 upstream_version = upstream_version_add_revision(
                     wt.branch, next_upstream_version, wt.last_revision(),
                     '~')

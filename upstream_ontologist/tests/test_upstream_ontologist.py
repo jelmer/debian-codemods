@@ -17,15 +17,23 @@
 
 """Tests for upstream_ontologist."""
 
-from breezy.tests import (
+import os
+import shutil
+import tempfile
+from unittest import (
     TestCase,
-    TestCaseWithTransport,
     )
 
 
 from upstream_ontologist import (
     BuildSystem,
     UpstreamDatum,
+    min_certainty,
+    certainty_to_confidence,
+    confidence_to_certainty,
+    certainty_sufficient,
+    )
+from upstream_ontologist.guess import (
     guess_repo_from_url,
     guess_from_package_json,
     guess_from_debian_watch,
@@ -33,27 +41,34 @@ from upstream_ontologist import (
     bug_database_url_from_bug_submit_url,
     url_from_git_clone_command,
     url_from_fossil_clone_command,
-    min_certainty,
-    certainty_to_confidence,
-    confidence_to_certainty,
-    certainty_sufficient,
     )
 
 
-class GuessFromDebianWatchTests(TestCaseWithTransport):
+class TestCaseInTempDir(TestCase):
+
+    def setUp(self):
+        super(TestCaseInTempDir, self).setUp()
+        self.testdir = tempfile.mkdtemp()
+        os.chdir(self.testdir)
+        self.addCleanup(shutil.rmtree, self.testdir)
+
+
+class GuessFromDebianWatchTests(TestCaseInTempDir):
 
     def test_empty(self):
-        self.build_tree_contents([('watch', """\
+        with open('watch', 'w') as f:
+            f.write("""\
 # Blah
-""")])
+""")
         self.assertEqual(
             [], list(guess_from_debian_watch('watch', False)))
 
     def test_simple(self):
-        self.build_tree_contents([('watch', """\
+        with open('watch', 'w') as f:
+            f.write("""\
 version=4
 https://github.com/jelmer/dulwich/tags/dulwich-(.*).tar.gz
-""")])
+""")
         self.assertEqual(
             [UpstreamDatum(
                 'Repository', 'https://github.com/jelmer/dulwich.git',
@@ -61,10 +76,11 @@ https://github.com/jelmer/dulwich/tags/dulwich-(.*).tar.gz
             list(guess_from_debian_watch('watch', False)))
 
 
-class GuessFromPackageJsonTests(TestCaseWithTransport):
+class GuessFromPackageJsonTests(TestCaseInTempDir):
 
     def test_simple(self):
-        self.build_tree_contents([('package.json', """\
+        with open('package.json', 'w') as f:
+            f.write("""\
 {
   "name": "autosize",
   "version": "4.0.2",
@@ -82,7 +98,7 @@ class GuessFromPackageJsonTests(TestCaseWithTransport):
     "url": "http://github.com/jackmoore/autosize.git"
   }
 }
-""")])
+""")
         self.assertEqual(
             [BuildSystem('npm'),
              UpstreamDatum('Name', 'autosize', 'certain'),
@@ -95,7 +111,8 @@ class GuessFromPackageJsonTests(TestCaseWithTransport):
             list(guess_from_package_json('package.json', False)))
 
     def test_dummy(self):
-        self.build_tree_contents([('package.json', """\
+        with open('package.json', 'w') as f:
+            f.write("""\
 {
   "name": "mozillaeslintsetup",
   "description": "This package file is for setup of ESLint.",
@@ -112,7 +129,7 @@ class GuessFromPackageJsonTests(TestCaseWithTransport):
   },
   "devDependencies": {}
 }
-""")])
+""")
         self.assertEqual(
             [BuildSystem('npm'),
              UpstreamDatum('Name', 'mozillaeslintsetup', 'certain'),
@@ -125,10 +142,11 @@ class GuessFromPackageJsonTests(TestCaseWithTransport):
             list(guess_from_package_json('package.json', False)))
 
 
-class GuessFromRDescriptionTests(TestCaseWithTransport):
+class GuessFromRDescriptionTests(TestCaseInTempDir):
 
     def test_read(self):
-        self.build_tree_contents([('DESCRIPTION', """\
+        with open('DESCRIPTION', 'w') as f:
+            f.write("""\
 Package: crul
 Title: HTTP Client
 Description: A simple HTTP client, with tools for making HTTP requests,
@@ -165,7 +183,7 @@ Author: Scott Chamberlain [aut, cre] (<https://orcid.org/0000-0003-1444-9135>)
 Maintainer: Scott Chamberlain <myrmecocystus@gmail.com>
 Repository: CRAN
 Date/Publication: 2019-08-02 20:30:02 UTC
-""")])
+""")
         ret = guess_from_r_description('DESCRIPTION', True)
         self.assertEqual(list(ret), [
             UpstreamDatum('Name', 'crul', 'certain'),
