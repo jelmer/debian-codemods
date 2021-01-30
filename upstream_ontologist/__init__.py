@@ -69,9 +69,6 @@ from debmutate.vcs import (
     )
 
 from lintian_brush import (
-    USER_AGENT,
-    DEFAULT_URLLIB_TIMEOUT,
-    SUPPORTED_CERTAINTIES,
     certainty_sufficient,
     certainty_to_confidence,
     min_certainty,
@@ -85,6 +82,14 @@ from lintian_brush.vcs import (
     determine_browser_url,
     )
 from urllib.request import urlopen, Request
+
+SUPPORTED_CERTAINTIES = ['certain', 'confident', 'likely', 'possible', None]
+
+version_string = '0.1'
+
+USER_AGENT = 'upstream-ontologist/' + version_string
+# Too aggressive?
+DEFAULT_URLLIB_TIMEOUT = 3
 
 # Pecl is quite slow, so up the timeout a bit.
 PECL_URLLIB_TIMEOUT = 15
