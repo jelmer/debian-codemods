@@ -28,7 +28,6 @@ def test_suite():
         'lintian_overrides',
         'multiarch_hints',
         'patches',
-        'rules',
         'run',
         'salsa',
         'systemd',
