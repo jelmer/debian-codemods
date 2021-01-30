@@ -1,3 +1,9 @@
+lintian-brush (0.95) UNRELEASED; urgency=medium
+
+  * Use rules module from debmutate.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 30 Jan 2021 16:37:49 +0000
+
 lintian-brush (0.94) unstable; urgency=medium
 
   * debhelper-but-no-misc-depends: Also handle debhelper-compat.
