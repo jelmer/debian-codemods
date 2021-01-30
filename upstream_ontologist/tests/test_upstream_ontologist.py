@@ -71,7 +71,7 @@ https://github.com/jelmer/dulwich/tags/dulwich-(.*).tar.gz
 """)
         self.assertEqual(
             [UpstreamDatum(
-                'Repository', 'https://github.com/jelmer/dulwich.git',
+                'Repository', 'https://github.com/jelmer/dulwich',
                 'likely', 'watch')],
             list(guess_from_debian_watch('watch', False)))
 
@@ -106,7 +106,7 @@ class GuessFromPackageJsonTests(TestCaseInTempDir):
                  'Homepage', 'http://www.jacklmoore.com/autosize', 'certain'),
              UpstreamDatum('X-License', 'MIT', 'certain', None),
              UpstreamDatum(
-                 'Repository', 'https://github.com/jackmoore/autosize.git',
+                 'Repository', 'http://github.com/jackmoore/autosize.git',
                  'certain')],
             list(guess_from_package_json('package.json', False)))
 
@@ -258,17 +258,17 @@ class UrlFromGitCloneTests(TestCase):
 
     def test_guess_simple(self):
         self.assertEqual(
-            'https://github.com/jelmer/blah.git',
+            'https://github.com/jelmer/blah',
             url_from_git_clone_command(
                 b'git clone https://github.com/jelmer/blah'))
         self.assertEqual(
-            'https://github.com/jelmer/blah.git',
+            'https://github.com/jelmer/blah',
             url_from_git_clone_command(
                 b'git clone https://github.com/jelmer/blah target'))
 
     def test_args(self):
         self.assertEqual(
-            'https://github.com/jelmer/blah.git',
+            'https://github.com/jelmer/blah',
             url_from_git_clone_command(
                 b'git clone -b foo https://github.com/jelmer/blah target'))
 

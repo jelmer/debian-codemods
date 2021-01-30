@@ -232,7 +232,7 @@ def guess_from_debian_rules(path, trust_package):
         pass
     else:
         yield UpstreamDatum(
-            "Repository", sanitize_vcs_url(upstream_git.decode()), "likely")
+            "Repository", upstream_git.decode(), "likely")
     try:
         upstream_url = mf.get_variable(b'DEB_UPSTREAM_URL')
     except KeyError:
@@ -262,14 +262,14 @@ def guess_from_debian_watch(path, trust_package):
             url = w.format_url(package=get_package_name)
             if 'mode=git' in w.options:
                 yield UpstreamDatum(
-                    "Repository", sanitize_vcs_url(url), "confident",
+                    "Repository", url, "confident",
                     origin=path)
                 continue
             if url.startswith('https://') or url.startswith('http://'):
                 repo = guess_repo_from_url(url)
                 if repo:
                     yield UpstreamDatum(
-                        "Repository", sanitize_vcs_url(repo), "likely",
+                        "Repository", repo, "likely",
                         origin=path)
                     continue
             m = re.match('https?://sf.net/([^/]+)', url)
@@ -293,7 +293,7 @@ def guess_from_debian_control(path, trust_package):
         yield (
             UpstreamDatum(
                 'Repository',
-                sanitize_vcs_url('https://' + control['XS-Go-Import-Path']),
+                'https://' + control['XS-Go-Import-Path'],
                 'likely'))
 
 
@@ -306,12 +306,12 @@ def guess_from_python_metadata(pkg_info):
         repo = guess_repo_from_url(pkg_info['Home-Page'])
         if repo:
             yield UpstreamDatum(
-                'Repository', sanitize_vcs_url(repo), 'likely')
+                'Repository', repo, 'likely')
     for value in pkg_info.get_all('Project-URL', []):
         url_type, url = value.split(', ')
         if url_type in ('GitHub', 'Repository', 'Source Code'):
             yield UpstreamDatum(
-                'Repository', sanitize_vcs_url(url), 'certain')
+                'Repository', url, 'certain')
         if url_type in ('Bug Tracker', ):
             yield UpstreamDatum(
                 'Bug-Database', url, 'certain')
@@ -352,7 +352,7 @@ def guess_from_setup_py(path, trust_package):
         repo = guess_repo_from_url(result.get_url())
         if repo:
             yield UpstreamDatum(
-                'Repository', sanitize_vcs_url(repo), 'likely')
+                'Repository', repo, 'likely')
     if result.get_download_url() not in (None, '', 'UNKNOWN'):
         yield UpstreamDatum(
             'X-Download', result.get_download_url(), 'likely')
@@ -370,7 +370,7 @@ def guess_from_setup_py(path, trust_package):
     for url_type, url in result.metadata.project_urls.items():
         if url_type in ('GitHub', 'Repository', 'Source Code'):
             yield UpstreamDatum(
-                'Repository', sanitize_vcs_url(url), 'certain')
+                'Repository', url, 'certain')
         if url_type in ('Bug Tracker', ):
             yield UpstreamDatum(
                 'Bug-Database', url, 'certain')
@@ -409,12 +409,12 @@ def guess_from_package_json(path, trust_package):
             parsed_url = urlparse(repo_url)
             if parsed_url.scheme and parsed_url.netloc:
                 yield UpstreamDatum(
-                    'Repository', sanitize_vcs_url(repo_url), 'certain')
+                    'Repository', repo_url, 'certain')
             else:
                 # Some people seem to default to github. :(
                 repo_url = 'https://github.com/' + parsed_url.path
                 yield UpstreamDatum(
-                    'Repository', sanitize_vcs_url(repo_url), 'likely')
+                    'Repository', repo_url, 'likely')
     if 'bugs' in package:
         if isinstance(package['bugs'], dict):
             url = package['bugs'].get('url')
@@ -454,7 +454,7 @@ def guess_from_package_xml(path, trust_package):
     for url_tag in root.findall('url'):
         if url_tag.get('type') == 'repository':
             yield UpstreamDatum(
-                'Repository', sanitize_vcs_url(url_tag.text), 'certain')
+                'Repository', url_tag.text, 'certain')
         if url_tag.get('type') == 'bugtracker':
             yield UpstreamDatum('Bug-Database', url_tag.text, 'certain')
 
@@ -540,7 +540,7 @@ def guess_from_debian_copyright(path, trust_package):
                 repo_url = guess_repo_from_url(from_url)
                 if repo_url:
                     yield UpstreamDatum(
-                        'Repository', sanitize_vcs_url(repo_url), 'likely')
+                        'Repository', repo_url, 'likely')
                 if (from_url.startswith('https://pecl.php.net/package/') or
                         from_url.startswith('http://pecl.php.net/package/')):
                     yield UpstreamDatum('X-Pecl-URL', from_url, 'certain')
@@ -576,7 +576,7 @@ def url_from_git_clone_command(command):
     except IndexError:
         url = args[0]
     if plausible_vcs_url(url):
-        return sanitize_vcs_url(url)
+        return url
     return None
 
 
@@ -598,7 +598,7 @@ def url_from_fossil_clone_command(command):
     except IndexError:
         url = args[0]
     if plausible_vcs_url(url):
-        return sanitize_vcs_url(url)
+        return url
     return None
 
 
@@ -712,7 +712,7 @@ def guess_from_meta_json(path, trust_package):
                 repo = resources['repository']
                 if 'url' in repo:
                     yield UpstreamDatum(
-                        'Repository', sanitize_vcs_url(repo["url"]), 'certain')
+                        'Repository', repo["url"], 'certain')
                 if 'web' in repo:
                     yield UpstreamDatum(
                         'Repository-Browse', repo['web'], 'certain')
@@ -749,7 +749,7 @@ def guess_from_meta_yml(path, trust_package):
                     url = resources['repository']
                 if url:
                     yield UpstreamDatum(
-                        'Repository', sanitize_vcs_url(url), 'certain')
+                        'Repository', url, 'certain')
             for require in data.get('requires', []):
                 yield UpstreamRequirement('build', 'perl', require)
 
@@ -801,7 +801,7 @@ def guess_from_doap(path, trust_package):
                         repo_url = None
                     if repo_url:
                         yield UpstreamDatum(
-                            'Repository', sanitize_vcs_url(repo_url),
+                            'Repository', repo_url,
                             'certain')
                     web_location = repo.find(
                         '{http://usefulinc.com/ns/doap#}browse')
@@ -1059,7 +1059,7 @@ def guess_from_pom_xml(path, trust_package=False):
                      connection)
                 continue
             yield UpstreamDatum(
-                'Repository', sanitize_vcs_url(provider_specific), 'certain')
+                'Repository', provider_specific, 'certain')
     for issue_mgmt_tag in root.findall('issueManagement'):
         url_tag = issue_mgmt_tag.find('url')
         if url_tag is not None:
@@ -2134,9 +2134,9 @@ def guess_from_aur(package: str):
                 url = value
             url = url.replace('#branch=', ',branch=')
             if any([url.startswith(vcs+'+') for vcs in vcses]):
-                yield 'Repository', sanitize_vcs_url(url)
+                yield 'Repository', url
         if key == '_gitroot':
-            yield 'Repository', sanitize_vcs_url(value[0])
+            yield 'Repository', value[0]
 
 
 def guess_from_launchpad(package, distribution=None, suite=None):
