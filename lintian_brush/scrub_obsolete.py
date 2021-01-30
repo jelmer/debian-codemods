@@ -154,7 +154,8 @@ def update_depends(base, field, upgrade_release):
     for ws1, oldrelation, ws2 in parse_relations(old_contents):
         relation, dropped = drop_obsolete_depends(oldrelation, upgrade_release)
         changed.extend([d.name for d in dropped])
-        newrelations.append((ws1, relation, ws2))
+        if relation:
+            newrelations.append((ws1, relation, ws2))
 
     if changed:
         base[field] = format_relations(newrelations)

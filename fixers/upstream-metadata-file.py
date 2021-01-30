@@ -18,6 +18,9 @@ from lintian_brush.fixer import (
     LintianIssue,
     )
 from lintian_brush.upstream_metadata import (
+    ADDON_ONLY_FIELDS,
+    )
+from upstream_ontologist import (
     UpstreamDatum,
     check_upstream_metadata,
     extend_upstream_metadata,
@@ -25,7 +28,6 @@ from lintian_brush.upstream_metadata import (
     guess_upstream_metadata_items,
     update_from_guesses,
     filter_bad_guesses,
-    ADDON_ONLY_FIELDS,
     upstream_metadata_sort_key,
     upstream_version,
     )

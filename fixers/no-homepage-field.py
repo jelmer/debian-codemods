@@ -7,7 +7,7 @@ from lintian_brush.fixer import (
     report_result,
     trust_package,
     )
-from lintian_brush.upstream_metadata import guess_upstream_metadata_items
+from upstream_ontologist import guess_upstream_metadata_items
 
 current_certainty = None
 

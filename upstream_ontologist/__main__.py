@@ -17,7 +17,7 @@
 
 """Functions for working with upstream metadata."""
 
-from .. import version_string
+from lintian_brush import version_string
 
 from . import (
     guess_upstream_metadata,

@@ -6,7 +6,7 @@ from lintian_brush.fixer import (
     meets_minimum_certainty,
     trust_package,
     )
-from lintian_brush.upstream_metadata import (
+from upstream_ontologist import (
     guess_upstream_metadata_items,
     UpstreamDatum,
     )

@@ -42,7 +42,7 @@ from . import (
     get_committer,
     reset_tree,
     )
-from .upstream_metadata import (
+from upstream_ontologist import (
     get_upstream_info,
     )
 from .debhelper import (
@@ -50,7 +50,6 @@ from .debhelper import (
     write_rules_template as write_debhelper_rules_template,
     )
 from .standards_version import iter_standards_versions
-
 
 
 def write_control_template(path, source, binaries):

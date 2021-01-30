@@ -190,7 +190,7 @@ class UpdateOrderedDict(TestCase):
             ]), self._od)
 
     def test_csb(self):
-        from ..upstream_metadata import upstream_metadata_sort_key
+        from upstream_ontologist import upstream_metadata_sort_key
         self._od['Registry'] = [
                 ordereddict([('Name', 'OMICtools'), ('Entry', 'OMICS_09827')]),
                 ordereddict([('Name', 'bio.tools'), ('Entry', 'NA')])]
