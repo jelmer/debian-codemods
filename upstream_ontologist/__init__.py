@@ -68,7 +68,6 @@ from .vcs import (
     plausible_browse_url as plausible_vcs_browse_url,
     sanitize_url as sanitize_vcs_url,
     is_gitlab_site,
-    determine_browser_url,
     )
 from urllib.request import urlopen, Request
 
@@ -1927,9 +1926,8 @@ def _extrapolate_security_contact_from_security_md(
         upstream_metadata, net_access):
     repository_url = upstream_metadata['Repository']
     security_md_path = upstream_metadata['X-Security-MD']
-    vcs_url = unsplit_vcs_url(
-        repository_url.value, None, security_md_path.value)
-    security_url = determine_browser_url(None, vcs_url)
+    security_url = browse_url_from_repo_url(
+        repository_url.value, security_md_path.value)
     if security_url is None:
         return None
     return UpstreamDatum(

@@ -16,22 +16,20 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 __all__ = [
-    'browse_url_from_repo_url',
     'plausible_url',
     'plausible_browse_url',
     'sanitize_url',
     'is_gitlab_site',
-    'determine_browser_url',
+    'browse_url_from_repo_url',
     ]
 
 from typing import Optional
 
 
 from lintian_brush.vcs import (
-    browse_url_from_repo_url,
     sanitize_url,
     is_gitlab_site,
-    determine_browser_url,
+    browse_url_from_repo_url,
     )
 
 

@@ -278,23 +278,34 @@ def fixup_broken_git_url(url: str) -> str:
     return url
 
 
-def browse_url_from_repo_url(url: str) -> Optional[str]:
+def browse_url_from_repo_url(
+        url: str, subpath: Optional[str] = None) -> Optional[str]:
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
         path = '/'.join(parsed_url.path.split('/')[:3])
         if path.endswith('.git'):
             path = path[:-4]
+        if subpath is not None:
+            path += '/tree/HEAD/' + subpath
         return urlunparse(
             ('https', 'github.com', path,
              None, None, None))
     if parsed_url.netloc in ('code.launchpad.net', 'launchpad.net'):
-        return urlunparse(
-            ('https', 'code.launchpad.net', parsed_url.path,
-             parsed_url.query, parsed_url.params, parsed_url.fragment))
+        if subpath is not None:
+            path = parsed_url.path + '/view/head:/' + subpath
+            return urlunparse(
+                ('https', 'bazaar.launchpad.net', path,
+                 parsed_url.query, parsed_url.params, parsed_url.fragment))
+        else:
+            return urlunparse(
+                ('https', 'code.launchpad.net', parsed_url.path,
+                 parsed_url.query, parsed_url.params, parsed_url.fragment))
     if is_gitlab_site(parsed_url.netloc):
         path = parsed_url.path
         if path.endswith('.git'):
             path = path[:-4]
+        if subpath is not None:
+            path += '/-/blob/HEAD/' + subpath
         return urlunparse(('https', parsed_url.netloc, path, None, None, None))
     if parsed_url.netloc == 'svn.apache.org':
         path_elements = parsed_url.path.strip('/').split('/')
@@ -302,6 +313,8 @@ def browse_url_from_repo_url(url: str) -> Optional[str]:
             return None
         path_elements.pop(0)
         path_elements[0] = 'viewvc'
+        if subpath is not None:
+            path_elements.append(subpath)
         return urlunparse(
             ('https', parsed_url.netloc, '/'.join(path_elements), None, None,
              None))
@@ -311,6 +324,9 @@ def browse_url_from_repo_url(url: str) -> Optional[str]:
             path_elements.pop(0)
         # Why cgit and not gitweb?
         path_elements.insert(0, 'cgit')
+        if subpath is not None:
+            path_elements.append('tree')
+            path_elements.append(subpath)
         return urlunparse(
             ('https', parsed_url.netloc, '/'.join(path_elements), None,
              None, None))
