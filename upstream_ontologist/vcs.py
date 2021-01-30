@@ -16,8 +16,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 __all__ = [
-    'split_vcs_url',
-    'unsplit_vcs_url',
     'browse_url_from_repo_url',
     'plausible_url',
     'plausible_browse_url',
@@ -26,11 +24,8 @@ __all__ = [
     'determine_browser_url',
     ]
 
+from typing import Optional
 
-from debmutate.vcs import (
-    split_vcs_url,
-    unsplit_vcs_url,
-    )
 
 from lintian_brush.vcs import (
     browse_url_from_repo_url,
@@ -46,3 +41,22 @@ def plausible_browse_url(url: str) -> bool:
 
 def plausible_url(url: str) -> bool:
     return ':' in url
+
+
+def unsplit_vcs_url(repo_url: str,
+                    branch: Optional[str] = None,
+                    subpath: Optional[str] = None) -> str:
+    """Unsplit a Debian VCS URL.
+
+    Args:
+      repo_url: Repository URL
+      branch: Branch name
+      subpath: Subpath in the tree
+    Returns: full URL
+    """
+    url = repo_url
+    if branch:
+        url = '%s -b %s' % (url, branch)
+    if subpath:
+        url = '%s [%s]' % (url, subpath)
+    return url

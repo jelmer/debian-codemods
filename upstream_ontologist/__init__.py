@@ -62,7 +62,6 @@ from urllib.parse import quote, urlparse, urlunparse, urljoin, parse_qs
 from warnings import warn
 
 from .vcs import (
-    split_vcs_url,
     unsplit_vcs_url,
     browse_url_from_repo_url,
     plausible_url as plausible_vcs_url,
@@ -1651,7 +1650,6 @@ def bug_database_from_issue_url(url):
 
 
 def guess_bug_database_url_from_repo_url(url):
-    url = split_vcs_url(url)[0]
     parsed_url = urlparse(url)
     if parsed_url.netloc == 'github.com':
         path = '/'.join(parsed_url.path.split('/')[:3])
