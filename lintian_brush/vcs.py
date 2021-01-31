@@ -26,61 +26,21 @@ __all__ = [
 
 import posixpath
 import re
-import socket
 from typing import Optional, Union, List
-import urllib.error
-from urllib.parse import urlparse, urlunparse, ParseResult
-from urllib.request import urlopen, Request
+from urllib.parse import urlparse, urlunparse
 
 from debmutate.vcs import split_vcs_url, unsplit_vcs_url
 
 from upstream_ontologist.vcs import (
+    convert_cvs_list_to_str,
     drop_vcs_in_scheme,
     find_secure_repo_url,
     canonical_git_repo_url,
     find_public_repo_url,
     fixup_rcp_style_git_repo_url,
+    fixup_broken_git_details,
+    is_gitlab_site,
     )
-
-from lintian_brush import (
-    USER_AGENT,
-    DEFAULT_URLLIB_TIMEOUT,
-    )
-
-
-KNOWN_GITLAB_SITES = [
-    'salsa.debian.org',
-    'invent.kde.org',
-    ]
-
-
-def probe_gitlab_host(hostname: str):
-    headers = {'User-Agent': USER_AGENT, 'Accept': 'application/json'}
-    try:
-        urlopen(
-            Request('https://%s/api/v4/version' % hostname, headers=headers),
-            timeout=DEFAULT_URLLIB_TIMEOUT)
-    except urllib.error.HTTPError as e:
-        if e.status == 401:
-            import json
-            if json.loads(e.read()) == {"message": "401 Unauthorized"}:
-                return True
-    except (socket.timeout, urllib.error.URLError):
-        # Probably not?
-        return False
-    return False
-
-
-def is_gitlab_site(hostname: str, net_access: bool = False) -> bool:
-    if hostname is None:
-        return False
-    if hostname in KNOWN_GITLAB_SITES:
-        return True
-    if hostname.startswith('gitlab.'):
-        return True
-    if net_access:
-        return probe_gitlab_host(hostname)
-    return False
 
 
 def find_public_vcs_url(url: str) -> Optional[str]:
@@ -95,155 +55,6 @@ def fixup_rcp_style_git_url(url: str) -> str:
     (repo_url, branch, subpath) = split_vcs_url(url)
     repo_url = fixup_rcp_style_git_repo_url(repo_url)
     return unsplit_vcs_url(repo_url, branch, subpath)
-
-
-def convert_cvs_list_to_str(urls):
-    if not isinstance(urls, list):
-        return urls
-    if urls[0].startswith(':extssh:') or urls[0].startswith(':pserver:'):
-        try:
-            from breezy.location import cvs_to_url
-        except ImportError:
-            from breezy.location import pserver_to_url as cvs_to_url
-            if urls[0].startswith(':extssh:'):
-                raise NotImplementedError(
-                    'unable to deal with extssh CVS locations.')
-        return cvs_to_url(urls[0]) + '#' + urls[1]
-    return urls
-
-
-def fix_path_in_port(parsed: ParseResult, branch: Optional[str]):
-    if ':' not in parsed.netloc or parsed.netloc.endswith(']'):
-        return None, None
-    host, port = parsed.netloc.rsplit(':', 1)
-    if host.split('@')[-1] not in (KNOWN_GITLAB_SITES + ['github.com']):
-        return None, None
-    if not port or port.isdigit():
-        return None, None
-    return parsed._replace(
-        path='%s/%s' % (port, parsed.path.lstrip('/')),
-        netloc=host), branch
-
-
-def fix_gitlab_scheme(parsed, branch):
-    if is_gitlab_site(parsed.hostname):
-        return parsed._replace(scheme='https'), branch
-    return None, None
-
-
-def fix_salsa_cgit_url(parsed, branch):
-    if (parsed.hostname == 'salsa.debian.org' and
-            parsed.path.startswith('/cgit/')):
-        return parsed._replace(path=parsed.path[5:]), branch
-    return None, None
-
-
-def fix_gitlab_tree_in_url(parsed, branch):
-    if is_gitlab_site(parsed.hostname):
-        parts = parsed.path.split('/')
-        if len(parts) >= 5 and parts[3] == 'tree':
-            branch = '/'.join(parts[4:])
-            return parsed._replace(path='/'.join(parts[:3])), branch
-    return None, None
-
-
-def fix_double_slash(parsed, branch):
-    if parsed.path.startswith('//'):
-        return parsed._replace(path=parsed.path[1:]), branch
-    return None, None
-
-
-def fix_extra_colon(parsed, branch):
-    return parsed._replace(netloc=parsed.netloc.rstrip(':')), branch
-
-
-def drop_git_username(parsed, branch):
-    if parsed.hostname not in ('salsa.debian.org', 'github.com'):
-        return None, None
-    if parsed.scheme not in ('git', 'http', 'https'):
-        return None, None
-    if parsed.username == 'git' and parsed.netloc.startswith('git@'):
-        return parsed._replace(netloc=parsed.netloc[4:]), branch
-    return None, None
-
-
-def fix_branch_argument(parsed, branch):
-    if parsed.hostname != 'github.com':
-        return None, None
-    # TODO(jelmer): Handle gitlab sites too?
-    path_elements = parsed.path.strip('/').split('/')
-    if len(path_elements) > 2 and path_elements[2] == 'tree':
-        return (parsed._replace(path='/'.join(path_elements[:2])),
-                '/'.join(path_elements[3:]))
-    return None, None
-
-
-def fix_git_gnome_org_url(parsed, branch):
-    if parsed.netloc == 'git.gnome.org':
-        if parsed.path.startswith('/browse'):
-            path = parsed.path[7:]
-        else:
-            path = parsed.path
-        parsed = parsed._replace(
-            netloc='gitlab.gnome.org', scheme='https',
-            path='/GNOME' + path)
-        return parsed, branch
-    return None, None
-
-
-def fix_anongit_url(parsed, branch):
-    if parsed.netloc == 'anongit.kde.org' and parsed.scheme == 'git':
-        parsed = parsed._replace(scheme='https')
-        return parsed, branch
-    return None, None
-
-
-def fix_freedesktop_org_url(parsed: ParseResult, branch: Optional[str]):
-    if parsed.netloc == 'anongit.freedesktop.org':
-        path = parsed.path
-        if path.startswith('/git/'):
-            path = path[len('/git'):]
-        parsed = parsed._replace(
-            netloc='gitlab.freedesktop.org', scheme='https',
-            path=path)
-        return parsed, branch
-    return None, None
-
-
-FIXERS = [
-    fix_path_in_port,
-    fix_gitlab_scheme,
-    fix_salsa_cgit_url,
-    fix_gitlab_tree_in_url,
-    fix_double_slash,
-    fix_extra_colon,
-    drop_git_username,
-    fix_branch_argument,
-    fix_git_gnome_org_url,
-    fix_anongit_url,
-    fix_freedesktop_org_url,
-    ]
-
-
-def fixup_broken_git_url(url: str) -> str:
-    """Attempt to fix up broken Git URLs.
-
-    A common misspelling is to add an extra ":" after the hostname
-    """
-    repo_url, branch, subpath = split_vcs_url(url)
-
-    parsed = urlparse(repo_url)
-    changed = False
-    for fn in FIXERS:
-        newparsed, newbranch = fn(parsed, branch)
-        if newparsed:
-            changed = True
-            parsed = newparsed
-            branch = newbranch
-
-    if changed:
-        return unsplit_vcs_url(urlunparse(parsed), branch, subpath)
-    return url
 
 
 def determine_gitlab_browser_url(url: str) -> str:
@@ -366,6 +177,20 @@ def find_secure_vcs_url(url: str, net_access: bool = True) -> Optional[str]:
         return None
 
     return unsplit_vcs_url(repo_url, branch, subpath)
+
+
+def fixup_broken_git_url(url: str) -> str:
+    """Attempt to fix up broken Git URLs.
+
+    A common misspelling is to add an extra ":" after the hostname
+    """
+    repo_url, branch, subpath = split_vcs_url(url)
+    newrepo_url, newbranch, newsubpath = fixup_broken_git_details(
+        repo_url, branch, subpath)
+    if (newrepo_url != repo_url or newbranch != branch or
+            newsubpath != subpath):
+        return unsplit_vcs_url(newrepo_url, newbranch, newsubpath)
+    return url
 
 
 SANITIZERS = [

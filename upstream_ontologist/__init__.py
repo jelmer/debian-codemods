@@ -35,7 +35,7 @@ Supported fields:
 - Archive
 - Security-Contact
 
-Extensions for lintian-brush.
+Extensions for upstream-ontologist.
 - X-SourceForge-Project
 - X-Wiki
 - X-Summary
