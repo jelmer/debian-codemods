@@ -34,6 +34,14 @@ from urllib.request import urlopen, Request
 
 from debmutate.vcs import split_vcs_url, unsplit_vcs_url
 
+from upstream_ontologist.vcs import (
+    drop_vcs_in_scheme,
+    find_secure_repo_url,
+    canonical_git_repo_url,
+    find_public_repo_url,
+    fixup_rcp_style_git_repo_url,
+    )
+
 from lintian_brush import (
     USER_AGENT,
     DEFAULT_URLLIB_TIMEOUT,
@@ -77,41 +85,15 @@ def is_gitlab_site(hostname: str, net_access: bool = False) -> bool:
 
 def find_public_vcs_url(url: str) -> Optional[str]:
     (repo_url, branch, subpath) = split_vcs_url(url)
-    parsed = urlparse(repo_url)
-    revised_url = None
-    if parsed.hostname == 'github.com':
-        if parsed.scheme in ('https', 'http', 'git'):
-            return url
-        revised_url = urlunparse(
-                ('https', 'github.com', parsed.path, None, None, None))
-    if parsed.hostname and is_gitlab_site(parsed.hostname):
-        # Not sure if gitlab even support plain http?
-        if parsed.scheme in ('https', 'http'):
-            return url
-        if parsed.scheme == 'ssh':
-            revised_url = urlunparse(
-                ('https', parsed.hostname, parsed.path, None, None, None))
-    if parsed.hostname in (
-            'code.launchpad.net', 'bazaar.launchpad.net', 'git.launchpad.net'):
-        if parsed.scheme.startswith('http') or parsed.scheme == 'lp':
-            return url
-        if parsed.scheme in ('ssh', 'bzr+ssh'):
-            revised_url = urlunparse(
-                ('https', parsed.hostname, parsed.path, None, None, None))
-
-    if revised_url:
+    revised_url = find_public_repo_url(repo_url)
+    if revised_url is not None:
         return unsplit_vcs_url(revised_url, branch, subpath)
-
     return None
 
 
 def fixup_rcp_style_git_url(url: str) -> str:
     (repo_url, branch, subpath) = split_vcs_url(url)
-    from breezy.location import rcp_location_to_url
-    try:
-        repo_url = rcp_location_to_url(repo_url)
-    except ValueError:
-        return url
+    repo_url = fixup_rcp_style_git_repo_url(repo_url)
     return unsplit_vcs_url(repo_url, branch, subpath)
 
 
@@ -128,16 +110,6 @@ def convert_cvs_list_to_str(urls):
                     'unable to deal with extssh CVS locations.')
         return cvs_to_url(urls[0]) + '#' + urls[1]
     return urls
-
-
-def drop_vcs_in_scheme(url: str) -> str:
-    if url.startswith('git+http:') or url.startswith('git+https:'):
-        url = url[4:]
-    if url.startswith('hg+https:') or url.startswith('hg+http'):
-        url = url[3:]
-    if url.startswith('bzr+lp:') or url.startswith('bzr+http'):
-        url = url.split('+', 1)[1]
-    return url
 
 
 def fix_path_in_port(parsed: ParseResult, branch: Optional[str]):
@@ -369,14 +341,8 @@ def canonicalize_vcs_browser_url(url: str) -> str:
 
 def canonical_vcs_git_url(url: str) -> str:
     (repo_url, branch, subpath) = split_vcs_url(url)
-    parsed_url = urlparse(repo_url)
-    if (is_gitlab_site(parsed_url.netloc) or
-            parsed_url.netloc in ['github.com']):
-        if not parsed_url.path.rstrip('/').endswith('.git'):
-            parsed_url = parsed_url._replace(
-                path=parsed_url.path.rstrip('/') + '.git')
-        return unsplit_vcs_url(urlunparse(parsed_url), branch, subpath)
-    return url
+    repo_url = canonical_git_repo_url(repo_url)
+    return unsplit_vcs_url(repo_url, branch, subpath)
 
 
 canonicalize_vcs_fns = {
@@ -392,66 +358,14 @@ def canonicalize_vcs_url(vcs_type: str, url: str) -> str:
         return url
 
 
-def try_open_branch(url: str, branch_name: Optional[str] = None):
-    import breezy.ui
-    from breezy.controldir import ControlDir
-    old_ui = breezy.ui.ui_factory
-    breezy.ui.ui_factory = breezy.ui.SilentUIFactory()
-    try:
-        c = ControlDir.open(url)
-        b = c.open_branch(name=branch_name)
-        b.last_revision()
-        return b
-    except Exception:
-        # TODO(jelmer): Catch more specific exceptions?
-        return None
-    finally:
-        breezy.ui.ui_factory = old_ui
-
-
-SECURE_SCHEMES = ['https', 'git+ssh', 'bzr+ssh', 'hg+ssh', 'ssh', 'svn+ssh']
-
-
 def find_secure_vcs_url(url: str, net_access: bool = True) -> Optional[str]:
     (repo_url, branch, subpath) = split_vcs_url(url)
-    parsed_repo_url = urlparse(repo_url)
-    if parsed_repo_url.scheme in SECURE_SCHEMES:
-        return url
+    repo_url = find_secure_repo_url(
+        repo_url, branch=branch, net_access=net_access)
+    if repo_url is None:
+        return None
 
-    # Sites we know to be available over https
-    if (parsed_repo_url.hostname and (
-            is_gitlab_site(parsed_repo_url.hostname, net_access) or
-            parsed_repo_url.hostname in [
-                'github.com', 'git.launchpad.net', 'bazaar.launchpad.net',
-                'code.launchpad.net'])):
-        parsed_repo_url = parsed_repo_url._replace(scheme='https')
-
-    if parsed_repo_url.scheme == 'lp':
-        parsed_repo_url = parsed_repo_url._replace(
-            scheme='https', netloc='code.launchpad.net')
-
-    if parsed_repo_url.hostname in ('git.savannah.gnu.org', 'git.sv.gnu.org'):
-        if parsed_repo_url.scheme == 'http':
-            parsed_repo_url = parsed_repo_url._replace(scheme='https')
-        else:
-            parsed_repo_url = parsed_repo_url._replace(
-                scheme='https', path='/git' + parsed_repo_url.path)
-
-    if net_access:
-        secure_repo_url = parsed_repo_url._replace(scheme='https')
-        insecure_branch = try_open_branch(repo_url, branch)
-        secure_branch = try_open_branch(urlunparse(secure_repo_url), branch)
-        if secure_branch:
-            if (not insecure_branch or
-                    secure_branch.last_revision() ==
-                    insecure_branch.last_revision()):
-                parsed_repo_url = secure_repo_url
-
-    if parsed_repo_url.scheme in SECURE_SCHEMES:
-        return unsplit_vcs_url(urlunparse(parsed_repo_url), branch, subpath)
-
-    # Can't find a secure URI :(
-    return None
+    return unsplit_vcs_url(repo_url, branch, subpath)
 
 
 SANITIZERS = [
