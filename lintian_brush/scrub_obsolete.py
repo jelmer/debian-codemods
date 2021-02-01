@@ -37,6 +37,12 @@ from debmutate.control import (
     ControlEditor,
     parse_relations,
     format_relations,
+    guess_template_type,
+    )
+
+from debmutate.reformatting import (
+    check_generated_file,
+    GeneratedFile,
     )
 
 from .changelog import add_changelog_entry
@@ -220,7 +226,18 @@ def drop_old_binary_relations(binary, upgrade_release):
 
 def drop_old_relations(editor, upgrade_release):
     dropped = []
-    source_dropped = drop_old_source_relations(editor.source, upgrade_release)
+    source_dropped = []
+    try:
+        check_generated_file(editor.path)
+    except GeneratedFile as e:
+        uses_cdbs = (
+            e.template_path is not None and
+            guess_template_type(e.template_path) == 'cdbs')
+    else:
+        uses_cdbs = False
+    if not uses_cdbs:
+        source_dropped.extend(
+                drop_old_source_relations(editor.source, upgrade_release))
     if source_dropped:
         dropped.append((None, source_dropped))
 
