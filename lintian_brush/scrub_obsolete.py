@@ -164,9 +164,19 @@ def update_depends(base, field, upgrade_release):
             newrelations.append((ws1, relation, ws2))
 
     if changed:
-        base[field] = format_relations(newrelations)
+        if relations_empty(newrelations):
+            del base[field]
+        else:
+            base[field] = format_relations(newrelations)
         return changed
     return []
+
+
+def relations_empty(rels):
+    for ws1, rel, ws2 in rels:
+        if rel:
+            return False
+    return True
 
 
 def update_conflicts(base, field, upgrade_release):
@@ -184,9 +194,10 @@ def update_conflicts(base, field, upgrade_release):
         newrelations.append((ws1, relation, ws2))
 
     if changed:
-        base[field] = format_relations(newrelations)
-        if not base[field].strip(','):
+        if relations_empty(newrelations):
             del base[field]
+        else:
+            base[field] = format_relations(newrelations)
         return changed
     return []
 
