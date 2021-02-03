@@ -38,6 +38,7 @@ from upstream_ontologist.guess import (
 from upstream_ontologist.debian import (
     upstream_name_to_debian_source_name as source_name_from_upstream_name,
     upstream_version_to_debian_upstream_version as debian_upstream_version,
+    valid_debian_package_name,
     )
 
 from . import (
@@ -103,8 +104,6 @@ select id from wnpp where source = $1 and type in ('ITP', 'RFP') LIMIT 1
 """, source_name)]
 
 
-package_name_re = re.compile('[a-z0-9][a-z0-9+-.]+')
-
 MINIMUM_CERTAINTY = 'possible'  # For now..
 
 
@@ -154,18 +153,6 @@ def debianize(
         return 1
 
     source_name = source_name_from_upstream_name(upstream_name)
-    if not package_name_re.fullmatch(source_name):
-        note('Unable to sanitize source package name: %s',
-             source_name)
-        return 1
-
-    if net_access:
-        import asyncio
-        note('Searching for WNPP bug for %s', source_name)
-        loop = asyncio.get_event_loop()
-        wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
-    else:
-        wnpp_bugs = None
 
     with wt.lock_write():
         try:
@@ -177,7 +164,7 @@ def debianize(
             note('Install breezy-debian for upstream version guessing.')
         else:
             upstream_version = upstream_branch_version(
-                wt.branch, wt.last_revision(), source_name)
+                wt.branch, wt.last_revision(), upstream_name)
             if upstream_version is None and 'X-Version' in metadata:
                 # They haven't done any releases yet. Assume we're ahead of
                 # the next announced release?
@@ -191,7 +178,6 @@ def debianize(
 
         version = Version(upstream_version + '-1')
         source = Deb822()
-        source['Source'] = source_name
         # TODO(jelmer): This is a reasonable guess, but won't always be
         # okay.
         source['Rules-Requires-Root'] = 'no'
@@ -210,15 +196,15 @@ def debianize(
         if buildsystem and buildsystem.name == 'setup.py':
             dh_buildsystem = 'pybuild'
             dh_addons.append('python3')
-            source['Source'] = 'python-%s' % source_name
+            source_name = 'python-%s' % upstream_name
             binaries.append(
                 Deb822({'Package': 'python3-%s' % source_name,
                         'Architecture': 'all'}))
         elif buildsystem and buildsystem.name == 'npm':
             dh_addons.append('nodejs')
-            source['Source'] = 'node-%s' % source_name
+            source_name = 'node-%s' % upstream_name
             binaries.append(
-                Deb822({'Package': 'node-%s' % source_name,
+                Deb822({'Package': 'node-%s' % upstream_name,
                         'Architecture': 'all'}))
             if os.path.exists('test/node.js'):
                 source['Testsuite'] = 'autopkgtest-pkg-nodejs'
@@ -229,13 +215,13 @@ def debianize(
                 source['Build-Depends'] = ensure_some_version(
                     source['Build-Depends'], 'mocha <!nocheck>')
         elif buildsystem and buildsystem.name == 'dist-zilla':
-            source['Source'] = 'lib%s-perl' % source_name
+            source_name = 'lib%s-perl' % upstream_name
             dh_addons.append('dist-zilla')
             binaries.append(
-                Deb822({'Package': 'lib%s-perl' % source_name,
+                Deb822({'Package': 'lib%s-perl' % upstream_name,
                         'Architecture': 'all'}))
         elif buildsystem and buildsystem.name == 'cargo':
-            source['Source'] = 'rust-%s' % source_name
+            source_name = 'rust-%s' % upstream_name
             source['Build-Depends'] = ensure_some_version(
                 source['Build-Depends'], 'dh-cargo')
             dh_buildsystem = 'cargo'
@@ -251,6 +237,21 @@ def debianize(
             source['Build-Depends'] = ensure_some_version(
                 source['Build-Depends'],
                 'dh-sequence-%s' % dh_addon)
+
+        if not valid_debian_package_name(source_name):
+            note('Unable to sanitize source package name: %s',
+                 source_name)
+            return 1
+
+        source['Source'] = source_name
+
+        if net_access:
+            import asyncio
+            note('Searching for WNPP bug for %s', source_name)
+            loop = asyncio.get_event_loop()
+            wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
+        else:
+            wnpp_bugs = None
 
         try:
             debian_path = osutils.pathjoin(subpath, 'debian')
