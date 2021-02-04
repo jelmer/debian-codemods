@@ -18,8 +18,8 @@
 """Debianize a package."""
 
 import os
-import re
 import sys
+from urllib.parse import urlparse
 import warnings
 
 
@@ -30,7 +30,7 @@ from debian.deb822 import Deb822
 from breezy import osutils
 from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
-from breezy.trace import note  # noqa: E402
+from breezy.trace import note, warning  # noqa: E402
 
 from upstream_ontologist.guess import (
     get_upstream_info,
@@ -92,6 +92,20 @@ def write_changelog_template(path, source_name, version, wnpp_bugs=None):
         f.write(cl.__str__().strip('\n') + '\n')
 
 
+async def find_archived_wnpp_bugs(source_name):
+    try:
+        from .udd import connect_udd_mirror
+    except ModuleNotFoundError:
+        warnings.warn('asyncpg not available, unable to find wnpp bugs.')
+        return []
+    conn = await connect_udd_mirror()
+    return [row[0] for row in await conn.fetch("""\
+select id from archived_bugs where package = 'wnpp' and
+title like 'ITP: ' || $1 || ' -- %' OR
+title like 'RFP: ' || $1 || ' -- %'
+""", source_name)]
+
+
 async def find_wnpp_bugs(source_name):
     try:
         from .udd import connect_udd_mirror
@@ -100,7 +114,7 @@ async def find_wnpp_bugs(source_name):
         return []
     conn = await connect_udd_mirror()
     return [row[0] for row in await conn.fetch("""\
-select id from wnpp where source = $1 and type in ('ITP', 'RFP') LIMIT 1
+select id from wnpp where source = $1 and type in ('ITP', 'RFP')
 """, source_name)]
 
 
@@ -112,6 +126,14 @@ class DebianDirectoryExists(Exception):
 
     def __init__(self, path):
         self.path = path
+
+
+def go_import_path_from_repo(repo_url):
+    parsed_url = urlparse(repo_url)
+    p = parsed_url.hostname + parsed_url.path
+    if p.endswith('.git'):
+        p = p[:-4]
+    return p
 
 
 def debianize(
@@ -127,6 +149,8 @@ def debianize(
     if os.path.exists('debian') and list(os.listdir('debian')):
         raise DebianDirectoryExists(wt.abspath(subpath))
 
+    # TODO(jelmer): Find revision with latest release rather than simply
+    # last revision?
     try:
         wt.controldir.create_branch('upstream').generate_revision_history(
             wt.last_revision())
@@ -183,8 +207,7 @@ def debianize(
         source['Rules-Requires-Root'] = 'no'
         source['Standards-Version'] = '.'.join(
             map(str, next(iter_standards_versions())[0]))
-        # TODO(jelmer): Autodetect binaries rather than letting the user
-        # specify them.
+
         binaries = []
         source['Build-Depends'] = (
             'debhelper-compat (= %d)' % maximum_debhelper_compat_version(
@@ -228,8 +251,29 @@ def debianize(
             binaries.append(
                 Deb822({'Package': 'rust-%s' % source_name,
                         'Architecture': 'any'}))
+        elif buildsystem and buildsystem.name == 'golang':
+            source['XS-Go-Import-Path'] = go_import_path_from_repo(
+                metadata['Repository'])
+            if 'Repository-Browse' in metadata:
+                source['Homepage'] = metadata['Repository-Browse']
+            source['Section'] = 'devel'
+            parsed_url = urlparse(metadata['Repository-Browse'])
+            hostname = parsed_url.hostname
+            if hostname == 'github.com':
+                hostname = 'github'
+            godebname = hostname + parsed_url.path.replace('/', '-')
+            source_name = 'golang-%s' % godebname
+            source['Testsuite'] = 'autopkgtest-pkg-go'
+            dh_addons.append('golang')
+            dh_buildsystem = 'golang'
+            # TODO(jelmer): Add --builddirectory=_build to dh arguments
+            binaries.append(
+                Deb822({'Package': 'golang-%s-dev' % godebname,
+                        'Architecture': 'all',
+                        'Multi-Arch': 'foreign'}))
         else:
-            for binary_name, arch in [(source['Source'], 'any')]:
+            source_name = upstream_name
+            for binary_name, arch in [(source_name, 'any')]:
                 binaries.append(
                     Deb822({'Package': binary_name, 'Architecture': arch}))
 
@@ -247,9 +291,18 @@ def debianize(
 
         if net_access:
             import asyncio
-            note('Searching for WNPP bug for %s', source_name)
             loop = asyncio.get_event_loop()
             wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
+            if not wnpp_bugs:
+                wnpp_bugs = loop.run_until_complete(
+                    find_archived_wnpp_bugs(source_name))
+                if wnpp_bugs:
+                    warning('Found archived ITP/RFP bugs for %s: %r',
+                            source_name, wnpp_bugs)
+                else:
+                    warning('No relevant WNPP bugs found for %s', source_name)
+            else:
+                note('Found WNPP bugs for %s: %r', source_name, wnpp_bugs)
         else:
             wnpp_bugs = None
 
@@ -343,7 +396,6 @@ def main(argv=None):
     parser.add_argument(
         '--force-subprocess', action='store_true',
         help=argparse.SUPPRESS)
-    parser.add_argument('binary', type=str, nargs='*')
 
     args = parser.parse_args(argv)
 
