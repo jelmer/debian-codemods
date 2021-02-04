@@ -93,7 +93,7 @@ def maximum_debhelper_compat_version(compat_release: str) -> int:
     return max_version
 
 
-def write_rules_template(path, buildsystem=None, addons=None):
+def write_rules_template(path, buildsystem=None, addons=None, env=None):
     if addons is None:
         addons = []
     dh_args = ['$@']
@@ -106,6 +106,13 @@ def write_rules_template(path, buildsystem=None, addons=None):
         f.write("""\
 #!/usr/bin/make -f
 
+""")
+        if env:
+            for key, value in env.items():
+                f.write('export %s := %s\n' % (key, value))
+            f.write('\n')
+
+        f.write("""\
 %:
 \tdh """ + ' '.join(dh_args) + """
 """)

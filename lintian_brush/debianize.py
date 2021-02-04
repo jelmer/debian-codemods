@@ -215,6 +215,7 @@ def debianize(
         dh_addons = []
         initial_files = []
         dh_buildsystem = None
+        dh_env = {}
 
         if buildsystem and buildsystem.name == 'setup.py':
             dh_buildsystem = 'pybuild'
@@ -266,6 +267,8 @@ def debianize(
             source['Testsuite'] = 'autopkgtest-pkg-go'
             dh_addons.append('golang')
             dh_buildsystem = 'golang'
+            if os.path.isdir('examples'):
+                dh_env['DH_GOLANG_EXCLUDES'] = 'examples/'
             # TODO(jelmer): Add --builddirectory=_build to dh arguments
             binaries.append(
                 Deb822({'Package': 'golang-%s-dev' % godebname,
@@ -312,7 +315,8 @@ def debianize(
                 wt.mkdir(debian_path)
             write_debhelper_rules_template(
                 wt.abspath(os.path.join(debian_path, 'rules')),
-                buildsystem=dh_buildsystem)
+                buildsystem=dh_buildsystem,
+                env=dh_env)
             initial_files.append('debian/rules')
             write_control_template(
                 wt.abspath(os.path.join(debian_path, 'control')),
