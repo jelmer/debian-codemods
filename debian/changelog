@@ -1,11 +1,11 @@
-lintian-brush (0.95) UNRELEASED; urgency=medium
+lintian-brush (0.95) unstable; urgency=medium
 
   * Use rules module from debmutate.
   * deb-scrub-obsolete: don't edit build dependencies for cdbs packages.
     Closes: #981528
   * Explicitly depend on now-split-out upstream-ontologist package.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 30 Jan 2021 16:37:49 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 05 Feb 2021 00:42:43 +0000
 
 lintian-brush (0.94) unstable; urgency=medium
 
