@@ -23,7 +23,7 @@ setup(
     version="0.95",
     author="Jelmer Vernooij",
     author_email="jelmer@debian.org",
-    packages=["lintian_brush", "upstream_ontologist"],
+    packages=["lintian_brush"],
     url="https://salsa.debian.org/jelmer/lintian-brush",
     description="Automatic lintian issue fixer",
     project_urls={
