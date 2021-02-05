@@ -1,5 +1,4 @@
 debian/apply-multiarch-hints.1
-debian/guess-upstream-metadata.1
 debian/lintian-brush.1
 debian/lintian-brush.conf.5
 debian/deb-scrub-obsolete.1

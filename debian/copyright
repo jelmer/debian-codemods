@@ -8,14 +8,6 @@ Copyright:
  2018-2019 Jelmer Vernooĳ <jelmer@debian.org>
 License: GPL-2+
 
-Files: lintian_brush/_deb822.py
-Copyright: 2005-2006  dann frazier <dannf@dannf.org>
-           2006-2010  John Wright <john@johnwright.org>
-           2006       Adeodato Simó <dato@net.com.org.es>
-           2008       Stefano Zacchiroli <zack@upsilon.cc>
-           2014       Google, Inc.
-License: GPL-2+
-
 Files: lintian_brush/systemd.py
 Copyright: 2001, 2002, 2003 Python Software Foundation
            2004-2008 Paramjit Oberoi <param.cs.wisc.edu>
