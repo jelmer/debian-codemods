@@ -1,2 +1,3 @@
 # This macro is used intentionally :-)
-lintian-brush source: autotools-pkg-config-macro-not-cross-compilation-safe tests/autotools-pkg-config-macro-not-cross-compilation-safe/simple/in/configure.ac (line 10)
+lintian-brush source: autotools-pkg-config-macro-not-cross-compilation-safe tests/autotools-pkg-config-macro-not-cross-compilation-safe/complex/in/configure.ac (line 11)
+lintian-brush source: package-does-not-install-examples tests/package-does-not-install-examples/*
