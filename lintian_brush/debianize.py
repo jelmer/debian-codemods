@@ -223,6 +223,7 @@ def debianize(
             source_name = 'python-%s' % upstream_name
             binaries.append(
                 Deb822({'Package': 'python3-%s' % source_name,
+                        'Depends': '${python3:Depends}',
                         'Architecture': 'all'}))
         elif buildsystem and buildsystem.name == 'npm':
             dh_addons.append('nodejs')
