@@ -30,6 +30,7 @@ class VcsWatch(object):
 
     async def connect(self):
         from .udd import connect_udd_mirror
+
         self._conn = await connect_udd_mirror()
 
     async def get_package(self, name):
@@ -41,23 +42,29 @@ class VcsWatch(object):
           Tuple with (vcs_type, vcs_url, vcs_browser)
         """
         assert self._conn is not None, "call connect() first"
-        row = await self._conn.fetchrow("""
+        row = await self._conn.fetchrow(
+            """
 select vcs, url, browser, status, error from vcswatch
-where source = $1""", name)
+where source = $1""",
+            name,
+        )
         if row is None:
             raise KeyError(name)
-        if row[3] == 'ERROR':
+        if row[3] == "ERROR":
             raise VcsWatchError(row[4])
         return row[:3]
 
     async def get_branch_from_url(self, vcs, url):
         """Get the branch for a VCS URL."""
         assert self._conn is not None, "call connect() first"
-        row = await self._conn.fetchrow("""
+        row = await self._conn.fetchrow(
+            """
 select branch, status, error from vcswatch where url = $1 and vcs = $2""",
-                                        url, vcs)
+            url,
+            vcs,
+        )
         if row is None:
             raise KeyError(url)
-        if row[1] == 'ERROR':
+        if row[1] == "ERROR":
             raise VcsWatchError(row[2])
         return row[0]

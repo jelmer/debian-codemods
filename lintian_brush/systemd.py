@@ -24,17 +24,17 @@
 """Utility functions for dealing with systemd files."""
 
 __all__ = [
-    'Undefined',
-    'SystemdServiceEditor',
-    'update_service_file',
-    ]
+    "Undefined",
+    "SystemdServiceEditor",
+    "update_service_file",
+]
 
 from io import StringIO
 
 from iniparse.config import (
     ConfigNamespace,
     Undefined,
-    )
+)
 from iniparse.ini import (
     LineContainer,
     SectionLine,
@@ -46,15 +46,24 @@ from iniparse.ini import (
     CommentLine,
     make_comment,
     readline_iterator,
-    )
+)
 
 from debmutate.reformatting import Editor
 
 import os
 
 LIST_KEYS = [
-    'Before', 'After', 'Documentation', 'Wants', 'Alias', 'WantedBy',
-    'Requires', 'RequiredBy', 'Also', 'Conflicts']
+    "Before",
+    "After",
+    "Documentation",
+    "Wants",
+    "Alias",
+    "WantedBy",
+    "Requires",
+    "RequiredBy",
+    "Also",
+    "Conflicts",
+]
 
 
 class Section(ConfigNamespace):
@@ -76,7 +85,7 @@ class Section(ConfigNamespace):
             option.name = newkey
 
     def _getitem(self, key):
-        if key == '__name__':
+        if key == "__name__":
             return self._lines[-1].name
         try:
             option = self._options[key]
@@ -99,19 +108,18 @@ class Section(ConfigNamespace):
                         remaining.remove(v)
                     except ValueError:
                         values.remove(v)
-                option.value = ' '.join(values)
+                option.value = " ".join(values)
                 if not option.value:
                     for line in self._lines:
                         line.contents.remove(option)
             if remaining:
-                obj = LineContainer(
-                    OptionLine(key, ' '.join(remaining), separator='='))
+                obj = LineContainer(OptionLine(key, " ".join(remaining), separator="="))
                 self._lines[-1].add(obj)
                 self._options[key].append(obj)
         else:
             if key not in self._options:
                 # create a dummy object - value may have multiple lines
-                obj = LineContainer(OptionLine(key, '', separator='='))
+                obj = LineContainer(OptionLine(key, "", separator="="))
                 self._lines[-1].add(obj)
                 self._options[key] = obj
             # the set_value() function in LineContainer
@@ -141,11 +149,10 @@ class Section(ConfigNamespace):
                         d.add(ans)
 
     def _new_namespace(self, name):
-        raise Exception('No sub-sections allowed', name)
+        raise Exception("No sub-sections allowed", name)
 
 
 class OptionList(object):
-
     def __init__(self, section, key, options):
         self._section = section
         self._key = key
@@ -160,7 +167,7 @@ class OptionList(object):
             vals = o.value.split()
             if k >= i and k < i + len(vals):
                 del vals[k - i]
-                o.value = ' '.join(vals)
+                o.value = " ".join(vals)
                 for line in self._section._lines:
                     line.contents.remove(o)
                 break
@@ -174,7 +181,7 @@ class OptionList(object):
             vals = o.value.split()
             if k >= i and k < i + len(vals):
                 vals[k - i] = val
-                o.value = ' '.join(vals)
+                o.value = " ".join(vals)
                 break
             i += len(vals)
         else:
@@ -203,7 +210,7 @@ class OptionList(object):
         raise ValueError(value)
 
     def append(self, v):
-        option = OptionLine(self._key, v, separator='=')
+        option = OptionLine(self._key, v, separator="=")
         obj = LineContainer(option)
         self._section._lines[-1].add(obj)
         self._section._options.setdefault(v, []).append(obj)
@@ -224,7 +231,7 @@ class UnitFile(ConfigNamespace):
         return self._sections[key]
 
     def __setitem__(self, key, value):
-        raise Exception('Values must be inside sections', key, value)
+        raise Exception("Values must be inside sections", key, value)
 
     def __delitem__(self, key):
         for line in self._sections[key]._lines:
@@ -255,9 +262,7 @@ class UnitFile(ConfigNamespace):
     def __str__(self):
         return self._data.__str__()
 
-    _line_types = [EmptyLine, CommentLine,
-                   SectionLine, OptionLine,
-                   ContinuationLine]
+    _line_types = [EmptyLine, CommentLine, SectionLine, OptionLine, ContinuationLine]
 
     def _parse(self, line):
         for linetype in self._line_types:
@@ -277,7 +282,7 @@ class UnitFile(ConfigNamespace):
         try:
             fname = fp.name
         except AttributeError:
-            fname = '<???>'
+            fname = "<???>"
         linecount = 0
         exc = None
         line = None
@@ -288,7 +293,8 @@ class UnitFile(ConfigNamespace):
             linecount += 1
 
             if not cur_section and not isinstance(
-                    lineobj, (CommentLine, EmptyLine, SectionLine)):
+                lineobj, (CommentLine, EmptyLine, SectionLine)
+            ):
                 raise MissingSectionHeaderError(fname, linecount, line)
 
             if lineobj is None:
@@ -324,7 +330,8 @@ class UnitFile(ConfigNamespace):
                         optobj._options[cur_option_name] = []
                     else:
                         optobj._options.setdefault(cur_option_name, []).append(
-                            cur_option)
+                            cur_option
+                        )
                 else:
                     optobj._options[cur_option_name] = cur_option
 
@@ -339,24 +346,23 @@ class UnitFile(ConfigNamespace):
                 if cur_section_name not in self._sections:
                     self._sections[cur_section_name] = Section(cur_section)
                 else:
-                    self._sections[cur_section_name]._lines.append(
-                        cur_section)
+                    self._sections[cur_section_name]._lines.append(cur_section)
 
             if isinstance(lineobj, (CommentLine, EmptyLine)):
                 pending_lines.append(lineobj)
 
         self._data.extend(pending_lines)
-        if line and line[-1] == '\n':
+        if line and line[-1] == "\n":
             self._data.add(EmptyLine())
 
         if exc:
             raise exc
 
 
-def systemd_service_files(path='debian', exclude_links=True):
+def systemd_service_files(path="debian", exclude_links=True):
     """List paths to systemd service files."""
     for name in os.listdir(path):
-        if not name.endswith('.service'):
+        if not name.endswith(".service"):
             continue
         subpath = os.path.join(path, name)
         if exclude_links and os.path.islink(subpath):
@@ -365,7 +371,6 @@ def systemd_service_files(path='debian', exclude_links=True):
 
 
 class SystemdServiceEditor(Editor):
-
     def _parse(self, content):
         return UnitFile(StringIO(self._orig_content))
 

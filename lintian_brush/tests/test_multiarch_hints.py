@@ -21,23 +21,25 @@ from io import BytesIO
 
 from breezy.tests import (
     TestCase,
-    )
+)
 
 from lintian_brush.multiarch_hints import (
     parse_multiarch_hints,
-    )
+)
 
 
 class ParseMultiArchHints(TestCase):
-
     def test_invalid_header(self):
-        f = BytesIO(b"""\
+        f = BytesIO(
+            b"""\
 format: blah
-""")
+"""
+        )
         self.assertRaises(ValueError, parse_multiarch_hints, f)
 
     def test_some_entries(self):
-        f = BytesIO(b"""\
+        f = BytesIO(
+            b"""\
 format: multiarch-hints-1.0
 hints:
 - binary: coinor-libcoinmp-dev
@@ -46,15 +48,18 @@ hints:
   severity: high
   source: coinmp
   version: 1.8.3-2+b11
-""")
+"""
+        )
         self.assertEqual(
-            parse_multiarch_hints(f), [{
-                'binary': 'coinor-libcoinmp-dev',
-                'description': 'coinor-libcoinmp-dev conflicts on ...',
-                'link': (
-                    'https://wiki.debian.org/MultiArch/Hints#file-conflict'),
-                'severity': 'high',
-                'source': 'coinmp',
-                'version': '1.8.3-2+b11'
-              }],
-            )
+            parse_multiarch_hints(f),
+            [
+                {
+                    "binary": "coinor-libcoinmp-dev",
+                    "description": "coinor-libcoinmp-dev conflicts on ...",
+                    "link": ("https://wiki.debian.org/MultiArch/Hints#file-conflict"),
+                    "severity": "high",
+                    "source": "coinmp",
+                    "version": "1.8.3-2+b11",
+                }
+            ],
+        )

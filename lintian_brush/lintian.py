@@ -20,11 +20,11 @@
 
 def read_debhelper_lintian_data_file(f, sep):
     for lineno, line in enumerate(f, 1):
-        if line.startswith('#'):
+        if line.startswith("#"):
             continue
         if not line.strip():
             continue
-        line = line.rstrip('\n')
+        line = line.rstrip("\n")
         try:
             key, value = line.split(sep, 1)
         except ValueError:

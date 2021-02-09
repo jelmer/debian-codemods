@@ -20,24 +20,24 @@ import unittest
 
 def test_suite():
     names = [
-        'changelog',
-        'config',
-        'debhelper',
-        'detect_gbp_dch',
-        'dirty_tracker',
-        'lintian_overrides',
-        'multiarch_hints',
-        'patches',
-        'run',
-        'salsa',
-        'systemd',
-        'vcs',
-        'xdg',
-        'yaml',
-        ]
-    module_names = [__name__ + '.test_' + name for name in names]
-    module_names.append('upstream_ontologist.tests.test_upstream_ontologist')
-    module_names.append('upstream_ontologist.tests.test_vcs')
+        "changelog",
+        "config",
+        "debhelper",
+        "detect_gbp_dch",
+        "dirty_tracker",
+        "lintian_overrides",
+        "multiarch_hints",
+        "patches",
+        "run",
+        "salsa",
+        "systemd",
+        "vcs",
+        "xdg",
+        "yaml",
+    ]
+    module_names = [__name__ + ".test_" + name for name in names]
+    module_names.append("upstream_ontologist.tests.test_upstream_ontologist")
+    module_names.append("upstream_ontologist.tests.test_vcs")
     module_names.append(__name__ + ".fixers.test_suite")
     loader = unittest.TestLoader()
     return loader.loadTestsFromNames(module_names)

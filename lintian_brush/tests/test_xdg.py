@@ -19,38 +19,57 @@
 
 from ..xdg import (
     DesktopEntryEditor,
-    )
+)
 
 from breezy.tests import (
     TestCaseWithTransport,
-    )
+)
 
 
 class UpdateDesktopEntryTests(TestCaseWithTransport):
-
     def test_weird_spacing(self):
-        self.build_tree_contents([('foo.desktop', """\
+        self.build_tree_contents(
+            [
+                (
+                    "foo.desktop",
+                    """\
 [Desktop Entry]
 Name= foo
-""")])
-        with DesktopEntryEditor('foo.desktop') as updater:
-            updater['NewField'] = 'foo'
-        self.assertFileEqual("""\
+""",
+                )
+            ]
+        )
+        with DesktopEntryEditor("foo.desktop") as updater:
+            updater["NewField"] = "foo"
+        self.assertFileEqual(
+            """\
 [Desktop Entry]
 Name= foo
 NewField=foo
-""", 'foo.desktop')
+""",
+            "foo.desktop",
+        )
 
     def test_modify(self):
-        self.build_tree_contents([('foo.desktop', """\
+        self.build_tree_contents(
+            [
+                (
+                    "foo.desktop",
+                    """\
 [Desktop Entry]
 Name=Foo
-""")])
-        with DesktopEntryEditor('foo.desktop') as updater:
-            updater['NewField'] = 'foo'
+""",
+                )
+            ]
+        )
+        with DesktopEntryEditor("foo.desktop") as updater:
+            updater["NewField"] = "foo"
 
-        self.assertFileEqual("""\
+        self.assertFileEqual(
+            """\
 [Desktop Entry]
 Name=Foo
 NewField=foo
-""", 'foo.desktop')
+""",
+            "foo.desktop",
+        )

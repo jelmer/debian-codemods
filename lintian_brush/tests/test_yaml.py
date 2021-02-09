@@ -20,119 +20,151 @@
 from breezy.tests import (
     TestCaseInTempDir,
     TestCase,
-    )
+)
 
 from ruamel.yaml.compat import ordereddict
 
 from lintian_brush.yaml import (
     YamlUpdater,
     update_ordered_dict,
-    )
+)
 
 
 class YamlUpdaterTests(TestCaseInTempDir):
-
     def test_new(self):
-        with YamlUpdater('newfile.yaml') as editor:
-            editor.code['Somekey'] = 'Somevalue'
+        with YamlUpdater("newfile.yaml") as editor:
+            editor.code["Somekey"] = "Somevalue"
         self.assertFileEqual("---\nSomekey: Somevalue\n", "newfile.yaml")
 
     def test_update(self):
-        with open('newfile.yaml', 'w') as f:
-            f.write("""\
+        with open("newfile.yaml", "w") as f:
+            f.write(
+                """\
 Origkey: origvalue
 Somekey: origvalue
-""")
-        with YamlUpdater('newfile.yaml') as editor:
-            editor.code['Somekey'] = 'Somevalue'
-        self.assertFileEqual("""\
+"""
+            )
+        with YamlUpdater("newfile.yaml") as editor:
+            editor.code["Somekey"] = "Somevalue"
+        self.assertFileEqual(
+            """\
 Origkey: origvalue
 Somekey: Somevalue
-""", "newfile.yaml")
+""",
+            "newfile.yaml",
+        )
 
     def test_update_with_spaces(self):
-        with open('newfile.yaml', 'w') as f:
-            f.write("""\
+        with open("newfile.yaml", "w") as f:
+            f.write(
+                """\
 Origkey : origvalue
 Somekey: origvalue
-""")
-        with YamlUpdater('newfile.yaml') as editor:
-            editor.code['Somekey'] = 'Somevalue'
-        self.assertFileEqual("""\
+"""
+            )
+        with YamlUpdater("newfile.yaml") as editor:
+            editor.code["Somekey"] = "Somevalue"
+        self.assertFileEqual(
+            """\
 Origkey : origvalue
 Somekey: Somevalue
-""", "newfile.yaml")
+""",
+            "newfile.yaml",
+        )
 
     def test_delete(self):
-        with open('newfile.yaml', 'w') as f:
-            f.write("""\
+        with open("newfile.yaml", "w") as f:
+            f.write(
+                """\
 Origkey: origvalue
 Somekey: origvalue
-""")
-        with YamlUpdater('newfile.yaml') as editor:
-            del editor.code['Origkey']
-            del editor.code['Somekey']
-        self.assertPathDoesNotExist('newfile.yaml')
+"""
+            )
+        with YamlUpdater("newfile.yaml") as editor:
+            del editor.code["Origkey"]
+            del editor.code["Somekey"]
+        self.assertPathDoesNotExist("newfile.yaml")
 
     def test_no_change(self):
-        with open('newfile.yaml', 'w') as f:
-            f.write("""\
+        with open("newfile.yaml", "w") as f:
+            f.write(
+                """\
 Origkey: origvalue
 Somekey: origvalue
-""")
-        with YamlUpdater('newfile.yaml'):
+"""
+            )
+        with YamlUpdater("newfile.yaml"):
             pass
-        self.assertFileEqual("""\
+        self.assertFileEqual(
+            """\
 Origkey: origvalue
 Somekey: origvalue
-""", "newfile.yaml")
+""",
+            "newfile.yaml",
+        )
 
     def test_preserve_header(self):
-        with open('newfile.yaml', 'w') as f:
-            f.write("""\
+        with open("newfile.yaml", "w") as f:
+            f.write(
+                """\
 ---
 Origkey: origvalue
 Somekey: origvalue
-""")
-        with YamlUpdater('newfile.yaml') as editor:
-            editor.code['Newkey'] = 'newvalue'
-        self.assertFileEqual("""\
+"""
+            )
+        with YamlUpdater("newfile.yaml") as editor:
+            editor.code["Newkey"] = "newvalue"
+        self.assertFileEqual(
+            """\
 ---
 Origkey: origvalue
 Somekey: origvalue
 Newkey: newvalue
-""", "newfile.yaml")
+""",
+            "newfile.yaml",
+        )
 
     def test_interrupted_line(self):
-        with open('newfile.yaml', 'w') as f:
-            f.write("""\
+        with open("newfile.yaml", "w") as f:
+            f.write(
+                """\
 ---
 Origkey: origvalue
-Somekey: origvalue""")
-        with YamlUpdater('newfile.yaml') as editor:
-            editor.code['Newkey'] = 'newvalue'
-        self.assertFileEqual("""\
+Somekey: origvalue"""
+            )
+        with YamlUpdater("newfile.yaml") as editor:
+            editor.code["Newkey"] = "newvalue"
+        self.assertFileEqual(
+            """\
 ---
 Origkey: origvalue
 Somekey: origvalue
 Newkey: newvalue
-""", "newfile.yaml")
+""",
+            "newfile.yaml",
+        )
 
     def test_replace_only_line(self):
-        with open('newfile.yaml', 'w') as f:
-            f.write("""\
+        with open("newfile.yaml", "w") as f:
+            f.write(
+                """\
 Origkey: origvalue
-""")
-        with YamlUpdater('newfile.yaml') as editor:
-            del editor.code['Origkey']
-            editor.code['Newkey'] = 'newvalue'
-        self.assertFileEqual("""\
+"""
+            )
+        with YamlUpdater("newfile.yaml") as editor:
+            del editor.code["Origkey"]
+            editor.code["Newkey"] = "newvalue"
+        self.assertFileEqual(
+            """\
 Newkey: newvalue
-""", "newfile.yaml")
+""",
+            "newfile.yaml",
+        )
 
     def test_json(self):
-        with open('newfile.yaml', 'w') as f:
-            f.write("""\
+        with open("newfile.yaml", "w") as f:
+            f.write(
+                """\
 {
   "Archive": "GitHub",
   "Bug-Database": "https://github.com/fabiang/sasl/issues",
@@ -140,10 +172,12 @@ Newkey: newvalue
   "Documentation": "https://github.com/fabiang/sasl#usage",
   "Name": "The PHP SASL2 Authentification Library",
 }
-""")
-        with YamlUpdater('newfile.yaml') as editor:
+"""
+            )
+        with YamlUpdater("newfile.yaml") as editor:
             editor.code["Repository"] = "git@github.com:fabiang/sasl.git"
-        self.assertFileEqual("""\
+        self.assertFileEqual(
+            """\
 {
   "Archive": "GitHub",
   "Bug-Database": "https://github.com/fabiang/sasl/issues",
@@ -152,64 +186,83 @@ Newkey: newvalue
   "Name": "The PHP SASL2 Authentification Library",
   "Repository": "git@github.com:fabiang/sasl.git"
 }
-""", "newfile.yaml")
+""",
+            "newfile.yaml",
+        )
 
 
 class UpdateOrderedDict(TestCase):
-
     def setUp(self):
         super(UpdateOrderedDict, self).setUp()
         self._od = ordereddict()
 
     def test_empty(self):
-        update_ordered_dict(self._od, [('Contact', 'Foo'), ('Blah', 'blah')])
-        self.assertEqual(ordereddict([
-            ('Blah', 'blah'),
-            ('Contact', 'Foo')]), self._od)
+        update_ordered_dict(self._od, [("Contact", "Foo"), ("Blah", "blah")])
+        self.assertEqual(ordereddict([("Blah", "blah"), ("Contact", "Foo")]), self._od)
 
     def test_modify(self):
-        self._od['Contact'] = 'Bar'
-        self._od['ZZ'] = 'z'
-        update_ordered_dict(
-            self._od, [('Contact', 'Foo'), ('Blah', 'blah')])
-        self.assertEqual(ordereddict([
-            ('Blah', 'blah'),
-            ('Contact', 'Foo'),
-            ('ZZ', 'z'),
-            ]), self._od)
+        self._od["Contact"] = "Bar"
+        self._od["ZZ"] = "z"
+        update_ordered_dict(self._od, [("Contact", "Foo"), ("Blah", "blah")])
+        self.assertEqual(
+            ordereddict(
+                [
+                    ("Blah", "blah"),
+                    ("Contact", "Foo"),
+                    ("ZZ", "z"),
+                ]
+            ),
+            self._od,
+        )
 
     def test_insert_before(self):
-        self._od['Contact'] = 'Bar'
-        self._od['Bar'] = 'Bar'
-        update_ordered_dict(
-            self._od, [('Daar', 'blah')])
-        self.assertEqual(ordereddict([
-            ('Contact', 'Bar'),
-            ('Bar', 'Bar'),
-            ('Daar', 'blah'),
-            ]), self._od)
+        self._od["Contact"] = "Bar"
+        self._od["Bar"] = "Bar"
+        update_ordered_dict(self._od, [("Daar", "blah")])
+        self.assertEqual(
+            ordereddict(
+                [
+                    ("Contact", "Bar"),
+                    ("Bar", "Bar"),
+                    ("Daar", "blah"),
+                ]
+            ),
+            self._od,
+        )
 
     def test_csb(self):
         from upstream_ontologist import upstream_metadata_sort_key
-        self._od['Registry'] = [
-                ordereddict([('Name', 'OMICtools'), ('Entry', 'OMICS_09827')]),
-                ordereddict([('Name', 'bio.tools'), ('Entry', 'NA')])]
-        self._od['Repository'] = 'https://github.com/csb-toolbox/CSB'
+
+        self._od["Registry"] = [
+            ordereddict([("Name", "OMICtools"), ("Entry", "OMICS_09827")]),
+            ordereddict([("Name", "bio.tools"), ("Entry", "NA")]),
+        ]
+        self._od["Repository"] = "https://github.com/csb-toolbox/CSB"
         update_ordered_dict(
             self._od,
-            [('Bug-Database', 'https://github.com/csb-toolbox/CSB/issues'),
-             ('Bug-Submit', 'https://github.com/csb-toolbox/CSB/issues/new'),
-             ('Repository', 'https://github.com/csb-toolbox/CSB/issues.git')],
-            key=upstream_metadata_sort_key)
+            [
+                ("Bug-Database", "https://github.com/csb-toolbox/CSB/issues"),
+                ("Bug-Submit", "https://github.com/csb-toolbox/CSB/issues/new"),
+                ("Repository", "https://github.com/csb-toolbox/CSB/issues.git"),
+            ],
+            key=upstream_metadata_sort_key,
+        )
         self.assertEqual(
-            ordereddict([
-                 ('Bug-Database', 'https://github.com/csb-toolbox/CSB/issues'),
-                 ('Bug-Submit',
-                  'https://github.com/csb-toolbox/CSB/issues/new'),
-                 ('Registry', [
-                     ordereddict([('Name', 'OMICtools'),
-                                  ('Entry', 'OMICS_09827')]),
-                     ordereddict([('Name', 'bio.tools'), ('Entry', 'NA')])
-                  ]),
-                 ('Repository',
-                  'https://github.com/csb-toolbox/CSB/issues.git')]), self._od)
+            ordereddict(
+                [
+                    ("Bug-Database", "https://github.com/csb-toolbox/CSB/issues"),
+                    ("Bug-Submit", "https://github.com/csb-toolbox/CSB/issues/new"),
+                    (
+                        "Registry",
+                        [
+                            ordereddict(
+                                [("Name", "OMICtools"), ("Entry", "OMICS_09827")]
+                            ),
+                            ordereddict([("Name", "bio.tools"), ("Entry", "NA")]),
+                        ],
+                    ),
+                    ("Repository", "https://github.com/csb-toolbox/CSB/issues.git"),
+                ]
+            ),
+            self._od,
+        )

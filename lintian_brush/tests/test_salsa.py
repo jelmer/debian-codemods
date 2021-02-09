@@ -19,253 +19,275 @@
 
 from breezy.tests import (
     TestCase,
-    )
+)
 from lintian_brush.salsa import (
     guess_repository_url,
     determine_browser_url,
     salsa_url_from_alioth_url,
-    )
+)
 
 
 class GuessRepositoryURLTests(TestCase):
-
     def test_unknown(self):
         self.assertIs(
-            None,
-            guess_repository_url(
-                'blah', 'unknown-team@lists.alioth.debian.org'))
+            None, guess_repository_url("blah", "unknown-team@lists.alioth.debian.org")
+        )
 
     def test_individual(self):
         self.assertEqual(
-            'https://salsa.debian.org/jelmer/lintian-brush.git',
-            guess_repository_url('lintian-brush', 'jelmer@debian.org'))
+            "https://salsa.debian.org/jelmer/lintian-brush.git",
+            guess_repository_url("lintian-brush", "jelmer@debian.org"),
+        )
 
     def test_team(self):
         self.assertEqual(
-            'https://salsa.debian.org/js-team/node-blah.git',
+            "https://salsa.debian.org/js-team/node-blah.git",
             guess_repository_url(
-                'node-blah', 'pkg-javascript-devel@lists.alioth.debian.org'))
+                "node-blah", "pkg-javascript-devel@lists.alioth.debian.org"
+            ),
+        )
 
 
 class DetermineBrowserUrlTests(TestCase):
-
     def test_browser_url(self):
         self.assertEqual(
-            'https://salsa.debian.org/js-team/node-blah',
-            determine_browser_url(
-                'https://salsa.debian.org/js-team/node-blah.git'))
+            "https://salsa.debian.org/js-team/node-blah",
+            determine_browser_url("https://salsa.debian.org/js-team/node-blah.git"),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/js-team/node-blah',
-            determine_browser_url(
-                'https://salsa.debian.org/js-team/node-blah'))
+            "https://salsa.debian.org/js-team/node-blah",
+            determine_browser_url("https://salsa.debian.org/js-team/node-blah"),
+        )
 
     def test_branch(self):
         self.assertEqual(
-            'https://salsa.debian.org/js-team/node-blah/tree/debian',
+            "https://salsa.debian.org/js-team/node-blah/tree/debian",
             determine_browser_url(
-                'https://salsa.debian.org/js-team/node-blah -b debian'))
+                "https://salsa.debian.org/js-team/node-blah -b debian"
+            ),
+        )
 
     def test_subpath(self):
         self.assertEqual(
-            'https://salsa.debian.org/js-team/node-blah/tree/debian/foo',
+            "https://salsa.debian.org/js-team/node-blah/tree/debian/foo",
             determine_browser_url(
-                'https://salsa.debian.org/js-team/node-blah -b debian [foo]'))
+                "https://salsa.debian.org/js-team/node-blah -b debian [foo]"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/js-team/node-blah/tree/HEAD/foo',
-            determine_browser_url(
-                'https://salsa.debian.org/js-team/node-blah [foo]'))
+            "https://salsa.debian.org/js-team/node-blah/tree/HEAD/foo",
+            determine_browser_url("https://salsa.debian.org/js-team/node-blah [foo]"),
+        )
 
 
 class SalsaUrlFromAliothUrlTests(TestCase):
-
     def test_none(self):
         self.assertIs(None, salsa_url_from_alioth_url(None, None))
 
     def test_mismatch(self):
         self.assertIs(
-            None, salsa_url_from_alioth_url(
-                'bzr', 'https://code.launchpad.net/blah'))
+            None, salsa_url_from_alioth_url("bzr", "https://code.launchpad.net/blah")
+        )
 
     def test_perl(self):
         self.assertEqual(
-            'https://salsa.debian.org/perl-team/modules/packages/libbla.git',
+            "https://salsa.debian.org/perl-team/modules/packages/libbla.git",
             salsa_url_from_alioth_url(
-                'svn', 'svn://svn.debian.org/pkg-perl/trunk/libbla'))
+                "svn", "svn://svn.debian.org/pkg-perl/trunk/libbla"
+            ),
+        )
 
     def test_git(self):
         self.assertEqual(
-            'https://salsa.debian.org/jelmer/python-bla.git',
+            "https://salsa.debian.org/jelmer/python-bla.git",
             salsa_url_from_alioth_url(
-                'git',
-                'http://anonscm.debian.org/git/users/jelmer/python-bla')
-            )
+                "git", "http://anonscm.debian.org/git/users/jelmer/python-bla"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/jelmer/python-bla.git',
+            "https://salsa.debian.org/jelmer/python-bla.git",
             salsa_url_from_alioth_url(
-                'git',
-                'http://anonscm.debian.org/users/jelmer/python-bla')
-            )
+                "git", "http://anonscm.debian.org/users/jelmer/python-bla"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/go-team/golang-example-blah-blah.git',
+            "https://salsa.debian.org/go-team/golang-example-blah-blah.git",
             salsa_url_from_alioth_url(
-                'git',
-                'http://anonscm.debian.org/pkg-go/golang-example-blah-blah')
-            )
+                "git", "http://anonscm.debian.org/pkg-go/golang-example-blah-blah"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/lua-team/blah.git',
+            "https://salsa.debian.org/lua-team/blah.git",
             salsa_url_from_alioth_url(
-                'git',
-                'https://alioth.debian.org/anonscm/git/pkg-lua/blah'))
+                "git", "https://alioth.debian.org/anonscm/git/pkg-lua/blah"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/science-team/ros-geometry.git',
+            "https://salsa.debian.org/science-team/ros-geometry.git",
             salsa_url_from_alioth_url(
-                'git',
-                'https://anonscm.debian.org/cgit/debian-science/'
-                'ros-geometry.git'))
+                "git",
+                "https://anonscm.debian.org/cgit/debian-science/" "ros-geometry.git",
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/nagios-team/pkg-check-multi.git',
+            "https://salsa.debian.org/nagios-team/pkg-check-multi.git",
             salsa_url_from_alioth_url(
-                'git',
-                'https://anonscm.debian.org/git/pkg-nagios/'
-                'pkg-check-multi.git'))
+                "git",
+                "https://anonscm.debian.org/git/pkg-nagios/" "pkg-check-multi.git",
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/perl-team/modules/packages/'
-            'libgstream-interfaces-perl.git',
+            "https://salsa.debian.org/perl-team/modules/packages/"
+            "libgstream-interfaces-perl.git",
             salsa_url_from_alioth_url(
-                'git',
-                'git://git.debian.org/pkg-perl/packages/'
-                'libgstream-interfaces-perl.git'))
+                "git",
+                "git://git.debian.org/pkg-perl/packages/"
+                "libgstream-interfaces-perl.git",
+            ),
+        )
         # TODO(jelmer): This should actually be
         # https://salsa.debian.org/qt-kde-team/extras/plasma-widget-menubar.git
         self.assertEqual(
-            'https://salsa.debian.org/qt-kde-team/'
-            'kde-extras/plasma-widget-menubar.git',
+            "https://salsa.debian.org/qt-kde-team/"
+            "kde-extras/plasma-widget-menubar.git",
             salsa_url_from_alioth_url(
-                'git',
-                'git://anonscm.debian.org/pkg-kde/kde-extras/'
-                'plasma-widget-menubar.git'))
+                "git",
+                "git://anonscm.debian.org/pkg-kde/kde-extras/"
+                "plasma-widget-menubar.git",
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/fonts-team/fonts-beteckna.git',
+            "https://salsa.debian.org/fonts-team/fonts-beteckna.git",
             salsa_url_from_alioth_url(
-                'git',
-                'git://anonscm.debian.org/pkg-fonts/fonts-beteckna.git'))
+                "git", "git://anonscm.debian.org/pkg-fonts/fonts-beteckna.git"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/brlink/xwit.git',
+            "https://salsa.debian.org/brlink/xwit.git",
             salsa_url_from_alioth_url(
-                'git',
-                'git://anonscm.debian.org/users/brlink/xwit.git'))
+                "git", "git://anonscm.debian.org/users/brlink/xwit.git"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/qt-kde-team/kde/kruler.git',
+            "https://salsa.debian.org/qt-kde-team/kde/kruler.git",
             salsa_url_from_alioth_url(
-                'git',
-                'https://anonscm.debian.org/git/pkg-kde/applications/'
-                'kruler'))
+                "git", "https://anonscm.debian.org/git/pkg-kde/applications/" "kruler"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/3dprinting-team/arduino-mighty.git',
+            "https://salsa.debian.org/3dprinting-team/arduino-mighty.git",
             salsa_url_from_alioth_url(
-                'git',
-                'https://anonscm.debian.org/git/3dprinter/packages/'
-                'arduino-mighty'))
+                "git",
+                "https://anonscm.debian.org/git/3dprinter/packages/" "arduino-mighty",
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/emacsen-team/lua-mode.git',
+            "https://salsa.debian.org/emacsen-team/lua-mode.git",
             salsa_url_from_alioth_url(
-                'git',
-                'https://anonscm.debian.org/git/pkg-emacsen/pkg/lua-mode'))
+                "git", "https://anonscm.debian.org/git/pkg-emacsen/pkg/lua-mode"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/debian-astro-team/astromatic.git',
+            "https://salsa.debian.org/debian-astro-team/astromatic.git",
             salsa_url_from_alioth_url(
-                'git',
-                'http://anonscm.debian.org/cgit/debian-astro/packages/'
-                'astromatic.git'))
+                "git",
+                "http://anonscm.debian.org/cgit/debian-astro/packages/"
+                "astromatic.git",
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/debichem-team/bkchem.git',
+            "https://salsa.debian.org/debichem-team/bkchem.git",
             salsa_url_from_alioth_url(
-                'git',
-                'https://anonscm.debian.org/git/debichem/packages/bkchem.git'))
+                "git", "https://anonscm.debian.org/git/debichem/packages/bkchem.git"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/3dprinting-team/yagv.git',
+            "https://salsa.debian.org/3dprinting-team/yagv.git",
             salsa_url_from_alioth_url(
-                'git',
-                'https://anonscm.debian.org/cgit/3dprinter/packages/yagv.git'))
+                "git", "https://anonscm.debian.org/cgit/3dprinter/packages/yagv.git"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/fonts-team/fonts-pagul.git',
+            "https://salsa.debian.org/fonts-team/fonts-pagul.git",
             salsa_url_from_alioth_url(
-                'git',
-                'git://anonscm.debian.org/debian-in/fonts-pagul.git'))
+                "git", "git://anonscm.debian.org/debian-in/fonts-pagul.git"
+            ),
+        )
 
     def test_svn(self):
         self.assertEqual(
-            'https://salsa.debian.org/multimedia-team/ezstream.git',
+            "https://salsa.debian.org/multimedia-team/ezstream.git",
             salsa_url_from_alioth_url(
-                'svn',
-                'svn://svn.debian.org/svn/pkg-icecast/ezstream/trunk')
-            )
+                "svn", "svn://svn.debian.org/svn/pkg-icecast/ezstream/trunk"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/bsd-team/freebsd-buildutils.git',
+            "https://salsa.debian.org/bsd-team/freebsd-buildutils.git",
             salsa_url_from_alioth_url(
-                'svn',
-                'svn://anonscm.debian.org/glibc-bsd/trunk/freebsd-buildutils/')
-            )
+                "svn", "svn://anonscm.debian.org/glibc-bsd/trunk/freebsd-buildutils/"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/nvidia-team/nvclock.git',
+            "https://salsa.debian.org/nvidia-team/nvclock.git",
             salsa_url_from_alioth_url(
-                'svn',
-                'svn://svn.debian.org/pkg-nvidia/packages/nvclock/trunk'
-            ))
+                "svn", "svn://svn.debian.org/pkg-nvidia/packages/nvclock/trunk"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/llvm-team/llvm.git',
+            "https://salsa.debian.org/llvm-team/llvm.git",
             salsa_url_from_alioth_url(
-                'svn',
-                'svn://svn.debian.org/svn/pkg-llvm/llvm/trunk/'
-            ))
+                "svn", "svn://svn.debian.org/svn/pkg-llvm/llvm/trunk/"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/xfce-team/xfswitch-plugin.git',
+            "https://salsa.debian.org/xfce-team/xfswitch-plugin.git",
             salsa_url_from_alioth_url(
-                'svn',
-                'svn://anonscm.debian.org/pkg-xfce/goodies/trunk/'
-                'xfswitch-plugin/'
-            ))
+                "svn",
+                "svn://anonscm.debian.org/pkg-xfce/goodies/trunk/" "xfswitch-plugin/",
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/python-team/applications/pypar2.git',
+            "https://salsa.debian.org/python-team/applications/pypar2.git",
             salsa_url_from_alioth_url(
-                'svn',
-                'svn://anonscm.debian.org/python-apps/packages/pypar2/trunk/'
-            ))
+                "svn", "svn://anonscm.debian.org/python-apps/packages/pypar2/trunk/"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/xml-sgml-team/docbook-slides-demo.git',
+            "https://salsa.debian.org/xml-sgml-team/docbook-slides-demo.git",
             salsa_url_from_alioth_url(
-                'svn',
-                'svn://svn.debian.org/debian-xml-sgml/packages/'
-                'docbook-slides-demo/trunk/'
-            ))
+                "svn",
+                "svn://svn.debian.org/debian-xml-sgml/packages/"
+                "docbook-slides-demo/trunk/",
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/fonts-team/ttf-inconsolata.git',
+            "https://salsa.debian.org/fonts-team/ttf-inconsolata.git",
             salsa_url_from_alioth_url(
-                'svn',
-                'svn://svn.debian.org/svn/pkg-fonts/packages/ttf-inconsolata'
-            ))
+                "svn", "svn://svn.debian.org/svn/pkg-fonts/packages/ttf-inconsolata"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/qt-kde-team/kde3libs.git',
+            "https://salsa.debian.org/qt-kde-team/kde3libs.git",
             salsa_url_from_alioth_url(
-                'svn',
-                'svn://svn.debian.org/svn/pkg-kde/trunk/packages/kde3libs'
-            ))
+                "svn", "svn://svn.debian.org/svn/pkg-kde/trunk/packages/kde3libs"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/python-team/applications/'
-            'upnp-inspector.git',
+            "https://salsa.debian.org/python-team/applications/" "upnp-inspector.git",
             salsa_url_from_alioth_url(
-                'svn',
-                'svn://svn.debian.org/python-apps/packages/upnp-inspector/'
-                'trunk/'
-            ))
+                "svn",
+                "svn://svn.debian.org/python-apps/packages/upnp-inspector/" "trunk/",
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/python-team/applications/hotssh.git',
+            "https://salsa.debian.org/python-team/applications/hotssh.git",
             salsa_url_from_alioth_url(
-                'svn',
-                'svn://anonscm.debian.org/python-apps/packages/hotssh/trunk/'
-            ))
+                "svn", "svn://anonscm.debian.org/python-apps/packages/hotssh/trunk/"
+            ),
+        )
         self.assertEqual(
-            'https://salsa.debian.org/debichem-team/drawxtl.git',
+            "https://salsa.debian.org/debichem-team/drawxtl.git",
             salsa_url_from_alioth_url(
-                'svn',
-                'svn://svn.debian.org/svn/debichem/unstable/drawxtl'))
+                "svn", "svn://svn.debian.org/svn/debichem/unstable/drawxtl"
+            ),
+        )

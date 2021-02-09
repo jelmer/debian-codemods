@@ -18,19 +18,19 @@
 """Handling of quilt patches."""
 
 __all__ = [
-    'PatchSyntax',
-    'find_patch_base',
-    'find_patches_branch',
-    'AppliedPatches',
-    'read_quilt_patches',
-    'PatchApplicationBaseNotFound',
-    'upstream_with_applied_patches',
-    'find_patches_directory',
-    'rules_find_patches_directory',
-    'tree_patches_directory',
-    'add_patch',
-    'move_upstream_changes_to_patch',
-    ]
+    "PatchSyntax",
+    "find_patch_base",
+    "find_patches_branch",
+    "AppliedPatches",
+    "read_quilt_patches",
+    "PatchApplicationBaseNotFound",
+    "upstream_with_applied_patches",
+    "find_patches_directory",
+    "rules_find_patches_directory",
+    "tree_patches_directory",
+    "add_patch",
+    "move_upstream_changes_to_patch",
+]
 
 import contextlib
 from datetime import datetime
@@ -49,7 +49,7 @@ from breezy.patches import (
     parse_patches,
     apply_patches,
     PatchSyntax,
-    )
+)
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 
@@ -59,12 +59,12 @@ from debmutate.patch import (
     QuiltSeriesEditor,
     read_quilt_series,
     find_common_patch_suffix,
-    )
+)
 
 from . import reset_tree
 
 # TODO(jelmer): Use debmutate version
-DEFAULT_DEBIAN_PATCHES_DIR = 'debian/patches'
+DEFAULT_DEBIAN_PATCHES_DIR = "debian/patches"
 
 
 def find_patch_base(tree):
@@ -75,17 +75,17 @@ def find_patch_base(tree):
     Returns:
       A revision string
     """
-    with tree.get_file('debian/changelog') as f:
+    with tree.get_file("debian/changelog") as f:
         cl = Changelog(f, max_blocks=1)
         package = cl.package
         upstream_version = cl.version.upstream_version
     possible_tags = [
-        'upstream-%s' % upstream_version,
-        'upstream/%s' % upstream_version,
-        '%s' % upstream_version,
-        'v%s' % upstream_version,
-        '%s-%s' % (package, upstream_version),
-        ]
+        "upstream-%s" % upstream_version,
+        "upstream/%s" % upstream_version,
+        "%s" % upstream_version,
+        "v%s" % upstream_version,
+        "%s-%s" % (package, upstream_version),
+    ]
     tags = tree.branch.tags.get_tag_dict()
     for possible_tag in possible_tags:
         if possible_tag in tags:
@@ -104,15 +104,15 @@ def find_patches_branch(tree):
     """
     if tree.branch.name is None:
         return None
-    branch_name = 'patch-queue/%s' % tree.branch.name
+    branch_name = "patch-queue/%s" % tree.branch.name
     try:
         return tree.branch.controldir.open_branch(branch_name)
     except NotBranchError:
         pass
-    if tree.branch.name == 'master':
-        branch_name = 'patched'
+    if tree.branch.name == "master":
+        branch_name = "patched"
     else:
-        branch_name = 'patched-%s' % tree.branch.name
+        branch_name = "patched-%s" % tree.branch.name
     try:
         return tree.branch.controldir.open_branch(branch_name)
     except NotBranchError:
@@ -121,8 +121,7 @@ def find_patches_branch(tree):
 
 
 class AppliedPatches(object):
-    """Context that provides access to a tree with patches applied.
-    """
+    """Context that provides access to a tree with patches applied."""
 
     def __init__(self, tree, patches, prefix=1):
         self.tree = tree
@@ -132,6 +131,7 @@ class AppliedPatches(object):
     def __enter__(self):
         if self.patches:
             from breezy.transform import TransformPreview
+
             self._tt = TransformPreview(self.tree)
             apply_patches(self._tt, self.patches, prefix=self.prefix)
             return self._tt.get_preview_tree()
@@ -154,7 +154,7 @@ def read_quilt_patches(tree, directory=DEFAULT_DEBIAN_PATCHES_DIR):
     Returns:
       list of Patch objects
     """
-    series_path = osutils.pathjoin(directory, 'series')
+    series_path = osutils.pathjoin(directory, "series")
     try:
         series_lines = tree.get_file_lines(series_path)
     except NoSuchFile:
@@ -203,7 +203,7 @@ def rules_find_patches_directory(makefile):
         path to patches directory, or None if none was found in debian/rules
     """
     try:
-        val = makefile.get_variable(b'QUILT_PATCH_DIR')
+        val = makefile.get_variable(b"QUILT_PATCH_DIR")
     except KeyError:
         return None
     else:
@@ -219,9 +219,10 @@ def find_patches_directory(path):
       relative path to patches directory, or None if none exists
     """
     from debmutate._rules import Makefile
+
     directory = None
     try:
-        mf = Makefile.from_path(os.path.join(path, 'debian/rules'))
+        mf = Makefile.from_path(os.path.join(path, "debian/rules"))
     except FileNotFoundError:
         pass
     else:
@@ -229,12 +230,13 @@ def find_patches_directory(path):
         if rules_directory is not None:
             directory = rules_directory
     if directory is None and os.path.exists(
-            os.path.join(path, DEFAULT_DEBIAN_PATCHES_DIR)):
+        os.path.join(path, DEFAULT_DEBIAN_PATCHES_DIR)
+    ):
         directory = DEFAULT_DEBIAN_PATCHES_DIR
     return directory
 
 
-def tree_patches_directory(tree, subpath=''):
+def tree_patches_directory(tree, subpath=""):
     """Find the name of the patches directory.
 
     This will always return a path, even if the patches
@@ -265,14 +267,14 @@ def tree_non_patches_changes(tree, patches_directory):
     patches = list(read_quilt_patches(tree, patches_directory))
 
     # TODO(jelmer): What if patches are already applied on tree?
-    with upstream_with_applied_patches(tree, patches) \
-            as upstream_patches_tree, \
-            AppliedPatches(tree, patches) as patches_tree:
+    with upstream_with_applied_patches(
+        tree, patches
+    ) as upstream_patches_tree, AppliedPatches(tree, patches) as patches_tree:
         for change in filter_excluded(
-                patches_tree.iter_changes(upstream_patches_tree),
-                exclude=['debian']):
+            patches_tree.iter_changes(upstream_patches_tree), exclude=["debian"]
+        ):
             path = change.path[1]
-            if path == '':
+            if path == "":
                 continue
             yield change
 
@@ -299,14 +301,14 @@ def add_patch(tree, patches_directory, name, contents, header=None):
     path = os.path.join(abs_patches_dir, patchname)
     if tree.has_filename(path):
         raise FileExistsError(path)
-    with open(tree.abspath(path), 'wb') as f:
+    with open(tree.abspath(path), "wb") as f:
         if header is not None:
-            f.write(header.as_string().encode('utf-8'))
+            f.write(header.as_string().encode("utf-8"))
         f.write(contents)
 
     # TODO(jelmer): Write to patches branch if applicable
 
-    series_path = os.path.join(abs_patches_dir, 'series')
+    series_path = os.path.join(abs_patches_dir, "series")
     with QuiltSeriesEditor(series_path) as editor:
         editor.append(patchname)
 
@@ -314,11 +316,14 @@ def add_patch(tree, patches_directory, name, contents, header=None):
 
 
 def move_upstream_changes_to_patch(
-        local_tree: WorkingTree,
-        basis_tree: Tree,
-        subpath: str, patch_name: str, description: str,
-        dirty_tracker=None,
-        timestamp: Optional[datetime] = None) -> Tuple[List[str], str]:
+    local_tree: WorkingTree,
+    basis_tree: Tree,
+    subpath: str,
+    patch_name: str,
+    description: str,
+    dirty_tracker=None,
+    timestamp: Optional[datetime] = None,
+) -> Tuple[List[str], str]:
     """Move upstream changes to patch.
 
     Args:
@@ -336,17 +341,25 @@ def move_upstream_changes_to_patch(
     header = Message()
     lines = description.splitlines()
     # See https://dep-team.pages.debian.net/deps/dep3/ for fields.
-    header['Description'] = lines[0] + '\n' + '\n'.join(
-            [(' ' + line) if line else ' .' for line in lines[1:]])
-    header['Origin'] = 'other'
-    header['Last-Update'] = timestamp.strftime('%Y-%m-%d')
+    header["Description"] = (
+        lines[0]
+        + "\n"
+        + "\n".join([(" " + line) if line else " ." for line in lines[1:]])
+    )
+    header["Origin"] = "other"
+    header["Last-Update"] = timestamp.strftime("%Y-%m-%d")
     patches_directory = tree_patches_directory(local_tree, subpath)
     patchname = add_patch(
-        local_tree, os.path.join(subpath, patches_directory),
-        patch_name, diff.getvalue(), header)
+        local_tree,
+        os.path.join(subpath, patches_directory),
+        patch_name,
+        diff.getvalue(),
+        header,
+    )
     specific_files = [
         os.path.join(subpath, patches_directory),
-        os.path.join(subpath, patches_directory, 'series'),
-        os.path.join(subpath, patches_directory, patchname)]
+        os.path.join(subpath, patches_directory, "series"),
+        os.path.join(subpath, patches_directory, patchname),
+    ]
     local_tree.add(specific_files)
     return specific_files, patchname

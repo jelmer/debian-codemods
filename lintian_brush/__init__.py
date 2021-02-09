@@ -52,10 +52,10 @@ from debmutate.reformatting import FormattingUnpreservable
 
 
 __version__ = (0, 95)
-version_string = '.'.join(map(str, __version__))
-SUPPORTED_CERTAINTIES = ['certain', 'confident', 'likely', 'possible', None]
-DEFAULT_MINIMUM_CERTAINTY = 'certain'
-USER_AGENT = 'lintian-brush/' + version_string
+version_string = ".".join(map(str, __version__))
+SUPPORTED_CERTAINTIES = ["certain", "confident", "likely", "possible", None]
+DEFAULT_MINIMUM_CERTAINTY = "certain"
+USER_AGENT = "lintian-brush/" + version_string
 # Too aggressive?
 DEFAULT_URLLIB_TIMEOUT = 3
 
@@ -99,17 +99,20 @@ class FixerScriptFailed(FixerFailed):
         self.errors = errors
 
     def __str__(self):
-        return ("Script %s failed with exit code: %d\n%s\n" % (
-                self.path, self.returncode,
-                self.errors))
+        return "Script %s failed with exit code: %d\n%s\n" % (
+            self.path,
+            self.returncode,
+            self.errors,
+        )
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
         return (
-            self.path == other.path and
-            self.returncode == other.returncode and
-            self.errors == other.errors)
+            self.path == other.path
+            and self.returncode == other.returncode
+            and self.errors == other.errors
+        )
 
 
 class DescriptionMissing(Exception):
@@ -130,16 +133,21 @@ class NotDebianPackage(Exception):
 class PendingChanges(Exception):
     """The directory has pending changes."""
 
-    def __init__(self, tree, subpath=''):
+    def __init__(self, tree, subpath=""):
         super(PendingChanges, self).__init__(tree.abspath(subpath))
 
 
 class FixerResult(object):
     """Result of a fixer run."""
 
-    def __init__(self, description, fixed_lintian_tags=[],
-                 certainty=None, patch_name=None,
-                 revision_id=None):
+    def __init__(
+        self,
+        description,
+        fixed_lintian_tags=[],
+        certainty=None,
+        patch_name=None,
+        revision_id=None,
+    ):
         self.description = description
         self.fixed_lintian_tags = fixed_lintian_tags
         self.certainty = certainty
@@ -147,20 +155,28 @@ class FixerResult(object):
         self.revision_id = revision_id
 
     def __repr__(self):
-        return ("%s(%r, fixed_lintian_tags=%r, certainty=%r, patch_name=%r, "
-                "revision_id=%r)") % (
-                self.__class__.__name__,
-                self.description, self.fixed_lintian_tags, self.certainty,
-                self.patch_name, self.revision_id)
+        return (
+            "%s(%r, fixed_lintian_tags=%r, certainty=%r, patch_name=%r, "
+            "revision_id=%r)"
+        ) % (
+            self.__class__.__name__,
+            self.description,
+            self.fixed_lintian_tags,
+            self.certainty,
+            self.patch_name,
+            self.revision_id,
+        )
 
     def __eq__(self, other):
         if type(other) != type(self):
             return False
-        return ((self.description == other.description) and
-                (self.fixed_lintian_tags == other.fixed_lintian_tags) and
-                (self.certainty == other.certainty) and
-                (self.patch_name == other.patch_name) and
-                (self.revision_id == other.revision_id))
+        return (
+            (self.description == other.description)
+            and (self.fixed_lintian_tags == other.fixed_lintian_tags)
+            and (self.certainty == other.certainty)
+            and (self.patch_name == other.patch_name)
+            and (self.revision_id == other.revision_id)
+        )
 
 
 class Fixer(object):
@@ -174,10 +190,19 @@ class Fixer(object):
         self.name = name
         self.lintian_tags = lintian_tags or []
 
-    def run(self, basedir, package, current_version, compat_release,
-            minimum_certainty=None, trust_package=False,
-            allow_reformatting=False, net_access=True, opinionated=False,
-            diligence=0):
+    def run(
+        self,
+        basedir,
+        package,
+        current_version,
+        compat_release,
+        minimum_certainty=None,
+        trust_package=False,
+        allow_reformatting=False,
+        net_access=True,
+        opinionated=False,
+        diligence=0,
+    ):
         """Apply this fixer script.
 
         Args:
@@ -206,36 +231,44 @@ def parse_script_fixer_output(text):
     for line in text.splitlines():
         # TODO(jelmer): Do this in a slightly less hackish manner
         try:
-            (key, value) = line.split(':', 1)
+            (key, value) = line.split(":", 1)
         except ValueError:
             lines.append(line)
         else:
-            if key == 'Fixed-Lintian-Tags':
-                fixed_tags = [tag.strip() for tag in value.strip().split(',')]
-            elif key == 'Certainty':
+            if key == "Fixed-Lintian-Tags":
+                fixed_tags = [tag.strip() for tag in value.strip().split(",")]
+            elif key == "Certainty":
                 certainty = value.strip()
-            elif key == 'Patch-Name':
+            elif key == "Patch-Name":
                 patch_name = value.strip()
             else:
                 lines.append(line)
     if certainty not in SUPPORTED_CERTAINTIES:
         raise UnsupportedCertainty(certainty)
-    return FixerResult('\n'.join(lines), fixed_tags, certainty, patch_name)
+    return FixerResult("\n".join(lines), fixed_tags, certainty, patch_name)
 
 
-def determine_env(package, current_version, compat_release, minimum_certainty,
-                  trust_package, allow_reformatting, net_access, opinionated,
-                  diligence):
+def determine_env(
+    package,
+    current_version,
+    compat_release,
+    minimum_certainty,
+    trust_package,
+    allow_reformatting,
+    net_access,
+    opinionated,
+    diligence,
+):
     env = dict(os.environ.items())
-    env['PACKAGE'] = package
-    env['CURRENT_VERSION'] = str(current_version)
-    env['COMPAT_RELEASE'] = compat_release
-    env['MINIMUM_CERTAINTY'] = minimum_certainty
-    env['TRUST_PACKAGE'] = 'true' if trust_package else 'false'
-    env['REFORMATTING'] = ('allow' if allow_reformatting else 'disallow')
-    env['NET_ACCESS'] = ('allow' if net_access else 'disallow')
-    env['OPINIONATED'] = ('yes' if opinionated else 'no')
-    env['DILIGENCE'] = str(diligence)
+    env["PACKAGE"] = package
+    env["CURRENT_VERSION"] = str(current_version)
+    env["COMPAT_RELEASE"] = compat_release
+    env["MINIMUM_CERTAINTY"] = minimum_certainty
+    env["TRUST_PACKAGE"] = "true" if trust_package else "false"
+    env["REFORMATTING"] = "allow" if allow_reformatting else "disallow"
+    env["NET_ACCESS"] = "allow" if net_access else "disallow"
+    env["OPINIONATED"] = "yes" if opinionated else "no"
+    env["DILIGENCE"] = str(diligence)
     return env
 
 
@@ -254,10 +287,19 @@ class PythonScriptFixer(Fixer):
     def __repr__(self):
         return "<%s(%r)>" % (self.__class__.__name__, self.name)
 
-    def run(self, basedir, package, current_version, compat_release,
-            minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
-            trust_package=False, allow_reformatting=False,
-            net_access=True, opinionated=False, diligence=0):
+    def run(
+        self,
+        basedir,
+        package,
+        current_version,
+        compat_release,
+        minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
+        trust_package=False,
+        allow_reformatting=False,
+        net_access=True,
+        opinionated=False,
+        diligence=0,
+    ):
         env = determine_env(
             package=package,
             current_version=current_version,
@@ -267,7 +309,8 @@ class PythonScriptFixer(Fixer):
             allow_reformatting=allow_reformatting,
             net_access=net_access,
             opinionated=opinionated,
-            diligence=diligence)
+            diligence=diligence,
+        )
         try:
             old_env = os.environ
             old_stderr = sys.stderr
@@ -281,20 +324,17 @@ class PythonScriptFixer(Fixer):
                 global_vars = {
                     "__file__": self.script_path,
                     "__name__": "__main__",
-                    }
-                with open(self.script_path, 'r') as f:
-                    code = compile(f.read(), self.script_path, 'exec')
+                }
+                with open(self.script_path, "r") as f:
+                    code = compile(f.read(), self.script_path, "exec")
                     exec(code, global_vars)
             except FormattingUnpreservable:
                 raise
             except SystemExit as e:
                 retcode = e.code
             except BaseException as e:
-                traceback.print_exception(
-                    type(e), e, e.__traceback__, file=sys.stderr)
-                raise FixerScriptFailed(
-                    self.script_path, 1,
-                    sys.stderr.getvalue())
+                traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
+                raise FixerScriptFailed(self.script_path, 1, sys.stderr.getvalue())
             else:
                 retcode = 0
             description = sys.stdout.getvalue()
@@ -305,6 +345,7 @@ class PythonScriptFixer(Fixer):
             sys.stdout = old_stdout
             os.chdir(old_cwd)
             from . import fixer
+
             fixer.reset()
 
         if retcode == 2:
@@ -325,17 +366,19 @@ class ScriptFixer(Fixer):
     def __repr__(self):
         return "<ScriptFixer(%r)>" % self.name
 
-    def run(self,
-            basedir: str,
-            package: str,
-            current_version: Version,
-            compat_release: str,
-            minimum_certainty: str = DEFAULT_MINIMUM_CERTAINTY,
-            trust_package: bool = False,
-            allow_reformatting: bool = False,
-            net_access: bool = True,
-            opinionated: bool = False,
-            diligence: int = 0):
+    def run(
+        self,
+        basedir: str,
+        package: str,
+        current_version: Version,
+        compat_release: str,
+        minimum_certainty: str = DEFAULT_MINIMUM_CERTAINTY,
+        trust_package: bool = False,
+        allow_reformatting: bool = False,
+        net_access: bool = True,
+        opinionated: bool = False,
+        diligence: int = 0,
+    ):
         env = determine_env(
             package=package,
             current_version=current_version,
@@ -345,12 +388,17 @@ class ScriptFixer(Fixer):
             allow_reformatting=allow_reformatting,
             net_access=net_access,
             opinionated=opinionated,
-            diligence=diligence)
+            diligence=diligence,
+        )
         with tempfile.SpooledTemporaryFile() as stderr:
             try:
-                p = subprocess.Popen(self.script_path, cwd=basedir,
-                                     stdout=subprocess.PIPE, stderr=stderr,
-                                     env=env)
+                p = subprocess.Popen(
+                    self.script_path,
+                    cwd=basedir,
+                    stdout=subprocess.PIPE,
+                    stderr=stderr,
+                    env=env,
+                )
             except OSError as e:
                 if e.errno == errno.ENOMEM:
                     raise MemoryError
@@ -361,28 +409,28 @@ class ScriptFixer(Fixer):
             if p.returncode != 0:
                 stderr.seek(0)
                 raise FixerScriptFailed(
-                        self.script_path, p.returncode,
-                        stderr.read().decode('utf-8', 'replace'))
-        return parse_script_fixer_output(description.decode('utf-8'))
+                    self.script_path,
+                    p.returncode,
+                    stderr.read().decode("utf-8", "replace"),
+                )
+        return parse_script_fixer_output(description.decode("utf-8"))
 
 
 def find_fixers_dir() -> str:
     """Find the local directory with lintian fixer scripts."""
-    local_dir = os.path.abspath(os.path.join(
-        os.path.dirname(__file__), '..', 'fixers'))
+    local_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "fixers"))
     if os.path.isdir(local_dir):
         return local_dir
     import pkg_resources
-    resource_dir = pkg_resources.resource_filename(
-        __name__, 'lintian-brush/fixers')
+
+    resource_dir = pkg_resources.resource_filename(__name__, "lintian-brush/fixers")
     if os.path.isdir(resource_dir):
         return resource_dir
     # Urgh.
-    return '/usr/share/lintian-brush/fixers'
+    return "/usr/share/lintian-brush/fixers"
 
 
-def read_desc_file(
-        path: str, force_subprocess: bool = False) -> Iterator[Fixer]:
+def read_desc_file(path: str, force_subprocess: bool = False) -> Iterator[Fixer]:
     """Read a description file.
 
     Args:
@@ -392,24 +440,23 @@ def read_desc_file(
       Fixer objects
     """
     dirname = os.path.dirname(path)
-    with open(path, 'r') as f:
+    with open(path, "r") as f:
         for paragraph in Deb822.iter_paragraphs(f):
-            name = os.path.splitext(paragraph['Fix-Script'])[0]
-            script_path = os.path.join(dirname, paragraph['Fix-Script'])
-            if 'Lintian-Tags' in paragraph:
-                tags = [tag.strip()
-                        for tag in paragraph['Lintian-Tags'].split(',')]
+            name = os.path.splitext(paragraph["Fix-Script"])[0]
+            script_path = os.path.join(dirname, paragraph["Fix-Script"])
+            if "Lintian-Tags" in paragraph:
+                tags = [tag.strip() for tag in paragraph["Lintian-Tags"].split(",")]
             else:
                 tags = []
-            if script_path.endswith('.py') and not force_subprocess:
+            if script_path.endswith(".py") and not force_subprocess:
                 yield PythonScriptFixer(name, tags, script_path)
             else:
                 yield ScriptFixer(name, tags, script_path)
 
 
-def select_fixers(fixers: List[Fixer],
-                  names: List[str],
-                  exclude: Optional[Iterable[str]] = None) -> List[Fixer]:
+def select_fixers(
+    fixers: List[Fixer], names: List[str], exclude: Optional[Iterable[str]] = None
+) -> List[Fixer]:
     """Select fixers by name, from a list.
 
     Args:
@@ -434,8 +481,8 @@ def select_fixers(fixers: List[Fixer],
 
 
 def available_lintian_fixers(
-        fixers_dir: Optional[str] = None,
-        force_subprocess: bool = False) -> Iterator[Fixer]:
+    fixers_dir: Optional[str] = None, force_subprocess: bool = False
+) -> Iterator[Fixer]:
     """Return a list of available lintian fixers.
 
     Args:
@@ -450,8 +497,8 @@ def available_lintian_fixers(
         if not n.endswith(".desc"):
             continue
         for fixer in read_desc_file(
-                os.path.join(fixers_dir, n),
-                force_subprocess=force_subprocess):
+            os.path.join(fixers_dir, n), force_subprocess=force_subprocess
+        ):
             yield fixer
 
 
@@ -466,22 +513,25 @@ def increment_version(v: Version) -> None:
     """
     if v.debian_revision is not None:
         v.debian_revision = re.sub(
-                '\\d+$', lambda x: str(int(x.group())+1), v.debian_revision)
+            "\\d+$", lambda x: str(int(x.group()) + 1), v.debian_revision
+        )
     else:
         v.upstream_version = re.sub(
-                '\\d+$', lambda x: str(int(x.group())+1), v.upstream_version)
+            "\\d+$", lambda x: str(int(x.group()) + 1), v.upstream_version
+        )
 
 
 def delete_items(deletables, dry_run: bool = False):
     """Delete files in the deletables iterable"""
+
     def onerror(function, path, excinfo):
-        """Show warning for errors seen by rmtree.
-        """
+        """Show warning for errors seen by rmtree."""
         # Handle only permission error while removing files.
         # Other errors are re-raised.
         if function is not os.remove or excinfo[1].errno != errno.EACCES:
             raise
-        warning('unable to remove %s', path)
+        warning("unable to remove %s", path)
+
     for path in deletables:
         if os.path.isdir(path):
             shutil.rmtree(path, onerror=onerror)
@@ -504,34 +554,33 @@ def get_committer(tree: WorkingTree) -> str:
       A committer string
     """
     # TODO(jelmer): Perhaps this logic should be in Breezy?
-    if getattr(tree.branch.repository, '_git', None):
+    if getattr(tree.branch.repository, "_git", None):
         cs = tree.branch.repository._git.get_config_stack()
         user = os.environ.get("GIT_COMMITTER_NAME")
         email = os.environ.get("GIT_COMMITTER_EMAIL")
         if user is None:
             try:
-                user = cs.get(("user", ), "name").decode('utf-8')
+                user = cs.get(("user",), "name").decode("utf-8")
             except KeyError:
                 user = None
         if email is None:
             try:
-                email = cs.get(("user", ), "email").decode('utf-8')
+                email = cs.get(("user",), "email").decode("utf-8")
             except KeyError:
                 email = None
         if user and email:
             return user + " <" + email + ">"
         from breezy.config import GlobalStack
-        return GlobalStack().get('email')
+
+        return GlobalStack().get("email")
     else:
         config = tree.branch.get_config_stack()
-        return config.get('email')
+        return config.get("email")
 
 
 def only_changes_last_changelog_block(
-        tree: WorkingTree,
-        basis_tree: Tree,
-        changelog_path: str,
-        changes) -> bool:
+    tree: WorkingTree, basis_tree: Tree, changelog_path: str, changes
+) -> bool:
     """Check whether the only change in a tree is to the last changelog entry.
 
     Args:
@@ -544,13 +593,14 @@ def only_changes_last_changelog_block(
     with tree.lock_read(), basis_tree.lock_read():
         changes_seen = False
         for change in changes:
-            if change.path[1] == '':
+            if change.path[1] == "":
                 continue
             if change.path[1] == changelog_path:
                 changes_seen = True
                 continue
-            if (not tree.has_versioned_directories() and
-                    is_inside(change.path[1], changelog_path)):
+            if not tree.has_versioned_directories() and is_inside(
+                change.path[1], changelog_path
+            ):
                 continue
             return False
         if not changes_seen:
@@ -570,8 +620,12 @@ def only_changes_last_changelog_block(
         return str(new_cl) == str(old_cl)
 
 
-def reset_tree(local_tree: WorkingTree, basis_tree: Optional[Tree] = None,
-               subpath: str = '', dirty_tracker=None) -> None:
+def reset_tree(
+    local_tree: WorkingTree,
+    basis_tree: Optional[Tree] = None,
+    subpath: str = "",
+    dirty_tracker=None,
+) -> None:
     """Reset a tree back to its basis tree.
 
     This will leave ignored and detritus files alone.
@@ -585,8 +639,7 @@ def reset_tree(local_tree: WorkingTree, basis_tree: Optional[Tree] = None,
         return
     if basis_tree is None:
         basis_tree = local_tree.branch.basis_tree()
-    revert(local_tree, basis_tree,
-           [subpath] if subpath not in ('.', '') else None)
+    revert(local_tree, basis_tree, [subpath] if subpath not in (".", "") else None)
     deletables: List[str] = []
     # TODO(jelmer): Use basis tree
     for p in local_tree.extras():
@@ -597,8 +650,9 @@ def reset_tree(local_tree: WorkingTree, basis_tree: Optional[Tree] = None,
     delete_items(deletables)
 
 
-def certainty_sufficient(actual_certainty: str,
-                         minimum_certainty: Optional[str]) -> bool:
+def certainty_sufficient(
+    actual_certainty: str, minimum_certainty: Optional[str]
+) -> bool:
     """Check if the actual certainty is sufficient.
 
     Args:
@@ -619,7 +673,8 @@ def certainty_sufficient(actual_certainty: str,
 
 
 def check_clean_tree(
-        local_tree: WorkingTree, basis_tree: Tree, subpath: str = '') -> None:
+    local_tree: WorkingTree, basis_tree: Tree, subpath: str = ""
+) -> None:
     """Check that a tree is clean and has no pending changes or unknown files.
 
     Args:
@@ -631,9 +686,12 @@ def check_clean_tree(
     """
     # Just check there are no changes to begin with
     changes = local_tree.iter_changes(
-        basis_tree, include_unchanged=False,
-        require_versioned=False, want_unversioned=True,
-        specific_files=[subpath])
+        basis_tree,
+        include_unchanged=False,
+        require_versioned=False,
+        want_unversioned=True,
+        specific_files=[subpath],
+    )
 
     def relevant(p, t):
         if not p:
@@ -642,21 +700,22 @@ def check_clean_tree(
             return False
         if t.is_ignored(p):
             return False
-        if not t.has_versioned_directories() and t.kind(p) == 'directory':
+        if not t.has_versioned_directories() and t.kind(p) == "directory":
             return False
         return True
 
-    if any(change for change in changes if
-           relevant(change.path[0], basis_tree) or
-           relevant(change.path[1], local_tree)):
+    if any(
+        change
+        for change in changes
+        if relevant(change.path[0], basis_tree) or relevant(change.path[1], local_tree)
+    ):
         raise PendingChanges(local_tree, subpath)
 
 
 def has_non_debian_changes(changes, subpath):
     for change in changes:
         for path in change.path:
-            if path and not is_inside(
-                    os.path.join(subpath, 'debian'), path):
+            if path and not is_inside(os.path.join(subpath, "debian"), path):
                 return True
     return False
 
@@ -668,32 +727,34 @@ def _note_changelog_policy(policy, msg):
     global _changelog_policy_noted
     if not _changelog_policy_noted:
         if policy:
-            extra = 'Specify --no-update-changelog to override.'
+            extra = "Specify --no-update-changelog to override."
         else:
-            extra = 'Specify --update-changelog to override.'
-        note('%s %s', msg, extra)
+            extra = "Specify --update-changelog to override."
+        note("%s %s", msg, extra)
     _changelog_policy_noted = True
 
 
 class FailedPatchManipulation(Exception):
-
     def __init__(self, tree, patches_directory, reason):
-        super(FailedPatchManipulation, self).__init__(
-            tree, patches_directory, reason)
+        super(FailedPatchManipulation, self).__init__(tree, patches_directory, reason)
 
 
 def _upstream_changes_to_patch(
-        local_tree: WorkingTree,
-        basis_tree: Tree,
-        dirty_tracker,
-        subpath: str, patch_name: str, patch_description: str,
-        timestamp: Optional[datetime] = None) -> Tuple[str, List[str]]:
+    local_tree: WorkingTree,
+    basis_tree: Tree,
+    dirty_tracker,
+    subpath: str,
+    patch_name: str,
+    patch_description: str,
+    timestamp: Optional[datetime] = None,
+) -> Tuple[str, List[str]]:
     from .patches import (
         move_upstream_changes_to_patch,
         read_quilt_patches,
         tree_patches_directory,
         PatchSyntax,
-        )
+    )
+
     # TODO(jelmer): Apply all patches before generating a diff.
 
     patches_directory = tree_patches_directory(local_tree, subpath)
@@ -701,43 +762,52 @@ def _upstream_changes_to_patch(
         quilt_patches = list(read_quilt_patches(local_tree, patches_directory))
     except PatchSyntax as e:
         raise FailedPatchManipulation(
-            local_tree, patches_directory,
-            "Unable to parse some patches: %s" % e)
+            local_tree, patches_directory, "Unable to parse some patches: %s" % e
+        )
     if len(quilt_patches) > 0:
         raise FailedPatchManipulation(
-            local_tree, patches_directory,
-            "Creating patch on top of existing upstream "
-            "patches not supported.")
+            local_tree,
+            patches_directory,
+            "Creating patch on top of existing upstream " "patches not supported.",
+        )
 
-    mutter('Moving upstream changes to patch %s', patch_name)
+    mutter("Moving upstream changes to patch %s", patch_name)
     try:
         specific_files, patch_name = move_upstream_changes_to_patch(
-            local_tree, basis_tree, subpath, patch_name, patch_description,
-            dirty_tracker, timestamp=timestamp)
+            local_tree,
+            basis_tree,
+            subpath,
+            patch_name,
+            patch_description,
+            dirty_tracker,
+            timestamp=timestamp,
+        )
     except FileExistsError as e:
         raise FailedPatchManipulation(
-            local_tree, patches_directory,
-            'patch path %s already exists\n' % e.args[0])
+            local_tree, patches_directory, "patch path %s already exists\n" % e.args[0]
+        )
 
     return patch_name, specific_files
 
 
-def run_lintian_fixer(local_tree: WorkingTree,
-                      fixer: Fixer,
-                      committer: Optional[str] = None,
-                      update_changelog: Optional[bool] = None,
-                      compat_release: Optional[str] = None,
-                      minimum_certainty: Optional[str] = None,
-                      trust_package: bool = False,
-                      allow_reformatting: bool = False,
-                      dirty_tracker=None,
-                      subpath: str = '',
-                      net_access: bool = True,
-                      opinionated: Optional[bool] = None,
-                      diligence: int = 0,
-                      timestamp: Optional[datetime] = None,
-                      basis_tree: Optional[Tree] = None,
-                      changes_by: str = "lintian-brush"):
+def run_lintian_fixer(
+    local_tree: WorkingTree,
+    fixer: Fixer,
+    committer: Optional[str] = None,
+    update_changelog: Optional[bool] = None,
+    compat_release: Optional[str] = None,
+    minimum_certainty: Optional[str] = None,
+    trust_package: bool = False,
+    allow_reformatting: bool = False,
+    dirty_tracker=None,
+    subpath: str = "",
+    net_access: bool = True,
+    opinionated: Optional[bool] = None,
+    diligence: int = 0,
+    timestamp: Optional[datetime] = None,
+    basis_tree: Optional[Tree] = None,
+    changes_by: str = "lintian-brush",
+):
     """Run a lintian fixer on a tree.
 
     Args:
@@ -764,10 +834,10 @@ def run_lintian_fixer(local_tree: WorkingTree,
     if basis_tree is None:
         basis_tree = local_tree.basis_tree()
 
-    if subpath == '.':
-        changelog_path = 'debian/changelog'
+    if subpath == ".":
+        changelog_path = "debian/changelog"
     else:
-        changelog_path = os.path.join(subpath, 'debian/changelog')
+        changelog_path = os.path.join(subpath, "debian/changelog")
 
     try:
         with local_tree.get_file(changelog_path) as f:
@@ -775,13 +845,13 @@ def run_lintian_fixer(local_tree: WorkingTree,
     except NoSuchFile:
         raise NotDebianPackage(local_tree, subpath)
     package = cl.package
-    if cl.distributions == 'UNRELEASED':
+    if cl.distributions == "UNRELEASED":
         current_version = cl.version
     else:
         current_version = cl.version
         increment_version(current_version)
     if compat_release is None:
-        compat_release = 'sid'
+        compat_release = "sid"
     if minimum_certainty is None:
         minimum_certainty = DEFAULT_MINIMUM_CERTAINTY
     try:
@@ -795,15 +865,13 @@ def run_lintian_fixer(local_tree: WorkingTree,
             allow_reformatting=allow_reformatting,
             net_access=net_access,
             opinionated=opinionated,
-            diligence=diligence)
+            diligence=diligence,
+        )
     except BaseException:
-        reset_tree(local_tree, basis_tree, subpath,
-                   dirty_tracker=dirty_tracker)
+        reset_tree(local_tree, basis_tree, subpath, dirty_tracker=dirty_tracker)
         raise
     if not certainty_sufficient(result.certainty, minimum_certainty):
-        reset_tree(
-            local_tree, basis_tree, subpath,
-            dirty_tracker=dirty_tracker)
+        reset_tree(local_tree, basis_tree, subpath, dirty_tracker=dirty_tracker)
         raise NotCertainEnough(fixer, result.certainty, minimum_certainty)
     specific_files: Optional[List[str]]
     if dirty_tracker:
@@ -811,12 +879,13 @@ def run_lintian_fixer(local_tree: WorkingTree,
         # Sort paths so that directories get added before the files they
         # contain (on VCSes where it matters)
         local_tree.add(
-            [p for p in sorted(relpaths)
-             if local_tree.has_filename(p) and not
-                local_tree.is_ignored(p)])
-        specific_files = [
-            p for p in relpaths
-            if local_tree.is_versioned(p)]
+            [
+                p
+                for p in sorted(relpaths)
+                if local_tree.has_filename(p) and not local_tree.is_ignored(p)
+            ]
+        )
+        specific_files = [p for p in relpaths if local_tree.is_versioned(p)]
         if not specific_files:
             raise NoChanges(fixer, "Script didn't make any changes")
     else:
@@ -824,12 +893,16 @@ def run_lintian_fixer(local_tree: WorkingTree,
         specific_files = [subpath] if subpath else None
 
     if local_tree.supports_setting_file_ids():
-        RenameMap.guess_renames(
-            basis_tree, local_tree, dry_run=False)
+        RenameMap.guess_renames(basis_tree, local_tree, dry_run=False)
 
-    changes = list(local_tree.iter_changes(
-        basis_tree, specific_files=specific_files,
-        want_unversioned=False, require_versioned=True))
+    changes = list(
+        local_tree.iter_changes(
+            basis_tree,
+            specific_files=specific_files,
+            want_unversioned=False,
+            require_versioned=True,
+        )
+    )
 
     if len(local_tree.get_parent_ids()) <= 1 and not changes:
         raise NoChanges(fixer, "Script didn't make any changes")
@@ -843,22 +916,26 @@ def run_lintian_fixer(local_tree: WorkingTree,
 
     # If there are upstream changes in a non-native package, perhaps
     # export them to debian/patches
-    if (has_non_debian_changes(changes, subpath) and
-            current_version.debian_revision):
+    if has_non_debian_changes(changes, subpath) and current_version.debian_revision:
         try:
             patch_name, specific_files = _upstream_changes_to_patch(
-                local_tree, basis_tree, dirty_tracker, subpath,
+                local_tree,
+                basis_tree,
+                dirty_tracker,
+                subpath,
                 result.patch_name or fixer.name,
-                result.description, timestamp=timestamp)
+                result.description,
+                timestamp=timestamp,
+            )
         except BaseException:
-            reset_tree(local_tree, basis_tree, subpath,
-                       dirty_tracker=dirty_tracker)
+            reset_tree(local_tree, basis_tree, subpath, dirty_tracker=dirty_tracker)
             raise
 
-        summary = 'Add patch %s: %s' % (patch_name, summary)
+        summary = "Add patch %s: %s" % (patch_name, summary)
 
     if update_changelog is None:
         from .detect_gbp_dch import guess_update_changelog
+
         dch_guess = guess_update_changelog(local_tree, subpath, cl)
         if dch_guess:
             update_changelog = dch_guess[0]
@@ -868,13 +945,15 @@ def run_lintian_fixer(local_tree: WorkingTree,
             update_changelog = True
 
     if update_changelog and only_changes_last_changelog_block(
-            local_tree, basis_tree, changelog_path, changes):
+        local_tree, basis_tree, changelog_path, changes
+    ):
         # If the script only changed the last entry in the changelog,
         # don't update the changelog
         update_changelog = False
 
     if update_changelog:
         from .changelog import add_changelog_entry
+
         add_changelog_entry(local_tree, changelog_path, [summary] + details)
         if specific_files:
             specific_files.append(changelog_path)
@@ -884,24 +963,24 @@ def run_lintian_fixer(local_tree: WorkingTree,
     description += "Changes-By: %s\n" % changes_by
     for tag in result.fixed_lintian_tags:
         description += "Fixes: lintian: %s\n" % tag
-        description += (
-            "See-also: https://lintian.debian.org/tags/%s.html\n" % tag)
+        description += "See-also: https://lintian.debian.org/tags/%s.html\n" % tag
 
     if committer is None:
         committer = get_committer(local_tree)
 
     revid = local_tree.commit(
-        description, allow_pointless=False,
+        description,
+        allow_pointless=False,
         reporter=NullCommitReporter(),
         committer=committer,
-        specific_files=specific_files)
+        specific_files=specific_files,
+    )
     result.revision_id = revid
     # TODO(jelmer): Support running sbuild & verify lintian warning is gone?
     return result, summary
 
 
 class ManyResult(object):
-
     def __init__(self):
         self.success = []
         self.failed_fixers = {}
@@ -910,8 +989,12 @@ class ManyResult(object):
     def minimum_success_certainty(self) -> str:
         """Return the minimum certainty of any successfully made change."""
         return min_certainty(
-            [r.certainty for r, unused_summary in self.success
-             if r.certainty is not None])
+            [
+                r.certainty
+                for r, unused_summary in self.success
+                if r.certainty is not None
+            ]
+        )
 
     def __tuple__(self):
         return (self.success, self.failed_fixers)
@@ -920,12 +1003,13 @@ class ManyResult(object):
         return iter(self.__tuple__())
 
 
-def get_dirty_tracker(local_tree: WorkingTree,
-                      subpath: str = '',
-                      use_inotify: bool = None):
+def get_dirty_tracker(
+    local_tree: WorkingTree, subpath: str = "", use_inotify: bool = None
+):
     """Create a dirty tracker object."""
     if use_inotify is True:
         from .dirty_tracker import DirtyTracker
+
         return DirtyTracker(local_tree, subpath)
     elif use_inotify is False:
         return None
@@ -938,20 +1022,22 @@ def get_dirty_tracker(local_tree: WorkingTree,
             return DirtyTracker(local_tree, subpath)
 
 
-def run_lintian_fixers(local_tree: WorkingTree,
-                       fixers: List[Fixer],
-                       update_changelog: bool = True,
-                       verbose: bool = False,
-                       committer: Optional[str] = None,
-                       compat_release: Optional[str] = None,
-                       minimum_certainty: Optional[str] = None,
-                       trust_package: bool = False,
-                       allow_reformatting: bool = False,
-                       use_inotify: Optional[bool] = None,
-                       subpath: str = '',
-                       net_access: bool = True,
-                       opinionated: Optional[bool] = None,
-                       diligence: int = 0):
+def run_lintian_fixers(
+    local_tree: WorkingTree,
+    fixers: List[Fixer],
+    update_changelog: bool = True,
+    verbose: bool = False,
+    committer: Optional[str] = None,
+    compat_release: Optional[str] = None,
+    minimum_certainty: Optional[str] = None,
+    trust_package: bool = False,
+    allow_reformatting: bool = False,
+    use_inotify: Optional[bool] = None,
+    subpath: str = "",
+    net_access: bool = True,
+    opinionated: Optional[bool] = None,
+    diligence: int = 0,
+):
     """Run a set of lintian fixers on a tree.
 
     Args:
@@ -983,84 +1069,102 @@ def run_lintian_fixers(local_tree: WorkingTree,
     check_clean_tree(local_tree, basis_tree, subpath)
     fixers = list(fixers)
     dirty_tracker = get_dirty_tracker(
-        local_tree, subpath=subpath, use_inotify=use_inotify)
+        local_tree, subpath=subpath, use_inotify=use_inotify
+    )
     ret = ManyResult()
     with ui.ui_factory.nested_progress_bar() as pb:
         for i, fixer in enumerate(fixers):
-            pb.update('Running fixer %r on %s' %
-                      (fixer, local_tree.abspath(subpath)),
-                      i, len(fixers))
+            pb.update(
+                "Running fixer %r on %s" % (fixer, local_tree.abspath(subpath)),
+                i,
+                len(fixers),
+            )
             start = time.time()
             if dirty_tracker:
                 dirty_tracker.mark_clean()
             try:
                 result, summary = run_lintian_fixer(
-                        local_tree, fixer,
-                        update_changelog=update_changelog,
-                        committer=committer, compat_release=compat_release,
-                        minimum_certainty=minimum_certainty,
-                        trust_package=trust_package,
-                        allow_reformatting=allow_reformatting,
-                        dirty_tracker=dirty_tracker,
-                        subpath=subpath, net_access=net_access,
-                        opinionated=opinionated,
-                        diligence=diligence,
-                        basis_tree=basis_tree)
+                    local_tree,
+                    fixer,
+                    update_changelog=update_changelog,
+                    committer=committer,
+                    compat_release=compat_release,
+                    minimum_certainty=minimum_certainty,
+                    trust_package=trust_package,
+                    allow_reformatting=allow_reformatting,
+                    dirty_tracker=dirty_tracker,
+                    subpath=subpath,
+                    net_access=net_access,
+                    opinionated=opinionated,
+                    diligence=diligence,
+                    basis_tree=basis_tree,
+                )
             except FormattingUnpreservable as e:
                 ret.formatting_unpreservable[fixer.name] = e.path
                 if verbose:
-                    note('Fixer %r was unable to preserve formatting of %s.',
-                         fixer.name, e.path)
+                    note(
+                        "Fixer %r was unable to preserve formatting of %s.",
+                        fixer.name,
+                        e.path,
+                    )
             except FixerFailed as e:
                 ret.failed_fixers[fixer.name] = e
                 if verbose:
-                    note('Fixer %r failed to run.', fixer.name)
+                    note("Fixer %r failed to run.", fixer.name)
                     sys.stderr.write(str(e))
             except MemoryError as e:
                 ret.failed_fixers[fixer.name] = e
                 if verbose:
-                    note('Run out of memory while running fixer %r.',
-                         fixer.name)
+                    note("Run out of memory while running fixer %r.", fixer.name)
             except NotCertainEnough as e:
                 if verbose:
-                    note('Fixer %r made changes but not high enough '
-                         'certainty (was %r, needed %r). (took: %.2fs)',
-                         fixer.name, e.certainty, e.minimum_certainty,
-                         time.time() - start)
+                    note(
+                        "Fixer %r made changes but not high enough "
+                        "certainty (was %r, needed %r). (took: %.2fs)",
+                        fixer.name,
+                        e.certainty,
+                        e.minimum_certainty,
+                        time.time() - start,
+                    )
             except FailedPatchManipulation as e:
                 if verbose:
-                    note('Unable to manipulate upstream patches: %s',
-                         e.args[2])
+                    note("Unable to manipulate upstream patches: %s", e.args[2])
                 ret.failed_fixers[fixer.name] = e
             except NoChanges:
                 if verbose:
-                    note('Fixer %r made no changes. (took: %.2fs)',
-                         fixer.name, time.time() - start)
+                    note(
+                        "Fixer %r made no changes. (took: %.2fs)",
+                        fixer.name,
+                        time.time() - start,
+                    )
             else:
                 if verbose:
-                    note('Fixer %r made changes. (took %.2fs)',
-                         fixer.name, time.time() - start)
+                    note(
+                        "Fixer %r made changes. (took %.2fs)",
+                        fixer.name,
+                        time.time() - start,
+                    )
                 ret.success.append((result, summary))
                 basis_tree = local_tree.basis_tree()
     return ret
 
 
 def certainty_to_confidence(certainty: Optional[str]) -> Optional[int]:
-    if certainty in ('unknown', None):
+    if certainty in ("unknown", None):
         return None
     return SUPPORTED_CERTAINTIES.index(certainty)
 
 
 def confidence_to_certainty(confidence: Optional[int]) -> str:
     if confidence is None:
-        return 'unknown'
+        return "unknown"
     try:
-        return SUPPORTED_CERTAINTIES[confidence] or 'unknown'
+        return SUPPORTED_CERTAINTIES[confidence] or "unknown"
     except IndexError:
         raise ValueError(confidence)
 
 
 def min_certainty(certainties: Sequence[str]) -> str:
     return confidence_to_certainty(
-        max([certainty_to_confidence(c)
-            for c in certainties] + [0]))
+        max([certainty_to_confidence(c) for c in certainties] + [0])
+    )

@@ -25,7 +25,6 @@ from typing import List
 
 
 class MultiYamlUpdater(object):
-
     def __init__(self, path: str, remove_empty: bool = False):
         self.yaml = YAML()
         self.path = path
@@ -52,17 +51,17 @@ class MultiYamlUpdater(object):
 
     def __enter__(self):
         try:
-            with open(self.path, 'r') as f:
+            with open(self.path, "r") as f:
                 inp = list(f)
         except FileNotFoundError:
             self._orig = {}
-            self._orig_text = ''
+            self._orig_text = ""
         else:
             for line in inp:
-                if line != '\n' and not line.startswith('#'):
+                if line != "\n" and not line.startswith("#"):
                     break
                 self._preamble.append(line)
-            self._orig_text = ''.join(inp)
+            self._orig_text = "".join(inp)
             self._orig = list(self.yaml.load_all(self._orig_text))
         self._code = self._orig.copy()
         return self
@@ -86,17 +85,16 @@ class MultiYamlUpdater(object):
                 if self._force_rewrite or self._code != self._orig:
                     if not os.path.exists(self._dirpath) and self._dirpath:
                         os.mkdir(self._dirpath)
-                    with open(self.path, 'w') as f:
+                    with open(self.path, "w") as f:
                         f.writelines(self._preamble)
                         self.yaml.dump_all(self._code, f)
         return False
 
 
 class YamlUpdater(object):
-
     def __init__(
-            self, path: str, remove_empty: bool = True,
-            allow_duplicate_keys: bool = False):
+        self, path: str, remove_empty: bool = True, allow_duplicate_keys: bool = False
+    ):
         self.yaml = YAML()
         self.yaml.allow_duplicate_keys = allow_duplicate_keys
         self.path = path
@@ -110,18 +108,18 @@ class YamlUpdater(object):
 
     def __enter__(self):
         try:
-            with open(self.path, 'r') as f:
+            with open(self.path, "r") as f:
                 inp = list(f)
         except FileNotFoundError:
             self._orig = {}
-            self._orig_text = ''
+            self._orig_text = ""
         else:
-            if '---\n' in inp:
+            if "---\n" in inp:
                 for i, line in enumerate(inp):
-                    if line == '---\n':
-                        self._directives = inp[:i+1]
+                    if line == "---\n":
+                        self._directives = inp[: i + 1]
                         break
-            self._orig_text = ''.join(inp)
+            self._orig_text = "".join(inp)
             self._orig = self.yaml.load(self._orig_text)
         self._code = self._orig.copy()
         return self
@@ -142,6 +140,7 @@ class YamlUpdater(object):
             f = StringIO()
             self.yaml.dump({k: v}, f)
             return len(f.getvalue().splitlines()) == 1
+
         # Check if there are only "simple" changes, i.e.
         # changes that update string fields
         for k, v in self._code.items():
@@ -150,21 +149,21 @@ class YamlUpdater(object):
         for k, v in self._orig.items():
             if k not in self._code and not is_one_line(k, v):
                 return False
-            if ':' in k:
+            if ":" in k:
                 return False
         return True
 
     def _update_lines(self, lines, f):
         for line in self._directives:
             f.write(line)
-        if ''.join(lines[len(self._directives):]).startswith('{'):
+        if "".join(lines[len(self._directives) :]).startswith("{"):
             _update_json_lines(
-                self._orig, self._code,
-                lines[len(self._directives):], f)
+                self._orig, self._code, lines[len(self._directives) :], f
+            )
         else:
             _update_yaml_lines(
-                self.yaml, self._orig, self._code,
-                lines[len(self._directives):], f)
+                self.yaml, self._orig, self._code, lines[len(self._directives) :], f
+            )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if not exc_type:
@@ -179,14 +178,14 @@ class YamlUpdater(object):
                         os.mkdir(self._dirpath)
                     if not self._force_rewrite and self._only_simple_changes():
                         try:
-                            with open(self.path, 'r') as f:
+                            with open(self.path, "r") as f:
                                 lines = list(f.readlines())
                         except FileNotFoundError:
-                            lines = ['---\n']
-                        with open(self.path, 'w') as f:
+                            lines = ["---\n"]
+                        with open(self.path, "w") as f:
                             self._update_lines(lines, f)
                     else:
-                        with open(self.path, 'w') as f:
+                        with open(self.path, "w") as f:
                             f.writelines(self._directives)
                             self.yaml.dump(self._code, f)
         return False
@@ -194,6 +193,7 @@ class YamlUpdater(object):
 
 def update_ordered_dict(code, changed, key=None):
     if key is None:
+
         def key(x):
             return x
 
@@ -220,11 +220,11 @@ def update_ordered_dict(code, changed, key=None):
 def _update_json_lines(orig, code, lines, f):
     indent = 0
     for c in lines[1][0:]:
-        if c != ' ':
+        if c != " ":
             break
         indent += 1
     json.dump(code, f, indent=indent)
-    f.write('\n')
+    f.write("\n")
 
 
 def _update_yaml_lines(yaml, orig, code, lines, f):
@@ -236,7 +236,7 @@ def _update_yaml_lines(yaml, orig, code, lines, f):
             key = os[o]
         except IndexError:
             key = None
-        if key and ':' in line and line.split(':', 1)[0].strip() == key:
+        if key and ":" in line and line.split(":", 1)[0].strip() == key:
             while cs and cs[0] not in os:
                 yaml.dump({cs[0]: code[cs[0]]}, f)
                 cs.pop(0)
@@ -252,8 +252,8 @@ def _update_yaml_lines(yaml, orig, code, lines, f):
             o += 1
         else:
             f.write(line)
-    if cs and not line.endswith('\n'):
-        f.write('\n')
+    if cs and not line.endswith("\n"):
+        f.write("\n")
     while cs:
         key = cs.pop(0)
         yaml.dump({key: code[key]}, f)

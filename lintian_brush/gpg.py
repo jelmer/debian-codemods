@@ -19,10 +19,10 @@ import os
 import shlex
 import subprocess
 
-gpg = shlex.split(os.environ.get('GPG', 'gpg'))
+gpg = shlex.split(os.environ.get("GPG", "gpg"))
 
-KEY_BLOCK_START = b'-----BEGIN PGP PUBLIC KEY BLOCK-----'
-KEY_BLOCK_END = b'-----END PGP PUBLIC KEY BLOCK-----'
+KEY_BLOCK_START = b"-----BEGIN PGP PUBLIC KEY BLOCK-----"
+KEY_BLOCK_END = b"-----END PGP PUBLIC KEY BLOCK-----"
 
 
 class GpgMissing(Exception):
@@ -35,13 +35,20 @@ class GpgFailed(Exception):
 
 def gpg_import_export(import_options, export_options, stdin):
     argv = gpg + [
-            '--armor', '--quiet', '--no-default-keyring',
-            '--export-options', ','.join(export_options),
-            '--import-options', ','.join(['import-export'] + import_options),
-            '--output', '-', '--import', '-']
+        "--armor",
+        "--quiet",
+        "--no-default-keyring",
+        "--export-options",
+        ",".join(export_options),
+        "--import-options",
+        ",".join(["import-export"] + import_options),
+        "--output",
+        "-",
+        "--import",
+        "-",
+    ]
     try:
-        p = subprocess.Popen(
-            argv, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        p = subprocess.Popen(argv, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     except FileNotFoundError:
         # No gpg, no dice.
         raise GpgMissing()

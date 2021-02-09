@@ -26,16 +26,20 @@ _key_package_versions = None
 
 def load_key_package_versions():
     import json
-    path = os.path.abspath(os.path.join(
-        os.path.dirname(__file__), '..', 'key-package-versions.json'))
+
+    path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "key-package-versions.json")
+    )
     if not os.path.isfile(path):
         import pkg_resources
+
         path = pkg_resources.resource_filename(
-            __name__, 'lintian-brush/key-package-versions.json')
+            __name__, "lintian-brush/key-package-versions.json"
+        )
         if not os.path.isfile(path):
             # Urgh.
-            path = '/usr/share/lintian-brush/key-package-versions.json'
-    with open(path, 'rb') as f:
+            path = "/usr/share/lintian-brush/key-package-versions.json"
+    with open(path, "rb") as f:
         return json.load(f)
 
 

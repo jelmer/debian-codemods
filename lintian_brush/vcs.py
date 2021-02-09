@@ -18,10 +18,10 @@
 """Utility functions for dealing with Vcs URLs of various types."""
 
 __all__ = [
-    'fixup_broken_git_url',
-    'sanitize_url',
-    'determine_browser_url',
-    ]
+    "fixup_broken_git_url",
+    "sanitize_url",
+    "determine_browser_url",
+]
 
 
 import posixpath
@@ -40,7 +40,7 @@ from upstream_ontologist.vcs import (
     fixup_rcp_style_git_repo_url,
     fixup_broken_git_details,
     is_gitlab_site,
-    )
+)
 
 
 def find_public_vcs_url(url: str) -> Optional[str]:
@@ -59,94 +59,101 @@ def fixup_rcp_style_git_url(url: str) -> str:
 
 def determine_gitlab_browser_url(url: str) -> str:
     (url, branch, subpath) = split_vcs_url(url)
-    parsed_url = urlparse(url.rstrip('/'))
+    parsed_url = urlparse(url.rstrip("/"))
     # TODO(jelmer): Add support for branches
     path = parsed_url.path
-    if path.endswith('.git'):
-        path = path[:-len('.git')]
+    if path.endswith(".git"):
+        path = path[: -len(".git")]
     if subpath and not branch:
         branch = "HEAD"
     if branch:
-        path = path + '/tree/%s' % branch
+        path = path + "/tree/%s" % branch
     if subpath:
-        path = path + '/' + subpath
-    return 'https://%s%s' % (parsed_url.hostname, path)
+        path = path + "/" + subpath
+    return "https://%s%s" % (parsed_url.hostname, path)
 
 
 def determine_browser_url(vcs_type, vcs_url: str) -> Optional[str]:
     repo_url, branch, subpath = split_vcs_url(vcs_url)
-    parsed = urlparse(repo_url.rstrip('/'))
+    parsed = urlparse(repo_url.rstrip("/"))
     if is_gitlab_site(parsed.netloc):
         return determine_gitlab_browser_url(vcs_url)
-    if parsed.netloc == 'github.com':
+    if parsed.netloc == "github.com":
         path = parsed.path
-        if path.endswith('.git'):
+        if path.endswith(".git"):
             path = path[:-4]
         if subpath and not branch:
             branch = "HEAD"
         if branch:
-            path = posixpath.join(path, 'tree', branch)
+            path = posixpath.join(path, "tree", branch)
         if subpath:
             path = posixpath.join(path, subpath)
         return urlunparse(
-            ('https', parsed.netloc, path,
-             parsed.query, parsed.params, parsed.fragment))
-    if (parsed.netloc in ('code.launchpad.net', 'launchpad.net') and
-            not branch and not subpath):
+            ("https", parsed.netloc, path, parsed.query, parsed.params, parsed.fragment)
+        )
+    if (
+        parsed.netloc in ("code.launchpad.net", "launchpad.net")
+        and not branch
+        and not subpath
+    ):
         return urlunparse(
-            ('https', 'code.launchpad.net', parsed.path,
-             parsed.query, parsed.params, parsed.fragment))
-    if parsed.hostname in ('git.savannah.gnu.org', 'git.sv.gnu.org'):
-        path_elements = parsed.path.strip('/').split('/')
-        if parsed.scheme == 'https' and path_elements[0] == 'git':
+            (
+                "https",
+                "code.launchpad.net",
+                parsed.path,
+                parsed.query,
+                parsed.params,
+                parsed.fragment,
+            )
+        )
+    if parsed.hostname in ("git.savannah.gnu.org", "git.sv.gnu.org"):
+        path_elements = parsed.path.strip("/").split("/")
+        if parsed.scheme == "https" and path_elements[0] == "git":
             path_elements.pop(0)
         # Why cgit and not gitweb?
-        path_elements.insert(0, 'cgit')
+        path_elements.insert(0, "cgit")
         return urlunparse(
-            ('https', parsed.netloc, '/'.join(path_elements), None,
-             None, None))
-    if parsed.hostname in ('git.code.sf.net', 'git.code.sourceforge.net'):
-        path_elements = parsed.path.strip('/').split('/')
-        if path_elements[0] != 'p':
+            ("https", parsed.netloc, "/".join(path_elements), None, None, None)
+        )
+    if parsed.hostname in ("git.code.sf.net", "git.code.sourceforge.net"):
+        path_elements = parsed.path.strip("/").split("/")
+        if path_elements[0] != "p":
             return None
         project = path_elements[1]
         repository = path_elements[2]
-        path_elements = ['p', project, repository]
+        path_elements = ["p", project, repository]
         if branch is not None:
-            path_elements.extend(['ci', branch, 'tree'])
+            path_elements.extend(["ci", branch, "tree"])
         elif subpath is not None:
-            path_elements.extend(['ci', 'HEAD', 'tree'])
+            path_elements.extend(["ci", "HEAD", "tree"])
         if subpath is not None:
             path_elements.append(subpath)
         return urlunparse(
-            ('https', 'sourceforge.net', '/'.join(path_elements), None, None,
-             None))
+            ("https", "sourceforge.net", "/".join(path_elements), None, None, None)
+        )
     return None
 
 
 def canonicalize_vcs_browser_url(url: str) -> str:
     url = url.replace(
-        "https://svn.debian.org/wsvn/",
-        "https://anonscm.debian.org/viewvc/")
+        "https://svn.debian.org/wsvn/", "https://anonscm.debian.org/viewvc/"
+    )
     url = url.replace(
-        "http://svn.debian.org/wsvn/",
-        "https://anonscm.debian.org/viewvc/")
+        "http://svn.debian.org/wsvn/", "https://anonscm.debian.org/viewvc/"
+    )
+    url = url.replace("https://git.debian.org/?p=", "https://anonscm.debian.org/git/")
+    url = url.replace("http://git.debian.org/?p=", "https://anonscm.debian.org/git/")
     url = url.replace(
-        "https://git.debian.org/?p=",
-        "https://anonscm.debian.org/git/")
+        "https://bzr.debian.org/loggerhead/", "https://anonscm.debian.org/loggerhead/"
+    )
     url = url.replace(
-        "http://git.debian.org/?p=",
-        "https://anonscm.debian.org/git/")
-    url = url.replace(
-        "https://bzr.debian.org/loggerhead/",
-        "https://anonscm.debian.org/loggerhead/")
-    url = url.replace(
-        "http://bzr.debian.org/loggerhead/",
-        "https://anonscm.debian.org/loggerhead/")
+        "http://bzr.debian.org/loggerhead/", "https://anonscm.debian.org/loggerhead/"
+    )
     url = re.sub(
         r"^https?://salsa.debian.org/([^/]+/[^/]+)\.git/?$",
         "https://salsa.debian.org/\\1",
-        url)
+        url,
+    )
     return url
 
 
@@ -157,8 +164,8 @@ def canonical_vcs_git_url(url: str) -> str:
 
 
 canonicalize_vcs_fns = {
-    'Browser': canonicalize_vcs_browser_url,
-    'Git': canonical_vcs_git_url,
+    "Browser": canonicalize_vcs_browser_url,
+    "Git": canonical_vcs_git_url,
 }
 
 
@@ -171,8 +178,7 @@ def canonicalize_vcs_url(vcs_type: str, url: str) -> str:
 
 def find_secure_vcs_url(url: str, net_access: bool = True) -> Optional[str]:
     (repo_url, branch, subpath) = split_vcs_url(url)
-    repo_url = find_secure_repo_url(
-        repo_url, branch=branch, net_access=net_access)
+    repo_url = find_secure_repo_url(repo_url, branch=branch, net_access=net_access)
     if repo_url is None:
         return None
 
@@ -186,9 +192,9 @@ def fixup_broken_git_url(url: str) -> str:
     """
     repo_url, branch, subpath = split_vcs_url(url)
     newrepo_url, newbranch, newsubpath = fixup_broken_git_details(
-        repo_url, branch, subpath)
-    if (newrepo_url != repo_url or newbranch != branch or
-            newsubpath != subpath):
+        repo_url, branch, subpath
+    )
+    if newrepo_url != repo_url or newbranch != branch or newsubpath != subpath:
         return unsplit_vcs_url(newrepo_url, newbranch, newsubpath)
     return url
 

@@ -22,13 +22,13 @@ from debmutate.control import parse_standards_version
 from typing import Tuple, Iterator
 
 
-RELEASE_DATES_PATH = '/usr/share/lintian/data/standards-version/release-dates'
+RELEASE_DATES_PATH = "/usr/share/lintian/data/standards-version/release-dates"
 
 
 def iter_standards_versions() -> Iterator[Tuple[Tuple[int, ...], int]]:
-    with open(RELEASE_DATES_PATH, 'r') as f:
+    with open(RELEASE_DATES_PATH, "r") as f:
         for line in f:
-            if line.startswith('#') or not line.strip():
+            if line.startswith("#") or not line.strip():
                 continue
             (version, ts) = line.split()
             yield parse_standards_version(version), int(ts)

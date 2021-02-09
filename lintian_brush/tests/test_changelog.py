@@ -21,24 +21,26 @@ from datetime import datetime
 
 from breezy.tests import (
     TestCaseWithTransport,
-    )
+)
 
 from debian.changelog import (
     ChangelogCreateError,
-    )
+)
 
 from lintian_brush.changelog import (
     add_changelog_entry,
-    )
+)
 
 
 class ChangelogAddEntryTests(TestCaseWithTransport):
-
     def test_edit_existing_new_author(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([
-            ('debian/', ),
-            ('debian/changelog', """\
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                (
+                    "debian/changelog",
+                    """\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
   * Initial change.
@@ -46,12 +48,16 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
     template.
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""")])
-        tree.add(['debian', 'debian/changelog'])
-        self.overrideEnv('DEBFULLNAME', 'Jane Example')
-        self.overrideEnv('DEBEMAIL', 'jane@example.com')
-        add_changelog_entry(tree, 'debian/changelog', ['Add a foo'])
-        self.assertFileEqual("""\
+""",
+                ),
+            ]
+        )
+        tree.add(["debian", "debian/changelog"])
+        self.overrideEnv("DEBFULLNAME", "Jane Example")
+        self.overrideEnv("DEBEMAIL", "jane@example.com")
+        add_changelog_entry(tree, "debian/changelog", ["Add a foo"])
+        self.assertFileEqual(
+            """\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
   [ Joe Example ]
@@ -63,13 +69,18 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
   * Add a foo
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""", 'debian/changelog')
+""",
+            "debian/changelog",
+        )
 
     def test_edit_existing_multi_new_author(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([
-            ('debian/', ),
-            ('debian/changelog', """\
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                (
+                    "debian/changelog",
+                    """\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
   [ Jane Example ]
@@ -80,12 +91,16 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
   * Another change
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""")])
-        tree.add(['debian', 'debian/changelog'])
-        self.overrideEnv('DEBFULLNAME', 'Jane Example')
-        self.overrideEnv('DEBEMAIL', 'jane@example.com')
-        add_changelog_entry(tree, 'debian/changelog', ['Add a foo'])
-        self.assertFileEqual("""\
+""",
+                ),
+            ]
+        )
+        tree.add(["debian", "debian/changelog"])
+        self.overrideEnv("DEBFULLNAME", "Jane Example")
+        self.overrideEnv("DEBEMAIL", "jane@example.com")
+        add_changelog_entry(tree, "debian/changelog", ["Add a foo"])
+        self.assertFileEqual(
+            """\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
   [ Jane Example ]
@@ -99,25 +114,34 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
   * Add a foo
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""", 'debian/changelog')
+""",
+            "debian/changelog",
+        )
 
     def test_edit_existing_existing_author(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([
-            ('debian/', ),
-            ('debian/changelog', """\
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                (
+                    "debian/changelog",
+                    """\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
   * Support updating templated debian/control files that use cdbs
     template.
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""")])
-        tree.add(['debian', 'debian/changelog'])
-        self.overrideEnv('DEBFULLNAME', 'Joe Example')
-        self.overrideEnv('DEBEMAIL', 'joe@example.com')
-        add_changelog_entry(tree, 'debian/changelog', ['Add a foo'])
-        self.assertFileEqual("""\
+""",
+                ),
+            ]
+        )
+        tree.add(["debian", "debian/changelog"])
+        self.overrideEnv("DEBFULLNAME", "Joe Example")
+        self.overrideEnv("DEBEMAIL", "joe@example.com")
+        add_changelog_entry(tree, "debian/changelog", ["Add a foo"])
+        self.assertFileEqual(
+            """\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
   * Support updating templated debian/control files that use cdbs
@@ -125,27 +149,40 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
   * Add a foo
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""", 'debian/changelog')
+""",
+            "debian/changelog",
+        )
 
     def test_add_new(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([
-            ('debian/', ),
-            ('debian/changelog', """\
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                (
+                    "debian/changelog",
+                    """\
 lintian-brush (0.35) unstable; urgency=medium
 
   * Support updating templated debian/control files that use cdbs
     template.
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""")])
-        tree.add(['debian', 'debian/changelog'])
-        self.overrideEnv('DEBFULLNAME', 'Jane Example')
-        self.overrideEnv('DEBEMAIL', 'jane@example.com')
-        self.overrideEnv('DEBCHANGE_VENDOR', 'debian')
-        add_changelog_entry(tree, 'debian/changelog', ['Add a foo'],
-                            timestamp=datetime(2020, 5, 24, 15, 27, 26))
-        self.assertFileEqual("""\
+""",
+                ),
+            ]
+        )
+        tree.add(["debian", "debian/changelog"])
+        self.overrideEnv("DEBFULLNAME", "Jane Example")
+        self.overrideEnv("DEBEMAIL", "jane@example.com")
+        self.overrideEnv("DEBCHANGE_VENDOR", "debian")
+        add_changelog_entry(
+            tree,
+            "debian/changelog",
+            ["Add a foo"],
+            timestamp=datetime(2020, 5, 24, 15, 27, 26),
+        )
+        self.assertFileEqual(
+            """\
 lintian-brush (0.36) UNRELEASED; urgency=medium
 
   * Add a foo
@@ -158,13 +195,18 @@ lintian-brush (0.35) unstable; urgency=medium
     template.
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""", 'debian/changelog')
+""",
+            "debian/changelog",
+        )
 
     def test_edit_broken_first_line(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([
-            ('debian/', ),
-            ('debian/changelog', """\
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                (
+                    "debian/changelog",
+                    """\
 THIS IS NOT A PARSEABLE LINE
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
@@ -172,12 +214,16 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
     template.
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""")])
-        tree.add(['debian', 'debian/changelog'])
-        self.overrideEnv('DEBFULLNAME', 'Jane Example')
-        self.overrideEnv('DEBEMAIL', 'jane@example.com')
-        add_changelog_entry(tree, 'debian/changelog', ['Add a foo', '+ Bar'])
-        self.assertFileEqual("""\
+""",
+                ),
+            ]
+        )
+        tree.add(["debian", "debian/changelog"])
+        self.overrideEnv("DEBFULLNAME", "Jane Example")
+        self.overrideEnv("DEBEMAIL", "jane@example.com")
+        add_changelog_entry(tree, "debian/changelog", ["Add a foo", "+ Bar"])
+        self.assertFileEqual(
+            """\
 THIS IS NOT A PARSEABLE LINE
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
@@ -190,28 +236,41 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
     + Bar
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""", 'debian/changelog')
+""",
+            "debian/changelog",
+        )
 
     def test_add_long_line(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([
-            ('debian/', ),
-            ('debian/changelog', """\
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                (
+                    "debian/changelog",
+                    """\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
   * Support updating templated debian/control files that use cdbs
     template.
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""")])
-        tree.add(['debian', 'debian/changelog'])
-        self.overrideEnv('DEBFULLNAME', 'Joe Example')
-        self.overrideEnv('DEBEMAIL', 'joe@example.com')
+""",
+                ),
+            ]
+        )
+        tree.add(["debian", "debian/changelog"])
+        self.overrideEnv("DEBFULLNAME", "Joe Example")
+        self.overrideEnv("DEBEMAIL", "joe@example.com")
         add_changelog_entry(
-            tree, 'debian/changelog', [
-                'This is adding a very long sentence that is longer than '
-                'would fit on a single line in a 80-character-wide line.'])
-        self.assertFileEqual("""\
+            tree,
+            "debian/changelog",
+            [
+                "This is adding a very long sentence that is longer than "
+                "would fit on a single line in a 80-character-wide line."
+            ],
+        )
+        self.assertFileEqual(
+            """\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
   * Support updating templated debian/control files that use cdbs
@@ -220,29 +279,42 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
     single line in a 80-character-wide line.
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""", 'debian/changelog')
+""",
+            "debian/changelog",
+        )
 
     def test_add_long_subline(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([
-            ('debian/', ),
-            ('debian/changelog', """\
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                (
+                    "debian/changelog",
+                    """\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
   * Support updating templated debian/control files that use cdbs
     template.
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""")])
-        tree.add(['debian', 'debian/changelog'])
-        self.overrideEnv('DEBFULLNAME', 'Joe Example')
-        self.overrideEnv('DEBEMAIL', 'joe@example.com')
+""",
+                ),
+            ]
+        )
+        tree.add(["debian", "debian/changelog"])
+        self.overrideEnv("DEBFULLNAME", "Joe Example")
+        self.overrideEnv("DEBEMAIL", "joe@example.com")
         add_changelog_entry(
-            tree, 'debian/changelog', [
-                'This is the main item.',
-                '+ This is adding a very long sentence that is longer than '
-                'would fit on a single line in a 80-character-wide line.'])
-        self.assertFileEqual("""\
+            tree,
+            "debian/changelog",
+            [
+                "This is the main item.",
+                "+ This is adding a very long sentence that is longer than "
+                "would fit on a single line in a 80-character-wide line.",
+            ],
+        )
+        self.assertFileEqual(
+            """\
 lintian-brush (0.35) UNRELEASED; urgency=medium
 
   * Support updating templated debian/control files that use cdbs
@@ -252,43 +324,57 @@ lintian-brush (0.35) UNRELEASED; urgency=medium
       single line in a 80-character-wide line.
 
  -- Joe Example <joe@example.com>  Fri, 04 Oct 2019 02:36:13 +0000
-""", 'debian/changelog')
+""",
+            "debian/changelog",
+        )
 
     def test_trailer_only(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([
-            ('debian/', ),
-            ('debian/changelog', """\
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                (
+                    "debian/changelog",
+                    """\
 lintian-brush (0.35) unstable; urgency=medium
 
   * This line already existed.
 
  --
-""")])
-        tree.add(['debian', 'debian/changelog'])
-        self.overrideEnv('DEBFULLNAME', 'Joe Example')
-        self.overrideEnv('DEBEMAIL', 'joe@example.com')
+""",
+                ),
+            ]
+        )
+        tree.add(["debian", "debian/changelog"])
+        self.overrideEnv("DEBFULLNAME", "Joe Example")
+        self.overrideEnv("DEBEMAIL", "joe@example.com")
         try:
-            add_changelog_entry(
-                tree, 'debian/changelog', ['And this one is new.'])
+            add_changelog_entry(tree, "debian/changelog", ["And this one is new."])
         except ChangelogCreateError:
             self.skipTest(
-                'python-debian does not allow serializing changelog '
-                'with empty trailer')
-        self.assertFileEqual("""\
+                "python-debian does not allow serializing changelog "
+                "with empty trailer"
+            )
+        self.assertFileEqual(
+            """\
 lintian-brush (0.35) unstable; urgency=medium
 
   * This line already existed.
   * And this one is new.
 
  --
-""", 'debian/changelog')
+""",
+            "debian/changelog",
+        )
 
     def test_trailer_only_existing_author(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([
-            ('debian/', ),
-            ('debian/changelog', """\
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                (
+                    "debian/changelog",
+                    """\
 lintian-brush (0.35) unstable; urgency=medium
 
   * This line already existed.
@@ -297,18 +383,22 @@ lintian-brush (0.35) unstable; urgency=medium
   * And this one has an existing author.
 
  --
-""")])
-        tree.add(['debian', 'debian/changelog'])
-        self.overrideEnv('DEBFULLNAME', 'Joe Example')
-        self.overrideEnv('DEBEMAIL', 'joe@example.com')
+""",
+                ),
+            ]
+        )
+        tree.add(["debian", "debian/changelog"])
+        self.overrideEnv("DEBFULLNAME", "Joe Example")
+        self.overrideEnv("DEBEMAIL", "joe@example.com")
         try:
-            add_changelog_entry(
-                tree, 'debian/changelog', ['And this one is new.'])
+            add_changelog_entry(tree, "debian/changelog", ["And this one is new."])
         except ChangelogCreateError:
             self.skipTest(
-                'python-debian does not allow serializing changelog '
-                'with empty trailer')
-        self.assertFileEqual("""\
+                "python-debian does not allow serializing changelog "
+                "with empty trailer"
+            )
+        self.assertFileEqual(
+            """\
 lintian-brush (0.35) unstable; urgency=medium
 
   * This line already existed.
@@ -320,4 +410,6 @@ lintian-brush (0.35) unstable; urgency=medium
   * And this one is new.
 
  --
-""", 'debian/changelog')
+""",
+            "debian/changelog",
+        )

@@ -26,17 +26,20 @@ from breezy.mutabletree import MutableTree
 from debmutate.changelog import (
     Changelog,
     changelog_add_entry as _changelog_add_entry,
-    )
+)
 
 
-DEFAULT_URGENCY = 'medium'
+DEFAULT_URGENCY = "medium"
 
 
 def add_changelog_entry(
-        tree: MutableTree, path: str, summary: List[str],
-        maintainer: Optional[Tuple[str, str]] = None,
-        timestamp: Optional[datetime] = None,
-        urgency: str = DEFAULT_URGENCY) -> None:
+    tree: MutableTree,
+    path: str,
+    summary: List[str],
+    maintainer: Optional[Tuple[str, str]] = None,
+    timestamp: Optional[datetime] = None,
+    urgency: str = DEFAULT_URGENCY,
+) -> None:
     """Add a changelog entry.
 
     Args:
@@ -49,22 +52,26 @@ def add_changelog_entry(
     # TODO(jelmer): This logic should ideally be in python-debian.
     with tree.get_file(path) as f:
         cl = Changelog()
-        cl.parse_changelog(
-            f, max_blocks=None, allow_empty_author=True, strict=False)
+        cl.parse_changelog(f, max_blocks=None, allow_empty_author=True, strict=False)
         _changelog_add_entry(
-            cl, summary=summary, maintainer=maintainer,
-            timestamp=timestamp, urgency=urgency)
+            cl,
+            summary=summary,
+            maintainer=maintainer,
+            timestamp=timestamp,
+            urgency=urgency,
+        )
     # Workaround until
     # https://salsa.debian.org/python-debian-team/python-debian/-/merge_requests/22
     # lands.
     pieces = []
     for line in cl.initial_blank_lines:
-        pieces.append(line.encode(cl._encoding) + b'\n')
+        pieces.append(line.encode(cl._encoding) + b"\n")
     for block in cl._blocks:
         try:
             serialized = block._format(allow_missing_author=True).encode(
-                block._encoding)
+                block._encoding
+            )
         except TypeError:  # older python-debian
             serialized = bytes(block)
         pieces.append(serialized)
-    tree.put_file_bytes_non_atomic(path, b''.join(pieces))
+    tree.put_file_bytes_non_atomic(path, b"".join(pieces))

@@ -26,6 +26,7 @@ class DebBugs(object):
 
     async def connect(self):
         from .udd import connect_udd_mirror
+
         self._conn = await connect_udd_mirror()
 
     async def check_bug(self, package, bugid):
@@ -38,8 +39,11 @@ class DebBugs(object):
           Boolean
         """
         assert self._conn is not None, "call connect() first"
-        row = await self._conn.fetchrow("""
-select package from bugs where id = $1""", bugid)
+        row = await self._conn.fetchrow(
+            """
+select package from bugs where id = $1""",
+            bugid,
+        )
         if row is None:
             return False
         return row[0] == package

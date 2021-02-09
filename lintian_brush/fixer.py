@@ -25,12 +25,12 @@ from typing import Optional, Tuple, Union, List, Any
 from . import (
     DEFAULT_MINIMUM_CERTAINTY,
     certainty_sufficient,
-    )
+)
 from .lintian_overrides import (
     get_overrides,
     LintianOverride,
     load_renamed_tags,
-    )
+)
 
 
 from debian.changelog import Version
@@ -41,29 +41,32 @@ class LintianIssue(object):
     """Represents a lintian issue."""
 
     def __init__(
-            self,
-            target: Union[Deb822, Tuple[str, str]],
-            tag: str, info: Optional[Union[str, Tuple[str, ...]]] = None):
+        self,
+        target: Union[Deb822, Tuple[str, str]],
+        tag: str,
+        info: Optional[Union[str, Tuple[str, ...]]] = None,
+    ):
         if isinstance(target, Deb822):
-            if 'Source' in target:
-                target = ('source', target['Source'])
-            elif 'Package' in target:
-                target = ('binary', target['Package'])
+            if "Source" in target:
+                target = ("source", target["Source"])
+            elif "Package" in target:
+                target = ("binary", target["Package"])
             else:
                 raise ValueError(
-                    'unable to determine source/binary package from target')
-        elif target == 'source':
-            target = ('source', None)
+                    "unable to determine source/binary package from target"
+                )
+        elif target == "source":
+            target = ("source", None)
         if isinstance(info, tuple):
-            info = ' '.join(info)
+            info = " ".join(info)
         self.target = target
         self.info = info
         self.tag = tag
 
     def override_exists(self):
         return _override_exists(
-            tag=self.tag, info=self.info, type=self.target[0],
-            package=self.target[1])
+            tag=self.tag, info=self.info, type=self.target[0], package=self.target[1]
+        )
 
     def should_fix(self):
         return not self.override_exists()
@@ -73,7 +76,11 @@ class LintianIssue(object):
 
     def __repr__(self):
         return "%s(target=%r, tag=%r, info=%r)" % (
-            type(self).__name__, self.target, self.tag, self.info)
+            type(self).__name__,
+            self.target,
+            self.tag,
+            self.info,
+        )
 
 
 _fixed_lintian_tags: List[Any] = []
@@ -82,10 +89,12 @@ _tag_renames = None
 
 
 def _override_exists(
-        tag: str, info: Optional[str] = None,
-        package: Optional[str] = None,
-        type: Optional[str] = None,
-        arch: Optional[str] = None) -> bool:
+    tag: str,
+    info: Optional[str] = None,
+    package: Optional[str] = None,
+    type: Optional[str] = None,
+    arch: Optional[str] = None,
+) -> bool:
     global _present_overrides, _tag_renames
     if _present_overrides is None:
         _present_overrides = list(get_overrides())
@@ -96,22 +105,22 @@ def _override_exists(
     for override in _present_overrides:
         if _tag_renames.get(override.tag) == tag:
             tag = override.tag
-        if override.matches(package=package, info=info, tag=tag, arch=arch,
-                            type=type):
+        if override.matches(package=package, info=info, tag=tag, arch=arch, type=type):
             return True
     return False
 
 
 def fixed_lintian_tag(
-        target: Union[Deb822, Tuple[str, str]],
-        tag: str, info: Optional[Union[str, Tuple[str, ...]]] = None):
+    target: Union[Deb822, Tuple[str, str]],
+    tag: str,
+    info: Optional[Union[str, Tuple[str, ...]]] = None,
+):
     """Register a lintian tag as being fixed."""
     LintianIssue(target, tag, info).report_fixed()
 
 
 def fixed_lintian_tags():
-    return set([
-        tag for (target, tag, info) in _fixed_lintian_tags])
+    return set([tag for (target, tag, info) in _fixed_lintian_tags])
 
 
 def reset() -> None:
@@ -133,57 +142,56 @@ def report_result(description=None, certainty=None, patch_name=None):
     if description:
         print(description)
     if certainty:
-        print('Certainty: %s' % certainty)
-    fixed_lintian_tags = set(
-        [tag for (target, tag, info) in _fixed_lintian_tags])
+        print("Certainty: %s" % certainty)
+    fixed_lintian_tags = set([tag for (target, tag, info) in _fixed_lintian_tags])
     if fixed_lintian_tags:
-        print('Fixed-Lintian-Tags: %s' % ', '.join(sorted(fixed_lintian_tags)))
+        print("Fixed-Lintian-Tags: %s" % ", ".join(sorted(fixed_lintian_tags)))
     if patch_name:
-        print('Patch-Name: %s' % patch_name)
+        print("Patch-Name: %s" % patch_name)
     reset()
 
 
 def net_access_allowed():
     """Check whether network access is allowed."""
-    return os.environ.get('NET_ACCESS', 'disallow') == 'allow'
+    return os.environ.get("NET_ACCESS", "disallow") == "allow"
 
 
 def compat_release():
-    return os.environ.get('COMPAT_RELEASE', 'sid')
+    return os.environ.get("COMPAT_RELEASE", "sid")
 
 
 def current_package_version():
-    return Version(os.environ['CURRENT_VERSION'])
+    return Version(os.environ["CURRENT_VERSION"])
 
 
 def package_is_native():
-    return (not current_package_version().debian_revision)
+    return not current_package_version().debian_revision
 
 
 def meets_minimum_certainty(certainty):
     return certainty_sufficient(
-        certainty,
-        os.environ.get('MINIMUM_CERTAINTY', DEFAULT_MINIMUM_CERTAINTY))
+        certainty, os.environ.get("MINIMUM_CERTAINTY", DEFAULT_MINIMUM_CERTAINTY)
+    )
 
 
 def trust_package():
-    return os.environ.get('TRUST_PACKAGE') == 'true'
+    return os.environ.get("TRUST_PACKAGE") == "true"
 
 
 def opinionated():
-    return os.environ.get('OPINIONATED', 'no') == 'yes'
+    return os.environ.get("OPINIONATED", "no") == "yes"
 
 
 def warn(msg):
-    sys.stderr.write('%s\n' % msg)
+    sys.stderr.write("%s\n" % msg)
 
 
 def diligence():
-    return int(os.environ.get('DILIGENCE', '0'))
+    return int(os.environ.get("DILIGENCE", "0"))
 
 
 def source_package_name():
-    return os.environ.get('PACKAGE')
+    return os.environ.get("PACKAGE")
 
 
 control = ControlEditor()

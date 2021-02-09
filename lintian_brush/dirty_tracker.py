@@ -30,14 +30,14 @@ from pyinotify import (
     ProcessEvent,
     Notifier,
     Event,
-    )
+)
 from typing import Set
 from breezy.workingtree import WorkingTree
 
 
 MASK = (
-    IN_CLOSE_WRITE | IN_DELETE | IN_Q_OVERFLOW | IN_MOVED_TO | IN_MOVED_FROM |
-    IN_ATTRIB)
+    IN_CLOSE_WRITE | IN_DELETE | IN_Q_OVERFLOW | IN_MOVED_TO | IN_MOVED_FROM | IN_ATTRIB
+)
 
 
 class _Process(ProcessEvent):  # type: ignore
@@ -60,8 +60,7 @@ class _Process(ProcessEvent):  # type: ignore
 
 
 class DirtyTracker(object):
-
-    def __init__(self, tree: WorkingTree, subpath: str = '.') -> None:
+    def __init__(self, tree: WorkingTree, subpath: str = ".") -> None:
         self._tree = tree
         self._wm = WatchManager()
         self._process = _Process()
@@ -70,9 +69,14 @@ class DirtyTracker(object):
 
         def check_excluded(p: str) -> bool:
             return tree.is_control_filename(tree.relpath(p))  # type: ignore
+
         self._wdd = self._wm.add_watch(
-            tree.abspath(subpath), MASK, rec=True, auto_add=True,
-            exclude_filter=check_excluded)
+            tree.abspath(subpath),
+            MASK,
+            rec=True,
+            auto_add=True,
+            exclude_filter=check_excluded,
+        )
 
     def _process_pending(self) -> None:
         if self._notifier.check_events(timeout=0):

@@ -21,7 +21,7 @@ import os
 
 from breezy.tests import (
     TestCaseWithTransport,
-    )
+)
 
 from lintian_brush.lintian_overrides import (
     LintianOverride,
@@ -29,49 +29,46 @@ from lintian_brush.lintian_overrides import (
     override_exists,
     update_overrides_file,
     get_overrides,
-    )
+)
 
 
 class OverridesPathTests(TestCaseWithTransport):
-
     def test_no_overrides_paths(self):
         self.assertEqual([], list(overrides_paths()))
 
     def test_overrides_paths(self):
         self.build_tree(
-            ['debian/', 'debian/source/', 'debian/source/lintian-overrides'])
-        self.assertEqual(
-            ['debian/source/lintian-overrides'],
-            list(overrides_paths()))
+            ["debian/", "debian/source/", "debian/source/lintian-overrides"]
+        )
+        self.assertEqual(["debian/source/lintian-overrides"], list(overrides_paths()))
 
 
 class UpdateOverridesFileTests(TestCaseWithTransport):
-
     def test_no_changes(self):
         CONTENT = """\
 # An architecture wildcard would look like:
 foo [any-i386] binary: another-tag optional-extra
 """
-        self.build_tree_contents([('overrides', CONTENT)])
+        self.build_tree_contents([("overrides", CONTENT)])
 
         def cb(lineno, override):
             return override
 
-        self.assertFalse(update_overrides_file(cb=cb, path='overrides'))
-        self.assertFileEqual(CONTENT, 'overrides')
+        self.assertFalse(update_overrides_file(cb=cb, path="overrides"))
+        self.assertFileEqual(CONTENT, "overrides")
 
     def test_delete_last(self):
         CONTENT = """\
 # An architecture wildcard would look like:
 foo [any-i386] binary: another-tag optional-extra
 """
-        self.build_tree_contents([('overrides', CONTENT)])
+        self.build_tree_contents([("overrides", CONTENT)])
 
         def cb(lineno, override):
             return None
 
-        self.assertTrue(update_overrides_file(cb=cb, path='overrides'))
-        self.assertFalse(os.path.exists('overrides'))
+        self.assertTrue(update_overrides_file(cb=cb, path="overrides"))
+        self.assertFalse(os.path.exists("overrides"))
 
     def test_delete(self):
         CONTENT = """\
@@ -79,48 +76,74 @@ foo [any-i386] binary: another-tag optional-extra
 foo [any-i386] binary: another-tag optional-extra
 bar binary: onetag
 """
-        self.build_tree_contents([('overrides', CONTENT)])
+        self.build_tree_contents([("overrides", CONTENT)])
 
         def cb(lineno, override):
-            return override if override.tag != 'another-tag' else None
+            return override if override.tag != "another-tag" else None
 
-        self.assertTrue(update_overrides_file(cb=cb, path='overrides'))
-        self.assertFileEqual('bar binary: onetag\n', 'overrides')
+        self.assertTrue(update_overrides_file(cb=cb, path="overrides"))
+        self.assertFileEqual("bar binary: onetag\n", "overrides")
 
     def test_change_set_archlist(self):
-        self.build_tree_contents([('overrides', """\
+        self.build_tree_contents(
+            [
+                (
+                    "overrides",
+                    """\
 # An architecture wildcard would look like:
 foo binary: another-tag optional-extra
-""")])
+""",
+                )
+            ]
+        )
 
         def cb(lineno, override):
             return LintianOverride(
-                tag=override.tag, package=override.package,
-                type=override.type, info=override.info,
-                archlist=['any-i386'])
+                tag=override.tag,
+                package=override.package,
+                type=override.type,
+                info=override.info,
+                archlist=["any-i386"],
+            )
 
-        self.assertTrue(update_overrides_file(cb=cb, path='overrides'))
-        self.assertFileEqual("""\
+        self.assertTrue(update_overrides_file(cb=cb, path="overrides"))
+        self.assertFileEqual(
+            """\
 # An architecture wildcard would look like:
 foo [any-i386] binary: another-tag optional-extra
-""", 'overrides')
+""",
+            "overrides",
+        )
 
 
 class OverrideExistsTests(TestCaseWithTransport):
-
     def test_override_exists(self):
-        self.build_tree_contents([
-            ('debian/', ),
-            ('debian/source/', ),
-            ('debian/source/lintian-overrides', """\
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                ("debian/source/",),
+                (
+                    "debian/source/lintian-overrides",
+                    """\
 blah source: patch-file-exists-but info
-""")])
-        self.assertEqual([
-            LintianOverride(
-                package='blah', archlist=None, type='source',
-                tag='patch-file-exists-but', info='info')],
-            list(get_overrides()))
-        self.assertTrue(override_exists('patch-file-exists-but', info='info'))
-        self.assertFalse(override_exists('patch-file-exists-but', info='no'))
-        self.assertTrue(override_exists(
-            tag='patch-file-exists-but', info='info', package='blah'))
+""",
+                ),
+            ]
+        )
+        self.assertEqual(
+            [
+                LintianOverride(
+                    package="blah",
+                    archlist=None,
+                    type="source",
+                    tag="patch-file-exists-but",
+                    info="info",
+                )
+            ],
+            list(get_overrides()),
+        )
+        self.assertTrue(override_exists("patch-file-exists-but", info="info"))
+        self.assertFalse(override_exists("patch-file-exists-but", info="no"))
+        self.assertTrue(
+            override_exists(tag="patch-file-exists-but", info="info", package="blah")
+        )

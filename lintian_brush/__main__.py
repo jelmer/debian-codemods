@@ -31,7 +31,8 @@ import breezy  # noqa: E402
 from breezy.errors import (  # noqa: E402
     DependencyNotPresent,
     NotBranchError,
-    )
+)
+
 breezy.initialize()
 import breezy.git  # noqa: E402
 import breezy.bzr  # noqa: E402
@@ -49,98 +50,139 @@ from . import (  # noqa: E402
     version_string,
     SUPPORTED_CERTAINTIES,
     DEFAULT_MINIMUM_CERTAINTY,
-    )
-from .config import Config   # noqa: E402
+)
+from .config import Config  # noqa: E402
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(prog='lintian-brush')
+    parser = argparse.ArgumentParser(prog="lintian-brush")
 
-    fixer_group = parser.add_argument_group('fixer selection')
+    fixer_group = parser.add_argument_group("fixer selection")
     fixer_group.add_argument(
-        'fixers', metavar='FIXER', nargs='*',
-        help='specific fixer to run')
+        "fixers", metavar="FIXER", nargs="*", help="specific fixer to run"
+    )
     fixer_group.add_argument(
-        '--fixers-dir', type=str, help='path to fixer scripts. [%(default)s]',
-        default=find_fixers_dir())
+        "--fixers-dir",
+        type=str,
+        help="path to fixer scripts. [%(default)s]",
+        default=find_fixers_dir(),
+    )
     fixer_group.add_argument(
-        '--exclude', metavar='EXCLUDE', type=str, action='append',
-        help='Exclude a fixer.')
+        "--exclude",
+        metavar="EXCLUDE",
+        type=str,
+        action="append",
+        help="Exclude a fixer.",
+    )
     fixer_group.add_argument(
-        '--modern', help=(
-            'Use features/compatibility levels that are not available in '
-            'stable. (makes backporting harder)'),
-        action='store_true', default=False)
-    fixer_group.add_argument(
-        '--compat-release', type=str, help=argparse.SUPPRESS)
+        "--modern",
+        help=(
+            "Use features/compatibility levels that are not available in "
+            "stable. (makes backporting harder)"
+        ),
+        action="store_true",
+        default=False,
+    )
+    fixer_group.add_argument("--compat-release", type=str, help=argparse.SUPPRESS)
     # Hide the minimum-certainty option for the moment.
     fixer_group.add_argument(
-        '--minimum-certainty',
+        "--minimum-certainty",
         type=str,
         choices=SUPPORTED_CERTAINTIES,
         default=None,
-        help=argparse.SUPPRESS)
+        help=argparse.SUPPRESS,
+    )
     fixer_group.add_argument(
-        '--opinionated', action='store_true',
-        help=argparse.SUPPRESS)
+        "--opinionated", action="store_true", help=argparse.SUPPRESS
+    )
     fixer_group.add_argument(
-        '--diligent', action='count', default=0, dest='diligence',
-        help=argparse.SUPPRESS)
+        "--diligent",
+        action="count",
+        default=0,
+        dest="diligence",
+        help=argparse.SUPPRESS,
+    )
     fixer_group.add_argument(
-        '--uncertain', action='store_true',
-        help='Include changes with lower certainty.')
+        "--uncertain", action="store_true", help="Include changes with lower certainty."
+    )
     fixer_group.add_argument(
-        '--force-subprocess', action='store_true', default=False,
-        help=argparse.SUPPRESS)
+        "--force-subprocess", action="store_true", default=False, help=argparse.SUPPRESS
+    )
 
-    package_group = parser.add_argument_group('package preferences')
+    package_group = parser.add_argument_group("package preferences")
     package_group.add_argument(
-        '--allow-reformatting', default=None, action='store_true',
-        help=argparse.SUPPRESS)
+        "--allow-reformatting",
+        default=None,
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     package_group.add_argument(
-        '--no-update-changelog', action="store_false", default=None,
-        dest="update_changelog", help="do not update the changelog")
+        "--no-update-changelog",
+        action="store_false",
+        default=None,
+        dest="update_changelog",
+        help="do not update the changelog",
+    )
     package_group.add_argument(
-        '--update-changelog', action="store_true", dest="update_changelog",
-        help="force updating of the changelog", default=None)
-    package_group.add_argument(
-        '--trust',
-        action='store_true',
-        help=argparse.SUPPRESS)
+        "--update-changelog",
+        action="store_true",
+        dest="update_changelog",
+        help="force updating of the changelog",
+        default=None,
+    )
+    package_group.add_argument("--trust", action="store_true", help=argparse.SUPPRESS)
 
-    output_group = parser.add_argument_group('output')
+    output_group = parser.add_argument_group("output")
     output_group.add_argument(
-        '--verbose', help='be verbose', action='store_true', default=False)
+        "--verbose", help="be verbose", action="store_true", default=False
+    )
     output_group.add_argument(
-        '--diff', help='Print resulting diff afterwards.', action='store_true')
+        "--diff", help="Print resulting diff afterwards.", action="store_true"
+    )
     output_group.add_argument(
-        '--version', action='version', version='%(prog)s ' + version_string)
+        "--version", action="version", version="%(prog)s " + version_string
+    )
     output_group.add_argument(
-        '--list-fixers', action="store_true", help="list available fixers")
+        "--list-fixers", action="store_true", help="list available fixers"
+    )
     output_group.add_argument(
-        '--list-tags', action="store_true",
-        help="list lintian tags for which fixers are available")
+        "--list-tags",
+        action="store_true",
+        help="list lintian tags for which fixers are available",
+    )
     output_group.add_argument(
-        '--dry-run', help=(
-            'Do not make any changes to the current repository. '
-            'Note: currently creates a temporary clone of the repository.'),
-        action='store_true')
+        "--dry-run",
+        help=(
+            "Do not make any changes to the current repository. "
+            "Note: currently creates a temporary clone of the repository."
+        ),
+        action="store_true",
+    )
     output_group.add_argument(
-        '--identity',
-        help='Print user identity that would be used when committing',
-        action='store_true', default=False)
+        "--identity",
+        help="Print user identity that would be used when committing",
+        action="store_true",
+        default=False,
+    )
 
     parser.add_argument(
-        '-d', '--directory', metavar='DIRECTORY', help='directory to run in',
-        type=str, default='.')
+        "-d",
+        "--directory",
+        metavar="DIRECTORY",
+        help="directory to run in",
+        type=str,
+        default=".",
+    )
     parser.add_argument(
-        '--disable-net-access',
-        help='Do not probe external services.',
-        action='store_true', default=False)
+        "--disable-net-access",
+        help="Do not probe external services.",
+        action="store_true",
+        default=False,
+    )
 
     parser.add_argument(
-        '--disable-inotify', action='store_true', default=False,
-        help=argparse.SUPPRESS)
+        "--disable-inotify", action="store_true", default=False, help=argparse.SUPPRESS
+    )
     args = parser.parse_args(argv)
 
     if args.list_fixers and args.list_tags:
@@ -148,7 +190,8 @@ def main(argv=None):
         return 1
 
     fixers = available_lintian_fixers(
-        args.fixers_dir, force_subprocess=args.force_subprocess)
+        args.fixers_dir, force_subprocess=args.force_subprocess
+    )
     if args.list_fixers:
         for script in sorted([fixer.name for fixer in fixers]):
             note(script)
@@ -166,34 +209,40 @@ def main(argv=None):
                 atexit.register(shutil.rmtree, td)
                 # TODO(jelmer): Make a slimmer copy
                 to_dir = branch.controldir.sprout(
-                    td, None, create_tree_if_local=True,
+                    td,
+                    None,
+                    create_tree_if_local=True,
                     source_branch=branch,
-                    stacked=branch._format.supports_stacking())
+                    stacked=branch._format.supports_stacking(),
+                )
                 wt = to_dir.open_workingtree()
             else:
                 wt, subpath = WorkingTree.open_containing(args.directory)
         except NotBranchError:
-            note('No version control directory found (e.g. a .git directory).')
+            note("No version control directory found (e.g. a .git directory).")
             return 1
         except DependencyNotPresent as e:
-            note('Unable to open tree at %s: missing package %s',
-                 args.directory, e.library)
+            note(
+                "Unable to open tree at %s: missing package %s",
+                args.directory,
+                e.library,
+            )
             return 1
         if args.identity:
-            print('Committer identity: %s' % get_committer(wt))
-            print('Changelog identity: %s <%s>' % get_maintainer())
+            print("Committer identity: %s" % get_committer(wt))
+            print("Changelog identity: %s <%s>" % get_maintainer())
             return 0
         since_revid = wt.last_revision()
         if args.fixers:
             try:
                 fixers = select_fixers(fixers, args.fixers, args.exclude)
             except KeyError as e:
-                show_error('Unknown fixer specified: %s', e.args[0])
+                show_error("Unknown fixer specified: %s", e.args[0])
                 return 1
         debian_info = distro_info.DebianDistroInfo()
         if args.modern:
             if args.compat_release:
-                show_error('--compat-release and --modern are incompatible.')
+                show_error("--compat-release and --modern are incompatible.")
                 return 1
             compat_release = debian_info.devel()
         else:
@@ -216,7 +265,7 @@ def main(argv=None):
                 update_changelog = cfg.update_changelog()
         if minimum_certainty is None:
             if args.uncertain:
-                minimum_certainty = 'possible'
+                minimum_certainty = "possible"
             else:
                 minimum_certainty = DEFAULT_MINIMUM_CERTAINTY
         if compat_release is None:
@@ -226,7 +275,8 @@ def main(argv=None):
         with wt.lock_write():
             try:
                 overall_result = run_lintian_fixers(
-                    wt, fixers,
+                    wt,
+                    fixers,
                     update_changelog=update_changelog,
                     compat_release=compat_release,
                     verbose=args.verbose,
@@ -237,7 +287,8 @@ def main(argv=None):
                     subpath=subpath,
                     net_access=not args.disable_net_access,
                     opinionated=args.opinionated,
-                    diligence=args.diligence)
+                    diligence=args.diligence,
+                )
             except NotDebianPackage:
                 note("%s: Not a debian package.", wt.basedir)
                 return 1
@@ -245,6 +296,7 @@ def main(argv=None):
                 note("%s: Please commit pending changes first.", wt.basedir)
                 if args.verbose:
                     from breezy.status import show_tree_status
+
                     show_tree_status(wt)
                 return 1
         if overall_result.success:
@@ -254,29 +306,38 @@ def main(argv=None):
             if all_tags:
                 note("Lintian tags fixed: %r" % all_tags)
             else:
-                note("Some changes were made, "
-                     "but there are no affected lintian tags.")
+                note(
+                    "Some changes were made, " "but there are no affected lintian tags."
+                )
             min_certainty = overall_result.minimum_success_certainty()
-            if min_certainty != 'certain':
-                note('Some changes were made with lower certainty (%s); '
-                     'please double check the changes.', min_certainty)
+            if min_certainty != "certain":
+                note(
+                    "Some changes were made with lower certainty (%s); "
+                    "please double check the changes.",
+                    min_certainty,
+                )
         else:
             note("No changes made.")
         if overall_result.failed_fixers and not args.verbose:
-            note("Some fixer scripts failed to run: %r. "
-                 "Run with --verbose for details.",
-                 set(overall_result.failed_fixers.keys()))
+            note(
+                "Some fixer scripts failed to run: %r. "
+                "Run with --verbose for details.",
+                set(overall_result.failed_fixers.keys()),
+            )
         if overall_result.formatting_unpreservable and not args.verbose:
-            note('Some fixer scripts were unable to preserve formatting: %r. '
-                 'Run with --allow-reformatting to reformat %r.',
-                 set(overall_result.formatting_unpreservable),
-                 set(overall_result.formatting_unpreservable.values()))
+            note(
+                "Some fixer scripts were unable to preserve formatting: %r. "
+                "Run with --allow-reformatting to reformat %r.",
+                set(overall_result.formatting_unpreservable),
+                set(overall_result.formatting_unpreservable.values()),
+            )
         if args.diff:
             from breezy.diff import show_diff_trees
+
             show_diff_trees(
-                wt.branch.repository.revision_tree(since_revid),
-                wt, sys.stdout.buffer)
+                wt.branch.repository.revision_tree(since_revid), wt, sys.stdout.buffer
+            )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

@@ -20,23 +20,22 @@
 import json
 import os
 
-COMMON_LICENSES_DIR = '/usr/share/common-licenses'
+COMMON_LICENSES_DIR = "/usr/share/common-licenses"
 
 FULL_LICENSE_NAME = {
-    'Apache-2.0': 'Apache License, Version 2.0',
-    'CC0-1.0': 'CC0 1.0 Universal license',
+    "Apache-2.0": "Apache License, Version 2.0",
+    "CC0-1.0": "CC0 1.0 Universal license",
 }
 
 
 def load_spdx_data():
-    path = os.path.abspath(os.path.join(
-        os.path.dirname(__file__), '..', 'spdx.json'))
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "spdx.json"))
     if not os.path.isfile(path):
         import pkg_resources
-        path = pkg_resources.resource_filename(
-            __name__, 'lintian-brush/spdx.json')
+
+        path = pkg_resources.resource_filename(__name__, "lintian-brush/spdx.json")
         if not os.path.isfile(path):
             # Urgh.
-            path = '/usr/share/lintian-brush/spdx.json'
-    with open(path, 'rb') as f:
+            path = "/usr/share/lintian-brush/spdx.json"
+    with open(path, "rb") as f:
         return json.load(f)

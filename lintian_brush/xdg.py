@@ -26,20 +26,18 @@ from debmutate.reformatting import edit_formatted_file
 
 
 class DesktopEntryEditor(object):
-
     def __init__(self, path, allow_reformatting=False):
         self.path = path
         if allow_reformatting is None:
-            allow_reformatting = (
-                os.environ.get('REFORMATTING', 'disallow') == 'allow')
+            allow_reformatting = os.environ.get("REFORMATTING", "disallow") == "allow"
         self.allow_reformatting = allow_reformatting
 
     def __enter__(self):
-        with open(self.path, 'r') as f:
+        with open(self.path, "r") as f:
             self._orig_content = f.read()
 
         self._entry = INIConfig(StringIO(self._orig_content))
-        self.entry = self._entry['Desktop Entry']
+        self.entry = self._entry["Desktop Entry"]
         self._rewritten_content = self.dump()
         return self
 
@@ -57,7 +55,7 @@ class DesktopEntryEditor(object):
 
     def __setitem__(self, key, value):
         if key not in self.entry._options:
-            lc = LineContainer(OptionLine(key, value, separator='='))
+            lc = LineContainer(OptionLine(key, value, separator="="))
             self.entry._options[key] = lc
             self.entry._lines[-1].add(lc)
         else:
@@ -70,7 +68,10 @@ class DesktopEntryEditor(object):
         updated_content = self.dump()
 
         self.changed = edit_formatted_file(
-            self.path, self._orig_content, self._rewritten_content,
+            self.path,
+            self._orig_content,
+            self._rewritten_content,
             updated_content,
-            allow_reformatting=self.allow_reformatting)
+            allow_reformatting=self.allow_reformatting,
+        )
         return False

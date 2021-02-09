@@ -25,6 +25,7 @@ _udd = None
 
 async def connect_udd_mirror():
     import asyncpg
+
     global _udd
     if _udd:
         return _udd
@@ -35,5 +36,6 @@ async def connect_udd_mirror():
         password="udd-mirror",
         port=5432,
         host="udd-mirror.debian.net",
-        loop=loop)
+        loop=loop,
+    )
     return _udd

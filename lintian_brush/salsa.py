@@ -17,7 +17,7 @@
 
 """Utility functions for dealing with control files."""
 
-__all__ = ['guess_repository_url', 'determine_browser_url']
+__all__ = ["guess_repository_url", "determine_browser_url"]
 
 import re
 from typing import Optional
@@ -27,108 +27,107 @@ from .vcs import determine_gitlab_browser_url
 
 
 MAINTAINER_EMAIL_MAP = {
-    'pkg-javascript-devel@lists.alioth.debian.org': 'js-team',
-    'python-modules-team@lists.alioth.debian.org': 'python-team/modules',
-    'python-apps-team@lists.alioth.debian.org': 'python-team/applications',
-    'debian-science-maintainers@lists.alioth.debian.org': 'science-team',
-    'pkg-perl-maintainers@lists.alioth.debian.org':
-        'perl-team/modules/packages',
-    'pkg-java-maintainers@lists.alioth.debian.org': 'java-team',
-    'pkg-ruby-extras-maintainers@lists.alioth.debian.org': 'ruby-team',
-    'pkg-clamav-devel@lists.alioth.debian.org': 'clamav-team',
-    'pkg-go-maintainers@lists.alioth.debian.org': 'go-team/packages',
-    'pkg-games-devel@lists.alioth.debian.org': 'games-team',
-    'pkg-telepathy-maintainers@lists.alioth.debian.org': 'telepathy-team',
-    'debian-fonts@lists.debian.org': 'fonts-team',
-    'pkg-gnustep-maintainers@lists.alioth.debian.org': 'gnustep-team',
-    'pkg-gnome-maintainers@lists.alioth.debian.org': 'gnome-team',
-    'pkg-multimedia-maintainers@lists.alioth.debian.org': 'multimedia-team',
-    'debian-ocaml-maint@lists.debian.org': 'ocaml-team',
-    'pkg-php-pear@lists.alioth.debian.org': 'php-team/pear',
-    'pkg-mpd-maintainers@lists.alioth.debian.org': 'mpd-team',
-    'pkg-cli-apps-team@lists.alioth.debian.org': 'dotnet-team',
-    'pkg-mono-group@lists.alioth.debian.org': 'dotnet-team',
-    }
+    "pkg-javascript-devel@lists.alioth.debian.org": "js-team",
+    "python-modules-team@lists.alioth.debian.org": "python-team/modules",
+    "python-apps-team@lists.alioth.debian.org": "python-team/applications",
+    "debian-science-maintainers@lists.alioth.debian.org": "science-team",
+    "pkg-perl-maintainers@lists.alioth.debian.org": "perl-team/modules/packages",
+    "pkg-java-maintainers@lists.alioth.debian.org": "java-team",
+    "pkg-ruby-extras-maintainers@lists.alioth.debian.org": "ruby-team",
+    "pkg-clamav-devel@lists.alioth.debian.org": "clamav-team",
+    "pkg-go-maintainers@lists.alioth.debian.org": "go-team/packages",
+    "pkg-games-devel@lists.alioth.debian.org": "games-team",
+    "pkg-telepathy-maintainers@lists.alioth.debian.org": "telepathy-team",
+    "debian-fonts@lists.debian.org": "fonts-team",
+    "pkg-gnustep-maintainers@lists.alioth.debian.org": "gnustep-team",
+    "pkg-gnome-maintainers@lists.alioth.debian.org": "gnome-team",
+    "pkg-multimedia-maintainers@lists.alioth.debian.org": "multimedia-team",
+    "debian-ocaml-maint@lists.debian.org": "ocaml-team",
+    "pkg-php-pear@lists.alioth.debian.org": "php-team/pear",
+    "pkg-mpd-maintainers@lists.alioth.debian.org": "mpd-team",
+    "pkg-cli-apps-team@lists.alioth.debian.org": "dotnet-team",
+    "pkg-mono-group@lists.alioth.debian.org": "dotnet-team",
+}
 
 TEAM_NAME_MAP = {
-    'debian-xml-sgml': 'xml-sgml-team',
-    'pkg-go': 'go-team',
-    'pkg-fonts': 'fonts-team',
-    'pkg-javascript': 'js-team',
-    'pkg-java': 'java-team',
-    'pkg-mpd': 'mpd-team',
-    'pkg-electronics': 'electronics-team',
-    'pkg-xfce': 'xfce-team',
-    'pkg-lxc': 'lxc-team',
-    'debian-science': 'science-team',
-    'pkg-games': 'games-team',
-    'pkg-bluetooth': 'bluetooth-team',
-    'debichem': 'debichem-team',
-    'openstack': 'openstack-team',
-    'pkg-kde': 'qt-kde-team',
-    'debian-islamic': 'islamic-team',
-    'pkg-lua': 'lua-team',
-    'pkg-xorg': 'xorg-team',
-    'debian-astro': 'debian-astro-team',
-    'pkg-icecast': 'multimedia-team',
-    'glibc-bsd': 'bsd-team',
-    'pkg-nvidia': 'nvidia-team',
-    'pkg-llvm': 'llvm-team',
-    'pkg-nagios': 'nagios-team',
-    'pkg-sugar': 'pkg-sugar-team',
-    'pkg-phototools': 'debian-phototools-team',
-    'pkg-netmeasure': 'ineteng-team',
-    'pkg-hamradio': 'debian-hamradio-team',
-    'pkg-sass': 'sass-team',
-    'pkg-rpm': 'pkg-rpm-team',
-    'tts': 'tts-team',
-    'python-apps': 'python-team/applications',
-    'pkg-monitoring': 'monitoring-team',
-    'pkg-perl': 'perl-team/modules',
-    'debian-iot': 'debian-iot-team',
-    'pkg-bitcoin': 'cryptocoin-team',
-    'pkg-cyrus-imapd': 'debian',
-    'pkg-dns': 'dns-team',
-    'pkg-freeipa': 'freeipa-team',
-    'pkg-ocaml-team': 'ocaml-team',
-    'pkg-vdr-dvb': 'vdr-team',
-    'debian-in': 'debian-in-team',
-    'pkg-octave': 'pkg-octave-team',
-    'pkg-postgresql': 'postgresql',
-    'pkg-grass': 'debian-gis-team',
-    'pkg-evolution': 'gnome-team',
-    'pkg-gnome': 'gnome-team',
-    'pkg-exppsy': 'neurodebian-team',
-    'pkg-voip': 'pkg-voip-team',
-    'pkg-privacy': 'pkg-privacy-team',
-    'pkg-libvirt': 'libvirt-team',
-    'debian-ha': 'ha-team',
-    'debian-lego': 'debian-lego-team',
-    'calendarserver': 'calendarserver-team',
-    '3dprinter': '3dprinting-team',
-    'pkg-multimedia': 'multimedia-team',
-    'pkg-emacsen': 'emacsen-team',
-    'pkg-haskell': 'haskell-team',
-    'pkg-gnutls': 'gnutls-team',
-    'pkg-mysql': 'mariadb-team',
-    'pkg-php': 'php-team',
-    'pkg-qemu': 'qemu-team',
-    'pkg-xmpp': 'xmpp-team',
-    'uefi': 'efi-team',
-    'pkg-manpages-fr': 'l10n-fr-team',
-    'pkg-proftpd': 'debian-proftpd-team',
-    'pkg-apache': 'apache-team',
+    "debian-xml-sgml": "xml-sgml-team",
+    "pkg-go": "go-team",
+    "pkg-fonts": "fonts-team",
+    "pkg-javascript": "js-team",
+    "pkg-java": "java-team",
+    "pkg-mpd": "mpd-team",
+    "pkg-electronics": "electronics-team",
+    "pkg-xfce": "xfce-team",
+    "pkg-lxc": "lxc-team",
+    "debian-science": "science-team",
+    "pkg-games": "games-team",
+    "pkg-bluetooth": "bluetooth-team",
+    "debichem": "debichem-team",
+    "openstack": "openstack-team",
+    "pkg-kde": "qt-kde-team",
+    "debian-islamic": "islamic-team",
+    "pkg-lua": "lua-team",
+    "pkg-xorg": "xorg-team",
+    "debian-astro": "debian-astro-team",
+    "pkg-icecast": "multimedia-team",
+    "glibc-bsd": "bsd-team",
+    "pkg-nvidia": "nvidia-team",
+    "pkg-llvm": "llvm-team",
+    "pkg-nagios": "nagios-team",
+    "pkg-sugar": "pkg-sugar-team",
+    "pkg-phototools": "debian-phototools-team",
+    "pkg-netmeasure": "ineteng-team",
+    "pkg-hamradio": "debian-hamradio-team",
+    "pkg-sass": "sass-team",
+    "pkg-rpm": "pkg-rpm-team",
+    "tts": "tts-team",
+    "python-apps": "python-team/applications",
+    "pkg-monitoring": "monitoring-team",
+    "pkg-perl": "perl-team/modules",
+    "debian-iot": "debian-iot-team",
+    "pkg-bitcoin": "cryptocoin-team",
+    "pkg-cyrus-imapd": "debian",
+    "pkg-dns": "dns-team",
+    "pkg-freeipa": "freeipa-team",
+    "pkg-ocaml-team": "ocaml-team",
+    "pkg-vdr-dvb": "vdr-team",
+    "debian-in": "debian-in-team",
+    "pkg-octave": "pkg-octave-team",
+    "pkg-postgresql": "postgresql",
+    "pkg-grass": "debian-gis-team",
+    "pkg-evolution": "gnome-team",
+    "pkg-gnome": "gnome-team",
+    "pkg-exppsy": "neurodebian-team",
+    "pkg-voip": "pkg-voip-team",
+    "pkg-privacy": "pkg-privacy-team",
+    "pkg-libvirt": "libvirt-team",
+    "debian-ha": "ha-team",
+    "debian-lego": "debian-lego-team",
+    "calendarserver": "calendarserver-team",
+    "3dprinter": "3dprinting-team",
+    "pkg-multimedia": "multimedia-team",
+    "pkg-emacsen": "emacsen-team",
+    "pkg-haskell": "haskell-team",
+    "pkg-gnutls": "gnutls-team",
+    "pkg-mysql": "mariadb-team",
+    "pkg-php": "php-team",
+    "pkg-qemu": "qemu-team",
+    "pkg-xmpp": "xmpp-team",
+    "uefi": "efi-team",
+    "pkg-manpages-fr": "l10n-fr-team",
+    "pkg-proftpd": "debian-proftpd-team",
+    "pkg-apache": "apache-team",
 }
 
 GIT_PATH_RENAMES = {
-    'pkg-kde/applications': 'qt-kde-team/kde',
-    '3dprinter/packages': '3dprinting-team',
-    'pkg-emacsen/pkg': 'emacsen-team',
-    'debian-astro/packages': 'debian-astro-team',
-    'debian-islamic/packages': 'islamic-team',
-    'debichem/packages': 'debichem-team',
-    'pkg-privacy/packages': 'pkg-privacy-team',
-    'pkg-cli-libs/packages': 'dotnet-team',
+    "pkg-kde/applications": "qt-kde-team/kde",
+    "3dprinter/packages": "3dprinting-team",
+    "pkg-emacsen/pkg": "emacsen-team",
+    "debian-astro/packages": "debian-astro-team",
+    "debian-islamic/packages": "islamic-team",
+    "debichem/packages": "debichem-team",
+    "pkg-privacy/packages": "pkg-privacy-team",
+    "pkg-cli-libs/packages": "dotnet-team",
 }
 
 
@@ -141,15 +140,15 @@ def guess_repository_url(package: str, maintainer_email: str) -> Optional[str]:
     Returns:
       A guessed repository URL
     """
-    if maintainer_email.endswith('@debian.org'):
-        team_name = maintainer_email.split('@')[0]
+    if maintainer_email.endswith("@debian.org"):
+        team_name = maintainer_email.split("@")[0]
     else:
         try:
             team_name = MAINTAINER_EMAIL_MAP[maintainer_email]
         except KeyError:
             return None
 
-    return 'https://salsa.debian.org/%s/%s.git' % (team_name, package)
+    return "https://salsa.debian.org/%s/%s.git" % (team_name, package)
 
 
 def determine_browser_url(url: str) -> str:
@@ -164,88 +163,87 @@ def determine_browser_url(url: str) -> str:
 
 
 def _salsa_path_from_alioth_url(
-        vcs_type: Optional[str], alioth_url: str) -> Optional[str]:
+    vcs_type: Optional[str], alioth_url: str
+) -> Optional[str]:
     if vcs_type is None:
         return None
     # These two regular expressions come from vcswatch:
     # https://salsa.debian.org/qa/qa/blob/master/data/vcswatch/vcswatch#L165
-    if vcs_type.lower() == 'git':
-        pat = ("(https?|git)://(anonscm|git).debian.org/"
-               "(cgit/|git/)?collab-maint/")
+    if vcs_type.lower() == "git":
+        pat = "(https?|git)://(anonscm|git).debian.org/" "(cgit/|git/)?collab-maint/"
         if re.match(pat, alioth_url):
-            return re.sub(pat, 'debian/', alioth_url)
+            return re.sub(pat, "debian/", alioth_url)
         pat = "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?users/"
         if re.match(pat, alioth_url):
-            return re.sub(pat, '', alioth_url)
+            return re.sub(pat, "", alioth_url)
         m = re.match(
-            "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?(.+)",
-            alioth_url)
+            "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?(.+)", alioth_url
+        )
         if m:
-            parts = m.group(4).split('/')
+            parts = m.group(4).split("/")
             for i in range(len(parts), 0, -1):
-                subpath = '/'.join(parts[:i])
+                subpath = "/".join(parts[:i])
                 try:
-                    return (
-                        GIT_PATH_RENAMES[subpath] + '/' +
-                        '/'.join(parts[i:]))
+                    return GIT_PATH_RENAMES[subpath] + "/" + "/".join(parts[i:])
                 except KeyError:
                     pass
         m = re.match(
-            "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?([^/]+)/",
-            alioth_url)
-        if m and m.group(4) == 'debian-in' and 'fonts-' in alioth_url:
-            return re.sub(m.re, 'fonts-team/', alioth_url)
+            "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?([^/]+)/", alioth_url
+        )
+        if m and m.group(4) == "debian-in" and "fonts-" in alioth_url:
+            return re.sub(m.re, "fonts-team/", alioth_url)
         if m and m.group(4) in TEAM_NAME_MAP:
             new_name = TEAM_NAME_MAP[m.group(4)]
-            return re.sub(m.re, new_name + '/', alioth_url)
+            return re.sub(m.re, new_name + "/", alioth_url)
         m = re.match(
-            'https?://alioth.debian.org/anonscm/(git/|cgit/)?([^/]+)/',
-            alioth_url)
+            "https?://alioth.debian.org/anonscm/(git/|cgit/)?([^/]+)/", alioth_url
+        )
         if m and m.group(2) in TEAM_NAME_MAP:
             new_name = TEAM_NAME_MAP[m.group(2)]
-            return re.sub(m.re, new_name + '/', alioth_url)
+            return re.sub(m.re, new_name + "/", alioth_url)
 
-    if vcs_type.lower() == 'svn':
-        if alioth_url.startswith('svn://svn.debian.org/pkg-perl/trunk'):
+    if vcs_type.lower() == "svn":
+        if alioth_url.startswith("svn://svn.debian.org/pkg-perl/trunk"):
             return alioth_url.replace(
-                'svn://svn.debian.org/pkg-perl/trunk',
-                'perl-team/modules/packages')
-        if alioth_url.startswith('svn://svn.debian.org/pkg-lua/packages'):
+                "svn://svn.debian.org/pkg-perl/trunk", "perl-team/modules/packages"
+            )
+        if alioth_url.startswith("svn://svn.debian.org/pkg-lua/packages"):
             return alioth_url.replace(
-                'svn://svn.debian.org/pkg-lua/packages',
-                'lua-team')
+                "svn://svn.debian.org/pkg-lua/packages", "lua-team"
+            )
         parsed_url = urlparse(alioth_url)
-        if (parsed_url.scheme == 'svn' and
-                parsed_url.netloc in (
-                    ('svn.debian.org', 'anonscm.debian.org'))):
-            parts = parsed_url.path.strip('/').split('/')
-            if parts[0] == 'svn':
+        if parsed_url.scheme == "svn" and parsed_url.netloc in (
+            ("svn.debian.org", "anonscm.debian.org")
+        ):
+            parts = parsed_url.path.strip("/").split("/")
+            if parts[0] == "svn":
                 parts.pop(0)
-            if (len(parts) == 3 and
-                    parts[0] in TEAM_NAME_MAP and
-                    parts[2] == 'trunk'):
-                return '%s/%s' % (TEAM_NAME_MAP[parts[0]], parts[1])
-            if (len(parts) == 3 and
-                    parts[0] in TEAM_NAME_MAP and
-                    parts[1] == 'trunk'):
-                return '%s/%s' % (TEAM_NAME_MAP[parts[0]], parts[2])
-            if (len(parts) == 4 and
-                    parts[0] in TEAM_NAME_MAP and
-                    parts[1] == 'packages' and
-                    parts[3] == 'trunk'):
-                return '%s/%s' % (TEAM_NAME_MAP[parts[0]], parts[2])
-            if (len(parts) == 4 and
-                    parts[0] in TEAM_NAME_MAP and
-                    parts[1] == 'trunk' and parts[2] == 'packages'):
-                return '%s/%s' % (TEAM_NAME_MAP[parts[0]], parts[3])
-            if (len(parts) > 3 and
-                    parts[0] in TEAM_NAME_MAP and
-                    parts[-2] == 'trunk'):
-                return '%s/%s' % (TEAM_NAME_MAP[parts[0]], parts[-1])
-            if (len(parts) == 3 and
-                    parts[0] in TEAM_NAME_MAP and
-                    parts[1] in ('packages', 'unstable')):
-                return '%s/%s' % (TEAM_NAME_MAP[parts[0]], parts[2])
+            if len(parts) == 3 and parts[0] in TEAM_NAME_MAP and parts[2] == "trunk":
+                return "%s/%s" % (TEAM_NAME_MAP[parts[0]], parts[1])
+            if len(parts) == 3 and parts[0] in TEAM_NAME_MAP and parts[1] == "trunk":
+                return "%s/%s" % (TEAM_NAME_MAP[parts[0]], parts[2])
+            if (
+                len(parts) == 4
+                and parts[0] in TEAM_NAME_MAP
+                and parts[1] == "packages"
+                and parts[3] == "trunk"
+            ):
+                return "%s/%s" % (TEAM_NAME_MAP[parts[0]], parts[2])
+            if (
+                len(parts) == 4
+                and parts[0] in TEAM_NAME_MAP
+                and parts[1] == "trunk"
+                and parts[2] == "packages"
+            ):
+                return "%s/%s" % (TEAM_NAME_MAP[parts[0]], parts[3])
+            if len(parts) > 3 and parts[0] in TEAM_NAME_MAP and parts[-2] == "trunk":
+                return "%s/%s" % (TEAM_NAME_MAP[parts[0]], parts[-1])
+            if (
+                len(parts) == 3
+                and parts[0] in TEAM_NAME_MAP
+                and parts[1] in ("packages", "unstable")
+            ):
+                return "%s/%s" % (TEAM_NAME_MAP[parts[0]], parts[2])
     return None
 
 
@@ -261,7 +259,7 @@ def salsa_url_from_alioth_url(vcs_type: str, alioth_url: str) -> Optional[str]:
     path = _salsa_path_from_alioth_url(vcs_type, alioth_url)
     if path is None:
         return None
-    path = path.strip('/')
-    if not path.endswith('.git'):
-        path = path + '.git'
-    return 'https://salsa.debian.org/' + path
+    path = path.strip("/")
+    if not path.endswith(".git"):
+        path = path + ".git"
+    return "https://salsa.debian.org/" + path

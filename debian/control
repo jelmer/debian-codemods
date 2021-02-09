@@ -25,7 +25,8 @@ Build-Depends: bash-completion,
                po-debconf,
                gpg (>= 2.1),
                lintian (>= 2.104.0),
-               debhelper-compat (= 12)
+               debhelper-compat (= 12),
+               ognibuild
 Standards-Version: 4.5.1
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
@@ -42,6 +43,7 @@ Depends: devscripts,
          python3-iniparse,
          python3-ruamel.yaml,
          python3-upstream-ontologist,
+         ognibuild,
          ${misc:Depends},
          ${python3:Depends}
 Recommends: lintian, dos2unix, gpg (>= 2.1), python3-pyinotify, python3-asyncpg, libdebhelper-perl, python3-toml, python3-levenshtein, decopy, python3-bs4

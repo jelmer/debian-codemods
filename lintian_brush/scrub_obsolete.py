@@ -38,12 +38,12 @@ from debmutate.control import (
     parse_relations,
     format_relations,
     guess_template_type,
-    )
+)
 
 from debmutate.reformatting import (
     check_generated_file,
     GeneratedFile,
-    )
+)
 
 from .changelog import add_changelog_entry
 from . import get_committer
@@ -56,10 +56,10 @@ def _note_changelog_policy(policy, msg):
     global _changelog_policy_noted
     if not _changelog_policy_noted:
         if policy:
-            extra = 'Specify --no-update-changelog to override.'
+            extra = "Specify --no-update-changelog to override."
         else:
-            extra = 'Specify --update-changelog to override.'
-        note('%s %s', msg, extra)
+            extra = "Specify --update-changelog to override."
+        note("%s %s", msg, extra)
     _changelog_policy_noted = True
 
 
@@ -68,7 +68,7 @@ def drop_old_maintscript(editor, package_name, upgrade_release):
     for i, entry in enumerate(list(editor.lines)):
         if isinstance(entry, str):
             continue
-        prior_version = getattr(entry, 'prior_version', None)
+        prior_version = getattr(entry, "prior_version", None)
         if prior_version is None:
             continue
         package = entry.package or package_name
@@ -86,30 +86,33 @@ def drop_old_maintscript(editor, package_name, upgrade_release):
 
 def depends_obsolete(latest_version, kind, req_version):
     req_version = Version(req_version)
-    if kind == '>=':
+    if kind == ">=":
         return latest_version >= req_version
-    elif kind == '>>':
+    elif kind == ">>":
         return latest_version > req_version
-    elif kind == '=':
+    elif kind == "=":
         return False
     return False
 
 
 def conflict_obsolete(latest_version, kind, req_version):
     req_version = Version(req_version)
-    if kind == '<<':
+    if kind == "<<":
         return latest_version >= req_version
-    elif kind in ('<=', '='):
+    elif kind in ("<=", "="):
         return latest_version > req_version
     return False
 
 
 async def _package_version(source, release):
     from .udd import connect_udd_mirror
+
     conn = await connect_udd_mirror()
     version = await conn.fetchval(
         "select version from sources where source = $1 and release = $2",
-        source, release)
+        source,
+        release,
+    )
     if version is not None:
         return Version(version)
     return None
@@ -125,10 +128,11 @@ def drop_obsolete_depends(entry, upgrade_release):
     dropped = []
     for pkgrel in entry:
         if pkgrel.version is not None:
-            logging.debug('Relation: %s', pkgrel)
+            logging.debug("Relation: %s", pkgrel)
             compat_version = package_version(pkgrel.name, upgrade_release)
-            if (compat_version is not None and
-                    depends_obsolete(compat_version, *pkgrel.version)):
+            if compat_version is not None and depends_obsolete(
+                compat_version, *pkgrel.version
+            ):
                 pkgrel.version = None
                 dropped.append(pkgrel)
         ors.append(pkgrel)
@@ -141,8 +145,9 @@ def drop_obsolete_conflicts(entry, upgrade_release):
     for pkgrel in entry:
         if pkgrel.version is not None:
             compat_version = package_version(pkgrel.name, upgrade_release)
-            if (compat_version is not None and
-                    conflict_obsolete(compat_version, *pkgrel.version)):
+            if compat_version is not None and conflict_obsolete(
+                compat_version, *pkgrel.version
+            ):
                 dropped.append(pkgrel)
                 continue
         ors.append(pkgrel)
@@ -188,8 +193,7 @@ def update_conflicts(base, field, upgrade_release):
     changed = []
     newrelations = []
     for ws1, oldrelation, ws2 in parse_relations(old_contents):
-        relation, dropped = drop_obsolete_conflicts(
-            oldrelation, upgrade_release)
+        relation, dropped = drop_obsolete_conflicts(oldrelation, upgrade_release)
         changed.extend([d.name for d in dropped])
         newrelations.append((ws1, relation, ws2))
 
@@ -205,14 +209,14 @@ def update_conflicts(base, field, upgrade_release):
 def drop_old_source_relations(source, upgrade_release):
     ret = []
     for field in [
-            'Build-Depends', 'Build-Depends-Indep', 'Build-Depends-Arch',
-            ]:
+        "Build-Depends",
+        "Build-Depends-Indep",
+        "Build-Depends-Arch",
+    ]:
         packages = update_depends(source, field, upgrade_release)
         if packages:
             ret.append((field, packages))
-    for field in [
-            'Build-Conflicts', 'Build-Conflicts-Indep',
-            'Build-Conflicts-Arch']:
+    for field in ["Build-Conflicts", "Build-Conflicts-Indep", "Build-Conflicts-Arch"]:
         packages = update_conflicts(source, field, upgrade_release)
         if packages:
             ret.append((field, packages))
@@ -221,13 +225,12 @@ def drop_old_source_relations(source, upgrade_release):
 
 def drop_old_binary_relations(binary, upgrade_release):
     ret = []
-    for field in [
-            'Depends', 'Breaks', 'Suggests', 'Recommends', 'Pre-Depends']:
+    for field in ["Depends", "Breaks", "Suggests", "Recommends", "Pre-Depends"]:
         packages = update_depends(binary, field, upgrade_release)
         if packages:
             ret.append((field, packages))
 
-    for field in ['Conflicts', 'Replaces', 'Breaks']:
+    for field in ["Conflicts", "Replaces", "Breaks"]:
         packages = update_conflicts(binary, field, upgrade_release)
         if packages:
             ret.append((field, packages))
@@ -242,34 +245,33 @@ def drop_old_relations(editor, upgrade_release):
         check_generated_file(editor.path)
     except GeneratedFile as e:
         uses_cdbs = (
-            e.template_path is not None and
-            guess_template_type(e.template_path) == 'cdbs')
+            e.template_path is not None
+            and guess_template_type(e.template_path) == "cdbs"
+        )
     else:
         uses_cdbs = False
     if not uses_cdbs:
-        source_dropped.extend(
-                drop_old_source_relations(editor.source, upgrade_release))
+        source_dropped.extend(drop_old_source_relations(editor.source, upgrade_release))
     if source_dropped:
         dropped.append((None, source_dropped))
 
     for binary in editor.binaries:
         binary_dropped = drop_old_binary_relations(binary, upgrade_release)
         if binary_dropped:
-            dropped.append((binary['Package'], binary_dropped))
+            dropped.append((binary["Package"], binary_dropped))
 
     return dropped
 
 
 def update_maintscripts(wt, path, package, upgrade_release):
     ret = []
-    for entry in os.scandir(wt.abspath(os.path.join(path, 'debian'))):
-        if not (entry.name == 'maintscript' or
-                entry.name.endswith('.maintscript')):
+    for entry in os.scandir(wt.abspath(os.path.join(path, "debian"))):
+        if not (entry.name == "maintscript" or entry.name.endswith(".maintscript")):
             continue
         with MaintscriptEditor(entry.path) as editor:
             removed = drop_old_maintscript(editor, package, upgrade_release)
             if removed:
-                ret.append((os.path.join(path, 'debian', entry.name), removed))
+                ret.append((os.path.join(path, "debian", entry.name), removed))
     return ret
 
 
@@ -277,13 +279,11 @@ def name_list(packages):
     if len(packages) == 1:
         return packages[0]
     std = list(sorted(set(packages)))
-    return ', '.join(std[:-1]) + ' and ' + std[-1]
+    return ", ".join(std[:-1]) + " and " + std[-1]
 
 
 class ScrubObsoleteResult(object):
-
-    def __init__(self, specific_files, maintscript_removed,
-                 control_removed):
+    def __init__(self, specific_files, maintscript_removed, control_removed):
         self.specific_files = specific_files
         self.maintscript_removed = maintscript_removed
         self.control_removed = control_removed
@@ -297,34 +297,36 @@ class ScrubObsoleteResult(object):
             for field, packages in changes:
                 if para:
                     summary.append(
-                        '%s: Drop versioned constraint on %s in %s.' % (
-                         para, name_list(packages), field))
+                        "%s: Drop versioned constraint on %s in %s."
+                        % (para, name_list(packages), field)
+                    )
                 else:
                     summary.append(
-                        '%s: Drop versioned constraint on %s.' % (
-                         field, name_list(packages)))
+                        "%s: Drop versioned constraint on %s."
+                        % (field, name_list(packages))
+                    )
         if self.maintscript_removed:
-            summary.append('Remove %d maintscript entries.' %
-                           len(self.maintscript_removed))
+            summary.append(
+                "Remove %d maintscript entries." % len(self.maintscript_removed)
+            )
         return summary
 
 
 def _scrub_obsolete(wt, subpath, upgrade_release):
     specific_files = []
-    control_path = os.path.join(subpath, 'debian/control')
+    control_path = os.path.join(subpath, "debian/control")
     try:
         with ControlEditor(wt.abspath(control_path)) as editor:
             specific_files.append(control_path)
-            package = editor.source['Source']
+            package = editor.source["Source"]
             control_removed = drop_old_relations(editor, upgrade_release)
     except FileNotFoundError:
-        if wt.has_filename(os.path.join(subpath, 'debian/debcargo.toml')):
+        if wt.has_filename(os.path.join(subpath, "debian/debcargo.toml")):
             return ScrubObsoleteResult([], [], [])
         raise
 
     maintscript_removed = []
-    for path, removed in update_maintscripts(
-            wt, subpath, package, upgrade_release):
+    for path, removed in update_maintscripts(wt, subpath, package, upgrade_release):
         if removed:
             maintscript_removed.append((path, removed))
             specific_files.append(path)
@@ -332,11 +334,13 @@ def _scrub_obsolete(wt, subpath, upgrade_release):
     return ScrubObsoleteResult(
         specific_files=specific_files,
         control_removed=control_removed,
-        maintscript_removed=maintscript_removed)
+        maintscript_removed=maintscript_removed,
+    )
 
 
 def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None):
     from breezy.commit import NullCommitReporter
+
     result = _scrub_obsolete(wt, subpath, upgrade_release)
 
     if not result:
@@ -345,11 +349,12 @@ def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None):
     specific_files = list(result.specific_files)
     summary = result.itemized()
 
-    changelog_path = os.path.join(subpath, 'debian/changelog')
+    changelog_path = os.path.join(subpath, "debian/changelog")
 
     if update_changelog is None:
         from .detect_gbp_dch import guess_update_changelog
         from debian.changelog import Changelog
+
         with wt.get_file(changelog_path) as f:
             cl = Changelog(f, max_blocks=1)
 
@@ -363,15 +368,18 @@ def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None):
 
     if update_changelog:
         add_changelog_entry(
-            wt, changelog_path,
-            ['Remove constraints unnecessary since %s:' %
-             upgrade_release] + ['+ ' + line for line in summary])
+            wt,
+            changelog_path,
+            ["Remove constraints unnecessary since %s:" % upgrade_release]
+            + ["+ " + line for line in summary],
+        )
         specific_files.append(changelog_path)
 
-    message = '\n'.join([
-        'Remove constraints unnecessary since %s.' % upgrade_release, ''] +
-        ['* ' + line for line in summary] +
-        ['', 'Changes-By: deb-scrub-obsolete'])
+    message = "\n".join(
+        ["Remove constraints unnecessary since %s." % upgrade_release, ""]
+        + ["* " + line for line in summary]
+        + ["", "Changes-By: deb-scrub-obsolete"]
+    )
 
     committer = get_committer(wt)
 
@@ -381,7 +389,8 @@ def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None):
             message=message,
             allow_pointless=False,
             reporter=NullCommitReporter(),
-            committer=committer)
+            committer=committer,
+        )
     except PointlessCommit:
         pass
 
@@ -392,6 +401,7 @@ def main():
     import argparse
     from breezy.workingtree import WorkingTree
     import breezy  # noqa: E402
+
     breezy.initialize()
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
@@ -401,32 +411,49 @@ def main():
         check_clean_tree,
         PendingChanges,
         version_string,
-        )
+    )
     from .config import Config
 
-    parser = argparse.ArgumentParser(prog='drop-backwards-compat')
+    parser = argparse.ArgumentParser(prog="drop-backwards-compat")
     parser.add_argument(
-        '--directory', metavar='DIRECTORY', help='directory to run in',
-        type=str, default='.')
+        "--directory",
+        metavar="DIRECTORY",
+        help="directory to run in",
+        type=str,
+        default=".",
+    )
     parser.add_argument(
-        '--upgrade-release', metavar='UPGRADE-RELEASE',
-        help='Release to allow upgrading from.', default='oldstable')
+        "--upgrade-release",
+        metavar="UPGRADE-RELEASE",
+        help="Release to allow upgrading from.",
+        default="oldstable",
+    )
     parser.add_argument(
-        '--no-update-changelog', action="store_false", default=None,
-        dest="update_changelog", help="do not update the changelog")
+        "--no-update-changelog",
+        action="store_false",
+        default=None,
+        dest="update_changelog",
+        help="do not update the changelog",
+    )
     parser.add_argument(
-        '--update-changelog', action="store_true", dest="update_changelog",
-        help="force updating of the changelog", default=None)
+        "--update-changelog",
+        action="store_true",
+        dest="update_changelog",
+        help="force updating of the changelog",
+        default=None,
+    )
     parser.add_argument(
-        '--version', action='version', version='%(prog)s ' + version_string)
+        "--version", action="version", version="%(prog)s " + version_string
+    )
     parser.add_argument(
-        '--identity',
-        help='Print user identity that would be used when committing',
-        action='store_true', default=False)
+        "--identity",
+        help="Print user identity that would be used when committing",
+        action="store_true",
+        default=False,
+    )
     parser.add_argument(
-        '--debug',
-        help='Describe all considerd changes.',
-        action='store_true')
+        "--debug", help="Describe all considerd changes.", action="store_true"
+    )
 
     args = parser.parse_args()
 
@@ -442,10 +469,11 @@ def main():
         return 1
 
     import distro_info
+
     debian_info = distro_info.DebianDistroInfo()
     upgrade_release = debian_info.codename(args.upgrade_release)
 
-    note('Removing constraints unnecessary since %s', upgrade_release)
+    note("Removing constraints unnecessary since %s", upgrade_release)
 
     if args.debug:
         logging.basicConfig()
@@ -461,12 +489,13 @@ def main():
             update_changelog = cfg.update_changelog()
 
     result = scrub_obsolete(
-        wt, subpath, upgrade_release,
-        update_changelog=args.update_changelog)
+        wt, subpath, upgrade_release, update_changelog=args.update_changelog
+    )
     if not result:
         return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
+
     sys.exit(main())

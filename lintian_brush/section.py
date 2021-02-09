@@ -19,17 +19,16 @@
 
 import re
 
-NAME_SECTION_MAPPINGS_PATH = (
-    '/usr/share/lintian/data/fields/name_section_mappings')
+NAME_SECTION_MAPPINGS_PATH = "/usr/share/lintian/data/fields/name_section_mappings"
 
 
 def get_name_section_mappings():
     regexes = []
 
-    with open(NAME_SECTION_MAPPINGS_PATH, 'r') as f:
+    with open(NAME_SECTION_MAPPINGS_PATH, "r") as f:
         for line in f:
             try:
-                (regex, section) = line.split('=>')
+                (regex, section) = line.split("=>")
             except ValueError:
                 pass
             else:
