@@ -159,12 +159,22 @@ def debianize(
     else:
         note('Created upstream branch.')
 
-    buildsystem, unused_requirements, metadata = (
-        get_upstream_info(
-            wt.abspath(subpath), trust_package=trust,
-            net_access=net_access,
-            consult_external_directory=consult_external_directory,
-            check=check))
+    metadata = get_upstream_info(
+        wt.abspath(subpath), trust_package=trust,
+        net_access=net_access,
+        consult_external_directory=consult_external_directory,
+        check=check)
+
+    # Compatibility with older upstream-ontologist, which included buildsystem
+    # info.
+    if isinstance(metadata, tuple):
+        metadata = metadata[2]
+        buildsystem = metadata[0]
+    else:
+        from ognibuild.buildsystem import get_buildsystem
+
+        buildsystem = get_buildsystem(
+            wt.abspath(subpath), trust_package=trust)
 
     try:
         upstream_name = metadata['Name']
