@@ -162,7 +162,7 @@ def determine_browser_url(url: str) -> str:
     return determine_gitlab_browser_url(url)
 
 
-def _salsa_path_from_alioth_url(
+def _salsa_path_from_alioth_url(  # noqa: C901
     vcs_type: Optional[str], alioth_url: str
 ) -> Optional[str]:
     if vcs_type is None:

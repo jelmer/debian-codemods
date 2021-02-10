@@ -10,7 +10,7 @@ from ruamel.yaml.nodes import MappingNode, SequenceNode
 
 SEQUENCE_FIELDS = ['Reference', 'Screenshots']
 
-try:
+try:  # noqa: C901
     editor = YamlUpdater(
         'debian/upstream/metadata', allow_duplicate_keys=True)
 

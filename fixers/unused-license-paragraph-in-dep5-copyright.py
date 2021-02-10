@@ -28,7 +28,7 @@ def extract_licenses(synopsis):
     return ret
 
 
-try:
+try:  # noqa: C901
     with CopyrightEditor() as updater:
         if updater.copyright.header.license:
             if updater.copyright.header.license.text:

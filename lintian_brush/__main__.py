@@ -54,7 +54,7 @@ from . import (  # noqa: E402
 from .config import Config  # noqa: E402
 
 
-def main(argv=None):
+def main(argv=None):  # noqa: C901
     parser = argparse.ArgumentParser(prog="lintian-brush")
 
     fixer_group = parser.add_argument_group("fixer selection")

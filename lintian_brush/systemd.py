@@ -273,7 +273,7 @@ class UnitFile(ConfigNamespace):
             # can't parse line
             return None
 
-    def _readfp(self, fp):
+    def _readfp(self, fp):  # noqa: C901
         cur_section = None
         cur_option = None
         cur_section_name = None

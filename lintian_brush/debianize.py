@@ -148,7 +148,7 @@ def go_import_path_from_repo(repo_url):
     return p
 
 
-def debianize(
+def debianize(  # noqa: C901
     wt,
     subpath,
     use_inotify=None,

@@ -790,7 +790,7 @@ def _upstream_changes_to_patch(
     return patch_name, specific_files
 
 
-def run_lintian_fixer(
+def run_lintian_fixer(  # noqa: C901
     local_tree: WorkingTree,
     fixer: Fixer,
     committer: Optional[str] = None,

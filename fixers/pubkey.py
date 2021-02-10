@@ -49,7 +49,7 @@ with WatchEditor() as editor:
     needed_keys = set()
     sigs_valid = []
     used_mangles: List[Optional[str]] = []
-    for entry in wf.entries:
+    for entry in wf.entries:  # noqa: C901
         releases_without_sig = []
         if entry.has_option('pgpsigurlmangle') and has_keys:
             continue
