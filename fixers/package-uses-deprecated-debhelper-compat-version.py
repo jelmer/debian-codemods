@@ -11,6 +11,8 @@ from debmutate.control import (
     )
 from debmutate.debhelper import (
     read_debhelper_compat_file,
+    MaintscriptEditor,
+    MaintscriptRemoveConffile,
     )
 from lintian_brush.debhelper import (
     detect_debhelper_buildsystem,
@@ -393,9 +395,11 @@ def upgrade_to_debhelper_11():
             package = service = parts[0]
         os.unlink(os.path.join('debian', name))
         subitems.add('Drop obsolete upstart file %s.' % name)
-        with open('debian/%s.maintscript' % package, 'a') as f:
-            f.write('rm_conffile /etc/init/%s.conf %s\n' % (
-                service, str(current_package_version())))
+        with MaintscriptEditor('debian/%s.maintscript' % package) as e:
+            e.append(MaintscriptRemoveConffile(
+                conffile='/etc/init/%s.conf' % service,
+                prior_version=current_package_version(),
+                package=None))
 
 
 def drop_dh_missing_fail(line, target):
