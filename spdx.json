@@ -199,6 +199,9 @@
         "BSD-4-Clause": {
             "name": "BSD 4-Clause \"Original\" or \"Old\" License"
         },
+        "BSD-4-Clause-Shortened": {
+            "name": "BSD 4 Clause Shortened"
+        },
         "BSD-4-Clause-UC": {
             "name": "BSD-4-Clause (University of California-Specific)"
         },
@@ -510,6 +513,9 @@
         },
         "Frameworx-1.0": {
             "name": "Frameworx Open License 1.0"
+        },
+        "FreeBSD-DOC": {
+            "name": "FreeBSD Documentation License"
         },
         "FreeImage": {
             "name": "FreeImage Public License v1.0"
@@ -944,7 +950,7 @@
             "name": "Open Data Commons Attribution License v1.0"
         },
         "ODbL-1.0": {
-            "name": "ODC Open Database License v1.0"
+            "name": "Open Data Commons Open Database License v1.0"
         },
         "OFL-1.0": {
             "name": "SIL Open Font License 1.0"
@@ -1058,7 +1064,7 @@
             "name": "OpenSSL License"
         },
         "PDDL-1.0": {
-            "name": "ODC Public Domain Dedication & License 1.0"
+            "name": "Open Data Commons Public Domain Dedication & License 1.0"
         },
         "PHP-3.0": {
             "name": "PHP License v3.0"
