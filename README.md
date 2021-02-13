@@ -59,6 +59,7 @@ subset of the issues:
 * debian-rules-missing-recommended-target
 * debian-rules-not-executable
 * debian-rules-sets-dpkg-architecture-variable
+* debian-rules-uses-as-needed-linker-flag
 * debian-rules-uses-unnecessary-dh-argument
 * debian-tests-control-and-control-autodep8
 * debian-tests-control-autodep8-is-obsolete
