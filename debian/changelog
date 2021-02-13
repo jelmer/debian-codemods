@@ -1,4 +1,4 @@
-lintian-brush (0.95) UNRELEASED; urgency=medium
+lintian-brush (0.95) unstable; urgency=medium
 
   * Add fixer for debian-rules-uses-as-needed-linker-flag.
   * Use rules module from debmutate.
@@ -6,7 +6,7 @@ lintian-brush (0.95) UNRELEASED; urgency=medium
     Closes: #981528
   * Explicitly depend on now-split-out upstream-ontologist package.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 05 Feb 2021 00:42:43 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 13 Feb 2021 01:03:17 +0000
 
 lintian-brush (0.94) unstable; urgency=medium
 
