@@ -1,11 +1,6 @@
-lintian-brush (0.96) UNRELEASED; urgency=medium
+lintian-brush (0.95) UNRELEASED; urgency=medium
 
   * Add fixer for debian-rules-uses-as-needed-linker-flag.
-
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 13 Feb 2021 01:00:42 +0000
-
-lintian-brush (0.95) unstable; urgency=medium
-
   * Use rules module from debmutate.
   * deb-scrub-obsolete: don't edit build dependencies for cdbs packages.
     Closes: #981528
