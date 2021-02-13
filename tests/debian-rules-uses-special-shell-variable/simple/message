@@ -1,0 +1,2 @@
+Avoid using $(_) to discover source package directory.
+Fixed-Lintian-Tags: debian-rules-uses-special-shell-variable

@@ -467,3 +467,6 @@ Lintian-Tags: public-upstream-key-in-native-package
 
 Fix-Script: debian-rules-uses-as-needed-linker-flag.py
 Lintian-Tags: debian-rules-uses-as-needed-linker-flag
+
+Fix-Script: debian-rules-uses-special-shell-variable.py
+Lintian-Tags: debian-rules-uses-special-shell-variable

@@ -234,11 +234,13 @@
 - tag: debian-rules-should-not-use-sanitize-all-buildflag
 - tag: debian-rules-updates-control-automatically
 - tag: debian-rules-uses-as-needed-linker-flag
+  status: implemented
 - tag: debian-rules-uses-deb-build-opts
 - tag: debian-rules-uses-deprecated-makefile
 - tag: debian-rules-uses-deprecated-systemd-override
 - tag: debian-rules-uses-installed-python-versions
 - tag: debian-rules-uses-special-shell-variable
+  status: implemented
 - tag: debian-rules-uses-supported-python-versions-without-python-all-build-depends
 - tag: debian-rules-uses-wrong-environment-variable
 - tag: debian-tests-control-uses-national-encoding
