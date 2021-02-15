@@ -16,6 +16,8 @@ def check_global(line):
                 issue.report_fixed()
                 args = shlex.split(value.decode())
                 args.remove('-Wl,--as-needed')
+                if not args:
+                    return None
                 return b'export %s = %s' % (name, shlex.join(args).encode())
             return line
     return line
