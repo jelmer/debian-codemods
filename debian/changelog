@@ -1,10 +1,10 @@
-lintian-brush (0.96) UNRELEASED; urgency=medium
+lintian-brush (0.96) unstable; urgency=medium
 
   * Add fixer for debian-rules-uses-special-shell-variable.
   * Depend on newer version of debmutate, fixing maintscript
     manipulation.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 13 Feb 2021 01:51:11 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 15 Feb 2021 19:24:59 +0000
 
 lintian-brush (0.95) unstable; urgency=medium
 
