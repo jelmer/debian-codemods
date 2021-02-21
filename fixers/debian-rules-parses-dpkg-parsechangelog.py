@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import re
-from lintian_brush.fixer import report_result, opinionated, fixed_lintian_tag
+from lintian_brush.fixer import report_result, fixed_lintian_tag
 from debmutate._rules import update_rules, Makefile
 from typing import Set, Tuple, Optional
 
