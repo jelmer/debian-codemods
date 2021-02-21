@@ -2,6 +2,7 @@ lintian-brush (0.97) UNRELEASED; urgency=medium
 
   * Drop DEB_LDFLAGS_MAINT_APPEND ratther than leaving it empty.
   * Add fixer for obsolete-url-in-packaging.
+  * Add basic fixer for debian-rules-parses-dpkg-parsechangelog.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 15 Feb 2021 23:18:33 +0000
 

@@ -473,3 +473,6 @@ Lintian-Tags: debian-rules-uses-as-needed-linker-flag
 
 Fix-Script: debian-rules-uses-special-shell-variable.py
 Lintian-Tags: debian-rules-uses-special-shell-variable
+
+Fix-Script: debian-rules-parses-dpkg-parsechangelog.py
+Lintian-Tags: debian-rules-parses-dpkg-parsechangelog

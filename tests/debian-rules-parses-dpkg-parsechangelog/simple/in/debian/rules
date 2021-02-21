@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+
+DEB_VERSION := $(shell dpkg-parsechangelog | sed -n -e 's/^Version: //p')
+DEB_UPSTREAM_VERSION := $(shell echo $(DEB_VERSION) | cut -d+ -f1)
+
+%:
+	dh $@
+
+version:
+	echo $(DEB_VERSION)
