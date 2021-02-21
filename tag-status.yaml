@@ -468,9 +468,11 @@
   status: build-stage
 - tag: extended-description-contains-empty-paragraph
 - tag: extended-description-is-empty
+  difficulty: hard
 - tag: extended-description-is-probably-too-short
   difficulty: hard
 - tag: extended-description-line-too-long
+  difficulty: medium
 - tag: extra-license-file
 - tag: extra-whitespace-around-name-in-changelog-trailer
 - tag: field-too-long
@@ -868,6 +870,8 @@
   difficulty: hard
 - tag: no-description-in-changes-file
 - tag: no-dh-sequencer
+  difficulty: medium
+  comment: Will require rewriting debian/rules
 - tag: no-human-maintainers
 - tag: no-md5sums-control-file
 - tag: no-newline-at-end
@@ -926,6 +930,7 @@
 - tag: obsolete-relation-form
 - tag: obsolete-relation-form-in-source
 - tag: obsolete-url-in-packaging
+  status: implemented
 - tag: ocaml-custom-executable
 - tag: ocaml-dangling-cmi
 - tag: ocaml-dangling-cmx
@@ -1159,6 +1164,8 @@
 - tag: qa-upload-has-incorrect-version-number
 - tag: quilt-build-dep-but-no-series-file
 - tag: quilt-patch-missing-description
+  difficulty: hard
+  comment: Requires human-created text
 - tag: quilt-patch-using-template-description
 - tag: quilt-patch-with-non-standard-options
 - tag: quilt-series-references-non-existent-patch
@@ -1434,9 +1441,13 @@
 - tag: uses-no-compression-for-control-tarball
 - tag: uses-no-compression-for-data-tarball
 - tag: using-first-person-in-description
+  difficulty: hard
 - tag: using-first-person-in-templates
+  difficulty: hard
 - tag: using-imperative-form-in-templates
+  difficulty: hard
 - tag: using-question-in-extended-description-in-templates
+  difficulty: hard
 - tag: usr-share-doc-symlink-points-outside-of-usr-share-doc
 - tag: usr-share-doc-symlink-to-foreign-package
 - tag: usr-share-doc-symlink-without-dependency
@@ -1485,6 +1496,7 @@
 - tag: bogus-mail-host
 - tag: bogus-mail-host-in-debian-changelog
 - tag: breakout-link
+  difficulty: hard
 - tag: broken-link-to-undocumented
 - tag: build-path-in-manual
 - tag: capitalization-in-override-comment
