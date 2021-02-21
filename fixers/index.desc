@@ -186,6 +186,9 @@ Lintian-Tags:
 Fix-Script: missing-vcs-browser-field.py
 Lintian-Tags: missing-vcs-browser-field
 
+Fix-Script: obsolete-url-in-packaging.py
+Lintian-Tags: obsolete-url-in-packaging
+
 Fix-Script: no-homepage-field.py
 Lintian-Tags: no-homepage-field
 

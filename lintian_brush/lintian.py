@@ -17,6 +17,8 @@
 
 """Functions for working with lintian data."""
 
+from typing import Optional
+
 
 def read_debhelper_lintian_data_file(f, sep):
     for lineno, line in enumerate(f, 1):
@@ -31,3 +33,29 @@ def read_debhelper_lintian_data_file(f, sep):
             key = line
             value = None
         yield key, value
+
+
+def read_obsolete_sites(f):
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith('#'):
+            continue
+        yield line
+
+
+OBSOLETE_SITES_PATH = '/usr/share/lintian/data/obsolete-sites/obsolete-sites'
+_obsolete_sites = None
+
+
+def is_obsolete_site(parsed_url) -> Optional[str]:
+    global _obsolete_sites
+    if _obsolete_sites is None:
+        with open(OBSOLETE_SITES_PATH, 'r') as f:
+            _obsolete_sites = list(read_obsolete_sites(f))
+    for site in _obsolete_sites:
+        if parsed_url.hostname.endswith(site):
+            return site
+    else:
+        return None
