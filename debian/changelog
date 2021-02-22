@@ -1,8 +1,8 @@
-lintian-brush (0.99) UNRELEASED; urgency=medium
+lintian-brush (0.99) unstable; urgency=medium
 
   * Also update 'set -e' in postrm files. Closes: #983347
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 22 Feb 2021 17:53:27 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 22 Feb 2021 17:53:37 +0000
 
 lintian-brush (0.98) unstable; urgency=medium
 
