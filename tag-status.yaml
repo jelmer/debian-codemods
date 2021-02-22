@@ -153,6 +153,8 @@
 - tag: conflicting-negation-in-source-relation
 - tag: conflicts-with-dependency
 - tag: conflicts-with-version
+  difficulty: hard
+  comment: requires archive info
 - tag: control-file-contains-dh_make-vcs-comment
 - tag: control-file-has-bad-owner
 - tag: control-file-has-bad-permissions

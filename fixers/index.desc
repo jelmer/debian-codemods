@@ -476,3 +476,6 @@ Lintian-Tags: debian-rules-uses-special-shell-variable
 
 Fix-Script: debian-rules-parses-dpkg-parsechangelog.py
 Lintian-Tags: debian-rules-parses-dpkg-parsechangelog
+
+Fix-Script: field-name-typo-in-control.py
+Lintian-Tags: cute-field

@@ -1,3 +1,9 @@
+lintian-brush (0.98) UNRELEASED; urgency=medium
+
+  * Add fixer for cute-field.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 22 Feb 2021 13:07:32 +0000
+
 lintian-brush (0.97) unstable; urgency=medium
 
   * Drop DEB_LDFLAGS_MAINT_APPEND ratther than leaving it empty.
