@@ -892,6 +892,8 @@
 - tag: no-standards-version-field
 - tag: no-strong-digests-in-dsc
 - tag: no-symbols-control-file
+  difficulty: medium
+  comment: requires building; adds extra future work
 - tag: no-template-description
 - tag: no-template-name
 - tag: no-template-type
@@ -1093,6 +1095,8 @@
 - tag: pkg-config-bad-directive
 - tag: pkg-config-multi-arch-wrong-dir
 - tag: pkg-config-unavailable-for-cross-compilation
+  difficulty: medium
+  comment: hard to do without building
 - tag: pkg-js-autopkgtest-file-does-not-exist
 - tag: pkg-js-autopkgtest-test-is-empty
 - tag: pkg-js-autopkgtest-test-is-missing
@@ -1573,6 +1577,8 @@
 - tag: root-in-contact
 - tag: ships-r-site-library
 - tag: spare-manual-page
+  difficulty: medium
+  comment: requires build
 - tag: spelling-in-override-comment
 - tag: stray-folder-in-manual
 - tag: too-many-contacts
