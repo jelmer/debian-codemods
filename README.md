@@ -44,6 +44,7 @@ subset of the issues:
 * copyright-refers-to-symlink-license
 * copyright-refers-to-versionless-license-file
 * custom-compression-in-debian-source-options
+* cute-field
 * debhelper-but-no-misc-depends
 * debhelper-tools-from-autotools-dev-are-deprecated
 * debian-changelog-file-contains-obsolete-user-emacs-settings
@@ -58,8 +59,10 @@ subset of the issues:
 * debian-rules-contains-unnecessary-get-orig-source-target
 * debian-rules-missing-recommended-target
 * debian-rules-not-executable
+* debian-rules-parses-dpkg-parsechangelog
 * debian-rules-sets-dpkg-architecture-variable
 * debian-rules-uses-as-needed-linker-flag
+* debian-rules-uses-special-shell-variable
 * debian-rules-uses-unnecessary-dh-argument
 * debian-tests-control-and-control-autodep8
 * debian-tests-control-autodep8-is-obsolete
@@ -106,6 +109,7 @@ subset of the issues:
 * obsolete-debian-watch-file-standard
 * obsolete-field-in-dep5-copyright
 * obsolete-runtime-tests-restriction
+* obsolete-url-in-packaging
 * old-dpmt-vcs
 * old-fsf-address-in-copyright-file
 * old-papt-vcs
