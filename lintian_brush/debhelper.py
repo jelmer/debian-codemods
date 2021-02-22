@@ -22,7 +22,7 @@ import os
 import subprocess
 from typing import Dict, Optional
 
-from .lintian import read_debhelper_lintian_data_file
+from .lintian import read_debhelper_lintian_data_file, LINTIAN_DATA_PATH
 
 
 DEBHELPER_BUILD_STEPS = ["configure", "build", "test", "install", "clean"]
@@ -58,7 +58,7 @@ if (defined($b)) { print($b->NAME); } else { print("_undefined_"); }\
     return output
 
 
-LINTIAN_COMPAT_LEVEL_PATH = "/usr/share/lintian/data/debhelper/compat-level"
+LINTIAN_COMPAT_LEVEL_PATH = os.path.join(LINTIAN_DATA_PATH, "debhelper/compat-level")
 
 
 def _get_lintian_compat_levels() -> Dict[str, int]:

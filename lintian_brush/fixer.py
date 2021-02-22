@@ -194,4 +194,8 @@ def source_package_name():
     return os.environ.get("PACKAGE")
 
 
+def vendor():
+    return os.environ.get('DEB_VENDOR', 'debian')
+
+
 control = ControlEditor()

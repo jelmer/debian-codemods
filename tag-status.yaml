@@ -37,6 +37,10 @@
 - tag: apache2-unsupported-dependency
 - tag: apparently-corrupted-elf-binary
 - tag: application-in-library-section
+  difficulty: medium
+  comment: |
+    it's hard to determine whether the package should be moved out of the
+    library section or whether the binary is a helper
 - tag: appstream-metadata-in-legacy-location
 - tag: appstream-metadata-invalid
 - tag: appstream-metadata-legacy-format
@@ -135,6 +139,7 @@
 - tag: checksum-mismatch-in-changes-file
 - tag: classpath-contains-relative-path
 - tag: co-maintained-package-with-no-vcs-fields
+  difficulty: hard
 - tag: codeless-jar
 - tag: command-in-menu-file-and-desktop-file
 - tag: command-in-sbin-has-manpage-in-incorrect-section
@@ -422,6 +427,7 @@
 - tag: emacsen-common-without-dh-elpa
 - tag: embedded-feedparser-library
 - tag: embedded-javascript-library
+  difficulty: hard
 - tag: embedded-library
 - tag: embedded-pear-module
 - tag: embedded-php-library
@@ -464,7 +470,9 @@
 - tag: exit-in-shared-library
   difficulty: hard
 - tag: experimental-to-unstable-without-comment
-  difficulty: easy
+  difficulty: hard
+  comment: |
+    hard to determine whether the upload was intentional
 - tag: explicit-default-in-package-type
 - tag: explicitly-armored-upstream-signature
   status: build-stage
@@ -726,7 +734,7 @@
 - tag: maintainer-script-should-not-use-recursive-chown-or-chmod
   comment: needs-shell-parser
 - tag: maintainer-script-supports-ancient-package-version
-  comment: needs-shell-parser
+  comment: needs-shell-parser; partially addressed by deb-scrub-obsolete
 - tag: maintainer-script-switches-dir-to-symlink-unsafely
   comment: needs-shell-parser
 - tag: maintainer-script-updates-fontconfig-cache-improperly
@@ -1045,6 +1053,9 @@
 - tag: package-modifies-ld.so-search-path
 - tag: package-name-defined-in-config-h
 - tag: package-name-doesnt-match-sonames
+  difficulty: hard
+  comment: |
+   need a way to reliably rename a binary package
 - tag: package-not-lowercase
 - tag: package-placeholder-in-symbols-file
 - tag: package-relation-with-perl-modules
@@ -1094,6 +1105,8 @@
   comment: needs-shell-parser
 - tag: possible-debconf-note-abuse
 - tag: possible-documentation-but-no-doc-base-registration
+  difficulty: medium
+  comment: hard to determine whether documentation needs to be registered
 - tag: possible-gpl-code-linked-with-openssl
 - tag: possible-new-upstream-release-without-new-version
 - tag: possible-unindented-list-in-extended-description
@@ -1188,6 +1201,7 @@
 - tag: relative-symlink
 - tag: remove-of-unknown-diversion
 - tag: repackaged-source-not-advertised
+  difficulty: impossible
 - tag: repeated-trigger-name
 - tag: ruby-script-but-no-ruby-dep
 - tag: rules-does-not-require-root

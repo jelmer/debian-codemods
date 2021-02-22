@@ -17,7 +17,10 @@
 
 """Functions for working with lintian data."""
 
+import os
 from typing import Optional
+
+LINTIAN_DATA_PATH = '/usr/share/lintian/data'
 
 
 def read_debhelper_lintian_data_file(f, sep):
@@ -35,27 +38,61 @@ def read_debhelper_lintian_data_file(f, sep):
         yield key, value
 
 
-def read_obsolete_sites(f):
+def read_list_file(f, vendor):
     for line in f:
         line = line.strip()
         if not line:
             continue
         if line.startswith('#'):
             continue
+        if line.startswith('@'):
+            cond, if_vendor, val = line.split(None, 2)
+            if (cond == '@if-vendor-is-not' and
+                    if_vendor.lower() == vendor.lower()):
+                continue
+            else:
+                raise ValueError('invalid check %r' % cond)
         yield line
 
 
-OBSOLETE_SITES_PATH = '/usr/share/lintian/data/obsolete-sites/obsolete-sites'
+OBSOLETE_SITES_PATH = os.path.join(LINTIAN_DATA_PATH, 'obsolete-sites/obsolete-sites')
 _obsolete_sites = None
 
 
-def is_obsolete_site(parsed_url) -> Optional[str]:
+def is_obsolete_site(parsed_url, vendor) -> Optional[str]:
     global _obsolete_sites
     if _obsolete_sites is None:
         with open(OBSOLETE_SITES_PATH, 'r') as f:
-            _obsolete_sites = list(read_obsolete_sites(f))
+            _obsolete_sites = list(read_list_file(f, vendor))
     for site in _obsolete_sites:
         if parsed_url.hostname.endswith(site):
             return site
     else:
         return None
+
+
+KNOWN_TESTS_CONTROL_FIELDS_PATH = os.path.join(
+    LINTIAN_DATA_PATH, 'testsuite/known-fields')
+
+
+def known_tests_control_fields(vendor):
+    with open(KNOWN_TESTS_CONTROL_FIELDS_PATH, 'r') as f:
+        return list(read_list_file(f, vendor=vendor))
+
+
+KNOWN_SOURCE_FIELDS_PATH = os.path.join(
+    LINTIAN_DATA_PATH, 'common/source-fields')
+
+
+def known_source_fields(vendor):
+    with open(KNOWN_SOURCE_FIELDS_PATH, 'r') as f:
+        return list(read_list_file(f, vendor=vendor))
+
+
+KNOWN_BINARY_FIELDS_PATH = os.path.join(
+    LINTIAN_DATA_PATH, 'fields/binary-fields')
+
+
+def known_binary_fields(vendor):
+    with open(KNOWN_BINARY_FIELDS_PATH, 'r') as f:
+        return list(read_list_file(f, vendor=vendor))

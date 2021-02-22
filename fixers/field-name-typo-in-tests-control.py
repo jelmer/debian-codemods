@@ -2,6 +2,7 @@
 
 from debmutate.deb822 import Deb822Editor
 from lintian_brush.fixer import report_result
+from lintian_brush.lintian import known_tests_control_fields
 
 import sys
 
@@ -12,10 +13,7 @@ except ImportError:
 
 
 # See https://people.debian.org/~mpitt/autopkgtest/README.package-tests.html
-valid_field_names = {
-    'Tests', 'Test-Command', 'Restrictions',
-    'Features', 'Depends', 'Tests-Directory',
-    'Classes'}
+valid_field_names = set(known_tests_control_fields())
 
 case_fixed = set()
 typo_fixed = set()

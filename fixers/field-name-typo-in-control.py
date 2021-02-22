@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 from debmutate.deb822 import Deb822Editor
-from lintian_brush.fixer import report_result, LintianIssue, control
+from lintian_brush.fixer import report_result, LintianIssue, control, vendor
+from lintian_brush.lintian import known_source_fields, known_binary_fields
 
 import sys
 
@@ -12,11 +13,9 @@ except ImportError:
 
 
 # See https://people.debian.org/~mpitt/autopkgtest/README.package-tests.html
-valid_field_names = {
-    'Homepage', 'Vcs-Git', 'Vcs-Bzr', 'Vcs-Svn', 'Vcs-Hg', 'Vcs-Browser',
-    'Source', 'Package', 'Multi-Arch', 'Dm-Upload-Allowed', 'Pre-Depends',
-    'Build-Depends', 'Build-Depends-Indep', 'Build-Depends-Arch',
-    'Depends', 'X-Python3-Version', 'X-Debian-Abi'}
+valid_field_names = set()
+valid_field_names.update(known_source_fields(vendor()))
+valid_field_names.update(known_binary_fields(vendor()))
 
 case_fixed = set()
 
