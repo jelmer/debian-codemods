@@ -195,7 +195,12 @@ def source_package_name():
 
 
 def vendor():
-    return os.environ.get('DEB_VENDOR', 'debian')
+    try:
+        return os.environ['DEB_VENDOR']
+    except KeyError:
+        with open('/etc/dpkg/origins/default', 'r') as f:
+            c = Deb822(f)
+            return c['Vendor']
 
 
 control = ControlEditor()

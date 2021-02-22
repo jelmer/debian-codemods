@@ -231,7 +231,6 @@
 - tag: debian-rules-is-symlink
 - tag: debian-rules-missing-required-target
 - tag: debian-rules-not-a-makefile
-- tag: debian-rules-parses-dpkg-parsechangelog
 - tag: debian-rules-passes-version-info-to-dh_shlibdeps
 - tag: debian-rules-sets-DEB_BUILD_OPTIONS
 - tag: debian-rules-sets-DH_COMPAT
@@ -1347,14 +1346,22 @@
   difficulty: hard
 - tag: systemd-service-file-missing-documentation-key
 - tag: systemd-service-file-missing-hardening-features
+  difficulty: hard
+  comment: needs verification
 - tag: systemd-service-file-missing-install-key
+  difficulty: hard
 - tag: systemd-service-file-outside-lib
 - tag: systemd-service-file-refers-to-unusual-wantedby-target
 - tag: systemd-service-file-wraps-init-script
+  difficulty: hard
+  comment: needs interpreting init script
 - tag: systemd-tmpfiles.d-outside-usr-lib
 - tag: tar-errors-from-control
+  difficulty: hard
 - tag: tar-errors-from-data
+  difficulty: hard
 - tag: tar-errors-from-source
+  difficulty: hard
 - tag: tclsh-script-but-no-tclsh-dep
 - tag: team-upload-has-incorrect-version-number
 - tag: template-uses-unsplit-choices
@@ -1522,7 +1529,6 @@
 - tag: custom-compression-in-debian-rules
 - tag: custom-compression-in-debian-source-options
   status: implemented
-- tag: cute-field
 - tag: duplicate-contact
 - tag: executable-manual-page
 - tag: faulty-debian-qa-group-address

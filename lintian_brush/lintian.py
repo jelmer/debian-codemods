@@ -59,11 +59,11 @@ OBSOLETE_SITES_PATH = os.path.join(LINTIAN_DATA_PATH, 'obsolete-sites/obsolete-s
 _obsolete_sites = None
 
 
-def is_obsolete_site(parsed_url, vendor) -> Optional[str]:
+def is_obsolete_site(parsed_url) -> Optional[str]:
     global _obsolete_sites
     if _obsolete_sites is None:
         with open(OBSOLETE_SITES_PATH, 'r') as f:
-            _obsolete_sites = list(read_list_file(f, vendor))
+            _obsolete_sites = list(read_list_file(f, vendor=None))
     for site in _obsolete_sites:
         if parsed_url.hostname.endswith(site):
             return site

@@ -1,16 +1,9 @@
 #!/usr/bin/python3
 
-from debmutate.deb822 import Deb822Editor
 from lintian_brush.fixer import report_result, LintianIssue, control, vendor
 from lintian_brush.lintian import known_source_fields, known_binary_fields
 
 import sys
-
-try:
-    from Levenshtein import distance
-except ImportError:
-    sys.exit(2)
-
 
 # See https://people.debian.org/~mpitt/autopkgtest/README.package-tests.html
 valid_field_names = set()
