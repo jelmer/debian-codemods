@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -e
+
+# If purging the package, remove the configuration file if it exists.
+if [ "$1" = "purge" -a -e /etc/jalview_properties ]; then
+    rm -f /etc/jalview_properties
+fi
+
+#DEBHELPER#

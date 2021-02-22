@@ -5,7 +5,7 @@ from lintian_brush.fixer import report_result, fixed_lintian_tag
 import os
 
 
-SCRIPTS = ['preinst', 'prerm', 'postinst', 'config']
+SCRIPTS = ['preinst', 'prerm', 'postinst', 'config', 'postrm']
 
 
 def replace_set_e(path):
