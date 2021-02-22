@@ -1,8 +1,8 @@
-lintian-brush (0.98) UNRELEASED; urgency=medium
+lintian-brush (0.98) unstable; urgency=medium
 
   * Add fixer for cute-field.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 22 Feb 2021 13:07:32 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 22 Feb 2021 16:29:57 +0000
 
 lintian-brush (0.97) unstable; urgency=medium
 
