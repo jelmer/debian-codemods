@@ -243,7 +243,11 @@
   status: implemented
 - tag: debian-rules-uses-deb-build-opts
 - tag: debian-rules-uses-deprecated-makefile
+  comment: |
+    if included file is /usr/share/cdbs/1/rules/simple-patchsys.mk, then
+    upgrade to 3.0 (quilt) source format
 - tag: debian-rules-uses-deprecated-systemd-override
+  difficulty: easy
 - tag: debian-rules-uses-installed-python-versions
 - tag: debian-rules-uses-special-shell-variable
   status: implemented
