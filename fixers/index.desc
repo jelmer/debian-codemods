@@ -11,6 +11,14 @@
 Fix-Script: file-contains-trailing-whitespace.py
 Lintian-Tags: trailing-whitespace
 
+Fix-Script: debian-control-has-unusual-field-spacing.py
+Lintian-Tags: debian-control-has-unusual-field-spacing
+
+Fix-Script: rules-not-executable.py
+
+Fix-Script: no-copyright-file.py
+Lintian-Tags: no-copyright-file
+
 # Copyright related fixers. Fix format URL before semantic fixes.
 Fix-Script: insecure-copyright-format-uri.py
 Lintian-Tags: insecure-copyright-format-uri
@@ -18,19 +26,11 @@ Lintian-Tags: insecure-copyright-format-uri
 Fix-Script: unversioned-copyright-format-uri.py
 Lintian-Tags: unversioned-copyright-format-uri
 
-Fix-Script: debian-control-has-unusual-field-spacing.py
-Lintian-Tags: debian-control-has-unusual-field-spacing
-
-Fix-Script: rules-not-executable.py
-
 Fix-Script: copyright-has-crs.sh
 Lintian-Tags: copyright-has-crs
 
 Fix-Script: copyright-continued-lines-with-space.py
 Lintian-Tags: tab-in-license-text
-
-Fix-Script: no-copyright-file.py
-Lintian-Tags: no-copyright-file
 
 Fix-Script: desktop-entry-file-has-crs.sh
 Lintian-Tags: desktop-entry-file-has-crs
