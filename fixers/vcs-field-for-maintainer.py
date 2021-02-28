@@ -15,7 +15,10 @@ REPLACEMENTS = {
 }
 
 with control as editor:
-    maint, email = parseaddr(editor.source['Maintainer'])
+    try:
+        maint, email = parseaddr(editor.source['Maintainer'])
+    except KeyError:
+        maint, email = None, None
     changed_fields = set()
     try:
         tag, replacements = REPLACEMENTS[email]
