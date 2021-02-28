@@ -148,6 +148,79 @@ def go_import_path_from_repo(repo_url):
     return p
 
 
+def import_upstream_version_from_dist(
+        wt, subpath, buildsystem, source_name, upstream_version):
+    def create_dist(tree, package, version, target_dir):
+        from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
+        from ognibuild.session.plain import PlainSession
+        from ognibuild.resolver.apt import AptResolver
+        from ognibuild.buildlog import UpstreamRequirementFixer
+        import shutil
+        session = PlainSession()
+        resolver = AptResolver.from_session(session)
+        fixers = [UpstreamRequirementFixer(resolver)]
+        with DistCatcher(wt.abspath('.')) as dc:
+            oldcwd = os.getcwd()
+            try:
+                session.chdir(wt.abspath('.'))
+                run_dist(session, [buildsystem], resolver, fixers)
+            finally:
+                os.chdir(oldcwd)
+
+        for path in dc.files:
+            shutil.copy(path, target_dir)
+            return os.path.join(target_dir, os.path.basename(path))
+
+        raise DistNoTarball()
+
+    from breezy.plugins.debian import default_orig_dir
+    from breezy.plugins.debian.util import debuild_config
+    from breezy.plugins.debian.merge_upstream import get_tarballs, do_import
+    from breezy.plugins.debian.upstream.branch import UpstreamBranchSource
+    from breezy.plugins.debian.upstream.pristinetar import get_pristine_tar_source
+    import tempfile
+
+    config = debuild_config(wt, subpath)
+    upstream_source = UpstreamBranchSource.from_branch(
+        wt.branch, config=config, local_dir=wt.controldir,
+        create_dist=create_dist, snapshot=False)
+    pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
+    if pristine_tar_source.has_version(source_name, upstream_version):
+        warning('Upstream version %s/%s already imported.',
+                source_name, upstream_version)
+        pristine_revids = pristine_tar_source\
+            .version_as_revisions(source_name, upstream_version)
+    else:
+        with tempfile.TemporaryDirectory() as target_dir:
+            locations = upstream_source.fetch_tarballs(
+                source_name, upstream_version, target_dir, components=[None])
+            orig_dir = config.orig_dir or default_orig_dir
+            tarball_filenames = get_tarballs(
+                orig_dir, wt, source_name, upstream_version, locations)
+            upstream_revisions = upstream_source\
+                .version_as_revisions(source_name, upstream_version)
+            files_excluded = None
+            imported_revids = do_import(
+                wt, subpath, tarball_filenames, source_name, upstream_version,
+                current_version=None, upstream_branch=wt.branch,
+                upstream_revisions=upstream_revisions,
+                merge_type=None, files_excluded=files_excluded)
+            pristine_revids = {}
+            for (component, tag_name, revid, pristine_tar_imported) in imported_revids:
+                pristine_revids[component] = revid
+
+    try:
+        wt.controldir.create_branch("upstream").generate_revision_history(
+            pristine_revids[None]
+        )
+    except AlreadyBranchError:
+        note("Upstream branch already exists; not creating.")
+    else:
+        note("Created upstream branch.")
+
+    return pristine_revids
+
+
 def debianize(  # noqa: C901
     wt,
     subpath,
@@ -168,17 +241,6 @@ def debianize(  # noqa: C901
 
     if os.path.exists("debian") and list(os.listdir("debian")):
         raise DebianDirectoryExists(wt.abspath(subpath))
-
-    # TODO(jelmer): Find revision with latest release rather than simply
-    # last revision?
-    try:
-        wt.controldir.create_branch("upstream").generate_revision_history(
-            wt.last_revision()
-        )
-    except AlreadyBranchError:
-        note("Upstream branch already exists; not creating.")
-    else:
-        note("Created upstream branch.")
 
     metadata = get_upstream_info(
         wt.abspath(subpath),
@@ -228,6 +290,15 @@ def debianize(  # noqa: C901
                 )
         if upstream_version is None:
             note("Unable to determine upstream version, using 0.")
+
+        pristine_revids = import_upstream_version_from_dist(
+            wt, subpath, buildsystem, source_name, upstream_version)
+
+        if wt.branch.last_revision() != pristine_revids[None]:
+            wt.pull(
+                wt.branch, overwrite=True, stop_revision=pristine_revids[None])
+            if dirty_tracker:
+                dirty_tracker.mark_clean()
 
         version = Version(upstream_version + "-1")
         source = Deb822()
@@ -339,6 +410,8 @@ def debianize(  # noqa: C901
 
             loop = asyncio.get_event_loop()
             wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
+            if not wnpp_bugs and source_name != upstream_name:
+                wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
             if not wnpp_bugs:
                 wnpp_bugs = loop.run_until_complete(
                     find_archived_wnpp_bugs(source_name)
