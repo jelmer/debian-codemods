@@ -828,6 +828,9 @@
 - tag: missing-license-text-in-dep5-copyright
 - tag: missing-manifest
 - tag: missing-notice-file-for-apache-license
+  difficulty: medium
+  comment: |
+   tricky is figuring out whether something else already installs this file
 - tag: missing-pkg-php-tools-addon
 - tag: missing-pkg-php-tools-buildsystem
 - tag: missing-potfiles-in
