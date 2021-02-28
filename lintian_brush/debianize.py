@@ -55,7 +55,7 @@ from .debhelper import (
     maximum_debhelper_compat_version,
     write_rules_template as write_debhelper_rules_template,
 )
-from .standards_version import iter_standards_versions
+from .standards_version import latest_standards_version
 
 
 def write_control_template(path, source, binaries):
@@ -234,9 +234,7 @@ def debianize(  # noqa: C901
         # TODO(jelmer): This is a reasonable guess, but won't always be
         # okay.
         source["Rules-Requires-Root"] = "no"
-        source["Standards-Version"] = ".".join(
-            map(str, next(iter_standards_versions())[0])
-        )
+        source["Standards-Version"] = latest_standards_version()
 
         binaries = []
         source[
@@ -250,11 +248,13 @@ def debianize(  # noqa: C901
         if buildsystem and buildsystem.name == "setup.py":
             dh_buildsystem = "pybuild"
             dh_addons.append("python3")
+            source["Build-Depends"] = ensure_some_version(
+                source["Build-Depends"], "python3-all")
             source_name = "python-%s" % upstream_name
             binaries.append(
                 Deb822(
                     {
-                        "Package": "python3-%s" % source_name,
+                        "Package": "python3-%s" % upstream_name,
                         "Depends": "${python3:Depends}",
                         "Architecture": "all",
                     }

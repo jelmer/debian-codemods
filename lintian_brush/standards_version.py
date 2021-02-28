@@ -32,3 +32,7 @@ def iter_standards_versions() -> Iterator[Tuple[Tuple[int, ...], int]]:
                 continue
             (version, ts) = line.split()
             yield parse_standards_version(version), int(ts)
+
+
+def latest_standards_version():
+    return ".".join(map(str, next(iter_standards_versions())[0]))

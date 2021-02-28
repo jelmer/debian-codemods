@@ -195,13 +195,16 @@ def replace_full_license(para):
         return
     if license_matched == 'Apache-2.0':
         fixed_lintian_tag(
-            'source', 'copyright-file-contains-full-apache-2-license')
+            'source', 'copyright-file-contains-full-apache-2-license',
+            info=())
     if license_matched.startswith('GFDL-'):
         fixed_lintian_tag(
-            'source', 'copyright-file-contains-full-gfdl-license')
+            'source', 'copyright-file-contains-full-gfdl-license',
+            info=())
     if license_matched.startswith('GPL-'):
         fixed_lintian_tag(
-            'source', 'copyright-file-contains-full-gpl-license')
+            'source', 'copyright-file-contains-full-gpl-license',
+            info=())
     para.license = License(license.synopsis, blurb)
     return license_matched
 
@@ -223,18 +226,19 @@ def reference_common_license(para):
             common_license))
     if common_license in ('Apache-2.0', 'Apache-2'):
         fixed_lintian_tag(
-            'source', 'copyright-not-using-common-license-for-apache2')
+            'source', 'copyright-not-using-common-license-for-apache2',
+            info=())
     elif common_license.startswith('GPL-'):
         fixed_lintian_tag(
-            'source', 'copyright-not-using-common-license-for-gpl')
+            'source', 'copyright-not-using-common-license-for-gpl', info=())
     elif common_license.startswith('LGPL-'):
         fixed_lintian_tag(
-            'source', 'copyright-not-using-common-license-for-lgpl')
+            'source', 'copyright-not-using-common-license-for-lgpl', info=())
     elif common_license.startswith('GFDL-'):
         fixed_lintian_tag(
-            'source', 'copyright-not-using-common-license-for-gfdl')
+            'source', 'copyright-not-using-common-license-for-gfdl', info=())
     fixed_lintian_tag(
-        'source', 'copyright-does-not-refer-to-common-license-file')
+        'source', 'copyright-does-not-refer-to-common-license-file', info=())
     if license.synopsis != common_license:
         renames[license.synopsis] = common_license
     return common_license

@@ -72,7 +72,7 @@ class LintianIssue(object):
         return not self.override_exists()
 
     def report_fixed(self):
-        _fixed_lintian_tags.append((self.target, self.tag, self.info))
+        _fixed_lintian_issues.append((self.target, self.tag, self.info))
 
     def __repr__(self):
         return "%s(target=%r, tag=%r, info=%r)" % (
@@ -83,7 +83,7 @@ class LintianIssue(object):
         )
 
 
-_fixed_lintian_tags: List[Any] = []
+_fixed_lintian_issues: List[Any] = []
 _present_overrides: Optional[List[LintianOverride]] = None
 _tag_renames = None
 
@@ -120,13 +120,13 @@ def fixed_lintian_tag(
 
 
 def fixed_lintian_tags():
-    return set([tag for (target, tag, info) in _fixed_lintian_tags])
+    return set([tag for (target, tag, info) in _fixed_lintian_issues])
 
 
 def reset() -> None:
     """Reset any global state that may exist."""
-    global _fixed_lintian_tags, _present_overrides
-    _fixed_lintian_tags = []
+    global _fixed_lintian_issues, _present_overrides
+    _fixed_lintian_issues = []
     _present_overrides = None
 
 
@@ -135,7 +135,6 @@ def report_result(description=None, certainty=None, patch_name=None):
 
     Args:
       description: Description of the fix
-      fixed_lintian_tags: Set of fixed lintian tags
       certainty: Certainty of the fix
       patch_name: Suggested patch name, if there are upstream changes
     """
@@ -143,7 +142,8 @@ def report_result(description=None, certainty=None, patch_name=None):
         print(description)
     if certainty:
         print("Certainty: %s" % certainty)
-    fixed_lintian_tags = set([tag for (target, tag, info) in _fixed_lintian_tags])
+    fixed_lintian_tags = set(
+        [tag for (target, tag, info) in _fixed_lintian_issues])
     if fixed_lintian_tags:
         print("Fixed-Lintian-Tags: %s" % ", ".join(sorted(fixed_lintian_tags)))
     if patch_name:
