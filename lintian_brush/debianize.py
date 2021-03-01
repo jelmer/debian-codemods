@@ -24,13 +24,13 @@ import warnings
 
 
 from debian.changelog import Changelog, Version, get_maintainer, format_date
-from debmutate.control import ensure_some_version
-from debian.deb822 import Deb822
+from debmutate.control import ensure_some_version, ensure_relation
+from debian.deb822 import Deb822, PkgRelation
 
 from breezy import osutils
 from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
-from breezy.trace import note, warning  # noqa: E402
+from breezy.trace import note, warning, mutter  # noqa: E402
 
 from upstream_ontologist.guess import (
     get_upstream_info,
@@ -153,17 +153,18 @@ def import_upstream_version_from_dist(
     def create_dist(tree, package, version, target_dir):
         from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
         from ognibuild.session.plain import PlainSession
-        from ognibuild.resolver.apt import AptResolver
-        from ognibuild.buildlog import UpstreamRequirementFixer
+        from ognibuild.resolver import auto_resolver
+        from ognibuild.buildlog import RequirementFixer
         import shutil
         session = PlainSession()
-        resolver = AptResolver.from_session(session)
-        fixers = [UpstreamRequirementFixer(resolver)]
+        resolver = auto_resolver(session)
+        fixers = [RequirementFixer(resolver)]
         with DistCatcher(wt.abspath('.')) as dc:
             oldcwd = os.getcwd()
             try:
                 session.chdir(wt.abspath('.'))
-                run_dist(session, [buildsystem], resolver, fixers)
+                run_dist(
+                    session, [buildsystem], resolver, fixers, quiet=True)
             finally:
                 os.chdir(oldcwd)
 
@@ -311,6 +312,33 @@ def debianize(  # noqa: C901
         source[
             "Build-Depends"
         ] = "debhelper-compat (= %d)" % maximum_debhelper_compat_version(compat_release)
+        try:
+            upstream_deps = buildsystem.get_declared_dependencies()
+        except NotImplementedError:
+            warning('Unable to obtain declared dependencies.')
+            upstream_deps = None
+
+        from ognibuild.session.plain import PlainSession
+        from ognibuild.resolver.apt import AptResolver
+
+        session = PlainSession()
+        apt_resolver = AptResolver.from_session(session)
+
+        build_deps = []
+        test_deps = []
+        for kind, dep in upstream_deps:
+            apt_dep = apt_resolver.resolve(dep)
+            if apt_dep is None:
+                warning(
+                    'Unable to map upstream requirement %s (kind %s) '
+                    'to a Debian package', dep, kind)
+                continue
+            mutter('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
+            if kind in ('core', 'build'):
+                build_deps.append(apt_dep)
+            if kind in ('core', 'test', ):
+                test_deps.append(apt_dep)
+
         dh_addons = []
         initial_files = []
         dh_buildsystem = None
@@ -319,6 +347,7 @@ def debianize(  # noqa: C901
         if buildsystem and buildsystem.name == "setup.py":
             dh_buildsystem = "pybuild"
             dh_addons.append("python3")
+            source["Testsuite"] = "autopkgtest-pkg-python"
             source["Build-Depends"] = ensure_some_version(
                 source["Build-Depends"], "python3-all")
             source_name = "python-%s" % upstream_name
@@ -404,6 +433,11 @@ def debianize(  # noqa: C901
             return 1
 
         source["Source"] = source_name
+        for build_dep in build_deps:
+            for rel in build_dep.relations:
+                source["Build-Depends"] = ensure_relation(
+                    source.get("Build-Depends", ""),
+                    PkgRelation.str([rel]))
 
         if net_access:
             import asyncio
