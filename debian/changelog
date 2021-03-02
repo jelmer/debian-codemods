@@ -1,3 +1,9 @@
+lintian-brush (0.100) UNRELEASED; urgency=medium
+
+  * Drop ognibuild to recommands; it's only used by debianize.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 02 Mar 2021 14:59:45 +0000
+
 lintian-brush (0.99) unstable; urgency=medium
 
   * Also update 'set -e' in postrm files. Closes: #983347
