@@ -17,6 +17,7 @@
 
 """Debianize a package."""
 
+import logging
 import os
 import sys
 from urllib.parse import urlparse
@@ -30,7 +31,7 @@ from debian.deb822 import Deb822, PkgRelation
 from breezy import osutils
 from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
-from breezy.trace import note, warning, mutter  # noqa: E402
+from breezy.trace import note # noqa: E402
 
 from upstream_ontologist.guess import (
     get_upstream_info,
@@ -163,8 +164,11 @@ def import_upstream_version_from_dist(
             oldcwd = os.getcwd()
             try:
                 session.chdir(wt.abspath('.'))
-                run_dist(
-                    session, [buildsystem], resolver, fixers, quiet=True)
+                try:
+                    run_dist(
+                        session, [buildsystem], resolver, fixers, quiet=True)
+                except NotImplementedError:
+                    return None
             finally:
                 os.chdir(oldcwd)
 
@@ -187,8 +191,9 @@ def import_upstream_version_from_dist(
         create_dist=create_dist, snapshot=False)
     pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
     if pristine_tar_source.has_version(source_name, upstream_version):
-        warning('Upstream version %s/%s already imported.',
-                source_name, upstream_version)
+        logging.warning(
+            'Upstream version %s/%s already imported.',
+            source_name, upstream_version)
         pristine_revids = pristine_tar_source\
             .version_as_revisions(source_name, upstream_version)
     else:
@@ -215,9 +220,9 @@ def import_upstream_version_from_dist(
             pristine_revids[None]
         )
     except AlreadyBranchError:
-        note("Upstream branch already exists; not creating.")
+        logging.info("Upstream branch already exists; not creating.")
     else:
-        note("Created upstream branch.")
+        logging.info("Created upstream branch.")
 
     return pristine_revids
 
@@ -263,9 +268,9 @@ def debianize(  # noqa: C901
     try:
         upstream_name = metadata["Name"]
     except KeyError:
-        note("%s: Unable to determine upstream package name.", wt.abspath(subpath))
+        logging.info("%s: Unable to determine upstream package name.", wt.abspath(subpath))
         if not trust:
-            note("Run with --trust if you are okay running code " "from the package?")
+            logging.info("Run with --trust if you are okay running code " "from the package?")
         return 1
 
     source_name = source_name_from_upstream_name(upstream_name)
@@ -277,7 +282,7 @@ def debianize(  # noqa: C901
                 upstream_version_add_revision,
             )
         except ModuleNotFoundError:
-            note("Install breezy-debian for upstream version guessing.")
+            logging.info("Install breezy-debian for upstream version guessing.")
         else:
             upstream_version = upstream_branch_version(
                 wt.branch, wt.last_revision(), upstream_name
@@ -290,7 +295,7 @@ def debianize(  # noqa: C901
                     wt.branch, next_upstream_version, wt.last_revision(), "~"
                 )
         if upstream_version is None:
-            note("Unable to determine upstream version, using 0.")
+            logging.info("Unable to determine upstream version, using 0.")
 
         pristine_revids = import_upstream_version_from_dist(
             wt, subpath, buildsystem, source_name, upstream_version)
@@ -315,7 +320,7 @@ def debianize(  # noqa: C901
         try:
             upstream_deps = buildsystem.get_declared_dependencies()
         except NotImplementedError:
-            warning('Unable to obtain declared dependencies.')
+            logging.warning('Unable to obtain declared dependencies.')
             upstream_deps = None
 
         from ognibuild.session.plain import PlainSession
@@ -329,11 +334,11 @@ def debianize(  # noqa: C901
         for kind, dep in upstream_deps:
             apt_dep = apt_resolver.resolve(dep)
             if apt_dep is None:
-                warning(
+                logging.warning(
                     'Unable to map upstream requirement %s (kind %s) '
                     'to a Debian package', dep, kind)
                 continue
-            mutter('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
+            logging.debug('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
             if kind in ('core', 'build'):
                 build_deps.append(apt_dep)
             if kind in ('core', 'test', ):
@@ -429,7 +434,7 @@ def debianize(  # noqa: C901
             )
 
         if not valid_debian_package_name(source_name):
-            note("Unable to sanitize source package name: %s", source_name)
+            logging.info("Unable to sanitize source package name: %s", source_name)
             return 1
 
         source["Source"] = source_name
@@ -445,19 +450,20 @@ def debianize(  # noqa: C901
             loop = asyncio.get_event_loop()
             wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
             if not wnpp_bugs and source_name != upstream_name:
-                wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
+                wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(upstream_name))
             if not wnpp_bugs:
                 wnpp_bugs = loop.run_until_complete(
                     find_archived_wnpp_bugs(source_name)
                 )
                 if wnpp_bugs:
-                    warning(
+                    logging.warning(
                         "Found archived ITP/RFP bugs for %s: %r", source_name, wnpp_bugs
                     )
                 else:
-                    warning("No relevant WNPP bugs found for %s", source_name)
+                    logging.warning(
+                        "No relevant WNPP bugs found for %s", source_name)
             else:
-                note("Found WNPP bugs for %s: %r", source_name, wnpp_bugs)
+                logging.info("Found WNPP bugs for %s: %r", source_name, wnpp_bugs)
         else:
             wnpp_bugs = None
 
@@ -578,6 +584,8 @@ def main(argv=None):
 
     args = parser.parse_args(argv)
 
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+
     compat_release = args.compat_release
     if compat_release is None:
         import distro_info
@@ -592,7 +600,7 @@ def main(argv=None):
         try:
             check_clean_tree(wt, wt.basis_tree(), subpath)
         except PendingChanges:
-            note("%s: Please commit pending changes first.", wt.basedir)
+            logging.info("%s: Please commit pending changes first.", wt.basedir)
             return 1
 
         try:
@@ -610,7 +618,7 @@ def main(argv=None):
                 verbose=args.verbose,
             )
         except DebianDirectoryExists as e:
-            note(
+            logging.info(
                 "%s: A debian directory already exists. " "Run lintian-brush instead?",
                 e.path,
             )
