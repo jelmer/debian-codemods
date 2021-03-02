@@ -154,11 +154,11 @@ def import_upstream_version_from_dist(
         from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
         from ognibuild.session.plain import PlainSession
         from ognibuild.resolver import auto_resolver
-        from ognibuild.buildlog import RequirementFixer
+        from ognibuild.buildlog import InstallFixer
         import shutil
         session = PlainSession()
         resolver = auto_resolver(session)
-        fixers = [RequirementFixer(resolver)]
+        fixers = [InstallFixer(resolver)]
         with DistCatcher(wt.abspath('.')) as dc:
             oldcwd = os.getcwd()
             try:
