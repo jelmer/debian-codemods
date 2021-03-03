@@ -43,7 +43,7 @@ class LintianIssue(object):
 
     def __init__(
         self,
-        target: Union[MutableMapping, Tuple[str, str]],
+        target: Union[MutableMapping, Tuple[str, str], str],
         tag: str,
         info: Optional[Union[str, Tuple[str, ...]]] = None,
     ):
@@ -112,7 +112,7 @@ def _override_exists(
 
 
 def fixed_lintian_tag(
-    target: Union[MutableMapping, Tuple[str, str]],
+    target: Union[MutableMapping, Tuple[str, str], str],
     tag: str,
     info: Optional[Union[str, Tuple[str, ...]]] = None,
 ):

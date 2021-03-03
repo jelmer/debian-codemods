@@ -463,10 +463,10 @@ Lintian-Tags: public-upstream-key-in-native-package
 
 # Disabled for now, since debmutate's support for watch files is still
 # experimental.
-#Fix-Script: pubkey.py
-#Lintian-Tags:
-#  debian-watch-file-pubkey-file-is-missing,
-#  debian-watch-does-not-check-gpg-signature
+Fix-Script: pubkey.py
+Lintian-Tags:
+  debian-watch-file-pubkey-file-is-missing,
+  debian-watch-does-not-check-gpg-signature
 
 Fix-Script: debian-rules-uses-as-needed-linker-flag.py
 Lintian-Tags: debian-rules-uses-as-needed-linker-flag

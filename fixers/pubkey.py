@@ -40,6 +40,7 @@ for path in ['debian/upstream/signing-key.asc',
 def sig_valid(sig):
     return sig.status == 0
 
+description = None
 
 with WatchEditor() as editor:
     if not editor.watch_file:
@@ -50,7 +51,6 @@ with WatchEditor() as editor:
     sigs_valid = []
     used_mangles: List[Optional[str]] = []
     for entry in wf.entries:  # noqa: C901
-        releases_without_sig = []
         if entry.has_option('pgpsigurlmangle') and has_keys:
             continue
         try:
@@ -97,9 +97,10 @@ with WatchEditor() as editor:
                 used_mangles.append(None)
         if not all(sigs_valid[:5]):
             sys.exit(0)
-        common_mangles = set(used_mangles[:5])
-        if len(common_mangles) == 1:
-            new_mangle = common_mangles.pop()
+        found_common_mangles = set(used_mangles[:5])
+        if (not entry.has_option('pgpsigurlmangle') and
+                len(found_common_mangles) == 1):
+            new_mangle = found_common_mangles.pop()
             issue = LintianIssue(
                 'source', 'debian-watch-does-not-check-gpg-signature', ())
             if new_mangle is not None and issue.should_fix():
@@ -107,6 +108,7 @@ with WatchEditor() as editor:
                 if len(used_mangles) == 1:
                     entry.set_option('pgpmode', 'mangle')
                 issue.report_fixed()
+                description = "Check upstream PGP signatures."
         if not has_keys and needed_keys:
             issue = LintianIssue(
                 'source', 'debian-watch-file-pubkey-file-is-missing', ())
@@ -132,6 +134,9 @@ with WatchEditor() as editor:
                             f.write(key)
 
                 issue.report_fixed()
+                if description is None:
+                    description = "Add upstream signing keys."
 
 
-report_result('Check upstream signatures.')
+if description:
+    report_result(description)
