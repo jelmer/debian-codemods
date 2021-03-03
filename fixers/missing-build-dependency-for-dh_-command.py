@@ -42,7 +42,10 @@ for path, sep in [
 
 need = []
 
-mf = Makefile.from_path('debian/rules')
+try:
+    mf = Makefile.from_path('debian/rules')
+except FileNotFoundError:
+    sys.exit(0)
 
 for entry in mf.contents:
     if isinstance(entry, Rule):
