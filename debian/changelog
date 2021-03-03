@@ -4,6 +4,8 @@ lintian-brush (0.100) UNRELEASED; urgency=medium
   * Read field lists from lintian.
   * Add support for fixing some things in debcargo.toml.
   * Enable upstream signing key updating.
+  * debian-rules-uses-as-needed-linker-flag: handle exporting of
+    variables without assignment.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 02 Mar 2021 14:59:45 +0000
 
