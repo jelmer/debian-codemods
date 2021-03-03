@@ -31,7 +31,6 @@ from debian.deb822 import Deb822, PkgRelation
 from breezy import osutils
 from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
-from breezy.trace import note # noqa: E402
 
 from upstream_ontologist.guess import (
     get_upstream_info,
