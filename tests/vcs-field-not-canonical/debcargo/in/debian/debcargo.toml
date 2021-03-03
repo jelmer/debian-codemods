@@ -1,0 +1,2 @@
+[source]
+vcs_git = "https://salsa.debian.org/jelmer/myrustpkg"

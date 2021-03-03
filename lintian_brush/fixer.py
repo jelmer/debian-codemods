@@ -17,6 +17,7 @@
 
 """Helper functions for fixers."""
 
+from collections.abc import MutableMapping
 from debmutate.control import ControlEditor
 from debmutate.deb822 import Deb822
 import sys
@@ -42,11 +43,11 @@ class LintianIssue(object):
 
     def __init__(
         self,
-        target: Union[Deb822, Tuple[str, str]],
+        target: Union[MutableMapping, Tuple[str, str]],
         tag: str,
         info: Optional[Union[str, Tuple[str, ...]]] = None,
     ):
-        if isinstance(target, Deb822):
+        if isinstance(target, MutableMapping):
             if "Source" in target:
                 target = ("source", target["Source"])
             elif "Package" in target:
@@ -111,7 +112,7 @@ def _override_exists(
 
 
 def fixed_lintian_tag(
-    target: Union[Deb822, Tuple[str, str]],
+    target: Union[MutableMapping, Tuple[str, str]],
     tag: str,
     info: Optional[Union[str, Tuple[str, ...]]] = None,
 ):
