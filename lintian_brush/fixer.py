@@ -203,4 +203,9 @@ def vendor():
             return c['Vendor']
 
 
-control = ControlEditor()
+if os.path.exists('debian/debcargo.toml'):
+    from debmutate.debcargo import DebcargoControlShimEditor, DebcargoEditor
+
+    control = DebcargoControlShimEditor(DebcargoEditor())
+else:
+    control = ControlEditor()
