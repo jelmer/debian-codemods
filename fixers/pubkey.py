@@ -23,7 +23,8 @@ from lintian_brush.fixer import (
     warn,
     )
 
-COMMON_MANGLES = ['s/$/.asc/']
+COMMON_MANGLES = [
+    's/$/.%s/' % ext for ext in ['asc', 'pgp', 'gpg', 'sig', 'sign']]
 
 
 if not os.path.exists('debian/watch'):
