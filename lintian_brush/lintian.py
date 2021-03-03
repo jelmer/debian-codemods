@@ -75,9 +75,22 @@ KNOWN_TESTS_CONTROL_FIELDS_PATH = os.path.join(
     LINTIAN_DATA_PATH, 'testsuite/known-fields')
 
 
+def _capitalize_field(field):
+    return "-".join([x.capitalize() for x in field.split("-")])
+
+
+def _read_test_fields(path, vendor):
+    with open(path, 'r') as f:
+        fields = list(read_list_file(f, vendor=vendor))
+
+    # Older versions of lintian listed fields with all lowercase.
+    if all([x == x.lower() for x in fields]):
+        fields = set([_capitalize_field(x) for x in fields])
+    return fields
+
+
 def known_tests_control_fields(vendor):
-    with open(KNOWN_TESTS_CONTROL_FIELDS_PATH, 'r') as f:
-        return list(read_list_file(f, vendor=vendor))
+    return _read_test_fields(KNOWN_TESTS_CONTROL_FIELDS_PATH, vendor)
 
 
 KNOWN_SOURCE_FIELDS_PATH = os.path.join(
@@ -85,8 +98,7 @@ KNOWN_SOURCE_FIELDS_PATH = os.path.join(
 
 
 def known_source_fields(vendor):
-    with open(KNOWN_SOURCE_FIELDS_PATH, 'r') as f:
-        return list(read_list_file(f, vendor=vendor))
+    return _read_test_fields(KNOWN_SOURCE_FIELDS_PATH, vendor)
 
 
 KNOWN_BINARY_FIELDS_PATH = os.path.join(
@@ -94,5 +106,4 @@ KNOWN_BINARY_FIELDS_PATH = os.path.join(
 
 
 def known_binary_fields(vendor):
-    with open(KNOWN_BINARY_FIELDS_PATH, 'r') as f:
-        return list(read_list_file(f, vendor=vendor))
+    return _read_test_fields(KNOWN_BINARY_FIELDS_PATH, vendor)
