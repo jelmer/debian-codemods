@@ -6,6 +6,8 @@ lintian-brush (0.100) UNRELEASED; urgency=medium
   * Enable upstream signing key updating.
   * debian-rules-uses-as-needed-linker-flag: handle exporting of
     variables without assignment.
+  * declares-possibly-conflicting-debhelper-compat-versions: Remove
+    debian/compat if it conflicts with control field.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 02 Mar 2021 14:59:45 +0000
 

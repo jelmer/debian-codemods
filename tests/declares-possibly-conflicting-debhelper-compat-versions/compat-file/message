@@ -1,0 +1,2 @@
+Avoid setting debhelper compat version in debian/rules and debian/compat.
+Fixed-Lintian-Tags: declares-possibly-conflicting-debhelper-compat-versions

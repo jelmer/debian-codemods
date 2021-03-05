@@ -1,14 +1,35 @@
 #!/usr/bin/python3
 
+import os
 import re
 import sys
 
-from debmutate.debhelper import get_debhelper_compat_level
-from lintian_brush.fixer import report_result, LintianIssue
+from debmutate.debhelper import (
+    read_debhelper_compat_file,
+    get_debhelper_compat_level_from_control,
+    )
+from lintian_brush.fixer import control, report_result, LintianIssue
 from debmutate._rules import update_rules
 
-compat_version = get_debhelper_compat_level()
-if compat_version is None:
+try:
+    file_compat_version = read_debhelper_compat_file('debian/compat')
+except FileNotFoundError:
+    file_compat_version = None
+
+
+with control:
+    control_compat_version = get_debhelper_compat_level_from_control(
+        control.source)
+
+
+if control_compat_version is not None and file_compat_version is not None:
+    os.remove('debian/compat')
+    compat_version = control_compat_version
+elif control_compat_version is not None:
+    compat_version = control_compat_version
+elif file_compat_version is not None:
+    compat_version = file_compat_version
+else:
     sys.exit(0)
 
 
