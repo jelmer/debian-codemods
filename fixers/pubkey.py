@@ -25,6 +25,7 @@ from lintian_brush.fixer import (
 
 COMMON_MANGLES = [
     's/$/.%s/' % ext for ext in ['asc', 'pgp', 'gpg', 'sig', 'sign']]
+NUM_KEYS_TO_CHECK = 5
 
 
 if not os.path.exists('debian/watch'):
@@ -96,7 +97,7 @@ with WatchEditor() as editor:
                 break
             else:
                 used_mangles.append(None)
-        if not all(sigs_valid[:5]):
+        if not all(sigs_valid[:NUM_KEYS_TO_CHECK]):
             sys.exit(0)
         found_common_mangles = set(used_mangles[:5])
         if (not entry.has_option('pgpsigurlmangle') and
