@@ -1,3 +1,9 @@
+lintian-brush (0.101) UNRELEASED; urgency=medium
+
+  * Drop unnecesary toml dependencies.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 06 Mar 2021 05:11:38 +0000
+
 lintian-brush (0.100) unstable; urgency=medium
 
   * Drop ognibuild to recommends; it's only used by debianize.
