@@ -1,4 +1,4 @@
-lintian-brush (0.100) UNRELEASED; urgency=medium
+lintian-brush (0.100) unstable; urgency=medium
 
   * Drop ognibuild to recommends; it's only used by debianize.
   * Read field lists from lintian.
@@ -9,7 +9,7 @@ lintian-brush (0.100) UNRELEASED; urgency=medium
   * declares-possibly-conflicting-debhelper-compat-versions: Remove
     debian/compat if it conflicts with control field.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 02 Mar 2021 14:59:45 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 06 Mar 2021 05:03:32 +0000
 
 lintian-brush (0.99) unstable; urgency=medium
 
