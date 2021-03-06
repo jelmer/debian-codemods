@@ -885,6 +885,7 @@
 - tag: no-dep5-copyright
   difficulty: hard
 - tag: no-description-in-changes-file
+  status: build-stage
 - tag: no-dh-sequencer
   difficulty: medium
   comment: Will require rewriting debian/rules
