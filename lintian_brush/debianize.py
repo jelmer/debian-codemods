@@ -17,6 +17,7 @@
 
 """Debianize a package."""
 
+import contextlib
 import logging
 import os
 import sys
@@ -148,6 +149,12 @@ def go_import_path_from_repo(repo_url):
     return p
 
 
+def setup_debhelper(source, compat_release):
+    source[
+        "Build-Depends"
+    ] = "debhelper-compat (= %d)" % maximum_debhelper_compat_version(compat_release)
+
+
 def import_upstream_version_from_dist(
         wt, subpath, buildsystem, source_name, upstream_version):
     def create_dist(tree, package, version, target_dir):
@@ -274,7 +281,8 @@ def debianize(  # noqa: C901
 
     source_name = source_name_from_upstream_name(upstream_name)
 
-    with wt.lock_write():
+    with contextlib.ExitStack() as es:
+        es.enter_context(wt.lock_write())
         try:
             from breezy.plugins.debian.upstream.branch import (
                 upstream_branch_version,
@@ -313,9 +321,7 @@ def debianize(  # noqa: C901
         source["Standards-Version"] = latest_standards_version()
 
         binaries = []
-        source[
-            "Build-Depends"
-        ] = "debhelper-compat (= %d)" % maximum_debhelper_compat_version(compat_release)
+        setup_debhelper(source, compat_release=compat_release)
         try:
             upstream_deps = buildsystem.get_declared_dependencies()
         except NotImplementedError:
