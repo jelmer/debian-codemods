@@ -414,7 +414,7 @@ def debianize(  # noqa: C901
                     {"Package": "lib%s-perl" % upstream_name, "Architecture": "all"})
             elif buildsystem and buildsystem.name == "cargo":
                 from debmutate.debcargo import DebcargoControlShimEditor
-                control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path)))
+                control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name))
                 source = control.source
             elif buildsystem and buildsystem.name == "golang":
                 control = es.enter_context(ControlEditor.create())
