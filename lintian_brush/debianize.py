@@ -26,8 +26,8 @@ import warnings
 
 
 from debian.changelog import Changelog, Version, get_maintainer, format_date
-from debmutate.control import ensure_some_version, ensure_relation
-from debian.deb822 import Deb822, PkgRelation
+from debmutate.control import ensure_some_version, ensure_relation, ControlEditor
+from debian.deb822 import PkgRelation
 
 from breezy import osutils
 from breezy.errors import AlreadyBranchError
@@ -57,21 +57,6 @@ from .debhelper import (
     write_rules_template as write_debhelper_rules_template,
 )
 from .standards_version import latest_standards_version
-
-
-def write_control_template(path, source, binaries):
-    """Write a control file template.
-
-    Args:
-      path: Path to write to
-      source: Source stanza
-      binaries: Binary stanzas
-    """
-    with open(path, "wb") as f:
-        source.dump(f)
-        for binary in binaries:
-            f.write(b"\n")
-            binary.dump(f)
 
 
 def write_changelog_template(path, source_name, version, wnpp_bugs=None):
@@ -149,10 +134,23 @@ def go_import_path_from_repo(repo_url):
     return p
 
 
-def setup_debhelper(source, compat_release):
+def enable_dh_addon(source, addon):
+    source["Build-Depends"] = ensure_some_version(
+        source["Build-Depends"], "dh-sequence-%s" % addon
+    )
+
+
+def setup_debhelper(wt, debian_path, source, compat_release, addons=None, env=None, buildsystem=None):
     source[
         "Build-Depends"
     ] = "debhelper-compat (= %d)" % maximum_debhelper_compat_version(compat_release)
+    for addon in addons or []:
+        enable_dh_addon(source, addon)
+    write_debhelper_rules_template(
+        wt.abspath(os.path.join(debian_path, "rules")),
+        buildsystem=buildsystem,
+        env=(env or {}),
+    )
 
 
 def import_upstream_version_from_dist(
@@ -233,6 +231,24 @@ def import_upstream_version_from_dist(
     return pristine_revids
 
 
+class ResetOnFailure(object):
+
+    def __init__(self, wt, subpath=None, dirty_tracker=None):
+        self.wt = wt
+        self.subpath = subpath
+        self.dirty_tracker = dirty_tracker
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            reset_tree(
+                self.wt, self.wt.basis_tree(), self.subpath,
+                dirty_tracker=self.dirty_tracker)
+        return False
+
+
 def debianize(  # noqa: C901
     wt,
     subpath,
@@ -281,232 +297,227 @@ def debianize(  # noqa: C901
 
     source_name = source_name_from_upstream_name(upstream_name)
 
-    with contextlib.ExitStack() as es:
-        es.enter_context(wt.lock_write())
-        try:
-            from breezy.plugins.debian.upstream.branch import (
-                upstream_branch_version,
-                upstream_version_add_revision,
-            )
-        except ModuleNotFoundError:
-            logging.info("Install breezy-debian for upstream version guessing.")
-        else:
-            upstream_version = upstream_branch_version(
-                wt.branch, wt.last_revision(), upstream_name
-            )
-            if upstream_version is None and "X-Version" in metadata:
-                # They haven't done any releases yet. Assume we're ahead of
-                # the next announced release?
-                next_upstream_version = debian_upstream_version(metadata["X-Version"])
-                upstream_version = upstream_version_add_revision(
-                    wt.branch, next_upstream_version, wt.last_revision(), "~"
+    with wt.lock_write():
+        with contextlib.ExitStack() as es:
+            es.enter_context(ResetOnFailure(
+                wt, subpath=subpath, dirty_tracker=dirty_tracker))
+
+            debian_path = osutils.pathjoin(subpath, "debian")
+            if not wt.has_filename(debian_path):
+                wt.mkdir(debian_path)
+
+            try:
+                from breezy.plugins.debian.upstream.branch import (
+                    upstream_branch_version,
+                    upstream_version_add_revision,
                 )
-        if upstream_version is None:
-            logging.info("Unable to determine upstream version, using 0.")
+            except ModuleNotFoundError:
+                logging.info("Install breezy-debian for upstream version guessing.")
+            else:
+                upstream_version = upstream_branch_version(
+                    wt.branch, wt.last_revision(), upstream_name
+                )
+                if upstream_version is None and "X-Version" in metadata:
+                    # They haven't done any releases yet. Assume we're ahead of
+                    # the next announced release?
+                    next_upstream_version = debian_upstream_version(metadata["X-Version"])
+                    upstream_version = upstream_version_add_revision(
+                        wt.branch, next_upstream_version, wt.last_revision(), "~"
+                    )
+            if upstream_version is None:
+                logging.info("Unable to determine upstream version, using 0.")
 
-        pristine_revids = import_upstream_version_from_dist(
-            wt, subpath, buildsystem, source_name, upstream_version)
+            pristine_revids = import_upstream_version_from_dist(
+                wt, subpath, buildsystem, source_name, upstream_version)
 
-        if wt.branch.last_revision() != pristine_revids[None]:
-            wt.pull(
-                wt.branch, overwrite=True, stop_revision=pristine_revids[None])
-            if dirty_tracker:
-                dirty_tracker.mark_clean()
+            if wt.branch.last_revision() != pristine_revids[None]:
+                wt.pull(
+                    wt.branch, overwrite=True, stop_revision=pristine_revids[None])
+                if dirty_tracker:
+                    dirty_tracker.mark_clean()
 
-        version = Version(upstream_version + "-1")
-        source = Deb822()
-        # TODO(jelmer): This is a reasonable guess, but won't always be
-        # okay.
-        source["Rules-Requires-Root"] = "no"
-        source["Standards-Version"] = latest_standards_version()
+            version = Version(upstream_version + "-1")
+            # TODO(jelmer): This is a reasonable guess, but won't always be
+            # okay.
+            try:
+                upstream_deps = buildsystem.get_declared_dependencies()
+            except NotImplementedError:
+                logging.warning('Unable to obtain declared dependencies.')
+                upstream_deps = None
 
-        binaries = []
-        setup_debhelper(source, compat_release=compat_release)
-        try:
-            upstream_deps = buildsystem.get_declared_dependencies()
-        except NotImplementedError:
-            logging.warning('Unable to obtain declared dependencies.')
-            upstream_deps = None
+            from ognibuild.session.plain import PlainSession
+            from ognibuild.resolver.apt import AptResolver
 
-        from ognibuild.session.plain import PlainSession
-        from ognibuild.resolver.apt import AptResolver
+            session = PlainSession()
+            apt_resolver = AptResolver.from_session(session)
 
-        session = PlainSession()
-        apt_resolver = AptResolver.from_session(session)
+            build_deps = []
+            test_deps = []
+            for kind, dep in upstream_deps:
+                apt_dep = apt_resolver.resolve(dep)
+                if apt_dep is None:
+                    logging.warning(
+                        'Unable to map upstream requirement %s (kind %s) '
+                        'to a Debian package', dep, kind)
+                    continue
+                logging.debug('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
+                if kind in ('core', 'build'):
+                    build_deps.append(apt_dep)
+                if kind in ('core', 'test', ):
+                    test_deps.append(apt_dep)
 
-        build_deps = []
-        test_deps = []
-        for kind, dep in upstream_deps:
-            apt_dep = apt_resolver.resolve(dep)
-            if apt_dep is None:
-                logging.warning(
-                    'Unable to map upstream requirement %s (kind %s) '
-                    'to a Debian package', dep, kind)
-                continue
-            logging.debug('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
-            if kind in ('core', 'build'):
-                build_deps.append(apt_dep)
-            if kind in ('core', 'test', ):
-                test_deps.append(apt_dep)
-
-        dh_addons = []
-        initial_files = []
-        dh_buildsystem = None
-        dh_env = {}
-
-        if buildsystem and buildsystem.name == "setup.py":
-            dh_buildsystem = "pybuild"
-            dh_addons.append("python3")
-            source["Testsuite"] = "autopkgtest-pkg-python"
-            source["Build-Depends"] = ensure_some_version(
-                source["Build-Depends"], "python3-all")
-            source_name = "python-%s" % upstream_name
-            binaries.append(
-                Deb822(
-                    {
+            if buildsystem and buildsystem.name == "setup.py":
+                control = es.enter_context(ControlEditor.create())
+                source = control.source
+                setup_debhelper(
+                    wt, debian_path,
+                    source, compat_release=compat_release,
+                    addons=["python3"],
+                    buildsystem="pybuild")
+                source["Testsuite"] = "autopkgtest-pkg-python"
+                source["Build-Depends"] = ensure_some_version(
+                    source["Build-Depends"], "python3-all")
+                source['Source'] = "python-%s" % upstream_name
+                control.add_binary({
                         "Package": "python3-%s" % upstream_name,
                         "Depends": "${python3:Depends}",
                         "Architecture": "all",
                     }
                 )
-            )
-        elif buildsystem and buildsystem.name == "npm":
-            dh_addons.append("nodejs")
-            source_name = "node-%s" % upstream_name
-            binaries.append(
-                Deb822({"Package": "node-%s" % upstream_name, "Architecture": "all"})
-            )
-            if os.path.exists("test/node.js"):
-                source["Testsuite"] = "autopkgtest-pkg-nodejs"
-                os.makedirs("debian/tests/pkg-js", exist_ok=True)
-                initial_files.append("debian/tests/pkg-js/test")
-                with open("debian/tests/pkg-js/test", "w") as f:
-                    f.write("mocha test/node.js")
-                source["Build-Depends"] = ensure_some_version(
-                    source["Build-Depends"], "mocha <!nocheck>"
-                )
-        elif buildsystem and buildsystem.name == "dist-zilla":
-            source_name = "lib%s-perl" % upstream_name
-            dh_addons.append("dist-zilla")
-            binaries.append(
-                Deb822({"Package": "lib%s-perl" % upstream_name, "Architecture": "all"})
-            )
-        elif buildsystem and buildsystem.name == "cargo":
-            source_name = "rust-%s" % upstream_name
-            source["Build-Depends"] = ensure_some_version(
-                source["Build-Depends"], "dh-cargo"
-            )
-            dh_buildsystem = "cargo"
-            binaries.append(
-                Deb822({"Package": "rust-%s" % source_name, "Architecture": "any"})
-            )
-        elif buildsystem and buildsystem.name == "golang":
-            source["XS-Go-Import-Path"] = go_import_path_from_repo(
-                metadata["Repository"]
-            )
-            if "Repository-Browse" in metadata:
-                source["Homepage"] = metadata["Repository-Browse"]
-            source["Section"] = "devel"
-            parsed_url = urlparse(metadata["Repository-Browse"])
-            hostname = parsed_url.hostname
-            if hostname == "github.com":
-                hostname = "github"
-            godebname = hostname + parsed_url.path.replace("/", "-")
-            source_name = "golang-%s" % godebname
-            source["Testsuite"] = "autopkgtest-pkg-go"
-            dh_addons.append("golang")
-            dh_buildsystem = "golang"
-            if os.path.isdir("examples"):
-                dh_env["DH_GOLANG_EXCLUDES"] = "examples/"
-            # TODO(jelmer): Add --builddirectory=_build to dh arguments
-            binaries.append(
-                Deb822(
-                    {
-                        "Package": "golang-%s-dev" % godebname,
-                        "Architecture": "all",
-                        "Multi-Arch": "foreign",
-                    }
-                )
-            )
-        else:
-            source_name = upstream_name
-            for binary_name, arch in [(source_name, "any")]:
-                binaries.append(Deb822({"Package": binary_name, "Architecture": arch}))
-
-        for dh_addon in dh_addons:
-            source["Build-Depends"] = ensure_some_version(
-                source["Build-Depends"], "dh-sequence-%s" % dh_addon
-            )
-
-        if not valid_debian_package_name(source_name):
-            logging.info("Unable to sanitize source package name: %s", source_name)
-            return 1
-
-        source["Source"] = source_name
-        for build_dep in build_deps:
-            for rel in build_dep.relations:
-                source["Build-Depends"] = ensure_relation(
-                    source.get("Build-Depends", ""),
-                    PkgRelation.str([rel]))
-
-        if net_access:
-            import asyncio
-
-            loop = asyncio.get_event_loop()
-            wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
-            if not wnpp_bugs and source_name != upstream_name:
-                wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(upstream_name))
-            if not wnpp_bugs:
-                wnpp_bugs = loop.run_until_complete(
-                    find_archived_wnpp_bugs(source_name)
-                )
-                if wnpp_bugs:
-                    logging.warning(
-                        "Found archived ITP/RFP bugs for %s: %r", source_name, wnpp_bugs
+            elif buildsystem and buildsystem.name == "npm":
+                control = es.enter_context(ControlEditor.create())
+                source = control.source
+                setup_debhelper(
+                    wt, debian_path,
+                    source, compat_release=compat_release, addons=["nodejs"])
+                source['Source'] = "node-%s" % upstream_name
+                control.dd_binary(
+                    {"Package": "node-%s" % upstream_name, "Architecture": "all"})
+                if wt.has_filename(os.path.join(subpath, "test/node.js")):
+                    source["Testsuite"] = "autopkgtest-pkg-nodejs"
+                    os.makedirs(
+                        os.path.join(debian_path, "debian/tests"), exist_ok=True)
+                    with open(os.path.join(debian_path, "tests/pkg-js/test"), "w") as f:
+                        f.write("mocha test/node.js")
+                    source["Build-Depends"] = ensure_some_version(
+                        source["Build-Depends"], "mocha <!nocheck>"
                     )
-                else:
-                    logging.warning(
-                        "No relevant WNPP bugs found for %s", source_name)
+            elif buildsystem and buildsystem.name == "dist-zilla":
+                control = es.enter_context(ControlEditor.create())
+                source = control.source
+                source['Source'] = "lib%s-perl" % upstream_name
+                setup_debhelper(
+                    wt, debian_path,
+                    source, compat_release=compat_release,
+                    addons=["dist-zilla"])
+                control.add_binary(
+                    {"Package": "lib%s-perl" % upstream_name, "Architecture": "all"})
+            elif buildsystem and buildsystem.name == "cargo":
+                control = es.enter_context(ControlEditor.create())
+                source = control.source
+                source['Source'] = "rust-%s" % upstream_name
+                setup_debhelper(
+                    wt, debian_path,
+                    source, compat_release=compat_release,
+                    buildsystem="cargo")
+                source["Build-Depends"] = ensure_some_version(
+                    source["Build-Depends"], "dh-cargo"
+                )
+                control.add_binary(
+                    {"Package": "rust-%s" % upstream_name, "Architecture": "any"})
+            elif buildsystem and buildsystem.name == "golang":
+                control = es.enter_context(ControlEditor.create())
+                source = control.source
+                source["XS-Go-Import-Path"] = go_import_path_from_repo(
+                    metadata["Repository"]
+                )
+                if "Repository-Browse" in metadata:
+                    source["Homepage"] = metadata["Repository-Browse"]
+                source["Section"] = "devel"
+                parsed_url = urlparse(metadata["Repository-Browse"])
+                hostname = parsed_url.hostname
+                if hostname == "github.com":
+                    hostname = "github"
+                godebname = hostname + parsed_url.path.replace("/", "-")
+                source['Source'] = "golang-%s" % godebname
+                source["Testsuite"] = "autopkgtest-pkg-go"
+                dh_env = {}
+                if os.path.isdir("examples"):
+                    dh_env["DH_GOLANG_EXCLUDES"] = "examples/"
+                setup_debhelper(
+                    wt, debian_path,
+                    source, compat_release=compat_release,
+                    addons=["golang"],
+                    buildsystem="golang",
+                    env=dh_env)
+                # TODO(jelmer): Add --builddirectory=_build to dh arguments
+                control.add_binary({
+                    "Package": "golang-%s-dev" % godebname,
+                    "Architecture": "all",
+                    "Multi-Arch": "foreign",
+                    })
             else:
-                logging.info("Found WNPP bugs for %s: %r", source_name, wnpp_bugs)
-        else:
-            wnpp_bugs = None
+                control = es.enter_context(ControlEditor.create())
+                source = control.source
+                setup_debhelper(
+                    wt, debian_path,
+                    source, compat_release=compat_release)
+                source_name = upstream_name
+                for binary_name, arch in [(source_name, "any")]:
+                    control.add_binary({"Package": binary_name, "Architecture": arch})
 
-        try:
-            debian_path = osutils.pathjoin(subpath, "debian")
-            if not wt.has_filename(debian_path):
-                wt.mkdir(debian_path)
-            write_debhelper_rules_template(
-                wt.abspath(os.path.join(debian_path, "rules")),
-                buildsystem=dh_buildsystem,
-                env=dh_env,
-            )
-            initial_files.append("debian/rules")
-            write_control_template(
-                wt.abspath(os.path.join(debian_path, "control")), source, binaries
-            )
-            initial_files.append("debian/control")
+            if not valid_debian_package_name(source['Source']):
+                logging.info("Unable to sanitize source package name: %s", source['Source'])
+                return 1
+
+            for build_dep in build_deps:
+                for rel in build_dep.relations:
+                    source["Build-Depends"] = ensure_relation(
+                        source.get("Build-Depends", ""),
+                        PkgRelation.str([rel]))
+
+            if net_access:
+                import asyncio
+
+                loop = asyncio.get_event_loop()
+                wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source['Source']))
+                if not wnpp_bugs and source['Source'] != upstream_name:
+                    wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(upstream_name))
+                if not wnpp_bugs:
+                    wnpp_bugs = loop.run_until_complete(
+                        find_archived_wnpp_bugs(source['Source'])
+                    )
+                    if wnpp_bugs:
+                        logging.warning(
+                            "Found archived ITP/RFP bugs for %s: %r", source['Source'], wnpp_bugs
+                        )
+                    else:
+                        logging.warning(
+                            "No relevant WNPP bugs found for %s", source['Source'])
+                else:
+                    logging.info("Found WNPP bugs for %s: %r", source['Source'], wnpp_bugs)
+            else:
+                wnpp_bugs = None
+
+            source["Rules-Requires-Root"] = "no"
+            source["Standards-Version"] = latest_standards_version()
+
             write_changelog_template(
                 wt.abspath(os.path.join(debian_path, "changelog")),
                 source["Source"],
                 version,
                 wnpp_bugs,
             )
-            initial_files.append("debian/changelog")
 
-            wt_paths = [osutils.pathjoin(subpath, p) for p in initial_files]
-            wt.add(wt_paths)
+        wt.smart_add(['debian/'])
+        wt.commit(
+            "Create debian/ directory",
+            allow_pointless=False,
+            committer=get_committer(wt),
+            reporter=NullCommitReporter(),
+        )
 
-            wt.commit(
-                "Create debian/ directory",
-                allow_pointless=False,
-                committer=get_committer(wt),
-                specific_files=wt_paths,
-                reporter=NullCommitReporter(),
-            )
-        except BaseException:
-            reset_tree(wt, wt.basis_tree(), subpath, dirty_tracker=dirty_tracker)
-            raise
+    with wt.lock_write():
 
         fixers = available_lintian_fixers(force_subprocess=force_subprocess)
 
