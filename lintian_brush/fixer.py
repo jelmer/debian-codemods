@@ -207,6 +207,9 @@ def vendor():
 if os.path.exists('debian/debcargo.toml'):
     from debmutate.debcargo import DebcargoControlShimEditor, DebcargoEditor
 
-    control = DebcargoControlShimEditor(DebcargoEditor())
+    try:
+        control = DebcargoControlShimEditor.from_debian_dir('debian')
+    except AttributeError:
+        control = DebcargoControlShimEditor(DebcargoEditor())
 else:
     control = ControlEditor()

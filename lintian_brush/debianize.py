@@ -413,18 +413,9 @@ def debianize(  # noqa: C901
                 control.add_binary(
                     {"Package": "lib%s-perl" % upstream_name, "Architecture": "all"})
             elif buildsystem and buildsystem.name == "cargo":
-                control = es.enter_context(ControlEditor.create())
+                from debmutate.debcargo import DebcargoControlShimEditor
+                control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path)))
                 source = control.source
-                source['Source'] = "rust-%s" % upstream_name
-                setup_debhelper(
-                    wt, debian_path,
-                    source, compat_release=compat_release,
-                    buildsystem="cargo")
-                source["Build-Depends"] = ensure_some_version(
-                    source["Build-Depends"], "dh-cargo"
-                )
-                control.add_binary(
-                    {"Package": "rust-%s" % upstream_name, "Architecture": "any"})
             elif buildsystem and buildsystem.name == "golang":
                 control = es.enter_context(ControlEditor.create())
                 source = control.source

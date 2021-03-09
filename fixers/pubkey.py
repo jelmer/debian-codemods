@@ -42,6 +42,7 @@ for path in ['debian/upstream/signing-key.asc',
 def sig_valid(sig):
     return sig.status == 0
 
+
 description = None
 
 with WatchEditor() as editor:
