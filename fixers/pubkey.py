@@ -26,6 +26,7 @@ from lintian_brush.fixer import (
 COMMON_MANGLES = [
     's/$/.%s/' % ext for ext in ['asc', 'pgp', 'gpg', 'sig', 'sign']]
 NUM_KEYS_TO_CHECK = 5
+RELEASES_TO_INSPECT = 5
 
 
 if not os.path.exists('debian/watch'):
@@ -37,6 +38,11 @@ for path in ['debian/upstream/signing-key.asc',
              'debian/upstream/signing-key.pgp']:
     if os.path.exists(path):
         has_keys = True
+
+
+def fetch_keys(keys):
+    import subprocess
+    subprocess.check_call(['gpg', '--recv-keys'] + keys)
 
 
 def sig_valid(sig):
@@ -54,7 +60,11 @@ with WatchEditor() as editor:
     sigs_valid = []
     used_mangles: List[Optional[str]] = []
     for entry in wf.entries:  # noqa: C901
-        if entry.has_option('pgpsigurlmangle') and has_keys:
+        try:
+            pgpsigurlmangle = entry.get_option('pgpsigurlmangle')
+        except KeyError:
+            pgpsigurlmangle = None
+        if pgpsigurlmangle and has_keys:
             continue
         try:
             pgpmode = entry.get_option('pgpmode')
@@ -62,10 +72,10 @@ with WatchEditor() as editor:
             pgpmode = 'default'
         if pgpmode in ('gittag', 'previous', 'next', 'self'):
             sys.exit(2)
-        for r in sorted(entry.discover(source_package_name()), reverse=True):
+        releases = list(sorted(entry.discover(source_package_name()), reverse=True))
+        for r in releases[:RELEASES_TO_INSPECT]:
             if r.pgpsigurl:
-                pgpsigurls = [
-                    (entry.get_option('pgpsigurlmangle'), r.pgpsigurl)]
+                pgpsigurls = [(pgpsigurlmangle, r.pgpsigurl)]
             else:
                 pgpsigurls = [
                     (mangle, apply_url_mangle(mangle, r.url))
@@ -84,9 +94,15 @@ with WatchEditor() as editor:
                     warn('Error verifying signature %s on %s: %s' % (
                          pgpsigurl, r.url, e))
                     continue
+                except gpg.errors.BadSignatures as e:
+                    if str(e).endswith(': No public key'):
+                        fetch_keys([s.fpr for s in e.result.signatures])
+                        gr = c.verify(actual, sig)[1]
+                    else:
+                        raise
+                signatures = gr.signatures
                 is_valid = True
-                for sig in gr.signatures:
-                    # TODO(jelmer): Check validity
+                for sig in signatures:
                     if not sig_valid(sig):
                         warn('Signature from %s in %s for %s not valid' % (
                              sig.fpr, pgpsigurl, r.url))
@@ -101,8 +117,7 @@ with WatchEditor() as editor:
         if not all(sigs_valid[:NUM_KEYS_TO_CHECK]):
             sys.exit(0)
         found_common_mangles = set(used_mangles[:5])
-        if (not entry.has_option('pgpsigurlmangle') and
-                len(found_common_mangles) == 1):
+        if pgpsigurlmangle is None and len(found_common_mangles) == 1:
             new_mangle = found_common_mangles.pop()
             issue = LintianIssue(
                 'source', 'debian-watch-does-not-check-gpg-signature', ())
@@ -126,9 +141,7 @@ with WatchEditor() as editor:
                             missing_keys.append(fpr)
                         f.write(key)
                     if missing_keys:
-                        import subprocess
-                        subprocess.check_call(
-                            ['gpg', '--recv-keys'] + missing_keys)
+                        fetch_keys(missing_keys)
                         for fpr in missing_keys:
                             key = c.key_export_minimal(fpr)
                             if not key:
