@@ -18,10 +18,10 @@
 """Automatically fix lintian issues."""
 
 from datetime import datetime
-from debian.changelog import Changelog, Version
 import errno
 import io
 import itertools
+import logging
 import os
 import re
 import shutil
@@ -31,6 +31,8 @@ import tempfile
 import time
 import traceback
 from typing import Optional, List, Sequence, Iterator, Iterable, Tuple
+
+from debian.changelog import Changelog, Version
 
 from breezy import ui
 
@@ -58,6 +60,7 @@ DEFAULT_MINIMUM_CERTAINTY = "certain"
 USER_AGENT = "lintian-brush/" + version_string
 # Too aggressive?
 DEFAULT_URLLIB_TIMEOUT = 3
+logger = logging.getLogger(__name__)
 
 
 class NoChanges(Exception):
@@ -854,6 +857,7 @@ def run_lintian_fixer(  # noqa: C901
         compat_release = "sid"
     if minimum_certainty is None:
         minimum_certainty = DEFAULT_MINIMUM_CERTAINTY
+    logger.debug('Running fixer %r', fixer)
     try:
         result = fixer.run(
             local_tree.abspath(subpath),
