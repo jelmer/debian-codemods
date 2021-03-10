@@ -21,6 +21,7 @@ from lintian_brush.fixer import (
     LintianIssue,
     report_result,
     warn,
+    diligence,
     )
 
 COMMON_MANGLES = [
@@ -70,6 +71,9 @@ with WatchEditor() as editor:
             pgpmode = entry.get_option('pgpmode')
         except KeyError:
             pgpmode = 'default'
+        else:
+            if diligence() == 0:
+                continue
         if pgpmode in ('gittag', 'previous', 'next', 'self'):
             sys.exit(2)
         releases = list(sorted(entry.discover(source_package_name()), reverse=True))
@@ -117,14 +121,23 @@ with WatchEditor() as editor:
         if not all(sigs_valid[:NUM_KEYS_TO_CHECK]):
             sys.exit(0)
         found_common_mangles = set(used_mangles[:5])
-        if pgpsigurlmangle is None and len(found_common_mangles) == 1:
-            new_mangle = found_common_mangles.pop()
+        if pgpsigurlmangle is None and found_common_mangles != set([None]):
             issue = LintianIssue(
                 'source', 'debian-watch-does-not-check-gpg-signature', ())
-            if new_mangle is not None and issue.should_fix():
-                entry.set_option('pgpsigurlmangle', new_mangle)
-                if len(used_mangles) == 1:
+            if issue.should_fix():
+                # If only a single mangle is used for all releases
+                # that have signatures, set that.
+                active_common_mangles = set(
+                        [x for x in found_common_mangles if x])
+                if len(active_common_mangles) == 1:
+                    new_mangle = active_common_mangles.pop()
+                    entry.set_option('pgpsigurlmangle', new_mangle)
+                # If all releases are signed, mandate it.
+                if len(found_common_mangles) == 1:
                     entry.set_option('pgpmode', 'mangle')
+                else:
+                    # Otherwise, fall back to auto.
+                    entry.set_option('pgpmode', 'auto')
                 issue.report_fixed()
                 description = "Check upstream PGP signatures."
         if not has_keys and needed_keys:
