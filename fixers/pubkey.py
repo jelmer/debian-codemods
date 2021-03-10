@@ -135,11 +135,12 @@ with WatchEditor() as editor:
                 # If all releases are signed, mandate it.
                 if len(found_common_mangles) == 1:
                     entry.set_option('pgpmode', 'mangle')
+                    description = "Check upstream PGP signatures."
                 else:
                     # Otherwise, fall back to auto.
                     entry.set_option('pgpmode', 'auto')
+                    description = "Opportunistically check upstream PGP signatures."
                 issue.report_fixed()
-                description = "Check upstream PGP signatures."
         if not has_keys and needed_keys:
             issue = LintianIssue(
                 'source', 'debian-watch-file-pubkey-file-is-missing', ())
