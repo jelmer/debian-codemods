@@ -258,10 +258,12 @@
   status: implemented
 - tag: debian-watch-could-verify-download
 - tag: debian-watch-does-not-check-gpg-signature
+  status: implemented
 - tag: debian-watch-file-declares-multiple-versions
 - tag: debian-watch-file-in-native-package
 - tag: debian-watch-file-missing-version
 - tag: debian-watch-file-pubkey-file-is-missing
+  status: implemented
 - tag: debian-watch-file-specifies-old-upstream-version
 - tag: debian-watch-file-specifies-wrong-upstream-version
 - tag: debian-watch-file-standard
