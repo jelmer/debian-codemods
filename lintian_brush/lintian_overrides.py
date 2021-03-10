@@ -155,18 +155,16 @@ from lintian where tag = 'unused-override' AND (%s)"""
 unused_overrides = None
 
 
-def remove_unused(ignore_tags=None) -> List[LintianOverride]:
-    from debian.deb822 import Deb822
+def remove_unused(control_paragraphs, ignore_tags=None) -> List[LintianOverride]:
 
     if ignore_tags is None:
         ignore_tags = set()
     packages = []
-    with open("debian/control", "r") as f:
-        for para in Deb822.iter_paragraphs(f):
-            if "Source" in para:
-                packages.append(("source", para["Source"]))
-            else:
-                packages.append(("binary", para["Package"]))
+    for para in control_paragraphs:
+        if "Source" in para:
+            packages.append(("source", para["Source"]))
+        else:
+            packages.append(("binary", para["Package"]))
     global unused_overrides
     unused_overrides = None
     removed = []
@@ -230,7 +228,9 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     if args.remove_unused:
-        removed = remove_unused()
+        from debian.deb822 import Deb822
+        with open("debian/control", "r") as f:
+            removed = remove_unused(Deb822.iter_paragraphs(f))
         print("Removed %d unused overrides" % len(removed))
     else:
         parser.print_usage()

@@ -9,7 +9,7 @@ except ModuleNotFoundError:
 
 from lintian_brush.lintian_overrides import remove_unused
 from lintian_brush.fixer import (
-    net_access_allowed, report_result, diligence, fixed_lintian_tag,
+    control, net_access_allowed, report_result, diligence, fixed_lintian_tag,
     )
 
 
@@ -25,7 +25,8 @@ if diligence() < 1:
 if not net_access_allowed():
     sys.exit(0)
 
-removed = remove_unused(ignore_tags=INTERMITTENT_LINTIAN_TAGS)
+removed = remove_unused(
+    control.paragraphs, ignore_tags=INTERMITTENT_LINTIAN_TAGS)
 
 description = [
     'Remove %d unused lintian overrides.\n' % len(removed),
