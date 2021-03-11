@@ -1,6 +1,7 @@
 lintian-brush (0.101) UNRELEASED; urgency=medium
 
   * Drop unnecesary toml dependencies.
+  * Improve handling of generated debcargo fields.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 06 Mar 2021 05:11:38 +0000
 
