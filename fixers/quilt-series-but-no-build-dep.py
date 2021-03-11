@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os
+import sys
 from typing import Optional
 
 from debmutate.control import ensure_some_version
