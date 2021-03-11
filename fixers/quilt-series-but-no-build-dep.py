@@ -16,7 +16,7 @@ except FileNotFoundError:
 if format != '3.0 (quilt)' and os.path.exists('debian/patches/series'):
     with control as updater:
         updater.source['Build-Depends'] = ensure_some_version(
-            updater.source['Build-Depends'], 'quilt')
+            updater.source.get('Build-Depends', ''), 'quilt')
     if updater.changed:
         fixed_lintian_tag(updater.source, 'quilt-series-but-no-build-dep')
 
