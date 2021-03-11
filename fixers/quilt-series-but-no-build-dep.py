@@ -6,6 +6,9 @@ from typing import Optional
 from debmutate.control import ensure_some_version
 from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 
+if os.path.exists('debian/debcargo.toml'):
+    sys.exit(0)
+
 format: Optional[str]
 try:
     with open('debian/source/format', 'r') as f:
