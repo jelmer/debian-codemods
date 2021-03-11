@@ -906,7 +906,10 @@ class LintianBrushVersion(TestCase):
             )
         with open("debian/changelog", "r") as f:
             cl = Changelog(f, max_blocks=1)
-        self.assertEqual(str(cl.version).split("+")[0], version_string)
+        package_version = str(cl.version)
+        package_version = package_version.split("+")[0]
+        package_version = package_version.split("~")[0]
+        self.assertEqual(package_version, version_string)
 
     def test_matches_setup_version(self):
         if not os.path.exists("setup.py"):
