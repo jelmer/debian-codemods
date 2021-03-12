@@ -249,6 +249,131 @@ class ResetOnFailure(object):
         return False
 
 
+def process_setup_py(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
+    control = es.enter_context(ControlEditor.create())
+    source = control.source
+    source["Rules-Requires-Root"] = "no"
+    source["Standards-Version"] = latest_standards_version()
+    setup_debhelper(
+        wt, debian_path,
+        source, compat_release=compat_release,
+        addons=["python3"],
+        buildsystem="pybuild")
+    source["Testsuite"] = "autopkgtest-pkg-python"
+    source["Build-Depends"] = ensure_some_version(
+        source["Build-Depends"], "python3-all")
+    source['Source'] = "python-%s" % upstream_name
+    control.add_binary({
+            "Package": "python3-%s" % upstream_name,
+            "Depends": "${python3:Depends}",
+            "Architecture": "all",
+        }
+    )
+    return control
+
+
+def process_npm(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
+    control = es.enter_context(ControlEditor.create())
+    source = control.source
+    setup_debhelper(
+        wt, debian_path,
+        source, compat_release=compat_release, addons=["nodejs"])
+    source['Source'] = "node-%s" % upstream_name
+    source["Rules-Requires-Root"] = "no"
+    source["Standards-Version"] = latest_standards_version()
+    control.dd_binary(
+        {"Package": "node-%s" % upstream_name, "Architecture": "all"})
+    if wt.has_filename(os.path.join(subpath, "test/node.js")):
+        source["Testsuite"] = "autopkgtest-pkg-nodejs"
+        os.makedirs(
+            os.path.join(debian_path, "debian/tests"), exist_ok=True)
+        with open(os.path.join(debian_path, "tests/pkg-js/test"), "w") as f:
+            f.write("mocha test/node.js")
+        source["Build-Depends"] = ensure_some_version(
+            source["Build-Depends"], "mocha <!nocheck>"
+        )
+    return control
+
+
+def process_dist_zilla(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
+    control = es.enter_context(ControlEditor.create())
+    source = control.source
+    source['Source'] = "lib%s-perl" % upstream_name
+    source["Rules-Requires-Root"] = "no"
+    source["Standards-Version"] = latest_standards_version()
+    setup_debhelper(
+        wt, debian_path,
+        source, compat_release=compat_release,
+        addons=["dist-zilla"])
+    control.add_binary(
+        {"Package": "lib%s-perl" % upstream_name, "Architecture": "all"})
+    return control
+
+
+def process_golang(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
+    control = es.enter_context(ControlEditor.create())
+    source = control.source
+    source["Rules-Requires-Root"] = "no"
+    source["Standards-Version"] = latest_standards_version()
+    source["XS-Go-Import-Path"] = go_import_path_from_repo(
+        metadata["Repository"]
+    )
+    if "Repository-Browse" in metadata:
+        source["Homepage"] = metadata["Repository-Browse"]
+    source["Section"] = "devel"
+    parsed_url = urlparse(metadata["Repository-Browse"])
+    hostname = parsed_url.hostname
+    if hostname == "github.com":
+        hostname = "github"
+    godebname = hostname + parsed_url.path.replace("/", "-")
+    source['Source'] = "golang-%s" % godebname
+    source["Testsuite"] = "autopkgtest-pkg-go"
+    dh_env = {}
+    if os.path.isdir("examples"):
+        dh_env["DH_GOLANG_EXCLUDES"] = "examples/"
+    setup_debhelper(
+        wt, debian_path,
+        source, compat_release=compat_release,
+        addons=["golang"],
+        buildsystem="golang",
+        env=dh_env)
+    # TODO(jelmer): Add --builddirectory=_build to dh arguments
+    control.add_binary({
+        "Package": "golang-%s-dev" % godebname,
+        "Architecture": "all",
+        "Multi-Arch": "foreign",
+        })
+    return control
+
+
+def process_default(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
+    control = es.enter_context(ControlEditor.create())
+    source = control.source
+    source["Rules-Requires-Root"] = "no"
+    source["Standards-Version"] = latest_standards_version()
+    setup_debhelper(
+        wt, debian_path,
+        source, compat_release=compat_release)
+    source_name = upstream_name
+    for binary_name, arch in [(source_name, "any")]:
+        control.add_binary({"Package": binary_name, "Architecture": arch})
+    return control
+
+
+def process_cargo(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
+    from debmutate.debcargo import DebcargoControlShimEditor
+    return es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name))
+
+
+PROCESSORS = {
+    "setup.py": process_setup_py,
+    "npm": process_npm,
+    "dist-zilla": process_dist_zilla,
+    "cargo": process_cargo,
+    "golang": process_golang,
+    }
+
+
 def debianize(  # noqa: C901
     wt,
     subpath,
@@ -366,96 +491,19 @@ def debianize(  # noqa: C901
                 if kind in ('core', 'test', ):
                     test_deps.append(apt_dep)
 
-            if buildsystem and buildsystem.name == "setup.py":
-                control = es.enter_context(ControlEditor.create())
-                source = control.source
-                setup_debhelper(
-                    wt, debian_path,
-                    source, compat_release=compat_release,
-                    addons=["python3"],
-                    buildsystem="pybuild")
-                source["Testsuite"] = "autopkgtest-pkg-python"
-                source["Build-Depends"] = ensure_some_version(
-                    source["Build-Depends"], "python3-all")
-                source['Source'] = "python-%s" % upstream_name
-                control.add_binary({
-                        "Package": "python3-%s" % upstream_name,
-                        "Depends": "${python3:Depends}",
-                        "Architecture": "all",
-                    }
-                )
-            elif buildsystem and buildsystem.name == "npm":
-                control = es.enter_context(ControlEditor.create())
-                source = control.source
-                setup_debhelper(
-                    wt, debian_path,
-                    source, compat_release=compat_release, addons=["nodejs"])
-                source['Source'] = "node-%s" % upstream_name
-                control.dd_binary(
-                    {"Package": "node-%s" % upstream_name, "Architecture": "all"})
-                if wt.has_filename(os.path.join(subpath, "test/node.js")):
-                    source["Testsuite"] = "autopkgtest-pkg-nodejs"
-                    os.makedirs(
-                        os.path.join(debian_path, "debian/tests"), exist_ok=True)
-                    with open(os.path.join(debian_path, "tests/pkg-js/test"), "w") as f:
-                        f.write("mocha test/node.js")
-                    source["Build-Depends"] = ensure_some_version(
-                        source["Build-Depends"], "mocha <!nocheck>"
-                    )
-            elif buildsystem and buildsystem.name == "dist-zilla":
-                control = es.enter_context(ControlEditor.create())
-                source = control.source
-                source['Source'] = "lib%s-perl" % upstream_name
-                setup_debhelper(
-                    wt, debian_path,
-                    source, compat_release=compat_release,
-                    addons=["dist-zilla"])
-                control.add_binary(
-                    {"Package": "lib%s-perl" % upstream_name, "Architecture": "all"})
-            elif buildsystem and buildsystem.name == "cargo":
-                from debmutate.debcargo import DebcargoControlShimEditor
-                control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name))
-                source = control.source
-            elif buildsystem and buildsystem.name == "golang":
-                control = es.enter_context(ControlEditor.create())
-                source = control.source
-                source["XS-Go-Import-Path"] = go_import_path_from_repo(
-                    metadata["Repository"]
-                )
-                if "Repository-Browse" in metadata:
-                    source["Homepage"] = metadata["Repository-Browse"]
-                source["Section"] = "devel"
-                parsed_url = urlparse(metadata["Repository-Browse"])
-                hostname = parsed_url.hostname
-                if hostname == "github.com":
-                    hostname = "github"
-                godebname = hostname + parsed_url.path.replace("/", "-")
-                source['Source'] = "golang-%s" % godebname
-                source["Testsuite"] = "autopkgtest-pkg-go"
-                dh_env = {}
-                if os.path.isdir("examples"):
-                    dh_env["DH_GOLANG_EXCLUDES"] = "examples/"
-                setup_debhelper(
-                    wt, debian_path,
-                    source, compat_release=compat_release,
-                    addons=["golang"],
-                    buildsystem="golang",
-                    env=dh_env)
-                # TODO(jelmer): Add --builddirectory=_build to dh arguments
-                control.add_binary({
-                    "Package": "golang-%s-dev" % godebname,
-                    "Architecture": "all",
-                    "Multi-Arch": "foreign",
-                    })
+            if buildsystem:
+                try:
+                    process = PROCESSORS[buildsystem.name]
+                except KeyError:
+                    process = process_default
             else:
-                control = es.enter_context(ControlEditor.create())
-                source = control.source
-                setup_debhelper(
-                    wt, debian_path,
-                    source, compat_release=compat_release)
-                source_name = upstream_name
-                for binary_name, arch in [(source_name, "any")]:
-                    control.add_binary({"Package": binary_name, "Architecture": arch})
+                process = process_default
+
+            control = process(
+                es, wt, subpath, debian_path, upstream_name=upstream_name,
+                metadata=metadata, compat_release=compat_release)
+
+            source = control.source
 
             if not valid_debian_package_name(source['Source']):
                 logging.info("Unable to sanitize source package name: %s", source['Source'])
@@ -489,9 +537,6 @@ def debianize(  # noqa: C901
                     logging.info("Found WNPP bugs for %s: %r", source['Source'], wnpp_bugs)
             else:
                 wnpp_bugs = None
-
-            source["Rules-Requires-Root"] = "no"
-            source["Standards-Version"] = latest_standards_version()
 
             write_changelog_template(
                 wt.abspath(os.path.join(debian_path, "changelog")),
