@@ -482,8 +482,9 @@
 - tag: explicitly-armored-upstream-signature
   status: build-stage
 - tag: extended-description-contains-empty-paragraph
+  status: implemented
 - tag: extended-description-is-empty
-  difficulty: hard
+  status: implemented
 - tag: extended-description-is-probably-too-short
   difficulty: hard
 - tag: extended-description-line-too-long
