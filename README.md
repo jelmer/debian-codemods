@@ -84,6 +84,7 @@ subset of the issues:
 * empty-debian-tests-control
 * excessive-priority-for-library-package
 * executable-desktop-file
+* extended-description-contains-empty-paragraph
 * extended-description-is-empty
 * field-name-typo-in-dep5-copyright
 * font-package-not-multi-arch-foreign
