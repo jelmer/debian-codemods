@@ -68,7 +68,9 @@ subset of the issues:
 * debian-tests-control-autodep8-is-obsolete
 * debian-upstream-obsolete-path
 * debian-watch-contains-dh_make-template
+* debian-watch-does-not-check-gpg-signature
 * debian-watch-file-is-missing
+* debian-watch-file-pubkey-file-is-missing
 * debian-watch-file-uses-deprecated-githubredir
 * debian-watch-uses-insecure-uri
 * debug-symbol-migration-possibly-complete
@@ -82,6 +84,7 @@ subset of the issues:
 * empty-debian-tests-control
 * excessive-priority-for-library-package
 * executable-desktop-file
+* extended-description-is-empty
 * field-name-typo-in-dep5-copyright
 * font-package-not-multi-arch-foreign
 * global-files-wildcard-not-first-paragraph-in-dep5-copyright
