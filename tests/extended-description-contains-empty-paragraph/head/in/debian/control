@@ -1,0 +1,8 @@
+Source: blah
+
+Package: blah
+Description: This is a package
+ .
+ But it starts with an empty paragraph.
+ .
+ And then more.

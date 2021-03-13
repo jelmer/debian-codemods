@@ -41,6 +41,9 @@ Lintian-Tags: executable-desktop-file
 Fix-Script: package-has-no-description.py
 Lintian-Tags: required-field, extended-description-is-empty
 
+Fix-Script: extended-description-contains-empty-paragraph.py
+Lintian-Tags: extended-description-contains-empty-paragraph
+
 Fix-Script: empty-debian-tests-control.py
 Lintian-Tags: empty-debian-tests-control
 
