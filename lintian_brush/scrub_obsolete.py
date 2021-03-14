@@ -263,12 +263,12 @@ def drop_old_relations(editor, upgrade_release):
     return dropped
 
 
-def update_maintscripts(wt, path, package, upgrade_release):
+def update_maintscripts(wt, path, package, upgrade_release, allow_reformatting=False):
     ret = []
     for entry in os.scandir(wt.abspath(os.path.join(path, "debian"))):
         if not (entry.name == "maintscript" or entry.name.endswith(".maintscript")):
             continue
-        with MaintscriptEditor(entry.path) as editor:
+        with MaintscriptEditor(entry.path, allow_reformatting=allow_reformatting) as editor:
             removed = drop_old_maintscript(editor, package, upgrade_release)
             if removed:
                 ret.append((os.path.join(path, "debian", entry.name), removed))
@@ -312,11 +312,13 @@ class ScrubObsoleteResult(object):
         return summary
 
 
-def _scrub_obsolete(wt, subpath, upgrade_release):
+def _scrub_obsolete(wt, subpath, upgrade_release, allow_reformatting):
     specific_files = []
     control_path = os.path.join(subpath, "debian/control")
     try:
-        with ControlEditor(wt.abspath(control_path)) as editor:
+        with ControlEditor(
+                wt.abspath(control_path),
+                allow_reformatting=allow_reformatting) as editor:
             specific_files.append(control_path)
             package = editor.source["Source"]
             control_removed = drop_old_relations(editor, upgrade_release)
@@ -326,7 +328,7 @@ def _scrub_obsolete(wt, subpath, upgrade_release):
         raise
 
     maintscript_removed = []
-    for path, removed in update_maintscripts(wt, subpath, package, upgrade_release):
+    for path, removed in update_maintscripts(wt, subpath, package, upgrade_release, allow_reformatting):
         if removed:
             maintscript_removed.append((path, removed))
             specific_files.append(path)
@@ -338,10 +340,11 @@ def _scrub_obsolete(wt, subpath, upgrade_release):
     )
 
 
-def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None):
+def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None,
+                   allow_reformatting=False):
     from breezy.commit import NullCommitReporter
 
-    result = _scrub_obsolete(wt, subpath, upgrade_release)
+    result = _scrub_obsolete(wt, subpath, upgrade_release, allow_reformatting)
 
     if not result:
         return result
@@ -443,6 +446,12 @@ def main():
         default=None,
     )
     parser.add_argument(
+        "--allow-reformatting",
+        default=None,
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "--version", action="version", version="%(prog)s " + version_string
     )
     parser.add_argument(
@@ -480,6 +489,7 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG)
 
     update_changelog = args.update_changelog
+    allow_reformatting = args.allow_reformatting
     try:
         cfg = Config.from_workingtree(wt, subpath)
     except FileNotFoundError:
@@ -487,9 +497,15 @@ def main():
     else:
         if update_changelog is None:
             update_changelog = cfg.update_changelog()
+        if allow_reformatting is None:
+            allow_reformatting = cfg.allow_reformatting()
+
+    if allow_reformatting is None:
+        allow_reformatting = False
 
     result = scrub_obsolete(
-        wt, subpath, upgrade_release, update_changelog=args.update_changelog
+        wt, subpath, upgrade_release, update_changelog=args.update_changelog,
+        allow_reformatting=allow_reformatting
     )
     if not result:
         return 0
