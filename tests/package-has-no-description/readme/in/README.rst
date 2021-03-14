@@ -2,3 +2,5 @@ Blah
 ====
 
 BLAH is a C++ wrapper library around [Example](https://ww.example.com/) with the aim of supporting ISO 191007:2013 and OGC Simple Features for 3D operations.
+
+And here is some more information about it.

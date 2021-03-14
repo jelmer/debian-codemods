@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import sys
-import textwrap
 
 from lintian_brush.fixer import (
     control,
@@ -28,6 +27,9 @@ def textwrap_description(text):
             ret.extend(para.splitlines())
         else:
             ret.extend(textwrap.wrap(para))
+        ret.append('')
+    if not ret[-1]:
+        ret.pop(-1)
     return ret
 
 
