@@ -43,7 +43,11 @@ for path in ['debian/upstream/signing-key.asc',
 
 def fetch_keys(keys):
     import subprocess
-    subprocess.check_call(['gpg', '--recv-keys'] + keys)
+    try:
+        subprocess.check_call(['gpg', '--recv-keys'] + keys)
+    except subprocess.CalledProcessError:
+        return False
+    return True
 
 
 def sig_valid(sig):
@@ -100,7 +104,10 @@ with WatchEditor() as editor:
                     continue
                 except gpg.errors.BadSignatures as e:
                     if str(e).endswith(': No public key'):
-                        fetch_keys([s.fpr for s in e.result.signatures])
+                        if not fetch_keys([s.fpr for s in e.result.signatures]):
+                            warn('Unable to retrieve keys: %r' % (
+                                 e.result.signatures, ))
+                            sys.exit(2)
                         gr = c.verify(actual, sig)[1]
                     else:
                         raise
