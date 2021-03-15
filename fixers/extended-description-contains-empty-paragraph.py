@@ -14,8 +14,10 @@ with control as editor:
             binary, 'extended-description-contains-empty-paragraph', ())
         if not issue.should_fix():
             continue
-        if lines[1] == ' .\n':
+        if len(lines) > 1 and lines[1] == ' .\n':
             del lines[1]
+        else:
+            continue
         binary['Description'] = ''.join(lines)
         issue.report_fixed()
 
