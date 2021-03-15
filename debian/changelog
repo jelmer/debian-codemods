@@ -1,11 +1,15 @@
 lintian-brush (0.101) UNRELEASED; urgency=medium
 
+  [ Jelmer Vernooĳ ]
   * Drop unnecesary toml dependencies.
   * Improve handling of generated debcargo fields.
   * Depend on python3-toml to run tests - it's a recommended dependency
     of upstream-ontologist.
   * Add fixer for extended-description-contains-empty-paragraph.
   * Add --allow-reformatting argument to deb-scrub-obsolete.
+
+  [ Richard Laager ]
+  * Correct section name for gbp-dch in lintian-brush.conf manapage.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 06 Mar 2021 05:11:38 +0000
 
