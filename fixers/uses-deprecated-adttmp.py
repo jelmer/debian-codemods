@@ -6,7 +6,7 @@ import os
 import re
 import sys
 
-if not os.path.exists('debian/tests'):
+if not os.path.isdir('debian/tests'):
     sys.exit(0)
 
 for entry in os.scandir('debian/tests'):
