@@ -485,8 +485,9 @@ def main():
     note("Removing constraints unnecessary since %s", upgrade_release)
 
     if args.debug:
-        logging.basicConfig()
-        logging.getLogger().setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
     update_changelog = args.update_changelog
     allow_reformatting = args.allow_reformatting

@@ -56,6 +56,7 @@ from .debhelper import (
     maximum_debhelper_compat_version,
     write_rules_template as write_debhelper_rules_template,
 )
+from .publish import update_offical_vcs
 from .standards_version import latest_standards_version
 
 
@@ -572,6 +573,8 @@ def debianize(  # noqa: C901
             opinionated=True,
             diligence=diligence,
         )
+
+        update_offical_vcs(wt, subpath=subpath, committer=get_committer(wt))
 
 
 def main(argv=None):
