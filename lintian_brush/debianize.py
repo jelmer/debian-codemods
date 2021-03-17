@@ -48,7 +48,6 @@ from upstream_ontologist.guess import (
 )
 from upstream_ontologist.debian import (
     upstream_name_to_debian_source_name as source_name_from_upstream_name,
-    upstream_package_to_debian_binary_name as binary_name_from_upstream_name,
     upstream_version_to_debian_upstream_version as debian_upstream_version,
     valid_debian_package_name,
 )
@@ -408,7 +407,7 @@ def process_default(es, wt, subpath, debian_path, metadata, compat_release):
         wt, debian_path,
         source, compat_release=compat_release)
     # For now, just assume a single binary package that is architecture-dependent.
-    for binary_name, arch in [(binary_name_from_upstream_name(upstream_name), "any")]:
+    for binary_name, arch in [(source['Source'], "any")]:
         control.add_binary({"Package": binary_name, "Architecture": arch})
     return control
 
