@@ -393,7 +393,8 @@ def debianize(  # noqa: C901
     if dirty_tracker:
         dirty_tracker.mark_clean()
 
-    if os.path.exists("debian") and list(os.listdir("debian")):
+    debian_path = osutils.pathjoin(subpath, "debian")
+    if wt.has_filename(debian_path) and list(os.listdir(wt.abspath(debian_path))):
         raise DebianDirectoryExists(wt.abspath(subpath))
 
     metadata = get_upstream_info(
@@ -428,7 +429,6 @@ def debianize(  # noqa: C901
             es.enter_context(ResetOnFailure(
                 wt, subpath=subpath, dirty_tracker=dirty_tracker))
 
-            debian_path = osutils.pathjoin(subpath, "debian")
             if not wt.has_filename(debian_path):
                 wt.mkdir(debian_path)
 
