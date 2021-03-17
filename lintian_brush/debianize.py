@@ -201,7 +201,7 @@ def import_upstream_version_from_dist(
             except NotImplementedError:
                 return None
             except DetailedFailure as e:
-                raise DistCreationFailed(str(e), e)
+                raise DistCreationFailed(str(e), e.error)
             except UnidentifiedError as e:
                 raise DistCreationFailed(str(e))
 
