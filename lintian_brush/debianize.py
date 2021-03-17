@@ -466,26 +466,28 @@ def debianize(  # noqa: C901
             if not wt.has_filename(debian_path):
                 wt.mkdir(debian_path)
 
-            try:
-                from breezy.plugins.debian.upstream.branch import (
-                    upstream_branch_version,
-                    upstream_version_add_revision,
+            from breezy.plugins.debian.upstream.branch import (
+                upstream_branch_version,
+                upstream_version_add_revision,
+            )
+            upstream_version = upstream_branch_version(
+                wt.branch, wt.last_revision(), upstream_name
+            )
+            if upstream_version is None and "X-Version" in metadata:
+                # They haven't done any releases yet. Assume we're ahead of
+                # the next announced release?
+                next_upstream_version = debian_upstream_version(metadata["X-Version"])
+                upstream_version = upstream_version_add_revision(
+                    wt.branch, next_upstream_version, wt.last_revision(), "~"
                 )
-            except ModuleNotFoundError:
-                logging.info("Install breezy-debian for upstream version guessing.")
-            else:
-                upstream_version = upstream_branch_version(
-                    wt.branch, wt.last_revision(), upstream_name
-                )
-                if upstream_version is None and "X-Version" in metadata:
-                    # They haven't done any releases yet. Assume we're ahead of
-                    # the next announced release?
-                    next_upstream_version = debian_upstream_version(metadata["X-Version"])
-                    upstream_version = upstream_version_add_revision(
-                        wt.branch, next_upstream_version, wt.last_revision(), "~"
-                    )
             if upstream_version is None:
-                logging.info("Unable to determine upstream version, using 0.")
+                upstream_version = upstream_version_add_revision(
+                    wt.branch, "0", wt.last_revision(), "+"
+                )
+                logging.warning(
+                    "Unable to determine upstream version, using %s.",
+                    upstream_version)
+
 
             if schroot is None:
                 from ognibuild.session.plain import PlainSession
