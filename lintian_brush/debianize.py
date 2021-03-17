@@ -35,7 +35,7 @@ from breezy import osutils
 from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
 
-from ognibuild import DetailedFailure
+from ognibuild import DetailedFailure, UnidentifiedError
 from ognibuild.buildsystem import NoBuildToolsFound
 from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
 from ognibuild.session.plain import PlainSession
@@ -87,7 +87,8 @@ class SourcePackageNameInvalid(Exception):
 class DistCreationFailed(Exception):
     """Dist tarball creation failed."""
 
-    def __init__(self, inner):
+    def __init__(self, msg, inner=None):
+        self.msg = msg
         self.inner = inner
 
 
@@ -200,7 +201,9 @@ def import_upstream_version_from_dist(
             except NotImplementedError:
                 return None
             except DetailedFailure as e:
-                raise DistCreationFailed(e)
+                raise DistCreationFailed(str(e), e)
+            except UnidentifiedError as e:
+                raise DistCreationFailed(str(e))
 
         try:
             for path in dc.files:
