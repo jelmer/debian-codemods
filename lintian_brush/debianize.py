@@ -309,7 +309,7 @@ def process_setup_py(es, wt, subpath, debian_path, metadata, compat_release):
         upstream_name = upstream_name[len('python-'):]
     source['Source'] = "python-%s" % upstream_name.lower()
     control.add_binary({
-            "Package": "python3-%s" % upstream_name,
+            "Package": "python3-%s" % upstream_name.lower(),
             "Depends": "${python3:Depends}",
             "Architecture": "all",
         }
