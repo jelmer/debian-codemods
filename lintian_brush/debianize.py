@@ -38,6 +38,7 @@ from breezy.commit import NullCommitReporter
 from ognibuild.buildsystem import NoBuildToolsFound
 from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
 from ognibuild.session.plain import PlainSession
+from ognibuild.session.schroot import SchrootSession
 from ognibuild.resolver import auto_resolver
 from ognibuild.buildlog import InstallFixer
 
@@ -182,17 +183,14 @@ def import_upstream_version_from_dist(
     def create_dist(tree, package, version, target_dir):
         resolver = auto_resolver(session)
         fixers = [InstallFixer(resolver)]
-        with DistCatcher(wt.abspath('.')) as dc:
-            oldcwd = os.getcwd()
+        external_dir, internal_dir = session.setup_from_vcs(wt, subpath)
+        with DistCatcher(external_dir) as dc:
+            session.chdir(internal_dir)
             try:
-                session.chdir(wt.abspath('.'))
-                try:
-                    run_dist(
-                        session, [buildsystem], resolver, fixers, quiet=True)
-                except NotImplementedError:
-                    return None
-            finally:
-                os.chdir(oldcwd)
+                run_dist(
+                    session, [buildsystem], resolver, fixers, quiet=True)
+            except NotImplementedError:
+                return None
 
         try:
             for path in dc.files:
@@ -489,23 +487,20 @@ def debianize(  # noqa: C901
                     "Unable to determine upstream version, using %s.",
                     upstream_version)
 
-
             if schroot is None:
-                from ognibuild.session.plain import PlainSession
                 session = PlainSession()
             else:
-                from ognibuild.session.schroot import SchrootSession
                 session = SchrootSession(schroot)
 
             with session:
-                if schroot:
-                    session.setup_from_vcs(
-                        wt.revision_tree(upstream_revision),
-                        include_controldir=False
-                        )
+                if wt.last_revision() == upstream_revision:
+                    # If at all possible, try to avoid copying
+                    upstream_tree = wt
+                else:
+                    upstream_tree = wt.revision_tree(upstream_revision)
                 (pristine_revids, tag_names,
                  upstream_branch_name) = import_upstream_version_from_dist(
-                    wt, subpath, buildsystem, source_name, upstream_version,
+                    upstream_tree, subpath, buildsystem, source_name, upstream_version,
                     session=session)
 
             if wt.branch.last_revision() != pristine_revids[None]:
@@ -522,7 +517,6 @@ def debianize(  # noqa: C901
             except NotImplementedError:
                 logging.warning('Unable to obtain declared dependencies.')
                 upstream_deps = None
-
 
             build_deps = []
             test_deps = []
