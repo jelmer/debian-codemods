@@ -20,6 +20,7 @@
 import contextlib
 import logging
 import os
+import shutil
 import sys
 from typing import Optional
 from urllib.parse import urlparse
@@ -33,6 +34,12 @@ from debian.deb822 import PkgRelation
 from breezy import osutils
 from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
+
+from ognibuild.buildsystem import NoBuildToolsFound
+from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
+from ognibuild.session.plain import PlainSession
+from ognibuild.resolver import auto_resolver
+from ognibuild.buildlog import InstallFixer
 
 from upstream_ontologist.guess import (
     get_upstream_info,
@@ -173,11 +180,6 @@ def import_upstream_version_from_dist(
         wt, subpath, buildsystem, source_name, upstream_version,
         session):
     def create_dist(tree, package, version, target_dir):
-        from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
-        from ognibuild.session.plain import PlainSession
-        from ognibuild.resolver import auto_resolver
-        from ognibuild.buildlog import InstallFixer
-        import shutil
         resolver = auto_resolver(session)
         fixers = [InstallFixer(resolver)]
         with DistCatcher(wt.abspath('.')) as dc:
