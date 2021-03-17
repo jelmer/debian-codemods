@@ -251,7 +251,7 @@ class ResetOnFailure(object):
 
 
 def process_setup_py(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
-    control = es.enter_context(ControlEditor.create())
+    control = es.enter_context(ControlEditor.create(os.path.join(debian_path, 'control')))
     source = control.source
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
@@ -274,7 +274,7 @@ def process_setup_py(es, wt, subpath, debian_path, upstream_name, metadata, comp
 
 
 def process_npm(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
-    control = es.enter_context(ControlEditor.create())
+    control = es.enter_context(ControlEditor.create(os.path.join(debian_path, 'control')))
     source = control.source
     setup_debhelper(
         wt, debian_path,
@@ -297,7 +297,7 @@ def process_npm(es, wt, subpath, debian_path, upstream_name, metadata, compat_re
 
 
 def process_dist_zilla(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
-    control = es.enter_context(ControlEditor.create())
+    control = es.enter_context(ControlEditor.create(os.path.join(debian_path, 'control')))
     source = control.source
     source['Source'] = "lib%s-perl" % upstream_name
     source["Rules-Requires-Root"] = "no"
@@ -312,7 +312,7 @@ def process_dist_zilla(es, wt, subpath, debian_path, upstream_name, metadata, co
 
 
 def process_golang(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
-    control = es.enter_context(ControlEditor.create())
+    control = es.enter_context(ControlEditor.create(os.path.join(debian_path, 'control')))
     source = control.source
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
@@ -348,7 +348,7 @@ def process_golang(es, wt, subpath, debian_path, upstream_name, metadata, compat
 
 
 def process_default(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
-    control = es.enter_context(ControlEditor.create())
+    control = es.enter_context(ControlEditor.create(os.path.join(debian_path, 'control')))
     source = control.source
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
@@ -589,7 +589,7 @@ def main(argv=None):
 
     parser = argparse.ArgumentParser(prog="debianize")
     parser.add_argument(
-        "--directory",
+        "--directory", "-d",
         metavar="DIRECTORY",
         help="directory to run in",
         type=str,
