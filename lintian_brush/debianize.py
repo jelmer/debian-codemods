@@ -202,6 +202,7 @@ def import_upstream_version_from_dist(
         wt.branch, config=config, local_dir=wt.controldir,
         create_dist=create_dist, snapshot=False)
     pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
+    tag_names = {}
     if pristine_tar_source.has_version(source_name, upstream_version):
         logging.warning(
             'Upstream version %s/%s already imported.',
@@ -226,9 +227,11 @@ def import_upstream_version_from_dist(
             pristine_revids = {}
             for (component, tag_name, revid, pristine_tar_imported) in imported_revids:
                 pristine_revids[component] = revid
+                tag_names[component] = tag_name
 
+    upstream_branch_name = "upstream"
     try:
-        wt.controldir.create_branch("upstream").generate_revision_history(
+        wt.controldir.create_branch(upstream_branch_name).generate_revision_history(
             pristine_revids[None]
         )
     except AlreadyBranchError:
@@ -236,7 +239,7 @@ def import_upstream_version_from_dist(
     else:
         logging.info("Created upstream branch.")
 
-    return pristine_revids
+    return pristine_revids, tag_names, upstream_branch_name
 
 
 class ResetOnFailure(object):
@@ -382,6 +385,14 @@ PROCESSORS = {
     }
 
 
+class DebianizeResult(object):
+    """Debianize result."""
+
+    def __init__(self, upstream_branch_name, tag_names):
+        self.upstream_branch_name = upstream_branch_name
+        self.tag_names = tag_names
+
+
 def debianize(  # noqa: C901
     wt,
     subpath,
@@ -460,7 +471,8 @@ def debianize(  # noqa: C901
             if upstream_version is None:
                 logging.info("Unable to determine upstream version, using 0.")
 
-            pristine_revids = import_upstream_version_from_dist(
+            (pristine_revids, tag_names,
+             upstream_branch_name) = import_upstream_version_from_dist(
                 wt, subpath, buildsystem, source_name, upstream_version)
 
             if wt.branch.last_revision() != pristine_revids[None]:
@@ -582,6 +594,10 @@ def debianize(  # noqa: C901
         )
 
         update_offical_vcs(wt, subpath=subpath, committer=get_committer(wt))
+
+    return DebianizeResult(
+        upstream_branch_name=upstream_branch_name,
+        tag_names=tag_names)
 
 
 def main(argv=None):
