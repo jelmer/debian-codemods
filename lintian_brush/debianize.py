@@ -192,7 +192,10 @@ def import_upstream_version_from_dist(
     def create_dist(tree, package, version, target_dir):
         resolver = auto_resolver(session)
         fixers = [InstallFixer(resolver)]
-        external_dir, internal_dir = session.setup_from_vcs(wt, subpath)
+        # TODO(jelmer): set include_controldir=True to make
+        # setuptools_scm happy?
+        external_dir, internal_dir = session.setup_from_vcs(
+            wt, subpath)
         with DistCatcher(external_dir) as dc:
             session.chdir(internal_dir)
             try:
