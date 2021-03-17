@@ -282,7 +282,7 @@ def process_npm(es, wt, subpath, debian_path, upstream_name, metadata, compat_re
     source['Source'] = "node-%s" % upstream_name
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
-    control.dd_binary(
+    control.add_binary(
         {"Package": "node-%s" % upstream_name, "Architecture": "all"})
     if wt.has_filename(os.path.join(subpath, "test/node.js")):
         source["Testsuite"] = "autopkgtest-pkg-nodejs"
