@@ -177,9 +177,16 @@ def import_upstream_version_from_dist(
             finally:
                 os.chdir(oldcwd)
 
-        for path in dc.files:
-            shutil.copy(path, target_dir)
-            return os.path.join(target_dir, os.path.basename(path))
+        try:
+            for path in dc.files:
+                shutil.copy(path, target_dir)
+                return os.path.join(target_dir, os.path.basename(path))
+        finally:
+            for path in dc.files:
+                if os.path.isdir(path):
+                    shutil.rmtree(path)
+                else:
+                    os.unlink(path)
 
         raise DistNoTarball()
 
@@ -251,7 +258,7 @@ class ResetOnFailure(object):
 
 
 def process_setup_py(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
-    control = es.enter_context(ControlEditor.create(os.path.join(debian_path, 'control')))
+    control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
@@ -274,7 +281,7 @@ def process_setup_py(es, wt, subpath, debian_path, upstream_name, metadata, comp
 
 
 def process_npm(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
-    control = es.enter_context(ControlEditor.create(os.path.join(debian_path, 'control')))
+    control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     setup_debhelper(
         wt, debian_path,
@@ -297,7 +304,7 @@ def process_npm(es, wt, subpath, debian_path, upstream_name, metadata, compat_re
 
 
 def process_dist_zilla(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
-    control = es.enter_context(ControlEditor.create(os.path.join(debian_path, 'control')))
+    control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     source['Source'] = "lib%s-perl" % upstream_name
     source["Rules-Requires-Root"] = "no"
@@ -312,7 +319,7 @@ def process_dist_zilla(es, wt, subpath, debian_path, upstream_name, metadata, co
 
 
 def process_golang(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
-    control = es.enter_context(ControlEditor.create(os.path.join(debian_path, 'control')))
+    control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
@@ -348,7 +355,7 @@ def process_golang(es, wt, subpath, debian_path, upstream_name, metadata, compat
 
 
 def process_default(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
-    control = es.enter_context(ControlEditor.create(os.path.join(debian_path, 'control')))
+    control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
