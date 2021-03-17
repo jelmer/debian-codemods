@@ -21,6 +21,7 @@ import contextlib
 import logging
 import os
 import sys
+from typing import Optional
 from urllib.parse import urlparse
 import warnings
 
@@ -155,14 +156,14 @@ def setup_debhelper(wt, debian_path, source, compat_release, addons=None, env=No
 
 
 def import_upstream_version_from_dist(
-        wt, subpath, buildsystem, source_name, upstream_version):
+        wt, subpath, buildsystem, source_name, upstream_version,
+        session):
     def create_dist(tree, package, version, target_dir):
         from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
         from ognibuild.session.plain import PlainSession
         from ognibuild.resolver import auto_resolver
         from ognibuild.buildlog import InstallFixer
         import shutil
-        session = PlainSession()
         resolver = auto_resolver(session)
         fixers = [InstallFixer(resolver)]
         with DistCatcher(wt.abspath('.')) as dc:
@@ -396,17 +397,18 @@ class DebianizeResult(object):
 
 def debianize(  # noqa: C901
     wt,
-    subpath,
-    use_inotify=None,
-    diligence=0,
-    trust=False,
-    check=False,
-    net_access=True,
-    force_subprocess=False,
-    compat_release=None,
-    minimum_certainty=MINIMUM_CERTAINTY,
-    consult_external_directory=True,
-    verbose=False,
+    subpath: str,
+    use_inotify: Optional[bool] = None,
+    diligence: int = 0,
+    trust: bool = False,
+    check: bool = False,
+    net_access: bool = True,
+    force_subprocess: bool = False,
+    compat_release: Optional[str] = None,
+    minimum_certainty: str = MINIMUM_CERTAINTY,
+    consult_external_directory: bool = True,
+    verbose: bool = False,
+    schroot: Optional[str] = None
 ):
     dirty_tracker = get_dirty_tracker(wt, subpath, use_inotify)
     if dirty_tracker:
@@ -472,9 +474,18 @@ def debianize(  # noqa: C901
             if upstream_version is None:
                 logging.info("Unable to determine upstream version, using 0.")
 
-            (pristine_revids, tag_names,
-             upstream_branch_name) = import_upstream_version_from_dist(
-                wt, subpath, buildsystem, source_name, upstream_version)
+            if schroot is None:
+                from ognibuild.session.plain import PlainSession
+                session = PlainSession()
+            else:
+                from ognibuild.session.schroot import SchrootSession
+                session = SchrootSession(schroot)
+
+            with session:
+                (pristine_revids, tag_names,
+                 upstream_branch_name) = import_upstream_version_from_dist(
+                    wt, subpath, buildsystem, source_name, upstream_version,
+                    session=session)
 
             if wt.branch.last_revision() != pristine_revids[None]:
                 wt.pull(
@@ -491,26 +502,25 @@ def debianize(  # noqa: C901
                 logging.warning('Unable to obtain declared dependencies.')
                 upstream_deps = None
 
-            from ognibuild.session.plain import PlainSession
             from ognibuild.resolver.apt import AptResolver
 
-            session = PlainSession()
-            apt_resolver = AptResolver.from_session(session)
+            with session:
+                apt_resolver = AptResolver.from_session(session)
 
-            build_deps = []
-            test_deps = []
-            for kind, dep in upstream_deps:
-                apt_dep = apt_resolver.resolve(dep)
-                if apt_dep is None:
-                    logging.warning(
-                        'Unable to map upstream requirement %s (kind %s) '
-                        'to a Debian package', dep, kind)
-                    continue
-                logging.debug('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
-                if kind in ('core', 'build'):
-                    build_deps.append(apt_dep)
-                if kind in ('core', 'test', ):
-                    test_deps.append(apt_dep)
+                build_deps = []
+                test_deps = []
+                for kind, dep in upstream_deps:
+                    apt_dep = apt_resolver.resolve(dep)
+                    if apt_dep is None:
+                        logging.warning(
+                            'Unable to map upstream requirement %s (kind %s) '
+                            'to a Debian package', dep, kind)
+                        continue
+                    logging.debug('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
+                    if kind in ('core', 'build'):
+                        build_deps.append(apt_dep)
+                    if kind in ('core', 'test', ):
+                        test_deps.append(apt_dep)
 
             if buildsystem:
                 try:
