@@ -35,6 +35,7 @@ from breezy import osutils
 from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
 
+from ognibuild import DetailedFailure
 from ognibuild.buildsystem import NoBuildToolsFound
 from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
 from ognibuild.session.plain import PlainSession
@@ -81,6 +82,13 @@ class SourcePackageNameInvalid(Exception):
 
     def __init__(self, source):
         self.source = source
+
+
+class DistCreationFailed(Exception):
+    """Dist tarball creation failed."""
+
+    def __init__(self, inner):
+        self.inner = inner
 
 
 def write_changelog_template(path, source_name, version, wnpp_bugs=None):
@@ -191,6 +199,8 @@ def import_upstream_version_from_dist(
                     session, [buildsystem], resolver, fixers, quiet=True)
             except NotImplementedError:
                 return None
+            except DetailedFailure as e:
+                raise DistCreationFailed(e)
 
         try:
             for path in dc.files:
@@ -743,6 +753,9 @@ def main(argv=None):
             return 1
         except SourcePackageNameInvalid as e:
             logging.info("Unable to sanitize source package name: %s", e.source)
+            return 1
+        except DistCreationFailed as e:
+            logging.fatal('Dist tarball creation failed: %s', e.inner)
             return 1
     return 0
 
