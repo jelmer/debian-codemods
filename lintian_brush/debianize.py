@@ -56,7 +56,7 @@ from .debhelper import (
     maximum_debhelper_compat_version,
     write_rules_template as write_debhelper_rules_template,
 )
-from .publish import update_offical_vcs
+from .publish import update_offical_vcs, NoVcsLocation
 from .standards_version import latest_standards_version
 
 
@@ -594,7 +594,12 @@ def debianize(  # noqa: C901
             diligence=diligence,
         )
 
-        update_offical_vcs(wt, subpath=subpath, committer=get_committer(wt))
+        try:
+            update_offical_vcs(wt, subpath=subpath, committer=get_committer(wt))
+        except NoVcsLocation:
+            logging.debug(
+                'No public VCS location specified and unable to guess it '
+                'based on maintainer e-mail.')
 
     return DebianizeResult(
         upstream_branch_name=upstream_branch_name,
