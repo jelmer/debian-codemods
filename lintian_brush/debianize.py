@@ -388,9 +388,10 @@ PROCESSORS = {
 class DebianizeResult(object):
     """Debianize result."""
 
-    def __init__(self, upstream_branch_name, tag_names):
+    def __init__(self, upstream_branch_name, tag_names, upstream_version):
         self.upstream_branch_name = upstream_branch_name
         self.tag_names = tag_names
+        self.upstream_version = upstream_version
 
 
 def debianize(  # noqa: C901
@@ -597,7 +598,8 @@ def debianize(  # noqa: C901
 
     return DebianizeResult(
         upstream_branch_name=upstream_branch_name,
-        tag_names=tag_names)
+        tag_names=tag_names,
+        upstream_version=upstream_version)
 
 
 def main(argv=None):
