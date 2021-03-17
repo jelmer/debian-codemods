@@ -321,7 +321,10 @@ class PythonScriptFixer(Fixer):
             sys.stderr = io.StringIO()
             sys.stdout = io.StringIO()
             os.environ = env
-            old_cwd = os.getcwd()
+            try:
+                old_cwd = os.getcwd()
+            except FileNotFoundError:
+                old_cwd = None
             try:
                 os.chdir(basedir)
                 global_vars = {
@@ -346,7 +349,8 @@ class PythonScriptFixer(Fixer):
             os.environ = old_env
             sys.stderr = old_stderr
             sys.stdout = old_stdout
-            os.chdir(old_cwd)
+            if old_cwd is not None:
+                os.chdir(old_cwd)
             from . import fixer
 
             fixer.reset()
