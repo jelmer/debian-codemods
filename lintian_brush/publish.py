@@ -29,7 +29,7 @@ from breezy.workingtree import WorkingTree
 from debmutate.control import ControlEditor
 from debmutate.vcs import source_package_vcs
 
-from . import get_committer
+from . import get_committer, check_clean_tree
 from .salsa import guess_repository_url
 from .vcs import determine_browser_url
 
@@ -49,6 +49,8 @@ class VcsAlreadySpecified(Exception):
 
 def update_offical_vcs(wt, subpath, repo_url=None, committer=None):
     # TODO(jelmer): Allow creation of the repository as well
+
+    check_clean_tree(wt, wt.basis_tree(), subpath)
 
     control_path = wt.abspath(os.path.join(subpath, 'debian/control'))
     with ControlEditor(control_path) as editor:
@@ -132,6 +134,9 @@ def main():
 
     try:
         update_offical_vcs(wt, subpath, repo_url=args.url)
+    except PendingChanges:
+        logging.info("%s: Please commit pending changes first.", wt.basedir)
+        return 1
     except NoVcsLocation:
         parser.print_usage()
         return 1
