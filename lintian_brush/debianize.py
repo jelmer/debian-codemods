@@ -61,6 +61,20 @@ from .publish import update_offical_vcs, NoVcsLocation
 from .standards_version import latest_standards_version
 
 
+class UpstreamNameUnknown(Exception):
+    """Upstream name unknown."""
+
+    def __init__(self, path):
+        self.path = path
+
+
+class SourcePackageNameInvalid(Exception):
+    """Source package name is invalid."""
+
+    def __init__(self, source):
+        self.source = source
+
+
 def write_changelog_template(path, source_name, version, wnpp_bugs=None):
     if wnpp_bugs:
         closes = " Closes: " + ", ".join([("#%d" % (bug,)) for bug in wnpp_bugs])
@@ -438,10 +452,7 @@ def debianize(  # noqa: C901
     try:
         upstream_name = metadata["Name"]
     except KeyError:
-        logging.info("%s: Unable to determine upstream package name.", wt.abspath(subpath))
-        if not trust:
-            logging.info("Run with --trust if you are okay running code " "from the package?")
-        return 1
+        raise UpstreamNameUnknown(wt.abspath(subpath))
 
     source_name = source_name_from_upstream_name(upstream_name)
 
@@ -537,8 +548,7 @@ def debianize(  # noqa: C901
             source = control.source
 
             if not valid_debian_package_name(source['Source']):
-                logging.info("Unable to sanitize source package name: %s", source['Source'])
-                return 1
+                raise SourcePackageNameInvalid(source['Source'])
 
             for build_dep in build_deps:
                 for rel in build_dep.relations:
@@ -717,6 +727,16 @@ def main(argv=None):
                 "%s: A debian directory already exists. " "Run lintian-brush instead?",
                 e.path,
             )
+            return 1
+        except UpstreamNameUnknown as e:
+            logging.info("%s: Unable to determine upstream package name.", e.path)
+            if not args.trust:
+                logging.info(
+                    "Run with --trust if you are okay running code "
+                    "from the package?")
+            return 1
+        except SourcePackageNameInvalid as e:
+            logging.info("Unable to sanitize source package name: %s", e.source)
             return 1
     return 0
 
