@@ -513,25 +513,26 @@ def debianize(  # noqa: C901
                 logging.warning('Unable to obtain declared dependencies.')
                 upstream_deps = None
 
-            from ognibuild.resolver.apt import AptResolver
+            if upstream_deps:
+                from ognibuild.resolver.apt import AptResolver
 
-            with session:
-                apt_resolver = AptResolver.from_session(session)
+                with session:
+                    apt_resolver = AptResolver.from_session(session)
 
-                build_deps = []
-                test_deps = []
-                for kind, dep in upstream_deps:
-                    apt_dep = apt_resolver.resolve(dep)
-                    if apt_dep is None:
-                        logging.warning(
-                            'Unable to map upstream requirement %s (kind %s) '
-                            'to a Debian package', dep, kind)
-                        continue
-                    logging.debug('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
-                    if kind in ('core', 'build'):
-                        build_deps.append(apt_dep)
-                    if kind in ('core', 'test', ):
-                        test_deps.append(apt_dep)
+                    build_deps = []
+                    test_deps = []
+                    for kind, dep in upstream_deps:
+                        apt_dep = apt_resolver.resolve(dep)
+                        if apt_dep is None:
+                            logging.warning(
+                                'Unable to map upstream requirement %s (kind %s) '
+                                'to a Debian package', dep, kind)
+                            continue
+                        logging.debug('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
+                        if kind in ('core', 'build'):
+                            build_deps.append(apt_dep)
+                        if kind in ('core', 'test', ):
+                            test_deps.append(apt_dep)
 
             if buildsystem:
                 try:
