@@ -546,7 +546,7 @@ def debianize(  # noqa: C901
                 wnpp_bugs,
             )
 
-        wt.smart_add(['debian/'])
+        wt.smart_add([wt.abspath(debian_path)])
         wt.commit(
             "Create debian/ directory",
             allow_pointless=False,
