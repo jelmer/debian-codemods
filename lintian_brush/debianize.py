@@ -301,7 +301,9 @@ def process_setup_py(es, wt, subpath, debian_path, upstream_name, metadata, comp
     source["Testsuite"] = "autopkgtest-pkg-python"
     source["Build-Depends"] = ensure_some_version(
         source["Build-Depends"], "python3-all")
-    source['Source'] = "python-%s" % upstream_name
+    if upstream_name.startswith('python-'):
+        upstream_name = upstream_name[len('python-'):]
+    source['Source'] = "python-%s" % upstream_name.lower()
     control.add_binary({
             "Package": "python3-%s" % upstream_name,
             "Depends": "${python3:Depends}",
@@ -317,7 +319,7 @@ def process_npm(es, wt, subpath, debian_path, upstream_name, metadata, compat_re
     setup_debhelper(
         wt, debian_path,
         source, compat_release=compat_release, addons=["nodejs"])
-    source['Source'] = "node-%s" % upstream_name
+    source['Source'] = "node-%s" % upstream_name.lower()
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     control.add_binary(
@@ -337,7 +339,7 @@ def process_npm(es, wt, subpath, debian_path, upstream_name, metadata, compat_re
 def process_dist_zilla(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
-    source['Source'] = "lib%s-perl" % upstream_name
+    source['Source'] = "lib%s-perl" % upstream_name.replace('::', '-').lower()
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     setup_debhelper(
@@ -345,7 +347,9 @@ def process_dist_zilla(es, wt, subpath, debian_path, upstream_name, metadata, co
         source, compat_release=compat_release,
         addons=["dist-zilla"])
     control.add_binary(
-        {"Package": "lib%s-perl" % upstream_name, "Architecture": "all"})
+        {"Package": "lib%s-perl" % upstream_name.replace('::', '-').lower(),
+         "Architecture": "all"
+         })
     return control
 
 
