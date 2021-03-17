@@ -388,13 +388,13 @@ def process_golang(es, wt, subpath, debian_path, upstream_name, metadata, compat
 def process_default(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
+    source["Source"] = upstream_name
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     setup_debhelper(
         wt, debian_path,
         source, compat_release=compat_release)
-    source_name = upstream_name
-    for binary_name, arch in [(source_name, "any")]:
+    for binary_name, arch in [(upstream_name, "any")]:
         control.add_binary({"Package": binary_name, "Architecture": arch})
     return control
 
