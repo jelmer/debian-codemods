@@ -513,14 +513,15 @@ def debianize(  # noqa: C901
                 logging.warning('Unable to obtain declared dependencies.')
                 upstream_deps = None
 
+
+            build_deps = []
+            test_deps = []
             if upstream_deps:
                 from ognibuild.resolver.apt import AptResolver
 
                 with session:
                     apt_resolver = AptResolver.from_session(session)
 
-                    build_deps = []
-                    test_deps = []
                     for kind, dep in upstream_deps:
                         apt_dep = apt_resolver.resolve(dep)
                         if apt_dep is None:
