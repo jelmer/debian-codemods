@@ -470,19 +470,20 @@ def debianize(  # noqa: C901
                 upstream_branch_version,
                 upstream_version_add_revision,
             )
+            upstream_revision = wt.last_revision()
             upstream_version = upstream_branch_version(
-                wt.branch, wt.last_revision(), upstream_name
+                wt.branch, upstream_revision, upstream_name
             )
             if upstream_version is None and "X-Version" in metadata:
                 # They haven't done any releases yet. Assume we're ahead of
                 # the next announced release?
                 next_upstream_version = debian_upstream_version(metadata["X-Version"])
                 upstream_version = upstream_version_add_revision(
-                    wt.branch, next_upstream_version, wt.last_revision(), "~"
+                    wt.branch, next_upstream_version, upstream_revision, "~"
                 )
             if upstream_version is None:
                 upstream_version = upstream_version_add_revision(
-                    wt.branch, "0", wt.last_revision(), "+"
+                    wt.branch, "0", upstream_revision, "+"
                 )
                 logging.warning(
                     "Unable to determine upstream version, using %s.",
@@ -497,6 +498,11 @@ def debianize(  # noqa: C901
                 session = SchrootSession(schroot)
 
             with session:
+                if schroot:
+                    session.setup_from_vcs(
+                        wt.revision_tree(upstream_revision),
+                        include_controldir=False
+                        )
                 (pristine_revids, tag_names,
                  upstream_branch_name) = import_upstream_version_from_dist(
                     wt, subpath, buildsystem, source_name, upstream_version,
@@ -512,7 +518,7 @@ def debianize(  # noqa: C901
             # TODO(jelmer): This is a reasonable guess, but won't always be
             # okay.
             try:
-                upstream_deps = buildsystem.get_declared_dependencies()
+                upstream_deps = list(buildsystem.get_declared_dependencies())
             except NotImplementedError:
                 logging.warning('Unable to obtain declared dependencies.')
                 upstream_deps = None
