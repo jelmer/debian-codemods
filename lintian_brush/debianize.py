@@ -291,7 +291,7 @@ class ResetOnFailure(object):
         return False
 
 
-def process_setup_py(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
+def process_setup_py(es, wt, subpath, debian_path, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     source["Rules-Requires-Root"] = "no"
@@ -304,6 +304,7 @@ def process_setup_py(es, wt, subpath, debian_path, upstream_name, metadata, comp
     source["Testsuite"] = "autopkgtest-pkg-python"
     source["Build-Depends"] = ensure_some_version(
         source["Build-Depends"], "python3-all")
+    upstream_name = metadata['Name']
     if upstream_name.startswith('python-'):
         upstream_name = upstream_name[len('python-'):]
     source['Source'] = "python-%s" % upstream_name.lower()
@@ -316,12 +317,13 @@ def process_setup_py(es, wt, subpath, debian_path, upstream_name, metadata, comp
     return control
 
 
-def process_npm(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
+def process_npm(es, wt, subpath, debian_path, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     setup_debhelper(
         wt, debian_path,
         source, compat_release=compat_release, addons=["nodejs"])
+    upstream_name = metadata['Name']
     source['Source'] = "node-%s" % upstream_name.lower()
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
@@ -339,9 +341,10 @@ def process_npm(es, wt, subpath, debian_path, upstream_name, metadata, compat_re
     return control
 
 
-def process_dist_zilla(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
+def process_dist_zilla(es, wt, subpath, debian_path, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
+    upstream_name = metadata['Name']
     source['Source'] = "lib%s-perl" % upstream_name.replace('::', '-').lower()
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
@@ -356,9 +359,10 @@ def process_dist_zilla(es, wt, subpath, debian_path, upstream_name, metadata, co
     return control
 
 
-def process_golang(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
+def process_golang(es, wt, subpath, debian_path, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
+    upstream_name = metadata['Name']
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     source["XS-Go-Import-Path"] = go_import_path_from_repo(
@@ -392,22 +396,26 @@ def process_golang(es, wt, subpath, debian_path, upstream_name, metadata, compat
     return control
 
 
-def process_default(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
+def process_default(es, wt, subpath, debian_path, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
-    source["Source"] = upstream_name
+    upstream_name = metadata['Name']
+    source["Source"] = source_name_from_upstream_name(upstream_name)
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     setup_debhelper(
         wt, debian_path,
         source, compat_release=compat_release)
-    for binary_name, arch in [(upstream_name, "any")]:
+    # For now, just assume a single binary package with the same name as the
+    # source and architecture-dependent.
+    for binary_name, arch in [(source['Source'], "any")]:
         control.add_binary({"Package": binary_name, "Architecture": arch})
     return control
 
 
-def process_cargo(es, wt, subpath, debian_path, upstream_name, metadata, compat_release):
+def process_cargo(es, wt, subpath, debian_path, metadata, compat_release):
     from debmutate.debcargo import DebcargoControlShimEditor
+    upstream_name = metadata['Name']
     return es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name))
 
 
@@ -568,7 +576,7 @@ def debianize(  # noqa: C901
                 process = process_default
 
             control = process(
-                es, wt, subpath, debian_path, upstream_name=upstream_name,
+                es, wt, subpath, debian_path,
                 metadata=metadata, compat_release=compat_release)
 
             source = control.source
