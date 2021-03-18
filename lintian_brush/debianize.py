@@ -515,6 +515,7 @@ def debianize(  # noqa: C901
             if schroot is None:
                 session = PlainSession()
             else:
+                logging.info('Using schroot %s', schroot)
                 session = SchrootSession(schroot)
 
             with session:
