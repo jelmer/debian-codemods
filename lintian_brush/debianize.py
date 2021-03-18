@@ -188,10 +188,8 @@ def setup_debhelper(wt, debian_path, source, compat_release, addons=None, env=No
 
 def import_upstream_version_from_dist(
         wt, subpath, buildsystem, source_name, upstream_version,
-        session):
+        session, resolver, fixers):
     def create_dist(tree, package, version, target_dir):
-        resolver = auto_resolver(session)
-        fixers = [InstallFixer(resolver)]
         # TODO(jelmer): set include_controldir=True to make
         # setuptools_scm happy?
         external_dir, internal_dir = session.setup_from_vcs(
@@ -525,10 +523,20 @@ def debianize(  # noqa: C901
                     upstream_tree = wt
                 else:
                     upstream_tree = wt.revision_tree(upstream_revision)
+
+                resolver = auto_resolver(session)
+                fixers = [InstallFixer(resolver)]
+
                 (pristine_revids, tag_names,
                  upstream_branch_name) = import_upstream_version_from_dist(
                     upstream_tree, subpath, buildsystem, source_name, upstream_version,
-                    session=session)
+                    session=session, resolver=resolver, fixers=fixers)
+
+                try:
+                    upstream_deps = list(buildsystem.get_declared_dependencies(session, fixers))
+                except NotImplementedError:
+                    logging.warning('Unable to obtain declared dependencies.')
+                    upstream_deps = None
 
             if wt.branch.last_revision() != pristine_revids[None]:
                 wt.pull(
@@ -539,11 +547,6 @@ def debianize(  # noqa: C901
             version = Version(upstream_version + "-1")
             # TODO(jelmer): This is a reasonable guess, but won't always be
             # okay.
-            try:
-                upstream_deps = list(buildsystem.get_declared_dependencies())
-            except NotImplementedError:
-                logging.warning('Unable to obtain declared dependencies.')
-                upstream_deps = None
 
             build_deps = []
             test_deps = []
