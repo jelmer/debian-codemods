@@ -397,7 +397,15 @@ def process_golang(es, wt, subpath, debian_path, metadata, compat_release):
 def process_r(es, wt, subpath, debian_path, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
-    source["Source"] = "r-cran-%s" % metadata['Name']
+
+    if metadata.get('Archive') == 'CRAN':
+        archive = 'cran'
+    elif metadata.get('Archive') == 'Bioconductor':
+        archive = 'bioc'
+    else:
+        archive = 'other'
+
+    source["Source"] = "r-%s-%s" % (archive, metadata['Name'])
     source["Rules-Requires-Root"] = "no"
     source["Build-Depends"] = "dh-r, r-base-dev"
     source["Standards-Version"] = latest_standards_version()
@@ -407,7 +415,7 @@ def process_r(es, wt, subpath, debian_path, metadata, compat_release):
         buildsystem="R")
     # For now, just assume a single binary package that is architecture-dependent.
     control.add_binary({
-        "Package": "r-cran-%s" % metadata['Name'],
+        "Package": "r-%s-%s" % (archive, metadata['Name']),
         "Architecture": 'any',
         'Depends': '${R:Depends}, ${shlibs:Depends}, ${misc:Depends}',
         'Recommends': '${R:Recommends}',
