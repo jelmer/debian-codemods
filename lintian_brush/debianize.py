@@ -600,13 +600,6 @@ def debianize(  # noqa: C901
                     session=session, resolver=resolver, fixers=build_fixers,
                     create_dist=create_dist)
 
-                try:
-                    upstream_deps = list(buildsystem.get_declared_dependencies(
-                        session, build_fixers))
-                except NotImplementedError:
-                    logging.warning('Unable to obtain declared dependencies.')
-                    upstream_deps = None
-
             if wt.branch.last_revision() != pristine_revids[None]:
                 wt.pull(
                     wt.branch, overwrite=True, stop_revision=pristine_revids[None])
@@ -617,12 +610,30 @@ def debianize(  # noqa: C901
             # TODO(jelmer): This is a reasonable guess, but won't always be
             # okay.
 
-            build_deps = []
-            test_deps = []
-            if upstream_deps:
-                from ognibuild.resolver.apt import AptResolver
+            if buildsystem:
+                try:
+                    process = PROCESSORS[buildsystem.name]
+                except KeyError:
+                    process = process_default
+
+                build_deps = []
+                test_deps = []
 
                 with session:
+                    external_dir, internal_dir = session.setup_from_vcs(
+                        wt, os.path.join(subpath, buildsystem_subpath))
+
+                    from ognibuild.resolver.apt import AptResolver
+                    apt_resolver = AptResolver.from_session(session)
+                    build_fixers = [InstallFixer(resolver)]
+                    session.chdir(internal_dir)
+                    try:
+                        upstream_deps = list(buildsystem.get_declared_dependencies(
+                            session, build_fixers))
+                    except NotImplementedError:
+                        logging.warning('Unable to obtain declared dependencies.')
+                        upstream_deps = None
+
                     apt_resolver = AptResolver.from_session(session)
 
                     for kind, dep in upstream_deps:
@@ -637,12 +648,6 @@ def debianize(  # noqa: C901
                             build_deps.append(apt_dep)
                         if kind in ('core', 'test', ):
                             test_deps.append(apt_dep)
-
-            if buildsystem:
-                try:
-                    process = PROCESSORS[buildsystem.name]
-                except KeyError:
-                    process = process_default
             else:
                 process = process_default
 
