@@ -28,7 +28,7 @@ import warnings
 
 
 from debian.changelog import Changelog, Version, get_maintainer, format_date
-from debmutate.control import ensure_some_version, ensure_relation, ControlEditor
+from debmutate.control import ensure_some_version, ensure_exact_version, ensure_relation, ControlEditor
 from debian.deb822 import PkgRelation
 
 from breezy import osutils
@@ -174,9 +174,10 @@ def enable_dh_addon(source, addon):
 
 
 def setup_debhelper(wt, debian_path, source, compat_release, addons=None, env=None, buildsystem=None):
-    source[
-        "Build-Depends"
-    ] = "debhelper-compat (= %d)" % maximum_debhelper_compat_version(compat_release)
+    source["Build-Depends"] = ensure_exact_version(
+            source.get("Build-Depends", ""),
+            "debhelper-compat",
+            str(maximum_debhelper_compat_version(compat_release)))
     for addon in addons or []:
         enable_dh_addon(source, addon)
     write_debhelper_rules_template(
