@@ -503,7 +503,7 @@ def debianize(  # noqa: C901
         from ognibuild.buildsystem import get_buildsystem
 
         buildsystem_subpath, buildsystem = get_buildsystem(
-            wt.abspath(subpath), trust_package=trust)
+            wt.abspath(subpath))
 
     try:
         upstream_name = metadata["Name"]
