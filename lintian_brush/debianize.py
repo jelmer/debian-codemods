@@ -198,8 +198,7 @@ def import_upstream_version_from_dist(
         with DistCatcher(external_dir) as dc:
             session.chdir(internal_dir)
             try:
-                run_dist(
-                    session, [buildsystem], resolver, fixers, quiet=True)
+                run_dist(session, [buildsystem], resolver, fixers, quiet=True)
             except NotImplementedError:
                 return None
             except DetailedFailure as e:
@@ -503,7 +502,8 @@ def debianize(  # noqa: C901
     else:
         from ognibuild.buildsystem import get_buildsystem
 
-        buildsystem = get_buildsystem(wt.abspath(subpath), trust_package=trust)
+        buildsystem_subpath, buildsystem = get_buildsystem(
+            wt.abspath(subpath), trust_package=trust)
 
     try:
         upstream_name = metadata["Name"]
@@ -557,15 +557,17 @@ def debianize(  # noqa: C901
                     upstream_tree = wt.revision_tree(upstream_revision)
 
                 resolver = auto_resolver(session)
-                fixers = [InstallFixer(resolver)]
+                build_fixers = [InstallFixer(resolver)]
 
                 (pristine_revids, tag_names,
                  upstream_branch_name) = import_upstream_version_from_dist(
-                    upstream_tree, subpath, buildsystem, source_name, upstream_version,
-                    session=session, resolver=resolver, fixers=fixers)
+                    upstream_tree, os.path.join(subpath, buildsystem_subpath),
+                    buildsystem, source_name, upstream_version,
+                    session=session, resolver=resolver, fixers=build_fixers)
 
                 try:
-                    upstream_deps = list(buildsystem.get_declared_dependencies(session, fixers))
+                    upstream_deps = list(buildsystem.get_declared_dependencies(
+                        session, build_fixers))
                 except NotImplementedError:
                     logging.warning('Unable to obtain declared dependencies.')
                     upstream_deps = None
@@ -664,11 +666,11 @@ def debianize(  # noqa: C901
 
     with wt.lock_write():
 
-        fixers = available_lintian_fixers(force_subprocess=force_subprocess)
+        lintian_fixers = available_lintian_fixers(force_subprocess=force_subprocess)
 
         run_lintian_fixers(
             wt,
-            fixers,
+            lintian_fixers,
             update_changelog=False,
             compat_release=compat_release,
             verbose=verbose,
