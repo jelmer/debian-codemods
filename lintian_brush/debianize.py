@@ -394,6 +394,28 @@ def process_golang(es, wt, subpath, debian_path, metadata, compat_release):
     return control
 
 
+def process_r(es, wt, subpath, debian_path, metadata, compat_release):
+    control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
+    source = control.source
+    source["Source"] = "r-cran-%s" % metadata['Name']
+    source["Rules-Requires-Root"] = "no"
+    source["Build-Depends"] = "dh-r, r-base-dev"
+    source["Standards-Version"] = latest_standards_version()
+    source["Testsuite"] = "autopkgtest-pkg-r"
+    setup_debhelper(
+        wt, debian_path, source, compat_release=compat_release,
+        buildsystem="R")
+    # For now, just assume a single binary package that is architecture-dependent.
+    control.add_binary({
+        "Package": "r-cran-%s" % metadata['Name'],
+        "Architecture": 'any',
+        'Depends': '${R:Depends}, ${shlibs:Depends}, ${misc:Depends}',
+        'Recommends': '${R:Recommends}',
+        'Suggests': '${R:Suggests}',
+        })
+    return control
+
+
 def process_default(es, wt, subpath, debian_path, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -422,6 +444,7 @@ PROCESSORS = {
     "dist-zilla": process_dist_zilla,
     "cargo": process_cargo,
     "golang": process_golang,
+    "R": process_r,
     }
 
 
