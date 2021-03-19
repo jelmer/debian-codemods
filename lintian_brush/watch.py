@@ -112,6 +112,15 @@ def candidates_from_upstream_metadata(
                     parsed_url, good_upstream_versions, net_access=net_access
                 )
 
+        archive = code.get('Archive')
+        if archive == 'CRAN':
+            yield from guess_cran_watch_entry(code['Name'])
+
+
+def guess_cran_watch_entry(name):
+    w = Watch(r'https://cran.r-project.org/src/contrib/%s_([-\d.]*)\.tar\.gz' % name)
+    yield w, "cran", "likely"
+
 
 def guess_github_watch_entry(parsed_url, good_upstream_versions, net_access=False):
     from breezy.branch import Branch
