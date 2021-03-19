@@ -36,7 +36,6 @@ from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
 
 from ognibuild import DetailedFailure, UnidentifiedError
-from ognibuild.buildsystem import NoBuildToolsFound
 from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
@@ -545,6 +544,12 @@ def debianize(  # noqa: C901
                     "Unable to determine upstream version, using %s.",
                     upstream_version)
 
+            if wt.last_revision() == upstream_revision:
+                # If at all possible, try to avoid copying
+                upstream_tree = wt
+            else:
+                upstream_tree = wt.revision_tree(upstream_revision)
+
             if schroot is None:
                 session = PlainSession()
             else:
@@ -552,12 +557,6 @@ def debianize(  # noqa: C901
                 session = SchrootSession(schroot)
 
             with session:
-                if wt.last_revision() == upstream_revision:
-                    # If at all possible, try to avoid copying
-                    upstream_tree = wt
-                else:
-                    upstream_tree = wt.revision_tree(upstream_revision)
-
                 resolver = auto_resolver(session)
                 build_fixers = [InstallFixer(resolver)]
 
