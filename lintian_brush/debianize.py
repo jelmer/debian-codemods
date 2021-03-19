@@ -189,42 +189,43 @@ def setup_debhelper(wt, debian_path, source, compat_release, addons=None, env=No
 
 def import_upstream_version_from_dist(
         wt, subpath, buildsystem, source_name, upstream_version,
-        session, resolver, fixers):
-    def create_dist(tree, package, version, target_dir):
-        # TODO(jelmer): set include_controldir=True to make
-        # setuptools_scm happy?
-        external_dir, internal_dir = session.setup_from_vcs(
-            wt, subpath)
-        with DistCatcher(external_dir) as dc:
-            session.chdir(internal_dir)
-            try:
-                run_dist(session, [buildsystem], resolver, fixers, quiet=True)
-            except NotImplementedError:
-                return None
-            except DetailedFailure as e:
-                raise DistCreationFailed(str(e), e.error)
-            except UnidentifiedError as e:
-                raise DistCreationFailed(str(e))
-
-        try:
-            for path in dc.files:
-                shutil.copy(path, target_dir)
-                return os.path.join(target_dir, os.path.basename(path))
-        finally:
-            for path in dc.files:
-                if os.path.isdir(path):
-                    shutil.rmtree(path)
-                else:
-                    os.unlink(path)
-
-        raise DistNoTarball()
-
+        session, resolver, fixers, create_dist=None):
     from breezy.plugins.debian import default_orig_dir
     from breezy.plugins.debian.util import debuild_config
     from breezy.plugins.debian.merge_upstream import get_tarballs, do_import
     from breezy.plugins.debian.upstream.branch import UpstreamBranchSource
     from breezy.plugins.debian.upstream.pristinetar import get_pristine_tar_source
     import tempfile
+
+    if create_dist is None:
+        def create_dist(tree, package, version, target_dir):
+            # TODO(jelmer): set include_controldir=True to make
+            # setuptools_scm happy?
+            external_dir, internal_dir = session.setup_from_vcs(
+                wt, subpath)
+            with DistCatcher(external_dir) as dc:
+                session.chdir(internal_dir)
+                try:
+                    run_dist(session, [buildsystem], resolver, fixers, quiet=True)
+                except NotImplementedError:
+                    return None
+                except DetailedFailure as e:
+                    raise DistCreationFailed(str(e), e.error)
+                except UnidentifiedError as e:
+                    raise DistCreationFailed(str(e))
+
+            try:
+                for path in dc.files:
+                    shutil.copy(path, target_dir)
+                    return os.path.join(target_dir, os.path.basename(path))
+            finally:
+                for path in dc.files:
+                    if os.path.isdir(path):
+                        shutil.rmtree(path)
+                    else:
+                        os.unlink(path)
+
+            raise DistNoTarball()
 
     config = debuild_config(wt, subpath)
     upstream_source = UpstreamBranchSource.from_branch(
@@ -477,7 +478,8 @@ def debianize(  # noqa: C901
     minimum_certainty: str = MINIMUM_CERTAINTY,
     consult_external_directory: bool = True,
     verbose: bool = False,
-    schroot: Optional[str] = None
+    schroot: Optional[str] = None,
+    create_dist=None
 ):
     dirty_tracker = get_dirty_tracker(wt, subpath, use_inotify)
     if dirty_tracker:
@@ -563,7 +565,8 @@ def debianize(  # noqa: C901
                  upstream_branch_name) = import_upstream_version_from_dist(
                     upstream_tree, os.path.join(subpath, buildsystem_subpath),
                     buildsystem, source_name, upstream_version,
-                    session=session, resolver=resolver, fixers=build_fixers)
+                    session=session, resolver=resolver, fixers=build_fixers,
+                    create_dist=create_dist)
 
                 try:
                     upstream_deps = list(buildsystem.get_declared_dependencies(
