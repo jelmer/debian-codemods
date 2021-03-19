@@ -344,7 +344,7 @@ def process_dist_zilla(es, wt, subpath, debian_path, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     upstream_name = metadata['Name']
-    source['Source'] = "lib%s-perl" % upstream_name.replace('::', '-').lower()
+    source['Source'] = "lib%s-perl" % upstream_name.replace('::', '-').replace('_', '').lower()
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     setup_debhelper(
@@ -352,7 +352,7 @@ def process_dist_zilla(es, wt, subpath, debian_path, metadata, compat_release):
         source, compat_release=compat_release,
         addons=["dist-zilla"])
     control.add_binary(
-        {"Package": "lib%s-perl" % upstream_name.replace('::', '-').lower(),
+        {"Package": source['Source'],
          "Architecture": "all"
          })
     return control
@@ -361,7 +361,6 @@ def process_dist_zilla(es, wt, subpath, debian_path, metadata, compat_release):
 def process_golang(es, wt, subpath, debian_path, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
-    upstream_name = metadata['Name']
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     source["XS-Go-Import-Path"] = go_import_path_from_repo(
