@@ -188,7 +188,40 @@ def setup_debhelper(wt, debian_path, source, compat_release, addons=None, env=No
 
 def import_upstream_version_from_dist(
         wt, subpath, buildsystem, source_name, upstream_version,
+<<<<<<< HEAD
         session, resolver, fixers, create_dist=None):
+=======
+        session, resolver, fixers):
+    def create_dist(tree, package, version, target_dir):
+        # TODO(jelmer): set include_controldir=True to make
+        # setuptools_scm happy?
+        external_dir, internal_dir = session.setup_from_vcs(
+            wt, subpath)
+        with DistCatcher(external_dir) as dc:
+            session.chdir(internal_dir)
+            try:
+                run_dist(session, [buildsystem], resolver, fixers, quiet=True)
+            except NotImplementedError:
+                return None
+            except DetailedFailure as e:
+                raise DistCreationFailed(str(e.error), e.error)
+            except UnidentifiedError as e:
+                raise DistCreationFailed(''.join([line + '\n' for line in e.lines]))
+
+        try:
+            for path in dc.files:
+                shutil.copy(path, target_dir)
+                return os.path.join(target_dir, os.path.basename(path))
+        finally:
+            for path in dc.files:
+                if os.path.isdir(path):
+                    shutil.rmtree(path)
+                else:
+                    os.unlink(path)
+
+        raise DistNoTarball()
+
+>>>>>>> 9a444d6d (Fix error handling.)
     from breezy.plugins.debian import default_orig_dir
     from breezy.plugins.debian.util import debuild_config
     from breezy.plugins.debian.merge_upstream import get_tarballs, do_import
