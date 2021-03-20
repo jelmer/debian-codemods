@@ -600,22 +600,21 @@ def debianize(  # noqa: C901
                             session, build_fixers))
                     except NotImplementedError:
                         logging.warning('Unable to obtain declared dependencies.')
-                        upstream_deps = None
+                    else:
+                        apt_resolver = AptResolver.from_session(session)
 
-                    apt_resolver = AptResolver.from_session(session)
-
-                    for kind, dep in upstream_deps:
-                        apt_dep = apt_resolver.resolve(dep)
-                        if apt_dep is None:
-                            logging.warning(
-                                'Unable to map upstream requirement %s (kind %s) '
-                                'to a Debian package', dep, kind)
-                            continue
-                        logging.debug('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
-                        if kind in ('core', 'build'):
-                            build_deps.append(apt_dep)
-                        if kind in ('core', 'test', ):
-                            test_deps.append(apt_dep)
+                        for kind, dep in upstream_deps:
+                            apt_dep = apt_resolver.resolve(dep)
+                            if apt_dep is None:
+                                logging.warning(
+                                    'Unable to map upstream requirement %s (kind %s) '
+                                    'to a Debian package', dep, kind)
+                                continue
+                            logging.debug('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
+                            if kind in ('core', 'build'):
+                                build_deps.append(apt_dep)
+                            if kind in ('core', 'test', ):
+                                test_deps.append(apt_dep)
             else:
                 process = process_default
 
