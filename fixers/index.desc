@@ -482,3 +482,6 @@ Lintian-Tags: debian-rules-parses-dpkg-parsechangelog
 
 Fix-Script: field-name-typo-in-control.py
 Lintian-Tags: cute-field
+
+Fix-Script: github-archive-url.py
+Lintian-Tags: github-archive-url
