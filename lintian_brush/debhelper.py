@@ -46,7 +46,7 @@ def detect_debhelper_buildsystem(step: Optional[str] = None) -> Optional[str]:
             "-MDebian::Debhelper::Dh_Buildsystems",
             "-e",
             """\
-Debian::Debhelper::Dh_Lib::init();
+Debian::Debhelper::Dh_Lib::init(inhibit_log=>1);
 my $b=Debian::Debhelper::Dh_Buildsystems::load_buildsystem(undef, %(step)s);\
 if (defined($b)) { print($b->NAME); } else { print("_undefined_"); }\
 """
