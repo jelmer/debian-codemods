@@ -1,0 +1,2 @@
+version=4
+https://github.com/jupyter/jupyter_client/tags .*/archive/refs/tags/@ANY_VERSION@@ARCHIVE_EXT@
