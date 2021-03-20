@@ -70,7 +70,7 @@ def all_sha_prefixed(cl: Changelog) -> bool:
 
 
 def guess_update_changelog(
-    tree: WorkingTree, debian_path: str = "", cl: Optional[Changelog] = None
+    tree: WorkingTree, debian_path: str, cl: Optional[Changelog] = None
 ) -> Optional[Tuple[bool, str]]:
     """Guess whether the changelog should be updated.
 
