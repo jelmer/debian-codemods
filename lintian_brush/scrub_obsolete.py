@@ -263,15 +263,15 @@ def drop_old_relations(editor, upgrade_release):
     return dropped
 
 
-def update_maintscripts(wt, path, package, upgrade_release, allow_reformatting=False):
+def update_maintscripts(wt, subpath, package, upgrade_release, allow_reformatting=False):
     ret = []
-    for entry in os.scandir(wt.abspath(os.path.join(path, "debian"))):
+    for entry in os.scandir(wt.abspath(os.path.join(subpath))):
         if not (entry.name == "maintscript" or entry.name.endswith(".maintscript")):
             continue
         with MaintscriptEditor(entry.path, allow_reformatting=allow_reformatting) as editor:
             removed = drop_old_maintscript(editor, package, upgrade_release)
             if removed:
-                ret.append((os.path.join(path, "debian", entry.name), removed))
+                ret.append((os.path.join(subpath, entry.name), removed))
     return ret
 
 
@@ -312,9 +312,9 @@ class ScrubObsoleteResult(object):
         return summary
 
 
-def _scrub_obsolete(wt, subpath, upgrade_release, allow_reformatting):
+def _scrub_obsolete(wt, debian_path, upgrade_release, allow_reformatting):
     specific_files = []
-    control_path = os.path.join(subpath, "debian/control")
+    control_path = os.path.join(debian_path, "control")
     try:
         with ControlEditor(
                 wt.abspath(control_path),
@@ -323,12 +323,12 @@ def _scrub_obsolete(wt, subpath, upgrade_release, allow_reformatting):
             package = editor.source["Source"]
             control_removed = drop_old_relations(editor, upgrade_release)
     except FileNotFoundError:
-        if wt.has_filename(os.path.join(subpath, "debian/debcargo.toml")):
+        if wt.has_filename(os.path.join(debian_path, "debcargo.toml")):
             return ScrubObsoleteResult([], [], [])
         raise
 
     maintscript_removed = []
-    for path, removed in update_maintscripts(wt, subpath, package, upgrade_release, allow_reformatting):
+    for path, removed in update_maintscripts(wt, debian_path, package, upgrade_release, allow_reformatting):
         if removed:
             maintscript_removed.append((path, removed))
             specific_files.append(path)
@@ -344,7 +344,9 @@ def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None,
                    allow_reformatting=False):
     from breezy.commit import NullCommitReporter
 
-    result = _scrub_obsolete(wt, subpath, upgrade_release, allow_reformatting)
+    debian_path = os.path.join(subpath, 'debian')
+
+    result = _scrub_obsolete(wt, debian_path, upgrade_release, allow_reformatting)
 
     if not result:
         return result
@@ -352,7 +354,7 @@ def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None,
     specific_files = list(result.specific_files)
     summary = result.itemized()
 
-    changelog_path = os.path.join(subpath, "debian/changelog")
+    changelog_path = os.path.join(debian_path, "changelog")
 
     if update_changelog is None:
         from .detect_gbp_dch import guess_update_changelog
