@@ -19,6 +19,7 @@
 
 
 from debian.changelog import Changelog
+import os
 import re
 from typing import Optional, Tuple, List
 
@@ -37,9 +38,9 @@ DEFAULT_BACKLOG = 50
 # what was in the commit messages?
 
 
-def gbp_conf_has_dch_section(tree: WorkingTree, path: str = "") -> Optional[bool]:
+def gbp_conf_has_dch_section(tree: WorkingTree, debian_path: str = "") -> Optional[bool]:
     try:
-        gbp_conf_path = osutils.pathjoin(path, "debian/gbp.conf")
+        gbp_conf_path = osutils.pathjoin(debian_path, "gbp.conf")
         gbp_conf_text = tree.get_file_text(gbp_conf_path)
     except NoSuchFile:
         return False
@@ -79,19 +80,20 @@ def guess_update_changelog(
     Returns:
       best guess at whether we should update changelog (bool)
     """
-    ret = _guess_update_changelog_from_tree(tree, path, cl)
+    debian_path = os.path.join(path, 'debian')
+    ret = _guess_update_changelog_from_tree(tree, debian_path, cl)
     if ret is not None:
         return ret
-    ret = _guess_update_changelog_from_branch(tree.branch, path)
+    ret = _guess_update_changelog_from_branch(tree.branch, debian_path)
     if ret is not None:
         return ret
     return None
 
 
 def _guess_update_changelog_from_tree(
-    tree: Tree, path: str = "", cl: Optional[Changelog] = None
+    tree: Tree, debian_path: str = "debian", cl: Optional[Changelog] = None
 ) -> Optional[Tuple[bool, str]]:
-    if gbp_conf_has_dch_section(tree, path):
+    if gbp_conf_has_dch_section(tree, debian_path):
         return (
             False,
             "Assuming changelog does not need to be updated, "
@@ -100,7 +102,7 @@ def _guess_update_changelog_from_tree(
 
     # TODO(jelmes): Do something more clever here, perhaps looking at history
     # of the changelog file?
-    changelog_path = osutils.pathjoin(path, "debian/changelog")
+    changelog_path = osutils.pathjoin(debian_path, "changelog")
     if cl is None:
         try:
             with tree.get_file(changelog_path) as f:
@@ -135,7 +137,7 @@ def _greedy_revisions(graph, revid: bytes, length: int) -> Tuple[List[bytes], bo
     return ret, False
 
 
-def _changelog_stats(branch: Branch, history: int, subpath: str):
+def _changelog_stats(branch: Branch, history: int, debian_path: str):
     mixed = 0
     changelog_only = 0
     other_only = 0
@@ -167,11 +169,11 @@ def _changelog_stats(branch: Branch, history: int, subpath: str):
                 [
                     f
                     for f in filenames
-                    if f.startswith(osutils.pathjoin(subpath, "debian/"))
+                    if f.startswith(debian_path + '/')
                 ]
             ):
                 continue
-            if osutils.pathjoin(subpath, "debian/changelog") in filenames:
+            if osutils.pathjoin(debian_path, "changelog") in filenames:
                 if len(filenames) > 1:
                     mixed += 1
                 else:
@@ -182,7 +184,7 @@ def _changelog_stats(branch: Branch, history: int, subpath: str):
 
 
 def _guess_update_changelog_from_branch(
-    branch: Branch, subpath: str = "", history: int = DEFAULT_BACKLOG
+    branch: Branch, debian_path: str = "", history: int = DEFAULT_BACKLOG
 ) -> Optional[Tuple[bool, str]]:
     """Guess whether the changelog should be updated manually.
 
@@ -198,7 +200,7 @@ def _guess_update_changelog_from_branch(
     # - The vast majority of lines in changelog get added in
     #   commits that only touch the changelog
     (changelog_only, other_only, mixed, dch_references) = _changelog_stats(
-        branch, history, subpath
+        branch, history, debian_path
     )
     if dch_references:
         return (
