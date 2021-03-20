@@ -17,6 +17,11 @@
 
 """Debianize a package."""
 
+__all__ = [
+    'NoBuildToolsFound',
+    'debianize',
+    ]
+
 import contextlib
 import logging
 import os
@@ -36,7 +41,7 @@ from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
 
 from ognibuild import DetailedFailure, UnidentifiedError
-from ognibuild.buildsystem import NoBuildToolsFound
+from ognibuild.buildsystem import NoBuildToolsFound  # noqa: F401
 from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession

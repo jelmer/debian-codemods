@@ -46,7 +46,7 @@ from debmutate.reformatting import (
 )
 
 from .changelog import add_changelog_entry
-from . import get_committer
+from . import get_committer, control_files_in_root
 
 
 _changelog_policy_noted = False
@@ -344,7 +344,10 @@ def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None,
                    allow_reformatting=False):
     from breezy.commit import NullCommitReporter
 
-    debian_path = os.path.join(subpath, 'debian')
+    if control_files_in_root(subpath):
+        debian_path = subpath
+    else:
+        debian_path = os.path.join(subpath, 'debian')
 
     result = _scrub_obsolete(wt, debian_path, upgrade_release, allow_reformatting)
 
@@ -363,7 +366,7 @@ def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None,
         with wt.get_file(changelog_path) as f:
             cl = Changelog(f, max_blocks=1)
 
-        dch_guess = guess_update_changelog(wt, subpath, cl)
+        dch_guess = guess_update_changelog(wt, debian_path, cl)
         if dch_guess:
             update_changelog = dch_guess[0]
             _note_changelog_policy(update_changelog, dch_guess[1])

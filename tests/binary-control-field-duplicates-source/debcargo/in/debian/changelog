@@ -1,0 +1,5 @@
+rust-foo (0.1) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #XXXXXX)
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 20 Mar 2021 21:54:19 +0000

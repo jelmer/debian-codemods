@@ -944,7 +944,8 @@ def run_lintian_fixer(  # noqa: C901
     if update_changelog is None:
         from .detect_gbp_dch import guess_update_changelog
 
-        dch_guess = guess_update_changelog(local_tree, subpath, cl)
+        dch_guess = guess_update_changelog(
+            local_tree, os.path.join(subpath, "debian"), cl)
         if dch_guess:
             update_changelog = dch_guess[0]
             _note_changelog_policy(update_changelog, dch_guess[1])
@@ -1176,3 +1177,15 @@ def min_certainty(certainties: Sequence[str]) -> str:
     return confidence_to_certainty(
         max([certainty_to_confidence(c) for c in certainties] + [0])
     )
+
+
+def control_files_in_root(tree: Tree, subpath: str) -> bool:
+    debian_path = os.path.join(subpath, "debian")
+    if tree.has_filename(debian_path):
+        return False
+    control_path = os.path.join(subpath, "control")
+    if tree.has_filename(control_path):
+        return True
+    if tree.has_filename(control_path + ".in"):
+        return True
+    return False

@@ -22,14 +22,13 @@ import logging
 import os
 import sys
 
-from breezy.branch import Branch
 from breezy.commit import NullCommitReporter
-from breezy.errors import NotBranchError, AlreadyBranchError
+from breezy.errors import AlreadyBranchError
 from breezy.workingtree import WorkingTree
 from debmutate.control import ControlEditor
 from debmutate.vcs import source_package_vcs
 
-from . import get_committer, check_clean_tree
+from . import get_committer, check_clean_tree, PendingChanges
 from .salsa import guess_repository_url
 from .vcs import determine_browser_url
 

@@ -43,7 +43,7 @@ lintian-brush (0.1) UNRELEASED; urgency=medium
 class GuessUpdateChangelogTests(TestCaseWithTransport):
     def test_no_gbp_conf(self):
         tree = self.make_branch_and_tree(".")
-        self.assertTrue(guess_update_changelog(tree))
+        self.assertTrue(guess_update_changelog(tree, "debian"))
 
     def test_gbp_conf_dch(self):
         tree = self.make_branch_and_tree(".")
@@ -65,7 +65,7 @@ class GuessUpdateChangelogTests(TestCaseWithTransport):
                 "Assuming changelog does not need to be updated, since "
                 "there is a [dch] section in gbp.conf.",
             ),
-            guess_update_changelog(tree),
+            guess_update_changelog(tree, "debian"),
         )
 
     def test_changelog_sha_prefixed(self):
@@ -99,7 +99,7 @@ blah (0.20.1) unstable; urgency=medium
                 "since all entries in last changelog entry are prefixed "
                 "by git shas.",
             ),
-            guess_update_changelog(tree),
+            guess_update_changelog(tree, "debian"),
         )
 
     def test_empty(self):
@@ -111,7 +111,7 @@ blah (0.20.1) unstable; urgency=medium
                 "since it is always changed together "
                 "with other files in the tree.",
             ),
-            guess_update_changelog(tree),
+            guess_update_changelog(tree, "debian"),
         )
 
     def test_update_with_change(self):
@@ -160,7 +160,7 @@ blah (0.20.1) unstable; urgency=medium
                 "since it is always changed together "
                 "with other files in the tree.",
             ),
-            guess_update_changelog(tree),
+            guess_update_changelog(tree, "debian"),
         )
 
     def test_changelog_updated_separately(self):
@@ -210,7 +210,7 @@ blah (0.20.1) unstable; urgency=medium
                 "since changelog entries are usually updated in "
                 "separate commits.",
             ),
-            guess_update_changelog(tree),
+            guess_update_changelog(tree, "debian"),
         )
 
     def test_has_dch_in_messages(self):
@@ -226,5 +226,5 @@ blah (0.20.1) unstable; urgency=medium
                 "Assuming changelog does not need to be updated, "
                 "since there are Gbp-Dch stanzas in commit messages",
             ),
-            guess_update_changelog(tree),
+            guess_update_changelog(tree, "debian"),
         )

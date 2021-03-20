@@ -70,17 +70,16 @@ def all_sha_prefixed(cl: Changelog) -> bool:
 
 
 def guess_update_changelog(
-    tree: WorkingTree, path: str = "", cl: Optional[Changelog] = None
+    tree: WorkingTree, debian_path: str = "", cl: Optional[Changelog] = None
 ) -> Optional[Tuple[bool, str]]:
     """Guess whether the changelog should be updated.
 
     Args:
       tree: Tree to edit
-      path: Path to packaging in tree
+      debian_path: Path to packaging in tree
     Returns:
       best guess at whether we should update changelog (bool)
     """
-    debian_path = os.path.join(path, 'debian')
     ret = _guess_update_changelog_from_tree(tree, debian_path, cl)
     if ret is not None:
         return ret
@@ -91,7 +90,7 @@ def guess_update_changelog(
 
 
 def _guess_update_changelog_from_tree(
-    tree: Tree, debian_path: str = "debian", cl: Optional[Changelog] = None
+    tree: Tree, debian_path: str, cl: Optional[Changelog] = None
 ) -> Optional[Tuple[bool, str]]:
     if gbp_conf_has_dch_section(tree, debian_path):
         return (
@@ -237,4 +236,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
     wt, subpath = WorkingTree.open_containing(".")
-    print(guess_update_changelog(wt, subpath))
+    from . import control_files_in_root
+    if control_files_in_root(wt, subpath):
+        debian_path = subpath
+    else:
+        debian_path = os.path.join(subpath, "debian")
+    print(guess_update_changelog(wt, debian_path))
