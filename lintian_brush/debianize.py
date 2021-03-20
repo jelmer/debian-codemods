@@ -36,6 +36,7 @@ from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
 
 from ognibuild import DetailedFailure, UnidentifiedError
+from ognibuild import NoBuildToolsFound
 from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
