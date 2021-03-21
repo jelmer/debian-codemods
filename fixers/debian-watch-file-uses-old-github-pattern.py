@@ -14,8 +14,10 @@ with WatchEditor() as updater:
         parts = parsed_url.path.strip('/').split('/')
         if len(parts) < 3 or parts[2] != 'tags':
             continue
-        if w.matching_pattern == ".*/archive/(.*)\\.tar\\.gz":
-            w.matching_pattern = ".*/archive/.*/(.*)\\.tar\\.gz"
+        parts = w.matching_pattern.split('/')
+        if parts[-2] == 'archive':
+            parts.insert(-1, '.*')
+        w.matching_pattern = '/'.join(parts)
 
 
 report_result(
