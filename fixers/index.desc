@@ -362,6 +362,8 @@ Fix-Script: vcs-broken-uri.py
 Fix-Script: debian-watch-file-uses-deprecated-githubredir.py
 Lintian-Tags: debian-watch-file-uses-deprecated-githubredir
 
+Fix-Script: debian-watch-file-uses-old-github-pattern.py
+
 Fix-Script: quilt-series-but-no-build-dep.py
 Lintian-Tags: quilt-series-but-no-build-dep
 
