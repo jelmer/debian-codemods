@@ -228,3 +228,30 @@ blah (0.20.1) unstable; urgency=medium
             ),
             guess_update_changelog(tree, "debian"),
         )
+
+    def test_inaugural_unreleased(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                (
+                    "debian/changelog",
+                    """\
+blah (0.20.1) UNRELEASED; urgency=medium
+
+  * Initial release. Closes: #123123
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+""",
+                ),
+            ]
+        )
+        tree.add(["debian", "debian/changelog"])
+        self.assertEqual(
+            (
+                False,
+                'assuming changelog does not need to be updated since it is the inaugural '
+                'unreleased entry'
+            ),
+            guess_update_changelog(tree, "debian"),
+        )

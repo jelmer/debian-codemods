@@ -18,10 +18,12 @@
 """Detect gbp dch policy."""
 
 
-from debian.changelog import Changelog
 import os
 import re
 from typing import Optional, Tuple, List
+
+from debian.changelog import Changelog
+from debmutate.changelog import distribution_is_unreleased
 
 from breezy import osutils
 from breezy.branch import Branch
@@ -69,6 +71,21 @@ def all_sha_prefixed(cl: Changelog) -> bool:
     return sha_prefixed > 0
 
 
+def _is_unreleased_inaugural(cl: Changelog):
+    if cl is None:
+        return False
+    if len(cl) != 1:
+        return False
+    if not distribution_is_unreleased(cl[0].distributions):
+        return False
+    actual = [change for change in cl[0].changes() if change.strip()]
+    if len(actual) != 1:
+        return False
+    if not actual[0].startswith('  * Initial release'):
+        return False
+    return True
+
+
 def guess_update_changelog(
     tree: WorkingTree, debian_path: str, cl: Optional[Changelog] = None
 ) -> Optional[Tuple[bool, str]]:
@@ -80,6 +97,18 @@ def guess_update_changelog(
     Returns:
       best guess at whether we should update changelog (bool)
     """
+    changelog_path = osutils.pathjoin(debian_path, "changelog")
+    if cl is None:
+        try:
+            with tree.get_file(changelog_path) as f:
+                cl = Changelog(f)
+        except NoSuchFile:
+            cl = None
+    if _is_unreleased_inaugural(cl):
+        return (
+            False,
+            "assuming changelog does not need to be updated "
+            "since it is the inaugural unreleased entry")
     ret = _guess_update_changelog_from_tree(tree, debian_path, cl)
     if ret is not None:
         return ret
@@ -90,7 +119,7 @@ def guess_update_changelog(
 
 
 def _guess_update_changelog_from_tree(
-    tree: Tree, debian_path: str, cl: Optional[Changelog] = None
+    tree: Tree, debian_path: str, cl: Changelog
 ) -> Optional[Tuple[bool, str]]:
     if gbp_conf_has_dch_section(tree, debian_path):
         return (
@@ -101,13 +130,6 @@ def _guess_update_changelog_from_tree(
 
     # TODO(jelmes): Do something more clever here, perhaps looking at history
     # of the changelog file?
-    changelog_path = osutils.pathjoin(debian_path, "changelog")
-    if cl is None:
-        try:
-            with tree.get_file(changelog_path) as f:
-                cl = Changelog(f, max_blocks=1)
-        except NoSuchFile:
-            cl = None
     if cl:
         if all_sha_prefixed(cl[0]):
             return (
