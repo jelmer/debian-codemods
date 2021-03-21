@@ -488,6 +488,11 @@ def debianize(  # noqa: C901
         consult_external_directory=consult_external_directory,
         check=check)
 
+    if not verbose:
+        commit_reporter = NullCommitReporter()
+    else:
+        commit_reporter = None
+
     with wt.lock_write():
         with contextlib.ExitStack() as es:
             es.enter_context(ResetOnFailure(wt, subpath=subpath))
@@ -673,7 +678,7 @@ def debianize(  # noqa: C901
             "Create debian/ directory",
             allow_pointless=False,
             committer=get_committer(wt),
-            reporter=NullCommitReporter(),
+            reporter=commit_reporter,
         )
 
     with wt.lock_write():
