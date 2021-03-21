@@ -41,7 +41,7 @@ from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
 
 from ognibuild import DetailedFailure, UnidentifiedError
-from ognibuild.buildsystem import NoBuildToolsFound
+from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound
 from ognibuild.dist import (  # noqa: F401
     DistCatcher, DistNoTarball,
     create_dist as ogni_create_dist,
@@ -53,13 +53,16 @@ from ognibuild.resolver.apt import AptResolver
 from ognibuild.buildlog import InstallFixer
 
 from upstream_ontologist.guess import (
-    get_upstream_info,
+    guess_upstream_info,
+    summarize_upstream_metadata,
 )
 from upstream_ontologist.debian import (
     upstream_name_to_debian_source_name as source_name_from_upstream_name,
     upstream_version_to_debian_upstream_version as debian_upstream_version,
     valid_debian_package_name,
 )
+
+from breezy.plugins.debian.upstream.pristinetar import get_pristine_tar_source
 
 from . import (
     available_lintian_fixers,
@@ -77,13 +80,6 @@ from .debhelper import (
 )
 from .publish import update_offical_vcs, NoVcsLocation
 from .standards_version import latest_standards_version
-
-
-class UpstreamNameUnknown(Exception):
-    """Upstream name unknown."""
-
-    def __init__(self, path):
-        self.path = path
 
 
 class SourcePackageNameInvalid(Exception):
@@ -197,24 +193,25 @@ def setup_debhelper(wt, debian_path, source, compat_release, addons=None, env=No
 
 
 def import_upstream_version_from_dist(
-        wt, subpath, buildsystem, source_name, upstream_version,
-        session, resolver, fixers, create_dist=None):
+        wt, subpath, source_name, upstream_version,
+        session, create_dist=None):
     from breezy.plugins.debian import default_orig_dir
     from breezy.plugins.debian.util import debuild_config
     from breezy.plugins.debian.merge_upstream import get_tarballs, do_import
     from breezy.plugins.debian.upstream.branch import UpstreamBranchSource
-    from breezy.plugins.debian.upstream.pristinetar import get_pristine_tar_source
     import tempfile
 
     if create_dist is None:
         def create_dist(tree, package, version, target_dir):
             try:
-                # TODO(jelmer): set include_controldir=True to make
-                # setuptools_scm happy?
-                return ogni_create_dist(
-                    session, tree, target_dir,
-                    include_controldir=False,
-                    subdir=source_name)
+                with session:
+                    # TODO(jelmer): set include_controldir=True to make
+                    # setuptools_scm happy?
+                    return ogni_create_dist(
+                        session, tree, target_dir,
+                        include_controldir=False,
+                        subdir=(package or "package"),
+                        cleanup=False)
             except NoBuildToolsFound:
                 logging.info(
                     "No build tools found, falling back to simple export.")
@@ -233,33 +230,25 @@ def import_upstream_version_from_dist(
     upstream_source = UpstreamBranchSource.from_branch(
         wt.branch, config=config, local_dir=wt.controldir,
         create_dist=create_dist, snapshot=False)
-    pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
     tag_names = {}
-    if pristine_tar_source.has_version(source_name, upstream_version):
-        logging.warning(
-            'Upstream version %s/%s already imported.',
-            source_name, upstream_version)
-        pristine_revids = pristine_tar_source\
+    with tempfile.TemporaryDirectory() as target_dir:
+        locations = upstream_source.fetch_tarballs(
+            source_name, upstream_version, target_dir, components=[None])
+        orig_dir = config.orig_dir or default_orig_dir
+        tarball_filenames = get_tarballs(
+            orig_dir, wt, source_name, upstream_version, locations)
+        upstream_revisions = upstream_source\
             .version_as_revisions(source_name, upstream_version)
-    else:
-        with tempfile.TemporaryDirectory() as target_dir:
-            locations = upstream_source.fetch_tarballs(
-                source_name, upstream_version, target_dir, components=[None])
-            orig_dir = config.orig_dir or default_orig_dir
-            tarball_filenames = get_tarballs(
-                orig_dir, wt, source_name, upstream_version, locations)
-            upstream_revisions = upstream_source\
-                .version_as_revisions(source_name, upstream_version)
-            files_excluded = None
-            imported_revids = do_import(
-                wt, subpath, tarball_filenames, source_name, upstream_version,
-                current_version=None, upstream_branch=wt.branch,
-                upstream_revisions=upstream_revisions,
-                merge_type=None, files_excluded=files_excluded)
-            pristine_revids = {}
-            for (component, tag_name, revid, pristine_tar_imported) in imported_revids:
-                pristine_revids[component] = revid
-                tag_names[component] = tag_name
+        files_excluded = None
+        imported_revids = do_import(
+            wt, subpath, tarball_filenames, source_name, upstream_version,
+            current_version=None, upstream_branch=wt.branch,
+            upstream_revisions=upstream_revisions,
+            merge_type=None, files_excluded=files_excluded)
+        pristine_revids = {}
+        for (component, tag_name, revid, pristine_tar_imported) in imported_revids:
+            pristine_revids[component] = revid
+            tag_names[component] = tag_name
 
     upstream_branch_name = "upstream"
     try:
@@ -276,19 +265,17 @@ def import_upstream_version_from_dist(
 
 class ResetOnFailure(object):
 
-    def __init__(self, wt, subpath=None, dirty_tracker=None):
+    def __init__(self, wt, subpath=None):
         self.wt = wt
         self.subpath = subpath
-        self.dirty_tracker = dirty_tracker
 
     def __enter__(self):
+        check_clean_tree(self.wt, self.wt.basis_tree(), self.subpath)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type:
-            reset_tree(
-                self.wt, self.wt.basis_tree(), self.subpath,
-                dirty_tracker=self.dirty_tracker)
+            reset_tree(self.wt, self.wt.basis_tree(), self.subpath)
         return False
 
 
@@ -303,6 +290,7 @@ def process_setup_py(es, wt, subpath, debian_path, metadata, compat_release):
         addons=["python3"],
         buildsystem="pybuild")
     source["Testsuite"] = "autopkgtest-pkg-python"
+    # TODO(jelmer): check whether project supports python 3
     source["Build-Depends"] = ensure_some_version(
         source["Build-Depends"], "python3-all")
     upstream_name = metadata['Name']
@@ -458,6 +446,13 @@ PROCESSORS = {
     }
 
 
+def source_name_from_directory_name(path):
+    d = os.path.dirname(path)
+    if '-' in d:
+        return d.split('-')
+    return d
+
+
 class DebianizeResult(object):
     """Debianize result."""
 
@@ -483,40 +478,19 @@ def debianize(  # noqa: C901
     schroot: Optional[str] = None,
     create_dist=None
 ):
-    dirty_tracker = get_dirty_tracker(wt, subpath, use_inotify)
-    if dirty_tracker:
-        dirty_tracker.mark_clean()
-
     debian_path = osutils.pathjoin(subpath, "debian")
     if wt.has_filename(debian_path) and list(os.listdir(wt.abspath(debian_path))):
         raise DebianDirectoryExists(wt.abspath(subpath))
 
-    metadata = get_upstream_info(
-        wt.abspath(subpath),
-        trust_package=trust,
-        net_access=net_access,
+    metadata_items = list(guess_upstream_info(wt.abspath(subpath), trust_package=trust))
+    metadata = summarize_upstream_metadata(
+        metadata_items, '.', net_access=net_access,
         consult_external_directory=consult_external_directory,
-        check=check,
-    )
-
-    from ognibuild.buildsystem import get_buildsystem
-
-    buildsystem_subpath, buildsystem = get_buildsystem(
-        wt.abspath(subpath))
-
-    try:
-        upstream_name = metadata["Name"]
-    except KeyError:
-        raise UpstreamNameUnknown(wt.abspath(subpath))
-
-    source_name = source_name_from_upstream_name(upstream_name)
-    if not valid_debian_package_name(source_name):
-        source_name = None
+        check=check)
 
     with wt.lock_write():
         with contextlib.ExitStack() as es:
-            es.enter_context(ResetOnFailure(
-                wt, subpath=subpath, dirty_tracker=dirty_tracker))
+            es.enter_context(ResetOnFailure(wt, subpath=subpath))
 
             if not wt.has_filename(debian_path):
                 wt.mkdir(debian_path)
@@ -525,9 +499,11 @@ def debianize(  # noqa: C901
                 upstream_branch_version,
                 upstream_version_add_revision,
             )
+            # TODO(jelmer): Support resetting to e.g. last upstream release
+
             upstream_revision = wt.last_revision()
             upstream_version = upstream_branch_version(
-                wt.branch, upstream_revision, upstream_name
+                wt.branch, upstream_revision, metadata.get("Name")
             )
             if upstream_version is None and "X-Version" in metadata:
                 # They haven't done any releases yet. Assume we're ahead of
@@ -556,26 +532,54 @@ def debianize(  # noqa: C901
                 logging.info('Using schroot %s', schroot)
                 session = SchrootSession(schroot)
 
-            with session:
-                resolver = auto_resolver(session)
-                build_fixers = [InstallFixer(resolver)]
+            try:
+                source_name = source_name_from_upstream_name(metadata['Name'])
+            except KeyError:
+                source_name = None
+            else:
+                if not valid_debian_package_name(source_name):
+                    source_name = None
+            if source_name is None:
+                source_name = source_name_from_directory_name(wt.base)
+                if not valid_debian_package_name(source_name):
+                    source_name = None
 
+            pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
+            if pristine_tar_source.has_version(source_name, upstream_version):
+                logging.warning(
+                    'Upstream version %s/%s already imported.',
+                    source_name, upstream_version)
+                pristine_revids = pristine_tar_source\
+                    .version_as_revisions(source_name, upstream_version)
+                upstream_branch_name = "upstream"
+                tag_names = {}
+            else:
                 (pristine_revids, tag_names,
                  upstream_branch_name) = import_upstream_version_from_dist(
-                    upstream_tree, os.path.join(subpath, buildsystem_subpath),
-                    buildsystem, source_name, upstream_version,
-                    session=session, resolver=resolver, fixers=build_fixers,
+                    upstream_tree, subpath,
+                    source_name, upstream_version,
+                    session=session,
                     create_dist=create_dist)
 
             if wt.branch.last_revision() != pristine_revids[None]:
                 wt.pull(
                     wt.branch, overwrite=True, stop_revision=pristine_revids[None])
-                if dirty_tracker:
-                    dirty_tracker.mark_clean()
+
+            # Gather metadata items again now that we're at the correct
+            # revision
+            metadata_items.extend(
+                guess_upstream_info(wt.abspath(subpath), trust_package=trust))
+            metadata = summarize_upstream_metadata(
+                metadata_items, '.', net_access=net_access,
+                consult_external_directory=consult_external_directory,
+                check=check)
 
             version = Version(upstream_version + "-1")
             # TODO(jelmer): This is a reasonable guess, but won't always be
             # okay.
+
+            buildsystem_subpath, buildsystem = get_buildsystem(
+                wt.abspath(subpath))
 
             if buildsystem:
                 try:
@@ -590,9 +594,8 @@ def debianize(  # noqa: C901
                     external_dir, internal_dir = session.setup_from_vcs(
                         wt, os.path.join(subpath, buildsystem_subpath))
 
-                    from ognibuild.resolver.apt import AptResolver
                     apt_resolver = AptResolver.from_session(session)
-                    build_fixers = [InstallFixer(resolver)]
+                    build_fixers = [InstallFixer(apt_resolver)]
                     session.chdir(internal_dir)
                     try:
                         upstream_deps = list(buildsystem.get_declared_dependencies(
@@ -626,6 +629,9 @@ def debianize(  # noqa: C901
             if not valid_debian_package_name(source['Source']):
                 raise SourcePackageNameInvalid(source['Source'])
 
+            if "Homepage" in metadata:
+                source["Homepage"] = metadata["Homepage"]
+
             for build_dep in build_deps:
                 for rel in build_dep.relations:
                     source["Build-Depends"] = ensure_relation(
@@ -637,8 +643,8 @@ def debianize(  # noqa: C901
 
                 loop = asyncio.get_event_loop()
                 wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source['Source']))
-                if not wnpp_bugs and source['Source'] != upstream_name:
-                    wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(upstream_name))
+                if not wnpp_bugs and source['Source'] != metadata.get('Name'):
+                    wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(metadata.get('Name')))
                 if not wnpp_bugs:
                     wnpp_bugs = loop.run_until_complete(
                         find_archived_wnpp_bugs(source['Source'])
@@ -779,12 +785,6 @@ def main(argv=None):
     use_inotify = ((False if args.disable_inotify else None),)
     with wt.lock_write():
         try:
-            check_clean_tree(wt, wt.basis_tree(), subpath)
-        except PendingChanges:
-            logging.info("%s: Please commit pending changes first.", wt.basedir)
-            return 1
-
-        try:
             debianize(
                 wt,
                 subpath,
@@ -798,18 +798,14 @@ def main(argv=None):
                 consult_external_directory=args.consult_external_directory,
                 verbose=args.verbose,
             )
+        except PendingChanges:
+            logging.info("%s: Please commit pending changes first.", wt.basedir)
+            return 1
         except DebianDirectoryExists as e:
             logging.info(
                 "%s: A debian directory already exists. " "Run lintian-brush instead?",
                 e.path,
             )
-            return 1
-        except UpstreamNameUnknown as e:
-            logging.info("%s: Unable to determine upstream package name.", e.path)
-            if not args.trust:
-                logging.info(
-                    "Run with --trust if you are okay running code "
-                    "from the package?")
             return 1
         except SourcePackageNameInvalid as e:
             logging.info("Unable to sanitize source package name: %s", e.source)

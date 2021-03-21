@@ -48,7 +48,6 @@ class VcsAlreadySpecified(Exception):
 
 def update_offical_vcs(wt, subpath, repo_url=None, committer=None):
     # TODO(jelmer): Allow creation of the repository as well
-
     check_clean_tree(wt, wt.basis_tree(), subpath)
 
     control_path = wt.abspath(os.path.join(subpath, 'debian/control'))
