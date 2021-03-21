@@ -545,7 +545,7 @@ def debianize(  # noqa: C901
                 if not valid_debian_package_name(source_name):
                     source_name = None
             if source_name is None:
-                source_name = source_name_from_directory_name(wt.base)
+                source_name = source_name_from_directory_name(wt.basedir)
                 if not valid_debian_package_name(source_name):
                     source_name = None
 
