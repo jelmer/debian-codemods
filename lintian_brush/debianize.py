@@ -25,7 +25,6 @@ __all__ = [
 import contextlib
 import logging
 import os
-import shutil
 import sys
 from typing import Optional
 from urllib.parse import urlparse
@@ -203,6 +202,7 @@ def import_upstream_version_from_dist(
 
     if create_dist is None:
         def create_dist(tree, package, version, target_dir):
+            os.environ['SETUPTOOLS_SCM_PRETEND_VERSION'] = version.upstream_version
             try:
                 with session:
                     # TODO(jelmer): set include_controldir=True to make
@@ -570,12 +570,14 @@ def debianize(  # noqa: C901
                 wt.pull(
                     wt.branch, overwrite=True, stop_revision=pristine_revids[None])
 
+            os.chdir(wt.abspath(subpath))
+
             # Gather metadata items again now that we're at the correct
             # revision
             metadata_items.extend(
                 guess_upstream_info(wt.abspath(subpath), trust_package=trust))
             metadata = summarize_upstream_metadata(
-                metadata_items, '.', net_access=net_access,
+                metadata_items, wt.abspath(subpath), net_access=net_access,
                 consult_external_directory=consult_external_directory,
                 check=check)
 
