@@ -46,6 +46,7 @@ from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
 from ognibuild.resolver import auto_resolver
+from ognibuild.resolver.apt import AptResolver
 from ognibuild.buildlog import InstallFixer
 
 from upstream_ontologist.guess import (
@@ -502,15 +503,10 @@ def debianize(  # noqa: C901
         check=check,
     )
 
-    # Compatibility with older upstream-ontologist, which included buildsystem
-    # info.
-    if isinstance(metadata, tuple):
-        buildsystem, unused_reqs, metadata = metadata
-    else:
-        from ognibuild.buildsystem import get_buildsystem
+    from ognibuild.buildsystem import get_buildsystem
 
-        buildsystem_subpath, buildsystem = get_buildsystem(
-            wt.abspath(subpath))
+    buildsystem_subpath, buildsystem = get_buildsystem(
+        wt.abspath(subpath))
 
     try:
         upstream_name = metadata["Name"]
@@ -518,6 +514,8 @@ def debianize(  # noqa: C901
         raise UpstreamNameUnknown(wt.abspath(subpath))
 
     source_name = source_name_from_upstream_name(upstream_name)
+    if not valid_debian_package_name(source_name):
+        source_name = None
 
     with wt.lock_write():
         with contextlib.ExitStack() as es:
