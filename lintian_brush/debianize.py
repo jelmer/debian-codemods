@@ -202,7 +202,7 @@ def import_upstream_version_from_dist(
 
     if create_dist is None:
         def create_dist(tree, package, version, target_dir):
-            os.environ['SETUPTOOLS_SCM_PRETEND_VERSION'] = version.upstream_version
+            os.environ['SETUPTOOLS_SCM_PRETEND_VERSION'] = version
             try:
                 with session:
                     # TODO(jelmer): set include_controldir=True to make
