@@ -41,8 +41,11 @@ from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
 
 from ognibuild import DetailedFailure, UnidentifiedError
-from ognibuild.buildsystem import NoBuildToolsFound  # noqa: F401
-from ognibuild.dist import run_dist, DistCatcher, DistNoTarball
+from ognibuild.buildsystem import NoBuildToolsFound
+from ognibuild.dist import (  # noqa: F401
+    DistCatcher, DistNoTarball,
+    create_dist as ogni_create_dist,
+    )
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
 from ognibuild.resolver import auto_resolver
@@ -205,33 +208,26 @@ def import_upstream_version_from_dist(
 
     if create_dist is None:
         def create_dist(tree, package, version, target_dir):
-            # TODO(jelmer): set include_controldir=True to make
-            # setuptools_scm happy?
-            external_dir, internal_dir = session.setup_from_vcs(
-                wt, subpath)
-            with DistCatcher(external_dir) as dc:
-                session.chdir(internal_dir)
-                try:
-                    run_dist(session, [buildsystem], resolver, fixers, quiet=True)
-                except NotImplementedError:
-                    return None
-                except DetailedFailure as e:
-                    raise DistCreationFailed(str(e), e.error)
-                except UnidentifiedError as e:
-                    raise DistCreationFailed(str(e))
-
             try:
-                for path in dc.files:
-                    shutil.copy(path, target_dir)
-                    return os.path.join(target_dir, os.path.basename(path))
-            finally:
-                for path in dc.files:
-                    if os.path.isdir(path):
-                        shutil.rmtree(path)
-                    else:
-                        os.unlink(path)
-
-            raise DistNoTarball()
+                # TODO(jelmer): set include_controldir=True to make
+                # setuptools_scm happy?
+                return ogni_create_dist(
+                    session, tree, target_dir,
+                    include_controldir=False,
+                    subdir=source_name)
+            except NoBuildToolsFound:
+                logging.info(
+                    "No build tools found, falling back to simple export.")
+                return None
+            except NotImplementedError:
+                logging.info(
+                    "Build system does not support dist, falling back "
+                    "to export.")
+                return None
+            except DetailedFailure as e:
+                raise DistCreationFailed(str(e), e.error)
+            except UnidentifiedError as e:
+                raise DistCreationFailed(str(e))
 
     config = debuild_config(wt, subpath)
     upstream_source = UpstreamBranchSource.from_branch(
