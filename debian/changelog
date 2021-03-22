@@ -1,4 +1,4 @@
-lintian-brush (0.101) UNRELEASED; urgency=medium
+lintian-brush (0.101) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * Drop unnecesary toml dependencies.
@@ -22,7 +22,7 @@ lintian-brush (0.101) UNRELEASED; urgency=medium
   [ Jelmer Vernooĳ ]
   * Add fixer to remove obsolete maintscript entries. Closes: #959815
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 22 Mar 2021 17:07:55 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 22 Mar 2021 17:57:18 +0000
 
 lintian-brush (0.100) unstable; urgency=medium
 
