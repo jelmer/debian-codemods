@@ -1,4 +1,4 @@
-lintian-brush (0.101) unstable; urgency=medium
+lintian-brush (0.101) UNRELEASED; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * Drop unnecesary toml dependencies.
