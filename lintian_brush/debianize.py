@@ -414,6 +414,27 @@ def process_r(es, wt, subpath, debian_path, metadata, compat_release):
     return control
 
 
+def process_octave(es, wt, subpath, debian_path, metadata, compat_release):
+    control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
+    source = control.source
+
+    source["Source"] = "octave-%s" % metadata['Name']
+    source["Rules-Requires-Root"] = "no"
+    source["Build-Depends"] = "dh-octave"
+    source["Standards-Version"] = latest_standards_version()
+    setup_debhelper(
+        wt, debian_path, source, compat_release=compat_release,
+        buildsystem="octave", addons=['octave'])
+    # For now, just assume a single binary package that is architecture-independent.
+    control.add_binary({
+        "Package": "octave-%s" % metadata['Name'],
+        "Architecture": 'all',
+        'Depends': '${octave:Depends}, ${misc:Depends}',
+        'Description': '${octave:Upstream-Description}',
+        })
+    return control
+
+
 def process_default(es, wt, subpath, debian_path, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -443,6 +464,7 @@ PROCESSORS = {
     "cargo": process_cargo,
     "golang": process_golang,
     "R": process_r,
+    "octave": process_octave,
     }
 
 
