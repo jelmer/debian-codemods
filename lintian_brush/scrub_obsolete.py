@@ -344,7 +344,7 @@ def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None,
                    allow_reformatting=False):
     from breezy.commit import NullCommitReporter
 
-    if control_files_in_root(subpath):
+    if control_files_in_root(wt, subpath):
         debian_path = subpath
     else:
         debian_path = os.path.join(subpath, 'debian')
