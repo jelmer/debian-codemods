@@ -58,6 +58,7 @@ def is_long_passed(version):
     return True
 
 
+total_entries = 0
 ret = []
 for name in maintscripts:
     with MaintscriptEditor(os.path.join('debian', name)) as editor:
@@ -75,9 +76,11 @@ for name in maintscripts:
             removed.append(editor.lines[i])
             del editor.lines[i]
         if removed:
+            total_entries += len(removed)
             ret.append((os.path.join('debian', name), removed))
 
-if len(ret) == 1:
-    report_result('Remove %d obsolete maintscript entry.' % len(ret))
+if total_entries == 1:
+    report_result('Remove %d obsolete maintscript entry.' % total_entries)
 else:
-    report_result('Remove %d obsolete maintscript entries.' % len(ret))
+    report_result('Remove %d obsolete maintscript entries in %d files.' %
+                  (total_entries, len(ret)))

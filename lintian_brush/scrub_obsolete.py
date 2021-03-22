@@ -302,8 +302,11 @@ class ScrubObsoleteResult(object):
                         % (field, name_list(packages))
                     )
         if self.maintscript_removed:
+            total_entries = sum(
+                [len(entries) for name, entries in self.maintscript_removed])
             summary.append(
-                "Remove %d maintscript entries." % len(self.maintscript_removed)
+                "Remove %d maintscript entries from %d files." % (
+                    total_entries, len(self.maintscript_removed))
             )
         return summary
 
