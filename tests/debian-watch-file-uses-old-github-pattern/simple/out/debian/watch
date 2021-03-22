@@ -1,2 +1,2 @@
 version=4
-https://github.com/jupyter/jupyter_core/tags .*/archive/.*/(.*)\.tar\.gz
+https://github.com/jupyter/jupyter_core/tags .*/archive/refs/tags/(.*)\.tar\.gz

@@ -1,1 +1,1 @@
-Update pattern for GitHub URL in watch file to cope with addition of full ref name.
+Update pattern for GitHub archive URLs from /<org>/<repo>/tags page/<org>/<repo>/archive/<tag> -> /<org>/<repo>/archive/refs/tags/<tag>.
