@@ -23,7 +23,6 @@ import logging
 import os
 
 from breezy.commit import PointlessCommit
-from breezy.trace import note
 
 from debmutate.debhelper import MaintscriptEditor
 
@@ -56,7 +55,7 @@ def _note_changelog_policy(policy, msg):
             extra = "Specify --no-update-changelog to override."
         else:
             extra = "Specify --update-changelog to override."
-        note("%s %s", msg, extra)
+        logging.info("%s %s", msg, extra)
     _changelog_policy_noted = True
 
 
@@ -410,7 +409,6 @@ def main():
     breezy.initialize()
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
-    from breezy.trace import note  # note: E402
 
     from . import (
         check_clean_tree,
@@ -470,13 +468,13 @@ def main():
 
     wt, subpath = WorkingTree.open_containing(args.directory)
     if args.identity:
-        note(get_committer(wt))
+        logging.info('%s', get_committer(wt))
         return 0
 
     try:
         check_clean_tree(wt, wt.basis_tree(), subpath)
     except PendingChanges:
-        note("%s: Please commit pending changes first.", wt.basedir)
+        logging.info("%s: Please commit pending changes first.", wt.basedir)
         return 1
 
     import distro_info
@@ -484,7 +482,7 @@ def main():
     debian_info = distro_info.DebianDistroInfo()
     upgrade_release = debian_info.codename(args.upgrade_release)
 
-    note("Removing constraints unnecessary since %s", upgrade_release)
+    logging.info("Removing constraints unnecessary since %s", upgrade_release)
 
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)

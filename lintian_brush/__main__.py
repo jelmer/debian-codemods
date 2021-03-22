@@ -17,6 +17,7 @@
 
 import argparse
 import atexit
+import logging
 import shutil
 import sys
 import tempfile
@@ -36,8 +37,6 @@ from breezy.errors import (  # noqa: E402
 breezy.initialize()
 import breezy.git  # noqa: E402
 import breezy.bzr  # noqa: E402
-
-from breezy.trace import note, show_error  # noqa: E402
 
 from . import (  # noqa: E402
     NotDebianPackage,
@@ -185,6 +184,8 @@ def main(argv=None):  # noqa: C901
     )
     args = parser.parse_args(argv)
 
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+
     if args.list_fixers and args.list_tags:
         parser.print_usage()
         return 1
@@ -194,13 +195,13 @@ def main(argv=None):  # noqa: C901
     )
     if args.list_fixers:
         for script in sorted([fixer.name for fixer in fixers]):
-            note(script)
+            print('%s', script)
     elif args.list_tags:
         tags = set()
         for fixer in fixers:
             tags.update(fixer.lintian_tags)
         for tag in sorted(tags):
-            note(tag)
+            print('%s', tag)
     else:
         try:
             if args.dry_run:
@@ -219,10 +220,10 @@ def main(argv=None):  # noqa: C901
             else:
                 wt, subpath = WorkingTree.open_containing(args.directory)
         except NotBranchError:
-            note("No version control directory found (e.g. a .git directory).")
+            logging.error("No version control directory found (e.g. a .git directory).")
             return 1
         except DependencyNotPresent as e:
-            note(
+            logging.error(
                 "Unable to open tree at %s: missing package %s",
                 args.directory,
                 e.library,
@@ -237,12 +238,12 @@ def main(argv=None):  # noqa: C901
             try:
                 fixers = select_fixers(fixers, args.fixers, args.exclude)
             except KeyError as e:
-                show_error("Unknown fixer specified: %s", e.args[0])
+                logging.error("Unknown fixer specified: %s", e.args[0])
                 return 1
         debian_info = distro_info.DebianDistroInfo()
         if args.modern:
             if args.compat_release:
-                show_error("--compat-release and --modern are incompatible.")
+                logging.error("--compat-release and --modern are incompatible.")
                 return 1
             compat_release = debian_info.devel()
         else:
@@ -290,10 +291,10 @@ def main(argv=None):  # noqa: C901
                     diligence=args.diligence,
                 )
             except NotDebianPackage:
-                note("%s: Not a debian package.", wt.basedir)
+                logging.error("%s: Not a debian package.", wt.basedir)
                 return 1
             except PendingChanges:
-                note("%s: Please commit pending changes first.", wt.basedir)
+                logging.error("%s: Please commit pending changes first.", wt.basedir)
                 if args.verbose:
                     from breezy.status import show_tree_status
 
@@ -304,28 +305,28 @@ def main(argv=None):  # noqa: C901
             for result, summary in overall_result.success:
                 all_tags.update(result.fixed_lintian_tags)
             if all_tags:
-                note("Lintian tags fixed: %r" % all_tags)
+                logging.info("Lintian tags fixed: %r" % all_tags)
             else:
-                note(
+                logging.info(
                     "Some changes were made, " "but there are no affected lintian tags."
                 )
             min_certainty = overall_result.minimum_success_certainty()
             if min_certainty != "certain":
-                note(
+                logging.info(
                     "Some changes were made with lower certainty (%s); "
                     "please double check the changes.",
                     min_certainty,
                 )
         else:
-            note("No changes made.")
+            logging.info("No changes made.")
         if overall_result.failed_fixers and not args.verbose:
-            note(
+            logging.info(
                 "Some fixer scripts failed to run: %r. "
                 "Run with --verbose for details.",
                 set(overall_result.failed_fixers.keys()),
             )
         if overall_result.formatting_unpreservable and not args.verbose:
-            note(
+            logging.info(
                 "Some fixer scripts were unable to preserve formatting: %r. "
                 "Run with --allow-reformatting to reformat %r.",
                 set(overall_result.formatting_unpreservable),

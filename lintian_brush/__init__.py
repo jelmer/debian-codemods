@@ -42,7 +42,6 @@ from breezy.commit import NullCommitReporter
 from breezy.errors import NoSuchFile
 from breezy.osutils import is_inside
 from breezy.rename_map import RenameMap
-from breezy.trace import note, mutter, warning
 from breezy.transform import revert
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
@@ -537,7 +536,7 @@ def delete_items(deletables, dry_run: bool = False):
         # Other errors are re-raised.
         if function is not os.remove or excinfo[1].errno != errno.EACCES:
             raise
-        warning("unable to remove %s", path)
+        logging.warning("unable to remove %s", path)
 
     for path in deletables:
         if os.path.isdir(path):
@@ -549,7 +548,7 @@ def delete_items(deletables, dry_run: bool = False):
                 # We handle only permission error here
                 if e.errno != errno.EACCES:
                     raise e
-                warning('unable to remove "%s": %s.', path, e.strerror)
+                logging.warning('unable to remove "%s": %s.', path, e.strerror)
 
 
 def get_committer(tree: WorkingTree) -> str:
@@ -737,7 +736,7 @@ def _note_changelog_policy(policy, msg):
             extra = "Specify --no-update-changelog to override."
         else:
             extra = "Specify --update-changelog to override."
-        note("%s %s", msg, extra)
+        logging.info("%s %s", msg, extra)
     _changelog_policy_noted = True
 
 
@@ -778,7 +777,7 @@ def _upstream_changes_to_patch(
             "Creating patch on top of existing upstream " "patches not supported.",
         )
 
-    mutter("Moving upstream changes to patch %s", patch_name)
+    logging.debug("Moving upstream changes to patch %s", patch_name)
     try:
         specific_files, patch_name = move_upstream_changes_to_patch(
             local_tree,
@@ -1111,7 +1110,7 @@ def run_lintian_fixers(
             except FormattingUnpreservable as e:
                 ret.formatting_unpreservable[fixer.name] = e.path
                 if verbose:
-                    note(
+                    logging.info(
                         "Fixer %r was unable to preserve formatting of %s.",
                         fixer.name,
                         e.path,
@@ -1119,15 +1118,15 @@ def run_lintian_fixers(
             except FixerFailed as e:
                 ret.failed_fixers[fixer.name] = e
                 if verbose:
-                    note("Fixer %r failed to run.", fixer.name)
+                    logging.info("Fixer %r failed to run.", fixer.name)
                     sys.stderr.write(str(e))
             except MemoryError as e:
                 ret.failed_fixers[fixer.name] = e
                 if verbose:
-                    note("Run out of memory while running fixer %r.", fixer.name)
+                    logging.info("Run out of memory while running fixer %r.", fixer.name)
             except NotCertainEnough as e:
                 if verbose:
-                    note(
+                    logging.info(
                         "Fixer %r made changes but not high enough "
                         "certainty (was %r, needed %r). (took: %.2fs)",
                         fixer.name,
@@ -1137,18 +1136,18 @@ def run_lintian_fixers(
                     )
             except FailedPatchManipulation as e:
                 if verbose:
-                    note("Unable to manipulate upstream patches: %s", e.args[2])
+                    logging.info("Unable to manipulate upstream patches: %s", e.args[2])
                 ret.failed_fixers[fixer.name] = e
             except NoChanges:
                 if verbose:
-                    note(
+                    logging.info(
                         "Fixer %r made no changes. (took: %.2fs)",
                         fixer.name,
                         time.time() - start,
                     )
             else:
                 if verbose:
-                    note(
+                    logging.info(
                         "Fixer %r made changes. (took %.2fs)",
                         fixer.name,
                         time.time() - start,

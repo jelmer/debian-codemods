@@ -18,6 +18,7 @@
 """Utility functions for applying multi-arch hints."""
 
 import contextlib
+import logging
 import os
 import re
 import sys
@@ -89,8 +90,6 @@ def multiarch_hints_by_source(hints):
 @contextlib.contextmanager
 def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
     """Load multi-arch hints from a URL, but use cached version if available."""
-    from breezy.trace import note, warning
-
     cache_home = os.environ.get("XDG_CACHE_HOME")
     if not cache_home:
         cache_home = os.path.expanduser("~/.cache")
@@ -99,7 +98,7 @@ def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
         os.makedirs(cache_dir, exist_ok=True)
     except PermissionError:
         local_hints_path = None
-        warning("Unable to create %s; not caching.", cache_dir)
+        logging.warning("Unable to create %s; not caching.", cache_dir)
     else:
         local_hints_path = os.path.join(cache_dir, "multiarch-hints.yml")
     try:
@@ -111,7 +110,7 @@ def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
             if local_hints_path is None:
                 yield f
                 return
-            note("Downloading new version of multi-arch hints.")
+            logging.info("Downloading new version of multi-arch hints.")
             with open(local_hints_path, "wb") as c:
                 c.writelines(f)
     except HTTPError as e:
@@ -305,7 +304,6 @@ def main(argv=None):
     breezy.initialize()
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
-    from breezy.trace import note  # noqa: E402
 
     from .config import Config
 
@@ -359,10 +357,13 @@ def main(argv=None):
     )
 
     args = parser.parse_args(argv)
+
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+
     minimum_certainty = args.minimum_certainty
     wt, subpath = WorkingTree.open_containing(args.directory)
     if args.identity:
-        note(get_committer(wt))
+        logging.info('%s', get_committer(wt))
         return 0
 
     update_changelog = args.update_changelog
@@ -383,7 +384,7 @@ def main(argv=None):
     try:
         check_clean_tree(wt, wt.basis_tree(), subpath)
     except PendingChanges:
-        note("%s: Please commit pending changes first.", wt.basedir)
+        logging.info("%s: Please commit pending changes first.", wt.basedir)
         return 1
 
     dirty_tracker = get_dirty_tracker(wt, subpath, use_inotify)
@@ -406,13 +407,13 @@ def main(argv=None):
             changes_by="apply-multiarch-hints",
         )
     except NoChanges:
-        note("Nothing to do.")
+        logging.info("Nothing to do.")
     except NotDebianPackage:
-        note("%s: Not a debian package.", wt.basedir)
+        logging.info("%s: Not a debian package.", wt.basedir)
         return 1
     else:
         for binary, hint, description, certainty in result.changes:
-            note("%s: %s" % (binary["Package"], description))
+            logging.info("%s: %s" % (binary["Package"], description))
 
 
 if __name__ == "__main__":
