@@ -1,0 +1,11 @@
+version=4
+
+opts="repacksuffix=+dfsg1,dversionmangle=auto" https://github.com/n-riesco/ijavascript/tags .*/archive/refs/tags/v?([\d\.]+).tar.gz group
+
+# if two or more components have the same versions, the filenames are the same (v2.0.0.tar.gz) and
+# uscan will break, hence the (otherwise unnecessary) filenamemangle
+opts="component=jmp,filenamemangle=s/^.*\/([^\/]*)$/jmp-$1/" https://github.com/n-riesco/jmp/tags .*/archive/refs/tags/v?([\d\.]+).tar.gz checksum
+
+opts="component=jp-kernel,filenamemangle=s/^.*\/([^\/]*)$/jp-kernel-$1/" https://github.com/n-riesco/jp-kernel/tags .*/archive/refs/tags/v?([\d\.]+).tar.gz checksum
+
+opts="component=nel,filenamemangle=s/^.*\/([^\/]*)$/nel-$1/" https://github.com/n-riesco/nel/tags .*/archive/refs/tags/v?([\d\.]+).tar.gz checksum
