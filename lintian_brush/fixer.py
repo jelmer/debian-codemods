@@ -158,7 +158,13 @@ def net_access_allowed():
 
 
 def compat_release():
+    """Codename of oldest release to stay compatible with."""
     return os.environ.get("COMPAT_RELEASE", "sid")
+
+
+def upgrade_release():
+    """Codename of oldest release to allow upgrading from."""
+    return os.environ.get("UPGRADE_RELEASE", "oldstable")
 
 
 def current_package_version():

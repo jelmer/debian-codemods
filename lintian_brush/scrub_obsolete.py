@@ -25,10 +25,7 @@ import os
 from breezy.commit import PointlessCommit
 from breezy.trace import note
 
-try:
-    from debmutate.debhelper import MaintscriptEditor
-except ImportError:
-    MaintscriptEditor = None
+from debmutate.debhelper import MaintscriptEditor
 
 
 from debian.changelog import Version

@@ -19,6 +19,9 @@ lintian-brush (0.101) UNRELEASED; urgency=medium
   [ Gordon Ball, Jelmer Vernooĳ ]
   * Add fixer debian-watch-file-uses-old-github-pattern.
 
+  [ Jelmer Vernooĳ ]
+  * Add fixer to remove obsolete maintscript entries. Closes: #959815
+
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 06 Mar 2021 05:11:38 +0000
 
 lintian-brush (0.100) unstable; urgency=medium

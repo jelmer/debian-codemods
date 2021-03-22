@@ -154,6 +154,8 @@ Lintian-Tags: libmodule-build-perl-needs-to-be-in-build-depends
 Fix-Script: maintainer-script-without-set-e.py
 Lintian-Tags: maintainer-script-without-set-e
 
+Fix-Script: ancient-maintscript-entry.py
+
 Fix-Script: dm-upload-allowed.py
 Lintian-Tags:
   malformed-dm-upload-allowed,
