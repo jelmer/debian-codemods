@@ -149,21 +149,33 @@ class FixerResult(object):
         certainty=None,
         patch_name=None,
         revision_id=None,
+        fixed_lintian_issues=[],
+        overridden_lintian_issues=[],
     ):
         self.description = description
-        self.fixed_lintian_tags = fixed_lintian_tags
+        self.fixed_lintian_issues = fixed_lintian_issues or []
+        if fixed_lintian_tags:
+            self.fixed_lintian_issues.extend(
+                [LintianIssue(tag=tag) for tag in fixed_lintian_tags])
+        self.overridden_lintian_issues = overridden_lintian_issues
         self.certainty = certainty
         self.patch_name = patch_name
         self.revision_id = revision_id
 
+    @property
+    def fixed_lintian_tags(self):
+        return [issue.tag for issue in self.fixed_lintian_issues]
+
     def __repr__(self):
         return (
-            "%s(%r, fixed_lintian_tags=%r, certainty=%r, patch_name=%r, "
+            "%s(%r, fixed_lintian_issues=%r, "
+            "overridden_lintian_issues=%r, certainty=%r, patch_name=%r, "
             "revision_id=%r)"
         ) % (
             self.__class__.__name__,
             self.description,
-            self.fixed_lintian_tags,
+            self.fixed_lintian_issues,
+            self.overridden_lintian_issues,
             self.certainty,
             self.patch_name,
             self.revision_id,
@@ -174,7 +186,8 @@ class FixerResult(object):
             return False
         return (
             (self.description == other.description)
-            and (self.fixed_lintian_tags == other.fixed_lintian_tags)
+            and (self.fixed_lintian_issues == other.fixed_lintian_issues)
+            and (self.overridden_lintian_issues == other.overridden_lintian_issues)
             and (self.certainty == other.certainty)
             and (self.patch_name == other.patch_name)
             and (self.revision_id == other.revision_id)
@@ -224,30 +237,94 @@ class Fixer(object):
         raise NotImplementedError(self.run)
 
 
+class LintianIssue(object):
+
+    def __init__(
+            self,
+            tag: str,
+            package: Optional[str] = None,
+            package_type: Optional[str] = None,
+            info: Optional[List[str]] = None):
+        self.package = package
+        self.package_type = package_type
+        self.tag = tag
+        self.info = info
+
+    def __eq__(self, other):
+        return isinstance(self, type(other)) and (
+            self.package == other.package and
+            self.package_type == other.package_type and
+            self.tag == other.tag and
+            self.info == other.info)
+
+    @classmethod
+    def from_str(cls, text):
+        try:
+            (before, after) = text.strip().split(':', 1)
+        except ValueError:
+            package_type = package = None
+            after = text
+        else:
+            try:
+                (package_type, package) = before.strip().split(' ')
+            except ValueError:
+                package = before
+                package_type = None
+        parts = after.strip().split(' ')
+        return cls(
+            package=package,
+            package_type=package_type,
+            tag=parts[0],
+            info=parts[1:])
+
+
 def parse_script_fixer_output(text):
     """Parse the output from a script fixer."""
-    lines = []
+    description = []
+    overridden_issues = []
+    fixed_issues = []
     fixed_tags = []
     certainty = None
     patch_name = None
-    for line in text.splitlines():
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
         # TODO(jelmer): Do this in a slightly less hackish manner
         try:
-            (key, value) = line.split(":", 1)
+            (key, value) = lines[i].split(":", 1)
         except ValueError:
-            lines.append(line)
+            description.append(lines[i])
         else:
             if key == "Fixed-Lintian-Tags":
-                fixed_tags = [tag.strip() for tag in value.strip().split(",")]
+                fixed_tags.extend(
+                    [tag.strip() for tag in value.strip().split(",")])
+            elif key == "Fixed-Lintian-Issues":
+                i += 1
+                while i < len(lines) and lines[i].startswith(' '):
+                    fixed_issues.append(LintianIssue.from_str(lines[i][1:]))
+                    i += 1
+                continue
+            elif key == "Overridden-Lintian-Issues":
+                i += 1
+                while i < len(lines) and lines[i].startswith(' '):
+                    overridden_issues.append(
+                        LintianIssue.from_str(lines[i][1:]))
+                    i += 1
+                continue
             elif key == "Certainty":
                 certainty = value.strip()
             elif key == "Patch-Name":
                 patch_name = value.strip()
             else:
-                lines.append(line)
+                description.append(lines[i])
+        i += 1
     if certainty not in SUPPORTED_CERTAINTIES:
         raise UnsupportedCertainty(certainty)
-    return FixerResult("\n".join(lines), fixed_tags, certainty, patch_name)
+    return FixerResult(
+        "\n".join(description), fixed_tags,
+        certainty, patch_name, revision_id=None,
+        fixed_lintian_issues=fixed_issues,
+        overridden_lintian_issues=overridden_issues)
 
 
 def determine_env(
