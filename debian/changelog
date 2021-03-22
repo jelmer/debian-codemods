@@ -15,6 +15,8 @@ lintian-brush (0.101) UNRELEASED; urgency=medium
   * Inhibit log file writing when detecting debhelper buildsystem.
     Thanks, Niels Thykier for the suggestion.
   * Don't update changelog for inaugural unreleased entry.
+
+  [ Gordon Ball, Jelmer Vernooĳ ]
   * Add fixer debian-watch-file-uses-old-github-pattern.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 06 Mar 2021 05:11:38 +0000
