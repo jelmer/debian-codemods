@@ -43,6 +43,7 @@ from debmutate.reformatting import (
 
 from .changelog import add_changelog_entry
 from . import get_committer, control_files_in_root
+from .debhelper import drop_obsolete_maintscript_entries
 
 
 _changelog_policy_noted = False
@@ -57,27 +58,6 @@ def _note_changelog_policy(policy, msg):
             extra = "Specify --update-changelog to override."
         logging.info("%s %s", msg, extra)
     _changelog_policy_noted = True
-
-
-def drop_old_maintscript(editor, package_name, upgrade_release):
-    remove = []
-    for i, entry in enumerate(list(editor.lines)):
-        if isinstance(entry, str):
-            continue
-        prior_version = getattr(entry, "prior_version", None)
-        if prior_version is None:
-            continue
-        package = entry.package or package_name
-        compat_version = package_version(package, upgrade_release)
-        if compat_version is None:
-            continue
-        if compat_version > prior_version:
-            remove.append(i)
-    removed = []
-    for i in reversed(remove):
-        removed.append(editor.lines[i])
-        del editor.lines[i]
-    return removed
 
 
 def depends_obsolete(latest_version, kind, req_version):
@@ -261,7 +241,10 @@ def update_maintscripts(wt, subpath, package, upgrade_release, allow_reformattin
         if not (entry.name == "maintscript" or entry.name.endswith(".maintscript")):
             continue
         with MaintscriptEditor(entry.path, allow_reformatting=allow_reformatting) as editor:
-            removed = drop_old_maintscript(editor, package, upgrade_release)
+            def can_drop(p, v):
+                compat_version = package_version(p or package, upgrade_release)
+                return compat_version is not None and compat_version > v
+            removed = drop_obsolete_maintscript_entries(editor, can_drop)
             if removed:
                 ret.append((os.path.join(subpath, entry.name), removed))
     return ret

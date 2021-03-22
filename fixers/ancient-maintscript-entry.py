@@ -5,9 +5,9 @@ import os
 import email.utils
 import sys
 
-from debian.changelog import Version
 from debmutate.changelog import ChangelogEditor
 from debmutate.debhelper import MaintscriptEditor
+from lintian_brush.debhelper import drop_obsolete_maintscript_entries
 from lintian_brush.fixer import report_result, upgrade_release, warn
 
 
@@ -62,22 +62,11 @@ total_entries = 0
 ret = []
 for name in maintscripts:
     with MaintscriptEditor(os.path.join('debian', name)) as editor:
-        remove = []
-        for i, entry in enumerate(list(editor.lines)):
-            if isinstance(entry, str):
-                continue
-            prior_version = getattr(entry, "prior_version", None)
-            if prior_version is None:
-                continue
-            if is_long_passed(Version(prior_version)):
-                remove.append(i)
-        removed = []
-        for i in reversed(remove):
-            removed.append(editor.lines[i])
-            del editor.lines[i]
+        removed = drop_obsolete_maintscript_entries(
+            editor, lambda p, v: is_long_passed(v))
         if removed:
-            total_entries += len(removed)
             ret.append((os.path.join('debian', name), removed))
+            total_entries += len(removed)
 
 if total_entries == 1:
     report_result('Remove %d obsolete maintscript entry.' % total_entries)

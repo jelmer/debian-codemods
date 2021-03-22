@@ -22,6 +22,8 @@ import os
 import subprocess
 from typing import Dict, Optional
 
+from debian.changelog import Version
+
 from .lintian import read_debhelper_lintian_data_file, LINTIAN_DATA_PATH
 
 
@@ -131,3 +133,25 @@ def write_rules_template(path, buildsystem=None, addons=None, env=None):
 """
         )
     os.chmod(path, 0o755)
+
+
+def drop_obsolete_maintscript_entries(editor, should_remove):
+    remove = []
+    comments = []
+    entries_removed = []
+    for i, entry in enumerate(list(editor.lines)):
+        if isinstance(entry, str):
+            comments.append(i)
+            continue
+        prior_version = getattr(entry, "prior_version", None)
+        if prior_version is not None:
+            if should_remove(entry.package, Version(prior_version)):
+                remove.extend(comments)
+                remove.append(i)
+                entries_removed.append(i)
+        comments = []
+    removed = []
+    for i in reversed(remove):
+        removed.append(editor.lines[i])
+        del editor.lines[i]
+    return entries_removed
