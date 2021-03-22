@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import email.utils
-import logging
 from debmutate.changelog import ChangelogEditor
 
 from lintian_brush.fixer import report_result, LintianIssue, warn
@@ -14,7 +13,7 @@ with ChangelogEditor() as updater:
         try:
             dt = email.utils.parsedate_to_datetime(block.date)
         except (TypeError, ValueError):
-            logging.warning('Invalid date %r for %s', block.date, block.version)
+            warn('Invalid date %r for %s' % (block.date, block.version))
             # parsedate_to_datetime is buggy and raises a TypeError
             # when the date is invalid.
             continue

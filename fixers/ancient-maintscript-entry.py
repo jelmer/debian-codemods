@@ -2,14 +2,13 @@
 
 from datetime import datetime, timedelta
 import os
-import logging
 import email.utils
 import sys
 
 from debian.changelog import Version
 from debmutate.changelog import ChangelogEditor
 from debmutate.debhelper import MaintscriptEditor
-from lintian_brush.fixer import source_package_name, report_result, upgrade_release
+from lintian_brush.fixer import report_result, upgrade_release, warn
 
 
 maintscripts = []
@@ -44,8 +43,7 @@ with ChangelogEditor() as cl:
         try:
             dt = email.utils.parsedate_to_datetime(block.date)
         except (TypeError, ValueError):
-            logging.warning(
-                'Invalid date %r for %s', block.date, block.version)
+            warn('Invalid date %r for %s' % (block.date, block.version))
             # parsedate_to_datetime is buggy and raises a TypeError
             # when the date is invalid.
             # We can't reliably check anymore :(

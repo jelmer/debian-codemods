@@ -47,7 +47,6 @@ from ognibuild.dist import (  # noqa: F401
     )
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
-from ognibuild.resolver import auto_resolver
 from ognibuild.resolver.apt import AptResolver
 from ognibuild.buildlog import InstallFixer
 
@@ -68,7 +67,6 @@ from . import (
     version_string,
     check_clean_tree,
     PendingChanges,
-    get_dirty_tracker,
     run_lintian_fixers,
     get_committer,
     reset_tree,
