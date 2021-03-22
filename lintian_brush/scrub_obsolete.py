@@ -151,26 +151,9 @@ def drop_obsolete_conflicts(entry, upgrade_release):
 
 
 def update_depends(base, field, upgrade_release):
-    try:
-        old_contents = base[field]
-    except KeyError:
-        return []
-
-    changed = []
-    newrelations = []
-    for ws1, oldrelation, ws2 in parse_relations(old_contents):
-        relation, dropped = drop_obsolete_depends(oldrelation, upgrade_release)
-        changed.extend([d.name for d in dropped])
-        if relation:
-            newrelations.append((ws1, relation, ws2))
-
-    if changed:
-        if relations_empty(newrelations):
-            del base[field]
-        else:
-            base[field] = format_relations(newrelations)
-        return changed
-    return []
+    return filter_relations(
+        base, field,
+        lambda oldrelation: drop_obsolete_depends(oldrelation, upgrade_release))
 
 
 def relations_empty(rels):
@@ -180,18 +163,25 @@ def relations_empty(rels):
     return True
 
 
-def update_conflicts(base, field, upgrade_release):
+def filter_relations(base, field, cb):
     try:
         old_contents = base[field]
     except KeyError:
         return []
 
-    changed = []
+    oldrelations = parse_relations(old_contents)
     newrelations = []
-    for ws1, oldrelation, ws2 in parse_relations(old_contents):
-        relation, dropped = drop_obsolete_conflicts(oldrelation, upgrade_release)
+
+    changed = []
+    for i, (ws1, oldrelation, ws2) in enumerate(oldrelations):
+        relation, dropped = cb(oldrelation)
         changed.extend([d.name for d in dropped])
-        newrelations.append((ws1, relation, ws2))
+        if relation:
+            newrelations.append((ws1, relation, ws2))
+        elif i == 0 and len(oldrelations) > 1:
+            # If the first item is removed, then copy the spacing to the next
+            # item
+            oldrelations[1] = (ws1, oldrelations[1][1], ws2)
 
     if changed:
         if relations_empty(newrelations):
@@ -200,6 +190,12 @@ def update_conflicts(base, field, upgrade_release):
             base[field] = format_relations(newrelations)
         return changed
     return []
+
+
+def update_conflicts(base, field, upgrade_release):
+    return filter_relations(
+        base, field,
+        lambda oldrelation: drop_obsolete_conflicts(oldrelation, upgrade_release))
 
 
 def drop_old_source_relations(source, upgrade_release):
