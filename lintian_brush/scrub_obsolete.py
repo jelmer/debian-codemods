@@ -94,9 +94,9 @@ async def _package_version(source, release):
     return None
 
 
-def package_version(source, upgrade_release):
+def package_version(source, release):
     loop = asyncio.get_event_loop()
-    return loop.run_until_complete(_package_version(source, upgrade_release))
+    return loop.run_until_complete(_package_version(source, release))
 
 
 def drop_obsolete_depends(entry, upgrade_release):
@@ -178,18 +178,18 @@ def update_conflicts(base, field, upgrade_release):
         lambda oldrelation: drop_obsolete_conflicts(oldrelation, upgrade_release))
 
 
-def drop_old_source_relations(source, upgrade_release):
+def drop_old_source_relations(source, compat_release):
     ret = []
     for field in [
         "Build-Depends",
         "Build-Depends-Indep",
         "Build-Depends-Arch",
     ]:
-        packages = update_depends(source, field, upgrade_release)
+        packages = update_depends(source, field, compat_release)
         if packages:
             ret.append((field, packages))
     for field in ["Build-Conflicts", "Build-Conflicts-Indep", "Build-Conflicts-Arch"]:
-        packages = update_conflicts(source, field, upgrade_release)
+        packages = update_conflicts(source, field, compat_release)
         if packages:
             ret.append((field, packages))
     return ret
@@ -210,7 +210,7 @@ def drop_old_binary_relations(binary, upgrade_release):
     return ret
 
 
-def drop_old_relations(editor, upgrade_release):
+def drop_old_relations(editor, compat_release, upgrade_release):
     dropped = []
     source_dropped = []
     try:
@@ -223,7 +223,7 @@ def drop_old_relations(editor, upgrade_release):
     else:
         uses_cdbs = False
     if not uses_cdbs:
-        source_dropped.extend(drop_old_source_relations(editor.source, upgrade_release))
+        source_dropped.extend(drop_old_source_relations(editor.source, compat_release))
     if source_dropped:
         dropped.append((None, source_dropped))
 
@@ -290,7 +290,7 @@ class ScrubObsoleteResult(object):
         return summary
 
 
-def _scrub_obsolete(wt, debian_path, upgrade_release, allow_reformatting):
+def _scrub_obsolete(wt, debian_path, compat_release, upgrade_release, allow_reformatting):
     specific_files = []
     control_path = os.path.join(debian_path, "control")
     try:
@@ -299,7 +299,7 @@ def _scrub_obsolete(wt, debian_path, upgrade_release, allow_reformatting):
                 allow_reformatting=allow_reformatting) as editor:
             specific_files.append(control_path)
             package = editor.source["Source"]
-            control_removed = drop_old_relations(editor, upgrade_release)
+            control_removed = drop_old_relations(editor, compat_release, upgrade_release)
     except FileNotFoundError:
         if wt.has_filename(os.path.join(debian_path, "debcargo.toml")):
             return ScrubObsoleteResult([], [], [])
@@ -318,7 +318,7 @@ def _scrub_obsolete(wt, debian_path, upgrade_release, allow_reformatting):
     )
 
 
-def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None,
+def scrub_obsolete(wt, subpath, compat_release, upgrade_release, update_changelog=None,
                    allow_reformatting=False):
     from breezy.commit import NullCommitReporter
 
@@ -327,7 +327,7 @@ def scrub_obsolete(wt, subpath, upgrade_release, update_changelog=None,
     else:
         debian_path = os.path.join(subpath, 'debian')
 
-    result = _scrub_obsolete(wt, debian_path, upgrade_release, allow_reformatting)
+    result = _scrub_obsolete(wt, debian_path, compat_release, upgrade_release, allow_reformatting)
 
     if not result:
         return result
@@ -414,6 +414,11 @@ def main():
         default="oldstable",
     )
     parser.add_argument(
+        '--compat-release',
+        metavar='COMPAT-RELEASE',
+        help="Release to allow building on.",
+        default=None)
+    parser.add_argument(
         "--no-update-changelog",
         action="store_false",
         default=None,
@@ -460,11 +465,13 @@ def main():
         return 1
 
     import distro_info
-
     debian_info = distro_info.DebianDistroInfo()
     upgrade_release = debian_info.codename(args.upgrade_release)
 
-    logging.info("Removing constraints unnecessary since %s", upgrade_release)
+    logging.info(
+        "Removing run time constraints unnecessary since %s"
+        " and build time constraints unnecessary since %s",
+        upgrade_release, compat_release)
 
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
@@ -473,6 +480,10 @@ def main():
 
     update_changelog = args.update_changelog
     allow_reformatting = args.allow_reformatting
+    if args.compat_release:
+        compat_release = debian_info.codename(args.compat_release)
+    else:
+        compat_release = None
     try:
         cfg = Config.from_workingtree(wt, subpath)
     except FileNotFoundError:
@@ -482,12 +493,18 @@ def main():
             update_changelog = cfg.update_changelog()
         if allow_reformatting is None:
             allow_reformatting = cfg.allow_reformatting()
+        if compat_release is None:
+            compat_release = cfg.compat_release()
+
+    if compat_release is None:
+        compat_release = debian_info.stable()
 
     if allow_reformatting is None:
         allow_reformatting = False
 
     result = scrub_obsolete(
-        wt, subpath, upgrade_release, update_changelog=args.update_changelog,
+        wt, subpath, upgrade_release, upgrade_release,
+        update_changelog=args.update_changelog,
         allow_reformatting=allow_reformatting
     )
     if not result:
