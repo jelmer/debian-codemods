@@ -357,11 +357,13 @@ def process_golang(es, wt, subpath, debian_path, metadata, compat_release):
     if "Repository-Browse" in metadata:
         source["Homepage"] = metadata["Repository-Browse"]
     source["Section"] = "devel"
-    parsed_url = urlparse(metadata["Repository-Browse"])
+    parsed_url = urlparse(metadata["Repository"])
     hostname = parsed_url.hostname
     if hostname == "github.com":
         hostname = "github"
     godebname = (hostname + parsed_url.path.replace("/", "-")).replace("_", "-").lower()
+    if godebname.endswith('.git'):
+        godebname = godebname[:-4]
     source['Source'] = "golang-%s" % godebname
     source["Testsuite"] = "autopkgtest-pkg-go"
     dh_env = {}
