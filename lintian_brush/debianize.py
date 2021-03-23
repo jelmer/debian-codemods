@@ -557,12 +557,12 @@ def get_project_wide_deps(session, wt, subpath, buildsystem, buildsystem_subpath
         external_dir, internal_dir = session.setup_from_vcs(
             wt, os.path.join(subpath, buildsystem_subpath))
 
-        from ognibuild.debian.udd import udd_tie_breaker
+        from ognibuild.debian.udd import popcon_tie_breaker
         from ognibuild.debian.build_deps import BuildDependencyTieBreaker
         apt_resolver = AptResolver.from_session(
             session, tie_breakers=[
                 BuildDependencyTieBreaker.from_session(session),
-                udd_tie_breaker,
+                popcon_tie_breaker,
                 ])
         build_fixers = [InstallFixer(apt_resolver)]
         session.chdir(internal_dir)
