@@ -300,6 +300,15 @@ def main(argv=None):  # noqa: C901
 
                     show_tree_status(wt)
                 return 1
+        if overall_result.overridden_lintian_issues:
+            if len(overall_result.overridden_lintian_issues) == 1:
+                logging.info(
+                    "%d change skipped because of lintian overrides.",
+                    len(overall_result.overridden_lintian_issues))
+            else:
+                logging.info(
+                    "%d changes skipped because of lintian overrides.",
+                    len(overall_result.overridden_lintian_issues))
         if overall_result.success:
             all_tags = set()
             for result, summary in overall_result.success:

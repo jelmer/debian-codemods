@@ -21,7 +21,7 @@ from collections.abc import MutableMapping
 from debmutate.control import ControlEditor
 from debmutate.deb822 import Deb822
 import sys
-from typing import Optional, Tuple, Union, List, Any
+from typing import Optional, Tuple, Union, List
 
 from . import (
     DEFAULT_MINIMUM_CERTAINTY,
@@ -40,6 +40,10 @@ import os
 
 class LintianIssue(object):
     """Represents a lintian issue."""
+
+    target: Tuple[str, Optional[str]]
+    info: Optional[Union[str, Tuple[str, ...]]]
+    tag: str
 
     def __init__(
         self,
@@ -70,10 +74,21 @@ class LintianIssue(object):
         )
 
     def should_fix(self):
-        return not self.override_exists()
+        if self.override_exists():
+            _overriden_issues.append(self)
+            return False
+        return True
 
     def report_fixed(self):
-        _fixed_lintian_issues.append((self.target, self.tag, self.info))
+        _fixed_lintian_issues.append(self)
+
+    def __str__(self):
+        ret = []
+        if self.target[1] is not None:
+            ret.append(self.target[1] + " ")
+        ret.append(self.target[0])
+        ret.append(": " + self.tag + (' ' + self.info) if self.info else '')
+        return "".join(ret)
 
     def __repr__(self):
         return "%s(target=%r, tag=%r, info=%r)" % (
@@ -84,8 +99,9 @@ class LintianIssue(object):
         )
 
 
-_fixed_lintian_issues: List[Any] = []
+_fixed_lintian_issues: List[LintianIssue] = []
 _present_overrides: Optional[List[LintianOverride]] = None
+_overriden_issues = []
 _tag_renames = None
 
 
@@ -111,6 +127,10 @@ def _override_exists(
     return False
 
 
+def fixed_lintian_tags():
+    return set([issue.tag for issue in _fixed_lintian_issues])
+
+
 def fixed_lintian_tag(
     target: Union[MutableMapping, Tuple[str, str], str],
     tag: str,
@@ -120,15 +140,12 @@ def fixed_lintian_tag(
     LintianIssue(target, tag, info).report_fixed()
 
 
-def fixed_lintian_tags():
-    return set([tag for (target, tag, info) in _fixed_lintian_issues])
-
-
 def reset() -> None:
     """Reset any global state that may exist."""
-    global _fixed_lintian_issues, _present_overrides
+    global _fixed_lintian_issues, _present_overrides, _overriden_issues
     _fixed_lintian_issues = []
     _present_overrides = None
+    _overriden_issues = []
 
 
 def report_result(description=None, certainty=None, patch_name=None):
@@ -144,9 +161,13 @@ def report_result(description=None, certainty=None, patch_name=None):
     if certainty:
         print("Certainty: %s" % certainty)
     fixed_lintian_tags = set(
-        [tag for (target, tag, info) in _fixed_lintian_issues])
+        [issue.tag for issue in _fixed_lintian_issues])
     if fixed_lintian_tags:
         print("Fixed-Lintian-Tags: %s" % ", ".join(sorted(fixed_lintian_tags)))
+    if _overriden_issues:
+        print("Overridden-Lintian-Issues:")
+        for issue in _overriden_issues:
+            print(' ' + str(issue))
     if patch_name:
         print("Patch-Name: %s" % patch_name)
     reset()

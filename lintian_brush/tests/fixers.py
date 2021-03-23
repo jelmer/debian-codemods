@@ -101,7 +101,7 @@ class FixerTestCase(unittest.TestCase):
         p = subprocess.Popen(
             self._fixer.script_path, cwd=self._testdir, stdout=subprocess.PIPE, env=env
         )
-        (result, err) = p.communicate("")
+        (stdout, err) = p.communicate("")
         self.assertEqual(p.returncode, 0)
         out_path = os.path.join(self._path, "out")
         p = subprocess.Popen(
@@ -128,10 +128,8 @@ class FixerTestCase(unittest.TestCase):
             not os.path.islink(out_path)
             or os.readlink(os.path.join(self._path, "out")) != "in"
         ):
-            with open(os.path.join(self._path, "message"), "r") as f:
-                # Assert that message on stdout matches
-                self.assertEqual(result.decode().strip(), f.read().strip())
-            result = parse_script_fixer_output(result.decode())
+            check_message = True
+            result = parse_script_fixer_output(stdout.decode())
             self.assertTrue(
                 set(result.fixed_lintian_tags).issubset(self._fixer.lintian_tags),
                 "fixer %s claims to fix tags (%r) not declared "
@@ -142,6 +140,14 @@ class FixerTestCase(unittest.TestCase):
                     self._fixer.lintian_tags,
                 ),
             )
+        else:
+            check_message = False
+
+        message_path = os.path.join(self._path, "message")
+        if os.path.exists(message_path) or check_message:
+            with open(message_path, "r") as f:
+                # Assert that message on stdout matches
+                self.assertEqual(stdout.decode().strip(), f.read().strip())
 
 
 class SaneFixerTests(unittest.TestCase):

@@ -1,3 +1,4 @@
 Remove unused license definitions for BSL-1.
 Certainty: certain
-Fixed-Lintian-Tags: unused-license-paragraph-in-dep5-copyright
+Overridden-Lintian-Issues:
+ source: unused-license-paragraph-in-dep5-copyright bsl-1

@@ -1,2 +1,3 @@
-Remove patch three that is missing from debian/patches/series.
-Fixed-Lintian-Tags: patch-file-present-but-not-mentioned-in-series
+Remove patch  that are missing from debian/patches/series.
+Overridden-Lintian-Issues:
+ source: patch-file-present-but-not-mentioned-in-series three

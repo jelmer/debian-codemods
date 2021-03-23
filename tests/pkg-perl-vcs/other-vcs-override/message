@@ -1,0 +1,6 @@
+Use standard Vcs fields for perl package.
+Certainty: certain
+Overridden-Lintian-Issues:
+ libblah-perl source: team/pkg-perl/vcs/no-git Vcs-Bzr
+ libblah-perl source: team/pkg-perl/vcs/no-team-url Vcs-Git 
+ libblah-perl source: team/pkg-perl/vcs/no-team-url Vcs-Browser

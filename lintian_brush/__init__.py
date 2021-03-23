@@ -52,7 +52,7 @@ from debian.deb822 import Deb822
 from debmutate.reformatting import FormattingUnpreservable
 
 
-__version__ = (0, 101)
+__version__ = (0, 102)
 version_string = ".".join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ["certain", "confident", "likely", "possible", None]
 DEFAULT_MINIMUM_CERTAINTY = "certain"
@@ -65,16 +65,19 @@ logger = logging.getLogger(__name__)
 class NoChanges(Exception):
     """Script didn't make any changes."""
 
-    def __init__(self, fixer, comment=None):
+    def __init__(self, fixer, comment=None, overridden_lintian_issues=None):
         super(NoChanges, self).__init__(fixer, comment)
         self.fixer = fixer
+        self.overridden_lintian_issues = overridden_lintian_issues or []
 
 
 class NotCertainEnough(NoChanges):
     """Script made changes but with too low certainty."""
 
-    def __init__(self, fixer, certainty, minimum_certainty):
-        super(NotCertainEnough, self).__init__(fixer)
+    def __init__(self, fixer, certainty, minimum_certainty,
+                 overridden_lintian_issues=None):
+        super(NotCertainEnough, self).__init__(
+            fixer, overridden_lintian_issues=overridden_lintian_issues)
         self.certainty = certainty
         self.minimum_certainty = minimum_certainty
 
@@ -956,7 +959,9 @@ def run_lintian_fixer(  # noqa: C901
         raise
     if not certainty_sufficient(result.certainty, minimum_certainty):
         reset_tree(local_tree, basis_tree, subpath, dirty_tracker=dirty_tracker)
-        raise NotCertainEnough(fixer, result.certainty, minimum_certainty)
+        raise NotCertainEnough(
+            fixer, result.certainty, minimum_certainty,
+            overridden_lintian_issues=result.overridden_lintian_issues)
     specific_files: Optional[List[str]]
     if dirty_tracker:
         relpaths = dirty_tracker.relpaths()
@@ -971,7 +976,9 @@ def run_lintian_fixer(  # noqa: C901
         )
         specific_files = [p for p in relpaths if local_tree.is_versioned(p)]
         if not specific_files:
-            raise NoChanges(fixer, "Script didn't make any changes")
+            raise NoChanges(
+                fixer, "Script didn't make any changes",
+                result.overridden_lintian_issues)
     else:
         local_tree.smart_add([local_tree.abspath(subpath)])
         specific_files = [subpath] if subpath else None
@@ -989,7 +996,9 @@ def run_lintian_fixer(  # noqa: C901
     )
 
     if len(local_tree.get_parent_ids()) <= 1 and not changes:
-        raise NoChanges(fixer, "Script didn't make any changes")
+        raise NoChanges(
+            fixer, "Script didn't make any changes",
+            result.overridden_lintian_issues)
 
     if not result.description:
         raise DescriptionMissing(fixer)
@@ -1070,6 +1079,7 @@ class ManyResult(object):
         self.success = []
         self.failed_fixers = {}
         self.formatting_unpreservable = {}
+        self.overridden_lintian_issues = []
 
     def minimum_success_certainty(self) -> str:
         """Return the minimum certainty of any successfully made change."""
@@ -1215,13 +1225,15 @@ def run_lintian_fixers(
                 if verbose:
                     logging.info("Unable to manipulate upstream patches: %s", e.args[2])
                 ret.failed_fixers[fixer.name] = e
-            except NoChanges:
+            except NoChanges as e:
                 if verbose:
                     logging.info(
                         "Fixer %r made no changes. (took: %.2fs)",
                         fixer.name,
                         time.time() - start,
                     )
+                ret.overridden_lintian_issues.extend(
+                    e.overridden_lintian_issues)
             else:
                 if verbose:
                     logging.info(
