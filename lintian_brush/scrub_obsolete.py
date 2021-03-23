@@ -468,11 +468,6 @@ def main():
     debian_info = distro_info.DebianDistroInfo()
     upgrade_release = debian_info.codename(args.upgrade_release)
 
-    logging.info(
-        "Removing run time constraints unnecessary since %s"
-        " and build time constraints unnecessary since %s",
-        upgrade_release, compat_release)
-
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
     else:
@@ -499,11 +494,16 @@ def main():
     if compat_release is None:
         compat_release = debian_info.stable()
 
+    logging.info(
+        "Removing run time constraints unnecessary since %s"
+        " and build time constraints unnecessary since %s",
+        upgrade_release, compat_release)
+
     if allow_reformatting is None:
         allow_reformatting = False
 
     result = scrub_obsolete(
-        wt, subpath, upgrade_release, upgrade_release,
+        wt, subpath, compat_release, upgrade_release,
         update_changelog=args.update_changelog,
         allow_reformatting=allow_reformatting
     )
