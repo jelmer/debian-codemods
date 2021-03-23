@@ -87,6 +87,13 @@ class SourcePackageNameInvalid(Exception):
         self.source = source
 
 
+class SourceNameUnknown(Exception):
+    """Unable to determine source name."""
+
+    def __init__(self, upstream_name):
+        self.upstream_name = upstream_name
+
+
 class DistCreationFailed(Exception):
     """Dist tarball creation failed."""
 
@@ -335,6 +342,7 @@ def process_dist_zilla(es, wt, subpath, debian_path, metadata, compat_release):
     upstream_name = metadata['Name']
     source['Source'] = "lib%s-perl" % upstream_name.replace('::', '-').replace('_', '').lower()
     source["Rules-Requires-Root"] = "no"
+    source['Testsuite'] = 'autopkgtest-pkg-perl'
     source["Standards-Version"] = latest_standards_version()
     setup_debhelper(
         wt, debian_path,
@@ -342,9 +350,29 @@ def process_dist_zilla(es, wt, subpath, debian_path, metadata, compat_release):
         addons=["dist-zilla"])
     control.add_binary(
         {"Package": source['Source'],
+         "Depends": "${perl:Depends}",
          "Architecture": "all"
          })
     return control
+
+
+def process_perl_build_tiny(es, wt, subpath, debian_path, metadata, compat_release):
+    control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
+    source = control.source
+    upstream_name = metadata['Name']
+    source['Source'] = "lib%s-perl" % upstream_name.replace('::', '-').replace('_', '').lower()
+    source["Rules-Requires-Root"] = "no"
+    source['Testsuite'] = 'autopkgtest-pkg-perl'
+    source["Standards-Version"] = latest_standards_version()
+    source["Build-Depends"] = "libmodule-build-perl"
+    setup_debhelper(wt, debian_path, source, compat_release=compat_release)
+    control.add_binary(
+        {"Package": source['Source'],
+         "Depends": "${perl:Depends}",
+         "Architecture": "all"
+         })
+    return control
+
 
 
 def process_golang(es, wt, subpath, debian_path, metadata, compat_release):
@@ -440,7 +468,10 @@ def process_default(es, wt, subpath, debian_path, metadata, compat_release):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     upstream_name = metadata['Name']
-    source["Source"] = source_name_from_upstream_name(upstream_name)
+    source_name = source_name_from_upstream_name(upstream_name)
+    if source_name is None:
+        raise SourceNameUnknown(upstream_name)
+    source["Source"] = source_name
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     setup_debhelper(
@@ -462,6 +493,7 @@ PROCESSORS = {
     "setup.py": process_setup_py,
     "npm": process_npm,
     "dist-zilla": process_dist_zilla,
+    "perl-build-tiny": process_perl_build_tiny,
     "cargo": process_cargo,
     "golang": process_golang,
     "R": process_r,
