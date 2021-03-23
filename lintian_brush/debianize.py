@@ -666,7 +666,9 @@ def debianize(  # noqa: C901
                     external_dir, internal_dir = session.setup_from_vcs(
                         wt, os.path.join(subpath, buildsystem_subpath))
 
-                    apt_resolver = AptResolver.from_session(session)
+                    from ognibuild.debian.udd import udd_tie_breaker
+                    apt_resolver = AptResolver.from_session(
+                        session, tie_breakers=[udd_tie_breaker])
                     build_fixers = [InstallFixer(apt_resolver)]
                     session.chdir(internal_dir)
                     try:
@@ -675,8 +677,6 @@ def debianize(  # noqa: C901
                     except NotImplementedError:
                         logging.warning('Unable to obtain declared dependencies.')
                     else:
-                        apt_resolver = AptResolver.from_session(session)
-
                         for kind, dep in upstream_deps:
                             apt_dep = apt_resolver.resolve(dep)
                             if apt_dep is None:
