@@ -618,7 +618,7 @@ def debianize(  # noqa: C901
                     source_name, upstream_version)
                 pristine_revids = pristine_tar_source\
                     .version_as_revisions(source_name, upstream_version)
-                upstream_branch_name = "upstream"
+                upstream_branch_name = None
                 tag_names = {}
             else:
                 (pristine_revids, tag_names,
