@@ -285,7 +285,7 @@ class ResetOnFailure(object):
         return False
 
 
-def process_setup_py(es, wt, subpath, debian_path, metadata, compat_release):
+def process_setup_py(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     source["Rules-Requires-Root"] = "no"
@@ -299,6 +299,14 @@ def process_setup_py(es, wt, subpath, debian_path, metadata, compat_release):
     # TODO(jelmer): check whether project supports python 3
     source["Build-Depends"] = ensure_some_version(
         source["Build-Depends"], "python3-all")
+    if buildsystem.build_backend == "flit.build_api":
+        source["Build-Depends"] = ensure_some_version(
+            source["Build-Depends"], "flit")
+        source["Build-Depends"] = ensure_some_version(
+            source["Build-Depends"], "python3-toml")
+    build_deps, test_deps = get_project_wide_deps(
+        session, wt, subpath, buildsystem, buildsystem_subpath)
+    import_build_deps(source, build_deps)
     upstream_name = metadata['Name']
     if upstream_name.startswith('python-'):
         upstream_name = upstream_name[len('python-'):]
@@ -312,7 +320,7 @@ def process_setup_py(es, wt, subpath, debian_path, metadata, compat_release):
     return control
 
 
-def process_npm(es, wt, subpath, debian_path, metadata, compat_release):
+def process_npm(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     setup_debhelper(
@@ -322,6 +330,9 @@ def process_npm(es, wt, subpath, debian_path, metadata, compat_release):
     source['Source'] = "node-%s" % upstream_name.lower()
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
+    build_deps, test_deps = get_project_wide_deps(
+        session, wt, subpath, buildsystem, buildsystem_subpath)
+    import_build_deps(source, build_deps)
     control.add_binary(
         {"Package": "node-%s" % upstream_name, "Architecture": "all"})
     if wt.has_filename(os.path.join(subpath, "test/node.js")):
@@ -336,7 +347,7 @@ def process_npm(es, wt, subpath, debian_path, metadata, compat_release):
     return control
 
 
-def process_dist_zilla(es, wt, subpath, debian_path, metadata, compat_release):
+def process_dist_zilla(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     upstream_name = metadata['Name']
@@ -344,6 +355,9 @@ def process_dist_zilla(es, wt, subpath, debian_path, metadata, compat_release):
     source["Rules-Requires-Root"] = "no"
     source['Testsuite'] = 'autopkgtest-pkg-perl'
     source["Standards-Version"] = latest_standards_version()
+    build_deps, test_deps = get_project_wide_deps(
+        session, wt, subpath, buildsystem, buildsystem_subpath)
+    import_build_deps(source, build_deps)
     setup_debhelper(
         wt, debian_path,
         source, compat_release=compat_release,
@@ -356,7 +370,7 @@ def process_dist_zilla(es, wt, subpath, debian_path, metadata, compat_release):
     return control
 
 
-def process_perl_build_tiny(es, wt, subpath, debian_path, metadata, compat_release):
+def process_perl_build_tiny(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     upstream_name = metadata['Name']
@@ -365,6 +379,9 @@ def process_perl_build_tiny(es, wt, subpath, debian_path, metadata, compat_relea
     source['Testsuite'] = 'autopkgtest-pkg-perl'
     source["Standards-Version"] = latest_standards_version()
     source["Build-Depends"] = "libmodule-build-perl"
+    build_deps, test_deps = get_project_wide_deps(
+        session, wt, subpath, buildsystem, buildsystem_subpath)
+    import_build_deps(source, build_deps)
     setup_debhelper(wt, debian_path, source, compat_release=compat_release)
     control.add_binary(
         {"Package": source['Source'],
@@ -375,7 +392,7 @@ def process_perl_build_tiny(es, wt, subpath, debian_path, metadata, compat_relea
 
 
 
-def process_golang(es, wt, subpath, debian_path, metadata, compat_release):
+def process_golang(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     source["Rules-Requires-Root"] = "no"
@@ -397,6 +414,9 @@ def process_golang(es, wt, subpath, debian_path, metadata, compat_release):
         godebname = path[:-4]
     godebname = (hostname + path).replace("_", "-").lower()
     source['Source'] = "golang-%s" % godebname
+    build_deps, test_deps = get_project_wide_deps(
+        session, wt, subpath, buildsystem, buildsystem_subpath)
+    import_build_deps(source, build_deps)
     source["Testsuite"] = "autopkgtest-pkg-go"
     dh_env = {}
     if os.path.isdir("examples"):
@@ -416,7 +436,7 @@ def process_golang(es, wt, subpath, debian_path, metadata, compat_release):
     return control
 
 
-def process_r(es, wt, subpath, debian_path, metadata, compat_release):
+def process_r(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
 
@@ -432,6 +452,9 @@ def process_r(es, wt, subpath, debian_path, metadata, compat_release):
     source["Build-Depends"] = "dh-r, r-base-dev"
     source["Standards-Version"] = latest_standards_version()
     source["Testsuite"] = "autopkgtest-pkg-r"
+    build_deps, test_deps = get_project_wide_deps(
+        session, wt, subpath, buildsystem, buildsystem_subpath)
+    import_build_deps(source, build_deps)
     setup_debhelper(
         wt, debian_path, source, compat_release=compat_release,
         buildsystem="R")
@@ -446,7 +469,7 @@ def process_r(es, wt, subpath, debian_path, metadata, compat_release):
     return control
 
 
-def process_octave(es, wt, subpath, debian_path, metadata, compat_release):
+def process_octave(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
 
@@ -454,6 +477,9 @@ def process_octave(es, wt, subpath, debian_path, metadata, compat_release):
     source["Rules-Requires-Root"] = "no"
     source["Build-Depends"] = "dh-octave"
     source["Standards-Version"] = latest_standards_version()
+    build_deps, test_deps = get_project_wide_deps(
+        session, wt, subpath, buildsystem, buildsystem_subpath)
+    import_build_deps(source, build_deps)
     setup_debhelper(
         wt, debian_path, source, compat_release=compat_release,
         buildsystem="octave", addons=['octave'])
@@ -467,7 +493,7 @@ def process_octave(es, wt, subpath, debian_path, metadata, compat_release):
     return control
 
 
-def process_default(es, wt, subpath, debian_path, metadata, compat_release):
+def process_default(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     upstream_name = metadata['Name']
@@ -477,6 +503,9 @@ def process_default(es, wt, subpath, debian_path, metadata, compat_release):
     source["Source"] = source_name
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
+    build_deps, test_deps = get_project_wide_deps(
+        session, wt, subpath, buildsystem, buildsystem_subpath)
+    import_build_deps(source, build_deps)
     setup_debhelper(
         wt, debian_path,
         source, compat_release=compat_release)
@@ -486,7 +515,7 @@ def process_default(es, wt, subpath, debian_path, metadata, compat_release):
     return control
 
 
-def process_cargo(es, wt, subpath, debian_path, metadata, compat_release):
+def process_cargo(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     from debmutate.debcargo import DebcargoControlShimEditor
     upstream_name = metadata['Name']
     return es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name))
@@ -518,6 +547,52 @@ class DebianizeResult(object):
         self.upstream_branch_name = upstream_branch_name
         self.tag_names = tag_names
         self.upstream_version = upstream_version
+
+
+def get_project_wide_deps(session, wt, subpath, buildsystem, buildsystem_subpath):
+    build_deps = []
+    test_deps = []
+
+    with session:
+        external_dir, internal_dir = session.setup_from_vcs(
+            wt, os.path.join(subpath, buildsystem_subpath))
+
+        from ognibuild.debian.udd import udd_tie_breaker
+        from ognibuild.debian.build_deps import BuildDependencyTieBreaker
+        apt_resolver = AptResolver.from_session(
+            session, tie_breakers=[
+                BuildDependencyTieBreaker.from_session(session),
+                udd_tie_breaker,
+                ])
+        build_fixers = [InstallFixer(apt_resolver)]
+        session.chdir(internal_dir)
+        try:
+            upstream_deps = list(buildsystem.get_declared_dependencies(
+                session, build_fixers))
+        except NotImplementedError:
+            logging.warning('Unable to obtain declared dependencies.')
+        else:
+            for kind, dep in upstream_deps:
+                apt_dep = apt_resolver.resolve(dep)
+                if apt_dep is None:
+                    logging.warning(
+                        'Unable to map upstream requirement %s (kind %s) '
+                        'to a Debian package', dep, kind)
+                    continue
+                logging.debug('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
+                if kind in ('core', 'build'):
+                    build_deps.append(apt_dep)
+                if kind in ('core', 'test', ):
+                    test_deps.append(apt_dep)
+    return (build_deps, test_deps)
+
+
+def import_build_deps(source, build_deps):
+    for build_dep in build_deps:
+        for rel in build_dep.relations:
+            source["Build-Depends"] = ensure_relation(
+                source.get("Build-Depends", ""),
+                PkgRelation.str([rel]))
 
 
 def debianize(  # noqa: C901
@@ -658,43 +733,17 @@ def debianize(  # noqa: C901
                     process = PROCESSORS[buildsystem.name]
                 except KeyError:
                     process = process_default
-
-                build_deps = []
-                test_deps = []
-
-                with session:
-                    external_dir, internal_dir = session.setup_from_vcs(
-                        wt, os.path.join(subpath, buildsystem_subpath))
-
-                    from ognibuild.debian.udd import udd_tie_breaker
-                    apt_resolver = AptResolver.from_session(
-                        session, tie_breakers=[udd_tie_breaker])
-                    build_fixers = [InstallFixer(apt_resolver)]
-                    session.chdir(internal_dir)
-                    try:
-                        upstream_deps = list(buildsystem.get_declared_dependencies(
-                            session, build_fixers))
-                    except NotImplementedError:
-                        logging.warning('Unable to obtain declared dependencies.')
-                    else:
-                        for kind, dep in upstream_deps:
-                            apt_dep = apt_resolver.resolve(dep)
-                            if apt_dep is None:
-                                logging.warning(
-                                    'Unable to map upstream requirement %s (kind %s) '
-                                    'to a Debian package', dep, kind)
-                                continue
-                            logging.debug('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
-                            if kind in ('core', 'build'):
-                                build_deps.append(apt_dep)
-                            if kind in ('core', 'test', ):
-                                test_deps.append(apt_dep)
             else:
                 process = process_default
 
+            logging.info('Creating core packaging using %s', process.__name__)
+
             control = process(
-                es, wt, subpath, debian_path,
-                metadata=metadata, compat_release=compat_release)
+                es, session,
+                wt, subpath, debian_path,
+                metadata=metadata, compat_release=compat_release,
+                buildsystem=buildsystem,
+                buildsystem_subpath=buildsystem_subpath)
 
             source = control.source
 
@@ -703,12 +752,6 @@ def debianize(  # noqa: C901
 
             if "Homepage" in metadata:
                 source["Homepage"] = metadata["Homepage"]
-
-            for build_dep in build_deps:
-                for rel in build_dep.relations:
-                    source["Build-Depends"] = ensure_relation(
-                        source.get("Build-Depends", ""),
-                        PkgRelation.str([rel]))
 
             if net_access:
                 import asyncio
