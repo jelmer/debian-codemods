@@ -25,6 +25,7 @@ __all__ = [
 import contextlib
 import logging
 import os
+import shutil
 import sys
 from typing import Optional
 from urllib.parse import urlparse
@@ -493,6 +494,7 @@ def debianize(  # noqa: C901
     check: bool = False,
     net_access: bool = True,
     force_subprocess: bool = False,
+    force_new_directory: bool = False,
     compat_release: Optional[str] = None,
     minimum_certainty: str = MINIMUM_CERTAINTY,
     consult_external_directory: bool = True,
@@ -502,7 +504,13 @@ def debianize(  # noqa: C901
 ):
     debian_path = osutils.pathjoin(subpath, "debian")
     if wt.has_filename(debian_path) and list(os.listdir(wt.abspath(debian_path))):
-        raise DebianDirectoryExists(wt.abspath(subpath))
+        if force_new_directory:
+            shutil.rmtree(wt.abspath(debian_path))
+            wt.commit(
+                'Remove old debian directory', specific_files=[debian_path],
+                reporter=NullCommitReporter())
+        else:
+            raise DebianDirectoryExists(wt.abspath(subpath))
 
     metadata_items = list(guess_upstream_info(wt.abspath(subpath), trust_package=trust))
     metadata = summarize_upstream_metadata(
@@ -797,6 +805,9 @@ def main(argv=None):
     parser.add_argument(
         "--force-subprocess", action="store_true", help=argparse.SUPPRESS
     )
+    parser.add_argument(
+        "--force-new-directory", action="store_true",
+        help="Create a new debian/ directory even if one already exists.")
 
     args = parser.parse_args(argv)
 
@@ -822,6 +833,7 @@ def main(argv=None):
                 trust=args.trust,
                 check=args.check,
                 net_access=not args.disable_net_access,
+                force_new_directory=args.force_new_directory,
                 force_subprocess=args.force_subprocess,
                 compat_release=compat_release,
                 consult_external_directory=args.consult_external_directory,
