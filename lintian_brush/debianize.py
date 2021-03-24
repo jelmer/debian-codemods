@@ -320,6 +320,29 @@ def process_setup_py(es, session, wt, subpath, debian_path, metadata, compat_rel
     return control
 
 
+def process_maven(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
+    control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
+    source = control.source
+    source["Rules-Requires-Root"] = "no"
+    source["Standards-Version"] = latest_standards_version()
+    setup_debhelper(
+        wt, debian_path,
+        source, compat_release=compat_release,
+        buildsystem="maven")
+    build_deps, test_deps = get_project_wide_deps(
+        session, wt, subpath, buildsystem, buildsystem_subpath)
+    import_build_deps(source, build_deps)
+    upstream_name = metadata['Name']
+    source['Source'] = upstream_name
+    control.add_binary({
+            "Package": "lib%s-java" % upstream_name,
+            "Depends": "${java:Depends}",
+            "Architecture": "all",
+        }
+    )
+    return control
+
+
 def process_npm(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -524,6 +547,7 @@ def process_cargo(es, session, wt, subpath, debian_path, metadata, compat_releas
 PROCESSORS = {
     "setup.py": process_setup_py,
     "npm": process_npm,
+    "maven": process_maven,
     "dist-zilla": process_dist_zilla,
     "perl-build-tiny": process_perl_build_tiny,
     "cargo": process_cargo,
