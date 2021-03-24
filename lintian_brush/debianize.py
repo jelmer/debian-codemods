@@ -173,7 +173,7 @@ class DebianDirectoryExists(Exception):
 
 def go_import_path_from_repo(repo_url):
     parsed_url = urlparse(repo_url)
-    p = parsed_url.hostname + parsed_url.path
+    p = parsed_url.hostname + parsed_url.path.rstrip('/')
     if p.endswith(".git"):
         p = p[:-4]
     return p
