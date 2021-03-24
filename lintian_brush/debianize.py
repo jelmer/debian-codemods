@@ -42,6 +42,8 @@ from breezy.commit import NullCommitReporter
 
 from ognibuild import DetailedFailure, UnidentifiedError
 from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound
+from ognibuild.debian.apt import AptManager
+from ognibuild.debian.build import DEFAULT_BUILDER
 from ognibuild.dist import (  # noqa: F401
     DistCatcher, DistNoTarball,
     create_dist as ogni_create_dist,
@@ -634,8 +636,12 @@ def debianize(  # noqa: C901
     consult_external_directory: bool = True,
     verbose: bool = False,
     schroot: Optional[str] = None,
-    create_dist=None
+    create_dist=None,
+    committer = None
 ):
+    if committer is None:
+        committer = get_committer(wt)
+
     debian_path = osutils.pathjoin(subpath, "debian")
     if wt.has_filename(debian_path) and list(os.listdir(wt.abspath(debian_path))):
         if force_new_directory:
@@ -811,7 +817,7 @@ def debianize(  # noqa: C901
         wt.commit(
             "Create debian/ directory",
             allow_pointless=False,
-            committer=get_committer(wt),
+            committer=committer,
             reporter=commit_reporter,
         )
 
@@ -821,7 +827,7 @@ def debianize(  # noqa: C901
 
         run_lintian_fixers(
             wt,
-            lintian_fixers,
+            list(lintian_fixers),
             update_changelog=False,
             compat_release=compat_release,
             verbose=verbose,
@@ -836,7 +842,7 @@ def debianize(  # noqa: C901
         )
 
         try:
-            update_offical_vcs(wt, subpath=subpath, committer=get_committer(wt))
+            update_offical_vcs(wt, subpath=subpath, committer=committer)
         except NoVcsLocation:
             logging.debug(
                 'No public VCS location specified and unable to guess it '
@@ -910,6 +916,19 @@ def main(argv=None):
     parser.add_argument(
         "--force-new-directory", action="store_true",
         help="Create a new debian/ directory even if one already exists.")
+    parser.add_argument(
+        "--iterate-fix", "-x", action="store_true",
+        help="Invoke deb-fix-build afterwards to build package and add "
+        "missing dependencies.")
+    parser.add_argument(
+        "--schroot", type=str,
+        help="Schroot to use for building and apt archive access")
+    parser.add_argument(
+        "--build-command",
+        type=str,
+        help="Build command (used for --iterate-fix)",
+        default=(DEFAULT_BUILDER + " -A -s -v"),
+    )
 
     args = parser.parse_args(argv)
 
@@ -940,6 +959,7 @@ def main(argv=None):
                 compat_release=compat_release,
                 consult_external_directory=args.consult_external_directory,
                 verbose=args.verbose,
+                schroot=args.schroot
             )
         except PendingChanges:
             logging.info("%s: Please commit pending changes first.", wt.basedir)
@@ -956,6 +976,50 @@ def main(argv=None):
         except DistCreationFailed as e:
             logging.fatal('Dist tarball creation failed: %s', e.inner)
             return 1
+
+    if args.iterate_fix:
+        import tempfile
+        from ognibuild.debian.fix_build import (
+            SbuildFailure,
+            build_incrementally,
+            )
+        if args.schroot is None:
+            session = PlainSession()
+        else:
+            logging.info('Using schroot %s', args.schroot)
+            session = SchrootSession(args.schroot)
+
+        with contextlib.ExitStack() as es:
+            es.enter_context(session)
+            apt = AptManager.from_session(session)
+
+            try:
+                output_directory = es.enter_context(tempfile.TemporaryDirectory())
+                (changes_name, cl_version) = build_incrementally(
+                    wt,
+                    apt,
+                    None,
+                    None,
+                    output_directory,
+                    args.build_command,
+                    build_changelog_entry=None,
+                    committer=None,
+                    update_changelog=False,
+                )
+            except SbuildFailure as e:
+                if e.phase is None:
+                    phase = 'unknown phase'
+                elif len(e.phase) == 1:
+                    phase = e.phase[0]
+                else:
+                    phase = '%s (%s)' % (e.phase[0], e.phase[1])
+                if e.error:
+                    logging.fatal('Error during %s: %s', phase, e.error)
+                else:
+                    logging.fatal('Error during %s: %s', phase, e.description)
+                return 1
+            logging.info('Built %s.', changes_name)
+
     return 0
 
 
