@@ -920,10 +920,7 @@ def run_lintian_fixer(  # noqa: C901
     if basis_tree is None:
         basis_tree = local_tree.basis_tree()
 
-    if subpath == ".":
-        changelog_path = "debian/changelog"
-    else:
-        changelog_path = os.path.join(subpath, "debian/changelog")
+    changelog_path = os.path.join(subpath, "debian/changelog")
 
     try:
         with local_tree.get_file(changelog_path) as f:
