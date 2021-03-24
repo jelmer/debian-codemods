@@ -326,7 +326,7 @@ def process_npm(es, session, wt, subpath, debian_path, metadata, compat_release,
     setup_debhelper(
         wt, debian_path,
         source, compat_release=compat_release, addons=["nodejs"])
-    upstream_name = metadata['Name']
+    upstream_name = metadata['Name'].strip('@').replace('/', '-')
     source['Source'] = "node-%s" % upstream_name.lower()
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
