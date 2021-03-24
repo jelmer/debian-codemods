@@ -551,6 +551,7 @@ PROCESSORS = {
     "npm": process_npm,
     "maven": process_maven,
     "dist-zilla": process_dist_zilla,
+    "dist-inkt": process_dist_zilla,
     "perl-build-tiny": process_perl_build_tiny,
     "cargo": process_cargo,
     "golang": process_golang,
