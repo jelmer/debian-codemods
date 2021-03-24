@@ -359,7 +359,7 @@ def process_npm(es, session, wt, subpath, debian_path, metadata, compat_release,
         session, wt, subpath, buildsystem, buildsystem_subpath)
     import_build_deps(source, build_deps)
     control.add_binary(
-        {"Package": "node-%s" % upstream_name, "Architecture": "all"})
+        {"Package": "node-%s" % upstream_name.lower(), "Architecture": "all"})
     if wt.has_filename(os.path.join(subpath, "test/node.js")):
         source["Testsuite"] = "autopkgtest-pkg-nodejs"
         os.makedirs(

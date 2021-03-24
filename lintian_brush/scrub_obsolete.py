@@ -42,7 +42,7 @@ from debmutate.reformatting import (
 )
 
 from .changelog import add_changelog_entry
-from . import get_committer, control_files_in_root
+from . import get_committer, control_files_in_root, NotDebianPackage
 from .debhelper import drop_obsolete_maintscript_entries
 
 
@@ -302,8 +302,9 @@ def _scrub_obsolete(wt, debian_path, compat_release, upgrade_release, allow_refo
             control_removed = drop_old_relations(editor, compat_release, upgrade_release)
     except FileNotFoundError:
         if wt.has_filename(os.path.join(debian_path, "debcargo.toml")):
-            return ScrubObsoleteResult([], [], [])
-        raise
+            control_removed = []
+        else:
+            raise NotDebianPackage(wt, debian_path)
 
     maintscript_removed = []
     for path, removed in update_maintscripts(wt, debian_path, package, upgrade_release, allow_reformatting):
@@ -502,13 +503,16 @@ def main():
     if allow_reformatting is None:
         allow_reformatting = False
 
-    result = scrub_obsolete(
-        wt, subpath, compat_release, upgrade_release,
-        update_changelog=args.update_changelog,
-        allow_reformatting=allow_reformatting
-    )
-    if not result:
-        return 0
+    try:
+        scrub_obsolete(
+            wt, subpath, compat_release, upgrade_release,
+            update_changelog=args.update_changelog,
+            allow_reformatting=allow_reformatting
+        )
+    except NotDebianPackage:
+        logging.fatal('not a Debian package.')
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
