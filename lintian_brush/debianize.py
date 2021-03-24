@@ -436,7 +436,7 @@ def process_golang(es, session, wt, subpath, debian_path, metadata, compat_relea
         hostname = "gopkg"
     path = parsed_url.path.rstrip('/').replace("/", "-")
     if path.endswith('.git'):
-        godebname = path[:-4]
+        path = path[:-4]
     godebname = (hostname + path).replace("_", "-").lower()
     source['Source'] = "golang-%s" % godebname
     build_deps, test_deps = get_project_wide_deps(
