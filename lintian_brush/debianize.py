@@ -309,6 +309,9 @@ def process_setup_py(es, session, wt, subpath, debian_path, metadata, compat_rel
     build_deps, test_deps = get_project_wide_deps(
         session, wt, subpath, buildsystem, buildsystem_subpath)
     import_build_deps(source, build_deps)
+    # We're going to be running the testsuite as part of the build,
+    # so import the test dependencies too.
+    import_build_deps(source, test_deps)
     upstream_name = metadata['Name']
     if upstream_name.startswith('python-'):
         upstream_name = upstream_name[len('python-'):]
