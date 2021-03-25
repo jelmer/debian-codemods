@@ -45,7 +45,7 @@ from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound
 from ognibuild.debian.apt import AptManager
 from ognibuild.debian.build import DEFAULT_BUILDER
 from ognibuild.dist import (  # noqa: F401
-    DistCatcher, DistNoTarball,
+    DistNoTarball,
     create_dist as ogni_create_dist,
     )
 from ognibuild.session.plain import PlainSession
