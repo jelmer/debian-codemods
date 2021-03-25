@@ -301,7 +301,7 @@ def process_setup_py(es, session, wt, subpath, debian_path, metadata, compat_rel
     # TODO(jelmer): check whether project supports python 3
     source["Build-Depends"] = ensure_some_version(
         source["Build-Depends"], "python3-all")
-    if buildsystem.build_backend == "flit.build_api":
+    if buildsystem.build_backend in ("flit.build_api", "flit_core.build_api"):
         source["Build-Depends"] = ensure_some_version(
             source["Build-Depends"], "flit")
         source["Build-Depends"] = ensure_some_version(
