@@ -933,6 +933,11 @@ def main(argv=None):
         help="Build command (used for --iterate-fix)",
         default=(DEFAULT_BUILDER + " -A -s -v"),
     )
+    parser.add_argument(
+        "--max-build-iterations",
+        type=int,
+        default=50,
+        help=argparse.SUPPRESS)
 
     args = parser.parse_args(argv)
 
@@ -1009,6 +1014,7 @@ def main(argv=None):
                     build_changelog_entry=None,
                     committer=None,
                     update_changelog=False,
+                    max_iterations=args.max_build_iterations,
                 )
             except SbuildFailure as e:
                 if e.phase is None:
