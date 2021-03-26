@@ -784,9 +784,6 @@ def debianize(  # noqa: C901
             if not valid_debian_package_name(source['Source']):
                 raise SourcePackageNameInvalid(source['Source'])
 
-            if "Homepage" in metadata:
-                source["Homepage"] = metadata["Homepage"]
-
             if net_access:
                 import asyncio
 
