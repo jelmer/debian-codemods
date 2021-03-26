@@ -50,8 +50,13 @@ def update_offical_vcs(wt, subpath, repo_url=None, committer=None):
     # TODO(jelmer): Allow creation of the repository as well
     check_clean_tree(wt, wt.basis_tree(), subpath)
 
-    control_path = wt.abspath(os.path.join(subpath, 'debian/control'))
-    with ControlEditor(control_path) as editor:
+    if wt.has_filename(os.path.join(subpath, 'debian/debcargo.toml')):
+        from debmutate.debcargo import DebcargoControlShimEditor, DebcargoEditor
+        editor = DebcargoControlShimEditor.from_debian_dir(wt.abspath(os.path.join(subpath, 'debian')))
+    else:
+        control_path = wt.abspath(os.path.join(subpath, 'debian/control'))
+        editor = ControlEditor(control_path)
+    with editor:
         try:
             vcs_type, url = source_package_vcs(editor.source)
         except KeyError:
