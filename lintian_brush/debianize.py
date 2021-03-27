@@ -546,7 +546,9 @@ def process_default(es, session, wt, subpath, debian_path, metadata, compat_rele
 def process_cargo(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     from debmutate.debcargo import DebcargoControlShimEditor
     upstream_name = metadata['Name']
-    return es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name))
+    control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name))
+    control.debcargo_editor['overlay'] = '.'
+    return control
 
 
 PROCESSORS = {
