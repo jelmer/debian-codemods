@@ -37,8 +37,10 @@ from debmutate.control import ensure_some_version, ensure_exact_version, ensure_
 from debian.deb822 import PkgRelation
 
 from breezy import osutils
+from breezy.branch import Branch
 from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
+from breezy.workingtree import WorkingTree
 
 from ognibuild import DetailedFailure, UnidentifiedError
 from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound
@@ -687,9 +689,33 @@ def get_upstream_version(branch, upstream_revision, metadata):
     return upstream_version
 
 
+def find_wnpp_bugs_harder(source_name, upstream_name):
+    import asyncio
+
+    loop = asyncio.get_event_loop()
+    wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
+    if not wnpp_bugs and source_name != upstream_name:
+        wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(upstream_name))
+    if not wnpp_bugs:
+        wnpp_bugs = loop.run_until_complete(
+            find_archived_wnpp_bugs(source_name)
+        )
+        if wnpp_bugs:
+            logging.warning(
+                "Found archived ITP/RFP bugs for %s: %r", source_name, wnpp_bugs
+            )
+        else:
+            logging.warning(
+                "No relevant WNPP bugs found for %s", source_name)
+    else:
+        logging.info("Found WNPP bugs for %s: %r", source_name, wnpp_bugs)
+
+    return wnpp_bugs
+
+
 def debianize(  # noqa: C901
-    wt,
-    subpath: str,
+    wt: WorkingTree, subpath: str,
+    upstream_branch: Branch, upstream_subpath: str,
     use_inotify: Optional[bool] = None,
     diligence: int = 0,
     trust: bool = False,
@@ -742,16 +768,15 @@ def debianize(  # noqa: C901
                 wt.mkdir(debian_path)
 
             # TODO(jelmer): Support resetting to e.g. last upstream release
-
-            upstream_revision = wt.last_revision()
+            upstream_revision = upstream_branch.last_revision()
             upstream_version = get_upstream_version(
-                wt.branch, upstream_revision, metadata)
+                upstream_branch, upstream_revision, metadata)
 
             if wt.last_revision() == upstream_revision:
                 # If at all possible, try to avoid copying
                 upstream_tree = wt
             else:
-                upstream_tree = wt.revision_tree(upstream_revision)
+                upstream_tree = upstream_branch.repository.revision_tree(upstream_revision)
 
             if schroot is None:
                 session = PlainSession()
@@ -763,7 +788,7 @@ def debianize(  # noqa: C901
 
             pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
             upstream_dist_revid, upstream_branch_name, tag_names = import_upstream_dist(
-                pristine_tar_source, upstream_tree, subpath, source_name,
+                pristine_tar_source, upstream_tree, upstream_subpath, source_name,
                 upstream_version, session, create_dist)
 
             if wt.branch.last_revision() != upstream_dist_revid:
@@ -804,25 +829,7 @@ def debianize(  # noqa: C901
                 raise SourcePackageNameInvalid(source['Source'])
 
             if net_access:
-                import asyncio
-
-                loop = asyncio.get_event_loop()
-                wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source['Source']))
-                if not wnpp_bugs and source['Source'] != metadata.get('Name'):
-                    wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(metadata.get('Name')))
-                if not wnpp_bugs:
-                    wnpp_bugs = loop.run_until_complete(
-                        find_archived_wnpp_bugs(source['Source'])
-                    )
-                    if wnpp_bugs:
-                        logging.warning(
-                            "Found archived ITP/RFP bugs for %s: %r", source['Source'], wnpp_bugs
-                        )
-                    else:
-                        logging.warning(
-                            "No relevant WNPP bugs found for %s", source['Source'])
-                else:
-                    logging.info("Found WNPP bugs for %s: %r", source['Source'], wnpp_bugs)
+                wnpp_bugs = find_wnpp_bugs_harder(source['Source'], metadata.get('Name'))
             else:
                 wnpp_bugs = None
 
@@ -882,7 +889,6 @@ def debianize(  # noqa: C901
 
 def main(argv=None):
     import argparse
-    from breezy.workingtree import WorkingTree
 
     import breezy  # noqa: E402
 
@@ -974,12 +980,16 @@ def main(argv=None):
 
     wt, subpath = WorkingTree.open_containing(args.directory)
 
+    # For now...
+    upstream_branch = wt.branch
+    upstream_subpath = subpath
+
     use_inotify = ((False if args.disable_inotify else None),)
     with wt.lock_write():
         try:
             debianize(
-                wt,
-                subpath,
+                wt, subpath,
+                upstream_branch, upstream_subpath,
                 use_inotify=use_inotify,
                 diligence=args.diligence,
                 trust=args.trust,
