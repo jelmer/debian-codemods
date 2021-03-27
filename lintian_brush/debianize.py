@@ -626,7 +626,7 @@ def import_build_deps(source, build_deps):
                 PkgRelation.str([rel]))
 
 
-def obtain_upstream_dist_tree(pristine_tar_source, upstream_tree, subpath, source_name, upstream_version, session, create_dist=None):
+def import_upstream_dist(pristine_tar_source, upstream_tree, subpath, source_name, upstream_version, session, create_dist=None):
     if pristine_tar_source.has_version(source_name, upstream_version):
         logging.warning(
             'Upstream version %s/%s already imported.',
@@ -718,11 +718,16 @@ def debianize(  # noqa: C901
         else:
             raise DebianDirectoryExists(wt.abspath(subpath))
 
-    metadata_items = list(guess_upstream_info(wt.abspath(subpath), trust_package=trust))
-    metadata = summarize_upstream_metadata(
-        metadata_items, '.', net_access=net_access,
-        consult_external_directory=consult_external_directory,
-        check=check)
+    metadata_items = []
+
+    def import_metadata_from_tree(t, sp):
+        metadata_items.extend(guess_upstream_info(t.abspath(sp), trust_package=trust))
+        return summarize_upstream_metadata(
+            metadata_items, t.abspath(sp), net_access=net_access,
+            consult_external_directory=consult_external_directory,
+            check=check)
+
+    metadata = import_metadata_from_tree(wt, subpath)
 
     if not verbose:
         commit_reporter = NullCommitReporter()
@@ -757,7 +762,7 @@ def debianize(  # noqa: C901
             source_name = generic_get_source_name(wt, metadata)
 
             pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
-            upstream_dist_revid, upstream_branch_name, tag_names = obtain_upstream_dist_tree(
+            upstream_dist_revid, upstream_branch_name, tag_names = import_upstream_dist(
                 pristine_tar_source, upstream_tree, subpath, source_name,
                 upstream_version, session, create_dist)
 
@@ -766,23 +771,15 @@ def debianize(  # noqa: C901
                     wt.branch, overwrite=True,
                     stop_revision=upstream_dist_revid)
 
+                # Gather metadata items again now that we're at the correct
+                # revision
+                metadata = import_metadata_from_tree(wt, subpath)
+
             os.chdir(wt.abspath(subpath))
 
-            # Gather metadata items again now that we're at the correct
-            # revision
-            metadata_items.extend(
-                guess_upstream_info(wt.abspath(subpath), trust_package=trust))
-            metadata = summarize_upstream_metadata(
-                metadata_items, wt.abspath(subpath), net_access=net_access,
-                consult_external_directory=consult_external_directory,
-                check=check)
-
             version = Version(upstream_version + "-1")
-            # TODO(jelmer): This is a reasonable guess, but won't always be
-            # okay.
 
-            buildsystem_subpath, buildsystem = get_buildsystem(
-                wt.abspath(subpath))
+            buildsystem_subpath, buildsystem = get_buildsystem(wt.abspath(subpath))
 
             if buildsystem:
                 try:

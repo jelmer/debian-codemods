@@ -22,8 +22,9 @@ import logging
 import os
 import sys
 
+from breezy.controldir import ControlDir
 from breezy.commit import NullCommitReporter
-from breezy.errors import AlreadyBranchError
+from breezy.errors import AlreadyBranchError, AlreadyControlDirError
 from breezy.workingtree import WorkingTree
 from debmutate.control import ControlEditor
 from debmutate.vcs import source_package_vcs
@@ -46,7 +47,7 @@ class VcsAlreadySpecified(Exception):
     """Vcs is already specified."""
 
 
-def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False):
+def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False, create=False):
     # TODO(jelmer): Allow creation of the repository as well
     check_clean_tree(wt, wt.basis_tree(), subpath)
 
@@ -88,10 +89,27 @@ def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False):
 
     wt.commit(
         message='Set Vcs headers.',
-        allow_pointless=False,
+        allow_pointless=(True if force else False),
         reporter=NullCommitReporter(),
         committer=committer,
     )
+
+    if create:
+        # TODO(jelmer): This functionality should be in breezy.propose
+        from breezy.propose import iter_hoster_instances
+        from urllib.parse import urlparse
+        for hoster in iter_hoster_instances():
+            if repo_url.startswith(hoster.base_url):
+                try:
+                    hoster.create_project(urlparse(repo_url).path)
+                except AlreadyControlDirError:
+                    logging.info('%s already exists', repo_url)
+                else:
+                    logging.info('Created %s', repo_url)
+                break
+        else:
+            logging.error(
+                'Unable to find a way to create %s', repo_url)
 
     return repo_url
 
@@ -109,6 +127,12 @@ def main():
     parser.add_argument(
         "--debug", help="Describe all considerd changes.", action="store_true"
     )
+    parser.add_argument(
+        '--create', help='Create the repository', action='store_true')
+    parser.add_argument(
+        '--force', action='store_true')
+    parser.add_argument(
+        '--push', help='Push branch', action='store_true')
 
     parser.add_argument(
         "--directory",
@@ -135,6 +159,7 @@ def main():
     breezy.initialize()
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
+    import breezy.plugins.gitlab
 
     wt, subpath = WorkingTree.open_containing(args.directory)
     if args.identity:
@@ -142,7 +167,7 @@ def main():
         return 0
 
     try:
-        update_offical_vcs(wt, subpath, repo_url=args.url)
+        repo_url = update_offical_vcs(wt, subpath, repo_url=args.url, force=args.force, create=args.create)
     except PendingChanges:
         logging.info("%s: Please commit pending changes first.", wt.basedir)
         return 1
@@ -156,6 +181,13 @@ def main():
     except AlreadyBranchError as e:
         logging.fatal('Repository already exists at %s', e.path)
         return 1
+
+    controldir = ControlDir.open(repo_url)
+    try:
+        branch = controldir.create_branch()
+    except AlreadyBranchError:
+        branch = controldir.open_branch()
+    wt.branch.push(branch)
 
 
 if __name__ == '__main__':
