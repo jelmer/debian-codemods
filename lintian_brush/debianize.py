@@ -419,7 +419,6 @@ def process_perl_build_tiny(es, session, wt, subpath, debian_path, metadata, com
     return control
 
 
-
 def process_golang(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -627,6 +626,67 @@ def import_build_deps(source, build_deps):
                 PkgRelation.str([rel]))
 
 
+def obtain_upstream_dist_tree(pristine_tar_source, upstream_tree, subpath, source_name, upstream_version, session, create_dist=None):
+    if pristine_tar_source.has_version(source_name, upstream_version):
+        logging.warning(
+            'Upstream version %s/%s already imported.',
+            source_name, upstream_version)
+        pristine_revids = pristine_tar_source\
+            .version_as_revisions(source_name, upstream_version)
+        upstream_branch_name = None
+        tag_names = {}
+    else:
+        (pristine_revids, tag_names,
+         upstream_branch_name) = import_upstream_version_from_dist(
+            upstream_tree, subpath,
+            source_name, upstream_version,
+            session=session,
+            create_dist=create_dist)
+
+    return pristine_revids[None], upstream_branch_name, tag_names
+
+
+def generic_get_source_name(wt, metadata):
+    try:
+        source_name = source_name_from_upstream_name(metadata['Name'])
+    except KeyError:
+        source_name = None
+    else:
+        if not valid_debian_package_name(source_name):
+            source_name = None
+    if source_name is None:
+        source_name = source_name_from_directory_name(wt.basedir)
+        if not valid_debian_package_name(source_name):
+            source_name = None
+    return source_name
+
+
+def get_upstream_version(branch, upstream_revision, metadata):
+    from breezy.plugins.debian.upstream.branch import (
+        upstream_branch_version,
+        upstream_version_add_revision,
+    )
+
+    upstream_version = upstream_branch_version(
+        branch, upstream_revision, metadata.get("Name")
+    )
+    if upstream_version is None and "X-Version" in metadata:
+        # They haven't done any releases yet. Assume we're ahead of
+        # the next announced release?
+        next_upstream_version = debian_upstream_version(metadata["X-Version"])
+        upstream_version = upstream_version_add_revision(
+            branch, next_upstream_version, upstream_revision, "~"
+        )
+    if upstream_version is None:
+        upstream_version = upstream_version_add_revision(
+            branch, "0", upstream_revision, "+"
+        )
+        logging.warning(
+            "Unable to determine upstream version, using %s.",
+            upstream_version)
+    return upstream_version
+
+
 def debianize(  # noqa: C901
     wt,
     subpath: str,
@@ -676,30 +736,11 @@ def debianize(  # noqa: C901
             if not wt.has_filename(debian_path):
                 wt.mkdir(debian_path)
 
-            from breezy.plugins.debian.upstream.branch import (
-                upstream_branch_version,
-                upstream_version_add_revision,
-            )
             # TODO(jelmer): Support resetting to e.g. last upstream release
 
             upstream_revision = wt.last_revision()
-            upstream_version = upstream_branch_version(
-                wt.branch, upstream_revision, metadata.get("Name")
-            )
-            if upstream_version is None and "X-Version" in metadata:
-                # They haven't done any releases yet. Assume we're ahead of
-                # the next announced release?
-                next_upstream_version = debian_upstream_version(metadata["X-Version"])
-                upstream_version = upstream_version_add_revision(
-                    wt.branch, next_upstream_version, upstream_revision, "~"
-                )
-            if upstream_version is None:
-                upstream_version = upstream_version_add_revision(
-                    wt.branch, "0", upstream_revision, "+"
-                )
-                logging.warning(
-                    "Unable to determine upstream version, using %s.",
-                    upstream_version)
+            upstream_version = get_upstream_version(
+                wt.branch, upstream_revision, metadata)
 
             if wt.last_revision() == upstream_revision:
                 # If at all possible, try to avoid copying
@@ -713,38 +754,17 @@ def debianize(  # noqa: C901
                 logging.info('Using schroot %s', schroot)
                 session = SchrootSession(schroot)
 
-            try:
-                source_name = source_name_from_upstream_name(metadata['Name'])
-            except KeyError:
-                source_name = None
-            else:
-                if not valid_debian_package_name(source_name):
-                    source_name = None
-            if source_name is None:
-                source_name = source_name_from_directory_name(wt.basedir)
-                if not valid_debian_package_name(source_name):
-                    source_name = None
+            source_name = generic_get_source_name(wt, metadata)
 
             pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
-            if pristine_tar_source.has_version(source_name, upstream_version):
-                logging.warning(
-                    'Upstream version %s/%s already imported.',
-                    source_name, upstream_version)
-                pristine_revids = pristine_tar_source\
-                    .version_as_revisions(source_name, upstream_version)
-                upstream_branch_name = None
-                tag_names = {}
-            else:
-                (pristine_revids, tag_names,
-                 upstream_branch_name) = import_upstream_version_from_dist(
-                    upstream_tree, subpath,
-                    source_name, upstream_version,
-                    session=session,
-                    create_dist=create_dist)
+            upstream_dist_revid, upstream_branch_name, tag_names = obtain_upstream_dist_tree(
+                pristine_tar_source, upstream_tree, subpath, source_name,
+                upstream_version, session, create_dist)
 
-            if wt.branch.last_revision() != pristine_revids[None]:
+            if wt.branch.last_revision() != upstream_dist_revid:
                 wt.pull(
-                    wt.branch, overwrite=True, stop_revision=pristine_revids[None])
+                    wt.branch, overwrite=True,
+                    stop_revision=upstream_dist_revid)
 
             os.chdir(wt.abspath(subpath))
 

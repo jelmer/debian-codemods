@@ -54,7 +54,7 @@ def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False):
     control_path = os.path.join(subpath, 'debian/control')
 
     if wt.has_filename(debcargo_path):
-        from debmutate.debcargo import DebcargoControlShimEditor, DebcargoEditor
+        from debmutate.debcargo import DebcargoControlShimEditor
         editor = DebcargoControlShimEditor.from_debian_dir(wt.abspath(os.path.join(subpath, 'debian')))
     elif wt.has_filename(control_path):
         control_path = wt.abspath(control_path)
