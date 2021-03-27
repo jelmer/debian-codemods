@@ -848,6 +848,10 @@ def debianize(  # noqa: C901
             logging.debug(
                 'No public VCS location specified and unable to guess it '
                 'based on maintainer e-mail.')
+        except FileNotFoundError:
+            logging.info(
+                'No control file or debcargo.toml file, '
+                'not setting vcs information.')
 
     return DebianizeResult(
         upstream_branch_name=upstream_branch_name,

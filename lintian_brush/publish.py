@@ -50,12 +50,17 @@ def update_offical_vcs(wt, subpath, repo_url=None, committer=None):
     # TODO(jelmer): Allow creation of the repository as well
     check_clean_tree(wt, wt.basis_tree(), subpath)
 
-    if wt.has_filename(os.path.join(subpath, 'debian/debcargo.toml')):
+    debcargo_path = os.path.join(subpath, 'debian/debcargo.toml')
+    control_path = os.path.join(subpath, 'debian/control')
+
+    if wt.has_filename(debcargo_path):
         from debmutate.debcargo import DebcargoControlShimEditor, DebcargoEditor
         editor = DebcargoControlShimEditor.from_debian_dir(wt.abspath(os.path.join(subpath, 'debian')))
-    else:
-        control_path = wt.abspath(os.path.join(subpath, 'debian/control'))
+    elif wt.has_filename(control_path):
+        control_path = wt.abspath(control_path)
         editor = ControlEditor(control_path)
+    else:
+        raise FileNotFoundError(control_path)
     with editor:
         try:
             vcs_type, url = source_package_vcs(editor.source)
