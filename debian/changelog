@@ -1,10 +1,10 @@
-lintian-brush (0.102) UNRELEASED; urgency=medium
+lintian-brush (0.102) unstable; urgency=medium
 
   * Report how many changes were skipped because of lintian overrides.
     Closes: #982883
   * Various improvements to debianize.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 23 Mar 2021 00:24:14 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 27 Mar 2021 20:43:53 +0000
 
 lintian-brush (0.101) unstable; urgency=medium
 
