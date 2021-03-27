@@ -46,7 +46,7 @@ class VcsAlreadySpecified(Exception):
     """Vcs is already specified."""
 
 
-def update_offical_vcs(wt, subpath, repo_url=None, committer=None):
+def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False):
     # TODO(jelmer): Allow creation of the repository as well
     check_clean_tree(wt, wt.basis_tree(), subpath)
 
@@ -67,7 +67,8 @@ def update_offical_vcs(wt, subpath, repo_url=None, committer=None):
         except KeyError:
             pass
         else:
-            raise VcsAlreadySpecified(vcs_type, url)
+            if not force:
+                raise VcsAlreadySpecified(vcs_type, url)
         maintainer_email = parseaddr(editor.source['Maintainer'])[1]
         source = editor.source['Source']
         if repo_url is None:
