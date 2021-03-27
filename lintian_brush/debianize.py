@@ -643,7 +643,7 @@ def debianize(  # noqa: C901
     verbose: bool = False,
     schroot: Optional[str] = None,
     create_dist=None,
-    committer = None
+    committer: Optional[str] = None
 ):
     if committer is None:
         committer = get_committer(wt)
