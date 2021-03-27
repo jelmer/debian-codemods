@@ -23,7 +23,7 @@ import re
 from typing import Optional, Tuple, List
 
 from debian.changelog import Changelog
-from debmutate.changelog import distribution_is_unreleased
+from debmutate.changelog import distribution_is_unreleased, all_sha_prefixed
 
 from breezy import osutils
 from breezy.branch import Branch
@@ -59,18 +59,6 @@ def gbp_conf_has_dch_section(tree: WorkingTree, debian_path: str = "") -> Option
 
 
 # TODO(jelmer): Use copy from debmutate.changelog
-def all_sha_prefixed(cl: Changelog) -> bool:
-    sha_prefixed = 0
-    for change in cl.changes():
-        if not change.startswith("  * "):
-            continue
-        if re.match(r"  \* \[[0-9a-f]{7}\] ", change):
-            sha_prefixed += 1
-        else:
-            return False
-    return sha_prefixed > 0
-
-
 def _is_unreleased_inaugural(cl: Changelog):
     if cl is None:
         return False
