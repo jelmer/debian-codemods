@@ -23,7 +23,7 @@ import os
 import sys
 
 from breezy.controldir import ControlDir
-from breezy.commit import NullCommitReporter
+from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.errors import AlreadyBranchError, AlreadyControlDirError
 from breezy.workingtree import WorkingTree
 from debmutate.control import ControlEditor
@@ -87,12 +87,17 @@ def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False, 
     if committer is None:
         committer = get_committer(wt)
 
-    wt.commit(
-        message='Set Vcs headers.',
-        allow_pointless=(True if force else False),
-        reporter=NullCommitReporter(),
-        committer=committer,
-    )
+    try:
+        wt.commit(
+            message='Set Vcs headers.',
+            allow_pointless=False,
+            reporter=NullCommitReporter(),
+            committer=committer,
+        )
+    except PointlessCommit:
+        if not force:
+            # This can't happen
+            raise
 
     if create:
         # TODO(jelmer): This functionality should be in breezy.propose
