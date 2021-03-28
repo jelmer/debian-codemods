@@ -1,3 +1,10 @@
+lintian-brush (0.103) UNRELEASED; urgency=medium
+
+  * debian-watch-file-uses-old-github-pattern: Also update watch files
+    that uses the 'releases' page.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 28 Mar 2021 15:49:39 +0100
+
 lintian-brush (0.102) unstable; urgency=medium
 
   * Report how many changes were skipped because of lintian overrides.
