@@ -15,7 +15,7 @@ with WatchEditor() as updater:
             continue
 
         parts = parsed_url.path.strip('/').split('/')
-        if len(parts) < 3 or parts[2] not in('tags', 'releases'):
+        if len(parts) < 3 or parts[2] not in ('tags', 'releases'):
             continue
 
         parts = w.matching_pattern.split('/')

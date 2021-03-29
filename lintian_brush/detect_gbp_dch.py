@@ -19,7 +19,6 @@
 
 
 import os
-import re
 from typing import Optional, Tuple, List
 
 from debian.changelog import Changelog

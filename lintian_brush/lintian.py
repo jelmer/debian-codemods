@@ -47,9 +47,10 @@ def read_list_file(f, vendor):
             continue
         if line.startswith('@'):
             cond, if_vendor, val = line.split(None, 2)
-            if (cond == '@if-vendor-is-not' and
-                    if_vendor.lower() == vendor.lower()):
-                continue
+            if cond == '@if-vendor-is-not':
+                if if_vendor.lower() == vendor.lower():
+                    continue
+                line = val
             else:
                 raise ValueError('invalid check %r' % cond)
         yield line

@@ -1,3 +1,10 @@
+lintian-brush (0.104) UNRELEASED; urgency=medium
+
+  * Fix parsing of @if-vendor-is-not in lintian lists files. Closes:
+    #986111
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 29 Mar 2021 18:50:02 +0100
+
 lintian-brush (0.103) unstable; urgency=medium
 
   * debian-watch-file-uses-old-github-pattern: Also update watch files
