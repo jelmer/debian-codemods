@@ -52,7 +52,7 @@ from debian.deb822 import Deb822
 from debmutate.reformatting import FormattingUnpreservable
 
 
-__version__ = (0, 102)
+__version__ = (0, 104)
 version_string = ".".join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ["certain", "confident", "likely", "possible", None]
 DEFAULT_MINIMUM_CERTAINTY = "certain"
