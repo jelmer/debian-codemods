@@ -1036,7 +1036,7 @@ def main(argv=None):
 
             try:
                 output_directory = es.enter_context(tempfile.TemporaryDirectory())
-                (changes_name, cl_version) = build_incrementally(
+                (changes_names, cl_version) = build_incrementally(
                     wt,
                     apt,
                     None,
@@ -1060,7 +1060,7 @@ def main(argv=None):
                 else:
                     logging.fatal('Error during %s: %s', phase, e.description)
                 return 1
-            logging.info('Built %s.', changes_name)
+            logging.info('Built %r.', changes_names)
 
     return 0
 
