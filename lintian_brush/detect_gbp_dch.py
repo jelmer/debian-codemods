@@ -22,7 +22,10 @@ import os
 from typing import Optional, Tuple, List
 
 from debian.changelog import Changelog
-from debmutate.changelog import distribution_is_unreleased, all_sha_prefixed
+from debmutate.changelog import (
+    all_sha_prefixed,
+    is_unreleased_inaugural,
+    )
 
 from breezy import osutils
 from breezy.branch import Branch
@@ -57,22 +60,6 @@ def gbp_conf_has_dch_section(tree: WorkingTree, debian_path: str = "") -> Option
         return parser.has_section("dch")
 
 
-# TODO(jelmer): Use copy from debmutate.changelog
-def _is_unreleased_inaugural(cl: Changelog):
-    if cl is None:
-        return False
-    if len(cl) != 1:
-        return False
-    if not distribution_is_unreleased(cl[0].distributions):
-        return False
-    actual = [change for change in cl[0].changes() if change.strip()]
-    if len(actual) != 1:
-        return False
-    if not actual[0].startswith('  * Initial release'):
-        return False
-    return True
-
-
 def guess_update_changelog(
     tree: WorkingTree, debian_path: str, cl: Optional[Changelog] = None
 ) -> Optional[Tuple[bool, str]]:
@@ -84,6 +71,12 @@ def guess_update_changelog(
     Returns:
       best guess at whether we should update changelog (bool)
     """
+    if debian_path != "debian":
+        return (
+            True,
+            "assuming changelog needs to be updated since "
+            "gbp dch only suppors a debian directory in the root of the "
+            "repository")
     changelog_path = osutils.pathjoin(debian_path, "changelog")
     if cl is None:
         try:
@@ -91,7 +84,7 @@ def guess_update_changelog(
                 cl = Changelog(f)
         except NoSuchFile:
             cl = None
-    if _is_unreleased_inaugural(cl):
+    if cl and is_unreleased_inaugural(cl):
         return (
             False,
             "assuming changelog does not need to be updated "
@@ -106,7 +99,7 @@ def guess_update_changelog(
 
 
 def _guess_update_changelog_from_tree(
-    tree: Tree, debian_path: str, cl: Changelog
+    tree: Tree, debian_path: str, cl: Optional[Changelog]
 ) -> Optional[Tuple[bool, str]]:
     if gbp_conf_has_dch_section(tree, debian_path):
         return (

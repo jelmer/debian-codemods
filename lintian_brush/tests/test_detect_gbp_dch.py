@@ -43,7 +43,26 @@ lintian-brush (0.1) UNRELEASED; urgency=medium
 class GuessUpdateChangelogTests(TestCaseWithTransport):
     def test_no_gbp_conf(self):
         tree = self.make_branch_and_tree(".")
-        self.assertTrue(guess_update_changelog(tree, "debian"))
+        self.assertEqual(
+            (True,
+             'Assuming changelog needs to be updated, since it is always changed together '
+             'with other files in the tree.'), guess_update_changelog(tree, "debian"))
+
+    def test_custom_path(self):
+        tree = self.make_branch_and_tree(".")
+        self.assertEqual((
+            True,
+            'Assuming changelog needs to be updated, since it is always changed together '
+            'with other files in the tree.'), guess_update_changelog(tree, "debian"))
+        self.assertEqual(
+            (True,
+             'assuming changelog needs to be updated since gbp dch only suppors a debian '
+             'directory in the root of the repository'), guess_update_changelog(tree, ""))
+        self.assertEqual(
+            (True,
+             'assuming changelog needs to be updated since gbp dch only suppors a debian '
+             'directory in the root of the repository'),
+            guess_update_changelog(tree, "lala/debian"))
 
     def test_gbp_conf_dch(self):
         tree = self.make_branch_and_tree(".")
