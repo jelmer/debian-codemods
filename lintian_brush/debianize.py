@@ -476,7 +476,7 @@ def process_r(es, session, wt, subpath, debian_path, metadata, compat_release, b
     else:
         archive = 'other'
 
-    source["Source"] = "r-%s-%s" % (archive, metadata['Name'])
+    source["Source"] = "r-%s-%s" % (archive, metadata['Name'].lower())
     source["Rules-Requires-Root"] = "no"
     source["Build-Depends"] = "dh-r, r-base-dev"
     source["Standards-Version"] = latest_standards_version()
@@ -489,7 +489,7 @@ def process_r(es, session, wt, subpath, debian_path, metadata, compat_release, b
         buildsystem="R")
     # For now, just assume a single binary package that is architecture-dependent.
     control.add_binary({
-        "Package": "r-%s-%s" % (archive, metadata['Name']),
+        "Package": "r-%s-%s" % (archive, metadata['Name'].lower()),
         "Architecture": 'any',
         'Depends': '${R:Depends}, ${shlibs:Depends}, ${misc:Depends}',
         'Recommends': '${R:Recommends}',
@@ -502,7 +502,7 @@ def process_octave(es, session, wt, subpath, debian_path, metadata, compat_relea
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
 
-    source["Source"] = "octave-%s" % metadata['Name']
+    source["Source"] = "octave-%s" % metadata['Name'].lower()
     source["Rules-Requires-Root"] = "no"
     source["Build-Depends"] = "dh-octave"
     source["Standards-Version"] = latest_standards_version()
@@ -514,7 +514,7 @@ def process_octave(es, session, wt, subpath, debian_path, metadata, compat_relea
         buildsystem="octave", addons=['octave'])
     # For now, just assume a single binary package that is architecture-independent.
     control.add_binary({
-        "Package": "octave-%s" % metadata['Name'],
+        "Package": "octave-%s" % metadata['Name'].lower(),
         "Architecture": 'all',
         'Depends': '${octave:Depends}, ${misc:Depends}',
         'Description': '${octave:Upstream-Description}',
