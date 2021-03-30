@@ -356,15 +356,15 @@ def process_npm(es, session, wt, subpath, debian_path, metadata, compat_release,
     setup_debhelper(
         wt, debian_path,
         source, compat_release=compat_release, addons=["nodejs"])
-    upstream_name = metadata['Name'].strip('@').replace('/', '-')
-    source['Source'] = "node-%s" % upstream_name.lower()
+    upstream_name = metadata['Name'].strip('@').replace('/', '-').replace('_', '-').replace('@', '').lower()
+    source['Source'] = "node-%s" % upstream_name
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     build_deps, test_deps = get_project_wide_deps(
         session, wt, subpath, buildsystem, buildsystem_subpath)
     import_build_deps(source, build_deps)
     control.add_binary(
-        {"Package": "node-%s" % upstream_name.lower(), "Architecture": "all"})
+        {"Package": "node-%s" % upstream_name, "Architecture": "all"})
     if wt.has_filename(os.path.join(subpath, "test/node.js")):
         source["Testsuite"] = "autopkgtest-pkg-nodejs"
         os.makedirs(
