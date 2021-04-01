@@ -24,7 +24,7 @@ LINTIAN_DATA_PATH = '/usr/share/lintian/data'
 
 
 def read_debhelper_lintian_data_file(f, sep):
-    for lineno, line in enumerate(f, 1):
+    for line in f:
         if line.startswith("#"):
             continue
         if not line.strip():
@@ -108,3 +108,12 @@ KNOWN_BINARY_FIELDS_PATH = os.path.join(
 
 def known_binary_fields(vendor):
     return _read_test_fields(KNOWN_BINARY_FIELDS_PATH, vendor)
+
+
+DEBHELPER_DH_COMMANDS_PATH = os.path.join(
+    LINTIAN_DATA_PATH, 'debhelper/dh_commands')
+
+
+def dh_commands():
+    with open(DEBHELPER_DH_COMMANDS_PATH, 'r') as f:
+        return list(read_debhelper_lintian_data_file(f, '='))

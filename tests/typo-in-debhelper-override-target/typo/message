@@ -1,0 +1,2 @@
+Fix typo in debian/rules rules: override_dh_instalman => override_dh_installman
+Fixed-Lintian-Tags: typo-in-debhelper-override-target
