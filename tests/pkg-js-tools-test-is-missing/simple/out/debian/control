@@ -1,0 +1,6 @@
+Source: node-blah
+Build-Depends: debhelper-compat (= 13)
+ , dh-sequence-nodejs
+ , node-tape <!nocheck>
+
+Package: node-blah

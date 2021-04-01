@@ -1,0 +1,5 @@
+Source: node-blah
+Build-Depends: debhelper-compat (= 13)
+ , dh-sequence-nodejs
+
+Package: node-blah

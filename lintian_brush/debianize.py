@@ -365,23 +365,7 @@ def process_npm(es, session, wt, subpath, debian_path, metadata, compat_release,
     import_build_deps(source, build_deps)
     control.add_binary(
         {"Package": "node-%s" % upstream_name, "Architecture": "all"})
-    if wt.has_filename(os.path.join(subpath, "test/node.js")):
-        source["Testsuite"] = "autopkgtest-pkg-nodejs"
-        os.makedirs(
-            os.path.join(debian_path, "debian/tests"), exist_ok=True)
-        with open(os.path.join(debian_path, "tests/pkg-js/test"), "w") as f:
-            f.write("mocha test/node.js")
-        source["Build-Depends"] = ensure_some_version(
-            source["Build-Depends"], "mocha <!nocheck>"
-        )
-    elif wt.has_filename(os.path.join(subpath, "test.js")):
-        os.makedirs(
-            os.path.join(debian_path, "debian/tests"), exist_ok=True)
-        with open(os.path.join(debian_path, "tests/pkg-js/test"), "w") as f:
-            f.write("tape test.js")
-        source["Build-Depends"] = ensure_some_version(
-            source["Build-Depends"], "node-tape <!nocheck>"
-        )
+    source["Testsuite"] = "autopkgtest-pkg-nodejs"
     return control
 
 
