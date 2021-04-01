@@ -16,6 +16,7 @@ with control as updater:
         (head_whitespace, relation, tail_whitespace) = entry
         if any(r.name in ('debhelper', 'debhelper-compat') for r in relation):
             uses_debhelper = True
+            break
 
     if uses_debhelper:
         for binary in updater.binaries:
