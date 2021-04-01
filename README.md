@@ -128,6 +128,7 @@ subset of the issues:
 * package-uses-deprecated-debhelper-compat-version
 * package-uses-old-debhelper-compat-version
 * patch-file-present-but-not-mentioned-in-series
+* pkg-js-tools-test-is-missing
 * possible-missing-colon-in-closes
 * priority-extra-is-replaced-by-priority-optional
 * public-upstream-key-in-native-package
