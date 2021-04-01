@@ -152,6 +152,7 @@ subset of the issues:
 * team/pkg-perl/vcs/no-team-url
 * trailing-whitespace
 * transitional-package-not-oldlibs-optional
+* typo-in-debhelper-override-target
 * unnecessary-team-upload
 * unnecessary-testsuite-autopkgtest-field
 * unused-build-dependency-on-cdbs
