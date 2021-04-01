@@ -363,7 +363,7 @@ def scrub_obsolete(wt, subpath, compat_release, upgrade_release, update_changelo
         specific_files.append(changelog_path)
 
     message = "\n".join(
-        ["Remove constraints unnecessary since %s." % upgrade_release, ""]
+        ["Remove constraints unnecessary since %s" % upgrade_release, ""]
         + ["* " + line for line in summary]
         + ["", "Changes-By: deb-scrub-obsolete"]
     )
