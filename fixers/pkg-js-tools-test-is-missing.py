@@ -6,7 +6,13 @@ import sys
 from debmutate.control import ensure_some_version, ControlEditor
 from debmutate.debhelper import get_sequences
 
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import report_result, LintianIssue, meets_minimum_certainty
+
+CERTAINTY = 'possible'
+
+
+if not meets_minimum_certainty(CERTAINTY):
+    sys.exit(2)
 
 
 with ControlEditor() as control_editor:
@@ -37,4 +43,4 @@ with ControlEditor() as control_editor:
             issue.report_fixed()
 
 
-report_result('Add autopkgtest for node.')
+report_result('Add autopkgtest for node.', certainty=CERTAINTY)
