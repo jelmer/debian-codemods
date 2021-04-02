@@ -118,7 +118,7 @@ class DistCreationFailed(Exception):
 
 def write_changelog_template(path, source_name, version, wnpp_bugs=None):
     if wnpp_bugs:
-        closes = " Closes: " + ", ".join([("#%d" % (bug,)) for bug in wnpp_bugs])
+        closes = " Closes: " + ", ".join([("#%d" % (bug,)) for bug, kind in wnpp_bugs])
     else:
         closes = ""
     cl = Changelog()
@@ -143,10 +143,10 @@ async def find_archived_wnpp_bugs(source_name):
         return []
     conn = await connect_udd_mirror()
     return [
-        row[0]
+        (row[0], row[1])
         for row in await conn.fetch(
             """\
-select id from archived_bugs where package = 'wnpp' and
+select id, substring(title, 0, 3) from archived_bugs where package = 'wnpp' and
 title like 'ITP: ' || $1 || ' -- %' OR
 title like 'RFP: ' || $1 || ' -- %'
 """,
@@ -163,10 +163,10 @@ async def find_wnpp_bugs(source_name):
         return []
     conn = await connect_udd_mirror()
     return [
-        row[0]
+        (row[0], row['type'])
         for row in await conn.fetch(
             """\
-select id from wnpp where source = $1 and type in ('ITP', 'RFP')
+select id, type from wnpp where source = $1 and type in ('ITP', 'RFP')
 """,
             source_name,
         )
@@ -578,10 +578,11 @@ def source_name_from_directory_name(path):
 class DebianizeResult(object):
     """Debianize result."""
 
-    def __init__(self, upstream_branch_name, tag_names, upstream_version):
+    def __init__(self, upstream_branch_name, tag_names, upstream_version, wnpp_bugs):
         self.upstream_branch_name = upstream_branch_name
         self.tag_names = tag_names
         self.upstream_version = upstream_version
+        self.wnpp_bugs = wnpp_bugs
 
 
 def get_project_wide_deps(session, wt, subpath, buildsystem, buildsystem_subpath):
@@ -668,9 +669,11 @@ def generic_get_source_name(wt, metadata):
 
 
 def get_upstream_version(
-        upstream_source, upstream_revision, metadata, snapshot=False,
+        upstream_source, metadata, snapshot=False,
         local_dir=None):
     upstream_version = upstream_source.get_latest_version(metadata.get("Name"), None)
+    upstream_revision = upstream_source.version_as_revision(
+        metadata.get("Name"), upstream_version)
 
     if upstream_version is None and "X-Version" in metadata:
         # They haven't done any releases yet. Assume we're ahead of
@@ -779,9 +782,8 @@ def debianize(  # noqa: C901
                 upstream_branch, snapshot=snapshot, local_dir=wt.controldir,
                 create_dist=(create_dist or partial(default_create_dist, session)))
 
-            upstream_revision = upstream_branch.last_revision()
             upstream_version = get_upstream_version(
-                upstream_source, upstream_revision, metadata,
+                upstream_source, metadata,
                 snapshot=snapshot, local_dir=wt.controldir)
 
             source_name = generic_get_source_name(wt, metadata)
@@ -793,7 +795,7 @@ def debianize(  # noqa: C901
 
             if wt.branch.last_revision() != upstream_dist_revid:
                 wt.pull(
-                    wt.branch, overwrite=True,
+                    upstream_source.upstream_branch, overwrite=True,
                     stop_revision=upstream_dist_revid)
 
                 # Gather metadata items again now that we're at the correct
@@ -884,6 +886,7 @@ def debianize(  # noqa: C901
     return DebianizeResult(
         upstream_branch_name=upstream_branch_name,
         tag_names=tag_names,
+        wnpp_bugs=wnpp_bugs,
         upstream_version=upstream_version)
 
 
