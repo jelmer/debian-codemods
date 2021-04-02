@@ -71,6 +71,11 @@ from upstream_ontologist.debian import (
 )
 
 from breezy.plugins.debian.upstream.pristinetar import get_pristine_tar_source
+from breezy.plugins.debian.upstream.branch import (
+    upstream_version_add_revision,
+    UpstreamBranchSource,
+)
+
 
 from . import (
     available_lintian_fixers,
@@ -206,57 +211,52 @@ def setup_debhelper(wt, debian_path, source, compat_release, addons=None, env=No
     )
 
 
+def default_create_dist(session, tree, package, version, target_dir):
+    os.environ['SETUPTOOLS_SCM_PRETEND_VERSION'] = version
+    try:
+        with session:
+            # TODO(jelmer): set include_controldir=True to make
+            # setuptools_scm happy?
+            return ogni_create_dist(
+                session, tree, target_dir,
+                include_controldir=False,
+                subdir=(package or "package"),
+                cleanup=False)
+    except NoBuildToolsFound:
+        logging.info(
+            "No build tools found, falling back to simple export.")
+        return None
+    except NotImplementedError:
+        logging.info(
+            "Build system does not support dist, falling back "
+            "to export.")
+        return None
+    except DetailedFailure as e:
+        raise DistCreationFailed(str(e), e.error)
+    except UnidentifiedError as e:
+        raise DistCreationFailed(str(e))
+
+
 def import_upstream_version_from_dist(
-        wt, subpath, source_name, upstream_version,
-        session, create_dist=None):
+        wt, subpath, upstream_source, source_name, upstream_version,
+        session):
     from breezy.plugins.debian import default_orig_dir
     from breezy.plugins.debian.util import debuild_config
     from breezy.plugins.debian.merge_upstream import get_tarballs, do_import
     from breezy.plugins.debian.upstream.branch import UpstreamBranchSource
 
-    if create_dist is None:
-        def create_dist(tree, package, version, target_dir):
-            os.environ['SETUPTOOLS_SCM_PRETEND_VERSION'] = version
-            try:
-                with session:
-                    # TODO(jelmer): set include_controldir=True to make
-                    # setuptools_scm happy?
-                    return ogni_create_dist(
-                        session, tree, target_dir,
-                        include_controldir=False,
-                        subdir=(package or "package"),
-                        cleanup=False)
-            except NoBuildToolsFound:
-                logging.info(
-                    "No build tools found, falling back to simple export.")
-                return None
-            except NotImplementedError:
-                logging.info(
-                    "Build system does not support dist, falling back "
-                    "to export.")
-                return None
-            except DetailedFailure as e:
-                raise DistCreationFailed(str(e), e.error)
-            except UnidentifiedError as e:
-                raise DistCreationFailed(str(e))
-
-    config = debuild_config(wt, subpath)
-    upstream_source = UpstreamBranchSource.from_branch(
-        wt.branch, config=config, local_dir=wt.controldir,
-        create_dist=create_dist, snapshot=False)
     tag_names = {}
     with TemporaryDirectory() as target_dir:
         locations = upstream_source.fetch_tarballs(
             source_name, upstream_version, target_dir, components=[None])
-        orig_dir = config.orig_dir or default_orig_dir
         tarball_filenames = get_tarballs(
-            orig_dir, wt, source_name, upstream_version, locations)
+            default_orig_dir, wt, source_name, upstream_version, locations)
         upstream_revisions = upstream_source\
             .version_as_revisions(source_name, upstream_version)
         files_excluded = None
         imported_revids = do_import(
             wt, subpath, tarball_filenames, source_name, upstream_version,
-            current_version=None, upstream_branch=wt.branch,
+            current_version=None, upstream_branch=upstream_source.upstream_branch,
             upstream_revisions=upstream_revisions,
             merge_type=None, files_excluded=files_excluded)
         pristine_revids = {}
@@ -630,7 +630,9 @@ def import_build_deps(source, build_deps):
                 PkgRelation.str([rel]))
 
 
-def import_upstream_dist(pristine_tar_source, upstream_vcs_tree, subpath, source_name, upstream_version, session, create_dist=None):
+def import_upstream_dist(
+        pristine_tar_source, wt, upstream_source, subpath, source_name,
+        upstream_version, session):
     if pristine_tar_source.has_version(source_name, upstream_version):
         logging.warning(
             'Upstream version %s/%s already imported.',
@@ -642,10 +644,10 @@ def import_upstream_dist(pristine_tar_source, upstream_vcs_tree, subpath, source
     else:
         (pristine_revids, tag_names,
          upstream_branch_name) = import_upstream_version_from_dist(
-            upstream_vcs_tree, subpath,
+            wt, subpath,
+            upstream_source,
             source_name, upstream_version,
-            session=session,
-            create_dist=create_dist)
+            session=session)
 
     return pristine_revids[None], upstream_branch_name, tag_names
 
@@ -666,28 +668,21 @@ def generic_get_source_name(wt, metadata):
 
 
 def get_upstream_version(
-        branch, upstream_revision, metadata, snapshot=False,
+        upstream_source, upstream_revision, metadata, snapshot=False,
         local_dir=None):
-    from breezy.plugins.debian.upstream.branch import (
-        upstream_version_add_revision,
-        UpstreamBranchSource,
-    )
-
-    source = UpstreamBranchSource.from_branch(
-            branch, snapshot=snapshot, local_dir=local_dir)
-    upstream_version = source.get_latest_version(metadata.get("Name"), None)
+    upstream_version = upstream_source.get_latest_version(metadata.get("Name"), None)
 
     if upstream_version is None and "X-Version" in metadata:
         # They haven't done any releases yet. Assume we're ahead of
         # the next announced release?
         next_upstream_version = debian_upstream_version(metadata["X-Version"])
         upstream_version = upstream_version_add_revision(
-            source.upstream_branch, next_upstream_version,
+            upstream_source.upstream_branch, next_upstream_version,
             upstream_revision, "~"
         )
     if upstream_version is None:
         upstream_version = upstream_version_add_revision(
-            source.upstream_branch, "0", upstream_revision, "+"
+            upstream_source.upstream_branch, "0", upstream_revision, "+"
         )
         logging.warning(
             "Unable to determine upstream version, using %s.",
@@ -774,29 +769,27 @@ def debianize(  # noqa: C901
             if not wt.has_filename(debian_path):
                 wt.mkdir(debian_path)
 
-            upstream_revision = upstream_branch.last_revision()
-            upstream_version = get_upstream_version(
-                upstream_branch, upstream_revision, metadata,
-                snapshot=snapshot, local_dir=wt.controldir)
-
-            if wt.last_revision() == upstream_revision:
-                # If at all possible, try to avoid copying
-                upstream_vcs_tree = wt
-            else:
-                upstream_vcs_tree = upstream_branch.repository.revision_tree(upstream_revision)
-
             if schroot is None:
                 session = PlainSession()
             else:
                 logging.info('Using schroot %s', schroot)
                 session = SchrootSession(schroot)
 
+            upstream_source = UpstreamBranchSource.from_branch(
+                upstream_branch, snapshot=snapshot, local_dir=wt.controldir,
+                create_dist=(create_dist or partial(default_create_dist, session)))
+
+            upstream_revision = upstream_branch.last_revision()
+            upstream_version = get_upstream_version(
+                upstream_source, upstream_revision, metadata,
+                snapshot=snapshot, local_dir=wt.controldir)
+
             source_name = generic_get_source_name(wt, metadata)
 
             pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
             upstream_dist_revid, upstream_branch_name, tag_names = import_upstream_dist(
-                pristine_tar_source, upstream_vcs_tree, upstream_subpath, source_name,
-                upstream_version, session, create_dist)
+                pristine_tar_source, wt, upstream_source, upstream_subpath, source_name,
+                upstream_version, session)
 
             if wt.branch.last_revision() != upstream_dist_revid:
                 wt.pull(
@@ -1067,8 +1060,8 @@ def main(argv=None):
         default=50,
         help=argparse.SUPPRESS)
     parser.add_argument(
-        '--snapshot', action='store_true',
-        help='Package latest upstream snapshot rather than release.')
+        '--release', action='store_true',
+        help='Package latest upstream release rather than a snapshot.')
     parser.add_argument(
         "--recursive", "-r",
         action="store_true",
@@ -1115,7 +1108,7 @@ def main(argv=None):
                 consult_external_directory=args.consult_external_directory,
                 verbose=args.verbose,
                 schroot=args.schroot,
-                snapshot=args.snapshot,
+                snapshot=(not args.release),
             )
         except PendingChanges:
             logging.info("%s: Please commit pending changes first.", wt.basedir)
@@ -1164,27 +1157,35 @@ def main(argv=None):
                     'Packaging %r to address %r',
                      upstream_info.branch_url, problem)
                 upstream_branch = Branch.open(upstream_info.branch_url)
+                vcs_path = os.path.join(self.vcs_directory, upstream_info.name.replace('/', '-'))
+                if os.path.exists(vcs_path):
+                    shutil.rmtree(vcs_path)
                 result = ControlDir.create_branch_convenience(
-                    os.path.join(self.vcs_directory, upstream_info.name.replace('/', '-')),
-                    force_new_tree=True,
+                    vcs_path, force_new_tree=True,
                     format=upstream_branch.controldir.cloning_metadir())
-                debianize(
-                    result.controldir.open_workingtree(), '',
-                    upstream_branch, upstream_info.branch_subpath,
-                    use_inotify=use_inotify,
-                    diligence=args.diligence,
-                    trust=args.trust,
-                    check=args.check,
-                    net_access=not args.disable_net_access,
-                    force_new_directory=args.force_new_directory,
-                    force_subprocess=args.force_subprocess,
-                    compat_release=compat_release,
-                    consult_external_directory=args.consult_external_directory,
-                    verbose=args.verbose, schroot=args.schroot,
-                    snapshot=args.snapshot)
-                do_build(
-                    wt, subpath, self.apt_repo.directory,
-                    extra_repositories=self.apt_repo.sources_lines())
+                new_wt = result.controldir.open_workingtree()
+                new_subpath = ''
+                try:
+                    debianize(
+                        new_wt, new_subpath,
+                        upstream_branch, upstream_info.branch_subpath,
+                        use_inotify=use_inotify,
+                        diligence=args.diligence,
+                        trust=args.trust,
+                        check=args.check,
+                        net_access=not args.disable_net_access,
+                        force_new_directory=args.force_new_directory,
+                        force_subprocess=args.force_subprocess,
+                        compat_release=compat_release,
+                        consult_external_directory=args.consult_external_directory,
+                        verbose=args.verbose, schroot=args.schroot,
+                        snapshot=(not args.release))
+                    do_build(
+                        new_wt, new_subpath, self.apt_repo.directory,
+                        extra_repositories=self.apt_repo.sources_lines())
+                except BaseException:
+                    shutil.rmtree(vcs_path)
+                    raise
                 self.apt_repo.refresh()
                 return True
 
@@ -1198,8 +1199,11 @@ def main(argv=None):
             es.enter_context(session)
             apt = AptManager.from_session(session)
             if not args.output_directory:
-                args.output_directory = es.enter_context(TemporaryDirectory())
-            vcs_directory = args.output_directory
+                from xdg.BaseDirectory import xdg_cache_home
+                args.output_directory = os.path.join(xdg_cache_home, 'debianize')
+                os.makedirs(args.output_directory, exist_ok=True)
+                logging.info(
+                    'Building dependencies in %s', args.output_directory)
 
             def do_build(wt, subpath, incoming_directory, extra_repositories=None):
                 return build_incrementally(
@@ -1219,11 +1223,15 @@ def main(argv=None):
 
             try:
                 if args.recursive:
-                    with SimpleTrustedAptRepo(args.output_directory) as apt_repo:
+                    vcs_directory = os.path.join(args.output_directory, 'vcs')
+                    os.makedirs(vcs_directory, exist_ok=True)
+                    apt_directory = os.path.join(args.output_directory, 'apt')
+                    os.makedirs(apt_directory, exist_ok=True)
+                    with SimpleTrustedAptRepo(apt_directory) as apt_repo:
                         (changes_names, cl_version) = iterate_with_build_fixers(
                             [DebianizeFixer(vcs_directory, apt_repo)],
                             partial(
-                                do_build, wt, subpath, args.output_directory,
+                                do_build, wt, subpath, apt_repo.directory,
                                 extra_repositories=apt_repo.sources_lines()))
                 else:
                     (changes_names, cl_version) = do_build(
