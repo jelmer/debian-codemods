@@ -682,8 +682,10 @@ def generic_get_source_name(wt, metadata):
 
 def get_upstream_version(
         upstream_source, metadata, snapshot=False,
-        local_dir=None):
-    upstream_version = upstream_source.get_latest_version(metadata.get("Name"), None)
+        local_dir=None,
+        upstream_version=None):
+    if upstream_version is None:
+        upstream_version = upstream_source.get_latest_version(metadata.get("Name"), None)
     upstream_revision = upstream_source.version_as_revision(
         metadata.get("Name"), upstream_version)
 
@@ -747,7 +749,8 @@ def debianize(  # noqa: C901
     create_dist=None,
     committer: Optional[str] = None,
     snapshot: bool = False,
-    debian_revision: str = "1"
+    debian_revision: str = "1",
+    upstream_version: Optional[str] = None
 ):
     if committer is None:
         committer = get_committer(wt)
@@ -801,7 +804,8 @@ def debianize(  # noqa: C901
 
             result.upstream_version = upstream_version = get_upstream_version(
                 upstream_source, metadata,
-                snapshot=snapshot, local_dir=wt.controldir)
+                snapshot=snapshot, local_dir=wt.controldir,
+                upstream_version=upstream_version)
 
             def kickstart_from_dist(wt, subpath):
                 logging.info("Using upstream version %s", upstream_version)
@@ -1108,6 +1112,10 @@ def main(argv=None):
         type=str,
         default='1',
         help='Debian revision for the new release.')
+    parser.add_argument(
+        '--upstream-version',
+        type=str,
+        help='Upstream version to package.')
     parser.add_argument('upstream', nargs='?', type=str)
 
     args = parser.parse_args(argv)
@@ -1152,6 +1160,7 @@ def main(argv=None):
                 schroot=args.schroot,
                 snapshot=(not args.release),
                 debian_revision=args.debian_revision,
+                upstream_version=args.upstream_version,
             )
         except PendingChanges:
             logging.info("%s: Please commit pending changes first.", wt.basedir)
