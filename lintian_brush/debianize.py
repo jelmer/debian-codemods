@@ -734,7 +734,8 @@ def debianize(  # noqa: C901
     schroot: Optional[str] = None,
     create_dist=None,
     committer: Optional[str] = None,
-    snapshot: bool = False
+    snapshot: bool = False,
+    debian_revision: str = "1"
 ):
     if committer is None:
         committer = get_committer(wt)
@@ -804,8 +805,6 @@ def debianize(  # noqa: C901
 
             os.chdir(wt.abspath(subpath))
 
-            version = Version(upstream_version + "-1")
-
             buildsystem_subpath, buildsystem = get_buildsystem(wt.abspath(subpath))
 
             if buildsystem:
@@ -835,6 +834,7 @@ def debianize(  # noqa: C901
             else:
                 wnpp_bugs = None
 
+            version = Version(upstream_version + "-" + debian_revision)
             write_changelog_template(
                 wt.abspath(os.path.join(debian_path, "changelog")),
                 source["Source"],
@@ -926,6 +926,19 @@ def find_upstream(problem) -> Optional[UpstreamInfo]:
                 name=problem.package,
                 branch_url='https://%s' % '/'.join(problem.package.split('/')[:3]),
                 branch_subpath='')
+    elif problem.kind == 'missing-rust-crate':
+        from urllib.request import urlopen
+        http_url = 'https://crates.io/api/v1/crates/%s' % problem.crate
+        from urllib.request import urlopen, Request
+        import json
+        headers = {'User-Agent': 'debianize', 'Accept': 'application/json'}
+        http_contents = urlopen(Request(http_url, headers=headers)).read()
+        data = json.loads(http_contents)
+        upstream_branch = data['crate']['repository']
+        name = data['crate']['name']
+        return UpstreamInfo(
+            branch_url=upstream_branch, branch_subpath='',
+            name=name)
     return None
 
 
@@ -1073,6 +1086,11 @@ def main(argv=None):
         '--output-directory',
         type=str,
         help='Output directory.')
+    parser.add_argument(
+        '--debian-revision',
+        type=str,
+        default='1',
+        help='Debian revision for the new release.')
 
     args = parser.parse_args(argv)
 
@@ -1112,6 +1130,7 @@ def main(argv=None):
                 verbose=args.verbose,
                 schroot=args.schroot,
                 snapshot=(not args.release),
+                debian_revision=args.debian_revision,
             )
         except PendingChanges:
             logging.info("%s: Please commit pending changes first.", wt.basedir)
@@ -1182,6 +1201,7 @@ def main(argv=None):
                         compat_release=compat_release,
                         consult_external_directory=args.consult_external_directory,
                         verbose=args.verbose, schroot=args.schroot,
+                        debian_revision=args.debian_revision,
                         snapshot=(not args.release))
                     do_build(
                         new_wt, new_subpath, self.apt_repo.directory,
