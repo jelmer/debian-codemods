@@ -31,7 +31,7 @@ import shutil
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from urllib.parse import urlparse
 import warnings
 
@@ -45,6 +45,7 @@ from breezy.branch import Branch
 from breezy.controldir import ControlDir
 from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
+from breezy.revision import NULL_REVISION
 from breezy.workingtree import WorkingTree
 
 from ognibuild import DetailedFailure, UnidentifiedError
@@ -293,7 +294,8 @@ class ResetOnFailure(object):
         return False
 
 
-def process_setup_py(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
+def process_setup_py(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+    kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     source["Rules-Requires-Root"] = "no"
@@ -331,7 +333,8 @@ def process_setup_py(es, session, wt, subpath, debian_path, metadata, compat_rel
     return control
 
 
-def process_maven(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
+def process_maven(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+    kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     source["Rules-Requires-Root"] = "no"
@@ -354,7 +357,8 @@ def process_maven(es, session, wt, subpath, debian_path, metadata, compat_releas
     return control
 
 
-def process_npm(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
+def process_npm(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+    kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     setup_debhelper(
@@ -379,7 +383,8 @@ def perl_package_name(upstream_name):
     return "lib%s-perl" % upstream_name.replace('::', '-').replace('_', '').lower()
 
 
-def process_dist_zilla(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
+def process_dist_zilla(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+    kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     upstream_name = metadata['Name']
@@ -402,7 +407,8 @@ def process_dist_zilla(es, session, wt, subpath, debian_path, metadata, compat_r
     return control
 
 
-def process_perl_build_tiny(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
+def process_perl_build_tiny(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+    kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     upstream_name = metadata['Name']
@@ -423,7 +429,8 @@ def process_perl_build_tiny(es, session, wt, subpath, debian_path, metadata, com
     return control
 
 
-def process_golang(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
+def process_golang(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+    kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     source["Rules-Requires-Root"] = "no"
@@ -467,7 +474,8 @@ def process_golang(es, session, wt, subpath, debian_path, metadata, compat_relea
     return control
 
 
-def process_r(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
+def process_r(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+    kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
 
@@ -500,7 +508,8 @@ def process_r(es, session, wt, subpath, debian_path, metadata, compat_release, b
     return control
 
 
-def process_octave(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
+def process_octave(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+    kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
 
@@ -524,7 +533,8 @@ def process_octave(es, session, wt, subpath, debian_path, metadata, compat_relea
     return control
 
 
-def process_default(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
+def process_default(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+    kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     upstream_name = metadata['Name']
@@ -546,7 +556,9 @@ def process_default(es, session, wt, subpath, debian_path, metadata, compat_rele
     return control
 
 
-def process_cargo(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
+def process_cargo(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+    wt.branch.generate_revision_history(NULL_REVISION)
+    reset_tree(wt, wt.basis_tree(), subpath)
     from debmutate.debcargo import DebcargoControlShimEditor
     upstream_name = metadata['Name']
     control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name))
@@ -575,14 +587,14 @@ def source_name_from_directory_name(path):
     return d
 
 
+@dataclass
 class DebianizeResult(object):
     """Debianize result."""
 
-    def __init__(self, upstream_branch_name, tag_names, upstream_version, wnpp_bugs):
-        self.upstream_branch_name = upstream_branch_name
-        self.tag_names = tag_names
-        self.upstream_version = upstream_version
-        self.wnpp_bugs = wnpp_bugs
+    upstream_branch_name: Optional[str] = None
+    tag_names: Optional[List[str]] = None
+    upstream_version: Optional[str] = None
+    wnpp_bugs: Optional[List[Tuple[int, str]]] = None
 
 
 def get_project_wide_deps(session, wt, subpath, buildsystem, buildsystem_subpath):
@@ -706,13 +718,13 @@ def find_wnpp_bugs_harder(source_name, upstream_name):
         )
         if wnpp_bugs:
             logging.warning(
-                "Found archived ITP/RFP bugs for %s: %r", source_name, wnpp_bugs
+                "Found archived ITP/RFP bugs for %s: %r", source_name, [bug for bug, kind in wnpp_bugs]
             )
         else:
             logging.warning(
                 "No relevant WNPP bugs found for %s", source_name)
     else:
-        logging.info("Found WNPP bugs for %s: %r", source_name, wnpp_bugs)
+        logging.info("Found WNPP bugs for %s: %r", source_name, [bug for bug, kind in wnpp_bugs])
 
     return wnpp_bugs
 
@@ -751,20 +763,24 @@ def debianize(  # noqa: C901
             raise DebianDirectoryExists(wt.abspath(subpath))
 
     metadata_items = []
+    metadata = {}
 
     def import_metadata_from_tree(t, sp):
         metadata_items.extend(guess_upstream_info(t.abspath(sp), trust_package=trust))
-        return summarize_upstream_metadata(
-            metadata_items, t.abspath(sp), net_access=net_access,
-            consult_external_directory=consult_external_directory,
-            check=check)
+        metadata.update(
+            summarize_upstream_metadata(
+                metadata_items, t.abspath(sp), net_access=net_access,
+                consult_external_directory=consult_external_directory,
+                check=check))
 
-    metadata = import_metadata_from_tree(wt, subpath)
+    import_metadata_from_tree(wt, subpath)
 
     if not verbose:
         commit_reporter = NullCommitReporter()
     else:
         commit_reporter = None
+
+    result = DebianizeResult()
 
     with wt.lock_write():
         with contextlib.ExitStack() as es:
@@ -783,25 +799,28 @@ def debianize(  # noqa: C901
                 upstream_branch, snapshot=snapshot, local_dir=wt.controldir,
                 create_dist=(create_dist or partial(default_create_dist, session)))
 
-            upstream_version = get_upstream_version(
+            result.upstream_version = upstream_version = get_upstream_version(
                 upstream_source, metadata,
                 snapshot=snapshot, local_dir=wt.controldir)
 
-            source_name = generic_get_source_name(wt, metadata)
+            def kickstart_from_dist(wt, subpath):
+                logging.info("Using upstream version %s", upstream_version)
 
-            pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
-            upstream_dist_revid, upstream_branch_name, tag_names = import_upstream_dist(
-                pristine_tar_source, wt, upstream_source, upstream_subpath, source_name,
-                upstream_version, session)
+                source_name = generic_get_source_name(wt, metadata)
 
-            if wt.branch.last_revision() != upstream_dist_revid:
-                wt.pull(
-                    upstream_source.upstream_branch, overwrite=True,
-                    stop_revision=upstream_dist_revid)
+                pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
+                upstream_dist_revid, result.upstream_branch_name, result.tag_names = import_upstream_dist(
+                    pristine_tar_source, wt, upstream_source, upstream_subpath, source_name,
+                    upstream_version, session)
 
-                # Gather metadata items again now that we're at the correct
-                # revision
-                metadata = import_metadata_from_tree(wt, subpath)
+                if wt.branch.last_revision() != upstream_dist_revid:
+                    wt.pull(
+                        upstream_source.upstream_branch, overwrite=True,
+                        stop_revision=upstream_dist_revid)
+
+                    # Gather metadata items again now that we're at the correct
+                    # revision
+                    import_metadata_from_tree(wt, subpath)
 
             os.chdir(wt.abspath(subpath))
 
@@ -822,7 +841,8 @@ def debianize(  # noqa: C901
                 wt, subpath, debian_path,
                 metadata=metadata, compat_release=compat_release,
                 buildsystem=buildsystem,
-                buildsystem_subpath=buildsystem_subpath)
+                buildsystem_subpath=buildsystem_subpath,
+                kickstart_from_dist=kickstart_from_dist)
 
             source = control.source
 
@@ -833,6 +853,8 @@ def debianize(  # noqa: C901
                 wnpp_bugs = find_wnpp_bugs_harder(source['Source'], metadata.get('Name'))
             else:
                 wnpp_bugs = None
+
+            result.wnpp_bugs = wnpp_bugs
 
             version = Version(upstream_version + "-" + debian_revision)
             write_changelog_template(
@@ -883,12 +905,7 @@ def debianize(  # noqa: C901
                 'No control file or debcargo.toml file, '
                 'not setting vcs information.')
 
-    return DebianizeResult(
-        upstream_branch_name=upstream_branch_name,
-        tag_names=tag_names,
-        wnpp_bugs=wnpp_bugs,
-        upstream_version=upstream_version)
-
+    return result
 
 @dataclass
 class UpstreamInfo:
@@ -1091,6 +1108,7 @@ def main(argv=None):
         type=str,
         default='1',
         help='Debian revision for the new release.')
+    parser.add_argument('upstream', nargs='?', type=str)
 
     args = parser.parse_args(argv)
 
@@ -1106,8 +1124,11 @@ def main(argv=None):
     wt, subpath = WorkingTree.open_containing(args.directory)
 
     # For now...
-    upstream_branch = wt.branch
-    upstream_subpath = subpath
+    if args.upstream:
+        upstream_branch, upstream_subpath = Branch.open_containing(args.upstream)
+    else:
+        upstream_branch = wt.branch
+        upstream_subpath = subpath
 
     from breezy import breakin
     breakin.hook_debugger_to_signal()
