@@ -23,11 +23,15 @@ __all__ = [
     ]
 
 import contextlib
+from dataclasses import dataclass
+from functools import partial
 import logging
 import os
 import shutil
+import subprocess
 import sys
-from typing import Optional
+from tempfile import TemporaryDirectory
+from typing import Optional, Tuple
 from urllib.parse import urlparse
 import warnings
 
@@ -38,6 +42,7 @@ from debian.deb822 import PkgRelation
 
 from breezy import osutils
 from breezy.branch import Branch
+from breezy.controldir import ControlDir
 from breezy.errors import AlreadyBranchError
 from breezy.commit import NullCommitReporter
 from breezy.workingtree import WorkingTree
@@ -208,7 +213,6 @@ def import_upstream_version_from_dist(
     from breezy.plugins.debian.util import debuild_config
     from breezy.plugins.debian.merge_upstream import get_tarballs, do_import
     from breezy.plugins.debian.upstream.branch import UpstreamBranchSource
-    import tempfile
 
     if create_dist is None:
         def create_dist(tree, package, version, target_dir):
@@ -241,7 +245,7 @@ def import_upstream_version_from_dist(
         wt.branch, config=config, local_dir=wt.controldir,
         create_dist=create_dist, snapshot=False)
     tag_names = {}
-    with tempfile.TemporaryDirectory() as target_dir:
+    with TemporaryDirectory() as target_dir:
         locations = upstream_source.fetch_tarballs(
             source_name, upstream_version, target_dir, components=[None])
         orig_dir = config.orig_dir or default_orig_dir
@@ -626,7 +630,7 @@ def import_build_deps(source, build_deps):
                 PkgRelation.str([rel]))
 
 
-def import_upstream_dist(pristine_tar_source, upstream_tree, subpath, source_name, upstream_version, session, create_dist=None):
+def import_upstream_dist(pristine_tar_source, upstream_vcs_tree, subpath, source_name, upstream_version, session, create_dist=None):
     if pristine_tar_source.has_version(source_name, upstream_version):
         logging.warning(
             'Upstream version %s/%s already imported.',
@@ -638,7 +642,7 @@ def import_upstream_dist(pristine_tar_source, upstream_tree, subpath, source_nam
     else:
         (pristine_revids, tag_names,
          upstream_branch_name) = import_upstream_version_from_dist(
-            upstream_tree, subpath,
+            upstream_vcs_tree, subpath,
             source_name, upstream_version,
             session=session,
             create_dist=create_dist)
@@ -661,25 +665,29 @@ def generic_get_source_name(wt, metadata):
     return source_name
 
 
-def get_upstream_version(branch, upstream_revision, metadata):
+def get_upstream_version(
+        branch, upstream_revision, metadata, snapshot=False,
+        local_dir=None):
     from breezy.plugins.debian.upstream.branch import (
-        upstream_branch_version,
         upstream_version_add_revision,
+        UpstreamBranchSource,
     )
 
-    upstream_version = upstream_branch_version(
-        branch, upstream_revision, metadata.get("Name")
-    )
+    source = UpstreamBranchSource.from_branch(
+            branch, snapshot=snapshot, local_dir=local_dir)
+    upstream_version = source.get_latest_version(metadata.get("Name"), None)
+
     if upstream_version is None and "X-Version" in metadata:
         # They haven't done any releases yet. Assume we're ahead of
         # the next announced release?
         next_upstream_version = debian_upstream_version(metadata["X-Version"])
         upstream_version = upstream_version_add_revision(
-            branch, next_upstream_version, upstream_revision, "~"
+            source.upstream_branch, next_upstream_version,
+            upstream_revision, "~"
         )
     if upstream_version is None:
         upstream_version = upstream_version_add_revision(
-            branch, "0", upstream_revision, "+"
+            source.upstream_branch, "0", upstream_revision, "+"
         )
         logging.warning(
             "Unable to determine upstream version, using %s.",
@@ -712,8 +720,8 @@ def find_wnpp_bugs_harder(source_name, upstream_name):
 
 
 def debianize(  # noqa: C901
-    wt: WorkingTree, subpath: str,
-    upstream_branch: Branch, upstream_subpath: str,
+    wt: WorkingTree, subpath: Optional[str],
+    upstream_branch: Branch, upstream_subpath: Optional[str],
     use_inotify: Optional[bool] = None,
     diligence: int = 0,
     trust: bool = False,
@@ -727,7 +735,8 @@ def debianize(  # noqa: C901
     verbose: bool = False,
     schroot: Optional[str] = None,
     create_dist=None,
-    committer: Optional[str] = None
+    committer: Optional[str] = None,
+    snapshot: bool = False
 ):
     if committer is None:
         committer = get_committer(wt)
@@ -765,16 +774,16 @@ def debianize(  # noqa: C901
             if not wt.has_filename(debian_path):
                 wt.mkdir(debian_path)
 
-            # TODO(jelmer): Support resetting to e.g. last upstream release
             upstream_revision = upstream_branch.last_revision()
             upstream_version = get_upstream_version(
-                upstream_branch, upstream_revision, metadata)
+                upstream_branch, upstream_revision, metadata,
+                snapshot=snapshot, local_dir=wt.controldir)
 
             if wt.last_revision() == upstream_revision:
                 # If at all possible, try to avoid copying
-                upstream_tree = wt
+                upstream_vcs_tree = wt
             else:
-                upstream_tree = upstream_branch.repository.revision_tree(upstream_revision)
+                upstream_vcs_tree = upstream_branch.repository.revision_tree(upstream_revision)
 
             if schroot is None:
                 session = PlainSession()
@@ -786,7 +795,7 @@ def debianize(  # noqa: C901
 
             pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
             upstream_dist_revid, upstream_branch_name, tag_names = import_upstream_dist(
-                pristine_tar_source, upstream_tree, upstream_subpath, source_name,
+                pristine_tar_source, upstream_vcs_tree, upstream_subpath, source_name,
                 upstream_version, session, create_dist)
 
             if wt.branch.last_revision() != upstream_dist_revid:
@@ -885,6 +894,99 @@ def debianize(  # noqa: C901
         upstream_version=upstream_version)
 
 
+@dataclass
+class UpstreamInfo:
+    name: Optional[str]
+    branch_url: Optional[str] = None
+    branch_subpath: Optional[str] = None
+    tarball_url: Optional[str] = None
+
+
+def find_upstream(problem) -> Optional[UpstreamInfo]:
+    if problem.kind == 'missing-python-distribution':
+        from urllib.request import urlopen
+        http_url = 'https://pypi.org/pypi/%s/json' % problem.distribution
+        from urllib.request import urlopen, Request
+        import json
+        headers = {'User-Agent': 'ognibuild', 'Accept': 'application/json'}
+        http_contents = urlopen(
+            Request(http_url, headers=headers)).read()
+        pypi_data = json.loads(http_contents)
+        upstream_branch = None
+        for name, url in pypi_data['info']['project_urls'].items():
+            if name.lower() in ('github', 'repository'):
+                upstream_branch = url
+        tarball_url = None
+        for url_data in pypi_data['urls']:
+            if url_data.get('package_type') == 'sdist':
+                tarball_url = url_data['url']
+        return UpstreamInfo(
+            branch_url=upstream_branch, branch_subpath='',
+            name=pypi_data['info']['name'],
+            tarball_url=tarball_url)
+    elif problem.kind == 'missing-go-package':
+        if problem.package.startswith('github.com/'):
+            return UpstreamInfo(
+                name=problem.package,
+                branch_url='https://%s' % '/'.join(problem.package.split('/')[:3]),
+                branch_subpath='')
+    return None
+
+
+class SimpleTrustedAptRepo(object):
+
+    def __init__(self, directory):
+        self.directory = directory
+        self.httpd = None
+        self.thread = None
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
+        return False
+
+    def sources_lines(self):
+        return [
+            "deb [trusted=yes] http://%s:%d/ ./" % (
+                self.httpd.server_name, self.httpd.server_port)]
+
+    def start(self):
+        if self.thread is not None:
+            raise RuntimeError('thread already active')
+        import http.server
+        from threading import Thread
+        hostname = "localhost"
+        handler = partial(
+            http.server.SimpleHTTPRequestHandler, directory=self.directory)
+        self.httpd = http.server.HTTPServer((hostname, 0), handler, False)
+        self.httpd.server_bind()
+        logging.info(
+            'Local apt repo started at http://%s:%d/',
+            self.httpd.server_name, self.httpd.server_port)
+        self.httpd.server_activate()
+
+        def serve_forever(httpd):
+            with httpd:  # to make sure httpd.server_close is called
+                httpd.serve_forever()
+
+        self.thread = Thread(target=serve_forever, args=(self.httpd, ))
+        self.thread.setDaemon(True)
+        self.thread.start()
+
+    def stop(self):
+        self.httpd.shutdown()
+        self.thread.join()
+
+    def refresh(self):
+        with open(os.path.join(self.directory, 'Packages'), 'wb') as f:
+            subprocess.check_call(
+                ['dpkg-scanpackages', '.', '/dev/null'],
+                stdout=f, cwd=self.directory)
+
+
 def main(argv=None):
     import argparse
 
@@ -965,9 +1067,16 @@ def main(argv=None):
         default=50,
         help=argparse.SUPPRESS)
     parser.add_argument(
+        '--snapshot', action='store_true',
+        help='Package latest upstream snapshot rather than release.')
+    parser.add_argument(
         "--recursive", "-r",
         action="store_true",
         help="Attempt to package dependencies if they are not yet packaged.")
+    parser.add_argument(
+        '--output-directory',
+        type=str,
+        help='Output directory.')
 
     args = parser.parse_args(argv)
 
@@ -986,6 +1095,9 @@ def main(argv=None):
     upstream_branch = wt.branch
     upstream_subpath = subpath
 
+    from breezy import breakin
+    breakin.hook_debugger_to_signal()
+
     use_inotify = ((False if args.disable_inotify else None),)
     with wt.lock_write():
         try:
@@ -1002,7 +1114,8 @@ def main(argv=None):
                 compat_release=compat_release,
                 consult_external_directory=args.consult_external_directory,
                 verbose=args.verbose,
-                schroot=args.schroot
+                schroot=args.schroot,
+                snapshot=args.snapshot,
             )
         except PendingChanges:
             logging.info("%s: Please commit pending changes first.", wt.basedir)
@@ -1021,12 +1134,60 @@ def main(argv=None):
             return 1
 
     if args.iterate_fix:
-        import tempfile
+        from ognibuild.fix_build import iterate_with_build_fixers, BuildFixer
         from ognibuild.debian.fix_build import (
             DetailedDebianBuildFailure,
             UnidentifiedDebianBuildError,
             build_incrementally,
             )
+
+        class DebianizeFixer(BuildFixer):
+
+            def __str__(self):
+                return "debianize fixer"
+
+            def __repr__(self):
+                return "%s(%r, %r)" % (
+                    type(self).__name__, self.vcs_directory,
+                    self.apt_repo)
+
+            def __init__(self, vcs_directory, apt_repo):
+                self.vcs_directory = vcs_directory
+                self.apt_repo = apt_repo
+
+            def can_fix(self, problem):
+                return find_upstream(problem) is not None
+
+            def _fix(self, problem, phase: Tuple[str, ...]):
+                upstream_info = find_upstream(problem)
+                logging.info(
+                    'Packaging %r to address %r',
+                     upstream_info.branch_url, problem)
+                upstream_branch = Branch.open(upstream_info.branch_url)
+                result = ControlDir.create_branch_convenience(
+                    os.path.join(self.vcs_directory, upstream_info.name.replace('/', '-')),
+                    force_new_tree=True,
+                    format=upstream_branch.controldir.cloning_metadir())
+                debianize(
+                    result.controldir.open_workingtree(), '',
+                    upstream_branch, upstream_info.branch_subpath,
+                    use_inotify=use_inotify,
+                    diligence=args.diligence,
+                    trust=args.trust,
+                    check=args.check,
+                    net_access=not args.disable_net_access,
+                    force_new_directory=args.force_new_directory,
+                    force_subprocess=args.force_subprocess,
+                    compat_release=compat_release,
+                    consult_external_directory=args.consult_external_directory,
+                    verbose=args.verbose, schroot=args.schroot,
+                    snapshot=args.snapshot)
+                do_build(
+                    wt, subpath, self.apt_repo.directory,
+                    extra_repositories=self.apt_repo.sources_lines())
+                self.apt_repo.refresh()
+                return True
+
         if args.schroot is None:
             session = PlainSession()
         else:
@@ -1036,24 +1197,37 @@ def main(argv=None):
         with contextlib.ExitStack() as es:
             es.enter_context(session)
             apt = AptManager.from_session(session)
+            if not args.output_directory:
+                args.output_directory = es.enter_context(TemporaryDirectory())
+            vcs_directory = args.output_directory
 
-            def do_build():
-                output_directory = es.enter_context(tempfile.TemporaryDirectory())
+            def do_build(wt, subpath, incoming_directory, extra_repositories=None):
                 return build_incrementally(
                     wt,
                     apt,
                     None,
                     None,
-                    output_directory,
+                    incoming_directory,
                     args.build_command,
                     build_changelog_entry=None,
                     committer=None,
                     update_changelog=False,
                     max_iterations=args.max_build_iterations,
+                    subpath=subpath,
+                    extra_repositories=extra_repositories,
                 )
 
             try:
-                (changes_names, cl_version) = do_build()
+                if args.recursive:
+                    with SimpleTrustedAptRepo(args.output_directory) as apt_repo:
+                        (changes_names, cl_version) = iterate_with_build_fixers(
+                            [DebianizeFixer(vcs_directory, apt_repo)],
+                            partial(
+                                do_build, wt, subpath, args.output_directory,
+                                extra_repositories=apt_repo.sources_lines()))
+                else:
+                    (changes_names, cl_version) = do_build(
+                        wt, subpath, args.output_directory)
             except DetailedDebianBuildFailure as e:
                 if e.phase is None:
                     phase = 'unknown phase'
