@@ -369,11 +369,17 @@ def process_npm(es, session, wt, subpath, debian_path, metadata, compat_release,
     return control
 
 
+def perl_package_name(upstream_name):
+    if upstream_name.startswith('lib'):
+        upstream_name = upstream_name[len('lib'):]
+    return "lib%s-perl" % upstream_name.replace('::', '-').replace('_', '').lower()
+
+
 def process_dist_zilla(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath):
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     upstream_name = metadata['Name']
-    source['Source'] = "lib%s-perl" % upstream_name.replace('::', '-').replace('_', '').lower()
+    source['Source'] = perl_package_name(upstream_name)
     source["Rules-Requires-Root"] = "no"
     source['Testsuite'] = 'autopkgtest-pkg-perl'
     source["Standards-Version"] = latest_standards_version()
@@ -396,7 +402,7 @@ def process_perl_build_tiny(es, session, wt, subpath, debian_path, metadata, com
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
     upstream_name = metadata['Name']
-    source['Source'] = "lib%s-perl" % upstream_name.replace('::', '-').replace('_', '').lower()
+    source['Source'] = perl_package_name(upstream_name)
     source["Rules-Requires-Root"] = "no"
     source['Testsuite'] = 'autopkgtest-pkg-perl'
     source["Standards-Version"] = latest_standards_version()
@@ -958,6 +964,10 @@ def main(argv=None):
         type=int,
         default=50,
         help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--recursive", "-r",
+        action="store_true",
+        help="Attempt to package dependencies if they are not yet packaged.")
 
     args = parser.parse_args(argv)
 
@@ -1013,7 +1023,8 @@ def main(argv=None):
     if args.iterate_fix:
         import tempfile
         from ognibuild.debian.fix_build import (
-            SbuildFailure,
+            DetailedDebianBuildFailure,
+            UnidentifiedDebianBuildError,
             build_incrementally,
             )
         if args.schroot is None:
@@ -1026,9 +1037,9 @@ def main(argv=None):
             es.enter_context(session)
             apt = AptManager.from_session(session)
 
-            try:
+            def do_build():
                 output_directory = es.enter_context(tempfile.TemporaryDirectory())
-                (changes_names, cl_version) = build_incrementally(
+                return build_incrementally(
                     wt,
                     apt,
                     None,
@@ -1040,17 +1051,26 @@ def main(argv=None):
                     update_changelog=False,
                     max_iterations=args.max_build_iterations,
                 )
-            except SbuildFailure as e:
+
+            try:
+                (changes_names, cl_version) = do_build()
+            except DetailedDebianBuildFailure as e:
                 if e.phase is None:
                     phase = 'unknown phase'
                 elif len(e.phase) == 1:
                     phase = e.phase[0]
                 else:
                     phase = '%s (%s)' % (e.phase[0], e.phase[1])
-                if e.error:
-                    logging.fatal('Error during %s: %s', phase, e.error)
+                logging.fatal('Error during %s: %s', phase, e.error)
+                return 1
+            except UnidentifiedDebianBuildError as e:
+                if e.phase is None:
+                    phase = 'unknown phase'
+                elif len(e.phase) == 1:
+                    phase = e.phase[0]
                 else:
-                    logging.fatal('Error during %s: %s', phase, e.description)
+                    phase = '%s (%s)' % (e.phase[0], e.phase[1])
+                logging.fatal('Error during %s: %s', phase, e.description)
                 return 1
             logging.info('Built %r.', changes_names)
 
