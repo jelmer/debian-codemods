@@ -231,7 +231,10 @@ def vendor():
             return c['Vendor']
 
 
-if os.path.exists('debian/debcargo.toml'):
+def is_debcargo_package():
+    return os.path.exists('debian/debcargo.toml')
+
+if is_debcargo_package():
     from debmutate.debcargo import DebcargoControlShimEditor, DebcargoEditor
 
     try:

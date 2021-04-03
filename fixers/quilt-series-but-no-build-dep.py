@@ -5,9 +5,9 @@ import sys
 from typing import Optional
 
 from debmutate.control import ensure_some_version
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, fixed_lintian_tag, is_debcargo_package
 
-if os.path.exists('debian/debcargo.toml'):
+if is_debcargo_package():
     sys.exit(0)
 
 format: Optional[str]

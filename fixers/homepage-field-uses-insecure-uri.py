@@ -61,8 +61,6 @@ def fix_homepage(http_url):
     return http_url
 
 
-# TODO(jelmer): Support editing the homepage field in debian/debcargo.toml
-
 try:
     with control as updater:
         try:

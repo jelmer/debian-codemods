@@ -24,6 +24,7 @@ from lintian_brush.fixer import (
     compat_release,
     control,
     current_package_version,
+    is_debcargo_package,
     fixed_lintian_tag,
     report_result,
     warn,
@@ -134,7 +135,7 @@ else:
     except FileNotFoundError:
         # debcargo just uses the latest version and doesn't store debhelper
         # version explicitly.
-        if os.path.exists('debian/debcargo.toml'):
+        if is_debcargo_package():
             sys.exit(0)
         raise
 

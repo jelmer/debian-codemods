@@ -142,10 +142,6 @@ check_requirements = {
 current_version = None
 
 
-# TODO(jelmer): Support updating the settings.policy field in
-# debian/debcargo.toml
-
-
 try:
     with control as updater:
         try:

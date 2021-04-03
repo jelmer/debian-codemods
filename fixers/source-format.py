@@ -4,11 +4,12 @@ from lintian_brush.fixer import (
     opinionated,
     package_is_native,
     LintianIssue,
+    is_debcargo_package,
     )
 import os
 import sys
 
-if os.path.exists('debian/debcargo.toml'):
+if is_debcargo_package():
     sys.exit(0)
 
 description = None

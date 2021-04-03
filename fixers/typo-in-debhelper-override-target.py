@@ -3,6 +3,7 @@
 from lintian_brush.fixer import report_result, LintianIssue
 from lintian_brush.lintian import dh_commands
 from debmutate._rules import RulesEditor
+import os
 import sys
 from typing import List, Tuple
 
