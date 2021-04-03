@@ -6,6 +6,9 @@ from debmutate._rules import RulesEditor
 import sys
 from typing import List, Tuple
 
+if not os.path.exists('debian/rules'):
+    sys.exit(2)
+
 try:
     from Levenshtein import distance
 except ModuleNotFoundError:
