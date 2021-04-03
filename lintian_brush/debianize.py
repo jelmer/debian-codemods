@@ -570,7 +570,7 @@ def process_cargo(es, session, wt, subpath, debian_path, metadata, compat_releas
     wt.branch.generate_revision_history(NULL_REVISION)
     reset_tree(wt, wt.basis_tree(), subpath)
     from debmutate.debcargo import DebcargoControlShimEditor
-    upstream_name = metadata['Name']
+    upstream_name = metadata['Name'].replace('_', '-')
     control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name))
     control.debcargo_editor['overlay'] = '.'
     return control
@@ -972,9 +972,9 @@ def find_upstream(requirement) -> Optional[UpstreamInfo]:
         name = data['crate']['name']
         version = None
         if requirement.version is not None:
-            desired_version = requirement.version + '.'
             for version_info in data['versions']:
-                if not version_info['num'].startswith(desired_version):
+                if (not version_info['num'].startswith(requirement.version + '.') and
+                        not version_info['num'] == requirement.version):
                     continue
                 if version is None:
                     version = semver.VersionInfo.parse(version_info['num'])
@@ -986,7 +986,7 @@ def find_upstream(requirement) -> Optional[UpstreamInfo]:
                     name, requirement.version)
         return UpstreamInfo(
             branch_url=upstream_branch, branch_subpath='',
-            name=name, version=version)
+            name=name, version=str(version) if version else None)
     elif requirement.family == 'apt':
         for option in requirement.relations:
             for rel in option:
@@ -1019,9 +1019,12 @@ class SimpleTrustedAptRepo(object):
         return False
 
     def sources_lines(self):
-        return [
-            "deb [trusted=yes] http://%s:%d/ ./" % (
-                self.httpd.server_name, self.httpd.server_port)]
+        if os.path.exists(os.path.join(self.directory, 'Packages')):
+            return [
+                "deb [trusted=yes] http://%s:%d/ ./" % (
+                    self.httpd.server_name, self.httpd.server_port)]
+        else:
+            return []
 
     def start(self):
         if self.thread is not None:
@@ -1029,8 +1032,13 @@ class SimpleTrustedAptRepo(object):
         import http.server
         from threading import Thread
         hostname = "localhost"
-        handler = partial(
-            http.server.SimpleHTTPRequestHandler, directory=self.directory)
+
+        class RequestHandler(http.server.SimpleHTTPRequestHandler):
+
+            def log_message(self, format, *args):
+                return
+
+        handler = partial(RequestHandler, directory=self.directory)
         self.httpd = http.server.HTTPServer((hostname, 0), handler, False)
         self.httpd.server_bind()
         logging.info(
