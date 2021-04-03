@@ -59,9 +59,9 @@ from ognibuild.dist import (  # noqa: F401
     )
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
-from ognibuild.resolver import UnsatisfiedRequirements
+from ognibuild.requirements import CargoCrateRequirement
 from ognibuild.resolver.apt import AptResolver
-from ognibuild.buildlog import InstallFixer
+from ognibuild.buildlog import InstallFixer, problem_to_upstream_requirement
 
 from upstream_ontologist.guess import (
     guess_upstream_info,
@@ -930,13 +930,14 @@ class UpstreamInfo:
     branch_url: Optional[str] = None
     branch_subpath: Optional[str] = None
     tarball_url: Optional[str] = None
+    version: Optional[str] = None
 
 
-def find_upstream(problem) -> Optional[UpstreamInfo]:
-    if problem.kind == 'missing-python-distribution':
+def find_upstream(requirement) -> Optional[UpstreamInfo]:
+    if requirement.family == 'python-package':
         from urllib.request import urlopen, Request
         import json
-        http_url = 'https://pypi.org/pypi/%s/json' % problem.distribution
+        http_url = 'https://pypi.org/pypi/%s/json' % requirement.package
         headers = {'User-Agent': 'ognibuild', 'Accept': 'application/json'}
         http_contents = urlopen(
             Request(http_url, headers=headers)).read()
@@ -953,31 +954,52 @@ def find_upstream(problem) -> Optional[UpstreamInfo]:
             branch_url=upstream_branch, branch_subpath='',
             name=pypi_data['info']['name'],
             tarball_url=tarball_url)
-    elif problem.kind == 'missing-go-package':
-        if problem.package.startswith('github.com/'):
+    elif requirement.family == 'go-package':
+        if requirement.package.startswith('github.com/'):
             return UpstreamInfo(
-                name=problem.package,
-                branch_url='https://%s' % '/'.join(problem.package.split('/')[:3]),
+                name=requirement.package,
+                branch_url='https://%s' % '/'.join(requirement.package.split('/')[:3]),
                 branch_subpath='')
-    elif problem.kind == 'missing-cargo-crate':
+    elif requirement.family == 'cargo-crate':
         from urllib.request import urlopen, Request
         import json
-        http_url = 'https://crates.io/api/v1/crates/%s' % problem.crate
+        import semver
+        http_url = 'https://crates.io/api/v1/crates/%s' % requirement.crate
         headers = {'User-Agent': 'debianize', 'Accept': 'application/json'}
         http_contents = urlopen(Request(http_url, headers=headers)).read()
         data = json.loads(http_contents)
         upstream_branch = data['crate']['repository']
         name = data['crate']['name']
+        version = None
+        if requirement.version is not None:
+            desired_version = requirement.version + '.'
+            for version_info in data['versions']:
+                if not version_info['num'].startswith(desired_version):
+                    continue
+                if version is None:
+                    version = semver.VersionInfo.parse(version_info['num'])
+                else:
+                    version = semver.max_ver(version, semver.VersionInfo.parse(version_info['num']))
+            if version is None:
+                logging.warning(
+                    'Unable to find version of crate %s that matches version %s',
+                    name, requirement.version)
         return UpstreamInfo(
             branch_url=upstream_branch, branch_subpath='',
-            name=name)
-    elif problem.kind == 'unsatisfied-dependencies':
-        from buildlog_consultant.common import MissingCargoCrate
-        for option in problem.relations:
+            name=name, version=version)
+    elif requirement.family == 'apt':
+        for option in requirement.relations:
             for rel in option:
-                m = re.match('librust-(.*)-(.*)-dev', rel['name'])
+                m = re.match(r'librust-(.*)-([^-+]+)(\+.*?)-dev', rel['name'])
                 if m:
-                    return find_upstream(MissingCargoCrate(m.group(1)))
+                    name = m.group(1)
+                    version = m.group(2)
+                    if m.group(3):
+                        features = set(m.group(3).split('-'))
+                    else:
+                        features = set()
+                    return find_upstream(
+                        CargoCrateRequirement(name, version=version, features=features))
     return None
 
 
@@ -1031,7 +1053,7 @@ class SimpleTrustedAptRepo(object):
     def refresh(self):
         with open(os.path.join(self.directory, 'Packages'), 'wb') as f:
             subprocess.check_call(
-                ['dpkg-scanpackages', '.', '/dev/null'],
+                ['dpkg-scanpackages', '-m', '.', '/dev/null'],
                 stdout=f, cwd=self.directory)
 
 
@@ -1126,6 +1148,10 @@ def main(argv=None):
         type=str,
         help='Output directory.')
     parser.add_argument(
+        '--discard-output',
+        action='store_true',
+        help='Store output in a temporary directory (just test).')
+    parser.add_argument(
         '--debian-revision',
         type=str,
         default='1',
@@ -1216,13 +1242,19 @@ def main(argv=None):
                 self.apt_repo = apt_repo
 
             def can_fix(self, problem):
-                return find_upstream(problem) is not None
+                requirement = problem_to_upstream_requirement(problem)
+                if requirement is None:
+                    return False
+                return find_upstream(requirement) is not None
 
             def _fix(self, problem, phase: Tuple[str, ...]):
-                upstream_info = find_upstream(problem)
+                requirement = problem_to_upstream_requirement(problem)
+                if requirement is None:
+                    return False
+                upstream_info = find_upstream(requirement)
                 logging.info(
                     'Packaging %r to address %r',
-                     upstream_info.branch_url, problem)
+                    upstream_info.branch_url, problem)
                 upstream_branch = Branch.open(upstream_info.branch_url)
                 vcs_path = os.path.join(self.vcs_directory, upstream_info.name.replace('/', '-'))
                 if os.path.exists(vcs_path):
@@ -1247,6 +1279,7 @@ def main(argv=None):
                         consult_external_directory=args.consult_external_directory,
                         verbose=args.verbose, schroot=args.schroot,
                         debian_revision=args.debian_revision,
+                        upstream_version=upstream_info.version,
                         snapshot=(not args.release))
                     do_build(
                         new_wt, new_subpath, self.apt_repo.directory,
@@ -1266,6 +1299,8 @@ def main(argv=None):
         with contextlib.ExitStack() as es:
             es.enter_context(session)
             apt = AptManager.from_session(session)
+            if args.discard_output:
+                args.output_directory = es.enter_context(TemporaryDirectory())
             if not args.output_directory:
                 from xdg.BaseDirectory import xdg_cache_home
                 args.output_directory = os.path.join(xdg_cache_home, 'debianize')
