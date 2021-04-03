@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from functools import partial
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -49,7 +50,7 @@ from breezy.revision import NULL_REVISION
 from breezy.workingtree import WorkingTree
 
 from ognibuild import DetailedFailure, UnidentifiedError
-from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound
+from ognibuild.buildsystem import get_buildsystem as _get_buildsystem, NoBuildToolsFound
 from ognibuild.debian.apt import AptManager
 from ognibuild.debian.build import DEFAULT_BUILDER
 from ognibuild.dist import (  # noqa: F401
@@ -173,6 +174,14 @@ select id, type from wnpp where source = $1 and type in ('ITP', 'RFP')
             source_name,
         )
     ]
+
+
+def get_buildsystem(vcs_tree, subpath):
+    # TODO(jelmer): Don't export
+    from breezy.export import export
+    with TemporaryDirectory() as td:
+        export(vcs_tree, td, 'dir')
+        return _get_buildsystem(td)
 
 
 MINIMUM_CERTAINTY = "possible"  # For now..
@@ -808,10 +817,10 @@ def debianize(  # noqa: C901
                 snapshot=snapshot, local_dir=wt.controldir,
                 upstream_version=upstream_version)
 
+            source_name = generic_get_source_name(wt, metadata)
+
             def kickstart_from_dist(wt, subpath):
                 logging.info("Using upstream version %s", upstream_version)
-
-                source_name = generic_get_source_name(wt, metadata)
 
                 pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
                 upstream_dist_revid, result.upstream_branch_name, result.tag_names = import_upstream_dist(
@@ -827,9 +836,9 @@ def debianize(  # noqa: C901
                     # revision
                     import_metadata_from_tree(wt, subpath)
 
-            os.chdir(wt.abspath(subpath))
+            upstream_vcs_tree = upstream_source.revision_tree(source_name, upstream_version)
 
-            buildsystem_subpath, buildsystem = get_buildsystem(wt.abspath(subpath))
+            buildsystem_subpath, buildsystem = get_buildsystem(upstream_vcs_tree, subpath)
 
             if buildsystem:
                 try:
@@ -840,6 +849,8 @@ def debianize(  # noqa: C901
                 process = process_default
 
             logging.info('Creating core packaging using %s', process.__name__)
+
+            os.chdir(wt.abspath(subpath))
 
             control = process(
                 es, session,
@@ -912,6 +923,7 @@ def debianize(  # noqa: C901
 
     return result
 
+
 @dataclass
 class UpstreamInfo:
     name: Optional[str]
@@ -922,10 +934,9 @@ class UpstreamInfo:
 
 def find_upstream(problem) -> Optional[UpstreamInfo]:
     if problem.kind == 'missing-python-distribution':
-        from urllib.request import urlopen
-        http_url = 'https://pypi.org/pypi/%s/json' % problem.distribution
         from urllib.request import urlopen, Request
         import json
+        http_url = 'https://pypi.org/pypi/%s/json' % problem.distribution
         headers = {'User-Agent': 'ognibuild', 'Accept': 'application/json'}
         http_contents = urlopen(
             Request(http_url, headers=headers)).read()
@@ -949,10 +960,9 @@ def find_upstream(problem) -> Optional[UpstreamInfo]:
                 branch_url='https://%s' % '/'.join(problem.package.split('/')[:3]),
                 branch_subpath='')
     elif problem.kind == 'missing-cargo-crate':
-        from urllib.request import urlopen
-        http_url = 'https://crates.io/api/v1/crates/%s' % problem.crate
         from urllib.request import urlopen, Request
         import json
+        http_url = 'https://crates.io/api/v1/crates/%s' % problem.crate
         headers = {'User-Agent': 'debianize', 'Accept': 'application/json'}
         http_contents = urlopen(Request(http_url, headers=headers)).read()
         data = json.loads(http_contents)
@@ -965,7 +975,6 @@ def find_upstream(problem) -> Optional[UpstreamInfo]:
         from buildlog_consultant.common import MissingCargoCrate
         for option in problem.relations:
             for rel in option:
-                import re
                 m = re.match('librust-(.*)-(.*)-dev', rel['name'])
                 if m:
                     return find_upstream(MissingCargoCrate(m.group(1)))
