@@ -58,6 +58,7 @@ from ognibuild.dist import (  # noqa: F401
     )
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
+from ognibuild.resolver import UnsatisfiedRequirements
 from ognibuild.resolver.apt import AptResolver
 from ognibuild.buildlog import InstallFixer
 
@@ -947,7 +948,7 @@ def find_upstream(problem) -> Optional[UpstreamInfo]:
                 name=problem.package,
                 branch_url='https://%s' % '/'.join(problem.package.split('/')[:3]),
                 branch_subpath='')
-    elif problem.kind == 'missing-rust-crate':
+    elif problem.kind == 'missing-cargo-crate':
         from urllib.request import urlopen
         http_url = 'https://crates.io/api/v1/crates/%s' % problem.crate
         from urllib.request import urlopen, Request
@@ -960,6 +961,14 @@ def find_upstream(problem) -> Optional[UpstreamInfo]:
         return UpstreamInfo(
             branch_url=upstream_branch, branch_subpath='',
             name=name)
+    elif problem.kind == 'unsatisfied-dependencies':
+        from buildlog_consultant.common import MissingCargoCrate
+        for option in problem.relations:
+            for rel in option:
+                import re
+                m = re.match('librust-(.*)-(.*)-dev', rel['name'])
+                if m:
+                    return find_upstream(MissingCargoCrate(m.group(1)))
     return None
 
 
@@ -1137,9 +1146,6 @@ def main(argv=None):
     else:
         upstream_branch = wt.branch
         upstream_subpath = subpath
-
-    from breezy import breakin
-    breakin.hook_debugger_to_signal()
 
     use_inotify = ((False if args.disable_inotify else None),)
     with wt.lock_write():
