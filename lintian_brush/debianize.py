@@ -45,12 +45,13 @@ from breezy import osutils
 from breezy.branch import Branch
 from breezy.controldir import ControlDir
 from breezy.errors import AlreadyBranchError
+from breezy.export import export
 from breezy.commit import NullCommitReporter
 from breezy.revision import NULL_REVISION
 from breezy.workingtree import WorkingTree
 
 from ognibuild import DetailedFailure, UnidentifiedError
-from ognibuild.buildsystem import get_buildsystem as _get_buildsystem, NoBuildToolsFound
+from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound
 from ognibuild.debian.apt import AptManager
 from ognibuild.debian.build import DEFAULT_BUILDER
 from ognibuild.dist import (  # noqa: F401
@@ -174,14 +175,6 @@ select id, type from wnpp where source = $1 and type in ('ITP', 'RFP')
             source_name,
         )
     ]
-
-
-def get_buildsystem(vcs_tree, subpath):
-    # TODO(jelmer): Don't export
-    from breezy.export import export
-    with TemporaryDirectory() as td:
-        export(vcs_tree, td, 'dir')
-        return _get_buildsystem(td)
 
 
 MINIMUM_CERTAINTY = "possible"  # For now..
@@ -778,15 +771,13 @@ def debianize(  # noqa: C901
     metadata_items = []
     metadata = {}
 
-    def import_metadata_from_tree(t, sp):
-        metadata_items.extend(guess_upstream_info(t.abspath(sp), trust_package=trust))
+    def import_metadata_from_path(p):
+        metadata_items.extend(guess_upstream_info(p, trust_package=trust))
         metadata.update(
             summarize_upstream_metadata(
-                metadata_items, t.abspath(sp), net_access=net_access,
+                metadata_items, p, net_access=net_access,
                 consult_external_directory=consult_external_directory,
                 check=check))
-
-    import_metadata_from_tree(wt, subpath)
 
     if not verbose:
         commit_reporter = NullCommitReporter()
@@ -834,11 +825,15 @@ def debianize(  # noqa: C901
 
                     # Gather metadata items again now that we're at the correct
                     # revision
-                    import_metadata_from_tree(wt, subpath)
+                    import_metadata_from_path(wt.abspath(subpath))
 
             upstream_vcs_tree = upstream_source.revision_tree(source_name, upstream_version)
 
-            buildsystem_subpath, buildsystem = get_buildsystem(upstream_vcs_tree, subpath)
+            # TODO(jelmer): Don't export
+            exported_upstream_tree_path = es.enter_context(TemporaryDirectory())
+            export(upstream_vcs_tree, exported_upstream_tree_path, 'dir')
+            import_metadata_from_path(exported_upstream_tree_path)
+            buildsystem_subpath, buildsystem = get_buildsystem(exported_upstream_tree_path)
 
             if buildsystem:
                 try:
@@ -1019,7 +1014,7 @@ class SimpleTrustedAptRepo(object):
         return False
 
     def sources_lines(self):
-        if os.path.exists(os.path.join(self.directory, 'Packages')):
+        if os.path.exists(os.path.join(self.directory, 'Packages.gz')):
             return [
                 "deb [trusted=yes] http://%s:%d/ ./" % (
                     self.httpd.server_name, self.httpd.server_port)]
@@ -1059,10 +1054,12 @@ class SimpleTrustedAptRepo(object):
         self.thread.join()
 
     def refresh(self):
-        with open(os.path.join(self.directory, 'Packages'), 'wb') as f:
-            subprocess.check_call(
-                ['dpkg-scanpackages', '-m', '.', '/dev/null'],
-                stdout=f, cwd=self.directory)
+        import gzip
+        packages = subprocess.check_output(
+            ['dpkg-scanpackages', '-m', '.', '/dev/null'],
+            cwd=self.directory)
+        with gzip.GzipFile(os.path.join(self.directory, 'Packages.gz'), 'wb') as f:
+            f.write(packages)
 
 
 def main(argv=None):
@@ -1272,29 +1269,25 @@ def main(argv=None):
                     format=upstream_branch.controldir.cloning_metadir())
                 new_wt = result.controldir.open_workingtree()
                 new_subpath = ''
-                try:
-                    debianize(
-                        new_wt, new_subpath,
-                        upstream_branch, upstream_info.branch_subpath,
-                        use_inotify=use_inotify,
-                        diligence=args.diligence,
-                        trust=args.trust,
-                        check=args.check,
-                        net_access=not args.disable_net_access,
-                        force_new_directory=args.force_new_directory,
-                        force_subprocess=args.force_subprocess,
-                        compat_release=compat_release,
-                        consult_external_directory=args.consult_external_directory,
-                        verbose=args.verbose, schroot=args.schroot,
-                        debian_revision=args.debian_revision,
-                        upstream_version=upstream_info.version,
-                        snapshot=(not args.release))
-                    do_build(
-                        new_wt, new_subpath, self.apt_repo.directory,
-                        extra_repositories=self.apt_repo.sources_lines())
-                except BaseException:
-                    shutil.rmtree(vcs_path)
-                    raise
+                debianize(
+                    new_wt, new_subpath,
+                    upstream_branch, upstream_info.branch_subpath,
+                    use_inotify=use_inotify,
+                    diligence=args.diligence,
+                    trust=args.trust,
+                    check=args.check,
+                    net_access=not args.disable_net_access,
+                    force_new_directory=args.force_new_directory,
+                    force_subprocess=args.force_subprocess,
+                    compat_release=compat_release,
+                    consult_external_directory=args.consult_external_directory,
+                    verbose=args.verbose, schroot=args.schroot,
+                    debian_revision=args.debian_revision,
+                    upstream_version=upstream_info.version,
+                    snapshot=(not args.release))
+                do_build(
+                    new_wt, new_subpath, self.apt_repo.directory,
+                    extra_repositories=self.apt_repo.sources_lines())
                 self.apt_repo.refresh()
                 return True
 
@@ -1338,12 +1331,14 @@ def main(argv=None):
                     os.makedirs(vcs_directory, exist_ok=True)
                     apt_directory = os.path.join(args.output_directory, 'apt')
                     os.makedirs(apt_directory, exist_ok=True)
+                    def main_build():
+                        return do_build(
+                            wt, subpath, apt_repo.directory,
+                            extra_repositories=apt_repo.sources_lines())
                     with SimpleTrustedAptRepo(apt_directory) as apt_repo:
                         (changes_names, cl_version) = iterate_with_build_fixers(
                             [DebianizeFixer(vcs_directory, apt_repo)],
-                            partial(
-                                do_build, wt, subpath, apt_repo.directory,
-                                extra_repositories=apt_repo.sources_lines()))
+                            main_build)
                 else:
                     (changes_names, cl_version) = do_build(
                         wt, subpath, args.output_directory)
