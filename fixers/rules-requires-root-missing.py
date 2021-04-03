@@ -5,6 +5,7 @@ from lintian_brush.fixer import (
     control,
     report_result,
     meets_minimum_certainty,
+    is_debcargo_package,
     LintianIssue,
     )
 
@@ -13,6 +14,9 @@ CERTAINTY = "possible"
 
 if not meets_minimum_certainty(CERTAINTY):
     sys.exit(0)
+
+if is_debcargo_package():
+    sys.exit(2)
 
 with control as updater:
     if "Rules-Requires-Root" not in updater.source:

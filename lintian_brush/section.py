@@ -27,17 +27,17 @@ def get_name_section_mappings():
 
     with open(NAME_SECTION_MAPPINGS_PATH, "r") as f:
         for line in f:
-            try:
-                (regex, section) = line.split("=>")
-            except ValueError:
-                pass
-            else:
-                regexes.append((re.compile(regex.strip()), section.strip()))
+            if line.startswith('#'):
+                continue
+            if not line.strip():
+                continue
+            (regex, section) = line.split("=>")
+            regexes.append((re.compile(regex.strip()), section.strip()))
     return regexes
 
 
 def find_expected_section(regexes, name):
     for regex, section in regexes:
-        if regex.search(name):
+        if regex.match(name):
             return section
     return None
