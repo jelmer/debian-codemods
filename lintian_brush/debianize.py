@@ -752,7 +752,7 @@ def find_wnpp_bugs_harder(source_name, upstream_name):
 
 
 def debianize(  # noqa: C901
-    wt: WorkingTree, subpath: Optional[str],
+    wt: WorkingTree, subpath: str,
     upstream_branch: Branch, upstream_subpath: Optional[str],
     use_inotify: Optional[bool] = None,
     diligence: int = 0,
@@ -1314,7 +1314,7 @@ def main(argv=None):  # noqa: C901
                 new_subpath = ''
                 debianize(
                     new_wt, new_subpath,
-                    upstream_branch, upstream_info.branch_subpath,
+                    upstream_branch, upstream_info.branch_subpath or '',
                     use_inotify=use_inotify,
                     diligence=args.diligence,
                     trust=args.trust,
