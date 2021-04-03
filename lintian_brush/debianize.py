@@ -60,7 +60,7 @@ from ognibuild.dist import (  # noqa: F401
     )
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
-from ognibuild.requirements import CargoCrateRequirement
+from ognibuild.requirements import CargoCrateRequirement, Requirement
 from ognibuild.resolver.apt import AptResolver
 from ognibuild.buildlog import InstallFixer, problem_to_upstream_requirement
 
@@ -96,6 +96,16 @@ from .debhelper import (
 )
 from .publish import update_offical_vcs, NoVcsLocation, VcsAlreadySpecified
 from .standards_version import latest_standards_version
+
+
+class DebianizedPackageRequirementMismatch(Exception):
+    """Debianized package does not satisfy requirement."""
+
+    def __init__(self, requirement, control, version, upstream_branch):
+        self.requirement = requirement
+        self.control = control
+        self.version = version
+        self.upstream_branch = upstream_branch
 
 
 class SourcePackageNameInvalid(Exception):
@@ -245,9 +255,7 @@ def import_upstream_version_from_dist(
         wt, subpath, upstream_source, source_name, upstream_version,
         session):
     from breezy.plugins.debian import default_orig_dir
-    from breezy.plugins.debian.util import debuild_config
     from breezy.plugins.debian.merge_upstream import get_tarballs, do_import
-    from breezy.plugins.debian.upstream.branch import UpstreamBranchSource
 
     tag_names = {}
     with TemporaryDirectory() as target_dir:
@@ -297,7 +305,7 @@ class ResetOnFailure(object):
         return False
 
 
-def process_setup_py(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+def process_setup_py(es, session, wt, subpath, debian_path, upstream_version, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -336,7 +344,7 @@ def process_setup_py(es, session, wt, subpath, debian_path, metadata, compat_rel
     return control
 
 
-def process_maven(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+def process_maven(es, session, wt, subpath, debian_path, upstream_version, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -360,7 +368,7 @@ def process_maven(es, session, wt, subpath, debian_path, metadata, compat_releas
     return control
 
 
-def process_npm(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+def process_npm(es, session, wt, subpath, debian_path, upstream_version, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -386,7 +394,7 @@ def perl_package_name(upstream_name):
     return "lib%s-perl" % upstream_name.replace('::', '-').replace('_', '').lower()
 
 
-def process_dist_zilla(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+def process_dist_zilla(es, session, wt, subpath, debian_path, upstream_version, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -410,7 +418,7 @@ def process_dist_zilla(es, session, wt, subpath, debian_path, metadata, compat_r
     return control
 
 
-def process_perl_build_tiny(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+def process_perl_build_tiny(es, session, wt, subpath, debian_path, upstream_version, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -432,7 +440,7 @@ def process_perl_build_tiny(es, session, wt, subpath, debian_path, metadata, com
     return control
 
 
-def process_golang(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+def process_golang(es, session, wt, subpath, debian_path, upstream_version, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -477,7 +485,7 @@ def process_golang(es, session, wt, subpath, debian_path, metadata, compat_relea
     return control
 
 
-def process_r(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+def process_r(es, session, wt, subpath, debian_path, metadata, upstream_version, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -511,7 +519,7 @@ def process_r(es, session, wt, subpath, debian_path, metadata, compat_release, b
     return control
 
 
-def process_octave(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+def process_octave(es, session, wt, subpath, debian_path, metadata, upstream_version, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -536,7 +544,7 @@ def process_octave(es, session, wt, subpath, debian_path, metadata, compat_relea
     return control
 
 
-def process_default(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+def process_default(es, session, wt, subpath, debian_path, upstream_version, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
     source = control.source
@@ -559,12 +567,21 @@ def process_default(es, session, wt, subpath, debian_path, metadata, compat_rele
     return control
 
 
-def process_cargo(es, session, wt, subpath, debian_path, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+def process_cargo(es, session, wt, subpath, debian_path, upstream_version, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     wt.branch.generate_revision_history(NULL_REVISION)
     reset_tree(wt, wt.basis_tree(), subpath)
     from debmutate.debcargo import DebcargoControlShimEditor
     upstream_name = metadata['Name'].replace('_', '-')
-    control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name))
+    control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name, upstream_version))
+    # Only set semver_suffix if this is not the latest version
+    import semver
+    desired_version = semver.VersionInfo.parse(upstream_version)
+    data = load_crate_info(upstream_name)
+    for version_info in data['versions']:
+        available_version = semver.VersionInfo.parse(version_info['num'])
+        if (available_version.major, available_version.minor) > (desired_version.major, desired_version.minor):
+            control.debcargo_editor['semver_suffix'] = True
+            break
     control.debcargo_editor['overlay'] = '.'
     return control
 
@@ -753,7 +770,8 @@ def debianize(  # noqa: C901
     committer: Optional[str] = None,
     snapshot: bool = False,
     debian_revision: str = "1",
-    upstream_version: Optional[str] = None
+    upstream_version: Optional[str] = None,
+    requirement: Optional[Requirement] = None
 ):
     if committer is None:
         committer = get_committer(wt)
@@ -849,7 +867,9 @@ def debianize(  # noqa: C901
 
             control = process(
                 es, session,
-                wt, subpath, debian_path,
+                wt, subpath,
+                debian_path,
+                upstream_version=upstream_version,
                 metadata=metadata, compat_release=compat_release,
                 buildsystem=buildsystem,
                 buildsystem_subpath=buildsystem_subpath,
@@ -874,6 +894,19 @@ def debianize(  # noqa: C901
                 version,
                 wnpp_bugs,
             )
+
+            if requirement and requirement.family == 'apt':
+                if not requirement.satisfied_by(
+                        control.binaries, version):
+                    # TODO(jelmer): Eventually, raise an exception here:
+                    # raise DebianizedPackageRequirementMismatch(
+                    #    requirement, control, version,
+                    #    upstream_branch)
+                    logging.warning(
+                        'Debianized package (binary packages: %r), version %s '
+                        'did not satisfy requirement %r. Wrong repository (%s)?',
+                        [binary['Package'] for binary in control.binaries],
+                        version, requirement, upstream_branch)
 
         wt.smart_add([wt.abspath(debian_path)])
         wt.commit(
@@ -928,7 +961,16 @@ class UpstreamInfo:
     version: Optional[str] = None
 
 
-def find_upstream(requirement) -> Optional[UpstreamInfo]:
+def load_crate_info(crate):
+    from urllib.request import urlopen, Request
+    import json
+    http_url = 'https://crates.io/api/v1/crates/%s' % crate
+    headers = {'User-Agent': 'debianize', 'Accept': 'application/json'}
+    http_contents = urlopen(Request(http_url, headers=headers)).read()
+    return json.loads(http_contents)
+
+
+def find_upstream(requirement) -> Optional[UpstreamInfo]:  # noqa; C901
     if requirement.family == 'python-package':
         from urllib.request import urlopen, Request
         import json
@@ -956,13 +998,8 @@ def find_upstream(requirement) -> Optional[UpstreamInfo]:
                 branch_url='https://%s' % '/'.join(requirement.package.split('/')[:3]),
                 branch_subpath='')
     elif requirement.family == 'cargo-crate':
-        from urllib.request import urlopen, Request
-        import json
         import semver
-        http_url = 'https://crates.io/api/v1/crates/%s' % requirement.crate
-        headers = {'User-Agent': 'debianize', 'Accept': 'application/json'}
-        http_contents = urlopen(Request(http_url, headers=headers)).read()
-        data = json.loads(http_contents)
+        data = load_crate_info(requirement.crate)
         upstream_branch = data['crate']['repository']
         name = data['crate']['name']
         version = None
@@ -980,7 +1017,7 @@ def find_upstream(requirement) -> Optional[UpstreamInfo]:
                     'Unable to find version of crate %s that matches version %s',
                     name, requirement.version)
         return UpstreamInfo(
-            branch_url=upstream_branch, branch_subpath='',
+            branch_url=upstream_branch, branch_subpath=None,
             name=name, version=str(version) if version else None)
     elif requirement.family == 'apt':
         for option in requirement.relations:
@@ -990,7 +1027,7 @@ def find_upstream(requirement) -> Optional[UpstreamInfo]:
                     name = m.group(1)
                     version = m.group(2)
                     if m.group(3):
-                        features = set(m.group(3).split('-'))
+                        features = set(m.group(3)[1:].split('-'))
                     else:
                         features = set()
                     return find_upstream(
@@ -1062,7 +1099,7 @@ class SimpleTrustedAptRepo(object):
             f.write(packages)
 
 
-def main(argv=None):
+def main(argv=None):  # noqa: C901
     import argparse
 
     import breezy  # noqa: E402
@@ -1169,7 +1206,11 @@ def main(argv=None):
 
     args = parser.parse_args(argv)
 
-    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    if args.verbose:
+        loglevel = logging.DEBUG
+    else:
+        loglevel = logging.INFO
+    logging.basicConfig(level=loglevel, format='%(message)s')
 
     compat_release = args.compat_release
     if compat_release is None:
@@ -1256,6 +1297,8 @@ def main(argv=None):
                 requirement = problem_to_upstream_requirement(problem)
                 if requirement is None:
                     return False
+                logging.debug(
+                    'Translated problem %r to requirement %r', problem, requirement)
                 upstream_info = find_upstream(requirement)
                 logging.info(
                     'Packaging %r to address %r',
@@ -1284,7 +1327,8 @@ def main(argv=None):
                     verbose=args.verbose, schroot=args.schroot,
                     debian_revision=args.debian_revision,
                     upstream_version=upstream_info.version,
-                    snapshot=(not args.release))
+                    snapshot=(not args.release),
+                    requirement=requirement)
                 do_build(
                     new_wt, new_subpath, self.apt_repo.directory,
                     extra_repositories=self.apt_repo.sources_lines())
@@ -1331,6 +1375,7 @@ def main(argv=None):
                     os.makedirs(vcs_directory, exist_ok=True)
                     apt_directory = os.path.join(args.output_directory, 'apt')
                     os.makedirs(apt_directory, exist_ok=True)
+
                     def main_build():
                         return do_build(
                             wt, subpath, apt_repo.directory,
@@ -1359,6 +1404,13 @@ def main(argv=None):
                 else:
                     phase = '%s (%s)' % (e.phase[0], e.phase[1])
                 logging.fatal('Error during %s: %s', phase, e.description)
+                return 1
+            except DebianizedPackageRequirementMismatch as e:
+                logging.fatal(
+                    'Debianized package (binary packages: %r), version %s '
+                    'did not satisfy requirement %r. Wrong repository (%s)?',
+                    [binary['Package'] for binary in e.control.binaries],
+                    e.version, e.requirement, e.upstream_branch)
                 return 1
             logging.info('Built %r.', changes_names)
 
