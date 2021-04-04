@@ -45,7 +45,6 @@ from breezy import osutils
 from breezy.branch import Branch
 from breezy.controldir import ControlDir
 from breezy.errors import AlreadyBranchError
-from breezy.export import export
 from breezy.commit import NullCommitReporter
 from breezy.revision import NULL_REVISION
 from breezy.workingtree import WorkingTree
@@ -62,6 +61,7 @@ from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
 from ognibuild.requirements import CargoCrateRequirement, Requirement
 from ognibuild.resolver.apt import AptResolver
+from ognibuild.vcs import dupe_vcs_tree
 from ognibuild.buildlog import InstallFixer, problem_to_upstream_requirement
 
 from upstream_ontologist.guess import (
@@ -849,7 +849,7 @@ def debianize(  # noqa: C901
 
             # TODO(jelmer): Don't export
             exported_upstream_tree_path = es.enter_context(TemporaryDirectory())
-            export(upstream_vcs_tree, exported_upstream_tree_path, 'dir')
+            dupe_vcs_tree(upstream_vcs_tree, exported_upstream_tree_path)
             import_metadata_from_path(exported_upstream_tree_path)
             buildsystem_subpath, buildsystem = get_buildsystem(exported_upstream_tree_path)
 
