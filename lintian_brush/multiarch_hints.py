@@ -45,7 +45,7 @@ from lintian_brush import (
     version_string,
 )
 from debmutate.control import (
-    update_control,
+    ControlEditor,
     format_relations,
     parse_relations,
 )
@@ -221,17 +221,17 @@ def apply_multiarch_hints(hints, minimum_certainty="certain"):
     changes = []
     appliers = {applier.kind: applier for applier in APPLIERS}
 
-    def update_binary(binary):
-        for hint in hints.get(binary["Package"], []):
-            kind = hint["link"].rsplit("#", 1)[1]
-            applier = appliers[kind]
-            if not certainty_sufficient(applier.certainty, minimum_certainty):
-                continue
-            description = applier.fn(binary, hint)
-            if description:
-                changes.append((binary, hint, description, applier.certainty))
+    with ControlEditor() as editor:
+        for binary in editor.binaries:
+            for hint in hints.get(binary["Package"], []):
+                kind = hint["link"].rsplit("#", 1)[1]
+                applier = appliers[kind]
+                if not certainty_sufficient(applier.certainty, minimum_certainty):
+                    continue
+                description = applier.fn(binary, hint)
+                if description:
+                    changes.append((binary, hint, description, applier.certainty))
 
-    update_control(binary_package_cb=update_binary)
     return changes
 
 
