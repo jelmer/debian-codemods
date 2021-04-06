@@ -970,69 +970,88 @@ def load_crate_info(crate):
     return json.loads(http_contents)
 
 
-def find_upstream(requirement) -> Optional[UpstreamInfo]:  # noqa; C901
-    if requirement.family == 'python-package':
-        from urllib.request import urlopen, Request
-        import json
-        http_url = 'https://pypi.org/pypi/%s/json' % requirement.package
-        headers = {'User-Agent': 'ognibuild', 'Accept': 'application/json'}
-        http_contents = urlopen(
-            Request(http_url, headers=headers)).read()
-        pypi_data = json.loads(http_contents)
-        upstream_branch = None
-        for name, url in pypi_data['info']['project_urls'].items():
-            if name.lower() in ('github', 'repository'):
-                upstream_branch = url
-        tarball_url = None
-        for url_data in pypi_data['urls']:
-            if url_data.get('package_type') == 'sdist':
-                tarball_url = url_data['url']
+def find_python_package_upstream(requirement):
+    from urllib.request import urlopen, Request
+    import json
+    http_url = 'https://pypi.org/pypi/%s/json' % requirement.package
+    headers = {'User-Agent': 'ognibuild', 'Accept': 'application/json'}
+    http_contents = urlopen(
+        Request(http_url, headers=headers)).read()
+    pypi_data = json.loads(http_contents)
+    upstream_branch = None
+    for name, url in pypi_data['info']['project_urls'].items():
+        if name.lower() in ('github', 'repository'):
+            upstream_branch = url
+    tarball_url = None
+    for url_data in pypi_data['urls']:
+        if url_data.get('package_type') == 'sdist':
+            tarball_url = url_data['url']
+    return UpstreamInfo(
+        branch_url=upstream_branch, branch_subpath='',
+        name=pypi_data['info']['name'],
+        tarball_url=tarball_url)
+
+
+def find_go_package_upstream(requirement):
+    if requirement.package.startswith('github.com/'):
         return UpstreamInfo(
-            branch_url=upstream_branch, branch_subpath='',
-            name=pypi_data['info']['name'],
-            tarball_url=tarball_url)
-    elif requirement.family == 'go-package':
-        if requirement.package.startswith('github.com/'):
-            return UpstreamInfo(
-                name=requirement.package,
-                branch_url='https://%s' % '/'.join(requirement.package.split('/')[:3]),
-                branch_subpath='')
-    elif requirement.family == 'cargo-crate':
-        import semver
-        data = load_crate_info(requirement.crate)
-        upstream_branch = data['crate']['repository']
-        name = data['crate']['name']
-        version = None
-        if requirement.version is not None:
-            for version_info in data['versions']:
-                if (not version_info['num'].startswith(requirement.version + '.') and
-                        not version_info['num'] == requirement.version):
-                    continue
-                if version is None:
-                    version = semver.VersionInfo.parse(version_info['num'])
-                else:
-                    version = semver.max_ver(version, semver.VersionInfo.parse(version_info['num']))
+            name=requirement.package,
+            branch_url='https://%s' % '/'.join(requirement.package.split('/')[:3]),
+            branch_subpath='')
+
+
+def find_cargo_crate_upstream(requirement):
+    import semver
+    data = load_crate_info(requirement.crate)
+    upstream_branch = data['crate']['repository']
+    name = data['crate']['name']
+    version = None
+    if requirement.version is not None:
+        for version_info in data['versions']:
+            if (not version_info['num'].startswith(requirement.version + '.') and
+                    not version_info['num'] == requirement.version):
+                continue
             if version is None:
-                logging.warning(
-                    'Unable to find version of crate %s that matches version %s',
-                    name, requirement.version)
-        return UpstreamInfo(
-            branch_url=upstream_branch, branch_subpath=None,
-            name=name, version=str(version) if version else None)
-    elif requirement.family == 'apt':
-        for option in requirement.relations:
-            for rel in option:
-                m = re.match(r'librust-(.*)-([^-+]+)(\+.*?)-dev', rel['name'])
-                if m:
-                    name = m.group(1)
-                    version = m.group(2)
-                    if m.group(3):
-                        features = set(m.group(3)[1:].split('-'))
-                    else:
-                        features = set()
-                    return find_upstream(
-                        CargoCrateRequirement(name, version=version, features=features))
-    return None
+                version = semver.VersionInfo.parse(version_info['num'])
+            else:
+                version = semver.max_ver(version, semver.VersionInfo.parse(version_info['num']))
+        if version is None:
+            logging.warning(
+                'Unable to find version of crate %s that matches version %s',
+                name, requirement.version)
+    return UpstreamInfo(
+        branch_url=upstream_branch, branch_subpath=None,
+        name=name, version=str(version) if version else None)
+
+
+def find_apt_upstream(requirement):
+    for option in requirement.relations:
+        for rel in option:
+            m = re.match(r'librust-(.*)-([^-+]+)(\+.*?)-dev', rel['name'])
+            if m:
+                name = m.group(1)
+                version = m.group(2)
+                if m.group(3):
+                    features = set(m.group(3)[1:].split('-'))
+                else:
+                    features = set()
+                return find_upstream(
+                    CargoCrateRequirement(name, version=version, features=features))
+
+
+UPSTREAM_FINDER = {
+    'python-package': find_python_package_upstream,
+    'go-package': find_go_package_upstream,
+    'cargo-crate': find_cargo_crate_upstream,
+    'apt': find_apt_upstream,
+    }
+
+
+def find_upstream(requirement) -> Optional[UpstreamInfo]:  # noqa: C901
+    try:
+        return UPSTREAM_FINDER[requirement.family](requirement)
+    except KeyError:
+        return None
 
 
 class SimpleTrustedAptRepo(object):
