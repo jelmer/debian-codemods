@@ -6,6 +6,7 @@ lintian-brush (0.105) UNRELEASED; urgency=medium
   * Add missing test dependency on python3-tomlkit.
   * Add fixer pkg-js-tools-test-is-missing.
   * Add fixer for pypi-homepage.
+  * Add fixer for rubygems-homepage.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 30 Mar 2021 00:21:42 +0100
 

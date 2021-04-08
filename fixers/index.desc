@@ -195,7 +195,7 @@ Fix-Script: obsolete-url-in-packaging.py
 Lintian-Tags: obsolete-url-in-packaging
 
 Fix-Script: no-homepage-field.py
-Lintian-Tags: no-homepage-field, pypi-homepage
+Lintian-Tags: no-homepage-field, pypi-homepage, rubygem-homepage
 
 Fix-Script: orphaned-package-should-not-have-uploaders.py
 Lintian-Tags: uploaders-in-orphan

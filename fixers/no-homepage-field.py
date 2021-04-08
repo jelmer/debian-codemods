@@ -33,10 +33,17 @@ with control as updater:
             issue.report_fixed()
             report_result('Fill in Homepage field.', certainty=datum.certainty)
     else:
-        if urlparse(updater.source['Homepage']).hostname == 'pypi.org':
+        hostname = urlparse(updater.source['Homepage']).hostname
+        if hostname == 'pypi.org':
             issue = LintianIssue('source', 'pypi-homepage', updater.source['Homepage'])
+        elif hostname == 'rubygems.org':
+            issue = LintianIssue('source', 'pypi-homepage', updater.source['Homepage'])
+        else:
+            issue = None
+
+        if issue:
             datum = guess_homepage()
             if issue.should_fix() and datum:
                 updater.source["Homepage"] = datum.value
                 issue.report_fixed()
-                report_result('Avoid pypi in Homepage field.', certainty=datum.certainty)
+                report_result('Avoid %s in Homepage field.' % hostname, certainty=datum.certainty)
