@@ -134,6 +134,7 @@ subset of the issues:
 * public-upstream-key-in-native-package
 * public-upstream-key-not-minimal
 * public-upstream-keys-in-multiple-locations
+* pypi-homepage
 * python-teams-merged
 * quilt-series-but-no-build-dep
 * quilt-series-without-trailing-newline
