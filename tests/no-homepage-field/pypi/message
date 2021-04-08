@@ -1,0 +1,3 @@
+Avoid pypi in Homepage field.
+Certainty: certain
+Fixed-Lintian-Tags: pypi-homepage

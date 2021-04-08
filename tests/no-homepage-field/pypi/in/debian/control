@@ -1,0 +1,7 @@
+Source: blah
+Maintainer: Joe Maintainer <joe@example.com>
+Homepage: https://pypi.org/project/aiohttp-socks/
+
+Package: blah
+Description: blah
+ blah blah
