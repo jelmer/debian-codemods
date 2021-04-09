@@ -45,7 +45,7 @@ from breezy import osutils
 from breezy.branch import Branch
 from breezy.controldir import ControlDir
 from breezy.errors import AlreadyBranchError
-from breezy.commit import NullCommitReporter
+from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.revision import NULL_REVISION
 from breezy.workingtree import WorkingTree
 
@@ -789,12 +789,7 @@ def debianize(  # noqa: C901
 
     debian_path = osutils.pathjoin(subpath, "debian")
     if wt.has_filename(debian_path) and list(os.listdir(wt.abspath(debian_path))):
-        if force_new_directory:
-            shutil.rmtree(wt.abspath(debian_path))
-            wt.commit(
-                'Remove old debian directory', specific_files=[debian_path],
-                reporter=NullCommitReporter())
-        else:
+        if not force_new_directory:
             raise DebianDirectoryExists(wt.abspath(subpath))
 
     metadata_items = []
@@ -855,6 +850,16 @@ def debianize(  # noqa: C901
                     # Gather metadata items again now that we're at the correct
                     # revision
                     import_metadata_from_path(wt.abspath(subpath))
+
+                if wt.has_filename(debian_path) and force_new_directory:
+                    shutil.rmtree(wt.abspath(debian_path))
+                    os.mkdir(wt.abspath(debian_path))
+                    try:
+                        wt.commit(
+                            'Remove old debian directory', specific_files=[debian_path],
+                            reporter=NullCommitReporter())
+                    except PointlessCommit:
+                        pass
 
             upstream_vcs_tree = upstream_source.revision_tree(source_name, upstream_version)
 
@@ -1195,6 +1200,9 @@ def main(argv=None):  # noqa: C901
         help="Invoke deb-fix-build afterwards to build package and add "
         "missing dependencies.")
     parser.add_argument(
+        '--install', '-i', action='store_true',
+        help='Install package after building (implies --iterate-fix)')
+    parser.add_argument(
         "--schroot", type=str,
         help="Schroot to use for building and apt archive access")
     parser.add_argument(
@@ -1284,7 +1292,7 @@ def main(argv=None):  # noqa: C901
             return 1
         except DebianDirectoryExists as e:
             logging.info(
-                "%s: A debian directory already exists. " "Run lintian-brush instead?",
+                "%s: A debian directory already exists. " "Run lintian-brush instead or specify --force-new-directory.",
                 e.path,
             )
             return 1
@@ -1294,6 +1302,9 @@ def main(argv=None):  # noqa: C901
         except DistCreationFailed as e:
             logging.fatal('Dist tarball creation failed: %s', e.inner)
             return 1
+
+    if args.install:
+        args.iterate_fix = True
 
     if args.iterate_fix:
         from ognibuild.fix_build import iterate_with_build_fixers, BuildFixer
@@ -1443,6 +1454,9 @@ def main(argv=None):  # noqa: C901
                     e.version, e.requirement, e.upstream_branch)
                 return 1
             logging.info('Built %r.', changes_names)
+            if args.install:
+                subprocess.check_call(
+                    ["debi"] + [os.path.join(args.output_directory, cn) for cn in changes_names])
 
     return 0
 

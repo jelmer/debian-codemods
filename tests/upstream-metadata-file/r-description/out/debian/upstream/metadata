@@ -1,5 +1,6 @@
 ---
 Name: readxl
+Contact: Jennifer Bryan <jenny@rstudio.com>
 Archive: CRAN
 Bug-Database: https://github.com/tidyverse/readxl/issues
 Bug-Submit: https://github.com/tidyverse/readxl/issues/new

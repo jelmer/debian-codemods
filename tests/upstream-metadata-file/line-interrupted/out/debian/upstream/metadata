@@ -1,4 +1,5 @@
 Name: tsne
+Contact: Justin Donaldson <jdonaldson@gmail.com>
 Archive: CRAN
 Bug-Database: https://github.com/jdonaldson/rtsne/issues
 Bug-Submit: https://github.com/jdonaldson/rtsne/issues/new
