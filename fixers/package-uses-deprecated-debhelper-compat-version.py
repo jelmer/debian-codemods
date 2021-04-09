@@ -330,6 +330,15 @@ def debhelper_argument_order(line, target):
     return line
 
 
+def override_dh_auto_test_drop_options(rule):
+    if b'override_dh_auto_test' not in rule.targets:
+        return
+    if rule.lines[1] != b'ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))' or rule.lines[-1] != b'endif':
+        return
+    del rule.lines[1]
+    del rule.lines[-1]
+
+
 def upgrade_to_debhelper_12():
 
     pybuild_upgrader = PybuildUpgrader()
@@ -455,7 +464,7 @@ def upgrade_to_debhelper_13():
         # be reverted to a non-fatal warning by explicitly passing
         # --list-missing like it was in compat 12.
         drop_dh_missing_fail,
-        ])
+        ], rule_cb=override_dh_auto_test_drop_options)
 
 
 upgrade_to_debhelper = {

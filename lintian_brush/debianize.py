@@ -130,6 +130,14 @@ class DistCreationFailed(Exception):
         self.inner = inner
 
 
+class NoUpstreamReleases(Exception):
+    """No upstream releases were found."""
+
+    def __init__(self, upstream_source, name):
+        self.upstream_source = upstream_source
+        self.name = name
+
+
 def write_changelog_template(path, source_name, version, wnpp_bugs=None):
     if wnpp_bugs:
         closes = " Closes: " + ", ".join([("#%d" % (bug,)) for bug, kind in wnpp_bugs])
@@ -706,6 +714,9 @@ def get_upstream_version(
         upstream_version=None):
     if upstream_version is None:
         upstream_version = upstream_source.get_latest_version(metadata.get("Name"), None)
+    if upstream_version is None:
+        raise NoUpstreamReleases(upstream_source, metadata.get("Name"))
+
     upstream_revision = upstream_source.version_as_revision(
         metadata.get("Name"), upstream_version)
 
