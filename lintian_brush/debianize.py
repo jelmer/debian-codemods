@@ -32,7 +32,7 @@ import shutil
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict
 from urllib.parse import urlparse
 import warnings
 
@@ -620,7 +620,7 @@ class DebianizeResult(object):
     """Debianize result."""
 
     upstream_branch_name: Optional[str] = None
-    tag_names: List[str] = field(default_factory=list)
+    tag_names: Dict[Optional[str], str] = field(default_factory=dict)
     upstream_version: Optional[str] = None
     wnpp_bugs: List[Tuple[int, str]] = field(default_factory=list)
 
