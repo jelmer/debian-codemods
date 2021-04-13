@@ -23,7 +23,7 @@ __all__ = [
     ]
 
 import contextlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 import logging
 import os
@@ -620,9 +620,9 @@ class DebianizeResult(object):
     """Debianize result."""
 
     upstream_branch_name: Optional[str] = None
-    tag_names: List[str] = []
+    tag_names: List[str] = field(default_factory=list)
     upstream_version: Optional[str] = None
-    wnpp_bugs: List[Tuple[int, str]] = []
+    wnpp_bugs: List[Tuple[int, str]] = field(default_factory=list)
 
 
 def get_project_wide_deps(session, wt, subpath, buildsystem, buildsystem_subpath):
