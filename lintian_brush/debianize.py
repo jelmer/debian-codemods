@@ -620,9 +620,9 @@ class DebianizeResult(object):
     """Debianize result."""
 
     upstream_branch_name: Optional[str] = None
-    tag_names: Optional[List[str]] = None
+    tag_names: List[str] = []
     upstream_version: Optional[str] = None
-    wnpp_bugs: Optional[List[Tuple[int, str]]] = None
+    wnpp_bugs: List[Tuple[int, str]] = []
 
 
 def get_project_wide_deps(session, wt, subpath, buildsystem, buildsystem_subpath):
@@ -863,7 +863,7 @@ def debianize(  # noqa: C901
 
             upstream_vcs_tree = upstream_source.revision_tree(source_name, upstream_version)
 
-            # TODO(jelmer): Don't export
+            # TODO(jelmer): Don't export, just access from memory.
             exported_upstream_tree_path = es.enter_context(TemporaryDirectory())
             dupe_vcs_tree(upstream_vcs_tree, exported_upstream_tree_path)
             import_metadata_from_path(exported_upstream_tree_path)

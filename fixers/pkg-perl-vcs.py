@@ -12,7 +12,10 @@ URL_BASE = 'https://salsa.debian.org/perl-team/modules/packages'
 
 with control as e:
     # Parse the maintainer field and extract the email address.
-    (name, email) = parseaddr(e.source['Maintainer'])
+    try:
+        (name, email) = parseaddr(e.source['Maintainer'])
+    except KeyError:
+        sys.exit(2)
     if email != PKG_PERL_EMAIL:
         # Nothing to do here, it's not a pkg-perl-maintained package
         sys.exit(0)

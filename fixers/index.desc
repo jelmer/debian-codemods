@@ -182,6 +182,7 @@ Lintian-Tags:
 # and then drop the quilt extension.
 Fix-Script: dh-quilt-addon-but-quilt-source-format.py
 Lintian-Tags: dh-quilt-addon-but-quilt-source-format
+After: source-format.py
 
 Fix-Script: missing-build-dependency-for-dh_-command.py
 Lintian-Tags:
@@ -459,9 +460,11 @@ Lintian-Tags: maintainer-script-empty
 
 Fix-Script: pkg-perl-vcs.py
 Lintian-Tags: team/pkg-perl/vcs/no-team-url, team/pkg-perl/vcs/no-git
+After: no-maintainer-field.py
 
 Fix-Script: pkg-perl-testsuite.py
 Lintian-Tags: team/pkg-perl/testsuite/no-testsuite-header
+After: no-maintainer-field.py
 
 # Disabled for now because it updates even for any diff, not just when messages
 # change.
