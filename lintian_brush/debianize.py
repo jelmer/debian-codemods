@@ -426,6 +426,27 @@ def process_dist_zilla(es, session, wt, subpath, debian_path, upstream_version, 
     return control
 
 
+def process_makefile_pl(es, session, wt, subpath, debian_path, upstream_version, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
+    kickstart_from_dist(wt, subpath)
+    control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
+    source = control.source
+    upstream_name = metadata['Name']
+    source['Source'] = perl_package_name(upstream_name)
+    source["Rules-Requires-Root"] = "no"
+    source['Testsuite'] = 'autopkgtest-pkg-perl'
+    source["Standards-Version"] = latest_standards_version()
+    build_deps, test_deps = get_project_wide_deps(
+        session, wt, subpath, buildsystem, buildsystem_subpath)
+    import_build_deps(source, build_deps)
+    setup_debhelper(wt, debian_path, source, compat_release=compat_release)
+    control.add_binary(
+        {"Package": source['Source'],
+         "Depends": "${perl:Depends}",
+         "Architecture": "all"
+         })
+    return control
+
+
 def process_perl_build_tiny(es, session, wt, subpath, debian_path, upstream_version, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
@@ -601,6 +622,7 @@ PROCESSORS = {
     "dist-zilla": process_dist_zilla,
     "dist-inkt": process_dist_zilla,
     "perl-build-tiny": process_perl_build_tiny,
+    "makefile.pl" : process_makefile_pl,
     "cargo": process_cargo,
     "golang": process_golang,
     "R": process_r,
