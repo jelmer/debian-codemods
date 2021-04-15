@@ -998,6 +998,15 @@ class UpstreamInfo:
     tarball_url: Optional[str] = None
     version: Optional[str] = None
 
+    def json(self):
+        return {
+            'name': self.name,
+            'branch_url': self.branch_url,
+            'branch_subpath': self.branch_subpath,
+            'tarball_url': self.tarball_url,
+            'version': self.version
+        }
+
 
 def load_crate_info(crate):
     from urllib.request import urlopen, Request
