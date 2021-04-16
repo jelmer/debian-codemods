@@ -19,7 +19,7 @@ with WatchEditor() as updater:
             continue
 
         parts = w.matching_pattern.split('/')
-        if parts[-2] == 'archive':
+        if len(parts) > 2 and parts[-2] == 'archive':
             parts.insert(-1, 'refs/tags')
         w.matching_pattern = '/'.join(parts)
 
