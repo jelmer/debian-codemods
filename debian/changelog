@@ -1,4 +1,4 @@
-lintian-brush (0.105) UNRELEASED; urgency=medium
+lintian-brush (0.105) unstable; urgency=medium
 
   * Bump required debmutate.
   * Detect gbp-dch use in repositories with subdirectories.
@@ -10,7 +10,7 @@ lintian-brush (0.105) UNRELEASED; urgency=medium
   * Drop checks for DEB_BUILT_OPTIONS=nocheck when upgrading to
     debhelper 13.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 30 Mar 2021 00:21:42 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 16 Apr 2021 19:04:39 +0100
 
 lintian-brush (0.104) unstable; urgency=medium
 
