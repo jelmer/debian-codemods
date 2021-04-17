@@ -1066,6 +1066,8 @@ def find_cargo_crate_upstream(requirement):
             logging.warning(
                 'Unable to find version of crate %s that matches version %s',
                 name, requirement.version)
+        else:
+            name += '-' + str(version)
     return UpstreamInfo(
         branch_url=upstream_branch, branch_subpath=None,
         name=name, version=str(version) if version else None)
