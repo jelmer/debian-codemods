@@ -469,6 +469,18 @@ def process_perl_build_tiny(es, session, wt, subpath, debian_path, upstream_vers
     return control
 
 
+def go_base_name(package):
+    (hostname, path) = package.split('/')
+    if hostname == "github.com":
+        hostname = "github"
+    if hostname == "gopkg.in":
+        hostname = "gopkg"
+    path = path.rstrip('/').replace("/", "-")
+    if path.endswith('.git'):
+        path = path[:-4]
+    return (hostname + path).replace("_", "-").lower()
+
+
 def process_golang(es, session, wt, subpath, debian_path, upstream_version, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
@@ -482,15 +494,7 @@ def process_golang(es, session, wt, subpath, debian_path, upstream_version, meta
         source["Homepage"] = metadata["Repository-Browse"]
     source["Section"] = "devel"
     parsed_url = urlparse(metadata["Repository"])
-    hostname = parsed_url.hostname
-    if hostname == "github.com":
-        hostname = "github"
-    if hostname == "gopkg.in":
-        hostname = "gopkg"
-    path = parsed_url.path.rstrip('/').replace("/", "-")
-    if path.endswith('.git'):
-        path = path[:-4]
-    godebname = (hostname + path).replace("_", "-").lower()
+    godebname = go_base_name(parsed_url.hostname + parsed_url.path)
     source['Source'] = "golang-%s" % godebname
     build_deps, test_deps = get_project_wide_deps(
         session, wt, subpath, buildsystem, buildsystem_subpath)
@@ -1035,14 +1039,14 @@ def find_python_package_upstream(requirement):
             tarball_url = url_data['url']
     return UpstreamInfo(
         branch_url=upstream_branch, branch_subpath='',
-        name=pypi_data['info']['name'],
+        name='python-%s' % pypi_data['info']['name'],
         tarball_url=tarball_url)
 
 
 def find_go_package_upstream(requirement):
     if requirement.package.startswith('github.com/'):
         return UpstreamInfo(
-            name=requirement.package,
+            name='golang-' % go_base_name(requirement.package),
             branch_url='https://%s' % '/'.join(requirement.package.split('/')[:3]),
             branch_subpath='')
 
@@ -1051,7 +1055,7 @@ def find_cargo_crate_upstream(requirement):
     import semver
     data = load_crate_info(requirement.crate)
     upstream_branch = data['crate']['repository']
-    name = data['crate']['name']
+    name = 'rust-' + data['crate']['name'].replace('_', '-')
     version = None
     if requirement.version is not None:
         for version_info in data['versions']:
