@@ -1053,6 +1053,7 @@ def find_go_package_upstream(requirement):
 
 def find_cargo_crate_upstream(requirement):
     import semver
+    from debmutate.debcargo import semver_pair
     data = load_crate_info(requirement.crate)
     upstream_branch = data['crate']['repository']
     name = 'rust-' + data['crate']['name'].replace('_', '-')
@@ -1071,7 +1072,7 @@ def find_cargo_crate_upstream(requirement):
                 'Unable to find version of crate %s that matches version %s',
                 name, requirement.version)
         else:
-            name += '-' + str(version)
+            name += '-' + semver_pair(version)
     return UpstreamInfo(
         branch_url=upstream_branch, branch_subpath=None,
         name=name, version=str(version) if version else None)
