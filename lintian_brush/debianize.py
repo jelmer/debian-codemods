@@ -470,7 +470,7 @@ def process_perl_build_tiny(es, session, wt, subpath, debian_path, upstream_vers
 
 
 def go_base_name(package):
-    (hostname, path) = package.split('/')
+    (hostname, path) = package.split('/', 1)
     if hostname == "github.com":
         hostname = "github"
     if hostname == "gopkg.in":
