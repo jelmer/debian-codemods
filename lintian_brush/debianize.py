@@ -1062,7 +1062,7 @@ def find_python_package_upstream(requirement):
 def find_go_package_upstream(requirement):
     if requirement.package.startswith('github.com/'):
         return UpstreamInfo(
-            name='golang-' % go_base_name(requirement.package),
+            name='golang-%s' % go_base_name(requirement.package),
             branch_url='https://%s' % '/'.join(requirement.package.split('/')[:3]),
             branch_subpath='')
 
