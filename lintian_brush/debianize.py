@@ -610,6 +610,8 @@ def process_cargo(es, session, wt, subpath, debian_path, upstream_version, metad
     import semver
     desired_version = semver.VersionInfo.parse(upstream_version)
     data = load_crate_info(upstream_name)
+    if data is None:
+        raise Exception('Crate does not exist' % upstream_name)
     for version_info in data['versions']:
         available_version = semver.VersionInfo.parse(version_info['num'])
         if (available_version.major, available_version.minor) > (desired_version.major, desired_version.minor):
@@ -1013,22 +1015,36 @@ class UpstreamInfo:
 
 
 def load_crate_info(crate):
+    import urllib.error
     from urllib.request import urlopen, Request
     import json
     http_url = 'https://crates.io/api/v1/crates/%s' % crate
     headers = {'User-Agent': 'debianize', 'Accept': 'application/json'}
     http_contents = urlopen(Request(http_url, headers=headers)).read()
-    return json.loads(http_contents)
+    try:
+        return json.loads(http_contents)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            logging.warning('No crate %r', crate)
+            return None
+        raise
 
 
 def find_python_package_upstream(requirement):
+    import urllib.error
     from urllib.request import urlopen, Request
     import json
     http_url = 'https://pypi.org/pypi/%s/json' % requirement.package
     headers = {'User-Agent': 'ognibuild', 'Accept': 'application/json'}
     http_contents = urlopen(
         Request(http_url, headers=headers)).read()
-    pypi_data = json.loads(http_contents)
+    try:
+        pypi_data = json.loads(http_contents)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            logging.warning('No pypi project %r', requirement.package)
+            return None
+        raise
     upstream_branch = None
     for name, url in pypi_data['info']['project_urls'].items():
         if name.lower() in ('github', 'repository'):
@@ -1055,6 +1071,8 @@ def find_cargo_crate_upstream(requirement):
     import semver
     from debmutate.debcargo import semver_pair
     data = load_crate_info(requirement.crate)
+    if data is None:
+        return None
     upstream_branch = data['crate']['repository']
     name = 'rust-' + data['crate']['name'].replace('_', '-')
     version = None
@@ -1072,7 +1090,7 @@ def find_cargo_crate_upstream(requirement):
                 'Unable to find version of crate %s that matches version %s',
                 name, requirement.version)
         else:
-            name += '-' + semver_pair(version)
+            name += '-' + semver_pair(str(version))
     return UpstreamInfo(
         branch_url=upstream_branch, branch_subpath=None,
         name=name, version=str(version) if version else None)
