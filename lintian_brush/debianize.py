@@ -737,8 +737,7 @@ def generic_get_source_name(wt, metadata):
 
 
 def get_upstream_version(
-        upstream_source, metadata, snapshot=False,
-        local_dir=None,
+        upstream_source, metadata, local_dir=None,
         upstream_version=None):
     if upstream_version is None:
         upstream_version = upstream_source.get_latest_version(metadata.get("Name"), None)
@@ -807,7 +806,7 @@ def debianize(  # noqa: C901
     schroot: Optional[str] = None,
     create_dist=None,
     committer: Optional[str] = None,
-    snapshot: bool = False,
+    upstream_version_kind: str = "snapshot",
     debian_revision: str = "1",
     upstream_version: Optional[str] = None,
     requirement: Optional[Requirement] = None
@@ -852,12 +851,11 @@ def debianize(  # noqa: C901
                 session = SchrootSession(schroot)
 
             upstream_source = UpstreamBranchSource.from_branch(
-                upstream_branch, snapshot=snapshot, local_dir=wt.controldir,
+                upstream_branch, version_kind=upstream_version_kind, local_dir=wt.controldir,
                 create_dist=(create_dist or partial(default_create_dist, session)))
 
             result.upstream_version = upstream_version = get_upstream_version(
-                upstream_source, metadata,
-                snapshot=snapshot, local_dir=wt.controldir,
+                upstream_source, metadata, local_dir=wt.controldir,
                 upstream_version=upstream_version)
 
             source_name = generic_get_source_name(wt, metadata)
@@ -1273,8 +1271,12 @@ def main(argv=None):  # noqa: C901
         default=50,
         help=argparse.SUPPRESS)
     parser.add_argument(
-        '--release', action='store_true',
+        '--release', dest='upstream-version-kind', const="release",
         help='Package latest upstream release rather than a snapshot.')
+    parser.add_argument(
+        '--upstream-version-kind', choices=['auto', 'release', 'snapshot'],
+        default='snapshot',
+        help="What kind of release to package.")
     parser.add_argument(
         "--recursive", "-r",
         action="store_true",
@@ -1339,7 +1341,7 @@ def main(argv=None):  # noqa: C901
                 consult_external_directory=args.consult_external_directory,
                 verbose=args.verbose,
                 schroot=args.schroot,
-                snapshot=(not args.release),
+                upstream_version_kind=args.upstream_version_kind,
                 debian_revision=args.debian_revision,
                 upstream_version=args.upstream_version,
             )
@@ -1424,7 +1426,7 @@ def main(argv=None):  # noqa: C901
                     verbose=args.verbose, schroot=args.schroot,
                     debian_revision=args.debian_revision,
                     upstream_version=upstream_info.version,
-                    snapshot=(not args.release),
+                    upstream_version_kind=args.upstream_version_kind,
                     requirement=requirement)
                 do_build(
                     new_wt, new_subpath, self.apt_repo.directory,
