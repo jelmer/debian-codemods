@@ -806,7 +806,7 @@ def debianize(  # noqa: C901
     schroot: Optional[str] = None,
     create_dist=None,
     committer: Optional[str] = None,
-    upstream_version_kind: str = "snapshot",
+    upstream_version_kind: str = "auto",
     debian_revision: str = "1",
     upstream_version: Optional[str] = None,
     requirement: Optional[Requirement] = None
@@ -1275,7 +1275,7 @@ def main(argv=None):  # noqa: C901
         help='Package latest upstream release rather than a snapshot.')
     parser.add_argument(
         '--upstream-version-kind', choices=['auto', 'release', 'snapshot'],
-        default='snapshot',
+        default='auto',
         help="What kind of release to package.")
     parser.add_argument(
         "--recursive", "-r",
