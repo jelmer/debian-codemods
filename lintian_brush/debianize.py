@@ -39,7 +39,6 @@ import warnings
 
 from debian.changelog import Changelog, Version, get_maintainer, format_date
 from debmutate.control import ensure_some_version, ensure_exact_version, ensure_relation, ControlEditor
-from debmutate.versions import debianize_upstream_version
 from debian.deb822 import PkgRelation
 
 from breezy import osutils
