@@ -740,12 +740,12 @@ def get_upstream_version(
         upstream_source, metadata, local_dir=None,
         upstream_version=None):
     if upstream_version is None:
-        upstream_version = upstream_source.get_latest_version(metadata.get("Name"), None)
+        upstream_version, mangled_upstream_version = upstream_source.get_latest_version(metadata.get("Name"), None)
     if upstream_version is None:
         raise NoUpstreamReleases(upstream_source, metadata.get("Name"))
 
     upstream_revision = upstream_source.version_as_revision(
-        metadata.get("Name"), upstream_version)
+        metadata.get("Name"), mangled_upstream_version)
 
     if upstream_version is None and "X-Version" in metadata:
         # They haven't done any releases yet. Assume we're ahead of
@@ -762,7 +762,7 @@ def get_upstream_version(
         logging.warning(
             "Unable to determine upstream version, using %s.",
             upstream_version)
-    return upstream_version
+    return upstream_version, mangled_upstream_version
 
 
 def find_wnpp_bugs_harder(source_name, upstream_name):
@@ -854,19 +854,21 @@ def debianize(  # noqa: C901
                 upstream_branch, version_kind=upstream_version_kind, local_dir=wt.controldir,
                 create_dist=(create_dist or partial(default_create_dist, session)))
 
-            result.upstream_version = upstream_version = get_upstream_version(
+            upstream_version, mangled_upstream_version = get_upstream_version(
                 upstream_source, metadata, local_dir=wt.controldir,
                 upstream_version=upstream_version)
+
+            result.upstream_version = upstream_version
 
             source_name = generic_get_source_name(wt, metadata)
 
             def kickstart_from_dist(wt, subpath):
-                logging.info("Using upstream version %s", upstream_version)
+                logging.info("Using upstream version %s", mangled_upstream_version)
 
                 pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
                 upstream_dist_revid, result.upstream_branch_name, result.tag_names = import_upstream_dist(
                     pristine_tar_source, wt, upstream_source, upstream_subpath, source_name,
-                    upstream_version, session)
+                    mangled_upstream_version, session)
 
                 if wt.branch.last_revision() != upstream_dist_revid:
                     wt.pull(
@@ -887,7 +889,7 @@ def debianize(  # noqa: C901
                     except PointlessCommit:
                         pass
 
-            upstream_vcs_tree = upstream_source.revision_tree(source_name, upstream_version)
+            upstream_vcs_tree = upstream_source.revision_tree(source_name, mangled_upstream_version)
 
             # TODO(jelmer): Don't export, just access from memory.
             exported_upstream_tree_path = es.enter_context(TemporaryDirectory())
@@ -929,7 +931,7 @@ def debianize(  # noqa: C901
 
             result.wnpp_bugs = wnpp_bugs
 
-            version = Version(upstream_version + "-" + debian_revision)
+            version = Version(mangled_upstream_version + "-" + debian_revision)
             write_changelog_template(
                 wt.abspath(os.path.join(debian_path, "changelog")),
                 source["Source"],
