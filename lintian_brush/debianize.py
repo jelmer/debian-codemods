@@ -39,12 +39,13 @@ import warnings
 
 from debian.changelog import Changelog, Version, get_maintainer, format_date
 from debmutate.control import ensure_some_version, ensure_exact_version, ensure_relation, ControlEditor
+from debmutate.versions import debianize_upstream_version
 from debian.deb822 import PkgRelation
 
 from breezy import osutils
 from breezy.branch import Branch
 from breezy.controldir import ControlDir
-from breezy.errors import AlreadyBranchError
+from breezy.errors import AlreadyBranchError, NotBranchError
 from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.revision import NULL_REVISION
 from breezy.workingtree import WorkingTree
@@ -1272,6 +1273,7 @@ def main(argv=None):  # noqa: C901
         help=argparse.SUPPRESS)
     parser.add_argument(
         '--release', dest='upstream-version-kind', const="release",
+        action='store_const',
         help='Package latest upstream release rather than a snapshot.')
     parser.add_argument(
         '--upstream-version-kind', choices=['auto', 'release', 'snapshot'],
@@ -1319,7 +1321,11 @@ def main(argv=None):  # noqa: C901
 
     # For now...
     if args.upstream:
-        upstream_branch, upstream_subpath = Branch.open_containing(args.upstream)
+        try:
+            upstream_branch, upstream_subpath = Branch.open_containing(args.upstream)
+        except NotBranchError as e:
+            logging.fatal('%s: not a valid branch: %s', args.upstream, e)
+            return 1
     else:
         upstream_branch = wt.branch
         upstream_subpath = subpath
