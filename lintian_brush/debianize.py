@@ -80,6 +80,10 @@ from breezy.plugins.debian.upstream.branch import (
     UpstreamBranchSource,
 )
 
+from debmutate.versions import (
+    debianize_upstream_version,
+    )
+
 
 from . import (
     available_lintian_fixers,
@@ -741,6 +745,8 @@ def get_upstream_version(
         upstream_version=None):
     if upstream_version is None:
         upstream_version, mangled_upstream_version = upstream_source.get_latest_version(metadata.get("Name"), None)
+    else:
+        mangled_upstream_version = debianize_upstream_version(upstream_version)
     if upstream_version is None:
         raise NoUpstreamReleases(upstream_source, metadata.get("Name"))
 
