@@ -11,7 +11,7 @@ from debmutate.control import (
     )
 from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, LintianIssue
 from lintian_brush.standards_version import iter_standards_versions
 
 # Dictionary mapping source and target versions
@@ -171,7 +171,7 @@ try:
                         tag = 'ancient-standards-version'
                     else:
                         tag = 'out-of-date-standards-version'
-            fixed_lintian_tag(
+            issue = LintianIssue(
                 updater.source,
                 tag,
                 '%s%s%s' % (
@@ -181,18 +181,19 @@ try:
                      '.'.join([str(x) for x in last]))
                     if last is not None else '',
                     ))
-
-            while current_version in upgrade_path:
-                target_version = upgrade_path[current_version]
-                try:
-                    check_fn = check_requirements[target_version]
-                except KeyError:
-                    pass
-                else:
-                    if not check_fn():
-                        break
-                current_version = target_version
-            updater.source["Standards-Version"] = current_version
+            if issue.should_fix():
+                while current_version in upgrade_path:
+                    target_version = upgrade_path[current_version]
+                    try:
+                        check_fn = check_requirements[target_version]
+                    except KeyError:
+                        pass
+                    else:
+                        if not check_fn():
+                            break
+                    current_version = target_version
+                updater.source["Standards-Version"] = current_version
+                issue.report_fixed()
 except FileNotFoundError:
     sys.exit(0)
 
