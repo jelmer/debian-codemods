@@ -64,7 +64,7 @@ with control as updater:
         if not existing_description:
             issue = LintianIssue(binary, 'required-field', 'Description')
             summary = None
-        elif len(existing_description.splitlines()) == 1:
+        elif len(existing_description.strip().splitlines()) == 1:
             issue = LintianIssue(binary, 'extended-description-is-empty')
             summary = existing_description.splitlines()[0]
         else:

@@ -130,9 +130,7 @@ class AppliedPatches(object):
 
     def __enter__(self):
         if self.patches:
-            from breezy.transform import TransformPreview
-
-            self._tt = TransformPreview(self.tree)
+            self._tt = self.tree.preview_transform()
             apply_patches(self._tt, self.patches, prefix=self.prefix)
             return self._tt.get_preview_tree()
         else:

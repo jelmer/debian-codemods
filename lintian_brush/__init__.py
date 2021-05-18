@@ -342,7 +342,7 @@ def determine_env(
     diligence,
 ):
     env = dict(os.environ.items())
-    env["PACKAGE"] = package
+    env["DEB_SOURCE"] = package
     env["CURRENT_VERSION"] = str(current_version)
     env["COMPAT_RELEASE"] = compat_release
     env["MINIMUM_CERTAINTY"] = minimum_certainty

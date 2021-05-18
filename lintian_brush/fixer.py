@@ -219,7 +219,7 @@ def diligence():
 
 
 def source_package_name():
-    return os.environ.get("PACKAGE")
+    return os.environ.get("DEB_SOURCE")
 
 
 def vendor():

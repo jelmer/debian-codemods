@@ -203,7 +203,7 @@ it has made will be discarded and the fixer will be reported as having failed.
 
 The following additional environment variables are set:
 
- * ``PACKAGE``: The name of the source package that is being edited.
+ * ``DEB_SOURCE``: The name of the source package that is being edited.
  * ``CURRENT_VERSION``: Package version that is being edited.
  * ``COMPAT_RELEASE``: Debian release to be compatible with. Usually ``sid``
    when --modern was specified and the name of the current stable release otherwise.
