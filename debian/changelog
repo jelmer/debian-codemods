@@ -1,8 +1,8 @@
-lintian-brush (0.106) UNRELEASED; urgency=medium
+lintian-brush (0.106) unstable; urgency=medium
 
   * Add support for upgrading to Standards-Version 4.5.1.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 19 May 2021 20:29:41 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 19 May 2021 21:10:35 +0100
 
 lintian-brush (0.105) unstable; urgency=medium
 
