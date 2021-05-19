@@ -22,6 +22,7 @@ upgrade_path = {
     "4.3.0": "4.4.0",
     "4.4.0": "4.4.1",
     "4.4.1": "4.5.0",
+    "4.5.0": "4.5.1",
 }
 
 
@@ -131,12 +132,31 @@ def check_4_5_0():
     return True
 
 
+def check_4_5_1():
+    # TODO(jelmer): check whether necessary copyright headers have been copied
+    # verbatim into copyright file?
+
+    try:
+        for entry in os.scandir('debian/patches'):
+            if entry.name.endswith('.series'):
+                return False
+    except FileNotFoundError:
+        pass
+    return True
+
+
+def check_4_2_1():
+    return True
+
+
 check_requirements = {
     "4.1.1": check_4_1_1,
+    "4.2.1": check_4_2_1,
     "4.4.0": check_4_4_0,
     "4.4.1": check_4_4_1,
     "4.1.5": check_4_1_5,
     "4.5.0": check_4_5_0,
+    "4.5.1": check_4_5_1,
 }
 
 current_version = None
@@ -184,13 +204,9 @@ try:
             if issue.should_fix():
                 while current_version in upgrade_path:
                     target_version = upgrade_path[current_version]
-                    try:
-                        check_fn = check_requirements[target_version]
-                    except KeyError:
-                        pass
-                    else:
-                        if not check_fn():
-                            break
+                    check_fn = check_requirements[target_version]
+                    if not check_fn():
+                        break
                     current_version = target_version
                 updater.source["Standards-Version"] = current_version
                 issue.report_fixed()
