@@ -1493,11 +1493,11 @@ def main(argv=None):  # noqa: C901
                             wt, subpath, apt_repo.directory,
                             extra_repositories=apt_repo.sources_lines())
                     with SimpleTrustedAptRepo(apt_directory) as apt_repo:
-                        (changes_names, cl_version) = iterate_with_build_fixers(
+                        (changes_names, cl_entry) = iterate_with_build_fixers(
                             [DebianizeFixer(vcs_directory, apt_repo)],
                             main_build)
                 else:
-                    (changes_names, cl_version) = do_build(
+                    (changes_names, cl_entry) = do_build(
                         wt, subpath, args.output_directory)
             except DetailedDebianBuildFailure as e:
                 if e.phase is None:
