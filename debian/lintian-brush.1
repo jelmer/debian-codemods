@@ -69,6 +69,12 @@ changes and updating debian/changelog if necessary.
 However, for testing purposes, you can also run the scripts directly in a
 packaging repository. See /usr/share/doc/lintian-brush/README.md.gz (section
 "Writing new fixers") for details about the expected behaviour from fixer scripts.
+.SH ENVIRONMENT
+.TP
+\fBDEB_UPDATE_CHANGELOG\fR
+Used to control whether the changelog should be updated, depending on whether
+it is set to "leave", "update" or "auto". The --update-changelog and --no-update-changelog arguments
+override this.
 .SH EXAMPLES
 .IP "\fB$ lintian-brush\fR --list-tags"
 List all lintian tags for which fixers are available.

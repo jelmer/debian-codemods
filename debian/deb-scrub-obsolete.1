@@ -25,6 +25,12 @@ Print the identity (name and e\-mailaddress) that apply-multiarch-hints will use
 .TP
 \fB\-\-verbose\fR
 Print list of fixers that was run and print tracebacks for failed fixers.
+.SH ENVIRONMENT
+.TP
+\fBDEB_UPDATE_CHANGELOG\fR
+Used to control whether the changelog should be updated, depending on whether
+it is set to "leave", "update" or "auto". The --update-changelog and --no-update-changelog arguments
+override this.
 .SH "SEE ALSO"
 \&\fIlintian-brush.conf\fR\|(5)
 \&\fIlintian-brush\fR\|(1)
