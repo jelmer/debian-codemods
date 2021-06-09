@@ -10,6 +10,7 @@ lintian-brush (0.105) UNRELEASED; urgency=medium
   * Drop checks for DEB_BUILT_OPTIONS=nocheck when upgrading to
     debhelper 13.
   * Add support for upgrading to Standards-Version 4.5.1.
+  * Fix compatibility with Breezy 3.2. Closes: #989633
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 16 Apr 2021 19:04:39 +0100
 
