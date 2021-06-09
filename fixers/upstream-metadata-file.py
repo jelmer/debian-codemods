@@ -101,6 +101,7 @@ with YamlUpdater('debian/upstream/metadata') as editor:
             else minimum_certainty),
         net_access=net_access,
         consult_external_directory=True)
+
     if net_access:
         # Verify that online resources actually exist and adjust certainty
         # accordingly.

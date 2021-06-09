@@ -51,6 +51,23 @@ from debmutate.control import (
 )
 
 
+DEFAULT_VALUE_MULTIARCH_HINT = 50
+MULTIARCH_HINTS_VALUE = {
+    "ma-foreign": 20,
+    "file-conflict": 50,
+    "ma-foreign-library": 20,
+    "dep-any": 20,
+    "ma-same": 20,
+    "arch-all": 20,
+}
+
+
+def calculate_value(hints):
+    return sum(map(MULTIARCH_HINTS_VALUE.__getitem__, hints)) + (
+        DEFAULT_VALUE_MULTIARCH_HINT
+    )
+
+
 MULTIARCH_HINTS_URL = "https://dedup.debian.net/static/multiarch-hints.yaml.xz"
 
 
@@ -394,6 +411,17 @@ def main(argv=None):
     with cache_download_multiarch_hints() as f:
         hints = multiarch_hints_by_binary(parse_multiarch_hints(f))
 
+    if control_files_in_root(wt, subpath):
+        report_fatal(
+            "control-files-in-root",
+            "control files live in root rather than debian/ " "(LarstIQ mode)",
+        )
+
+    if is_debcargo_package(local_tree, subpath):
+        report_okay("nothing-to-do", "Package uses debcargo")
+    elif not control_file_present(local_tree, subpath):
+        report_fatal("missing-control-file", "Unable to find debian/control")
+
     try:
         result, summary = run_lintian_fixer(
             wt,
@@ -407,13 +435,41 @@ def main(argv=None):
             changes_by="apply-multiarch-hints",
         )
     except NoChanges:
-        logging.info("Nothing to do.")
+        report_okay("nothing-to-do", "no hints to apply")
+        return 0
+    except FormattingUnpreservable as e:
+        report_fatal(
+            "formatting-unpreservable",
+            "unable to preserve formatting while editing %s" % e.path,
+        )
+        return 1
+    except GeneratedFile as e:
+        report_fatal(
+            "generated-file", "unable to edit generated file: %r" % e)
+        return 1
     except NotDebianPackage:
         logging.info("%s: Not a debian package.", wt.basedir)
         return 1
     else:
-        for binary, hint, description, certainty in result.changes:
+        applied_hints = []
+        hint_names = []
+        for (binary, hint, description, certainty) in result.changes:
+            hint_names.append(hint["link"].split("#")[-1])
+            entry = dict(hint.items())
+            hint_names.append(entry["link"].split("#")[-1])
+            entry["action"] = description
+            entry["certainty"] = certainty
+            applied_hints.append(entry)
             logging.info("%s: %s" % (binary["Package"], description))
+        if os.environ.get('SVP_API') == '1':
+            with open(os.environ['SVP_RESULT'], 'w') as f:
+                json.dump(f, {
+                    'description': "Applied multi-arch hints.",
+                    'value': calculate_value(hint_names),
+                    'commit-message': 'Apply multi-arch hints',
+                    'context': {
+                        'applied-hints': applied_hints,
+                    }})
 
 
 if __name__ == "__main__":
