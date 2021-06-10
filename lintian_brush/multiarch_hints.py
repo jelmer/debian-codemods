@@ -18,6 +18,7 @@
 """Utility functions for applying multi-arch hints."""
 
 import contextlib
+import json
 import logging
 import os
 import re
@@ -43,12 +44,16 @@ from lintian_brush import (
     check_clean_tree,
     run_lintian_fixer,
     version_string,
+    control_files_in_root,
+    control_file_present,
+    is_debcargo_package,
 )
 from debmutate.control import (
     ControlEditor,
     format_relations,
     parse_relations,
 )
+from debmutate.reformatting import GeneratedFile, FormattingUnpreservable
 
 
 DEFAULT_VALUE_MULTIARCH_HINT = 50
@@ -280,7 +285,7 @@ class MultiArchHintFixer(Fixer):
         if not net_access:
             # This should never happen - perhaps if something else imported and
             # used this class?
-            raise NoChanges()
+            raise NoChanges(self)
         old_cwd = os.getcwd()
         try:
             os.chdir(basedir)
@@ -312,7 +317,25 @@ APPLIERS = [
 ]
 
 
-def main(argv=None):
+def report_okay(code, description):
+    if os.environ.get('SVP_API') == '1':
+        with open(os.environ['SVP_RESULT'], 'w') as f:
+            json.dump(f, {
+                'result_code': code,
+                'description': description})
+    logging.info('%s', description)
+
+
+def report_fatal(code, description):
+    if os.environ.get('SVP_API') == '1':
+        with open(os.environ['SVP_RESULT'], 'w') as f:
+            json.dump(f, {
+                'result_code': code,
+                'description': description})
+    logging.fatal('%s', description)
+
+
+def main(argv=None):  # noqa: C901
     import argparse
     from breezy.workingtree import WorkingTree
 
@@ -416,11 +439,14 @@ def main(argv=None):
             "control-files-in-root",
             "control files live in root rather than debian/ " "(LarstIQ mode)",
         )
+        return 1
 
-    if is_debcargo_package(local_tree, subpath):
+    if is_debcargo_package(wt, subpath):
         report_okay("nothing-to-do", "Package uses debcargo")
-    elif not control_file_present(local_tree, subpath):
+        return 0
+    if not control_file_present(wt, subpath):
         report_fatal("missing-control-file", "Unable to find debian/control")
+        return 1
 
     try:
         result, summary = run_lintian_fixer(
