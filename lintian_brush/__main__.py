@@ -17,12 +17,13 @@
 
 import argparse
 import atexit
+import json
 import logging
 import shutil
 import sys
 import tempfile
 
-from debian.changelog import get_maintainer
+from debian.changelog import get_maintainer, ChangelogCreateError
 import distro_info
 
 from breezy.branch import Branch
@@ -51,6 +52,17 @@ from . import (  # noqa: E402
     DEFAULT_MINIMUM_CERTAINTY,
 )
 from .config import Config  # noqa: E402
+
+
+def report_fatal(code, description, hint=None):
+    if os.environ.get('SVP_API') == '1':
+        with open(os.environ['SVP_RESULT'], 'w') as f:
+            json.dump(f, {
+                'result_code': code,
+                'description': description})
+    logging.fatal('%s', description)
+    if hint:
+        logging.info('%s', hint)
 
 
 def main(argv=None):  # noqa: C901
@@ -291,7 +303,7 @@ def main(argv=None):  # noqa: C901
                     diligence=args.diligence,
                 )
             except NotDebianPackage:
-                logging.error("%s: Not a debian package.", wt.basedir)
+                report_fatal("not-debian-package", "Not a Debian package")
                 return 1
             except PendingChanges:
                 logging.error("%s: Please commit pending changes first.", wt.basedir)
@@ -300,6 +312,12 @@ def main(argv=None):  # noqa: C901
 
                     show_tree_status(wt)
                 return 1
+            except ChangelogCreateError as e:
+                report_fatal(
+                    "changelog-create-error", "Error creating changelog entry: %s" % e
+                )
+                return 1
+
         if overall_result.overridden_lintian_issues:
             if len(overall_result.overridden_lintian_issues) == 1:
                 logging.info(
