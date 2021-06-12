@@ -25,6 +25,7 @@ __all__ = [
 import contextlib
 from dataclasses import dataclass, field
 from functools import partial
+import json
 import logging
 import os
 import re
@@ -1196,6 +1197,17 @@ class SimpleTrustedAptRepo(object):
             f.write(packages)
 
 
+def report_fatal(code, description, hint=None):
+    if os.environ.get('SVP_API') == '1':
+        with open(os.environ['SVP_RESULT'], 'w') as f:
+            json.dump(f, {
+                'result_code': code,
+                'description': description})
+    logging.fatal('%s', description)
+    if hint:
+        logging.info('%s', hint)
+
+
 def main(argv=None):  # noqa: C901
     import argparse
 
@@ -1362,16 +1374,24 @@ def main(argv=None):  # noqa: C901
             logging.info("%s: Please commit pending changes first.", wt.basedir)
             return 1
         except DebianDirectoryExists as e:
-            logging.info(
-                "%s: A debian directory already exists. " "Run lintian-brush instead or specify --force-new-directory.",
-                e.path,
+            report_fatal(
+                code='debian-directory-exists',
+                description="%s: A debian directory already exists. " % e.path,
+                hint="Run lintian-brush instead or specify --force-new-directory.",
             )
             return 1
         except SourcePackageNameInvalid as e:
-            logging.info("Unable to sanitize source package name: %s", e.source)
+            report_fatal(
+                code='invalid-source-package-name',
+                description="Generated source package name %r is not valid." % e.source)
             return 1
         except DistCreationFailed as e:
-            logging.fatal('Dist tarball creation failed: %s', e.inner)
+            if e.inner:
+                report_fatal(
+                    code='dist-%s' % e.inner.kind, description=e.msg)
+            else:
+                report_fatal(
+                    code='dist-command-failed', description=e.msg)
             return 1
 
     if args.install:
