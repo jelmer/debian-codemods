@@ -1,5 +1,5 @@
 Tests: tool-testsuite
-Depends: lintian-brush, python3-breezy.tests, gpg, dos2unix, libdebhelper-perl, lintian (>= 2.104.0), python3-iniparse, python3-levenshtein, decopy, po-debconf, python3-upstream-ontologist (>> 0.1.22), python3-markdown, python3-docutils, python3-bs4, python3-lxml, python3-tomlkit
+Depends: lintian-brush, python3-breezy.tests, gpg, dos2unix, libdebhelper-perl, lintian (>= 2.104.0), python3-iniparse, python3-levenshtein, decopy, po-debconf, python3-upstream-ontologist (>= 0.1.22), python3-markdown, python3-docutils, python3-bs4, python3-lxml, python3-tomlkit
 Restrictions: allow-stderr
 
 Test-Command: deb-scrub-obsolete --version

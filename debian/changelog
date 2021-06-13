@@ -14,7 +14,7 @@ lintian-brush (0.105) UNRELEASED; urgency=medium
   * Fix compatibility with newer versions of upstream-ontologist.
     Closes: #988909
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 16 Apr 2021 19:04:39 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 13 Jun 2021 01:50:50 +0100
 
 lintian-brush (0.104) unstable; urgency=medium
 
