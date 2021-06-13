@@ -84,21 +84,24 @@ with YamlUpdater('debian/upstream/metadata') as editor:
     minimum_certainty = os.environ.get('MINIMUM_CERTAINTY')
     net_access = net_access_allowed()
 
+    # Downgrade minimum certainty, since check_upstream_metadata can
+    # upgrade it to "certain" later.
+    initial_minimum_certainty = (
+        'likely'
+        if net_access and minimum_certainty == 'certain'
+        else minimum_certainty)
+
     # Do some guessing based on what's in the package
     update_from_guesses(
         upstream_metadata, filter_bad_guesses(
             guess_upstream_metadata_items(
-                '.', trust_package=trust_package())))
+                '.', trust_package=trust_package(),
+                minimum_certainty=initial_minimum_certainty)))
 
     # Then extend that by contacting e.g. SourceForge
     extend_upstream_metadata(
         upstream_metadata, '.',
-        # Downgrade minimum certainty, since check_upstream_metadata can
-        # upgrade it to "certain" later.
-        minimum_certainty=(
-            'likely'
-            if net_access and minimum_certainty == 'certain'
-            else minimum_certainty),
+        minimum_certainty=initial_minimum_certainty,
         net_access=net_access,
         consult_external_directory=True)
 
