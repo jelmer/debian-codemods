@@ -45,11 +45,7 @@ Depends: devscripts,
          python3-distro-info,
          python3-iniparse,
          python3-ruamel.yaml,
-<<<<<<< HEAD
-         python3-upstream-ontologist (>> 0.1.22),
-=======
          python3-upstream-ontologist (>= 0.1.22),
->>>>>>> a9f56de7 (Fix compatibility with newer versions of upstream-ontologist. Closes: #988909)
          ${misc:Depends},
          ${python3:Depends}
 Recommends: lintian, dos2unix, gpg (>= 2.1), python3-pyinotify, python3-asyncpg, libdebhelper-perl, python3-levenshtein, decopy, python3-bs4, ognibuild, python3-docutils, python3-markdown, python3-lxml, python3-tomlkit
