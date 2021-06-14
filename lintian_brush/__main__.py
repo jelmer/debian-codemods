@@ -22,10 +22,12 @@ import logging
 import shutil
 import sys
 import tempfile
+from typing import Set
 
 from debian.changelog import get_maintainer, ChangelogCreateError
 import distro_info
 
+import breezy
 from breezy.branch import Branch
 from breezy.workingtree import WorkingTree
 
@@ -50,8 +52,38 @@ from . import (  # noqa: E402
     version_string,
     SUPPORTED_CERTAINTIES,
     DEFAULT_MINIMUM_CERTAINTY,
+    control_files_in_root,
+    version_string as lintian_brush_version_string,
 )
 from .config import Config  # noqa: E402
+
+
+DEFAULT_ADDON_FIXERS = [
+    "debian-changelog-line-too-long",
+    "file-contains-trailing-whitespace",
+    "out-of-date-standards-version",
+    "package-uses-old-debhelper-compat-version",
+    "public-upstream-key-not-minimal",
+    "no-dh-sequencer",
+]
+
+DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY = 10
+DEFAULT_VALUE_LINTIAN_BRUSH = 50
+# Base these scores on the importance as set in Debian?
+LINTIAN_BRUSH_TAG_VALUES = {
+    "file-contains-trailing-whitespace": 0,
+}
+LINTIAN_BRUSH_TAG_DEFAULT_VALUE = 5
+
+
+def calculate_value(tags: Set[str]) -> int:
+    if not (set(tags) - set(DEFAULT_ADDON_FIXERS)):
+        value = DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY
+    else:
+        value = DEFAULT_VALUE_LINTIAN_BRUSH
+    for tag in tags:
+        value += LINTIAN_BRUSH_TAG_VALUES.get(tag, LINTIAN_BRUSH_TAG_DEFAULT_VALUE)
+    return value
 
 
 def report_fatal(code, description, hint=None):
@@ -286,6 +318,12 @@ def main(argv=None):  # noqa: C901
         if allow_reformatting is None:
             allow_reformatting = False
         with wt.lock_write():
+            if control_files_in_root(wt, subpath):
+                report_fatal(
+                    "control-files-in-root",
+                    "control files live in root rather than debian/ " "(LarstIQ mode)",
+                )
+
             try:
                 overall_result = run_lintian_fixers(
                     wt,
@@ -345,7 +383,8 @@ def main(argv=None):  # noqa: C901
                     min_certainty,
                 )
         else:
-            logging.info("No changes made.")
+            report_fatal("nothing-to-do", "No changes made.")
+            return 0
         if overall_result.failed_fixers and not args.verbose:
             logging.info(
                 "Some fixer scripts failed to run: %r. "
@@ -365,6 +404,37 @@ def main(argv=None):  # noqa: C901
             show_diff_trees(
                 wt.branch.repository.revision_tree(since_revid), wt, sys.stdout.buffer
             )
+        if os.environ.get('SVP_API') == '1':
+            applied = []
+            if 'SVP_RESUME' in os.environ:
+                with open(os.environ['SVP_RESUME'], 'r') as f:
+                    base = json.load(f)
+                    applied.extend(base['applied'])
+            for result, summary in overall_result.success:
+                applied.append(
+                    {
+                        "summary": summary,
+                        "description": result.description,
+                        "fixed_lintian_tags": result.fixed_lintian_tags,
+                        "revision_id": result.revision_id.decode("utf-8"),
+                        "certainty": result.certainty,
+                    }
+                )
+            failed = {
+                name: str(e)
+                for (name, e) in overall_result.failed_fixers.items()}
+            with open(os.environ['SVP_RESULT'], 'w') as f:
+                json.dump({
+                    'value': calculate_value(fixed_lintian_tags),
+                    'context': {
+                        'applied': applied,
+                        'failed': failed,
+                        "versions": {
+                            "lintian-brush": lintian_brush_version_string,
+                            "breezy": breezy.version_string,
+                            }
+                        }
+                    }, f)
 
 
 if __name__ == "__main__":
