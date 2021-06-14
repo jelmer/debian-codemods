@@ -46,6 +46,19 @@ from . import get_committer, control_files_in_root, NotDebianPackage
 from .debhelper import drop_obsolete_maintscript_entries
 
 
+DEFAULT_VALUE_MULTIARCH_HINT = 30
+
+
+def calculate_value(result):
+    value = DEFAULT_VALUE_MULTIARCH_HINT
+    for para, changes in result.control_removed:
+        for field, packages in changes:
+            value += len(packages) * 2
+    for path, removed in result.maintscript_removed:
+        value += len(removed)
+    return value
+
+
 _changelog_policy_noted = False
 
 
@@ -384,6 +397,24 @@ def scrub_obsolete(wt, subpath, compat_release, upgrade_release, update_changelo
     return result
 
 
+def report_fatal(code, description):
+    if os.environ.get('SVP_API') == '1':
+        with open(os.environ['SVP_RESULT'], 'w') as f:
+            json.dump({
+                'result_code': code,
+                'description': description}, f)
+    logging.fatal('%s', description)
+
+
+def report_okay(code, description):
+    if os.environ.get('SVP_API') == '1':
+        with open(os.environ['SVP_RESULT'], 'w') as f:
+            json.dump({
+                'result_code': code,
+                'description': description}, f)
+    logging.info('%s', description)
+
+
 def main():
     import argparse
     from breezy.workingtree import WorkingTree
@@ -503,15 +534,54 @@ def main():
     if allow_reformatting is None:
         allow_reformatting = False
 
+    if is_debcargo_package(local_tree, subpath):
+        report_fatal("nothing-to-do", "Package uses debcargo")
+        return 1
+    elif not control_file_present(local_tree, subpath):
+        report_fatal("missing-control-file", "Unable to find debian/control")
+        return 1
+
     try:
-        scrub_obsolete(
+        result = scrub_obsolete(
             wt, subpath, compat_release, upgrade_release,
             update_changelog=args.update_changelog,
             allow_reformatting=allow_reformatting
         )
-    except NotDebianPackage:
-        logging.fatal('not a Debian package.')
+    except FormattingUnpreservable as e:
+        report_fatal(
+            "formatting-unpreservable",
+            "unable to preserve formatting while editing %s" % e.path,
+        )
         return 1
+    except GeneratedFile as e:
+        report_fatal(
+            "generated-file", "unable to edit generated file: %r" % e
+        )
+        return 1
+    except NotDebianPackage:
+        report_fatal('not-debian-package', 'Not a Debian package.')
+        return 1
+
+    if not result:
+        report_okay("nothing-to-do", "no obsolete constraints")
+        return 0
+
+    if os.environ.get("SVP_API") == "1":
+        with open(os.environ["SVP_RESULT"], "w") as f:
+            json.dump({
+                "description": "Remove constraints unnecessary since %s." %
+                    upgrade_release,
+                "value": calculate_value(result),
+                "context": {
+                    "specific_files": result.specific_files,
+                    "maintscript_removed": result.maintscript_removed,
+                    "control_removed": result.control_removed,
+                }, f)
+
+    logging.info("Scrub obsolete settings.")
+    for line in result.itemized():
+        logging.info("* %s", line)
+
     return 0
 
 
