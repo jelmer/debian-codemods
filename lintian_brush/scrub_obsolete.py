@@ -400,7 +400,7 @@ def main():
     )
     from .config import Config
 
-    parser = argparse.ArgumentParser(prog="drop-backwards-compat")
+    parser = argparse.ArgumentParser(prog="deb-scrub-obsolete")
     parser.add_argument(
         "--directory",
         metavar="DIRECTORY",

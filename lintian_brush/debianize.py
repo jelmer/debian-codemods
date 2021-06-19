@@ -75,6 +75,7 @@ from upstream_ontologist.debian import (
     valid_debian_package_name,
 )
 
+import breezy
 from breezy.plugins.debian.upstream.pristinetar import get_pristine_tar_source
 from breezy.plugins.debian.upstream.branch import (
     upstream_version_add_revision,
@@ -94,6 +95,7 @@ from . import (
     run_lintian_fixers,
     get_committer,
     reset_tree,
+    version_string as lintian_brush_version_string,
 )
 from .debhelper import (
     maximum_debhelper_compat_version,
@@ -1319,6 +1321,9 @@ def main(argv=None):  # noqa: C901
         '--upstream-version',
         type=str,
         help='Upstream version to package.')
+    parser.add_argument(
+        '--dist-command', type=str,
+        help='Dist command')
     parser.add_argument('upstream', nargs='?', type=str)
 
     args = parser.parse_args(argv)
@@ -1338,6 +1343,15 @@ def main(argv=None):  # noqa: C901
 
     wt, subpath = WorkingTree.open_containing(args.directory)
 
+    if args.dist_command:
+
+        def create_dist(session, tree, package, version, target_dir):
+            with DistCatcher([session.external_path("dist")]) as dc:
+                session.check_call(args.dist_command)
+            return dc.copy_single(target_dir)
+    else:
+        create_dist = None
+
     # For now...
     if args.upstream:
         try:
@@ -1352,7 +1366,7 @@ def main(argv=None):  # noqa: C901
     use_inotify = ((False if args.disable_inotify else None),)
     with wt.lock_write():
         try:
-            debianize(
+            debianize_result = debianize(
                 wt, subpath,
                 upstream_branch, upstream_subpath,
                 use_inotify=use_inotify,
@@ -1368,6 +1382,7 @@ def main(argv=None):  # noqa: C901
                 schroot=args.schroot,
                 upstream_version_kind=args.upstream_version_kind,
                 debian_revision=args.debian_revision,
+                create_dist=create_dist,
                 upstream_version=args.upstream_version,
             )
         except PendingChanges:
@@ -1393,6 +1408,10 @@ def main(argv=None):  # noqa: C901
                 report_fatal(
                     code='dist-command-failed', description=e.msg)
             return 1
+        except NoUpstreamReleases:
+            report_fatal(
+                'no-upstream-releases',
+                'The upstream project does not appear to have made any releases.')
 
     if args.install:
         args.iterate_fix = True
@@ -1449,6 +1468,7 @@ def main(argv=None):  # noqa: C901
                     upstream_branch, upstream_info.branch_subpath or '',
                     use_inotify=use_inotify,
                     diligence=args.diligence,
+                    create_dist=create_dist,
                     trust=args.trust,
                     check=args.check,
                     net_access=not args.disable_net_access,
@@ -1538,7 +1558,8 @@ def main(argv=None):  # noqa: C901
                 logging.fatal('Error during %s: %s', phase, e.description)
                 return 1
             except DebianizedPackageRequirementMismatch as e:
-                logging.fatal(
+                report_fatal(
+                    'package-requirements-mismatch',
                     'Debianized package (binary packages: %r), version %s '
                     'did not satisfy requirement %r. Wrong repository (%s)?',
                     [binary['Package'] for binary in e.control.binaries],
@@ -1548,6 +1569,18 @@ def main(argv=None):  # noqa: C901
             if args.install:
                 subprocess.check_call(
                     ["debi"] + [os.path.join(args.output_directory, cn) for cn in changes_names])
+
+    if os.environ.get("SVP_API") == "1":
+        with open(os.environ['SVP_RESULT'], "w") as f:
+            json.dump({
+                "description": "Debianized package",
+                "context": {
+                    "wnpp_bugs": debianize_result.wnpp_bugs,
+                    "versions": {
+                        "lintian-brush": lintian_brush_version_string,
+                        "breezy": breezy.version_string,
+                    }
+                }, f)
 
     return 0
 

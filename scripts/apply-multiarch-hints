@@ -1,0 +1,4 @@
+#!/usr/bin/python3
+
+from lintian_brush.multiarch_hints import main
+main()
