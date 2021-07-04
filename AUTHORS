@@ -4,6 +4,7 @@ Dmitry Bogatov <KAction@debian.org>
 Topi Miettinen <toiwoton@gmail.com>
 Niels Thykier <niels@thykier.net>
 Sandro Knauß <hefee@debian.org>
+Filippo Giunchedi <filippo@debian.org>
 
 The test interface and some of the fixers were inspired by Ondřej Nový's
 onovy-mass tool @ https://github.com/onovy/onovy-mass
