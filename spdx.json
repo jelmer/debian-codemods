@@ -1,46 +1,46 @@
 {
     "exception_ids": [
-        "OpenJDK-assembly-exception-1.0",
-        "Font-exception-2.0",
-        "freertos-exception-2.0",
-        "Autoconf-exception-3.0",
-        "Nokia-Qt-exception-1.1",
-        "Swift-exception",
-        "SHL-2.1",
-        "Qt-LGPL-exception-1.1",
-        "GCC-exception-3.1",
-        "FLTK-exception",
-        "Qwt-exception-1.0",
-        "LLVM-exception",
-        "CLISP-exception-2.0",
-        "gnu-javamail-exception",
-        "GCC-exception-2.0",
-        "GPL-CC-1.0",
-        "GPL-3.0-linking-source-exception",
-        "Classpath-exception-2.0",
-        "Qt-GPL-exception-1.0",
-        "i2p-gpl-java-exception",
         "WxWindows-exception-3.1",
-        "SHL-2.0",
-        "389-exception",
-        "openvpn-openssl-exception",
+        "Bootloader-exception",
+        "PS-or-PDF-font-exception-20170817",
+        "mif-exception",
+        "OCCT-exception-1.0",
+        "DigiRule-FOSS-exception",
+        "OCaml-LGPL-linking-exception",
         "eCos-exception-2.0",
         "Linux-syscall-note",
-        "LGPL-3.0-linking-exception",
-        "OCaml-LGPL-linking-exception",
-        "Bootloader-exception",
-        "Bison-exception-2.2",
-        "GPL-3.0-linking-exception",
-        "DigiRule-FOSS-exception",
-        "LZMA-exception",
         "u-boot-exception-2.0",
-        "mif-exception",
-        "Libtool-exception",
-        "PS-or-PDF-font-exception-20170817",
+        "GPL-3.0-linking-source-exception",
+        "Font-exception-2.0",
+        "OpenJDK-assembly-exception-1.0",
+        "GCC-exception-2.0",
+        "389-exception",
+        "SHL-2.0",
+        "LZMA-exception",
+        "FLTK-exception",
         "Autoconf-exception-2.0",
-        "OCCT-exception-1.0",
+        "Nokia-Qt-exception-1.1",
+        "LLVM-exception",
         "Universal-FOSS-exception-1.0",
-        "Fawkes-Runtime-exception"
+        "Fawkes-Runtime-exception",
+        "freertos-exception-2.0",
+        "Qt-LGPL-exception-1.1",
+        "SHL-2.1",
+        "Swift-exception",
+        "GPL-3.0-linking-exception",
+        "Qt-GPL-exception-1.0",
+        "Libtool-exception",
+        "Qwt-exception-1.0",
+        "openvpn-openssl-exception",
+        "GCC-exception-3.1",
+        "Bison-exception-2.2",
+        "Autoconf-exception-3.0",
+        "gnu-javamail-exception",
+        "Classpath-exception-2.0",
+        "GPL-CC-1.0",
+        "LGPL-3.0-linking-exception",
+        "i2p-gpl-java-exception",
+        "CLISP-exception-2.0"
     ],
     "licenses": {
         "0BSD": {
@@ -187,6 +187,9 @@
         "BSD-3-Clause-Modification": {
             "name": "BSD 3-Clause Modification"
         },
+        "BSD-3-Clause-No-Military-License": {
+            "name": "BSD 3-Clause No Military License"
+        },
         "BSD-3-Clause-No-Nuclear-License": {
             "name": "BSD 3-Clause No Nuclear License"
         },
@@ -261,6 +264,9 @@
         },
         "CC-BY-2.5": {
             "name": "Creative Commons Attribution 2.5 Generic"
+        },
+        "CC-BY-2.5-AU": {
+            "name": "Creative Commons Attribution 2.5 Australia"
         },
         "CC-BY-3.0": {
             "name": "Creative Commons Attribution 3.0 Unported"
@@ -356,7 +362,7 @@
             "name": "Creative Commons Attribution Share Alike 3.0 Unported"
         },
         "CC-BY-SA-3.0-AT": {
-            "name": "Creative Commons Attribution-Share Alike 3.0 Austria"
+            "name": "Creative Commons Attribution Share Alike 3.0 Austria"
         },
         "CC-BY-SA-4.0": {
             "name": "Creative Commons Attribution Share Alike 4.0 International"
@@ -372,6 +378,9 @@
         },
         "CDDL-1.1": {
             "name": "Common Development and Distribution License 1.1"
+        },
+        "CDL-1.0": {
+            "name": "Common Documentation License 1.0"
         },
         "CDLA-Permissive-1.0": {
             "name": "Community Data License Agreement Permissive 1.0"
@@ -1065,6 +1074,9 @@
         },
         "OPL-1.0": {
             "name": "Open Public License v1.0"
+        },
+        "OPUBL-1.0": {
+            "name": "Open Publication License v1.0"
         },
         "OSET-PL-2.1": {
             "name": "OSET Public License version 2.1"
