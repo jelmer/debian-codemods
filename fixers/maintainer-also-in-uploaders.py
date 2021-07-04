@@ -15,6 +15,8 @@ try:
             if maintainer in [uploader.strip() for uploader in uploaders]:
                 updater.source['Uploaders'] = delete_from_list(
                     updater.source['Uploaders'], maintainer)
+                if not updater.source['Uploaders'].strip():
+                    del updater.source['Uploaders']
                 fixed_lintian_tag(
                     updater.source, 'maintainer-also-in-uploaders')
 except FileNotFoundError:
