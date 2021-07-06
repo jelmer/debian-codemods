@@ -240,13 +240,13 @@ def main(argv=None):  # noqa: C901
     )
     if args.list_fixers:
         for script in sorted([fixer.name for fixer in fixers]):
-            print('%s', script)
+            print(script)
     elif args.list_tags:
         tags = set()
         for fixer in fixers:
             tags.update(fixer.lintian_tags)
         for tag in sorted(tags):
-            print('%s', tag)
+            print(tag)
     else:
         try:
             if args.dry_run:
