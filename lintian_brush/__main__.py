@@ -90,9 +90,9 @@ def calculate_value(tags: Set[str]) -> int:
 def report_fatal(code, description, hint=None):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump(f, {
+            json.dump({
                 'result_code': code,
-                'description': description})
+                'description': description}, f)
     logging.fatal('%s', description)
     if hint:
         logging.info('%s', hint)
@@ -411,6 +411,7 @@ def main(argv=None):  # noqa: C901
                 with open(os.environ['SVP_RESUME'], 'r') as f:
                     base = json.load(f)
                     applied.extend(base['applied'])
+            all_fixed_lintian_tags = set()
             for result, summary in overall_result.success:
                 applied.append(
                     {
@@ -421,12 +422,13 @@ def main(argv=None):  # noqa: C901
                         "certainty": result.certainty,
                     }
                 )
+                all_fixed_lintian_tags.update(result.fixed_lintian_tags)
             failed = {
                 name: str(e)
                 for (name, e) in overall_result.failed_fixers.items()}
             with open(os.environ['SVP_RESULT'], 'w') as f:
                 json.dump({
-                    'value': calculate_value(fixed_lintian_tags),
+                    'value': calculate_value(all_fixed_lintian_tags),
                     'context': {
                         'applied': applied,
                         'failed': failed,
