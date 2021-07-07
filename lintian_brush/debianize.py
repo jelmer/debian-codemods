@@ -1580,7 +1580,8 @@ def main(argv=None):  # noqa: C901
                         "lintian-brush": lintian_brush_version_string,
                         "breezy": breezy.version_string,
                     }
-                }, f)
+                }
+            }, f)
 
     return 0
 
