@@ -19,13 +19,14 @@
 """Utility for dropping unnecessary constraints."""
 
 import asyncio
+import json
 import logging
 import os
 
 from breezy.commit import PointlessCommit
 
 from debmutate.debhelper import MaintscriptEditor
-
+from debmutate.reformatting import FormattingUnpreservable
 
 from debian.changelog import Version
 
@@ -42,7 +43,13 @@ from debmutate.reformatting import (
 )
 
 from .changelog import add_changelog_entry
-from . import get_committer, control_files_in_root, NotDebianPackage
+from . import (
+    get_committer,
+    control_files_in_root,
+    control_file_present,
+    NotDebianPackage,
+    is_debcargo_package,
+    )
 from .debhelper import drop_obsolete_maintscript_entries
 
 
@@ -534,10 +541,10 @@ def main():
     if allow_reformatting is None:
         allow_reformatting = False
 
-    if is_debcargo_package(local_tree, subpath):
+    if is_debcargo_package(wt, subpath):
         report_fatal("nothing-to-do", "Package uses debcargo")
         return 1
-    elif not control_file_present(local_tree, subpath):
+    elif not control_file_present(wt, subpath):
         report_fatal("missing-control-file", "Unable to find debian/control")
         return 1
 
@@ -569,14 +576,15 @@ def main():
     if os.environ.get("SVP_API") == "1":
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump({
-                "description": "Remove constraints unnecessary since %s." %
-                    upgrade_release,
+                "description": "Remove constraints unnecessary since %s."
+                % upgrade_release,
                 "value": calculate_value(result),
                 "context": {
                     "specific_files": result.specific_files,
                     "maintscript_removed": result.maintscript_removed,
                     "control_removed": result.control_removed,
-                }, f)
+                }
+            }, f)
 
     logging.info("Scrub obsolete settings.")
     for line in result.itemized():
