@@ -320,18 +320,18 @@ APPLIERS = [
 def report_okay(code, description):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump(f, {
+            json.dump({
                 'result_code': code,
-                'description': description})
+                'description': description}, f)
     logging.info('%s', description)
 
 
 def report_fatal(code, description):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump(f, {
+            json.dump({
                 'result_code': code,
-                'description': description})
+                'description': description}, f)
     logging.fatal('%s', description)
 
 
@@ -489,13 +489,13 @@ def main(argv=None):  # noqa: C901
             logging.info("%s: %s" % (binary["Package"], description))
         if os.environ.get('SVP_API') == '1':
             with open(os.environ['SVP_RESULT'], 'w') as f:
-                json.dump(f, {
+                json.dump({
                     'description': "Applied multi-arch hints.",
                     'value': calculate_value(hint_names),
                     'commit-message': 'Apply multi-arch hints',
                     'context': {
                         'applied-hints': applied_hints,
-                    }})
+                    }}, f)
 
 
 if __name__ == "__main__":
