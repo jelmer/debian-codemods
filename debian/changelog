@@ -1,9 +1,9 @@
-lintian-brush (0.107) UNRELEASED; urgency=medium
+lintian-brush (0.107) unstable; urgency=medium
 
   [ Filippo Giunchedi ]
   * maintainer-also-in-uploaders: Remove uploaders field when empty.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 04 Jul 2021 16:11:55 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 11 Jul 2021 17:09:54 +0100
 
 lintian-brush (0.106) unstable; urgency=medium
 
