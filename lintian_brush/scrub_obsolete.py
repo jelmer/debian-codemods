@@ -25,6 +25,7 @@ import os
 
 from breezy.commit import PointlessCommit
 
+from debmutate.deb822 import ChangeConflict
 from debmutate.debhelper import MaintscriptEditor
 from debmutate.reformatting import FormattingUnpreservable
 
@@ -567,6 +568,9 @@ def main():
         return 1
     except NotDebianPackage:
         report_fatal('not-debian-package', 'Not a Debian package.')
+        return 1
+    except ChangeConflict as e:
+        report_fatal('change-conflict', 'Generated file changes conflict: %s' % e)
         return 1
 
     if not result:
