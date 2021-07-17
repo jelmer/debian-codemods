@@ -32,7 +32,6 @@ import breezy
 from breezy.branch import Branch
 from breezy.workingtree import WorkingTree
 
-import breezy  # noqa: E402
 from breezy.errors import (  # noqa: E402
     DependencyNotPresent,
     NotBranchError,

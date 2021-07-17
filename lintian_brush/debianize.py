@@ -1213,8 +1213,6 @@ def report_fatal(code, description, hint=None):
 def main(argv=None):  # noqa: C901
     import argparse
 
-    import breezy  # noqa: E402
-
     breezy.initialize()
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
@@ -1346,6 +1344,7 @@ def main(argv=None):  # noqa: C901
     if args.dist_command:
 
         def create_dist(session, tree, package, version, target_dir):
+            from ognibuild.dist_catcher import DistCatcher
             with DistCatcher([session.external_path("dist")]) as dc:
                 session.check_call(args.dist_command)
             return dc.copy_single(target_dir)

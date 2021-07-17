@@ -423,7 +423,7 @@ def report_okay(code, description):
     logging.info('%s', description)
 
 
-def main():
+def main():  # noqa: C901
     import argparse
     from breezy.workingtree import WorkingTree
     import breezy  # noqa: E402
