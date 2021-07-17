@@ -17,6 +17,26 @@ except ModuleNotFoundError:
 
 known_dh_commands = [command for command, deps in dh_commands()]
 
+# Include javahelper binaries, since some are just one character away from
+# debhelper ones.
+known_dh_commands.extend([
+    'jh_build',
+    'jh_classpath',
+    'jh_clean',
+    'jh_compilefeatures',
+    'jh_depends',
+    'jh_exec',
+    'jh_generateorbitdir',
+    'jh_installeclipse',
+    'jh_installjavadoc',
+    'jh_installlibs',
+    'jh_linkjars',
+    'jh_makepkg',
+    'jh_manifest',
+    'jh_repack',
+    'jh_setupenvironment',
+])
+
 known_targets = []
 for dh_command in known_dh_commands:
     known_targets.extend([
