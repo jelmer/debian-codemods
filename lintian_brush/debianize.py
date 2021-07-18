@@ -45,7 +45,7 @@ from debian.deb822 import PkgRelation
 from breezy import osutils
 from breezy.branch import Branch
 from breezy.controldir import ControlDir
-from breezy.errors import AlreadyBranchError, NotBranchError
+from breezy.errors import AlreadyBranchError, NotBranchError, FileExists
 from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.revision import NULL_REVISION
 from breezy.workingtree import WorkingTree
@@ -271,14 +271,21 @@ def import_upstream_version_from_dist(
     from breezy.plugins.debian import default_orig_dir
     from breezy.plugins.debian.merge_upstream import get_tarballs, do_import
 
+    orig_dir = os.path.abspath(default_orig_dir)
+
     tag_names = {}
     with TemporaryDirectory() as target_dir:
         locations = upstream_source.fetch_tarballs(
             source_name, upstream_version, target_dir, components=[None])
         if source_name is None:
             source_name = os.path.basename(locations[0]).split('_')[0]
-        tarball_filenames = get_tarballs(
-            default_orig_dir, wt, source_name, upstream_version, locations)
+        try:
+            tarball_filenames = get_tarballs(
+                orig_dir,
+                wt, source_name, upstream_version, locations)
+        except FileExists as e:
+            logging.warning('Tarball %s exists, reusing existing file.', e.path)
+            tarball_filenames = [os.path.join(orig_dir, e.path)]
         upstream_revisions = upstream_source\
             .version_as_revisions(source_name, upstream_version)
         files_excluded = None
