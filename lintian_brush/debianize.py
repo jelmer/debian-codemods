@@ -275,6 +275,8 @@ def import_upstream_version_from_dist(
     with TemporaryDirectory() as target_dir:
         locations = upstream_source.fetch_tarballs(
             source_name, upstream_version, target_dir, components=[None])
+        if source_name is None:
+            source_name = os.path.basename(locations[0]).split('_')[0]
         tarball_filenames = get_tarballs(
             default_orig_dir, wt, source_name, upstream_version, locations)
         upstream_revisions = upstream_source\
