@@ -75,7 +75,6 @@ from upstream_ontologist.debian import (
     valid_debian_package_name,
 )
 
-import breezy
 from breezy.plugins.debian.upstream.pristinetar import get_pristine_tar_source
 from breezy.plugins.debian.upstream.branch import (
     upstream_version_add_revision,
@@ -1213,6 +1212,7 @@ def report_fatal(code, description, hint=None):
 def main(argv=None):  # noqa: C901
     import argparse
 
+    import breezy
     breezy.initialize()
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
@@ -1339,7 +1339,13 @@ def main(argv=None):  # noqa: C901
         debian_info = distro_info.DebianDistroInfo()
         compat_release = debian_info.stable()
 
-    wt, subpath = WorkingTree.open_containing(args.directory)
+    try:
+        wt, subpath = WorkingTree.open_containing(args.directory)
+    except NotBranchError as e:
+        logging.fatal(
+            'please run debianize in an existing branch where '
+            'it should add the packaging: %s', e)
+        return 1
 
     if args.dist_command:
 
