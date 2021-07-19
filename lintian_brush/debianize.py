@@ -1465,6 +1465,11 @@ def main(argv=None):  # noqa: C901
                 logging.debug(
                     'Translated problem %r to requirement %r', problem, requirement)
                 upstream_info = find_upstream(requirement)
+                if upstream_info is None:
+                    logging.error(
+                        'Unable to find upstream information for requirement %r',
+                        requirement)
+                    return False
                 logging.info(
                     'Packaging %r to address %r',
                     upstream_info.branch_url, problem)
