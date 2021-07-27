@@ -4,24 +4,11 @@ from debmutate.watch import WatchEditor
 from urllib.parse import urlparse
 
 from lintian_brush.fixer import report_result
+from lintian_brush.watch import fix_old_github_patterns
 
 
 with WatchEditor() as updater:
-    for w in getattr(updater.watch_file, "entries", []):
-        parsed_url = urlparse(w.url)
-
-        # only applies to github.com
-        if parsed_url.netloc != "github.com":
-            continue
-
-        parts = parsed_url.path.strip('/').split('/')
-        if len(parts) < 3 or parts[2] not in ('tags', 'releases'):
-            continue
-
-        parts = w.matching_pattern.split('/')
-        if len(parts) > 2 and parts[-2] == 'archive':
-            parts.insert(-1, 'refs/tags')
-        w.matching_pattern = '/'.join(parts)
+    fix_old_github_patterns(updater)
 
 
 report_result(

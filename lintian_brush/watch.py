@@ -195,3 +195,29 @@ def candidates_from_hackage(package, good_upstream_versions, net_access=False):
     matching_pattern = r".*/%s-(.*).tar.gz" % package
     w = Watch(download_url, matching_pattern)
     yield w, "hackage", "certain"
+
+
+def fix_old_github_patterns(updater):
+    for w in getattr(updater.watch_file, "entries", []):
+        parsed_url = urlparse(w.url)
+
+        # only applies to github.com
+        if parsed_url.netloc != "github.com":
+            continue
+
+        parts = parsed_url.path.strip('/').split('/')
+        if len(parts) >= 3 and parts[2] in ('tags', 'releases'):
+            pass
+        elif len(parts) >= 2 and parts[0] == '.*' and parts[1] == 'archive':
+            pass
+        else:
+            continue
+
+        parts = w.matching_pattern.split('/')
+        if len(parts) > 2 and parts[-2] == 'archive':
+            parts.insert(-1, 'refs/tags')
+        w.matching_pattern = '/'.join(parts)
+
+
+def fix_watch_issues(updater):
+    fix_old_github_patterns(updater)
