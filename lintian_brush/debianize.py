@@ -81,6 +81,8 @@ from breezy.plugins.debian.upstream.branch import (
     UpstreamBranchSource,
 )
 
+from buildlog_consultant.common import VcsControlDirectoryNeeded
+
 from debmutate.versions import (
     debianize_upstream_version,
     )
@@ -243,13 +245,21 @@ def default_create_dist(session, tree, package, version, target_dir):
     os.environ['SETUPTOOLS_SCM_PRETEND_VERSION'] = version
     try:
         with session:
-            # TODO(jelmer): set include_controldir=True to make
-            # setuptools_scm happy?
-            return ogni_create_dist(
-                session, tree, target_dir,
-                include_controldir=False,
-                subdir=(package or "package"),
-                cleanup=False)
+            try:
+                return ogni_create_dist(
+                    session, tree, target_dir,
+                    include_controldir=False,
+                    subdir=(package or "package"),
+                    cleanup=False)
+            except DetailedFailure as e:
+                if isinstance(e.error, VcsControlDirectoryNeeded):
+                    return ogni_create_dist(
+                        session, tree, target_dir,
+                        include_controldir=True,
+                        subdir=(package or "package"),
+                        cleanup=False)
+                else:
+                    raise
     except NoBuildToolsFound:
         logging.info(
             "No build tools found, falling back to simple export.")
