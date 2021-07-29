@@ -168,7 +168,7 @@ try:
             current_version = updater.source["Standards-Version"]
         except KeyError:
             # Huh, no standards version?
-            pass
+            sys.exit(0)
         else:
             try:
                 svs = dict(iter_standards_versions())
