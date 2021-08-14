@@ -211,6 +211,7 @@ SANITIZERS = [
 
 
 def sanitize_url(url: Union[str, List[str]]) -> str:
+    """Sanitize a version control URL."""
     if isinstance(url, str):
         url = url.strip()
     for sanitizer in SANITIZERS:

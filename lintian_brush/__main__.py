@@ -23,7 +23,7 @@ import os
 import shutil
 import sys
 import tempfile
-from typing import Set
+from typing import Set, Optional
 
 from debian.changelog import get_maintainer, ChangelogCreateError
 import distro_info
@@ -86,7 +86,7 @@ def calculate_value(tags: Set[str]) -> int:
     return value
 
 
-def report_fatal(code, description, hint=None):
+def report_fatal(code: str, description: str, hint: Optional[str] = None) -> None:
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
