@@ -1113,6 +1113,7 @@
 - tag: pkg-js-autopkgtest-test-is-missing
 - tag: pkg-js-tools-test-is-empty
 - tag: pkg-js-tools-test-is-missing
+  status: implemented
 - tag: pkg-not-in-package-test
 - tag: portable-executable-missing-security-features
 - tag: possible-bashism-in-maintainer-script
@@ -1399,7 +1400,7 @@
 - tag: typelib-package-name-does-not-match
 - tag: typelib-section-not-introspection
 - tag: typo-in-debhelper-override-target
-  difficulty: easy
+  status: implemented
 - tag: udeb-contains-documentation-file
 - tag: udeb-postinst-calls-ldconfig
 - tag: udeb-uses-unsupported-compression-for-data-tarball
