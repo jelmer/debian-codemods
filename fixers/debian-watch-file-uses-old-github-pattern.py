@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 from debmutate.watch import WatchEditor
-from urllib.parse import urlparse
 
 from lintian_brush.fixer import report_result
 from lintian_brush.watch import fix_old_github_patterns
