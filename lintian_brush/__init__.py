@@ -513,6 +513,10 @@ def find_fixers_dir() -> str:
     if os.path.isdir(resource_dir):
         return resource_dir
     # Urgh.
+    local_share_dir = "/usr/local/share/lintian-brush/fixers"
+    if os.path.isdir(local_share_dir):
+        return local_share_dir
+
     return "/usr/share/lintian-brush/fixers"
 
 
