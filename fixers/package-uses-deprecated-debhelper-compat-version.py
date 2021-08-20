@@ -335,6 +335,9 @@ def override_dh_auto_test_drop_options(rule):
         return
     if rule.lines[1] != b'ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))' or rule.lines[-1] != b'endif':
         return
+    subitems.add(
+        'Drop check for DEB_BUILD_OPTIONS containing "nocheck", '
+        'since debhelper now does this.')
     del rule.lines[1]
     del rule.lines[-1]
 
