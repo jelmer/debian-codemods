@@ -125,8 +125,10 @@ def drop_obsolete_depends(entry, upgrade_release):
     dropped = []
     for pkgrel in entry:
         if pkgrel.version is not None:
-            logging.debug("Relation: %s", pkgrel)
             compat_version = package_version(pkgrel.name, upgrade_release)
+            logging.debug(
+                "Relation: %s. Upgrade release %s has %r ",
+                pkgrel, upgrade_release, compat_version)
             if compat_version is not None and depends_obsolete(
                 compat_version, *pkgrel.version
             ):
@@ -513,7 +515,7 @@ def main():  # noqa: C901
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
     else:
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
 
     update_changelog = args.update_changelog
     allow_reformatting = args.allow_reformatting
