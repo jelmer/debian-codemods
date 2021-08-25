@@ -22,6 +22,7 @@ import asyncio
 import json
 import logging
 import os
+from typing import List, Tuple, Optional, Dict
 
 from breezy.commit import PointlessCommit
 
@@ -59,10 +60,10 @@ DEFAULT_VALUE_MULTIARCH_HINT = 30
 
 def calculate_value(result):
     value = DEFAULT_VALUE_MULTIARCH_HINT
-    for para, changes in result.control_removed:
+    for para, changes, release in result.control_removed:
         for field, packages in changes:
             value += len(packages) * 2
-    for path, removed in result.maintscript_removed:
+    for path, removed, release in result.maintscript_removed:
         value += len(removed)
     return value
 
@@ -201,7 +202,7 @@ def update_conflicts(base, field, upgrade_release):
         lambda oldrelation: drop_obsolete_conflicts(oldrelation, upgrade_release))
 
 
-def drop_old_source_relations(source, compat_release):
+def drop_old_source_relations(source, compat_release) -> List[Tuple[str, List[str], str]]:
     ret = []
     for field in [
         "Build-Depends",
@@ -210,30 +211,30 @@ def drop_old_source_relations(source, compat_release):
     ]:
         packages = update_depends(source, field, compat_release)
         if packages:
-            ret.append((field, packages))
+            ret.append((field, packages, compat_release))
     for field in ["Build-Conflicts", "Build-Conflicts-Indep", "Build-Conflicts-Arch"]:
         packages = update_conflicts(source, field, compat_release)
         if packages:
-            ret.append((field, packages))
+            ret.append((field, packages, compat_release))
     return ret
 
 
-def drop_old_binary_relations(binary, upgrade_release):
+def drop_old_binary_relations(binary, upgrade_release) -> List[Tuple[str, List[str], str]]:
     ret = []
     for field in ["Depends", "Breaks", "Suggests", "Recommends", "Pre-Depends"]:
         packages = update_depends(binary, field, upgrade_release)
         if packages:
-            ret.append((field, packages))
+            ret.append((field, packages, upgrade_release))
 
     for field in ["Conflicts", "Replaces", "Breaks"]:
         packages = update_conflicts(binary, field, upgrade_release)
         if packages:
-            ret.append((field, packages))
+            ret.append((field, packages, upgrade_release))
 
     return ret
 
 
-def drop_old_relations(editor, compat_release, upgrade_release):
+def drop_old_relations(editor, compat_release, upgrade_release) -> List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]]:
     dropped = []
     source_dropped = []
     try:
@@ -291,24 +292,24 @@ class ScrubObsoleteResult(object):
     def __bool__(self):
         return bool(self.control_removed) or bool(self.maintscript_removed)
 
-    def itemized(self):
-        summary = []
+    def itemized(self) -> Dict[str, List[str]]:
+        summary: Dict[str, List[str]] = {}
         for para, changes in self.control_removed:
-            for field, packages in changes:
+            for field, packages, release in changes:
                 if para:
-                    summary.append(
+                    summary.setdefault(release, []).append(
                         "%s: Drop versioned constraint on %s in %s."
                         % (para, name_list(packages), field)
                     )
                 else:
-                    summary.append(
+                    summary.setdefault(release, []).append(
                         "%s: Drop versioned constraint on %s."
                         % (field, name_list(packages))
                     )
         if self.maintscript_removed:
             total_entries = sum(
-                [len(entries) for name, entries in self.maintscript_removed])
-            summary.append(
+                [len(entries) for name, entries, release in self.maintscript_removed])
+            summary.setdefault(self.maintscript_removed[0][2], []).append(
                 "Remove %d maintscript entries from %d files." % (
                     total_entries, len(self.maintscript_removed))
             )
@@ -334,7 +335,7 @@ def _scrub_obsolete(wt, debian_path, compat_release, upgrade_release, allow_refo
     maintscript_removed = []
     for path, removed in update_maintscripts(wt, debian_path, package, upgrade_release, allow_reformatting):
         if removed:
-            maintscript_removed.append((path, removed))
+            maintscript_removed.append((path, removed, upgrade_release))
             specific_files.append(path)
 
     return ScrubObsoleteResult(
@@ -344,8 +345,9 @@ def _scrub_obsolete(wt, debian_path, compat_release, upgrade_release, allow_refo
     )
 
 
-def scrub_obsolete(wt, subpath, compat_release, upgrade_release, update_changelog=None,
-                   allow_reformatting=False):
+def scrub_obsolete(
+        wt, subpath, compat_release, upgrade_release, update_changelog=None,
+        allow_reformatting=False):
     from breezy.commit import NullCommitReporter
 
     if control_files_in_root(wt, subpath):
@@ -353,7 +355,8 @@ def scrub_obsolete(wt, subpath, compat_release, upgrade_release, update_changelo
     else:
         debian_path = os.path.join(subpath, 'debian')
 
-    result = _scrub_obsolete(wt, debian_path, compat_release, upgrade_release, allow_reformatting)
+    result = _scrub_obsolete(
+        wt, debian_path, compat_release, upgrade_release, allow_reformatting)
 
     if not result:
         return result
@@ -379,26 +382,25 @@ def scrub_obsolete(wt, subpath, compat_release, upgrade_release, update_changelo
             update_changelog = True
 
     if update_changelog:
-        add_changelog_entry(
-            wt,
-            changelog_path,
-            ["Remove constraints unnecessary since %s:" % upgrade_release]
-            + ["+ " + line for line in summary],
-        )
+        lines = []
+        for release, entries in summary.items():
+            lines.append("Remove constraints unnecessary since %s:" % release)
+            lines.extend(["+ " + line for line in entries])
+        add_changelog_entry(wt, changelog_path, lines)
         specific_files.append(changelog_path)
 
-    message = "\n".join(
-        ["Remove constraints unnecessary since %s" % upgrade_release, ""]
-        + ["* " + line for line in summary]
-        + ["", "Changes-By: deb-scrub-obsolete"]
-    )
+    lines = []
+    for release, entries in summary.items():
+        lines.extend(["Remove constraints unnecessary since %s" % release, ""])
+        lines.extend(["* " + line for line in entries])
+    lines.extend(["", "Changes-By: deb-scrub-obsolete"])
 
     committer = get_committer(wt)
 
     try:
         wt.commit(
             specific_files=specific_files,
-            message=message,
+            message="\n".join(lines),
             allow_pointless=False,
             reporter=NullCommitReporter(),
             committer=committer,
@@ -595,8 +597,9 @@ def main():  # noqa: C901
             }, f)
 
     logging.info("Scrub obsolete settings.")
-    for line in result.itemized():
-        logging.info("* %s", line)
+    for release, lines in result.itemized().items():
+        for line in lines:
+            logging.info("* %s", line)
 
     return 0
 
