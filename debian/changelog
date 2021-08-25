@@ -1,9 +1,9 @@
-lintian-brush (0.108) UNRELEASED; urgency=medium
+lintian-brush (0.108) unstable; urgency=medium
 
   * Don't correct override targets for javahelper commands. Thanks,
     Perry.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Jul 2021 23:05:21 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 25 Aug 2021 23:29:06 +0100
 
 lintian-brush (0.107) unstable; urgency=medium
 
