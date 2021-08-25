@@ -31,6 +31,7 @@ def test_suite():
         "patches",
         "run",
         "salsa",
+        "scrub_obsolete",
         "systemd",
         "vcs",
         "xdg",

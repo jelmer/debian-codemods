@@ -1400,6 +1400,7 @@
 - tag: typelib-package-name-does-not-match
 - tag: typelib-section-not-introspection
 - tag: typo-in-debhelper-override-target
+  difficulty: easy
   status: implemented
 - tag: udeb-contains-documentation-file
 - tag: udeb-postinst-calls-ldconfig

@@ -272,9 +272,11 @@ def update_maintscripts(wt, subpath, package, upgrade_release, allow_reformattin
 
 
 def name_list(packages):
-    if len(packages) == 1:
-        return packages[0]
+    if not packages:
+        raise ValueError(packages)
     std = list(sorted(set(packages)))
+    if len(std) == 1:
+        return std[0]
     return ", ".join(std[:-1]) + " and " + std[-1]
 
 
