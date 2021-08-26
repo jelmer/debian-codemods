@@ -12,6 +12,7 @@ with control as editor:
         maint, email = parseaddr(old_maintainer)
         if email in (
                 'python-modules-team@lists.alioth.debian.org',
+                'python-modules-team@alioth-lists.debian.net',
                 'python-apps-team@lists.alioth.debian.org'):
             editor.source['Maintainer'] = (
                 'Debian Python Team <team+python@tracker.debian.org>')
