@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from email.utils import parseaddr
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, LintianIssue
 
 with control as editor:
     try:
@@ -14,9 +14,11 @@ with control as editor:
                 'python-modules-team@lists.alioth.debian.org',
                 'python-modules-team@alioth-lists.debian.net',
                 'python-apps-team@lists.alioth.debian.org'):
-            editor.source['Maintainer'] = (
-                'Debian Python Team <team+python@tracker.debian.org>')
-            fixed_lintian_tag(
+            issue = LintianIssue(
                 editor.source, 'python-teams-merged', info=(old_maintainer, ))
+            if issue.should_fix():
+                editor.source['Maintainer'] = (
+                    'Debian Python Team <team+python@tracker.debian.org>')
+                issue.report_fixed()
 
 report_result('Update maintainer email for merge of DPMT and PAPT.')
