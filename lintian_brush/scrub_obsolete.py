@@ -289,8 +289,8 @@ class ScrubObsoleteResult(object):
 
     def value(self):
         value = DEFAULT_VALUE_MULTIARCH_HINT
-        for para, changes, release in self.control_removed:
-            for field, packages in changes:
+        for para, changes in self.control_removed:
+            for field, packages, release in changes:
                 value += len(packages) * 2
         for path, removed, release in self.maintscript_removed:
             value += len(removed)
