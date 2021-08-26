@@ -1,9 +1,9 @@
-lintian-brush (0.109) UNRELEASED; urgency=medium
+lintian-brush (0.109) unstable; urgency=medium
 
   * deb-scrub-obsolete: Don't drop trailing comma's. Closes: #988932
   * Add another old Debian Python email address.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 26 Aug 2021 02:14:59 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 26 Aug 2021 09:36:27 +0100
 
 lintian-brush (0.108) unstable; urgency=medium
 
