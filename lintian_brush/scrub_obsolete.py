@@ -542,7 +542,7 @@ def main():  # noqa: C901
             compat_release = cfg.compat_release()
 
     if compat_release is None:
-        compat_release = debian_info.stable()
+        compat_release = debian_info.oldstable()
 
     logging.info(
         "Removing run time constraints unnecessary since %s"
