@@ -22,10 +22,11 @@ import asyncio
 import json
 import logging
 import os
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Callable
 
 from breezy.commit import PointlessCommit
 
+from debmutate.control import PkgRelation
 from debmutate.deb822 import ChangeConflict
 from debmutate.debhelper import MaintscriptEditor
 from debmutate.reformatting import FormattingUnpreservable
@@ -56,16 +57,6 @@ from .debhelper import drop_obsolete_maintscript_entries
 
 
 DEFAULT_VALUE_MULTIARCH_HINT = 30
-
-
-def calculate_value(result):
-    value = DEFAULT_VALUE_MULTIARCH_HINT
-    for para, changes, release in result.control_removed:
-        for field, packages in changes:
-            value += len(packages) * 2
-    for path, removed, release in result.maintscript_removed:
-        value += len(removed)
-    return value
 
 
 _changelog_policy_noted = False
@@ -121,7 +112,7 @@ def package_version(source, release):
     return loop.run_until_complete(_package_version(source, release))
 
 
-def drop_obsolete_depends(entry, upgrade_release):
+def drop_obsolete_depends(entry, upgrade_release: str):
     ors = []
     dropped = []
     for pkgrel in entry:
@@ -139,7 +130,7 @@ def drop_obsolete_depends(entry, upgrade_release):
     return ors, dropped
 
 
-def drop_obsolete_conflicts(entry, upgrade_release):
+def drop_obsolete_conflicts(entry: List[PkgRelation], upgrade_release: str):
     ors = []
     dropped = []
     for pkgrel in entry:
@@ -160,14 +151,17 @@ def update_depends(base, field, upgrade_release):
         lambda oldrelation: drop_obsolete_depends(oldrelation, upgrade_release))
 
 
-def relations_empty(rels):
+def _relations_empty(rels):
     for ws1, rel, ws2 in rels:
         if rel:
             return False
     return True
 
 
-def filter_relations(base, field: str, cb):
+RelationsCallback = Callable[[List[PkgRelation]], Tuple[List[PkgRelation], List[PkgRelation]]]
+
+
+def filter_relations(base, field: str, cb: RelationsCallback):
     """Update a relations field."""
     try:
         old_contents = base[field]
@@ -181,7 +175,7 @@ def filter_relations(base, field: str, cb):
     for i, (ws1, oldrelation, ws2) in enumerate(oldrelations):
         relation, dropped = cb(oldrelation)
         changed.extend([d.name for d in dropped])
-        if relation:
+        if relation == oldrelation or relation:
             newrelations.append((ws1, relation, ws2))
         elif i == 0 and len(oldrelations) > 1:
             # If the first item is removed, then copy the spacing to the next
@@ -189,7 +183,7 @@ def filter_relations(base, field: str, cb):
             oldrelations[1] = (ws1, oldrelations[1][1], ws2)
 
     if changed:
-        if relations_empty(newrelations):
+        if _relations_empty(newrelations):
             del base[field]
         else:
             base[field] = format_relations(newrelations)
@@ -197,7 +191,7 @@ def filter_relations(base, field: str, cb):
     return []
 
 
-def update_conflicts(base, field, upgrade_release):
+def update_conflicts(base, field: str, upgrade_release: str):
     return filter_relations(
         base, field,
         lambda oldrelation: drop_obsolete_conflicts(oldrelation, upgrade_release))
@@ -292,6 +286,15 @@ class ScrubObsoleteResult(object):
 
     def __bool__(self):
         return bool(self.control_removed) or bool(self.maintscript_removed)
+
+    def value(self):
+        value = DEFAULT_VALUE_MULTIARCH_HINT
+        for para, changes, release in self.control_removed:
+            for field, packages in changes:
+                value += len(packages) * 2
+        for path, removed, release in self.maintscript_removed:
+            value += len(removed)
+        return value
 
     def itemized(self) -> Dict[str, List[str]]:
         summary: Dict[str, List[str]] = {}
@@ -589,7 +592,7 @@ def main():  # noqa: C901
             json.dump({
                 "description": "Remove constraints unnecessary since %s."
                 % upgrade_release,
-                "value": calculate_value(result),
+                "value": result.value(),
                 "context": {
                     "specific_files": result.specific_files,
                     "maintscript_removed": result.maintscript_removed,

@@ -1,3 +1,9 @@
+lintian-brush (0.109) UNRELEASED; urgency=medium
+
+  * deb-scrub-obsolete: Don't drop trailing comma's. Closes: #988932
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 26 Aug 2021 02:14:59 +0100
+
 lintian-brush (0.108) unstable; urgency=medium
 
   * Don't correct override targets for javahelper commands. Thanks,

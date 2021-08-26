@@ -80,4 +80,15 @@ class FilterRelationsTests(TestCase):
             return oldrel, []
 
         self.assertEqual(["foo"], filter_relations(control, "Depends", cb))
-        self.assertEqual({"Depends": "bar"}, control)
+        self.assertEqual({"Depends": "bar, "}, control)
+
+    def test_drop_just_comma(self):
+        control = {"Depends": "foo, "}
+
+        def cb(oldrel):
+            if oldrel and oldrel[0].name == 'foo':
+                return [], oldrel
+            return oldrel, []
+
+        self.assertEqual(["foo"], filter_relations(control, "Depends", cb))
+        self.assertEqual({}, control)
