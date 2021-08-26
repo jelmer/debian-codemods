@@ -167,7 +167,8 @@ def relations_empty(rels):
     return True
 
 
-def filter_relations(base, field, cb):
+def filter_relations(base, field: str, cb):
+    """Update a relations field."""
     try:
         old_contents = base[field]
     except KeyError:
@@ -235,7 +236,7 @@ def drop_old_binary_relations(binary, upgrade_release) -> List[Tuple[str, List[s
 
 
 def drop_old_relations(editor, compat_release, upgrade_release) -> List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]]:
-    dropped = []
+    dropped: List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]] = []
     source_dropped = []
     try:
         check_generated_file(editor.path)

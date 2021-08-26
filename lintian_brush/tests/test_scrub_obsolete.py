@@ -19,7 +19,7 @@
 
 from unittest import TestCase
 
-from lintian_brush.scrub_obsolete import name_list
+from lintian_brush.scrub_obsolete import name_list, filter_relations
 
 
 class NameListTests(TestCase):
@@ -34,3 +34,50 @@ class NameListTests(TestCase):
             'bar and foo', name_list(['foo', 'bar', 'foo']))
         self.assertEqual(
             'bar, bla and foo', name_list(['foo', 'bar', 'foo', 'bla']))
+
+
+class FilterRelationsTests(TestCase):
+
+    def test_missing(self):
+        control = {}
+        self.assertEqual(
+            [], filter_relations(control, "Build-Depends", None))
+
+    def test_keep(self):
+        control = {"Depends": "foo"}
+
+        def cb(oldrel):
+            return oldrel, []
+
+        self.assertEqual([], filter_relations(control, "Depends", cb))
+
+    def test_drop_last(self):
+        control = {"Depends": "foo"}
+
+        def cb(oldrel):
+            return [], oldrel
+
+        self.assertEqual(["foo"], filter_relations(control, "Depends", cb))
+        self.assertEqual({}, control)
+
+    def test_drop(self):
+        control = {"Depends": "foo, bar"}
+
+        def cb(oldrel):
+            if oldrel[0].name == 'foo':
+                return [], oldrel
+            return oldrel, []
+
+        self.assertEqual(["foo"], filter_relations(control, "Depends", cb))
+        self.assertEqual({"Depends": "bar"}, control)
+
+    def test_keep_last_comma(self):
+        control = {"Depends": "foo, bar, "}
+
+        def cb(oldrel):
+            if oldrel and oldrel[0].name == 'foo':
+                return [], oldrel
+            return oldrel, []
+
+        self.assertEqual(["foo"], filter_relations(control, "Depends", cb))
+        self.assertEqual({"Depends": "bar"}, control)
