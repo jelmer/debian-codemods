@@ -1,3 +1,10 @@
+lintian-brush (0.110) UNRELEASED; urgency=medium
+
+  * deb-scrub-obsolete: Both the compat-release and the upgrade-release
+    now default to oldstable.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 27 Aug 2021 18:00:03 +0100
+
 lintian-brush (0.109) unstable; urgency=medium
 
   * deb-scrub-obsolete: Don't drop trailing comma's. Closes: #988932
