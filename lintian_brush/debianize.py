@@ -1340,7 +1340,7 @@ def main(argv=None):  # noqa: C901
         help='Upstream version to package.')
     parser.add_argument(
         '--dist-command', type=str,
-        help='Dist command')
+        help='Dist command', default=os.environ.get('DIST'))
     parser.add_argument('upstream', nargs='?', type=str)
 
     args = parser.parse_args(argv)
