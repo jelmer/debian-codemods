@@ -42,7 +42,7 @@ DEFAULT_BACKLOG = 50
 # what was in the commit messages?
 
 
-def gbp_conf_has_dch_section(tree: WorkingTree, debian_path: str = "") -> Optional[bool]:
+def gbp_conf_has_dch_section(tree: Tree, debian_path: str = "") -> Optional[bool]:
     try:
         gbp_conf_path = osutils.pathjoin(debian_path, "gbp.conf")
         gbp_conf_text = tree.get_file_text(gbp_conf_path)
@@ -154,10 +154,7 @@ def _changelog_stats(branch: Branch, history: int, debian_path: str):
             if "Git-Dch: " in rev.message:
                 dch_references += 1
             revs.append(rev)
-        try:
-            get_deltas = branch.repository.get_revision_deltas
-        except AttributeError:  # breezy <= 3.1.1
-            get_deltas = branch.repository.get_deltas_for_revisions
+        get_deltas = branch.repository.get_revision_deltas
         for delta in get_deltas(revs):
             filenames = set(
                 [a.path[1] for a in delta.added]
