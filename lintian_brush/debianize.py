@@ -24,6 +24,7 @@ __all__ = [
 
 import contextlib
 from dataclasses import dataclass, field
+import errno
 from functools import partial
 import json
 import logging
@@ -79,6 +80,8 @@ from breezy.plugins.debian.upstream.pristinetar import get_pristine_tar_source
 from breezy.plugins.debian.upstream.branch import (
     upstream_version_add_revision,
     UpstreamBranchSource,
+    DistCommandFailed,
+    run_dist_command,
 )
 
 from buildlog_consultant.common import VcsControlDirectoryNeeded
@@ -1369,10 +1372,8 @@ def main(argv=None):  # noqa: C901
     if args.dist_command:
 
         def create_dist(session, tree, package, version, target_dir):
-            from ognibuild.dist_catcher import DistCatcher
-            with DistCatcher([session.external_path("dist")]) as dc:
-                session.check_call(args.dist_command)
-            return dc.copy_single(target_dir)
+            return run_dist_command(
+                tree, package, version, target_dir, args.dist_command)
     else:
         create_dist = None
 
@@ -1436,6 +1437,17 @@ def main(argv=None):  # noqa: C901
             report_fatal(
                 'no-upstream-releases',
                 'The upstream project does not appear to have made any releases.')
+        except NoBuildToolsFound:
+            report_fatal(
+                'no-build-tools',
+                "Unable to find any build systems in upstream sources.")
+            return 1
+        except OSError as e:
+            if e.errno == errno.ENOSPC:
+                report_fatal('no-space-on-device', str(e))
+                return 1
+            else:
+                raise
 
     if args.install:
         args.iterate_fix = True
@@ -1590,9 +1602,9 @@ def main(argv=None):  # noqa: C901
                 report_fatal(
                     'package-requirements-mismatch',
                     'Debianized package (binary packages: %r), version %s '
-                    'did not satisfy requirement %r. Wrong repository (%s)?',
-                    [binary['Package'] for binary in e.control.binaries],
-                    e.version, e.requirement, e.upstream_branch)
+                    'did not satisfy requirement %r. Wrong repository (%s)?' % (
+                        [binary['Package'] for binary in e.control.binaries],
+                        e.version, e.requirement, e.upstream_branch))
                 return 1
             logging.info('Built %r.', changes_names)
             if args.install:
