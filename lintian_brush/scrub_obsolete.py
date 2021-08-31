@@ -544,10 +544,15 @@ def main():  # noqa: C901
     if compat_release is None:
         compat_release = debian_info.codename('oldstable')
 
-    logging.info(
-        "Removing run time constraints unnecessary since %s"
-        " and build time constraints unnecessary since %s",
-        upgrade_release, compat_release)
+    if upgrade_release != compat_release:
+        logging.info(
+            "Removing run time constraints unnecessary since %s"
+            " and build time constraints unnecessary since %s",
+            upgrade_release, compat_release)
+    else:
+        logging.info(
+            "Removing run time and build time constraints unnecessary "
+            "since %s", compat_release)
 
     if allow_reformatting is None:
         allow_reformatting = False
