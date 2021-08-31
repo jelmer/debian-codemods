@@ -229,6 +229,7 @@ class PybuildUpgrader(object):
             line, rest = line.split(b' -- ', 1)
             if step is None:
                 step = line[len(b'dh_auto_'):].split(b' ', 1)[0].decode()
+            subitems.add('Replace python_distutils buildsystem with pybuild.')
             line = (b'PYBUILD_' + step.upper().encode() + b'_ARGS=' +
                     shlex.quote(rest.decode()).encode() + b' ' + line)
 
