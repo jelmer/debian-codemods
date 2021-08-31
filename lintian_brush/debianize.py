@@ -133,14 +133,6 @@ class SourceNameUnknown(Exception):
         self.upstream_name = upstream_name
 
 
-class DistCreationFailed(Exception):
-    """Dist tarball creation failed."""
-
-    def __init__(self, msg, inner=None):
-        self.msg = msg
-        self.inner = inner
-
-
 class NoUpstreamReleases(Exception):
     """No upstream releases were found."""
 
@@ -245,7 +237,6 @@ def setup_debhelper(wt, debian_path, source, compat_release, addons=None, env=No
 
 
 def default_create_dist(session, tree, package, version, target_dir):
-    os.environ['SETUPTOOLS_SCM_PRETEND_VERSION'] = version
     try:
         with session:
             try:
@@ -273,9 +264,9 @@ def default_create_dist(session, tree, package, version, target_dir):
             "to export.")
         return None
     except DetailedFailure as e:
-        raise DistCreationFailed(str(e), e.error)
+        raise DistCommandFailed(str(e), e.error)
     except UnidentifiedError as e:
-        raise DistCreationFailed(str(e))
+        raise DistCommandFailed(str(e))
 
 
 def import_upstream_version_from_dist(
@@ -1410,8 +1401,11 @@ def main(argv=None):  # noqa: C901
                 create_dist=create_dist,
                 upstream_version=args.upstream_version,
             )
+        except DistCommandFailed as e:
+            report_fatal(e.kind or "dist-command-failed", e.error)
+            return 1
         except PendingChanges:
-            logging.info("%s: Please commit pending changes first.", wt.basedir)
+            report_fatal("pending-changes", "Please commit pending changes first.")
             return 1
         except DebianDirectoryExists as e:
             report_fatal(
@@ -1424,14 +1418,6 @@ def main(argv=None):  # noqa: C901
             report_fatal(
                 code='invalid-source-package-name',
                 description="Generated source package name %r is not valid." % e.source)
-            return 1
-        except DistCreationFailed as e:
-            if e.inner:
-                report_fatal(
-                    code='dist-%s' % e.inner.kind, description=e.msg)
-            else:
-                report_fatal(
-                    code='dist-command-failed', description=e.msg)
             return 1
         except NoUpstreamReleases:
             report_fatal(
