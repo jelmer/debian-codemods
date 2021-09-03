@@ -11,6 +11,14 @@ uses_debhelper = False
 misc_depends_added = []
 
 
+def has_misc_depends(relations):
+    for entry in parse_relations(relations):
+        (head_whitespace, relation, tail_whitespace) = entry
+        if any(r.name == '${misc:Depends}' for r in relation):
+            return True
+    return False
+
+
 with control as updater:
     for entry in parse_relations(updater.source.get("Build-Depends", '')):
         (head_whitespace, relation, tail_whitespace) = entry
@@ -20,10 +28,9 @@ with control as updater:
 
     if uses_debhelper:
         for binary in updater.binaries:
-            for entry in parse_relations(binary.get("Depends", '')):
-                (head_whitespace, relation, tail_whitespace) = entry
-                if any(r.name == '${misc:Depends}' for r in relation):
-                    break
+            if (has_misc_depends(binary.get('Depends', '')) or
+                    has_misc_depends(binary.get('Pre-Depends', ''))):
+                continue
             else:
                 issue = LintianIssue(
                     updater.source, 'debhelper-but-no-misc-depends',
