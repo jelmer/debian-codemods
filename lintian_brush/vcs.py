@@ -26,7 +26,7 @@ __all__ = [
 
 import posixpath
 import re
-from typing import Optional, Union, List, Callable, cast
+from typing import Optional, Union, List, Callable
 from urllib.parse import urlparse, urlunparse
 
 from debmutate.vcs import split_vcs_url, unsplit_vcs_url
