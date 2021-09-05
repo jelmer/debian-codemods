@@ -161,7 +161,7 @@ def _relations_empty(rels):
 RelationsCallback = Callable[[List[PkgRelation]], Tuple[List[PkgRelation], List[PkgRelation]]]
 
 
-def filter_relations(base, field: str, cb: RelationsCallback):
+def filter_relations(base, field: str, cb: RelationsCallback) -> List[str]:
     """Update a relations field."""
     try:
         old_contents = base[field]

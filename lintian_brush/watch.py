@@ -44,8 +44,8 @@ def candidates_from_setup_py(path, good_upstream_versions: Set[str], net_access=
 
         traceback.print_exc()
         return
-    project = result.get_name()
-    version = result.get_version()
+    project = result.get_name()  # type: ignore
+    version = result.get_version()  # type: ignore
     if not project:
         return
     current_version_filenames = None

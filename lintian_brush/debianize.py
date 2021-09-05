@@ -1482,7 +1482,12 @@ def main(argv=None):  # noqa: C901
                     'Packaging %r to address %r',
                     upstream_info.branch_url, problem)
                 upstream_branch = Branch.open(upstream_info.branch_url)
-                vcs_path = os.path.join(self.vcs_directory, upstream_info.name.replace('/', '-'))
+                if upstream_info.name is not None:
+                    vcs_path = os.path.join(
+                        self.vcs_directory,
+                        upstream_info.name.replace('/', '-'))
+                else:
+                    raise AssertionError('no upstream name provided')
                 if os.path.exists(vcs_path):
                     shutil.rmtree(vcs_path)
                 result = ControlDir.create_branch_convenience(

@@ -26,7 +26,7 @@ __all__ = [
 
 import posixpath
 import re
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Callable, cast
 from urllib.parse import urlparse, urlunparse
 
 from debmutate.vcs import split_vcs_url, unsplit_vcs_url
@@ -199,8 +199,7 @@ def fixup_broken_git_url(url: str) -> str:
     return url
 
 
-SANITIZERS = [
-    convert_cvs_list_to_str,
+SANITIZERS: List[Callable[[str], str]] = [
     drop_vcs_in_scheme,
     fixup_broken_git_url,
     fixup_rcp_style_git_url,
@@ -212,8 +211,11 @@ SANITIZERS = [
 
 def sanitize_url(url: Union[str, List[str]]) -> str:
     """Sanitize a version control URL."""
-    if isinstance(url, str):
-        url = url.strip()
+    if isinstance(url, list):
+        url_str = convert_cvs_list_to_str(url)
+    else:
+        url_str = url
+    url_str = url_str.strip()
     for sanitizer in SANITIZERS:
-        url = sanitizer(url)
-    return url
+        url_str = sanitizer(url_str)
+    return url_str

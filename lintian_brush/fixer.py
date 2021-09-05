@@ -101,7 +101,7 @@ class LintianIssue(object):
 
 _fixed_lintian_issues: List[LintianIssue] = []
 _present_overrides: Optional[List[LintianOverride]] = None
-_overriden_issues = []
+_overriden_issues: List[LintianIssue] = []
 _tag_renames = None
 
 

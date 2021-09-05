@@ -1264,7 +1264,7 @@ def confidence_to_certainty(confidence: Optional[int]) -> str:
 
 def min_certainty(certainties: Sequence[str]) -> str:
     return confidence_to_certainty(
-        max([certainty_to_confidence(c) for c in certainties] + [0])
+        max([SUPPORTED_CERTAINTIES.index(c) for c in certainties] + [0])
     )
 
 
