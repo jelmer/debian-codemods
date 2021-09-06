@@ -103,6 +103,8 @@ class FilterRelationsTests(TestCase):
 
 class DummyChecker(object):
 
+    release = "release"
+
     def __init__(self, versions, essential):
         self.versions = versions
         self.essential = essential
@@ -122,10 +124,20 @@ class DropObsoleteDependsTests(TestCase):
 
     def test_single(self):
         checker = DummyChecker({'simple': Version('1.1')}, {})
+        orig = PkgRelation.parse('simple (>= 1.0)')
         self.assertEqual(
-            (PkgRelation.parse('simple >= 1.0'), []), drop_obsolete_depends(PkgRelation.parse('simple >= 1.0'), checker))
+            (PkgRelation.parse('simple'), PkgRelation.parse('simple (>= 1.0)')),
+            drop_obsolete_depends(orig, checker))
 
     def test_essential(self):
         checker = DummyChecker({'simple': Version('1.1')}, {'simple'})
+        orig = PkgRelation.parse('simple (>= 1.0)')
         self.assertEqual(
-            (PkgRelation.parse('simple >= 1.0'), []), drop_obsolete_depends(PkgRelation.parse('simple >= 1.0'), checker))
+            ([], PkgRelation.parse('simple (>= 1.0)')), drop_obsolete_depends(orig, checker))
+
+    def test_other_essential(self):
+        checker = DummyChecker({'simple': Version('1.1')}, {'simple'})
+        orig = PkgRelation.parse('simple (>= 1.0) | other')
+        self.assertEqual(
+            ([], PkgRelation.parse('simple (>= 1.0) | other')),
+            drop_obsolete_depends(orig, checker))

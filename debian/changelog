@@ -3,6 +3,8 @@ lintian-brush (0.110) UNRELEASED; urgency=medium
   * deb-scrub-obsolete: Both the compat-release and the upgrade-release
     now default to oldstable.
   * Also check Pre-Depends for ${misc:Depends}. Closes: #993528
+  * deb-scrub-obsolete: When dropping versioned depends on an essential
+    package, drop the entire dependency. Closes: #988933
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 27 Aug 2021 18:00:03 +0100
 

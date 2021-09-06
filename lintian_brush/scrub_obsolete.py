@@ -33,6 +33,7 @@ from debmutate.debhelper import MaintscriptEditor
 from debmutate.reformatting import FormattingUnpreservable
 
 from debian.changelog import Version
+from debian.deb822 import Deb822Dict
 
 from debmutate.control import (
     ControlEditor,
@@ -113,7 +114,7 @@ async def _package_essential(package: str, release: str) -> bool:
 
     conn = await connect_udd_mirror()
     return await conn.fetchval(
-        "select essential from packages where package = $1 and release = $2",
+        "select (essential = 'yes') from packages where package = $1 and release = $2",
         package, release)
 
 
@@ -121,7 +122,14 @@ async def _package_build_essential(package: str, release: str) -> bool:
     from .udd import connect_udd_mirror
 
     conn = await connect_udd_mirror()
-    # TODO: Check if package is implied by build-essential depenendencies
+    depends = await conn.fetchval(
+        "select depends from packages where package = $1 and release = $2",
+        package, release)
+
+    build_essential = set()
+    for rel in PkgRelation.parse(depends):
+        build_essential.update([r.name for r in rel])
+    return package in build_essential
 
 
 class PackageChecker(object):
@@ -146,6 +154,7 @@ def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
     ors = []
     dropped = []
     for pkgrel in entry:
+        newrel = pkgrel
         if pkgrel.version is not None:
             compat_version = checker.package_version(pkgrel.name)
             logging.debug(
@@ -154,13 +163,14 @@ def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
             if compat_version is not None and depends_obsolete(
                 compat_version, *pkgrel.version
             ):
-                pkgrel.version = None
+                newrel = PkgRelation.parse(pkgrel.str())[0]
+                newrel.version = None
                 dropped.append(pkgrel)
                 # If the package is essential, we don't need to maintain a
                 # dependency on it.
                 if checker.is_essential(pkgrel.name):
-                    continue
-        ors.append(pkgrel)
+                    return [], entry
+        ors.append(newrel)
     return ors, dropped
 
 
@@ -179,7 +189,7 @@ def drop_obsolete_conflicts(checker: PackageChecker, entry: List[PkgRelation]):
     return ors, dropped
 
 
-def update_depends(base, field: str, checker: PackageChecker) -> List[str]:
+def update_depends(base: Deb822Dict, field: str, checker: PackageChecker) -> List[str]:
     return filter_relations(
         base, field,
         lambda oldrelation: drop_obsolete_depends(oldrelation, checker))
@@ -195,7 +205,7 @@ def _relations_empty(rels):
 RelationsCallback = Callable[[List[PkgRelation]], Tuple[List[PkgRelation], List[PkgRelation]]]
 
 
-def filter_relations(base, field: str, cb: RelationsCallback) -> List[str]:
+def filter_relations(base: Deb822Dict, field: str, cb: RelationsCallback) -> List[str]:
     """Update a relations field."""
     try:
         old_contents = base[field]
@@ -225,7 +235,7 @@ def filter_relations(base, field: str, cb: RelationsCallback) -> List[str]:
     return []
 
 
-def update_conflicts(base, field: str, checker: PackageChecker) -> List[str]:
+def update_conflicts(base: Deb822Dict, field: str, checker: PackageChecker) -> List[str]:
     return filter_relations(
         base, field,
         lambda oldrelation: drop_obsolete_conflicts(checker, oldrelation))
