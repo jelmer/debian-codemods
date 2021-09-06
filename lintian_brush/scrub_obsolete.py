@@ -24,7 +24,8 @@ import logging
 import os
 from typing import List, Tuple, Optional, Dict, Callable
 
-from breezy.commit import PointlessCommit
+from breezy.commit import PointlessCommit, NullCommitReporter
+from breezy.workingtree import WorkingTree
 
 from debmutate.control import PkgRelation
 from debmutate.deb822 import ChangeConflict
@@ -73,7 +74,7 @@ def _note_changelog_policy(policy, msg):
     _changelog_policy_noted = True
 
 
-def depends_obsolete(latest_version, kind, req_version):
+def depends_obsolete(latest_version: Version, kind: str, req_version: Version):
     req_version = Version(req_version)
     if kind == ">=":
         return latest_version >= req_version
@@ -84,7 +85,7 @@ def depends_obsolete(latest_version, kind, req_version):
     return False
 
 
-def conflict_obsolete(latest_version, kind, req_version):
+def conflict_obsolete(latest_version: Version, kind: str, req_version: Version):
     req_version = Version(req_version)
     if kind == "<<":
         return latest_version >= req_version
@@ -93,7 +94,7 @@ def conflict_obsolete(latest_version, kind, req_version):
     return False
 
 
-async def _package_version(source, release):
+async def _package_version(source: str, release: str):
     from .udd import connect_udd_mirror
 
     conn = await connect_udd_mirror()
@@ -107,12 +108,12 @@ async def _package_version(source, release):
     return None
 
 
-def package_version(source, release):
+def package_version(source: str, release: str) -> Version:
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(_package_version(source, release))
 
 
-def drop_obsolete_depends(entry, upgrade_release: str):
+def drop_obsolete_depends(entry: List[PkgRelation], upgrade_release: str):
     ors = []
     dropped = []
     for pkgrel in entry:
@@ -145,7 +146,7 @@ def drop_obsolete_conflicts(entry: List[PkgRelation], upgrade_release: str):
     return ors, dropped
 
 
-def update_depends(base, field, upgrade_release):
+def update_depends(base, field: str, upgrade_release: str) -> List[str]:
     return filter_relations(
         base, field,
         lambda oldrelation: drop_obsolete_depends(oldrelation, upgrade_release))
@@ -191,7 +192,7 @@ def filter_relations(base, field: str, cb: RelationsCallback) -> List[str]:
     return []
 
 
-def update_conflicts(base, field: str, upgrade_release: str):
+def update_conflicts(base, field: str, upgrade_release: str) -> List[str]:
     return filter_relations(
         base, field,
         lambda oldrelation: drop_obsolete_conflicts(oldrelation, upgrade_release))
@@ -214,7 +215,7 @@ def drop_old_source_relations(source, compat_release) -> List[Tuple[str, List[st
     return ret
 
 
-def drop_old_binary_relations(binary, upgrade_release) -> List[Tuple[str, List[str], str]]:
+def drop_old_binary_relations(binary, upgrade_release: str) -> List[Tuple[str, List[str], str]]:
     ret = []
     for field in ["Depends", "Breaks", "Suggests", "Recommends", "Pre-Depends"]:
         packages = update_depends(binary, field, upgrade_release)
@@ -229,7 +230,7 @@ def drop_old_binary_relations(binary, upgrade_release) -> List[Tuple[str, List[s
     return ret
 
 
-def drop_old_relations(editor, compat_release, upgrade_release) -> List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]]:
+def drop_old_relations(editor, compat_release: str, upgrade_release: str) -> List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]]:
     dropped: List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]] = []
     source_dropped = []
     try:
@@ -254,7 +255,7 @@ def drop_old_relations(editor, compat_release, upgrade_release) -> List[Tuple[Op
     return dropped
 
 
-def update_maintscripts(wt, subpath, package, upgrade_release, allow_reformatting=False):
+def update_maintscripts(wt: WorkingTree, subpath: str, package: str, upgrade_release: str, allow_reformatting: bool = False):
     ret = []
     for entry in os.scandir(wt.abspath(os.path.join(subpath))):
         if not (entry.name == "maintscript" or entry.name.endswith(".maintscript")):
@@ -269,7 +270,14 @@ def update_maintscripts(wt, subpath, package, upgrade_release, allow_reformattin
     return ret
 
 
-def name_list(packages):
+def name_list(packages: List[str]) -> str:
+    """Format a list of package names for use in prose.
+
+    Args:
+      packages: non-empty list of packages to format
+    Returns:
+      human-readable string
+    """
     if not packages:
         raise ValueError(packages)
     std = list(sorted(set(packages)))
@@ -279,6 +287,7 @@ def name_list(packages):
 
 
 class ScrubObsoleteResult(object):
+
     def __init__(self, specific_files, maintscript_removed, control_removed):
         self.specific_files = specific_files
         self.maintscript_removed = maintscript_removed
@@ -350,9 +359,11 @@ def _scrub_obsolete(wt, debian_path, compat_release, upgrade_release, allow_refo
 
 
 def scrub_obsolete(
-        wt, subpath, compat_release, upgrade_release, update_changelog=None,
-        allow_reformatting=False):
-    from breezy.commit import NullCommitReporter
+        wt: WorkingTree, subpath: str, compat_release: str, upgrade_release: str,
+        update_changelog=None,
+        allow_reformatting: bool = False) -> ScrubObsoleteResult:
+    """Scrub obsolete entries.
+    """
 
     if control_files_in_root(wt, subpath):
         debian_path = subpath
@@ -415,7 +426,7 @@ def scrub_obsolete(
     return result
 
 
-def report_fatal(code, description):
+def report_fatal(code: str, description: str) -> None:
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
@@ -424,7 +435,7 @@ def report_fatal(code, description):
     logging.fatal('%s', description)
 
 
-def report_okay(code, description):
+def report_okay(code: str, description: str) -> None:
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
@@ -435,7 +446,6 @@ def report_okay(code, description):
 
 def main():  # noqa: C901
     import argparse
-    from breezy.workingtree import WorkingTree
     import breezy  # noqa: E402
 
     breezy.initialize()

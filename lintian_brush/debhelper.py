@@ -20,7 +20,7 @@
 
 import os
 import subprocess
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Callable
 
 from debian.changelog import Version
 
@@ -103,7 +103,10 @@ def maximum_debhelper_compat_version(compat_release: str) -> int:
     return max_version
 
 
-def write_rules_template(path, buildsystem=None, addons=None, env=None):
+def write_rules_template(
+        path: str, buildsystem: Optional[str] = None,
+        addons: Optional[List[str]] = None,
+        env: Optional[Dict[str, str]] = None) -> None:
     if addons is None:
         addons = []
     dh_args = ["$@"]
@@ -135,7 +138,16 @@ def write_rules_template(path, buildsystem=None, addons=None, env=None):
     os.chmod(path, 0o755)
 
 
-def drop_obsolete_maintscript_entries(editor, should_remove):
+def drop_obsolete_maintscript_entries(
+        editor, should_remove: Callable[[str, Version], bool]) -> List[int]:
+    """Drop obsolete entries from a maintscript file.
+
+    Args:
+      editor: editor to use to access the maintscript
+      should_remove: callable to check whether a package/version tuple is obsolete
+    Returns:
+      list of indexes of entries that were removed
+    """
     remove = []
     comments = []
     entries_removed = []
