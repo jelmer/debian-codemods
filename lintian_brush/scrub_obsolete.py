@@ -108,20 +108,25 @@ async def _package_version(source: str, release: str):
     return None
 
 
-def package_version(source: str, release: str) -> Version:
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(_package_version(source, release))
+class PackageChecker(object):
+
+    def __init__(self, release: str):
+        self.release = release
+
+    def package_version(self, source: str) -> Version:
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(_package_version(source, self.release))
 
 
-def drop_obsolete_depends(entry: List[PkgRelation], upgrade_release: str):
+def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
     ors = []
     dropped = []
     for pkgrel in entry:
         if pkgrel.version is not None:
-            compat_version = package_version(pkgrel.name, upgrade_release)
+            compat_version = checker.package_version(pkgrel.name)
             logging.debug(
                 "Relation: %s. Upgrade release %s has %r ",
-                pkgrel, upgrade_release, compat_version)
+                pkgrel, checker.release, compat_version)
             if compat_version is not None and depends_obsolete(
                 compat_version, *pkgrel.version
             ):
@@ -131,12 +136,12 @@ def drop_obsolete_depends(entry: List[PkgRelation], upgrade_release: str):
     return ors, dropped
 
 
-def drop_obsolete_conflicts(entry: List[PkgRelation], upgrade_release: str):
+def drop_obsolete_conflicts(checker: PackageChecker, entry: List[PkgRelation]):
     ors = []
     dropped = []
     for pkgrel in entry:
         if pkgrel.version is not None:
-            compat_version = package_version(pkgrel.name, upgrade_release)
+            compat_version = checker.package_version(pkgrel.name)
             if compat_version is not None and conflict_obsolete(
                 compat_version, *pkgrel.version
             ):
@@ -146,10 +151,10 @@ def drop_obsolete_conflicts(entry: List[PkgRelation], upgrade_release: str):
     return ors, dropped
 
 
-def update_depends(base, field: str, upgrade_release: str) -> List[str]:
+def update_depends(base, field: str, checker: PackageChecker) -> List[str]:
     return filter_relations(
         base, field,
-        lambda oldrelation: drop_obsolete_depends(oldrelation, upgrade_release))
+        lambda oldrelation: drop_obsolete_depends(oldrelation, checker))
 
 
 def _relations_empty(rels):
@@ -192,38 +197,40 @@ def filter_relations(base, field: str, cb: RelationsCallback) -> List[str]:
     return []
 
 
-def update_conflicts(base, field: str, upgrade_release: str) -> List[str]:
+def update_conflicts(base, field: str, checker: PackageChecker) -> List[str]:
     return filter_relations(
         base, field,
-        lambda oldrelation: drop_obsolete_conflicts(oldrelation, upgrade_release))
+        lambda oldrelation: drop_obsolete_conflicts(checker, oldrelation))
 
 
 def drop_old_source_relations(source, compat_release) -> List[Tuple[str, List[str], str]]:
+    checker = PackageChecker(compat_release)
     ret = []
     for field in [
         "Build-Depends",
         "Build-Depends-Indep",
         "Build-Depends-Arch",
     ]:
-        packages = update_depends(source, field, compat_release)
+        packages = update_depends(source, field, checker)
         if packages:
             ret.append((field, packages, compat_release))
     for field in ["Build-Conflicts", "Build-Conflicts-Indep", "Build-Conflicts-Arch"]:
-        packages = update_conflicts(source, field, compat_release)
+        packages = update_conflicts(source, field, checker)
         if packages:
             ret.append((field, packages, compat_release))
     return ret
 
 
 def drop_old_binary_relations(binary, upgrade_release: str) -> List[Tuple[str, List[str], str]]:
+    checker = PackageChecker(upgrade_release)
     ret = []
     for field in ["Depends", "Breaks", "Suggests", "Recommends", "Pre-Depends"]:
-        packages = update_depends(binary, field, upgrade_release)
+        packages = update_depends(binary, field, checker)
         if packages:
             ret.append((field, packages, upgrade_release))
 
     for field in ["Conflicts", "Replaces", "Breaks"]:
-        packages = update_conflicts(binary, field, upgrade_release)
+        packages = update_conflicts(binary, field, checker)
         if packages:
             ret.append((field, packages, upgrade_release))
 
@@ -255,14 +262,14 @@ def drop_old_relations(editor, compat_release: str, upgrade_release: str) -> Lis
     return dropped
 
 
-def update_maintscripts(wt: WorkingTree, subpath: str, package: str, upgrade_release: str, allow_reformatting: bool = False):
+def update_maintscripts(wt: WorkingTree, subpath: str, checker: PackageChecker, package: str, allow_reformatting: bool = False):
     ret = []
     for entry in os.scandir(wt.abspath(os.path.join(subpath))):
         if not (entry.name == "maintscript" or entry.name.endswith(".maintscript")):
             continue
         with MaintscriptEditor(entry.path, allow_reformatting=allow_reformatting) as editor:
             def can_drop(p, v):
-                compat_version = package_version(p or package, upgrade_release)
+                compat_version = checker.package_version(p or package)
                 return compat_version is not None and compat_version > v
             removed = drop_obsolete_maintscript_entries(editor, can_drop)
             if removed:
@@ -351,7 +358,7 @@ def _scrub_obsolete(
             raise NotDebianPackage(wt, debian_path)
 
     maintscript_removed = []
-    for path, removed in update_maintscripts(wt, debian_path, package, upgrade_release, allow_reformatting):
+    for path, removed in update_maintscripts(wt, debian_path, PackageChecker(upgrade_release), package, allow_reformatting):
         if removed:
             maintscript_removed.append((path, removed, upgrade_release))
             specific_files.append(path)
