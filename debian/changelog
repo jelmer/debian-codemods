@@ -1,4 +1,4 @@
-lintian-brush (0.110) UNRELEASED; urgency=medium
+lintian-brush (0.110) unstable; urgency=medium
 
   * deb-scrub-obsolete: Both the compat-release and the upgrade-release
     now default to oldstable.
@@ -6,7 +6,7 @@ lintian-brush (0.110) UNRELEASED; urgency=medium
   * deb-scrub-obsolete: When dropping versioned depends on an essential
     package, drop the entire dependency. Closes: #988933
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 27 Aug 2021 18:00:03 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 06 Sep 2021 16:01:52 +0100
 
 lintian-brush (0.109) unstable; urgency=medium
 
