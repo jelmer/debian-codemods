@@ -127,7 +127,7 @@ async def _package_build_essential(package: str, release: str) -> bool:
         package, release)
 
     build_essential = set()
-    for rel in PkgRelation.parse(depends):
+    for ws1, rel, ws2 in parse_relations(depends):
         build_essential.update([r.name for r in rel])
     return package in build_essential
 
