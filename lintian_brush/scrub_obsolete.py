@@ -329,7 +329,12 @@ class ScrubObsoleteResult(object):
         return summary
 
 
-def _scrub_obsolete(wt, debian_path, compat_release, upgrade_release, allow_reformatting):
+def _scrub_obsolete(
+        wt: WorkingTree,
+        debian_path: str,
+        compat_release: str,
+        upgrade_release: str,
+        allow_reformatting: bool = True) -> ScrubObsoleteResult:
     specific_files = []
     control_path = os.path.join(debian_path, "control")
     try:
