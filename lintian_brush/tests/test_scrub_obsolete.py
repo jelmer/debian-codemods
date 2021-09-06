@@ -19,7 +19,14 @@
 
 from unittest import TestCase
 
-from lintian_brush.scrub_obsolete import name_list, filter_relations
+from lintian_brush.scrub_obsolete import (
+    name_list,
+    filter_relations,
+    drop_obsolete_depends,
+    )
+
+from debian.changelog import Version
+from debmutate._deb822 import PkgRelation
 
 
 class NameListTests(TestCase):
@@ -92,3 +99,33 @@ class FilterRelationsTests(TestCase):
 
         self.assertEqual(["foo"], filter_relations(control, "Depends", cb))
         self.assertEqual({}, control)
+
+
+class DummyChecker(object):
+
+    def __init__(self, versions, essential):
+        self.versions = versions
+        self.essential = essential
+
+    def package_version(self, package):
+        return self.versions.get(package)
+
+    def is_essential(self, package):
+        return package in self.essential
+
+
+class DropObsoleteDependsTests(TestCase):
+
+    def test_empty(self):
+        self.assertEqual(
+            ([], []), drop_obsolete_depends([], DummyChecker({}, [])))
+
+    def test_single(self):
+        checker = DummyChecker({'simple': Version('1.1')}, {})
+        self.assertEqual(
+            (PkgRelation.parse('simple >= 1.0'), []), drop_obsolete_depends(PkgRelation.parse('simple >= 1.0'), checker))
+
+    def test_essential(self):
+        checker = DummyChecker({'simple': Version('1.1')}, {'simple'})
+        self.assertEqual(
+            (PkgRelation.parse('simple >= 1.0'), []), drop_obsolete_depends(PkgRelation.parse('simple >= 1.0'), checker))

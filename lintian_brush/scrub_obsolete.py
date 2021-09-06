@@ -94,7 +94,7 @@ def conflict_obsolete(latest_version: Version, kind: str, req_version: Version):
     return False
 
 
-async def _package_version(source: str, release: str):
+async def _package_version(source: str, release: str) -> Optional[Version]:
     from .udd import connect_udd_mirror
 
     conn = await connect_udd_mirror()
@@ -108,14 +108,38 @@ async def _package_version(source: str, release: str):
     return None
 
 
+async def _package_essential(package: str, release: str) -> bool:
+    from .udd import connect_udd_mirror
+
+    conn = await connect_udd_mirror()
+    return await conn.fetchval(
+        "select essential from packages where package = $1 and release = $2",
+        package, release)
+
+
+async def _package_build_essential(package: str, release: str) -> bool:
+    from .udd import connect_udd_mirror
+
+    conn = await connect_udd_mirror()
+    # TODO: Check if package is implied by build-essential depenendencies
+
+
 class PackageChecker(object):
 
-    def __init__(self, release: str):
+    def __init__(self, release: str, build: bool):
         self.release = release
+        self.build = build
 
-    def package_version(self, source: str) -> Version:
+    def package_version(self, source: str) -> Optional[Version]:
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(_package_version(source, self.release))
+
+    def is_essential(self, package: str) -> bool:
+        loop = asyncio.get_event_loop()
+        if self.build:
+            return loop.run_until_complete(_package_build_essential(package, self.release))
+        else:
+            return loop.run_until_complete(_package_essential(package, self.release))
 
 
 def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
@@ -132,6 +156,10 @@ def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
             ):
                 pkgrel.version = None
                 dropped.append(pkgrel)
+                # If the package is essential, we don't need to maintain a
+                # dependency on it.
+                if checker.is_essential(pkgrel.name):
+                    continue
         ors.append(pkgrel)
     return ors, dropped
 
@@ -204,7 +232,7 @@ def update_conflicts(base, field: str, checker: PackageChecker) -> List[str]:
 
 
 def drop_old_source_relations(source, compat_release) -> List[Tuple[str, List[str], str]]:
-    checker = PackageChecker(compat_release)
+    checker = PackageChecker(compat_release, build=True)
     ret = []
     for field in [
         "Build-Depends",
@@ -222,7 +250,7 @@ def drop_old_source_relations(source, compat_release) -> List[Tuple[str, List[st
 
 
 def drop_old_binary_relations(binary, upgrade_release: str) -> List[Tuple[str, List[str], str]]:
-    checker = PackageChecker(upgrade_release)
+    checker = PackageChecker(upgrade_release, build=False)
     ret = []
     for field in ["Depends", "Breaks", "Suggests", "Recommends", "Pre-Depends"]:
         packages = update_depends(binary, field, checker)
@@ -262,7 +290,9 @@ def drop_old_relations(editor, compat_release: str, upgrade_release: str) -> Lis
     return dropped
 
 
-def update_maintscripts(wt: WorkingTree, subpath: str, checker: PackageChecker, package: str, allow_reformatting: bool = False):
+def update_maintscripts(
+        wt: WorkingTree, subpath: str, checker: PackageChecker, package: str,
+        allow_reformatting: bool = False):
     ret = []
     for entry in os.scandir(wt.abspath(os.path.join(subpath))):
         if not (entry.name == "maintscript" or entry.name.endswith(".maintscript")):
@@ -303,7 +333,7 @@ class ScrubObsoleteResult(object):
     def __bool__(self):
         return bool(self.control_removed) or bool(self.maintscript_removed)
 
-    def value(self):
+    def value(self) -> int:
         value = DEFAULT_VALUE_MULTIARCH_HINT
         for para, changes in self.control_removed:
             for field, packages, release in changes:
@@ -358,7 +388,9 @@ def _scrub_obsolete(
             raise NotDebianPackage(wt, debian_path)
 
     maintscript_removed = []
-    for path, removed in update_maintscripts(wt, debian_path, PackageChecker(upgrade_release), package, allow_reformatting):
+    for path, removed in update_maintscripts(
+            wt, debian_path, PackageChecker(upgrade_release, build=False), package,
+            allow_reformatting):
         if removed:
             maintscript_removed.append((path, removed, upgrade_release))
             specific_files.append(path)
