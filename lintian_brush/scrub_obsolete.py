@@ -187,12 +187,8 @@ def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
                 if checker.is_essential(pkgrel.name):
                     return [], entry
         ors.append(newrel)
-    if dropped:
-        entry = ors
-        ors = []
-        for pkgrel in entry:
-            if _is_implied(
-        # Check if any ors are implied by existing other dependenies
+    # TODO: if dropped: Check if any ors are implied by existing other
+    # dependencies
     return ors, dropped
 
 
