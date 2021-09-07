@@ -17,14 +17,17 @@ with control as updater:
         sv = parse_standards_version(updater.source['Standards-Version'])
     except KeyError:
         sys.exit(0)
-    if sv[:3] in release_dates:
+    if (sv in release_dates or
+            sv[:4] in release_dates or
+            len(sv) == 3 and
+            sv + (0, ) in release_dates):
         sys.exit(0)
     invalid_version = updater.source['Standards-Version']
     issue = LintianIssue(
         'source', 'invalid-standards-version', invalid_version)
     if issue.should_fix():
         issue.report_fixed()
-        if len(sv) == 2 and (sv[0], sv[1], 0) in release_dates:
+        if len(sv) == 2 and (sv[0], sv[1], 0, 0) in release_dates:
             updater.source['Standards-Version'] += '.0'
             report_result("Add missing .0 suffix in Standards-Version.")
         elif sv > sorted(release_dates)[-1]:

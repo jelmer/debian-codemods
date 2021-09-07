@@ -32,12 +32,8 @@ for path, sep in [
 ADDON_TO_DEP = {}
 
 
-for path, sep in [
-    ('/usr/share/lintian/data/common/dh_addons', '='),
-    ('/usr/share/lintian/data/debhelper/dh_addons-manual', '||'),
-        ]:
-    with open(path, 'r') as f:
-        ADDON_TO_DEP.update(read_debhelper_lintian_data_file(f, sep))
+with open('/usr/share/lintian/data/common/dh_addons', 'r') as f:
+    ADDON_TO_DEP.update(read_debhelper_lintian_data_file(f, '='))
 
 
 need = []
