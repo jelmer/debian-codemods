@@ -27,7 +27,7 @@ Build-Depends: bash-completion,
                python3-tomlkit,
                po-debconf,
                gpg (>= 2.1),
-               lintian (>= 2.104.0),
+               lintian (>= 2.105.0),
                debhelper-compat (= 12),
                ognibuild
 Standards-Version: 4.5.1
