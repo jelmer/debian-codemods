@@ -95,17 +95,29 @@ def conflict_obsolete(latest_version: Version, kind: str, req_version: Version):
     return False
 
 
-async def _package_version(source: str, release: str) -> Optional[Version]:
+async def _package_version(package: str, release: str) -> Optional[Version]:
     from .udd import connect_udd_mirror
 
     conn = await connect_udd_mirror()
     version = await conn.fetchval(
-        "select version from sources where source = $1 and release = $2",
-        source,
+        "select version from packages where package = $1 and release = $2",
+        package,
         release,
     )
     if version is not None:
         return Version(version)
+    return None
+
+
+async def _package_provides(package: str, release: str) -> Optional[Version]:
+    from .udd import connect_udd_mirror
+
+    conn = await connect_udd_mirror()
+    provides = await conn.fetchval(
+        "select provides from packages where package = $1 and release = $2",
+        package, release)
+    if provides is not None:
+        return [r[1] for r in parse_relations(provides)]
     return None
 
 
@@ -124,7 +136,7 @@ async def _package_build_essential(package: str, release: str) -> bool:
     conn = await connect_udd_mirror()
     depends = await conn.fetchval(
         "select depends from packages where package = $1 and release = $2",
-        package, release)
+        'build-essential', release)
 
     build_essential = set()
     for ws1, rel, ws2 in parse_relations(depends):
@@ -138,9 +150,13 @@ class PackageChecker(object):
         self.release = release
         self.build = build
 
-    def package_version(self, source: str) -> Optional[Version]:
+    def package_version(self, package: str) -> Optional[Version]:
         loop = asyncio.get_event_loop()
-        return loop.run_until_complete(_package_version(source, self.release))
+        return loop.run_until_complete(_package_version(package, self.release))
+
+    def package_provides(self, package):
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(_package_provides(package, self.release))
 
     def is_essential(self, package: str) -> bool:
         loop = asyncio.get_event_loop()
@@ -171,6 +187,12 @@ def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
                 if checker.is_essential(pkgrel.name):
                     return [], entry
         ors.append(newrel)
+    if dropped:
+        entry = ors
+        ors = []
+        for pkgrel in entry:
+            if _is_implied(
+        # Check if any ors are implied by existing other dependenies
     return ors, dropped
 
 
