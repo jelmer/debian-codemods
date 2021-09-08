@@ -31,10 +31,38 @@ for path, sep in [
 
 ADDON_TO_DEP = {}
 
-
 with open('/usr/share/lintian/data/common/dh_addons', 'r') as f:
     ADDON_TO_DEP.update(read_debhelper_lintian_data_file(f, '='))
 
+ADDON_TO_DEP.update({
+# Copied from /usr/share/lintian/lib/Lintian/Check/Debhelper.pm
+    'ada_library': 'dh-ada-library | dh-sequence-ada-library',
+    'apache2': 'dh-apache2 | apache2-dev',
+    'autoreconf':
+        'dh-autoreconf | debhelper (>= 9.20160403~) | debhelper-compat',
+    'cli': 'cli-common-dev | dh-sequence-cli',
+    'dwz': 'debhelper | debhelper-compat | dh-sequence-dwz',
+    'installinitramfs':
+        'debhelper | debhelper-compat | dh-sequence-installinitramfs',
+    'gnome': 'gnome-pkg-tools | dh-sequence-gnome',
+    'lv2config': 'lv2core',
+    'nodejs': 'pkg-js-tools | dh-sequence-nodejs',
+    'perl_dbi': 'libdbi-perl | dh-sequence-perl-dbi',
+    'perl_imager': 'libimager-perl | dh-sequence-perl-imager',
+    'pgxs': 'postgresql-server-dev-all | postgresql-all',
+    'pgxs_loop':  'postgresql-server-dev-all | postgresql-all',
+    'pypy': 'dh-python | dh-sequence-pypy',
+    'python2': 'python2:any | python2-dev:any | dh-sequence-python2',
+    'python3':
+        'python3:any | python3-all:any | python3-dev:any | '
+        'python3-all-dev:any | dh-sequence-python3',
+    'scour':  'scour | python-scour | dh-sequence-scour',
+    'sphinxdoc':
+        'sphinx | python-sphinx | python3-sphinx | dh-sequence-sphinxdoc',
+    'systemd':
+        'debhelper (>= 9.20160709~) | debhelper-compat | '
+        'dh-sequence-systemd | dh-systemd',
+})
 
 need = []
 
