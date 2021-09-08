@@ -1,3 +1,9 @@
+lintian-brush (0.111) UNRELEASED; urgency=medium
+
+  * Fix compatibility with newer versions of lintian. Closes: #993921
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 08 Sep 2021 16:10:57 +0100
+
 lintian-brush (0.110) unstable; urgency=medium
 
   * deb-scrub-obsolete: Both the compat-release and the upgrade-release
