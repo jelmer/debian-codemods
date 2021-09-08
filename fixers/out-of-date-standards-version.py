@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-from datetime import datetime
 import os
 import re
 import sys
@@ -177,15 +176,13 @@ try:
                 last = None
                 tag = 'out-of-date-standards-version'
             else:
-                last, last_ts = max(svs.items())
-                last_dt = datetime.fromtimestamp(last_ts)
+                last, last_dt = max(svs.items())
                 try:
-                    ts = svs[parse_standards_version(current_version)]
+                    dt = svs[parse_standards_version(current_version)]
                 except KeyError:
                     dt = None
                     tag = 'out-of-date-standards-version'
                 else:
-                    dt = datetime.fromtimestamp(ts)
                     age = last_dt - dt
                     if age.days > 365 * 2:
                         tag = 'ancient-standards-version'
