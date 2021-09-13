@@ -370,10 +370,11 @@ def main(argv=None):  # noqa: C901
             for result, summary in overall_result.success:
                 all_tags.update(result.fixed_lintian_tags)
             if all_tags:
-                logging.info("Lintian tags fixed: %r" % all_tags)
+                logging.info("Lintian tags fixed: %r", all_tags)
             else:
                 logging.info(
-                    "Some changes were made, " "but there are no affected lintian tags."
+                    "Some changes were made, "
+                    "but there are no affected lintian tags."
                 )
             min_certainty = overall_result.minimum_success_certainty()
             if min_certainty != "certain":
