@@ -32,6 +32,8 @@ import time
 import traceback
 from typing import Optional, List, Sequence, Iterator, Iterable, Tuple
 
+from tqdm import trange
+
 from debian.changelog import Changelog, Version
 
 from breezy import ui
@@ -1168,13 +1170,11 @@ def run_lintian_fixers(
         local_tree, subpath=subpath, use_inotify=use_inotify
     )
     ret = ManyResult()
-    with ui.ui_factory.nested_progress_bar() as pb:
+    with trange(len(fixers)) as t:
         for i, fixer in enumerate(fixers):
-            pb.update(
-                "Running fixer %r on %s" % (fixer, local_tree.abspath(subpath)),
-                i,
-                len(fixers),
-            )
+            t.set_description(
+                "Running fixer %r on %s" % (fixer, local_tree.abspath(subpath)))
+            t.update()
             start = time.time()
             if dirty_tracker:
                 dirty_tracker.mark_clean()

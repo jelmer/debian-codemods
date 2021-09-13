@@ -29,7 +29,14 @@ setup(
     project_urls={
         "Repository": "https://salsa.debian.org/jelmer/lintian-brush",
     },
-    install_requires=['breezy>=3.2', 'python_debian', 'debmutate', 'distro-info', 'upstream-ontologist'],
+    install_requires=[
+        'breezy>=3.2',
+        'python_debian',
+        'debmutate',
+        'distro-info',
+        'upstream-ontologist',
+        'tqdm',
+    ],
     entry_points={
         'console_scripts': [
             'debianize=lintian_brush.debianize:main',
