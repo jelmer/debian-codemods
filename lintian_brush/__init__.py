@@ -371,6 +371,9 @@ class PythonScriptFixer(Fixer):
     def __repr__(self):
         return "<%s(%r)>" % (self.__class__.__name__, self.name)
 
+    def __str__(self):
+        return self.name
+
     def run(
         self,
         basedir,
@@ -453,6 +456,9 @@ class ScriptFixer(Fixer):
 
     def __repr__(self):
         return "<ScriptFixer(%r)>" % self.name
+
+    def __str__(self):
+        return self.name
 
     def run(
         self,
@@ -1172,8 +1178,7 @@ def run_lintian_fixers(
     ret = ManyResult()
     with trange(len(fixers), leave=False) as t:
         for i, fixer in enumerate(fixers):
-            t.set_description(
-                "Running fixer %r on %s" % (fixer, local_tree.abspath(subpath)))
+            t.set_description("Running fixer %s" % fixer)
             t.update()
             start = time.time()
             if dirty_tracker:
