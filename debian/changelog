@@ -1,9 +1,9 @@
-lintian-brush (0.112) UNRELEASED; urgency=medium
+lintian-brush (0.112) unstable; urgency=medium
 
   * Use tqdm for progress bars.
   * Bump debmutate dependency.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 14 Sep 2021 17:26:22 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 14 Sep 2021 17:26:49 +0100
 
 lintian-brush (0.111) unstable; urgency=medium
 
