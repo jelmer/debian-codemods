@@ -1,3 +1,10 @@
+lintian-brush (0.113) UNRELEASED; urgency=medium
+
+  * Bump dependency on breezy to 3.2.1-1, as older versions lack
+    Repository.get_revision_deltas. Closes: #994626
+
+ -- Stig Sandbeck Mathisen <ssm@debian.org>  Sat, 18 Sep 2021 22:32:30 +0100
+
 lintian-brush (0.112) unstable; urgency=medium
 
   * Use tqdm for progress bars.
