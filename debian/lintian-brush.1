@@ -59,6 +59,12 @@ Print list of fixers that was run and print tracebacks for failed fixers.
 Make changes with lower certain than normal. This will potentially fix more
 issues, but is more likely to get things wrong. If changes with lower certainty were made,
 lintian-brush will let you know in its output.
+.TP
+\fB\-\-allow\-reformatting\fR
+Allow reformatting of files that are being changed, so long as this does not
+affect the semantics. This could mean stripping whitespace, but in some cases
+could also mean stripping comments.
+
 .SH WRITING AND DEBUGGING FIXERS
 Fixer scripts for lintian-brush can be found under \fI/usr/share/lintian-brush/fixers\fR.
 .PP

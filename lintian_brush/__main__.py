@@ -157,7 +157,7 @@ def main(argv=None):  # noqa: C901
         "--allow-reformatting",
         default=None,
         action="store_true",
-        help=argparse.SUPPRESS,
+        help="Allow file reformatting and stripping of comments."
     )
     package_group.add_argument(
         "--no-update-changelog",
