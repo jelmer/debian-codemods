@@ -1,4 +1,10 @@
-lintian-brush (0.113) UNRELEASED; urgency=medium
+lintian-brush (0.114) UNRELEASED; urgency=medium
+
+  * Add fixer for obsolete-vim-addon-manager.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 19 Sep 2021 17:00:08 +0100
+
+lintian-brush (0.113) unstable; urgency=medium
 
   [ Stig Sandbeck Mathisen ]
   * Bump dependency on breezy to 3.2.1-1, as older versions lack
@@ -8,7 +14,7 @@ lintian-brush (0.113) UNRELEASED; urgency=medium
   * Clarify that --allow-reformatting will in some cases strip comments.
     Closes: #946744
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 18 Sep 2021 22:32:30 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 19 Sep 2021 12:34:00 +0100
 
 lintian-brush (0.112) unstable; urgency=medium
 

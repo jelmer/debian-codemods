@@ -1,0 +1,12 @@
+Source: vim-blah
+Section: editors
+Priority: optional
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper-compat (= 12)
+Standards-Version: 4.5.0
+
+Package: vim-blah
+Architecture: all
+Depends: ${misc:Depends}, vim, vim-addon-manager
+Description: Blah blah
+ blah

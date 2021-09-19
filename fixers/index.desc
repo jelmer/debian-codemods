@@ -495,3 +495,6 @@ Lintian-Tags: cute-field
 
 Fix-Script: pkg-js-tools-test-is-missing.py
 Lintian-Tags: pkg-js-tools-test-is-missing
+
+Fix-Script: obsolete-vim-addon-manager.py
+Lintian-Tags: obsolete-vim-addon-manager

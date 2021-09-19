@@ -34,7 +34,7 @@ if not update_rules(drop_with_autoreconf):
 with control as updater:
     ensure_minimum_debhelper_version(updater.source, "10~")
     new_depends = drop_dependency(
-        updater.source["Build-Depends"], "dh-autoreconf")
+        updater.source.get("Build-Depends", ""), "dh-autoreconf")
     if new_depends != updater.source['Build-Depends']:
         issue = LintianIssue(
             updater.source, 'useless-autoreconf-build-depends',

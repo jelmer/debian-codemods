@@ -23,6 +23,8 @@ import subprocess
 from typing import Dict, Optional, List, Callable
 
 from debian.changelog import Version
+from debmutate.control import drop_dependency, add_dependency
+from debmutate._rules import update_rules, dh_invoke_drop_with, dh_invoke_add_with
 
 from .lintian import read_debhelper_lintian_data_file, LINTIAN_DATA_PATH
 
@@ -167,3 +169,28 @@ def drop_obsolete_maintscript_entries(
         removed.append(editor.lines[i])
         del editor.lines[i]
     return entries_removed
+
+
+def drop_sequence(control, rules, sequence):
+    new_depends = drop_dependency(
+        control.source.get("Build-Depends", ""), "dh-" + sequence)
+    if new_depends != control.source['Build-Depends']:
+        def drop_with(line, target):
+            return dh_invoke_drop_with(line, sequence.replace('-', '_').encode())
+        update_rules(drop_with)
+    new_depends = drop_dependency(
+        new_depends, "dh-sequence-" + sequence)
+    if control['Build-Depends'] == new_depends:
+        return False
+    control['Build-Depends'] = new_depends
+    return True
+
+
+def add_sequence(control, rules, sequence):
+    control.source['Build-Depends'] = add_dependency(
+        control.source.get('Build-Depends'), 'dh-vim-addon')
+    def add_with(line, target):
+        if line.startswith(b'dh ') or line.startswith(b'dh_'):
+            return dh_invoke_add_with(line, sequence.replace('-', '_').encode())
+        return line
+    update_rules(add_with)

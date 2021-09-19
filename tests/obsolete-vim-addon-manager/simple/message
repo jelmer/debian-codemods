@@ -1,0 +1,2 @@
+Migrate from vim-addon-manager to dh-vim-addon.
+Fixed-Lintian-Tags: obsolete-vim-addon-manager
