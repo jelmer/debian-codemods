@@ -44,6 +44,7 @@ import breezy.bzr  # noqa: E402
 from . import (  # noqa: E402
     NotDebianPackage,
     PendingChanges,
+    DescriptionMissing,
     available_lintian_fixers,
     find_fixers_dir,
     get_committer,
@@ -354,6 +355,12 @@ def main(argv=None):  # noqa: C901
                 report_fatal(
                     "changelog-create-error", "Error creating changelog entry: %s" % e
                 )
+                return 1
+            except DescriptionMissing as e:
+                report_fatal(
+                    "fixer-description-missing",
+                    "Fixer %s made changes but did not provide description." %
+                    e.fixer)
                 return 1
 
         if overall_result.overridden_lintian_issues:
