@@ -1695,6 +1695,7 @@
 - tag: no-versioned-debhelper-prerequisite
 - tag: nodejs-missing-version-override
 - tag: obsolete-vim-addon-manager
+  status: implemented
 - tag: python-traceback-in-manpage
 - tag: ruby-interpreter-is-deprecated
 - tag: rules-require-build-prerequisite
