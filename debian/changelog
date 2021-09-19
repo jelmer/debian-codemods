@@ -8,7 +8,7 @@ lintian-brush (0.113) UNRELEASED; urgency=medium
   * Clarify that --allow-reformatting will in some cases strip comments.
     Closes: #946744
 
- -- Stig Sandbeck Mathisen <ssm@debian.org>  Sat, 18 Sep 2021 22:32:30 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 18 Sep 2021 22:32:30 +0100
 
 lintian-brush (0.112) unstable; urgency=medium
 
