@@ -178,8 +178,8 @@ def main(argv=None):  # noqa: C901
 
     output_group = parser.add_argument_group("output")
     output_group.add_argument(
-        "--verbose", help="be verbose", action="store_true", default=False
-    )
+        "--verbose", help="be verbose", action="store_true",
+        default=('SVP_API' in os.environ))
     output_group.add_argument(
         "--diff", help="Print resulting diff afterwards.", action="store_true"
     )

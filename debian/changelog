@@ -1,6 +1,7 @@
 lintian-brush (0.114) UNRELEASED; urgency=medium
 
   * Add fixer for obsolete-vim-addon-manager.
+  * Default to being verbose when silver-platter is in use.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 19 Sep 2021 17:00:08 +0100
 
