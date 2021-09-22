@@ -1362,8 +1362,7 @@ def main(argv=None):  # noqa: C901
         return 1
 
     if args.dist_command:
-
-        def create_dist(session, tree, package, version, target_dir):
+        def create_dist(tree, package, version, target_dir):
             return run_dist_command(
                 tree, package, version, target_dir, args.dist_command)
     else:
