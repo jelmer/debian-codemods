@@ -1176,7 +1176,7 @@ def run_lintian_fixers(
         local_tree, subpath=subpath, use_inotify=use_inotify
     )
     ret = ManyResult()
-    with trange(len(fixers), leave=False) as t:
+    with trange(len(fixers), leave=False, disable=None) as t:
         for i, fixer in enumerate(fixers):
             t.set_description("Running fixer %s" % fixer)
             t.update()
