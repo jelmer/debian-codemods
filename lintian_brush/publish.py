@@ -25,6 +25,7 @@ import sys
 from breezy.controldir import ControlDir
 from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.errors import AlreadyBranchError, AlreadyControlDirError
+from breezy.propose import iter_hoster_instances, UnsupportedHoster
 from breezy.workingtree import WorkingTree
 from debmutate.control import ControlEditor
 from debmutate.vcs import source_package_vcs
@@ -100,23 +101,30 @@ def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False, 
             raise
 
     if create:
-        # TODO(jelmer): This functionality should be in breezy.propose
-        from breezy.propose import iter_hoster_instances
-        from urllib.parse import urlparse
-        for hoster in iter_hoster_instances():
-            if repo_url.startswith(hoster.base_url):
-                try:
-                    hoster.create_project(urlparse(repo_url).path)
-                except AlreadyControlDirError:
-                    logging.info('%s already exists', repo_url)
-                else:
-                    logging.info('Created %s', repo_url)
-                break
-        else:
+        try:
+            hoster, project = create_project(repo_url)
+        except AlreadyControlDirError:
+            logging.info('%s already exists', repo_url)
+        except UnsupportedHoster:
             logging.error(
                 'Unable to find a way to create %s', repo_url)
+        else:
+            logging.info('Created %s', repo_url)
 
     return repo_url
+
+
+try:
+    from breezy.propose import create_project
+except ImportError:  # brz < 3.2
+    def create_project(url):
+        from urllib.parse import urlparse
+        for hoster in iter_hoster_instances():
+            if url.startswith(hoster.base_url):
+                hoster.create_project(urlparse(url).path)
+                break
+        else:
+            raise UnsupportedHoster(url)
 
 
 def main():

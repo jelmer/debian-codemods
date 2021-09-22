@@ -670,6 +670,7 @@ class DebianizeResult(object):
     tag_names: Dict[Optional[str], str] = field(default_factory=dict)
     upstream_version: Optional[str] = None
     wnpp_bugs: List[Tuple[int, str]] = field(default_factory=list)
+    vcs_url: Optional[str] = None
 
 
 def get_project_wide_deps(session, wt, subpath, buildsystem, buildsystem_subpath):
@@ -1002,7 +1003,7 @@ def debianize(  # noqa: C901
         )
 
         try:
-            update_offical_vcs(wt, subpath=subpath, committer=committer)
+            result.vcs_url = update_offical_vcs(wt, subpath=subpath, committer=committer)
         except VcsAlreadySpecified:
             pass
         except NoVcsLocation:
@@ -1606,6 +1607,8 @@ def main(argv=None):  # noqa: C901
         with open(os.environ['SVP_RESULT'], "w") as f:
             json.dump({
                 "description": "Debianized package",
+                # TODO(jelmer): Convert from Debian to brz format?
+                "target-branch-url": debianize_result.vcs_url,
                 "context": {
                     "wnpp_bugs": debianize_result.wnpp_bugs,
                     "versions": {
