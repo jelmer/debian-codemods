@@ -1215,9 +1215,9 @@ class SimpleTrustedAptRepo(object):
 def report_fatal(code, description, hint=None):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump(f, {
+            json.dump({
                 'result_code': code,
-                'description': description})
+                'description': description}, f)
     logging.fatal('%s', description)
     if hint:
         logging.info('%s', hint)
