@@ -2,6 +2,8 @@ lintian-brush (0.114) UNRELEASED; urgency=medium
 
   * Add fixer for obsolete-vim-addon-manager.
   * Default to being verbose when silver-platter is in use.
+  * comma-separated-files-in-dep5-copyright: Handle bash style
+    expansions.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 19 Sep 2021 17:00:08 +0100
 

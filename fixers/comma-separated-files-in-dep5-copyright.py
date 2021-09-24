@@ -10,6 +10,9 @@ try:
                 continue
             if ',' not in paragraph['Files']:
                 continue
+            if '{' in paragraph['Files']:
+                # Bash-style expansion?
+                continue
             issue = LintianIssue(
                 'source', 'comma-separated-files-in-dep5-copyright',
                 'paragraph at line XX')
