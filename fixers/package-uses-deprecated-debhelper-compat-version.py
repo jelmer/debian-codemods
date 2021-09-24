@@ -217,6 +217,8 @@ class PybuildUpgrader(object):
                 buildsystem = detect_debhelper_buildsystem(step)
                 if buildsystem == 'python_distutils':
                     line += b' --buildsystem=pybuild'
+                    subitems.add(
+                        'Replace python_distutils buildsystem with pybuild.')
                     self.upgraded = True
             else:
                 if b'buildsystem=pybuild' in line:

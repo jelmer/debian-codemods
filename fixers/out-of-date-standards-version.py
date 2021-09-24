@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os
+import logging
 import re
 import sys
 from debian.changelog import Changelog
@@ -22,26 +23,44 @@ upgrade_path = {
     "4.4.0": "4.4.1",
     "4.4.1": "4.5.0",
     "4.5.0": "4.5.1",
+    "4.5.1": "4.6.0",
 }
 
 
+class UpgradeCheckFailure(Exception):
+    """Upgrade check failed."""
+
+    def __init__(self, section, reason):
+        self.section = section
+        self.reason = reason
+
+
+class UpgradeCheckUnable(Exception):
+    """Unable to check upgrade requirement."""
+
+    def __init__(self, section, reason):
+        self.section = section
+        self.reason = reason
+
+
 def check_4_1_1():
-    return os.path.exists("debian/changelog")
+    if not os.path.exists("debian/changelog"):
+        raise UpgradeCheckFailure("4.4", "debian/changelog does not exist")
 
 
 def check_4_4_0():
     # Check that the package uses debhelper.
     if os.path.exists("debian/compat"):
-        return True
+        return
     with open('debian/control') as f:
         source = next(Deb822.iter_paragraphs(f))
         build_deps = source.get('Build-Depends', '')
         try:
             get_relation(build_deps, 'debhelper-compat')
         except KeyError:
-            return False
+            raise UpgradeCheckFailure("4.9", "package does not use dh")
         else:
-            return True
+            return
 
 
 def check_4_4_1():
@@ -55,7 +74,8 @@ def check_4_4_1():
             if name.lower().startswith('vcs-'):
                 vcs_fields.append(name)
     if len(vcs_fields) > 1:
-        return False
+        raise UpgradeCheckFailure(
+            "5.6.26", "package has more than one Vcs-<type> field")
 
     # Check that Files entries don't refer to directories.
     # They must be wildcards *in* the directories.
@@ -65,30 +85,26 @@ def check_4_4_1():
             for para in copyright.all_files_paragraphs():
                 for glob in para.files:
                     if os.path.isdir(glob):
-                        return False
+                        raise UpgradeCheckFailure(
+                            "copyright-format",
+                            "Wildcards are required to match the contents of "
+                            "directories")
     except FileNotFoundError:
-        return False
+        pass
     except NotMachineReadableError:
         pass
-    return True
 
 
 def check_4_1_5():
-    # If epoch has changed -> return False
+    # If epoch has changed
     with open('debian/changelog', 'r') as f:
         cl = Changelog(f, max_blocks=2)
         epochs = set()
         for block in cl:
             epochs.add(block.version.epoch)
         if len(epochs) > 1:
-            return False
-
-    with open('debian/control') as f:
-        source = Deb822(f)
-        if 'Rules-Requires-Root' not in source:
-            return False
-
-    return True
+            # Maybe they did email debian-devel@; we don't know.
+            raise UpgradeCheckUnable("5.6.12", "last release changes epoch")
 
 
 def _poor_grep(path, needle):
@@ -111,7 +127,9 @@ def check_4_5_0():
                 not entry.name.endswith('.preinst')):
             continue
         if _poor_grep(entry.path, b'(adduser|useradd)'):
-            return False
+            raise UpgradeCheckUnable(
+                "9.2.1", "dynamically generated usernames should start with "
+                "an underscore")
         if _poor_grep(entry.path, b'update-rc.d'):
             uses_update_rc_d = True
 
@@ -123,12 +141,16 @@ def check_4_5_0():
         shortname = entry.name[:-len('.init')]
         if (not os.path.exists('debian/%s.service' % shortname) and
                 not os.path.exists('debian/%s@.service' % shortname)):
-            return False
+            raise UpgradeCheckFailure(
+                "9.3.1",
+                "packages that include system services should include "
+                "systemd units")
         # Use of update-rc.d is required if the package includes an init
         # script.
         if not uses_update_rc_d:
-            return False
-    return True
+            raise UpgradeCheckFailure(
+                "9.3.3",
+                "update-rc usage if required if package includes init script")
 
 
 def check_4_5_1():
@@ -138,14 +160,28 @@ def check_4_5_1():
     try:
         for entry in os.scandir('debian/patches'):
             if entry.name.endswith('.series'):
-                return False
+                raise UpgradeCheckFailure(
+                    "4.5.1",
+                    "package contains non-default series file")
     except FileNotFoundError:
         pass
-    return True
 
 
 def check_4_2_1():
-    return True
+    pass
+
+
+def check_4_6_0():
+    # TODO(jelmer): No package is allowed to install files in /usr/lib64/.
+    # Previously, this prohibition only applied to packages for 64-bit
+    # architectures.
+    for entry in os.scandir('debian'):
+        if not entry.is_file():
+            continue
+        if _poor_grep(entry.path, b'lib64'):
+            raise UpgradeCheckUnable(
+                "9.1.1",
+                "unable to verify whether package install files into /usr/lib/64")
 
 
 check_requirements = {
@@ -156,6 +192,7 @@ check_requirements = {
     "4.1.5": check_4_1_5,
     "4.5.0": check_4_5_0,
     "4.5.1": check_4_5_1,
+    "4.6.0": check_4_6_0,
 }
 
 current_version = None
@@ -202,7 +239,21 @@ try:
                 while current_version in upgrade_path:
                     target_version = upgrade_path[current_version]
                     check_fn = check_requirements[target_version]
-                    if not check_fn():
+                    try:
+                        check_fn()
+                    except UpgradeCheckFailure as e:
+                        logging.info(
+                            'Upgrade checklist validation from standards %s => %s '
+                            'failed: %s: %s',
+                            current_version, target_version,
+                            e.section, e.reason)
+                        break
+                    except UpgradeCheckUnable as e:
+                        logging.info(
+                            'Unable to validate checklist from standards %s => %s: '
+                            '%s: %s',
+                            current_version, target_version,
+                            e.section, e.reason)
                         break
                     current_version = target_version
                 updater.source["Standards-Version"] = current_version
