@@ -1,46 +1,46 @@
 {
     "exception_ids": [
-        "WxWindows-exception-3.1",
-        "Bootloader-exception",
-        "PS-or-PDF-font-exception-20170817",
-        "mif-exception",
-        "OCCT-exception-1.0",
-        "DigiRule-FOSS-exception",
-        "OCaml-LGPL-linking-exception",
-        "eCos-exception-2.0",
-        "Linux-syscall-note",
-        "u-boot-exception-2.0",
-        "GPL-3.0-linking-source-exception",
-        "Font-exception-2.0",
-        "OpenJDK-assembly-exception-1.0",
         "GCC-exception-2.0",
-        "389-exception",
+        "Autoconf-exception-2.0",
+        "PS-or-PDF-font-exception-20170817",
         "SHL-2.0",
+        "OpenJDK-assembly-exception-1.0",
+        "Bootloader-exception",
+        "OCaml-LGPL-linking-exception",
+        "Nokia-Qt-exception-1.1",
+        "LGPL-3.0-linking-exception",
+        "freertos-exception-2.0",
+        "GPL-3.0-linking-exception",
+        "Font-exception-2.0",
+        "Libtool-exception",
+        "Fawkes-Runtime-exception",
+        "gnu-javamail-exception",
         "LZMA-exception",
         "FLTK-exception",
-        "Autoconf-exception-2.0",
-        "Nokia-Qt-exception-1.1",
-        "LLVM-exception",
-        "Universal-FOSS-exception-1.0",
-        "Fawkes-Runtime-exception",
-        "freertos-exception-2.0",
-        "Qt-LGPL-exception-1.1",
+        "mif-exception",
+        "u-boot-exception-2.0",
         "SHL-2.1",
-        "Swift-exception",
-        "GPL-3.0-linking-exception",
-        "Qt-GPL-exception-1.0",
-        "Libtool-exception",
-        "Qwt-exception-1.0",
-        "openvpn-openssl-exception",
-        "GCC-exception-3.1",
-        "Bison-exception-2.2",
-        "Autoconf-exception-3.0",
-        "gnu-javamail-exception",
-        "Classpath-exception-2.0",
-        "GPL-CC-1.0",
-        "LGPL-3.0-linking-exception",
         "i2p-gpl-java-exception",
-        "CLISP-exception-2.0"
+        "Qt-GPL-exception-1.0",
+        "Bison-exception-2.2",
+        "WxWindows-exception-3.1",
+        "Qwt-exception-1.0",
+        "GPL-CC-1.0",
+        "Qt-LGPL-exception-1.1",
+        "Universal-FOSS-exception-1.0",
+        "CLISP-exception-2.0",
+        "GCC-exception-3.1",
+        "LLVM-exception",
+        "389-exception",
+        "Linux-syscall-note",
+        "eCos-exception-2.0",
+        "GPL-3.0-linking-source-exception",
+        "Classpath-exception-2.0",
+        "openvpn-openssl-exception",
+        "Swift-exception",
+        "Autoconf-exception-3.0",
+        "DigiRule-FOSS-exception",
+        "OCCT-exception-1.0"
     ],
     "licenses": {
         "0BSD": {
@@ -274,6 +274,12 @@
         "CC-BY-3.0-AT": {
             "name": "Creative Commons Attribution 3.0 Austria"
         },
+        "CC-BY-3.0-DE": {
+            "name": "Creative Commons Attribution 3.0 Germany"
+        },
+        "CC-BY-3.0-NL": {
+            "name": "Creative Commons Attribution 3.0 Netherlands"
+        },
         "CC-BY-3.0-US": {
             "name": "Creative Commons Attribution 3.0 United States"
         },
@@ -292,6 +298,9 @@
         "CC-BY-NC-3.0": {
             "name": "Creative Commons Attribution Non Commercial 3.0 Unported"
         },
+        "CC-BY-NC-3.0-DE": {
+            "name": "Creative Commons Attribution Non Commercial 3.0 Germany"
+        },
         "CC-BY-NC-4.0": {
             "name": "Creative Commons Attribution Non Commercial 4.0 International"
         },
@@ -307,6 +316,9 @@
         "CC-BY-NC-ND-3.0": {
             "name": "Creative Commons Attribution Non Commercial No Derivatives 3.0 Unported"
         },
+        "CC-BY-NC-ND-3.0-DE": {
+            "name": "Creative Commons Attribution Non Commercial No Derivatives 3.0 Germany"
+        },
         "CC-BY-NC-ND-3.0-IGO": {
             "name": "Creative Commons Attribution Non Commercial No Derivatives 3.0 IGO"
         },
@@ -319,11 +331,23 @@
         "CC-BY-NC-SA-2.0": {
             "name": "Creative Commons Attribution Non Commercial Share Alike 2.0 Generic"
         },
+        "CC-BY-NC-SA-2.0-FR": {
+            "name": "Creative Commons Attribution-NonCommercial-ShareAlike 2.0 France"
+        },
+        "CC-BY-NC-SA-2.0-UK": {
+            "name": "Creative Commons Attribution Non Commercial Share Alike 2.0 England and Wales"
+        },
         "CC-BY-NC-SA-2.5": {
             "name": "Creative Commons Attribution Non Commercial Share Alike 2.5 Generic"
         },
         "CC-BY-NC-SA-3.0": {
             "name": "Creative Commons Attribution Non Commercial Share Alike 3.0 Unported"
+        },
+        "CC-BY-NC-SA-3.0-DE": {
+            "name": "Creative Commons Attribution Non Commercial Share Alike 3.0 Germany"
+        },
+        "CC-BY-NC-SA-3.0-IGO": {
+            "name": "Creative Commons Attribution Non Commercial Share Alike 3.0 IGO"
         },
         "CC-BY-NC-SA-4.0": {
             "name": "Creative Commons Attribution Non Commercial Share Alike 4.0 International"
@@ -339,6 +363,9 @@
         },
         "CC-BY-ND-3.0": {
             "name": "Creative Commons Attribution No Derivatives 3.0 Unported"
+        },
+        "CC-BY-ND-3.0-DE": {
+            "name": "Creative Commons Attribution No Derivatives 3.0 Germany"
         },
         "CC-BY-ND-4.0": {
             "name": "Creative Commons Attribution No Derivatives 4.0 International"
@@ -364,6 +391,9 @@
         "CC-BY-SA-3.0-AT": {
             "name": "Creative Commons Attribution Share Alike 3.0 Austria"
         },
+        "CC-BY-SA-3.0-DE": {
+            "name": "Creative Commons Attribution Share Alike 3.0 Germany"
+        },
         "CC-BY-SA-4.0": {
             "name": "Creative Commons Attribution Share Alike 4.0 International"
         },
@@ -384,6 +414,9 @@
         },
         "CDLA-Permissive-1.0": {
             "name": "Community Data License Agreement Permissive 1.0"
+        },
+        "CDLA-Permissive-2.0": {
+            "name": "Community Data License Agreement Permissive 2.0"
         },
         "CDLA-Sharing-1.0": {
             "name": "Community Data License Agreement Sharing 1.0"
@@ -920,7 +953,10 @@
             "name": "NIST Public Domain Notice with license fallback"
         },
         "NLOD-1.0": {
-            "name": "Norwegian Licence for Open Government Data"
+            "name": "Norwegian Licence for Open Government Data (NLOD) 1.0"
+        },
+        "NLOD-2.0": {
+            "name": "Norwegian Licence for Open Government Data (NLOD) 2.0"
         },
         "NLPL": {
             "name": "No Limit Public License"
@@ -1290,6 +1326,9 @@
         },
         "VSL-1.0": {
             "name": "Vovida Software License v1.0"
+        },
+        "Verbatim-man-pages": {
+            "name": "The \"Verbatim\" License (man-pages)"
         },
         "Vim": {
             "name": "Vim License"
