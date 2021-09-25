@@ -41,24 +41,13 @@ def detect_debhelper_buildsystem(step: Optional[str] = None) -> Optional[str]:
     """
     if os.path.exists("configure.ac") or os.path.exists("configure.in"):
         return "autoconf"
+    env = dict(os.environ)
+    # Necessary for debhelper (<= 13.5.2), or it'll write debian/.debhelper
+    # files.
+    env['DH_NO_ACT'] = '1'
     output = subprocess.check_output(
-        [
-            "perl",
-            "-w",
-            "-MDebian::Debhelper::Dh_Lib",
-            "-MDebian::Debhelper::Dh_Buildsystems",
-            "-e",
-            """\
-Debian::Debhelper::Dh_Lib::init(inhibit_log=>1);
-my $b=Debian::Debhelper::Dh_Buildsystems::load_buildsystem(undef, %(step)s);\
-if (defined($b)) { print($b->NAME); } else { print("_undefined_"); }\
-"""
-            % {"step": ("'%s'" % step) if step is not None else "undef"},
-        ]
-    ).decode()
-    if output == "_undefined_":
-        return None
-    return output
+        ["dh_assistant", "which-build-system"], env=env).decode()
+    return json.loads(output)["build-system"]
 
 
 @cache
