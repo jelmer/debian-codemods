@@ -114,6 +114,7 @@ subset of the issues:
 * obsolete-field-in-dep5-copyright
 * obsolete-runtime-tests-restriction
 * obsolete-url-in-packaging
+* obsolete-vim-addon-manager
 * old-dpmt-vcs
 * old-fsf-address-in-copyright-file
 * old-papt-vcs
