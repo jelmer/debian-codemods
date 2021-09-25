@@ -72,7 +72,7 @@ with control as updater:
         if not issue.should_fix():
             continue
         description = guess_description(
-            binary['Package'], updater.binaries, summary=summary)
+            binary['Package'], list(updater.binaries), summary=summary)
         if description and description != existing_description:
             binary['Description'] = description
             updated.append(binary['Package'])

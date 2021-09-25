@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from lintian_brush.fixer import control, LintianIssue, report_result
-from debmutate.control import get_relation, add_dependency, drop_dependency
+from debmutate.control import get_relation, drop_dependency
 from debmutate._rules import RulesEditor
 from lintian_brush.debhelper import add_sequence
 

@@ -36,8 +36,6 @@ from tqdm import trange
 
 from debian.changelog import Changelog, Version
 
-from breezy import ui
-
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy.commit import NullCommitReporter

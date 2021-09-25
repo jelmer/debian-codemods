@@ -35,7 +35,7 @@ with open('/usr/share/lintian/data/common/dh_addons', 'r') as f:
     ADDON_TO_DEP.update(read_debhelper_lintian_data_file(f, '='))
 
 ADDON_TO_DEP.update({
-# Copied from /usr/share/lintian/lib/Lintian/Check/Debhelper.pm
+    # Copied from /usr/share/lintian/lib/Lintian/Check/Debhelper.pm
     'ada_library': 'dh-ada-library | dh-sequence-ada-library',
     'apache2': 'dh-apache2 | apache2-dev',
     'autoreconf':
