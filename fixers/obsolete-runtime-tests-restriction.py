@@ -7,6 +7,7 @@ from debmutate.deb822 import Deb822Editor
 from debmutate.control import delete_from_list
 
 from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.lintian import LINTIAN_DATA_PATH
 
 
 removed_restrictions = []
@@ -16,7 +17,7 @@ if not os.path.exists('debian/tests/control'):
     sys.exit(0)
 
 KNOWN_OBSOLETE_RESTRICTIONS_PATH = (
-    '/usr/share/lintian/data/testsuite/known-obsolete-restrictions')
+    os.path.join(LINTIAN_DATA_PATH, 'testsuite/known-obsolete-restrictions'))
 DEPRECATED_RESTRICTIONS = []
 
 try:

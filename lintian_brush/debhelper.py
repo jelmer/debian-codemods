@@ -18,6 +18,7 @@
 
 """Debhelper utility functions."""
 
+import json
 import os
 import subprocess
 from typing import Dict, Optional, List, Callable
@@ -42,24 +43,8 @@ def detect_debhelper_buildsystem(step: Optional[str] = None) -> Optional[str]:
     """
     if os.path.exists("configure.ac") or os.path.exists("configure.in"):
         return "autoconf"
-    output = subprocess.check_output(
-        [
-            "perl",
-            "-w",
-            "-MDebian::Debhelper::Dh_Lib",
-            "-MDebian::Debhelper::Dh_Buildsystems",
-            "-e",
-            """\
-Debian::Debhelper::Dh_Lib::init(inhibit_log=>1);
-my $b=Debian::Debhelper::Dh_Buildsystems::load_buildsystem(undef, %(step)s);\
-if (defined($b)) { print($b->NAME); } else { print("_undefined_"); }\
-"""
-            % {"step": ("'%s'" % step) if step is not None else "undef"},
-        ]
-    ).decode()
-    if output == "_undefined_":
-        return None
-    return output
+    output = subprocess.check_output(["dh_assistant", "which-build-system"]).decode()
+    return json.loads(output)["build-system"]
 
 
 LINTIAN_COMPAT_LEVEL_PATH = os.path.join(LINTIAN_DATA_PATH, "debhelper/compat-level")
@@ -189,6 +174,7 @@ def drop_sequence(control, rules, sequence):
 def add_sequence(control, rules, sequence):
     control.source['Build-Depends'] = add_dependency(
         control.source.get('Build-Depends'), 'dh-vim-addon')
+
     def add_with(line, target):
         if line.startswith(b'dh ') or line.startswith(b'dh_'):
             return dh_invoke_add_with(line, sequence.replace('-', '_').encode())

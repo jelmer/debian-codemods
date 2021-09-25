@@ -7,7 +7,7 @@ from debmutate.control import (
     is_relation_implied,
     )
 from lintian_brush.fixer import control, report_result, LintianIssue
-from lintian_brush.lintian import read_debhelper_lintian_data_file
+from lintian_brush.lintian import read_debhelper_lintian_data_file, LINTIAN_DATA_PATH
 from debmutate._rules import Makefile, Rule, dh_invoke_get_with
 import os
 import shlex
@@ -16,14 +16,14 @@ import sys
 COMMAND_TO_DEP = {}
 
 
-if not os.path.isdir('/usr/share/lintian/data'):
+if not os.path.isdir(LINTIAN_DATA_PATH):
     # lintian doesn't appear to be installed
     sys.exit(2)
 
 
 for path, sep in [
-    ('/usr/share/lintian/data/debhelper/dh_commands', '='),
-    ('/usr/share/lintian/data/debhelper/dh_commands-manual', '||'),
+    (os.path.join(LINTIAN_DATA_PATH, 'debhelper/dh_commands'), '='),
+    (os.path.join(LINTIAN_DATA_PATH, 'debhelper/dh_commands-manual'), '||'),
         ]:
     with open(path, 'r') as f:
         COMMAND_TO_DEP.update(read_debhelper_lintian_data_file(f, sep))
@@ -31,7 +31,7 @@ for path, sep in [
 
 ADDON_TO_DEP = {}
 
-with open('/usr/share/lintian/data/common/dh_addons', 'r') as f:
+with open(os.path.join(LINTIAN_DATA_PATH, 'common/dh_addons'), 'r') as f:
     ADDON_TO_DEP.update(read_debhelper_lintian_data_file(f, '='))
 
 ADDON_TO_DEP.update({

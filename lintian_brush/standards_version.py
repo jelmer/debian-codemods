@@ -20,11 +20,15 @@
 from datetime import datetime
 from iso8601 import parse_date
 import json
+import os
+
 from debmutate.control import parse_standards_version
 from typing import Tuple, Iterator
 
+from .lintian import LINTIAN_DATA_PATH
 
-RELEASE_DATES_PATH = "/usr/share/lintian/data/debian-policy/releases.json"
+
+RELEASE_DATES_PATH = os.path.join(LINTIAN_DATA_PATH, "debian-policy/releases.json")
 
 
 def iter_standards_versions() -> Iterator[Tuple[Tuple[int, ...], datetime]]:
