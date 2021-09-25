@@ -18,27 +18,36 @@
 """Standards-Version handling."""
 
 from datetime import datetime
-from iso8601 import parse_date
 import json
 import os
+from typing import Tuple, Iterator
 
 from debmutate.control import parse_standards_version
-from typing import Tuple, Iterator
+from iso8601 import parse_date
 
 from .lintian import LINTIAN_DATA_PATH
 
 
 RELEASE_DATES_PATH = os.path.join(LINTIAN_DATA_PATH, "debian-policy/releases.json")
+OLD_RELEASE_DATES_PATH = os.path.join(LINTIAN_DATA_PATH, "standards-version/release-dates")
 
 
 def iter_standards_versions() -> Iterator[Tuple[Tuple[int, ...], datetime]]:
-    with open(RELEASE_DATES_PATH, "r") as f:
-        data = json.load(f)
-        for release in data['releases']:
-            version = release['version']
-            yield (
-                parse_standards_version(version),
-                parse_date(release['timestamp']))
+    try:
+        with open(RELEASE_DATES_PATH, "r") as f:
+            data = json.load(f)
+            for release in data['releases']:
+                version = release['version']
+                yield (
+                    parse_standards_version(version),
+                    parse_date(release['timestamp']))
+    except FileNotFoundError:
+        with open(OLD_RELEASE_DATES_PATH, "r") as f:
+            for line in f:
+                if line.startswith("#") or not line.strip():
+                    continue
+                (version, ts) = line.split()
+                yield parse_standards_version(version), datetime.fromtimestamp(int(ts))
 
 
 def latest_standards_version() -> str:
