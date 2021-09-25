@@ -1692,7 +1692,6 @@
 - tag: illegal-variable
 - tag: misplaced-systemd-tmpfiles
 - tag: missing-conffile
-- tag: no-versioned-debhelper-prerequisite
 - tag: nodejs-missing-version-override
 - tag: obsolete-vim-addon-manager
   status: implemented

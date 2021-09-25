@@ -5,9 +5,6 @@ from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
     read_debhelper_compat_file,
     )
-from lintian_brush.debhelper import (
-    pedantic_compat_level,
-    )
 from lintian_brush.fixer import (
     control,
     report_result,
@@ -30,13 +27,8 @@ with control as updater:
             updater.source, "%s~" % minimum_version):
         fixed_lintian_tag(
             'source',
-            'package-lacks-versioned-build-depends-on-debhelper',
+            'no-versioned-debhelper-prerequisite',
             info='%d' % minimum_version)
-        if minimum_version > pedantic_compat_level():
-            fixed_lintian_tag(
-                'source',
-                'package-needs-versioned-debhelper-build-depends',
-                info='%d' % minimum_version)
 
 
 report_result(

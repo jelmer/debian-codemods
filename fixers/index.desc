@@ -208,8 +208,7 @@ Fix-Script: debhelper-compat-wrong-field.py
 
 Fix-Script: package-needs-versioned-debhelper-build-depends.py
 Lintian-Tags:
-  package-needs-versioned-debhelper-build-depends,
-  package-lacks-versioned-build-depends-on-debhelper
+  no-versioned-debhelper-prerequisite
 
 Fix-Script: package-uses-deprecated-source-override-location.sh
 Lintian-Tags: old-source-override-location

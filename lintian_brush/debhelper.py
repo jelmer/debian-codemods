@@ -18,6 +18,7 @@
 
 """Debhelper utility functions."""
 
+from functools import cache
 import json
 import os
 import subprocess
@@ -26,9 +27,6 @@ from typing import Dict, Optional, List, Callable
 from debian.changelog import Version
 from debmutate.control import drop_dependency, add_dependency
 from debmutate._rules import update_rules, dh_invoke_drop_with, dh_invoke_add_with
-
-from .lintian import read_debhelper_lintian_data_file, LINTIAN_DATA_PATH
-
 
 DEBHELPER_BUILD_STEPS = ["configure", "build", "test", "install", "clean"]
 
@@ -43,33 +41,41 @@ def detect_debhelper_buildsystem(step: Optional[str] = None) -> Optional[str]:
     """
     if os.path.exists("configure.ac") or os.path.exists("configure.in"):
         return "autoconf"
-    output = subprocess.check_output(["dh_assistant", "which-build-system"]).decode()
-    return json.loads(output)["build-system"]
+    output = subprocess.check_output(
+        [
+            "perl",
+            "-w",
+            "-MDebian::Debhelper::Dh_Lib",
+            "-MDebian::Debhelper::Dh_Buildsystems",
+            "-e",
+            """\
+Debian::Debhelper::Dh_Lib::init(inhibit_log=>1);
+my $b=Debian::Debhelper::Dh_Buildsystems::load_buildsystem(undef, %(step)s);\
+if (defined($b)) { print($b->NAME); } else { print("_undefined_"); }\
+"""
+            % {"step": ("'%s'" % step) if step is not None else "undef"},
+        ]
+    ).decode()
+    if output == "_undefined_":
+        return None
+    return output
 
 
-LINTIAN_COMPAT_LEVEL_PATH = os.path.join(LINTIAN_DATA_PATH, "debhelper/compat-level")
-
-
+@cache
 def _get_lintian_compat_levels() -> Dict[str, int]:
-    with open(LINTIAN_COMPAT_LEVEL_PATH, "r") as f:
-        return {
-            key: int(value) for (key, value) in read_debhelper_lintian_data_file(f, "=")
-        }
+    output = subprocess.check_output(
+        ["dh_assistant", "supported-compat-levels"]).decode()
+    return json.loads(output)
 
 
 def lowest_non_deprecated_compat_level() -> int:
     """Find the lowest non-deprecated debhelper compat level."""
-    return _get_lintian_compat_levels()["deprecated"]
+    return _get_lintian_compat_levels()["LOWEST_NON_DEPRECATED_COMPAT_LEVEL"]
 
 
 def highest_stable_compat_level() -> int:
     """Find the highest stable debhelper compat level."""
-    return _get_lintian_compat_levels()["recommended"]
-
-
-def pedantic_compat_level() -> int:
-    """Find the highest stable debhelper compat level."""
-    return _get_lintian_compat_levels()["pedantic"]
+    return _get_lintian_compat_levels()["HIGHEST_STABLE_COMPAT_LEVEL"]
 
 
 def maximum_debhelper_compat_version(compat_release: str) -> int:
