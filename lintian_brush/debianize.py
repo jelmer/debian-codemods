@@ -1212,12 +1212,13 @@ class SimpleTrustedAptRepo(object):
             f.write(packages)
 
 
-def report_fatal(code, description, hint=None):
+def report_fatal(code, description, hint=None, details=None):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'result_code': code,
-                'description': description}, f)
+                'description': description,
+                'details': details}, f)
     logging.fatal('%s', description)
     if hint:
         logging.info('%s', hint)
@@ -1427,6 +1428,12 @@ def main(argv=None):  # noqa: C901
             report_fatal(
                 'no-build-tools',
                 "Unable to find any build systems in upstream sources.")
+            return 1
+        except DetailedFailure as e:
+            report_fatal(
+                'debianize-' + e.error.kind,
+                str(e),
+                e.json())
             return 1
         except OSError as e:
             if e.errno == errno.ENOSPC:
