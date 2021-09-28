@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_strip:
+	# no longer necessary after buster
+	dh_strip --dbgsym-migration='amule-dbg (<< 1:2.3.2-2~)'
+
+override_dh_test:
+ifneq (${SOME_TEST_THING}, 1)
+	dh_test
+endif
+
+.PHONY: override_dh_test override_dh_strip
