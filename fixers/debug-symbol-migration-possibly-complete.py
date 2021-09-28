@@ -1,5 +1,10 @@
 #!/usr/bin/python3
 
+import os
+
+import re
+import sys
+
 from debian.deb822 import PkgRelation
 from lintian_brush.fixer import (
     net_access_allowed,
@@ -7,10 +12,7 @@ from lintian_brush.fixer import (
     report_result,
     LintianIssue,
     )
-from debmutate._rules import update_rules
-import os
-
-import re
+from debmutate._rules import RulesEditor, discard_pointless_override
 
 
 compat_release = compat_release()
@@ -108,6 +110,21 @@ def eliminate_dbgsym_migration(line, target):
     return line
 
 
-update_rules(eliminate_dbgsym_migration)
+if not os.path.exists('debian/rules'):
+    sys.exit(2)
+with RulesEditor() as editor:
+    for rule in editor.makefile.iter_all_rules():
+        newlines = []
+        for line in list(rule.lines[1:]):
+            if line.startswith(b'\t'):
+                ret = eliminate_dbgsym_migration(line[1:], rule.target)
+                newlines.append(b'\t' + ret)
+            else:
+                newlines.append(line)
+        oldlines = rule.lines
+        if oldlines != newlines:
+            rule.lines = [rule.lines[0]] + newlines
+            discard_pointless_override(editor.makefile, rule, ignore_comments=True)
+
 
 report_result('Drop transition for old debug package migration.')
