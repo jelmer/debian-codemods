@@ -171,7 +171,7 @@ def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
     dropped = []
     for pkgrel in entry:
         newrel = pkgrel
-        if pkgrel.version is not None:
+        if pkgrel.version is not None and pkgrel.name != 'debhelper':
             compat_version = checker.package_version(pkgrel.name)
             logging.debug(
                 "Relation: %s. Upgrade release %s has %r ",

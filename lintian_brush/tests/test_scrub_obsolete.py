@@ -135,6 +135,12 @@ class DropObsoleteDependsTests(TestCase):
         self.assertEqual(
             ([], PkgRelation.parse('simple (>= 1.0)')), drop_obsolete_depends(orig, checker))
 
+    def test_debhelper(self):
+        checker = DummyChecker({'debhelper': Version('1.4')}, {})
+        orig = PkgRelation.parse('debhelper (>= 1.1)')
+        self.assertEqual(
+            (PkgRelation.parse('debhelper (>= 1.1)'), []), drop_obsolete_depends(orig, checker))
+
     def test_other_essential(self):
         checker = DummyChecker({'simple': Version('1.1')}, {'simple'})
         orig = PkgRelation.parse('simple (>= 1.0) | other')

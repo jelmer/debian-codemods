@@ -1,6 +1,7 @@
 lintian-brush (0.115) UNRELEASED; urgency=medium
 
   * Use dh_assistant for introspection of build systems.
+  * deb-scrub-obsolete: Don't touch dependencies on debhelper.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 25 Sep 2021 09:26:08 +0100
 
