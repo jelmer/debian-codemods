@@ -109,7 +109,7 @@ async def _package_version(package: str, release: str) -> Optional[Version]:
     return None
 
 
-async def _package_provides(package: str, release: str) -> Optional[Version]:
+async def _package_provides(package: str, release: str) -> Optional[List[PkgRelation]]:
     from .udd import connect_udd_mirror
 
     conn = await connect_udd_mirror()
