@@ -76,6 +76,7 @@ from upstream_ontologist.debian import (
     valid_debian_package_name,
 )
 
+from breezy.plugins.debian.upstream import PackageVersionNotPresent
 from breezy.plugins.debian.upstream.pristinetar import get_pristine_tar_source
 from breezy.plugins.debian.upstream.branch import (
     upstream_version_add_revision,
@@ -1402,6 +1403,15 @@ def main(argv=None):  # noqa: C901
                 create_dist=create_dist,
                 upstream_version=args.upstream_version,
             )
+        except PackageVersionNotPresent:
+            if args.upstream_version:
+                report_fatal(
+                    'requested-version-missing',
+                    'Requested version %s not present upstream' %
+                        args.upstream_version)
+            else:
+                # For now
+                raise
         except DistCommandFailed as e:
             report_fatal(e.kind or "dist-command-failed", e.error)
             return 1
