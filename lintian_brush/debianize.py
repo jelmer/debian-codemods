@@ -1433,7 +1433,7 @@ def main(argv=None):  # noqa: C901
             report_fatal(
                 'debianize-' + e.error.kind,
                 str(e),
-                e.json())
+                details=(e.error.json() if e.error else None))
             return 1
         except OSError as e:
             if e.errno == errno.ENOSPC:
