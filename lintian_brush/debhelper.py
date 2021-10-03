@@ -22,7 +22,7 @@ from functools import cache
 import json
 import os
 import subprocess
-from typing import Dict, Optional, List, Callable
+from typing import Dict, Optional, List, Callable, Tuple
 
 from debian.changelog import Version
 from debmutate.control import drop_dependency, add_dependency
@@ -121,31 +121,32 @@ def write_rules_template(
 
 
 def drop_obsolete_maintscript_entries(
-        editor, should_remove: Callable[[str, Version], bool]) -> List[int]:
+        editor, should_remove: Callable[[str, Version], bool]
+        ) -> List[Tuple[int, str, Version]]:
     """Drop obsolete entries from a maintscript file.
 
     Args:
       editor: editor to use to access the maintscript
       should_remove: callable to check whether a package/version tuple is obsolete
     Returns:
-      list of indexes of entries that were removed
+      list of tuples with index, package, version of entries that were removed
     """
-    remove = []
+    remove: List[Tuple[int, str, Version]] = []
     comments = []
     entries_removed = []
     for i, entry in enumerate(list(editor.lines)):
         if isinstance(entry, str):
-            comments.append(i)
+            comments.append((i, None, None))
             continue
         prior_version = getattr(entry, "prior_version", None)
         if prior_version is not None:
             if should_remove(entry.package, Version(prior_version)):
                 remove.extend(comments)
-                remove.append(i)
+                remove.append((i, entry.package, Version(prior_version)))
                 entries_removed.append(i)
         comments = []
     removed = []
-    for i in reversed(remove):
+    for i, pkg, version in reversed(remove):
         removed.append(editor.lines[i])
         del editor.lines[i]
     return entries_removed
