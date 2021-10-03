@@ -109,7 +109,7 @@ async def _package_version(package: str, release: str) -> Optional[Version]:
     return None
 
 
-async def _package_provides(package: str, release: str) -> Optional[Version]:
+async def _package_provides(package: str, release: str) -> Optional[List[PkgRelation]]:
     from .udd import connect_udd_mirror
 
     conn = await connect_udd_mirror()
@@ -171,7 +171,7 @@ def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
     dropped = []
     for pkgrel in entry:
         newrel = pkgrel
-        if pkgrel.version is not None:
+        if pkgrel.version is not None and pkgrel.name != 'debhelper':
             compat_version = checker.package_version(pkgrel.name)
             logging.debug(
                 "Relation: %s. Upgrade release %s has %r ",

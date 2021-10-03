@@ -1,7 +1,10 @@
 #!/usr/bin/python3
 
+import os
+import sys
+
 from lintian_brush.fixer import control, report_result, LintianIssue
-from debmutate._rules import update_rules
+from debmutate._rules import RulesEditor
 
 
 def get_archs():
@@ -17,17 +20,19 @@ def get_archs():
 added = []
 
 
-def process_makefile(mf):
-    has_build_arch = bool(list(mf.iter_rules(b'build-arch', exact=False)))
-    has_build_indep = bool(list(mf.iter_rules(b'build-indep', exact=False)))
+if not os.path.exists('debian/rules'):
+    sys.exit(2)
+with RulesEditor() as editor:
+    has_build_arch = bool(list(editor.makefile.iter_rules(b'build-arch', exact=False)))
+    has_build_indep = bool(list(editor.makefile.iter_rules(b'build-indep', exact=False)))
 
     if has_build_arch and has_build_indep:
-        return
+        sys.exit(0)
 
     if any([line.lstrip(b' -').startswith(b'include ')
-            for line in mf.dump_lines()]):
+            for line in editor.makefile.dump_lines()]):
         # No handling of includes for the moment.
-        return
+        sys.exit(0)
 
     archs = get_archs()
     if not has_build_indep:
@@ -36,7 +41,7 @@ def process_makefile(mf):
             info='build-indep')
         if issue.should_fix():
             added.append('build-indep')
-            mf.add_rule(
+            editor.makefile.add_rule(
                 b'build-indep',
                 components=([b'build'] if 'all' in archs else None))
             issue.report_fixed()
@@ -46,24 +51,22 @@ def process_makefile(mf):
             'source', 'debian-rules-missing-recommended-target',
             info='build-arch')
         if issue.should_fix():
-            mf.add_rule(
+            editor.makefile.add_rule(
                 b'build-arch',
                 components=([b'build'] if (archs - set(['all'])) else None))
             issue.report_fixed()
 
     if not added:
-        return
+        sys.exit(0)
 
     try:
-        phony_rule = list(mf.iter_rules(b'.PHONY'))[-1]
+        phony_rule = list(editor.makefile.iter_rules(b'.PHONY'))[-1]
     except IndexError:
-        return
+        pass
+    else:
+        for c in added:
+            phony_rule.append_component(c.encode())
 
-    for c in added:
-        phony_rule.append_component(c.encode())
-
-
-update_rules(makefile_cb=process_makefile)
 
 if len(added) == 1:
     report_result('Add missing debian/rules target %s.' % added[0])
