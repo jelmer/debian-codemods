@@ -274,7 +274,12 @@ def import_upstream_version_from_dist(
         wt, subpath, upstream_source, source_name, upstream_version,
         session):
     from breezy.plugins.debian import default_orig_dir
-    from breezy.plugins.debian.merge_upstream import get_tarballs, do_import
+    from breezy.plugins.debian.merge_upstream import (
+        get_tarballs,
+        do_import,
+        get_existing_imported_upstream_revids,
+        )
+    from breezy.plugins.debian.import_dsc import UpstreamAlreadyImported
 
     orig_dir = os.path.abspath(default_orig_dir)
 
@@ -294,11 +299,17 @@ def import_upstream_version_from_dist(
         upstream_revisions = upstream_source\
             .version_as_revisions(source_name, upstream_version)
         files_excluded = None
-        imported_revids = do_import(
-            wt, subpath, tarball_filenames, source_name, upstream_version,
-            current_version=None, upstream_branch=upstream_source.upstream_branch,
-            upstream_revisions=upstream_revisions,
-            merge_type=None, files_excluded=files_excluded)
+        try:
+            imported_revids = do_import(
+                wt, subpath, tarball_filenames, source_name, upstream_version,
+                current_version=None, upstream_branch=upstream_source.upstream_branch,
+                upstream_revisions=upstream_revisions,
+                merge_type=None, files_excluded=files_excluded)
+        except UpstreamAlreadyImported as e:
+            logging.warning(
+                'Upstream release %s already imported.', e.version)
+            imported_revids = get_existing_imported_upstream_revids(
+                upstream_source, source_name, upstream_version)
         pristine_revids = {}
         for (component, tag_name, revid, pristine_tar_imported) in imported_revids:
             pristine_revids[component] = revid
@@ -1408,7 +1419,7 @@ def main(argv=None):  # noqa: C901
                 report_fatal(
                     'requested-version-missing',
                     'Requested version %s not present upstream' %
-                        args.upstream_version)
+                    args.upstream_version)
             else:
                 # For now
                 raise
