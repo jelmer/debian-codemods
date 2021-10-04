@@ -55,7 +55,7 @@ with ChangelogEditor() as cl:
         cl_dates.append((block.version, dt))
 
 
-def is_long_passed(version):
+def is_well_past(version):
     for (cl_version, cl_dt) in cl_dates:
         if cl_version <= version and cl_dt.date() > date_threshold:
             return False
@@ -67,7 +67,7 @@ ret = []
 for name in maintscripts:
     with MaintscriptEditor(os.path.join('debian', name)) as editor:
         removed = drop_obsolete_maintscript_entries(
-            editor, lambda p, v: is_long_passed(v))
+            editor, lambda p, v: is_well_past(v))
         if removed:
             ret.append((os.path.join('debian', name), removed))
             total_entries += len(removed)
