@@ -1145,11 +1145,20 @@ def find_apt_upstream(requirement):
                     CargoCrateRequirement(name, version=version, features=features))
 
 
+def find_or_upstream(requirement) -> Optional[UpstreamInfo]:
+    for req in requirement.elements:
+        info = find_upstream(req)
+        if info is not None:
+            return info
+    return None
+
+
 UPSTREAM_FINDER = {
     'python-package': find_python_package_upstream,
     'go-package': find_go_package_upstream,
     'cargo-crate': find_cargo_crate_upstream,
     'apt': find_apt_upstream,
+    'or': find_or_upstream,
     }
 
 
