@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, LintianIssue
 
 import os
 
@@ -27,8 +27,6 @@ removed = []
 for entry in os.scandir('debian'):
     if entry.name in MAINTAINER_SCRIPTS:
         script = entry.name
-        with control:
-            package = control.binaries[0]['Package']
         package = None
     elif '.' not in entry.name:
         continue
@@ -41,9 +39,11 @@ for entry in os.scandir('debian'):
         if script not in MAINTAINER_SCRIPTS:
             continue
     if is_empty(entry.path):
-        fixed_lintian_tag(package, 'maintainer-script-empty', script)
-        removed.append((package, script))
-        os.unlink(entry.path)
+        issue = LintianIssue(package, 'maintainer-script-empty', script)
+        if issue.should_fix():
+            removed.append((package, script))
+            os.unlink(entry.path)
+            issue.report_fixed()
 
 report_result(
     'Remove empty maintainer scripts: ' +
