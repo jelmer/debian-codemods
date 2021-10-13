@@ -95,10 +95,17 @@ def conflict_obsolete(latest_version: Version, kind: str, req_version: Version):
     return False
 
 
+class UddTimeout(Exception):
+    """Timeout while connecting to UDD."""
+
+
 async def _package_version(package: str, release: str) -> Optional[Version]:
     from .udd import connect_udd_mirror
 
-    conn = await connect_udd_mirror()
+    try:
+        conn = await connect_udd_mirror()
+    except asyncio.TimeoutError:
+        raise UddTimeout()
     version = await conn.fetchval(
         "select version from packages where package = $1 and release = $2",
         package,
@@ -669,6 +676,9 @@ def main():  # noqa: C901
         return 1
     except ChangeConflict as e:
         report_fatal('change-conflict', 'Generated file changes conflict: %s' % e)
+        return 1
+    except UddTimeout as e:
+        report_fatal('udd-timeout', 'Timeout communicating with UDD')
         return 1
 
     if not result:
