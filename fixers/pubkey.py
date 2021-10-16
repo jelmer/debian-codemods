@@ -80,7 +80,12 @@ with WatchEditor() as editor:
                 continue
         if pgpmode in ('gittag', 'previous', 'next', 'self'):
             sys.exit(2)
-        releases = list(sorted(entry.discover(source_package_name()), reverse=True))
+        try:
+            releases = list(sorted(entry.discover(source_package_name()), reverse=True))
+        except HTTPError as e:
+            warn('HTTP error accessing discovery URL %s: %s.' %
+                 (e.geturl(), e))
+            sys.exit(0)
         for r in releases[:RELEASES_TO_INSPECT]:
             if r.pgpsigurl:
                 pgpsigurls = [(pgpsigurlmangle, r.pgpsigurl)]
