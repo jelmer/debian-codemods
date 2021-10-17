@@ -110,6 +110,15 @@ from .publish import update_offical_vcs, NoVcsLocation, VcsAlreadySpecified
 from .standards_version import latest_standards_version
 
 
+class BuildSystemProcessError(Exception):
+    """Error processing buildsystem-specific part of debianization."""
+
+    def __init__(self, buildsystem, message, inner=None):
+        self.buildsystem = buildsystem
+        self.message = message
+        self.inner = inner
+
+
 class DebianizedPackageRequirementMismatch(Exception):
     """Debianized package does not satisfy requirement."""
 
@@ -639,10 +648,14 @@ def process_cargo(es, session, wt, subpath, debian_path, upstream_version, metad
     control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name, upstream_version))
     # Only set semver_suffix if this is not the latest version
     import semver
-    desired_version = semver.VersionInfo.parse(upstream_version)
+    try:
+        desired_version = semver.VersionInfo.parse(upstream_version)
+    except ValueError as e:
+        raise BuildSystemProcessError(buildsystem, str(e), e)
     data = load_crate_info(upstream_name)
     if data is None:
-        raise Exception('Crate does not exist' % upstream_name)
+        raise BuildSystemProcessError(
+            buildsystem, 'Crate does not exist' % upstream_name)
     for version_info in data['versions']:
         available_version = semver.VersionInfo.parse(version_info['num'])
         if (available_version.major, available_version.minor) > (desired_version.major, desired_version.minor):
