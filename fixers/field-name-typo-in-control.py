@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
+import sys
+
 from lintian_brush.fixer import report_result, LintianIssue, control, vendor
 from lintian_brush.lintian import known_source_fields, known_binary_fields
-
-import sys
 
 # See https://people.debian.org/~mpitt/autopkgtest/README.package-tests.html
 valid_field_names = set()
@@ -20,7 +20,7 @@ try:
                 para_name = 'source'
             else:
                 para_name = paragraph['Package']
-            for field in paragraph:
+            for field in list(paragraph):
                 if field in valid_field_names:
                     continue
                 for option in valid_field_names:

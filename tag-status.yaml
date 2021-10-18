@@ -1326,6 +1326,7 @@
 - tag: stray-translated-debconf-templates
 - tag: stripped-library
 - tag: stronger-dependency-implies-weaker
+  difficulty: easy
 - tag: su-to-root-with-usr-sbin
 - tag: su-wrapper-not-su-to-root
 - tag: su-wrapper-without--c
