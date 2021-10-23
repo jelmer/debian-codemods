@@ -18,7 +18,14 @@
 
 """Debhelper utility functions."""
 
-from functools import cache
+try:
+    from functools import cache
+except ImportError:
+    # Python < 3.8
+    from functools import lru_cache
+    def cache(user_function):
+        return lru_cache(maxsize=None)(user_function)
+
 import json
 import os
 import subprocess
