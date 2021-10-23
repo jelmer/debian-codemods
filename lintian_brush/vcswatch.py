@@ -28,10 +28,12 @@ class VcsWatch(object):
     def __init__(self):
         self._conn = None
 
-    async def connect(self):
+    async def __aenter__(self):
         from .udd import connect_udd_mirror
-
         self._conn = await connect_udd_mirror()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return await self._conn.__aexit__(exc_type, exc, tb)
 
     async def get_package(self, name):
         """Get the VCS information for a package.

@@ -53,13 +53,12 @@ def verify_salsa_repository(url):
 
 
 async def retrieve_vcswatch_urls(package):
-    vcs_watch = VcsWatch()
     try:
-        await vcs_watch.connect()
+        async with VcsWatch() as vcs_watch:
+            return await vcs_watch.get_package(package)
     except ImportError:
         # No asyncpg, nothing
         raise KeyError
-    return await vcs_watch.get_package(package)
 
 
 class NewRepositoryURLUnknown(Exception):

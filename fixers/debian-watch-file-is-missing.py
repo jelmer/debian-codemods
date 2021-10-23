@@ -1,9 +1,8 @@
 #!/usr/bin/python3
 import os
 import sys
-from typing import Optional, Tuple
 
-from debmutate.watch import WatchFile, Watch
+from debmutate.watch import WatchFile
 
 from lintian_brush import (
     certainty_to_confidence,
@@ -16,7 +15,6 @@ from lintian_brush.fixer import (
     LintianIssue,
     )
 from lintian_brush.watch import (
-    WatchCandidate,
     candidates_from_setup_py,
     candidates_from_upstream_metadata,
     )

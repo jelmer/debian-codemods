@@ -20,22 +20,21 @@
 import asyncio
 
 
-_udd = None
+_pool = None
 
 
 async def connect_udd_mirror():
     import asyncpg
 
-    global _udd
-    if _udd:
-        return _udd
-    loop = asyncio.get_event_loop()
-    _udd = await asyncpg.connect(
-        database="udd",
-        user="udd-mirror",
-        password="udd-mirror",
-        port=5432,
-        host="udd-mirror.debian.net",
-        loop=loop,
-    )
-    return _udd
+    global _pool
+    if not _pool:
+        loop = asyncio.get_event_loop()
+        _pool = await asyncpg.create_pool(
+            database="udd",
+            user="udd-mirror",
+            password="udd-mirror",
+            port=5432,
+            host="udd-mirror.debian.net",
+            loop=loop,
+        )
+    return await _pool.acquire()

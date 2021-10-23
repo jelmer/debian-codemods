@@ -44,9 +44,8 @@ def get_default_branch(url, branch=None):
 
 
 async def find_branch(vcs_type, url):
-    vcswatch = VcsWatch()
-    await vcswatch.connect()
-    return await vcswatch.get_branch_from_url(vcs_type, vcs_git)
+    async with VcsWatch() as vcswatch:
+        return await vcswatch.get_branch_from_url(vcs_type, vcs_git)
 
 
 with control as updater:

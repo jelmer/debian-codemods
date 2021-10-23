@@ -53,15 +53,15 @@ async def package_exists(package, release, version_info):
         from lintian_brush.udd import connect_udd_mirror
     except ModuleNotFoundError:
         return None
-    udd = await connect_udd_mirror()
-    query = 'SELECT True FROM packages WHERE release = $2 AND package = $1'
-    args = [package, release]
-    if version_info is not None:
-        version_cmp, version = version_info
-        query += ' AND version %s $3' % VERSION_CMP_SQL[version_cmp]
-        args.append(version)
-    row = await udd.fetchrow(query, *args)
-    return bool(row)
+    async with connect_udd_mirror() as udd:
+        query = 'SELECT True FROM packages WHERE release = $2 AND package = $1'
+        args = [package, release]
+        if version_info is not None:
+            version_cmp, version = version_info
+            query += ' AND version %s $3' % VERSION_CMP_SQL[version_cmp]
+            args.append(version)
+        row = await udd.fetchrow(query, *args)
+        return bool(row)
 
 
 def migration_done(rels):

@@ -131,8 +131,6 @@ async def get_unused_overrides(
 ) -> List[Tuple[str, str, Version, str]]:
     from .udd import connect_udd_mirror
 
-    udd = await connect_udd_mirror()
-
     args: List[str] = []
     extra = []
     for (type, name) in packages:
@@ -141,15 +139,13 @@ async def get_unused_overrides(
         )
         args.extend([name, type])
 
-    return list(
-        await udd.fetch(
-            """\
+    async with connect_udd_mirror() as udd:
+        return list(
+            await udd.fetch(
+                """\
 select package, package_type, package_version, information
-from lintian where tag = 'unused-override' AND (%s)"""
-            % " OR ".join(extra),
-            *args
-        )
-    )
+from lintian where tag = 'unused-override' AND (%s)
+""" % " OR ".join(extra), *args))
 
 
 unused_overrides = None

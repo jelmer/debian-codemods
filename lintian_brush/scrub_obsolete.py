@@ -103,14 +103,12 @@ async def _package_version(package: str, release: str) -> Optional[Version]:
     from .udd import connect_udd_mirror
 
     try:
-        conn = await connect_udd_mirror()
+        async with connect_udd_mirror() as conn:
+            version = await conn.fetchval(
+                "select version from packages where package = $1 and release = $2",
+                package, release)
     except asyncio.TimeoutError:
         raise UddTimeout()
-    version = await conn.fetchval(
-        "select version from packages where package = $1 and release = $2",
-        package,
-        release,
-    )
     if version is not None:
         return Version(version)
     return None
@@ -119,10 +117,10 @@ async def _package_version(package: str, release: str) -> Optional[Version]:
 async def _package_provides(package: str, release: str) -> Optional[List[PkgRelation]]:
     from .udd import connect_udd_mirror
 
-    conn = await connect_udd_mirror()
-    provides = await conn.fetchval(
-        "select provides from packages where package = $1 and release = $2",
-        package, release)
+    async with connect_udd_mirror() as conn:
+        provides = await conn.fetchval(
+            "select provides from packages where package = $1 and release = $2",
+            package, release)
     if provides is not None:
         return [r[1] for r in parse_relations(provides)]
     return None
@@ -131,19 +129,19 @@ async def _package_provides(package: str, release: str) -> Optional[List[PkgRela
 async def _package_essential(package: str, release: str) -> bool:
     from .udd import connect_udd_mirror
 
-    conn = await connect_udd_mirror()
-    return await conn.fetchval(
-        "select (essential = 'yes') from packages where package = $1 and release = $2",
-        package, release)
+    async with connect_udd_mirror() as conn:
+        return await conn.fetchval(
+            "select (essential = 'yes') from packages where package = $1 and release = $2",
+            package, release)
 
 
 async def _package_build_essential(package: str, release: str) -> bool:
     from .udd import connect_udd_mirror
 
-    conn = await connect_udd_mirror()
-    depends = await conn.fetchval(
-        "select depends from packages where package = $1 and release = $2",
-        'build-essential', release)
+    async with connect_udd_mirror() as conn:
+        depends = await conn.fetchval(
+            "select depends from packages where package = $1 and release = $2",
+            'build-essential', release)
 
     build_essential = set()
     for ws1, rel, ws2 in parse_relations(depends):
