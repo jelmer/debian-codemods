@@ -677,7 +677,7 @@ def main():  # noqa: C901
     except ChangeConflict as e:
         report_fatal('change-conflict', 'Generated file changes conflict: %s' % e)
         return 1
-    except UddTimeout as e:
+    except UddTimeout:
         report_fatal('udd-timeout', 'Timeout communicating with UDD')
         return 1
 

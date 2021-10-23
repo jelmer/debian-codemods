@@ -1710,3 +1710,11 @@
 - tag: unmerged-usr
 - tag: upstream-metadata-field-unknown
 - tag: wrong-team
+- tag: architecture-escape
+- tag: control-interpreter-without-predepends
+- tag: ldconfig-escape
+- tag: odd-static-library-name
+- tag: redundant-build-prerequisites
+- tag: redundant-control-relation
+- tag: runtime-test-file-uses-supported-python-versions-without-test-depends
+- tag: static-library-has-unneeded-sections
