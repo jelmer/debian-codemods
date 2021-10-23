@@ -37,4 +37,4 @@ async def connect_udd_mirror():
             host="udd-mirror.debian.net",
             loop=loop,
         )
-    return await _pool.acquire()
+    return _pool.acquire()
