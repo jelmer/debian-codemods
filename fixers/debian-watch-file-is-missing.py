@@ -16,6 +16,7 @@ from lintian_brush.fixer import (
     LintianIssue,
     )
 from lintian_brush.watch import (
+    WatchCandidate,
     candidates_from_setup_py,
     candidates_from_upstream_metadata,
     )
@@ -44,28 +45,28 @@ if os.path.exists('debian/upstream/metadata'):
         'debian/upstream/metadata', good_upstream_versions,
         net_access=net_access_allowed()))
 
+
+def candidate_key(candidate):
+    return (
+        certainty_to_confidence(candidate.certainty),
+        candidate.preference)
+
+
+candidates.sort(key=candidate_key)
+
 # TODO(jelmer): parse cabal file and call candidates_from_hackage
 
 if not candidates:
     sys.exit(0)
 
-winner: Optional[Tuple[Watch, str, str]] = None
-for candidate in candidates:
-    if winner is not None and (  # type: ignore
-            certainty_to_confidence(candidate[2]) >=   # type: ignore
-            certainty_to_confidence(winner[2])):
-        continue
-    winner = candidate
-
-if not winner:
-    sys.exit(0)
+winner = candidates[0]
 
 wf = WatchFile()
-(entry, site, certainty) = winner
-wf.entries.append(winner[0])
+wf.entries.append(winner.watch)
 
 with open('debian/watch', 'w') as f:
     wf.dump(f)
     issue.report_fixed()
 
-report_result("Add debian/watch file, using %s." % site, certainty=certainty)
+report_result(
+    "Add debian/watch file, using %s." % winner.site, certainty=winner.certainty)

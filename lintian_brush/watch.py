@@ -17,10 +17,11 @@
 
 """Functions for working with watch files."""
 
+from dataclasses import dataclass
 import json
 import os
 import re
-from typing import Set
+from typing import Set, Optional
 from urllib.parse import urlparse, urlunparse
 import urllib.error
 from urllib.request import urlopen, Request
@@ -31,6 +32,15 @@ from . import (
     USER_AGENT,
     DEFAULT_URLLIB_TIMEOUT,
 )
+
+
+@dataclass
+class WatchCandidate:
+
+    watch: Watch
+    site: str
+    certainty: Optional[str]
+    preference: Optional[int]
 
 
 def candidates_from_setup_py(path, good_upstream_versions: Set[str], net_access=False):
@@ -86,7 +96,7 @@ def candidates_from_setup_py(path, good_upstream_versions: Set[str], net_access=
     }
     # TODO(jelmer): Add pgpsigurlmangle if has_sig==True
     w = Watch(url, opts=opts)
-    yield (w, "pypi", certainty)
+    yield WatchCandidate(w, "pypi", certainty=certainty, preference=1)
 
 
 def candidates_from_upstream_metadata(
@@ -119,7 +129,7 @@ def candidates_from_upstream_metadata(
 
 def guess_cran_watch_entry(name):
     w = Watch(r'https://cran.r-project.org/src/contrib/%s_([-\d.]*)\.tar\.gz' % name)
-    yield w, "cran", "likely"
+    yield WatchCandidate(w, "cran", certainty="likely", preference=0)
 
 
 def guess_github_watch_entry(parsed_url, good_upstream_versions, net_access=False):
@@ -169,7 +179,7 @@ def guess_github_watch_entry(parsed_url, good_upstream_versions, net_access=Fals
     #    r's/archive\/%s\.tar\.gz/releases\/download\/$1\/$1\.tar\.gz\.asc/' %
     #    version_pattern)
     w = Watch(download_url, matching_pattern, opts=opts)
-    yield w, "github", "certain"
+    yield WatchCandidate(w, "github", certainty="certain", preference=0)
 
 
 def candidates_from_hackage(package, good_upstream_versions, net_access=False):
@@ -194,7 +204,7 @@ def candidates_from_hackage(package, good_upstream_versions, net_access=False):
     download_url = "https://hackage.haskell.org/package/" + package
     matching_pattern = r".*/%s-(.*).tar.gz" % package
     w = Watch(download_url, matching_pattern)
-    yield w, "hackage", "certain"
+    yield WatchCandidate(w, "hackage", certainty="certain", preference=1)
 
 
 def fix_old_github_patterns(updater):
