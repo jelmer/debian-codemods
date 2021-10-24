@@ -139,7 +139,7 @@ async def get_unused_overrides(
         )
         args.extend([name, type])
 
-    async with connect_udd_mirror() as udd:
+    async with await connect_udd_mirror() as udd:
         return list(
             await udd.fetch(
                 """\

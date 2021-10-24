@@ -175,7 +175,7 @@ async def find_archived_wnpp_bugs(source_name):
     except ModuleNotFoundError:
         logging.warning("asyncpg not available, unable to find wnpp bugs.")
         return []
-    async with connect_udd_mirror() as conn:
+    async with await connect_udd_mirror() as conn:
         return [
             (row[0], row[1])
             for row in await conn.fetch("""\
@@ -191,7 +191,7 @@ async def find_wnpp_bugs(source_name):
     except ModuleNotFoundError:
         logging.warning("asyncpg not available, unable to find wnpp bugs.")
         return []
-    async with connect_udd_mirror() as conn:
+    async with await connect_udd_mirror() as conn:
         return [
             (row[0], row['type'])
             for row in await conn.fetch("""\

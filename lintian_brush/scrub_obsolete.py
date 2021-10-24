@@ -103,7 +103,7 @@ async def _package_version(package: str, release: str) -> Optional[Version]:
     from .udd import connect_udd_mirror
 
     try:
-        async with connect_udd_mirror() as conn:
+        async with await connect_udd_mirror() as conn:
             version = await conn.fetchval(
                 "select version from packages where package = $1 and release = $2",
                 package, release)
@@ -117,7 +117,7 @@ async def _package_version(package: str, release: str) -> Optional[Version]:
 async def _package_provides(package: str, release: str) -> Optional[List[PkgRelation]]:
     from .udd import connect_udd_mirror
 
-    async with connect_udd_mirror() as conn:
+    async with await connect_udd_mirror() as conn:
         provides = await conn.fetchval(
             "select provides from packages where package = $1 and release = $2",
             package, release)
@@ -129,7 +129,7 @@ async def _package_provides(package: str, release: str) -> Optional[List[PkgRela
 async def _package_essential(package: str, release: str) -> bool:
     from .udd import connect_udd_mirror
 
-    async with connect_udd_mirror() as conn:
+    async with await connect_udd_mirror() as conn:
         return await conn.fetchval(
             "select (essential = 'yes') from packages where package = $1 and release = $2",
             package, release)
@@ -138,7 +138,7 @@ async def _package_essential(package: str, release: str) -> bool:
 async def _package_build_essential(package: str, release: str) -> bool:
     from .udd import connect_udd_mirror
 
-    async with connect_udd_mirror() as conn:
+    async with await connect_udd_mirror() as conn:
         depends = await conn.fetchval(
             "select depends from packages where package = $1 and release = $2",
             'build-essential', release)
