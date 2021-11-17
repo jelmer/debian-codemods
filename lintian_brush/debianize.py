@@ -150,7 +150,9 @@ class NoUpstreamReleases(Exception):
         self.name = name
 
 
-def write_changelog_template(path, source_name, version, wnpp_bugs=None):
+def write_changelog_template(path, source_name, version, author=None, wnpp_bugs=None):
+    if author is None:
+        author = get_maintainer()
     if wnpp_bugs:
         closes = " Closes: " + ", ".join([("#%d" % (bug,)) for bug, kind in wnpp_bugs])
     else:
@@ -162,7 +164,7 @@ def write_changelog_template(path, source_name, version, wnpp_bugs=None):
         distributions="UNRELEASED",
         urgency="low",
         changes=["", "  * Initial release." + closes, ""],
-        author="%s <%s>" % get_maintainer(),
+        author="%s <%s>" % author,
         date=format_date(),
     )
     with open(path, "w") as f:
@@ -847,7 +849,8 @@ def debianize(  # noqa: C901
     upstream_version_kind: str = "auto",
     debian_revision: str = "1",
     upstream_version: Optional[str] = None,
-    requirement: Optional[Requirement] = None
+    requirement: Optional[Requirement] = None,
+    team: Optional[str] = None
 ):
     if committer is None:
         committer = get_committer(wt)
@@ -959,6 +962,12 @@ def debianize(  # noqa: C901
 
             source = control.source
 
+            if team:
+                control.source['Maintainer'] = team
+                uploader = '%s <%s>' % get_maintainer()
+                if uploader != team:
+                    control.source['Uploaders'] = uploader
+
             if not valid_debian_package_name(source['Source']):
                 raise SourcePackageNameInvalid(source['Source'])
 
@@ -974,6 +983,7 @@ def debianize(  # noqa: C901
                 wt.abspath(os.path.join(debian_path, "changelog")),
                 source["Source"],
                 version,
+                get_maintainer(),
                 wnpp_bugs,
             )
 
@@ -1000,7 +1010,8 @@ def debianize(  # noqa: C901
 
     with wt.lock_write():
 
-        lintian_fixers = available_lintian_fixers(force_subprocess=force_subprocess)
+        lintian_fixers = available_lintian_fixers(
+            force_subprocess=force_subprocess)
 
         run_lintian_fixers(
             wt,
@@ -1019,7 +1030,8 @@ def debianize(  # noqa: C901
         )
 
         try:
-            result.vcs_url = update_offical_vcs(wt, subpath=subpath, committer=committer)
+            result.vcs_url = update_offical_vcs(
+                wt, subpath=subpath, committer=committer)
         except VcsAlreadySpecified:
             pass
         except NoVcsLocation:
@@ -1362,6 +1374,9 @@ def main(argv=None):  # noqa: C901
     parser.add_argument(
         '--dist-command', type=str,
         help='Dist command', default=os.environ.get('DIST'))
+    parser.add_argument(
+        '--team', type=str,
+        help='Maintainer team ("$NAME <$EMAIL>")')
     parser.add_argument('upstream', nargs='?', type=str)
 
     args = parser.parse_args(argv)
@@ -1553,7 +1568,8 @@ def main(argv=None):  # noqa: C901
                     debian_revision=args.debian_revision,
                     upstream_version=upstream_info.version,
                     upstream_version_kind=args.upstream_version_kind,
-                    requirement=requirement)
+                    requirement=requirement,
+                    team=args.team)
                 do_build(
                     new_wt, new_subpath, self.apt_repo.directory,
                     extra_repositories=self.apt_repo.sources_lines())
