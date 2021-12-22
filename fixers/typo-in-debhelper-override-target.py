@@ -15,7 +15,7 @@ try:
 except ModuleNotFoundError:
     sys.exit(2)
 
-known_dh_commands = [command for command, deps in dh_commands()]
+known_dh_commands = list(dh_commands())
 
 # Include javahelper binaries, since some are just one character away from
 # debhelper ones.

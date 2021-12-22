@@ -7,7 +7,7 @@ from debmutate.control import (
     is_relation_implied,
     )
 from lintian_brush.fixer import control, report_result, LintianIssue
-from lintian_brush.lintian import read_debhelper_lintian_data_file, LINTIAN_DATA_PATH
+from lintian_brush.lintian import LINTIAN_DATA_PATH, dh_commands, dh_addons
 from debmutate._rules import Makefile, Rule, dh_invoke_get_with
 import os
 import shlex
@@ -21,18 +21,14 @@ if not os.path.isdir(LINTIAN_DATA_PATH):
     sys.exit(2)
 
 
-for path, sep in [
-    (os.path.join(LINTIAN_DATA_PATH, 'debhelper/dh_commands'), '='),
-    (os.path.join(LINTIAN_DATA_PATH, 'debhelper/dh_commands-manual'), '||'),
-        ]:
-    with open(path, 'r') as f:
-        COMMAND_TO_DEP.update(read_debhelper_lintian_data_file(f, sep))
+for command, info in dh_commands().items():
+    COMMAND_TO_DEP[command] = info['installed_by']
 
 
 ADDON_TO_DEP = {}
+for addon, info in dh_addons().items():
+    ADDON_TO_DEP[addon] = info['installed_by']
 
-with open(os.path.join(LINTIAN_DATA_PATH, 'common/dh_addons'), 'r') as f:
-    ADDON_TO_DEP.update(read_debhelper_lintian_data_file(f, '='))
 
 ADDON_TO_DEP.update({
     # Copied from /usr/share/lintian/lib/Lintian/Check/Debhelper.pm
@@ -81,7 +77,7 @@ for entry in mf.contents:
             except (ValueError, IndexError):
                 continue
             try:
-                dep = COMMAND_TO_DEP[executable]
+                [dep] = COMMAND_TO_DEP[executable]
             except KeyError:
                 pass
             else:

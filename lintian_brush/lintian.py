@@ -17,6 +17,7 @@
 
 """Functions for working with lintian data."""
 
+import json
 import os
 from typing import Optional
 
@@ -113,8 +114,35 @@ def known_binary_fields(vendor):
 
 DEBHELPER_DH_COMMANDS_PATH = os.path.join(
     LINTIAN_DATA_PATH, 'debhelper/dh_commands')
+DEBHELPER_DH_COMMANDS_MANUAL_PATH = os.path.join(
+    LINTIAN_DATA_PATH, 'debhelper/dh_commands-manual')
+
+DEBHELPER_COMMANDS_JSON_PATH = os.path.join(
+    LINTIAN_DATA_PATH, 'debhelper/commands.json')
 
 
 def dh_commands():
-    with open(DEBHELPER_DH_COMMANDS_PATH, 'r') as f:
-        return list(read_debhelper_lintian_data_file(f, '='))
+    try:
+        with open(DEBHELPER_DH_COMMANDS_PATH, 'r') as f:
+            entries = list(read_debhelper_lintian_data_file(f, '='))
+        with open(DEBHELPER_DH_COMMANDS_MANUAL_PATH, 'r') as f:
+            entries.update(read_debhelper_lintian_data_file(f, '||'))
+        return {
+            cmd: {'installed_by': [pkg]}
+            for (cmd, pkg) in entries}
+    except FileNotFoundError:
+        with open(DEBHELPER_COMMANDS_JSON_PATH, 'r') as f:
+            data = json.load(f)
+        return data['commands']
+
+
+def dh_addons():
+    try:
+        with open(os.path.join(LINTIAN_DATA_PATH, 'common/dh_addons'), 'r') as f:
+            return {
+                addon: {'installed_by': [pkg]}
+                for (addon, pkg) in read_debhelper_lintian_data_file(f, '=')}
+    except FileNotFoundError:
+        with open(os.path.join(LINTIAN_DATA_PATH, 'debhelper/add_ons.json'), 'r') as f:
+            data = json.load(f)
+            return data['add_ons']
