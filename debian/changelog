@@ -1,9 +1,9 @@
-lintian-brush (0.116) UNRELEASED; urgency=medium
+lintian-brush (0.116) unstable; urgency=medium
 
   * Add --team argument to debianize.
   * Fix compatibility with newer versions of lintian. Closes: #1002364
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 17 Nov 2021 17:41:06 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 22 Dec 2021 14:18:47 +0000
 
 lintian-brush (0.115) unstable; urgency=medium
 
