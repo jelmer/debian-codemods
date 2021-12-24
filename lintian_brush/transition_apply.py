@@ -18,6 +18,7 @@
 
 """Apply transitions."""
 
+import json
 import logging
 import os
 import re
@@ -34,6 +35,7 @@ from debmutate.reformatting import (
 from . import (
     check_clean_tree,
     control_files_in_root,
+    get_committer,
     PendingChanges,
     NotDebianPackage,
     version_string,
@@ -90,19 +92,19 @@ def parse_ben(f):
     assignment = {}
     lastk = None
     v = ''
-    for l in f:
+    for line in f:
         if lastk is None:
-            if not l.strip():
+            if not line.strip():
                 continue
-            if l.startswith('#'):
+            if line.startswith('#'):
                 continue
-            l = l.rstrip()
-            (k, v) = l.split('=', 1)
+            line = line.rstrip()
+            (k, v) = line.split('=', 1)
             k = k.strip()
             v = v.lstrip()
             lastk = k
         else:
-            v += l
+            v += line
         if v.rstrip().endswith(';'):
             assignment[lastk] = v[:-1]
             lastk = None
@@ -120,7 +122,7 @@ SUPPORTED_KEYS = [
 def control_matches(control, ors):
     for field, expr in ors:
         if not field.startswith('.'):
-            raise ValueError('unsupported field %r' % entry)
+            raise ValueError('unsupported field %r' % field)
         for paragraph in control.paragraphs:
             try:
                 value = paragraph[field[1:]]
@@ -164,7 +166,7 @@ def _apply_transition(control, ben):
             raise PackageNotBad(control.source['Source'])
     for field, expr in ben['is_bad']:
         if not field.startswith('.'):
-            raise ValueError('unsupported field %r' % entry)
+            raise ValueError('unsupported field %r' % field)
         for paragraph in control.paragraphs:
             try:
                 value = paragraph[field[1:]]
@@ -177,7 +179,7 @@ def _apply_transition(control, ben):
             else:
                 raise ValueError(
                     'unable to find replacement value for %s=%s' % field, expr)
-            paragraph[field[1:]] = expr.sub(replacement, paragraph[field[1:]])
+            paragraph[field[1:]] = expr.sub(replacement, value)
 
     bugs = re.findall('#([0-9]+)', ben.get('notes', ''))
 
@@ -303,8 +305,6 @@ def main():  # noqa: C901
             update_changelog = cfg.update_changelog()
         if allow_reformatting is None:
             allow_reformatting = cfg.allow_reformatting()
-        if compat_release is None:
-            compat_release = cfg.compat_release()
 
     if allow_reformatting is None:
         allow_reformatting = False
@@ -319,17 +319,17 @@ def main():  # noqa: C901
             wt, debian_path, ben, update_changelog=args.update_changelog,
             allow_reformatting=allow_reformatting
         )
-    except PackageNotAffected as e:
+    except PackageNotAffected:
         report_okay(
             "nothing-to-do",
             "Package not affected by transition")
         return 0
-    except PackageAlreadyGood as e:
+    except PackageAlreadyGood:
         report_okay(
             "nothing-to-do",
             "Transition already applied to package")
         return 0
-    except PackageNotBad as e:
+    except PackageNotBad:
         report_okay(
             "nothing-to-do",
             "Package not bad")
