@@ -1,3 +1,10 @@
+lintian-brush (0.117) UNRELEASED; urgency=medium
+
+  * Don't assume that no patches means there are is no delta vs
+    upstream.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Dec 2021 20:15:56 +0000
+
 lintian-brush (0.116) unstable; urgency=medium
 
   * Add --team argument to debianize.

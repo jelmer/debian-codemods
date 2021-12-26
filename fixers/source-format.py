@@ -5,6 +5,8 @@ from lintian_brush.fixer import (
     package_is_native,
     LintianIssue,
     is_debcargo_package,
+    meets_minimum_certainty,
+    warn,
     )
 import os
 import sys
@@ -47,21 +49,22 @@ if older_source_format_issue.should_fix():
         patches_directory = find_patches_directory('.')
         if patches_directory not in ('debian/patches', None):
             # Non-standard patches directory.
-            sys.stderr.write(
-                'Tree has non-standard patches directory %s.\n' % (
+            warn(
+                'Tree has non-standard patches directory %s.' % (
                     patches_directory))
         else:
             try:
                 tree, path = WorkingTree.open_containing('.')
-            except errors.NotBranchError:
-                # TODO(jelmer): Or maybe don't do anything ?
+            except errors.NotBranchError as e:
+                if not meets_minimum_certainty('possible'):
+                    warn('unable to open vcs to check for delta: %s' % e)
+                    sys.exit(0)
                 format = "3.0 (quilt)"
                 description = "Upgrade to newer source format %s." % format
             else:
                 delta = list(tree_non_patches_changes(tree, patches_directory))
                 if delta:
-                    sys.stderr.write(
-                        'Tree has non-quilt changes against upstream.\n')
+                    warn('Tree has non-quilt changes against upstream.')
                     if opinionated():
                         format = "3.0 (quilt)"
                         description = (

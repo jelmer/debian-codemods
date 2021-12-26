@@ -261,8 +261,9 @@ def tree_non_patches_changes(tree, patches_directory):
         list of TreeDelta objects
     """
     if patches_directory is None:
-        return
-    patches = list(read_quilt_patches(tree, patches_directory))
+        patches = []
+    else:
+        patches = list(read_quilt_patches(tree, patches_directory))
 
     # TODO(jelmer): What if patches are already applied on tree?
     with upstream_with_applied_patches(
