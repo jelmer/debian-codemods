@@ -18,6 +18,11 @@
 """Support for accessing UDD."""
 
 import asyncio
+import os
+
+
+DEFAULT_UDD_URL = (
+    'postgresql://udd-mirror:udd-mirror@udd-mirror.debian.net:5432/udd')
 
 
 _pool = None
@@ -29,12 +34,6 @@ async def connect_udd_mirror():
     global _pool
     if not _pool:
         loop = asyncio.get_event_loop()
-        _pool = await asyncpg.create_pool(
-            database="udd",
-            user="udd-mirror",
-            password="udd-mirror",
-            port=5432,
-            host="udd-mirror.debian.net",
-            loop=loop,
-        )
+        udd_url = os.environ.get('UDD_URL', DEFAULT_UDD_URL)
+        _pool = await asyncpg.create_pool(udd_url, loop=loop)
     return _pool.acquire()
