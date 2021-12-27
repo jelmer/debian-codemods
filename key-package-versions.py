@@ -2,11 +2,15 @@
 
 from debian.changelog import Version
 import json
+import os
 from typing import Dict
 
 KEY_PACKAGES = ('debhelper', 'dpkg')
 
 OUTPUT_FILENAME = 'key-package-versions.json'
+
+DEFAULT_UDD_URL = (
+    "postgresql://udd-mirror:udd-mirror@udd-mirror.debian.net/udd")
 
 versions: Dict[str, Dict[str, str]]
 
@@ -21,7 +25,7 @@ for kp in KEY_PACKAGES:
 def update_debian(versions, key_packages):
     import psycopg2
     conn = psycopg2.connect(
-        "postgresql://udd-mirror:udd-mirror@udd-mirror.debian.net/udd")
+        os.environ.get('UDD_URL', DEFAULT_UDD_URL))
 
     cursor = conn.cursor()
     cursor.execute(
