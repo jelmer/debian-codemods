@@ -1,46 +1,46 @@
 {
     "exception_ids": [
-        "GCC-exception-2.0",
-        "Autoconf-exception-2.0",
-        "PS-or-PDF-font-exception-20170817",
-        "SHL-2.0",
-        "OpenJDK-assembly-exception-1.0",
-        "Bootloader-exception",
-        "OCaml-LGPL-linking-exception",
-        "Nokia-Qt-exception-1.1",
-        "LGPL-3.0-linking-exception",
-        "freertos-exception-2.0",
-        "GPL-3.0-linking-exception",
-        "Font-exception-2.0",
+        "OCCT-exception-1.0",
         "Libtool-exception",
-        "Fawkes-Runtime-exception",
         "gnu-javamail-exception",
-        "LZMA-exception",
-        "FLTK-exception",
-        "mif-exception",
-        "u-boot-exception-2.0",
         "SHL-2.1",
-        "i2p-gpl-java-exception",
-        "Qt-GPL-exception-1.0",
-        "Bison-exception-2.2",
-        "WxWindows-exception-3.1",
-        "Qwt-exception-1.0",
-        "GPL-CC-1.0",
-        "Qt-LGPL-exception-1.1",
-        "Universal-FOSS-exception-1.0",
+        "Linux-syscall-note",
+        "Bootloader-exception",
         "CLISP-exception-2.0",
         "GCC-exception-3.1",
-        "LLVM-exception",
-        "389-exception",
-        "Linux-syscall-note",
+        "OpenJDK-assembly-exception-1.0",
+        "WxWindows-exception-3.1",
         "eCos-exception-2.0",
-        "GPL-3.0-linking-source-exception",
+        "LLVM-exception",
+        "GPL-CC-1.0",
+        "mif-exception",
         "Classpath-exception-2.0",
-        "openvpn-openssl-exception",
-        "Swift-exception",
+        "SHL-2.0",
+        "Qwt-exception-1.0",
+        "i2p-gpl-java-exception",
         "Autoconf-exception-3.0",
+        "OCaml-LGPL-linking-exception",
+        "FLTK-exception",
+        "GPL-3.0-linking-exception",
+        "Universal-FOSS-exception-1.0",
+        "LZMA-exception",
         "DigiRule-FOSS-exception",
-        "OCCT-exception-1.0"
+        "GPL-3.0-linking-source-exception",
+        "u-boot-exception-2.0",
+        "GCC-exception-2.0",
+        "PS-or-PDF-font-exception-20170817",
+        "LGPL-3.0-linking-exception",
+        "Fawkes-Runtime-exception",
+        "Font-exception-2.0",
+        "Swift-exception",
+        "Bison-exception-2.2",
+        "Qt-GPL-exception-1.0",
+        "Qt-LGPL-exception-1.1",
+        "Nokia-Qt-exception-1.1",
+        "389-exception",
+        "openvpn-openssl-exception",
+        "freertos-exception-2.0",
+        "Autoconf-exception-2.0"
     ],
     "licenses": {
         "0BSD": {
@@ -463,6 +463,9 @@
         "CNRI-Python-GPL-Compatible": {
             "name": "CNRI Python Open Source GPL Compatible License Agreement"
         },
+        "COIL-1.0": {
+            "name": "Copyfree Open Innovation License"
+        },
         "CPAL-1.0": {
             "name": "Common Public Attribution License 1.0"
         },
@@ -480,6 +483,9 @@
         },
         "ClArtistic": {
             "name": "Clarified Artistic License"
+        },
+        "Community-Spec-1.0": {
+            "name": "Community Specification License 1.0"
         },
         "Condor-1.1": {
             "name": "Condor Public License v1.1"
@@ -549,6 +555,9 @@
         },
         "Eurosym": {
             "name": "Eurosym License"
+        },
+        "FDK-AAC": {
+            "name": "Fraunhofer FDK AAC Codec Library"
         },
         "FSFAP": {
             "name": "FSF All Permissive License"
@@ -858,6 +867,9 @@
         },
         "Linux-OpenIB": {
             "name": "Linux Kernel Variant of OpenIB.org license"
+        },
+        "Linux-man-pages-copyleft": {
+            "name": "Linux man-pages Copyleft"
         },
         "MIT": {
             "name": "MIT License"
@@ -1252,6 +1264,9 @@
         "Saxpath": {
             "name": "Saxpath License"
         },
+        "SchemeReport": {
+            "name": "Scheme Language Report License"
+        },
         "Sendmail": {
             "name": "Sendmail License"
         },
@@ -1326,9 +1341,6 @@
         },
         "VSL-1.0": {
             "name": "Vovida Software License v1.0"
-        },
-        "Verbatim-man-pages": {
-            "name": "The \"Verbatim\" License (man-pages)"
         },
         "Vim": {
             "name": "Vim License"
