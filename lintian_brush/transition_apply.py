@@ -151,6 +151,15 @@ class PackageNotBad(Exception):
         self.source = source
 
 
+def ben_find_bugno(ben):
+    bugs = re.findall('#([0-9]+)', ben.get('notes', ''))
+
+    if bugs:
+        return int(bugs[0])
+    else:
+        return None
+
+
 def _apply_transition(control, ben):
     for key in ben:
         if key not in SUPPORTED_KEYS:
@@ -181,12 +190,7 @@ def _apply_transition(control, ben):
                     'unable to find replacement value for %s=%s' % field, expr)
             paragraph[field[1:]] = expr.sub(replacement, value)
 
-    bugs = re.findall('#([0-9]+)', ben.get('notes', ''))
-
-    if bugs:
-        bugno = int(bugs[0])
-    else:
-        bugno = None
+    bugno = ben_find_bugno(ben)
 
     return TransitionResult(ben, bugno=bugno)
 
