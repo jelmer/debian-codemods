@@ -110,6 +110,7 @@ subset of the issues:
 * misspelled-closes-bug
 * no-copyright-file
 * no-homepage-field
+* no-versioned-debhelper-prerequisite
 * obsolete-debian-watch-file-standard
 * obsolete-field-in-dep5-copyright
 * obsolete-runtime-tests-restriction
@@ -124,8 +125,6 @@ subset of the issues:
 * out-of-date-copyright-format-uri
 * out-of-date-standards-version
 * package-contains-linda-override
-* package-lacks-versioned-build-depends-on-debhelper
-* package-needs-versioned-debhelper-build-depends
 * package-uses-deprecated-debhelper-compat-version
 * package-uses-old-debhelper-compat-version
 * patch-file-present-but-not-mentioned-in-series
