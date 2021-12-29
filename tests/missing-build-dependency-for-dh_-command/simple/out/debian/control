@@ -1,5 +1,5 @@
 Source: blah
-Build-Depends: libc6-dev, dh-python
+Build-Depends: libc6-dev, dh-python | dh-sequence-python3
 
 Package: python3-blah
 Description: blah blah

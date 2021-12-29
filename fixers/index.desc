@@ -317,13 +317,13 @@ Fix-Script: wrong-debian-qa-group-name.py
 Lintian-Tags: wrong-debian-qa-group-name
 
 Fix-Script: xc-package-type-in-debian-control.sh
-Lintian-Tags: xc-package-type-in-debian-control
+Lintian-Tags: adopted-extended-field
 
 Fix-Script: xs-testsuite-field-in-debian-control.sh
-Lintian-Tags: xs-testsuite-field-in-debian-control
+Lintian-Tags: adopted-extended-field
 
 Fix-Script: xs-vcs-field-in-debian-control.py
-Lintian-Tags: xs-vcs-field-in-debian-control
+Lintian-Tags: adopted-extended-field
 
 Fix-Script: old-fsf-address-in-copyright-file.sh
 Lintian-Tags: old-fsf-address-in-copyright-file
@@ -449,7 +449,7 @@ Fix-Script: uses-deprecated-adttmp.py
 Lintian-Tags: uses-deprecated-adttmp
 
 Fix-Script: binary-control-field-duplicates-source.py
-Lintian-Tags: binary-control-field-duplicates-source
+Lintian-Tags: installable-field-mirrors-source
 
 Fix-Script: rules-requires-root-missing.py
 Lintian-Tags: silent-on-rules-requiring-root

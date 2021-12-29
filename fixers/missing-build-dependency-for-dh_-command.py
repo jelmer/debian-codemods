@@ -22,12 +22,33 @@ if not os.path.isdir(LINTIAN_DATA_PATH):
 
 
 for command, info in dh_commands().items():
-    COMMAND_TO_DEP[command] = info['installed_by']
+    COMMAND_TO_DEP[command] = ' | '.join(info['installed_by'])
+
+# Copied from /usr/share/lintian/lib/Lintian/Check/Debhelper.pm
+COMMAND_TO_DEP.update({
+    'dh_apache2': 'dh-apache2 | apache2-dev',
+    'dh_autoreconf_clean':
+        'dh-autoreconf | debhelper (>= 9.20160403~) | debhelper-compat',
+    'dh_autoreconf':
+        'dh-autoreconf | debhelper (>= 9.20160403~) | debhelper-compat',
+    'dh_dkms': 'dkms | dh-sequence-dkms',
+    'dh_girepository': 'gobject-introspection | dh-sequence-gir',
+    'dh_gnome': 'gnome-pkg-tools | dh-sequence-gnome',
+    'dh_gnome_clean': 'gnome-pkg-tools | dh-sequence-gnome',
+    'dh_lv2config': 'lv2core',
+    'dh_make_pgxs': 'postgresql-server-dev-all | postgresql-all',
+    'dh_nativejava': 'gcj-native-helper | default-jdk-builddep',
+    'dh_pgxs_test': 'postgresql-server-dev-all | postgresql-all',
+    'dh_python2': 'dh-python | dh-sequence-python2',
+    'dh_python3': 'dh-python | dh-sequence-python3',
+    'dh_sphinxdoc': 'sphinx | python-sphinx | python3-sphinx',
+    'dh_xine': 'libxine-dev | libxine2-dev',
+})
 
 
 ADDON_TO_DEP = {}
 for addon, info in dh_addons().items():
-    ADDON_TO_DEP[addon] = info['installed_by']
+    ADDON_TO_DEP[addon] = ' | '.join(info['installed_by'])
 
 
 ADDON_TO_DEP.update({
@@ -77,7 +98,7 @@ for entry in mf.contents:
             except (ValueError, IndexError):
                 continue
             try:
-                [dep] = COMMAND_TO_DEP[executable]
+                dep = COMMAND_TO_DEP[executable]
             except KeyError:
                 pass
             else:

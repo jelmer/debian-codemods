@@ -1720,6 +1720,7 @@
 - tag: static-library-has-unneeded-sections
 - tag: add-component-copyright
 - tag: adopted-extended-field
+  status: implemented
 - tag: anticipated-repack-count
 - tag: archive-liberty-mismatch
 - tag: bash-term-in-posix-shell
@@ -1733,6 +1734,7 @@
 - tag: elf-warning
 - tag: generated-file
 - tag: installable-field-mirrors-source
+  status: implemented
 - tag: invalid-systemd-documentation
 - tag: kill-mode-none
 - tag: no-code-sections

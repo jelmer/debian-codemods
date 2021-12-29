@@ -2,6 +2,7 @@ lintian-brush (0.118) UNRELEASED; urgency=medium
 
   * Support a UDD_URL environment variable, for contacting an
     alternative UDD.
+  * Update to lintian's new tag names.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 27 Dec 2021 12:21:32 +0000
 

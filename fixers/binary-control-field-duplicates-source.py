@@ -15,7 +15,7 @@ try:
                     removed.append((binary['Package'], field, value))
                     issue = LintianIssue(
                         updater.source,
-                        'binary-control-field-duplicates-source',
+                        'installable-field-mirrors-source',
                         info='field "%s" in package %s' % (
                             field, binary['Package']))
                     issue.report_fixed()

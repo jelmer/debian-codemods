@@ -7,7 +7,7 @@ with control as updater:
         if not key.startswith('XS-Vcs-'):
             continue
         issue = LintianIssue(
-            updater.source, 'xs-vcs-field-in-debian-control', info=key)
+            updater.source, 'adopted-extended-field', info=key)
         if not issue.should_fix():
             continue
         updater.source[key[3:]] = updater.source[key]
