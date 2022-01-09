@@ -23,10 +23,10 @@ Supported tags
 The current set of lintian tags for which a fixer is available that can fix a
 subset of the issues:
 
+* adopted-extended-field
 * ancient-python-version-field
 * ancient-standards-version
 * autotools-pkg-config-macro-not-cross-compilation-safe
-* binary-control-field-duplicates-source
 * build-depends-on-build-essential
 * build-depends-on-obsolete-package
 * built-using-field-on-arch-all-package
@@ -93,6 +93,7 @@ subset of the issues:
 * homepage-in-binary-package
 * init.d-script-needs-depends-on-lsb-base
 * insecure-copyright-format-uri
+* installable-field-mirrors-source
 * invalid-short-name-in-dep5-copyright
 * invalid-standards-version
 * libmodule-build-perl-needs-to-be-in-build-depends
@@ -180,9 +181,6 @@ subset of the issues:
 * vcs-obsolete-in-debian-infrastructure
 * wrong-debian-qa-group-name
 * wrong-section-according-to-package-name
-* xc-package-type-in-debian-control
-* xs-testsuite-field-in-debian-control
-* xs-vcs-field-in-debian-control
 
 .. _writing-fixers:
 
