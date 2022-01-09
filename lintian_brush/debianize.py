@@ -930,6 +930,10 @@ def debianize(  # noqa: C901
                     except PointlessCommit:
                         pass
 
+                wt.mkdir(os.path.join(debian_path, 'source'))
+                with open(os.path.join(debian_path, 'source', 'format'), 'w') as f:
+                    f.write('3.0 (quilt)\n')
+
             upstream_vcs_tree = upstream_source.revision_tree(source_name, mangled_upstream_version)
 
             # TODO(jelmer): Don't export, just access from memory.
