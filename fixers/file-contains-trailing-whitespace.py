@@ -57,7 +57,8 @@ file_strip_whitespace('debian/changelog', strip_tabs=True)
 file_strip_whitespace('debian/rules', strip_tabs=False)
 for entry in os.scandir('debian'):
     if (entry.name == 'control' or
-       (entry.name.startswith('control.') and not entry.name.endswith('~'))):
+       (entry.name.startswith('control.') and not entry.name.endswith('~') and
+           not entry.name.endswith('.m4'))):
         file_strip_whitespace(
             entry.path, strip_tabs=True, delete_new_empty_line=True)
 
