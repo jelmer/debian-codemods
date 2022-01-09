@@ -796,8 +796,11 @@ def check_clean_tree(
             return False
         if t.is_ignored(p):
             return False
-        if not t.has_versioned_directories() and t.kind(p) == "directory":
-            return False
+        try:
+            if not t.has_versioned_directories() and t.kind(p) == "directory":
+                return False
+        except NoSuchFile:
+            return True
         return True
 
     if any(
