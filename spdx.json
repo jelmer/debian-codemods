@@ -1,45 +1,45 @@
 {
     "exception_ids": [
-        "OCCT-exception-1.0",
-        "Libtool-exception",
-        "gnu-javamail-exception",
-        "SHL-2.1",
-        "Linux-syscall-note",
-        "Bootloader-exception",
-        "CLISP-exception-2.0",
-        "GCC-exception-3.1",
-        "OpenJDK-assembly-exception-1.0",
-        "WxWindows-exception-3.1",
-        "eCos-exception-2.0",
-        "LLVM-exception",
-        "GPL-CC-1.0",
-        "mif-exception",
-        "Classpath-exception-2.0",
-        "SHL-2.0",
+        "GPL-3.0-linking-source-exception",
+        "DigiRule-FOSS-exception",
         "Qwt-exception-1.0",
-        "i2p-gpl-java-exception",
+        "Swift-exception",
+        "Linux-syscall-note",
+        "Classpath-exception-2.0",
         "Autoconf-exception-3.0",
-        "OCaml-LGPL-linking-exception",
+        "Font-exception-2.0",
+        "Fawkes-Runtime-exception",
+        "GCC-exception-3.1",
+        "Qt-GPL-exception-1.0",
+        "OpenJDK-assembly-exception-1.0",
+        "LZMA-exception",
+        "WxWindows-exception-3.1",
+        "gnu-javamail-exception",
+        "LGPL-3.0-linking-exception",
+        "Libtool-exception",
         "FLTK-exception",
         "GPL-3.0-linking-exception",
+        "CLISP-exception-2.0",
         "Universal-FOSS-exception-1.0",
-        "LZMA-exception",
-        "DigiRule-FOSS-exception",
-        "GPL-3.0-linking-source-exception",
-        "u-boot-exception-2.0",
-        "GCC-exception-2.0",
         "PS-or-PDF-font-exception-20170817",
-        "LGPL-3.0-linking-exception",
-        "Fawkes-Runtime-exception",
-        "Font-exception-2.0",
-        "Swift-exception",
         "Bison-exception-2.2",
-        "Qt-GPL-exception-1.0",
-        "Qt-LGPL-exception-1.1",
-        "Nokia-Qt-exception-1.1",
-        "389-exception",
+        "Bootloader-exception",
+        "u-boot-exception-2.0",
+        "mif-exception",
+        "OCCT-exception-1.0",
+        "OCaml-LGPL-linking-exception",
         "openvpn-openssl-exception",
+        "Nokia-Qt-exception-1.1",
+        "SHL-2.1",
+        "389-exception",
         "freertos-exception-2.0",
+        "GPL-CC-1.0",
+        "LLVM-exception",
+        "i2p-gpl-java-exception",
+        "GCC-exception-2.0",
+        "SHL-2.0",
+        "eCos-exception-2.0",
+        "Qt-LGPL-exception-1.1",
         "Autoconf-exception-2.0"
     ],
     "licenses": {
@@ -141,6 +141,9 @@
         },
         "Apache-2.0": {
             "name": "Apache License 2.0"
+        },
+        "App-s2p": {
+            "name": "App::s2p License"
         },
         "Artistic-1.0": {
             "name": "Artistic License 1.0"
@@ -501,6 +504,9 @@
         },
         "D-FSL-1.0": {
             "name": "Deutsche Freie Software Lizenz"
+        },
+        "DL-DE-BY-2.0": {
+            "name": "Data licence Germany \u2013 attribution \u2013 version 2.0"
         },
         "DOC": {
             "name": "DOC License"
