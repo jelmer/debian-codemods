@@ -24,6 +24,9 @@ try:
 
 except FileNotFoundError:
     pass
+except ValueError:
+    # Not a machine-readable copyright file
+    pass
 
 report_result(
     "debian/copyright: Replace commas with whitespace to separate items "

@@ -1,3 +1,10 @@
+lintian-brush (0.119) UNRELEASED; urgency=medium
+
+  * comma-separated-files-in-dep5-copyright: Ignore copyright files that
+    are not machine readable.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 09 Jan 2022 12:19:27 +0000
+
 lintian-brush (0.118) unstable; urgency=medium
 
   * Support a UDD_URL environment variable, for contacting an
