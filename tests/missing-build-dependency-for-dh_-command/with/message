@@ -1,2 +1,2 @@
-Add missing build dependency on dh addon.
+Add missing build dependency on python3:any | python3-all:any | python3-dev:any | python3-all-dev:any | dh-sequence-python3 for addon python3.
 Fixed-Lintian-Tags: missing-build-dependency-for-dh-addon

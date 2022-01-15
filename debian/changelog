@@ -3,6 +3,8 @@ lintian-brush (0.119) UNRELEASED; urgency=medium
   * comma-separated-files-in-dep5-copyright: Ignore copyright files that
     are not machine readable.
   * Don't strip whitespace from m4 files.
+  * Don't add debhelper dependency when debhelper-compat is present.
+    Closes: #1003590
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 09 Jan 2022 12:19:27 +0000
 
