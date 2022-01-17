@@ -32,7 +32,7 @@ from lintian_brush import (
     Fixer,
     NoChanges,
     NotDebianPackage,
-    PendingChanges,
+    WorkspaceDirty,
     FixerResult,
     min_certainty,
     USER_AGENT,
@@ -423,7 +423,7 @@ def main(argv=None):  # noqa: C901
     use_inotify = ((False if args.disable_inotify else None),)
     try:
         check_clean_tree(wt, wt.basis_tree(), subpath)
-    except PendingChanges:
+    except WorkspaceDirty:
         logging.info("%s: Please commit pending changes first.", wt.basedir)
         return 1
 

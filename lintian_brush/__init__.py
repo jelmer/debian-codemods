@@ -24,7 +24,6 @@ import itertools
 import logging
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -45,6 +44,7 @@ from breezy.rename_map import RenameMap
 from breezy.transform import revert
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
+from breezy.workspace import reset_tree, check_clean_tree, WorkspaceDirty
 
 from debian.deb822 import Deb822
 
@@ -133,13 +133,6 @@ class NotDebianPackage(Exception):
 
     def __init__(self, tree, path):
         super(NotDebianPackage, self).__init__(tree.abspath(path))
-
-
-class PendingChanges(Exception):
-    """The directory has pending changes."""
-
-    def __init__(self, tree, subpath=""):
-        super(PendingChanges, self).__init__(tree.abspath(subpath))
 
 
 class FixerResult(object):
@@ -617,30 +610,6 @@ def increment_version(v: Version) -> None:
         )
 
 
-def delete_items(deletables, dry_run: bool = False):
-    """Delete files in the deletables iterable"""
-
-    def onerror(function, path, excinfo):
-        """Show warning for errors seen by rmtree."""
-        # Handle only permission error while removing files.
-        # Other errors are re-raised.
-        if function is not os.remove or excinfo[1].errno != errno.EACCES:
-            raise
-        logging.warning("unable to remove %s", path)
-
-    for path in deletables:
-        if os.path.isdir(path):
-            shutil.rmtree(path, onerror=onerror)
-        else:
-            try:
-                os.unlink(path)
-            except OSError as e:
-                # We handle only permission error here
-                if e.errno != errno.EACCES:
-                    raise e
-                logging.warning('unable to remove "%s": %s.', path, e.strerror)
-
-
 def get_committer(tree: WorkingTree) -> str:
     """Get the committer string for a tree.
 
@@ -716,36 +685,6 @@ def only_changes_last_changelog_block(
         return str(new_cl) == str(old_cl)
 
 
-def reset_tree(
-    local_tree: WorkingTree,
-    basis_tree: Optional[Tree] = None,
-    subpath: str = "",
-    dirty_tracker=None,
-) -> None:
-    """Reset a tree back to its basis tree.
-
-    This will leave ignored and detritus files alone.
-
-    Args:
-      local_tree: tree to work on
-      dirty_tracker: Optional dirty tracker
-      subpath: Subpath to operate on
-    """
-    if dirty_tracker and not dirty_tracker.is_dirty():
-        return
-    if basis_tree is None:
-        basis_tree = local_tree.branch.basis_tree()
-    revert(local_tree, basis_tree, [subpath] if subpath not in (".", "") else None)
-    deletables: List[str] = []
-    # TODO(jelmer): Use basis tree
-    for p in local_tree.extras():
-        if not is_inside(subpath, p):
-            continue
-        if not local_tree.is_ignored(p):
-            deletables.append(local_tree.abspath(p))
-    delete_items(deletables)
-
-
 def certainty_sufficient(
     actual_certainty: str, minimum_certainty: Optional[str]
 ) -> bool:
@@ -766,49 +705,6 @@ def certainty_sufficient(
     if minimum_confidence is None:
         return True
     return actual_confidence <= minimum_confidence
-
-
-def check_clean_tree(
-    local_tree: WorkingTree, basis_tree: Tree, subpath: str = ""
-) -> None:
-    """Check that a tree is clean and has no pending changes or unknown files.
-
-    Args:
-      local_tree: The tree to check
-      basis_tree: Tree to check against
-      subpath: Subpath of the tree to check
-    Raises:
-      PendingChanges: When there are pending changes
-    """
-    # Just check there are no changes to begin with
-    changes = local_tree.iter_changes(
-        basis_tree,
-        include_unchanged=False,
-        require_versioned=False,
-        want_unversioned=True,
-        specific_files=[subpath],
-    )
-
-    def relevant(p, t):
-        if not p:
-            return False
-        if not is_inside(subpath, p):
-            return False
-        if t.is_ignored(p):
-            return False
-        try:
-            if not t.has_versioned_directories() and t.kind(p) == "directory":
-                return False
-        except NoSuchFile:
-            return True
-        return True
-
-    if any(
-        change
-        for change in changes
-        if relevant(change.path[0], basis_tree) or relevant(change.path[1], local_tree)
-    ):
-        raise PendingChanges(local_tree, subpath)
 
 
 def has_non_debian_changes(changes, subpath):
@@ -1113,14 +1009,14 @@ def get_dirty_tracker(
 ):
     """Create a dirty tracker object."""
     if use_inotify is True:
-        from .dirty_tracker import DirtyTracker
+        from breezy.dirty_tracker import DirtyTracker
 
         return DirtyTracker(local_tree, subpath)
     elif use_inotify is False:
         return None
     else:
         try:
-            from .dirty_tracker import DirtyTracker
+            from breezy.dirty_tracker import DirtyTracker
         except ImportError:
             return None
         else:
@@ -1171,7 +1067,7 @@ def run_lintian_fixers(
            error that occurred
     """
     basis_tree = local_tree.basis_tree()
-    check_clean_tree(local_tree, basis_tree, subpath)
+    check_clean_tree(local_tree, basis_tree=basis_tree, subpath=subpath)
     fixers = list(fixers)
     dirty_tracker = get_dirty_tracker(
         local_tree, subpath=subpath, use_inotify=use_inotify

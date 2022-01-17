@@ -37,7 +37,7 @@ from . import (
     check_clean_tree,
     control_files_in_root,
     get_committer,
-    PendingChanges,
+    WorkspaceDirty,
     NotDebianPackage,
     version_string,
     )
@@ -232,7 +232,7 @@ def main():  # noqa: C901
 
     try:
         check_clean_tree(wt, wt.basis_tree(), subpath)
-    except PendingChanges:
+    except WorkspaceDirty:
         logging.info("%s: Please commit pending changes first.", wt.basedir)
         return 1
 

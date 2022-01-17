@@ -95,7 +95,7 @@ from . import (
     available_lintian_fixers,
     version_string,
     check_clean_tree,
-    PendingChanges,
+    WorkspaceDirty,
     run_lintian_fixers,
     get_committer,
     reset_tree,
@@ -1458,7 +1458,7 @@ def main(argv=None):  # noqa: C901
         except DistCommandFailed as e:
             report_fatal(e.kind or "dist-command-failed", e.error)
             return 1
-        except PendingChanges:
+        except WorkspaceDirty:
             report_fatal("pending-changes", "Please commit pending changes first.")
             return 1
         except DebianDirectoryExists as e:
