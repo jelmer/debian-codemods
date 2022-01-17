@@ -41,7 +41,6 @@ from lintian_brush import (
     FixerScriptFailed,
     NoChanges,
     NotDebianPackage,
-    PendingChanges,
     PythonScriptFixer,
     ScriptFixer,
     FailedPatchManipulation,

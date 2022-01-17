@@ -24,6 +24,10 @@ import os
 import re
 
 from breezy.workingtree import WorkingTree
+from breezy.workspace import (
+    check_clean_tree,
+    WorkspaceDirty,
+    )
 
 from debmutate.ben import parse_ben, SUPPORTED_KEYS
 from debmutate.control import ControlEditor
@@ -34,10 +38,8 @@ from debmutate.reformatting import (
     )
 
 from . import (
-    check_clean_tree,
     control_files_in_root,
     get_committer,
-    WorkspaceDirty,
     NotDebianPackage,
     version_string,
     )

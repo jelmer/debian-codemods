@@ -28,11 +28,15 @@ import time
 from urllib.error import HTTPError
 from urllib.request import urlopen, Request
 
+from breezy.workspace import (
+    WorkspaceDirty,
+    check_clean_tree,
+    )
+
 from lintian_brush import (
     Fixer,
     NoChanges,
     NotDebianPackage,
-    WorkspaceDirty,
     FixerResult,
     min_certainty,
     USER_AGENT,
@@ -41,7 +45,6 @@ from lintian_brush import (
     certainty_sufficient,
     get_committer,
     get_dirty_tracker,
-    check_clean_tree,
     run_lintian_fixer,
     version_string,
     control_files_in_root,

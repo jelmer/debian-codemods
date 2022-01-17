@@ -41,10 +41,9 @@ from breezy.commit import NullCommitReporter
 from breezy.errors import NoSuchFile
 from breezy.osutils import is_inside
 from breezy.rename_map import RenameMap
-from breezy.transform import revert
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
-from breezy.workspace import reset_tree, check_clean_tree, WorkspaceDirty
+from breezy.workspace import reset_tree, check_clean_tree
 
 from debian.deb822 import Deb822
 
