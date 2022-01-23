@@ -107,7 +107,7 @@ for entry in mf.contents:
                     '%s => %s' % (executable, dep))
                 if not issue.should_fix():
                     continue
-                need.append((dep, [issue]))
+                need.append((dep, [issue], 'command', executable))
             if executable == 'dh' or executable.startswith('dh_'):
                 for addon in dh_invoke_get_with(command):
                     try:
@@ -118,17 +118,21 @@ for entry in mf.contents:
                         issue = LintianIssue(
                             'source', 'missing-build-dependency-for-dh-addon',
                             '%s => %s' % (addon, dep))
-                        need.append((dep, [issue]))
+                        need.append((dep, [issue], 'addon', addon))
 
 
 if not need:
     sys.exit(0)
 
+changed = []
 
 with control as updater:
-    for deps, issues in need:
+    for deps, issues, kind, name in need:
         parsed = PkgRelation.parse(deps)
         is_implied = False
+
+        if is_relation_implied(parsed, 'debhelper'):
+            is_implied = True
 
         for field in ['Build-Depends', 'Build-Depends-Indep',
                       'Build-Depends-Arch']:
@@ -142,5 +146,12 @@ with control as updater:
             updater.source['Build-Depends'] = add_dependency(build_deps, deps)
             for issue in issues:
                 issue.report_fixed()
+            changed.append((deps, issue, kind, name))
 
-report_result('Add missing build dependency on dh addon.')
+if len(changed) == 1:
+    (dep, issue, kind, name) = changed[0]
+    report_result('Add missing build dependency on %s for %s %s.' % (dep, kind, name))
+else:
+    report_result(
+        'Add missing build dependencies:' +
+        '\n'.join('* %s for %s %s' % (dep, kind, name) for (dep, issue, kind, name) in changed))

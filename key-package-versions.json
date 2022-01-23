@@ -2,7 +2,7 @@
     "debhelper": {
         "artful": "10.7.2ubuntu2",
         "bionic": "11.1.6ubuntu1",
-        "bookworm": "13.5.2",
+        "bookworm": "13.6",
         "breezy": "4.9.5ubuntu1",
         "bullseye": "13.3.4",
         "buster": "12.1.1",

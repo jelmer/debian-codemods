@@ -1,0 +1,7 @@
+#!/usr/bin/make
+
+%:
+	dh $@ --with autoreconf
+
+override_dh_auto_clean:
+	dh_auto_clean

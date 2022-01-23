@@ -38,7 +38,8 @@ def update_debian(versions, key_packages):
 
 def update_ubuntu(versions, key_packages):
     from launchpadlib.launchpad import Launchpad
-    lp = Launchpad.login_anonymously('lintian-brush')
+    from launchpadlib.uris import LPNET_SERVICE_ROOT
+    lp = Launchpad.login_anonymously('lintian-brush', service_root=LPNET_SERVICE_ROOT)
     ubuntu = lp.distributions['ubuntu']
     archive = ubuntu.main_archive
     for series in ubuntu.series:
