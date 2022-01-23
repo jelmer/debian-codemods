@@ -1,11 +1,11 @@
-lintian-brush (0.119) UNRELEASED; urgency=medium
+lintian-brush (0.119) unstable; urgency=medium
 
   * comma-separated-files-in-dep5-copyright: Ignore copyright files that
     are not machine readable.
   * Don't strip whitespace from m4 files.
   * Use workspace interface from newer Breezy.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 09 Jan 2022 12:19:27 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 23 Jan 2022 19:12:06 +0000
 
 lintian-brush (0.118) unstable; urgency=medium
 
