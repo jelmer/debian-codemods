@@ -530,9 +530,11 @@ def main():  # noqa: C901
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
 
-    from . import (
+    from breezy.workspace import (
         check_clean_tree,
-        PendingChanges,
+        WorkspaceDirty,
+        )
+    from . import (
         version_string,
     )
     from .config import Config
@@ -598,7 +600,7 @@ def main():  # noqa: C901
 
     try:
         check_clean_tree(wt, wt.basis_tree(), subpath)
-    except PendingChanges:
+    except WorkspaceDirty:
         logging.info("%s: Please commit pending changes first.", wt.basedir)
         return 1
 

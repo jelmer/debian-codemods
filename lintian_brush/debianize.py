@@ -83,6 +83,11 @@ from breezy.plugins.debian.upstream.branch import (
     DistCommandFailed,
     run_dist_command,
 )
+from breezy.workspace import (
+    check_clean_tree,
+    reset_tree,
+    WorkspaceDirty,
+    )
 
 from buildlog_consultant.common import VcsControlDirectoryNeeded
 
@@ -94,11 +99,8 @@ from debmutate.versions import (
 from . import (
     available_lintian_fixers,
     version_string,
-    check_clean_tree,
-    PendingChanges,
     run_lintian_fixers,
     get_committer,
-    reset_tree,
     version_string as lintian_brush_version_string,
 )
 from .debhelper import (
@@ -1458,7 +1460,7 @@ def main(argv=None):  # noqa: C901
         except DistCommandFailed as e:
             report_fatal(e.kind or "dist-command-failed", e.error)
             return 1
-        except PendingChanges:
+        except WorkspaceDirty:
             report_fatal("pending-changes", "Please commit pending changes first.")
             return 1
         except DebianDirectoryExists as e:

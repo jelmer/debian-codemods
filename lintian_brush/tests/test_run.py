@@ -41,13 +41,11 @@ from lintian_brush import (
     FixerScriptFailed,
     NoChanges,
     NotDebianPackage,
-    PendingChanges,
     PythonScriptFixer,
     ScriptFixer,
     FailedPatchManipulation,
     UnsupportedCertainty,
     available_lintian_fixers,
-    check_clean_tree,
     certainty_sufficient,
     min_certainty,
     certainty_to_confidence,
@@ -107,96 +105,6 @@ Lintian-Tags: i-fix-another-tag, no-extension
             [["i-fix-a-tag"], ["i-fix-another-tag", "no-extension"]],
             [fixer.lintian_tags for fixer in available_lintian_fixers("fixers")],
         )
-
-
-class CheckCleanTreeTests(TestCaseWithTransport):
-    def make_test_tree(self, format=None, version="0.1"):
-        tree = self.make_branch_and_tree(".", format=format)
-        self.build_tree_contents(
-            [
-                ("debian/",),
-                (
-                    "debian/control",
-                    """\
-Source: blah
-Vcs-Git: https://example.com/blah
-Testsuite: autopkgtest
-
-Binary: blah
-Arch: all
-
-""",
-                ),
-                (CHANGELOG_FILE[0], CHANGELOG_FILE[1] % {"version": version}),
-            ]
-        )
-        tree.add(["debian", "debian/changelog", "debian/control"])
-        tree.commit("Initial thingy.")
-        return tree
-
-    def test_pending_changes(self):
-        tree = self.make_test_tree()
-        self.build_tree_contents([("debian/changelog", "blah")])
-        with tree.lock_write():
-            self.assertRaises(PendingChanges, check_clean_tree, tree, tree.basis_tree())
-
-    def test_pending_changes_bzr_empty_dir(self):
-        # See https://bugs.debian.org/914038
-        tree = self.make_test_tree(format="bzr")
-        self.build_tree_contents([("debian/upstream/",)])
-        with tree.lock_write():
-            self.assertRaises(PendingChanges, check_clean_tree, tree, tree.basis_tree())
-
-    def test_pending_changes_git_empty_dir(self):
-        # See https://bugs.debian.org/914038
-        tree = self.make_test_tree(format="git")
-        self.build_tree_contents([("debian/upstream/",)])
-        with tree.lock_write():
-            check_clean_tree(tree, tree.basis_tree())
-
-    def test_pending_changes_git_dir_with_ignored(self):
-        # See https://bugs.debian.org/914038
-        tree = self.make_test_tree(format="git")
-        self.build_tree_contents(
-            [
-                ("debian/upstream/",),
-                ("debian/upstream/blah", ""),
-                (".gitignore", "blah\n"),
-            ]
-        )
-        tree.add(".gitignore")
-        tree.commit("add gitignore")
-        with tree.lock_write():
-            check_clean_tree(tree, tree.basis_tree())
-
-    def test_extra(self):
-        tree = self.make_test_tree()
-        self.build_tree_contents([("debian/foo", "blah")])
-        with tree.lock_write():
-            self.assertRaises(PendingChanges, check_clean_tree, tree, tree.basis_tree())
-
-    def test_subpath(self):
-        tree = self.make_test_tree()
-        self.build_tree_contents([("debian/foo", "blah"), ("foo/",)])
-        tree.add("foo")
-        tree.commit("add foo")
-        with tree.lock_write():
-            check_clean_tree(tree, tree.basis_tree(), subpath="foo")
-            self.assertRaises(
-                PendingChanges, check_clean_tree, tree, tree.basis_tree(), subpath=""
-            )
-
-    def test_subpath_changed(self):
-        tree = self.make_test_tree()
-        self.build_tree_contents([("foo/",)])
-        tree.add("foo")
-        tree.commit("add foo")
-        self.build_tree_contents([("debian/control", "blah")])
-        with tree.lock_write():
-            check_clean_tree(tree, tree.basis_tree(), subpath="foo")
-            self.assertRaises(
-                PendingChanges, check_clean_tree, tree, tree.basis_tree(), subpath=""
-            )
 
 
 class DummyFixer(Fixer):

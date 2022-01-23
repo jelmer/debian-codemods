@@ -24,6 +24,10 @@ import os
 import re
 
 from breezy.workingtree import WorkingTree
+from breezy.workspace import (
+    check_clean_tree,
+    WorkspaceDirty,
+    )
 
 from debmutate.ben import parse_ben, SUPPORTED_KEYS
 from debmutate.control import ControlEditor
@@ -34,10 +38,8 @@ from debmutate.reformatting import (
     )
 
 from . import (
-    check_clean_tree,
     control_files_in_root,
     get_committer,
-    PendingChanges,
     NotDebianPackage,
     version_string,
     )
@@ -232,7 +234,7 @@ def main():  # noqa: C901
 
     try:
         check_clean_tree(wt, wt.basis_tree(), subpath)
-    except PendingChanges:
+    except WorkspaceDirty:
         logging.info("%s: Please commit pending changes first.", wt.basedir)
         return 1
 

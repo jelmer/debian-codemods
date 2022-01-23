@@ -27,10 +27,11 @@ from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.errors import AlreadyBranchError, AlreadyControlDirError
 from breezy.propose import iter_hoster_instances, UnsupportedHoster
 from breezy.workingtree import WorkingTree
+from breezy.workspace import check_clean_tree, WorkspaceDirty
 from debmutate.control import ControlEditor
 from debmutate.vcs import source_package_vcs
 
-from . import get_committer, check_clean_tree, PendingChanges
+from . import get_committer
 from .salsa import guess_repository_url
 from .vcs import determine_browser_url
 
@@ -181,7 +182,7 @@ def main():
 
     try:
         repo_url = update_offical_vcs(wt, subpath, repo_url=args.url, force=args.force, create=args.create)
-    except PendingChanges:
+    except WorkspaceDirty:
         logging.info("%s: Please commit pending changes first.", wt.basedir)
         return 1
     except NoVcsLocation:

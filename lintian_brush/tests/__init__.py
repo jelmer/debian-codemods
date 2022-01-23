@@ -24,7 +24,6 @@ def test_suite():
         "config",
         "debhelper",
         "detect_gbp_dch",
-        "dirty_tracker",
         "lintian",
         "lintian_overrides",
         "multiarch_hints",

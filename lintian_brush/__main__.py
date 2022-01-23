@@ -31,6 +31,7 @@ import distro_info
 import breezy
 from breezy.branch import Branch
 from breezy.workingtree import WorkingTree
+from breezy.workspace import WorkspaceDirty
 
 from breezy.errors import (  # noqa: E402
     DependencyNotPresent,
@@ -43,7 +44,6 @@ import breezy.bzr  # noqa: E402
 
 from . import (  # noqa: E402
     NotDebianPackage,
-    PendingChanges,
     DescriptionMissing,
     available_lintian_fixers,
     find_fixers_dir,
@@ -344,7 +344,7 @@ def main(argv=None):  # noqa: C901
             except NotDebianPackage:
                 report_fatal("not-debian-package", "Not a Debian package")
                 return 1
-            except PendingChanges:
+            except WorkspaceDirty:
                 logging.error("%s: Please commit pending changes first.", wt.basedir)
                 if args.verbose:
                     from breezy.status import show_tree_status
