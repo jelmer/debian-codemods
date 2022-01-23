@@ -30,7 +30,7 @@ setup(
         "Repository": "https://salsa.debian.org/jelmer/lintian-brush",
     },
     install_requires=[
-        'breezy>=3.2.2',
+        'breezy>=3.2.1',
         'python_debian',
         'debmutate',
         'distro-info',
