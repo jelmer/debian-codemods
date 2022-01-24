@@ -1,9 +1,9 @@
-lintian-brush (0.120) UNRELEASED; urgency=medium
+lintian-brush (0.120) unstable; urgency=medium
 
   * Don't add debhelper dependency when debhelper-compat is present.
     Closes: #1003590
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 23 Jan 2022 23:56:11 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 23 Jan 2022 23:58:15 +0000
 
 lintian-brush (0.119) unstable; urgency=medium
 
