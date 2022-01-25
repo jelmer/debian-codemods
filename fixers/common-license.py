@@ -220,6 +220,8 @@ def reference_common_license(para):
         return
     if 'X-Comment' in para and COMMON_LICENSES_DIR in para['X-Comment']:
         return
+    if 'License-Reference' in para:
+        return
     para.license = License(
         license.synopsis, license.text + '\n\n' + debian_file_reference(
             FULL_LICENSE_NAME.get(common_license, common_license),
