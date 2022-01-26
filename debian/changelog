@@ -1,6 +1,10 @@
 lintian-brush (0.121) UNRELEASED; urgency=medium
 
+  [ Jelmer Vernooĳ ]
   * Don't add reference comment field when License-Reference field exists.
+
+  [ Simon Chopin ]
+  * Fix the lintian compatibility code.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 25 Jan 2022 12:39:41 +0000
 

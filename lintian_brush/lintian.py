@@ -124,7 +124,7 @@ DEBHELPER_COMMANDS_JSON_PATH = os.path.join(
 def dh_commands():
     try:
         with open(DEBHELPER_DH_COMMANDS_PATH, 'r') as f:
-            entries = list(read_debhelper_lintian_data_file(f, '='))
+            entries = set(read_debhelper_lintian_data_file(f, '='))
         with open(DEBHELPER_DH_COMMANDS_MANUAL_PATH, 'r') as f:
             entries.update(read_debhelper_lintian_data_file(f, '||'))
         return {
