@@ -5,6 +5,8 @@ lintian-brush (0.121) UNRELEASED; urgency=medium
 
   [ Simon Chopin ]
   * Fix the lintian compatibility code.
+  * Relax the lintian-brush version number testing to allow for arbitrary
+    suffixes, such as ubuntu1.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 25 Jan 2022 12:39:41 +0000
 

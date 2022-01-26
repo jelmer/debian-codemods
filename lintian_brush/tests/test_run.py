@@ -815,8 +815,7 @@ class LintianBrushVersion(TestCase):
         with open("debian/changelog", "r") as f:
             cl = Changelog(f, max_blocks=1)
         package_version = str(cl.version)
-        package_version = package_version.split("+")[0]
-        package_version = package_version.split("~")[0]
+        package_version = re.match(r'^\d+\.\d+', package_version)[0]
         self.assertEqual(package_version, version_string)
 
     def test_matches_setup_version(self):
