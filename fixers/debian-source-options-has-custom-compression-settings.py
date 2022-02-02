@@ -32,7 +32,7 @@ for lineno, line in enumerate(oldlines, 1):
         if key.strip() == 'compression':
             issue = LintianIssue(
                 'source', 'custom-compression-in-debian-source-options',
-                '%s (line %d)' % (line, lineno))
+                '%s (line %d)' % (line.rstrip('\n'), lineno))
             if issue.should_fix():
                 drop_prior_comments(newlines)
                 dropped.add("custom source compression")
@@ -41,7 +41,7 @@ for lineno, line in enumerate(oldlines, 1):
         if key.strip() == 'compression-level':
             issue = LintianIssue(
                 'source', 'custom-compression-in-debian-source-options',
-                '%s (line %d)' % (line, lineno))
+                '%s (line %d)' % (line.rstrip('\n'), lineno))
             if issue.should_fix():
                 drop_prior_comments(newlines)
                 dropped.add("custom source compression level")

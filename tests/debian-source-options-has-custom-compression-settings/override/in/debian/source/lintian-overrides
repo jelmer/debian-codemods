@@ -1,0 +1,1 @@
+debootstrap source: debian-source-options-has-custom-compression-settings compression = gzip (line *)

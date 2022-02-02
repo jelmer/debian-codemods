@@ -1,0 +1,5 @@
+debootstrap (0.1) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #XXXXXX)
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 02 Feb 2022 22:41:08 +0000
