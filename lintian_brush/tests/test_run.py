@@ -92,11 +92,14 @@ class AvailableLintianFixersTest(TestCaseWithTransport):
                 (
                     "fixers/index.desc",
                     """\
-Fix-Script: foo.sh
-Lintian-Tags: i-fix-a-tag
+- script: foo.sh
+  lintian-tags:
+   - i-fix-a-tag
 
-Fix-Script: bar.sh
-Lintian-Tags: i-fix-another-tag, no-extension
+- script: bar.sh
+  lintian-tags:
+   - i-fix-another-tag
+   - no-extension
 """,
                 )
             ]

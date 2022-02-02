@@ -45,8 +45,6 @@ from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 from breezy.workspace import reset_tree, check_clean_tree
 
-from debian.deb822 import Deb822
-
 
 from debmutate.reformatting import FormattingUnpreservable
 
@@ -527,19 +525,19 @@ def read_desc_file(path: str, force_subprocess: bool = False) -> Iterator[Fixer]
     Yields:
       Fixer objects
     """
+    from ruamel.yaml import YAML
+    yaml = YAML()
     dirname = os.path.dirname(path)
     with open(path, "r") as f:
-        for paragraph in Deb822.iter_paragraphs(f):
-            name = os.path.splitext(paragraph["Fix-Script"])[0]
-            script_path = os.path.join(dirname, paragraph["Fix-Script"])
-            if "Lintian-Tags" in paragraph:
-                tags = [tag.strip() for tag in paragraph["Lintian-Tags"].split(",")]
-            else:
-                tags = []
-            if script_path.endswith(".py") and not force_subprocess:
-                yield PythonScriptFixer(name, tags, script_path)
-            else:
-                yield ScriptFixer(name, tags, script_path)
+        data = yaml.load(f)
+    for paragraph in data:
+        name = os.path.splitext(paragraph["script"])[0]
+        script_path = os.path.join(dirname, paragraph["script"])
+        tags = paragraph.get("lintian-tags", [])
+        if script_path.endswith(".py") and not force_subprocess:
+            yield PythonScriptFixer(name, tags, script_path)
+        else:
+            yield ScriptFixer(name, tags, script_path)
 
 
 def select_fixers(

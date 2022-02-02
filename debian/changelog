@@ -2,6 +2,7 @@ lintian-brush (0.121) UNRELEASED; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * Don't add reference comment field when License-Reference field exists.
+  * Convert index.desc to yaml.
 
   [ Simon Chopin ]
   * Fix the lintian compatibility code.
