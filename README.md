@@ -144,6 +144,7 @@ subset of the issues:
 * required-field
 * rubygem-homepage
 * silent-on-rules-requiring-root
+* skip-systemd-native-flag-missing-pre-depends
 * space-in-std-shortname-in-dep5-copyright
 * systemd-service-alias-without-extension
 * systemd-service-file-refers-to-obsolete-bindto
@@ -154,6 +155,7 @@ subset of the issues:
 * team/pkg-perl/testsuite/no-testsuite-header
 * team/pkg-perl/vcs/no-git
 * team/pkg-perl/vcs/no-team-url
+* tracked in bug https://bugs.debian.org/969762
 * trailing-whitespace
 * transitional-package-not-oldlibs-optional
 * typo-in-debhelper-override-target
