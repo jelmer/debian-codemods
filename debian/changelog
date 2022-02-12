@@ -1,3 +1,10 @@
+lintian-brush (0.122) UNRELEASED; urgency=medium
+
+  * Also check 'Essential: yes' packages when tidying up build dependencies.
+    Thanks to Andreas Beckmann for reporting.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 12 Feb 2022 09:52:19 +0000
+
 lintian-brush (0.121) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]

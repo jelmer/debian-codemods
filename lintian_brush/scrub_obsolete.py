@@ -166,9 +166,9 @@ class PackageChecker(object):
     def is_essential(self, package: str) -> bool:
         loop = asyncio.get_event_loop()
         if self.build:
-            return loop.run_until_complete(_package_build_essential(package, self.release))
-        else:
-            return loop.run_until_complete(_package_essential(package, self.release))
+            if loop.run_until_complete(_package_build_essential(package, self.release)):
+                return True
+        return loop.run_until_complete(_package_essential(package, self.release))
 
 
 def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
