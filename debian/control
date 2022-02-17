@@ -33,7 +33,7 @@ Build-Depends: bash-completion,
                debhelper-compat (= 13),
                debhelper (>= 13.5),
                ognibuild
-Standards-Version: 4.5.1
+Standards-Version: 4.6.0
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
 Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush
