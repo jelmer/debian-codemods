@@ -1,46 +1,46 @@
 {
     "exception_ids": [
-        "GPL-3.0-linking-source-exception",
-        "DigiRule-FOSS-exception",
-        "Qwt-exception-1.0",
-        "Swift-exception",
-        "Linux-syscall-note",
-        "Classpath-exception-2.0",
-        "Autoconf-exception-3.0",
-        "Font-exception-2.0",
-        "Fawkes-Runtime-exception",
-        "GCC-exception-3.1",
-        "Qt-GPL-exception-1.0",
-        "OpenJDK-assembly-exception-1.0",
-        "LZMA-exception",
-        "WxWindows-exception-3.1",
-        "gnu-javamail-exception",
-        "LGPL-3.0-linking-exception",
-        "Libtool-exception",
-        "FLTK-exception",
-        "GPL-3.0-linking-exception",
-        "CLISP-exception-2.0",
-        "Universal-FOSS-exception-1.0",
-        "PS-or-PDF-font-exception-20170817",
-        "Bison-exception-2.2",
-        "Bootloader-exception",
-        "u-boot-exception-2.0",
-        "mif-exception",
-        "OCCT-exception-1.0",
-        "OCaml-LGPL-linking-exception",
-        "openvpn-openssl-exception",
-        "Nokia-Qt-exception-1.1",
-        "SHL-2.1",
-        "389-exception",
         "freertos-exception-2.0",
-        "GPL-CC-1.0",
-        "LLVM-exception",
-        "i2p-gpl-java-exception",
-        "GCC-exception-2.0",
-        "SHL-2.0",
-        "eCos-exception-2.0",
+        "Swift-exception",
         "Qt-LGPL-exception-1.1",
-        "Autoconf-exception-2.0"
+        "gnu-javamail-exception",
+        "CLISP-exception-2.0",
+        "eCos-exception-2.0",
+        "GPL-CC-1.0",
+        "DigiRule-FOSS-exception",
+        "Font-exception-2.0",
+        "Qt-GPL-exception-1.0",
+        "PS-or-PDF-font-exception-20170817",
+        "GPL-3.0-linking-source-exception",
+        "Linux-syscall-note",
+        "GCC-exception-2.0",
+        "LZMA-exception",
+        "Autoconf-exception-3.0",
+        "u-boot-exception-2.0",
+        "LLVM-exception",
+        "OCaml-LGPL-linking-exception",
+        "Autoconf-exception-2.0",
+        "Bootloader-exception",
+        "LGPL-3.0-linking-exception",
+        "openvpn-openssl-exception",
+        "FLTK-exception",
+        "Bison-exception-2.2",
+        "OCCT-exception-1.0",
+        "GCC-exception-3.1",
+        "OpenJDK-assembly-exception-1.0",
+        "WxWindows-exception-3.1",
+        "Fawkes-Runtime-exception",
+        "Nokia-Qt-exception-1.1",
+        "Qwt-exception-1.0",
+        "Universal-FOSS-exception-1.0",
+        "Classpath-exception-2.0",
+        "SHL-2.0",
+        "GPL-3.0-linking-exception",
+        "SHL-2.1",
+        "Libtool-exception",
+        "mif-exception",
+        "389-exception",
+        "i2p-gpl-java-exception"
     ],
     "licenses": {
         "0BSD": {
@@ -787,6 +787,9 @@
         "JSON": {
             "name": "JSON License"
         },
+        "Jam": {
+            "name": "Jam License"
+        },
         "JasPer-2.0": {
             "name": "JasPer License"
         },
@@ -1374,6 +1377,9 @@
         },
         "X11": {
             "name": "X11 License"
+        },
+        "X11-distribute-modifications-variant": {
+            "name": "X11 License Distribution Modification Variant"
         },
         "XFree86-1.1": {
             "name": "XFree86 License 1.1"
