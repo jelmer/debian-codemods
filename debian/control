@@ -30,7 +30,7 @@ Build-Depends: bash-completion,
                po-debconf,
                gpg (>= 2.1),
                lintian (>= 2.105.0),
-               debhelper-compat (= 12),
+               debhelper-compat (= 13),
                debhelper (>= 13.5),
                ognibuild
 Standards-Version: 4.5.1
