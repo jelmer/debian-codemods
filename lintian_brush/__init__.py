@@ -29,7 +29,7 @@ import sys
 import tempfile
 import time
 import traceback
-from typing import Optional, List, Sequence, Iterator, Iterable, Tuple
+from typing import Optional, List, Sequence, Iterator, Iterable, Tuple, Union, Callable
 
 from tqdm import trange
 
@@ -786,7 +786,7 @@ def run_lintian_fixer(  # noqa: C901
     local_tree: WorkingTree,
     fixer: Fixer,
     committer: Optional[str] = None,
-    update_changelog: Optional[bool] = None,
+    update_changelog: Union[bool, Callable[[], bool]] = True,
     compat_release: Optional[str] = None,
     minimum_certainty: Optional[str] = None,
     trust_package: bool = False,
@@ -929,24 +929,15 @@ def run_lintian_fixer(  # noqa: C901
 
         summary = "Add patch %s: %s" % (patch_name, summary)
 
-    if update_changelog is None:
-        from .detect_gbp_dch import guess_update_changelog
-
-        dch_guess = guess_update_changelog(
-            local_tree, os.path.join(subpath, "debian"), cl)
-        if dch_guess:
-            update_changelog = dch_guess[0]
-            _note_changelog_policy(update_changelog, dch_guess[1])
-        else:
-            # Assume we should update changelog
-            update_changelog = True
-
-    if update_changelog and only_changes_last_changelog_block(
+    if only_changes_last_changelog_block(
         local_tree, basis_tree, changelog_path, changes
     ):
         # If the script only changed the last entry in the changelog,
         # don't update the changelog
         update_changelog = False
+
+    if callable(update_changelog):
+        update_changelog = update_changelog()
 
     if update_changelog:
         from .changelog import add_changelog_entry
@@ -1020,7 +1011,30 @@ def get_dirty_tracker(
             return DirtyTracker(local_tree, subpath)
 
 
-def run_lintian_fixers(
+def determine_update_changelog(local_tree, debian_path):
+    from .detect_gbp_dch import guess_update_changelog
+
+    changelog_path = os.path.join(debian_path, 'changelog')
+
+    try:
+        with local_tree.get_file(changelog_path) as f:
+            cl = Changelog(f)
+    except NoSuchFile:
+        # If there's no changelog, then there's nothing to update!
+        return False
+
+    dch_guess = guess_update_changelog(local_tree, debian_path, cl)
+    if dch_guess:
+        update_changelog = dch_guess[0]
+        _note_changelog_policy(update_changelog, dch_guess[1])
+    else:
+        # Assume we should update changelog
+        update_changelog = True
+
+    return update_changelog
+
+
+def run_lintian_fixers(  # noqa: C901
     local_tree: WorkingTree,
     fixers: List[Fixer],
     update_changelog: bool = True,
@@ -1069,6 +1083,15 @@ def run_lintian_fixers(
     dirty_tracker = get_dirty_tracker(
         local_tree, subpath=subpath, use_inotify=use_inotify
     )
+
+    # If we don't know whether to update the changelog, then find out *once*
+    if update_changelog is None:
+        def update_changelog():
+            nonlocal update_changelog
+            update_changelog = determine_update_changelog(
+                local_tree, os.path.join(subpath, "debian"))
+            return update_changelog
+
     ret = ManyResult()
     with trange(len(fixers), leave=False, disable=None) as t:
         for i, fixer in enumerate(fixers):
