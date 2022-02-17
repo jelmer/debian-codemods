@@ -974,6 +974,7 @@ class ManyResult(object):
         self.failed_fixers = {}
         self.formatting_unpreservable = {}
         self.overridden_lintian_issues = []
+        self.changelog_behaviour = None
 
     def minimum_success_certainty(self) -> str:
         """Return the minimum certainty of any successfully made change."""
@@ -984,12 +985,6 @@ class ManyResult(object):
                 if r.certainty is not None
             ]
         )
-
-    def __tuple__(self):
-        return (self.success, self.failed_fixers)
-
-    def __iter__(self):
-        return iter(self.__tuple__())
 
 
 def get_dirty_tracker(
@@ -1012,7 +1007,10 @@ def get_dirty_tracker(
 
 
 def determine_update_changelog(local_tree, debian_path):
-    from .detect_gbp_dch import guess_update_changelog
+    from .detect_gbp_dch import (
+        guess_update_changelog,
+        ChangelogBehaviour,
+        )
 
     changelog_path = os.path.join(debian_path, 'changelog')
 
@@ -1023,15 +1021,15 @@ def determine_update_changelog(local_tree, debian_path):
         # If there's no changelog, then there's nothing to update!
         return False
 
-    dch_guess = guess_update_changelog(local_tree, debian_path, cl)
-    if dch_guess:
-        update_changelog = dch_guess[0]
-        _note_changelog_policy(update_changelog, dch_guess[1])
+    behaviour = guess_update_changelog(local_tree, debian_path, cl)
+    if behaviour:
+        _note_changelog_policy(behaviour.update_changelog, behaviour.explanation)
     else:
-        # Assume we should update changelog
-        update_changelog = True
+        # If we can't make an educated guess, assume yes.
+        behaviour = ChangelogBehaviour(
+            True, "Assuming changelog should be updated")
 
-    return update_changelog
+    return behaviour
 
 
 def run_lintian_fixers(  # noqa: C901
@@ -1086,11 +1084,16 @@ def run_lintian_fixers(  # noqa: C901
 
     # If we don't know whether to update the changelog, then find out *once*
     if update_changelog is None:
+        changelog_behaviour = None
+
         def update_changelog():
-            nonlocal update_changelog
-            update_changelog = determine_update_changelog(
+            nonlocal update_changelog, changelog_behaviour
+            changelog_behaviour = determine_update_changelog(
                 local_tree, os.path.join(subpath, "debian"))
+            update_changelog = changelog_behaviour.update_changelog
             return update_changelog
+    else:
+        changelog_behaviour = None
 
     ret = ManyResult()
     with trange(len(fixers), leave=False, disable=None) as t:
@@ -1166,6 +1169,8 @@ def run_lintian_fixers(  # noqa: C901
                     )
                 ret.success.append((result, summary))
                 basis_tree = local_tree.basis_tree()
+    if changelog_behaviour:
+        ret.changelog_behaviour = changelog_behaviour
     return ret
 
 

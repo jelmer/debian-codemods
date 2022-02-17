@@ -433,9 +433,13 @@ def main(argv=None):  # noqa: C901
             failed = {
                 name: str(e)
                 for (name, e) in overall_result.failed_fixers.items()}
+            debian_context = {}
+            if overall_result.changelog_behaviour:
+                debian_context['changelog'] = overall_result.changelog_behaviour.json()
             with open(os.environ['SVP_RESULT'], 'w') as f:
                 json.dump({
                     'value': calculate_value(all_fixed_lintian_tags),
+                    'debian': debian_context,
                     'context': {
                         'applied': applied,
                         'failed': failed,

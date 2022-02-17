@@ -426,11 +426,11 @@ Arch: all
 
     def test_fails(self):
         with self.tree.lock_write():
-            applied, failed = run_lintian_fixers(
+            result = run_lintian_fixers(
                 self.tree, [FailingFixer("fail", "some-tag")], update_changelog=False
             )
-        self.assertEqual([], applied)
-        self.assertEqual({"fail": FixerFailed("Not successful")}, failed)
+        self.assertEqual([], result.success)
+        self.assertEqual({"fail": FixerFailed("Not successful")}, result.failed_fixers)
         with self.tree.lock_read():
             self.assertEqual([], list(self.tree.iter_changes(self.tree.basis_tree())))
 
@@ -449,7 +449,7 @@ Arch: all
 
     def test_simple_modify(self):
         with self.tree.lock_write():
-            applied, failed = run_lintian_fixers(
+            result = run_lintian_fixers(
                 self.tree, [DummyFixer("dummy", "some-tag")], update_changelog=False
             )
             revid = self.tree.last_revision()
@@ -465,9 +465,9 @@ Arch: all
                     "Fixed some tag.",
                 )
             ],
-            applied,
+            result.success,
         )
-        self.assertEqual({}, failed)
+        self.assertEqual({}, result.failed_fixers)
         self.assertEqual(2, self.tree.branch.revno())
         self.assertEqual(
             self.tree.get_file_lines("debian/control")[-1], b"a new line\n"
@@ -1062,13 +1062,11 @@ class ManyResultTests(TestCase):
     def test_empty(self):
         result = ManyResult()
         self.assertEqual("certain", result.minimum_success_certainty())
-        self.assertEqual(([], {}), tuple(result))
 
     def test_no_certainty(self):
         result = ManyResult()
         result.success.append((FixerResult("Do bla", ["tag-a"], None), "summary"))
         self.assertEqual("certain", result.minimum_success_certainty())
-        self.assertEqual((result.success, {}), tuple(result))
 
     def test_possible(self):
         result = ManyResult()

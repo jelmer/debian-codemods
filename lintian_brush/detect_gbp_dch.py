@@ -38,6 +38,30 @@ from breezy.workingtree import WorkingTree
 DEFAULT_BACKLOG = 50
 
 
+class ChangelogBehaviour(object):
+
+    def __init__(self, update_changelog, explanation):
+        self.update_changelog = update_changelog
+        self.explanation = explanation
+
+    def __tuple__(self):
+        return (self.update_changelog, self.explanation)
+
+    def __str__(self):
+        return self.explanation
+
+    def json(self):
+        return {
+            'update': self.update_changelog,
+            'explanation': self.explanation,
+            }
+
+    def __eq__(self, other):
+        return (isinstance(other, type(self)) and
+                self.explanation == other.explanation and
+                self.update_changelog == other.update_changelog)
+
+
 # TODO(jelmer): Check that what's added in the changelog is actually based on
 # what was in the commit messages?
 
@@ -62,7 +86,7 @@ def gbp_conf_has_dch_section(tree: Tree, debian_path: str = "") -> Optional[bool
 
 def guess_update_changelog(
     tree: WorkingTree, debian_path: str, cl: Optional[Changelog] = None
-) -> Optional[Tuple[bool, str]]:
+) -> Optional[ChangelogBehaviour]:
     """Guess whether the changelog should be updated.
 
     Args:
@@ -72,7 +96,7 @@ def guess_update_changelog(
       best guess at whether we should update changelog (bool)
     """
     if debian_path != "debian":
-        return (
+        return ChangelogBehaviour(
             True,
             "assuming changelog needs to be updated since "
             "gbp dch only suppors a debian directory in the root of the "
@@ -85,7 +109,7 @@ def guess_update_changelog(
         except NoSuchFile:
             cl = None
     if cl and is_unreleased_inaugural(cl):
-        return (
+        return ChangelogBehaviour(
             False,
             "assuming changelog does not need to be updated "
             "since it is the inaugural unreleased entry")
@@ -100,9 +124,9 @@ def guess_update_changelog(
 
 def _guess_update_changelog_from_tree(
     tree: Tree, debian_path: str, cl: Optional[Changelog]
-) -> Optional[Tuple[bool, str]]:
+) -> Optional[ChangelogBehaviour]:
     if gbp_conf_has_dch_section(tree, debian_path):
-        return (
+        return ChangelogBehaviour(
             False,
             "Assuming changelog does not need to be updated, "
             "since there is a [dch] section in gbp.conf.",
@@ -112,7 +136,7 @@ def _guess_update_changelog_from_tree(
     # of the changelog file?
     if cl:
         if all_sha_prefixed(cl[0]):
-            return (
+            return ChangelogBehaviour(
                 False,
                 "Assuming changelog does not need to be updated, "
                 "since all entries in last changelog entry are prefixed "
@@ -183,7 +207,7 @@ def _changelog_stats(branch: Branch, history: int, debian_path: str):
 
 def _guess_update_changelog_from_branch(
     branch: Branch, debian_path: str = "", history: int = DEFAULT_BACKLOG
-) -> Optional[Tuple[bool, str]]:
+) -> Optional[ChangelogBehaviour]:
     """Guess whether the changelog should be updated manually.
 
     Args:
@@ -201,27 +225,27 @@ def _guess_update_changelog_from_branch(
         branch, history, debian_path
     )
     if dch_references:
-        return (
+        return ChangelogBehaviour(
             False,
             "Assuming changelog does not need to be updated, since "
             "there are Gbp-Dch stanzas in commit messages",
         )
     if changelog_only == 0:
-        return (
+        return ChangelogBehaviour(
             True,
             "Assuming changelog needs to be updated, since "
             "it is always changed together with other files in the tree.",
         )
     if mixed == 0 and changelog_only > 0 and other_only > 0:
         # changelog is *always* updated in a separate commit.
-        return (
+        return ChangelogBehaviour(
             False,
             "Assuming changelog does not need to be updated, since "
             "changelog entries are always updated in separate commits.",
         )
     # Is this a reasonable threshold?
     if changelog_only > mixed and other_only > mixed:
-        return (
+        return ChangelogBehaviour(
             False,
             "Assuming changelog does not need to be updated, since "
             "changelog entries are usually updated in separate commits.",

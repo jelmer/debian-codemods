@@ -363,6 +363,7 @@ class ScrubObsoleteResult(object):
         self.specific_files = specific_files
         self.maintscript_removed = maintscript_removed
         self.control_removed = control_removed
+        self.changelog_behaviour = None
 
     def __bool__(self):
         return bool(self.control_removed) or bool(self.maintscript_removed)
@@ -468,11 +469,13 @@ def scrub_obsolete(
 
         dch_guess = guess_update_changelog(wt, debian_path, cl)
         if dch_guess:
-            update_changelog = dch_guess[0]
-            _note_changelog_policy(update_changelog, dch_guess[1])
+            update_changelog = dch_guess.update_changelog
+            _note_changelog_policy(update_changelog, dch_guess.explanation)
+            result.changelog_behaviour = dch_guess
         else:
             # Assume we should update changelog
             update_changelog = True
+            result.changelog_behaviour = None
 
     if update_changelog:
         lines = []
@@ -685,12 +688,17 @@ def main():  # noqa: C901
         report_okay("nothing-to-do", "no obsolete constraints")
         return 0
 
+    debian_context = {}
+    if result.changelog_behaviour:
+        debian_context['changelog'] = result.changelog_behaviour.json()
+
     if os.environ.get("SVP_API") == "1":
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump({
                 "description": "Remove constraints unnecessary since %s."
                 % upgrade_release,
                 "value": result.value(),
+                "debian": debian_context,
                 "context": {
                     "specific_files": result.specific_files,
                     "maintscript_removed": result.maintscript_removed,
