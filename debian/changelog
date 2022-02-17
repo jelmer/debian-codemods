@@ -1,3 +1,11 @@
+lintian-brush (0.123) UNRELEASED; urgency=medium
+
+  * Drop debian/upstream/metadata: package is native.
+  * Add lintian-override for runtime debhelper dependency, which is
+    actually necessary.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 17 Feb 2022 20:11:06 +0000
+
 lintian-brush (0.122) unstable; urgency=medium
 
   * Also check 'Essential: yes' packages when tidying up build dependencies.
