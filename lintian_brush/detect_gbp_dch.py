@@ -56,6 +56,13 @@ class ChangelogBehaviour(object):
             'explanation': self.explanation,
             }
 
+    def __getitem__(self, i):
+        if i == 0:
+            return self.update_changelog
+        if i == 1:
+            return self.explanation
+        raise IndexError(i)
+
     def __eq__(self, other):
         return (isinstance(other, type(self)) and
                 self.explanation == other.explanation and
