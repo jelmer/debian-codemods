@@ -5,6 +5,8 @@ lintian-brush (0.123) UNRELEASED; urgency=medium
     actually necessary.
   * Bump debhelper from old 12 to 13.
   * Update standards version to 4.6.0, no changes needed.
+  * Make changelog messages for binary-control-field-duplicates-source
+    shorter.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 17 Feb 2022 20:11:06 +0000
 

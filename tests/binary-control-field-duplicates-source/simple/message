@@ -1,2 +1,2 @@
-Remove Priority on blah that duplicates source.
+Remove field Priority on binary package blah that duplicates source.
 Fixed-Lintian-Tags: installable-field-mirrors-source
