@@ -35,12 +35,17 @@ class ResolveCodeNameTests(TestCase):
         self.assertEqual("sid", resolve_release_codename("sid"))
         self.assertEqual("buster", resolve_release_codename("buster"))
         self.assertEqual("sid", resolve_release_codename("unstable"))
+        self.assertEqual("sid", resolve_release_codename("debian/unstable"))
 
     def test_resolve_unknown(self):
         self.assertEqual(None, resolve_release_codename("blah"))
 
     def test_resolve_ubuntu(self):
         self.assertEqual("trusty", resolve_release_codename("trusty"))
+        self.assertEqual("trusty", resolve_release_codename("ubuntu/trusty"))
+
+    def resolve_ubuntu_esm(self):
+        self.assertIsInstance(resolve_release_codename("ubuntu/esm"), str)
 
 
 class ConfigReadTests(TestCaseWithTransport):

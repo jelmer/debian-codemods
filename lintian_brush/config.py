@@ -35,16 +35,31 @@ SUPPORTED_KEYS = [
 ]
 
 
-def resolve_release_codename(name):
-    debian = distro_info.DebianDistroInfo()
-    if debian.codename(name):
-        return debian.codename(name)
-    if debian.valid(name):
-        return name
-    ubuntu = distro_info.UbuntuDistroInfo()
-    if ubuntu.valid(name):
-        return name
-    return None
+def resolve_release_codename(name: str, date=None) -> str:
+    def oldest_name(fn):
+        return max(fn("object", date), key=lambda r: r.created).name
+
+    if '/' in name:
+        distro, name = name.split('/', 1)
+    else:
+        distro = None
+    if distro in ('debian', None):
+        debian = distro_info.DebianDistroInfo()
+        if name == 'lts':
+            return oldest_name(debian.lts_supported)
+        if name == 'elts':
+            return oldest_name(debian.elts_supported)
+        if debian.codename(name):
+            return debian.codename(name)
+        if debian.valid(name):
+            return name
+    if distro in ('ubuntu', None):
+        ubuntu = distro_info.UbuntuDistroInfo()
+        if name == 'esm':
+            return oldest_name(ubuntu.supported_esm)
+        if ubuntu.valid(name):
+            return name
+        return None
 
 
 class Config(object):
