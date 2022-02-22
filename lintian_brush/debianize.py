@@ -321,12 +321,11 @@ def import_upstream_version_from_dist(
 
     upstream_branch_name = "upstream"
     try:
-        wt.controldir.create_branch(upstream_branch_name).generate_revision_history(
-            pristine_revids[None]
-        )
+        branch = wt.controldir.create_branch(upstream_branch_name)
     except AlreadyBranchError:
         logging.info("Upstream branch already exists; not creating.")
     else:
+        branch.generate_revision_history(pristine_revids[None])
         logging.info("Created upstream branch.")
 
     return pristine_revids, tag_names, upstream_branch_name
@@ -742,7 +741,7 @@ def import_build_deps(source, build_deps):
 def import_upstream_dist(
         pristine_tar_source, wt, upstream_source, subpath, source_name,
         upstream_version, session):
-    if pristine_tar_source.has_version(source_name, upstream_version):
+    if pristine_tar_source.has_version(source_name, upstream_version, try_hard=False):
         logging.warning(
             'Upstream version %s/%s already imported.',
             source_name, upstream_version)
@@ -852,7 +851,7 @@ def debianize(  # noqa: C901
     debian_revision: str = "1",
     upstream_version: Optional[str] = None,
     requirement: Optional[Requirement] = None,
-    team: Optional[str] = None
+    team: Optional[str] = None,
 ):
     if committer is None:
         committer = get_committer(wt)
@@ -1255,6 +1254,20 @@ class SimpleTrustedAptRepo(object):
             f.write(packages)
 
 
+def use_packaging_branch(wt: WorkingTree, branch_name: str) -> None:
+    last_revision = wt.last_revision()
+    try:
+        target_branch = wt.controldir.open_branch(branch_name)
+    except NotBranchError:
+        target_branch = wt.controldir.create_branch(branch_name)
+
+    target_branch.generate_revision_history(last_revision)
+    logging.info('Switching to packaging branch %s.', branch_name)
+    wt.controldir.set_branch_reference(target_branch, name="")
+    # TODO(jelmer): breezy bug?
+    wt._branch = target_branch
+
+
 def report_fatal(code, description, hint=None, details=None):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
@@ -1383,6 +1396,10 @@ def main(argv=None):  # noqa: C901
     parser.add_argument(
         '--team', type=str,
         help='Maintainer team ("$NAME <$EMAIL>")')
+    parser.add_argument(
+        '--debian-branch', type=str,
+        help='Name of Debian branch to create. Empty string to stay at current branch.',
+        default='%(vendor)s/main')
     parser.add_argument('upstream', nargs='?', type=str)
 
     args = parser.parse_args(argv)
@@ -1415,6 +1432,7 @@ def main(argv=None):  # noqa: C901
     else:
         create_dist = None
 
+
     # For now...
     if args.upstream:
         try:
@@ -1425,6 +1443,11 @@ def main(argv=None):  # noqa: C901
     else:
         upstream_branch = wt.branch
         upstream_subpath = subpath
+
+    if args.debian_branch:
+        from debmutate.vendor import get_vendor_name
+
+        use_packaging_branch(wt, args.debian_branch % {'vendor': get_vendor_name().lower()})
 
     use_inotify = ((False if args.disable_inotify else None),)
     with wt.lock_write():

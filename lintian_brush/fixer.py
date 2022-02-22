@@ -19,6 +19,7 @@
 
 from collections.abc import MutableMapping
 from debmutate.control import ControlEditor
+from debmutate.vendor import get_vendor_name
 from debian.deb822 import Deb822
 import sys
 from typing import Optional, Tuple, Union, List
@@ -222,15 +223,6 @@ def source_package_name():
     return os.environ.get("DEB_SOURCE")
 
 
-def vendor():
-    try:
-        return os.environ['DEB_VENDOR']
-    except KeyError:
-        with open('/etc/dpkg/origins/default', 'r') as f:
-            c = Deb822(f)
-            return c['Vendor']
-
-
 def is_debcargo_package():
     return os.path.exists('debian/debcargo.toml')
 
@@ -244,3 +236,7 @@ if is_debcargo_package():
         control = DebcargoControlShimEditor(DebcargoEditor())
 else:
     control = ControlEditor()
+
+
+def vendor() -> str:
+    return get_vendor_name()
