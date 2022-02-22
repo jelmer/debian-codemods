@@ -47,6 +47,7 @@ MAINTAINER_EMAIL_MAP = {
     "pkg-mpd-maintainers@lists.alioth.debian.org": "mpd-team",
     "pkg-cli-apps-team@lists.alioth.debian.org": "dotnet-team",
     "pkg-mono-group@lists.alioth.debian.org": "dotnet-team",
+    "team+python@tracker.debian.org": "python-team/packages",
 }
 
 TEAM_NAME_MAP = {
