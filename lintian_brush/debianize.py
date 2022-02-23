@@ -89,7 +89,7 @@ from breezy.workspace import (
     WorkspaceDirty,
     )
 
-from buildlog_consultant.common import VcsControlDirectoryNeeded
+from buildlog_consultant.common import VcsControlDirectoryNeeded, SetuptoolScmVersionIssue
 
 from debmutate.versions import (
     debianize_upstream_version,
@@ -251,7 +251,9 @@ def default_create_dist(session, tree, package, version, target_dir):
                     subdir=(package or "package"),
                     cleanup=False)
             except DetailedFailure as e:
-                if isinstance(e.error, VcsControlDirectoryNeeded):
+                if isinstance(
+                        e.error,
+                        (VcsControlDirectoryNeeded, SetuptoolScmVersionIssue)):
                     return ogni_create_dist(
                         session, tree, target_dir,
                         include_controldir=True,
