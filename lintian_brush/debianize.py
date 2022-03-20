@@ -907,7 +907,9 @@ def debianize(  # noqa: C901
             source_name = generic_get_source_name(wt, metadata)
 
             def kickstart_from_dist(wt, subpath):
-                logging.info("Using upstream version %s", mangled_upstream_version)
+                logging.info(
+                    "Kickstarting from dist tarball. Using upstream version %s",
+                    mangled_upstream_version)
 
                 pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
                 upstream_dist_revid, result.upstream_branch_name, result.tag_names = import_upstream_dist(
