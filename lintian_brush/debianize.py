@@ -60,7 +60,12 @@ from ognibuild.dist import (  # noqa: F401
     )
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
-from ognibuild.requirements import CargoCrateRequirement, Requirement
+from ognibuild.requirements import (
+    Requirement,
+    CargoCrateRequirement,
+    PythonPackageRequirement,
+    GoPackageRequirement,
+    )
 from ognibuild.resolver.apt import AptResolver
 from ognibuild.vcs import dupe_vcs_tree
 from ognibuild.buildlog import InstallFixer, problem_to_upstream_requirement
@@ -1168,6 +1173,20 @@ def find_apt_upstream(requirement: Requirement) -> Optional[UpstreamInfo]:
                     features = set()
                 return find_upstream(
                     CargoCrateRequirement(name, version=version, features=features))
+            m = re.match(r'python([0-9.]*)-(.*)', rel['name'])
+            if m:
+                name = m.group(2)
+                python_version = m.group(1)
+                return find_upstream(
+                    PythonPackageRequirement(name, python_version=(python_version or None)))
+            m = re.match(r'golang-(.*)-dev', rel['name'])
+            if m:
+                parts = m.group(1).split('-')
+                if parts[0] == 'github':
+                    parts[0] = 'github.com'
+                if parts[0] == 'gopkg':
+                    parts[0] = 'gopkg.in'
+                return find_upstream(GoPackageRequirement('/'.join(parts)))
 
 
 def find_or_upstream(requirement: Requirement) -> Optional[UpstreamInfo]:
