@@ -1155,7 +1155,7 @@ def find_cargo_crate_upstream(requirement):
         name=name, version=str(version) if version else None)
 
 
-def find_apt_upstream(requirement):
+def find_apt_upstream(requirement: Requirement) -> Optional[UpstreamInfo]:
     for option in requirement.relations:
         for rel in option:
             m = re.match(r'librust-(.*)-([^-+]+)(\+.*?)-dev', rel['name'])
@@ -1170,7 +1170,7 @@ def find_apt_upstream(requirement):
                     CargoCrateRequirement(name, version=version, features=features))
 
 
-def find_or_upstream(requirement) -> Optional[UpstreamInfo]:
+def find_or_upstream(requirement: Requirement) -> Optional[UpstreamInfo]:
     for req in requirement.elements:
         info = find_upstream(req)
         if info is not None:
@@ -1187,7 +1187,7 @@ UPSTREAM_FINDER = {
     }
 
 
-def find_upstream(requirement) -> Optional[UpstreamInfo]:  # noqa: C901
+def find_upstream(requirement: Requirement) -> Optional[UpstreamInfo]:  # noqa: C901
     try:
         return UPSTREAM_FINDER[requirement.family](requirement)
     except KeyError:
@@ -1402,8 +1402,14 @@ def main(argv=None):  # noqa: C901
         help='Maintainer team ("$NAME <$EMAIL>")')
     parser.add_argument(
         '--debian-branch', type=str,
-        help='Name of Debian branch to create. Empty string to stay at current branch.',
+        help=('Name of Debian branch to create. Empty string to stay at '
+              'current branch.'),
         default='%(vendor)s/main')
+    parser.add_argument(
+        '--debian-binary', type=str,
+        help=(
+            'Package whatever source will create the named Debian '
+            'binary package.'))
     parser.add_argument('upstream', nargs='?', type=str)
 
     args = parser.parse_args(argv)
@@ -1436,7 +1442,6 @@ def main(argv=None):  # noqa: C901
     else:
         create_dist = None
 
-
     # For now...
     if args.upstream:
         try:
@@ -1444,6 +1449,18 @@ def main(argv=None):  # noqa: C901
         except NotBranchError as e:
             logging.fatal('%s: not a valid branch: %s', args.upstream, e)
             return 1
+    elif args.debian_binary:
+        from ognibuild.resolver.apt import AptRequirement
+        apt_requirement = AptRequirement.from_str(args.debian_binary)
+        upstream_info = find_apt_upstream(apt_requirement)
+        if not upstream_info:
+            logging.fatal(
+                '%s: Unable to find upstream info for %s', args.debian_binary,
+                apt_requirement)
+            return 1
+        logging.info('Found relevant upstream branch at %s', upstream_info.branch_url)
+        upstream_branch = Branch.open(upstream_info.branch_url)
+        upstream_subpath = upstream_info.branch_subpath
     else:
         upstream_branch = wt.branch
         upstream_subpath = subpath
