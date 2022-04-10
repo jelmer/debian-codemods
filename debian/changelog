@@ -1,8 +1,8 @@
-lintian-brush (0.124) UNRELEASED; urgency=medium
+lintian-brush (0.124) unstable; urgency=medium
 
   * Add --debian-binary argument to debianize.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 22 Mar 2022 21:23:08 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 10 Apr 2022 17:02:32 +0100
 
 lintian-brush (0.123) unstable; urgency=medium
 
