@@ -1553,6 +1553,11 @@ def main(argv=None):  # noqa: C901
                 str(e),
                 details=(e.error.json() if e.error else None))
             return 1
+        except BuildSystemProcessError as e:
+            report_fatal(
+                'build-system-process-error',
+                e.message)
+            return 1
         except OSError as e:
             if e.errno == errno.ENOSPC:
                 report_fatal('no-space-on-device', str(e))
