@@ -591,7 +591,7 @@ def main():  # noqa: C901
         default=False,
     )
     parser.add_argument(
-        "--debug", help="Describe all considerd changes.", action="store_true"
+        "--debug", help="Describe all considered changes.", action="store_true"
     )
 
     args = parser.parse_args()

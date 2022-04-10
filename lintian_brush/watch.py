@@ -26,7 +26,7 @@ from urllib.parse import urlparse, urlunparse
 import urllib.error
 from urllib.request import urlopen, Request
 
-from debmutate.watch import Watch
+from debmutate.watch import Watch, WatchEditor
 
 from . import (
     USER_AGENT,
@@ -233,8 +233,119 @@ def fix_watch_issues(updater):
     fix_old_github_patterns(updater)
 
 
-def main():
+def main():  # noqa: C901
+    import argparse
+    import breezy  # noqa: E402
+    import logging
+
+    breezy.initialize()
+    import breezy.git  # noqa: E402
+    import breezy.bzr  # noqa: E402
+
+    from breezy.workingtree import WorkingTree
+    from breezy.workspace import (
+        check_clean_tree,
+        WorkspaceDirty,
+        )
+    from . import (
+        get_committer,
+        version_string,
+    )
+    from .config import Config
+
+    parser = argparse.ArgumentParser(prog="deb-update-watch")
+    parser.add_argument(
+        "--directory",
+        metavar="DIRECTORY",
+        help="directory to run in",
+        type=str,
+        default=".",
+    )
+    parser.add_argument(
+        "--no-update-changelog",
+        action="store_false",
+        default=None,
+        dest="update_changelog",
+        help="do not update the changelog",
+    )
+    parser.add_argument(
+        "--update-changelog",
+        action="store_true",
+        dest="update_changelog",
+        help="force updating of the changelog",
+        default=None,
+    )
+    parser.add_argument(
+        "--allow-reformatting",
+        default=None,
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + version_string
+    )
+    parser.add_argument(
+        "--identity",
+        help="Print user identity that would be used when committing",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--debug", help="Describe all considerd changes.", action="store_true"
+    )
+
+    args = parser.parse_args()
+
+    wt, subpath = WorkingTree.open_containing(args.directory)
+    if args.identity:
+        logging.info('%s', get_committer(wt))
+        return 0
+
+    try:
+        check_clean_tree(wt, wt.basis_tree(), subpath)
+    except WorkspaceDirty:
+        logging.info("%s: Please commit pending changes first.", wt.basedir)
+        return 1
+
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+    update_changelog = args.update_changelog
+    allow_reformatting = args.allow_reformatting
+    try:
+        cfg = Config.from_workingtree(wt, subpath)
+    except FileNotFoundError:
+        pass
+    else:
+        if update_changelog is None:
+            update_changelog = cfg.update_changelog()
+        if allow_reformatting is None:
+            allow_reformatting = cfg.allow_reformatting()
+
+    if allow_reformatting is None:
+        allow_reformatting = False
+
+    try:
+        with WatchEditor() as updater:
+            fix_watch_issues(updater)
+    except FileNotFoundError:
+        # TODO(jelmer): Reuse logic from ../fixers/debian-watch-file-is-missing.py
+        pass
+
+    if os.environ.get("SVP_API") == "1":
+        with open(os.environ["SVP_RESULT"], "w") as f:
+            json.dump({
+                "description": "Update watch file.",
+                "context": {
+                }
+            }, f)
+
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+
+    sys.exit(main())
