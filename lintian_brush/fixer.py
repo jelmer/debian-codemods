@@ -20,7 +20,6 @@
 from collections.abc import MutableMapping
 from debmutate.control import ControlEditor
 from debmutate.vendor import get_vendor_name
-from debian.deb822 import Deb822
 import sys
 from typing import Optional, Tuple, Union, List
 

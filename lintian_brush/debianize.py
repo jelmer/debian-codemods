@@ -51,13 +51,22 @@ from breezy.revision import NULL_REVISION
 from breezy.workingtree import WorkingTree
 
 from ognibuild import DetailedFailure, UnidentifiedError
+from ognibuild.buildlog import InstallFixer, problem_to_upstream_requirement
 from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound
 from ognibuild.debian.apt import AptManager
 from ognibuild.debian.build import DEFAULT_BUILDER
+from ognibuild.debian.fix_build import (
+    DetailedDebianBuildFailure,
+    UnidentifiedDebianBuildError,
+    build_incrementally,
+    )
 from ognibuild.dist import (  # noqa: F401
     DistNoTarball,
     create_dist as ogni_create_dist,
     )
+from ognibuild.fix_build import iterate_with_build_fixers, BuildFixer
+
+
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
 from ognibuild.requirements import (
@@ -68,7 +77,6 @@ from ognibuild.requirements import (
     )
 from ognibuild.resolver.apt import AptResolver
 from ognibuild.vcs import dupe_vcs_tree
-from ognibuild.buildlog import InstallFixer, problem_to_upstream_requirement
 
 from upstream_ontologist.guess import (
     guess_upstream_info,
@@ -1291,6 +1299,107 @@ def use_packaging_branch(wt: WorkingTree, branch_name: str) -> None:
     wt._branch = target_branch
 
 
+class DebianizeFixer(BuildFixer):
+
+    def __str__(self):
+        return "debianize fixer"
+
+    def __repr__(self):
+        return "%s(%r, %r)" % (
+            type(self).__name__, self.vcs_directory,
+            self.apt_repo)
+
+    def __init__(self, vcs_directory, apt_repo, do_build, diligence=0,
+                 trust=False, check=True, net_access=True,
+                 force_new_directory=False,
+                 team=None, verbose=False, force_subprocess=False,
+                 upstream_version_kind="release",
+                 debian_revision="1",
+                 schroot=None,
+                 consult_external_directory=True,
+                 use_inotify=None,
+                 create_dist=None,
+                 compat_release=None):
+        self.vcs_directory = vcs_directory
+        self.apt_repo = apt_repo
+        self.diligence = diligence
+        self.trust = trust
+        self.check = check
+        self.net_access = net_access
+        self.force_new_directory = force_new_directory
+        self.team = team
+        self.verbose = verbose
+        self.force_subprocess = force_subprocess
+        self.upstream_version_kind = upstream_version_kind
+        self.debian_revision = debian_revision
+        self.consult_external_directory = consult_external_directory
+        self.schroot = schroot
+        self.use_inotify = use_inotify
+        self.create_dist = create_dist
+        self.compat_release = compat_release
+        self.do_build = do_build
+
+    def can_fix(self, problem):
+        requirement = problem_to_upstream_requirement(problem)
+        if requirement is None:
+            return False
+        return find_upstream(requirement) is not None
+
+    def _fix(self, problem, phase: Tuple[str, ...]):
+        requirement = problem_to_upstream_requirement(problem)
+        if requirement is None:
+            return False
+        logging.debug(
+            'Translated problem %r to requirement %r', problem, requirement)
+        upstream_info = find_upstream(requirement)
+        if upstream_info is None:
+            logging.error(
+                'Unable to find upstream information for requirement %r',
+                requirement)
+            return False
+        logging.info(
+            'Packaging %r to address %r',
+            upstream_info.branch_url, problem)
+        upstream_branch = Branch.open(upstream_info.branch_url)
+        if upstream_info.name is not None:
+            vcs_path = os.path.join(
+                self.vcs_directory,
+                upstream_info.name.replace('/', '-'))
+        else:
+            raise AssertionError('no upstream name provided')
+        if os.path.exists(vcs_path):
+            shutil.rmtree(vcs_path)
+        result = ControlDir.create_branch_convenience(
+            vcs_path, force_new_tree=True,
+            format=upstream_branch.controldir.cloning_metadir())
+        new_wt = result.controldir.open_workingtree()
+        new_subpath = ''
+        debianize(
+            new_wt, new_subpath,
+            upstream_branch, upstream_info.branch_subpath or '',
+            use_inotify=self.use_inotify,
+            diligence=self.diligence,
+            create_dist=self.create_dist,
+            trust=self.trust,
+            check=self.check,
+            net_access=self.net_access,
+            force_new_directory=self.force_new_directory,
+            force_subprocess=self.force_subprocess,
+            compat_release=self.compat_release,
+            consult_external_directory=self.consult_external_directory,
+            verbose=self.verbose, schroot=self.schroot,
+            debian_revision=self.debian_revision,
+            upstream_version=upstream_info.version,
+            upstream_version_kind=self.upstream_version_kind,
+            requirement=requirement,
+            team=self.team)
+        self.do_build(
+            new_wt, new_subpath, self.apt_repo.directory,
+            extra_repositories=self.apt_repo.sources_lines())
+        self.apt_repo.refresh()
+        return True
+
+
 def report_fatal(code, description, hint=None, details=None):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
@@ -1569,87 +1678,6 @@ def main(argv=None):  # noqa: C901
         args.iterate_fix = True
 
     if args.iterate_fix:
-        from ognibuild.fix_build import iterate_with_build_fixers, BuildFixer
-        from ognibuild.debian.fix_build import (
-            DetailedDebianBuildFailure,
-            UnidentifiedDebianBuildError,
-            build_incrementally,
-            )
-
-        class DebianizeFixer(BuildFixer):
-
-            def __str__(self):
-                return "debianize fixer"
-
-            def __repr__(self):
-                return "%s(%r, %r)" % (
-                    type(self).__name__, self.vcs_directory,
-                    self.apt_repo)
-
-            def __init__(self, vcs_directory, apt_repo):
-                self.vcs_directory = vcs_directory
-                self.apt_repo = apt_repo
-
-            def can_fix(self, problem):
-                requirement = problem_to_upstream_requirement(problem)
-                if requirement is None:
-                    return False
-                return find_upstream(requirement) is not None
-
-            def _fix(self, problem, phase: Tuple[str, ...]):
-                requirement = problem_to_upstream_requirement(problem)
-                if requirement is None:
-                    return False
-                logging.debug(
-                    'Translated problem %r to requirement %r', problem, requirement)
-                upstream_info = find_upstream(requirement)
-                if upstream_info is None:
-                    logging.error(
-                        'Unable to find upstream information for requirement %r',
-                        requirement)
-                    return False
-                logging.info(
-                    'Packaging %r to address %r',
-                    upstream_info.branch_url, problem)
-                upstream_branch = Branch.open(upstream_info.branch_url)
-                if upstream_info.name is not None:
-                    vcs_path = os.path.join(
-                        self.vcs_directory,
-                        upstream_info.name.replace('/', '-'))
-                else:
-                    raise AssertionError('no upstream name provided')
-                if os.path.exists(vcs_path):
-                    shutil.rmtree(vcs_path)
-                result = ControlDir.create_branch_convenience(
-                    vcs_path, force_new_tree=True,
-                    format=upstream_branch.controldir.cloning_metadir())
-                new_wt = result.controldir.open_workingtree()
-                new_subpath = ''
-                debianize(
-                    new_wt, new_subpath,
-                    upstream_branch, upstream_info.branch_subpath or '',
-                    use_inotify=use_inotify,
-                    diligence=args.diligence,
-                    create_dist=create_dist,
-                    trust=args.trust,
-                    check=args.check,
-                    net_access=not args.disable_net_access,
-                    force_new_directory=args.force_new_directory,
-                    force_subprocess=args.force_subprocess,
-                    compat_release=compat_release,
-                    consult_external_directory=args.consult_external_directory,
-                    verbose=args.verbose, schroot=args.schroot,
-                    debian_revision=args.debian_revision,
-                    upstream_version=upstream_info.version,
-                    upstream_version_kind=args.upstream_version_kind,
-                    requirement=requirement,
-                    team=args.team)
-                do_build(
-                    new_wt, new_subpath, self.apt_repo.directory,
-                    extra_repositories=self.apt_repo.sources_lines())
-                self.apt_repo.refresh()
-                return True
-
         if args.schroot is None:
             session = PlainSession()
         else:
@@ -1697,7 +1725,21 @@ def main(argv=None):  # noqa: C901
                             extra_repositories=apt_repo.sources_lines())
                     with SimpleTrustedAptRepo(apt_directory) as apt_repo:
                         (changes_names, cl_entry) = iterate_with_build_fixers(
-                            [DebianizeFixer(vcs_directory, apt_repo)],
+                            [DebianizeFixer(
+                                vcs_directory, apt_repo,
+                                diligence=args.diligence,
+                                trust=args.trust,
+                                check=args.check,
+                                net_access=not args.disable_net_access,
+                                force_new_directory=args.force_new_directory,
+                                team=args.team, verbose=args.verbose,
+                                force_subprocess=args.force_subprocess,
+                                upstream_version_kind=args.upstream_version_kind,
+                                debian_revision=args.debian_revision,
+                                schroot=args.schroot, use_inotify=use_inotify,
+                                consult_external_directory=args.consult_external_directory,
+                                create_dist=create_dist, compat_release=compat_release,
+                                do_build=do_build)],
                             main_build)
                 else:
                     (changes_names, cl_entry) = do_build(
