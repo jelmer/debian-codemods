@@ -237,3 +237,10 @@ the tree to run the fixer on, and ``out`` contains the directory after it has
 run. It's fine to create directories with only one or two control files, if the
 fixer only needs those. To run the tests for a single fixer, you can use "make
 check-fixer-$NAME".
+
+GitHub Action
+-------------
+
+If you're hosting a Git repository on GitHub, you can use the [lintian-brush
+GitHub action](https://github.com/gizmoguy/action-lintian-brush) to
+automatically run lintian-brush.

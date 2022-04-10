@@ -231,3 +231,10 @@ def fix_old_github_patterns(updater):
 
 def fix_watch_issues(updater):
     fix_old_github_patterns(updater)
+
+
+def main():
+
+
+if __name__ == '__main__':
+    main()
