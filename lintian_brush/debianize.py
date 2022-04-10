@@ -75,7 +75,7 @@ from ognibuild.requirements import (
     PythonPackageRequirement,
     GoPackageRequirement,
     )
-from ognibuild.resolver.apt import AptResolver
+from ognibuild.resolver.apt import AptResolver, AptRequirement
 from ognibuild.vcs import dupe_vcs_tree
 
 from upstream_ontologist.guess import (
@@ -1168,33 +1168,52 @@ def find_cargo_crate_upstream(requirement):
         name=name, version=str(version) if version else None)
 
 
-def find_apt_upstream(requirement: Requirement) -> Optional[UpstreamInfo]:
+def apt_to_cargo_requirement(m, rels):
+    name = m.group(1)
+    version = m.group(2)
+    if m.group(3):
+        features = set(m.group(3)[1:].split('-'))
+    else:
+        features = set()
+    return CargoCrateRequirement(name, version=version, features=features)
+
+
+def apt_to_python_requirement(m, rels):
+    name = m.group(2)
+    python_version = m.group(1)
+    return PythonPackageRequirement(name, python_version=(python_version or None))
+
+
+def apt_to_go_requirement(m, rels):
+    parts = m.group(1).split('-')
+    if parts[0] == 'github':
+        parts[0] = 'github.com'
+    if parts[0] == 'gopkg':
+        parts[0] = 'gopkg.in'
+    return GoPackageRequirement('/'.join(parts))
+
+
+BINARY_PACKAGE_UPSTREAM_MATCHERS = [
+    (r'librust-(.*)-([^-+]+)(\+.*?)-dev', apt_to_cargo_requirement),
+    (r'python([0-9.]*)-(.*)', apt_to_python_requirement),
+    (r'golang-(.*)-dev', apt_to_go_requirement),
+]
+
+
+_BINARY_PACKAGE_UPSTREAM_MATCHERS = [
+    (re.compile(r), fn) for (r, fn) in BINARY_PACKAGE_UPSTREAM_MATCHERS]
+
+
+def find_apt_upstream(requirement: AptRequirement) -> Optional[UpstreamInfo]:
     for option in requirement.relations:
         for rel in option:
-            m = re.match(r'librust-(.*)-([^-+]+)(\+.*?)-dev', rel['name'])
-            if m:
-                name = m.group(1)
-                version = m.group(2)
-                if m.group(3):
-                    features = set(m.group(3)[1:].split('-'))
-                else:
-                    features = set()
-                return find_upstream(
-                    CargoCrateRequirement(name, version=version, features=features))
-            m = re.match(r'python([0-9.]*)-(.*)', rel['name'])
-            if m:
-                name = m.group(2)
-                python_version = m.group(1)
-                return find_upstream(
-                    PythonPackageRequirement(name, python_version=(python_version or None)))
-            m = re.match(r'golang-(.*)-dev', rel['name'])
-            if m:
-                parts = m.group(1).split('-')
-                if parts[0] == 'github':
-                    parts[0] = 'github.com'
-                if parts[0] == 'gopkg':
-                    parts[0] = 'gopkg.in'
-                return find_upstream(GoPackageRequirement('/'.join(parts)))
+            for matcher, fn in _BINARY_PACKAGE_UPSTREAM_MATCHERS:
+                m = matcher.match(rel['name'])
+                if m:
+                    return find_upstream(fn(m, rel['version']))
+
+            logging.warning('Unable to map binary package name %s to upstream', rel['name'])
+    return None
 
 
 def find_or_upstream(requirement: Requirement) -> Optional[UpstreamInfo]:
@@ -1578,7 +1597,6 @@ def main(argv=None):  # noqa: C901
             logging.fatal('%s: not a valid branch: %s', args.upstream, e)
             return 1
     elif args.debian_binary:
-        from ognibuild.resolver.apt import AptRequirement
         apt_requirement = AptRequirement.from_str(args.debian_binary)
         upstream_info = find_apt_upstream(apt_requirement)
         if not upstream_info:
