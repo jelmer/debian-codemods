@@ -88,6 +88,13 @@ from upstream_ontologist.debian import (
     valid_debian_package_name,
 )
 
+from breezy.plugins.debian import default_orig_dir
+from breezy.plugins.debian.merge_upstream import (
+    get_tarballs,
+    do_import,
+    get_existing_imported_upstream_revids,
+    )
+from breezy.plugins.debian.import_dsc import UpstreamAlreadyImported
 from breezy.plugins.debian.upstream import PackageVersionNotPresent
 from breezy.plugins.debian.upstream.pristinetar import get_pristine_tar_source
 from breezy.plugins.debian.upstream.branch import (
@@ -292,14 +299,6 @@ def default_create_dist(session, tree, package, version, target_dir):
 def import_upstream_version_from_dist(
         wt, subpath, upstream_source, source_name, upstream_version,
         session):
-    from breezy.plugins.debian import default_orig_dir
-    from breezy.plugins.debian.merge_upstream import (
-        get_tarballs,
-        do_import,
-        get_existing_imported_upstream_revids,
-        )
-    from breezy.plugins.debian.import_dsc import UpstreamAlreadyImported
-
     orig_dir = os.path.abspath(default_orig_dir)
 
     tag_names = {}
@@ -1148,10 +1147,10 @@ def find_cargo_crate_upstream(requirement):
     upstream_branch = data['crate']['repository']
     name = 'rust-' + data['crate']['name'].replace('_', '-')
     version = None
-    if requirement.version is not None:
+    if requirement.api_version is not None:
         for version_info in data['versions']:
-            if (not version_info['num'].startswith(requirement.version + '.') and
-                    not version_info['num'] == requirement.version):
+            if (not version_info['num'].startswith(requirement.api_version + '.') and
+                    not version_info['num'] == requirement.api_version):
                 continue
             if version is None:
                 version = semver.VersionInfo.parse(version_info['num'])
@@ -1159,8 +1158,8 @@ def find_cargo_crate_upstream(requirement):
                 version = semver.max_ver(version, semver.VersionInfo.parse(version_info['num']))
         if version is None:
             logging.warning(
-                'Unable to find version of crate %s that matches version %s',
-                name, requirement.version)
+                'Unable to find version of crate %s that matches API version %s',
+                name, requirement.api_version)
         else:
             name += '-' + semver_pair(str(version))
     return UpstreamInfo(
@@ -1170,18 +1169,37 @@ def find_cargo_crate_upstream(requirement):
 
 def apt_to_cargo_requirement(m, rels):
     name = m.group(1)
-    version = m.group(2)
+    api_version = m.group(2)
     if m.group(3):
         features = set(m.group(3)[1:].split('-'))
     else:
         features = set()
-    return CargoCrateRequirement(name, version=version, features=features)
+    if not rels:
+        minimum_version = None
+    elif len(rels) == 1 and rels[0][0] == '>=':
+        minimum_version = Version(rels[0][1]).upstream_version
+    else:
+        logging.warning('Unable to parse Debian version %r', rels)
+        minimum_version = None
+
+    return CargoCrateRequirement(
+        name, api_version=api_version,
+        features=features, minimum_version=minimum_version)
 
 
 def apt_to_python_requirement(m, rels):
     name = m.group(2)
     python_version = m.group(1)
-    return PythonPackageRequirement(name, python_version=(python_version or None))
+    if not rels:
+        minimum_version = None
+    elif len(rels) == 1 and rels[0][0] == '>=':
+        minimum_version = Version(rels[0][1]).upstream_version
+    else:
+        logging.warning('Unable to parse Debian version %r', rels)
+        minimum_version = None
+    return PythonPackageRequirement(
+        name, python_version=(python_version or None),
+        minimum_version=minimum_version)
 
 
 def apt_to_go_requirement(m, rels):
@@ -1190,7 +1208,14 @@ def apt_to_go_requirement(m, rels):
         parts[0] = 'github.com'
     if parts[0] == 'gopkg':
         parts[0] = 'gopkg.in'
-    return GoPackageRequirement('/'.join(parts))
+    if not rels:
+        version = None
+    elif len(rels) == 1 and rels[0][0] == '=':
+        version = Version(rels[0][1]).upstream_version
+    else:
+        logging.warning('Unable to parse Debian version %r', rels)
+        version = None
+    return GoPackageRequirement('/'.join(parts), version=version)
 
 
 BINARY_PACKAGE_UPSTREAM_MATCHERS = [
@@ -1208,9 +1233,10 @@ def find_apt_upstream(requirement: AptRequirement) -> Optional[UpstreamInfo]:
     for option in requirement.relations:
         for rel in option:
             for matcher, fn in _BINARY_PACKAGE_UPSTREAM_MATCHERS:
-                m = matcher.match(rel['name'])
+                m = matcher.fullmatch(rel['name'])
                 if m:
-                    return find_upstream(fn(m, rel['version']))
+                    upstream_requirement = fn(m, [rel['version']] if rel['version'] else [])
+                    return find_upstream(upstream_requirement)
 
             logging.warning('Unable to map binary package name %s to upstream', rel['name'])
     return None
