@@ -34,7 +34,7 @@ import shutil
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
-from typing import Optional, Tuple, List, Dict
+from typing import Optional, Tuple, List, Dict, Any
 from urllib.parse import urlparse
 
 
@@ -52,7 +52,7 @@ from breezy.workingtree import WorkingTree
 
 from ognibuild import DetailedFailure, UnidentifiedError
 from ognibuild.buildlog import InstallFixer, problem_to_upstream_requirement
-from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound
+from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound, lookup_buildsystem_cls
 from ognibuild.debian.apt import AptManager
 from ognibuild.debian.build import DEFAULT_BUILDER
 from ognibuild.debian.fix_build import (
@@ -654,18 +654,20 @@ def process_cargo(es, session, wt, subpath, debian_path, upstream_version, metad
     wt.branch.generate_revision_history(NULL_REVISION)
     reset_tree(wt, wt.basis_tree(), subpath)
     from debmutate.debcargo import DebcargoControlShimEditor
-    upstream_name = metadata['Name'].replace('_', '-')
-    control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), upstream_name, upstream_version))
+    crate = metadata.get('X-Cargo-Crate')
+    if crate is None:
+        crate = metadata['Name'].replace('_', '-')
+    control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), crate, upstream_version))
     # Only set semver_suffix if this is not the latest version
     import semver
     try:
         desired_version = semver.VersionInfo.parse(upstream_version)
     except ValueError as e:
         raise BuildSystemProcessError(buildsystem, str(e), e)
-    data = load_crate_info(upstream_name)
+    data = load_crate_info(crate)
     if data is None:
         raise BuildSystemProcessError(
-            buildsystem, 'Crate does not exist' % upstream_name)
+            buildsystem, 'Crate does not exist' % crate)
     for version_info in data['versions']:
         available_version = semver.VersionInfo.parse(version_info['num'])
         if (available_version.major, available_version.minor) > (desired_version.major, desired_version.minor):
@@ -793,7 +795,7 @@ def generic_get_source_name(wt, metadata):
 
 def get_upstream_version(
         upstream_source, metadata, local_dir=None,
-        upstream_version=None):
+        upstream_version: Optional[str] = None) -> Tuple[str, str]:
     if upstream_version is None:
         upstream_version, mangled_upstream_version = upstream_source.get_latest_version(metadata.get("Name"), None)
     else:
@@ -868,6 +870,8 @@ def debianize(  # noqa: C901
     upstream_version: Optional[str] = None,
     requirement: Optional[Requirement] = None,
     team: Optional[str] = None,
+    buildsystem_name: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None
 ):
     if committer is None:
         committer = get_committer(wt)
@@ -878,7 +882,10 @@ def debianize(  # noqa: C901
             raise DebianDirectoryExists(wt.abspath(subpath))
 
     metadata_items = []
-    metadata = {}
+    if metadata is None:
+        metadata = {}
+    else:
+        metadata = dict(metadata)
 
     def import_metadata_from_path(p):
         metadata_items.extend(guess_upstream_info(p, trust_package=trust))
@@ -912,9 +919,12 @@ def debianize(  # noqa: C901
                 upstream_branch, version_kind=upstream_version_kind, local_dir=wt.controldir,
                 create_dist=(create_dist or partial(default_create_dist, session)))
 
-            upstream_version, mangled_upstream_version = get_upstream_version(
-                upstream_source, metadata, local_dir=wt.controldir,
-                upstream_version=upstream_version)
+            if upstream_version is not None:
+                mangled_upstream_version = debianize_upstream_version(upstream_version)
+            else:
+                upstream_version, mangled_upstream_version = get_upstream_version(
+                    upstream_source, metadata, local_dir=wt.controldir,
+                    upstream_version=upstream_version)
 
             result.upstream_version = upstream_version
 
@@ -953,17 +963,30 @@ def debianize(  # noqa: C901
                 wt.put_file_bytes_non_atomic(
                     os.path.join(debian_path, 'source', 'format'), b'3.0 (quilt)\n')
 
-            upstream_vcs_tree = upstream_source.revision_tree(source_name, mangled_upstream_version)
+            try:
+                upstream_vcs_tree = upstream_source.revision_tree(source_name, mangled_upstream_version)
+            except PackageVersionNotPresent:
+                logging.warning(
+                    'Unable to find upstream version %s/%s in upstream source %r. '
+                    'Unable to extract metadata.',
+                    source_name, mangled_upstream_version, upstream_source)
+            else:
+                # TODO(jelmer): Don't export, just access from memory.
+                exported_upstream_tree_path = es.enter_context(TemporaryDirectory())
+                dupe_vcs_tree(upstream_vcs_tree, exported_upstream_tree_path)
+                import_metadata_from_path(exported_upstream_tree_path)
 
-            # TODO(jelmer): Don't export, just access from memory.
-            exported_upstream_tree_path = es.enter_context(TemporaryDirectory())
-            dupe_vcs_tree(upstream_vcs_tree, exported_upstream_tree_path)
-            import_metadata_from_path(exported_upstream_tree_path)
-            buildsystem_subpath, buildsystem = get_buildsystem(exported_upstream_tree_path)
+            if buildsystem_name is None:
+                buildsystem_subpath, buildsystem = get_buildsystem(exported_upstream_tree_path)
+                if buildsystem:
+                    buildsystem_name = buildsystem.name
+            else:
+                buildsystem = None
+                buildsystem_subpath = ''
 
-            if buildsystem:
+            if buildsystem_name:
                 try:
-                    process = PROCESSORS[buildsystem.name]
+                    process = PROCESSORS[buildsystem_name]
                 except KeyError:
                     process = process_default
             else:
@@ -1072,14 +1095,17 @@ def debianize(  # noqa: C901
 @dataclass
 class UpstreamInfo:
     name: Optional[str]
+    buildsystem: Optional[str] = None
     branch_url: Optional[str] = None
     branch_subpath: Optional[str] = None
     tarball_url: Optional[str] = None
     version: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def json(self):
         return {
             'name': self.name,
+            'buildsystem': self.buildsystem,
             'branch_url': self.branch_url,
             'branch_subpath': self.branch_subpath,
             'tarball_url': self.tarball_url,
@@ -1166,7 +1192,9 @@ def find_cargo_crate_upstream(requirement):
             name += '-' + semver_pair(str(version))
     return UpstreamInfo(
         branch_url=upstream_branch, branch_subpath=None,
-        name=name, version=str(version) if version else None)
+        name=name, version=str(version) if version else None,
+        metadata={'X-Cargo-Crate': data['crate']['name']},
+        buildsystem='cargo')
 
 
 def apt_to_cargo_requirement(m, rels):
@@ -1439,7 +1467,9 @@ class DebianizeFixer(BuildFixer):
             upstream_version=upstream_info.version,
             upstream_version_kind=self.upstream_version_kind,
             requirement=requirement,
-            team=self.team)
+            buildsystem_name=upstream_info.buildsystem,
+            team=self.team,
+            metadata=upstream_info.metadata)
         self.do_build(
             new_wt, new_subpath, self.apt_repo.directory,
             extra_repositories=self.apt_repo.sources_lines())
