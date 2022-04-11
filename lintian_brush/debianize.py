@@ -1039,6 +1039,7 @@ def debianize(  # noqa: C901
             wt,
             list(lintian_fixers),
             update_changelog=False,
+            run_gbp_dch=False,
             compat_release=compat_release,
             verbose=verbose,
             minimum_certainty=minimum_certainty,
