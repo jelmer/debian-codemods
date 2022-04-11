@@ -657,6 +657,10 @@ def process_cargo(es, session, wt, subpath, debian_path, upstream_version, metad
     crate = metadata.get('X-Cargo-Crate')
     if crate is None:
         crate = metadata['Name'].replace('_', '-')
+    if not wt.has_filename(debian_path):
+        wt.mkdir(debian_path)
+    if not wt.is_versioned(debian_path):
+        wt.add(debian_path)
     control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), crate, upstream_version))
     # Only set semver_suffix if this is not the latest version
     import semver
@@ -850,7 +854,7 @@ def find_wnpp_bugs_harder(source_name, upstream_name):
 
 def debianize(  # noqa: C901
     wt: WorkingTree, subpath: str,
-    upstream_branch: Branch, upstream_subpath: Optional[str],
+    upstream_branch: Optional[Branch], upstream_subpath: Optional[str],
     use_inotify: Optional[bool] = None,
     diligence: int = 0,
     trust: bool = False,
@@ -908,6 +912,8 @@ def debianize(  # noqa: C901
 
             if not wt.has_filename(debian_path):
                 wt.mkdir(debian_path)
+            if not wt.is_versioned(debian_path):
+                wt.add(debian_path)
 
             if schroot is None:
                 session = PlainSession()
@@ -915,9 +921,12 @@ def debianize(  # noqa: C901
                 logging.info('Using schroot %s', schroot)
                 session = SchrootSession(schroot)
 
-            upstream_source = UpstreamBranchSource.from_branch(
-                upstream_branch, version_kind=upstream_version_kind, local_dir=wt.controldir,
-                create_dist=(create_dist or partial(default_create_dist, session)))
+            if upstream_branch:
+                upstream_source = UpstreamBranchSource.from_branch(
+                    upstream_branch, version_kind=upstream_version_kind, local_dir=wt.controldir,
+                    create_dist=(create_dist or partial(default_create_dist, session)))
+            else:
+                upstream_source = None
 
             if upstream_version is not None:
                 mangled_upstream_version = debianize_upstream_version(upstream_version)
@@ -951,7 +960,7 @@ def debianize(  # noqa: C901
 
                 if wt.has_filename(debian_path) and force_new_directory:
                     shutil.rmtree(wt.abspath(debian_path))
-                    os.mkdir(wt.abspath(debian_path))
+                    wt.mkdir(wt.abspath(debian_path))
                     try:
                         wt.commit(
                             'Remove old debian directory', specific_files=[debian_path],
@@ -960,21 +969,23 @@ def debianize(  # noqa: C901
                         pass
 
                 wt.mkdir(os.path.join(debian_path, 'source'))
+                wt.add(os.path.join(debian_path, 'source'))
                 wt.put_file_bytes_non_atomic(
                     os.path.join(debian_path, 'source', 'format'), b'3.0 (quilt)\n')
 
-            try:
-                upstream_vcs_tree = upstream_source.revision_tree(source_name, mangled_upstream_version)
-            except PackageVersionNotPresent:
-                logging.warning(
-                    'Unable to find upstream version %s/%s in upstream source %r. '
-                    'Unable to extract metadata.',
-                    source_name, mangled_upstream_version, upstream_source)
-            else:
-                # TODO(jelmer): Don't export, just access from memory.
-                exported_upstream_tree_path = es.enter_context(TemporaryDirectory())
-                dupe_vcs_tree(upstream_vcs_tree, exported_upstream_tree_path)
-                import_metadata_from_path(exported_upstream_tree_path)
+            if upstream_source:
+                try:
+                    upstream_vcs_tree = upstream_source.revision_tree(source_name, mangled_upstream_version)
+                except PackageVersionNotPresent:
+                    logging.warning(
+                        'Unable to find upstream version %s/%s in upstream source %r. '
+                        'Unable to extract metadata.',
+                        source_name, mangled_upstream_version, upstream_source)
+                else:
+                    # TODO(jelmer): Don't export, just access from memory.
+                    exported_upstream_tree_path = es.enter_context(TemporaryDirectory())
+                    dupe_vcs_tree(upstream_vcs_tree, exported_upstream_tree_path)
+                    import_metadata_from_path(exported_upstream_tree_path)
 
             if buildsystem_name is None:
                 buildsystem_subpath, buildsystem = get_buildsystem(exported_upstream_tree_path)
@@ -1432,10 +1443,19 @@ class DebianizeFixer(BuildFixer):
                 'Unable to find upstream information for requirement %r',
                 requirement)
             return False
-        logging.info(
-            'Packaging %r to address %r',
-            upstream_info.branch_url, problem)
-        upstream_branch = Branch.open(upstream_info.branch_url)
+        if upstream_info.branch_url:
+            logging.info(
+                'Packaging %r to address %r',
+                upstream_info.branch_url, problem)
+            try:
+                upstream_branch = Branch.open(upstream_info.branch_url)
+            except NotBranchError as e:
+                logging.warning(
+                    'Unable to open branch %s: %r', upstream_info.branch_url,
+                    e)
+                upstream_branch = None
+        else:
+            upstream_branch = None
         if upstream_info.name is not None:
             vcs_path = os.path.join(
                 self.vcs_directory,
@@ -1444,9 +1464,14 @@ class DebianizeFixer(BuildFixer):
             raise AssertionError('no upstream name provided')
         if os.path.exists(vcs_path):
             shutil.rmtree(vcs_path)
+        if upstream_branch:
+            format = upstream_branch.controldir.cloning_metadir()
+        else:
+            # TODO(jelmer): default to git?
+            format = None
         result = ControlDir.create_branch_convenience(
             vcs_path, force_new_tree=True,
-            format=upstream_branch.controldir.cloning_metadir())
+            format=format)
         new_wt = result.controldir.open_workingtree()
         new_subpath = ''
         debianize(
