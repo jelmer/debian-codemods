@@ -950,8 +950,8 @@ def debianize(  # noqa: C901
                         pass
 
                 wt.mkdir(os.path.join(debian_path, 'source'))
-                with open(os.path.join(debian_path, 'source', 'format'), 'w') as f:
-                    f.write('3.0 (quilt)\n')
+                wt.put_file_bytes_non_atomic(
+                    os.path.join(debian_path, 'source', 'format'), b'3.0 (quilt)\n')
 
             upstream_vcs_tree = upstream_source.revision_tree(source_name, mangled_upstream_version)
 
@@ -1040,7 +1040,6 @@ def debianize(  # noqa: C901
             wt,
             list(lintian_fixers),
             update_changelog=False,
-            run_gbp_dch=False,
             compat_release=compat_release,
             verbose=verbose,
             minimum_certainty=minimum_certainty,
