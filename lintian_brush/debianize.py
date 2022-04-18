@@ -66,7 +66,7 @@ from ognibuild.dist import (  # noqa: F401
     )
 from ognibuild.fix_build import iterate_with_build_fixers, BuildFixer
 
-
+from ognibuild.session import SessionSetupFailure
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
 from ognibuild.requirements import (
@@ -283,6 +283,8 @@ def default_create_dist(session, tree, package, version, target_dir):
             "Build system does not support dist, falling back "
             "to export.")
         return None
+    except SessionSetupFailure as e:
+        raise DistCommandFailed(str(e), 'session-setup-failure')
     except DetailedFailure as e:
         raise DistCommandFailed(str(e), e.error)
     except UnidentifiedError as e:
