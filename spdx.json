@@ -1,46 +1,46 @@
 {
     "exception_ids": [
-        "mif-exception",
-        "GPL-3.0-linking-source-exception",
-        "SHL-2.0",
-        "PS-or-PDF-font-exception-20170817",
-        "Bison-exception-2.2",
-        "Libtool-exception",
-        "GPL-3.0-linking-exception",
-        "Swift-exception",
-        "Classpath-exception-2.0",
-        "LZMA-exception",
-        "LGPL-3.0-linking-exception",
-        "eCos-exception-2.0",
-        "SHL-2.1",
-        "FLTK-exception",
-        "Font-exception-2.0",
-        "GCC-exception-3.1",
-        "Universal-FOSS-exception-1.0",
-        "Linux-syscall-note",
-        "389-exception",
-        "OCCT-exception-1.0",
-        "Qt-GPL-exception-1.0",
-        "OpenJDK-assembly-exception-1.0",
-        "i2p-gpl-java-exception",
-        "Nokia-Qt-exception-1.1",
         "freertos-exception-2.0",
-        "OCaml-LGPL-linking-exception",
-        "DigiRule-FOSS-exception",
-        "Bootloader-exception",
-        "GCC-exception-2.0",
+        "Swift-exception",
+        "Qt-LGPL-exception-1.1",
         "gnu-javamail-exception",
-        "Fawkes-Runtime-exception",
-        "openvpn-openssl-exception",
-        "WxWindows-exception-3.1",
         "CLISP-exception-2.0",
-        "Autoconf-exception-2.0",
+        "eCos-exception-2.0",
         "GPL-CC-1.0",
+        "DigiRule-FOSS-exception",
+        "Font-exception-2.0",
+        "Qt-GPL-exception-1.0",
+        "PS-or-PDF-font-exception-20170817",
+        "GPL-3.0-linking-source-exception",
+        "Linux-syscall-note",
+        "GCC-exception-2.0",
+        "LZMA-exception",
+        "Autoconf-exception-3.0",
         "u-boot-exception-2.0",
         "LLVM-exception",
-        "Qt-LGPL-exception-1.1",
+        "OCaml-LGPL-linking-exception",
+        "Autoconf-exception-2.0",
+        "Bootloader-exception",
+        "LGPL-3.0-linking-exception",
+        "openvpn-openssl-exception",
+        "FLTK-exception",
+        "Bison-exception-2.2",
+        "OCCT-exception-1.0",
+        "GCC-exception-3.1",
+        "OpenJDK-assembly-exception-1.0",
+        "WxWindows-exception-3.1",
+        "Fawkes-Runtime-exception",
+        "Nokia-Qt-exception-1.1",
         "Qwt-exception-1.0",
-        "Autoconf-exception-3.0"
+        "Universal-FOSS-exception-1.0",
+        "Classpath-exception-2.0",
+        "SHL-2.0",
+        "GPL-3.0-linking-exception",
+        "SHL-2.1",
+        "Libtool-exception",
+        "mif-exception",
+        "389-exception",
+        "i2p-gpl-java-exception"
     ],
     "licenses": {
         "0BSD": {
@@ -799,6 +799,9 @@
         "JasPer-2.0": {
             "name": "JasPer License"
         },
+        "KiCad-libraries-exception": {
+            "name": "KiCad Libraries Exception"
+        },
         "LAL-1.2": {
             "name": "Licence Art Libre 1.2"
         },
@@ -1482,6 +1485,9 @@
         },
         "mpich2": {
             "name": "mpich2 License"
+        },
+        "mplus": {
+            "name": "mplus Font License"
         },
         "psfrag": {
             "name": "psfrag License"
