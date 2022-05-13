@@ -45,7 +45,7 @@ from debian.deb822 import PkgRelation
 from breezy import osutils
 from breezy.branch import Branch
 from breezy.controldir import ControlDir
-from breezy.errors import AlreadyBranchError, NotBranchError, FileExists
+from breezy.errors import AlreadyBranchError, NotBranchError, FileExists, NoSuchRevision
 from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.revision import NULL_REVISION
 from breezy.workingtree import WorkingTree
@@ -292,6 +292,9 @@ def default_create_dist(session, tree, package, version, target_dir):
         return None
     except SessionSetupFailure as e:
         raise DistCommandFailed(str(e), 'session-setup-failure')
+    except DistNoTarball as e:
+        logging.info("Build system did not create a tarball: %s", e)
+        return None
     except DetailedFailure as e:
         raise DistCommandFailed(str(e), e.error)
     except UnidentifiedError as e:
@@ -976,7 +979,7 @@ def debianize(  # noqa: C901
             if upstream_source:
                 try:
                     upstream_vcs_tree = upstream_source.revision_tree(source_name, mangled_upstream_version)
-                except PackageVersionNotPresent:
+                except (PackageVersionNotPresent, NoSuchRevision):
                     logging.warning(
                         'Unable to find upstream version %s/%s in upstream source %r. '
                         'Unable to extract metadata.',
