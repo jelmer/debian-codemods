@@ -92,6 +92,7 @@ subset of the issues:
 * homepage-field-uses-insecure-uri
 * homepage-in-binary-package
 * init.d-script-needs-depends-on-lsb-base
+* initial-upload-closes-no-bugs
 * insecure-copyright-format-uri
 * installable-field-mirrors-source
 * invalid-short-name-in-dep5-copyright
@@ -109,6 +110,7 @@ subset of the issues:
 * missing-debian-source-format
 * missing-vcs-browser-field
 * misspelled-closes-bug
+* new-package-uses-date-based-version-number
 * no-copyright-file
 * no-homepage-field
 * no-versioned-debhelper-prerequisite
