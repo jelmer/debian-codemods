@@ -52,7 +52,7 @@ from breezy.workingtree import WorkingTree
 
 from ognibuild import DetailedFailure, UnidentifiedError
 from ognibuild.buildlog import InstallFixer, problem_to_upstream_requirement
-from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound, lookup_buildsystem_cls
+from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound
 from ognibuild.debian.apt import AptManager
 from ognibuild.debian.build import DEFAULT_BUILDER
 from ognibuild.debian.fix_build import (
