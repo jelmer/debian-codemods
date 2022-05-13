@@ -600,6 +600,7 @@
 - tag: init.d-script-starts-in-stop-runlevel
 - tag: init.d-script-uses-usr-interpreter
 - tag: initial-upload-closes-no-bugs
+  status: implemented
 - tag: install-info-used-in-maintainer-script
   comment: needs-shell-parser
 - tag: interpreter-in-usr-local
