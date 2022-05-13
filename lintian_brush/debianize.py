@@ -123,6 +123,7 @@ from . import (
     get_committer,
     version_string as lintian_brush_version_string,
 )
+from .debbugs import find_archived_wnpp_bugs, find_wnpp_bugs
 from .debhelper import (
     maximum_debhelper_compat_version,
     write_rules_template as write_debhelper_rules_template,
@@ -191,36 +192,6 @@ def write_changelog_template(path, source_name, version, author=None, wnpp_bugs=
     )
     with open(path, "w") as f:
         f.write(cl.__str__().strip("\n") + "\n")
-
-
-async def find_archived_wnpp_bugs(source_name):
-    try:
-        from .udd import connect_udd_mirror
-    except ModuleNotFoundError:
-        logging.warning("asyncpg not available, unable to find wnpp bugs.")
-        return []
-    async with await connect_udd_mirror() as conn:
-        return [
-            (row[0], row[1])
-            for row in await conn.fetch("""\
-select id, substring(title, 0, 3) from archived_bugs where package = 'wnpp' and
-title like 'ITP: ' || $1 || ' -- %' OR
-title like 'RFP: ' || $1 || ' -- %'
-""", source_name)]
-
-
-async def find_wnpp_bugs(source_name):
-    try:
-        from .udd import connect_udd_mirror
-    except ModuleNotFoundError:
-        logging.warning("asyncpg not available, unable to find wnpp bugs.")
-        return []
-    async with await connect_udd_mirror() as conn:
-        return [
-            (row[0], row['type'])
-            for row in await conn.fetch("""\
-select id, type from wnpp where source = $1 and type in ('ITP', 'RFP')
-""", source_name)]
 
 
 MINIMUM_CERTAINTY = "possible"  # For now..

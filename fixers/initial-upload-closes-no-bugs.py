@@ -3,8 +3,7 @@
 import asyncio
 from debmutate.changelog import ChangelogEditor
 import sys
-# TODO(jelmer): Move find_wnpp_bugs_harder to lintian_brush.debbugs
-from lintian_brush.debianize import find_archived_wnpp_bugs, find_wnpp_bugs
+from lintian_brush.debbugs import find_archived_wnpp_bugs, find_wnpp_bugs
 from lintian_brush.fixer import net_access_allowed, report_result
 
 
