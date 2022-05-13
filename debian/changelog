@@ -2,6 +2,7 @@ lintian-brush (0.125) UNRELEASED; urgency=medium
 
   * Depend on newer brz-debian.
   * Add fixer for new-package-uses-date-based-version-number.
+  * Add fixerf for initial-upload-closes-no-bugs.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 10 Apr 2022 17:34:46 +0100
 

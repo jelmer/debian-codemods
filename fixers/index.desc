@@ -633,3 +633,7 @@
 - script: new-package-uses-date-based-version-number.py
   lintian-tags:
    - new-package-uses-date-based-version-number
+
+- script: initial-upload-closes-no-bugs.py
+  lintian-tags:
+   - initial-upload-closes-no-bugs
