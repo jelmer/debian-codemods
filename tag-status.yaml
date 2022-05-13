@@ -870,7 +870,9 @@
 - tag: nested-examples-directory
 - tag: new-essential-package
 - tag: new-package-should-not-package-python2-module
+  difficulty: impossible
 - tag: new-package-uses-date-based-version-number
+  status: implemented
 - tag: newer-debconf-templates
   status: implemented
 - tag: newer-standards-version

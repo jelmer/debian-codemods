@@ -629,3 +629,7 @@
 - script: obsolete-vim-addon-manager.py
   lintian-tags:
    - obsolete-vim-addon-manager
+
+- script: new-package-uses-date-based-version-number.py
+  lintian-tags:
+   - new-package-uses-date-based-version-number

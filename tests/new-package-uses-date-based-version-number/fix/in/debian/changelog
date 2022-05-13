@@ -1,0 +1,5 @@
+example (20200101-1) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #XXXXXX)
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 13 May 2022 19:15:57 +0100
