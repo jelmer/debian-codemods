@@ -802,16 +802,12 @@ def get_upstream_version(
     return upstream_version, mangled_upstream_version
 
 
-def find_wnpp_bugs_harder(source_name, upstream_name):
-    import asyncio
-
-    loop = asyncio.get_event_loop()
-    wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(source_name))
+async def find_wnpp_bugs_harder(source_name, upstream_name):
+    wnpp_bugs = await find_wnpp_bugs(source_name)
     if not wnpp_bugs and source_name != upstream_name:
-        wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(upstream_name))
+        wnpp_bugs = await find_wnpp_bugs(upstream_name)
     if not wnpp_bugs:
-        wnpp_bugs = loop.run_until_complete(
-            find_archived_wnpp_bugs(source_name)
+        wnpp_bugs = await find_archived_wnpp_bugs(source_name)
         )
         if wnpp_bugs:
             logging.warning(
@@ -1003,7 +999,11 @@ def debianize(  # noqa: C901
                 raise SourcePackageNameInvalid(source['Source'])
 
             if net_access:
-                wnpp_bugs = find_wnpp_bugs_harder(source['Source'], metadata.get('Name'))
+                import asyncio
+
+                loop = asyncio.get_event_loop()
+                wnpp_bugs = loop.run_until_complete(
+                    find_wnpp_bugs_harder(source['Source'], metadata.get('Name')))
             else:
                 wnpp_bugs = None
 
