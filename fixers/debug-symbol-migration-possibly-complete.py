@@ -121,8 +121,7 @@ with RulesEditor() as editor:
                 newlines.append(b'\t' + ret)
             else:
                 newlines.append(line)
-        oldlines = rule.lines
-        if oldlines != newlines:
+        if rule.lines[1:] != newlines:
             rule.lines = [rule.lines[0]] + newlines
             discard_pointless_override(editor.makefile, rule, ignore_comments=True)
 
