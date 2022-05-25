@@ -969,6 +969,9 @@ def debianize(  # noqa: C901
                 try:
                     process = PROCESSORS[buildsystem_name]
                 except KeyError:
+                    logging.warning(
+                        'No support in debianize for build system %s, falling back to default.',
+                        buildsystem_name)
                     process = process_default
             else:
                 process = process_default
