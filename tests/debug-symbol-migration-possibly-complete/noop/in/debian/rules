@@ -1,0 +1,9 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_install:
+	dh_install
+
+.PHONY: override_dh_test override_dh_install
