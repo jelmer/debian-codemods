@@ -808,7 +808,6 @@ async def find_wnpp_bugs_harder(source_name, upstream_name):
         wnpp_bugs = await find_wnpp_bugs(upstream_name)
     if not wnpp_bugs:
         wnpp_bugs = await find_archived_wnpp_bugs(source_name)
-        )
         if wnpp_bugs:
             logging.warning(
                 "Found archived ITP/RFP bugs for %s: %r", source_name, [bug for bug, kind in wnpp_bugs]
