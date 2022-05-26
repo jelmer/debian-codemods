@@ -1,10 +1,14 @@
 lintian-brush (0.125) UNRELEASED; urgency=medium
 
+  [ Jelmer Vernooĳ ]
   * Depend on newer brz-debian.
   * Add fixer for new-package-uses-date-based-version-number.
   * Add fixerf for initial-upload-closes-no-bugs.
   * debug-symbol-migration-possibly-complete: avoid removing unnecessary
     overrides when not changing anything.
+
+  [ Geert Stappers ]
+  * Actually ship debianize.1.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 10 Apr 2022 17:34:46 +0100
 
