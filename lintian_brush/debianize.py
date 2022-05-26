@@ -1003,8 +1003,7 @@ def debianize(  # noqa: C901
             if net_access:
                 import asyncio
 
-                loop = asyncio.get_event_loop()
-                wnpp_bugs = loop.run_until_complete(
+                wnpp_bugs = asyncio.run(
                     find_wnpp_bugs_harder(source['Source'], metadata.get('Name')))
             else:
                 wnpp_bugs = None
@@ -1330,8 +1329,7 @@ class SimpleTrustedAptRepo(object):
             with httpd:  # to make sure httpd.server_close is called
                 httpd.serve_forever()
 
-        self.thread = Thread(target=serve_forever, args=(self.httpd, ))
-        self.thread.setDaemon(True)
+        self.thread = Thread(target=serve_forever, args=(self.httpd, ), daemon=True)
         self.thread.start()
 
     def stop(self):
