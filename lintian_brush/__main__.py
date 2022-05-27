@@ -150,6 +150,10 @@ def main(argv=None):  # noqa: C901
         "--uncertain", action="store_true", help="Include changes with lower certainty."
     )
     fixer_group.add_argument(
+        "--yolo", action="store_true", help=argparse.SUPPRESS
+    )
+
+    fixer_group.add_argument(
         "--force-subprocess", action="store_true", default=False, help=argparse.SUPPRESS
     )
 
@@ -310,7 +314,7 @@ def main(argv=None):  # noqa: C901
             if update_changelog is None:
                 update_changelog = cfg.update_changelog()
         if minimum_certainty is None:
-            if args.uncertain:
+            if args.uncertain or args.yolo:
                 minimum_certainty = "possible"
             else:
                 minimum_certainty = DEFAULT_MINIMUM_CERTAINTY

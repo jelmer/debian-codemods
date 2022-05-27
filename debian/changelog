@@ -1,3 +1,9 @@
+lintian-brush (0.126) UNRELEASED; urgency=medium
+
+  * Add --yolo argument.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 28 May 2022 00:38:38 +0100
+
 lintian-brush (0.125) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]

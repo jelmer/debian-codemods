@@ -1003,7 +1003,7 @@ def debianize(  # noqa: C901
             if net_access:
                 import asyncio
 
-                loop = asyncio.new_event_loop()
+                loop = asyncio.get_event_loop()
 
                 wnpp_bugs = loop.run_until_complete(
                     find_wnpp_bugs_harder(source['Source'], metadata.get('Name')))

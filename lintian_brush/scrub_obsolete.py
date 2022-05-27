@@ -156,15 +156,15 @@ class PackageChecker(object):
         self.build = build
 
     def package_version(self, package: str) -> Optional[Version]:
-        loop = asyncio.new_event_loop()
+        loop = asyncio.get_event_loop()
         return loop.run_until_complete(_package_version(package, self.release))
 
     def package_provides(self, package):
-        loop = asyncio.new_event_loop()
+        loop = asyncio.get_event_loop()
         return loop.run_until_complete(_package_provides(package, self.release))
 
     def is_essential(self, package: str) -> bool:
-        loop = asyncio.new_event_loop()
+        loop = asyncio.get_event_loop()
         if self.build:
             if loop.run_until_complete(_package_build_essential(package, self.release)):
                 return True
