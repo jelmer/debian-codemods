@@ -34,7 +34,7 @@ import shutil
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Optional, Tuple, List, Dict, Any, Callable
 from urllib.parse import urlparse
 
 
@@ -52,7 +52,7 @@ from breezy.workingtree import WorkingTree
 
 from ognibuild import DetailedFailure, UnidentifiedError
 from ognibuild.buildlog import InstallFixer, problem_to_upstream_requirement
-from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound
+from ognibuild.buildsystem import get_buildsystem, NoBuildToolsFound, BuildSystem
 from ognibuild.debian.apt import AptManager
 from ognibuild.debian.build import DEFAULT_BUILDER
 from ognibuild.debian.fix_build import (
@@ -66,7 +66,7 @@ from ognibuild.dist import (  # noqa: F401
     )
 from ognibuild.fix_build import iterate_with_build_fixers, BuildFixer
 
-from ognibuild.session import SessionSetupFailure
+from ognibuild.session import SessionSetupFailure, Session
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
 from ognibuild.requirements import (
@@ -130,6 +130,9 @@ from .debhelper import (
 )
 from .publish import update_offical_vcs, NoVcsLocation, VcsAlreadySpecified
 from .standards_version import latest_standards_version
+
+
+Kickstarter = Callable[[WorkingTree, str], None]
 
 
 class BuildSystemProcessError(Exception):
@@ -663,7 +666,13 @@ def process_cargo(es, session, wt, subpath, debian_path, upstream_version, metad
     return control
 
 
-PROCESSORS = {
+Processor = Callable[
+    [contextlib.ExitStack, Session, WorkingTree, str, str, str,
+     Dict[str, Any], Optional[str], BuildSystem, str, Kickstarter],
+    ControlEditor]
+
+
+PROCESSORS: Dict[str, Processor] = {
     "setup.py": process_setup_py,
     "npm": process_npm,
     "maven": process_maven,
@@ -675,7 +684,7 @@ PROCESSORS = {
     "golang": process_golang,
     "R": process_r,
     "octave": process_octave,
-    }
+}
 
 
 def source_name_from_directory_name(path):
@@ -991,11 +1000,11 @@ def debianize(  # noqa: C901
                 es, session,
                 wt, subpath,
                 debian_path,
-                upstream_version=upstream_version,
-                metadata=metadata, compat_release=compat_release,
-                buildsystem=buildsystem,
-                buildsystem_subpath=buildsystem_subpath,
-                kickstart_from_dist=kickstart_from_dist)
+                upstream_version,
+                metadata, compat_release,
+                buildsystem,
+                buildsystem_subpath,
+                kickstart_from_dist)
 
             source = control.source
 
