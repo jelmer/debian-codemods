@@ -37,4 +37,10 @@ or simply:
 make check
 ```
 
+To run the tests for a specific-fixer, run something like:
+
+```shell
+make check-fixer-ancient-maintscript-entry
+```
+
 The tests are also run by the package build and autopkgtest.
