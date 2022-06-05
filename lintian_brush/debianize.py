@@ -627,7 +627,7 @@ def process_default(es, session, wt, subpath, debian_path, upstream_version, met
 def process_cargo(es, session, wt, subpath, debian_path, upstream_version, metadata, compat_release, buildsystem, buildsystem_subpath, kickstart_from_dist):
     wt.branch.generate_revision_history(NULL_REVISION)
     reset_tree(wt, wt.basis_tree(), subpath)
-    from debmutate.debcargo import DebcargoControlShimEditor
+    from debmutate.debcargo import DebcargoControlShimEditor, unmangle_debcargo_version
     crate = metadata.get('X-Cargo-Crate')
     if crate is None:
         crate = metadata['Name'].replace('_', '-')
@@ -635,7 +635,6 @@ def process_cargo(es, session, wt, subpath, debian_path, upstream_version, metad
         wt.mkdir(debian_path)
     if not wt.is_versioned(debian_path):
         wt.add(debian_path)
-    control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), crate, upstream_version))
     # Only set semver_suffix if this is not the latest version
     import semver
     try:
@@ -646,11 +645,20 @@ def process_cargo(es, session, wt, subpath, debian_path, upstream_version, metad
     if data is None:
         raise BuildSystemProcessError(
             buildsystem, 'Crate does not exist' % crate)
+    features = None
+    crate_version = None
     for version_info in data['versions']:
         available_version = semver.VersionInfo.parse(version_info['num'])
         if (available_version.major, available_version.minor) > (desired_version.major, desired_version.minor):
-            control.debcargo_editor['semver_suffix'] = True
+            semver_suffix = True
             break
+        if unmangle_debcargo_version(upstream_version) == version_info['num']:
+            crate_version = version_info['num']
+            features = list(version_info['features'])
+    else:
+        semver_suffix = False
+    control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(wt.abspath(debian_path), crate, crate_version, features))
+    control.debcargo_editor['semver_suffix'] = semver_suffix
     control.debcargo_editor['overlay'] = '.'
     return control
 
