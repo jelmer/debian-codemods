@@ -1041,15 +1041,17 @@ def debianize(  # noqa: C901
             if requirement and requirement.family == 'apt':
                 if not requirement.satisfied_by(
                         control.binaries, version):
-                    # TODO(jelmer): Eventually, raise an exception here:
-                    # raise DebianizedPackageRequirementMismatch(
-                    #    requirement, control, version,
-                    #    upstream_branch)
                     logging.warning(
                         'Debianized package (binary packages: %r), version %s '
                         'did not satisfy requirement %r. Wrong repository (%s)?',
                         [binary['Package'] for binary in control.binaries],
                         version, requirement, upstream_branch)
+                    raise DebianizedPackageRequirementMismatch(
+                        requirement, control, version,
+                        upstream_branch)
+
+            control.wrap_and_sort()
+            control.sort_binary_packages()
 
         wt.smart_add([wt.abspath(debian_path)])
         wt.commit(
