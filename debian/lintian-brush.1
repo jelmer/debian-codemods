@@ -53,9 +53,9 @@ Run fixers but do not actually make changes to the repository. Useful in particu
 Note that this currently will create a temporary clone of the repository, which may be slow for large repositories.
 .TP
 \fB\-\-verbose\fR
-Print list of fixers that was run and print tracebacks for failed fixers.
+Be more verbose. For example, print list of fixers that was run and print tracebacks for failed fixers.
 .TP
-\fB\-\-uncertain\fR
+\fB\-\-uncertain\fR, \fB--yolo\fR
 Make changes with lower certain than normal. This will potentially fix more
 issues, but is more likely to get things wrong. If changes with lower certainty were made,
 lintian-brush will let you know in its output.
