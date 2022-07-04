@@ -80,6 +80,3 @@ async def find_wnpp_bugs(source_name):
             for row in await conn.fetch("""\
 select id, type from wnpp where source = $1 and type in ('ITP', 'RFP')
 """, source_name)]
-
-
-
