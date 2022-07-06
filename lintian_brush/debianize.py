@@ -242,8 +242,7 @@ def default_create_dist(session, tree, package, version, target_dir):
                 return ogni_create_dist(
                     session, tree, target_dir,
                     include_controldir=False,
-                    subdir=(package or "package"),
-                    cleanup=False)
+                    subdir=(package or "package"))
             except DetailedFailure as e:
                 if isinstance(
                         e.error,
@@ -251,8 +250,7 @@ def default_create_dist(session, tree, package, version, target_dir):
                     return ogni_create_dist(
                         session, tree, target_dir,
                         include_controldir=True,
-                        subdir=(package or "package"),
-                        cleanup=False)
+                        subdir=(package or "package"))
                 else:
                     raise
     except NoBuildToolsFound:
