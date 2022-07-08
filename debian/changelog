@@ -1,8 +1,8 @@
-lintian-brush (0.128) UNRELEASED; urgency=medium
+lintian-brush (0.128) unstable; urgency=medium
 
   * Add missing dependency on python3-semver.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 Jul 2022 19:44:45 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 Jul 2022 19:45:01 +0100
 
 lintian-brush (0.127) unstable; urgency=medium
 
