@@ -1,4 +1,4 @@
-lintian-brush (0.127) UNRELEASED; urgency=medium
+lintian-brush (0.127) unstable; urgency=medium
 
   * Fix compatibility with newer python-debian/debmutate.
 
