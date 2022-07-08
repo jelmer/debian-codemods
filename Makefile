@@ -21,8 +21,11 @@ tag-status::
 testsuite::
 	python3 setup.py test
 
+testsuite-core:
+	python3 -m unittest lintian_brush.tests.core_test_suite
+
 README.md::
-	PYTHONPATH=$(PWD) ./buildtools/update-readme.py
+	PYTHONPATH=$(PWD):$(PYTHONPATH) ./buildtools/update-readme.py
 
 lintian-tags:
 	lintian-explain-tags --list-tags > lintian-tags
@@ -30,7 +33,7 @@ lintian-tags:
 .PHONY: lintian-tags lintian-brush-tags
 
 lintian-brush-tags:
-	PYTHONPATH=$(PWD) python3 -m lintian_brush --list-tags 2> lintian-brush-tags
+	PYTHONPATH=$(PWD):$(PYTHONPATH) python3 -m lintian_brush --list-tags 2> lintian-brush-tags
 
 unsupported: lintian-tags lintian-brush-tags
 	awk 'NR==FNR{a[$$0]=1;next}!a[$$0]' lintian-brush-tags lintian-tags

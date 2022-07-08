@@ -18,25 +18,33 @@
 import unittest
 
 
+core_names = [
+    "changelog",
+    "config",
+    "debhelper",
+    "detect_gbp_dch",
+    "lintian",
+    "lintian_overrides",
+    "multiarch_hints",
+    "patches",
+    "run",
+    "salsa",
+    "scrub_obsolete",
+    "systemd",
+    "vcs",
+    "xdg",
+    "yaml",
+]
+
+
+def core_test_suite():
+    module_names = [__name__ + ".test_" + name for name in core_names]
+    loader = unittest.TestLoader()
+    return loader.loadTestsFromNames(module_names)
+
+
 def test_suite():
-    names = [
-        "changelog",
-        "config",
-        "debhelper",
-        "detect_gbp_dch",
-        "lintian",
-        "lintian_overrides",
-        "multiarch_hints",
-        "patches",
-        "run",
-        "salsa",
-        "scrub_obsolete",
-        "systemd",
-        "vcs",
-        "xdg",
-        "yaml",
-    ]
-    module_names = [__name__ + ".test_" + name for name in names]
+    module_names = [__name__ + ".test_" + name for name in core_names]
     module_names.append("upstream_ontologist.tests.test_upstream_ontologist")
     module_names.append("upstream_ontologist.tests.test_vcs")
     module_names.append(__name__ + ".fixers.test_suite")
