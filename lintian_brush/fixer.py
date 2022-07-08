@@ -19,6 +19,7 @@
 
 from collections.abc import MutableMapping
 from debmutate.control import ControlEditor
+from debmutate.deb822 import Deb822Paragraph
 from debmutate.vendor import get_vendor_name
 import sys
 from typing import Optional, Tuple, Union, List
@@ -47,11 +48,11 @@ class LintianIssue(object):
 
     def __init__(
         self,
-        target: Union[MutableMapping, Tuple[str, str], str],
+        target: Union[Deb822Paragraph, MutableMapping, Tuple[str, str], str],
         tag: str,
         info: Optional[Union[str, Tuple[str, ...]]] = None,
     ):
-        if isinstance(target, MutableMapping):
+        if isinstance(target, (Deb822Paragraph, MutableMapping)):
             if "Source" in target:
                 target = ("source", target["Source"])
             elif "Package" in target:
