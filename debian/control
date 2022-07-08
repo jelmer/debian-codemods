@@ -19,6 +19,7 @@ Build-Depends: bash-completion,
                python3-iso8601,
                python3-pyinotify [linux-any],
                python3-levenshtein,
+               python3-semver,
                python3-setuptools,
                python3-ruamel.yaml,
                python3-tqdm,
@@ -53,7 +54,7 @@ Depends: devscripts,
          python3-upstream-ontologist (>= 0.1.22),
          ${misc:Depends},
          ${python3:Depends}
-Recommends: lintian (>= 2.105.0), dos2unix, gpg (>= 2.1), python3-pyinotify, python3-asyncpg, debhelper (>= 13.5), python3-levenshtein, decopy, python3-bs4, ognibuild, python3-docutils, python3-markdown, python3-lxml, python3-tomlkit
+Recommends: lintian (>= 2.105.0), dos2unix, gpg (>= 2.1), python3-pyinotify, python3-asyncpg, debhelper (>= 13.5), python3-levenshtein, decopy, python3-bs4, ognibuild, python3-docutils, python3-markdown, python3-lxml, python3-tomlkit, python3-semver
 Suggests: gnome-pkg-tools, postgresql-common, brz-debian (>= 2.8.66), po-debconf, git-buildpackage
 Description: automatically fix lintian problems
  This package contains a set of scripts that can automatically fix more than 160
