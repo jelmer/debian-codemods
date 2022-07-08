@@ -86,7 +86,7 @@ try:  # noqa: C901
                     certainty = 'possible'
 
         if extra_defined and not extra_used:
-            for paragraph in list(updater.copyright._Copyright__paragraphs):
+            for paragraph in list(updater.copyright.all_paragraphs()):
                 if not paragraph.license:
                     continue
                 issue = LintianIssue(
@@ -96,7 +96,7 @@ try:  # noqa: C901
                     continue
                 if paragraph.license.synopsis in extra_defined:
                     issue.report_fixed()
-                    updater.copyright._Copyright__paragraphs.remove(paragraph)
+                    updater.remove(paragraph)
 except (FileNotFoundError, NotMachineReadableError):
     pass
 else:

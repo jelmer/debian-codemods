@@ -23,6 +23,7 @@ dbg_migration_done = set()
 
 try:
     with control as updater:
+        to_remove = []
         for binary in updater.binaries:
             # Delete the freeradius-dbg package from debian/control
             package = binary["Package"]
@@ -32,8 +33,10 @@ try:
                     # interpreter
                     continue
                 dbg_packages.add(binary["Package"])
-                binary.clear()
+                to_remove.append(binary)
 
+        for binary in to_remove:
+            updater.remove(binary)
         if not dbg_packages:
             # no debug packages found to remove
             sys.exit(0)

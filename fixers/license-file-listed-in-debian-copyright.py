@@ -32,7 +32,7 @@ try:
                         files.append(f.strip())
             files_entry = "\n".join(files)
             if not files_entry.strip():
-                updater.copyright._Copyright__paragraphs.remove(paragraph)
+                updater.remove(paragraph)
             elif files_entry != paragraph._RestrictedWrapper__data['Files']:
                 paragraph._RestrictedWrapper__data['Files'] = files_entry
 
