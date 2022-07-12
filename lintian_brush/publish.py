@@ -25,7 +25,7 @@ import sys
 from breezy.controldir import ControlDir
 from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.errors import AlreadyBranchError, AlreadyControlDirError
-from breezy.propose import iter_hoster_instances, UnsupportedHoster
+from breezy.forge import iter_forge_instances, UnsupportedForge
 from breezy.workingtree import WorkingTree
 from breezy.workspace import check_clean_tree, WorkspaceDirty
 from debmutate.control import ControlEditor
@@ -102,30 +102,18 @@ def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False, 
             raise
 
     if create:
+        from breezy.forge import create_project
         try:
-            hoster, project = create_project(repo_url)
+            forge, project = create_project(repo_url)
         except AlreadyControlDirError:
             logging.info('%s already exists', repo_url)
-        except UnsupportedHoster:
+        except UnsupportedForge:
             logging.error(
                 'Unable to find a way to create %s', repo_url)
         else:
             logging.info('Created %s', repo_url)
 
     return repo_url
-
-
-try:
-    from breezy.propose import create_project
-except ImportError:  # brz < 3.2
-    def create_project(url):
-        from urllib.parse import urlparse
-        for hoster in iter_hoster_instances():
-            if url.startswith(hoster.base_url):
-                hoster.create_project(urlparse(url).path)
-                break
-        else:
-            raise UnsupportedHoster(url)
 
 
 def main():
