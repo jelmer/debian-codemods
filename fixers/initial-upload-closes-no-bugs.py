@@ -1,10 +1,13 @@
 #!/usr/bin/python3
 
 import asyncio
-from debmutate.changelog import ChangelogEditor
+from typing import Optional
+from debmutate.changelog import ChangelogEditor, Version
 import sys
 from lintian_brush.debbugs import find_archived_wnpp_bugs, find_wnpp_bugs
 from lintian_brush.fixer import net_access_allowed, report_result
+
+versioned_changed: Optional[Version] = None
 
 
 if not net_access_allowed():
@@ -37,7 +40,8 @@ with ChangelogEditor() as editor:
             break
 
 
-report_result(
-    "Add %s bugs in %s." %
-    (', '.join(sorted(set([kind for (bugno, kind) in wnpp_bugs]))), version_changed),
-    certainty=certainty)
+if version_changed:
+    report_result(
+        "Add %s bugs in %s." %
+        (', '.join(sorted(set([kind for (bugno, kind) in wnpp_bugs]))), version_changed),
+        certainty=certainty)
