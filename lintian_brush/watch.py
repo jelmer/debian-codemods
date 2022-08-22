@@ -48,7 +48,7 @@ def candidates_from_setup_py(path, good_upstream_versions: Set[str], net_access=
     from distutils.core import run_setup
 
     try:
-        result = run_setup(os.path.abspath(path), stop_after="init")
+        result = run_setup(os.path.abspath(path), stop_after="config")
     except BaseException:
         import traceback
 
