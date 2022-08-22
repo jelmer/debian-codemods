@@ -44,7 +44,12 @@ from breezy import osutils
 from breezy.commit import filter_excluded
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
-from breezy.errors import NotBranchError, NoSuchFile
+from breezy.errors import NotBranchError
+try:
+    from breezy.transport import NoSuchFile
+except ImportError:  # breezy < 3.3
+    from breezy.errors import NoSuchFile
+
 from breezy.patches import (
     parse_patches,
     apply_patches,

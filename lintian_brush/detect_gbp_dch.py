@@ -29,7 +29,11 @@ from debmutate.changelog import (
 
 from breezy import osutils
 from breezy.branch import Branch
-from breezy.errors import NoSuchFile, RevisionNotPresent
+from breezy.errors import RevisionNotPresent
+try:
+    from breezy.transport import NoSuchFile
+except ImportError:  # breezy < 3.3
+    from breezy.errors import NoSuchFile
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 
