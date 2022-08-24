@@ -1,3 +1,10 @@
+lintian-brush (0.129) UNRELEASED; urgency=medium
+
+  * package-uses-deprecated-source-override-location: cope with existing
+    debian/source/lintian-overrides.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 24 Aug 2022 18:07:59 +0100
+
 lintian-brush (0.128) unstable; urgency=medium
 
   * Add missing dependency on python3-semver.
