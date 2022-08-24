@@ -1,2 +1,0 @@
-#!/bin/sh
-python3 -m unittest lintian_brush.tests.test_suite
