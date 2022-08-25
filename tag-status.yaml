@@ -1750,3 +1750,20 @@
 - tag: unicode-trojan
 - tag: update-debian-copyright
 - tag: upstream-metadata
+
+#  2.115.0
+- tag: alien-tag
+- tag: chown-with-dot
+  difficulty: easy
+- tag: conflicting-test-fields
+- tag: declare-python-versions-for-test
+- tag: drop-python-version-declaration
+- tag: invalid-override-restriction
+  difficulty: medium
+- tag: missing-prerequisite-for-pyproject-backend
+- tag: old-devhelp-standard
+  difficulty: medium
+- tag: stray-devhelp-documentation
+- tag: test-leaves-python-version-untested
+- tag: uses-poetry-cli
+  difficulty: medium
