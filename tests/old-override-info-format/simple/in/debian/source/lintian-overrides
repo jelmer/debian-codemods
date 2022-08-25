@@ -1,0 +1,1 @@
+lintian-brush source: autotools-pkg-config-macro-not-cross-compilation-safe configure.ac (line 11)

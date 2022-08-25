@@ -637,3 +637,5 @@
 - script: initial-upload-closes-no-bugs.py
   lintian-tags:
    - initial-upload-closes-no-bugs
+
+- script: old-override-info-format.py

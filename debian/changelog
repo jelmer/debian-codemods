@@ -1,3 +1,10 @@
+lintian-brush (0.130) UNRELEASED; urgency=medium
+
+  * Add fixer old-override-info-format: updates lintian overrides to new
+    format. Closes: #1014407
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 25 Aug 2022 18:29:19 +0100
+
 lintian-brush (0.129) unstable; urgency=medium
 
   * package-uses-deprecated-source-override-location: cope with existing
