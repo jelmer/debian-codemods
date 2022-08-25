@@ -601,88 +601,89 @@ def main():  # noqa: C901
         logging.info('%s', get_committer(wt))
         return 0
 
-    try:
-        check_clean_tree(wt, wt.basis_tree(), subpath)
-    except WorkspaceDirty:
-        logging.info("%s: Please commit pending changes first.", wt.basedir)
-        return 1
+    with wt.lock_write():
+        try:
+            check_clean_tree(wt, wt.basis_tree(), subpath)
+        except WorkspaceDirty:
+            logging.info("%s: Please commit pending changes first.", wt.basedir)
+            return 1
 
-    import distro_info
-    debian_info = distro_info.DebianDistroInfo()
-    upgrade_release = debian_info.codename(args.upgrade_release)
+        import distro_info
+        debian_info = distro_info.DebianDistroInfo()
+        upgrade_release = debian_info.codename(args.upgrade_release)
 
-    if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO, format='%(message)s')
+        if args.debug:
+            logging.basicConfig(level=logging.DEBUG)
+        else:
+            logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-    update_changelog = args.update_changelog
-    allow_reformatting = args.allow_reformatting
-    if args.compat_release:
-        compat_release = debian_info.codename(args.compat_release)
-    else:
-        compat_release = None
-    try:
-        cfg = Config.from_workingtree(wt, subpath)
-    except FileNotFoundError:
-        pass
-    else:
-        if update_changelog is None:
-            update_changelog = cfg.update_changelog()
-        if allow_reformatting is None:
-            allow_reformatting = cfg.allow_reformatting()
+        update_changelog = args.update_changelog
+        allow_reformatting = args.allow_reformatting
+        if args.compat_release:
+            compat_release = debian_info.codename(args.compat_release)
+        else:
+            compat_release = None
+        try:
+            cfg = Config.from_workingtree(wt, subpath)
+        except FileNotFoundError:
+            pass
+        else:
+            if update_changelog is None:
+                update_changelog = cfg.update_changelog()
+            if allow_reformatting is None:
+                allow_reformatting = cfg.allow_reformatting()
+            if compat_release is None:
+                compat_release = cfg.compat_release()
+
         if compat_release is None:
-            compat_release = cfg.compat_release()
+            compat_release = debian_info.codename('oldstable')
 
-    if compat_release is None:
-        compat_release = debian_info.codename('oldstable')
+        if upgrade_release != compat_release:
+            logging.info(
+                "Removing run time constraints unnecessary since %s"
+                " and build time constraints unnecessary since %s",
+                upgrade_release, compat_release)
+        else:
+            logging.info(
+                "Removing run time and build time constraints unnecessary "
+                "since %s", compat_release)
 
-    if upgrade_release != compat_release:
-        logging.info(
-            "Removing run time constraints unnecessary since %s"
-            " and build time constraints unnecessary since %s",
-            upgrade_release, compat_release)
-    else:
-        logging.info(
-            "Removing run time and build time constraints unnecessary "
-            "since %s", compat_release)
+        if allow_reformatting is None:
+            allow_reformatting = False
 
-    if allow_reformatting is None:
-        allow_reformatting = False
+        if is_debcargo_package(wt, subpath):
+            report_fatal("nothing-to-do", "Package uses debcargo")
+            return 1
+        elif not control_file_present(wt, subpath):
+            report_fatal("missing-control-file", "Unable to find debian/control")
+            return 1
 
-    if is_debcargo_package(wt, subpath):
-        report_fatal("nothing-to-do", "Package uses debcargo")
-        return 1
-    elif not control_file_present(wt, subpath):
-        report_fatal("missing-control-file", "Unable to find debian/control")
-        return 1
-
-    try:
-        result = scrub_obsolete(
-            wt, subpath, compat_release, upgrade_release,
-            update_changelog=args.update_changelog,
-            allow_reformatting=allow_reformatting
-        )
-    except FormattingUnpreservable as e:
-        report_fatal(
-            "formatting-unpreservable",
-            "unable to preserve formatting while editing %s" % e.path,
-        )
-        return 1
-    except GeneratedFile as e:
-        report_fatal(
-            "generated-file", "unable to edit generated file: %r" % e
-        )
-        return 1
-    except NotDebianPackage:
-        report_fatal('not-debian-package', 'Not a Debian package.')
-        return 1
-    except ChangeConflict as e:
-        report_fatal('change-conflict', 'Generated file changes conflict: %s' % e)
-        return 1
-    except UddTimeout:
-        report_fatal('udd-timeout', 'Timeout communicating with UDD')
-        return 1
+        try:
+            result = scrub_obsolete(
+                wt, subpath, compat_release, upgrade_release,
+                update_changelog=args.update_changelog,
+                allow_reformatting=allow_reformatting
+            )
+        except FormattingUnpreservable as e:
+            report_fatal(
+                "formatting-unpreservable",
+                "unable to preserve formatting while editing %s" % e.path,
+            )
+            return 1
+        except GeneratedFile as e:
+            report_fatal(
+                "generated-file", "unable to edit generated file: %r" % e
+            )
+            return 1
+        except NotDebianPackage:
+            report_fatal('not-debian-package', 'Not a Debian package.')
+            return 1
+        except ChangeConflict as e:
+            report_fatal('change-conflict', 'Generated file changes conflict: %s' % e)
+            return 1
+        except UddTimeout:
+            report_fatal('udd-timeout', 'Timeout communicating with UDD')
+            return 1
 
     if not result:
         report_okay("nothing-to-do", "no obsolete constraints")
