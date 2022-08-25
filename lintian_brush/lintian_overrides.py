@@ -38,18 +38,24 @@ def overrides_paths() -> Iterator[str]:
                 yield entry.path
 
 
-def update_overrides(cb: Callable[[int, LintianOverride], LintianOverride]) -> None:
+def update_overrides(
+        cb: Callable[
+            [str, int, LintianOverride],
+            Optional[LintianOverride]]) -> None:
     """ "Call update_overrides_file on all overrides files.
 
     Args:
-      cb: Callback that modifies overrides; called with an Override object
+      cb: Callback that modifies overrides; called with path, linenumber and
+         an Override object
     """
     for path in overrides_paths():
-        update_overrides_file(cb, path=path)
+        update_overrides_file(
+            lambda lineno, override: cb(path, lineno, override),
+            path=path)
 
 
 def update_overrides_file(
-    cb: Callable[[int, LintianOverride], LintianOverride],
+    cb: Callable[[int, LintianOverride], Optional[LintianOverride]],
     path: str = "debian/source/lintian-overrides",
 ) -> bool:
     """Modify the overrides in a file.
@@ -180,7 +186,7 @@ def remove_unused(control_paragraphs, ignore_tags=None) -> List[LintianOverride]
             return True
         return False
 
-    def drop_override(lineno, override):
+    def drop_override(path, lineno, override):
         global unused_overrides
         if unused_overrides is None:
             import asyncio

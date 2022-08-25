@@ -639,3 +639,5 @@
    - initial-upload-closes-no-bugs
 
 - script: old-override-info-format.py
+  lintian-tags:
+    - mismatched-override

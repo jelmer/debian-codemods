@@ -19,7 +19,7 @@ INFO_FIXERS = {
 linenos = []
 
 
-def fix_info(lineno, override):
+def fix_info(path, lineno, override):
     if not override.info:
         return override
     try:
@@ -35,10 +35,15 @@ def fix_info(lineno, override):
             raise TypeError(fixer)
         if info != override.info:
             linenos.append(lineno)
-        return LintianOverride(
-            package=override.package, archlist=override.archlist,
-            type=override.type, tag=override.tag,
-            info=info)
+        issue = LintianIssue(
+            (override.type, override.package), 'mismatched-override',
+            override.info + '[%s:%d]' % (path, lineno))
+        if issue.should_fix():
+            issue.report_fixed()
+            return LintianOverride(
+                package=override.package, archlist=override.archlist,
+                type=override.type, tag=override.tag,
+                info=info)
     return override
 
 

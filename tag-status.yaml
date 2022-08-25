@@ -1635,8 +1635,6 @@
 - tag: duplicate-globbing-patterns
 - tag: globbing-patterns-out-of-order
   difficulty: easy
-- tag: mismatched-override
-  difficulty: easy
 - tag: patch-not-forwarded-upstream
   difficulty: hard
 - tag: redundant-globbing-patterns

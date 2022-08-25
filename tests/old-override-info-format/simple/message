@@ -1,1 +1,2 @@
 Update lintian override info to new format on line 1.
+Fixed-Lintian-Tags: mismatched-override
