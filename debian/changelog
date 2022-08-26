@@ -5,6 +5,7 @@ lintian-brush (0.129) UNRELEASED; urgency=medium
   * package-uses-deprecated-source-override-location: cope with existing
     debian/source/lintian-overrides.
   * Update key versions.
+  * debbugs: Fix database connectivity logic.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 24 Aug 2022 19:22:53 +0100
 

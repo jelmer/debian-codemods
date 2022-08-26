@@ -30,7 +30,7 @@ class DebBugs(object):
         from .udd import connect_udd_mirror
 
         pool = await connect_udd_mirror()
-        self._conn = await pool.__enter__()
+        self._conn = await pool.__aenter__()
 
     async def check_bug(self, package, bugid):
         """Check that a bug belongs to a particular package.
