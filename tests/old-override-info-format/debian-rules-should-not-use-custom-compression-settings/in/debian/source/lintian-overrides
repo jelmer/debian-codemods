@@ -1,0 +1,1 @@
+lintian-brush source: debian-rules-should-not-use-custom-compression-settings dh_builddeb -pdebootstrap-udeb -- -Zxz (line *)

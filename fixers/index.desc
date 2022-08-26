@@ -4,6 +4,12 @@
 # Note that the order of this file is significant. Fixers mentioned earlier in
 # this file will always be run before later fixers.
 
+# First, update overrides for matching by other fixers
+
+- script: old-override-info-format.py
+  lintian-tags:
+    - mismatched-override
+
 # file-contains-trailing-whitespace and obsolete-field-in-dep5-copyright are
 # processed first, since they make it for other fixers to change the file
 # while preserving formatting.
@@ -638,6 +644,3 @@
   lintian-tags:
    - initial-upload-closes-no-bugs
 
-- script: old-override-info-format.py
-  lintian-tags:
-    - mismatched-override
