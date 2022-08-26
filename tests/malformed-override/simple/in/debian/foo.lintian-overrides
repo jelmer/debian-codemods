@@ -1,2 +1,0 @@
-# we do build with hardening flags
-foo: hardening-no-stackprotector usr/bin/xdt-csource

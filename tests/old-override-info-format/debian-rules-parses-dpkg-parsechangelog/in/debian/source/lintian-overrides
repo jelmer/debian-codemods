@@ -1,0 +1,1 @@
+lintian-brush source: debian-rules-parses-dpkg-parsechangelog debian/rules (line 11)

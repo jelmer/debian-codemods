@@ -9,11 +9,16 @@ from lintian_brush.lintian_overrides import (
     load_renamed_tags,
     )
 
+# Simple match of "$file (line $lineno)"
+PURE_FLN_SUB = (
+    r"^(?P<path>.+) \(line (?P<lineno>\d+)\)$", r"[\1:\2]")
+PURE_FLN_WILDCARD_SUB = (
+    r"^(?P<path>.+) \(line (?P<lineno>\d+)\)$", r"* [\1:\2]")
+
 
 INFO_FIXERS = {
-    "autotools-pkg-config-macro-not-cross-compilation-safe": 
-        (r"^(?P<path>.+) \(line (?P<lineno>\d+)\)$",
-         r"[\1:\2]")
+    "autotools-pkg-config-macro-not-cross-compilation-safe": PURE_FLN_WILDCARD_SUB,
+    "debian-rules-parses-dpkg-parsechangelog": PURE_FLN_SUB,
 }
 
 linenos = []
