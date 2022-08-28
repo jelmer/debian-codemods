@@ -28,8 +28,8 @@ from breezy.errors import AlreadyBranchError, AlreadyControlDirError
 try:
     from breezy.forge import iter_forge_instances, UnsupportedForge
 except ImportError:  # older breezy
-    from breezy.hoster import (
-        iter_hoster_instance as iter_forge_instances,
+    from breezy.propose import (
+        iter_hoster_instances as iter_forge_instances,
         UnsupportedHoster as UnsupportedForge,
         )
 from breezy.workingtree import WorkingTree
