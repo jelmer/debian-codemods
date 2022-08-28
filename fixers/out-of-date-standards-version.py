@@ -24,6 +24,7 @@ upgrade_path = {
     "4.4.1": "4.5.0",
     "4.5.0": "4.5.1",
     "4.5.1": "4.6.0",
+    "4.6.0": "4.6.1",
 }
 
 
@@ -184,6 +185,13 @@ def check_4_6_0():
                 "unable to verify whether package install files into /usr/lib/64")
 
 
+def check_4_6_1():
+    # 9.1.1: Restore permission for packages for non-64-bit architectures to
+    # install files to /usr/lib64/.
+    # -> No need to check anything.
+    pass
+
+
 check_requirements = {
     "4.1.1": check_4_1_1,
     "4.2.1": check_4_2_1,
@@ -193,6 +201,7 @@ check_requirements = {
     "4.5.0": check_4_5_0,
     "4.5.1": check_4_5_1,
     "4.6.0": check_4_6_0,
+    "4.6.1": check_4_6_1,
 }
 
 current_version = None

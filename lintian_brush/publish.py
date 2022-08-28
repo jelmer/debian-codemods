@@ -25,7 +25,13 @@ import sys
 from breezy.controldir import ControlDir
 from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.errors import AlreadyBranchError, AlreadyControlDirError
-from breezy.forge import iter_forge_instances, UnsupportedForge
+try:
+    from breezy.forge import iter_forge_instances, UnsupportedForge
+except ImportError:  # older breezy
+    from breezy.propose import (
+        iter_hoster_instances as iter_forge_instances,
+        UnsupportedHoster as UnsupportedForge,
+        )
 from breezy.workingtree import WorkingTree
 from breezy.workspace import check_clean_tree, WorkspaceDirty
 from debmutate.control import ControlEditor

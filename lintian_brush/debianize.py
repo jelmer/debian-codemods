@@ -686,9 +686,11 @@ PROCESSORS: Dict[str, Processor] = {
 
 
 def source_name_from_directory_name(path):
-    d = os.path.dirname(path)
+    d = os.path.basename(path)
     if '-' in d:
-        return d.split('-')
+        parts = d.split('-')
+        if parts[-1][0].isdigit():
+            return '-'.join(parts[:-1])
     return d
 
 
@@ -771,7 +773,7 @@ def import_upstream_dist(
     return pristine_revids[None], upstream_branch_name, tag_names
 
 
-def generic_get_source_name(wt, metadata):
+def generic_get_source_name(wt, subpath, metadata):
     try:
         source_name = source_name_from_upstream_name(metadata['Name'])
     except KeyError:
@@ -780,15 +782,18 @@ def generic_get_source_name(wt, metadata):
         if not valid_debian_package_name(source_name):
             source_name = None
     if source_name is None:
-        source_name = source_name_from_directory_name(wt.basedir)
+        source_name = source_name_from_directory_name(wt.abspath(subpath))
         if not valid_debian_package_name(source_name):
             source_name = None
     return source_name
 
 
 def get_upstream_version(
-        upstream_source, metadata, local_dir=None,
+        upstream_source, metadata: Dict[str, Any],
+        local_dir=None,
+        upstream_subpath: Optional[str] = None,
         upstream_version: Optional[str] = None) -> Tuple[str, str]:
+    # TODO(jelmer): if upstream_subpath != "", perhaps ignore info from upstream_source?
     if upstream_version is None:
         upstream_version, mangled_upstream_version = upstream_source.get_latest_version(metadata.get("Name"), None)
     else:
@@ -917,11 +922,12 @@ def debianize(  # noqa: C901
             else:
                 upstream_version, mangled_upstream_version = get_upstream_version(
                     upstream_source, metadata, local_dir=wt.controldir,
+                    upstream_subpath=upstream_subpath,
                     upstream_version=upstream_version)
 
             result.upstream_version = upstream_version
 
-            source_name = generic_get_source_name(wt, metadata)
+            source_name = generic_get_source_name(wt, subpath, metadata)
 
             def kickstart_from_dist(wt, subpath):
                 logging.info(
@@ -965,6 +971,7 @@ def debianize(  # noqa: C901
                         'Unable to find upstream version %s/%s in upstream source %r. '
                         'Unable to extract metadata.',
                         source_name, mangled_upstream_version, upstream_source)
+                    exported_upstream_tree_path = None
                 else:
                     # TODO(jelmer): Don't export, just access from memory.
                     exported_upstream_tree_path = es.enter_context(TemporaryDirectory())
