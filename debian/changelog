@@ -6,6 +6,7 @@ lintian-brush (0.129) UNRELEASED; urgency=medium
     debian/source/lintian-overrides.
   * Update key versions.
   * debbugs: Fix database connectivity logic.
+  * out-of-date-standards-version: Update for 4.6.1.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 24 Aug 2022 19:22:53 +0100
 
