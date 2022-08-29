@@ -12,6 +12,7 @@ if [ $(ls $OTHER_PATHS $MAIN_PATH 2>/dev/null | wc -l) -lt 2 ]; then
 fi
 
 TEMP_KEYRING=$(mktemp)
+export GNUPGHOME=$(mktemp -d)
 
 run_gpg() {
     ${GPG} --quiet --no-default-keyring --keyring "${TEMP_KEYRING}" "$@"
