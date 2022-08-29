@@ -1,4 +1,4 @@
-lintian-brush (0.129) UNRELEASED; urgency=medium
+lintian-brush (0.129) unstable; urgency=medium
 
   * Add fixer old-override-info-format: updates lintian overrides to new
     format. Closes: #1014407
@@ -11,7 +11,7 @@ lintian-brush (0.129) UNRELEASED; urgency=medium
     arguments.
   * Tweak wording in message when tree is dirty.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 28 Aug 2022 20:24:21 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 29 Aug 2022 20:58:14 +0100
 
 lintian-brush (0.128) unstable; urgency=medium
 
