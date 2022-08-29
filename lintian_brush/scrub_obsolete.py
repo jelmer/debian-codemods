@@ -86,7 +86,8 @@ def depends_obsolete(latest_version: Version, kind: str, req_version: Version):
     return False
 
 
-def conflict_obsolete(latest_version: Version, kind: str, req_version: Version):
+def conflict_obsolete(
+        latest_version: Version, kind: str, req_version: Version):
     req_version = Version(req_version)
     if kind == "<<":
         return latest_version >= req_version
@@ -105,7 +106,8 @@ async def _package_version(package: str, release: str) -> Optional[Version]:
     try:
         async with await connect_udd_mirror() as conn:
             version = await conn.fetchval(
-                "select version from packages where package = $1 and release = $2",
+                "select version from packages "
+                "where package = $1 and release = $2",
                 package, release)
     except asyncio.TimeoutError:
         raise UddTimeout()
@@ -114,12 +116,14 @@ async def _package_version(package: str, release: str) -> Optional[Version]:
     return None
 
 
-async def _package_provides(package: str, release: str) -> Optional[List[PkgRelation]]:
+async def _package_provides(
+        package: str, release: str) -> Optional[List[PkgRelation]]:
     from .udd import connect_udd_mirror
 
     async with await connect_udd_mirror() as conn:
         provides = await conn.fetchval(
-            "select provides from packages where package = $1 and release = $2",
+            "select provides from packages "
+            "where package = $1 and release = $2",
             package, release)
     if provides is not None:
         return [r[1] for r in parse_relations(provides)]
@@ -131,7 +135,8 @@ async def _package_essential(package: str, release: str) -> bool:
 
     async with await connect_udd_mirror() as conn:
         return await conn.fetchval(
-            "select (essential = 'yes') from packages where package = $1 and release = $2",
+            "select (essential = 'yes') from packages "
+            "where package = $1 and release = $2",
             package, release)
 
 
@@ -161,14 +166,17 @@ class PackageChecker(object):
 
     def package_provides(self, package):
         loop = asyncio.get_event_loop()
-        return loop.run_until_complete(_package_provides(package, self.release))
+        return loop.run_until_complete(
+            _package_provides(package, self.release))
 
     def is_essential(self, package: str) -> bool:
         loop = asyncio.get_event_loop()
         if self.build:
-            if loop.run_until_complete(_package_build_essential(package, self.release)):
+            if loop.run_until_complete(
+                    _package_build_essential(package, self.release)):
                 return True
-        return loop.run_until_complete(_package_essential(package, self.release))
+        return loop.run_until_complete(
+            _package_essential(package, self.release))
 
 
 def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
@@ -212,7 +220,8 @@ def drop_obsolete_conflicts(checker: PackageChecker, entry: List[PkgRelation]):
     return ors, dropped
 
 
-def update_depends(base: Deb822Dict, field: str, checker: PackageChecker) -> List[str]:
+def update_depends(
+        base: Deb822Dict, field: str, checker: PackageChecker) -> List[str]:
     return filter_relations(
         base, field,
         lambda oldrelation: drop_obsolete_depends(oldrelation, checker))
@@ -225,10 +234,12 @@ def _relations_empty(rels):
     return True
 
 
-RelationsCallback = Callable[[List[PkgRelation]], Tuple[List[PkgRelation], List[PkgRelation]]]
+RelationsCallback = Callable[
+    [List[PkgRelation]], Tuple[List[PkgRelation], List[PkgRelation]]]
 
 
-def filter_relations(base: Deb822Dict, field: str, cb: RelationsCallback) -> List[str]:
+def filter_relations(
+        base: Deb822Dict, field: str, cb: RelationsCallback) -> List[str]:
     """Update a relations field."""
     try:
         old_contents = base[field]
@@ -258,13 +269,15 @@ def filter_relations(base: Deb822Dict, field: str, cb: RelationsCallback) -> Lis
     return []
 
 
-def update_conflicts(base: Deb822Dict, field: str, checker: PackageChecker) -> List[str]:
+def update_conflicts(
+        base: Deb822Dict, field: str, checker: PackageChecker) -> List[str]:
     return filter_relations(
         base, field,
         lambda oldrelation: drop_obsolete_conflicts(checker, oldrelation))
 
 
-def drop_old_source_relations(source, compat_release) -> List[Tuple[str, List[str], str]]:
+def drop_old_source_relations(
+        source, compat_release) -> List[Tuple[str, List[str], str]]:
     checker = PackageChecker(compat_release, build=True)
     ret = []
     for field in [
@@ -275,17 +288,20 @@ def drop_old_source_relations(source, compat_release) -> List[Tuple[str, List[st
         packages = update_depends(source, field, checker)
         if packages:
             ret.append((field, packages, compat_release))
-    for field in ["Build-Conflicts", "Build-Conflicts-Indep", "Build-Conflicts-Arch"]:
+    for field in ["Build-Conflicts", "Build-Conflicts-Indep",
+                  "Build-Conflicts-Arch"]:
         packages = update_conflicts(source, field, checker)
         if packages:
             ret.append((field, packages, compat_release))
     return ret
 
 
-def drop_old_binary_relations(binary, upgrade_release: str) -> List[Tuple[str, List[str], str]]:
+def drop_old_binary_relations(
+        binary, upgrade_release: str) -> List[Tuple[str, List[str], str]]:
     checker = PackageChecker(upgrade_release, build=False)
     ret = []
-    for field in ["Depends", "Breaks", "Suggests", "Recommends", "Pre-Depends"]:
+    for field in ["Depends", "Breaks", "Suggests", "Recommends",
+                  "Pre-Depends"]:
         packages = update_depends(binary, field, checker)
         if packages:
             ret.append((field, packages, upgrade_release))
@@ -298,7 +314,9 @@ def drop_old_binary_relations(binary, upgrade_release: str) -> List[Tuple[str, L
     return ret
 
 
-def drop_old_relations(editor, compat_release: str, upgrade_release: str) -> List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]]:
+def drop_old_relations(
+        editor, compat_release: str, upgrade_release: str
+        ) -> List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]]:
     dropped: List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]] = []
     source_dropped = []
     try:
@@ -311,7 +329,8 @@ def drop_old_relations(editor, compat_release: str, upgrade_release: str) -> Lis
     else:
         uses_cdbs = False
     if not uses_cdbs:
-        source_dropped.extend(drop_old_source_relations(editor.source, compat_release))
+        source_dropped.extend(
+            drop_old_source_relations(editor.source, compat_release))
     if source_dropped:
         dropped.append((None, source_dropped))
 
@@ -329,9 +348,11 @@ def update_maintscripts(
         ) -> List[Tuple[str, List[Tuple[int, str, Version]]]]:
     ret = []
     for entry in os.scandir(wt.abspath(os.path.join(subpath))):
-        if not (entry.name == "maintscript" or entry.name.endswith(".maintscript")):
+        if not (entry.name == "maintscript"
+                or entry.name.endswith(".maintscript")):
             continue
-        with MaintscriptEditor(entry.path, allow_reformatting=allow_reformatting) as editor:
+        with MaintscriptEditor(
+                entry.path, allow_reformatting=allow_reformatting) as editor:
             def can_drop(p, v):
                 compat_version = checker.package_version(p or package)
                 return compat_version is not None and compat_version > v
@@ -393,7 +414,8 @@ class ScrubObsoleteResult(object):
                     )
         if self.maintscript_removed:
             total_entries = sum(
-                [len(entries) for name, entries, release in self.maintscript_removed])
+                [len(entries)
+                    for name, entries, release in self.maintscript_removed])
             summary.setdefault(self.maintscript_removed[0][2], []).append(
                 "Remove %d maintscript entries from %d files." % (
                     total_entries, len(self.maintscript_removed))
@@ -415,7 +437,8 @@ def _scrub_obsolete(
                 allow_reformatting=allow_reformatting) as editor:
             specific_files.append(control_path)
             package = editor.source["Source"]
-            control_removed = drop_old_relations(editor, compat_release, upgrade_release)
+            control_removed = drop_old_relations(
+                editor, compat_release, upgrade_release)
     except FileNotFoundError:
         if wt.has_filename(os.path.join(debian_path, "debcargo.toml")):
             control_removed = []
@@ -424,8 +447,8 @@ def _scrub_obsolete(
 
     maintscript_removed = []
     for path, removed in update_maintscripts(
-            wt, debian_path, PackageChecker(upgrade_release, build=False), package,
-            allow_reformatting):
+            wt, debian_path, PackageChecker(upgrade_release, build=False),
+            package, allow_reformatting):
         if removed:
             maintscript_removed.append((path, removed, upgrade_release))
             specific_files.append(path)
@@ -438,7 +461,8 @@ def _scrub_obsolete(
 
 
 def scrub_obsolete(
-        wt: WorkingTree, subpath: str, compat_release: str, upgrade_release: str,
+        wt: WorkingTree, subpath: str, compat_release: str,
+        upgrade_release: str,
         update_changelog=None,
         allow_reformatting: bool = False) -> ScrubObsoleteResult:
     """Scrub obsolete entries.
@@ -605,7 +629,8 @@ def main():  # noqa: C901
         try:
             check_clean_tree(wt, wt.basis_tree(), subpath)
         except WorkspaceDirty:
-            logging.info("%s: Please commit pending changes first.", wt.basedir)
+            logging.info(
+                "%s: Please commit pending changes first.", wt.basedir)
             return 1
 
         import distro_info
@@ -655,7 +680,8 @@ def main():  # noqa: C901
             report_fatal("nothing-to-do", "Package uses debcargo")
             return 1
         elif not control_file_present(wt, subpath):
-            report_fatal("missing-control-file", "Unable to find debian/control")
+            report_fatal(
+                "missing-control-file", "Unable to find debian/control")
             return 1
 
         try:
@@ -679,7 +705,8 @@ def main():  # noqa: C901
             report_fatal('not-debian-package', 'Not a Debian package.')
             return 1
         except ChangeConflict as e:
-            report_fatal('change-conflict', 'Generated file changes conflict: %s' % e)
+            report_fatal(
+                'change-conflict', 'Generated file changes conflict: %s' % e)
             return 1
         except UddTimeout:
             report_fatal('udd-timeout', 'Timeout communicating with UDD')

@@ -24,7 +24,8 @@ import re
 from .lintian import LINTIAN_DATA_PATH
 
 
-NAME_SECTION_MAPPINGS_PATH = os.path.join(LINTIAN_DATA_PATH, "fields/name_section_mappings")
+NAME_SECTION_MAPPINGS_PATH = os.path.join(
+    LINTIAN_DATA_PATH, "fields/name_section_mappings")
 
 
 def get_name_section_mappings():

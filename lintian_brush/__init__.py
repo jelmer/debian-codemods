@@ -29,7 +29,16 @@ import sys
 import tempfile
 import time
 import traceback
-from typing import Optional, List, Sequence, Iterator, Iterable, Tuple, Union, Callable
+from typing import (
+    Optional,
+    List,
+    Sequence,
+    Iterator,
+    Iterable,
+    Tuple,
+    Union,
+    Callable,
+)
 
 from tqdm import trange
 
@@ -183,7 +192,8 @@ class FixerResult(object):
         return (
             (self.description == other.description)
             and (self.fixed_lintian_issues == other.fixed_lintian_issues)
-            and (self.overridden_lintian_issues == other.overridden_lintian_issues)
+            and (self.overridden_lintian_issues
+                 == other.overridden_lintian_issues)
             and (self.certainty == other.certainty)
             and (self.patch_name == other.patch_name)
             and (self.revision_id == other.revision_id)
@@ -414,8 +424,10 @@ class PythonScriptFixer(Fixer):
             except SystemExit as e:
                 retcode = e.code
             except BaseException as e:
-                traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
-                raise FixerScriptFailed(self.script_path, 1, sys.stderr.getvalue())
+                traceback.print_exception(
+                    type(e), e, e.__traceback__, file=sys.stderr)
+                raise FixerScriptFailed(
+                    self.script_path, 1, sys.stderr.getvalue())
             else:
                 retcode = 0
             description = sys.stdout.getvalue()
@@ -503,12 +515,14 @@ class ScriptFixer(Fixer):
 
 def find_fixers_dir() -> str:
     """Find the local directory with lintian fixer scripts."""
-    local_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "fixers"))
+    local_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "fixers"))
     if os.path.isdir(local_dir):
         return local_dir
     import pkg_resources
 
-    resource_dir = pkg_resources.resource_filename(__name__, "lintian-brush/fixers")
+    resource_dir = pkg_resources.resource_filename(
+        __name__, "lintian-brush/fixers")
     if os.path.isdir(resource_dir):
         return resource_dir
     # Urgh.
@@ -519,7 +533,8 @@ def find_fixers_dir() -> str:
     return "/usr/share/lintian-brush/fixers"
 
 
-def read_desc_file(path: str, force_subprocess: bool = False) -> Iterator[Fixer]:
+def read_desc_file(
+        path: str, force_subprocess: bool = False) -> Iterator[Fixer]:
     """Read a description file.
 
     Args:
@@ -544,7 +559,8 @@ def read_desc_file(path: str, force_subprocess: bool = False) -> Iterator[Fixer]
 
 
 def select_fixers(
-    fixers: List[Fixer], names: List[str], exclude: Optional[Iterable[str]] = None
+    fixers: List[Fixer], names: List[str],
+    exclude: Optional[Iterable[str]] = None
 ) -> List[Fixer]:
     """Select fixers by name, from a list.
 
@@ -731,7 +747,8 @@ def _note_changelog_policy(policy, msg):
 
 class FailedPatchManipulation(Exception):
     def __init__(self, tree, patches_directory, reason):
-        super(FailedPatchManipulation, self).__init__(tree, patches_directory, reason)
+        super(FailedPatchManipulation, self).__init__(
+            tree, patches_directory, reason)
 
 
 def _upstream_changes_to_patch(
@@ -757,13 +774,15 @@ def _upstream_changes_to_patch(
         quilt_patches = list(read_quilt_patches(local_tree, patches_directory))
     except PatchSyntax as e:
         raise FailedPatchManipulation(
-            local_tree, patches_directory, "Unable to parse some patches: %s" % e
+            local_tree, patches_directory,
+            "Unable to parse some patches: %s" % e
         )
     if len(quilt_patches) > 0:
         raise FailedPatchManipulation(
             local_tree,
             patches_directory,
-            "Creating patch on top of existing upstream " "patches not supported.",
+            "Creating patch on top of existing upstream "
+            "patches not supported.",
         )
 
     logging.debug("Moving upstream changes to patch %s", patch_name)
@@ -779,7 +798,8 @@ def _upstream_changes_to_patch(
         )
     except FileExistsError as e:
         raise FailedPatchManipulation(
-            local_tree, patches_directory, "patch path %s already exists\n" % e.args[0]
+            local_tree, patches_directory,
+            "patch path %s already exists\n" % e.args[0]
         )
 
     return patch_name, specific_files
@@ -861,10 +881,12 @@ def run_lintian_fixer(  # noqa: C901
             diligence=diligence,
         )
     except BaseException:
-        reset_tree(local_tree, basis_tree, subpath, dirty_tracker=dirty_tracker)
+        reset_tree(local_tree, basis_tree, subpath,
+                   dirty_tracker=dirty_tracker)
         raise
     if not certainty_sufficient(result.certainty, minimum_certainty):
-        reset_tree(local_tree, basis_tree, subpath, dirty_tracker=dirty_tracker)
+        reset_tree(local_tree, basis_tree, subpath,
+                   dirty_tracker=dirty_tracker)
         raise NotCertainEnough(
             fixer, result.certainty, minimum_certainty,
             overridden_lintian_issues=result.overridden_lintian_issues)
@@ -915,7 +937,8 @@ def run_lintian_fixer(  # noqa: C901
 
     # If there are upstream changes in a non-native package, perhaps
     # export them to debian/patches
-    if has_non_debian_changes(changes, subpath) and current_version.debian_revision:
+    if (has_non_debian_changes(changes, subpath)
+            and current_version.debian_revision):
         try:
             patch_name, specific_files = _upstream_changes_to_patch(
                 local_tree,
@@ -927,7 +950,8 @@ def run_lintian_fixer(  # noqa: C901
                 timestamp=timestamp,
             )
         except BaseException:
-            reset_tree(local_tree, basis_tree, subpath, dirty_tracker=dirty_tracker)
+            reset_tree(local_tree, basis_tree, subpath,
+                       dirty_tracker=dirty_tracker)
             raise
 
         summary = "Add patch %s: %s" % (patch_name, summary)
@@ -954,7 +978,8 @@ def run_lintian_fixer(  # noqa: C901
     description += "Changes-By: %s\n" % changes_by
     for tag in result.fixed_lintian_tags:
         description += "Fixes: lintian: %s\n" % tag
-        description += "See-also: https://lintian.debian.org/tags/%s.html\n" % tag
+        description += (
+            "See-also: https://lintian.debian.org/tags/%s.html\n" % tag)
 
     if committer is None:
         committer = get_committer(local_tree)
@@ -1026,7 +1051,8 @@ def determine_update_changelog(local_tree, debian_path):
 
     behaviour = guess_update_changelog(local_tree, debian_path, cl)
     if behaviour:
-        _note_changelog_policy(behaviour.update_changelog, behaviour.explanation)
+        _note_changelog_policy(
+            behaviour.update_changelog, behaviour.explanation)
     else:
         # If we can't make an educated guess, assume yes.
         behaviour = ChangelogBehaviour(
@@ -1139,7 +1165,9 @@ def run_lintian_fixers(  # noqa: C901
             except MemoryError as e:
                 ret.failed_fixers[fixer.name] = e
                 if verbose:
-                    logging.info("Run out of memory while running fixer %r.", fixer.name)
+                    logging.info(
+                        "Run out of memory while running fixer %r.",
+                        fixer.name)
             except NotCertainEnough as e:
                 if verbose:
                     logging.info(
@@ -1152,7 +1180,8 @@ def run_lintian_fixers(  # noqa: C901
                     )
             except FailedPatchManipulation as e:
                 if verbose:
-                    logging.info("Unable to manipulate upstream patches: %s", e.args[2])
+                    logging.info(
+                        "Unable to manipulate upstream patches: %s", e.args[2])
                 ret.failed_fixers[fixer.name] = e
             except NoChanges as e:
                 if verbose:

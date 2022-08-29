@@ -28,8 +28,10 @@ from iso8601 import parse_date
 from .lintian import LINTIAN_DATA_PATH
 
 
-RELEASE_DATES_PATH = os.path.join(LINTIAN_DATA_PATH, "debian-policy/releases.json")
-OLD_RELEASE_DATES_PATH = os.path.join(LINTIAN_DATA_PATH, "standards-version/release-dates")
+RELEASE_DATES_PATH = os.path.join(
+    LINTIAN_DATA_PATH, "debian-policy/releases.json")
+OLD_RELEASE_DATES_PATH = os.path.join(
+    LINTIAN_DATA_PATH, "standards-version/release-dates")
 
 
 def iter_standards_versions() -> Iterator[Tuple[Tuple[int, ...], datetime]]:
@@ -47,7 +49,8 @@ def iter_standards_versions() -> Iterator[Tuple[Tuple[int, ...], datetime]]:
                 if line.startswith("#") or not line.strip():
                     continue
                 (version, ts) = line.split()
-                yield parse_standards_version(version), datetime.fromtimestamp(int(ts))
+                yield (parse_standards_version(version),
+                       datetime.fromtimestamp(int(ts)))
 
 
 def latest_standards_version() -> str:

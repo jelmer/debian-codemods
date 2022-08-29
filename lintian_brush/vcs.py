@@ -89,7 +89,8 @@ def determine_browser_url(vcs_type, vcs_url: str) -> Optional[str]:
         if subpath:
             path = posixpath.join(path, subpath)
         return urlunparse(
-            ("https", parsed.netloc, path, parsed.query, parsed.params, parsed.fragment)
+            ("https", parsed.netloc, path, parsed.query,
+             parsed.params, parsed.fragment)
         )
     if (
         parsed.netloc in ("code.launchpad.net", "launchpad.net")
@@ -129,7 +130,8 @@ def determine_browser_url(vcs_type, vcs_url: str) -> Optional[str]:
         if subpath is not None:
             path_elements.append(subpath)
         return urlunparse(
-            ("https", "sourceforge.net", "/".join(path_elements), None, None, None)
+            ("https", "sourceforge.net", "/".join(path_elements), None, None,
+             None)
         )
     return None
 
@@ -141,13 +143,17 @@ def canonicalize_vcs_browser_url(url: str) -> str:
     url = url.replace(
         "http://svn.debian.org/wsvn/", "https://anonscm.debian.org/viewvc/"
     )
-    url = url.replace("https://git.debian.org/?p=", "https://anonscm.debian.org/git/")
-    url = url.replace("http://git.debian.org/?p=", "https://anonscm.debian.org/git/")
     url = url.replace(
-        "https://bzr.debian.org/loggerhead/", "https://anonscm.debian.org/loggerhead/"
+        "https://git.debian.org/?p=", "https://anonscm.debian.org/git/")
+    url = url.replace(
+        "http://git.debian.org/?p=", "https://anonscm.debian.org/git/")
+    url = url.replace(
+        "https://bzr.debian.org/loggerhead/",
+        "https://anonscm.debian.org/loggerhead/"
     )
     url = url.replace(
-        "http://bzr.debian.org/loggerhead/", "https://anonscm.debian.org/loggerhead/"
+        "http://bzr.debian.org/loggerhead/",
+        "https://anonscm.debian.org/loggerhead/"
     )
     url = re.sub(
         r"^https?://salsa.debian.org/([^/]+/[^/]+)\.git/?$",
@@ -178,7 +184,8 @@ def canonicalize_vcs_url(vcs_type: str, url: str) -> str:
 
 def find_secure_vcs_url(url: str, net_access: bool = True) -> Optional[str]:
     (repo_url, branch, subpath) = split_vcs_url(url)
-    repo_url = find_secure_repo_url(repo_url, branch=branch, net_access=net_access)
+    repo_url = find_secure_repo_url(
+        repo_url, branch=branch, net_access=net_access)
     if repo_url is None:
         return None
 

@@ -337,7 +337,8 @@ def override_dh_auto_test_drop_options(rule):
     if b'override_dh_auto_test' not in rule.targets:
         return
     if (len(rule.lines) < 2
-            or rule.lines[1] != b'ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))'
+            or rule.lines[1]
+            != b'ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))'
             or rule.lines[-1] != b'endif'):
         return
     subitems.add(

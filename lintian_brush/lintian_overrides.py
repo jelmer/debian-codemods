@@ -88,7 +88,8 @@ def get_overrides(
     paths = []
     if type in ("source", None):
         paths.extend(
-            ["debian/source/lintian-overrides", "debian/source.lintian-overrides"]
+            ["debian/source/lintian-overrides",
+             "debian/source.lintian-overrides"]
         )
     if type in ("binary", None):
         if package is not None:
@@ -127,7 +128,8 @@ def override_exists(
       arch: Architecture
     """
     for override in get_overrides(type=type, package=package):
-        if override.matches(package=package, info=info, tag=tag, arch=arch, type=type):
+        if override.matches(
+                package=package, info=info, tag=tag, arch=arch, type=type):
             return True
     return False
 
@@ -141,7 +143,8 @@ async def get_unused_overrides(
     extra = []
     for (type, name) in packages:
         extra.append(
-            "package = $%d AND package_type = $%d" % (len(args) + 1, len(args) + 2)
+            "package = $%d AND package_type = $%d" % (
+                len(args) + 1, len(args) + 2)
         )
         args.extend([name, type])
 
@@ -157,7 +160,8 @@ from lintian where tag = 'unused-override' AND (%s)
 unused_overrides = None
 
 
-def remove_unused(control_paragraphs, ignore_tags=None) -> List[LintianOverride]:
+def remove_unused(
+        control_paragraphs, ignore_tags=None) -> List[LintianOverride]:
 
     if ignore_tags is None:
         ignore_tags = set()
@@ -192,8 +196,10 @@ def remove_unused(control_paragraphs, ignore_tags=None) -> List[LintianOverride]
             import asyncio
 
             loop = asyncio.get_event_loop()
-            unused_overrides = loop.run_until_complete(get_unused_overrides(packages))
-        if is_unused(override, unused_overrides) and override.tag not in ignore_tags:
+            unused_overrides = loop.run_until_complete(
+                get_unused_overrides(packages))
+        if (is_unused(override, unused_overrides)
+                and override.tag not in ignore_tags):
             removed.append(override)
             return None
         return override

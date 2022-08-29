@@ -123,7 +123,8 @@ with RulesEditor() as editor:
                 newlines.append(line)
         if rule.lines[1:] != newlines:
             rule.lines = [rule.lines[0]] + newlines
-            discard_pointless_override(editor.makefile, rule, ignore_comments=True)
+            discard_pointless_override(
+                editor.makefile, rule, ignore_comments=True)
 
 
 report_result('Drop transition for old debug package migration.')

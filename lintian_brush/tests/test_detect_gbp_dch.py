@@ -47,22 +47,29 @@ class GuessUpdateChangelogTests(TestCaseWithTransport):
         self.assertEqual(
             ChangelogBehaviour(
                 True,
-                'Assuming changelog needs to be updated, since it is always changed together '
-                'with other files in the tree.'), guess_update_changelog(tree, "debian"))
+                'Assuming changelog needs to be updated, '
+                'since it is always changed together '
+                'with other files in the tree.'),
+            guess_update_changelog(tree, "debian"))
 
     def test_custom_path(self):
         tree = self.make_branch_and_tree(".")
         self.assertEqual(ChangelogBehaviour(
             True,
-            'Assuming changelog needs to be updated, since it is always changed together '
-            'with other files in the tree.'), guess_update_changelog(tree, "debian"))
+            'Assuming changelog needs to be updated, '
+            'since it is always changed together '
+            'with other files in the tree.'),
+            guess_update_changelog(tree, "debian"))
         self.assertEqual(ChangelogBehaviour(
             True,
-            'assuming changelog needs to be updated since gbp dch only suppors a debian '
-            'directory in the root of the repository'), guess_update_changelog(tree, ""))
+            'assuming changelog needs to be updated since '
+            'gbp dch only suppors a debian '
+            'directory in the root of the repository'),
+            guess_update_changelog(tree, ""))
         self.assertEqual(ChangelogBehaviour(
             True,
-            'assuming changelog needs to be updated since gbp dch only suppors a debian '
+            'assuming changelog needs to be updated since '
+            'gbp dch only suppors a debian '
             'directory in the root of the repository'),
             guess_update_changelog(tree, "lala/debian"))
 
@@ -160,13 +167,16 @@ blah (0.20.1) unstable; urgency=medium
         changelog_entries = ["initial release"]
         for i in range(20):
             builder.build_snapshot(
-                None, [("modify", ("upstream", b"upstream %d" % i))], message="Upstream"
+                None, [("modify", ("upstream", b"upstream %d" % i))],
+                message="Upstream"
             )
             changelog_entries.append("next entry %d" % i)
             builder.build_snapshot(
                 None,
                 [
-                    ("modify", ("debian/changelog", make_changelog(changelog_entries))),
+                    ("modify", (
+                        "debian/changelog",
+                        make_changelog(changelog_entries))),
                     ("modify", ("debian/control", b"next %d" % i)),
                 ],
                 message="Next",
@@ -209,17 +219,22 @@ blah (0.20.1) unstable; urgency=medium
         for i in range(20):
             changelog_entries.append("next entry %d" % i)
             builder.build_snapshot(
-                None, [("modify", ("debian/control", b"next %d" % i))], message="Next\n"
+                None, [("modify", ("debian/control", b"next %d" % i))],
+                message="Next\n"
             )
         builder.build_snapshot(
-            None, [("modify", ("debian/changelog", make_changelog(changelog_entries)))]
+            None,
+            [("modify",
+                ("debian/changelog", make_changelog(changelog_entries)))]
         )
         changelog_entries.append("final entry")
         builder.build_snapshot(
             None, [("modify", ("debian/control", b"more"))], message="Next\n"
         )
         builder.build_snapshot(
-            None, [("modify", ("debian/changelog", make_changelog(changelog_entries)))]
+            None,
+            [("modify",
+                ("debian/changelog", make_changelog(changelog_entries)))]
         )
         builder.finish_series()
         branch = builder.get_branch()
@@ -237,7 +252,9 @@ blah (0.20.1) unstable; urgency=medium
     def test_has_dch_in_messages(self):
         builder = self.make_branch_builder(".")
         builder.build_snapshot(
-            None, [("add", ("", None, "directory", ""))], message="Git-Dch: ignore\n"
+            None,
+            [("add", ("", None, "directory", ""))],
+            message="Git-Dch: ignore\n"
         )
         branch = builder.get_branch()
         tree = branch.controldir.create_workingtree()
@@ -271,8 +288,8 @@ blah (0.20.1) UNRELEASED; urgency=medium
         self.assertEqual(
             ChangelogBehaviour(
                 False,
-                'assuming changelog does not need to be updated since it is the inaugural '
-                'unreleased entry'
+                'assuming changelog does not need to be '
+                'updated since it is the inaugural unreleased entry'
             ),
             guess_update_changelog(tree, "debian"),
         )

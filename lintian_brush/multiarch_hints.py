@@ -114,7 +114,8 @@ def multiarch_hints_by_source(hints):
 
 @contextlib.contextmanager
 def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
-    """Load multi-arch hints from a URL, but use cached version if available."""
+    """Load multi-arch hints from a URL, but use cached version if available.
+    """
     cache_home = os.environ.get("XDG_CACHE_HOME")
     if not cache_home:
         cache_home = os.path.expanduser("~/.cache")
@@ -160,7 +161,8 @@ def download_multiarch_hints(url=MULTIARCH_HINTS_URL, since: int = None):
             "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(since)
         )
 
-    with urlopen(Request(url, headers=headers), timeout=DEFAULT_URLLIB_TIMEOUT) as f:
+    with urlopen(Request(url, headers=headers),
+                 timeout=DEFAULT_URLLIB_TIMEOUT) as f:
         if url.endswith(".xz"):
             import lzma
 
@@ -194,7 +196,9 @@ def apply_hint_dep_any(binary, hint):
         hint["description"],
     )
     if not m or m.group(1) != binary["Package"]:
-        raise ValueError("unable to parse hint description: %r" % hint["description"])
+        raise ValueError(
+            "unable to parse hint description: %r"
+            % hint["description"])
     dep = m.group(2)
     if "Depends" not in binary:
         return
@@ -251,11 +255,13 @@ def apply_multiarch_hints(hints, minimum_certainty="certain"):
             for hint in hints.get(binary["Package"], []):
                 kind = hint["link"].rsplit("#", 1)[1]
                 applier = appliers[kind]
-                if not certainty_sufficient(applier.certainty, minimum_certainty):
+                if not certainty_sufficient(
+                        applier.certainty, minimum_certainty):
                     continue
                 description = applier.fn(binary, hint)
                 if description:
-                    changes.append((binary, hint, description, applier.certainty))
+                    changes.append(
+                        (binary, hint, description, applier.certainty))
 
     return changes
 
@@ -306,14 +312,18 @@ class MultiArchHintFixer(Fixer):
                 "+ %s: %s" % (", ".join(sorted(binaries)), description)
             )
         return MultiArchFixerResult(
-            "\n".join(overall_description), certainty=overall_certainty, changes=changes
+            "\n".join(overall_description),
+            certainty=overall_certainty, changes=changes
         )
 
 
 APPLIERS = [
-    MultiArchHintApplier("ma-foreign", apply_hint_ma_foreign, "certain"),
-    MultiArchHintApplier("file-conflict", apply_hint_file_conflict, "certain"),
-    MultiArchHintApplier("ma-foreign-library", apply_hint_ma_foreign_lib, "certain"),
+    MultiArchHintApplier(
+        "ma-foreign", apply_hint_ma_foreign, "certain"),
+    MultiArchHintApplier(
+        "file-conflict", apply_hint_file_conflict, "certain"),
+    MultiArchHintApplier(
+        "ma-foreign-library", apply_hint_ma_foreign_lib, "certain"),
     MultiArchHintApplier("dep-any", apply_hint_dep_any, "certain"),
     MultiArchHintApplier("ma-same", apply_hint_ma_same, "certain"),
     MultiArchHintApplier("arch-all", apply_hint_arch_all, "possible"),
@@ -359,7 +369,8 @@ def main(argv=None):  # noqa: C901
         default=".",
     )
     parser.add_argument(
-        "--disable-inotify", action="store_true", default=False, help=argparse.SUPPRESS
+        "--disable-inotify", action="store_true", default=False,
+        help=argparse.SUPPRESS
     )
     parser.add_argument(
         "--identity",

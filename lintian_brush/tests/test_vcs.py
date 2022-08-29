@@ -59,13 +59,15 @@ class FixUpGitUrlTests(TestCase):
     def test_salsa_uses_cgit(self):
         self.assertEqual(
             "https://salsa.debian.org/jelmer/dulwich",
-            fixup_broken_git_url("https://salsa.debian.org/cgit/jelmer/dulwich"),
+            fixup_broken_git_url(
+                "https://salsa.debian.org/cgit/jelmer/dulwich"),
         )
 
     def test_salsa_tree_branch(self):
         self.assertEqual(
             "https://salsa.debian.org/jelmer/dulwich -b master",
-            fixup_broken_git_url("https://salsa.debian.org/jelmer/dulwich/tree/master"),
+            fixup_broken_git_url(
+                "https://salsa.debian.org/jelmer/dulwich/tree/master"),
         )
 
     def test_strip_extra_slash(self):
@@ -77,7 +79,8 @@ class FixUpGitUrlTests(TestCase):
     def test_strip_extra_colon(self):
         self.assertEqual(
             "https://salsa.debian.org/mckinstry/lcov.git",
-            fixup_broken_git_url("https://salsa.debian.org:/mckinstry/lcov.git"),
+            fixup_broken_git_url(
+                "https://salsa.debian.org:/mckinstry/lcov.git"),
         )
 
     def test_strip_username(self):
@@ -105,7 +108,8 @@ class FixUpGitUrlTests(TestCase):
         )
         self.assertEqual(
             "https://gitlab.freedesktop.org/xorg/lib/libSM",
-            fixup_broken_git_url("git://anongit.freedesktop.org/git/xorg/lib/libSM"),
+            fixup_broken_git_url(
+                "git://anongit.freedesktop.org/git/xorg/lib/libSM"),
         )
 
     def test_anongit(self):
@@ -140,7 +144,8 @@ class SanitizeUrlTests(TestCase):
 
     def test_rcp_style(self):
         self.assertEqual(
-            "https://github.com/jelmer/blah.git", sanitize_url("github.com:jelmer/blah")
+            "https://github.com/jelmer/blah.git",
+            sanitize_url("github.com:jelmer/blah")
         )
 
     def test_insecure_savannah(self):
@@ -156,7 +161,8 @@ class SanitizeUrlTests(TestCase):
         )
         self.assertEqual(
             "cvs+pserver://_anoncvs@anoncvs.mirbsd.org/cvs#jupp",
-            sanitize_url([":pserver:_anoncvs@anoncvs.mirbsd.org:/cvs", "jupp"]),
+            sanitize_url(
+                [":pserver:_anoncvs@anoncvs.mirbsd.org:/cvs", "jupp"]),
         )
 
 
@@ -164,13 +170,15 @@ class DetermineBrowserUrlTests(TestCase):
     def test_salsa(self):
         self.assertEqual(
             "https://salsa.debian.org/jelmer/dulwich",
-            determine_browser_url("git", "https://salsa.debian.org/jelmer/dulwich.git"),
+            determine_browser_url(
+                "git", "https://salsa.debian.org/jelmer/dulwich.git"),
         )
 
     def test_github(self):
         self.assertEqual(
             "https://github.com/jelmer/dulwich",
-            determine_browser_url("git", "https://github.com/jelmer/dulwich.git"),
+            determine_browser_url(
+                "git", "https://github.com/jelmer/dulwich.git"),
         )
         self.assertEqual(
             "https://github.com/jelmer/dulwich/tree/master",
@@ -180,7 +188,8 @@ class DetermineBrowserUrlTests(TestCase):
         )
         self.assertEqual(
             "https://github.com/jelmer/dulwich/tree/master",
-            determine_browser_url("git", "git://github.com/jelmer/dulwich -b master"),
+            determine_browser_url(
+                "git", "git://github.com/jelmer/dulwich -b master"),
         )
         self.assertEqual(
             "https://github.com/jelmer/dulwich/tree/master/blah",
@@ -190,7 +199,8 @@ class DetermineBrowserUrlTests(TestCase):
         )
         self.assertEqual(
             "https://github.com/jelmer/dulwich/tree/HEAD/blah",
-            determine_browser_url("git", "git://github.com/jelmer/dulwich [blah]"),
+            determine_browser_url(
+                "git", "git://github.com/jelmer/dulwich [blah]"),
         )
         self.assertEqual(
             "https://git.sv.gnu.org/cgit/rcs.git",
@@ -202,7 +212,8 @@ class DetermineBrowserUrlTests(TestCase):
         )
         self.assertEqual(
             "https://sourceforge.net/p/shorewall/debian",
-            determine_browser_url("git", "git://git.code.sf.net/p/shorewall/debian"),
+            determine_browser_url(
+                "git", "git://git.code.sf.net/p/shorewall/debian"),
         )
         self.assertEqual(
             "https://sourceforge.net/p/shorewall/debian/ci/foo/tree",
@@ -234,11 +245,13 @@ class CanonicalizeVcsUrlTests(TestCase):
     def test_salsa(self):
         self.assertEqual(
             "https://salsa.debian.org/jelmer/example.git",
-            canonicalize_vcs_url("Git", "https://salsa.debian.org/jelmer/example"),
+            canonicalize_vcs_url(
+                "Git", "https://salsa.debian.org/jelmer/example"),
         )
         self.assertEqual(
             "https://salsa.debian.org/jelmer/example.git",
-            canonicalize_vcs_url("Git", "https://salsa.debian.org/jelmer/example.git"),
+            canonicalize_vcs_url(
+                "Git", "https://salsa.debian.org/jelmer/example.git"),
         )
 
 
@@ -282,5 +295,6 @@ class FixupRcpStyleUrlTests(TestCase):
         )
         self.assertEqual(
             "ssh://git@salsa.debian.org/jelmer/example",
-            fixup_rcp_style_git_url("ssh://git@salsa.debian.org/jelmer/example"),
+            fixup_rcp_style_git_url(
+                "ssh://git@salsa.debian.org/jelmer/example"),
         )

@@ -32,6 +32,8 @@ if len(removed) == 1:
             ', '.join(sorted(binary_packages))))
 elif len(removed) > 1:
     report_result(
-            'Remove fields on binary packages that duplicate source:\n' +
-            '\n'.join(['+ Field %s from %s.' % (field, ', '.join(sorted(packages)))
-                       for (field, packages) in sorted(removed.items())]))
+            'Remove fields on binary packages that duplicate source:\n'
+            + '\n'.join(
+                ['+ Field %s from %s.' % (
+                    field, ', '.join(sorted(packages)))
+                    for (field, packages) in sorted(removed.items())]))

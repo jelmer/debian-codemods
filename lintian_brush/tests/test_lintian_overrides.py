@@ -40,7 +40,8 @@ class OverridesPathTests(TestCaseWithTransport):
         self.build_tree(
             ["debian/", "debian/source/", "debian/source/lintian-overrides"]
         )
-        self.assertEqual(["debian/source/lintian-overrides"], list(overrides_paths()))
+        self.assertEqual(
+            ["debian/source/lintian-overrides"], list(overrides_paths()))
 
 
 class UpdateOverridesFileTests(TestCaseWithTransport):
@@ -145,5 +146,6 @@ blah source: patch-file-exists-but info
         self.assertTrue(override_exists("patch-file-exists-but", info="info"))
         self.assertFalse(override_exists("patch-file-exists-but", info="no"))
         self.assertTrue(
-            override_exists(tag="patch-file-exists-but", info="info", package="blah")
+            override_exists(
+                tag="patch-file-exists-but", info="info", package="blah")
         )

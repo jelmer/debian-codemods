@@ -14,7 +14,8 @@ with control:
         issue = LintianIssue(binary, 'obsolete-vim-addon-manager')
         if not issue.should_fix():
             continue
-        binary['Depends'] = drop_dependency(binary['Depends'], 'vim-addon-manager')
+        binary['Depends'] = drop_dependency(
+            binary['Depends'], 'vim-addon-manager')
         with RulesEditor() as rules:
             add_sequence(control, rules, 'vim-addon')
         issue.report_fixed()

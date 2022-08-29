@@ -106,7 +106,8 @@ class AvailableLintianFixersTest(TestCaseWithTransport):
         )
         self.assertEqual(
             [["i-fix-a-tag"], ["i-fix-another-tag", "no-extension"]],
-            [fixer.lintian_tags for fixer in available_lintian_fixers("fixers")],
+            [fixer.lintian_tags
+             for fixer in available_lintian_fixers("fixers")],
         )
 
 
@@ -177,7 +178,9 @@ Arch: all
         self.assertEqual(["some-tag"], result.fixed_lintian_tags)
         self.assertEqual("certain", result.certainty)
         self.assertEqual(2, tree.branch.revno())
-        self.assertEqual(tree.get_file_lines("debian/control")[-1], b"a new line\n")
+        self.assertEqual(
+            tree.get_file_lines("debian/control")[-1],
+            b"a new line\n")
 
     def test_simple_modify_too_uncertain(self):
         tree = self.make_test_tree()
@@ -228,7 +231,8 @@ Arch: all
 
         with tree.lock_write():
             result, summary = run_lintian_fixer(
-                tree, NewFileFixer("new-file", "some-tag"), update_changelog=False
+                tree,
+                NewFileFixer("new-file", "some-tag"), update_changelog=False
             )
         self.assertEqual(summary, "Created new file.")
         self.assertIs(None, result.certainty)
@@ -247,7 +251,8 @@ Arch: all
         self.assertEqual(2, tree.branch.revno())
         basis_tree = tree.branch.basis_tree()
         with basis_tree.lock_read():
-            self.assertEqual(basis_tree.get_file_text("debian/somefile"), b"test")
+            self.assertEqual(
+                basis_tree.get_file_text("debian/somefile"), b"test")
 
     def test_rename_file(self):
         tree = self.make_test_tree()
@@ -263,7 +268,8 @@ Arch: all
         orig_basis_tree = tree.branch.basis_tree()
         with tree.lock_write():
             result, summary = run_lintian_fixer(
-                tree, RenameFileFixer("rename", "some-tag"), update_changelog=False
+                tree, RenameFileFixer("rename", "some-tag"),
+                update_changelog=False
             )
         self.assertEqual(summary, "Renamed a file.")
         self.assertIs(None, result.certainty)
@@ -348,9 +354,11 @@ Arch: all
         basis_tree = tree.branch.basis_tree()
         with basis_tree.lock_read():
             self.assertEqual(
-                basis_tree.get_file_text("debian/patches/series"), b"add-config.patch\n"
+                basis_tree.get_file_text("debian/patches/series"),
+                b"add-config.patch\n"
             )
-            lines = basis_tree.get_file_lines("debian/patches/add-config.patch")
+            lines = basis_tree.get_file_lines(
+                "debian/patches/add-config.patch")
         self.assertEqual(lines[0], b"Description: Created new configure.ac.\n")
         self.assertEqual(lines[1], b"Origin: other\n")
         self.assertEqual(lines[2], b"Last-Update: 2020-09-08\n")
@@ -377,7 +385,11 @@ Arch: all
                 ),
             ]
         )
-        tree.add(["debian/patches", "debian/patches/series", "debian/patches/foo"])
+        tree.add([
+            "debian/patches",
+            "debian/patches/series",
+            "debian/patches/foo"
+        ])
         tree.commit("Add patches")
 
         class NewFileFixer(Fixer):
@@ -427,12 +439,17 @@ Arch: all
     def test_fails(self):
         with self.tree.lock_write():
             result = run_lintian_fixers(
-                self.tree, [FailingFixer("fail", "some-tag")], update_changelog=False
+                self.tree, [FailingFixer("fail", "some-tag")],
+                update_changelog=False
             )
         self.assertEqual([], result.success)
-        self.assertEqual({"fail": FixerFailed("Not successful")}, result.failed_fixers)
+        self.assertEqual(
+            {"fail": FixerFailed("Not successful")},
+            result.failed_fixers)
         with self.tree.lock_read():
-            self.assertEqual([], list(self.tree.iter_changes(self.tree.basis_tree())))
+            self.assertEqual(
+                [],
+                list(self.tree.iter_changes(self.tree.basis_tree())))
 
     def test_not_debian_tree(self):
         self.tree.remove("debian/changelog")
@@ -450,7 +467,8 @@ Arch: all
     def test_simple_modify(self):
         with self.tree.lock_write():
             result = run_lintian_fixers(
-                self.tree, [DummyFixer("dummy", "some-tag")], update_changelog=False
+                self.tree, [DummyFixer("dummy", "some-tag")],
+                update_changelog=False
             )
             revid = self.tree.last_revision()
         self.assertEqual(
@@ -511,7 +529,9 @@ Arch: all
         self.assertEqual(["some-tag"], result.fixed_lintian_tags)
         self.assertEqual("certain", result.certainty)
         self.assertEqual(2, tree.branch.revno())
-        self.assertEqual(tree.get_file_lines("debian/control")[-1], b"a new line\n")
+        self.assertEqual(
+            tree.get_file_lines("debian/control")[-1],
+            b"a new line\n")
 
     def test_honors_tree_committer_specified(self):
         tree = self.make_package_tree("git")
@@ -813,7 +833,8 @@ class LintianBrushVersion(TestCase):
     def test_matches_package_version(self):
         if not os.path.exists("debian/changelog"):
             self.skipTest(
-                "no debian/changelog available. " "Running outside of source tree?"
+                "no debian/changelog available. "
+                "Running outside of source tree?"
             )
         with open("debian/changelog", "r") as f:
             cl = Changelog(f, max_blocks=1)
@@ -823,7 +844,9 @@ class LintianBrushVersion(TestCase):
 
     def test_matches_setup_version(self):
         if not os.path.exists("setup.py"):
-            self.skipTest("no setup.py available. " "Running outside of source tree?")
+            self.skipTest(
+                "no setup.py available. "
+                "Running outside of source tree?")
         # TODO(jelmer): Surely there's a better way of doing this?
         with open("setup.py", "r") as f:
             for line in f:
@@ -863,7 +886,8 @@ class GetCommitterTests(TestCaseWithTransport):
         gs = GlobalStack()
         gs.set("email", "Yet Another Committer <yet@example.com>")
         tree = self.make_branch_and_tree(".", format="git")
-        self.assertEqual("Yet Another Committer <yet@example.com>", get_committer(tree))
+        self.assertEqual(
+            "Yet Another Committer <yet@example.com>", get_committer(tree))
 
 
 class CertaintySufficientTests(TestCase):
@@ -905,7 +929,8 @@ class MinimumCertaintyTests(TestCase):
         self.assertEqual("possible", min_certainty(["possible"]))
         self.assertEqual("possible", min_certainty(["possible", "certain"]))
         self.assertEqual("likely", min_certainty(["likely", "certain"]))
-        self.assertEqual("possible", min_certainty(["likely", "certain", "possible"]))
+        self.assertEqual(
+            "possible", min_certainty(["likely", "certain", "possible"]))
 
 
 class ParseScriptFixerOutputTests(TestCase):
@@ -962,9 +987,11 @@ class BaseScriptFixerTests(object):
     script_fixer_cls: Type[Fixer]
 
     def create_fixer(self, code):
-        self.build_tree_contents([("script.py", "#!" + sys.executable + "\n" + code)])
+        self.build_tree_contents(
+            [("script.py", "#!" + sys.executable + "\n" + code)])
         os.chmod("script.py", 0o755)
-        fixer = self.script_fixer_cls("fixer", ["a-tag"], os.path.abspath("script.py"))
+        fixer = self.script_fixer_cls(
+            "fixer", ["a-tag"], os.path.abspath("script.py"))
         self.assertEqual(os.path.abspath("script.py"), fixer.script_path)
         return fixer
 
@@ -991,8 +1018,8 @@ foo()
 """
         )
         e = self.assertRaises(
-            FixerScriptFailed, fixer.run, self.test_dir, "blah", "0.1", "buster"
-        )
+            FixerScriptFailed, fixer.run, self.test_dir, "blah", "0.1",
+            "buster")
         self.assertEqual(e.path, fixer.script_path)
         self.assertEqual(e.returncode, 1)
         self.assertEqual(
@@ -1029,7 +1056,8 @@ class SelectFixersTests(TestCase):
 
     def test_missing(self):
         self.assertRaises(
-            KeyError, select_fixers, [DummyFixer("dummy", "some-tag")], ["other"]
+            KeyError, select_fixers, [DummyFixer("dummy", "some-tag")],
+            ["other"]
         )
 
     def test_exclude_missing(self):
@@ -1065,12 +1093,14 @@ class ManyResultTests(TestCase):
 
     def test_no_certainty(self):
         result = ManyResult()
-        result.success.append((FixerResult("Do bla", ["tag-a"], None), "summary"))
+        result.success.append(
+            (FixerResult("Do bla", ["tag-a"], None), "summary"))
         self.assertEqual("certain", result.minimum_success_certainty())
 
     def test_possible(self):
         result = ManyResult()
-        result.success.append((FixerResult("Do bla", ["tag-a"], "possible"), "summary"))
+        result.success.append(
+            (FixerResult("Do bla", ["tag-a"], "possible"), "summary"))
         result.success.append(
             (FixerResult("Do bloeh", ["tag-b"], "certain"), "summary")
         )

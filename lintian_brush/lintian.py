@@ -57,7 +57,8 @@ def read_list_file(f, vendor):
         yield line
 
 
-OBSOLETE_SITES_PATH = os.path.join(LINTIAN_DATA_PATH, 'obsolete-sites/obsolete-sites')
+OBSOLETE_SITES_PATH = os.path.join(
+    LINTIAN_DATA_PATH, 'obsolete-sites/obsolete-sites')
 _obsolete_sites = None
 
 
@@ -138,11 +139,13 @@ def dh_commands():
 
 def dh_addons():
     try:
-        with open(os.path.join(LINTIAN_DATA_PATH, 'common/dh_addons'), 'r') as f:
+        with open(os.path.join(
+                LINTIAN_DATA_PATH, 'common/dh_addons'), 'r') as f:
             return {
                 addon: {'installed_by': [pkg]}
                 for (addon, pkg) in read_debhelper_lintian_data_file(f, '=')}
     except FileNotFoundError:
-        with open(os.path.join(LINTIAN_DATA_PATH, 'debhelper/add_ons.json'), 'r') as f:
+        with open(os.path.join(
+                LINTIAN_DATA_PATH, 'debhelper/add_ons.json'), 'r') as f:
             data = json.load(f)
             return data['add_ons']

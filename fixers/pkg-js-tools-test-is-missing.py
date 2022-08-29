@@ -6,7 +6,12 @@ import sys
 from debmutate.control import ensure_some_version
 from debmutate.debhelper import get_sequences
 
-from lintian_brush.fixer import report_result, LintianIssue, meets_minimum_certainty, control
+from lintian_brush.fixer import (
+    report_result,
+    LintianIssue,
+    meets_minimum_certainty,
+    control,
+)
 
 CERTAINTY = 'possible'
 

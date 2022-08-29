@@ -18,6 +18,7 @@
 import os
 import shlex
 import subprocess
+import tempfile
 
 gpg = shlex.split(os.environ.get("GPG", "gpg"))
 
@@ -47,12 +48,15 @@ def gpg_import_export(import_options, export_options, stdin):
         "--import",
         "-",
     ]
-    try:
-        p = subprocess.Popen(argv, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    except FileNotFoundError:
-        # No gpg, no dice.
-        raise GpgMissing()
-    (stdout, stderr) = p.communicate(stdin, timeout=5)
-    if p.returncode != 0:
-        raise GpgFailed(stderr)
-    return stdout
+    with tempfile.TemporaryDirectory() as td:
+        try:
+            p = subprocess.Popen(
+                argv, stdout=subprocess.PIPE, stdin=subprocess.PIPE,
+                env={'GNUPGHOME': td})
+        except FileNotFoundError:
+            # No gpg, no dice.
+            raise GpgMissing()
+        (stdout, stderr) = p.communicate(stdin, timeout=5)
+        if p.returncode != 0:
+            raise GpgFailed(stderr)
+        return stdout

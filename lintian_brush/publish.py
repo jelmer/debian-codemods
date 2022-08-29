@@ -28,7 +28,7 @@ from breezy.errors import AlreadyBranchError, AlreadyControlDirError
 try:
     from breezy.forge import iter_forge_instances, UnsupportedForge
 except ImportError:  # older breezy
-    from breezy.propose import (
+    from breezy.propose import (  # noqa: F401
         iter_hoster_instances as iter_forge_instances,
         UnsupportedHoster as UnsupportedForge,
         )
@@ -55,7 +55,8 @@ class VcsAlreadySpecified(Exception):
     """Vcs is already specified."""
 
 
-def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False, create=False):
+def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False,
+                       create=False):
     # TODO(jelmer): Allow creation of the repository as well
     check_clean_tree(wt, wt.basis_tree(), subpath)
 
@@ -64,7 +65,8 @@ def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False, 
 
     if wt.has_filename(debcargo_path):
         from debmutate.debcargo import DebcargoControlShimEditor
-        editor = DebcargoControlShimEditor.from_debian_dir(wt.abspath(os.path.join(subpath, 'debian')))
+        editor = DebcargoControlShimEditor.from_debian_dir(
+            wt.abspath(os.path.join(subpath, 'debian')))
     elif wt.has_filename(control_path):
         control_path = wt.abspath(control_path)
         editor = ControlEditor(control_path)
@@ -175,7 +177,9 @@ def main():
         return 0
 
     try:
-        repo_url = update_offical_vcs(wt, subpath, repo_url=args.url, force=args.force, create=args.create)
+        repo_url = update_offical_vcs(
+            wt, subpath, repo_url=args.url,
+            force=args.force, create=args.create)
     except WorkspaceDirty:
         logging.info("%s: Please commit pending changes first.", wt.basedir)
         return 1

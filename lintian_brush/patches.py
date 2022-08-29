@@ -275,7 +275,8 @@ def tree_non_patches_changes(tree, patches_directory):
         tree, patches
     ) as upstream_patches_tree, AppliedPatches(tree, patches) as patches_tree:
         for change in filter_excluded(
-            patches_tree.iter_changes(upstream_patches_tree), exclude=["debian"]
+            patches_tree.iter_changes(
+                upstream_patches_tree), exclude=["debian"]
         ):
             path = change.path[1]
             if path == "":

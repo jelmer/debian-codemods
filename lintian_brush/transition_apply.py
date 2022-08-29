@@ -159,7 +159,8 @@ def report_okay(code: str, description: str) -> None:
     logging.info('%s', description)
 
 
-def apply_transition(wt, debian_path, ben, update_changelog, allow_reformatting):
+def apply_transition(
+        wt, debian_path, ben, update_changelog, allow_reformatting):
     control_path = os.path.join(debian_path, "control")
     try:
         with ControlEditor(
@@ -299,7 +300,9 @@ def main():  # noqa: C901
         report_fatal('not-debian-package', 'Not a Debian package.')
         return 1
     except ChangeConflict as e:
-        report_fatal('change-conflict', 'Generated file changes conflict: %s' % e)
+        report_fatal(
+            'change-conflict',
+            'Generated file changes conflict: %s' % e)
         return 1
 
     if not result:

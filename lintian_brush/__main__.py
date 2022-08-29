@@ -83,11 +83,13 @@ def calculate_value(tags: Set[str]) -> int:
     else:
         value = DEFAULT_VALUE_LINTIAN_BRUSH
     for tag in tags:
-        value += LINTIAN_BRUSH_TAG_VALUES.get(tag, LINTIAN_BRUSH_TAG_DEFAULT_VALUE)
+        value += LINTIAN_BRUSH_TAG_VALUES.get(
+            tag, LINTIAN_BRUSH_TAG_DEFAULT_VALUE)
     return value
 
 
-def report_fatal(code: str, description: str, hint: Optional[str] = None) -> None:
+def report_fatal(code: str, description: str,
+                 hint: Optional[str] = None) -> None:
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
@@ -127,7 +129,8 @@ def main(argv=None):  # noqa: C901
         action="store_true",
         default=False,
     )
-    fixer_group.add_argument("--compat-release", type=str, help=argparse.SUPPRESS)
+    fixer_group.add_argument(
+        "--compat-release", type=str, help=argparse.SUPPRESS)
     # Hide the minimum-certainty option for the moment.
     fixer_group.add_argument(
         "--minimum-certainty",
@@ -147,14 +150,16 @@ def main(argv=None):  # noqa: C901
         help=argparse.SUPPRESS,
     )
     fixer_group.add_argument(
-        "--uncertain", action="store_true", help="Include changes with lower certainty."
+        "--uncertain", action="store_true",
+        help="Include changes with lower certainty."
     )
     fixer_group.add_argument(
         "--yolo", action="store_true", help=argparse.SUPPRESS
     )
 
     fixer_group.add_argument(
-        "--force-subprocess", action="store_true", default=False, help=argparse.SUPPRESS
+        "--force-subprocess", action="store_true", default=False,
+        help=argparse.SUPPRESS
     )
 
     package_group = parser.add_argument_group("package preferences")
@@ -178,7 +183,8 @@ def main(argv=None):  # noqa: C901
         help="force updating of the changelog",
         default=None,
     )
-    package_group.add_argument("--trust", action="store_true", help=argparse.SUPPRESS)
+    package_group.add_argument(
+        "--trust", action="store_true", help=argparse.SUPPRESS)
 
     output_group = parser.add_argument_group("output")
     output_group.add_argument(
@@ -229,7 +235,8 @@ def main(argv=None):  # noqa: C901
     )
 
     parser.add_argument(
-        "--disable-inotify", action="store_true", default=False, help=argparse.SUPPRESS
+        "--disable-inotify", action="store_true", default=False,
+        help=argparse.SUPPRESS
     )
     args = parser.parse_args(argv)
 
@@ -269,7 +276,8 @@ def main(argv=None):  # noqa: C901
             else:
                 wt, subpath = WorkingTree.open_containing(args.directory)
         except NotBranchError:
-            logging.error("No version control directory found (e.g. a .git directory).")
+            logging.error(
+                "No version control directory found (e.g. a .git directory).")
             return 1
         except DependencyNotPresent as e:
             logging.error(
@@ -292,7 +300,8 @@ def main(argv=None):  # noqa: C901
         debian_info = distro_info.DebianDistroInfo()
         if args.modern:
             if args.compat_release:
-                logging.error("--compat-release and --modern are incompatible.")
+                logging.error(
+                    "--compat-release and --modern are incompatible.")
                 return 1
             compat_release = debian_info.devel()
         else:
@@ -326,7 +335,8 @@ def main(argv=None):  # noqa: C901
             if control_files_in_root(wt, subpath):
                 report_fatal(
                     "control-files-in-root",
-                    "control files live in root rather than debian/ " "(LarstIQ mode)",
+                    "control files live in root rather than debian/ "
+                    "(LarstIQ mode)",
                 )
 
             try:
@@ -359,7 +369,8 @@ def main(argv=None):  # noqa: C901
                 return 1
             except ChangelogCreateError as e:
                 report_fatal(
-                    "changelog-create-error", "Error creating changelog entry: %s" % e
+                    "changelog-create-error",
+                    "Error creating changelog entry: %s" % e
                 )
                 return 1
             except DescriptionMissing as e:
@@ -416,7 +427,8 @@ def main(argv=None):  # noqa: C901
             from breezy.diff import show_diff_trees
 
             show_diff_trees(
-                wt.branch.repository.revision_tree(since_revid), wt, sys.stdout.buffer
+                wt.branch.repository.revision_tree(since_revid), wt,
+                sys.stdout.buffer
             )
         if os.environ.get('SVP_API') == '1':
             applied = []
@@ -441,7 +453,8 @@ def main(argv=None):  # noqa: C901
                 for (name, e) in overall_result.failed_fixers.items()}
             debian_context = {}
             if overall_result.changelog_behaviour:
-                debian_context['changelog'] = overall_result.changelog_behaviour.json()
+                debian_context['changelog'] = (
+                    overall_result.changelog_behaviour.json())
             with open(os.environ['SVP_RESULT'], 'w') as f:
                 json.dump({
                     'value': calculate_value(all_fixed_lintian_tags),

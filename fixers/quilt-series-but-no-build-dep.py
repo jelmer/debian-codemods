@@ -5,7 +5,12 @@ import sys
 from typing import Optional
 
 from debmutate.control import ensure_some_version
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag, is_debcargo_package
+from lintian_brush.fixer import (
+    control,
+    report_result,
+    fixed_lintian_tag,
+    is_debcargo_package,
+)
 
 if is_debcargo_package():
     sys.exit(0)

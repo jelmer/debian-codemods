@@ -56,7 +56,8 @@ class FixerTestCase(unittest.TestCase):
             return [name for name in names if name.endswith("~")]
 
         shutil.copytree(
-            os.path.join(self._path, "in"), self._testdir, symlinks=True, ignore=ignore
+            os.path.join(self._path, "in"), self._testdir, symlinks=True,
+            ignore=ignore
         )
 
     def id(self):
@@ -99,7 +100,8 @@ class FixerTestCase(unittest.TestCase):
                     key, value = line.rstrip("\n").split("=")
                     env[key] = value
         p = subprocess.Popen(
-            self._fixer.script_path, cwd=self._testdir, stdout=subprocess.PIPE, env=env
+            self._fixer.script_path, cwd=self._testdir, stdout=subprocess.PIPE,
+            env=env
         )
         (stdout, err) = p.communicate("")
         self.assertEqual(p.returncode, 0)
@@ -119,7 +121,9 @@ class FixerTestCase(unittest.TestCase):
             stdout=subprocess.PIPE,
         )
         (diff, stderr) = p.communicate("")
-        self.assertIn(p.returncode, (0, 1), "Unexpected exit code %d" % p.returncode)
+        self.assertIn(
+            p.returncode, (0, 1),
+            "Unexpected exit code %d" % p.returncode)
         if diff.decode() != "":
             raise AssertionError("unexpected output: %s" % diff.decode())
         self.assertMultiLineEqual(diff.decode(), "")
@@ -131,7 +135,8 @@ class FixerTestCase(unittest.TestCase):
             check_message = True
             result = parse_script_fixer_output(stdout.decode())
             self.assertTrue(
-                set(result.fixed_lintian_tags).issubset(self._fixer.lintian_tags),
+                set(result.fixed_lintian_tags).issubset(
+                    self._fixer.lintian_tags),
                 "fixer %s claims to fix tags (%r) not declared "
                 "in index.desc (%r)"
                 % (
@@ -172,7 +177,8 @@ class SaneFixerTests(unittest.TestCase):
         renames = load_renamed_tags()
         for tag in self.fixer.lintian_tags:
             self.assertNotIn(
-                tag, renames, "Tag %s has been renamed to %s" % (tag, renames.get(tag))
+                tag, renames,
+                "Tag %s has been renamed to %s" % (tag, renames.get(tag))
             )
 
 
@@ -212,7 +218,8 @@ if __name__ == "__main__":
         action="append",
         help="Fixer for which to run tests.",
     )
-    parser.add_argument("--exclude", type=str, action="append", help="Exclude a fixer.")
+    parser.add_argument(
+        "--exclude", type=str, action="append", help="Exclude a fixer.")
     args = parser.parse_args()
 
     fixers = list(available_lintian_fixers())
@@ -220,7 +227,8 @@ if __name__ == "__main__":
         try:
             fixers = select_fixers(fixers, args.fixer, args.exclude)
         except KeyError as e:
-            print("Selected fixer %s does not exist." % (e.args[0]), file=sys.stderr)
+            print("Selected fixer %s does not exist." % (
+                e.args[0]), file=sys.stderr)
             sys.exit(0)
 
     suite = unittest.TestSuite()

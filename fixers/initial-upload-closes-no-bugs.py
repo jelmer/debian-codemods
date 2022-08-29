@@ -19,7 +19,8 @@ with ChangelogEditor() as editor:
         sys.exit(0)
 
     loop = asyncio.get_event_loop()
-    wnpp_bugs = loop.run_until_complete(find_wnpp_bugs(editor.changelog[-1].package))
+    wnpp_bugs = loop.run_until_complete(
+        find_wnpp_bugs(editor.changelog[-1].package))
     if wnpp_bugs:
         certainty = 'certain'
     else:
@@ -35,7 +36,9 @@ with ChangelogEditor() as editor:
             continue
 
         if 'Initial release' in line:
-            editor.changelog[-1]._changes[i] = line + " Closes: #%s" % ', '.join([str(bugno) for (bugno, kind) in wnpp_bugs])
+            editor.changelog[-1]._changes[i] = line + (
+                " Closes: #%s" % ', '.join(
+                    [str(bugno) for (bugno, kind) in wnpp_bugs]))
             version_changed = editor.changelog[-1].version
             break
 
@@ -43,5 +46,8 @@ with ChangelogEditor() as editor:
 if version_changed:
     report_result(
         "Add %s bugs in %s." %
-        (', '.join(sorted(set([kind for (bugno, kind) in wnpp_bugs]))), version_changed),
+        (', '.join(
+            sorted(set(
+                [kind for (bugno, kind) in wnpp_bugs]))),
+            version_changed),
         certainty=certainty)

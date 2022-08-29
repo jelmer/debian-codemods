@@ -52,12 +52,15 @@ with RulesEditor() as editor:
             continue
         for known_target in known_targets:
             issue = LintianIssue(
-                'source', 'typo-in-debhelper-override-target', '%s -> %s (line X)')
-            if distance(known_target, rule.target.decode()) == 1 and issue.should_fix():
+                'source', 'typo-in-debhelper-override-target',
+                '%s -> %s (line X)')
+            if (distance(known_target, rule.target.decode()) == 1
+                    and issue.should_fix()):
                 renamed.append((rule.target.decode(), known_target))
                 rule.rename_target(rule.target, known_target.encode())
                 issue.report_fixed()
 
 
 report_result(
-    'Fix typo in debian/rules rules: %s' % ', '.join('%s => %s' % (old, new) for old, new in renamed))
+    'Fix typo in debian/rules rules: %s'
+    % ', '.join('%s => %s' % (old, new) for old, new in renamed))

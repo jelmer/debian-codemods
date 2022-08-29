@@ -52,7 +52,9 @@ def add_changelog_entry(
     # TODO(jelmer): This logic should ideally be in python-debian.
     with tree.get_file(path) as f:
         cl = Changelog()
-        cl.parse_changelog(f, max_blocks=None, allow_empty_author=True, strict=False)
+        cl.parse_changelog(
+                f, max_blocks=None, allow_empty_author=True,
+                strict=False)
         _changelog_add_entry(
             cl,
             summary=summary,

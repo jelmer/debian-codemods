@@ -43,7 +43,8 @@ class WatchCandidate:
     preference: Optional[int]
 
 
-def candidates_from_setup_py(path, good_upstream_versions: Set[str], net_access=False):
+def candidates_from_setup_py(
+        path, good_upstream_versions: Set[str], net_access=False):
     certainty = "likely"
     from distutils.core import run_setup
 
@@ -64,7 +65,8 @@ def candidates_from_setup_py(path, good_upstream_versions: Set[str], net_access=
         headers = {"User-Agent": USER_AGENT}
         try:
             response = urlopen(
-                Request(json_url, headers=headers), timeout=DEFAULT_URLLIB_TIMEOUT
+                Request(json_url, headers=headers),
+                timeout=DEFAULT_URLLIB_TIMEOUT
             )
         except urllib.error.HTTPError as e:
             if e.status == 404:
@@ -78,9 +80,9 @@ def candidates_from_setup_py(path, good_upstream_versions: Set[str], net_access=
                 for d in release
                 if d["packagetype"] == "sdist"
             ]
-    filename_regex = r"%(project)s-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))" % {
-        "project": project
-    }
+    filename_regex = (
+            r"%(project)s-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))" % {
+                "project": project})
     opts = []
     # TODO(jelmer): Set uversionmangle?
     # opts.append('uversionmangle=s/(rc|a|b|c)/~$1/')
@@ -128,11 +130,13 @@ def candidates_from_upstream_metadata(
 
 
 def guess_cran_watch_entry(name):
-    w = Watch(r'https://cran.r-project.org/src/contrib/%s_([-\d.]*)\.tar\.gz' % name)
+    w = Watch(r'https://cran.r-project.org/src/contrib/%s_([-\d.]*)\.tar\.gz'
+              % name)
     yield WatchCandidate(w, "cran", certainty="likely", preference=0)
 
 
-def guess_github_watch_entry(parsed_url, good_upstream_versions, net_access=False):
+def guess_github_watch_entry(
+        parsed_url, good_upstream_versions, net_access=False):
     from breezy.branch import Branch
     import re
 
@@ -331,7 +335,8 @@ def main():  # noqa: C901
         with WatchEditor() as updater:
             fix_watch_issues(updater)
     except FileNotFoundError:
-        # TODO(jelmer): Reuse logic from ../fixers/debian-watch-file-is-missing.py
+        # TODO(jelmer): Reuse logic from
+        # ../fixers/debian-watch-file-is-missing.py
         pass
 
     if os.environ.get("SVP_API") == "1":

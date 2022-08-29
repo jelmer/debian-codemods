@@ -93,7 +93,8 @@ class MultiYamlUpdater(object):
 
 class YamlUpdater(object):
     def __init__(
-        self, path: str, remove_empty: bool = True, allow_duplicate_keys: bool = False
+        self, path: str, remove_empty: bool = True,
+        allow_duplicate_keys: bool = False
     ):
         self.yaml = YAML()
         self.yaml.allow_duplicate_keys = allow_duplicate_keys
@@ -156,13 +157,14 @@ class YamlUpdater(object):
     def _update_lines(self, lines, f):
         for line in self._directives:
             f.write(line)
-        if "".join(lines[len(self._directives) :]).startswith("{"):
+        if "".join(lines[len(self._directives):]).startswith("{"):
             _update_json_lines(
-                self._orig, self._code, lines[len(self._directives) :], f
+                self._orig, self._code, lines[len(self._directives):], f
             )
         else:
             _update_yaml_lines(
-                self.yaml, self._orig, self._code, lines[len(self._directives) :], f
+                self.yaml, self._orig, self._code,
+                lines[len(self._directives):], f
             )
 
     def __exit__(self, exc_type, exc_val, exc_tb):

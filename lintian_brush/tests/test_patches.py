@@ -135,7 +135,8 @@ class FindPatchBranchTests(TestCaseWithTransport):
         master = self.make_named_branch_and_tree(".", name="master")
         master.branch.controldir.create_branch(name="patch-queue/master")
 
-        self.assertEqual("patch-queue/master", find_patches_branch(master).name)
+        self.assertEqual(
+            "patch-queue/master", find_patches_branch(master).name)
 
     def test_patched_master(self):
         master = self.make_named_branch_and_tree(".", name="master")
@@ -228,7 +229,8 @@ class ReadQuiltPatchesTests(TestCaseWithTransport):
             ]
         )
         tree.add(
-            ["debian", "debian/patches", "debian/patches/series", "debian/patches/foo"]
+            ["debian", "debian/patches", "debian/patches/series",
+             "debian/patches/foo"]
         )
         tree.commit("add patch")
         patches = list(read_quilt_patches(tree))
@@ -246,7 +248,8 @@ class ReadQuiltPatchesTests(TestCaseWithTransport):
             [
                 ("debian/",),
                 ("debian/patches/",),
-                ("debian/patches/series", "# This file intentionally left blank.\n"),
+                ("debian/patches/series",
+                 "# This file intentionally left blank.\n"),
             ]
         )
         self.assertEqual([], list(read_quilt_patches(t)))
@@ -357,13 +360,19 @@ blah (0.38) unstable; urgency=medium
 
 class FindCommonPatchSuffixTests(TestCase):
     def test_simple(self):
-        self.assertEqual(".blah", find_common_patch_suffix(["foo.blah", "series"]))
-        self.assertEqual(".patch", find_common_patch_suffix(["foo.patch", "series"]))
-        self.assertEqual(".patch", find_common_patch_suffix(["series"]))
-        self.assertEqual(".blah", find_common_patch_suffix(["series"], ".blah"))
-        self.assertEqual("", find_common_patch_suffix(["series", "foo", "bar"]))
         self.assertEqual(
-            ".patch", find_common_patch_suffix(["series", "foo.patch", "bar.patch"])
+            ".blah", find_common_patch_suffix(["foo.blah", "series"]))
+        self.assertEqual(
+            ".patch", find_common_patch_suffix(["foo.patch", "series"]))
+        self.assertEqual(
+            ".patch", find_common_patch_suffix(["series"]))
+        self.assertEqual(
+            ".blah", find_common_patch_suffix(["series"], ".blah"))
+        self.assertEqual(
+            "", find_common_patch_suffix(["series", "foo", "bar"]))
+        self.assertEqual(
+            ".patch",
+            find_common_patch_suffix(["series", "foo.patch", "bar.patch"])
         )
 
 
@@ -399,4 +408,5 @@ blah: bloe
             ]
         )
         tree.add("debian/rules")
-        self.assertEqual("debian/patches-applied", tree_patches_directory(tree))
+        self.assertEqual(
+            "debian/patches-applied", tree_patches_directory(tree))

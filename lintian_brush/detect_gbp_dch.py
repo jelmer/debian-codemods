@@ -77,7 +77,8 @@ class ChangelogBehaviour(object):
 # what was in the commit messages?
 
 
-def gbp_conf_has_dch_section(tree: Tree, debian_path: str = "") -> Optional[bool]:
+def gbp_conf_has_dch_section(
+        tree: Tree, debian_path: str = "") -> Optional[bool]:
     try:
         gbp_conf_path = osutils.pathjoin(debian_path, "gbp.conf")
         gbp_conf_text = tree.get_file_text(gbp_conf_path)
@@ -157,7 +158,8 @@ def _guess_update_changelog_from_tree(
     return None
 
 
-def _greedy_revisions(graph, revid: bytes, length: int) -> Tuple[List[bytes], bool]:
+def _greedy_revisions(
+        graph, revid: bytes, length: int) -> Tuple[List[bytes], bool]:
     ret: List[bytes] = []
     it = graph.iter_lefthand_ancestry(revid)
     while len(ret) < length:
@@ -180,7 +182,8 @@ def _changelog_stats(branch: Branch, history: int, debian_path: str):
     dch_references = 0
     with branch.lock_read():
         graph = branch.repository.get_graph()
-        revids, truncated = _greedy_revisions(graph, branch.last_revision(), history)
+        revids, truncated = _greedy_revisions(
+            graph, branch.last_revision(), history)
         revs = []
         for revid, rev in branch.repository.iter_revisions(revids):
             if rev is None:

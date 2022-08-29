@@ -29,7 +29,8 @@ class DesktopEntryEditor(object):
     def __init__(self, path, allow_reformatting=False):
         self.path = path
         if allow_reformatting is None:
-            allow_reformatting = os.environ.get("REFORMATTING", "disallow") == "allow"
+            allow_reformatting = (
+                os.environ.get("REFORMATTING", "disallow") == "allow")
         self.allow_reformatting = allow_reformatting
 
     def __enter__(self):

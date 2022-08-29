@@ -150,8 +150,10 @@ with control as updater:
 
 if len(changed) == 1:
     (dep, issue, kind, name) = changed[0]
-    report_result('Add missing build dependency on %s for %s %s.' % (dep, kind, name))
+    report_result(
+        'Add missing build dependency on %s for %s %s.' % (dep, kind, name))
 else:
     report_result(
         'Add missing build dependencies:' +
-        '\n'.join('* %s for %s %s' % (dep, kind, name) for (dep, issue, kind, name) in changed))
+        '\n'.join('* %s for %s %s'
+                  % (dep, kind, name) for (dep, issue, kind, name) in changed))

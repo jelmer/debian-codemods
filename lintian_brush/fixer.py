@@ -71,7 +71,8 @@ class LintianIssue(object):
 
     def override_exists(self):
         return _override_exists(
-            tag=self.tag, info=self.info, type=self.target[0], package=self.target[1]
+            tag=self.tag, info=self.info, type=self.target[0],
+            package=self.target[1]
         )
 
     def should_fix(self):
@@ -123,7 +124,8 @@ def _override_exists(
     for override in _present_overrides:
         if _tag_renames.get(override.tag) == tag:
             tag = override.tag
-        if override.matches(package=package, info=info, tag=tag, arch=arch, type=type):
+        if override.matches(
+                package=package, info=info, tag=tag, arch=arch, type=type):
             return True
     return False
 
@@ -199,7 +201,8 @@ def package_is_native():
 
 def meets_minimum_certainty(certainty):
     return certainty_sufficient(
-        certainty, os.environ.get("MINIMUM_CERTAINTY", DEFAULT_MINIMUM_CERTAINTY)
+        certainty,
+        os.environ.get("MINIMUM_CERTAINTY", DEFAULT_MINIMUM_CERTAINTY)
     )
 
 

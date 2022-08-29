@@ -23,8 +23,10 @@ added = []
 if not os.path.exists('debian/rules'):
     sys.exit(2)
 with RulesEditor() as editor:
-    has_build_arch = bool(list(editor.makefile.iter_rules(b'build-arch', exact=False)))
-    has_build_indep = bool(list(editor.makefile.iter_rules(b'build-indep', exact=False)))
+    has_build_arch = bool(list(
+        editor.makefile.iter_rules(b'build-arch', exact=False)))
+    has_build_indep = bool(list(
+        editor.makefile.iter_rules(b'build-indep', exact=False)))
 
     if has_build_arch and has_build_indep:
         sys.exit(0)

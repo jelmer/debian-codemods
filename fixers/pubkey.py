@@ -81,7 +81,8 @@ with WatchEditor() as editor:
         if pgpmode in ('gittag', 'previous', 'next', 'self'):
             sys.exit(2)
         try:
-            releases = list(sorted(entry.discover(source_package_name()), reverse=True))
+            releases = list(sorted(
+                entry.discover(source_package_name()), reverse=True))
         except HTTPError as e:
             warn('HTTP error accessing discovery URL %s: %s.' %
                  (e.geturl(), e))
@@ -109,7 +110,8 @@ with WatchEditor() as editor:
                     continue
                 except gpg.errors.BadSignatures as e:
                     if str(e).endswith(': No public key'):
-                        if not fetch_keys([s.fpr for s in e.result.signatures]):
+                        if not fetch_keys(
+                                [s.fpr for s in e.result.signatures]):
                             warn('Unable to retrieve keys: %r' % (
                                  e.result.signatures, ))
                             sys.exit(2)
@@ -150,7 +152,8 @@ with WatchEditor() as editor:
                 else:
                     # Otherwise, fall back to auto.
                     entry.set_option('pgpmode', 'auto')
-                    description = "Opportunistically check upstream PGP signatures."
+                    description = (
+                        "Opportunistically check upstream PGP signatures.")
                 issue.report_fixed()
         if not has_keys and needed_keys:
             issue = LintianIssue(

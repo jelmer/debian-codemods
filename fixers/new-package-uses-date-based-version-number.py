@@ -20,7 +20,8 @@ with ChangelogEditor() as editor:
     if not re.fullmatch("2[0-9]{7}", block.version.upstream_version):
         sys.exit(0)
 
-    issue = LintianIssue("source", "new-package-uses-date-based-version-number", None)
+    issue = LintianIssue(
+        "source", "new-package-uses-date-based-version-number", None)
     if issue.should_fix():
         block.version = Version("0~%s" % block.version)
         issue.report_fixed()

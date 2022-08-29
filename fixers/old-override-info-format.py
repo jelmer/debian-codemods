@@ -2,12 +2,14 @@
 
 import re
 
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import (
+    report_result,
+    LintianIssue,
+)
 from lintian_brush.lintian_overrides import (
     update_overrides,
     LintianOverride,
-    load_renamed_tags,
-    )
+)
 
 LINENO_MATCH = r"\d+|\*"
 
@@ -22,18 +24,18 @@ INFO_FIXERS = {
     "autotools-pkg-config-macro-not-cross-compilation-safe":
         PURE_FLN_WILDCARD_SUB,
     "debian-rules-parses-dpkg-parsechangelog": PURE_FLN_SUB,
-    "debian-rules-should-not-use-custom-compression-settings": 
-        ("(.*) \(line (" + LINENO_MATCH + ")\)", r"\1 [debian/rules:\2]"),
+    "debian-rules-should-not-use-custom-compression-settings":
+        (r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/rules:\2]"),
     "debian-source-options-has-custom-compression-settings":
-        ("(.*) \(line (" + LINENO_MATCH + ")\)",
+        (r"(.*) \(line (" + LINENO_MATCH + r")\)",
             r"\1 [debian/source/options:\2]"),
     "global-files-wildcard-not-first-paragraph-in-dep5-copyright":
         PURE_FLN_SUB,
     "missing-license-paragraph-in-dep5-copyright": (
-        r"([^ ]+) (.*) \(line (" + LINENO_MATCH + ")\)",
+        r"([^ ]+) (.*) \(line (" + LINENO_MATCH + r")\)",
         r"\2 [\1:\3]"),
     "unused-license-paragraph-in-dep5-copyright": (
-        r"([^ ]+) (.*) \(line (" + LINENO_MATCH + ")\)",
+        r"([^ ]+) (.*) \(line (" + LINENO_MATCH + r")\)",
         r"\2 [\1:\3]"),
     "license-problem-undefined-license": (
         r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/copyright:\2]"),
@@ -90,4 +92,5 @@ def fix_info(path, lineno, override):
 update_overrides(fix_info)
 
 report_result(
-    "Update lintian override info to new format on line %s." % ', '.join(map(str, linenos)))
+    "Update lintian override info to new format on line %s."
+    % ', '.join(map(str, linenos)))

@@ -9,7 +9,10 @@ from lintian_brush.fixer import (
     trust_package,
     LintianIssue,
     )
-from upstream_ontologist.guess import guess_upstream_metadata_items, known_bad_guess
+from upstream_ontologist.guess import (
+    guess_upstream_metadata_items,
+    known_bad_guess,
+)
 
 
 def guess_homepage():
@@ -35,9 +38,11 @@ with control as updater:
     else:
         hostname = urlparse(updater.source['Homepage']).hostname
         if hostname == 'pypi.org':
-            issue = LintianIssue('source', 'pypi-homepage', updater.source['Homepage'])
+            issue = LintianIssue(
+                'source', 'pypi-homepage', updater.source['Homepage'])
         elif hostname == 'rubygems.org':
-            issue = LintianIssue('source', 'pypi-homepage', updater.source['Homepage'])
+            issue = LintianIssue(
+                'source', 'pypi-homepage', updater.source['Homepage'])
         else:
             issue = None
 
@@ -46,4 +51,6 @@ with control as updater:
             if issue.should_fix() and datum:
                 updater.source["Homepage"] = datum.value
                 issue.report_fixed()
-                report_result('Avoid %s in Homepage field.' % hostname, certainty=datum.certainty)
+                report_result(
+                    'Avoid %s in Homepage field.' % hostname,
+                    certainty=datum.certainty)

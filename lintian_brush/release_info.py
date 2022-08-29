@@ -28,7 +28,9 @@ def load_key_package_versions():
     import json
 
     path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "key-package-versions.json")
+        os.path.join(
+            os.path.dirname(__file__), "..",
+            "key-package-versions.json")
     )
     if not os.path.isfile(path):
         import pkg_resources

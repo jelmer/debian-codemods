@@ -182,7 +182,8 @@ def check_4_6_0():
         if _poor_grep(entry.path, b'lib64'):
             raise UpgradeCheckUnable(
                 "9.1.1",
-                "unable to verify whether package install files into /usr/lib/64")
+                "unable to verify whether "
+                "package install files into /usr/lib/64")
 
 
 def check_4_6_1():
@@ -252,15 +253,15 @@ try:
                         check_fn()
                     except UpgradeCheckFailure as e:
                         logging.info(
-                            'Upgrade checklist validation from standards %s => %s '
-                            'failed: %s: %s',
+                            'Upgrade checklist validation from standards '
+                            '%s => %s failed: %s: %s',
                             current_version, target_version,
                             e.section, e.reason)
                         break
                     except UpgradeCheckUnable as e:
                         logging.info(
-                            'Unable to validate checklist from standards %s => %s: '
-                            '%s: %s',
+                            'Unable to validate checklist from standards '
+                            '%s => %s: %s: %s',
                             current_version, target_version,
                             e.section, e.reason)
                         break

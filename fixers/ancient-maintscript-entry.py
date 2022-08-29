@@ -17,7 +17,8 @@ DEFAULT_AGE_THRESHOLD_DAYS = 5 * 365
 
 maintscripts = []
 for entry in os.scandir('debian'):
-    if not (entry.name == "maintscript" or entry.name.endswith(".maintscript")):
+    if (not (entry.name == "maintscript"
+             or entry.name.endswith(".maintscript"))):
         continue
     maintscripts.append(entry.name)
 
@@ -38,7 +39,8 @@ else:
 if date_threshold is None:
     # Release has not yet or will never be released
     # Default to 5 years
-    date_threshold = (datetime.now() - timedelta(days=DEFAULT_AGE_THRESHOLD_DAYS)).date()
+    date_threshold = (
+        datetime.now() - timedelta(days=DEFAULT_AGE_THRESHOLD_DAYS)).date()
 
 
 cl_dates = []
