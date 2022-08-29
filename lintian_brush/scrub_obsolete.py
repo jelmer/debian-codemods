@@ -460,6 +460,26 @@ def _scrub_obsolete(
     )
 
 
+def release_aliases(name):
+    from distro_info import DebianDistroInfo, UbuntuDistroInfo
+    ret = []
+    debian_distro_info = DebianDistroInfo()
+    ubuntu_distro_info = UbuntuDistroInfo()
+    FN_ALIAS_MAP = {
+        debian_distro_info.stable: 'stable',
+        debian_distro_info.old: 'oldstable',
+        debian_distro_info.unstable: 'unstable',
+        ubuntu_distro_info.lts: 'lts',
+        ubuntu_distro_info.stable: 'stable'
+    }
+    for fn, alias in m.items():
+        if fn() == name:
+            ret.append(alias)
+    if ret:
+        return '(%s)' % ', '.join(ret)
+    return ''
+
+
 def scrub_obsolete(
         wt: WorkingTree, subpath: str, compat_release: str,
         upgrade_release: str,
@@ -504,14 +524,18 @@ def scrub_obsolete(
     if update_changelog:
         lines = []
         for release, entries in summary.items():
-            lines.append("Remove constraints unnecessary since %s:" % release)
+            lines.append(
+                "Remove constraints unnecessary since %s:" % release
+                + release_aliases(release))
             lines.extend(["+ " + line for line in entries])
         add_changelog_entry(wt, changelog_path, lines)
         specific_files.append(changelog_path)
 
     lines = []
     for release, entries in summary.items():
-        lines.extend(["Remove constraints unnecessary since %s" % release, ""])
+        lines.extend(
+            ["Remove constraints unnecessary since %s" % release
+             + release_aliases(release), ""])
         lines.extend(["* " + line for line in entries])
     lines.extend(["", "Changes-By: deb-scrub-obsolete"])
 
