@@ -18,7 +18,14 @@ Whether to update the changelog.
 show program's version number and exit
 .TP
 \fB\-\-upgrade\-release=RELEASE\fR
-Don't remove any constraints that are necessary for upgrading from RELEASE or newer releases.
+Don't remove any constraints that are necessary for upgrading from RELEASE or
+newer releases. This can either be a codename ("bookworm"), or an alias ("unstable", "old-old-stable").
+For a full list options, see \fBdistro-info\fR(1).
+.TP
+\fB\-\-compat\-release=RELEASE\fR
+Don't remove any constraints that are necessary for building on RELEASE or
+newer releases. This can either be a codename ("bookworm"), or an alias ("unstable", "old-old-stable").
+For a full list options, see \fBdistro-info\fR(1).
 .TP
 \fB\-\-identity\fR
 Print the identity (name and e\-mailaddress) that apply-multiarch-hints will use when committing changes, and exit.
