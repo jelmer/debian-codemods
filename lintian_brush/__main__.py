@@ -349,7 +349,9 @@ def main(argv=None):  # noqa: C901
                 report_fatal("not-debian-package", "Not a Debian package")
                 return 1
             except WorkspaceDirty:
-                logging.error("%s: Please commit pending changes first.", wt.basedir)
+                logging.error(
+                    "%s: Please commit pending changes and "
+                    "remove unknown files first.", wt.basedir)
                 if args.verbose:
                     from breezy.status import show_tree_status
 

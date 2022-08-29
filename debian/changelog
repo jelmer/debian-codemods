@@ -9,6 +9,7 @@ lintian-brush (0.129) UNRELEASED; urgency=medium
   * out-of-date-standards-version: Update for 4.6.1.
   * deb-scrub-obsolete(1): Document supported values for RELEASE in
     arguments.
+  * Tweak wording in message when tree is dirty.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 28 Aug 2022 20:24:21 +0100
 
