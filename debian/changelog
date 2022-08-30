@@ -1,3 +1,9 @@
+lintian-brush (0.130) UNRELEASED; urgency=medium
+
+  * Include aliases for releases in changelog. Closes: #1018697
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 30 Aug 2022 01:03:42 +0100
+
 lintian-brush (0.129) unstable; urgency=medium
 
   * Add fixer old-override-info-format: updates lintian overrides to new
