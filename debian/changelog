@@ -3,6 +3,7 @@ lintian-brush (0.130) UNRELEASED; urgency=medium
   * Include aliases for releases in changelog. Closes: #1018697
   * debian-rules-uses-as-needed-linker-flag: Support removing --as-
     needed from lists with multiple linker flags.
+  * malformed-override: fix fixer, add tests.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 30 Aug 2022 01:03:42 +0100
 

@@ -1,0 +1,2 @@
+Remove overrides for lintian tags that are no longer supported: uploader-not-full-name
+Fixed-Lintian-Tags: malformed-override

@@ -17,7 +17,10 @@ REMOVED_TAGS = [
 # TODO(jelmer): Check if a tag matches a binary package name.
 
 
-def fix_malformed(lineno, override):
+removed = []
+
+
+def fix_malformed(path, lineno, override):
     if override.tag not in REMOVED_TAGS:
         return override
     issue = LintianIssue(
@@ -25,6 +28,7 @@ def fix_malformed(lineno, override):
         'Unknown tag %s in line %d' % (override.tag, lineno))
     if issue.should_fix():
         issue.report_fixed()
+        removed.append(override.tag)
         return None
     return override
 
@@ -32,4 +36,5 @@ def fix_malformed(lineno, override):
 update_overrides(fix_malformed)
 
 report_result(
-    'Remove overrides for lintian tags that are no longer supported.')
+    'Remove overrides for lintian tags that are no longer supported: %s' %
+    ', '.join(removed))
