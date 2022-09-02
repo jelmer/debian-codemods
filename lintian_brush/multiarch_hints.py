@@ -59,7 +59,7 @@ from debmutate.control import (
 from debmutate.reformatting import GeneratedFile, FormattingUnpreservable
 
 
-DEFAULT_VALUE_MULTIARCH_HINT = 50
+DEFAULT_VALUE_MULTIARCH_HINT = 100
 MULTIARCH_HINTS_VALUE = {
     "ma-foreign": 20,
     "file-conflict": 50,

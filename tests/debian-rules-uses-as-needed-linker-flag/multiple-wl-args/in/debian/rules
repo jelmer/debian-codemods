@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,-O1 -Wl,-z,defs -Wl,--as-needed,-z,relno
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	dh_auto_configure -- --enable-gtk-doc
+
+override_dh_install:
+	find debian/ -name '*.la' -print -delete
+	dh_install
+
+override_dh_autoreconf:
+	dh_autoreconf --as-needed
+
+override_dh_makeshlibs:
+	dh_makeshlibs -- -c4

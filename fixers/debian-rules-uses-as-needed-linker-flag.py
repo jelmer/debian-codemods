@@ -19,13 +19,23 @@ def check_global(origline):
         return origline
     name = name.strip()
     value = value.strip()
-    if name == b'DEB_LDFLAGS_MAINT_APPEND' and b'-Wl,--as-needed' in value:
+    if name == b'DEB_LDFLAGS_MAINT_APPEND' and b'-Wl' in value:
         issue = LintianIssue(
             'source', 'debian-rules-uses-as-needed-linker-flag', 'line X')
         if issue.should_fix():
             issue.report_fixed()
             args = shlex.split(value.decode())
-            args.remove('-Wl,--as-needed')
+            for i, arg in enumerate(args):
+                if arg.startswith('-Wl'):
+                    ld_args = arg.split(',')
+                    try:
+                        ld_args.remove('--as-needed')
+                    except ValueError:
+                        continue
+                    if not ld_args[1:]:
+                        args.remove('-Wl,--as-needed')
+                    else:
+                        args[i] = ','.join(ld_args)
             if not args:
                 return None
             return prefix + b'%s = %s' % (name, shlex.join(args).encode())
