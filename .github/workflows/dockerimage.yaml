@@ -32,11 +32,38 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build base image
+      - name: Build lintian-brush image
         uses: docker/build-push-action@v2
         with:
-          file: "Dockerfile"
+          file: "Dockerfile.lintian-brush"
           tags: |
             ghcr.io/jelmer/lintian-brush:latest
+          # build on feature branches, push only on main branch
+          push: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Build deb-scrub-obsolete image
+        uses: docker/build-push-action@v2
+        with:
+          file: "Dockerfile.deb-scrub-obsolete"
+          tags: |
+            ghcr.io/jelmer/deb-scrub-obsolete:latest
+          # build on feature branches, push only on main branch
+          push: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Build debianize image
+        uses: docker/build-push-action@v2
+        with:
+          file: "Dockerfile.debianize"
+          tags: |
+            ghcr.io/jelmer/debianize:latest
+          # build on feature branches, push only on main branch
+          push: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Build apply-multiarch-hints image
+        uses: docker/build-push-action@v2
+        with:
+          file: "Dockerfile.apply-multiarch-hints"
+          tags: |
+            ghcr.io/jelmer/apply-multiarch-hints:latest
           # build on feature branches, push only on main branch
           push: ${{ github.ref == 'refs/heads/master' }}

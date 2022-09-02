@@ -63,3 +63,14 @@ update: update-spdx update-readme update-renamed-tags update-key-package-version
 
 next:
 	python3 next.py
+
+docker:
+	buildah build -t ghcr.io/jelmer/lintian-brush:latest Dockerfile.lintian-brush .
+	buildah push ghcr.io/jelmer/lintian-brush:latest
+	buildah build -t ghcr.io/jelmer/deb-scrub-obsolete:latest Dockerfile.deb-scrub-obsolete .
+	buildah push ghcr.io/jelmer/deb-scrub-obsolete:latest
+	buildah build -t ghcr.io/jelmer/debianize:latest Dockerfile.debianize .
+	buildah push ghcr.io/jelmer/debianize:latest
+	buildah build -t ghcr.io/jelmer/debianize:latest Dockerfile.debianize .
+	buildah push ghcr.io/jelmer/debianize:latest
+
