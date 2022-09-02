@@ -14,6 +14,9 @@ if not net_access_allowed():
     sys.exit(0)
 
 
+version_changed = None
+
+
 with ChangelogEditor() as editor:
     if editor.changelog[-1].bugs_closed:
         sys.exit(0)
