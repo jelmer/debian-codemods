@@ -468,7 +468,7 @@ def release_aliases(name):
     FN_ALIAS_MAP = {
         debian_distro_info.stable: 'stable',
         debian_distro_info.old: 'oldstable',
-        debian_distro_info.unstable: 'unstable',
+        debian_distro_info.devel: 'unstable',
         ubuntu_distro_info.lts: 'lts',
         ubuntu_distro_info.stable: 'stable'
     }
