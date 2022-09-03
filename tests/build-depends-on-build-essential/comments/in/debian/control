@@ -1,0 +1,13 @@
+Source: blah
+Build-Depends:
+ debhelper-compat (= 13),
+ djvulibre-bin (>= 3.5.25~),
+ libdjvulibre-dev (>= 3.5.25~),
+ libgraphicsmagick++1-dev,
+ libpoppler-private-dev (>= 0.35~),
+ libexiv2-dev,
+ uuid-dev,
+ pkg-config,
+# python-nose,
+# python-pil,
+ locales
