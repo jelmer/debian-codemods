@@ -472,7 +472,7 @@ def release_aliases(name):
         ubuntu_distro_info.lts: 'lts',
         ubuntu_distro_info.stable: 'stable'
     }
-    for fn, alias in m.items():
+    for fn, alias in FN_ALIAS_MAP.items():
         if fn() == name:
             ret.append(alias)
     if ret:

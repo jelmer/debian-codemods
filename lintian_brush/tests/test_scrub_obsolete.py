@@ -23,6 +23,7 @@ from lintian_brush.scrub_obsolete import (
     name_list,
     filter_relations,
     drop_obsolete_depends,
+    release_aliases,
     )
 
 from debian.changelog import Version
@@ -150,3 +151,12 @@ class DropObsoleteDependsTests(TestCase):
         self.assertEqual(
             ([], PkgRelation.parse('simple (>= 1.0) | other')),
             drop_obsolete_depends(orig, checker))
+
+
+class ReleaseAliasesTests(TestCase):
+
+    def test_existing(self):
+        self.assertEqual('(unstable)', release_aliases('sid'))
+
+    def test_missing(self):
+        self.assertEqual('', release_aliases('unknown'))
