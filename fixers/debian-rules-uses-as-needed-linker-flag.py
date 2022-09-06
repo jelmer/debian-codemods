@@ -25,6 +25,7 @@ def check_global(origline):
         if issue.should_fix():
             issue.report_fixed()
             args = shlex.split(value.decode())
+            orig_args = list(args)
             for i, arg in enumerate(args):
                 if arg.startswith('-Wl'):
                     ld_args = arg.split(',')
@@ -38,7 +39,8 @@ def check_global(origline):
                         args[i] = ','.join(ld_args)
             if not args:
                 return None
-            return prefix + b'%s = %s' % (name, shlex.join(args).encode())
+            if orig_args != args:
+                return prefix + b'%s = %s' % (name, shlex.join(args).encode())
         return origline
     return origline
 

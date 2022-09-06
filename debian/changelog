@@ -1,3 +1,10 @@
+lintian-brush (0.131) UNRELEASED; urgency=medium
+
+  * debian-rules-uses-as-needed-linker-flags: don't just reformat linker
+    flag lines.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 06 Sep 2022 19:53:17 +0100
+
 lintian-brush (0.130) unstable; urgency=medium
 
   * Include aliases for releases in changelog. Closes: #1018697
