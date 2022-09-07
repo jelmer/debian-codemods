@@ -22,4 +22,4 @@ foo [!any-i386] binary: some-tag-not-for-i386 optional-extra
 [linux-any]: tag-only-for-linux optional-extra.
 
 # This line will be rewritten:
-debian-watch-does-not-check-gpg-signature
+debian-watch-does-not-check-openpgp-signature
