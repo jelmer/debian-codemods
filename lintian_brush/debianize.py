@@ -1063,7 +1063,7 @@ def debianize(  # noqa: C901
                         upstream_vcs_tree, exported_upstream_tree_path)
                     import_metadata_from_path(exported_upstream_tree_path)
 
-            if buildsystem_name is None:
+            if buildsystem_name is None exported_upstream_tree_path is not None:
                 buildsystem_subpath, buildsystem = get_buildsystem(
                     exported_upstream_tree_path)
                 if buildsystem:
