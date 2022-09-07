@@ -257,7 +257,7 @@
 - tag: debian-watch-contains-dh_make-template
   status: implemented
 - tag: debian-watch-could-verify-download
-- tag: debian-watch-does-not-check-gpg-signature
+- tag: debian-watch-does-not-check-openpgp-signature
   status: implemented
 - tag: debian-watch-file-declares-multiple-versions
 - tag: debian-watch-file-in-native-package
@@ -1764,4 +1764,6 @@
 - tag: stray-devhelp-documentation
 - tag: test-leaves-python-version-untested
 - tag: uses-poetry-cli
+  difficulty: medium
+- tag: openpgp-file-has-implementation-specific-extension
   difficulty: medium

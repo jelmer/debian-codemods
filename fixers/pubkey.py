@@ -138,7 +138,7 @@ with WatchEditor() as editor:
         active_common_mangles = set([x for x in found_common_mangles if x])
         if pgpsigurlmangle is None and active_common_mangles:
             issue = LintianIssue(
-                'source', 'debian-watch-does-not-check-gpg-signature', ())
+                'source', 'debian-watch-does-not-check-openpgp-signature', ())
             if issue.should_fix():
                 # If only a single mangle is used for all releases
                 # that have signatures, set that.
