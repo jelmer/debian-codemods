@@ -61,7 +61,7 @@ class MultiYamlUpdater(object):
                 if line != "\n" and not line.startswith("#"):
                     break
                 self._preamble.append(line)
-            self._orig_text = "".join(inp)
+            self._orig_text = "".join(inp[len(self._preamble):])
             self._orig = list(self.yaml.load_all(self._orig_text))
         self._code = self._orig.copy()
         return self
@@ -102,6 +102,7 @@ class YamlUpdater(object):
         self._dirpath = os.path.dirname(path)
         self.remove_empty = remove_empty
         self._directives: List[str] = []
+        self._preamble: List[str] = []
         self._force_rewrite = False
 
     def force_rewrite(self):
@@ -115,12 +116,16 @@ class YamlUpdater(object):
             self._orig = {}
             self._orig_text = ""
         else:
+            for line in inp:
+                if line != "\n" and not line.startswith("#"):
+                    break
+                self._preamble.append(line)
             if "---\n" in inp:
                 for i, line in enumerate(inp):
                     if line == "---\n":
-                        self._directives = inp[: i + 1]
+                        self._directives = inp[len(self._preamble): i + 1]
                         break
-            self._orig_text = "".join(inp)
+            self._orig_text = "".join(inp[len(self._preamble):])
             self._orig = self.yaml.load(self._orig_text)
         self._code = self._orig.copy()
         return self
@@ -188,7 +193,9 @@ class YamlUpdater(object):
                             self._update_lines(lines, f)
                     else:
                         with open(self.path, "w") as f:
-                            f.writelines(self._directives)
+                            f.writelines(self._preamble)
+                            if self._force_rewrite:
+                                f.writelines(self._directives)
                             self.yaml.dump(self._code, f)
         return False
 
