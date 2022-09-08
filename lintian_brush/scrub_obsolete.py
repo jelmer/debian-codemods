@@ -524,18 +524,20 @@ def scrub_obsolete(
     if update_changelog:
         lines = []
         for release, entries in summary.items():
+            rev_aliases = release_aliases(release)
             lines.append(
-                "Remove constraints unnecessary since %s:" % release
-                + release_aliases(release))
+                "Remove constraints unnecessary since %s" % release
+                + ((' ' + rev_aliases) if rev_aliases else '') + ':')
             lines.extend(["+ " + line for line in entries])
         add_changelog_entry(wt, changelog_path, lines)
         specific_files.append(changelog_path)
 
     lines = []
     for release, entries in summary.items():
+        rev_aliases = release_aliases(release)
         lines.extend(
             ["Remove constraints unnecessary since %s" % release
-             + release_aliases(release), ""])
+             + ((' ' + rev_aliases) if rev_aliases else ''), ""])
         lines.extend(["* " + line for line in entries])
     lines.extend(["", "Changes-By: deb-scrub-obsolete"])
 
