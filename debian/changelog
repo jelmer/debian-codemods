@@ -1,7 +1,14 @@
 lintian-brush (0.131) UNRELEASED; urgency=medium
 
+  [ Jelmer Vernooĳ ]
   * debian-rules-uses-as-needed-linker-flags: don't just reformat linker
     flag lines.
+
+  [ Debian Janitor ]
+  * Remove constraints unnecessary since buster:(oldstable)
+    + Build-Depends: Drop versioned constraint on gpg and python3-dulwich.
+    + lintian-brush: Drop versioned constraint on python3-dulwich in Depends.
+    + lintian-brush: Drop versioned constraint on gpg in Recommends.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 06 Sep 2022 19:53:17 +0100
 
