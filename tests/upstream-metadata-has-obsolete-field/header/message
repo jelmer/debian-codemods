@@ -1,0 +1,1 @@
+Remove obsolete fields Contact, Name from debian/upstream/metadata (already present in machine-readable debian/copyright).
