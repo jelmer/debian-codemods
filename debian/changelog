@@ -10,6 +10,7 @@ lintian-brush (0.131) UNRELEASED; urgency=medium
     + Build-Depends: Drop versioned constraint on gpg and python3-dulwich.
     + lintian-brush: Drop versioned constraint on python3-dulwich in Depends.
     + lintian-brush: Drop versioned constraint on gpg in Recommends.
+  * Update standards version to 4.6.1, no changes needed.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 06 Sep 2022 19:53:17 +0100
 
