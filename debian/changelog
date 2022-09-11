@@ -3,6 +3,7 @@ lintian-brush (0.131) UNRELEASED; urgency=medium
   [ Jelmer Vernooĳ ]
   * debian-rules-uses-as-needed-linker-flags: don't just reformat linker
     flag lines.
+  * detect_gbp_dch: Scan for WIP headers in changelog as well.
 
   [ Debian Janitor ]
   * Remove constraints unnecessary since buster:(oldstable)

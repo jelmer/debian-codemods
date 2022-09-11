@@ -54,6 +54,11 @@ class ChangelogBehaviour(object):
     def __str__(self):
         return self.explanation
 
+    def __repr__(self):
+        return "%s(update_changelog=%r, explanation=%r)" % (
+            type(self).__name__, self.update_changelog,
+            self.explanation)
+
     def json(self):
         return {
             'update': self.update_changelog,
@@ -111,7 +116,7 @@ def guess_update_changelog(
         return ChangelogBehaviour(
             True,
             "assuming changelog needs to be updated since "
-            "gbp dch only suppors a debian directory in the root of the "
+            "gbp dch only supports a debian directory in the root of the "
             "repository")
     changelog_path = osutils.pathjoin(debian_path, "changelog")
     if cl is None:
@@ -125,6 +130,12 @@ def guess_update_changelog(
             False,
             "assuming changelog does not need to be updated "
             "since it is the inaugural unreleased entry")
+    if cl:
+        changes = cl[0].changes()
+        if len(changes) > 1 and 'generated at release time' in changes[1]:
+            return ChangelogBehaviour(
+                False, 'last changelog entry warns changelog is generated '
+                'at release time')
     ret = _guess_update_changelog_from_tree(tree, debian_path, cl)
     if ret is not None:
         return ret

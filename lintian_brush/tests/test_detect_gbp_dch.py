@@ -63,13 +63,13 @@ class GuessUpdateChangelogTests(TestCaseWithTransport):
         self.assertEqual(ChangelogBehaviour(
             True,
             'assuming changelog needs to be updated since '
-            'gbp dch only suppors a debian '
+            'gbp dch only supports a debian '
             'directory in the root of the repository'),
             guess_update_changelog(tree, ""))
         self.assertEqual(ChangelogBehaviour(
             True,
             'assuming changelog needs to be updated since '
-            'gbp dch only suppors a debian '
+            'gbp dch only supports a debian '
             'directory in the root of the repository'),
             guess_update_changelog(tree, "lala/debian"))
 
@@ -290,6 +290,39 @@ blah (0.20.1) UNRELEASED; urgency=medium
                 False,
                 'assuming changelog does not need to be '
                 'updated since it is the inaugural unreleased entry'
+            ),
+            guess_update_changelog(tree, "debian"),
+        )
+
+    def test_last_entry_warns_generated(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                (
+                    "debian/changelog",
+                    """\
+blah (0.20.1) UNRELEASED; urgency=medium
+
+  * WIP (generated at release time: please do not add entries below).
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+
+blah (0.20.1) unstable; urgency=medium
+
+  * Initial release. Closes: #123123
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+""",
+                ),
+            ]
+        )
+        tree.add(["debian", "debian/changelog"])
+        self.assertEqual(
+            ChangelogBehaviour(
+                False,
+                'last changelog entry warns changelog is generated '
+                'at release time',
             ),
             guess_update_changelog(tree, "debian"),
         )
