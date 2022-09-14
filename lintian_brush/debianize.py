@@ -220,6 +220,23 @@ def write_changelog_template(
 MINIMUM_CERTAINTY = "possible"  # For now..
 
 
+def versions_dict():
+    import lintian_brush
+    import debmutate
+    import debian
+    import ognibuild
+    import buildlog_consultant
+    import upstream_ontologist
+    return {
+        'lintian-brush': lintian_brush.version_string,
+        'debmutate': debmutate.version_string,
+        'debian': debian.__version__,
+        'ognibuild': ognibuild.version_version,
+        'buildlog_consultant': buildlog_consultant.version_string,
+        'upstream_ontologist': upstream_ontologist.version_string,
+    }
+
+
 class DebianDirectoryExists(Exception):
     """A Debian Directory already exists."""
 
@@ -1607,6 +1624,7 @@ def report_fatal(code, description, hint=None, details=None):
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'result_code': code,
+                'versions': versions_dict(),
                 'description': description,
                 'details': details}, f)
     logging.fatal('%s', description)
@@ -1999,6 +2017,7 @@ def main(argv=None):  # noqa: C901
                 "description": "Debianized package",
                 # TODO(jelmer): Convert from Debian to brz format?
                 "target-branch-url": debianize_result.vcs_url,
+                "versions": versions_dict(),
                 "context": {
                     "wnpp_bugs": debianize_result.wnpp_bugs,
                     "versions": {

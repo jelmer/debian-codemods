@@ -54,7 +54,6 @@ from . import (  # noqa: E402
     SUPPORTED_CERTAINTIES,
     DEFAULT_MINIMUM_CERTAINTY,
     control_files_in_root,
-    version_string as lintian_brush_version_string,
 )
 from .config import Config  # noqa: E402
 
@@ -88,12 +87,24 @@ def calculate_value(tags: Set[str]) -> int:
     return value
 
 
+def versions_dict():
+    import debmutate
+    import debian
+    return {
+        "lintian-brush": version_string,
+        "breezy": breezy.version_string,
+        "debmutate": debmutate.version_string,
+        "debian": debian.__version__,
+    }
+
+
 def report_fatal(code: str, description: str,
                  hint: Optional[str] = None) -> None:
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'result_code': code,
+                'versions': versions_dict(),
                 'description': description}, f)
     logging.fatal('%s', description)
     if hint:
@@ -462,12 +473,10 @@ def main(argv=None):  # noqa: C901
                     'context': {
                         'applied': applied,
                         'failed': failed,
-                        "versions": {
-                            "lintian-brush": lintian_brush_version_string,
-                            "breezy": breezy.version_string,
-                            }
-                        }
-                    }, f)
+
+                    },
+                    'versions': versions_dict(),
+                }, f)
 
 
 if __name__ == "__main__":

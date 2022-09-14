@@ -557,11 +557,23 @@ def scrub_obsolete(
     return result
 
 
+def versions_dict():
+    import lintian_brush
+    import debmutate
+    import debian
+    return {
+        "lintian-brush": lintian_brush.version_string,
+        "debmutate": debmutate.version_string,
+        "debian": debian.__version__,
+    }
+
+
 def report_fatal(code: str, description: str) -> None:
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'result_code': code,
+                'versions': versions_dict(),
                 'description': description}, f)
     logging.fatal('%s', description)
 
@@ -571,6 +583,7 @@ def report_okay(code: str, description: str) -> None:
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'result_code': code,
+                'versions': versions_dict(),
                 'description': description}, f)
     logging.info('%s', description)
 
@@ -753,6 +766,7 @@ def main():  # noqa: C901
                 % upgrade_release,
                 "value": result.value(),
                 "debian": debian_context,
+                "versions": versions_dict(),
                 "context": {
                     "specific_files": result.specific_files,
                     "maintscript_removed": result.maintscript_removed,

@@ -330,10 +330,22 @@ APPLIERS = [
 ]
 
 
+def versions_dict():
+    import lintian_brush
+    import debmutate
+    import debian
+    return {
+        'lintian-brush': lintian_brush.version_string,
+        'debmutate': debmutate.version_string,
+        'debian': debian.__version__,
+    }
+
+
 def report_okay(code, description):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
+                'versions': versions_dict(),
                 'result_code': code,
                 'description': description}, f)
     logging.info('%s', description)
@@ -343,6 +355,7 @@ def report_fatal(code, description):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
+                'versions': versions_dict(),
                 'result_code': code,
                 'description': description}, f)
     logging.fatal('%s', description)
@@ -505,6 +518,7 @@ def main(argv=None):  # noqa: C901
             with open(os.environ['SVP_RESULT'], 'w') as f:
                 json.dump({
                     'description': "Applied multi-arch hints.",
+                    'versions': versions_dict(),
                     'value': calculate_value(hint_names),
                     'commit-message': 'Apply multi-arch hints',
                     'context': {
