@@ -39,6 +39,8 @@ with ChangelogEditor() as editor:
             continue
 
         if 'Initial release' in line:
+            if not line.rstrip().endswith('.'):
+                line = line.rstrip() + '.'
             editor.changelog[-1]._changes[i] = line + (
                 " Closes: #%s" % ', '.join(
                     [str(bugno) for (bugno, kind) in wnpp_bugs]))
