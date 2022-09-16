@@ -12,6 +12,9 @@ lintian-brush (0.131) UNRELEASED; urgency=medium
     + lintian-brush: Drop versioned constraint on gpg in Recommends.
   * Update standards version to 4.6.1, no changes needed.
 
+  [ Jelmer Vernooĳ ]
+  * Rely on check_upstream_metadata to follow redirects. Closes: #948637
+
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 06 Sep 2022 19:53:17 +0100
 
 lintian-brush (0.130) unstable; urgency=medium
