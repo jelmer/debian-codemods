@@ -462,6 +462,8 @@
 
 - script: debian-watch-file-uses-old-github-pattern.py
 
+- script: debian-watch-file-uses-github-releases.py
+
 - script: quilt-series-but-no-build-dep.py
   lintian-tags:
    - quilt-series-but-no-build-dep

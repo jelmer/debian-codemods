@@ -233,8 +233,24 @@ def fix_old_github_patterns(updater):
         w.matching_pattern = '/'.join(parts)
 
 
+def fix_github_releases(updater):
+    for w in getattr(updater.watch_file, "entries", []):
+        parsed_url = urlparse(w.url)
+
+        # only applies to github.com
+        if parsed_url.netloc != "github.com":
+            continue
+
+        parts = parsed_url.path.strip('/').split('/')
+        if len(parts) >= 3 and parts[2] == 'releases':
+            parts[2] = 'tags'
+            parsed_url = parsed_url._replace(path='/'.join(parts))
+            w.url = parsed_url.geturl()
+
+
 def fix_watch_issues(updater):
     fix_old_github_patterns(updater)
+    fix_github_releases(updater)
 
 
 def main():  # noqa: C901
