@@ -1,4 +1,4 @@
-lintian-brush (0.131) UNRELEASED; urgency=medium
+lintian-brush (0.131) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * debian-rules-uses-as-needed-linker-flags: don't just reformat linker
@@ -18,7 +18,7 @@ lintian-brush (0.131) UNRELEASED; urgency=medium
     https page redirects back to http page. Closes: #977593
   * debian/watch: Replace use of /releases with /tags for GitHub URLs.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 06 Sep 2022 19:53:17 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 24 Sep 2022 02:14:44 +0100
 
 lintian-brush (0.130) unstable; urgency=medium
 
