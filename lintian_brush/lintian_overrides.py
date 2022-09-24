@@ -78,7 +78,8 @@ def update_overrides_file(
                 comments = []
             else:
                 comments.append(entry)
-        editor._parsed = new_lines + comments
+        if editor.lines != new_lines + comments:
+            editor._parsed = new_lines + comments
         return editor.has_changed()
 
 
