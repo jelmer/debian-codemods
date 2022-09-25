@@ -19,7 +19,7 @@ lintian-brush (0.131) unstable; urgency=medium
   * debian/watch: Replace use of /releases with /tags for GitHub URLs.
   * Cope with setuptools overriding distutils.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 24 Sep 2022 02:14:44 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 25 Sep 2022 02:54:02 +0100
 
 lintian-brush (0.130) unstable; urgency=medium
 
