@@ -17,6 +17,7 @@ lintian-brush (0.131) unstable; urgency=medium
   * homepage-field-uses-insecure-uri: Don't update Homepage field if
     https page redirects back to http page. Closes: #977593
   * debian/watch: Replace use of /releases with /tags for GitHub URLs.
+  * Cope with setuptools overriding distutils.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 24 Sep 2022 02:14:44 +0100
 

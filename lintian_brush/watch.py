@@ -46,6 +46,11 @@ class WatchCandidate:
 def candidates_from_setup_py(
         path, good_upstream_versions: Set[str], net_access=False):
     certainty = "likely"
+    # Import setuptools in case it replaces distutils
+    try:
+        import setuptools  # noqa: F401
+    except ImportError:
+        pass
     from distutils.core import run_setup
 
     try:
