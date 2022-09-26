@@ -56,6 +56,7 @@ INFO_FIXERS = {
         r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/rules:\2]"),
     "dh-quilt-addon-but-quilt-source-format": (
         r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/rules:\2]"),
+    "uses-dpkg-database-directly": (r"(?P<path>.+)", r"[\1]"),
 }
 
 linenos = []
