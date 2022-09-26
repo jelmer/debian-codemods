@@ -61,7 +61,7 @@ from breezy.workspace import reset_tree, check_clean_tree
 from debmutate.reformatting import FormattingUnpreservable
 
 
-__version__ = (0, 131)
+__version__ = (0, 132)
 version_string = ".".join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ["certain", "confident", "likely", "possible", None]
 DEFAULT_MINIMUM_CERTAINTY = "certain"

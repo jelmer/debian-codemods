@@ -18,6 +18,7 @@ PURE_FLN_SUB = (
     r"^(?P<path>.+) \(line (?P<lineno>" + LINENO_MATCH + r")\)$", r"[\1:\2]")
 PURE_FLN_WILDCARD_SUB = (
     r"^(?P<path>.+) \(line (?P<lineno>" + LINENO_MATCH + r")\)$", r"* [\1:\2]")
+PURE_FN_SUB = (r"^(?P<path>.+)", r"[\1]")
 
 
 INFO_FIXERS = {
@@ -56,7 +57,17 @@ INFO_FIXERS = {
         r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/rules:\2]"),
     "dh-quilt-addon-but-quilt-source-format": (
         r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/rules:\2]"),
-    "uses-dpkg-database-directly": (r"(?P<path>.+)", r"[\1]"),
+    "uses-dpkg-database-directly": PURE_FN_SUB,
+    "package-contains-documentation-outside-usr-share-doc": PURE_FN_SUB,
+    "non-standard-dir-perm": (
+        r"^(?P<path>.+) ([0-9]+) \!= ([0-9]+)", r"\2 != \3 [\1]"),
+    "executable-is-not-world-readable": (
+        r"^(?P<path>.+) ([0-9]+)", r"\1 [\2]"),
+    "library-not-linked-against-libc": PURE_FN_SUB,
+    "setuid-binary": (
+        r"^(?P<path>.+) (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),
+    "elevated-privileges": (
+        r"^(?P<path>.+) (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),
 }
 
 linenos = []
