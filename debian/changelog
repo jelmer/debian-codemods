@@ -1,10 +1,10 @@
-lintian-brush (0.132) UNRELEASED; urgency=medium
+lintian-brush (0.132) unstable; urgency=medium
 
   * Add old-override-info-format pattern for uses-dpkg-database-
     directly.
   * old-override-info-format: Don't repeatedly add surrounding []s.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 26 Sep 2022 06:19:34 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 28 Sep 2022 18:27:24 +0100
 
 lintian-brush (0.131) unstable; urgency=medium
 
