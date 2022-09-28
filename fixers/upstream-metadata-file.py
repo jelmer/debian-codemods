@@ -45,7 +45,7 @@ def filter_by_tag(orig, changed, fields, tag):
     if all(field in orig for field in fields):
         return
 
-    issue = LintianIssue('source', tag, info='')
+    issue = LintianIssue('source', tag, info='[debian/upstream/metadata]')
 
     if (not all(field in orig for field in fields) and
             not issue.should_fix()):
