@@ -15,12 +15,14 @@ LINENO_MATCH = r"\d+|\*"
 
 # Simple match of "$file (line $lineno)"
 PURE_FLN_SUB = (
-    r"^(?P<path>.+) \(line (?P<lineno>" + LINENO_MATCH + r")\)$", r"[\1:\2]")
+    r"^(?P<path>[^[].*) \(line (?P<lineno>" + LINENO_MATCH + r")\)$",
+    r"[\1:\2]")
 PURE_FLN_WILDCARD_SUB = (
     r"^(?P<path>.+) \(line (?P<lineno>" + LINENO_MATCH + r")\)$", r"* [\1:\2]")
-PURE_FN_SUB = (r"^(?P<path>.+)", r"[\1]")
+PURE_FN_SUB = (r"^(?P<path>[^[].*)", r"[\1]")
 
-
+# When adding new expressions here, make sure the first argument doesn't match
+# on the new format.
 INFO_FIXERS = {
     "autotools-pkg-config-macro-not-cross-compilation-safe":
         PURE_FLN_WILDCARD_SUB,

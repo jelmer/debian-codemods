@@ -1,0 +1,2 @@
+python3-django-crispy-forms: package-contains-documentation-outside-usr-share-doc [usr/lib/python3/dist-packages/crispy_forms/tests/results/bootstrap/*]
+python3-django-crispy-forms: package-contains-documentation-outside-usr-share-doc usr/lib/python3/dist-packages/crispy_forms/tests/bootstrap/*
