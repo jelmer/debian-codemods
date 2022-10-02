@@ -1078,12 +1078,13 @@ def debianize(  # noqa: C901
                         TemporaryDirectory())
                     dupe_vcs_tree(
                         upstream_vcs_tree, exported_upstream_tree_path)
-                    import_metadata_from_path(exported_upstream_tree_path)
+                    import_metadata_from_path(
+                        os.path.join(exported_upstream_tree_path, subpath))
 
             if (buildsystem_name is None
                     and exported_upstream_tree_path is not None):
                 buildsystem_subpath, buildsystem = get_buildsystem(
-                    exported_upstream_tree_path)
+                    os.path.join(exported_upstream_tree_path, subpath))
                 if buildsystem:
                     buildsystem_name = buildsystem.name
             else:
