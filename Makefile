@@ -19,7 +19,7 @@ tag-status::
 	python3 tag-status.py --check
 
 testsuite::
-	python3 setup.py test
+	python3 -m unittest lintian_brush.tests.test_suite
 
 testsuite-core:
 	python3 -m unittest lintian_brush.tests.core_test_suite
