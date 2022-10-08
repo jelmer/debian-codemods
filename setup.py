@@ -19,34 +19,6 @@ import glob
 from setuptools import setup
 
 setup(
-    name="lintian-brush",
-    version="0.132",
-    author="Jelmer Vernooij",
-    author_email="jelmer@debian.org",
-    packages=["lintian_brush"],
-    url="https://salsa.debian.org/jelmer/lintian-brush",
-    description="Automatic lintian issue fixer",
-    project_urls={
-        "Repository": "https://salsa.debian.org/jelmer/lintian-brush",
-    },
-    install_requires=[
-        'breezy>=3.2.1',
-        'python_debian',
-        'debmutate',
-        'distro-info',
-        'upstream-ontologist',
-        'tqdm',
-    ],
-    entry_points={
-        'console_scripts': [
-            'debianize=lintian_brush.debianize:main',
-            'lintian-brush=lintian_brush.__main__:main',
-            'apply-multiarch-hints=lintian_brush.multiarch_hints:main',
-            ('deb-scrub-obsolete='
-             'lintian_brush.scrub_obsolete:main'),
-            ]
-    },
-    test_suite='lintian_brush.tests.test_suite',
     data_files=[
         ('share/lintian-brush/fixers',
          [n for n in glob.glob('fixers/*') if not n.endswith('/slow')]),
