@@ -1,3 +1,9 @@
+lintian-brush (0.133) UNRELEASED; urgency=medium
+
+  * Add fixer for missing-prerequisite-for-pyproject-backend.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 11 Oct 2022 11:59:08 +0100
+
 lintian-brush (0.132) unstable; urgency=medium
 
   * Add old-override-info-format pattern for uses-dpkg-database-

@@ -646,3 +646,6 @@
   lintian-tags:
    - initial-upload-closes-no-bugs
 
+- script: missing-prerequisite-for-pyproject-backend.py
+  lintian-tags:
+   - missing-prerequisite-for-pyproject-backend
