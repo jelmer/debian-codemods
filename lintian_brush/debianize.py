@@ -22,6 +22,7 @@ __all__ = [
     'debianize',
     ]
 
+import asyncio
 import contextlib
 from dataclasses import dataclass, field
 import errno
@@ -275,6 +276,8 @@ def setup_debhelper(
 
 
 def default_create_dist(session, tree, package, version, target_dir):
+    # TODO(Jelmer): don't add backend specific things here
+    os.environ['SETUPTOOLS_SCM_PRETEND_VERSION'] = version
     try:
         with session:
             try:
@@ -1129,11 +1132,7 @@ def debianize(  # noqa: C901
                 raise SourcePackageNameInvalid(source['Source'])
 
             if net_access:
-                import asyncio
-
-                loop = asyncio.get_event_loop()
-
-                wnpp_bugs = loop.run_until_complete(
+                wnpp_bugs = asyncio.run(
                     find_wnpp_bugs_harder(
                         source['Source'], metadata.get('Name')))
             else:
