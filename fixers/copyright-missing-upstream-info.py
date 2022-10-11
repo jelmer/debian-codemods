@@ -5,6 +5,7 @@ from debmutate.copyright import CopyrightEditor, NotMachineReadableError
 from lintian_brush.fixer import (
     meets_minimum_certainty,
     trust_package,
+    report_result,
     )
 from upstream_ontologist import (
     UpstreamDatum,
@@ -71,10 +72,11 @@ try:
 except (FileNotFoundError, NotMachineReadableError):
     pass
 
+certainty = min(achieved_certainty, key=certainty_to_confidence)
+
 if len(fields) == 1:
-    print('Set field %s in debian/copyright.' % ', '.join(fields))
+    report_result('Set field %s in debian/copyright.' % ', '.join(fields),
+                  certainty=certainty)
 else:
-    print('Set fields %s in debian/copyright.' % ', '.join(fields))
-if achieved_certainty:
-    print('Certainty: %s' %
-          min(achieved_certainty, key=certainty_to_confidence))
+    report_result('Set fields %s in debian/copyright.' % ', '.join(fields),
+                  certainty=certainty)
