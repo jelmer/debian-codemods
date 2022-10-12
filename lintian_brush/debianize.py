@@ -304,15 +304,15 @@ def default_create_dist(session, tree, package, version, target_dir):
             "Build system does not support dist, falling back "
             "to export.")
         return None
-    except SessionSetupFailure as e:
-        raise DistCommandFailed(str(e), 'session-setup-failure')
+    except SessionSetupFailure as exc:
+        raise DistCommandFailed(str(exc), 'session-setup-failure') from exc
     except DistNoTarball as e:
         logging.info("Build system did not create a tarball: %s", e)
         return None
-    except DetailedFailure as e:
-        raise DistCommandFailed(str(e), e.error)
-    except UnidentifiedError as e:
-        raise DistCommandFailed(str(e))
+    except DetailedFailure as exc:
+        raise DistCommandFailed(str(exc), exc.error) from exc
+    except UnidentifiedError as exc:
+        raise DistCommandFailed(str(exc)) from exc
 
 
 def import_upstream_version_from_dist(
@@ -725,8 +725,8 @@ def process_cargo(es, session, wt, subpath, debian_path, upstream_version,
     import semver
     try:
         desired_version = semver.VersionInfo.parse(upstream_version)
-    except ValueError as e:
-        raise BuildSystemProcessError(buildsystem, str(e), e)
+    except ValueError as exc:
+        raise BuildSystemProcessError(buildsystem, str(exc), exc) from exc
     data = load_crate_info(crate)
     if data is None:
         raise BuildSystemProcessError(

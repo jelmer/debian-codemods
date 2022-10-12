@@ -56,9 +56,9 @@ async def retrieve_vcswatch_urls(package):
     try:
         async with VcsWatch() as vcs_watch:
             return await vcs_watch.get_package(package)
-    except ImportError:
+    except ImportError as exc:
         # No asyncpg, nothing
-        raise KeyError
+        raise KeyError(package) from exc
 
 
 class NewRepositoryURLUnknown(Exception):

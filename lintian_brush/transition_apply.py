@@ -167,8 +167,8 @@ def apply_transition(
                 wt.abspath(control_path),
                 allow_reformatting=allow_reformatting) as editor:
             return _apply_transition(editor, ben)
-    except FileNotFoundError:
-        raise NotDebianPackage(wt, debian_path)
+    except FileNotFoundError as exc:
+        raise NotDebianPackage(wt, debian_path) from exc
 
 
 def main():  # noqa: C901

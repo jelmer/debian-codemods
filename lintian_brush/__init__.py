@@ -427,7 +427,7 @@ class PythonScriptFixer(Fixer):
                 traceback.print_exception(
                     type(e), e, e.__traceback__, file=sys.stderr)
                 raise FixerScriptFailed(
-                    self.script_path, 1, sys.stderr.getvalue())
+                    self.script_path, 1, sys.stderr.getvalue()) from e
             else:
                 retcode = 0
             description = sys.stdout.getvalue()
@@ -498,7 +498,7 @@ class ScriptFixer(Fixer):
                 )
             except OSError as e:
                 if e.errno == errno.ENOMEM:
-                    raise MemoryError
+                    raise MemoryError from e
                 raise
             (description, err) = p.communicate(b"")
             if p.returncode == 2:
@@ -775,8 +775,7 @@ def _upstream_changes_to_patch(
     except PatchSyntax as e:
         raise FailedPatchManipulation(
             local_tree, patches_directory,
-            "Unable to parse some patches: %s" % e
-        )
+            "Unable to parse some patches: %s" % e) from e
     if len(quilt_patches) > 0:
         raise FailedPatchManipulation(
             local_tree,
@@ -800,7 +799,7 @@ def _upstream_changes_to_patch(
         raise FailedPatchManipulation(
             local_tree, patches_directory,
             "patch path %s already exists\n" % e.args[0]
-        )
+        ) from e
 
     return patch_name, specific_files
 
@@ -854,8 +853,8 @@ def run_lintian_fixer(  # noqa: C901
     try:
         with local_tree.get_file(changelog_path) as f:
             cl = Changelog(f, max_blocks=1)
-    except NoSuchFile:
-        raise NotDebianPackage(local_tree, subpath)
+    except NoSuchFile as e:
+        raise NotDebianPackage(local_tree, subpath) from e
     package = cl.package
     if cl.distributions == "UNRELEASED":
         current_version = cl.version
@@ -1217,8 +1216,8 @@ def confidence_to_certainty(confidence: Optional[int]) -> str:
         return "unknown"
     try:
         return SUPPORTED_CERTAINTIES[confidence] or "unknown"
-    except IndexError:
-        raise ValueError(confidence)
+    except IndexError as exc:
+        raise ValueError(confidence) from exc
 
 
 def min_certainty(certainties: Sequence[str]) -> str:

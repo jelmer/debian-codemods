@@ -109,8 +109,8 @@ async def _package_version(package: str, release: str) -> Optional[Version]:
                 "select version from packages "
                 "where package = $1 and release = $2",
                 package, release)
-    except asyncio.TimeoutError:
-        raise UddTimeout()
+    except asyncio.TimeoutError as exc:
+        raise UddTimeout() from exc
     if version is not None:
         return Version(version)
     return None
@@ -439,11 +439,11 @@ def _scrub_obsolete(
             package = editor.source["Source"]
             control_removed = drop_old_relations(
                 editor, compat_release, upgrade_release)
-    except FileNotFoundError:
+    except FileNotFoundError as exc:
         if wt.has_filename(os.path.join(debian_path, "debcargo.toml")):
             control_removed = []
         else:
-            raise NotDebianPackage(wt, debian_path)
+            raise NotDebianPackage(wt, debian_path) from exc
 
     maintscript_removed = []
     for path, removed in update_maintscripts(
