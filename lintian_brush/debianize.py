@@ -1254,15 +1254,15 @@ def find_python_package_upstream(requirement):
     import json
     http_url = 'https://pypi.org/pypi/%s/json' % requirement.package
     headers = {'User-Agent': 'ognibuild', 'Accept': 'application/json'}
-    http_contents = urlopen(
-        Request(http_url, headers=headers)).read()
     try:
-        pypi_data = json.loads(http_contents)
+        http_contents = urlopen(
+            Request(http_url, headers=headers)).read()
     except urllib.error.HTTPError as e:
         if e.code == 404:
             logging.warning('No pypi project %r', requirement.package)
             return None
         raise
+    pypi_data = json.loads(http_contents)
     upstream_branch = None
     for name, url in pypi_data['info']['project_urls'].items():
         if name.lower() in ('github', 'repository'):
