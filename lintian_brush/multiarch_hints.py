@@ -25,7 +25,7 @@ import re
 import sys
 import time
 
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import urlopen, Request
 
 from breezy.workspace import (
@@ -142,6 +142,8 @@ def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
     except HTTPError as e:
         if e.status != 304:
             raise
+    except URLError:
+        raise
     yield open(local_hints_path, "rb")
 
 
@@ -458,8 +460,14 @@ def main(argv=None):  # noqa: C901
     if dirty_tracker:
         dirty_tracker.mark_clean()
 
-    with cache_download_multiarch_hints() as f:
-        hints = multiarch_hints_by_binary(parse_multiarch_hints(f))
+    try:
+        with cache_download_multiarch_hints() as f:
+            hints = multiarch_hints_by_binary(parse_multiarch_hints(f))
+    except (HTTPError, URLError) as e:
+        report_fatal(
+            "multiarch-hints-download-error",
+            "Unable to download multiarch hints: %s"  % e)
+        return 1
 
     if control_files_in_root(wt, subpath):
         report_fatal(
