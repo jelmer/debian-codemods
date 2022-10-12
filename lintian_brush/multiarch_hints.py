@@ -353,12 +353,13 @@ def report_okay(code, description):
     logging.info('%s', description)
 
 
-def report_fatal(code, description):
+def report_fatal(code, description, transient=False):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'versions': versions_dict(),
                 'result_code': code,
+                'transient': transient,
                 'description': description}, f)
     logging.fatal('%s', description)
 
@@ -466,7 +467,8 @@ def main(argv=None):  # noqa: C901
     except (HTTPError, URLError) as e:
         report_fatal(
             "multiarch-hints-download-error",
-            "Unable to download multiarch hints: %s"  % e)
+            "Unable to download multiarch hints: %s"  % e,
+            transient=True)
         return 1
 
     if control_files_in_root(wt, subpath):
