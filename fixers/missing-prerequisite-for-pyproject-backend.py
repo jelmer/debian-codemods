@@ -5,8 +5,11 @@ from lintian_brush.fixer import control, report_result, LintianIssue
 from toml.decoder import load
 import sys
 
-with open('pyproject.toml') as f:
-    toml = load(f)
+try:
+    with open('pyproject.toml') as f:
+        toml = load(f)
+except FileNotFoundError:
+    sys.exit(0)
 
 
 build_backend = toml.get('build-system', {}).get('build-backend')
