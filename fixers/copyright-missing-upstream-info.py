@@ -72,7 +72,10 @@ try:
 except (FileNotFoundError, NotMachineReadableError):
     pass
 
-certainty = min(achieved_certainty, key=certainty_to_confidence)
+if achieved_certainty:
+    certainty = min(achieved_certainty, key=certainty_to_confidence)
+else:
+    certainty = None
 
 if len(fields) == 1:
     report_result('Set field %s in debian/copyright.' % ', '.join(fields),
