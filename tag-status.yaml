@@ -1759,6 +1759,7 @@
 - tag: invalid-override-restriction
   difficulty: medium
 - tag: missing-prerequisite-for-pyproject-backend
+  status: implemented
 - tag: old-devhelp-standard
   difficulty: medium
 - tag: stray-devhelp-documentation
@@ -1767,3 +1768,8 @@
   difficulty: medium
 - tag: openpgp-file-has-implementation-specific-extension
   difficulty: medium
+
+# pkg-perl-tools
+- tag: debian-changelog-contains-hint
+  difficulty: impossible
+- tag: build-deps-can-be-annotated-nocheck
