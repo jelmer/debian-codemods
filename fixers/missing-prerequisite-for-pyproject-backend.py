@@ -2,7 +2,10 @@
 
 from debmutate.control import ensure_some_version, get_relation
 from lintian_brush.fixer import control, report_result, LintianIssue
-from toml.decoder import load
+try:
+    from tomlkit import load
+except ModuleNotFoundError:
+    sys.exit(2)
 import sys
 
 try:
