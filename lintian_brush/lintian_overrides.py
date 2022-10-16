@@ -28,6 +28,9 @@ from debmutate.lintian_overrides import (
 )
 
 
+from . import data_file_path
+
+
 def overrides_paths() -> Iterator[str]:
     for path in ["debian/source/lintian-overrides"]:
         if os.path.exists(path):
@@ -213,20 +216,7 @@ def remove_unused(
 
 def load_renamed_tags():
     import json
-
-    path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "renamed-tags.json")
-    )
-    if not os.path.isfile(path):
-        import pkg_resources
-
-        path = pkg_resources.resource_filename(
-            __name__, "lintian-brush/renamed-tags.json"
-        )
-        if not os.path.isfile(path):
-            # Urgh.
-            path = "/usr/share/lintian-brush/renamed-tags.json"
-    with open(path, "rb") as f:
+    with open(data_file_path('renamed-tags.json'), "rb") as f:
         return json.load(f)
 
 

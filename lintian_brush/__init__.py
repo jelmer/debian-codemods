@@ -513,24 +513,30 @@ class ScriptFixer(Fixer):
         return parse_script_fixer_output(description.decode("utf-8"))
 
 
+def data_file_path(name, check=os.path.exists):
+    # There's probably a more Pythonic way of doing this, but
+    # I haven't bothered finding out what it is yet..
+    path = os.path.abspath(os.path.join(
+        os.path.dirname(__file__), "..", name))
+    if not check(path):
+        import pkg_resources
+
+        path = pkg_resources.resource_filename(
+            __name__, f"lintian-brush/{name}")
+        if check(path):
+            return path
+
+    # Urgh.
+    for b in ['/usr/share/lintian-brush', '/usr/local/share/lintian-brush']:
+        path = os.path.join(b, name)
+        if check(path):
+            return path
+    raise RuntimeError("unable to find data path: %s" % name)
+
+
 def find_fixers_dir() -> str:
     """Find the local directory with lintian fixer scripts."""
-    local_dir = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "fixers"))
-    if os.path.isdir(local_dir):
-        return local_dir
-    import pkg_resources
-
-    resource_dir = pkg_resources.resource_filename(
-        __name__, "lintian-brush/fixers")
-    if os.path.isdir(resource_dir):
-        return resource_dir
-    # Urgh.
-    local_share_dir = "/usr/local/share/lintian-brush/fixers"
-    if os.path.isdir(local_share_dir):
-        return local_share_dir
-
-    return "/usr/share/lintian-brush/fixers"
+    return data_file_path("fixers", os.path.isdir)
 
 
 def read_desc_file(

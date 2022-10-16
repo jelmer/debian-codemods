@@ -17,8 +17,9 @@
 
 """Utility functions for dealing with licenses."""
 
+from . import data_file_path
+
 import json
-import os
 
 COMMON_LICENSES_DIR = "/usr/share/common-licenses"
 
@@ -29,15 +30,6 @@ FULL_LICENSE_NAME = {
 
 
 def load_spdx_data():
-    path = os.path.abspath(os.path.join(
-        os.path.dirname(__file__), "..", "spdx.json"))
-    if not os.path.isfile(path):
-        import pkg_resources
 
-        path = pkg_resources.resource_filename(
-            __name__, "lintian-brush/spdx.json")
-        if not os.path.isfile(path):
-            # Urgh.
-            path = "/usr/share/lintian-brush/spdx.json"
-    with open(path, "rb") as f:
+    with open(data_file_path("spdx.json"), "rb") as f:
         return json.load(f)
