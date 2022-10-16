@@ -467,7 +467,7 @@ def main(argv=None):  # noqa: C901
     except (HTTPError, URLError, TimeoutError) as e:
         report_fatal(
             "multiarch-hints-download-error",
-            "Unable to download multiarch hints: %s"  % e,
+            "Unable to download multiarch hints: %s" % e,
             transient=True)
         return 1
 
