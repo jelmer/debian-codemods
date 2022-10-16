@@ -1,0 +1,7 @@
+#!/usr/bin/make -f
+
+%:
+	dh $*
+
+execute_before_mh_install:
+	lala

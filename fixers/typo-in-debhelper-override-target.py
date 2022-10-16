@@ -35,14 +35,29 @@ known_dh_commands.extend([
     'jh_manifest',
     'jh_repack',
     'jh_setupenvironment',
+    'mh_checkrepo',
+    'mh_install',
+    'mh_installpoms',
+    'mh_linkjars',
+    'mh_patchpoms',
+    'mh_clean',
+    'mh_installjar',
+    'mh_installsite',
+    'mh_linkrepojar',
+    'mh_unpatchpoms',
+    'mh_cleanpom',
+    'mh_installpom',
+    'mh_linkjar',
+    'mh_patchpom',
 ])
 
-known_targets = []
+known_targets = set()
 for dh_command in known_dh_commands:
-    known_targets.extend([
+    known_targets.update([
         'override_' + dh_command,
         'execute_before_' + dh_command,
         'execute_after_' + dh_command])
+
 
 renamed: List[Tuple[str, str]] = []
 

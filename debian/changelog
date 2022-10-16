@@ -1,6 +1,8 @@
 lintian-brush (0.133) UNRELEASED; urgency=medium
 
   * Add fixer for missing-prerequisite-for-pyproject-backend.
+  * typo-in-debhelper-override-target: Don't erroneously correct
+    mh_install to dh_install. Closes: #1021899
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 11 Oct 2022 11:59:08 +0100
 

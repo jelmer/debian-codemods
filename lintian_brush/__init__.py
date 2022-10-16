@@ -518,13 +518,15 @@ def data_file_path(name, check=os.path.exists):
     # I haven't bothered finding out what it is yet..
     path = os.path.abspath(os.path.join(
         os.path.dirname(__file__), "..", name))
-    if not check(path):
-        import pkg_resources
+    if check(path):
+        return path
 
-        path = pkg_resources.resource_filename(
-            __name__, f"lintian-brush/{name}")
-        if check(path):
-            return path
+    import pkg_resources
+
+    path = pkg_resources.resource_filename(
+        __name__, f"lintian-brush/{name}")
+    if check(path):
+        return path
 
     # Urgh.
     for b in ['/usr/share/lintian-brush', '/usr/local/share/lintian-brush']:
