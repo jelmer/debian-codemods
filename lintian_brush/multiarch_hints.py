@@ -464,7 +464,7 @@ def main(argv=None):  # noqa: C901
     try:
         with cache_download_multiarch_hints() as f:
             hints = multiarch_hints_by_binary(parse_multiarch_hints(f))
-    except (HTTPError, URLError) as e:
+    except (HTTPError, URLError, TimeoutError) as e:
         report_fatal(
             "multiarch-hints-download-error",
             "Unable to download multiarch hints: %s"  % e,
