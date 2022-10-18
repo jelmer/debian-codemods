@@ -60,10 +60,7 @@ from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.revision import NULL_REVISION
 from breezy.workingtree import WorkingTree
 
-try:
-    from breezy.transport import FileExists
-except ImportError:
-    from breezy.errors import FileExists
+from breezy.transport import FileExists
 
 from ognibuild import DetailedFailure, UnidentifiedError
 from ognibuild.buildlog import InstallFixer, problem_to_upstream_requirement
@@ -401,6 +398,8 @@ def process_setup_py(es, session, wt, subpath, debian_path, upstream_version,
     # TODO(jelmer): check whether project supports python 3
     source["Build-Depends"] = ensure_some_version(
         source["Build-Depends"], "python3-all")
+    # TODO(Jelmer): Convert pyproject's build-system.requirements to Python
+    # deps
     if buildsystem.build_backend in ("flit.build_api", "flit_core.build_api"):
         source["Build-Depends"] = ensure_some_version(
             source["Build-Depends"], "flit")
