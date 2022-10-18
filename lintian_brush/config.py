@@ -18,9 +18,10 @@
 """Lintian-brush configuration file."""
 
 import os
+from typing import Optional
+import warnings
 
 from configobj import ConfigObj
-import warnings
 import distro_info
 
 
@@ -35,7 +36,7 @@ SUPPORTED_KEYS = [
 ]
 
 
-def resolve_release_codename(name: str, date=None) -> str:
+def resolve_release_codename(name: str, date=None) -> Optional[str]:
     def oldest_name(fn):
         return max(fn("object", date), key=lambda r: r.created).name
 
@@ -60,6 +61,7 @@ def resolve_release_codename(name: str, date=None) -> str:
         if ubuntu.valid(name):
             return name
         return None
+    return None
 
 
 class Config(object):
