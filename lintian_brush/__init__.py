@@ -47,10 +47,7 @@ from debian.changelog import Changelog, Version
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy.commit import NullCommitReporter
-try:
-    from breezy.transport import NoSuchFile
-except ImportError:  # breezy < 3.3
-    from breezy.errors import NoSuchFile
+from breezy.transport import NoSuchFile
 from breezy.osutils import is_inside
 from breezy.rename_map import RenameMap
 from breezy.tree import Tree
