@@ -89,7 +89,12 @@ from ognibuild.requirements import (
     GoPackageRequirement,
     )
 from ognibuild.resolver.apt import AptResolver, AptRequirement
-from ognibuild.upstream import UpstreamInfo, find_upstream
+from ognibuild.upstream import (
+    UpstreamInfo,
+    find_upstream,
+    go_base_name,
+    load_crate_info,
+)
 from ognibuild.vcs import dupe_vcs_tree
 
 from upstream_ontologist.guess import (
@@ -559,18 +564,6 @@ def process_perl_build_tiny(es, session, wt, subpath, debian_path,
          "Architecture": "all"
          })
     return control
-
-
-def go_base_name(package):
-    (hostname, path) = package.split('/', 1)
-    if hostname == "github.com":
-        hostname = "github"
-    if hostname == "gopkg.in":
-        hostname = "gopkg"
-    path = path.rstrip('/').replace("/", "-")
-    if path.endswith('.git'):
-        path = path[:-4]
-    return (hostname + path).replace("_", "-").lower()
 
 
 def process_golang(es, session, wt, subpath, debian_path, upstream_version,
@@ -1211,22 +1204,6 @@ def debianize(  # noqa: C901
     return result
 
 
-def load_crate_info(crate):
-    import urllib.error
-    from urllib.request import urlopen, Request
-    import json
-    http_url = 'https://crates.io/api/v1/crates/%s' % crate
-    headers = {'User-Agent': 'debianize', 'Accept': 'application/json'}
-    http_contents = urlopen(Request(http_url, headers=headers)).read()
-    try:
-        return json.loads(http_contents)
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            logging.warning('No crate %r', crate)
-            return None
-        raise
-
-
 class SimpleTrustedAptRepo(object):
 
     def __init__(self, directory):
@@ -1563,6 +1540,11 @@ def main(argv=None):  # noqa: C901
         help=(
             'Package whatever source will create the named Debian '
             'binary package.'))
+    parser.add_argument(
+        '--log-directory',
+        type=str,
+        default=os.environ.get('LOG_DIRECTORY'),
+        help='Directory to write log files to.')
     parser.add_argument('upstream', nargs='?', type=str)
 
     args = parser.parse_args(argv)
