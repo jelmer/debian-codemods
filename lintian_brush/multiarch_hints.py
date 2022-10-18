@@ -451,89 +451,93 @@ def main(argv=None):  # noqa: C901
             update_changelog = cfg.update_changelog()
 
     use_inotify = ((False if args.disable_inotify else None),)
-    try:
-        check_clean_tree(wt, wt.basis_tree(), subpath)
-    except WorkspaceDirty:
-        logging.info("%s: Please commit pending changes first.", wt.basedir)
-        return 1
+    with wt.lock_write():
+        try:
+            check_clean_tree(wt, wt.basis_tree(), subpath)
+        except WorkspaceDirty:
+            logging.info("%s: Please commit pending changes first.",
+                         wt.basedir)
+            return 1
 
-    dirty_tracker = get_dirty_tracker(wt, subpath, use_inotify)
-    if dirty_tracker:
-        dirty_tracker.mark_clean()
+        dirty_tracker = get_dirty_tracker(wt, subpath, use_inotify)
+        if dirty_tracker:
+            dirty_tracker.mark_clean()
 
-    try:
-        with cache_download_multiarch_hints() as f:
-            hints = multiarch_hints_by_binary(parse_multiarch_hints(f))
-    except (HTTPError, URLError, TimeoutError) as e:
-        report_fatal(
-            "multiarch-hints-download-error",
-            "Unable to download multiarch hints: %s" % e,
-            transient=True)
-        return 1
+        try:
+            with cache_download_multiarch_hints() as f:
+                hints = multiarch_hints_by_binary(parse_multiarch_hints(f))
+        except (HTTPError, URLError, TimeoutError) as e:
+            report_fatal(
+                "multiarch-hints-download-error",
+                "Unable to download multiarch hints: %s" % e,
+                transient=True)
+            return 1
 
-    if control_files_in_root(wt, subpath):
-        report_fatal(
-            "control-files-in-root",
-            "control files live in root rather than debian/ " "(LarstIQ mode)",
-        )
-        return 1
+        if control_files_in_root(wt, subpath):
+            report_fatal(
+                "control-files-in-root",
+                "control files live in root rather than debian/ "
+                "(LarstIQ mode)",
+            )
+            return 1
 
-    if is_debcargo_package(wt, subpath):
-        report_okay("nothing-to-do", "Package uses debcargo")
-        return 0
-    if not control_file_present(wt, subpath):
-        report_fatal("missing-control-file", "Unable to find debian/control")
-        return 1
+        if is_debcargo_package(wt, subpath):
+            report_okay("nothing-to-do", "Package uses debcargo")
+            return 0
+        if not control_file_present(wt, subpath):
+            report_fatal("missing-control-file",
+                         "Unable to find debian/control")
+            return 1
 
-    try:
-        result, summary = run_lintian_fixer(
-            wt,
-            MultiArchHintFixer(hints),
-            update_changelog=update_changelog,
-            minimum_certainty=minimum_certainty,
-            dirty_tracker=dirty_tracker,
-            subpath=subpath,
-            allow_reformatting=allow_reformatting,
-            net_access=True,
-            changes_by="apply-multiarch-hints",
-        )
-    except NoChanges:
-        report_okay("nothing-to-do", "no hints to apply")
-        return 0
-    except FormattingUnpreservable as e:
-        report_fatal(
-            "formatting-unpreservable",
-            "unable to preserve formatting while editing %s" % e.path,
-        )
-        return 1
-    except GeneratedFile as e:
-        report_fatal(
-            "generated-file", "unable to edit generated file: %r" % e)
-        return 1
-    except NotDebianPackage:
-        logging.info("%s: Not a debian package.", wt.basedir)
-        return 1
-    else:
-        applied_hints = []
-        hint_names = []
-        for (binary, hint, description, certainty) in result.changes:
-            hint_names.append(hint["link"].split("#")[-1])
-            entry = dict(hint.items())
-            hint_names.append(entry["link"].split("#")[-1])
-            entry["action"] = description
-            entry["certainty"] = certainty
-            applied_hints.append(entry)
-            logging.info("%s: %s" % (binary["Package"], description))
-        if os.environ.get('SVP_API') == '1':
-            with open(os.environ['SVP_RESULT'], 'w') as f:
-                json.dump({
-                    'description': "Applied multi-arch hints.",
-                    'versions': versions_dict(),
-                    'value': calculate_value(hint_names),
-                    'commit-message': 'Apply multi-arch hints',
-                    'context': {
-                        'applied-hints': applied_hints,
-                    }}, f)
+        try:
+            result, summary = run_lintian_fixer(
+                wt,
+                MultiArchHintFixer(hints),
+                update_changelog=update_changelog,
+                minimum_certainty=minimum_certainty,
+                dirty_tracker=dirty_tracker,
+                subpath=subpath,
+                allow_reformatting=allow_reformatting,
+                net_access=True,
+                changes_by="apply-multiarch-hints",
+            )
+        except NoChanges:
+            report_okay("nothing-to-do", "no hints to apply")
+            return 0
+        except FormattingUnpreservable as e:
+            report_fatal(
+                "formatting-unpreservable",
+                "unable to preserve formatting while editing %s" % e.path,
+            )
+            return 1
+        except GeneratedFile as e:
+            report_fatal(
+                "generated-file", "unable to edit generated file: %r" % e)
+            return 1
+        except NotDebianPackage:
+            logging.info("%s: Not a debian package.", wt.basedir)
+            return 1
+        else:
+            applied_hints = []
+            hint_names = []
+            for (binary, hint, description, certainty) in result.changes:
+                hint_names.append(hint["link"].split("#")[-1])
+                entry = dict(hint.items())
+                hint_names.append(entry["link"].split("#")[-1])
+                entry["action"] = description
+                entry["certainty"] = certainty
+                applied_hints.append(entry)
+                logging.info("%s: %s" % (binary["Package"], description))
+            if os.environ.get('SVP_API') == '1':
+                with open(os.environ['SVP_RESULT'], 'w') as f:
+                    json.dump({
+                        'description': "Applied multi-arch hints.",
+                        'versions': versions_dict(),
+                        'value': calculate_value(hint_names),
+                        'commit-message': 'Apply multi-arch hints',
+                        'context': {
+                            'applied-hints': applied_hints,
+                        }}, f)
 
 
 if __name__ == "__main__":
