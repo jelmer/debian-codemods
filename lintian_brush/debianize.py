@@ -273,15 +273,14 @@ def setup_debhelper(
 
 
 def default_create_dist(session, tree, package, version, target_dir):
-    # TODO(Jelmer): don't add backend specific things here
-    os.environ['SETUPTOOLS_SCM_PRETEND_VERSION'] = version
     try:
         with session:
             try:
                 return ogni_create_dist(
                     session, tree, target_dir,
                     include_controldir=False,
-                    subdir=(package or "package"))
+                    subdir=(package or "package"),
+                    version=version)
             except DetailedFailure as e:
                 if isinstance(
                         e.error,
@@ -289,7 +288,8 @@ def default_create_dist(session, tree, package, version, target_dir):
                     return ogni_create_dist(
                         session, tree, target_dir,
                         include_controldir=True,
-                        subdir=(package or "package"))
+                        subdir=(package or "package"),
+                        version=version)
                 else:
                     raise
     except NoBuildToolsFound:
