@@ -40,8 +40,6 @@ from typing import (
     Callable,
 )
 
-from tqdm import trange
-
 from debian.changelog import Changelog, Version
 
 import breezy.bzr  # noqa: F401
@@ -1108,6 +1106,7 @@ def run_lintian_fixers(  # noqa: C901
         2. dictionary mapping fixer names for fixers that failed to run to the
            error that occurred
     """
+    from tqdm import trange
     basis_tree = local_tree.basis_tree()
     check_clean_tree(local_tree, basis_tree=basis_tree, subpath=subpath)
     fixers = list(fixers)
