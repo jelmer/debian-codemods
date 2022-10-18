@@ -65,7 +65,7 @@ class LintianIssue(object):
             target = ("source", None)
         if isinstance(info, tuple):
             info = " ".join(info)
-        self.target = target
+        self.target = target  # type: ignore
         self.info = info
         self.tag = tag
 
