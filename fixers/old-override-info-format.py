@@ -63,6 +63,8 @@ INFO_FIXERS = {
     "package-contains-documentation-outside-usr-share-doc": PURE_FN_SUB,
     "non-standard-dir-perm": (
         r"^(?P<path>.+) ([0-9]+) \!= ([0-9]+)", r"\2 != \3 [\1]"),
+    "non-standard-file-perm": (
+        r"^(?P<path>.+) ([0-9]+) \!= ([0-9]+)", r"\2 != \3 [\1]"),
     "executable-is-not-world-readable": (
         r"^(?P<path>.+) ([0-9]+)", r"\1 [\2]"),
     "library-not-linked-against-libc": PURE_FN_SUB,
