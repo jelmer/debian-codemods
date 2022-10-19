@@ -232,11 +232,7 @@ def is_debcargo_package():
 
 if is_debcargo_package():
     from debmutate.debcargo import DebcargoControlShimEditor, DebcargoEditor
-
-    try:
-        control = DebcargoControlShimEditor.from_debian_dir('debian')
-    except AttributeError:
-        control = DebcargoControlShimEditor(DebcargoEditor())
+    control = DebcargoControlShimEditor.from_debian_dir('debian')
 else:
     control = ControlEditor()
 
