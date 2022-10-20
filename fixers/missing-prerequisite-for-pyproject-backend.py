@@ -51,7 +51,7 @@ with control:
         issue.report_fixed()
 
 report_result(
-    'Add missing build-dependency on %s '
-    '(for build-backend %s in pyproject.toml)' % (
+    'Add missing build-dependency on %s.\n\n'
+    'This is necessary for build-backend %s in pyproject.toml' % (
         prerequisite,
         build_backend))
