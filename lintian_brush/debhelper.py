@@ -24,7 +24,7 @@ except ImportError:
     # Python < 3.8
     from functools import lru_cache
 
-    def cache(user_function):
+    def cache(user_function):  # type: ignore
         return lru_cache(maxsize=None)(user_function)
 
 import json

@@ -38,7 +38,7 @@ from breezy.errors import (  # noqa: E402
     NotBranchError,
 )
 
-breezy.initialize()
+breezy.initialize()  # type: ignore
 import breezy.git  # noqa: E402
 import breezy.bzr  # noqa: E402
 

@@ -30,7 +30,6 @@ from functools import partial
 import json
 import logging
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -84,14 +83,11 @@ from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
 from ognibuild.requirements import (
     Requirement,
-    CargoCrateRequirement,
-    PythonPackageRequirement,
-    GoPackageRequirement,
     )
 from ognibuild.resolver.apt import AptResolver, AptRequirement
 from ognibuild.upstream import (
-    UpstreamInfo,
     find_upstream,
+    find_apt_upstream,
     go_base_name,
     load_crate_info,
 )
@@ -143,7 +139,6 @@ from . import (
     version_string,
     run_lintian_fixers,
     get_committer,
-    version_string as lintian_brush_version_string,
 )
 from .debbugs import find_archived_wnpp_bugs, find_wnpp_bugs
 from .debhelper import (
@@ -235,7 +230,7 @@ def versions_dict():
         'lintian-brush': lintian_brush.version_string,
         'debmutate': debmutate.version_string,
         'debian': debian.__version__,
-        'ognibuild': ognibuild.version_version,
+        'ognibuild': ognibuild.version_version,  # type: ignore
         'buildlog_consultant': buildlog_consultant.version_string,
         'upstream_ontologist': upstream_ontologist.version_string,
     }
