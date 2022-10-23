@@ -21,6 +21,7 @@ from debian.changelog import Changelog
 import os
 import subprocess
 import shutil
+import sys
 import tempfile
 import unittest
 
@@ -93,6 +94,9 @@ class FixerTestCase(unittest.TestCase):
         env["CURRENT_VERSION"] = str(current_version)
         env["NET_ACCESS"] = "disallow"
         env["MINIMUM_CERTAINTY"] = "possible"
+        env["PYTHONPATH"] = ':'.join(
+            [os.path.dirname(os.path.dirname(__file__))]
+            + sys.path)
         env_path = os.path.join(self._path, "env")
         if os.path.exists(env_path):
             with open(env_path, "r") as f:
@@ -208,7 +212,6 @@ def test_suite():
 
 if __name__ == "__main__":
     import argparse
-    import sys
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
