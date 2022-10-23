@@ -1,4 +1,4 @@
-Remove fields on binary packages that duplicate source:
+Remove fields on binary packages that duplicate source.
 + Field Priority from blah.
 + Field Section from blah.
 Fixed-Lintian-Tags: installable-field-mirrors-source

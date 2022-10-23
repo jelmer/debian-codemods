@@ -502,9 +502,7 @@ if new_debhelper_compat_version > current_debhelper_compat_version:
         fixed_lintian_tag(
             'source', "package-uses-old-debhelper-compat-version",
             info='%s' % (current_debhelper_compat_version, ))
-    lines = ["Bump debhelper from %s %s to %s." % (
-        kind, current_debhelper_compat_version, new_debhelper_compat_version)]
-    for subitem in sorted(subitems):
-        lines.append("+ " + subitem)
+    description = "Bump debhelper from %s %s to %s." % (
+        kind, current_debhelper_compat_version, new_debhelper_compat_version)
 
-    report_result(description='\n'.join(lines))
+    report_result(description=description, details=sorted(subitems))

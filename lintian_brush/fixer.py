@@ -151,16 +151,21 @@ def reset() -> None:
     _overriden_issues = []
 
 
-def report_result(description=None, certainty=None, patch_name=None):
+def report_result(description=None, certainty=None, patch_name=None,
+                  details=None):
     """Report the result of a fixer.
 
     Args:
       description: Description of the fix
       certainty: Certainty of the fix
       patch_name: Suggested patch name, if there are upstream changes
+      details: List of details, as lines
     """
     if description:
         print(description)
+    if details:
+        for detail in details:
+            print('+ %s' % detail)
     if certainty:
         print("Certainty: %s" % certainty)
     fixed_lintian_tags = set(
@@ -231,7 +236,7 @@ def is_debcargo_package():
 
 
 if is_debcargo_package():
-    from debmutate.debcargo import DebcargoControlShimEditor, DebcargoEditor
+    from debmutate.debcargo import DebcargoControlShimEditor
     control = DebcargoControlShimEditor.from_debian_dir('debian')
 else:
     control = ControlEditor()
