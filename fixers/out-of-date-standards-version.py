@@ -9,6 +9,7 @@ from debmutate.control import (
     get_relation,
     parse_standards_version,
     )
+from typing import Dict, List
 from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
 from lintian_brush.fixer import control, report_result, LintianIssue
@@ -47,11 +48,14 @@ class UpgradeCheckUnable(Exception):
 def check_4_1_1():
     if not os.path.exists("debian/changelog"):
         raise UpgradeCheckFailure("4.4", "debian/changelog does not exist")
+    else:
+        yield "debian/changelog exists"
 
 
 def check_4_4_0():
     # Check that the package uses debhelper.
     if os.path.exists("debian/compat"):
+        yield "package uses debhelper"
         return
     with open('debian/control') as f:
         source = next(Deb822.iter_paragraphs(f))
@@ -61,6 +65,7 @@ def check_4_4_0():
         except KeyError:
             raise UpgradeCheckFailure("4.9", "package does not use dh")
         else:
+            yield "package uses debhelper"
             return
 
 
@@ -77,6 +82,10 @@ def check_4_4_1():
     if len(vcs_fields) > 1:
         raise UpgradeCheckFailure(
             "5.6.26", "package has more than one Vcs-<type> field")
+    elif len(vcs_fields) == 0:
+        yield "package has no Vcs-<type> fields"
+    else:
+        yield "package has only one Vcs-<type> field"
 
     # Check that Files entries don't refer to directories.
     # They must be wildcards *in* the directories.
@@ -94,6 +103,8 @@ def check_4_4_1():
         pass
     except NotMachineReadableError:
         pass
+    else:
+        yield "Files entries in debian/copyright don't refer to directories"
 
 
 def check_4_1_5():
@@ -106,6 +117,7 @@ def check_4_1_5():
         if len(epochs) > 1:
             # Maybe they did email debian-devel@; we don't know.
             raise UpgradeCheckUnable("5.6.12", "last release changes epoch")
+    yield "Package did not recently introduce epoch"
 
 
 def _poor_grep(path, needle):
@@ -133,6 +145,7 @@ def check_4_5_0():
                 "an underscore")
         if _poor_grep(entry.path, b'update-rc.d'):
             uses_update_rc_d = True
+    yield "Package does not create users"
 
     # Including an init script is encouraged if there is no systemd unit, and
     # optional if there is (previously, it was recommended).
@@ -152,6 +165,12 @@ def check_4_5_0():
             raise UpgradeCheckFailure(
                 "9.3.3",
                 "update-rc usage if required if package includes init script")
+    if uses_update_rc_d:
+        yield ("Package does not ship any init files without matching "
+               "systemd units")
+        yield "Package ships init files but uses update-rc.d"
+    else:
+        yield "Package does not ship init files"
 
 
 def check_4_5_1():
@@ -165,11 +184,13 @@ def check_4_5_1():
                     "4.5.1",
                     "package contains non-default series file")
     except FileNotFoundError:
-        pass
+        yield "Package does not have any patches"
+    else:
+        yield "Package does not ship any non-default series files"
 
 
 def check_4_2_1():
-    pass
+    yield from []
 
 
 def check_4_6_0():
@@ -184,13 +205,15 @@ def check_4_6_0():
                 "9.1.1",
                 "unable to verify whether "
                 "package install files into /usr/lib/64")
+    else:
+        yield "Package does not contain any references to lib64"
 
 
 def check_4_6_1():
     # 9.1.1: Restore permission for packages for non-64-bit architectures to
     # install files to /usr/lib64/.
     # -> No need to check anything.
-    pass
+    yield from []
 
 
 check_requirements = {
@@ -207,6 +230,8 @@ check_requirements = {
 
 current_version = None
 
+
+verified: Dict[str, List[str]] = {}
 
 try:
     with control as updater:
@@ -250,7 +275,7 @@ try:
                     target_version = upgrade_path[current_version]
                     check_fn = check_requirements[target_version]
                     try:
-                        check_fn()
+                        verified[target_version] = list(check_fn())
                     except UpgradeCheckFailure as e:
                         logging.info(
                             'Upgrade checklist validation from standards '
@@ -274,5 +299,5 @@ except FileNotFoundError:
 
 if current_version:
     report_result(
-        'Update standards version to %s, no changes needed.' % current_version,
+        f'Update standards version to {current_version}, no changes needed.',
         certainty='certain')
