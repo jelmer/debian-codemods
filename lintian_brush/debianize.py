@@ -104,6 +104,7 @@ from upstream_ontologist.debian import (
 )
 
 from breezy.plugins.debian import default_orig_dir
+from breezy.plugins.debian.directory import vcs_git_url_to_bzr_url
 from breezy.plugins.debian.merge_upstream import (
     get_tarballs,
     do_import,
@@ -132,7 +133,6 @@ from buildlog_consultant.common import (
 from debmutate.versions import (
     debianize_upstream_version,
 )
-
 
 from . import (
     available_lintian_fixers,
@@ -1792,12 +1792,17 @@ def main(argv=None):  # noqa: C901
                         os.path.join(args.output_directory, cn)
                         for cn in changes_names])
 
+    if debianize_result.vcs_url:
+        target_branch_url = vcs_git_url_to_bzr_url(
+            debianize_result.vcs_url)
+    else:
+        target_branch_url = None
+
     if os.environ.get("SVP_API") == "1":
         with open(os.environ['SVP_RESULT'], "w") as f:
             json.dump({
                 "description": "Debianized package",
-                # TODO(jelmer): Convert from Debian to brz format?
-                "target-branch-url": debianize_result.vcs_url,
+                "target-branch-url": target_branch_url,
                 "versions": versions_dict(),
                 "context": {
                     "wnpp_bugs": debianize_result.wnpp_bugs,
