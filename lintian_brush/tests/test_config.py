@@ -36,6 +36,8 @@ class ResolveCodeNameTests(TestCase):
         self.assertEqual("buster", resolve_release_codename("buster"))
         self.assertEqual("sid", resolve_release_codename("unstable"))
         self.assertEqual("sid", resolve_release_codename("debian/unstable"))
+        self.assertIsInstance(resolve_release_codename("oldstable"), str)
+        self.assertIsInstance(resolve_release_codename("oldoldstable"), str)
 
     def test_resolve_unknown(self):
         self.assertEqual(None, resolve_release_codename("blah"))
@@ -44,7 +46,7 @@ class ResolveCodeNameTests(TestCase):
         self.assertEqual("trusty", resolve_release_codename("trusty"))
         self.assertEqual("trusty", resolve_release_codename("ubuntu/trusty"))
 
-    def resolve_ubuntu_esm(self):
+    def test_resolve_ubuntu_esm(self):
         self.assertIsInstance(resolve_release_codename("ubuntu/esm"), str)
 
 

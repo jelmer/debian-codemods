@@ -18,6 +18,7 @@
 """Lintian-brush configuration file."""
 
 import os
+from datetime import datetime
 from typing import Optional
 import warnings
 
@@ -36,10 +37,18 @@ SUPPORTED_KEYS = [
 ]
 
 
-def resolve_release_codename(name: str, date=None) -> Optional[str]:
-    def oldest_name(fn):
-        return max(fn("object", date), key=lambda r: r.created).name
+def _oldoldstable(debian_info):
+    distros = [x for x in debian_info._releases if x.release is not None]
+    if len(distros) < 2:
+        raise distro_info.DistroDataOutdated()
+    return distros[-3].codename
 
+
+def _oldest_name(fn):
+    return min(fn(result="object"), key=lambda r: r.created).codename
+
+
+def resolve_release_codename(name: str, date=None) -> Optional[str]:
     if '/' in name:
         distro, name = name.split('/', 1)
     else:
@@ -47,9 +56,11 @@ def resolve_release_codename(name: str, date=None) -> Optional[str]:
     if distro in ('debian', None):
         debian = distro_info.DebianDistroInfo()
         if name == 'lts':
-            return oldest_name(debian.lts_supported)
+            return _oldest_name(debian.lts_supported)
         if name == 'elts':
-            return oldest_name(debian.elts_supported)
+            return _oldest_name(debian.elts_supported)
+        if name == 'oldoldstable':
+            return _oldoldstable(debian)
         if debian.codename(name):
             return debian.codename(name)
         if debian.valid(name):
@@ -57,7 +68,7 @@ def resolve_release_codename(name: str, date=None) -> Optional[str]:
     if distro in ('ubuntu', None):
         ubuntu = distro_info.UbuntuDistroInfo()
         if name == 'esm':
-            return oldest_name(ubuntu.supported_esm)
+            return _oldest_name(ubuntu.supported_esm)
         if ubuntu.valid(name):
             return name
         return None
