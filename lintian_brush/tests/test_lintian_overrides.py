@@ -18,9 +18,12 @@
 """Tests for lintian_brush.lintian_overrides."""
 
 import os
+import re
+import subprocess
 
 from breezy.tests import (
     TestCaseWithTransport,
+    TestCase,
 )
 
 from lintian_brush.lintian_overrides import (
@@ -29,6 +32,8 @@ from lintian_brush.lintian_overrides import (
     override_exists,
     update_overrides_file,
     get_overrides,
+    INFO_FIXERS,
+    load_renamed_tags,
 )
 
 
@@ -149,3 +154,19 @@ blah source: patch-file-exists-but info
             override_exists(
                 tag="patch-file-exists-but", info="info", package="blah")
         )
+
+
+class InfoFixerTests(TestCase):
+
+    def test_tags_known(self):
+        tags = set([
+            x.decode() for x in subprocess.check_output(
+                ["lintian-explain-tags", "--list-tags"]).splitlines(False)])
+        tags.update(load_renamed_tags())
+        for tag in INFO_FIXERS:
+            self.assertIn(tag, tags)
+
+    def test_valid_regexes(self):
+        for v in INFO_FIXERS:
+            if isinstance(v, tuple):
+                re.compile(v)

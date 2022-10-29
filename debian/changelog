@@ -6,6 +6,7 @@ lintian-brush (0.133) UNRELEASED; urgency=medium
   * old-override-info-format: Update non-standard-file-perm.
   * Support DEB_COMPAT_RELEASE environment variable.
   * threshold calculattion: Update tag names after changes in lintian.
+  * Add significantly more regexes for old-override-info-format.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 11 Oct 2022 11:59:08 +0100
 
