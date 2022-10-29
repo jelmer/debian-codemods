@@ -60,23 +60,24 @@ from .config import Config  # noqa: E402
 
 DEFAULT_ADDON_FIXERS = [
     "debian-changelog-line-too-long",
-    "file-contains-trailing-whitespace",
+    "trailing-whitespace",
     "out-of-date-standards-version",
     "package-uses-old-debhelper-compat-version",
     "public-upstream-key-not-minimal",
-    "no-dh-sequencer",
 ]
 
 DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY = 10
 DEFAULT_VALUE_LINTIAN_BRUSH = 50
 # Base these scores on the importance as set in Debian?
 LINTIAN_BRUSH_TAG_VALUES = {
-    "file-contains-trailing-whitespace": 0,
+    "trailing-whitespace": 0,
 }
 LINTIAN_BRUSH_TAG_DEFAULT_VALUE = 5
 
 
 def calculate_value(tags: Set[str]) -> int:
+    if not tags:
+        return 0
     if not (set(tags) - set(DEFAULT_ADDON_FIXERS)):
         value = DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY
     else:
