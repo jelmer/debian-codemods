@@ -1431,7 +1431,9 @@ def main(argv=None):  # noqa: C901
     parser.add_argument(
         "--version", action="version", version="%(prog)s " + version_string
     )
-    parser.add_argument("--compat-release", type=str, help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--compat-release", type=str, help=argparse.SUPPRESS,
+        default=os.environ.get('DEB_COMPAT_RELEASE'))
     parser.add_argument(
         "--verbose", help="be verbose", action="store_true", default=False
     )
