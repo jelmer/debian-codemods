@@ -623,7 +623,7 @@ def main():  # noqa: C901
         '--compat-release',
         metavar='COMPAT-RELEASE',
         help="Release to allow building on.",
-        default=None)
+        default=os.environ.get('COMPAT_RELEASE'))
     parser.add_argument(
         "--no-update-changelog",
         action="store_false",

@@ -141,7 +141,8 @@ def main(argv=None):  # noqa: C901
         default=False,
     )
     fixer_group.add_argument(
-        "--compat-release", type=str, help=argparse.SUPPRESS)
+        "--compat-release", type=str, help=argparse.SUPPRESS,
+        default=os.environ.get('COMPAT_RELEASE'))
     # Hide the minimum-certainty option for the moment.
     fixer_group.add_argument(
         "--minimum-certainty",
