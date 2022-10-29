@@ -13,13 +13,18 @@ from lintian_brush.lintian_overrides import (
 
 LINENO_MATCH = r"\d+|\*"
 
-# Simple match of "$file (line $lineno)"
+# Common regexes, for convenience:
+
+# "$file (line $lineno)" => "[$file:$lineno]"
 PURE_FLN_SUB = (
     r"^(?P<path>[^[].*) \(line (?P<lineno>" + LINENO_MATCH + r")\)$",
     r"[\1:\2]")
+# "$file (line $lineno)" => "* [$file:$lineno]"
 PURE_FLN_WILDCARD_SUB = (
     r"^(?P<path>.+) \(line (?P<lineno>" + LINENO_MATCH + r")\)$", r"* [\1:\2]")
+# "$file" => "[$file]"
 PURE_FN_SUB = (r"^(?P<path>[^[].*)", r"[\1]")
+
 
 # When adding new expressions here, make sure the first argument doesn't match
 # on the new format.
@@ -72,6 +77,22 @@ INFO_FIXERS = {
         r"^(?P<path>.+) (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),
     "elevated-privileges": (
         r"^(?P<path>.+) (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),
+    "executable-in-usr-lib": PURE_FN_SUB,
+    "executable-not-elf-or-script": PURE_FN_SUB,
+    "image-file-in-usr-lib": PURE_FN_SUB,
+    "extra-license-file": PURE_FN_SUB,
+    "script-not-executable": PURE_FN_SUB,
+    "shell-script-fails-syntax-check": PURE_FN_SUB,
+    "manpage-has-errors-from-man": (r"^(?P<path).+) (.*)", r"\2 [\1]"),
+    "groff-message": (r"^(?P<path).+) (.*)", r"\2 [\1]"),
+    "source-contains-prebuilt-javascript-object": PURE_FN_SUB,
+    "source-contains-prebuilt-java-object": PURE_FN_SUB,
+    "source-contains-prebuilt-windows-binary": PURE_FN_SUB,
+    "source-contains-prebuilt-doxygen-documentation": PURE_FN_SUB,
+    "source-contains-prebuilt-wasm-binary": PURE_FN_SUB,
+    "source-contains-prebuilt-binary": PURE_FN_SUB,
+    "source-is-missing": PURE_FN_SUB,
+    "spelling-error-in-binary": (r"^(?P<path>.+) (.+) (.+)$", r"\2 \3 [\1]"),
 }
 
 linenos = []
