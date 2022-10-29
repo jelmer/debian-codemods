@@ -1,4 +1,4 @@
-lintian-brush (0.133) UNRELEASED; urgency=medium
+lintian-brush (0.133) unstable; urgency=medium
 
   * Add fixer for missing-prerequisite-for-pyproject-backend.
   * typo-in-debhelper-override-target: Don't erroneously correct
@@ -8,7 +8,7 @@ lintian-brush (0.133) UNRELEASED; urgency=medium
   * threshold calculattion: Update tag names after changes in lintian.
   * Add significantly more regexes for old-override-info-format.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 11 Oct 2022 11:59:08 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 29 Oct 2022 19:28:29 +0100
 
 lintian-brush (0.132) unstable; urgency=medium
 
