@@ -45,7 +45,10 @@ def check_global(origline):
     return origline
 
 
-update_rules(global_line_cb=check_global)
+try:
+    update_rules(global_line_cb=check_global, drop_related_comments=True)
+except TypeError:  # debmutate < 0.62
+    update_rules(global_line_cb=check_global)
 
 
 report_result('Avoid explicitly specifying -Wl,--as-needed linker flag.')

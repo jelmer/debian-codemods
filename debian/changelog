@@ -7,6 +7,8 @@ lintian-brush (0.133) unstable; urgency=medium
   * Support DEB_COMPAT_RELEASE environment variable.
   * threshold calculattion: Update tag names after changes in lintian.
   * Add significantly more regexes for old-override-info-format.
+  * debian-rules-uses-as-needed-linker-flag: Drop related comments as
+    well when removing entire line.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 29 Oct 2022 19:28:29 +0100
 
