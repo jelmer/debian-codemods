@@ -1,3 +1,9 @@
+lintian-brush (0.134) UNRELEASED; urgency=medium
+
+  * deb-scrub-obsolete: add --keep-minimum-depends-versions option.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 30 Oct 2022 17:53:44 +0000
+
 lintian-brush (0.133) unstable; urgency=medium
 
   * Add fixer for missing-prerequisite-for-pyproject-backend.

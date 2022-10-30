@@ -179,7 +179,9 @@ class PackageChecker(object):
             _package_essential(package, self.release))
 
 
-def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
+def drop_obsolete_depends(
+        entry: List[PkgRelation], checker: PackageChecker,
+        keep_minimum_versions: bool = False):
     ors = []
     dropped = []
     for pkgrel in entry:
@@ -192,9 +194,10 @@ def drop_obsolete_depends(entry: List[PkgRelation], checker: PackageChecker):
             if compat_version is not None and depends_obsolete(
                 compat_version, *pkgrel.version
             ):
-                newrel = PkgRelation.parse(pkgrel.str())[0]
-                newrel.version = None
-                dropped.append(pkgrel)
+                if not keep_minimum_versions:
+                    newrel = PkgRelation.parse(pkgrel.str())[0]
+                    newrel.version = None
+                    dropped.append(pkgrel)
                 # If the package is essential, we don't need to maintain a
                 # dependency on it.
                 if checker.is_essential(pkgrel.name):
@@ -221,10 +224,12 @@ def drop_obsolete_conflicts(checker: PackageChecker, entry: List[PkgRelation]):
 
 
 def update_depends(
-        base: Deb822Dict, field: str, checker: PackageChecker) -> List[str]:
+        base: Deb822Dict, field: str, checker: PackageChecker,
+        keep_minimum_versions: bool = False) -> List[str]:
     return filter_relations(
         base, field,
-        lambda oldrelation: drop_obsolete_depends(oldrelation, checker))
+        lambda oldrelation: drop_obsolete_depends(
+            oldrelation, checker, keep_minimum_versions=keep_minimum_versions))
 
 
 def _relations_empty(rels):
@@ -277,7 +282,9 @@ def update_conflicts(
 
 
 def drop_old_source_relations(
-        source, compat_release) -> List[Tuple[str, List[str], str]]:
+        source, compat_release,
+        *, keep_minimum_depends_versions: bool = False
+        ) -> List[Tuple[str, List[str], str]]:
     checker = PackageChecker(compat_release, build=True)
     ret = []
     for field in [
@@ -285,7 +292,9 @@ def drop_old_source_relations(
         "Build-Depends-Indep",
         "Build-Depends-Arch",
     ]:
-        packages = update_depends(source, field, checker)
+        packages = update_depends(
+            source, field, checker,
+            keep_minimum_versions=keep_minimum_depends_versions)
         if packages:
             ret.append((field, packages, compat_release))
     for field in ["Build-Conflicts", "Build-Conflicts-Indep",
@@ -297,12 +306,16 @@ def drop_old_source_relations(
 
 
 def drop_old_binary_relations(
-        binary, upgrade_release: str) -> List[Tuple[str, List[str], str]]:
+        binary, upgrade_release: str, *,
+        keep_minimum_depends_versions: bool = False
+        ) -> List[Tuple[str, List[str], str]]:
     checker = PackageChecker(upgrade_release, build=False)
     ret = []
     for field in ["Depends", "Breaks", "Suggests", "Recommends",
                   "Pre-Depends"]:
-        packages = update_depends(binary, field, checker)
+        packages = update_depends(
+            binary, field, checker,
+            keep_minimum_versions=keep_minimum_depends_versions)
         if packages:
             ret.append((field, packages, upgrade_release))
 
@@ -315,7 +328,8 @@ def drop_old_binary_relations(
 
 
 def drop_old_relations(
-        editor, compat_release: str, upgrade_release: str
+        editor, compat_release: str, upgrade_release: str,
+        *, keep_minimum_depends_versions: bool = False
         ) -> List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]]:
     dropped: List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]] = []
     source_dropped = []
@@ -330,12 +344,16 @@ def drop_old_relations(
         uses_cdbs = False
     if not uses_cdbs:
         source_dropped.extend(
-            drop_old_source_relations(editor.source, compat_release))
+            drop_old_source_relations(
+                editor.source, compat_release,
+                keep_minimum_depends_versions=keep_minimum_depends_versions))
     if source_dropped:
         dropped.append((None, source_dropped))
 
     for binary in editor.binaries:
-        binary_dropped = drop_old_binary_relations(binary, upgrade_release)
+        binary_dropped = drop_old_binary_relations(
+            binary, upgrade_release,
+            keep_minimum_depends_versions=keep_minimum_depends_versions)
         if binary_dropped:
             dropped.append((binary["Package"], binary_dropped))
 
@@ -426,9 +444,11 @@ class ScrubObsoleteResult(object):
 def _scrub_obsolete(
         wt: WorkingTree,
         debian_path: str,
+        *,
         compat_release: str,
         upgrade_release: str,
-        allow_reformatting: bool = True) -> ScrubObsoleteResult:
+        allow_reformatting: bool = True,
+        keep_minimum_depends_versions: bool = False) -> ScrubObsoleteResult:
     specific_files = []
     control_path = os.path.join(debian_path, "control")
     try:
@@ -438,7 +458,8 @@ def _scrub_obsolete(
             specific_files.append(control_path)
             package = editor.source["Source"]
             control_removed = drop_old_relations(
-                editor, compat_release, upgrade_release)
+                editor, compat_release, upgrade_release,
+                keep_minimum_depends_versions=keep_minimum_depends_versions)
     except FileNotFoundError as exc:
         if wt.has_filename(os.path.join(debian_path, "debcargo.toml")):
             control_removed = []
@@ -481,10 +502,13 @@ def release_aliases(name):
 
 
 def scrub_obsolete(
-        wt: WorkingTree, subpath: str, compat_release: str,
+        wt: WorkingTree, subpath: str,
+        *,
+        compat_release: str,
         upgrade_release: str,
         update_changelog=None,
-        allow_reformatting: bool = False) -> ScrubObsoleteResult:
+        allow_reformatting: bool = False,
+        keep_minimum_depends_versions: bool = False) -> ScrubObsoleteResult:
     """Scrub obsolete entries.
     """
 
@@ -494,7 +518,9 @@ def scrub_obsolete(
         debian_path = os.path.join(subpath, 'debian')
 
     result = _scrub_obsolete(
-        wt, debian_path, compat_release, upgrade_release, allow_reformatting)
+        wt, debian_path, compat_release=compat_release,
+        upgrade_release=upgrade_release, allow_reformatting=allow_reformatting,
+        keep_minimum_depends_versions=keep_minimum_depends_versions)
 
     if not result:
         return result
@@ -645,6 +671,10 @@ def main():  # noqa: C901
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
+        "--keep-minimum-depends-versions",
+        action="store_true",
+        help="Keep minimum version dependencies, even when unnecessary")
+    parser.add_argument(
         "--version", action="version", version="%(prog)s " + version_string
     )
     parser.add_argument(
@@ -725,9 +755,11 @@ def main():  # noqa: C901
 
         try:
             result = scrub_obsolete(
-                wt, subpath, compat_release, upgrade_release,
+                wt, subpath, compat_release=compat_release,
+                upgrade_release=upgrade_release,
                 update_changelog=args.update_changelog,
-                allow_reformatting=allow_reformatting
+                allow_reformatting=allow_reformatting,
+                keep_minimum_depends_versions=args.keep_minimum_depends_versions
             )
         except FormattingUnpreservable as e:
             report_fatal(
