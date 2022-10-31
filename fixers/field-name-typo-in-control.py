@@ -46,7 +46,7 @@ else:
     kind = ''
 
 fixed_str = ', '.join(
-    ['%s => %s' % (old, new)
+    ['%s ⇒ %s' % (old, new)
      for (old, new) in sorted(list(case_fixed))])
 
 report_result(

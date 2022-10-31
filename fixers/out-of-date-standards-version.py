@@ -279,14 +279,14 @@ try:
                     except UpgradeCheckFailure as e:
                         logging.info(
                             'Upgrade checklist validation from standards '
-                            '%s => %s failed: %s: %s',
+                            '%s ⇒ %s failed: %s: %s',
                             current_version, target_version,
                             e.section, e.reason)
                         break
                     except UpgradeCheckUnable as e:
                         logging.info(
                             'Unable to validate checklist from standards '
-                            '%s => %s: %s: %s',
+                            '%s ⇒ %s: %s: %s',
                             current_version, target_version,
                             e.section, e.reason)
                         break

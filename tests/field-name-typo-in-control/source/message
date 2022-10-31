@@ -1,2 +1,2 @@
-Fix field name case in debian/control (HomePage => Homepage).
+Fix field name case in debian/control (HomePage ⇒ Homepage).
 Fixed-Lintian-Tags: cute-field

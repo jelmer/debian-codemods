@@ -100,6 +100,6 @@ with ChangelogEditor() as updater:
 if fixed_lintian_tags() == set(['possible-missing-colon-in-closes']):
     report_result("Add missing colon in closes line.", certainty=certainty)
 elif fixed_lintian_tags() == set(['misspelled-closes-bug']):
-    report_result("Fix misspelling of Close => Closes.", certainty=certainty)
+    report_result("Fix misspelling of Close ⇒ Closes.", certainty=certainty)
 else:
     report_result("Fix formatting of bug closes.", certainty=certainty)

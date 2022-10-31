@@ -1,2 +1,2 @@
-Fix field name cases in debian/control (VCS-Browser => Vcs-Browser, VCS-Git => Vcs-Git).
+Fix field name cases in debian/control (VCS-Browser ⇒ Vcs-Browser, VCS-Git ⇒ Vcs-Git).
 Fixed-Lintian-Tags: cute-field

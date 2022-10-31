@@ -1,1 +1,1 @@
-Fix field name case in debian/copyright (Upstream-name => Upstream-Name).
+Fix field name case in debian/copyright (Upstream-name ⇒ Upstream-Name).

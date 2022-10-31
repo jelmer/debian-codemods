@@ -46,5 +46,5 @@ with control as updater:
 # TODO(jelmer): If there is only a single binary package without section, just
 # set the section of the source package?
 report_result(
-    "Fix sections for %s." % ', '.join(['%s (%s => %s)' % v for v in fixed]),
+    "Fix sections for %s." % ', '.join(['%s (%s ⇒ %s)' % v for v in fixed]),
     certainty=CERTAINTY)

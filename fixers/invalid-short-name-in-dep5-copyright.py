@@ -49,4 +49,4 @@ except (FileNotFoundError, NotMachineReadableError):
 report_result(
     "Fix invalid short license name in debian/copyright (%s)" % (
         ', '.join(
-            ['%s => %s' % (old, new) for (old, new) in renames.items()])))
+            ['%s ⇒ %s' % (old, new) for (old, new) in renames.items()])))

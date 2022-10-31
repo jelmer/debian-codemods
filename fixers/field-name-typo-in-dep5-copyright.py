@@ -65,7 +65,7 @@ if typo_fixed:
     kind += 'typo' + ('s' if len(typo_fixed) > 1 else '')
 
 fixed_str = ', '.join(
-    ['%s => %s' % (old, new)
+    ['%s ⇒ %s' % (old, new)
      for (old, new) in sorted(list(case_fixed) + list(typo_fixed))])
 
 report_result(

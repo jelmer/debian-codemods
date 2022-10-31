@@ -1,2 +1,2 @@
-Fix field name typo in debian/copyright (File => Files).
+Fix field name typo in debian/copyright (File ⇒ Files).
 Fixed-Lintian-Tags: field-name-typo-in-dep5-copyright

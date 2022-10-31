@@ -42,4 +42,4 @@ except (FileNotFoundError, NotMachineReadableError):
     pass
 report_result(
     "Update copyright file header to use current field names (%s)" %
-    ', '.join("%s => %s" % (key, value) for (key, value) in applied_renames))
+    ', '.join("%s ⇒ %s" % (key, value) for (key, value) in applied_renames))

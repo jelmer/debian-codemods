@@ -14,7 +14,7 @@ with control as updater:
         if source_homepage == binary['Homepage']:
             issue = LintianIssue('source', 'homepage-in-binary-package')
             # Source and binary both have a homepage field, but they're the
-            # same => drop the binary package Homepage field
+            # same ⇒ drop the binary package Homepage field
             if issue.should_fix():
                 issue.report_fixed()
                 del binary['Homepage']
