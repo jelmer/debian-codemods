@@ -32,19 +32,19 @@ from lintian_brush.vcs import (
 class FixUpGitUrlTests(TestCase):
     def test_fixup(self):
         self.assertEqual(
-            "git://github.com/jelmer/dulwich",
-            fixup_broken_git_url("git://github.com:jelmer/dulwich"),
+            "https://github.com/jelmer/dulwich",
+            fixup_broken_git_url("https://github.com:jelmer/dulwich"),
         )
         self.assertEqual(
-            "git://github.com/jelmer/dulwich -b blah",
-            fixup_broken_git_url("git://github.com:jelmer/dulwich -b blah"),
+            "https://github.com/jelmer/dulwich -b blah",
+            fixup_broken_git_url("https://github.com:jelmer/dulwich -b blah"),
+        )
+        self.assertEqual(
+            "https://github.com/jelmer/dulwich",
+            fixup_broken_git_url("git://github.com/jelmer/dulwich"),
         )
 
     def test_preserves(self):
-        self.assertEqual(
-            "git://github.com/jelmer/dulwich",
-            fixup_broken_git_url("git://github.com/jelmer/dulwich"),
-        )
         self.assertEqual(
             "https://github.com/jelmer/dulwich",
             fixup_broken_git_url("https://github.com/jelmer/dulwich"),
@@ -85,8 +85,9 @@ class FixUpGitUrlTests(TestCase):
 
     def test_strip_username(self):
         self.assertEqual(
-            "git://github.com/RPi-Distro/pgzero.git",
-            fixup_broken_git_url("git://git@github.com:RPi-Distro/pgzero.git"),
+            "https://github.com/RPi-Distro/pgzero.git",
+            fixup_broken_git_url(
+                "git://git@github.com:RPi-Distro/pgzero.git"),
         )
         self.assertEqual(
             "https://salsa.debian.org/debian-astro-team/pyavm.git",

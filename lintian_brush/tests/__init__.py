@@ -45,8 +45,6 @@ def core_test_suite():
 
 def test_suite():
     module_names = [__name__ + ".test_" + name for name in core_names]
-    module_names.append("upstream_ontologist.tests.test_upstream_ontologist")
-    module_names.append("upstream_ontologist.tests.test_vcs")
     module_names.append(__name__ + ".fixers.test_suite")
     loader = unittest.TestLoader()
     return loader.loadTestsFromNames(module_names)

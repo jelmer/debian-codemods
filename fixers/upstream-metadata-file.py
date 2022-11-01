@@ -41,6 +41,12 @@ from lintian_brush.yaml import (
     )
 
 
+import logging
+# Don't clutter standard err/standard out
+logger = logging.getLogger("upstream_ontologist.guess")
+logger.setLevel(logging.ERROR)
+
+
 def filter_by_tag(orig, changed, fields, tag):
     if all(field in orig for field in fields):
         return

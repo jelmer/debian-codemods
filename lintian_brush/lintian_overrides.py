@@ -19,6 +19,7 @@
 
 from debian.changelog import Version
 import os
+import re
 from typing import Optional, Iterator, Callable, List, Tuple
 
 from debmutate.lintian_overrides import (

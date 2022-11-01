@@ -18,7 +18,6 @@
 """Lintian-brush configuration file."""
 
 import os
-from datetime import datetime
 from typing import Optional
 import warnings
 

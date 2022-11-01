@@ -759,7 +759,8 @@ def main():  # noqa: C901
                 upgrade_release=upgrade_release,
                 update_changelog=args.update_changelog,
                 allow_reformatting=allow_reformatting,
-                keep_minimum_depends_versions=args.keep_minimum_depends_versions
+                keep_minimum_depends_versions=(
+                    args.keep_minimum_depends_versions)
             )
         except FormattingUnpreservable as e:
             report_fatal(

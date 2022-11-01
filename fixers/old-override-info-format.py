@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-import re
-
 from lintian_brush.fixer import (
     report_result,
     LintianIssue,
