@@ -12,5 +12,5 @@ with WatchEditor() as updater:
 
 report_result(
     "Update pattern for GitHub archive URLs from /<org>/<repo>/tags page"
-    "/<org>/<repo>/archive/<tag> -> /<org>/<repo>/archive/refs/tags/<tag>."
+    "/<org>/<repo>/archive/<tag> → /<org>/<repo>/archive/refs/tags/<tag>."
 )
