@@ -528,7 +528,9 @@ def data_file_path(name, check=os.path.exists):
         return path
 
     # Urgh.
-    for b in ['/usr/share/lintian-brush', '/usr/local/share/lintian-brush']:
+    for b in ['/usr/share/lintian-brush',
+              '/usr/local/share/lintian-brush',
+              os.path.join(sys.prefix, 'share/lintian-brush')]:
         path = os.path.join(b, name)
         if check(path):
             return path
