@@ -17,7 +17,7 @@
 
 """Utility functions for dealing with licenses."""
 
-from . import data_file_path
+from . import open_binary
 
 import json
 
@@ -31,5 +31,5 @@ FULL_LICENSE_NAME = {
 
 def load_spdx_data():
 
-    with open(data_file_path("spdx.json"), "rb") as f:
+    with open_binary("spdx.json") as f:
         return json.load(f)

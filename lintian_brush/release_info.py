@@ -20,14 +20,14 @@
 from debian.changelog import Version
 from typing import Optional
 
-from . import data_file_path
+from . import open_binary
 
 _key_package_versions = None
 
 
 def load_key_package_versions():
     import json
-    with open(data_file_path("key-package-versions.json"), "rb") as f:
+    with open_binary("key-package-versions.json") as f:
         return json.load(f)
 
 

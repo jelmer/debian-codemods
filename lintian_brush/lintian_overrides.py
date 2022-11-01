@@ -29,7 +29,7 @@ from debmutate.lintian_overrides import (
 )
 
 
-from . import data_file_path
+from . import open_binary
 
 
 def overrides_paths() -> Iterator[str]:
@@ -217,7 +217,7 @@ def remove_unused(
 
 def load_renamed_tags():
     import json
-    with open(data_file_path('renamed-tags.json'), "rb") as f:
+    with open_binary('renamed-tags.json') as f:
         return json.load(f)
 
 

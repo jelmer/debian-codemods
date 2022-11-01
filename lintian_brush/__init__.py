@@ -508,6 +508,10 @@ class ScriptFixer(Fixer):
         return parse_script_fixer_output(description.decode("utf-8"))
 
 
+def open_binary(name):
+    return open(data_file_path(name), 'rb')
+
+
 def data_file_path(name, check=os.path.exists):
     # There's probably a more Pythonic way of doing this, but
     # I haven't bothered finding out what it is yet..
