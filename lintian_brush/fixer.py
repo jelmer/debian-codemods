@@ -244,3 +244,24 @@ else:
 
 def vendor() -> str:
     return get_vendor_name()
+
+
+def linenos_to_ranges(linenos):
+    ret = []
+    cur_range = []
+
+    def finalize_range(r):
+        if len(r) == 1:
+            ret.append("%d" % r[0])
+        else:
+            ret.append("%d-%d" % (r[0], r[-1]))
+
+    for lineno in linenos:
+        if not cur_range or cur_range[-1] == lineno-1:
+            cur_range.append(lineno)
+        else:
+            finalize_range(cur_range)
+            cur_range = [lineno]
+    if cur_range:
+        finalize_range(cur_range)
+    return ret

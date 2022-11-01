@@ -3,6 +3,7 @@
 from lintian_brush.fixer import (
     report_result,
     LintianIssue,
+    linenos_to_ranges,
 )
 from lintian_brush.lintian_overrides import (
     update_overrides,
@@ -22,7 +23,7 @@ def fix_info(path, lineno, override):
         return override
     issue = LintianIssue(
         (override.type, override.package), 'mismatched-override',
-        override.info + '[%s:%d]' % (path, lineno))
+        override.info + ' [%s:%d]' % (path, lineno))
     if issue.should_fix():
         issue.report_fixed()
         fixed_linenos.append(lineno)
@@ -37,4 +38,4 @@ update_overrides(fix_info)
 
 report_result(
     "Update lintian override info to new format on line %s."
-    % ', '.join(map(str, fixed_linenos)))
+    % ', '.join(linenos_to_ranges(fixed_linenos)))
