@@ -41,6 +41,12 @@ try:
                 for option in valid_field_names:
                     if distance(field, option) == 1:
                         value = paragraph[field]
+                        if (option in paragraph
+                                and option.lower() != field.lower()):
+                            warn(
+                                'Found typo (%s ⇒ %s), but %s already exists'
+                                % (field, option, option))
+                            continue
                         del paragraph[field]
                         paragraph[option] = value
                         if option.lower() == field.lower():
