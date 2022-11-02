@@ -183,6 +183,11 @@ def main(argv=None):  # noqa: C901
         help="Allow file reformatting and stripping of comments."
     )
     package_group.add_argument(
+        "--allowed-reformatting",
+        default=None,
+        choices=["none", "comments", "whitespace"],
+        help=argparse.SUPPRESS)
+    package_group.add_argument(
         "--no-update-changelog",
         action="store_false",
         default=None,
@@ -320,7 +325,9 @@ def main(argv=None):  # noqa: C901
         else:
             compat_release = args.compat_release
         minimum_certainty = args.minimum_certainty
-        allow_reformatting = args.allow_reformatting
+        allowed_reformatting = args.allowed_reformatting
+        if args.allow_reformatting:
+            allowed_reformatting = "comments"
         update_changelog = args.update_changelog
         try:
             cfg = Config.from_workingtree(wt, subpath)
@@ -331,8 +338,8 @@ def main(argv=None):  # noqa: C901
                 minimum_certainty = cfg.minimum_certainty()
             if compat_release is None:
                 compat_release = cfg.compat_release()
-            if allow_reformatting is None:
-                allow_reformatting = cfg.allow_reformatting()
+            if allowed_reformatting is None:
+                allowed_reformatting = cfg.allowed_reformatting()
             if update_changelog is None:
                 update_changelog = cfg.update_changelog()
         if minimum_certainty is None:
@@ -342,8 +349,8 @@ def main(argv=None):  # noqa: C901
                 minimum_certainty = DEFAULT_MINIMUM_CERTAINTY
         if compat_release is None:
             compat_release = debian_info.stable()
-        if allow_reformatting is None:
-            allow_reformatting = False
+        if allowed_reformatting is None:
+            allowed_reformatting = "none"
         with wt.lock_write():
             if control_files_in_root(wt, subpath):
                 report_fatal(
@@ -361,7 +368,7 @@ def main(argv=None):  # noqa: C901
                     verbose=args.verbose,
                     minimum_certainty=minimum_certainty,
                     trust_package=args.trust,
-                    allow_reformatting=allow_reformatting,
+                    allowed_reformatting=allowed_reformatting,
                     use_inotify=(False if args.disable_inotify else None),
                     subpath=subpath,
                     net_access=not args.disable_net_access,
