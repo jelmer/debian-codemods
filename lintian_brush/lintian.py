@@ -19,7 +19,7 @@
 
 import json
 import os
-from typing import Optional
+from typing import Optional, Dict, Optional, TextIO
 
 LINTIAN_DATA_PATH = '/usr/share/lintian/data'
 
@@ -39,7 +39,7 @@ def read_debhelper_lintian_data_file(f, sep):
         yield key, value
 
 
-def read_list_file(f, vendor):
+def read_list_file(f: TextIO, vendor: Optional[str] = None):
     for line in f:
         line = line.strip()
         if not line:
