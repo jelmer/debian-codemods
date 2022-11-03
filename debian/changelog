@@ -2,6 +2,8 @@ lintian-brush (0.135) UNRELEASED; urgency=medium
 
   * field-name-typo-in-dep5-copyright: Don't overwrite existing fields.
   * Various formatting improvements.
+  * Fix compatibility with upcoming versions of Breezy, with slightly
+    modified DirtyTracker API.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 01 Nov 2022 18:10:53 +0000
 

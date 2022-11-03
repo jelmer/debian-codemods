@@ -17,6 +17,7 @@
 
 """Automatically fix lintian issues."""
 
+from contextlib import ExitStack
 from datetime import datetime
 import errno
 import io
@@ -1116,9 +1117,6 @@ def run_lintian_fixers(  # noqa: C901
     basis_tree = local_tree.basis_tree()
     check_clean_tree(local_tree, basis_tree=basis_tree, subpath=subpath)
     fixers = list(fixers)
-    dirty_tracker = get_dirty_tracker(
-        local_tree, subpath=subpath, use_inotify=use_inotify
-    )
 
     # If we don't know whether to update the changelog, then find out *once*
     if update_changelog is None:
@@ -1134,7 +1132,16 @@ def run_lintian_fixers(  # noqa: C901
         changelog_behaviour = None
 
     ret = ManyResult()
-    with trange(len(fixers), leave=False, disable=None) as t:
+    with ExitStack() as es:
+        t = es.enter_context(trange(len(fixers), leave=False, disable=None))
+
+        dirty_tracker = get_dirty_tracker(
+            local_tree, subpath=subpath, use_inotify=use_inotify
+        )
+        # Only Breezy >= 3.3.1 has DirtyTracker as a context manager
+        if dirty_tracker and hasattr(dirty_tracker, '__enter__'):
+            es.enter_context(dirty_tracker)
+
         for i, fixer in enumerate(fixers):
             t.set_description("Running fixer %s" % fixer)
             t.update()
@@ -1162,10 +1169,9 @@ def run_lintian_fixers(  # noqa: C901
                 ret.formatting_unpreservable[fixer.name] = e.path
                 if verbose:
                     logging.info(
-                        "Fixer %r was unable to preserve formatting of %s.",
-                        fixer.name,
-                        e.path,
-                    )
+                        "Fixer %r was unable to preserve "
+                        "formatting of %s.", fixer.name,
+                        e.path)
             except FixerFailed as e:
                 ret.failed_fixers[fixer.name] = e
                 if verbose:
@@ -1190,7 +1196,8 @@ def run_lintian_fixers(  # noqa: C901
             except FailedPatchManipulation as e:
                 if verbose:
                     logging.info(
-                        "Unable to manipulate upstream patches: %s", e.args[2])
+                        "Unable to manipulate upstream patches: %s",
+                        e.args[2])
                 ret.failed_fixers[fixer.name] = e
             except NoChanges as e:
                 if verbose:
