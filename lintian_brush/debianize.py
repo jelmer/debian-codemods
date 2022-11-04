@@ -147,6 +147,7 @@ from .debhelper import (
 )
 from .publish import update_offical_vcs, NoVcsLocation, VcsAlreadySpecified
 from .standards_version import latest_standards_version
+from .upstream_deps import get_project_wide_deps
 
 
 Kickstarter = Callable[[WorkingTree, str], None]
@@ -778,45 +779,6 @@ class DebianizeResult(object):
     upstream_version: Optional[str] = None
     wnpp_bugs: List[Tuple[int, str]] = field(default_factory=list)
     vcs_url: Optional[str] = None
-
-
-def get_project_wide_deps(
-        session, wt, subpath, buildsystem, buildsystem_subpath):
-    build_deps = []
-    test_deps = []
-
-    with session:
-        external_dir, internal_dir = session.setup_from_vcs(
-            wt, os.path.join(subpath, buildsystem_subpath))
-
-        from ognibuild.debian.udd import popcon_tie_breaker
-        from ognibuild.debian.build_deps import BuildDependencyTieBreaker
-        apt_resolver = AptResolver.from_session(
-            session, tie_breakers=[
-                BuildDependencyTieBreaker.from_session(session),
-                popcon_tie_breaker,
-                ])
-        build_fixers = [InstallFixer(apt_resolver)]
-        session.chdir(internal_dir)
-        try:
-            upstream_deps = list(buildsystem.get_declared_dependencies(
-                session, build_fixers))
-        except NotImplementedError:
-            logging.warning('Unable to obtain declared dependencies.')
-        else:
-            for kind, dep in upstream_deps:
-                apt_dep = apt_resolver.resolve(dep)
-                if apt_dep is None:
-                    logging.warning(
-                        'Unable to map upstream requirement %s (kind %s) '
-                        'to a Debian package', dep, kind)
-                    continue
-                logging.debug('Mapped %s (kind: %s) to %s', dep, kind, apt_dep)
-                if kind in ('core', 'build'):
-                    build_deps.append(apt_dep)
-                if kind in ('core', 'test', ):
-                    test_deps.append(apt_dep)
-    return (build_deps, test_deps)
 
 
 def import_build_deps(source, build_deps):
