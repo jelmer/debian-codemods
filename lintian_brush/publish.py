@@ -25,38 +25,37 @@ import sys
 from breezy.controldir import ControlDir
 from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.errors import AlreadyBranchError, AlreadyControlDirError
-try:
-    from breezy.forge import iter_forge_instances, UnsupportedForge
-except ImportError:  # older breezy
-    from breezy.propose import (  # noqa: F401
-        iter_hoster_instances as iter_forge_instances,
-        UnsupportedHoster as UnsupportedForge,
-        )
+from breezy.forge import UnsupportedForge
 from breezy.workingtree import WorkingTree
 from breezy.workspace import check_clean_tree, WorkspaceDirty
 from debmutate.control import ControlEditor
-from debmutate.vcs import source_package_vcs
+from debmutate.vcs import source_package_vcs, unsplit_vcs_url, split_vcs_url
 
 from . import get_committer
 from .salsa import guess_repository_url
 from .vcs import determine_browser_url
 
 
-def update_control_for_vcs_url(source, vcs_type, repo_url):
-    source['Vcs-' + vcs_type] = repo_url
-    source['Vcs-Browser'] = determine_browser_url('git', repo_url)
+def update_control_for_vcs_url(source, vcs_type, vcs_url):
+    source['Vcs-' + vcs_type] = vcs_url
+    source['Vcs-Browser'] = determine_browser_url('git', vcs_url)
 
 
 class NoVcsLocation(Exception):
     """No VCS location specified or determined."""
 
 
-class VcsAlreadySpecified(Exception):
+class ConflictingVcsAlreadySpecified(Exception):
     """Vcs is already specified."""
 
+    def __init__(self, vcs_type, existing_vcs_url, target_vcs_url):
+        self.vcs_type = vcs_type
+        self.existing_vcs_url = existing_vcs_url
+        self.target_vcs_url = target_vcs_url
 
-def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False,
-                       create=False):
+
+def update_offical_vcs(wt, subpath, repo_url=None, branch=None, committer=None,
+                       force=False):
     # TODO(jelmer): Allow creation of the repository as well
     check_clean_tree(wt, wt.basis_tree(), subpath)
 
@@ -74,12 +73,21 @@ def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False,
         raise FileNotFoundError(control_path)
     with editor:
         try:
-            vcs_type, url = source_package_vcs(editor.source)
+            vcs_type, existing_url = source_package_vcs(editor.source)
         except KeyError:
             pass
         else:
-            if not force:
-                raise VcsAlreadySpecified(vcs_type, url)
+            (existing_repo_url, existing_branch,
+             existing_subpath) = split_vcs_url(existing_url)
+            existing = (existing_url, existing_branch,
+                        existing_subpath or '.')
+            if repo_url and existing != (repo_url, branch, subpath):
+                if not force:
+                    raise ConflictingVcsAlreadySpecified(
+                        vcs_type, existing_url,
+                        unsplit_vcs_url(repo_url, branch, subpath))
+            logging.info('Using existing URL %s', existing_url)
+            return existing
         maintainer_email = parseaddr(editor.source['Maintainer'])[1]
         source = editor.source['Source']
         if repo_url is None:
@@ -90,9 +98,12 @@ def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False,
         # TODO(jelmer): Detect vcs type in a better way
         if hasattr(wt.branch.repository, '_git'):
             vcs_type = 'Git'
+            branch = 'debian/main'
         else:
             vcs_type = 'Bzr'
-        update_control_for_vcs_url(editor.source, vcs_type, repo_url)
+            branch = None
+        vcs_url = unsplit_vcs_url(repo_url, branch, subpath)
+        update_control_for_vcs_url(editor.source, vcs_type, vcs_url)
 
     if committer is None:
         committer = get_committer(wt)
@@ -109,19 +120,17 @@ def update_offical_vcs(wt, subpath, repo_url=None, committer=None, force=False,
             # This can't happen
             raise
 
-    if create:
-        from breezy.forge import create_project
-        try:
-            forge, project = create_project(repo_url)
-        except AlreadyControlDirError:
-            logging.info('%s already exists', repo_url)
-        except UnsupportedForge:
-            logging.error(
-                'Unable to find a way to create %s', repo_url)
-        else:
-            logging.info('Created %s', repo_url)
+    return repo_url, branch, subpath
 
-    return repo_url
+
+def create_vcs_url(repo_url, branch):
+    from breezy.forge import create_project
+    try:
+        create_project(repo_url)
+    except AlreadyControlDirError:
+        logging.debug('%s already exists', repo_url)
+    else:
+        logging.info('Created %s', repo_url)
 
 
 def main():
@@ -138,7 +147,8 @@ def main():
         "--debug", help="Describe all considerd changes.", action="store_true"
     )
     parser.add_argument(
-        '--create', help='Create the repository', action='store_true')
+        '--no-create', help='Do not create the repository',
+        action='store_true')
     parser.add_argument(
         '--force', action='store_true')
     parser.add_argument(
@@ -177,28 +187,35 @@ def main():
         return 0
 
     try:
-        repo_url = update_offical_vcs(
+        repo_url, branch, subpath = update_offical_vcs(
             wt, subpath, repo_url=args.url,
-            force=args.force, create=args.create)
+            force=args.force)
     except WorkspaceDirty:
         logging.info("%s: Please commit pending changes first.", wt.basedir)
         return 1
     except NoVcsLocation:
         parser.print_usage()
         return 1
-    except VcsAlreadySpecified as e:
+    except ConflictingVcsAlreadySpecified as e:
         logging.fatal(
-            'Package already in %s at %s', e.args[0], e.args[1])
+            'Conflicting Vcs-%s already exists: %s != %s', e.vcs_type,
+            e.existing_vcs_url, e.target_vcs_url)
         return 1
-    except AlreadyBranchError as e:
-        logging.fatal('Repository already exists at %s', e.path)
-        return 1
+
+    if not args.no_create:
+        try:
+            create_vcs_url(repo_url, branch)
+        except UnsupportedForge:
+            logging.error(
+                'Unable to find a way to create %s', repo_url)
+        except AlreadyBranchError as e:
+            logging.fatal('Repository already exists at %s', e.path)
 
     controldir = ControlDir.open(repo_url)
     try:
-        branch = controldir.create_branch()
+        branch = controldir.create_branch(name=branch)
     except AlreadyBranchError:
-        branch = controldir.open_branch()
+        branch = controldir.open_branch(name=branch)
     wt.branch.push(branch)
 
 
