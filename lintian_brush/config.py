@@ -32,7 +32,6 @@ SUPPORTED_KEYS = [
     "compat-release",
     "minimum-certainty",
     "allow-reformatting",
-    "allowed-reformatting",
     "update-changelog",
 ]
 
@@ -102,25 +101,6 @@ class Config(object):
             return self._obj.as_bool("allow-reformatting")
         except KeyError:
             return None
-
-    def allowed_reformatting(self):
-        try:
-            val = self._obj["allowed-reformatting"]
-        except KeyError:
-            try:
-                allow_reformatting = self._obj.as_bool("allow-reformatting") 
-            except KeyError:
-                return None
-            else:
-                if allow_reformatting:
-                    return "strip-comments"
-                else:
-                    return "none"
-        else:
-            if val not in ("none", "comments", "whitespace"):
-                warnings.warn("unknown allowed-reformatting setting: %s", val)
-                return None
-            return val
 
     def minimum_certainty(self):
         return self._obj.get("minimum-certainty")
