@@ -133,6 +133,7 @@ from buildlog_consultant.common import (
 from debmutate.versions import (
     debianize_upstream_version,
 )
+from debmutate.vcs import unsplit_vcs_url
 
 from . import (
     available_lintian_fixers,
@@ -145,7 +146,10 @@ from .debhelper import (
     maximum_debhelper_compat_version,
     write_rules_template as write_debhelper_rules_template,
 )
-from .publish import update_offical_vcs, NoVcsLocation, VcsAlreadySpecified
+from .publish import (
+    update_offical_vcs,
+    NoVcsLocation,
+)
 from .standards_version import latest_standards_version
 from .upstream_deps import get_project_wide_deps
 
@@ -1145,10 +1149,8 @@ def debianize(  # noqa: C901
         )
 
         try:
-            result.vcs_url = update_offical_vcs(
-                wt, subpath=subpath, committer=committer)
-        except VcsAlreadySpecified:
-            pass
+            result.vcs_url = unsplit_vcs_url(*update_offical_vcs(
+                wt, subpath=subpath, committer=committer))
         except NoVcsLocation:
             logging.debug(
                 'No public VCS location specified and unable to guess it '
