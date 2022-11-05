@@ -265,3 +265,9 @@ def linenos_to_ranges(linenos):
     if cur_range:
         finalize_range(cur_range)
     return ret
+
+
+def shorten_path(path):
+    parts = path.split('/')
+    parts[0] = "d"
+    return "/".join(parts)

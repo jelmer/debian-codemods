@@ -1,2 +1,2 @@
-Update lintian override info to new format on line 1-2.
+Update lintian override info format in d/source/lintian-overrides on line 1-2.
 Fixed-Lintian-Tags: mismatched-override

@@ -1,0 +1,4 @@
+Update lintian override info to new format:
++ debian/source/lintian-overrides: line 1-2
++ debian/lib3d0.lintian-overrides: line 2
+Fixed-Lintian-Tags: mismatched-override

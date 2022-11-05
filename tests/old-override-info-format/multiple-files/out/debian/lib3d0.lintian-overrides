@@ -1,0 +1,2 @@
+# CPPFLAGS are correctly added but gcc didn't have anything to fortify
+libg3d0: hardening-no-fortify-functions [usr/lib/*/libg3d.so.0.0.8]
