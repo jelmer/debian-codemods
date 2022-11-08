@@ -251,7 +251,7 @@ INFO_FIXERS = {
     "global-files-wildcard-not-first-paragraph-in-dep5-copyright":
         PURE_FLN_SUB,
     "missing-license-paragraph-in-dep5-copyright": (
-        r"([^ ]+) (.*) \(line (" + LINENO_MATCH + r")\)",
+        r"([^ ]+) (.+) \(line (" + LINENO_MATCH + r")\)",
         r"\2 [\1:\3]"),
     "unused-license-paragraph-in-dep5-copyright": (
         r"([^ ]+) (.*) \(line (" + LINENO_MATCH + r")\)",
@@ -302,7 +302,9 @@ INFO_FIXERS = {
     "source-contains-prebuilt-doxygen-documentation": PURE_FN_SUB,
     "source-contains-prebuilt-wasm-binary": PURE_FN_SUB,
     "source-contains-prebuilt-binary": PURE_FN_SUB,
-    "source-is-missing": PURE_FN_SUB,
+    "source-is-missing": [
+        PURE_FN_SUB,
+        (r"^(?P<path>[^[ ].+) line length is .*", r"[\1]")],
     "spelling-error-in-binary":
         (r"^(?P<path>[^[ ]+) (.+) ([^[]+)$", r"\2 \3 [\1]"),
     "very-long-line-length-in-source-file":
