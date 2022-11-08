@@ -422,8 +422,7 @@ def main(argv=None):  # noqa: C901
                     min_certainty,
                 )
         else:
-            report_fatal("nothing-to-do", "No changes made.")
-            return 0
+            logging.info("No changes made.")
         if overall_result.failed_fixers and not args.verbose:
             logging.info(
                 "Some fixer scripts failed to run: %r. "
