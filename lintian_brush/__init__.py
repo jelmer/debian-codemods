@@ -585,15 +585,13 @@ def select_fixers(
     exclude_set = set(exclude) if exclude is not None else None
     ret = []
     for f in fixers:
-        if select_set is not None and f.name not in select_set:
-            if exclude_set and f.name in exclude_set:
-                exclude_set.remove(f.name)
-            continue
-        if exclude_set is not None and f.name in exclude_set:
+        if select_set is not None:
+            if f.name not in select_set:
+                continue
+            select_set.remove(f.name)
+        if exclude_set and f.name in exclude_set:
             exclude_set.remove(f.name)
             continue
-        if select_set is not None:
-            select_set.remove(f.name)
         ret.append(f)
     if select_set:
         raise KeyError(select_set.pop())
