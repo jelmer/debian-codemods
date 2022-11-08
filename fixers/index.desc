@@ -282,8 +282,8 @@
   lintian-tags:
    - uses-debhelper-compat-file
 
-# Temporarily disabled, since this triggers unnecessarily
-# (e.g. for nfdump). TODO(jelmer): Add bug #
+# TODO(jelmer): Temporarily disabled, since this triggers unnecessarily
+# (e.g. for nfdump). See https://bugs.debian.org/946398
 # - script: skip-systemd-native-flag-missing-pre-depends.py
 #   lintian-tags:
    - skip-systemd-native-flag-missing-pre-depends
