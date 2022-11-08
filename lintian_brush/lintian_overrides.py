@@ -231,7 +231,8 @@ PURE_FLN_SUB = (
     r"[\1:\2]")
 # "$file (line $lineno)" => "* [$file:$lineno]"
 PURE_FLN_WILDCARD_SUB = (
-    r"^(?P<path>[^ ]+) \(line (?P<lineno>" + LINENO_MATCH + r")\)$", r"* [\1:\2]")
+    r"^(?P<path>[^ ]+) \(line (?P<lineno>" + LINENO_MATCH + r")\)$",
+    r"* [\1:\2]")
 # "$file" => "[$file]"
 PURE_FN_SUB = (r"^(?P<path>[^[ ].+)", r"[\1]")
 
@@ -277,24 +278,24 @@ INFO_FIXERS = {
     "uses-dpkg-database-directly": PURE_FN_SUB,
     "package-contains-documentation-outside-usr-share-doc": PURE_FN_SUB,
     "non-standard-dir-perm": (
-        r"^(?P<path>.+) ([0-9]+) \!= ([0-9]+)", r"\2 != \3 [\1]"),
+        r"^(?P<path>[^ ]+) ([0-9]+) \!= ([0-9]+)", r"\2 != \3 [\1]"),
     "non-standard-file-perm": (
-        r"^(?P<path>.+) ([0-9]+) \!= ([0-9]+)", r"\2 != \3 [\1]"),
+        r"^(?P<path>[^ ]+) ([0-9]+) \!= ([0-9]+)", r"\2 != \3 [\1]"),
     "executable-is-not-world-readable": (
-        r"^(?P<path>.+) ([0-9]+)", r"\1 [\2]"),
+        r"^(?P<path>[^ ]+) ([0-9]+)", r"\1 [\2]"),
     "library-not-linked-against-libc": PURE_FN_SUB,
     "setuid-binary": (
-        r"^(?P<path>.+) (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),
+        r"^(?P<path>[^[ ]+) (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),
     "elevated-privileges": (
-        r"^(?P<path>.+) (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),
+        r"^(?P<path>[^[ ]+) (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),
     "executable-in-usr-lib": PURE_FN_SUB,
     "executable-not-elf-or-script": PURE_FN_SUB,
     "image-file-in-usr-lib": PURE_FN_SUB,
     "extra-license-file": PURE_FN_SUB,
     "script-not-executable": PURE_FN_SUB,
     "shell-script-fails-syntax-check": PURE_FN_SUB,
-    "manpage-has-errors-from-man": (r"^(?P<path).+) (.*)", r"\2 [\1]"),
-    "groff-message": (r"^(?P<path).+) (.*)", r"\2 [\1]"),
+    "manpage-has-errors-from-man": (r"^(?P<path)[^[ ]+) ([^[]*)", r"\2 [\1]"),
+    "groff-message": (r"^(?P<path)[^ ]+) ([^[ ]+)", r"\2 [\1]"),
     "source-contains-prebuilt-javascript-object": PURE_FN_SUB,
     "source-contains-prebuilt-java-object": PURE_FN_SUB,
     "source-contains-prebuilt-windows-binary": PURE_FN_SUB,
@@ -302,12 +303,13 @@ INFO_FIXERS = {
     "source-contains-prebuilt-wasm-binary": PURE_FN_SUB,
     "source-contains-prebuilt-binary": PURE_FN_SUB,
     "source-is-missing": PURE_FN_SUB,
-    "spelling-error-in-binary": (r"^(?P<path>.+) (.+) (.+)$", r"\2 \3 [\1]"),
+    "spelling-error-in-binary":
+        (r"^(?P<path>[^[ ]+) (.+) ([^[]+)$", r"\2 \3 [\1]"),
     "very-long-line-length-in-source-file":
         (r"(.*) line ([0-9]+) is ([0-9]+) characters long \(>([0-9]+)\)",
          r"\3 > \4 [\1:\2]"),
     "missing-license-text-in-dep5-copyright":
-        ("^(?P<path>.+) (.+)$", r"\2 [\1:*\]"),
+        ("^(?P<path>.+) ([^[]+)$", r"\2 [\1:*\]"),
     "national-encoding": PURE_FN_SUB,
     "no-manual-page": PURE_FN_SUB,
     "package-contains-empty-directory": PURE_FN_SUB,
@@ -318,7 +320,7 @@ INFO_FIXERS = {
     "license-problem-non-free-img-lenna": PURE_FN_SUB,
     "file-without-copyright-information": ("^(.*)$", r"\1 [debian/copyright]"),
     "globbing-patterns-out-of-order":
-        ("^(?P<path>.+) (.+)$", r"\2 [\1:*]"),
+        ("^(?P<path>.+) ([^[]+)$", r"\2 [\1:*]"),
     "statically-linked-binary": PURE_FN_SUB,
     "spare-manual-page": PURE_FN_SUB,
     "shared-library-lacks-prerequisites": PURE_FN_SUB,
@@ -342,6 +344,11 @@ def fix_override_info(override):
         for fixer in fixers:
             if isinstance(fixer, tuple):
                 info = re.sub(fixer[0], fixer[1], override.info)
+                # The regex should only apply once
+                if re.sub(fixer[0], fixer[1], info) != info:
+                    raise AssertionError(
+                        "invalid repeatable regex for %s: %s" % (
+                             override.tag, fixer[0]))
             elif callable(fixer):
                 info = fixer(info) or info
             else:
