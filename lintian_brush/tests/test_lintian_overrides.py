@@ -28,6 +28,7 @@ from breezy.tests import (
 
 from lintian_brush.lintian_overrides import (
     LintianOverride,
+    fix_override_info,
     overrides_paths,
     override_exists,
     update_overrides_file,
@@ -170,3 +171,39 @@ class InfoFixerTests(TestCase):
         for v in INFO_FIXERS:
             if isinstance(v, tuple):
                 re.compile(v)
+
+
+INFO_FIXER_TESTS = [
+    ('maintainer-manual-page', '*', '[*]'),
+    ('source-is-missing', 'lib/hash/md4.js', '[lib/hash/md4.js]'),
+    ('source-is-missing',
+     'test/integration/client/big-simple-query-tests.js line '
+     'length is 1118 characters (>512)',
+     '[test/integration/client/big-simple-query-tests.js]'),
+    ('source-contains-prebuilt-javascript-object', 'lib/hash/md5.js',
+     '[lib/hash/md5.js]'),
+    ('very-long-line-length-in-source-file', 'debian/gbp.conf *',
+     '* [debian/gbp.conf:*]'),
+    ('very-long-line-length-in-source-file',
+     'benchmark/samples/lorem1.txt line 3 is 881 characters long (>512)',
+     '881 > 512 [benchmark/samples/lorem1.txt:3]'),
+    ('very-long-line-length-in-source-file', 'docs/*.css line *',
+     '* [docs/*.css:*]'),
+    ('missing-license-text-in-dep5-copyright',
+     'debian/copyright GPL-3\\+ *', 'GPL-3\\+ [debian/copyright:*]'),
+    ('inconsistent-appstream-metadata-license',
+     'menu/peg-solitaire.appdata.xml (gpl-3.0+ != gpl-3+)',
+     'menu/peg-solitaire.appdata.xml (gpl-3.0+ != gpl-3+) [debian/copyright]'),
+]
+
+
+class InfoFixerDataTest(TestCase):
+
+    def test_data(self):
+        for tag, old_info, expected_info in INFO_FIXER_TESTS:
+            got_info = fix_override_info(
+                LintianOverride(tag=tag, info=old_info))
+            self.assertEqual(
+                got_info, expected_info,
+                "Unexpected transformation for %s: %r ⇒ %r != %r" % (
+                    tag, old_info, got_info, expected_info))

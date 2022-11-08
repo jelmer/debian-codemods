@@ -233,8 +233,14 @@ PURE_FLN_SUB = (
 PURE_FLN_WILDCARD_SUB = (
     r"^(?P<path>[^ ]+) \(line (?P<lineno>" + LINENO_MATCH + r")\)$",
     r"* [\1:\2]")
+INTERTWINED_FLN_SUB = [
+    (r"^(?P<path>[^ ]+) (.+) \(line (" + LINENO_MATCH + r")\)",
+     r"\2 [\1:\3]"),
+    (r"^(?P<path>[^ ]+) (.+) \*", r"\2 [\1:*]"),
+    (r"^(?P<path>[^ ]+) \*", r"* [\1:*]"),
+]
 # "$file" => "[$file]"
-PURE_FN_SUB = (r"^(?P<path>[^[ ].+)", r"[\1]")
+PURE_FN_SUB = (r"^(?P<path>[^[ ]+)", r"[\1]")
 
 
 # When adding new expressions here, make sure the first argument doesn't match
@@ -250,9 +256,7 @@ INFO_FIXERS = {
             r"\1 [debian/source/options:\2]"),
     "global-files-wildcard-not-first-paragraph-in-dep5-copyright":
         PURE_FLN_SUB,
-    "missing-license-paragraph-in-dep5-copyright": (
-        r"([^ ]+) (.+) \(line (" + LINENO_MATCH + r")\)",
-        r"\2 [\1:\3]"),
+    "missing-license-paragraph-in-dep5-copyright": INTERTWINED_FLN_SUB,
     "unused-license-paragraph-in-dep5-copyright": (
         r"([^ ]+) (.*) \(line (" + LINENO_MATCH + r")\)",
         r"\2 [\1:\3]"),
@@ -296,22 +300,25 @@ INFO_FIXERS = {
     "shell-script-fails-syntax-check": PURE_FN_SUB,
     "manpage-has-errors-from-man": (r"^(?P<path)[^[ ]+) ([^[]*)", r"\2 [\1]"),
     "groff-message": (r"^(?P<path)[^ ]+) ([^[ ]+)", r"\2 [\1]"),
-    "source-contains-prebuilt-javascript-object": PURE_FN_SUB,
+    "source-contains-prebuilt-javascript-object": [
+        PURE_FN_SUB,
+        (r"^(?P<path>[^[ ].+) line length is .*", r"[\1]")],
     "source-contains-prebuilt-java-object": PURE_FN_SUB,
     "source-contains-prebuilt-windows-binary": PURE_FN_SUB,
     "source-contains-prebuilt-doxygen-documentation": PURE_FN_SUB,
     "source-contains-prebuilt-wasm-binary": PURE_FN_SUB,
     "source-contains-prebuilt-binary": PURE_FN_SUB,
     "source-is-missing": [
-        PURE_FN_SUB,
-        (r"^(?P<path>[^[ ].+) line length is .*", r"[\1]")],
+        (r"^(?P<path>[^[ ].+) line length is .*", r"[\1]"),
+        PURE_FN_SUB],
     "spelling-error-in-binary":
         (r"^(?P<path>[^[ ]+) (.+) ([^[]+)$", r"\2 \3 [\1]"),
-    "very-long-line-length-in-source-file":
+    "very-long-line-length-in-source-file": [
         (r"(.*) line ([0-9]+) is ([0-9]+) characters long \(>([0-9]+)\)",
          r"\3 > \4 [\1:\2]"),
-    "missing-license-text-in-dep5-copyright":
-        ("^(?P<path>.+) ([^[]+)$", r"\2 [\1:*\]"),
+        (r"^(?P<path>[^ ]+) \*", r"* [\1:*]"),
+        (r"^(?P<path>[^ ]+) line \*$", r"* [\1:*]")],
+    "missing-license-text-in-dep5-copyright": INTERTWINED_FLN_SUB,
     "national-encoding": PURE_FN_SUB,
     "no-manual-page": PURE_FN_SUB,
     "package-contains-empty-directory": PURE_FN_SUB,
@@ -330,6 +337,9 @@ INFO_FIXERS = {
     "hardening-no-pie": PURE_FN_SUB,
     "obsolete-url-in-packaging": (
         r"^(?P<path>.+) (.+)$", r"\2 [\1]"),
+    "inconsistent-appstream-metadata-license": (
+        r'^(.+) \(([^ ]+) \!= ([^)]+)\)$',
+        r'\1 (\2 != \3) [debian/copyright]'),
 }
 
 
@@ -345,7 +355,7 @@ def fix_override_info(override):
             fixers = [fixers]
         for fixer in fixers:
             if isinstance(fixer, tuple):
-                info = re.sub(fixer[0], fixer[1], override.info)
+                info = re.sub(fixer[0], fixer[1], info)
                 # The regex should only apply once
                 if re.sub(fixer[0], fixer[1], info) != info:
                     raise AssertionError(
