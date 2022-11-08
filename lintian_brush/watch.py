@@ -19,9 +19,10 @@
 
 from dataclasses import dataclass
 import json
+import logging
 import os
 import re
-from typing import Set, Optional
+from typing import Set, Optional, List
 from urllib.parse import urlparse, urlunparse
 import urllib.error
 from urllib.request import urlopen, Request
@@ -31,6 +32,7 @@ from debmutate.watch import Watch, WatchEditor
 from . import (
     USER_AGENT,
     DEFAULT_URLLIB_TIMEOUT,
+    min_certainty,
 )
 
 
@@ -217,6 +219,7 @@ def candidates_from_hackage(package, good_upstream_versions, net_access=False):
 
 
 def fix_old_github_patterns(updater):
+    ret = []
     for w in getattr(updater.watch_file, "entries", []):
         parsed_url = urlparse(w.url)
 
@@ -236,9 +239,12 @@ def fix_old_github_patterns(updater):
         if len(parts) > 2 and parts[-2] == 'archive':
             parts.insert(-1, 'refs/tags')
         w.matching_pattern = '/'.join(parts)
+        ret.append(w)
+    return ret
 
 
 def fix_github_releases(updater):
+    ret = []
     for w in getattr(updater.watch_file, "entries", []):
         parsed_url = urlparse(w.url)
 
@@ -251,11 +257,56 @@ def fix_github_releases(updater):
             parts[2] = 'tags'
             parsed_url = parsed_url._replace(path='/'.join(parts))
             w.url = parsed_url.geturl()
+            ret.append(w)
+    return ret
 
 
 def fix_watch_issues(updater):
-    fix_old_github_patterns(updater)
-    fix_github_releases(updater)
+    ret = []
+    ret.extend(fix_old_github_patterns(updater))
+    ret.extend(fix_github_releases(updater))
+    return ret
+
+
+def watch_entries_certainty(entries, source_package,
+                            expected_versions=None):
+    certainty = "certain"
+    for entry in entries:
+        ret = verify_watch_entry(
+            entry, source_package,
+            expected_versions=expected_versions)
+        if ret is False:
+            certainty = min_certainty(["possible", certainty])
+        if ret is None:
+            certainty = min_certainty(["likely", certainty])
+    return certainty
+
+
+def verify_watch_entry(
+        entry: Watch, source_package: str,
+        expected_versions: Optional[List[str]] = None) -> Optional[bool]:
+    try:
+        releases = list(sorted(
+                entry.discover(source_package), reverse=True))
+    except urllib.error.HTTPError as e:
+        logging.warning(
+            'HTTP error accessing discovery URL %s: %s.',
+            (e.geturl(), e))
+        if e.status // 100 == 5:
+            # If the server is unhappy, then the entry could still be valid.
+            return None
+
+        return False
+
+    if not releases:
+        # No matches is not a good sign
+        return None
+
+    if (expected_versions
+            and all(map(releases.__contains__, expected_versions))):
+        return True
+
+    return True
 
 
 def main():  # noqa: C901

@@ -8,6 +8,7 @@ lintian-brush (0.135) UNRELEASED; urgency=medium
   * lintian-brush: don't ignore --exclude when there are no fixers
     specified.
   * Add detect-changelog-behaviour executable.
+  * Additional verification for debian/watch changes.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 01 Nov 2022 18:10:53 +0000
 
