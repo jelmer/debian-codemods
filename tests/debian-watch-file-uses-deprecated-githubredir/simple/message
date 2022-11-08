@@ -1,2 +1,3 @@
 Remove use of githubredir - see https://lists.debian.org/debian-devel-announce/2014/10/msg00000.html for details.
+Certainty: confident
 Fixed-Lintian-Tags: debian-watch-file-uses-deprecated-githubredir

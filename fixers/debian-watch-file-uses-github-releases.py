@@ -4,14 +4,19 @@ from debmutate.watch import WatchEditor
 
 from lintian_brush.fixer import (
     report_result, source_package_name, current_package_version,
+    net_access_allowed,
 )
 from lintian_brush.watch import fix_github_releases, watch_entries_certainty
 
 
 with WatchEditor() as updater:
     entries = fix_github_releases(updater)
-    certainty = watch_entries_certainty(entries, source_package_name(),
-        expected_versions=[current_package_version().upstream_version])
+    if net_access_allowed():
+        certainty = watch_entries_certainty(
+            entries, source_package_name(),
+            expected_versions=[current_package_version().upstream_version])
+    else:
+        certainty = None
 
 
 report_result(

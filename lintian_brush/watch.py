@@ -269,7 +269,8 @@ def fix_watch_issues(updater):
 
 
 def watch_entries_certainty(entries, source_package,
-                            expected_versions=None):
+                            expected_versions=None,
+                            default_certainty="likely"):
     certainty = "certain"
     for entry in entries:
         ret = verify_watch_entry(
@@ -278,7 +279,7 @@ def watch_entries_certainty(entries, source_package,
         if ret is False:
             certainty = min_certainty(["possible", certainty])
         if ret is None:
-            certainty = min_certainty(["likely", certainty])
+            certainty = min_certainty([default_certainty, certainty])
     return certainty
 
 
