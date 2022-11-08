@@ -13,6 +13,7 @@ from lintian_brush.lintian import LINTIAN_DATA_PATH
 def parse(t):
     return tuple([int(v) for v in t.split(".")])
 
+
 PYTHON_VERSIONS_PATH = os.path.join(
     LINTIAN_DATA_PATH, 'python/versions')
 
@@ -51,9 +52,9 @@ with control as updater:
         vers = updater.source["X-Python3-Version"].split(">=")[1].strip()
         if parse(vers) <= python_versions['old-python3']:
             if parse(vers) <= python_versions['ancient-python3']:
-                 kind = 'ancient'
+                kind = 'ancient'
             else:
-                 kind = 'old'
+                kind = 'old'
             issue = LintianIssue(
                 updater.source, '%s-python-version-field' % kind,
                 'x-python3-version %s' % updater.source['X-Python3-Version'])

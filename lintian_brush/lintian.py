@@ -19,7 +19,7 @@
 
 import json
 import os
-from typing import Optional, Dict, Optional, TextIO
+from typing import Optional, TextIO
 
 LINTIAN_DATA_PATH = '/usr/share/lintian/data'
 

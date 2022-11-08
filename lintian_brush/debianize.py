@@ -62,7 +62,7 @@ from breezy.workingtree import WorkingTree
 from breezy.transport import FileExists
 
 from ognibuild import DetailedFailure, UnidentifiedError
-from ognibuild.buildlog import InstallFixer, problem_to_upstream_requirement
+from ognibuild.buildlog import problem_to_upstream_requirement
 from ognibuild.buildsystem import (
     get_buildsystem, NoBuildToolsFound, BuildSystem)
 from ognibuild.debian.apt import AptManager
@@ -84,7 +84,7 @@ from ognibuild.session.schroot import SchrootSession
 from ognibuild.requirements import (
     Requirement,
     )
-from ognibuild.resolver.apt import AptResolver, AptRequirement
+from ognibuild.resolver.apt import AptRequirement
 from ognibuild.upstream import (
     find_upstream,
     find_apt_upstream,

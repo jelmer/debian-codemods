@@ -586,6 +586,8 @@ def select_fixers(
     ret = []
     for f in fixers:
         if select_set is not None and f.name not in select_set:
+            if exclude_set and f.name in exclude_set:
+                exclude_set.remove(f.name)
             continue
         if exclude_set is not None and f.name in exclude_set:
             exclude_set.remove(f.name)
