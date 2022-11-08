@@ -280,14 +280,14 @@ def _guess_update_changelog_from_branch(
     return None
 
 
-if __name__ == "__main__":
+def main(argv=None):
     import argparse
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', action='store_true',
                         help='Be verbose')
     parser.add_argument('directory', type=str, default='.', nargs='?')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, format='%(message)s')
@@ -302,5 +302,13 @@ if __name__ == "__main__":
     changelog_behaviour = guess_update_changelog(wt, debian_path)
     if changelog_behaviour is not None:
         logging.info('%s', changelog_behaviour)
+        print(changelog_behaviour.update_changelog)
+        return 0
     else:
         logging.info('Unable to determine changelog updating behaviour')
+        return 1
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main(sys.argv[1:]))
