@@ -18,6 +18,7 @@
 """Detect gbp dch policy."""
 
 
+import logging
 import os
 from typing import Optional, Tuple, List
 
@@ -30,10 +31,7 @@ from debmutate.changelog import (
 from breezy import osutils
 from breezy.branch import Branch
 from breezy.errors import RevisionNotPresent
-try:
-    from breezy.transport import NoSuchFile
-except ImportError:  # breezy < 3.3
-    from breezy.errors import NoSuchFile
+from breezy.transport import NoSuchFile
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 
@@ -125,6 +123,7 @@ def guess_update_changelog(
                 cl = Changelog(f)
         except NoSuchFile:
             cl = None
+            logging.debug('No changelog found')
     if cl and is_unreleased_inaugural(cl):
         return ChangelogBehaviour(
             False,
@@ -249,6 +248,9 @@ def _guess_update_changelog_from_branch(
     (changelog_only, other_only, mixed, dch_references) = _changelog_stats(
         branch, history, debian_path
     )
+    logging.debug('Branch history analysis: changelog_only: %d, '
+                  'other_only: %d, mixed: %d, dch_references: %d',
+                  changelog_only, other_only, mixed, dch_references)
     if dch_references:
         return ChangelogBehaviour(
             False,
@@ -282,11 +284,23 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('--verbose', action='store_true',
+                        help='Be verbose')
+    parser.add_argument('directory', type=str, default='.', nargs='?')
     args = parser.parse_args()
-    wt, subpath = WorkingTree.open_containing(".")
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG, format='%(message)s')
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
+    wt, subpath = WorkingTree.open_containing(args.directory)
     from . import control_files_in_root
     if control_files_in_root(wt, subpath):
         debian_path = subpath
     else:
         debian_path = os.path.join(subpath, "debian")
-    print(guess_update_changelog(wt, debian_path))
+    changelog_behaviour = guess_update_changelog(wt, debian_path)
+    if changelog_behaviour is not None:
+        logging.info('%s', changelog_behaviour)
+    else:
+        logging.info('Unable to determine changelog updating behaviour')
