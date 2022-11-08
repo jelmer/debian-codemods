@@ -22,6 +22,7 @@ from lintian_brush.fixer import (
     report_result,
     warn,
     diligence,
+    net_access_allowed,
     )
 
 COMMON_MANGLES = [
@@ -32,6 +33,9 @@ RELEASES_TO_INSPECT = 5
 
 if not os.path.exists('debian/watch'):
     sys.exit(0)
+
+if not net_access_allowed():
+    sys.exit(2)
 
 has_keys = False
 
