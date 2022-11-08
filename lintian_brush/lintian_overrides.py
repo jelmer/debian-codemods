@@ -282,7 +282,7 @@ INFO_FIXERS = {
     "non-standard-file-perm": (
         r"^(?P<path>[^ ]+) ([0-9]+) \!= ([0-9]+)", r"\2 != \3 [\1]"),
     "executable-is-not-world-readable": (
-        r"^(?P<path>[^ ]+) ([0-9]+)", r"\1 [\2]"),
+        r"^(?P<path>[^ ]+) ([0-9]+)", r"\2 [\1]"),
     "library-not-linked-against-libc": PURE_FN_SUB,
     "setuid-binary": (
         r"^(?P<path>[^[ ]+) (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),

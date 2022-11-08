@@ -9,6 +9,8 @@ lintian-brush (0.135) UNRELEASED; urgency=medium
     specified.
   * Add detect-changelog-behaviour executable.
   * Additional verification for debian/watch changes.
+  * old-override-info-format: Fix executable-is-not-world-readable
+    order.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 01 Nov 2022 18:10:53 +0000
 
