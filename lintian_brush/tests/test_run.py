@@ -1033,7 +1033,7 @@ class SelectFixersTests(TestCase):
                         DummyFixer("dummy1", "some-tag"),
                         DummyFixer("dummy2", "other-tag"),
                     ],
-                    ["dummy1"],
+                    names=["dummy1"],
                 )
             ],
         )
@@ -1041,7 +1041,7 @@ class SelectFixersTests(TestCase):
     def test_missing(self):
         self.assertRaises(
             KeyError, select_fixers, [DummyFixer("dummy", "some-tag")],
-            ["other"]
+            names=["other"]
         )
 
     def test_exclude_missing(self):
@@ -1049,8 +1049,8 @@ class SelectFixersTests(TestCase):
             KeyError,
             select_fixers,
             [DummyFixer("dummy", "some-tag")],
-            ["dummy"],
-            ["some-other"],
+            names=["dummy"],
+            exclude=["some-other"],
         )
 
     def test_exclude(self):
@@ -1063,8 +1063,8 @@ class SelectFixersTests(TestCase):
                         DummyFixer("dummy1", "some-tag"),
                         DummyFixer("dummy2", "other-tag"),
                     ],
-                    ["dummy1", "dummy2"],
-                    ["dummy2"],
+                    names=["dummy1", "dummy2"],
+                    exclude=["dummy2"],
                 )
             ],
         )

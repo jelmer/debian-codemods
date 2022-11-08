@@ -304,9 +304,10 @@ def main(argv=None):  # noqa: C901
             print("Changelog identity: %s <%s>" % get_maintainer())
             return 0
         since_revid = wt.last_revision()
-        if args.fixers:
+        if args.fixers or args.exclude:
             try:
-                fixers = select_fixers(fixers, args.fixers, args.exclude)
+                fixers = select_fixers(
+                    fixers, names=(args.fixers or None), exclude=args.exclude)
             except KeyError as e:
                 logging.error("Unknown fixer specified: %s", e.args[0])
                 return 1

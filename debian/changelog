@@ -5,6 +5,8 @@ lintian-brush (0.135) UNRELEASED; urgency=medium
   * Fix compatibility with upcoming versions of Breezy, with slightly
     modified DirtyTracker API.
   * Add deb-upstream-deps binary.
+  * lintian-brush: don't ignore --exclude when there are no fixers
+    specified.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 01 Nov 2022 18:10:53 +0000
 

@@ -569,7 +569,7 @@ def read_desc_file(
 
 
 def select_fixers(
-    fixers: List[Fixer], names: List[str],
+    fixers: List[Fixer], *, names: Optional[List[str]] = None,
     exclude: Optional[Iterable[str]] = None
 ) -> List[Fixer]:
     """Select fixers by name, from a list.
@@ -581,18 +581,23 @@ def select_fixers(
     Raises:
       KeyError: if one of the names did not exist
     """
-    names_set = set(names)
-    if exclude:
-        for name in exclude:
-            if name not in names_set:
-                raise KeyError(name)
-            names_set.remove(name)
-    available = set([f.name for f in fixers])
-    missing = names_set - available
-    if missing:
-        raise KeyError(missing.pop())
-    # Preserve order
-    return [f for f in fixers if f.name in names_set]
+    select_set = set(names) if names is not None else None
+    exclude_set = set(exclude) if exclude is not None else None
+    ret = []
+    for f in fixers:
+        if select_set is not None and f.name not in select_set:
+            continue
+        if exclude_set is not None and f.name in exclude_set:
+            exclude_set.remove(f.name)
+            continue
+        if select_set is not None:
+            select_set.remove(f.name)
+        ret.append(f)
+    if select_set:
+        raise KeyError(select_set.pop())
+    if exclude_set:
+        raise KeyError(exclude_set.pop())
+    return ret
 
 
 def available_lintian_fixers(
