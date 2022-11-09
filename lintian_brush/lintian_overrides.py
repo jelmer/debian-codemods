@@ -340,6 +340,8 @@ INFO_FIXERS = {
     "inconsistent-appstream-metadata-license": (
         r'^(.+) \(([^ ]+) \!= ([^)]+)\)$',
         r'\1 (\2 != \3) [debian/copyright]'),
+    "source-ships-excluded-file": (
+        r"^([^ ]+)", r"\1 [debian/copyright:*]"),
 }
 
 

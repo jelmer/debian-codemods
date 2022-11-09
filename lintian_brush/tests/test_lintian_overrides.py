@@ -194,6 +194,9 @@ INFO_FIXER_TESTS = [
     ('inconsistent-appstream-metadata-license',
      'menu/peg-solitaire.appdata.xml (gpl-3.0+ != gpl-3+)',
      'menu/peg-solitaire.appdata.xml (gpl-3.0+ != gpl-3+) [debian/copyright]'),
+    ('source-ships-excluded-file',
+     'compiler/gradle/wrapper/gradle-wrapper.jar',
+     'compiler/gradle/wrapper/gradle-wrapper.jar [debian/copyright:*]'),
 ]
 
 
