@@ -341,7 +341,7 @@ INFO_FIXERS = {
         r'^(.+) \(([^ ]+) \!= ([^)]+)\)$',
         r'\1 (\2 != \3) [debian/copyright]'),
     "source-ships-excluded-file": (
-        r"^([^ ]+)", r"\1 [debian/copyright:*]"),
+        r"^([^ ]+)$", r"\1 [debian/copyright:*]"),
 }
 
 
