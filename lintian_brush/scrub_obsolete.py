@@ -364,7 +364,8 @@ def drop_old_relations(
 def update_maintscripts(
         wt: WorkingTree, subpath: str, checker: PackageChecker, package: str,
         allow_reformatting: bool = False
-        ) -> List[Tuple[str, List[Tuple[int, Optional[str], Optional[Version]]]]]:
+        ) -> List[
+            Tuple[str, List[Tuple[int, str, Version]]]]:
     ret = []
     for entry in os.scandir(wt.abspath(os.path.join(subpath))):
         if not (entry.name == "maintscript"

@@ -21,7 +21,7 @@ from io import StringIO
 import json
 import os
 from ruamel.yaml import YAML
-from typing import List, Dict, Any, Iterator
+from typing import List, Any, Iterator
 
 
 class MultiYamlUpdater(object):

@@ -23,7 +23,7 @@ import os
 import shutil
 import sys
 import tempfile
-from typing import Set, Optional, Iterable
+from typing import Optional, Iterable
 
 from debian.changelog import get_maintainer, ChangelogCreateError
 import distro_info

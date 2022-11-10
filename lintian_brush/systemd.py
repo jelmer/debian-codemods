@@ -31,14 +31,14 @@ __all__ = [
 
 from io import StringIO
 import os
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 from iniparse.config import (
     ConfigNamespace,
     Undefined,
 )
 from iniparse.ini import (
-    Line,
+    LineType,
     LineContainer,
     SectionLine,
     OptionLine,
@@ -69,8 +69,8 @@ LIST_KEYS = [
 
 
 class Section(ConfigNamespace):
-    _lines: list[Line]
-    _options: Dict[str, Any]
+    _lines: List[LineType] = None  # type: ignore
+    _options: Dict[str, Any] = None  # type: ignore
 
     def __init__(self, lineobj):
         self._lines = [lineobj]
@@ -221,8 +221,8 @@ class OptionList(object):
 
 
 class UnitFile(ConfigNamespace):
-    _data: LineContainer
-    _sections: Dict[str, Section]
+    _data: LineContainer = None
+    _sections: Dict[str, Section] = None
 
     def __init__(self, fp=None):
         self._data = LineContainer()
@@ -282,7 +282,7 @@ class UnitFile(ConfigNamespace):
         cur_option = None
         cur_section_name = None
         cur_option_name = None
-        pending_lines: List[Line] = []
+        pending_lines: List[LineType] = []
         try:
             fname = fp.name
         except AttributeError:
@@ -308,7 +308,7 @@ class UnitFile(ConfigNamespace):
                 lineobj = make_comment(line)
 
             if isinstance(lineobj, ContinuationLine):
-                if cur_option is not None:
+                if cur_option:
                     if pending_lines:
                         cur_option.extend(pending_lines)
                         pending_lines = []
