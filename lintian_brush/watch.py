@@ -156,7 +156,7 @@ def guess_github_watch_entry(
     # TODO(jelmer): Maybe use releases API instead?
     # TODO(jelmer): Automatically added mangling for
     # e.g. rc and beta
-    uversionmangle = []
+    uversionmangle: List[str] = []
     for name in sorted(tags, reverse=True):
         for pattern in POSSIBLE_PATTERNS:
             m = re.match(pattern, name)
@@ -292,8 +292,8 @@ def verify_watch_entry(
     except urllib.error.HTTPError as e:
         logging.warning(
             'HTTP error accessing discovery URL %s: %s.',
-            (e.geturl(), e))
-        if e.status // 100 == 5:
+            e.geturl(), e)
+        if (e.status or 0) // 100 == 5:
             # If the server is unhappy, then the entry could still be valid.
             return None
 
@@ -315,7 +315,7 @@ def main():  # noqa: C901
     import breezy  # noqa: E402
     import logging
 
-    breezy.initialize()
+    breezy.initialize()  # type: ignore
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
 

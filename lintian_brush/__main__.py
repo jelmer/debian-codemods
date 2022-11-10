@@ -23,7 +23,7 @@ import os
 import shutil
 import sys
 import tempfile
-from typing import Set, Optional
+from typing import Set, Optional, Iterable
 
 from debian.changelog import get_maintainer, ChangelogCreateError
 import distro_info
@@ -75,7 +75,7 @@ LINTIAN_BRUSH_TAG_VALUES = {
 LINTIAN_BRUSH_TAG_DEFAULT_VALUE = 5
 
 
-def calculate_value(tags: Set[str]) -> int:
+def calculate_value(tags: Iterable[str]) -> int:
     if not tags:
         return 0
     if not (set(tags) - set(DEFAULT_ADDON_FIXERS)):
@@ -93,7 +93,7 @@ def versions_dict():
     import debian
     return {
         "lintian-brush": version_string,
-        "breezy": breezy.version_string,
+        "breezy": breezy.version_string,  # type: ignore
         "debmutate": debmutate.version_string,
         "debian": debian.__version__,
     }
@@ -259,9 +259,9 @@ def main(argv=None):  # noqa: C901
         parser.print_usage()
         return 1
 
-    fixers = available_lintian_fixers(
+    fixers = list(available_lintian_fixers(
         args.fixers_dir, force_subprocess=args.force_subprocess
-    )
+    ))
     if args.list_fixers:
         for script in sorted([fixer.name for fixer in fixers]):
             print(script)

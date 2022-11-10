@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush import certainty_to_confidence
+from lintian_brush import min_certainty
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
 from lintian_brush.fixer import (
     meets_minimum_certainty,
@@ -72,10 +72,7 @@ try:
 except (FileNotFoundError, NotMachineReadableError):
     pass
 
-if achieved_certainty:
-    certainty = min(achieved_certainty, key=certainty_to_confidence)
-else:
-    certainty = None
+certainty = min_certainty(achieved_certainty)
 
 if len(fields) == 1:
     report_result('Set field %s in debian/copyright.' % ', '.join(fields),

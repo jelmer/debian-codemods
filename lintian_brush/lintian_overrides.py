@@ -354,7 +354,7 @@ def fix_override_info(override):
     else:
         info = override.info
         if not isinstance(fixers, list):
-            fixers = [fixers]
+            fixers = [fixers]  # type: ignore
         for fixer in fixers:
             if isinstance(fixer, tuple):
                 info = re.sub(fixer[0], fixer[1], info)

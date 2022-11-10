@@ -27,7 +27,7 @@ removed = []
 for entry in os.scandir('debian'):
     if entry.name in MAINTAINER_SCRIPTS:
         script = entry.name
-        package = None
+        package = "source"
     elif '.' not in entry.name:
         continue
     else:

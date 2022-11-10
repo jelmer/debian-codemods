@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 
 from email.utils import parseaddr
+from typing import Optional, Dict, Tuple, List
+
 from lintian_brush.fixer import control, report_result, fixed_lintian_tag
 
-REPLACEMENTS = {
+REPLACEMENTS: Dict[Optional[str], Tuple[str, List[Tuple[str, str]]]] = {
     'python-modules-team@lists.alioth.debian.org':
         ('old-dpmt-vcs',
          [('https://salsa.debian.org/python-team/modules/',
@@ -15,6 +17,8 @@ REPLACEMENTS = {
 }
 
 with control as editor:
+    maint: Optional[str]
+    email: Optional[str]
     try:
         maint, email = parseaddr(editor.source['Maintainer'])
     except KeyError:

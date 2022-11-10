@@ -176,7 +176,7 @@ def main():
 
     import breezy  # noqa: E402
 
-    breezy.initialize()
+    breezy.initialize()  # type: ignore
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
     import breezy.plugins.gitlab

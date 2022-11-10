@@ -30,12 +30,15 @@ __all__ = [
 ]
 
 from io import StringIO
+import os
+from typing import Dict, Any, List, Optional
 
 from iniparse.config import (
     ConfigNamespace,
     Undefined,
 )
 from iniparse.ini import (
+    Line,
     LineContainer,
     SectionLine,
     OptionLine,
@@ -50,7 +53,6 @@ from iniparse.ini import (
 
 from debmutate.reformatting import Editor
 
-import os
 
 LIST_KEYS = [
     "Before",
@@ -67,8 +69,8 @@ LIST_KEYS = [
 
 
 class Section(ConfigNamespace):
-    _lines = None
-    _options = None
+    _lines: list[Line]
+    _options: Dict[str, Any]
 
     def __init__(self, lineobj):
         self._lines = [lineobj]
@@ -219,8 +221,8 @@ class OptionList(object):
 
 
 class UnitFile(ConfigNamespace):
-    _data = None
-    _sections = None
+    _data: LineContainer
+    _sections: Dict[str, Section]
 
     def __init__(self, fp=None):
         self._data = LineContainer()
@@ -280,7 +282,7 @@ class UnitFile(ConfigNamespace):
         cur_option = None
         cur_section_name = None
         cur_option_name = None
-        pending_lines = []
+        pending_lines: List[Line] = []
         try:
             fname = fp.name
         except AttributeError:
@@ -306,7 +308,7 @@ class UnitFile(ConfigNamespace):
                 lineobj = make_comment(line)
 
             if isinstance(lineobj, ContinuationLine):
-                if cur_option:
+                if cur_option is not None:
                     if pending_lines:
                         cur_option.extend(pending_lines)
                         pending_lines = []
@@ -320,12 +322,12 @@ class UnitFile(ConfigNamespace):
 
             if isinstance(lineobj, OptionLine):
                 if pending_lines:
-                    cur_section.extend(pending_lines)
+                    cur_section.extend(pending_lines)  # type: ignore
                     pending_lines = []
                 cur_option = LineContainer(lineobj)
-                cur_section.add(cur_option)
+                cur_section.add(cur_option)  # type: ignore
                 cur_option_name = cur_option.name
-                optobj = self._sections[cur_section_name]
+                optobj = self._sections[cur_section_name]  # type: ignore
                 if cur_option_name in LIST_KEYS:
                     if not cur_option.value.split():
                         # Reset list.

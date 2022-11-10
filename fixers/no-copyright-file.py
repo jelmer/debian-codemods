@@ -82,22 +82,23 @@ for _, group in sorted(
         holders = '\n           '.join(group.copyrights.sorted_members())
     else:
         holders = 'Unknown'
-    paragraph = FilesParagraph.create(
+    files_paragraph = FilesParagraph.create(
         list(files), holders, License(group.license))
 
     comments = group.get_comments()
     if comments:
-        paragraph.comment = comments
+        files_paragraph.comment = comments
 
-    c.add_files_paragraph(paragraph)
+    c.add_files_paragraph(files_paragraph)
 
 # Print license paragraphs
 for key in sorted(licenses):
     license_ = DecopyLicense.get(key)
-    paragraph = LicenseParagraph.create(
+    license_paragraph = LicenseParagraph.create(
         License(license_.name))
-    paragraph.comment = "Add the corresponding license text here"
-    c.add_license_paragraph(paragraph)
+    license_paragraph.comment = (
+        "Add the corresponding license text here")  # type: ignore
+    c.add_license_paragraph(license_paragraph)
 
 
 issue = LintianIssue('source', 'no-copyright-file')

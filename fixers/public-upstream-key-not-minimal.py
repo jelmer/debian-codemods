@@ -55,8 +55,8 @@ for p in [
         if inlines != outlines:
             fixed_lintian_tag(
                 'source', 'public-upstream-key-not-minimal')
-            with open(p, 'wb') as f:
-                f.writelines(outlines)
+            with open(p, 'wb') as g:
+                g.writelines(outlines)
 
 
 report_result("Re-export upstream signing key without extra signatures.")

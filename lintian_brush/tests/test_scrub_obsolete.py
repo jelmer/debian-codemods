@@ -17,6 +17,7 @@
 
 """Tests for lintian_brush.scrub_obsolete."""
 
+from typing import Dict
 from unittest import TestCase
 
 from lintian_brush.scrub_obsolete import (
@@ -24,6 +25,7 @@ from lintian_brush.scrub_obsolete import (
     filter_relations,
     drop_obsolete_depends,
     release_aliases,
+    PackageChecker,
     )
 
 from debian.changelog import Version
@@ -47,9 +49,10 @@ class NameListTests(TestCase):
 class FilterRelationsTests(TestCase):
 
     def test_missing(self):
-        control = {}
+        control: Dict[str, str] = {}
         self.assertEqual(
-            [], filter_relations(control, "Build-Depends", None))
+            [],
+            filter_relations(control, "Build-Depends", None))  # type: ignore
 
     def test_keep(self):
         control = {"Depends": "foo"}
@@ -102,7 +105,7 @@ class FilterRelationsTests(TestCase):
         self.assertEqual({}, control)
 
 
-class DummyChecker(object):
+class DummyChecker(PackageChecker):
 
     release = "release"
 

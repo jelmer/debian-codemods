@@ -22,7 +22,7 @@ import asyncio
 import json
 import logging
 import os
-from typing import List, Tuple, Optional, Dict, Callable
+from typing import List, Tuple, Optional, Dict, Callable, Union
 
 from breezy.commit import PointlessCommit, NullCommitReporter
 from breezy.workingtree import WorkingTree
@@ -126,7 +126,7 @@ async def _package_provides(
             "where package = $1 and release = $2",
             package, release)
     if provides is not None:
-        return [r[1] for r in parse_relations(provides)]
+        return [r for sublist in parse_relations(provides) for r in sublist[1]]
     return None
 
 
@@ -244,7 +244,8 @@ RelationsCallback = Callable[
 
 
 def filter_relations(
-        base: Deb822Dict, field: str, cb: RelationsCallback) -> List[str]:
+        base: Union[Deb822Dict, Dict[str, str]],
+        field: str, cb: RelationsCallback) -> List[str]:
     """Update a relations field."""
     try:
         old_contents = base[field]
@@ -363,7 +364,7 @@ def drop_old_relations(
 def update_maintscripts(
         wt: WorkingTree, subpath: str, checker: PackageChecker, package: str,
         allow_reformatting: bool = False
-        ) -> List[Tuple[str, List[Tuple[int, str, Version]]]]:
+        ) -> List[Tuple[str, List[Tuple[int, Optional[str], Optional[Version]]]]]:
     ret = []
     for entry in os.scandir(wt.abspath(os.path.join(subpath))):
         if not (entry.name == "maintscript"
@@ -618,7 +619,7 @@ def main():  # noqa: C901
     import argparse
     import breezy  # noqa: E402
 
-    breezy.initialize()
+    breezy.initialize()  # type: ignore
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
 

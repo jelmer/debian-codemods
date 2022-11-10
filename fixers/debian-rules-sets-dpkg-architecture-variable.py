@@ -28,7 +28,7 @@ def variable_defined(var):
             _variables.add('DEB_%s_%s' % (machine, var))
 
 
-def is_dpkg_architecture_line(line: str) -> Tuple[
+def is_dpkg_architecture_line(line: bytes) -> Tuple[
         Optional[str], bool, bool, Optional[bool]]:
     m = re.match(b'([A-Z_]+)[ \t]*([:?]?=)[ \t]*(.*)', line.strip())
     if not m:

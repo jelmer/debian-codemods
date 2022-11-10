@@ -2,12 +2,13 @@
 
 import re
 import sys
+from typing import List
 
 from lintian_brush.fixer import LintianIssue, report_result
 
 
 def expand_tabs(line, tabwidth=8):
-    ret = []
+    ret: List[bytes] = []
     for i, c in enumerate(line):
         if line[i:i+1] == b'\t':
             # Round up to the next unit of tabwidth
@@ -18,7 +19,10 @@ def expand_tabs(line, tabwidth=8):
 
 
 def whitespace_prefix_length(line):
-    return len(re.match(b'^\\s*', line).group(0))
+    m = re.match(b'^\\s*', line)
+    if not m:
+        return 0
+    return len(m.group(0))
 
 
 def value_offset(line):
@@ -91,8 +95,8 @@ try:
 except FileNotFoundError:
     pass
 else:
-    with open('debian/copyright', 'wb') as f:
-        f.writelines(lines)
+    with open('debian/copyright', 'wb') as g:
+        g.writelines(lines)
 
 sys.stdout.write('debian/copyright: ')
 if tabs_replaced:

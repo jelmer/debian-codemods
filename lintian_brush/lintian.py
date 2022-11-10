@@ -49,7 +49,8 @@ def read_list_file(f: TextIO, vendor: Optional[str] = None):
         if line.startswith('@'):
             cond, if_vendor, val = line.split(None, 2)
             if cond == '@if-vendor-is-not':
-                if if_vendor.lower() == vendor.lower():
+                if (if_vendor and vendor and
+                        if_vendor.lower() == vendor.lower()):
                     continue
                 line = val
             else:
@@ -88,7 +89,7 @@ def _read_test_fields(path, vendor):
 
     # Older versions of lintian listed fields with all lowercase.
     if all([x == x.lower() for x in fields]):
-        fields = set([_capitalize_field(x) for x in fields])
+        fields = [_capitalize_field(x) for x in fields]
     return fields
 
 

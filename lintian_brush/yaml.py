@@ -21,7 +21,7 @@ from io import StringIO
 import json
 import os
 from ruamel.yaml import YAML
-from typing import List
+from typing import List, Dict, Any, Iterator
 
 
 class MultiYamlUpdater(object):
@@ -39,7 +39,7 @@ class MultiYamlUpdater(object):
     def __setitem__(self, i, val):
         self._code[i] = val
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         for m in self._code:
             yield m
 
@@ -49,12 +49,12 @@ class MultiYamlUpdater(object):
     def __len__(self):
         return len(self._code)
 
-    def __enter__(self):
+    def __enter__(self) -> "MultiYamlUpdater":
         try:
             with open(self.path, "r") as f:
                 inp = list(f)
         except FileNotFoundError:
-            self._orig = {}
+            self._orig: List[Any] = []
             self._orig_text = ""
         else:
             for line in inp:

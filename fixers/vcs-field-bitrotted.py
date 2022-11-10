@@ -164,13 +164,13 @@ def migrate_from_obsolete_infra(control):
             info='%s %s' % (old_vcs_url or '', old_vcs_browser or ''))
 
     for hdr in ["Vcs-Git", "Vcs-Bzr", "Vcs-Hg", "Vcs-Svn"]:
-        if hdr == "Vcs-" + vcs_type:
+        if hdr == "Vcs-" + vcs_type:  # type: ignore
             continue
         try:
             del control[hdr]
         except KeyError:
             pass
-    control["Vcs-" + vcs_type] = vcs_url
+    control["Vcs-" + vcs_type] = vcs_url  # type: ignore
     if vcs_browser is not None:
         control["Vcs-Browser"] = vcs_browser
     else:

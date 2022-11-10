@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+from typing import Dict, List
+
 from lintian_brush.fixer import (
     report_result,
     LintianIssue,
@@ -13,7 +15,7 @@ from lintian_brush.lintian_overrides import (
 )
 
 
-fixed_linenos = {}
+fixed_linenos: Dict[str, List[int]] = {}
 
 
 def fix_info(path, lineno, override):

@@ -44,13 +44,12 @@ class FixerTestCase(unittest.TestCase):
         self._fixer_name = fixer_name
         self._test_name = name
         self._path = path
-        self._testdir = None
-        self._tempdir = None
         self.maxDiff = None
         super(FixerTestCase, self).__init__()
 
     def setUp(self):
         self._tempdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self._tempdir)
         self._testdir = os.path.join(self._tempdir, "testdir")
 
         def ignore(src, names):
@@ -66,11 +65,6 @@ class FixerTestCase(unittest.TestCase):
 
     def __str__(self):
         return "fixer test: %s for %s" % (self._test_name, self._fixer_name)
-
-    def tearDown(self):
-        shutil.rmtree(self._tempdir)
-        self._testdir = None
-        self._tempdir = None
 
     def runTest(self):
         xfail_path = os.path.join(self._path, "xfail")
@@ -107,7 +101,7 @@ class FixerTestCase(unittest.TestCase):
             self._fixer.script_path, cwd=self._testdir, stdout=subprocess.PIPE,
             env=env
         )
-        (stdout, err) = p.communicate("")
+        (stdout, err) = p.communicate(b"")
         self.assertEqual(p.returncode, 0)
         out_path = os.path.join(self._path, "out")
         p = subprocess.Popen(
@@ -124,7 +118,7 @@ class FixerTestCase(unittest.TestCase):
             ],
             stdout=subprocess.PIPE,
         )
-        (diff, stderr) = p.communicate("")
+        (diff, stderr) = p.communicate(b"")
         self.assertIn(
             p.returncode, (0, 1),
             "Unexpected exit code %d" % p.returncode)

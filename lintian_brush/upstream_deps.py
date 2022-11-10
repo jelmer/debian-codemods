@@ -73,7 +73,7 @@ def main(argv=None):  # noqa: C901
     import breezy
     from breezy.errors import NotBranchError
     from breezy.workingtree import WorkingTree
-    breezy.initialize()
+    breezy.initialize()  # type: ignore
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
 

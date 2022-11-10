@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import sys
+from typing import Dict, List, Any, Tuple
 
 from lintian_brush.fixer import report_result, fixed_lintian_tag
 from lintian_brush.yaml import YamlUpdater, MultiYamlUpdater
@@ -17,7 +18,7 @@ try:  # noqa: C901
     def flatten_mapping(node):
         if not isinstance(node, MappingNode):
             return
-        by_key = {}
+        by_key: Dict[Any, List[Tuple[int, Any]]] = {}
         for i, (k, v) in enumerate(node.value):
             by_key.setdefault(k.value, []).append((i, v))
         to_remove = []
@@ -82,12 +83,12 @@ try:  # noqa: C901
                         'Use YAML mapping in debian/upstream/metadata.')
     except ruamel.yaml.composer.ComposerError:
         ranges = []
-        with MultiYamlUpdater('debian/upstream/metadata') as editor:
-            for i, m in enumerate(editor):
+        with MultiYamlUpdater('debian/upstream/metadata') as multi_editor:
+            for i, m in enumerate(multi_editor):
                 if not m:
                     ranges.append(i)
             for i in reversed(ranges):
-                del editor[i]
+                del multi_editor[i]
         if ranges:
             report_result(
                 'Discard extra empty YAML documents in '

@@ -3,6 +3,7 @@
 import os
 import re
 import sys
+from typing import Optional
 
 from debmutate.debhelper import (
     read_debhelper_compat_file,
@@ -11,6 +12,8 @@ from debmutate.debhelper import (
 from lintian_brush.fixer import control, report_result, LintianIssue
 from debmutate._rules import update_rules
 
+
+file_compat_version: Optional[int]
 try:
     file_compat_version = read_debhelper_compat_file('debian/compat')
 except FileNotFoundError:
@@ -22,6 +25,7 @@ with control:
         control.source)
 
 
+compat_version: Optional[int]
 if control_compat_version is not None and file_compat_version is not None:
     os.remove('debian/compat')
     compat_version = control_compat_version
@@ -36,12 +40,17 @@ else:
 def drop_explicit_dh_compat(line):
     m = re.match(b'export DH_COMPAT[ \t]*=[ \t]*([0-9]+)', line)
     if m:
-        issue = LintianIssue(
-            'source',
-            'declares-possibly-conflicting-debhelper-compat-versions',
-            info='rules=%d compat=%s' % (compat_version, m.group(1)))
-        if issue.should_fix():
-            issue.report_fixed()
+        rules_version = int(m.group(1).decode('utf-8'))
+        if compat_version and compat_version != rules_version:
+            issue = LintianIssue(
+                'source',
+                'declares-possibly-conflicting-debhelper-compat-versions',
+                info='rules=%d compat=%d' % (
+                    rules_version, compat_version))
+            if issue.should_fix():
+                issue.report_fixed()
+                return []
+        elif compat_version:
             return []
     return line
 

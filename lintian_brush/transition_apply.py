@@ -54,6 +54,9 @@ class TransitionResult(object):
         self.bugno = bugno
 
 
+_changelog_policy_noted = None
+
+
 def _note_changelog_policy(policy, msg):
     global _changelog_policy_noted
     if not _changelog_policy_noted:
@@ -175,7 +178,7 @@ def main():  # noqa: C901
     import argparse
     import breezy  # noqa: E402
 
-    breezy.initialize()
+    breezy.initialize()  # type: ignore
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
 

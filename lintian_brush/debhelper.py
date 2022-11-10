@@ -134,7 +134,7 @@ def write_rules_template(
 
 def drop_obsolete_maintscript_entries(
         editor, should_remove: Callable[[str, Version], bool]
-        ) -> List[Tuple[int, str, Version]]:
+        ) -> List[Tuple[int, Optional[str], Optional[Version]]]:
     """Drop obsolete entries from a maintscript file.
 
     Args:
@@ -144,9 +144,8 @@ def drop_obsolete_maintscript_entries(
     Returns:
       list of tuples with index, package, version of entries that were removed
     """
-    remove: List[Tuple[int, str, Version]] = []
+    remove: List[Tuple[int, Optional[str], Optional[Version]]] = []
     comments = []
-    entries_removed = []
     for i, entry in enumerate(list(editor.lines)):
         if isinstance(entry, str):
             comments.append((i, None, None))
@@ -156,13 +155,10 @@ def drop_obsolete_maintscript_entries(
             if should_remove(entry.package, Version(prior_version)):
                 remove.extend(comments)
                 remove.append((i, entry.package, Version(prior_version)))
-                entries_removed.append(i)
         comments = []
-    removed = []
     for i, pkg, version in reversed(remove):
-        removed.append(editor.lines[i])
         del editor.lines[i]
-    return entries_removed
+    return remove
 
 
 def drop_sequence(control, rules, sequence):

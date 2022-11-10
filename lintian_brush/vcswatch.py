@@ -33,6 +33,8 @@ class VcsWatch(object):
         self._conn = await connect_udd_mirror()
 
     async def __aexit__(self, exc_type, exc, tb):
+        if self._conn is None:
+            raise RuntimeError('not in context manager')
         return await self._conn.__aexit__(exc_type, exc, tb)
 
     async def get_package(self, name):

@@ -46,7 +46,7 @@ def check_global(origline):
 
 
 try:
-    update_rules(global_line_cb=check_global, drop_related_comments=True)
+    update_rules(global_line_cb=check_global, drop_related_comments=True)  # type: ignore
 except TypeError:  # debmutate < 0.62
     update_rules(global_line_cb=check_global)
 

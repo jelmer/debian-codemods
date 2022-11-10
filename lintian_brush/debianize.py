@@ -57,6 +57,7 @@ from breezy.errors import (
 )
 from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.revision import NULL_REVISION
+from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 
 from breezy.transport import FileExists
@@ -931,6 +932,7 @@ def debianize(  # noqa: C901
 
     def import_metadata_from_path(p):
         metadata_items.extend(guess_upstream_info(p, trust_package=trust))
+        assert isinstance(metadata, dict)
         metadata.update(
             summarize_upstream_metadata(
                 metadata_items, p, net_access=net_access,
@@ -1179,6 +1181,8 @@ class SimpleTrustedAptRepo(object):
         return False
 
     def sources_lines(self):
+        if not self.httpd:
+            raise RuntimeError("httpd not yet started")
         if os.path.exists(os.path.join(self.directory, 'Packages.gz')):
             return [
                 "deb [trusted=yes] http://%s:%d/ ./" % (
@@ -1215,8 +1219,12 @@ class SimpleTrustedAptRepo(object):
         self.thread.start()
 
     def stop(self):
-        self.httpd.shutdown()
-        self.thread.join()
+        if self.httpd is not None:
+            self.httpd.shutdown()
+            self.httpd = None
+        if self.thread is not None:
+            self.thread.join()
+            self.thread = None
 
     def refresh(self):
         import gzip
@@ -1376,7 +1384,7 @@ def main(argv=None):  # noqa: C901
     import argparse
 
     import breezy
-    breezy.initialize()
+    breezy.initialize()  # type: ignore
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
 
@@ -1531,6 +1539,7 @@ def main(argv=None):  # noqa: C901
             'it should add the packaging: %s', e)
         return 1
 
+    create_dist: Optional[Callable[[Tree, str, str, str], str]]
     if args.dist_command:
         def create_dist(tree, package, version, target_dir):
             return run_dist_command(
@@ -1568,7 +1577,7 @@ def main(argv=None):  # noqa: C901
         use_packaging_branch(
             wt, args.debian_branch % {'vendor': get_vendor_name().lower()})
 
-    use_inotify = ((False if args.disable_inotify else None),)
+    use_inotify = ((False if args.disable_inotify else None))
     with wt.lock_write():
         try:
             debianize_result = debianize(

@@ -43,7 +43,7 @@ class LintianIssue(object):
     """Represents a lintian issue."""
 
     target: Tuple[str, Optional[str]]
-    info: Optional[Union[str, Tuple[str, ...]]]
+    info: Optional[str]
     tag: str
 
     def __init__(
@@ -54,19 +54,21 @@ class LintianIssue(object):
     ):
         if isinstance(target, (Deb822Paragraph, MutableMapping)):
             if "Source" in target:
-                target = ("source", target["Source"])
+                self.target = ("source", target["Source"])
             elif "Package" in target:
-                target = ("binary", target["Package"])
+                self.target = ("binary", target["Package"])
             else:
                 raise ValueError(
                     "unable to determine source/binary package from target"
                 )
         elif target == "source":
-            target = ("source", None)
+            self.target = ("source", None)
+        else:
+            self.target = target  # type: ignore
         if isinstance(info, tuple):
-            info = " ".join(info)
-        self.target = target  # type: ignore
-        self.info = info
+            self.info = " ".join(info)
+        else:
+            self.info = info
         self.tag = tag
 
     def override_exists(self):
@@ -248,7 +250,7 @@ def vendor() -> str:
 
 def linenos_to_ranges(linenos):
     ret = []
-    cur_range = []
+    cur_range: List[int] = []
 
     def finalize_range(r):
         if len(r) == 1:

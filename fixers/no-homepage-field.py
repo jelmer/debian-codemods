@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from typing import Optional
 from urllib.parse import urlparse
 
 from lintian_brush.fixer import (
@@ -28,6 +29,7 @@ def guess_homepage():
 
 
 with control as updater:
+    issue: Optional[LintianIssue]
     if 'Homepage' not in updater.source:
         datum = guess_homepage()
         issue = LintianIssue('source', 'no-homepage-field')

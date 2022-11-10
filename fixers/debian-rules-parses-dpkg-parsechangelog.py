@@ -32,7 +32,7 @@ def variable_defined(var):
     return var in _variables
 
 
-def is_pkg_info_var_line(line: str) -> Tuple[
+def is_pkg_info_var_line(line: bytes) -> Tuple[
         Optional[str], bool, bool, Optional[bool]]:
     m = var_sre.match(line.strip())
     if not m:

@@ -203,7 +203,7 @@ class Fixer(object):
     fixer addresses.
     """
 
-    def __init__(self, name: str, lintian_tags: List[str] = None):
+    def __init__(self, name: str, lintian_tags: Optional[List[str]] = None):
         self.name = name
         self.lintian_tags = lintian_tags or []
 
@@ -637,7 +637,8 @@ def increment_version(v: Version) -> None:
         )
     else:
         v.upstream_version = re.sub(
-            "\\d+$", lambda x: str(int(x.group()) + 1), v.upstream_version
+            "\\d+$", lambda x: str(int(x.group()) + 1),
+            v.upstream_version or ''
         )
 
 
@@ -1030,8 +1031,8 @@ class ManyResult(object):
 
 
 def get_dirty_tracker(
-    local_tree: WorkingTree, subpath: str = "", use_inotify: bool = None
-):
+        local_tree: WorkingTree, subpath: str = "",
+        use_inotify: Optional[bool] = None):
     """Create a dirty tracker object."""
     if use_inotify is True:
         from breezy.dirty_tracker import DirtyTracker

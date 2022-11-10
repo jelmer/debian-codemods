@@ -21,7 +21,7 @@ from datetime import datetime
 import os
 import re
 import sys
-from typing import Type
+from typing import Type, Callable
 
 from debian.changelog import (
     Changelog,
@@ -164,7 +164,7 @@ Arch: all
                 NotDebianPackage,
                 run_lintian_fixer,
                 tree,
-                DummyFixer("dummy", "some-tag"),
+                DummyFixer("dummy", ["some-tag"]),
                 update_changelog=False,
             )
 
@@ -172,7 +172,7 @@ Arch: all
         tree = self.make_test_tree()
         with tree.lock_write():
             result, summary = run_lintian_fixer(
-                tree, DummyFixer("dummy", "some-tag"), update_changelog=False
+                tree, DummyFixer("dummy", ["some-tag"]), update_changelog=False
             )
         self.assertEqual(summary, "Fixed some tag.")
         self.assertEqual(["some-tag"], result.fixed_lintian_tags)
@@ -196,7 +196,7 @@ Arch: all
                 NoChanges,
                 run_lintian_fixer,
                 tree,
-                UncertainFixer("dummy", "some-tag"),
+                UncertainFixer("dummy", ["some-tag"]),
                 update_changelog=False,
                 minimum_certainty="certain",
             )
@@ -214,7 +214,7 @@ Arch: all
         with tree.lock_write():
             result, summary = run_lintian_fixer(
                 tree,
-                UncertainFixer("dummy", "some-tag"),
+                UncertainFixer("dummy", ["some-tag"]),
                 update_changelog=False,
                 minimum_certainty="possible",
             )
@@ -232,7 +232,7 @@ Arch: all
         with tree.lock_write():
             result, summary = run_lintian_fixer(
                 tree,
-                NewFileFixer("new-file", "some-tag"), update_changelog=False
+                NewFileFixer("new-file", ["some-tag"]), update_changelog=False
             )
         self.assertEqual(summary, "Created new file.")
         self.assertIs(None, result.certainty)
@@ -268,7 +268,7 @@ Arch: all
         orig_basis_tree = tree.branch.basis_tree()
         with tree.lock_write():
             result, summary = run_lintian_fixer(
-                tree, RenameFileFixer("rename", "some-tag"),
+                tree, RenameFileFixer("rename", ["some-tag"]),
                 update_changelog=False
             )
         self.assertEqual(summary, "Renamed a file.")
@@ -301,7 +301,7 @@ Arch: all
                 NoChanges,
                 run_lintian_fixer,
                 tree,
-                EmptyFixer("empty", "some-tag"),
+                EmptyFixer("empty", ["some-tag"]),
                 update_changelog=False,
             )
         self.assertEqual(1, tree.branch.revno())
@@ -315,7 +315,7 @@ Arch: all
                 Exception,
                 run_lintian_fixer,
                 tree,
-                FailingFixer("fail", "some-tag"),
+                FailingFixer("fail", ["some-tag"]),
                 update_changelog=False,
             )
         self.assertEqual(1, tree.branch.revno())
@@ -336,7 +336,7 @@ Arch: all
         with tree.lock_write():
             result, summary = run_lintian_fixer(
                 tree,
-                NewFileFixer("add-config", "add-config"),
+                NewFileFixer("add-config", ["add-config"]),
                 update_changelog=False,
                 timestamp=datetime(2020, 9, 8, 0, 36, 35, 857836),
             )
@@ -405,7 +405,7 @@ Arch: all
                 FailedPatchManipulation,
                 run_lintian_fixer,
                 tree,
-                NewFileFixer("add-config", "add-config"),
+                NewFileFixer("add-config", ["add-config"]),
                 update_changelog=False,
                 timestamp=datetime(2020, 9, 8, 0, 36, 35, 857836),
             )
@@ -439,7 +439,7 @@ Arch: all
     def test_fails(self):
         with self.tree.lock_write():
             result = run_lintian_fixers(
-                self.tree, [FailingFixer("fail", "some-tag")],
+                self.tree, [FailingFixer("fail", ["some-tag"])],
                 update_changelog=False
             )
         self.assertEqual([], result.success)
@@ -460,14 +460,14 @@ Arch: all
                 NotDebianPackage,
                 run_lintian_fixers,
                 self.tree,
-                [DummyFixer("dummy", "some-tag")],
+                [DummyFixer("dummy", ["some-tag"])],
                 update_changelog=False,
             )
 
     def test_simple_modify(self):
         with self.tree.lock_write():
             result = run_lintian_fixers(
-                self.tree, [DummyFixer("dummy", "some-tag")],
+                self.tree, [DummyFixer("dummy", ["some-tag"])],
                 update_changelog=False
             )
             revid = self.tree.last_revision()
@@ -521,7 +521,7 @@ Arch: all
         with tree.lock_write():
             result, summary = run_lintian_fixer(
                 tree,
-                DummyFixer("dummy", "some-tag"),
+                DummyFixer("dummy", ["some-tag"]),
                 update_changelog=False,
                 committer=committer,
             )
@@ -839,7 +839,9 @@ class LintianBrushVersion(TestCase):
         with open("debian/changelog", "r") as f:
             cl = Changelog(f, max_blocks=1)
         package_version = str(cl.version)
-        package_version = re.match(r'^\d+\.\d+', package_version)[0]
+        m = re.match(r'^\d+\.\d+', package_version)
+        assert m is not None
+        package_version = m.group(0)
         self.assertEqual(package_version, version_string)
 
 
@@ -882,7 +884,7 @@ class CertaintySufficientTests(TestCase):
         self.assertTrue(certainty_sufficient("possible", None))
         # TODO(jelmer): Should we really always allow unknown certainties
         # through?
-        self.assertTrue(certainty_sufficient(None, "certain"))
+        self.assertTrue(certainty_sufficient(None, "certain"))  # type: ignore
 
     def test_insufficient(self):
         self.assertFalse(certainty_sufficient("possible", "certain"))
@@ -968,7 +970,13 @@ Patch-Name: aname
 
 class BaseScriptFixerTests(object):
 
-    script_fixer_cls: Type[Fixer]
+    script_fixer_cls: Type[ScriptFixer]
+
+    build_tree_contents: Callable
+    assertEqual: Callable
+    assertIsInstance: Callable
+    assertRaises: Callable
+    test_dir: str
 
     def create_fixer(self, code):
         self.build_tree_contents(
@@ -1019,7 +1027,7 @@ class ScriptFixerTests(BaseScriptFixerTests, TestCaseWithTransport):
 
 class PythonScriptFixerTests(BaseScriptFixerTests, TestCaseWithTransport):
 
-    script_fixer_cls = PythonScriptFixer
+    script_fixer_cls = PythonScriptFixer   # type: ignore
 
 
 class SelectFixersTests(TestCase):
@@ -1030,8 +1038,8 @@ class SelectFixersTests(TestCase):
                 f.name
                 for f in select_fixers(
                     [
-                        DummyFixer("dummy1", "some-tag"),
-                        DummyFixer("dummy2", "other-tag"),
+                        DummyFixer("dummy1", ["some-tag"]),
+                        DummyFixer("dummy2", ["other-tag"]),
                     ],
                     names=["dummy1"],
                 )
@@ -1040,7 +1048,7 @@ class SelectFixersTests(TestCase):
 
     def test_missing(self):
         self.assertRaises(
-            KeyError, select_fixers, [DummyFixer("dummy", "some-tag")],
+            KeyError, select_fixers, [DummyFixer("dummy", ["some-tag"])],
             names=["other"]
         )
 
@@ -1048,7 +1056,7 @@ class SelectFixersTests(TestCase):
         self.assertRaises(
             KeyError,
             select_fixers,
-            [DummyFixer("dummy", "some-tag")],
+            [DummyFixer("dummy", ["some-tag"])],
             names=["dummy"],
             exclude=["some-other"],
         )
@@ -1060,8 +1068,8 @@ class SelectFixersTests(TestCase):
                 f.name
                 for f in select_fixers(
                     [
-                        DummyFixer("dummy1", "some-tag"),
-                        DummyFixer("dummy2", "other-tag"),
+                        DummyFixer("dummy1", ["some-tag"]),
+                        DummyFixer("dummy2", ["other-tag"]),
                     ],
                     names=["dummy1", "dummy2"],
                     exclude=["dummy2"],

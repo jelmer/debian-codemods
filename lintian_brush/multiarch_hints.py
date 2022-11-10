@@ -24,6 +24,7 @@ import os
 import re
 import sys
 import time
+from typing import Optional, Dict, List, Any, Union
 
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen, Request
@@ -97,14 +98,14 @@ def parse_multiarch_hints(f):
 
 
 def multiarch_hints_by_binary(hints):
-    ret = {}
+    ret: Dict[str, List[Any]] = {}
     for entry in hints:
         ret.setdefault(entry["binary"], []).append(entry)
     return ret
 
 
 def multiarch_hints_by_source(hints):
-    ret = {}
+    ret: Dict[str, List[Any]] = {}
     for entry in hints:
         if "source" not in entry:
             continue
@@ -124,13 +125,14 @@ def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
         os.makedirs(cache_dir, exist_ok=True)
     except PermissionError:
         local_hints_path = None
+        last_modified = None
         logging.warning("Unable to create %s; not caching.", cache_dir)
     else:
         local_hints_path = os.path.join(cache_dir, "multiarch-hints.yml")
-    try:
-        last_modified = os.path.getmtime(local_hints_path)
-    except FileNotFoundError:
-        last_modified = None
+        try:
+            last_modified = os.path.getmtime(local_hints_path)
+        except FileNotFoundError:
+            last_modified = None
     try:
         with download_multiarch_hints(url=url, since=last_modified) as f:
             if local_hints_path is None:
@@ -139,16 +141,17 @@ def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
             logging.info("Downloading new version of multi-arch hints.")
             with open(local_hints_path, "wb") as c:
                 c.writelines(f)
+            yield open(local_hints_path, "rb")
     except HTTPError as e:
         if e.status != 304:
             raise
     except URLError:
         raise
-    yield open(local_hints_path, "rb")
 
 
 @contextlib.contextmanager
-def download_multiarch_hints(url=MULTIARCH_HINTS_URL, since: int = None):
+def download_multiarch_hints(url=MULTIARCH_HINTS_URL,
+                             since: Optional[Union[float, int]] = None):
     """Load multi-arch hints from a URL.
 
     Args:
@@ -269,7 +272,7 @@ def apply_multiarch_hints(hints, minimum_certainty="certain"):
 
 
 def changes_by_description(changes):
-    by_description = {}
+    by_description: Dict[str, List[str]] = {}
     for (binary, hint, description, certainty) in changes:
         by_description.setdefault(description, []).append(binary["Package"])
     return by_description
@@ -370,7 +373,7 @@ def main(argv=None):  # noqa: C901
 
     import breezy  # noqa: E402
 
-    breezy.initialize()
+    breezy.initialize()  # type: ignore
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
 
@@ -450,7 +453,7 @@ def main(argv=None):  # noqa: C901
         if update_changelog is None:
             update_changelog = cfg.update_changelog()
 
-    use_inotify = ((False if args.disable_inotify else None),)
+    use_inotify = (False if args.disable_inotify else None)
     with wt.lock_write():
         try:
             check_clean_tree(wt, wt.basis_tree(), subpath)
