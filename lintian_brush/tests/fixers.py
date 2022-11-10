@@ -95,7 +95,7 @@ class FixerTestCase(unittest.TestCase):
         env["NET_ACCESS"] = "disallow"
         env["MINIMUM_CERTAINTY"] = "possible"
         env["PYTHONPATH"] = ':'.join(
-            [os.path.dirname(os.path.dirname(__file__))]
+            [os.path.dirname(os.path.dirname(os.path.dirname(__file__)))]
             + sys.path)
         env_path = os.path.join(self._path, "env")
         if os.path.exists(env_path):
@@ -228,7 +228,8 @@ if __name__ == "__main__":
     fixers = list(available_lintian_fixers())
     if args.fixer:
         try:
-            fixers = select_fixers(fixers, args.fixer, args.exclude)
+            fixers = select_fixers(
+                fixers, names=args.fixer, exclude=args.exclude)
         except KeyError as e:
             print("Selected fixer %s does not exist." % (
                 e.args[0]), file=sys.stderr)
