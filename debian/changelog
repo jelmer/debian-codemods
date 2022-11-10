@@ -1,4 +1,4 @@
-lintian-brush (0.135) UNRELEASED; urgency=medium
+lintian-brush (0.135) unstable; urgency=medium
 
   * field-name-typo-in-dep5-copyright: Don't overwrite existing fields.
   * Various formatting improvements.
@@ -12,7 +12,7 @@ lintian-brush (0.135) UNRELEASED; urgency=medium
   * old-override-info-format: Fix executable-is-not-world-readable
     order.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 01 Nov 2022 18:10:53 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 10 Nov 2022 18:10:22 +0000
 
 lintian-brush (0.134) unstable; urgency=medium
 
