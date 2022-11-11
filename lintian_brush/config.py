@@ -47,6 +47,13 @@ def _oldest_name(fn):
     return min(fn(result="object"), key=lambda r: r.created).codename
 
 
+def oldest_supported_lts(info):
+    return min(
+        [r for r in info.supported(result='object')
+         if info.is_lts(r.codename)],
+        key=lambda r: r.created).codename
+
+
 def resolve_release_codename(name: str, date=None) -> Optional[str]:
     if '/' in name:
         distro, name = name.split('/', 1)
@@ -68,6 +75,8 @@ def resolve_release_codename(name: str, date=None) -> Optional[str]:
         ubuntu = distro_info.UbuntuDistroInfo()
         if name == 'esm':
             return _oldest_name(ubuntu.supported_esm)
+        if name == 'lts':
+            return oldest_supported_lts(ubuntu)
         if ubuntu.valid(name):
             return name
         return None

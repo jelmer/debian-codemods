@@ -45,6 +45,7 @@ class ResolveCodeNameTests(TestCase):
     def test_resolve_ubuntu(self):
         self.assertEqual("trusty", resolve_release_codename("trusty"))
         self.assertEqual("trusty", resolve_release_codename("ubuntu/trusty"))
+        self.assertIsInstance(resolve_release_codename("ubuntu/lts"), str)
 
     def test_resolve_ubuntu_esm(self):
         self.assertIsInstance(resolve_release_codename("ubuntu/esm"), str)
