@@ -40,18 +40,18 @@ def _oldoldstable(debian_info):
     distros = [x for x in debian_info._releases if x.release is not None]
     if len(distros) < 2:
         raise distro_info.DistroDataOutdated()
-    return distros[-3].codename
+    return distros[-3].series
 
 
 def _oldest_name(fn):
-    return min(fn(result="object"), key=lambda r: r.created).codename
+    return min(fn(result="object"), key=lambda r: r.created).series
 
 
 def oldest_supported_lts(info):
     return min(
         [r for r in info.supported(result='object')
-         if info.is_lts(r.codename)],
-        key=lambda r: r.created).codename
+         if info.is_lts(r.series)],
+        key=lambda r: r.created).series
 
 
 def resolve_release_codename(name: str, date=None) -> Optional[str]:
