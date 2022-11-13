@@ -1,3 +1,9 @@
+lintian-brush (0.136) UNRELEASED; urgency=medium
+
+  * Handle TooManyOpenFiles from inotify.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 13 Nov 2022 13:26:13 +0000
+
 lintian-brush (0.135) unstable; urgency=medium
 
   * field-name-typo-in-dep5-copyright: Don't overwrite existing fields.
