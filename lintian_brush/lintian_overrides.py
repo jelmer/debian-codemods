@@ -239,6 +239,13 @@ INTERTWINED_FLN_SUB = [
     (r"^(?P<path>[^ ]+) (.+) \*", r"\2 [\1:*]"),
     (r"^(?P<path>[^ ]+) \*", r"* [\1:*]"),
 ]
+COPYRIGHT_SUB = [
+    (r"^debian/copyright (.+) \(line (" + LINENO_MATCH + r")\)",
+     r"\1 [debian/copyright:\2]"),
+    (r"^debian/copyright (.+) \*", r"\1 [debian/copyright:*]"),
+    (r"^debian/copyright \*", r"* [debian/copyright:*]"),
+    (r"^([^/ ]+) \*", r"\1 [debian/copyright:*]"),
+]
 # "$file" => "[$file]"
 PURE_FN_SUB = (r"^(?P<path>[^[ ]+)", r"[\1]")
 
@@ -256,7 +263,8 @@ INFO_FIXERS = {
             r"\1 [debian/source/options:\2]"),
     "global-files-wildcard-not-first-paragraph-in-dep5-copyright":
         PURE_FLN_SUB,
-    "missing-license-paragraph-in-dep5-copyright": INTERTWINED_FLN_SUB,
+    "missing-license-paragraph-in-dep5-copyright": COPYRIGHT_SUB,
+    "missing-license-text-in-dep5-copyright": COPYRIGHT_SUB,
     "unused-license-paragraph-in-dep5-copyright": (
         r"([^ ]+) (.*) \(line (" + LINENO_MATCH + r")\)",
         r"\2 [\1:\3]"),
@@ -318,7 +326,6 @@ INFO_FIXERS = {
          r"\3 > \4 [\1:\2]"),
         (r"^(?P<path>[^ ]+) \*", r"* [\1:*]"),
         (r"^(?P<path>[^ ]+) line \*$", r"* [\1:*]")],
-    "missing-license-text-in-dep5-copyright": INTERTWINED_FLN_SUB,
     "national-encoding": PURE_FN_SUB,
     "no-manual-page": PURE_FN_SUB,
     "package-contains-empty-directory": PURE_FN_SUB,

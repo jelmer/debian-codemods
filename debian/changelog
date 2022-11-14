@@ -1,6 +1,8 @@
 lintian-brush (0.136) UNRELEASED; urgency=medium
 
   * Handle TooManyOpenFiles from inotify.
+  * Improve info format upgrade for missing-license-paragraph-in-dep5-
+    copyright and missing-license-text-in-dep5-copyright.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 13 Nov 2022 13:26:13 +0000
 

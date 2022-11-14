@@ -197,6 +197,8 @@ INFO_FIXER_TESTS = [
     ('source-ships-excluded-file',
      'compiler/gradle/wrapper/gradle-wrapper.jar',
      'compiler/gradle/wrapper/gradle-wrapper.jar [debian/copyright:*]'),
+    ('missing-license-paragraph-in-dep5-copyright', 'artistic *',
+     'artistic [debian/copyright:*]'),
 ]
 
 
