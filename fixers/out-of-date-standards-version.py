@@ -15,6 +15,9 @@ from debian.deb822 import Deb822
 from lintian_brush.fixer import control, report_result, LintianIssue
 from lintian_brush.standards_version import iter_standards_versions
 
+# For the Debian Policy upgrade checklist, see
+# https://www.debian.org/doc/debian-policy/upgrading-checklist.html
+
 # Dictionary mapping source and target versions
 upgrade_path = {
     "4.1.0": "4.1.1",
