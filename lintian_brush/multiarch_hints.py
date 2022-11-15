@@ -137,10 +137,10 @@ def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
         with download_multiarch_hints(url=url, since=last_modified) as f:
             if local_hints_path is None:
                 yield f
-            else:
-                logging.info("Downloading new version of multi-arch hints.")
-                with open(local_hints_path, "wb") as c:
-                    c.writelines(f)
+                return
+            logging.info("Downloading new version of multi-arch hints.")
+            with open(local_hints_path, "wb") as c:
+                c.writelines(f)
     except HTTPError as e:
         if e.status != 304:
             raise
