@@ -454,7 +454,8 @@ def main(argv=None):  # noqa: C901
             update_changelog = cfg.update_changelog()
 
     use_inotify = (False if args.disable_inotify else None)
-    with wt.lock_write():
+    with contextlib.ExitStack() as es:
+        es.enter_context(wt.lock_write())
         try:
             check_clean_tree(wt, wt.basis_tree(), subpath)
         except WorkspaceDirty:
@@ -463,8 +464,15 @@ def main(argv=None):  # noqa: C901
             return 1
 
         dirty_tracker = get_dirty_tracker(wt, subpath, use_inotify)
-        if dirty_tracker:
-            dirty_tracker.mark_clean()
+        # Only Breezy >= 3.3.1 has DirtyTracker as a context manager
+        if dirty_tracker and hasattr(dirty_tracker, '__enter__'):
+            from breezy.dirty_tracker import TooManyOpenFiles
+            try:
+                es.enter_context(dirty_tracker)
+            except TooManyOpenFiles:
+                logging.warning(
+                    'Too many open files for inotify, not using it.')
+                dirty_tracker = None
 
         try:
             with cache_download_multiarch_hints() as f:
