@@ -141,12 +141,12 @@ def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
                 logging.info("Downloading new version of multi-arch hints.")
                 with open(local_hints_path, "wb") as c:
                     c.writelines(f)
-                yield open(local_hints_path, "rb")
     except HTTPError as e:
         if e.status != 304:
             raise
     except URLError:
         raise
+    yield open(local_hints_path, "rb")
 
 
 @contextlib.contextmanager
