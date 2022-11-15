@@ -12,8 +12,12 @@ from debmutate.control import (
 from typing import Dict, List
 from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
-from lintian_brush.fixer import control, report_result, LintianIssue
+from lintian_brush.fixer import control, report_result, LintianIssue, is_debcargo_package
 from lintian_brush.standards_version import iter_standards_versions
+
+if is_debcargo_package():
+    # Not relevant
+    sys.exit(0)
 
 # For the Debian Policy upgrade checklist, see
 # https://www.debian.org/doc/debian-policy/upgrading-checklist.html
