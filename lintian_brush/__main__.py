@@ -449,7 +449,6 @@ def main(argv=None):  # noqa: C901
                 with open(os.environ['SVP_RESUME'], 'r') as f:
                     base = json.load(f)
                     applied.extend(base['applied'])
-            all_fixed_lintian_tags = set()
             for result, summary in overall_result.success:
                 applied.append(
                     {
@@ -460,7 +459,9 @@ def main(argv=None):  # noqa: C901
                         "certainty": result.certainty,
                     }
                 )
-                all_fixed_lintian_tags.update(result.fixed_lintian_tags)
+            all_fixed_lintian_tags = set()
+            for entry in applied:
+                all_fixed_lintian_tags.update(entry['fixed_lintian_tags'])
             failed = {
                 name: str(e)
                 for (name, e) in overall_result.failed_fixers.items()}
