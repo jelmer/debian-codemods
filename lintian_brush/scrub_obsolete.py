@@ -619,6 +619,7 @@ def report_okay(code: str, description: str) -> None:
 def main():  # noqa: C901
     import argparse
     import breezy  # noqa: E402
+    from breezy.errors import NotBranchError
 
     breezy.initialize()  # type: ignore
     import breezy.git  # noqa: E402
@@ -691,7 +692,18 @@ def main():  # noqa: C901
 
     args = parser.parse_args()
 
-    wt, subpath = WorkingTree.open_containing(args.directory)
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+    try:
+        wt, subpath = WorkingTree.open_containing(args.directory)
+    except NotBranchError:
+        logging.error(
+            "No version control directory found (e.g. a .git directory).")
+        return 1
+
     if args.identity:
         logging.info('%s', get_committer(wt))
         return 0
@@ -707,11 +719,6 @@ def main():  # noqa: C901
         import distro_info
         debian_info = distro_info.DebianDistroInfo()
         upgrade_release = debian_info.codename(args.upgrade_release)
-
-        if args.debug:
-            logging.basicConfig(level=logging.DEBUG)
-        else:
-            logging.basicConfig(level=logging.INFO, format='%(message)s')
 
         update_changelog = args.update_changelog
         allow_reformatting = args.allow_reformatting

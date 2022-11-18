@@ -372,6 +372,7 @@ def main(argv=None):  # noqa: C901
     from breezy.workingtree import WorkingTree
 
     import breezy  # noqa: E402
+    from breezy.errors import NotBranchError
 
     breezy.initialize()  # type: ignore
     import breezy.git  # noqa: E402
@@ -434,7 +435,13 @@ def main(argv=None):  # noqa: C901
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
     minimum_certainty = args.minimum_certainty
-    wt, subpath = WorkingTree.open_containing(args.directory)
+    try:
+        wt, subpath = WorkingTree.open_containing(args.directory)
+    except NotBranchError:
+        logging.error(
+            "No version control directory found (e.g. a .git directory).")
+        return 1
+
     if args.identity:
         logging.info('%s', get_committer(wt))
         return 0
