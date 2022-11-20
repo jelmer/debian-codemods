@@ -7,7 +7,7 @@ lintian-brush (0.137) UNRELEASED; urgency=medium
 
 lintian-brush (0.136) unstable; urgency=medium
 
-  * Handle TooManyOpenFiles from inotify.
+  * Handle TooManyOpenFiles from inotify, and degrade gracefully.
   * Improve info format upgrade for missing-license-paragraph-in-dep5-
     copyright and missing-license-text-in-dep5-copyright.
 
