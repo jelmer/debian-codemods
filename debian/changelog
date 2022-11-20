@@ -1,3 +1,10 @@
+lintian-brush (0.137) UNRELEASED; urgency=medium
+
+  * transitional-package-should-be-oldlibs-optional: Don't move udeb
+    packages to oldlibs. Closes: #1024398
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 20 Nov 2022 11:49:07 +0000
+
 lintian-brush (0.136) unstable; urgency=medium
 
   * Handle TooManyOpenFiles from inotify.

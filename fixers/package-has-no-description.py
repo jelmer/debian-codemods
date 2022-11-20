@@ -9,6 +9,7 @@ from lintian_brush.fixer import (
     net_access_allowed,
     report_result,
     trust_package,
+    warn,
     )
 from typing import List
 from upstream_ontologist.guess import guess_upstream_metadata
@@ -34,10 +35,16 @@ def textwrap_description(text) -> List[str]:
     return ret
 
 
+# TODO(jelmer): Use debmutate.control.format_description instead
+def format_description(summary, lines):
+    return summary + "\n" + ''.join([" %s\n" % line for line in lines])
+
+
 def guess_description(binary_name, all_binaries, summary=None):
     if len(all_binaries) != 1:
         # TODO(jelmer): Support handling multiple binaries
         return None
+
     upstream_metadata = guess_upstream_metadata(
         '.', trust_package(), net_access_allowed())
     if summary is None:
@@ -53,7 +60,8 @@ def guess_description(binary_name, all_binaries, summary=None):
             return upstream_description[0].rstrip('\n')
         return None
     lines = [line if line else '.' for line in upstream_description]
-    description = summary + "\n" + ''.join([" %s\n" % line for line in lines])
+
+    return format_description(summary, lines)
     return description.rstrip('\n')
 
 

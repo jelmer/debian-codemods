@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, LintianIssue
 
 packages = []
 
@@ -10,18 +10,23 @@ with control as updater:
 
     # TODO(jelmer): needs higher certainty?
     for binary in updater.binaries:
-        if "transitional package" in binary.get("Description", ""):
-            fixed_lintian_tag(
-                binary, 'transitional-package-not-oldlibs-optional',
-                '%s/%s' % (
-                    binary.get('Section') or updater.source.get('Section'),
-                    binary.get('Priority') or updater.source.get('Priority')))
+        if binary.get("Package-Type") == "udeb":
+            continue
+        if "transitional package" not in binary.get("Description", ""):
+            continue
+        issue = LintianIssue(
+            binary, 'transitional-package-not-oldlibs-optional',
+            '%s/%s' % (
+                binary.get('Section') or updater.source.get('Section'),
+                binary.get('Priority') or updater.source.get('Priority')))
+        if issue.should_fix():
             packages.append(binary["Package"])
             binary["Section"] = "oldlibs"
             if default_priority != "optional":
                 binary["Priority"] = "optional"
             elif "Priority" in binary:
                 del binary["Priority"]
+            issue.report_fixed()
 
 
 report_result(

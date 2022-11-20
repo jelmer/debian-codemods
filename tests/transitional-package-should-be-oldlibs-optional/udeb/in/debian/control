@@ -1,0 +1,20 @@
+
+Source: gdk-pixbuf
+Section: libs
+Priority: optional
+
+Package: libgdk-pixbuf2.0-0-udeb
+Build-Profiles: <!noudeb>
+Package-Type: udeb
+Section: debian-installer
+Architecture: any
+Depends: libgdk-pixbuf-2.0-0-udeb (= ${binary:Version}), ${misc:Depends}, ${shlibs:Depends}
+Description: GDK Pixbuf library - minimal runtime
+ This is a udeb, or a microdeb, for the debian-installer.
+ .
+ The GDK Pixbuf library provides:
+  - Image loading and saving facilities.
+  - Fast scaling and compositing of pixbufs.
+  - Simple animation loading (ie. animated GIFs)
+ .
+ This transitional package depends on libgdk-pixbuf-2.0-0-udeb.
