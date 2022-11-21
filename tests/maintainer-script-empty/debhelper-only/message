@@ -1,2 +1,3 @@
 Remove empty maintainer scripts: mon (prerm)
+Certainty: certain
 Fixed-Lintian-Tags: maintainer-script-empty
