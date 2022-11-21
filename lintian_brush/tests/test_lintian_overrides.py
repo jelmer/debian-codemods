@@ -168,9 +168,17 @@ class InfoFixerTests(TestCase):
             self.assertIn(tag, tags)
 
     def test_valid_regexes(self):
-        for v in INFO_FIXERS:
+        for tag, v in INFO_FIXERS.items():
             if isinstance(v, tuple):
-                re.compile(v)
+                vs = [v]
+            elif isinstance(v, list):
+                vs = v
+            for v in vs:
+                if isinstance(v, tuple):
+                    try:
+                        re.compile(v[0])
+                    except re.error as e:
+                        self.fail('Invalid regex %s: %s' % (v[0], e))
 
 
 INFO_FIXER_TESTS = [
@@ -199,6 +207,12 @@ INFO_FIXER_TESTS = [
      'compiler/gradle/wrapper/gradle-wrapper.jar [debian/copyright:*]'),
     ('missing-license-paragraph-in-dep5-copyright', 'artistic *',
      'artistic [debian/copyright:*]'),
+    ('script-not-executable', r'\[etc/lynis/plugins/*',
+     r'\[etc/lynis/plugins/*'),
+    ('source-is-missing',
+     'pydata_sphinx_theme/static/js/index.d8bbf5861d671d414e1a.js line length '
+     'is 992 characters (>512)',
+     '[pydata_sphinx_theme/static/js/index.d8bbf5861d671d414e1a.js]'),
 ]
 
 

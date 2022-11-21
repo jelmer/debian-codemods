@@ -221,33 +221,34 @@ def load_renamed_tags():
         return json.load(f)
 
 
-LINENO_MATCH = r"\d+|\*"
+LINENO_MATCH = r"(?P<lineno>\d+|\*)"
+PATH_MATCH = r"(?P<path>(?!\\\[)[^[ ]+)"
 
 # Common regexes, for convenience:
 
 # "$file (line $lineno)" => "[$file:$lineno]"
 PURE_FLN_SUB = (
-    r"^(?P<path>[^[ ].+) \(line (?P<lineno>" + LINENO_MATCH + r")\)$",
+    r"^" + PATH_MATCH + " \(line " + LINENO_MATCH + r"\)$",
     r"[\1:\2]")
 # "$file (line $lineno)" => "* [$file:$lineno]"
 PURE_FLN_WILDCARD_SUB = (
-    r"^(?P<path>[^ ]+) \(line (?P<lineno>" + LINENO_MATCH + r")\)$",
+    r"^" + PATH_MATCH + " \(line " + LINENO_MATCH + r"\)$",
     r"* [\1:\2]")
 INTERTWINED_FLN_SUB = [
-    (r"^(?P<path>[^ ]+) (.+) \(line (" + LINENO_MATCH + r")\)",
+    (r"^" + PATH_MATCH + r" (.+) \(line (" + LINENO_MATCH + r"\)",
      r"\2 [\1:\3]"),
-    (r"^(?P<path>[^ ]+) (.+) \*", r"\2 [\1:*]"),
-    (r"^(?P<path>[^ ]+) \*", r"* [\1:*]"),
+    (r"^" + PATH_MATCH + r" (.+) \*", r"\2 [\1:*]"),
+    (r"^" + PATH_MATCH + r" \*", r"* [\1:*]"),
 ]
 COPYRIGHT_SUB = [
-    (r"^debian/copyright (.+) \(line (" + LINENO_MATCH + r")\)",
+    (r"^debian/copyright (.+) \(line " + LINENO_MATCH + r"\)",
      r"\1 [debian/copyright:\2]"),
     (r"^debian/copyright (.+) \*", r"\1 [debian/copyright:*]"),
     (r"^debian/copyright \*", r"* [debian/copyright:*]"),
     (r"^([^/ ]+) \*", r"\1 [debian/copyright:*]"),
 ]
 # "$file" => "[$file]"
-PURE_FN_SUB = (r"^(?P<path>[^[ ]+)", r"[\1]")
+PURE_FN_SUB = (r"^" + PATH_MATCH + "$", r"[\1]")
 
 
 # When adding new expressions here, make sure the first argument doesn't match
@@ -257,57 +258,58 @@ INFO_FIXERS = {
         PURE_FLN_WILDCARD_SUB,
     "debian-rules-parses-dpkg-parsechangelog": PURE_FLN_SUB,
     "debian-rules-should-not-use-custom-compression-settings":
-        (r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/rules:\2]"),
+        (r"(.*) \(line " + LINENO_MATCH + r"\)", r"\1 [debian/rules:\2]"),
     "debian-source-options-has-custom-compression-settings":
-        (r"(.*) \(line (" + LINENO_MATCH + r")\)",
+        (r"(.*) \(line " + LINENO_MATCH + r"\)",
             r"\1 [debian/source/options:\2]"),
     "global-files-wildcard-not-first-paragraph-in-dep5-copyright":
         PURE_FLN_SUB,
     "missing-license-paragraph-in-dep5-copyright": COPYRIGHT_SUB,
     "missing-license-text-in-dep5-copyright": COPYRIGHT_SUB,
     "unused-license-paragraph-in-dep5-copyright": (
-        r"([^ ]+) (.*) \(line (" + LINENO_MATCH + r")\)",
+        r"([^ ]+) (.*) \(line " + LINENO_MATCH + r"\)",
         r"\2 [\1:\3]"),
     "license-problem-undefined-license": (
-        r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/copyright:\2]"),
+        r"(.*) \(line " + LINENO_MATCH + r"\)", r"\1 [debian/copyright:\2]"),
     "debhelper-tools-from-autotools-dev-are-deprecated": (
-        r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/rules:\2]"),
+        r"(.*) \(line " + LINENO_MATCH + r"\)", r"\1 [debian/rules:\2]"),
     "version-substvar-for-external-package": (
-        r"([^ ]+) \(line (" + LINENO_MATCH + r")\) (.*)",
+        r"([^ ]+) \(line " + LINENO_MATCH + r"\) (.*)",
         r"\1 \3 [debian/control:\2]"),
     "debian-watch-uses-insecure-uri": (
-        r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/watch:\2]"),
+        r"(.*) \(line " + LINENO_MATCH + r"\)", r"\1 [debian/watch:\2]"),
     "uses-deprecated-adttmp": (
-        r"([^ ]+) \(line (" + LINENO_MATCH + r")\)", r"[\1:\2]"),
+        r"([^ ]+) \(line " + LINENO_MATCH + r"\)", r"[\1:\2]"),
     "incomplete-creative-commons-license": (
-        r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/copyright:\2]"),
+        r"(.*) \(line " + LINENO_MATCH + r"\)", r"\1 [debian/copyright:\2]"),
     "debian-rules-sets-dpkg-architecture-variable": (
-        r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/rules:\2]"),
+        r"(.*) \(line " + LINENO_MATCH + r"\)", r"\1 [debian/rules:\2]"),
     "override_dh_auto_test-does-not-check-DEB_BUILD_OPTIONS": (
-        r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/rules:\2]"),
+        r"(.*) \(line " + LINENO_MATCH + r"\)", r"\1 [debian/rules:\2]"),
     "dh-quilt-addon-but-quilt-source-format": (
-        r"(.*) \(line (" + LINENO_MATCH + r")\)", r"\1 [debian/rules:\2]"),
+        r"(.*) \(line " + LINENO_MATCH + r"\)", r"\1 [debian/rules:\2]"),
     "uses-dpkg-database-directly": PURE_FN_SUB,
     "package-contains-documentation-outside-usr-share-doc": PURE_FN_SUB,
     "non-standard-dir-perm": (
-        r"^(?P<path>[^ ]+) ([0-9]+) \!= ([0-9]+)", r"\2 != \3 [\1]"),
+        r"^" + PATH_MATCH + r" ([0-9]+) \!= ([0-9]+)", r"\2 != \3 [\1]"),
     "non-standard-file-perm": (
-        r"^(?P<path>[^ ]+) ([0-9]+) \!= ([0-9]+)", r"\2 != \3 [\1]"),
+        r"^" + PATH_MATCH + r" ([0-9]+) \!= ([0-9]+)", r"\2 != \3 [\1]"),
     "executable-is-not-world-readable": (
-        r"^(?P<path>[^ ]+) ([0-9]+)", r"\2 [\1]"),
+        r"^" + PATH_MATCH + r" ([0-9]+)", r"\2 [\1]"),
     "library-not-linked-against-libc": PURE_FN_SUB,
     "setuid-binary": (
-        r"^(?P<path>[^[ ]+) (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),
+        r"^" + PATH_MATCH + " (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),
     "elevated-privileges": (
-        r"^(?P<path>[^[ ]+) (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),
+        r"^" + PATH_MATCH + " (?P<mode>[0-9]+) (.+/.+)", r"\2 \3 [\1]"),
     "executable-in-usr-lib": PURE_FN_SUB,
     "executable-not-elf-or-script": PURE_FN_SUB,
     "image-file-in-usr-lib": PURE_FN_SUB,
     "extra-license-file": PURE_FN_SUB,
     "script-not-executable": PURE_FN_SUB,
     "shell-script-fails-syntax-check": PURE_FN_SUB,
-    "manpage-has-errors-from-man": (r"^(?P<path)[^[ ]+) ([^[]*)", r"\2 [\1]"),
-    "groff-message": (r"^(?P<path)[^ ]+) ([^[ ]+)", r"\2 [\1]"),
+    "manpage-has-errors-from-man":
+        (r"^" + PATH_MATCH + " ([^[]*)", r"\2 [\1]"),
+    "groff-message": (r"^" + PATH_MATCH + " ([^[ ]+)", r"\2 [\1]"),
     "source-contains-prebuilt-javascript-object": [
         PURE_FN_SUB,
         (r"^(?P<path>[^[ ].+) line length is .*", r"[\1]")],
@@ -324,8 +326,8 @@ INFO_FIXERS = {
     "very-long-line-length-in-source-file": [
         (r"(.*) line ([0-9]+) is ([0-9]+) characters long \(>([0-9]+)\)",
          r"\3 > \4 [\1:\2]"),
-        (r"^(?P<path>[^ ]+) \*", r"* [\1:*]"),
-        (r"^(?P<path>[^ ]+) line \*$", r"* [\1:*]")],
+        (r"^" + PATH_MATCH + " \*", r"* [\1:*]"),
+        (r"^" + PATH_MATCH + " line \*$", r"* [\1:*]")],
     "national-encoding": PURE_FN_SUB,
     "no-manual-page": PURE_FN_SUB,
     "package-contains-empty-directory": PURE_FN_SUB,
