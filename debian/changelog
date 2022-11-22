@@ -1,11 +1,11 @@
-lintian-brush (0.137) UNRELEASED; urgency=medium
+lintian-brush (0.137) unstable; urgency=medium
 
   * transitional-package-should-be-oldlibs-optional: Don't move udeb
     packages to oldlibs. Closes: #1024398
   * maintainer-script-emty: Drop certainty for removing empty maintainer
     scripts that are just comments and seem to be intentional.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 20 Nov 2022 11:49:07 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 22 Nov 2022 23:48:18 +0000
 
 lintian-brush (0.136) unstable; urgency=medium
 
