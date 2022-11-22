@@ -213,6 +213,9 @@ INFO_FIXER_TESTS = [
      'pydata_sphinx_theme/static/js/index.d8bbf5861d671d414e1a.js line length '
      'is 992 characters (>512)',
      '[pydata_sphinx_theme/static/js/index.d8bbf5861d671d414e1a.js]'),
+    ('very-long-line-length-in-source-file',
+     'build/js/bootstrap-tour-standalone.js line length is 587 characters '
+     '(>512)', '587 > 512 [build/js/bootstrap-tour-standalone.js:*]'),
 ]
 
 

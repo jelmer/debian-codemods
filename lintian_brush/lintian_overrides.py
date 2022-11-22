@@ -324,8 +324,12 @@ INFO_FIXERS = {
     "spelling-error-in-binary":
         (r"^(?P<path>[^[ ]+) (.+) ([^[]+)$", r"\2 \3 [\1]"),
     "very-long-line-length-in-source-file": [
-        (r"(.*) line ([0-9]+) is ([0-9]+) characters long \(>([0-9]+)\)",
+        (PATH_MATCH +
+         r" line ([0-9]+) is ([0-9]+) characters long \(>([0-9]+)\)",
          r"\3 > \4 [\1:\2]"),
+        (PATH_MATCH +
+         r" line length is ([0-9]+) characters \(>([0-9]+)\)",
+         r"\2 > \3 [\1:*]"),
         (r"^" + PATH_MATCH + " \*", r"* [\1:*]"),
         (r"^" + PATH_MATCH + " line \*$", r"* [\1:*]")],
     "national-encoding": PURE_FN_SUB,
