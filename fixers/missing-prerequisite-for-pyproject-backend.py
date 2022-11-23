@@ -19,9 +19,9 @@ build_backend = toml.get('build-system', {}).get('build-backend')
 
 # See /usr/share/lintian/lib/Lintian/Check/Languages/Python.pm
 PREREQUISITE_MAP = {
-    'poetry.core.masonry.api': 'python3-poetry-core:any',
-    'flit_core.buildapi': 'flit:any',
-    'setuptools.build_meta': 'python3-setuptools:any'
+    'poetry.core.masonry.api': 'python3-poetry-core',
+    'flit_core.buildapi': 'flit',
+    'setuptools.build_meta': 'python3-setuptools'
 }
 
 

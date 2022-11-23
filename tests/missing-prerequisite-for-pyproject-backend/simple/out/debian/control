@@ -1,2 +1,2 @@
 Source: foo
-Build-Depends: python3, python3-setuptools:any
+Build-Depends: python3, python3-setuptools
