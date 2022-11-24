@@ -236,7 +236,7 @@ def versions_dict():
         'lintian-brush': lintian_brush.version_string,
         'debmutate': debmutate.version_string,
         'debian': debian.__version__,
-        'ognibuild': ognibuild.version_version,  # type: ignore
+        'ognibuild': ognibuild.version_string,
         'buildlog_consultant': buildlog_consultant.version_string,
         'upstream_ontologist': upstream_ontologist.version_string,
     }
