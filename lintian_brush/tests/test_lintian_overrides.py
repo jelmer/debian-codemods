@@ -184,6 +184,7 @@ class InfoFixerTests(TestCase):
 INFO_FIXER_TESTS = [
     ('maintainer-manual-page', '*', '[*]'),
     ('source-is-missing', 'lib/hash/md4.js', '[lib/hash/md4.js]'),
+    ('source-is-missing', 'lib/hash/md4.js *', '[lib/hash/md4.js]'),
     ('source-is-missing',
      'test/integration/client/big-simple-query-tests.js line '
      'length is 1118 characters (>512)',

@@ -320,6 +320,7 @@ INFO_FIXERS = {
     "source-contains-prebuilt-binary": PURE_FN_SUB,
     "source-is-missing": [
         (r"^(?P<path>[^[ ].+) line length is .*", r"[\1]"),
+        (r"^(?P<path>[^[ ].+) \*", r"[\1]"),
         PURE_FN_SUB],
     "spelling-error-in-binary":
         (r"^(?P<path>[^[ ]+) (.+) ([^[]+)$", r"\2 \3 [\1]"),
