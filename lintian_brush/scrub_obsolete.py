@@ -547,12 +547,12 @@ def _scrub_obsolete(
         with ControlEditor(
                 wt.abspath(control_path),
                 allow_reformatting=allow_reformatting) as editor:
-            specific_files.append(control_path)
             package = editor.source["Source"]
             control_actions = drop_old_relations(
                 editor, binary_package_checker, compat_release,
                 upgrade_release,
                 keep_minimum_depends_versions=keep_minimum_depends_versions)
+        specific_files.extend(wt.safe_relpath_files(editor.changed_files))
     except FileNotFoundError as exc:
         if wt.has_filename(os.path.join(debian_path, "debcargo.toml")):
             control_actions = []
