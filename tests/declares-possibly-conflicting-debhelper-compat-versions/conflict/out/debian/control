@@ -1,4 +1,4 @@
 Source: blah
-Build-Depends: debhelper (>= 10.11)
+Build-Depends: debhelper (>= 10.1)
 
 Package: blah
