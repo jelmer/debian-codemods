@@ -75,7 +75,66 @@ def _note_changelog_policy(policy, msg):
     _changelog_policy_noted = True
 
 
-def depends_obsolete(latest_version: Version, kind: str, req_version: Version):
+class Action:
+    """Action."""
+
+    def __init__(self, rel):
+        self.rel = rel
+
+
+class DropEssential(Action):
+    """Drop dependency on essential package."""
+
+    def __str__(self):
+        return "Drop dependency on essential package %s" % (
+            PkgRelation.str(self.rel))
+
+    def json(self):
+        return ("drop-essential", PkgRelation.str(self.rel))
+
+
+class DropMinimumVersion(Action):
+    """Drop minimumversion."""
+
+    def __str__(self):
+        return "Drop versioned constraint on %s" % PkgRelation.str(self.rel)
+
+    def json(self):
+        return ("drop-minimum-version", PkgRelation.str(self.rel))
+
+
+class ReplaceTransition(Action):
+    """Replace dependency on dummy transitional package."""
+
+    def __init__(self, rel, replacement):
+        super(ReplaceTransition, self).__init__(rel)
+        self.replacement = replacement
+
+    def __str__(self):
+        return (
+            "Replace dependency on transitional package %s "
+            "with replacement %s" % (
+                PkgRelation.str(self.rel), name_list([
+                    PkgRelation.str(p) for p in self.replacement])))
+
+    def json(self):
+        return ("inline-transitional", PkgRelation.str(self.rel),
+                [PkgRelation.str(p) for p in self.replacement])
+
+
+class DropObsoleteConflict(Action):
+    """Drop conflict with obsolete package."""
+
+    def __str__(self):
+        return "Drop conflict with removed package %s" % (
+            PkgRelation.str(self.rel))
+
+    def json(self):
+        return ("drop-obsolete-conflict", PkgRelation.str(self.rel))
+
+
+def depends_obsolete(
+        latest_version: Version, kind: str, req_version: Version) -> bool:
     req_version = Version(req_version)
     if kind == ">=":
         return latest_version >= req_version
@@ -154,15 +213,35 @@ async def _package_build_essential(package: str, release: str) -> bool:
     return package in build_essential
 
 
+async def _fetch_transitions(release: str) -> Dict[str, str]:
+    from .udd import connect_udd_mirror
+    from .dummy_transitional import find_dummy_transitional_packages
+
+    ret = {}
+    async with await connect_udd_mirror() as conn:
+        for transition in (await find_dummy_transitional_packages(
+                conn, release)).values():
+            ret[transition.from_name] = transition.to_expr
+    return ret
+
+
 class PackageChecker(object):
 
     def __init__(self, release: str, build: bool):
         self.release = release
         self.build = build
+        self._transitions: Optional[Dict[str, str]] = None
 
     def package_version(self, package: str) -> Optional[Version]:
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(_package_version(package, self.release))
+
+    def replacement(self, package: str) -> Optional[str]:
+        if self._transitions is None:
+            loop = asyncio.get_event_loop()
+            self._transitions = loop.run_until_complete(
+                _fetch_transitions(self.release))
+        return self._transitions.get(package)
 
     def package_provides(self, package):
         loop = asyncio.get_event_loop()
@@ -183,10 +262,19 @@ def drop_obsolete_depends(
         entry: List[PkgRelation], checker: PackageChecker,
         keep_minimum_versions: bool = False):
     ors = []
-    dropped = []
+    actions: List[Action] = []
     for pkgrel in entry:
         newrel = pkgrel
-        if pkgrel.version is not None and pkgrel.name != 'debhelper':
+        replacement = checker.replacement(pkgrel.name)
+        if replacement:
+            parsed_replacement = PkgRelation.parse(replacement)
+            if len(parsed_replacement) != 1:
+                logging.warning(
+                    'Unable to replace multi-package %r', replacement)
+            else:
+                newrel = parsed_replacement[0]
+                actions.append(ReplaceTransition(pkgrel, parsed_replacement))
+        elif pkgrel.version is not None and pkgrel.name != 'debhelper':
             compat_version = checker.package_version(pkgrel.name)
             logging.debug(
                 "Relation: %s. Upgrade release %s has %r ",
@@ -197,35 +285,36 @@ def drop_obsolete_depends(
                 if not keep_minimum_versions:
                     newrel = PkgRelation.parse(pkgrel.str())[0]
                     newrel.version = None
-                    dropped.append(pkgrel)
+                    actions.append(DropMinimumVersion(pkgrel))
                 # If the package is essential, we don't need to maintain a
                 # dependency on it.
                 if checker.is_essential(pkgrel.name):
-                    return [], entry
+                    actions.append(DropEssential(pkgrel))
+                    return [], actions
         ors.append(newrel)
     # TODO: if dropped: Check if any ors are implied by existing other
     # dependencies
-    return ors, dropped
+    return ors, actions
 
 
 def drop_obsolete_conflicts(checker: PackageChecker, entry: List[PkgRelation]):
     ors = []
-    dropped = []
+    actions: List[Action] = []
     for pkgrel in entry:
         if pkgrel.version is not None:
             compat_version = checker.package_version(pkgrel.name)
             if compat_version is not None and conflict_obsolete(
                 compat_version, *pkgrel.version
             ):
-                dropped.append(pkgrel)
+                actions.append(DropObsoleteConflict(pkgrel))
                 continue
         ors.append(pkgrel)
-    return ors, dropped
+    return ors, actions
 
 
 def update_depends(
         base: Deb822Dict, field: str, checker: PackageChecker,
-        keep_minimum_versions: bool = False) -> List[str]:
+        keep_minimum_versions: bool = False) -> List[Action]:
     return filter_relations(
         base, field,
         lambda oldrelation: drop_obsolete_depends(
@@ -240,12 +329,12 @@ def _relations_empty(rels):
 
 
 RelationsCallback = Callable[
-    [List[PkgRelation]], Tuple[List[PkgRelation], List[PkgRelation]]]
+    [List[PkgRelation]], Tuple[List[PkgRelation], List[Action]]]
 
 
 def filter_relations(
         base: Union[Deb822Dict, Dict[str, str]],
-        field: str, cb: RelationsCallback) -> List[str]:
+        field: str, cb: RelationsCallback) -> List[Action]:
     """Update a relations field."""
     try:
         old_contents = base[field]
@@ -255,10 +344,10 @@ def filter_relations(
     oldrelations = parse_relations(old_contents)
     newrelations = []
 
-    changed = []
+    all_actions: List[Action] = []
     for i, (ws1, oldrelation, ws2) in enumerate(oldrelations):
-        relation, dropped = cb(oldrelation)
-        changed.extend([d.name for d in dropped])
+        relation, actions = cb(oldrelation)
+        all_actions.extend(actions)
         if relation == oldrelation or relation:
             newrelations.append((ws1, relation, ws2))
         elif i == 0 and len(oldrelations) > 1:
@@ -266,17 +355,17 @@ def filter_relations(
             # item
             oldrelations[1] = (ws1, oldrelations[1][1], ws2)
 
-    if changed:
+    if all_actions:
         if _relations_empty(newrelations):
             del base[field]
         else:
             base[field] = format_relations(newrelations)
-        return changed
+        return all_actions
     return []
 
 
 def update_conflicts(
-        base: Deb822Dict, field: str, checker: PackageChecker) -> List[str]:
+        base: Deb822Dict, field: str, checker: PackageChecker) -> List[Action]:
     return filter_relations(
         base, field,
         lambda oldrelation: drop_obsolete_conflicts(checker, oldrelation))
@@ -285,7 +374,7 @@ def update_conflicts(
 def drop_old_source_relations(
         source, compat_release,
         *, keep_minimum_depends_versions: bool = False
-        ) -> List[Tuple[str, List[str], str]]:
+        ) -> List[Tuple[str, List[Action], str]]:
     checker = PackageChecker(compat_release, build=True)
     ret = []
     for field in [
@@ -293,47 +382,47 @@ def drop_old_source_relations(
         "Build-Depends-Indep",
         "Build-Depends-Arch",
     ]:
-        packages = update_depends(
+        actions = update_depends(
             source, field, checker,
             keep_minimum_versions=keep_minimum_depends_versions)
-        if packages:
-            ret.append((field, packages, compat_release))
+        if actions:
+            ret.append((field, actions, compat_release))
     for field in ["Build-Conflicts", "Build-Conflicts-Indep",
                   "Build-Conflicts-Arch"]:
-        packages = update_conflicts(source, field, checker)
-        if packages:
-            ret.append((field, packages, compat_release))
+        actions = update_conflicts(source, field, checker)
+        if actions:
+            ret.append((field, actions, compat_release))
     return ret
 
 
 def drop_old_binary_relations(
-        binary, upgrade_release: str, *,
+        package_checker, binary, upgrade_release: str, *,
         keep_minimum_depends_versions: bool = False
-        ) -> List[Tuple[str, List[str], str]]:
-    checker = PackageChecker(upgrade_release, build=False)
+        ) -> List[Tuple[str, List[Action], str]]:
     ret = []
     for field in ["Depends", "Breaks", "Suggests", "Recommends",
                   "Pre-Depends"]:
-        packages = update_depends(
-            binary, field, checker,
+        actions = update_depends(
+            binary, field, package_checker,
             keep_minimum_versions=keep_minimum_depends_versions)
-        if packages:
-            ret.append((field, packages, upgrade_release))
+        if actions:
+            ret.append((field, actions, upgrade_release))
 
     for field in ["Conflicts", "Replaces", "Breaks"]:
-        packages = update_conflicts(binary, field, checker)
-        if packages:
-            ret.append((field, packages, upgrade_release))
+        actions = update_conflicts(binary, field, package_checker)
+        if actions:
+            ret.append((field, actions, upgrade_release))
 
     return ret
 
 
 def drop_old_relations(
-        editor, compat_release: str, upgrade_release: str,
+        editor, package_checker, compat_release: str, upgrade_release: str,
         *, keep_minimum_depends_versions: bool = False
-        ) -> List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]]:
-    dropped: List[Tuple[Optional[str], List[Tuple[str, List[str], str]]]] = []
-    source_dropped = []
+        ) -> List[Tuple[Optional[str], List[Tuple[str, List[Action], str]]]]:
+    actions: List[
+        Tuple[Optional[str], List[Tuple[str, List[Action], str]]]] = []
+    source_actions = []
     try:
         check_generated_file(editor.path)
     except GeneratedFile as e:
@@ -344,21 +433,21 @@ def drop_old_relations(
     else:
         uses_cdbs = False
     if not uses_cdbs:
-        source_dropped.extend(
+        source_actions.extend(
             drop_old_source_relations(
                 editor.source, compat_release,
                 keep_minimum_depends_versions=keep_minimum_depends_versions))
-    if source_dropped:
-        dropped.append((None, source_dropped))
+    if source_actions:
+        actions.append((None, source_actions))
 
     for binary in editor.binaries:
-        binary_dropped = drop_old_binary_relations(
-            binary, upgrade_release,
+        binary_actions = drop_old_binary_relations(
+            package_checker, binary, upgrade_release,
             keep_minimum_depends_versions=keep_minimum_depends_versions)
-        if binary_dropped:
-            dropped.append((binary["Package"], binary_dropped))
+        if binary_actions:
+            actions.append((binary["Package"], binary_actions))
 
-    return dropped
+    return actions
 
 
 def update_maintscripts(
@@ -400,38 +489,38 @@ def name_list(packages: List[str]) -> str:
 
 class ScrubObsoleteResult(object):
 
-    def __init__(self, specific_files, maintscript_removed, control_removed):
+    control_actions: List[
+        Tuple[Optional[str], List[Tuple[str, List[Action], str]]]]
+
+    def __init__(self, specific_files, maintscript_removed, control_actions):
         self.specific_files = specific_files
         self.maintscript_removed = maintscript_removed
-        self.control_removed = control_removed
+        self.control_actions = control_actions
         self.changelog_behaviour = None
 
     def __bool__(self):
-        return bool(self.control_removed) or bool(self.maintscript_removed)
+        return bool(self.control_actions) or bool(self.maintscript_removed)
 
     def value(self) -> int:
         value = DEFAULT_VALUE_MULTIARCH_HINT
-        for para, changes in self.control_removed:
-            for field, packages, release in changes:
-                value += len(packages) * 2
+        for para, changes in self.control_actions:
+            for field, actions, release in changes:
+                value += len(actions) * 2
         for path, removed, release in self.maintscript_removed:
             value += len(removed)
         return value
 
     def itemized(self) -> Dict[str, List[str]]:
         summary: Dict[str, List[str]] = {}
-        for para, changes in self.control_removed:
-            for field, packages, release in changes:
-                if para:
-                    summary.setdefault(release, []).append(
-                        "%s: Drop versioned constraint on %s in %s."
-                        % (para, name_list(packages), field)
-                    )
-                else:
-                    summary.setdefault(release, []).append(
-                        "%s: Drop versioned constraint on %s."
-                        % (field, name_list(packages))
-                    )
+        for para, changes in self.control_actions:
+            for field, actions, release in changes:
+                for action in actions:
+                    if para:
+                        summary.setdefault(release, []).append(
+                            "%s: %s in %s." % (para, action, field))
+                    else:
+                        summary.setdefault(release, []).append(
+                            "%s: %s." % (field, action))
         if self.maintscript_removed:
             total_entries = sum(
                 [len(entries)
@@ -452,6 +541,7 @@ def _scrub_obsolete(
         allow_reformatting: bool = True,
         keep_minimum_depends_versions: bool = False) -> ScrubObsoleteResult:
     specific_files = []
+    binary_package_checker = PackageChecker(upgrade_release, build=False)
     control_path = os.path.join(debian_path, "control")
     try:
         with ControlEditor(
@@ -459,18 +549,19 @@ def _scrub_obsolete(
                 allow_reformatting=allow_reformatting) as editor:
             specific_files.append(control_path)
             package = editor.source["Source"]
-            control_removed = drop_old_relations(
-                editor, compat_release, upgrade_release,
+            control_actions = drop_old_relations(
+                editor, binary_package_checker, compat_release,
+                upgrade_release,
                 keep_minimum_depends_versions=keep_minimum_depends_versions)
     except FileNotFoundError as exc:
         if wt.has_filename(os.path.join(debian_path, "debcargo.toml")):
-            control_removed = []
+            control_actions = []
         else:
             raise NotDebianPackage(wt, debian_path) from exc
 
     maintscript_removed = []
     for path, removed in update_maintscripts(
-            wt, debian_path, PackageChecker(upgrade_release, build=False),
+            wt, debian_path, binary_package_checker,
             package, allow_reformatting):
         if removed:
             maintscript_removed.append((path, removed, upgrade_release))
@@ -478,7 +569,7 @@ def _scrub_obsolete(
 
     return ScrubObsoleteResult(
         specific_files=specific_files,
-        control_removed=control_removed,
+        control_actions=control_actions,
         maintscript_removed=maintscript_removed,
     )
 
@@ -510,7 +601,8 @@ def scrub_obsolete(
         upgrade_release: str,
         update_changelog=None,
         allow_reformatting: bool = False,
-        keep_minimum_depends_versions: bool = False) -> ScrubObsoleteResult:
+        keep_minimum_depends_versions: bool = False,
+        transitions: Optional[Dict[str, str]] = None) -> ScrubObsoleteResult:
     """Scrub obsolete entries.
     """
 
@@ -817,7 +909,11 @@ def main():  # noqa: C901
                             for (lineno, pkg, version) in entries], release)
                         for (name, entries, release)
                         in result.maintscript_removed],
-                    "control_removed": result.control_removed,
+                    "control_actions": [
+                        (pkg, [(field, [action.json() for action in actions],
+                                release)
+                               for (field, actions, release) in changes])
+                        for (pkg, changes) in result.control_actions],
                 }
             }, f)
 

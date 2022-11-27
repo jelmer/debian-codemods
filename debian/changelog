@@ -1,3 +1,10 @@
+lintian-brush (0.139) UNRELEASED; urgency=medium
+
+  * deb-scrub-obsolete: support replacing dependency on transitional
+    packages.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 27 Nov 2022 18:52:18 +0000
+
 lintian-brush (0.138) unstable; urgency=medium
 
   * missing-prerequisite-for-pyproject-backend: don't add :any for all
