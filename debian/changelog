@@ -1,17 +1,10 @@
 lintian-brush (0.138) unstable; urgency=medium
 
-  [ Jelmer Vernooĳ ]
   * missing-prerequisite-for-pyproject-backend: don't add :any for all
     packages.
   * handle another case for source-is-missing.
-
-  [ Jelmer Vernooij ]
   * Fix version string for ognibuild.
-
-  [ Jelmer Vernooĳ ]
   * Drop deb-upstream-deps: moved to ognibuild.
-  * Fix style.
-  * Fix style.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 27 Nov 2022 13:42:40 +0000
 
