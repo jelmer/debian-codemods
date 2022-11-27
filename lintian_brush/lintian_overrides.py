@@ -228,11 +228,11 @@ PATH_MATCH = r"(?P<path>(?!\\\[)[^[ ]+)"
 
 # "$file (line $lineno)" => "[$file:$lineno]"
 PURE_FLN_SUB = (
-    r"^" + PATH_MATCH + " \(line " + LINENO_MATCH + r"\)$",
+    r"^" + PATH_MATCH + r" \(line " + LINENO_MATCH + r"\)$",
     r"[\1:\2]")
 # "$file (line $lineno)" => "* [$file:$lineno]"
 PURE_FLN_WILDCARD_SUB = (
-    r"^" + PATH_MATCH + " \(line " + LINENO_MATCH + r"\)$",
+    r"^" + PATH_MATCH + r" \(line " + LINENO_MATCH + r"\)$",
     r"* [\1:\2]")
 INTERTWINED_FLN_SUB = [
     (r"^" + PATH_MATCH + r" (.+) \(line (" + LINENO_MATCH + r"\)",
@@ -331,8 +331,8 @@ INFO_FIXERS = {
         (PATH_MATCH +
          r" line length is ([0-9]+) characters \(>([0-9]+)\)",
          r"\2 > \3 [\1:*]"),
-        (r"^" + PATH_MATCH + " \*", r"* [\1:*]"),
-        (r"^" + PATH_MATCH + " line \*$", r"* [\1:*]")],
+        (r"^" + PATH_MATCH + r" \*", r"* [\1:*]"),
+        (r"^" + PATH_MATCH + r" line \*$", r"* [\1:*]")],
     "national-encoding": PURE_FN_SUB,
     "no-manual-page": PURE_FN_SUB,
     "package-contains-empty-directory": PURE_FN_SUB,

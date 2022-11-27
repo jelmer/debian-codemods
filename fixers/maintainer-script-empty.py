@@ -1,6 +1,10 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import report_result, LintianIssue, meets_minimum_certainty
+from lintian_brush.fixer import (
+    report_result,
+    LintianIssue,
+    meets_minimum_certainty,
+)
 
 import os
 

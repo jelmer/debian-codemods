@@ -9,7 +9,6 @@ from lintian_brush.fixer import (
     net_access_allowed,
     report_result,
     trust_package,
-    warn,
     )
 from typing import List
 from upstream_ontologist.guess import guess_upstream_metadata

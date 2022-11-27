@@ -12,7 +12,12 @@ from debmutate.control import (
 from typing import Dict, List
 from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
-from lintian_brush.fixer import control, report_result, LintianIssue, is_debcargo_package
+from lintian_brush.fixer import (
+    control,
+    report_result,
+    LintianIssue,
+    is_debcargo_package
+)
 from lintian_brush.standards_version import iter_standards_versions
 
 if is_debcargo_package():
