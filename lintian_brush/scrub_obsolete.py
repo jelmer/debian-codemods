@@ -812,8 +812,9 @@ def main():  # noqa: C901
                 "context": {
                     "specific_files": result.specific_files,
                     "maintscript_removed": [
-                        (name, [(lineno, pkg, str(version) if version else None)
-                                for (lineno, pkg, version) in entries], release)
+                        (name, [
+                            (lineno, pkg, str(version) if version else None)
+                            for (lineno, pkg, version) in entries], release)
                         for (name, entries, release)
                         in result.maintscript_removed],
                     "control_removed": result.control_removed,
