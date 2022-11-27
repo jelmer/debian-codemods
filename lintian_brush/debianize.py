@@ -92,6 +92,7 @@ from ognibuild.upstream import (
     go_base_name,
     load_crate_info,
 )
+from ognibuild.debian.upstream_deps import get_project_wide_deps
 from ognibuild.vcs import dupe_vcs_tree
 
 from upstream_ontologist.guess import (
@@ -152,7 +153,6 @@ from .publish import (
     NoVcsLocation,
 )
 from .standards_version import latest_standards_version
-from .upstream_deps import get_project_wide_deps
 
 
 Kickstarter = Callable[[WorkingTree, str], None]
