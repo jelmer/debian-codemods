@@ -26,6 +26,8 @@ from lintian_brush.scrub_obsolete import (
     drop_obsolete_depends,
     release_aliases,
     PackageChecker,
+    DropEssential,
+    DropMinimumVersion,
     )
 
 from debian.changelog import Version
@@ -68,7 +70,8 @@ class FilterRelationsTests(TestCase):
         def cb(oldrel):
             return [], oldrel
 
-        self.assertEqual(["foo"], filter_relations(control, "Depends", cb))
+        self.assertEqual(PkgRelation.parse("foo"),
+                         filter_relations(control, "Depends", cb))
         self.assertEqual({}, control)
 
     def test_drop(self):
@@ -79,7 +82,8 @@ class FilterRelationsTests(TestCase):
                 return [], oldrel
             return oldrel, []
 
-        self.assertEqual(["foo"], filter_relations(control, "Depends", cb))
+        self.assertEqual(PkgRelation.parse("foo"),
+                         filter_relations(control, "Depends", cb))
         self.assertEqual({"Depends": "bar"}, control)
 
     def test_keep_last_comma(self):
@@ -90,7 +94,8 @@ class FilterRelationsTests(TestCase):
                 return [], oldrel
             return oldrel, []
 
-        self.assertEqual(["foo"], filter_relations(control, "Depends", cb))
+        self.assertEqual(PkgRelation.parse("foo"),
+                         filter_relations(control, "Depends", cb))
         self.assertEqual({"Depends": "bar, "}, control)
 
     def test_drop_just_comma(self):
@@ -101,7 +106,8 @@ class FilterRelationsTests(TestCase):
                 return [], oldrel
             return oldrel, []
 
-        self.assertEqual(["foo"], filter_relations(control, "Depends", cb))
+        self.assertEqual(PkgRelation.parse("foo"),
+                         filter_relations(control, "Depends", cb))
         self.assertEqual({}, control)
 
 
@@ -112,6 +118,7 @@ class DummyChecker(PackageChecker):
     def __init__(self, versions, essential):
         self.versions = versions
         self.essential = essential
+        self._transitions = {}
 
     def package_version(self, package):
         return self.versions.get(package)
@@ -131,14 +138,14 @@ class DropObsoleteDependsTests(TestCase):
         orig = PkgRelation.parse('simple (>= 1.0)')
         self.assertEqual(
             (PkgRelation.parse('simple'),
-             PkgRelation.parse('simple (>= 1.0)')),
+             [DropMinimumVersion(*PkgRelation.parse('simple (>= 1.0)'))]),
             drop_obsolete_depends(orig, checker))
 
     def test_essential(self):
         checker = DummyChecker({'simple': Version('1.1')}, {'simple'})
         orig = PkgRelation.parse('simple (>= 1.0)')
         self.assertEqual(
-            ([], PkgRelation.parse('simple (>= 1.0)')),
+            ([], [DropEssential(*PkgRelation.parse('simple (>= 1.0)'))]),
             drop_obsolete_depends(orig, checker))
 
     def test_debhelper(self):
@@ -152,7 +159,8 @@ class DropObsoleteDependsTests(TestCase):
         checker = DummyChecker({'simple': Version('1.1')}, {'simple'})
         orig = PkgRelation.parse('simple (>= 1.0) | other')
         self.assertEqual(
-            ([], PkgRelation.parse('simple (>= 1.0) | other')),
+            ([],
+             [DropEssential(*PkgRelation.parse('simple (>= 1.0)'))]),
             drop_obsolete_depends(orig, checker))
 
 

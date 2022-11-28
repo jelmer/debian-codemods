@@ -81,6 +81,12 @@ class Action:
     def __init__(self, rel):
         self.rel = rel
 
+    def __repr__(self):
+        return "<%s(%r)>" % (type(self).__name__, PkgRelation.str(self.rel))
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.rel == other.rel
+
 
 class DropEssential(Action):
     """Drop dependency on essential package."""
@@ -120,6 +126,16 @@ class ReplaceTransition(Action):
     def json(self):
         return ("inline-transitional", PkgRelation.str(self.rel),
                 [PkgRelation.str(p) for p in self.replacement])
+
+    def __repr__(self):
+        return "<%s(%r, %r)>" % (
+            type(self).__name__, PkgRelation.str(self.rel),
+            [PkgRelation(p) for p in self.replacement])
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, type(self)) and self.rel == other.rel
+            and self.replacement == other.replacement)
 
 
 class DropObsoleteConflict(Action):
@@ -282,15 +298,15 @@ def drop_obsolete_depends(
             if compat_version is not None and depends_obsolete(
                 compat_version, *pkgrel.version
             ):
-                if not keep_minimum_versions:
-                    newrel = PkgRelation.parse(pkgrel.str())[0]
-                    newrel.version = None
-                    actions.append(DropMinimumVersion(pkgrel))
                 # If the package is essential, we don't need to maintain a
                 # dependency on it.
                 if checker.is_essential(pkgrel.name):
                     actions.append(DropEssential(pkgrel))
                     return [], actions
+                if not keep_minimum_versions:
+                    newrel = PkgRelation.parse(pkgrel.str())[0]
+                    newrel.version = None
+                    actions.append(DropMinimumVersion(pkgrel))
         ors.append(newrel)
     # TODO: if dropped: Check if any ors are implied by existing other
     # dependencies
