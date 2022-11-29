@@ -349,6 +349,7 @@ INFO_FIXERS = {
     "shared-library-lacks-prerequisites": PURE_FN_SUB,
     "codeless-jar": PURE_FN_SUB,
     "hardening-no-pie": PURE_FN_SUB,
+    "hardening-no-relro": PURE_FN_SUB,
     "obsolete-url-in-packaging": (
         r"^(?P<path>.+) (.+)$", r"\2 [\1]"),
     "inconsistent-appstream-metadata-license": (

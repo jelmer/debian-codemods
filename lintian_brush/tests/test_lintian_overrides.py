@@ -217,6 +217,8 @@ INFO_FIXER_TESTS = [
     ('very-long-line-length-in-source-file',
      'build/js/bootstrap-tour-standalone.js line length is 587 characters '
      '(>512)', '587 > 512 [build/js/bootstrap-tour-standalone.js:*]'),
+    ('hardening-no-relro', 'usr/lib/libfoo.so', '[usr/lib/libfoo.so]'),
+    ('hardening-no-pie', 'usr/lib/libfoo.so', '[usr/lib/libfoo.so]'),
 ]
 
 

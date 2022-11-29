@@ -2,6 +2,7 @@ lintian-brush (0.139) unstable; urgency=medium
 
   * deb-scrub-obsolete: support replacing dependency on transitional
     packages.
+  * Add fixer for hardening-no-relro.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 27 Nov 2022 21:39:36 +0000
 
