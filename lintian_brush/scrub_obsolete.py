@@ -109,6 +109,18 @@ class DropMinimumVersion(Action):
         return ("drop-minimum-version", PkgRelation.str(self.rel))
 
 
+class DropTransition(Action):
+    """Drop dependency on dummy transitional package."""
+
+    def __str__(self):
+        return (
+            "Drop dependency on transitional package %s" %
+                PkgRelation.str(self.rel))
+
+    def json(self):
+        return ("drop-transitional", PkgRelation.str(self.rel))
+
+
 class ReplaceTransition(Action):
     """Replace dependency on dummy transitional package."""
 
@@ -279,7 +291,7 @@ def drop_obsolete_depends(
         keep_minimum_versions: bool = False):
     ors = []
     actions: List[Action] = []
-    for pkgrel in entry:
+    for i, pkgrel in enumerate(entry):
         newrel = pkgrel
         replacement = checker.replacement(pkgrel.name)
         if replacement:
@@ -289,6 +301,9 @@ def drop_obsolete_depends(
                     'Unable to replace multi-package %r', replacement)
             else:
                 newrel = parsed_replacement[0]
+                if newrel in entry:
+                    actions.append(DropTransition(pkgrel))
+                    continue
                 actions.append(ReplaceTransition(pkgrel, parsed_replacement))
         elif pkgrel.version is not None and pkgrel.name != 'debhelper':
             compat_version = checker.package_version(pkgrel.name)

@@ -28,6 +28,8 @@ from lintian_brush.scrub_obsolete import (
     PackageChecker,
     DropEssential,
     DropMinimumVersion,
+    DropTransition,
+    ReplaceTransition,
     )
 
 from debian.changelog import Version
@@ -115,10 +117,10 @@ class DummyChecker(PackageChecker):
 
     release = "release"
 
-    def __init__(self, versions, essential):
+    def __init__(self, versions, essential, *, transitions=None):
         self.versions = versions
         self.essential = essential
-        self._transitions = {}
+        self._transitions = transitions or {}
 
     def package_version(self, package):
         return self.versions.get(package)
@@ -161,6 +163,24 @@ class DropObsoleteDependsTests(TestCase):
         self.assertEqual(
             ([],
              [DropEssential(*PkgRelation.parse('simple (>= 1.0)'))]),
+            drop_obsolete_depends(orig, checker))
+
+    def test_transition(self):
+        checker = DummyChecker({'simple': Version('1.1')}, {'simple'},
+                               transitions={'oldpackage': 'replacement'})
+        orig = PkgRelation.parse('oldpackage (>= 1.0) | other')
+        self.assertEqual(
+            (PkgRelation.parse('replacement | other'),
+             [ReplaceTransition(*PkgRelation.parse('oldpackage (>= 1.0)'), PkgRelation.parse('replacement'))]),
+            drop_obsolete_depends(orig, checker))
+
+    def test_transition_matches(self):
+        checker = DummyChecker({'simple': Version('1.1')}, {'simple'},
+                               transitions={'oldpackage': 'replacement'})
+        orig = PkgRelation.parse('oldpackage (>= 1.0) | replacement ')
+        self.assertEqual(
+            (PkgRelation.parse('replacement'),
+             [DropTransition(*PkgRelation.parse('oldpackage (>= 1.0)'))]),
             drop_obsolete_depends(orig, checker))
 
 
