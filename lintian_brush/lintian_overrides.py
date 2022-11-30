@@ -234,6 +234,7 @@ PURE_FLN_SUB = (
 PURE_FLN_WILDCARD_SUB = (
     r"^" + PATH_MATCH + r" \(line " + LINENO_MATCH + r"\)$",
     r"* [\1:\2]")
+# "$file (line $lineno) $msg" => "$msg [$file:$lineno]"
 INTERTWINED_FLN_SUB = [
     (r"^" + PATH_MATCH + r" (.+) \(line (" + LINENO_MATCH + r"\)",
      r"\2 [\1:\3]"),
@@ -359,6 +360,10 @@ INFO_FIXERS = {
         r"^([^ ]+)$", r"\1 [debian/copyright:*]"),
     "package-installs-java-bytecode": PURE_FN_SUB,
     "jar-not-in-usr-share": PURE_FN_SUB,
+    "debconf-is-not-a-registry": ("^" + PATH_MATCH + "$", r"[\1:*]"),
+    "unused-debconf-template": ("^([^ ]+)$", r"\1 [*:*]"),
+    "apache2-reverse-dependency-calls-invoke-rc.d": (
+        "^" + PATH_MATCH + r":([0-9]+)$", r"[\1:\2]"),
 }
 
 

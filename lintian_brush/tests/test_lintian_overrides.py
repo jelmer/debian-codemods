@@ -221,10 +221,18 @@ INFO_FIXER_TESTS = [
     ('hardening-no-pie', 'usr/lib/libfoo.so', '[usr/lib/libfoo.so]'),
     ('jar-not-in-usr-share',
      'usr/lib/R/site-library/rJava/jri/JRI.jar',
-     '[usr/lib/R/site-library/rJava/jri/JRI.jar]')
+     '[usr/lib/R/site-library/rJava/jri/JRI.jar]'),
     ('package-installs-java-bytecode',
      'usr/lib/R/site-library/rJava/java/ArrayWrapper.class',
      '[usr/lib/R/site-library/rJava/java/ArrayWrapper.class]'),
+    ('debconf-is-not-a-registry',
+     'usr/share/doc/dbconfig-common/examples/config',
+     '[usr/share/doc/dbconfig-common/examples/config:*]'),
+    ('unused-debconf-template',
+     'dbconfig-common/app-password-confirm',
+     'dbconfig-common/app-password-confirm [*:*]'),
+    ("apache2-reverse-dependency-calls-invoke-rc.d",
+     "postrm:21", "[postrm:21]"),
 ]
 
 
