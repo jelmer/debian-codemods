@@ -1,3 +1,10 @@
+lintian-brush (0.140) UNRELEASED; urgency=medium
+
+  * Fix up override info for jar-not-in-usr-share, package-installs-java-
+    bytecode.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 30 Nov 2022 12:51:23 +0000
+
 lintian-brush (0.139) unstable; urgency=medium
 
   * deb-scrub-obsolete: support replacing dependency on transitional

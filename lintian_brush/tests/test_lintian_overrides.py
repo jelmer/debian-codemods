@@ -219,6 +219,12 @@ INFO_FIXER_TESTS = [
      '(>512)', '587 > 512 [build/js/bootstrap-tour-standalone.js:*]'),
     ('hardening-no-relro', 'usr/lib/libfoo.so', '[usr/lib/libfoo.so]'),
     ('hardening-no-pie', 'usr/lib/libfoo.so', '[usr/lib/libfoo.so]'),
+    ('jar-not-in-usr-share',
+     'usr/lib/R/site-library/rJava/jri/JRI.jar',
+     '[usr/lib/R/site-library/rJava/jri/JRI.jar]')
+    ('package-installs-java-bytecode',
+     'usr/lib/R/site-library/rJava/java/ArrayWrapper.class',
+     '[usr/lib/R/site-library/rJava/java/ArrayWrapper.class]'),
 ]
 
 

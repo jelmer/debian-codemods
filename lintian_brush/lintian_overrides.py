@@ -357,6 +357,8 @@ INFO_FIXERS = {
         r'\1 (\2 != \3) [debian/copyright]'),
     "source-ships-excluded-file": (
         r"^([^ ]+)$", r"\1 [debian/copyright:*]"),
+    "package-installs-java-bytecode": PURE_FN_SUB,
+    "jar-not-in-usr-share": PURE_FN_SUB,
 }
 
 
