@@ -323,9 +323,17 @@ def drop_obsolete_depends(
                     newrel.version = None
                     actions.append(DropMinimumVersion(pkgrel))
         ors.append(newrel)
+    if not actions:
+        return ors, []
+
+    deduped = []
+    for rel in ors:
+        if rel not in deduped:
+            deduped.append(rel)
+
     # TODO: if dropped: Check if any ors are implied by existing other
     # dependencies
-    return ors, actions
+    return deduped, actions
 
 
 def drop_obsolete_conflicts(checker: PackageChecker, entry: List[PkgRelation]):

@@ -183,6 +183,18 @@ class DropObsoleteDependsTests(TestCase):
              [DropTransition(*PkgRelation.parse('oldpackage (>= 1.0)'))]),
             drop_obsolete_depends(orig, checker))
 
+    def test_transition_dupes(self):
+        checker = DummyChecker({'simple': Version('1.1')}, {'simple'},
+                               transitions={'oldpackage': 'replacement'})
+        orig = PkgRelation.parse('oldpackage (>= 1.0) | oldpackage (= 3.0) | other')
+        self.assertEqual(
+            (PkgRelation.parse('replacement | other'),
+             [ReplaceTransition(*PkgRelation.parse('oldpackage (>= 1.0)'),
+                                PkgRelation.parse('replacement')),
+              ReplaceTransition(*PkgRelation.parse('oldpackage (= 3.0)'),
+                                PkgRelation.parse('replacement'))]),
+            drop_obsolete_depends(orig, checker))
+
 
 class ReleaseAliasesTests(TestCase):
 
