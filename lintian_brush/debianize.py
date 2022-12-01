@@ -350,7 +350,7 @@ def import_upstream_version_from_dist(
                 merge_type=None, files_excluded=files_excluded)
         except UpstreamAlreadyImported as e:
             logging.warning(
-                'Upstream release %s already imported.', e.version)
+                'Upstream release %s already imported.', e.version)  # type: ignore
             imported_revids = get_existing_imported_upstream_revids(
                 upstream_source, source_name, upstream_version)
         pristine_revids = {}
@@ -1609,7 +1609,7 @@ def main(argv=None):  # noqa: C901
                 # For now
                 raise
         except DistCommandFailed as e:
-            report_fatal(e.kind or "dist-command-failed", e.error)
+            report_fatal(e.kind or "dist-command-failed", e.error)  # type: ignore
             return 1
         except WorkspaceDirty:
             report_fatal(

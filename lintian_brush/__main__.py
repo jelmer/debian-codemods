@@ -296,7 +296,7 @@ def main(argv=None):  # noqa: C901
             logging.error(
                 "Unable to open tree at %s: missing package %s",
                 args.directory,
-                e.library,
+                e.library,  # type: ignore
             )
             return 1
         if args.identity:

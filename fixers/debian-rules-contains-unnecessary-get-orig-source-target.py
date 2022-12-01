@@ -8,7 +8,8 @@ import sys
 certainty = None
 
 if not opinionated() and os.listdir() == ['debian']:
-    # See https://salsa.debian.org/debian-ayatana-team/snapd-glib/-/merge_requests/6#note_358358
+    # See https://salsa.debian.org/debian-ayatana-team/\
+    # snapd-glib/-/merge_requests/6#note_358358
     sys.exit(0)
 
 try:

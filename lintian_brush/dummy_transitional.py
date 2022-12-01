@@ -96,7 +96,7 @@ async def find_reverse_dependencies(udd, package):
             for option in parsed:
                 for rel in option:
                     if rel['name'] == package:
-                        by_source.setdefault(row['source'], [])
+                        by_source.setdefault(row['source'], set())
     return by_source
 
 
@@ -119,14 +119,12 @@ WHERE release = $1 AND description LIKE '%transitional%'"""
             if len(depends) != 1:
                 logging.debug(
                     'no single transition target for %s: %r', row[0], row[2])
-        ret[row[0]] = TransitionalPackage(from_name=row[0], to_expr=row[2])
+        ret[row[0]] = TransitionalPackage(from_name=row[0], to_expr=row[2])  # type: ignore
     return ret
 
 
 async def main(argv=None):
     from .udd import connect_udd_mirror
-    parser = argparse.ArgumentParser()
-
     parser = argparse.ArgumentParser(prog="candidates")
     parser.add_argument("--release", type=str, default="sid")
     parser.add_argument('--list-transitional-dummy', action="store_true")
@@ -149,7 +147,7 @@ async def main(argv=None):
                     for binary in binaries:
                         print('%s / %s / %s' % (source, binary, dep))
         else:
-            parser.usage()
+            parser.print_usage()
             return 1
 
 

@@ -146,6 +146,7 @@ def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
             raise
     except URLError:
         raise
+    assert local_hints_path is not None
     yield open(local_hints_path, "rb")
 
 

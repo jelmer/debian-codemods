@@ -222,7 +222,7 @@ class OptionList(object):
 
 class UnitFile(ConfigNamespace):
     _data: LineContainer = None
-    _sections: Dict[str, Section] = None
+    _sections: Dict[str, Section] = None  # type: ignore
 
     def __init__(self, fp=None):
         self._data = LineContainer()

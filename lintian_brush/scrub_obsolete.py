@@ -87,6 +87,9 @@ class Action:
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.rel == other.rel
 
+    def json(self):
+        raise NotImplementedError(self.json)
+
 
 class DropEssential(Action):
     """Drop dependency on essential package."""
@@ -115,7 +118,7 @@ class DropTransition(Action):
     def __str__(self):
         return (
             "Drop dependency on transitional package %s" %
-                PkgRelation.str(self.rel))
+            PkgRelation.str(self.rel))
 
     def json(self):
         return ("drop-transitional", PkgRelation.str(self.rel))
