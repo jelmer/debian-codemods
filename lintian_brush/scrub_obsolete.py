@@ -431,8 +431,7 @@ def drop_old_binary_relations(
         keep_minimum_depends_versions: bool = False
         ) -> List[Tuple[str, List[Action], str]]:
     ret = []
-    for field in ["Depends", "Breaks", "Suggests", "Recommends",
-                  "Pre-Depends"]:
+    for field in ["Depends", "Suggests", "Recommends", "Pre-Depends"]:
         actions = update_depends(
             binary, field, package_checker,
             keep_minimum_versions=keep_minimum_depends_versions)
