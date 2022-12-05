@@ -28,6 +28,7 @@ import urllib.error
 from urllib.request import urlopen, Request
 
 from debian.changelog import Changelog
+from debmutate.reformatting import FormattingUnpreservable
 from debmutate.watch import Watch, WatchEditor, WatchFile
 
 from . import (
@@ -67,11 +68,14 @@ def candidates_from_setup_py(
     project = result.get_name()  # type: ignore
     version = result.get_version()  # type: ignore
     if not project:
+        logging.warning('no project name in setup.py')
         return
     current_version_filenames = None
     if net_access:
         json_url = "https://pypi.python.org/pypi/%s/json" % project
         headers = {"User-Agent": USER_AGENT}
+        logging.info('Getting %s info on pypi (%s)',
+                     project, json_url)
         try:
             response = urlopen(
                 Request(json_url, headers=headers),
@@ -79,6 +83,8 @@ def candidates_from_setup_py(
             )
         except urllib.error.HTTPError as e:
             if e.status == 404:
+                logging.warning('unable to find project %s on pypi',
+                                project)
                 return
             raise
         pypi_data = json.load(response)
@@ -119,8 +125,8 @@ def find_candidates(path, good_upstream_versions, net_access=False):
 
     if os.path.exists(os.path.join(path, 'debian/upstream/metadata')):
         candidates.extend(candidates_from_upstream_metadata(
-            os.path.join(path, 'debian/upstream/metadata'), good_upstream_versions,
-            net_access=net_access))
+            os.path.join(path, 'debian/upstream/metadata'),
+            good_upstream_versions, net_access=net_access))
 
     def candidate_key(candidate):
         return (
@@ -133,8 +139,7 @@ def find_candidates(path, good_upstream_versions, net_access=False):
 
 
 def candidates_from_upstream_metadata(
-    path: str, good_upstream_versions: Set[str], net_access: bool = False
-):
+        path: str, good_upstream_versions: Set[str], net_access: bool = False):
     try:
         with open(path, "r") as f:
             inp = f.read()
@@ -408,7 +413,7 @@ def main():  # noqa: C901
         default=False,
     )
     parser.add_argument(
-        "--debug", help="Describe all considerd changes.", action="store_true"
+        "--debug", help="Describe all considered changes.", action="store_true"
     )
     parser.add_argument(
         "--verify", action="store_true",
@@ -422,6 +427,11 @@ def main():  # noqa: C901
 
     args = parser.parse_args()
 
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
+
     wt, subpath = WorkingTree.open_containing(args.directory)
     if args.identity:
         logging.info('%s', get_committer(wt))
@@ -432,11 +442,6 @@ def main():  # noqa: C901
     except WorkspaceDirty:
         logging.info("%s: Please commit pending changes first.", wt.basedir)
         return 1
-
-    if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO, format='%(message)s')
 
     update_changelog = args.update_changelog
     allow_reformatting = args.allow_reformatting
@@ -463,7 +468,7 @@ def main():  # noqa: C901
         package = cl.package
 
     try:
-        with WatchEditor() as updater:
+        with WatchEditor(allow_reformatting=allow_reformatting) as updater:
             if verify_watch_file(updater.watch_file, package,
                                  expected_versions):
                 report_fatal(
@@ -486,6 +491,9 @@ def main():  # noqa: C901
 
         with open('debian/watch', 'w') as f:
             wf.dump(f)
+    except FormattingUnpreservable as e:
+        report_fatal('formatting-unpreservable', str(e))
+        return 1
 
     if args.verify:
         with WatchEditor() as updater:
