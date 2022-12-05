@@ -27,12 +27,14 @@ from urllib.parse import urlparse, urlunparse
 import urllib.error
 from urllib.request import urlopen, Request
 
-from debmutate.watch import Watch, WatchEditor
+from debian.changelog import Changelog
+from debmutate.watch import Watch, WatchEditor, WatchFile
 
 from . import (
     USER_AGENT,
     DEFAULT_URLLIB_TIMEOUT,
     min_certainty,
+    certainty_to_confidence,
 )
 
 
@@ -106,6 +108,28 @@ def candidates_from_setup_py(
     # TODO(jelmer): Add pgpsigurlmangle if has_sig==True
     w = Watch(url, opts=opts)
     yield WatchCandidate(w, "pypi", certainty=certainty, preference=1)
+
+
+def find_candidates(path, good_upstream_versions, net_access=False):
+    candidates = []
+    if os.path.exists(os.path.join(path, 'setup.py')):
+        candidates.extend(candidates_from_setup_py(
+            os.path.join(path, 'setup.py'), good_upstream_versions,
+            net_access=net_access))
+
+    if os.path.exists(os.path.join(path, 'debian/upstream/metadata')):
+        candidates.extend(candidates_from_upstream_metadata(
+            os.path.join(path, 'debian/upstream/metadata'), good_upstream_versions,
+            net_access=net_access))
+
+    def candidate_key(candidate):
+        return (
+            certainty_to_confidence(candidate.certainty),
+            candidate.preference)
+
+    candidates.sort(key=candidate_key)
+
+    return candidates
 
 
 def candidates_from_upstream_metadata(
@@ -310,6 +334,22 @@ def verify_watch_entry(
     return True
 
 
+def report_fatal(code: str, description: str) -> None:
+    if os.environ.get('SVP_API') == '1':
+        with open(os.environ['SVP_RESULT'], 'w') as f:
+            json.dump({
+                'result_code': code,
+                'description': description}, f)
+    logging.fatal('%s', description)
+
+
+def verify_watch_file(watch_file, source_package, expected_versions):
+    for entry in watch_file.entries:
+        if not verify_watch_entry(entry, source_package, expected_versions):
+            return False
+    return True
+
+
 def main():  # noqa: C901
     import argparse
     import breezy  # noqa: E402
@@ -370,6 +410,15 @@ def main():  # noqa: C901
     parser.add_argument(
         "--debug", help="Describe all considerd changes.", action="store_true"
     )
+    parser.add_argument(
+        "--verify", action="store_true",
+        help="Verify that the new watch file works")
+    parser.add_argument(
+        "--disable-net-access",
+        help="Do not probe external services.",
+        action="store_true",
+        default=False,
+    )
 
     args = parser.parse_args()
 
@@ -404,13 +453,48 @@ def main():  # noqa: C901
     if allow_reformatting is None:
         allow_reformatting = False
 
+    good_upstream_versions = set()
+    expected_versions = list(sorted(good_upstream_versions))[-5:]
+
+    with open('debian/changelog', 'r') as f:
+        cl = Changelog(f)
+        for entry in cl:
+            good_upstream_versions.add(entry.version.upstream_version)
+        package = cl.package
+
     try:
         with WatchEditor() as updater:
+            if verify_watch_file(updater.watch_file, package,
+                                 expected_versions):
+                report_fatal(
+                    'nothing-to-do',
+                    'Existing watch file has valid entries')
+                return 0
             fix_watch_issues(updater)
+            if not verify_watch_file(updater.watch_file, package,
+                                     expected_versions):
+                candidates = find_candidates(
+                    '.', good_upstream_versions,
+                    net_access=not args.disable_net_access)
+                updater.watch_file.entries = [candidates[0].watch]
     except FileNotFoundError:
-        # TODO(jelmer): Reuse logic from
-        # ../fixers/debian-watch-file-is-missing.py
-        pass
+        candidates = find_candidates(
+            '.', good_upstream_versions,
+            net_access=not args.disable_net_access)
+        wf = WatchFile()
+        wf.entries.append(candidates[0].watch)
+
+        with open('debian/watch', 'w') as f:
+            wf.dump(f)
+
+    if args.verify:
+        with WatchEditor() as updater:
+            if not verify_watch_file(updater.watch_file, package,
+                                     expected_versions):
+                report_fatal(
+                    'verification-failed',
+                    'Unable to verify watch entry %r' % entry)
+                return 1
 
     if os.environ.get("SVP_API") == "1":
         with open(os.environ["SVP_RESULT"], "w") as f:

@@ -4,9 +4,6 @@ import sys
 
 from debmutate.watch import WatchFile
 
-from lintian_brush import (
-    certainty_to_confidence,
-    )
 from lintian_brush.fixer import (
     current_package_version,
     net_access_allowed,
@@ -15,8 +12,7 @@ from lintian_brush.fixer import (
     LintianIssue,
     )
 from lintian_brush.watch import (
-    candidates_from_setup_py,
-    candidates_from_upstream_metadata,
+    find_candidates,
     )
 
 
@@ -33,24 +29,9 @@ candidates = []
 
 good_upstream_versions = {current_package_version().upstream_version}
 
-if os.path.exists('setup.py'):
-    candidates.extend(candidates_from_setup_py(
-        'setup.py', good_upstream_versions,
-        net_access=net_access_allowed()))
+candidates = find_candidates(
+    '.', good_upstream_versions, net_access=net_access_allowed())
 
-if os.path.exists('debian/upstream/metadata'):
-    candidates.extend(candidates_from_upstream_metadata(
-        'debian/upstream/metadata', good_upstream_versions,
-        net_access=net_access_allowed()))
-
-
-def candidate_key(candidate):
-    return (
-        certainty_to_confidence(candidate.certainty),
-        candidate.preference)
-
-
-candidates.sort(key=candidate_key)
 
 # TODO(jelmer): parse cabal file and call candidates_from_hackage
 
