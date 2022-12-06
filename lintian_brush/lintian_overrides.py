@@ -365,7 +365,7 @@ INFO_FIXERS = {
     "apache2-reverse-dependency-calls-invoke-rc.d": (
         "^" + PATH_MATCH + r":([0-9]+)$", r"[\1:\2]"),
     "application-in-library-section": (
-        "^(.+) " + PATH_MATCH + "$", r"\1 [\2]"),
+        "^([^ ]+) " + PATH_MATCH + "$", r"\1 [\2]"),
 }
 
 

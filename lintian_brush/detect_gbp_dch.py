@@ -190,6 +190,7 @@ def _changelog_stats(branch: Branch, history: int, debian_path: str):
     changelog_only = 0
     other_only = 0
     dch_references = 0
+    unreleased_references = 0
     with branch.lock_read():
         graph = branch.repository.get_graph()
         revids, truncated = _greedy_revisions(
@@ -203,7 +204,7 @@ def _changelog_stats(branch: Branch, history: int, debian_path: str):
                 dch_references += 1
             revs.append(rev)
         get_deltas = branch.repository.get_revision_deltas
-        for delta in get_deltas(revs):
+        for rev, delta in zip(revs, get_deltas(revs)):
             filenames = set(
                 [a.path[1] for a in delta.added]
                 + [r.path[0] for r in delta.removed]
@@ -219,14 +220,19 @@ def _changelog_stats(branch: Branch, history: int, debian_path: str):
                 ]
             ):
                 continue
-            if osutils.pathjoin(debian_path, "changelog") in filenames:
+            cl_path = osutils.pathjoin(debian_path, "changelog")
+            if cl_path in filenames:
+                revtree = branch.repository.revision_tree(rev.revision_id)
+                if b'UNRELEASED' in revtree.get_file_lines(cl_path)[0]:
+                    unreleased_references += 1
                 if len(filenames) > 1:
                     mixed += 1
                 else:
                     changelog_only += 1
             else:
                 other_only += 1
-    return (changelog_only, other_only, mixed, dch_references)
+    return (changelog_only, other_only, mixed, dch_references,
+            unreleased_references)
 
 
 def _guess_update_changelog_from_branch(
@@ -245,12 +251,13 @@ def _guess_update_changelog_from_branch(
     # - "Git-Dch: " is used in the commit messages
     # - The vast majority of lines in changelog get added in
     #   commits that only touch the changelog
-    (changelog_only, other_only, mixed, dch_references) = _changelog_stats(
-        branch, history, debian_path
-    )
+    (changelog_only, other_only, mixed, dch_references,
+     unreleased_references) = _changelog_stats(branch, history, debian_path)
     logging.debug('Branch history analysis: changelog_only: %d, '
-                  'other_only: %d, mixed: %d, dch_references: %d',
-                  changelog_only, other_only, mixed, dch_references)
+                  'other_only: %d, mixed: %d, dch_references: %d, '
+                  'unreleased_references: %d',
+                  changelog_only, other_only, mixed, dch_references,
+                  unreleased_references)
     if dch_references:
         return ChangelogBehaviour(
             False,
@@ -263,6 +270,11 @@ def _guess_update_changelog_from_branch(
             "Assuming changelog needs to be updated, since "
             "it is always changed together with other files in the tree.",
         )
+    if unreleased_references == 0:
+        return ChangelogBehaviour(
+            False,
+            "Assuming changelog does not need to be updated, "
+            "since it never uses UNRELEASED entries")
     if mixed == 0 and changelog_only > 0 and other_only > 0:
         # changelog is *always* updated in a separate commit.
         return ChangelogBehaviour(

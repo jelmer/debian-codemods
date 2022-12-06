@@ -7,6 +7,7 @@ lintian-brush (0.140) unstable; urgency=medium
     opinionated mode.
   * deb-scrub-obsolete: Don't treat Breaks as a Dependency field.
   * Add fixer for application-in-library-section.
+  * Use lack of UNRELEASED entries of a signal that gbp-dch is in use.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 07 Dec 2022 10:18:52 +0000
 

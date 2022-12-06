@@ -326,3 +326,57 @@ blah (0.20.1) unstable; urgency=medium
             ),
             guess_update_changelog(tree, "debian"),
         )
+
+    def test_never_unreleased(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents(
+            [
+                ("debian/",),
+                ("debian/control", "foo"),
+                (
+                    "debian/changelog",
+                    """\
+blah (0.20.1) unstable; urgency=medium
+
+  * Initial release. Closes: #123123
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+""",
+                ),
+            ]
+        )
+        tree.add(["debian", "debian/control", "debian/changelog"])
+        tree.commit("rev1")
+        self.build_tree_contents([("debian/control", "bar")])
+        tree.commit("rev2")
+        self.build_tree_contents([("debian/control", "bla")])
+        tree.commit("rev2")
+        self.build_tree_contents(
+            [
+                (
+                    "debian/changelog",
+                    """\
+blah (0.21.1) unstable; urgency=medium
+
+  * Next release.
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+
+blah (0.20.1) unstable; urgency=medium
+
+  * Initial release. Closes: #123123
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+""",
+                ),
+            ]
+        )
+        tree.commit("rev2")
+        self.assertEqual(
+            ChangelogBehaviour(
+                False,
+                'Assuming changelog does not need to be updated, '
+                'since it never uses UNRELEASED entries'
+            ),
+            guess_update_changelog(tree, "debian"),
+        )
