@@ -6,6 +6,7 @@ lintian-brush (0.140) UNRELEASED; urgency=medium
   * Only remove get-orig-source target in package-only trees in
     opinionated mode.
   * deb-scrub-obsolete: Don't treat Breaks as a Dependency field.
+  * Add fixer for application-in-library-section.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 30 Nov 2022 12:51:23 +0000
 

@@ -233,6 +233,9 @@ INFO_FIXER_TESTS = [
      'dbconfig-common/app-password-confirm [*:*]'),
     ("apache2-reverse-dependency-calls-invoke-rc.d",
      "postrm:21", "[postrm:21]"),
+    ("application-in-library-section",
+     "libs usr/bin/cpan5.32-x86_64-linux-gnu",
+     "libs [usr/bin/cpan5.32-x86_64-linux-gnu]"),
 ]
 
 
