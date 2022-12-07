@@ -1,4 +1,4 @@
-lintian-brush (0.140) UNRELEASED; urgency=medium
+lintian-brush (0.140) unstable; urgency=medium
 
   * Fix up override info for jar-not-in-usr-share, package-installs-java-
     bytecode, debconf-is-not-a-registry, unused-debconf-template,
@@ -8,7 +8,7 @@ lintian-brush (0.140) UNRELEASED; urgency=medium
   * deb-scrub-obsolete: Don't treat Breaks as a Dependency field.
   * Add fixer for application-in-library-section.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 07 Dec 2022 10:18:50 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 07 Dec 2022 10:18:52 +0000
 
 lintian-brush (0.139) unstable; urgency=medium
 
