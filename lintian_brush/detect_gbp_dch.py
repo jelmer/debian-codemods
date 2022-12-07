@@ -223,8 +223,11 @@ def _changelog_stats(branch: Branch, history: int, debian_path: str):
             cl_path = osutils.pathjoin(debian_path, "changelog")
             if cl_path in filenames:
                 revtree = branch.repository.revision_tree(rev.revision_id)
-                if b'UNRELEASED' in revtree.get_file_lines(cl_path)[0]:
-                    unreleased_references += 1
+                try:
+                    if b'UNRELEASED' in revtree.get_file_lines(cl_path)[0]:
+                        unreleased_references += 1
+                except NoSuchFile:
+                    pass
                 if len(filenames) > 1:
                     mixed += 1
                 else:
