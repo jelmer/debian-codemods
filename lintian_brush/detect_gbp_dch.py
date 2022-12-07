@@ -224,10 +224,12 @@ def _changelog_stats(branch: Branch, history: int, debian_path: str):
             if cl_path in filenames:
                 revtree = branch.repository.revision_tree(rev.revision_id)
                 try:
-                    if b'UNRELEASED' in revtree.get_file_lines(cl_path)[0]:
-                        unreleased_references += 1
+                    cl_lines = revtree.get_file_lines(cl_path)
                 except NoSuchFile:
                     pass
+                else:
+                    if b'UNRELEASED' in cl_lines[0]:
+                        unreleased_references += 1
                 if len(filenames) > 1:
                     mixed += 1
                 else:
