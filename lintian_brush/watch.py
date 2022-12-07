@@ -561,7 +561,8 @@ def main():  # noqa: C901
         try:
             check_clean_tree(wt, wt.basis_tree(), subpath)
         except WorkspaceDirty:
-            logging.info("%s: Please commit pending changes first.", wt.basedir)
+            logging.info("%s: Please commit pending changes first.",
+                         wt.basedir)
             return 1
 
         update_changelog = args.update_changelog
@@ -602,6 +603,7 @@ def main():  # noqa: C901
                     candidates = find_candidates(
                         '.', good_upstream_versions,
                         net_access=not args.disable_net_access)
+                    updater.allow_reformatting = True
                     updater.watch_file.entries = [candidates[0].watch]
         except FileNotFoundError:
             candidates = find_candidates(
@@ -618,7 +620,8 @@ def main():  # noqa: C901
             with open('debian/watch', 'w') as f:
                 wf.dump(f)
         except FormattingUnpreservable as e:
-            report_fatal('formatting-unpreservable', str(e))
+            report_fatal('formatting-unpreservable',
+                         "Unable to preserve formatting of %s" % e.path)
             return 1
 
     if args.verify:
@@ -627,7 +630,8 @@ def main():  # noqa: C901
                                      expected_versions):
                 report_fatal(
                     'verification-failed',
-                    'Unable to verify watch entry %r' % entry)
+                    'Unable to verify watch entry: %s'
+                    % updater.watch_file.entries[0])
                 return 1
 
     if os.environ.get("SVP_API") == "1":
