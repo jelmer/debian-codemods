@@ -8,7 +8,7 @@ lintian-brush (0.140) UNRELEASED; urgency=medium
   * deb-scrub-obsolete: Don't treat Breaks as a Dependency field.
   * Add fixer for application-in-library-section.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 30 Nov 2022 12:51:23 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 07 Dec 2022 10:18:50 +0000
 
 lintian-brush (0.139) unstable; urgency=medium
 
