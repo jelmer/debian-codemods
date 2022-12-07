@@ -132,7 +132,7 @@ def probe_signature(r, *, pgpsigurlmangle=None, mangles=None, gpg_context=None):
             else:
                 needed_keys.add(sig.fpr)
         return SignatureInfo(
-            is_valid=is_valid, keys=needed_keys), mangle=mangle)
+            is_valid=is_valid, keys=needed_keys, mangle=mangle)
     else:
         return None
 
@@ -239,15 +239,22 @@ def candidates_from_upstream_metadata(
 
         code = ruamel.yaml.round_trip_load(inp, preserve_quotes=True)
 
-        try:
-            parsed_url = urlparse(code["Repository"])
-        except KeyError:
-            pass
-        else:
-            if parsed_url.hostname == "github.com":
-                yield from guess_github_watch_entry(
-                    parsed_url, good_upstream_versions, net_access=net_access
-                )
+        for field in ["Repository", "X-Download"]:
+            try:
+                parsed_url = urlparse(code[field])
+            except KeyError:
+                pass
+            else:
+                if parsed_url.hostname == "github.com":
+                    yield from guess_github_watch_entry(
+                        parsed_url, good_upstream_versions,
+                        net_access=net_access
+                    )
+                if parsed_url.hostname == "launchpad.net":
+                    yield from guess_launchpad_watch_entry(
+                        parsed_url, good_upstream_versions,
+                        net_access=net_access
+                    )
 
         archive = code.get('Archive')
         if archive == 'CRAN':
@@ -258,6 +265,31 @@ def guess_cran_watch_entry(name):
     w = Watch(r'https://cran.r-project.org/src/contrib/%s_([-\d.]*)\.tar\.gz'
               % name)
     yield WatchCandidate(w, "cran", certainty="likely", preference=0)
+
+
+def guess_launchpad_watch_entry(
+        parsed_url, good_upstream_versions, net_access=False):
+    from breezy.branch import Branch
+    import re
+
+    if not net_access:
+        return
+    project = parsed_url.path.strip("/").split("/")[0]
+    url = f"https://api.launchpad.net/devel/{project}/releases"
+    entries = []
+    while url:
+        response = _load_json(url)
+        entries.extend(response['entries'])
+        url = response.get('next_collection_link')
+    files = _load_json(entries[-1]['files_collection_link'])
+    assert len(files['entries']) > 0
+    # TODO(jelmer): add
+    filepattern = files['entries'][0]['file_link'].split('/')[-2].replace(
+        entries[-1]['version'], '(.*)')
+    w = Watch(
+        f'https://launchpad.net/{project}/+download',
+        f'https://launchpad.net/{project}/.*/{filepattern}')
+    yield WatchCandidate(w, "launchpad", certainty="certain", preference=0)
 
 
 def guess_github_watch_entry(
@@ -311,10 +343,7 @@ def guess_github_watch_entry(
     yield WatchCandidate(w, "github", certainty="certain", preference=0)
 
 
-def candidates_from_hackage(package, good_upstream_versions, net_access=False):
-    if not net_access:
-        return
-    url = "https://hackage.haskell.org/package/%s/preferred" % package
+def _load_json(url):
     headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
     try:
         response = urlopen(
@@ -322,9 +351,18 @@ def candidates_from_hackage(package, good_upstream_versions, net_access=False):
         )
     except urllib.error.HTTPError as e:
         if e.status == 404:
-            return
+            return None
         raise
-    versions = json.load(response)
+    return json.load(response)
+
+
+def candidates_from_hackage(package, good_upstream_versions, net_access=False):
+    if not net_access:
+        return
+    url = "https://hackage.haskell.org/package/%s/preferred" % package
+    versions = _load_json(url)
+    if versions is None:
+        return
     for version in versions["normal-version"]:
         if version in good_upstream_versions:
             break

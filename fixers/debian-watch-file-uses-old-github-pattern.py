@@ -13,11 +13,14 @@ from lintian_brush.watch import (
 certainty = "certain"
 
 
-with WatchEditor() as updater:
-    changed_entries = fix_old_github_patterns(updater)
-    certainty = watch_entries_certainty(
-        changed_entries, source_package_name(),
-        expected_versions=[current_package_version().upstream_version])
+try:
+    with WatchEditor() as updater:
+        changed_entries = fix_old_github_patterns(updater)
+        certainty = watch_entries_certainty(
+            changed_entries, source_package_name(),
+            expected_versions=[current_package_version().upstream_version])
+except FileNotFoundError:
+    pass
 
 
 report_result(
