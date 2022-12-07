@@ -1,49 +1,50 @@
 {
     "exception_ids": [
-        "gnu-javamail-exception",
-        "LLVM-exception",
-        "Fawkes-Runtime-exception",
-        "Libtool-exception",
-        "Autoconf-exception-3.0",
-        "OCCT-exception-1.0",
         "389-exception",
-        "SHL-2.1",
-        "Nokia-Qt-exception-1.1",
-        "Font-exception-2.0",
-        "LGPL-3.0-linking-exception",
-        "Bison-exception-2.2",
-        "i2p-gpl-java-exception",
-        "u-boot-exception-2.0",
-        "FLTK-exception",
-        "GPL-CC-1.0",
-        "Classpath-exception-2.0",
-        "Bootloader-exception",
-        "Linux-syscall-note",
-        "SHL-2.0",
-        "Qt-GPL-exception-1.0",
-        "mif-exception",
-        "Swift-exception",
-        "WxWindows-exception-3.1",
-        "GStreamer-exception-2008",
-        "CLISP-exception-2.0",
-        "GStreamer-exception-2005",
-        "Universal-FOSS-exception-1.0",
-        "GCC-exception-2.0",
-        "freertos-exception-2.0",
-        "OpenJDK-assembly-exception-1.0",
-        "GPL-3.0-linking-source-exception",
-        "OCaml-LGPL-linking-exception",
         "Autoconf-exception-2.0",
-        "Qwt-exception-1.0",
-        "openvpn-openssl-exception",
-        "GPL-3.0-linking-exception",
+        "Autoconf-exception-3.0",
+        "Bison-exception-2.2",
+        "Bootloader-exception",
+        "Classpath-exception-2.0",
+        "CLISP-exception-2.0",
         "DigiRule-FOSS-exception",
         "eCos-exception-2.0",
-        "Qt-LGPL-exception-1.1",
-        "PS-or-PDF-font-exception-20170817",
-        "LZMA-exception",
+        "Fawkes-Runtime-exception",
+        "FLTK-exception",
+        "Font-exception-2.0",
+        "freertos-exception-2.0",
+        "GCC-exception-2.0",
+        "GCC-exception-3.1",
+        "gnu-javamail-exception",
+        "GPL-3.0-linking-exception",
+        "GPL-3.0-linking-source-exception",
+        "GPL-CC-1.0",
+        "GStreamer-exception-2005",
+        "GStreamer-exception-2008",
+        "i2p-gpl-java-exception",
         "KiCad-libraries-exception",
-        "GCC-exception-3.1"
+        "LGPL-3.0-linking-exception",
+        "Libtool-exception",
+        "Linux-syscall-note",
+        "LLVM-exception",
+        "LZMA-exception",
+        "mif-exception",
+        "Nokia-Qt-exception-1.1",
+        "OCaml-LGPL-linking-exception",
+        "OCCT-exception-1.0",
+        "OpenJDK-assembly-exception-1.0",
+        "openvpn-openssl-exception",
+        "PS-or-PDF-font-exception-20170817",
+        "Qt-GPL-exception-1.0",
+        "Qt-LGPL-exception-1.1",
+        "Qwt-exception-1.0",
+        "SHL-2.0",
+        "SHL-2.1",
+        "Swift-exception",
+        "u-boot-exception-2.0",
+        "Universal-FOSS-exception-1.0",
+        "WxWindows-exception-3.1",
+        "x11vnc-openssl-exception"
     ],
     "licenses": {
         "0BSD": {
@@ -592,6 +593,9 @@
         "FSFULLR": {
             "name": "FSF Unlimited License (with License Retention)"
         },
+        "FSFULLRWD": {
+            "name": "FSF Unlimited License (With License Retention    and Warranty Disclaimer)"
+        },
         "FTL": {
             "name": "Freetype Project License"
         },
@@ -807,6 +811,9 @@
         },
         "JasPer-2.0": {
             "name": "JasPer License"
+        },
+        "Knuth-CTAN": {
+            "name": "Knuth CTAN License"
         },
         "LAL-1.2": {
             "name": "Licence Art Libre 1.2"
@@ -1339,6 +1346,9 @@
         "SugarCRM-1.1.3": {
             "name": "SugarCRM Public License v1.1.3"
         },
+        "Symlinks": {
+            "name": "Symlinks License"
+        },
         "TAPR-OHL-1.0": {
             "name": "TAPR Open Hardware License v1.0"
         },
@@ -1465,6 +1475,9 @@
         "bzip2-1.0.6": {
             "name": "bzip2 and libbzip2 License v1.0.6"
         },
+        "checkmk": {
+            "name": "Checkmk License"
+        },
         "copyleft-next-0.3.0": {
             "name": "copyleft-next 0.3.0"
         },
@@ -1506,6 +1519,9 @@
         },
         "libtiff": {
             "name": "libtiff License"
+        },
+        "libutil-David-Nugent": {
+            "name": "libutil David Nugent License"
         },
         "mpi-permissive": {
             "name": "mpi Permissive License"
