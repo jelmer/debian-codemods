@@ -12,9 +12,9 @@ try:
 except ImportError:
     sys.exit(2)
 
-import gpg.errors
-
-from debmutate.watch import WatchEditor, apply_url_mangle
+from debmutate.watch import (
+    WatchEditor,
+)
 
 from lintian_brush.fixer import (
     source_package_name,
@@ -24,9 +24,12 @@ from lintian_brush.fixer import (
     diligence,
     net_access_allowed,
     )
+from lintian_brush.gpg import fetch_keys
+from lintian_brush.watch import (
+    probe_signature,
+    KeyRetrievalFailed,
+)
 
-COMMON_MANGLES = [
-    's/$/.%s/' % ext for ext in ['asc', 'pgp', 'gpg', 'sig', 'sign']]
 NUM_KEYS_TO_CHECK = 5
 RELEASES_TO_INSPECT = 5
 
@@ -43,19 +46,6 @@ for path in ['debian/upstream/signing-key.asc',
              'debian/upstream/signing-key.pgp']:
     if os.path.exists(path):
         has_keys = True
-
-
-def fetch_keys(keys):
-    import subprocess
-    try:
-        subprocess.check_call(['gpg', '--recv-keys'] + keys)
-    except subprocess.CalledProcessError:
-        return False
-    return True
-
-
-def sig_valid(sig):
-    return sig.status == 0
 
 
 description = None
@@ -92,48 +82,16 @@ with WatchEditor() as editor:
                  (e.geturl(), e))
             sys.exit(0)
         for r in releases[:RELEASES_TO_INSPECT]:
-            if r.pgpsigurl:
-                pgpsigurls = [(pgpsigurlmangle, r.pgpsigurl)]
-            else:
-                pgpsigurls = [
-                    (mangle, apply_url_mangle(mangle, r.url))
-                    for mangle in COMMON_MANGLES]
-            for mangle, pgpsigurl in pgpsigurls:
-                # Try and download signatures from some predictable locations.
-                try:
-                    resp = urlopen(pgpsigurl)
-                except HTTPError:
-                    continue
-                sig = resp.read()
-                actual = urlopen(r.url).read()
-                try:
-                    gr = c.verify(actual, sig)[1]
-                except gpg.errors.GPGMEError as e:
-                    warn('Error verifying signature %s on %s: %s' % (
-                         pgpsigurl, r.url, e))
-                    continue
-                except gpg.errors.BadSignatures as e:
-                    if str(e).endswith(': No public key'):
-                        if not fetch_keys(
-                                [s.fpr for s in e.result.signatures]):
-                            warn('Unable to retrieve keys: %r' % (
-                                 e.result.signatures, ))
-                            sys.exit(2)
-                        gr = c.verify(actual, sig)[1]
-                    else:
-                        raise
-                signatures = gr.signatures
-                is_valid = True
-                for sig in signatures:
-                    if not sig_valid(sig):
-                        warn('Signature from %s in %s for %s not valid' % (
-                             sig.fpr, pgpsigurl, r.url))
-                        is_valid = False
-                    else:
-                        needed_keys.add(sig.fpr)
-                sigs_valid.append(is_valid)
-                used_mangles.append(mangle)
-                break
+            try:
+                sig_info = probe_signature(
+                    r, pgpsigurlmangle=pgpsigurlmangle,
+                    gpg_context=c)
+            except KeyRetrievalFailed:
+                sys.exit(2)
+            if sig_info is not None:
+                sigs_valid.append(sig_info.is_valid)
+                used_mangles.append(sig_info.mangle)
+                needed_keys.update(sig_info.keys)
             else:
                 used_mangles.append(None)
         if not all(sigs_valid[:NUM_KEYS_TO_CHECK]):
@@ -173,7 +131,7 @@ with WatchEditor() as editor:
                             missing_keys.append(fpr)
                         f.write(key)
                     if missing_keys:
-                        fetch_keys(missing_keys)
+                        fetch_keys(missing_keys, home_dir=c.home_dir)
                         for fpr in missing_keys:
                             key = c.key_export_minimal(fpr)
                             if not key:

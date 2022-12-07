@@ -17,6 +17,7 @@
 
 """Functions for working with watch files."""
 
+from collections import namedtuple
 from dataclasses import dataclass
 import json
 import logging
@@ -29,7 +30,12 @@ from urllib.request import urlopen, Request
 
 from debian.changelog import Changelog
 from debmutate.reformatting import FormattingUnpreservable
-from debmutate.watch import Watch, WatchEditor, WatchFile
+from debmutate.watch import (
+    Watch,
+    WatchEditor,
+    WatchFile,
+    apply_url_mangle,
+)
 
 from . import (
     USER_AGENT,
@@ -37,6 +43,7 @@ from . import (
     min_certainty,
     certainty_to_confidence,
 )
+from .gpg import fetch_keys
 
 
 @dataclass
@@ -46,6 +53,88 @@ class WatchCandidate:
     site: str
     certainty: Optional[str]
     preference: Optional[int]
+
+
+class KeyRetrievalFailed(Exception):
+
+    def __init__(self, fingerprints):
+        self.fingerprints = fingerprints
+
+
+COMMON_PGPSIGURL_MANGLES = [
+    's/$/.%s/' % ext for ext in ['asc', 'pgp', 'gpg', 'sig', 'sign']]
+
+
+SignatureInfo = namedtuple('SignatureInfo', ['is_valid', 'keys', 'mangles'])
+
+
+def probe_signature(r, *, pgpsigurlmangle=None, mangles=None, gpg_context=None):
+    """Try to find the signature file for a release.
+    """
+    import gpg.errors
+
+    if gpg_context is None:
+        import gpg
+        gpg_context = gpg.Context(armor=True)
+
+    if mangles is None:
+        mangles = COMMON_PGPSIGURL_MANGLES
+
+    def sig_valid(sig):
+        return sig.status == 0
+
+    if r.pgpsigurl:
+        pgpsigurls = [(pgpsigurlmangle, r.pgpsigurl)]
+    else:
+        pgpsigurls = [
+            (mangle, apply_url_mangle(mangle, r.url))
+            for mangle in mangles]
+    for mangle, pgpsigurl in pgpsigurls:
+        # Try and download signatures from some predictable locations.
+        try:
+            resp = urlopen(pgpsigurl)
+        except urllib.error.HTTPError:
+            continue
+        except TimeoutError:
+            logging.warning('Timeout error retrieving %s', pgpsigurl)
+            continue
+        sig = resp.read()
+        actual = urlopen(r.url).read()
+        try:
+            gr = gpg_context.verify(actual, sig)[1]
+        except gpg.errors.GPGMEError as e:
+            logging.warning(
+                'Error verifying signature %s on %s: %s',
+                pgpsigurl, r.url, e)
+            continue
+        except gpg.errors.BadSignatures as e:
+            if str(e).endswith(': No public key'):
+                if not fetch_keys(
+                        [s.fpr for s in e.result.signatures],
+                        home_dir=gpg_context.home_dir):
+                    logging.warning(
+                        'Unable to retrieve keys: %r',
+                         e.result.signatures)
+                    raise KeyRetrievalFailed(
+                        [s.fpr for s in e.result.signatures]) from e
+                gr = gpg_context.verify(actual, sig)[1]
+            else:
+                raise
+        signatures = gr.signatures
+        is_valid = True
+        needed_keys = set()
+        for sig in signatures:
+            if not sig_valid(sig):
+                loggin.warning(
+                    'Signature from %s in %s for %s not valid',
+                     sig.fpr, pgpsigurl, r.url)
+                is_valid = False
+            else:
+                needed_keys.add(sig.fpr)
+        return SignatureInfo(
+            is_valid=is_valid, keys=needed_keys), mangle=mangle)
+    else:
+        return None
 
 
 def candidates_from_setup_py(

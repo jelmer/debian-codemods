@@ -60,3 +60,20 @@ def gpg_import_export(import_options, export_options, stdin):
         if p.returncode != 0:
             raise GpgFailed(stderr)
         return stdout
+
+
+def fetch_keys(keys, home_dir):
+    import subprocess
+    if home_dir:
+        env = dict(os.environ)
+        env['GNUPGHOME'] = home_dir
+    try:
+        subprocess.check_call(
+            ['gpg', '--recv-keys'] + keys,
+            env=env)
+    except FileNotFoundError as exc:
+        # No gpg, no dice.
+        raise GpgMissing() from exc
+    except subprocess.CalledProcessError:
+        return False
+    return True
