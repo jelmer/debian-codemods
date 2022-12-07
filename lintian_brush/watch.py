@@ -526,63 +526,64 @@ def main():  # noqa: C901
         logging.info('%s', get_committer(wt))
         return 0
 
-    try:
-        check_clean_tree(wt, wt.basis_tree(), subpath)
-    except WorkspaceDirty:
-        logging.info("%s: Please commit pending changes first.", wt.basedir)
-        return 1
+    with wt.lock_write():
+        try:
+            check_clean_tree(wt, wt.basis_tree(), subpath)
+        except WorkspaceDirty:
+            logging.info("%s: Please commit pending changes first.", wt.basedir)
+            return 1
 
-    update_changelog = args.update_changelog
-    allow_reformatting = args.allow_reformatting
-    try:
-        cfg = Config.from_workingtree(wt, subpath)
-    except FileNotFoundError:
-        pass
-    else:
-        if update_changelog is None:
-            update_changelog = cfg.update_changelog()
+        update_changelog = args.update_changelog
+        allow_reformatting = args.allow_reformatting
+        try:
+            cfg = Config.from_workingtree(wt, subpath)
+        except FileNotFoundError:
+            pass
+        else:
+            if update_changelog is None:
+                update_changelog = cfg.update_changelog()
+            if allow_reformatting is None:
+                allow_reformatting = cfg.allow_reformatting()
+
         if allow_reformatting is None:
-            allow_reformatting = cfg.allow_reformatting()
+            allow_reformatting = False
 
-    if allow_reformatting is None:
-        allow_reformatting = False
+        good_upstream_versions = set()
+        expected_versions = list(sorted(good_upstream_versions))[-5:]
 
-    good_upstream_versions = set()
-    expected_versions = list(sorted(good_upstream_versions))[-5:]
+        with open('debian/changelog', 'r') as f:
+            cl = Changelog(f)
+            for entry in cl:
+                good_upstream_versions.add(entry.version.upstream_version)
+            package = cl.package
 
-    with open('debian/changelog', 'r') as f:
-        cl = Changelog(f)
-        for entry in cl:
-            good_upstream_versions.add(entry.version.upstream_version)
-        package = cl.package
-
-    try:
-        with WatchEditor(allow_reformatting=allow_reformatting) as updater:
-            if verify_watch_file(updater.watch_file, package,
-                                 expected_versions):
-                report_fatal(
-                    'nothing-to-do',
-                    'Existing watch file has valid entries')
-                return 0
-            fix_watch_issues(updater)
-            if not verify_watch_file(updater.watch_file, package,
+        try:
+            with WatchEditor(allow_reformatting=allow_reformatting) as updater:
+                if verify_watch_file(updater.watch_file, package,
                                      expected_versions):
-                candidates = find_candidates(
-                    '.', good_upstream_versions,
-                    net_access=not args.disable_net_access)
-                updater.watch_file.entries = [candidates[0].watch]
-    except FileNotFoundError:
-        candidates = find_candidates(
-            '.', good_upstream_versions,
-            net_access=not args.disable_net_access)
-        wf = WatchFile()
-        wf.entries.append(candidates[0].watch)
+                    report_fatal(
+                        'nothing-to-do',
+                        'Existing watch file has valid entries')
+                    return 0
+                fix_watch_issues(updater)
+                if not verify_watch_file(updater.watch_file, package,
+                                         expected_versions):
+                    candidates = find_candidates(
+                        '.', good_upstream_versions,
+                        net_access=not args.disable_net_access)
+                    updater.watch_file.entries = [candidates[0].watch]
+        except FileNotFoundError:
+            candidates = find_candidates(
+                '.', good_upstream_versions,
+                net_access=not args.disable_net_access)
+            wf = WatchFile()
+            wf.entries.append(candidates[0].watch)
 
-        with open('debian/watch', 'w') as f:
-            wf.dump(f)
-    except FormattingUnpreservable as e:
-        report_fatal('formatting-unpreservable', str(e))
-        return 1
+            with open('debian/watch', 'w') as f:
+                wf.dump(f)
+        except FormattingUnpreservable as e:
+            report_fatal('formatting-unpreservable', str(e))
+            return 1
 
     if args.verify:
         with WatchEditor() as updater:
