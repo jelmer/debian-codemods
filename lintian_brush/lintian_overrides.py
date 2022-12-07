@@ -368,6 +368,8 @@ INFO_FIXERS = {
         "^([^ ]+) " + PATH_MATCH + "$", r"\1 [\2]"),
     "repeated-path-segment": (
         "^([^ ]+) " + PATH_MATCH + "$", r"\1 [\2]"),
+    "symlink-is-self-recursive": (
+        "^([^ ]+) " + PATH_MATCH + "$", r"\1 [\2]"),
 }
 
 
