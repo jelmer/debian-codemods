@@ -608,6 +608,11 @@ def main():  # noqa: C901
                 '.', good_upstream_versions,
                 net_access=not args.disable_net_access)
             wf = WatchFile()
+            if len(candidates) == 0:
+                report_fatal(
+                    'no-download-urls-found',
+                    'No candidates for the watch file were found')
+                return 1
             wf.entries.append(candidates[0].watch)
 
             with open('debian/watch', 'w') as f:
