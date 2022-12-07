@@ -234,7 +234,7 @@ def candidates_from_upstream_metadata(
 
         for field in ["Repository", "X-Download"]:
             try:
-                parsed_url = urlparse(code[field])
+                parsed_url = urlparse(code[field].split(' ')[0])
             except KeyError:
                 pass
             else:
