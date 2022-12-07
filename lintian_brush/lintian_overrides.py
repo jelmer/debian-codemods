@@ -366,6 +366,8 @@ INFO_FIXERS = {
         "^" + PATH_MATCH + r":([0-9]+)$", r"[\1:\2]"),
     "application-in-library-section": (
         "^([^ ]+) " + PATH_MATCH + "$", r"\1 [\2]"),
+    "repeated-path-segment": (
+        "^([^ ]+) " + PATH_MATCH + "$", r"\1 [\2]"),
 }
 
 

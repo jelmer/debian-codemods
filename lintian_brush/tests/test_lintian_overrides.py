@@ -236,6 +236,9 @@ INFO_FIXER_TESTS = [
     ("application-in-library-section",
      "libs usr/bin/cpan5.32-x86_64-linux-gnu",
      "libs [usr/bin/cpan5.32-x86_64-linux-gnu]"),
+    ("repeated-path-segment",
+     "books usr/lib/acl2-8.4dfsg/books/projects/paco/books/",
+     "books [usr/lib/acl2-8.4dfsg/books/projects/paco/books/]"),
 ]
 
 
