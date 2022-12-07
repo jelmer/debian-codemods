@@ -68,7 +68,8 @@ COMMON_PGPSIGURL_MANGLES = [
 SignatureInfo = namedtuple('SignatureInfo', ['is_valid', 'keys', 'mangles'])
 
 
-def probe_signature(r, *, pgpsigurlmangle=None, mangles=None, gpg_context=None):
+def probe_signature(r, *, pgpsigurlmangle=None, mangles=None,
+                    gpg_context=None):
     """Try to find the signature file for a release.
     """
     import gpg.errors
@@ -125,7 +126,7 @@ def probe_signature(r, *, pgpsigurlmangle=None, mangles=None, gpg_context=None):
         needed_keys = set()
         for sig in signatures:
             if not sig_valid(sig):
-                loggin.warning(
+                logging.warning(
                     'Signature from %s in %s for %s not valid',
                      sig.fpr, pgpsigurl, r.url)
                 is_valid = False
@@ -162,21 +163,13 @@ def candidates_from_setup_py(
     current_version_filenames = None
     if net_access:
         json_url = "https://pypi.python.org/pypi/%s/json" % project
-        headers = {"User-Agent": USER_AGENT}
         logging.info('Getting %s info on pypi (%s)',
                      project, json_url)
-        try:
-            response = urlopen(
-                Request(json_url, headers=headers),
-                timeout=DEFAULT_URLLIB_TIMEOUT
-            )
-        except urllib.error.HTTPError as e:
-            if e.status == 404:
-                logging.warning('unable to find project %s on pypi',
-                                project)
-                return
-            raise
-        pypi_data = json.load(response)
+        pypi_data = _load_json(json_url)
+        if pypi_data is None:
+            logging.warning('unable to find project %s on pypi',
+                            project)
+            return
         if version in pypi_data["releases"]:
             release = pypi_data["releases"][version]
             current_version_filenames = [
