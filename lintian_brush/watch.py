@@ -603,6 +603,11 @@ def main():  # noqa: C901
                     candidates = find_candidates(
                         '.', good_upstream_versions,
                         net_access=not args.disable_net_access)
+                    if len(candidates) == 0:
+                        report_fatal(
+                            'no-download-urls-found',
+                            'No candidates for the watch file were found')
+                        return 1
                     updater.allow_reformatting = True
                     updater.watch_file.entries = [candidates[0].watch]
         except FileNotFoundError:
