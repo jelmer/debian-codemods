@@ -79,6 +79,7 @@ ADDON_TO_DEP.update({
     'systemd':
         'debhelper (>= 9.20160709~) | debhelper-compat | '
         'dh-sequence-systemd | dh-systemd',
+    'vim_addon': 'dh_vim-addon | dh-sequence-vim-addon',
 })
 
 need = []
