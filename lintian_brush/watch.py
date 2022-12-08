@@ -422,19 +422,43 @@ def watch_entries_certainty(entries, source_package,
                             default_certainty="likely"):
     certainty = "certain"
     for entry in entries:
-        ret = verify_watch_entry(
-            entry, source_package,
-            expected_versions=expected_versions)
-        if ret is False:
+        try:
+            ret = verify_watch_entry(
+                entry, source_package,
+                expected_versions=expected_versions)
+        except WatchEntryVerificationFailure:
             certainty = min_certainty(["possible", certainty])
-        if ret is None:
+        except TemporaryWatchEntryVerficationError:
             certainty = min_certainty([default_certainty, certainty])
+        else:
+            if not all(ret):
+                certainty = min_certainty(["possible", certainty])
     return certainty
+
+
+class WatchEntryVerificationFailure(Exception):
+    """Failure verifying watch entry."""
+
+
+class TemporaryWatchEntryVerficationError(Exception):
+    """Temporary error verifying watch entry."""
+
+
+class WatchEntryVerificationStatus:
+
+    def __init__(self, entry, releases, missing_versions=None):
+        self.entry = entry
+        self.releases = {r.version: v for v in releases}
+        self.missing_versions = missing_versions
+
+    def __bool__(self):
+        return not self.missing_versions
 
 
 def verify_watch_entry(
         entry: Watch, source_package: str,
-        expected_versions: Optional[List[str]] = None) -> Optional[bool]:
+        expected_versions:
+            Optional[List[str]] = None) -> WatchEntryVerificationStatus:
     try:
         releases = list(sorted(
                 entry.discover(source_package), reverse=True))
@@ -444,35 +468,49 @@ def verify_watch_entry(
             e.geturl(), e)
         if (e.status or 0) // 100 == 5:
             # If the server is unhappy, then the entry could still be valid.
-            return None
+            raise TemporaryWatchEntryVerficationError(str(e)) from e
 
-        return False
+        raise WatchEntryVerificationFailure(str(e)) from e
 
-    if not releases:
-        # No matches is not a good sign
-        return None
+    if expected_versions is None:
+        return WatchEntryVerificationStatus(entry, releases=releases)
 
-    if (expected_versions
-            and all(map(releases.__contains__, expected_versions))):
-        return True
-
-    return True
+    found_versions = set([str(r.version) for r in releases])
+    missing_versions = set(expected_versions) - found_versions
+    return WatchEntryVerificationStatus(
+        entry, releases=releases, missing_versions=missing_versions)
 
 
-def report_fatal(code: str, description: str) -> None:
+def report_fatal(code: str, description: str, context=None) -> None:
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'result_code': code,
-                'description': description}, f)
+                'description': description,
+                'context': context}, f)
     logging.fatal('%s', description)
 
 
 def verify_watch_file(watch_file, source_package, expected_versions):
+    ret = []
     for entry in watch_file.entries:
-        if not verify_watch_entry(entry, source_package, expected_versions):
-            return False
-    return True
+        ret.append(verify_watch_entry(entry, source_package, expected_versions))
+    return ret
+
+
+def svp_context(status):
+    return {
+        'entries': {
+            'text': str(entry_status.entry),
+            'releases': {
+                str(r.version): {
+                    'url': r.url,
+                } for r in entry_status.releases
+            },
+            'missing_versions':
+                [str(x) for x in entry_status.missing_versions]
+        } for entry_status in (status or [])
+    }
 
 
 def main():  # noqa: C901
@@ -581,7 +619,6 @@ def main():  # noqa: C901
             allow_reformatting = False
 
         good_upstream_versions = set()
-        expected_versions = list(sorted(good_upstream_versions))[-5:]
 
         with open('debian/changelog', 'r') as f:
             cl = Changelog(f)
@@ -589,17 +626,33 @@ def main():  # noqa: C901
                 good_upstream_versions.add(entry.version.upstream_version)
             package = cl.package
 
+        expected_versions = list(sorted(good_upstream_versions))[-5:]
+
+        status = None
         try:
             with WatchEditor(allow_reformatting=allow_reformatting) as updater:
-                if verify_watch_file(updater.watch_file, package,
-                                     expected_versions):
+                try:
+                    status = verify_watch_file(updater.watch_file, package,
+                                     expected_versions)
+                except (TemporaryWatchEntryVerficationError,
+                        WatchEntryVerificationFailure):
+                    status = [None]
+                if all(status):
                     report_fatal(
                         'nothing-to-do',
-                        'Existing watch file has valid entries')
+                        'Existing watch file has valid entries',
+                        context=svp_context(status))
                     return 0
                 fix_watch_issues(updater)
-                if not verify_watch_file(updater.watch_file, package,
-                                         expected_versions):
+                try:
+                    status = verify_watch_file(updater.watch_file, package,
+                                      expected_versions)
+                except WatchEntryVerificationFailure:
+                    status = [None]
+                except TemporaryWatchEntryVerficationError as e:
+                    report_fatal('temporary-verification-error', str(e))
+                    return 1
+                if not all(status):
                     candidates = find_candidates(
                         '.', good_upstream_versions,
                         net_access=not args.disable_net_access)
@@ -610,6 +663,7 @@ def main():  # noqa: C901
                         return 1
                     updater.allow_reformatting = True
                     updater.watch_file.entries = [candidates[0].watch]
+                    status = None
         except FileNotFoundError:
             candidates = find_candidates(
                 '.', good_upstream_versions,
@@ -624,27 +678,43 @@ def main():  # noqa: C901
 
             with open('debian/watch', 'w') as f:
                 wf.dump(f)
+            status = None
         except FormattingUnpreservable as e:
             report_fatal('formatting-unpreservable',
                          "Unable to preserve formatting of %s" % e.path)
             return 1
 
     if args.verify:
-        with WatchEditor() as updater:
-            if not verify_watch_file(updater.watch_file, package,
-                                     expected_versions):
-                report_fatal(
-                    'verification-failed',
-                    'Unable to verify watch entry: %s'
-                    % updater.watch_file.entries[0])
-                return 1
+        if status is None:
+            with WatchEditor() as updater:
+                try:
+                    status = verify_watch_file(
+                        updater.watch_file, package, expected_versions)
+                except WatchEntryVerificationFailure as e:
+                    report_fatal(
+                        'verification-failed',
+                        'Unable to verify watch entry: %s'
+                        % e)
+                    return 1
+                except TemporaryWatchEntryVerficationError as e:
+                    report_fatal(
+                        'temporary-verification-error',
+                        'Unable to verify watch entry: %s'
+                        % e)
+                    return 1
+                if not all(status):
+                    report_fatal(
+                        'verification-failed',
+                        'Unable to watch entries; missing versions: %r'
+                        % status[0].missing_versions,
+                        context=svp_context(status))
+                    return 1
 
     if os.environ.get("SVP_API") == "1":
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump({
                 "description": "Update watch file.",
-                "context": {
-                }
+                "context": svp_context(status),
             }, f)
 
     return 0
