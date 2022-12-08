@@ -240,6 +240,11 @@ INFO_FIXER_TESTS = [
      "books usr/lib/acl2-8.4dfsg/books/projects/paco/books/",
      "books [usr/lib/acl2-8.4dfsg/books/projects/paco/books/]"),
     ("symlink-is-self-recursive", ". usr/bin/X11", ". [usr/bin/X11]"),
+    ('privacy-breach-google-adsense',
+     'usr/share/doc/jquery-alternative-doc/index.html '
+     '(choke on: "google-analytics.com/ga.js")',
+     '(choke on: "google-analytics.com/ga.js") '
+     '[usr/share/doc/jquery-alternative-doc/index.html]'),
 ]
 
 

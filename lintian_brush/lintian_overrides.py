@@ -366,6 +366,9 @@ INFO_FIXERS = {
         "^([^ ]+) " + PATH_MATCH + "$", r"\1 [\2]"),
     "symlink-is-self-recursive": (
         "^([^ ]+) " + PATH_MATCH + "$", r"\1 [\2]"),
+    "privacy-breach-google-adsense": (
+        r"^" + PATH_MATCH + r" \(choke on: ([^\)]+)\)$",
+        r"(choke on: \2) [\1]"),
 }
 
 
