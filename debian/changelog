@@ -1,3 +1,22 @@
+lintian-brush (0.141) UNRELEASED; urgency=medium
+
+  * Allow removed files.
+  * Reformat.
+  * Fix repeated-path-segment.
+  * Update SPDX license data
+  * Update list of fixers in README.md
+  * Update key package versions
+  * Factor out probe_signature.
+  * Lock write.
+  * Support generating watch files for Launchpad.
+  * Use common _load_json.
+  * Error out when there are no candidates.
+  * Split out repo URL.
+  * Allow reformatting when rewriting.
+  * Handle symlink-is-self-recursive
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 08 Dec 2022 12:55:48 +0000
+
 lintian-brush (0.140) unstable; urgency=medium
 
   * Fix up override info for jar-not-in-usr-share, package-installs-java-
