@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import asyncio
+from contextlib import suppress
 import re
 import socket
 from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
@@ -120,9 +121,8 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
             raise NewRepositoryURLUnknown(vcs_type, vcs_url)
         vcs_type = "Git"
     # Verify that there is actually a repository there
-    if net_access:
-        if verify_salsa_repository(vcs_url) is False:
-            raise NewRepositoryURLUnknown(vcs_type, vcs_url)
+    if net_access and verify_salsa_repository(vcs_url) is False:
+        raise NewRepositoryURLUnknown(vcs_type, vcs_url)
 
     print("Update Vcs-* headers to use salsa repository.")
 
@@ -166,18 +166,14 @@ def migrate_from_obsolete_infra(control):
     for hdr in ["Vcs-Git", "Vcs-Bzr", "Vcs-Hg", "Vcs-Svn"]:
         if hdr == "Vcs-" + vcs_type:  # type: ignore
             continue
-        try:
+        with suppress(KeyError):
             del control[hdr]
-        except KeyError:
-            pass
     control["Vcs-" + vcs_type] = vcs_url  # type: ignore
     if vcs_browser is not None:
         control["Vcs-Browser"] = vcs_browser
     else:
-        try:
+        with suppress(KeyError):
             del control["Vcs-Browser"]
-        except KeyError:
-            pass
 
 
 with control as updater:

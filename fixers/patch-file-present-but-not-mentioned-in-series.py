@@ -19,7 +19,7 @@ if not opinionated():
 try:
     patches = set()
     with open('debian/patches/series', 'rb') as f:
-        for patch, quoted, options in read_quilt_series(f):
+        for patch, _quoted, _options in read_quilt_series(f):
             patches.add(patch)
 except FileNotFoundError:
     sys.exit(0)

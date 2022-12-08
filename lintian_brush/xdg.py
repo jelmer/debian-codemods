@@ -25,7 +25,7 @@ from iniparse.ini import INIConfig, LineContainer, OptionLine
 from debmutate.reformatting import edit_formatted_file
 
 
-class DesktopEntryEditor(object):
+class DesktopEntryEditor:
     def __init__(self, path, allow_reformatting=False):
         self.path = path
         if allow_reformatting is None:

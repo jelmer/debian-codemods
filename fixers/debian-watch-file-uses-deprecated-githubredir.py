@@ -28,7 +28,8 @@ try:
                 info='%s %s' % (w.url, w.matching_pattern))
             if issue.should_fix():
                 w.url = 'https://github.com/%s/%s/tags' % (parts[1], parts[2])
-                w.matching_pattern = '.*/' + w.matching_pattern.rsplit('/', 1)[-1]
+                w.matching_pattern = (
+                    '.*/' + w.matching_pattern.rsplit('/', 1)[-1])
                 issue.report_fixed()
                 changed_entries.append(w)
         if net_access_allowed():

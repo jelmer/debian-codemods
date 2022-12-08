@@ -33,20 +33,20 @@ except FileNotFoundError:
 
 with control as updater:
     # Remove anything that involves python 2.6, 2.7, 3.3
-    if "X-Python-Version" in updater.source:
-        if updater.source["X-Python-Version"].strip().startswith(">= 2."):
-            vers = updater.source["X-Python-Version"].split(">=")[1].strip()
-            if parse(vers) <= python_versions['old-python2']:
-                if parse(vers) <= python_versions['ancient-python2']:
-                    kind = 'ancient'
-                else:
-                    kind = 'old'
-            issue = LintianIssue(
-                updater.source, '%s-python-version-field' % kind,
-                'x-python-version %s' % updater.source['X-Python-Version'])
-            if issue.should_fix():
-                del updater.source["X-Python-Version"]
-                issue.report_fixed()
+    if ("X-Python-Version" in updater.source and
+            updater.source["X-Python-Version"].strip().startswith(">= 2.")):
+        vers = updater.source["X-Python-Version"].split(">=")[1].strip()
+        if parse(vers) <= python_versions['old-python2']:
+            if parse(vers) <= python_versions['ancient-python2']:
+                kind = 'ancient'
+            else:
+                kind = 'old'
+        issue = LintianIssue(
+            updater.source, '%s-python-version-field' % kind,
+            'x-python-version %s' % updater.source['X-Python-Version'])
+        if issue.should_fix():
+            del updater.source["X-Python-Version"]
+            issue.report_fixed()
     if ("X-Python3-Version" in updater.source and
             updater.source["X-Python3-Version"].strip().startswith(">=")):
         vers = updater.source["X-Python3-Version"].split(">=")[1].strip()

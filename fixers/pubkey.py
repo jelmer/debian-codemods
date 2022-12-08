@@ -4,7 +4,6 @@
 import os
 import sys
 from typing import List, Optional
-from urllib.request import urlopen
 from urllib.error import HTTPError
 
 try:

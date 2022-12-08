@@ -19,6 +19,7 @@
 """Utility for dropping unnecessary constraints."""
 
 import asyncio
+from contextlib import suppress
 import json
 import logging
 import os
@@ -167,7 +168,7 @@ class DropObsoleteConflict(Action):
 def depends_obsolete(
         latest_version: Version, kind: str, req_version: Version) -> bool:
     req_version = Version(req_version)
-    if kind == ">=":
+    if kind == ">=":  # noqa: SIM116
         return latest_version >= req_version
     elif kind == ">>":
         return latest_version > req_version
@@ -196,8 +197,8 @@ async def _package_version(package: str, release: str) -> Optional[Version]:
     try:
         async with await connect_udd_mirror() as conn:
             version = await conn.fetchval(
-                "select version from packages "
-                "where package = $1 and release = $2",
+                "SELECT version FROM packages "
+                "WHERE package = $1 AND release = $2",
                 package, release)
     except asyncio.TimeoutError as exc:
         raise UddTimeout() from exc
@@ -212,8 +213,8 @@ async def _package_provides(
 
     async with await connect_udd_mirror() as conn:
         provides = await conn.fetchval(
-            "select provides from packages "
-            "where package = $1 and release = $2",
+            "SELECT provides FROM packages "
+            "WHERE package = $1 AND release = $2",
             package, release)
     if provides is not None:
         return [r for sublist in parse_relations(provides) for r in sublist[1]]
@@ -225,8 +226,8 @@ async def _package_essential(package: str, release: str) -> bool:
 
     async with await connect_udd_mirror() as conn:
         return await conn.fetchval(
-            "select (essential = 'yes') from packages "
-            "where package = $1 and release = $2",
+            "SELECT (essential = 'yes') FROM packages "
+            "WHERE package = $1 AND release = $2",
             package, release)
 
 
@@ -239,7 +240,7 @@ async def _package_build_essential(package: str, release: str) -> bool:
             'build-essential', release)
 
     build_essential = set()
-    for ws1, rel, ws2 in parse_relations(depends):
+    for _ws1, rel, _ws2 in parse_relations(depends):
         build_essential.update([r.name for r in rel])
     return package in build_essential
 
@@ -256,7 +257,7 @@ async def _fetch_transitions(release: str) -> Dict[str, str]:
     return ret
 
 
-class PackageChecker(object):
+class PackageChecker:
 
     def __init__(self, release: str, build: bool):
         self.release = release
@@ -281,10 +282,9 @@ class PackageChecker(object):
 
     def is_essential(self, package: str) -> bool:
         loop = asyncio.get_event_loop()
-        if self.build:
-            if loop.run_until_complete(
-                    _package_build_essential(package, self.release)):
-                return True
+        if self.build and loop.run_until_complete(
+                _package_build_essential(package, self.release)):
+            return True
         return loop.run_until_complete(
             _package_essential(package, self.release))
 
@@ -294,7 +294,7 @@ def drop_obsolete_depends(
         keep_minimum_versions: bool = False):
     ors = []
     actions: List[Action] = []
-    for i, pkgrel in enumerate(entry):
+    for pkgrel in entry:
         newrel = pkgrel
         replacement = checker.replacement(pkgrel.name)
         if replacement:
@@ -364,10 +364,7 @@ def update_depends(
 
 
 def _relations_empty(rels):
-    for ws1, rel, ws2 in rels:
-        if rel:
-            return False
-    return True
+    return all(not rel for _ws1, rel, _ws2 in rels)
 
 
 RelationsCallback = Callable[
@@ -528,7 +525,7 @@ def name_list(packages: List[str]) -> str:
     return ", ".join(std[:-1]) + " and " + std[-1]
 
 
-class ScrubObsoleteResult(object):
+class ScrubObsoleteResult:
 
     control_actions: List[
         Tuple[Optional[str], List[Tuple[str, List[Action], str]]]]
@@ -544,10 +541,10 @@ class ScrubObsoleteResult(object):
 
     def value(self) -> int:
         value = DEFAULT_VALUE_MULTIARCH_HINT
-        for para, changes in self.control_actions:
-            for field, actions, release in changes:
+        for _para, changes in self.control_actions:
+            for _field, actions, _release in changes:
                 value += len(actions) * 2
-        for path, removed, release in self.maintscript_removed:
+        for _path, removed, _release in self.maintscript_removed:
             value += len(removed)
         return value
 
@@ -704,7 +701,7 @@ def scrub_obsolete(
 
     committer = get_committer(wt)
 
-    try:
+    with suppress(PointlessCommit):
         wt.commit(
             specific_files=specific_files,
             message="\n".join(lines),
@@ -712,8 +709,6 @@ def scrub_obsolete(
             reporter=NullCommitReporter(),
             committer=committer,
         )
-    except PointlessCommit:
-        pass
 
     return result
 
@@ -959,7 +954,7 @@ def main():  # noqa: C901
             }, f)
 
     logging.info("Scrub obsolete settings.")
-    for release, lines in result.itemized().items():
+    for lines in result.itemized().values():
         for line in lines:
             logging.info("* %s", line)
 

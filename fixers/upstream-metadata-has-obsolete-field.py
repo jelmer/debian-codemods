@@ -47,9 +47,9 @@ with YamlUpdater('debian/upstream/metadata') as editor:
             del editor.code[field]
             removed_fields.append(field)
 
-    if removed_fields:
-        if not (set(editor.code.keys()) - set(ADDON_ONLY_FIELDS)):
-            editor.code.clear()
+    if removed_fields and not (
+            set(editor.code.keys()) - set(ADDON_ONLY_FIELDS)):
+        editor.code.clear()
 
 
 report_result(

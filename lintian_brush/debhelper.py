@@ -152,13 +152,13 @@ def drop_obsolete_maintscript_entries(
             comments.append((i, None, None))
             continue
         prior_version = getattr(entry, "prior_version", None)
-        if prior_version is not None:
-            if should_remove(entry.package, Version(prior_version)):
-                remove.extend(comments)
-                remove.append((i, entry.package, Version(prior_version)))
-                ret.append((i, entry.package, Version(prior_version)))
+        if (prior_version is not None
+                and should_remove(entry.package, Version(prior_version))):
+            remove.extend(comments)
+            remove.append((i, entry.package, Version(prior_version)))
+            ret.append((i, entry.package, Version(prior_version)))
         comments = []
-    for i, pkg, version in reversed(remove):
+    for i, _pkg, _version in reversed(remove):
         del editor.lines[i]
     return ret
 

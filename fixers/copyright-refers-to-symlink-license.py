@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 from functools import partial
 import os
 import re
@@ -34,19 +35,17 @@ def replace_symlink_path(synopsis, m):
     return newpath
 
 
-try:
-    with CopyrightEditor() as updater:
-        for para in updater.copyright.all_paragraphs():
-            license = para.license
-            if not license or not license.text:
-                continue
-            changed_text = re.sub(
-                '/usr/share/common-licenses/([A-Za-z0-9-.]+)',
-                partial(replace_symlink_path, license.synopsis), license.text)
-            if changed_text != license.text:
-                para.license = License(license.synopsis, changed_text)
-except (FileNotFoundError, NotMachineReadableError):
-    pass
+with suppress(FileNotFoundError, NotMachineReadableError), \
+        CopyrightEditor() as updater:
+    for para in updater.copyright.all_paragraphs():
+        license = para.license
+        if not license or not license.text:
+            continue
+        changed_text = re.sub(
+            '/usr/share/common-licenses/([A-Za-z0-9-.]+)',
+            partial(replace_symlink_path, license.synopsis), license.text)
+        if changed_text != license.text:
+            para.license = License(license.synopsis, changed_text)
 
 
 report_result(

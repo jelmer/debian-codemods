@@ -47,7 +47,7 @@ from .changelog import add_changelog_entry
 from .config import Config
 
 
-class TransitionResult(object):
+class TransitionResult:
 
     def __init__(self, ben, bugno=None):
         self.ben = ben
@@ -113,15 +113,13 @@ def _apply_transition(control, ben):
     for key in ben:
         if key not in SUPPORTED_KEYS:
             raise ValueError('unsupported key in ben file: %r' % key)
-    if ben.get('is_affected'):
-        if not control_matches(control, ben['is_affected']):
-            raise PackageNotAffected(control.source['Source'])
-    if ben.get('is_good'):
-        if control_matches(control, ben['is_good']):
-            raise PackageAlreadyGood(control.source['Source'])
-    if ben.get('is_bad'):
-        if not control_matches(control, ben['is_bad']):
-            raise PackageNotBad(control.source['Source'])
+    if (ben.get('is_affected')
+            and not control_matches(control, ben['is_affected'])):
+        raise PackageNotAffected(control.source['Source'])
+    if ben.get('is_good') and control_matches(control, ben['is_good']):
+        raise PackageAlreadyGood(control.source['Source'])
+    if ben.get('is_bad') and not control_matches(control, ben['is_bad']):
+        raise PackageNotBad(control.source['Source'])
     for field, expr in ben['is_bad']:
         if not field.startswith('.'):
             raise ValueError('unsupported field %r' % field)

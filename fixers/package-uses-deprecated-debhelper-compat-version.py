@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+from contextlib import suppress
 import os
 import re
 import shlex
@@ -75,20 +76,18 @@ def autoreconf_disabled():
 
 
 if autoreconf_disabled():
-    try:
-        with open('configure', 'rb') as f:
-            for line in f:
-                if b'runstatedir' in line:
-                    break
-            else:
-                new_debhelper_compat_version = min(
-                    new_debhelper_compat_version, 10)
-                warn(
-                    'Not upgrading beyond debhelper %d, since the package '
-                    'disables autoreconf but its configure does not provide '
-                    '--runstatedir.' % new_debhelper_compat_version)
-    except (IsADirectoryError, FileNotFoundError):
-        pass
+    with suppress(IsADirectoryError, FileNotFoundError), \
+            open('configure', 'rb') as f:
+        for line in f:
+            if b'runstatedir' in line:
+                break
+        else:
+            new_debhelper_compat_version = min(
+                new_debhelper_compat_version, 10)
+            warn(
+                'Not upgrading beyond debhelper %d, since the package '
+                'disables autoreconf but its configure does not provide '
+                '--runstatedir.' % new_debhelper_compat_version)
 
 
 if os.path.exists('debian/compat'):
@@ -155,11 +154,8 @@ def line_matches_command(target, line, command):
     if line.startswith(command + b' ') or line == command:
         return True
 
-    if (target == (b'override_' + command) and
-            line.startswith(b'$(overridden_command)')):
-        return True
-
-    return False
+    return (target == (b'override_' + command) and
+            line.startswith(b'$(overridden_command)'))
 
 
 def update_line(line, orig, new, description):
@@ -188,7 +184,7 @@ def update_line_replace_argument(line, old, new, description):
     return line, False
 
 
-class PybuildUpgrader(object):
+class PybuildUpgrader:
 
     def __init__(self):
         # Does the dh line specify --buildsystem=pybuild?
@@ -246,7 +242,7 @@ def upgrade_to_dh_prep(line, target):
     return line
 
 
-class DhMissingUpgrader(object):
+class DhMissingUpgrader:
     """Replace --list-missing / --fail-missing with dh_missing."""
 
     def __init__(self):
@@ -486,10 +482,8 @@ upgrade_to_debhelper = {
 
 for version in range(int(str(current_debhelper_compat_version))+1,
                      int(str(new_debhelper_compat_version))+1):
-    try:
+    with suppress(KeyError):
         upgrade_to_debhelper[version]()
-    except KeyError:
-        pass
 
 if new_debhelper_compat_version > current_debhelper_compat_version:
     if current_debhelper_compat_version < lowest_non_deprecated_compat_level():

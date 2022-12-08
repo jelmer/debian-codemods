@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 from lintian_brush import min_certainty
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
 from lintian_brush.fixer import (
@@ -66,11 +67,9 @@ def add_upstream_metadata(copyright):
                 achieved_certainty.append(datum.certainty)
 
 
-try:
-    with CopyrightEditor() as updater:
-        add_upstream_metadata(updater.copyright)
-except (FileNotFoundError, NotMachineReadableError):
-    pass
+with suppress(FileNotFoundError, NotMachineReadableError), \
+        CopyrightEditor() as updater:
+    add_upstream_metadata(updater.copyright)
 
 certainty = min_certainty(achieved_certainty)
 

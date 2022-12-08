@@ -968,7 +968,7 @@ Patch-Name: aname
         )
 
 
-class BaseScriptFixerTests(object):
+class BaseScriptFixerTests:
 
     script_fixer_cls: Type[ScriptFixer]
 
@@ -1020,12 +1020,14 @@ foo()
         )
 
 
-class ScriptFixerTests(BaseScriptFixerTests, TestCaseWithTransport):
+class ScriptFixerTests(
+        BaseScriptFixerTests, TestCaseWithTransport):  # type: ignore
 
     script_fixer_cls = ScriptFixer
 
 
-class PythonScriptFixerTests(BaseScriptFixerTests, TestCaseWithTransport):
+class PythonScriptFixerTests(
+        BaseScriptFixerTests, TestCaseWithTransport):  # type: ignore
 
     script_fixer_cls = PythonScriptFixer   # type: ignore
 

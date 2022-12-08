@@ -45,11 +45,11 @@ try:  # noqa: C901
             else:
                 # Preserve the first value.
                 # TODO(jelmer): Make a more informed choice.
-                for (i, v) in vs[1:]:
+                for (i, _v) in vs[1:]:
                     to_remove.append((i, k))
         if not to_remove:
             return
-        for i, k in sorted(to_remove, reverse=True):
+        for i, _k in sorted(to_remove, reverse=True):
             editor.force_rewrite()
             del node.value[i]
         fixed_lintian_tag('source', 'upstream-metadata-yaml-invalid')
@@ -70,9 +70,8 @@ try:  # noqa: C901
                         'source', 'upstream-metadata-not-yaml-mapping')
                     report_result(
                         'Use YAML mapping in debian/upstream/metadata.')
-                elif all([
-                        isinstance(m, dict) and len(m) == 1
-                        for m in editor.code]):
+                elif all(isinstance(m, dict)
+                         and len(m) == 1 for m in editor.code):
                     old = editor.code
                     editor.code = {}
                     for entry in old:

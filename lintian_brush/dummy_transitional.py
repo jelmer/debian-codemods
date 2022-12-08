@@ -57,7 +57,7 @@ REGEXES = [
 
 
 @dataclass
-class TransitionalPackage(object):
+class TransitionalPackage:
 
     from_name: str
     to_expr: str
@@ -119,7 +119,8 @@ WHERE release = $1 AND description LIKE '%transitional%'"""
             if len(depends) != 1:
                 logging.debug(
                     'no single transition target for %s: %r', row[0], row[2])
-        ret[row[0]] = TransitionalPackage(from_name=row[0], to_expr=row[2])  # type: ignore
+        ret[row[0]] = TransitionalPackage(
+            from_name=row[0], to_expr=row[2])  # type: ignore
     return ret
 
 

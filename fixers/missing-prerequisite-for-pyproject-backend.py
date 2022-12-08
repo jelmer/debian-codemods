@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 from debmutate.control import ensure_some_version, get_relation
 from lintian_brush.fixer import control, report_result, LintianIssue
 import sys
@@ -33,11 +34,9 @@ except KeyError:
 with control:
     for field in ['Build-Depends', 'Build-Depends-Indep',
                   'Build-Depends-Arch']:
-        try:
+        with suppress(KeyError):
             if get_relation(control.source.get(field, ''), prerequisite):
                 sys.exit(0)
-        except KeyError:
-            pass
     # TOOD(jelmer): Add file:lineno; requires
     # https://github.com/sdispater/tomlkit/issues/55
     issue = LintianIssue(

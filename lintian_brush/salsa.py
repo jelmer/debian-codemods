@@ -19,6 +19,7 @@
 
 __all__ = ["guess_repository_url", "determine_browser_url"]
 
+from contextlib import suppress
 import re
 from typing import Optional
 from urllib.parse import urlparse
@@ -187,11 +188,9 @@ def _salsa_path_from_alioth_url(  # noqa: C901
             parts = m.group(4).split("/")
             for i in range(len(parts), 0, -1):
                 subpath = "/".join(parts[:i])
-                try:
+                with suppress(KeyError):
                     return (GIT_PATH_RENAMES[subpath]
                             + "/" + "/".join(parts[i:]))
-                except KeyError:
-                    pass
         m = re.match(
             "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?([^/]+)/",
             alioth_url

@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 from lintian_brush.fixer import (
     control,
     LintianIssue,
@@ -35,10 +36,8 @@ with control as updater:
     if len(binary_sections) == 1 and issue.should_fix():
         updater.source['Section'] = binary_sections.pop()
         for binary in updater.binaries:
-            try:
+            with suppress(KeyError):
                 del binary['Section']
-            except KeyError:
-                pass
         issue.report_fixed()
         source_section_set = True
     if source_section_set and binary_sections_set:

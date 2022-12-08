@@ -83,7 +83,7 @@ def resolve_release_codename(name: str, date=None) -> Optional[str]:
     return None
 
 
-class Config(object):
+class Config:
     """A configuration file."""
 
     def __init__(self, path):

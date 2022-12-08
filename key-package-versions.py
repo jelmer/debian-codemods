@@ -29,7 +29,7 @@ def update_debian(versions, key_packages):
 
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT source, release, version from sources where source IN %s",
+        "SELECT source, release, version from sources WHERE source IN %s",
         (key_packages, ))
 
     for row in cursor.fetchall():

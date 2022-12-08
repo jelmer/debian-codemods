@@ -81,11 +81,11 @@ def update_offical_vcs(wt, subpath, repo_url=None, branch=None, committer=None,
              existing_subpath) = split_vcs_url(existing_url)
             existing = (existing_repo_url, existing_branch,
                         existing_subpath or '.')
-            if repo_url and existing != (repo_url, branch, subpath):
-                if not force:
-                    raise ConflictingVcsAlreadySpecified(
-                        vcs_type, existing_url,
-                        unsplit_vcs_url(repo_url, branch, subpath))
+            if (repo_url and existing != (repo_url, branch, subpath)
+                    and not force):
+                raise ConflictingVcsAlreadySpecified(
+                    vcs_type, existing_url,
+                    unsplit_vcs_url(repo_url, branch, subpath))
             logging.info('Using existing URL %s', existing_url)
             return existing
         maintainer_email = parseaddr(editor.source['Maintainer'])[1]

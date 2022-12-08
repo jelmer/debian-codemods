@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 from debian.copyright import License
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
 from lintian_brush.fixer import report_result, fixed_lintian_tag
@@ -52,11 +53,9 @@ def fix_spaces(copyright):
             paragraph.license = License(newsynopsis, paragraph.license.text)
 
 
-try:
-    with CopyrightEditor() as updater:
-        fix_spaces(updater.copyright)
-except (FileNotFoundError, NotMachineReadableError):
-    pass
+with suppress(FileNotFoundError, NotMachineReadableError), \
+        CopyrightEditor() as updater:
+    fix_spaces(updater.copyright)
 
 report_result(
     'Replace spaces in short license names with dashes.')

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 import os
-
 import re
 import sys
 
@@ -24,10 +24,8 @@ def previous_release(release):
     if release in (debian.devel(), debian.testing(), 'experimental'):
         return debian.stable()
     releases = debian.get_all()
-    try:
+    with suppress(ValueError):
         return releases[releases.index(release)-1]
-    except ValueError:
-        pass
     # TODO(jelmer): Ubuntu?
     return None
 

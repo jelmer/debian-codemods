@@ -405,7 +405,7 @@ def main(argv=None):  # noqa: C901
                     len(overall_result.overridden_lintian_issues))
         if overall_result.success:
             all_tags = set()
-            for result, summary in overall_result.success:
+            for result, _summary in overall_result.success:
                 all_tags.update(result.fixed_lintian_tags)
             if all_tags:
                 logging.info("Lintian tags fixed: %r", all_tags)

@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 from lintian_brush.yaml import YamlUpdater
 from lintian_brush.fixer import report_result, warn
 import sys
@@ -36,35 +37,33 @@ valid_field_names = {
 typo_fixed = set()
 case_fixed = set()
 
-try:
-    with YamlUpdater('debian/upstream/metadata') as updater:
-        for field in updater.code:
-            if field in valid_field_names:
+with suppress(FileNotFoundError), \
+        YamlUpdater('debian/upstream/metadata') as updater:
+    for field in updater.code:
+        if field in valid_field_names:
+            continue
+        if (field.startswith('X-') and
+                field[2:] in valid_field_names):
+            if field[2:] in updater.code:
+                warn('Both %s and %s exist.' % (
+                     field, field[2:]))
                 continue
-            if (field.startswith('X-') and
-                    field[2:] in valid_field_names):
-                if field[2:] in updater.code:
-                    warn('Both %s and %s exist.' % (
-                         field, field[2:]))
-                    continue
+            value = updater.code[field]
+            del updater.code[field]
+            updater.code[field[2:]] = value
+            typo_fixed.add((field, field[2:]))
+            continue
+
+        for option in valid_field_names:
+            if distance(field, option) == 1:
                 value = updater.code[field]
                 del updater.code[field]
-                updater.code[field[2:]] = value
-                typo_fixed.add((field, field[2:]))
-                continue
-
-            for option in valid_field_names:
-                if distance(field, option) == 1:
-                    value = updater.code[field]
-                    del updater.code[field]
-                    updater.code[option] = value
-                    if option.lower() == field.lower():
-                        case_fixed.add((field, option))
-                    else:
-                        typo_fixed.add((field, option))
-                    break
-except FileNotFoundError:
-    pass
+                updater.code[option] = value
+                if option.lower() == field.lower():
+                    case_fixed.add((field, option))
+                else:
+                    typo_fixed.add((field, option))
+                break
 
 
 if case_fixed:

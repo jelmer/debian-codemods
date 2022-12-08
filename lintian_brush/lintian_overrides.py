@@ -17,7 +17,9 @@
 
 """Utility functions for dealing with lintian overrides files."""
 
+from contextlib import suppress
 from debian.changelog import Version
+from functools import partial
 import os
 import re
 from typing import Optional, Iterator, Callable, List, Tuple
@@ -53,9 +55,7 @@ def update_overrides(
          an Override object
     """
     for path in overrides_paths():
-        update_overrides_file(
-            lambda lineno, override: cb(path, lineno, override),
-            path=path)
+        update_overrides_file(partial(cb, path), path=path)
 
 
 def update_overrides_file(
@@ -111,11 +111,8 @@ def get_overrides(
             )
 
     for path in paths:
-        try:
-            with open(path, "r") as f:
-                yield from iter_overrides(f)
-        except FileNotFoundError:
-            pass
+        with suppress(FileNotFoundError), open(path, "r") as f:
+            yield from iter_overrides(f)
 
 
 def override_exists(
@@ -134,11 +131,10 @@ def override_exists(
       type: package type (source, binary)
       arch: Architecture
     """
-    for override in get_overrides(type=type, package=package):
-        if override.matches(
-                package=package, info=info, tag=tag, arch=arch, type=type):
-            return True
-    return False
+    return any(
+        override.matches(package=package, info=info, tag=tag, arch=arch,
+                         type=type)
+        for override in get_overrides(type=type, package=package))
 
 
 async def get_unused_overrides(

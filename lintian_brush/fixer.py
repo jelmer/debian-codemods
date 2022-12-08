@@ -39,7 +39,7 @@ from debian.changelog import Version
 import os
 
 
-class LintianIssue(object):
+class LintianIssue:
     """Represents a lintian issue."""
 
     target: Tuple[str, Optional[str]]

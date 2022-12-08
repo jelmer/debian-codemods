@@ -18,7 +18,7 @@
 """Utility functions for editing files by line."""
 
 
-class LineEditor(object):
+class LineEditor:
     """Edit a file line by line."""
 
     def __init__(self, path, mode=""):

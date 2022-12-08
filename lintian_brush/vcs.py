@@ -155,12 +155,11 @@ def canonicalize_vcs_browser_url(url: str) -> str:
         "http://bzr.debian.org/loggerhead/",
         "https://anonscm.debian.org/loggerhead/"
     )
-    url = re.sub(
+    return re.sub(
         r"^https?://salsa.debian.org/([^/]+/[^/]+)\.git/?$",
         "https://salsa.debian.org/\\1",
         url,
     )
-    return url
 
 
 def canonical_vcs_git_url(url: str) -> str:

@@ -21,17 +21,17 @@ with control as updater:
         else:
             binary_homepages.add(binary['Homepage'])
 
-    if source_homepage is None and binary_homepages:
-        if len(binary_homepages) == 1:
-            updater.source['Homepage'] = binary_homepages.pop()
+    if (source_homepage is None and binary_homepages
+            and len(binary_homepages) == 1):
+        updater.source['Homepage'] = binary_homepages.pop()
 
-            for binary in updater.binaries:
-                if 'Homepage' in binary:
-                    issue = LintianIssue(
-                        'source', 'homepage-in-binary-package')
-                    if issue.should_fix():
-                        del binary['Homepage']
-                        issue.report_fixed()
+        for binary in updater.binaries:
+            if 'Homepage' in binary:
+                issue = LintianIssue(
+                    'source', 'homepage-in-binary-package')
+                if issue.should_fix():
+                    del binary['Homepage']
+                    issue.report_fixed()
 
 
 report_result('Set Homepage field in Source rather than Binary package.')

@@ -44,7 +44,7 @@ with control as updater:
                 'source', 'pypi-homepage', updater.source['Homepage'])
         elif hostname == 'rubygems.org':
             issue = LintianIssue(
-                'source', 'pypi-homepage', updater.source['Homepage'])
+                'source', 'rubygem-homepage', updater.source['Homepage'])
         else:
             issue = None
 

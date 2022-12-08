@@ -58,10 +58,8 @@ with ChangelogEditor() as cl:
 
 
 def is_well_past(version):
-    for (cl_version, cl_dt) in cl_dates:
-        if cl_version <= version and cl_dt.date() > date_threshold:
-            return False
-    return True
+    return all(not (cl_version <= version and cl_dt.date() > date_threshold)
+               for cl_version, cl_dt in cl_dates)
 
 
 total_entries = 0

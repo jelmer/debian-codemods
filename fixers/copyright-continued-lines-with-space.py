@@ -9,7 +9,7 @@ from lintian_brush.fixer import LintianIssue, report_result
 
 def expand_tabs(line, tabwidth=8):
     ret: List[bytes] = []
-    for i, c in enumerate(line):
+    for i, _c in enumerate(line):
         if line[i:i+1] == b'\t':
             # Round up to the next unit of tabwidth
             ret.extend([b' '] * (tabwidth - len(ret) % tabwidth))

@@ -37,7 +37,7 @@ with Deb822Editor('debian/tests/control') as updater:
         if restrictions == ['']:
             continue
         to_delete = []
-        for i, restriction in enumerate(list(restrictions)):
+        for restriction in list(restrictions):
             if restriction.strip() in DEPRECATED_RESTRICTIONS:
                 to_delete.append(restriction.strip())
                 fixed_lintian_tag(

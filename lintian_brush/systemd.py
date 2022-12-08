@@ -155,7 +155,7 @@ class Section(ConfigNamespace):
         raise Exception("No sub-sections allowed", name)
 
 
-class OptionList(object):
+class OptionList:
     def __init__(self, section, key, options):
         self._section = section
         self._key = key
@@ -244,10 +244,9 @@ class UnitFile(ConfigNamespace):
     def __iter__(self):
         d = set()
         for x in self._data.contents:
-            if isinstance(x, LineContainer):
-                if x.name not in d:
-                    yield x.name
-                    d.add(x.name)
+            if isinstance(x, LineContainer) and x.name not in d:
+                yield x.name
+                d.add(x.name)
 
     def _new_namespace(self, name):
         if self._data.contents:
@@ -287,7 +286,7 @@ class UnitFile(ConfigNamespace):
             fname = fp.name
         except AttributeError:
             fname = "<???>"
-        linecount = 0
+        linecount = 0  # noqa: SIM113
         exc = None
         line = None
         optobj = None

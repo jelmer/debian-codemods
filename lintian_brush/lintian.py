@@ -88,7 +88,7 @@ def _read_test_fields(path, vendor):
         fields = list(read_list_file(f, vendor=vendor))
 
     # Older versions of lintian listed fields with all lowercase.
-    if all([x == x.lower() for x in fields]):
+    if all(x == x.lower() for x in fields):
         fields = [_capitalize_field(x) for x in fields]
     return fields
 

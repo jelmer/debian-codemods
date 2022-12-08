@@ -57,7 +57,7 @@ from breezy.workspace import reset_tree, check_clean_tree
 from debmutate.reformatting import FormattingUnpreservable
 
 
-__version__ = (0, 139)
+__version__ = (0, 141)
 version_string = ".".join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ["certain", "confident", "likely", "possible", None]
 DEFAULT_MINIMUM_CERTAINTY = "certain"
@@ -140,25 +140,27 @@ class NotDebianPackage(Exception):
         super(NotDebianPackage, self).__init__(tree.abspath(path))
 
 
-class FixerResult(object):
+class FixerResult:
     """Result of a fixer run."""
 
     def __init__(
         self,
         description,
-        fixed_lintian_tags=[],
+        fixed_lintian_tags=None,
         certainty=None,
         patch_name=None,
         revision_id=None,
-        fixed_lintian_issues=[],
-        overridden_lintian_issues=[],
+        fixed_lintian_issues=None,
+        overridden_lintian_issues=None,
     ):
         self.description = description
         self.fixed_lintian_issues = fixed_lintian_issues or []
+        if fixed_lintian_tags is None:
+            fixed_lintian_tags = []
         if fixed_lintian_tags:
             self.fixed_lintian_issues.extend(
                 [LintianIssue(tag=tag) for tag in fixed_lintian_tags])
-        self.overridden_lintian_issues = overridden_lintian_issues
+        self.overridden_lintian_issues = overridden_lintian_issues or []
         self.certainty = certainty
         self.patch_name = patch_name
         self.revision_id = revision_id
@@ -183,7 +185,7 @@ class FixerResult(object):
         )
 
     def __eq__(self, other):
-        if type(other) != type(self):
+        if not isinstance(other, type(self)):
             return False
         return (
             (self.description == other.description)
@@ -196,7 +198,7 @@ class FixerResult(object):
         )
 
 
-class Fixer(object):
+class Fixer:
     """A Fixer script.
 
     The `lintian_tags` attribute contains the name of the lintian tags this
@@ -239,7 +241,7 @@ class Fixer(object):
         raise NotImplementedError(self.run)
 
 
-class LintianIssue(object):
+class LintianIssue:
 
     def __init__(
             self,
@@ -396,12 +398,12 @@ class PythonScriptFixer(Fixer):
             diligence=diligence,
         )
         try:
-            old_env = os.environ
+            old_env = dict(os.environ)
             old_stderr = sys.stderr
             old_stdout = sys.stdout
             sys.stderr = io.StringIO()
             sys.stdout = io.StringIO()
-            os.environ = env
+            os.environ.update(env)
             try:
                 old_cwd = os.getcwd()
             except FileNotFoundError:
@@ -429,7 +431,8 @@ class PythonScriptFixer(Fixer):
             description = sys.stdout.getvalue()
             err = sys.stderr.getvalue()
         finally:
-            os.environ = old_env
+            os.environ.clear()
+            os.environ.update(old_env)
             sys.stderr = old_stderr
             sys.stdout = old_stdout
             if old_cwd is not None:
@@ -510,7 +513,7 @@ class ScriptFixer(Fixer):
 
 
 def open_binary(name):
-    return open(data_file_path(name), 'rb')
+    return open(data_file_path(name), 'rb')  # noqa: SIM115
 
 
 def data_file_path(name, check=os.path.exists):
@@ -616,10 +619,8 @@ def available_lintian_fixers(
     for n in os.listdir(fixers_dir):
         if not n.endswith(".desc"):
             continue
-        for fixer in read_desc_file(
-            os.path.join(fixers_dir, n), force_subprocess=force_subprocess
-        ):
-            yield fixer
+        yield from read_desc_file(
+            os.path.join(fixers_dir, n), force_subprocess=force_subprocess)
 
 
 def increment_version(v: Version) -> None:
@@ -1011,7 +1012,7 @@ def run_lintian_fixer(  # noqa: C901
     return result, summary
 
 
-class ManyResult(object):
+class ManyResult:
     def __init__(self):
         self.success = []
         self.failed_fixers = {}
@@ -1132,14 +1133,14 @@ def run_lintian_fixers(  # noqa: C901
             nonlocal update_changelog, changelog_behaviour
             changelog_behaviour = determine_update_changelog(
                 local_tree, os.path.join(subpath, "debian"))
-            update_changelog = changelog_behaviour.update_changelog
-            return update_changelog
+            return changelog_behaviour.update_changelog
     else:
         changelog_behaviour = None
 
     ret = ManyResult()
     with ExitStack() as es:
-        t = es.enter_context(trange(len(fixers), leave=False, disable=None))
+        t = es.enter_context(
+            trange(len(fixers), leave=False, disable=None))  # type: ignore
 
         dirty_tracker = get_dirty_tracker(
             local_tree, subpath=subpath, use_inotify=use_inotify
@@ -1154,7 +1155,7 @@ def run_lintian_fixers(  # noqa: C901
                     'Too many open files for inotify, not using it.')
                 dirty_tracker = None
 
-        for i, fixer in enumerate(fixers):
+        for fixer in fixers:
             t.set_description("Running fixer %s" % fixer)
             t.update()
             start = time.time()
@@ -1262,9 +1263,7 @@ def control_files_in_root(tree: Tree, subpath: str) -> bool:
     control_path = os.path.join(subpath, "control")
     if tree.has_filename(control_path):
         return True
-    if tree.has_filename(control_path + ".in"):
-        return True
-    return False
+    return tree.has_filename(control_path + ".in")
 
 
 def is_debcargo_package(tree: Tree, subpath: str) -> bool:

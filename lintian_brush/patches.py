@@ -107,22 +107,18 @@ def find_patches_branch(tree):
     if tree.branch.name is None:
         return None
     branch_name = "patch-queue/%s" % tree.branch.name
-    try:
+    with contextlib.suppress(NotBranchError):
         return tree.branch.controldir.open_branch(branch_name)
-    except NotBranchError:
-        pass
     if tree.branch.name == "master":
         branch_name = "patched"
     else:
         branch_name = "patched-%s" % tree.branch.name
-    try:
+    with contextlib.suppress(NotBranchError):
         return tree.branch.controldir.open_branch(branch_name)
-    except NotBranchError:
-        pass
     return None
 
 
-class AppliedPatches(object):
+class AppliedPatches:
     """Context that provides access to a tree with patches applied."""
 
     def __init__(self, tree, patches, prefix=1):
@@ -164,8 +160,7 @@ def read_quilt_patches(tree, directory=DEFAULT_DEBIAN_PATCHES_DIR):
             continue
         # TODO(jelmer): Pass on options?
         with tree.get_file(osutils.pathjoin(directory, entry.name)) as f:
-            for patch in parse_patches(f, allow_dirty=True, keep_dirty=False):
-                yield patch
+            yield from parse_patches(f, allow_dirty=True, keep_dirty=False)
 
 
 class PatchApplicationBaseNotFound(Exception):

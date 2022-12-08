@@ -22,7 +22,7 @@ class VcsWatchError(Exception):
     """Error from vcswatch."""
 
 
-class VcsWatch(object):
+class VcsWatch:
     """Read VcsWatch data through UDD."""
 
     def __init__(self):

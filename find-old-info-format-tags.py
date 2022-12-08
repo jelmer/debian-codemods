@@ -16,12 +16,12 @@ conn = psycopg2.connect(
     "postgresql://udd-mirror:udd-mirror@udd-mirror.debian.net/udd")
 cursor = conn.cursor()
 cursor.execute(
-    "select package_type, package, package_version, information from lintian "
-    "where tag = 'mismatched-override'")
+    "SELECT package_type, package, package_version, information FROM lintian "
+    "WHERE tag = 'mismatched-override'")
 
 
 tag_count = {}
-for (pkg_type, pkg, version, info) in cursor.fetchall():
+for (_pkg_type, _pkg, _version, info) in cursor.fetchall():
     tag = info.split(' ')[0]
     tag_count.setdefault(tag, 0)
     tag_count[tag] += 1
@@ -29,7 +29,7 @@ for (pkg_type, pkg, version, info) in cursor.fetchall():
 
 tags_with_location_info = set()
 
-cursor.execute("select tag from lintian where information like '%[%]'")
+cursor.execute("SELECT tag FROM lintian WHERE information LIKE '%[%]'")
 for tag, in cursor.fetchall():
     tags_with_location_info.add(tag)
 

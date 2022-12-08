@@ -24,7 +24,7 @@ from ruamel.yaml import YAML
 from typing import List, Any, Iterator
 
 
-class MultiYamlUpdater(object):
+class MultiYamlUpdater:
     def __init__(self, path: str, remove_empty: bool = False):
         self.yaml = YAML()
         self.path = path
@@ -40,8 +40,7 @@ class MultiYamlUpdater(object):
         self._code[i] = val
 
     def __iter__(self) -> Iterator[Any]:
-        for m in self._code:
-            yield m
+        yield from self._code
 
     def __delitem__(self, i):
         del self._code[i]
@@ -91,7 +90,7 @@ class MultiYamlUpdater(object):
         return False
 
 
-class YamlUpdater(object):
+class YamlUpdater:
     def __init__(
         self, path: str, remove_empty: bool = True,
         allow_duplicate_keys: bool = False
@@ -214,7 +213,7 @@ def update_ordered_dict(code, changed, key=None):
             to_insert.append((k, v))
 
     to_insert.sort(key=key)
-    i = 0
+    i = 0  # noqa: SIM113
     for k, v in list(code.items()):
         while to_insert and key((k, v)) > key(to_insert[0]):
             code.insert(i, *to_insert.pop(0))
@@ -227,7 +226,7 @@ def update_ordered_dict(code, changed, key=None):
 
 
 def _update_json_lines(orig, code, lines, f):
-    indent = 0
+    indent = 0  # noqa: SIM113
     for c in lines[1][0:]:
         if c != " ":
             break

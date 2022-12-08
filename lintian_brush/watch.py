@@ -18,6 +18,7 @@
 """Functions for working with watch files."""
 
 from collections import namedtuple
+from contextlib import suppress
 from dataclasses import dataclass
 import json
 import logging
@@ -66,7 +67,7 @@ COMMON_PGPSIGURL_MANGLES = [
     's/$/.%s/' % ext for ext in ['asc', 'pgp', 'gpg', 'sig', 'sign']]
 
 
-SignatureInfo = namedtuple('SignatureInfo', ['is_valid', 'keys', 'mangles'])
+SignatureInfo = namedtuple('SignatureInfo', ['is_valid', 'keys', 'mangle'])
 
 
 def probe_signature(r, *, pgpsigurlmangle=None, mangles=None,
@@ -116,7 +117,7 @@ def probe_signature(r, *, pgpsigurlmangle=None, mangles=None,
                         home_dir=gpg_context.home_dir):
                     logging.warning(
                         'Unable to retrieve keys: %r',
-                         e.result.signatures)
+                        e.result.signatures)
                     raise KeyRetrievalFailed(
                         [s.fpr for s in e.result.signatures]) from e
                 gr = gpg_context.verify(actual, sig)[1]
@@ -129,7 +130,7 @@ def probe_signature(r, *, pgpsigurlmangle=None, mangles=None,
             if not sig_valid(sig):
                 logging.warning(
                     'Signature from %s in %s for %s not valid',
-                     sig.fpr, pgpsigurl, r.url)
+                    sig.fpr, pgpsigurl, r.url)
                 is_valid = False
             else:
                 needed_keys.add(sig.fpr)
@@ -143,15 +144,13 @@ def candidates_from_setup_py(
         path, good_upstream_versions: Set[str], net_access=False):
     certainty = "likely"
     # Import setuptools in case it replaces distutils
-    try:
+    with suppress(ImportError):
         import setuptools  # noqa: F401
-    except ImportError:
-        pass
     from distutils.core import run_setup
 
     try:
         result = run_setup(os.path.abspath(path), stop_after="config")
-    except BaseException:
+    except BaseException:  # noqa: PIE786
         import traceback
 
         traceback.print_exc()
@@ -263,9 +262,6 @@ def guess_cran_watch_entry(name):
 
 def guess_launchpad_watch_entry(
         parsed_url, good_upstream_versions, net_access=False):
-    from breezy.branch import Branch
-    import re
-
     if not net_access:
         return
     project = parsed_url.path.strip("/").split("/")[0]
@@ -295,7 +291,8 @@ def guess_github_watch_entry(
         return
     branch = Branch.open(urlunparse(parsed_url))
     tags = branch.tags.get_tag_dict()
-    POSSIBLE_PATTERNS = [r"v(\d\S+)", r"(\d\S+)", ".*/[vV]?(\d[^\s+]+)\.tar\.gz"]
+    POSSIBLE_PATTERNS = [r"v(\d\S+)", r"(\d\S+)",
+                         r".*/[vV]?(\d[^\s+]+)\.tar\.gz"]
     version_pattern = None
     # TODO(jelmer): Maybe use releases API instead?
     # TODO(jelmer): Automatically added mangling for
@@ -321,11 +318,10 @@ def guess_github_watch_entry(
         "project": project,
     }
     matching_pattern = r".*\/%s\.tar\.gz" % version_pattern
-    opts = []
-    opts.append(
+    opts = [
         r"filenamemangle=s/%(pattern)s/%(project)s-$1\.tar\.gz/"
         % {"pattern": matching_pattern, "project": project}
-    )
+    ]
     if uversionmangle:
         opts.append(r"uversionmangle=" + ";".join(uversionmangle))
     # TODO(jelmer): Check for GPG
@@ -378,7 +374,7 @@ def fix_old_github_patterns(updater):
             continue
 
         parts = parsed_url.path.strip('/').split('/')
-        if len(parts) >= 3 and parts[2] in ('tags', 'releases'):
+        if len(parts) >= 3 and parts[2] in ('tags', 'releases'):  # noqa:SIM114
             pass
         elif len(parts) >= 2 and parts[0] == '.*' and parts[1] == 'archive':
             pass
@@ -432,7 +428,7 @@ def watch_entries_certainty(entries, source_package,
         except TemporaryWatchEntryVerficationError:
             certainty = min_certainty([default_certainty, certainty])
         else:
-            if not all(ret):
+            if not ret:
                 certainty = min_certainty(["possible", certainty])
     return certainty
 
@@ -453,13 +449,13 @@ class WatchEntryVerificationStatus:
         self.missing_versions = missing_versions
 
     def __bool__(self):
-        return not self.missing_versions
+        return not self.missing_versions and bool(self.releases)
 
 
 def verify_watch_entry(
         entry: Watch, source_package: str,
-        expected_versions:
-            Optional[List[str]] = None) -> WatchEntryVerificationStatus:
+        expected_versions: Optional[
+            List[str]] = None) -> WatchEntryVerificationStatus:
     try:
         releases = list(sorted(
                 entry.discover(source_package), reverse=True))
@@ -495,7 +491,8 @@ def report_fatal(code: str, description: str, context=None) -> None:
 def verify_watch_file(watch_file, source_package, expected_versions):
     ret = []
     for entry in getattr(watch_file, 'entries', []):
-        ret.append(verify_watch_entry(entry, source_package, expected_versions))
+        ret.append(verify_watch_entry(
+            entry, source_package, expected_versions))
     return ret
 
 
@@ -634,10 +631,11 @@ def main():  # noqa: C901
 
         status = None
         try:
-            with WatchEditor(allow_reformatting=allow_reformatting, allow_missing=False) as updater:
+            with WatchEditor(allow_reformatting=allow_reformatting,
+                             allow_missing=False) as updater:
                 try:
-                    status = verify_watch_file(updater.watch_file, package,
-                                     expected_versions)
+                    status = verify_watch_file(
+                        updater.watch_file, package, expected_versions)
                 except (TemporaryWatchEntryVerficationError,
                         WatchEntryVerificationFailure):
                     status = [None]
@@ -649,8 +647,8 @@ def main():  # noqa: C901
                     return 0
                 fix_watch_issues(updater)
                 try:
-                    status = verify_watch_file(updater.watch_file, package,
-                                      expected_versions)
+                    status = verify_watch_file(
+                        updater.watch_file, package, expected_versions)
                 except WatchEntryVerificationFailure:
                     status = [None]
                 except TemporaryWatchEntryVerficationError as e:
@@ -688,31 +686,30 @@ def main():  # noqa: C901
                          "Unable to preserve formatting of %s" % e.path)
             return 1
 
-    if args.verify:
-        if status is None:
-            with WatchEditor() as updater:
-                try:
-                    status = verify_watch_file(
-                        updater.watch_file, package, expected_versions)
-                except WatchEntryVerificationFailure as e:
-                    report_fatal(
-                        'verification-failed',
-                        'Unable to verify watch entry: %s'
-                        % e)
-                    return 1
-                except TemporaryWatchEntryVerficationError as e:
-                    report_fatal(
-                        'temporary-verification-error',
-                        'Unable to verify watch entry: %s'
-                        % e)
-                    return 1
-                if not status or not all(status):
-                    report_fatal(
-                        'verification-failed',
-                        'Unable to watch entries; missing versions: %r'
-                        % status[0].missing_versions,
-                        context=svp_context(status))
-                    return 1
+    if args.verify and status is None:
+        with WatchEditor() as updater:
+            try:
+                status = verify_watch_file(
+                    updater.watch_file, package, expected_versions)
+            except WatchEntryVerificationFailure as e:
+                report_fatal(
+                    'verification-failed',
+                    'Unable to verify watch entry: %s'
+                    % e)
+                return 1
+            except TemporaryWatchEntryVerficationError as e:
+                report_fatal(
+                    'temporary-verification-error',
+                    'Unable to verify watch entry: %s'
+                    % e)
+                return 1
+            if not status or not all(status):
+                report_fatal(
+                    'verification-failed',
+                    'Unable to watch entries; missing versions: %r'
+                    % status[0].missing_versions,
+                    context=svp_context(status))
+                return 1
 
     if os.environ.get("SVP_API") == "1":
         with open(os.environ["SVP_RESULT"], "w") as f:

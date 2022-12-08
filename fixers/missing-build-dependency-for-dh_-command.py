@@ -137,7 +137,7 @@ with control as updater:
 
         for field in ['Build-Depends', 'Build-Depends-Indep',
                       'Build-Depends-Arch']:
-            for unused1, existing, unused2 in parse_relations(
+            for _unused1, existing, _unused2 in parse_relations(
                     updater.source.get(field, '')):
                 if is_relation_implied(parsed, existing):
                     is_implied = True

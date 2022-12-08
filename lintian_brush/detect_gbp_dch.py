@@ -40,7 +40,7 @@ from breezy.workingtree import WorkingTree
 DEFAULT_BACKLOG = 50
 
 
-class ChangelogBehaviour(object):
+class ChangelogBehaviour:
 
     def __init__(self, update_changelog, explanation):
         self.update_changelog = update_changelog
@@ -156,14 +156,13 @@ def _guess_update_changelog_from_tree(
 
     # TODO(jelmes): Do something more clever here, perhaps looking at history
     # of the changelog file?
-    if cl:
-        if all_sha_prefixed(cl[0]):
-            return ChangelogBehaviour(
-                False,
-                "Assuming changelog does not need to be updated, "
-                "since all entries in last changelog entry are prefixed "
-                "by git shas.",
-            )
+    if cl and all_sha_prefixed(cl[0]):
+        return ChangelogBehaviour(
+            False,
+            "Assuming changelog does not need to be updated, "
+            "since all entries in last changelog entry are prefixed "
+            "by git shas.",
+        )
 
     return None
 
@@ -196,7 +195,7 @@ def _changelog_stats(branch: Branch, history: int, debian_path: str):
         revids, truncated = _greedy_revisions(
             graph, branch.last_revision(), history)
         revs = []
-        for revid, rev in branch.repository.iter_revisions(revids):
+        for _revid, rev in branch.repository.iter_revisions(revids):
             if rev is None:
                 # Ghost
                 continue

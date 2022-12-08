@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 from lintian_brush.fixer import (
     control,
     fixed_lintian_tag,
@@ -31,10 +32,8 @@ with control as updater:
     if len(binary_priorities) == 1:
         updater.source['Priority'] = binary_priorities.pop()
         for binary in updater.binaries:
-            try:
+            with suppress(KeyError):
                 del binary['Priority']
-            except KeyError:
-                pass
         report_result(
             'Set priority in source stanza, since it is the same '
             'for all packages.',

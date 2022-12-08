@@ -16,9 +16,9 @@ conn = psycopg2.connect(
     "postgresql://udd-mirror:udd-mirror@udd-mirror.debian.net/udd")
 cursor = conn.cursor()
 cursor.execute(
-    "select tag, count(distinct package) as package_count, "
-    "count(*) as tag_count from lintian "
-    "where tag_type not in ('classification') group by 1 order by 2 desc")
+    "SELECT tag, COUNT(DISTINCT package) AS package_count, "
+    "COUNT(*) AS tag_count from lintian "
+    "WHERE tag_type NOT IN ('classification') GROUP BY 1 ORDER BY 2 DESC")
 
 supported_tags = set()
 for fixer in available_lintian_fixers():

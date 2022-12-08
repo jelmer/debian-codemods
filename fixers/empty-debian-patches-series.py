@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 import os
 import sys
 
@@ -12,11 +13,8 @@ from lintian_brush.fixer import (
 if not opinionated():
     sys.exit(0)
 
-try:
-    with open('debian/patches/series', 'r') as f:
-        if not f.read().strip():
-            os.unlink('debian/patches/series')
-except FileNotFoundError:
-    pass
+with suppress(FileNotFoundError), open('debian/patches/series', 'r') as f:
+    if not f.read().strip():
+        os.unlink('debian/patches/series')
 
 report_result('Remove empty debian/patches/series.')

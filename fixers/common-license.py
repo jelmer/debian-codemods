@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 import os
 import re
 import textwrap
@@ -182,7 +183,7 @@ def replace_full_license(para):
         return
     # The full license text was found. Replace it with a blurb.
     canonical_id = canonical_license_id(license.synopsis)
-    for shortname, blurb in _BLURB.items():
+    for shortname, blurb in _BLURB.items():  # noqa: B007
         if canonical_id == canonical_license_id(shortname):
             break
     else:
@@ -246,28 +247,26 @@ def reference_common_license(para):
     return common_license
 
 
-try:
-    with CopyrightEditor() as updater:
-        for para in updater.copyright.all_paragraphs():
-            license = para.license
-            if not license or not license.text:
-                continue
-            replaced_license = replace_full_license(para)
-            if replaced_license:
-                updated.add(replaced_license)
-            replaced_license = reference_common_license(para)
-            if replaced_license:
-                updated.add(replaced_license)
-        for paragraph in updater.copyright.all_paragraphs():
-            if not paragraph.license or not paragraph.license.synopsis:
-                continue
-            try:
-                newsynopsis = renames[paragraph.license.synopsis]
-            except KeyError:
-                continue
-            paragraph.license = License(newsynopsis, paragraph.license.text)
-except (NotMachineReadableError, FileNotFoundError):
-    pass
+with suppress(NotMachineReadableError, FileNotFoundError), \
+        CopyrightEditor() as updater:
+    for para in updater.copyright.all_paragraphs():
+        license = para.license
+        if not license or not license.text:
+            continue
+        replaced_license = replace_full_license(para)
+        if replaced_license:
+            updated.add(replaced_license)
+        replaced_license = reference_common_license(para)
+        if replaced_license:
+            updated.add(replaced_license)
+    for paragraph in updater.copyright.all_paragraphs():
+        if not paragraph.license or not paragraph.license.synopsis:
+            continue
+        try:
+            newsynopsis = renames[paragraph.license.synopsis]
+        except KeyError:
+            continue
+        paragraph.license = License(newsynopsis, paragraph.license.text)
 
 
 done = []

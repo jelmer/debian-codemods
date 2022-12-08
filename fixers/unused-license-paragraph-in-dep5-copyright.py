@@ -18,8 +18,7 @@ def extract_licenses(synopsis):
     """
     ret = []
     for license in synopsis.split(" or "):
-        options = []
-        options.append(license)
+        options = [license]
         m = re.fullmatch(r'(.*) with (.*) exception', license)
         if m:
             license = m.group(1)
@@ -30,9 +29,9 @@ def extract_licenses(synopsis):
 
 try:  # noqa: C901
     with CopyrightEditor() as updater:
-        if updater.copyright.header.license:
-            if updater.copyright.header.license.text:
-                defined.add(updater.copyright.header.license.synopsis)
+        if (updater.copyright.header.license
+                and updater.copyright.header.license.text):
+            defined.add(updater.copyright.header.license.synopsis)
         for paragraph in updater.copyright.all_paragraphs():
             if not paragraph.license:
                 continue

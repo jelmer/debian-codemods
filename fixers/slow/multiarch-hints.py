@@ -27,5 +27,5 @@ overall_certainty = min_certainty(
 print("Apply multi-arch hints.")
 print("")
 
-for (binary, hint, description, certainty) in changes:
+for (binary, _hint, description, _certainty) in changes:
     print("* %s: %s" % (binary['Package'], description))

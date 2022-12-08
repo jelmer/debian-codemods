@@ -168,7 +168,7 @@ class InfoFixerTests(TestCase):
             self.assertIn(tag, tags)
 
     def test_valid_regexes(self):
-        for tag, v in INFO_FIXERS.items():
+        for v in INFO_FIXERS.values():
             if isinstance(v, tuple):
                 vs = [v]
             elif isinstance(v, list):

@@ -20,7 +20,7 @@
 import logging
 
 
-class DebBugs(object):
+class DebBugs:
     """Read DebBugs data through UDD."""
 
     def __init__(self):

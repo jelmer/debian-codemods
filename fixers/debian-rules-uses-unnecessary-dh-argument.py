@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 import shlex
 
 from debmutate.debhelper import get_debhelper_compat_level
@@ -47,27 +48,24 @@ def drop_unnecessary_args(line, target):
     return line
 
 
-try:
-    with RulesEditor() as updater:
-        for rule in updater.makefile.iter_rules(b'%'):
-            for command in rule.commands():
-                if not command.startswith(b'dh'):
-                    continue
-                argv = shlex.split(command.decode())
-                if argv[0] != 'dh':
-                    continue
-                for arg in argv:
-                    if arg.startswith('--no-'):
-                        actual = ('--' + arg[len('--no-'):])
-                        if actual.encode() in unnecessary_args:
-                            unnecessary_args.remove(actual.encode())
-                    elif arg.startswith('--'):
-                        actual = ('--no-' + arg[len('--'):])
-                        if actual.encode() in unnecessary_args:
-                            unnecessary_args.remove(actual.encode())
-        updater.legacy_update(drop_unnecessary_args)
-except FileNotFoundError:
-    pass
+with suppress(FileNotFoundError), RulesEditor() as updater:
+    for rule in updater.makefile.iter_rules(b'%'):
+        for command in rule.commands():
+            if not command.startswith(b'dh'):
+                continue
+            argv = shlex.split(command.decode())
+            if argv[0] != 'dh':
+                continue
+            for arg in argv:
+                if arg.startswith('--no-'):
+                    actual = ('--' + arg[len('--no-'):])
+                    if actual.encode() in unnecessary_args:
+                        unnecessary_args.remove(actual.encode())
+                elif arg.startswith('--'):
+                    actual = ('--no-' + arg[len('--'):])
+                    if actual.encode() in unnecessary_args:
+                        unnecessary_args.remove(actual.encode())
+    updater.legacy_update(drop_unnecessary_args)
 
 report_result(
     'Drop unnecessary dh arguments: %s' %

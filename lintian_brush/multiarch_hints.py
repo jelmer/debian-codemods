@@ -147,7 +147,7 @@ def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
     except URLError:
         raise
     assert local_hints_path is not None
-    yield open(local_hints_path, "rb")
+    yield open(local_hints_path, "rb")  # noqa: SIM115
 
 
 @contextlib.contextmanager
@@ -237,7 +237,7 @@ def apply_hint_arch_all(binary, hint):
     return "Make package Architecture: all."
 
 
-class MultiArchHintApplier(object):
+class MultiArchHintApplier:
     def __init__(self, kind, fn, certainty):
         self.kind = kind
         self.fn = fn
@@ -274,7 +274,7 @@ def apply_multiarch_hints(hints, minimum_certainty="certain"):
 
 def changes_by_description(changes):
     by_description: Dict[str, List[str]] = {}
-    for (binary, hint, description, certainty) in changes:
+    for (binary, _hint, description, _certainty) in changes:
         by_description.setdefault(description, []).append(binary["Package"])
     return by_description
 
@@ -546,7 +546,7 @@ def main(argv=None):  # noqa: C901
                 entry["action"] = description
                 entry["certainty"] = certainty
                 applied_hints.append(entry)
-                logging.info("%s: %s" % (binary["Package"], description))
+                logging.info("%s: %s", binary["Package"], description)
             if os.environ.get('SVP_API') == '1':
                 with open(os.environ['SVP_RESULT'], 'w') as f:
                     json.dump({

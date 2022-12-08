@@ -31,8 +31,8 @@ with RulesEditor() as editor:
     if has_build_arch and has_build_indep:
         sys.exit(0)
 
-    if any([line.lstrip(b' -').startswith(b'include ')
-            for line in editor.makefile.dump_lines()]):
+    if any(line.lstrip(b' -').startswith(b'include ')
+           for line in editor.makefile.dump_lines()):
         # No handling of includes for the moment.
         sys.exit(0)
 

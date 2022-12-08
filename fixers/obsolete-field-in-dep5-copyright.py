@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
 from lintian_brush.fixer import report_result, fixed_lintian_tag
 
@@ -35,11 +36,9 @@ def obsolete_field(copyright):
                 info='%s %s' % (old_name, new_name))
 
 
-try:
-    with CopyrightEditor() as updater:
-        obsolete_field(updater.copyright)
-except (FileNotFoundError, NotMachineReadableError):
-    pass
+with suppress(FileNotFoundError, NotMachineReadableError), \
+        CopyrightEditor() as updater:
+    obsolete_field(updater.copyright)
 report_result(
     "Update copyright file header to use current field names (%s)" %
     ', '.join("%s ⇒ %s" % (key, value) for (key, value) in applied_renames))

@@ -130,7 +130,8 @@ with YamlUpdater('debian/upstream/metadata') as editor:
 
     for key, datum in list(upstream_metadata.items()):
         # Drop keys that don't need to be in debian/upstream/metadata
-        if key.startswith('X-') or key in external_present_fields:
+        if (key.startswith('X-')  # noqa:SIM114
+                or key in external_present_fields):
             del upstream_metadata[key]
 
         # Drop everything that is below our minimum certainty

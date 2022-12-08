@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 
+from contextlib import suppress
 from debmutate.watch import WatchEditor
 
 from lintian_brush.fixer import (
     report_result, source_package_name, current_package_version,
+    net_access_allowed,
 )
 from lintian_brush.watch import (
     fix_old_github_patterns,
@@ -13,14 +15,14 @@ from lintian_brush.watch import (
 certainty = "certain"
 
 
-try:
-    with WatchEditor() as updater:
-        changed_entries = fix_old_github_patterns(updater)
+with suppress(FileNotFoundError), WatchEditor() as updater:
+    changed_entries = fix_old_github_patterns(updater)
+    if net_access_allowed():
         certainty = watch_entries_certainty(
             changed_entries, source_package_name(),
             expected_versions=[current_package_version().upstream_version])
-except FileNotFoundError:
-    pass
+    else:
+        certainty = "likely"
 
 
 report_result(

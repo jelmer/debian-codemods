@@ -350,12 +350,13 @@ def import_upstream_version_from_dist(
                 merge_type=None, files_excluded=files_excluded)
         except UpstreamAlreadyImported as e:
             logging.warning(
-                'Upstream release %s already imported.', e.version)  # type: ignore
+                'Upstream release %s already imported.',
+                e.version)  # type: ignore
             imported_revids = get_existing_imported_upstream_revids(
                 upstream_source, source_name, upstream_version)
         pristine_revids = {}
         for (component, tag_name, revid,
-             pristine_tar_imported) in imported_revids:
+             _pristine_tar_imported) in imported_revids:
             pristine_revids[component] = revid
             tag_names[component] = tag_name
 
@@ -371,7 +372,7 @@ def import_upstream_version_from_dist(
     return pristine_revids, tag_names, upstream_branch_name
 
 
-class ResetOnFailure(object):
+class ResetOnFailure:
 
     def __init__(self, wt, subpath=None):
         self.wt = wt
@@ -776,7 +777,7 @@ def source_name_from_directory_name(path):
 
 
 @dataclass
-class DebianizeResult(object):
+class DebianizeResult:
     """Debianize result."""
 
     upstream_branch_name: Optional[str] = None
@@ -920,9 +921,9 @@ def debianize(  # noqa: C901
 
     debian_path = osutils.pathjoin(subpath, "debian")
     if (wt.has_filename(debian_path)
-            and list(os.listdir(wt.abspath(debian_path)))):
-        if not force_new_directory:
-            raise DebianDirectoryExists(wt.abspath(subpath))
+            and list(os.listdir(wt.abspath(debian_path)))
+            and not force_new_directory):
+        raise DebianDirectoryExists(wt.abspath(subpath))
 
     metadata_items = []
     if metadata is None:
@@ -1007,13 +1008,11 @@ def debianize(  # noqa: C901
                 if wt.has_filename(debian_path) and force_new_directory:
                     shutil.rmtree(wt.abspath(debian_path))
                     wt.mkdir(wt.abspath(debian_path))
-                    try:
+                    with contextlib.suppress(PointlessCommit):
                         wt.commit(
                             'Remove old debian directory',
                             specific_files=[debian_path],
                             reporter=NullCommitReporter())
-                    except PointlessCommit:
-                        pass
 
                 wt.mkdir(os.path.join(debian_path, 'source'))
                 wt.add(os.path.join(debian_path, 'source'))
@@ -1105,18 +1104,17 @@ def debianize(  # noqa: C901
                 wnpp_bugs,
             )
 
-            if requirement and requirement.family == 'apt':
-                if not requirement.satisfied_by(
-                        control.binaries, version):
-                    logging.warning(
-                        'Debianized package (binary packages: %r), version %s '
-                        'did not satisfy requirement %r. '
-                        'Wrong repository (%s)?',
-                        [binary['Package'] for binary in control.binaries],
-                        version, requirement, upstream_branch)
-                    raise DebianizedPackageRequirementMismatch(
-                        requirement, control, version,
-                        upstream_branch)
+            if (requirement and requirement.family == 'apt' and
+                    not requirement.satisfied_by(control.binaries, version)):
+                logging.warning(
+                    'Debianized package (binary packages: %r), version %s '
+                    'did not satisfy requirement %r. '
+                    'Wrong repository (%s)?',
+                    [binary['Package'] for binary in control.binaries],
+                    version, requirement, upstream_branch)
+                raise DebianizedPackageRequirementMismatch(
+                    requirement, control, version,
+                    upstream_branch)
 
             control.wrap_and_sort()
             control.sort_binary_packages()
@@ -1165,7 +1163,7 @@ def debianize(  # noqa: C901
     return result
 
 
-class SimpleTrustedAptRepo(object):
+class SimpleTrustedAptRepo:
 
     def __init__(self, directory):
         self.directory = directory
@@ -1609,7 +1607,8 @@ def main(argv=None):  # noqa: C901
                 # For now
                 raise
         except DistCommandFailed as e:
-            report_fatal(e.kind or "dist-command-failed", e.error)  # type: ignore
+            report_fatal(
+                e.kind or "dist-command-failed", e.error)  # type: ignore
             return 1
         except WorkspaceDirty:
             report_fatal(
