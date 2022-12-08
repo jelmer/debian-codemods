@@ -295,7 +295,7 @@ def guess_github_watch_entry(
         return
     branch = Branch.open(urlunparse(parsed_url))
     tags = branch.tags.get_tag_dict()
-    POSSIBLE_PATTERNS = [r"v(\d\S+)", r"(\d\S+)"]
+    POSSIBLE_PATTERNS = [r"v(\d\S+)", r"(\d\S+)", ".*/[vV]?(\d[^\s+]+)\.tar\.gz"]
     version_pattern = None
     # TODO(jelmer): Maybe use releases API instead?
     # TODO(jelmer): Automatically added mangling for
