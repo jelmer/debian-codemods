@@ -1,4 +1,4 @@
-lintian-brush (0.141) UNRELEASED; urgency=medium
+lintian-brush (0.141) unstable; urgency=medium
 
   * Allow removed files.
   * Reformat.
@@ -15,7 +15,7 @@ lintian-brush (0.141) UNRELEASED; urgency=medium
   * Allow reformatting when rewriting.
   * Handle symlink-is-self-recursive
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 08 Dec 2022 12:55:48 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 08 Dec 2022 12:55:50 +0000
 
 lintian-brush (0.140) unstable; urgency=medium
 
