@@ -30,6 +30,7 @@ from urllib.request import urlopen, Request
 
 from debian.changelog import Changelog
 from debmutate.reformatting import FormattingUnpreservable
+from debmutate.versions import get_snapshot_revision, strip_dfsg_suffix
 from debmutate.watch import (
     Watch,
     WatchEditor,
@@ -448,7 +449,7 @@ class WatchEntryVerificationStatus:
 
     def __init__(self, entry, releases, missing_versions=None):
         self.entry = entry
-        self.releases = {r.version: v for v in releases}
+        self.releases = {r.version: r for r in releases}
         self.missing_versions = missing_versions
 
     def __bool__(self):
@@ -493,7 +494,7 @@ def report_fatal(code: str, description: str, context=None) -> None:
 
 def verify_watch_file(watch_file, source_package, expected_versions):
     ret = []
-    for entry in watch_file.entries:
+    for entry in getattr(watch_file, 'entries', []):
         ret.append(verify_watch_entry(entry, source_package, expected_versions))
     return ret
 
@@ -505,7 +506,7 @@ def svp_context(status):
             'releases': {
                 str(r.version): {
                     'url': r.url,
-                } for r in entry_status.releases
+                } for r in entry_status.releases.values()
             },
             'missing_versions':
                 [str(x) for x in entry_status.missing_versions]
@@ -623,21 +624,24 @@ def main():  # noqa: C901
         with open('debian/changelog', 'r') as f:
             cl = Changelog(f)
             for entry in cl:
-                good_upstream_versions.add(entry.version.upstream_version)
+                uv = strip_dfsg_suffix(entry.version.upstream_version)
+                if get_snapshot_revision(uv) is not None:
+                    continue
+                good_upstream_versions.add(uv)
             package = cl.package
 
         expected_versions = list(sorted(good_upstream_versions))[-5:]
 
         status = None
         try:
-            with WatchEditor(allow_reformatting=allow_reformatting) as updater:
+            with WatchEditor(allow_reformatting=allow_reformatting, allow_missing=False) as updater:
                 try:
                     status = verify_watch_file(updater.watch_file, package,
                                      expected_versions)
                 except (TemporaryWatchEntryVerficationError,
                         WatchEntryVerificationFailure):
                     status = [None]
-                if all(status):
+                if status and all(status):
                     report_fatal(
                         'nothing-to-do',
                         'Existing watch file has valid entries',
@@ -652,7 +656,7 @@ def main():  # noqa: C901
                 except TemporaryWatchEntryVerficationError as e:
                     report_fatal('temporary-verification-error', str(e))
                     return 1
-                if not all(status):
+                if status or not all(status):
                     candidates = find_candidates(
                         '.', good_upstream_versions,
                         net_access=not args.disable_net_access)
@@ -702,7 +706,7 @@ def main():  # noqa: C901
                         'Unable to verify watch entry: %s'
                         % e)
                     return 1
-                if not all(status):
+                if not status or not all(status):
                     report_fatal(
                         'verification-failed',
                         'Unable to watch entries; missing versions: %r'
