@@ -253,6 +253,9 @@ INFO_FIXER_TESTS = [
      "cannot adjust line",
      "282: warning [p 4, 6.0i]: cannot adjust line "
      "[usr/share/man/man1/connmanctl.1.gz:*]"),
+    ("spelling-error-in-binary", "wtH with *", "wtH with *"),
+    ("spelling-error-in-binary", "usr/bin/foo wtH with",
+     "wtH with [usr/bin/foo]"),
 ]
 
 

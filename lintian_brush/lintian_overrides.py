@@ -321,7 +321,7 @@ INFO_FIXERS = {
         (r"^(?P<path>[^[ ].+) \*", r"[\1]"),
         PURE_FN_SUB],
     "spelling-error-in-binary":
-        (r"^(?P<path>[^[ ]+) (.+) ([^[]+)$", r"\2 \3 [\1]"),
+        (r"^" + PATH_MATCH + " (.+) ([^[/\*]+)$", r"\2 \3 [\1]"),
     "very-long-line-length-in-source-file": [
         (PATH_MATCH +
          r" line ([0-9]+) is ([0-9]+) characters long \(>([0-9]+)\)",
