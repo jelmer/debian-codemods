@@ -245,6 +245,14 @@ INFO_FIXER_TESTS = [
      '(choke on: "google-analytics.com/ga.js")',
      '(choke on: "google-analytics.com/ga.js") '
      '[usr/share/doc/jquery-alternative-doc/index.html]'),
+    ("systemd-service-file-refers-to-unusual-wantedby-target",
+     "lib/systemd/system/autodir-home.service autodir.service",
+     "autodir.service [lib/systemd/system/autodir-home.service]"),
+    ("groff-message",
+     "usr/share/man/man1/connmanctl.1.gz 282: warning [p 4, 6.0i]: "
+     "cannot adjust line",
+     "282: warning [p 4, 6.0i]: cannot adjust line "
+     "[usr/share/man/man1/connmanctl.1.gz:*]"),
 ]
 
 

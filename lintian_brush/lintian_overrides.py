@@ -306,7 +306,8 @@ INFO_FIXERS = {
     "shell-script-fails-syntax-check": PURE_FN_SUB,
     "manpage-has-errors-from-man":
         (r"^" + PATH_MATCH + " ([^[]*)", r"\2 [\1]"),
-    "groff-message": (r"^" + PATH_MATCH + " ([^[ ]+)", r"\2 [\1]"),
+    "groff-message": (
+        r"^" + PATH_MATCH + " ([0-9]+): (.+)$", r"\2: \3 [\1:*]"),
     "source-contains-prebuilt-javascript-object": [
         PURE_FN_SUB,
         (r"^(?P<path>[^[ ].+) line length is .*", r"[\1]")],
@@ -369,6 +370,8 @@ INFO_FIXERS = {
     "privacy-breach-google-adsense": (
         r"^" + PATH_MATCH + r" \(choke on: ([^\)]+)\)$",
         r"(choke on: \2) [\1]"),
+    "systemd-service-file-refers-to-unusual-wantedby-target": (
+        "^" + PATH_MATCH + r" ([^[ ]+)$", r"\2 [\1]"),
 }
 
 
