@@ -1,3 +1,18 @@
+lintian-brush (0.142) UNRELEASED; urgency=medium
+
+  [ Jelmer Vernooĳ ]
+  * Handle missing candidates.
+  * Update vim_addon alias; see https://salsa.debian.org/lintian/lintian/-/merge_requests/433
+  * Various watch fixes.
+  * More watch fixer fixes.
+  * Add another possible pattern.
+  * Fix style.
+
+  [ Jelmer Vernooij ]
+  * Add fix for privacy-breach-google-adsense
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 09 Dec 2022 05:23:31 +0000
+
 lintian-brush (0.141) unstable; urgency=medium
 
   * Allow removed files.
