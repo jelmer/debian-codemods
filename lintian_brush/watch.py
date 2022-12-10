@@ -496,10 +496,11 @@ def verify_watch_file(watch_file, source_package, expected_versions):
     return ret
 
 
-def svp_context(status):
+def svp_context(status, site):
     return {
         'entries': {
             'text': str(entry_status.entry),
+            'site': entry_site,
             'releases': {
                 str(r.version): {
                     'url': r.url,
@@ -507,7 +508,7 @@ def svp_context(status):
             },
             'missing_versions':
                 [str(x) for x in entry_status.missing_versions]
-        } for entry_status in (status or [])
+        } for entry_status, entry_site in zip(status or [], site or [])
     }
 
 
@@ -665,7 +666,10 @@ def main():  # noqa: C901
                         return 1
                     updater.allow_reformatting = True
                     updater.watch_file.entries = [candidates[0].watch]
+                    site = [candidates[0].site]
                     status = None
+                else:
+                    site = None
         except FileNotFoundError:
             candidates = find_candidates(
                 '.', good_upstream_versions,
@@ -677,6 +681,7 @@ def main():  # noqa: C901
                     'No candidates for the watch file were found')
                 return 1
             wf.entries.append(candidates[0].watch)
+            site = [candidates[0].site]
 
             with open('debian/watch', 'w') as f:
                 wf.dump(f)
@@ -708,14 +713,14 @@ def main():  # noqa: C901
                     'verification-failed',
                     'Unable to watch entries; missing versions: %r'
                     % status[0].missing_versions,
-                    context=svp_context(status))
+                    context=svp_context(status, site))
                 return 1
 
     if os.environ.get("SVP_API") == "1":
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump({
                 "description": "Update watch file.",
-                "context": svp_context(status),
+                "context": svp_context(status, site),
             }, f)
 
     return 0
