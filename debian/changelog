@@ -1,8 +1,9 @@
 lintian-brush (0.143) UNRELEASED; urgency=medium
 
   * Fix info format fixers for groff-message.
+  * Fix spelling error match.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 09 Dec 2022 22:02:33 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 10 Dec 2022 01:48:51 +0000
 
 lintian-brush (0.142) unstable; urgency=medium
 
