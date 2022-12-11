@@ -1,8 +1,8 @@
-lintian-brush (0.144) UNRELEASED; urgency=medium
+lintian-brush (0.144) unstable; urgency=medium
 
   * Track site as well.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 11 Dec 2022 09:35:48 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 11 Dec 2022 09:35:50 +0000
 
 lintian-brush (0.143) unstable; urgency=medium
 
