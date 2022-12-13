@@ -2,7 +2,7 @@
 
 import sys
 from debmutate.control import drop_dependency
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, report_result, LintianIssue
 
 try:
     with open('debian/rules', 'rb') as f:
@@ -18,13 +18,16 @@ except FileNotFoundError:
 
 if not uses_cdbs:
     with control as updater:
-        new_depends = drop_dependency(
-            updater.source.get("Build-Depends", ""), "cdbs")
-        if new_depends != updater.source['Build-Depends']:
-            fixed_lintian_tag(
-                updater.source, 'unused-build-dependency-on-cdbs', '')
-            updater.source["Build-Depends"] = new_depends
-        if not updater.source["Build-Depends"]:
-            del updater.source["Build-Depends"]
+        for field in ["Build-Depends", "Build-Depends-Indep"]:
+            new_depends = drop_dependency(
+                updater.source.get(field, ""), "cdbs")
+            if new_depends != updater.source.get(field, ""):
+                issue = LintianIssue(
+                    updater.source, 'unused-build-dependency-on-cdbs', '')
+                if issue.should_fix():
+                    updater.source[field] = new_depends
+                    if not updater.source[field]:
+                        del updater.source[field]
+                    issue.report_fixed()
 
 report_result("Drop unused build-dependency on cdbs.")

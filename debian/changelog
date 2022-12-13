@@ -1,3 +1,10 @@
+lintian-brush (0.145) UNRELEASED; urgency=medium
+
+  * unused-build-dependency-on-cdbs: Cope with missing Build-Depends.
+    Closes: #1026052
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 13 Dec 2022 20:44:32 +0000
+
 lintian-brush (0.144) unstable; urgency=medium
 
   * Track site as well.
