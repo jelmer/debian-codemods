@@ -86,7 +86,7 @@ def update_offical_vcs(wt, subpath, repo_url=None, branch=None, committer=None,
                 raise ConflictingVcsAlreadySpecified(
                     vcs_type, existing_url,
                     unsplit_vcs_url(repo_url, branch, subpath))
-            logging.info('Using existing URL %s', existing_url)
+            logging.debug('Using existing URL %s', existing_url)
             return existing
         maintainer_email = parseaddr(editor.source['Maintainer'])[1]
         source = editor.source['Source']
