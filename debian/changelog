@@ -1,11 +1,11 @@
-lintian-brush (0.145) UNRELEASED; urgency=medium
+lintian-brush (0.145) unstable; urgency=medium
 
   * unused-build-dependency-on-cdbs: Cope with missing Build-Depends.
     Closes: #1026052
   * uses-debhelper-compat-file: Only migrate to debhelper-compat for
     stable compat levels. Closes: #1026252
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 13 Dec 2022 20:44:32 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Dec 2022 15:02:52 +0000
 
 lintian-brush (0.144) unstable; urgency=medium
 
