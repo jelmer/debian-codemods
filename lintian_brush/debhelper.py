@@ -64,6 +64,8 @@ def detect_debhelper_buildsystem(step: Optional[str] = None) -> Optional[str]:
 
 @cache
 def _get_lintian_compat_levels() -> Dict[str, int]:
+    # TODO(jelmer): ideally we should be getting these numbers from the
+    # compat-release dh_assistant, rather than what's on the system
     output = subprocess.check_output(
         ["dh_assistant", "supported-compat-levels"]).decode()
     return json.loads(output)
