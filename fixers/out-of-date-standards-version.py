@@ -38,6 +38,7 @@ upgrade_path = {
     "4.5.0": "4.5.1",
     "4.5.1": "4.6.0",
     "4.6.0": "4.6.1",
+    "4.6.1": "4.6.2",
 }
 
 
@@ -228,6 +229,34 @@ def check_4_6_1():
     yield from []
 
 
+def check_4_6_2():
+    # 3.8: Essential packages are only required to provide their core
+    # functionality when unconfigured if they had previously been configured
+    # at least once.
+
+    # -> Loosens requirements
+
+    # 6.5 & 6.6 The new package version is provided as an additional argument
+    # following the old package version to several ``preinst``, ``prerm``,
+    # and ``postrm`` maintainer script actions.
+
+    # -> Just provides more arguments
+
+    # 11.8.4 When computing the priority for alternatives for
+    # ``/usr/bin/x-window-manager``, start with a priority of 40, not 20, and
+    # don't increase the priority based on support for the (obsolete) Debian
+    # menu system.
+    for entry in os.scandir('debian'):
+        if not entry.is_file():
+            continue
+        if _poor_grep(entry.path, b'x-window-manager'):
+            raise UpgradeCheckUnable(
+                "11.8.4",
+                "unable to verify priority for "
+                "/usr/bin/x-window-manager alternative")
+    yield "Package does not provide x-window-manager alternative"
+
+
 check_requirements = {
     "4.1.1": check_4_1_1,
     "4.2.1": check_4_2_1,
@@ -238,6 +267,7 @@ check_requirements = {
     "4.5.1": check_4_5_1,
     "4.6.0": check_4_6_0,
     "4.6.1": check_4_6_1,
+    "4.6.2": check_4_6_2,
 }
 
 current_version = None

@@ -1,0 +1,5 @@
+Source: foo-wm
+Standards-Version: 4.6.1.0
+
+Package: foo-wm
+Provides: x-window-manager

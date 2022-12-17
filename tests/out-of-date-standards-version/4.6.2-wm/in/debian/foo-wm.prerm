@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+#DEBHELPER#
+
+if [ "$1" = "remove" ] || [ "$1" = "deconfigure" ]; then
+  update-alternatives --remove x-window-manager /usr/bin/foo-wm
+fi
+
+exit 0

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+#DEBHELPER#
+
+update-alternatives --install /usr/bin/x-window-manager x-window-manager \
+  /usr/bin/foo-wm 40 --slave /usr/share/man/man1/x-window-manager.1.gz \
+  x-window-manager.1.gz /usr/share/man/man1/foo-wm.1.gz
+
+exit 0
