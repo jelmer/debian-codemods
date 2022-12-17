@@ -860,6 +860,9 @@
         "LGPLLR": {
             "name": "Lesser General Public License For Linguistic Resources"
         },
+        "LOOP": {
+            "name": "Common Lisp LOOP License"
+        },
         "LPL-1.0": {
             "name": "Lucent Public License Version 1.0"
         },
