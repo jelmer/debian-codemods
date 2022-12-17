@@ -16,6 +16,7 @@ from debmutate.debhelper import (
     read_debhelper_compat_file,
     )
 from lintian_brush.fixer import control, report_result, fixed_lintian_tag
+from lintian_brush.debhelper import highest_stable_compat_level
 from debmutate._rules import (
     check_cdbs,
     )
@@ -29,10 +30,15 @@ if not os.path.exists('debian/compat'):
 debhelper_compat_version = read_debhelper_compat_file('debian/compat')
 
 # debhelper >= 11 supports the magic debhelper-compat build-dependency.
+
 # Exclude cdbs, since it only knows to get the debhelper compat version
 # from debian/compat.
 
-if debhelper_compat_version < 11 or check_cdbs():
+# debhelper-compat is only supported for stable compat levels
+# https://bugs.debian.org/1026252
+
+if (debhelper_compat_version < 11 or check_cdbs()
+        or debhelper_compat_version > highest_stable_compat_level()):
     sys.exit(0)
 
 # Upgrade to using debhelper-compat, drop debian/compat file.
