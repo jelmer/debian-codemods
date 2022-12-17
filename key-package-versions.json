@@ -38,7 +38,7 @@
         "quantal": "9.20120608ubuntu1",
         "raring": "9.20120909ubuntu1",
         "saucy": "9.20130630ubuntu1",
-        "sid": "13.11.1",
+        "sid": "13.11.3",
         "squeeze": "8.0.0",
         "stretch": "10.2.5",
         "stretch-backports": "12.1.1~bpo9+1",
@@ -55,7 +55,7 @@
     "dpkg": {
         "artful": "1.18.24ubuntu1",
         "bionic": "1.19.0.5ubuntu2",
-        "bookworm": "1.21.9",
+        "bookworm": "1.21.12",
         "breezy": "1.13.10ubuntu4",
         "bullseye": "1.20.12",
         "bullseye-proposed-updates": "1.20.12",
