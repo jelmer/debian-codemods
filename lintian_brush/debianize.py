@@ -1522,6 +1522,11 @@ def main(argv=None):  # noqa: C901
         loglevel = logging.INFO
     logging.basicConfig(level=loglevel, format='%(message)s')
 
+    logging.warning(
+        'debianize is experimental and often generates packaging '
+        'that is incomplete or does not build as-is. '
+        'If you encounter issues, please consider filing a bug.')
+
     compat_release = args.compat_release
     if compat_release is None:
         import distro_info
