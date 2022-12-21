@@ -1,3 +1,9 @@
+lintian-brush (0.146) UNRELEASED; urgency=medium
+
+  * debianize: Add warning about state of the tool.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 21 Dec 2022 12:19:44 +0000
+
 lintian-brush (0.145) unstable; urgency=medium
 
   * unused-build-dependency-on-cdbs: Cope with missing Build-Depends.

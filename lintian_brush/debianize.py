@@ -1571,10 +1571,11 @@ def main(argv=None):  # noqa: C901
         upstream_branch = Branch.open(upstream_info.branch_url)
         upstream_subpath = upstream_info.branch_subpath
     else:
-        if not wt.has_filename(os.path.join(subpath, 'debian')):
+        if wt.has_filename(os.path.join(subpath, 'debian')):
             report_fatal(
                 code='debian-directory-exists',
-                description="%s: A debian directory already exists. " % e.path,
+                description=(
+                    "%s: A debian directory already exists. " % wt.abspath(subpath)),
                 hint=("Run lintian-brush instead or "
                       "specify --force-new-directory."),
             )
