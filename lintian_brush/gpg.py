@@ -64,8 +64,8 @@ def gpg_import_export(import_options, export_options, stdin):
 
 def fetch_keys(keys, home_dir):
     import subprocess
+    env = dict(os.environ)
     if home_dir:
-        env = dict(os.environ)
         env['GNUPGHOME'] = home_dir
     try:
         subprocess.check_call(
