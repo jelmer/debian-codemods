@@ -182,6 +182,7 @@ def canonicalize_vcs_url(vcs_type: str, url: str) -> str:
 
 
 def find_secure_vcs_url(url: str, net_access: bool = True) -> Optional[str]:
+    repo_url: Optional[str]
     (repo_url, branch, subpath) = split_vcs_url(url)
     repo_url = find_secure_repo_url(
         repo_url, branch=branch, net_access=net_access)

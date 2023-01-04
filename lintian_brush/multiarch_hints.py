@@ -97,14 +97,14 @@ def parse_multiarch_hints(f):
     return data["hints"]
 
 
-def multiarch_hints_by_binary(hints):
+def multiarch_hints_by_binary(hints) -> Dict[str, List[Any]]:
     ret: Dict[str, List[Any]] = {}
     for entry in hints:
         ret.setdefault(entry["binary"], []).append(entry)
     return ret
 
 
-def multiarch_hints_by_source(hints):
+def multiarch_hints_by_source(hints) -> Dict[str,  List[Any]]:
     ret: Dict[str, List[Any]] = {}
     for entry in hints:
         if "source" not in entry:
@@ -207,7 +207,7 @@ def apply_hint_dep_any(binary, hint):
             % hint["description"])
     dep = m.group(2)
     if "Depends" not in binary:
-        return
+        return None
     changed = False
     relations = parse_relations(binary["Depends"])
     for entry in relations:
@@ -218,21 +218,21 @@ def apply_hint_dep_any(binary, hint):
                     r.archqual = "any"
                     changed = True
     if not changed:
-        return
+        return None
     binary["Depends"] = format_relations(relations)
     return "Add :any qualifier for %s dependency." % dep
 
 
-def apply_hint_ma_same(binary, hint):
+def apply_hint_ma_same(binary, hint) -> Optional[str]:
     if binary.get("Multi-Arch") == "same":
-        return
+        return None
     binary["Multi-Arch"] = "same"
     return "Add Multi-Arch: same."
 
 
-def apply_hint_arch_all(binary, hint):
+def apply_hint_arch_all(binary, hint) -> Optional[str]:
     if binary["Architecture"] == "all":
-        return
+        return None
     binary["Architecture"] = "all"
     return "Make package Architecture: all."
 
@@ -252,7 +252,7 @@ class MultiArchFixerResult(FixerResult):
         self.changes = changes
 
 
-def apply_multiarch_hints(hints, minimum_certainty="certain"):
+def apply_multiarch_hints(hints, minimum_certainty: str = "certain"):
     changes = []
     appliers = {applier.kind: applier for applier in APPLIERS}
 
@@ -272,7 +272,7 @@ def apply_multiarch_hints(hints, minimum_certainty="certain"):
     return changes
 
 
-def changes_by_description(changes):
+def changes_by_description(changes) -> Dict[str, List[str]]:
     by_description: Dict[str, List[str]] = {}
     for (binary, _hint, description, _certainty) in changes:
         by_description.setdefault(description, []).append(binary["Package"])
@@ -336,7 +336,7 @@ APPLIERS = [
 ]
 
 
-def versions_dict():
+def versions_dict() -> Dict[str, str]:
     import lintian_brush
     import debmutate
     import debian
@@ -347,7 +347,7 @@ def versions_dict():
     }
 
 
-def report_okay(code, description):
+def report_okay(code: str, description: str):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
@@ -357,7 +357,7 @@ def report_okay(code, description):
     logging.info('%s', description)
 
 
-def report_fatal(code, description, transient=False):
+def report_fatal(code: str, description: str, transient: bool = False) -> None:
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
