@@ -1,6 +1,10 @@
 lintian-brush (0.146) UNRELEASED; urgency=medium
 
+  [ Jelmer Vernooĳ ]
   * debianize: Add warning about state of the tool.
+
+  [ Colin Watson ]
+  * gpg: Fix crash if home_dir is None.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 21 Dec 2022 12:19:44 +0000
 
