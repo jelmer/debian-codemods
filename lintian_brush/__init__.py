@@ -261,6 +261,14 @@ class LintianIssue:
             self.tag == other.tag and
             self.info == other.info)
 
+    def json(self):
+        return {
+            "tag": self.tag,
+            "info": self.info,
+            "package": self.package,
+            "package_type": self.package_type,
+        }
+
     @classmethod
     def from_str(cls, text):
         try:
