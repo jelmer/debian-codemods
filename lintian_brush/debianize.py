@@ -96,6 +96,7 @@ from ognibuild.debian.upstream_deps import get_project_wide_deps
 from ognibuild.vcs import dupe_vcs_tree
 
 from upstream_ontologist.guess import (
+    UpstreamDatum,
     guess_upstream_info,
     summarize_upstream_metadata,
 )
@@ -925,7 +926,7 @@ def debianize(  # noqa: C901
             and not force_new_directory):
         raise DebianDirectoryExists(wt.abspath(subpath))
 
-    metadata_items = []
+    metadata_items: List[UpstreamDatum] = []
     if metadata is None:
         metadata = {}
     else:
