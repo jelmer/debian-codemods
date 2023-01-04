@@ -609,8 +609,8 @@ def process_golang(es, session, wt, subpath, debian_path, upstream_version,
     return control
 
 
-def process_r(es, session, wt, subpath, debian_path, metadata,
-              upstream_version, compat_release, buildsystem,
+def process_r(es, session, wt, subpath, debian_path,
+              upstream_version, metadata, compat_release, buildsystem,
               buildsystem_subpath, kickstart_from_dist):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(ControlEditor.create(
