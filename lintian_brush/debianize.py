@@ -1624,6 +1624,7 @@ def main(argv=None):  # noqa: C901
                     'requested-version-missing',
                     'Requested version %s not present upstream' %
                     args.upstream_version)
+                return 1
             else:
                 # For now
                 raise
