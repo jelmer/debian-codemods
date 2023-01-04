@@ -455,6 +455,9 @@ def main(argv=None):  # noqa: C901
                         "summary": summary,
                         "description": result.description,
                         "fixed_lintian_tags": result.fixed_lintian_tags,
+                        "fixed_lintian_issues": [
+                            issue.json()
+                            for issue in result.fixed_lintian_issues],
                         "revision_id": result.revision_id.decode("utf-8"),
                         "certainty": result.certainty,
                     }
