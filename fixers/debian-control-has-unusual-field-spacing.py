@@ -49,7 +49,7 @@ try:
     check_generated_file('debian/control')
 except GeneratedFile as e:
     if e.template_path:
-        template_type = guess_template_type(e.template_path)
+        template_type = guess_template_type(e.template_path, 'debian')
         if template_type is None:
             raise
         changed = fix_field_spacing(e.template_path)
