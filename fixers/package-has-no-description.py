@@ -10,7 +10,7 @@ from lintian_brush.fixer import (
     report_result,
     trust_package,
     )
-from typing import List
+from typing import List, Optional
 from upstream_ontologist.guess import guess_upstream_metadata
 
 CERTAINTY = 'possible'
@@ -61,12 +61,12 @@ def guess_description(binary_name, all_binaries, summary=None):
     lines = [line if line else '.' for line in upstream_description]
 
     return format_description(summary, lines)
-    return description.rstrip('\n')
 
 
 updated = []
 
 with control as updater:
+    summary: Optional[str]
     for binary in updater.binaries:
         existing_description = binary.get('Description')
         if not existing_description:
