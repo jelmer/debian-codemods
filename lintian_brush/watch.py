@@ -668,8 +668,12 @@ def main():  # noqa: C901
                     updater.watch_file.entries = [candidates[0].watch]
                     site = [candidates[0].site]
                     status = None
+                    description = (
+                        'Added new watch file from %s, '
+                        'since old one is broken' % site)
                 else:
                     site = None
+                    description = 'Fixed watch file'
         except FileNotFoundError:
             candidates = find_candidates(
                 '.', good_upstream_versions,
@@ -686,6 +690,7 @@ def main():  # noqa: C901
             with open('debian/watch', 'w') as f:
                 wf.dump(f)
             status = None
+            description = 'Added watch file'
         except FormattingUnpreservable as e:
             report_fatal('formatting-unpreservable',
                          "Unable to preserve formatting of %s" % e.path)
@@ -719,7 +724,7 @@ def main():  # noqa: C901
     if os.environ.get("SVP_API") == "1":
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump({
-                "description": "Update watch file.",
+                "description": description,
                 "context": svp_context(status, site),
             }, f)
 
