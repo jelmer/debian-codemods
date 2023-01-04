@@ -513,8 +513,23 @@ def svp_context(status, site):
             },
             'missing_versions':
                 [str(x) for x in entry_status.missing_versions]
-        } for entry_status, entry_site in zip(status or [], site or [])
+        } for entry_status, entry_site in
+        zip(status or [], site or [None] * len(status or []))
     }
+
+
+_changelog_policy_noted = False
+
+
+def _note_changelog_policy(policy, msg):
+    global _changelog_policy_noted
+    if not _changelog_policy_noted:
+        if policy:
+            extra = "Specify --no-update-changelog to override."
+        else:
+            extra = "Specify --update-changelog to override."
+        logging.info("%s %s", msg, extra)
+    _changelog_policy_noted = True
 
 
 def main():  # noqa: C901
@@ -526,6 +541,7 @@ def main():  # noqa: C901
     import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
 
+    from breezy.commit import NullCommitReporter, PointlessCommit
     from breezy.workingtree import WorkingTree
     from breezy.workspace import (
         check_clean_tree,
@@ -638,7 +654,8 @@ def main():  # noqa: C901
         status = None
         try:
             with WatchEditor(allow_reformatting=allow_reformatting,
-                             allow_missing=False) as updater:
+                             allow_missing=False,
+                             ) as updater:
                 try:
                     status = verify_watch_file(
                         updater.watch_file, package, expected_versions)
@@ -649,7 +666,7 @@ def main():  # noqa: C901
                     report_fatal(
                         'nothing-to-do',
                         'Existing watch file has valid entries',
-                        context=svp_context(status))
+                        context=svp_context(status, site=None))
                     return 0
                 fix_watch_issues(updater)
                 try:
@@ -673,12 +690,12 @@ def main():  # noqa: C901
                     updater.watch_file.entries = [candidates[0].watch]
                     site = [candidates[0].site]
                     status = None
-                    description = (
+                    summary = (
                         'Added new watch file from %s, '
                         'since old one is broken' % site)
                 else:
                     site = None
-                    description = 'Fixed watch file'
+                    summary = 'Fixed watch file'
         except FileNotFoundError:
             candidates = find_candidates(
                 '.', good_upstream_versions,
@@ -695,7 +712,7 @@ def main():  # noqa: C901
             with open('debian/watch', 'w') as f:
                 wf.dump(f)
             status = None
-            description = 'Added watch file'
+            summary = 'Added watch file'
         except FormattingUnpreservable as e:
             report_fatal('formatting-unpreservable',
                          "Unable to preserve formatting of %s" % e.path)
@@ -726,10 +743,48 @@ def main():  # noqa: C901
                     context=svp_context(status, site))
                 return 1
 
+    specific_files = updater.changed_files
+
+    changelog_path = os.path.join(subpath, "debian/changelog")
+    if update_changelog is None:
+        from .detect_gbp_dch import guess_update_changelog
+        from debian.changelog import Changelog
+
+        with wt.get_file(changelog_path) as f:
+            cl = Changelog(f, max_blocks=1)
+
+        dch_guess = guess_update_changelog(
+            wt, os.path.join(subpath, 'debian'), cl)
+        if dch_guess:
+            update_changelog = dch_guess.update_changelog
+            _note_changelog_policy(update_changelog, dch_guess.explanation)
+        else:
+            # Assume we should update changelog
+            update_changelog = True
+
+    if update_changelog:
+        from .changelog import add_changelog_entry
+
+        # TODO(jelmer): Add note here about having verified watch file?
+        add_changelog_entry(wt, changelog_path, [summary])
+        if specific_files:
+            specific_files.append(changelog_path)
+
+    committer = get_committer(wt)
+
+    with suppress(PointlessCommit):
+        wt.commit(
+            specific_files=specific_files,
+            message=summary,
+            allow_pointless=False,
+            reporter=NullCommitReporter(),
+            committer=committer,
+        )
+
     if os.environ.get("SVP_API") == "1":
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump({
-                "description": description,
+                "description": summary,
                 "context": svp_context(status, site),
                 "value": WATCH_FIX_VALUE,
             }, f)
