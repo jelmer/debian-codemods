@@ -71,6 +71,13 @@ class LintianIssue:
             self.info = info
         self.tag = tag
 
+    def json(self):
+        return {
+            "tag": self.tag,
+            "info": self.info,
+            "target": self.target,
+        }
+
     def override_exists(self):
         return _override_exists(
             tag=self.tag, info=self.info, type=self.target[0],
