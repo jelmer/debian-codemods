@@ -23,7 +23,8 @@ with control as e:
     if e.source.get('Testsuite') == TESTSUITE_VALUE:
         sys.exit(0)
     issue = LintianIssue(
-        e.source, 'team/pkg-perl/testsuite/no-testsuite-header', info="autopkgtest")
+        e.source, 'team/pkg-perl/testsuite/no-testsuite-header',
+        info="autopkgtest")
     if issue.should_fix():
         e.source['Testsuite'] = TESTSUITE_VALUE
         issue.report_fixed()

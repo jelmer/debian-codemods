@@ -34,7 +34,7 @@ import shutil
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
-from typing import Optional, Tuple, List, Dict, Any, Callable
+from typing import Optional, Tuple, List, Dict, Any, Callable, cast
 from urllib.parse import urlparse
 
 
@@ -956,6 +956,7 @@ def debianize(  # noqa: C901
             if not wt.is_versioned(debian_path):
                 wt.add(debian_path)
 
+            session: Session
             if schroot is None:
                 session = PlainSession()
             else:
@@ -1105,7 +1106,8 @@ def debianize(  # noqa: C901
             )
 
             if (requirement and requirement.family == 'apt' and
-                    not requirement.satisfied_by(control.binaries, version)):
+                    not cast(AptRequirement, requirement).satisfied_by(
+                        control.binaries, version)):
                 logging.warning(
                     'Debianized package (binary packages: %r), version %s '
                     'did not satisfy requirement %r. '
@@ -1575,7 +1577,8 @@ def main(argv=None):  # noqa: C901
             report_fatal(
                 code='debian-directory-exists',
                 description=(
-                    "%s: A debian directory already exists. " % wt.abspath(subpath)),
+                    f"{wt.abspath(subpath)}: "
+                    "A debian directory already exists."),
                 hint=("Run lintian-brush instead or "
                       "specify --force-new-directory."),
             )
@@ -1678,6 +1681,8 @@ def main(argv=None):  # noqa: C901
         args.iterate_fix = True
 
     if args.iterate_fix:
+        session: Session
+
         if args.schroot is None:
             session = PlainSession()
         else:
