@@ -2,13 +2,14 @@
 
 import os
 import re
+from debmutate.reformatting import check_generated_file, GeneratedFile
 from lintian_brush.fixer import report_result, LintianIssue
 
 trailing_whitespace_re = re.compile(b'\\s*\n$')
 trailing_space_re = re.compile(b'[ ]*\n$')
 
 
-def strip_whitespace(line: bytes, strip_tabs=True):
+def strip_whitespace(line: bytes, strip_tabs=True) -> bytes:
     if strip_tabs:
         pat = trailing_whitespace_re
     else:
@@ -17,8 +18,9 @@ def strip_whitespace(line: bytes, strip_tabs=True):
 
 
 def file_strip_whitespace(
-        path, strip_tabs=True, strip_trailing_empty_lines=True,
-        delete_new_empty_line=False):
+        path: str, strip_tabs: bool = True,
+        strip_trailing_empty_lines: bool = True,
+        delete_new_empty_line: bool = False) -> bool:
     newlines = []
     changed = False
     try:
@@ -36,7 +38,7 @@ def file_strip_whitespace(
                             continue
                 newlines.append(newline)
     except FileNotFoundError:
-        return
+        return False
     if strip_trailing_empty_lines:
         while newlines and newlines[-1] == b'\n':
             issue = LintianIssue(
@@ -51,15 +53,26 @@ def file_strip_whitespace(
     if changed:
         with open(path, 'wb') as f:
             f.writelines(newlines)
+    return changed
 
 
 file_strip_whitespace('debian/changelog', strip_tabs=True)
 file_strip_whitespace('debian/rules', strip_tabs=False)
-for entry in os.scandir('debian'):
-    if (entry.name == 'control' or
-       (entry.name.startswith('control.') and not entry.name.endswith('~') and
-           not entry.name.endswith('.m4'))):
-        file_strip_whitespace(
-            entry.path, strip_tabs=True, delete_new_empty_line=True)
+
+try:
+    check_generated_file('debian/control')
+except GeneratedFile:
+    changed = False
+    for entry in os.scandir('debian'):
+        if entry.name.startswith('control.') and not entry.name.endswith('~'):
+            if not entry.name.endswith('.m4'):
+                if file_strip_whitespace(
+                        entry.path, strip_tabs=True,
+                        delete_new_empty_line=True):
+                    changed = True
+    if changed:
+        file_strip_whitespace('debian/control', strip_tabs=False)
+else:
+    file_strip_whitespace('debian/control', strip_tabs=False)
 
 report_result("Trim trailing whitespace.")
