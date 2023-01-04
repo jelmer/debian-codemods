@@ -476,7 +476,6 @@ def main(argv=None):  # noqa: C901
                     'context': {
                         'applied': applied,
                         'failed': failed,
-
                     },
                     'versions': versions_dict(),
                 }, f)

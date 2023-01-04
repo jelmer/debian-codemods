@@ -48,6 +48,11 @@ from . import (
 from .gpg import fetch_keys
 
 
+# TODO(jelmer): Vary this depending on whether a new watch file was added or an
+# existing one was fixed?
+WATCH_FIX_VALUE = 60
+
+
 @dataclass
 class WatchCandidate:
 
@@ -726,6 +731,7 @@ def main():  # noqa: C901
             json.dump({
                 "description": description,
                 "context": svp_context(status, site),
+                "value": WATCH_FIX_VALUE,
             }, f)
 
     return 0
