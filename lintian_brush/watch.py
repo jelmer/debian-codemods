@@ -640,8 +640,10 @@ def main():  # noqa: C901
 
         good_upstream_versions = set()
 
-        with open('debian/changelog', 'r') as f:
-            cl = Changelog(f)
+        changelog_path = os.path.join(subpath, "debian/changelog")
+
+        with wt.get_file(changelog_path) as f:
+            cl = Changelog(f, max_blocks=1)
             for entry in cl:
                 uv = strip_dfsg_suffix(entry.version.upstream_version)
                 if get_snapshot_revision(uv) is not None:
@@ -718,68 +720,63 @@ def main():  # noqa: C901
                          "Unable to preserve formatting of %s" % e.path)
             return 1
 
-    if args.verify and status is None:
-        with WatchEditor() as updater:
-            try:
-                status = verify_watch_file(
-                    updater.watch_file, package, expected_versions)
-            except WatchEntryVerificationFailure as e:
-                report_fatal(
-                    'verification-failed',
-                    'Unable to verify watch entry: %s'
-                    % e)
-                return 1
-            except TemporaryWatchEntryVerficationError as e:
-                report_fatal(
-                    'temporary-verification-error',
-                    'Unable to verify watch entry: %s'
-                    % e)
-                return 1
-            if not status or not all(status):
-                report_fatal(
-                    'verification-failed',
-                    'Unable to watch entries; missing versions: %r'
-                    % status[0].missing_versions,
-                    context=svp_context(status, site))
-                return 1
+        if args.verify and status is None:
+            with WatchEditor() as updater:
+                try:
+                    status = verify_watch_file(
+                        updater.watch_file, package, expected_versions)
+                except WatchEntryVerificationFailure as e:
+                    report_fatal(
+                        'verification-failed',
+                        'Unable to verify watch entry: %s'
+                        % e)
+                    return 1
+                except TemporaryWatchEntryVerficationError as e:
+                    report_fatal(
+                        'temporary-verification-error',
+                        'Unable to verify watch entry: %s'
+                        % e)
+                    return 1
+                if not status or not all(status):
+                    report_fatal(
+                        'verification-failed',
+                        'Unable to watch entries; missing versions: %r'
+                        % status[0].missing_versions,
+                        context=svp_context(status, site))
+                    return 1
 
-    specific_files = updater.changed_files
+        specific_files = updater.changed_files
 
-    changelog_path = os.path.join(subpath, "debian/changelog")
-    if update_changelog is None:
-        from .detect_gbp_dch import guess_update_changelog
-        from debian.changelog import Changelog
+        if update_changelog is None:
+            from .detect_gbp_dch import guess_update_changelog
 
-        with wt.get_file(changelog_path) as f:
-            cl = Changelog(f, max_blocks=1)
+            dch_guess = guess_update_changelog(
+                wt, os.path.join(subpath, 'debian'), cl)
+            if dch_guess:
+                update_changelog = dch_guess.update_changelog
+                _note_changelog_policy(update_changelog, dch_guess.explanation)
+            else:
+                # Assume we should update changelog
+                update_changelog = True
 
-        dch_guess = guess_update_changelog(
-            wt, os.path.join(subpath, 'debian'), cl)
-        if dch_guess:
-            update_changelog = dch_guess.update_changelog
-            _note_changelog_policy(update_changelog, dch_guess.explanation)
-        else:
-            # Assume we should update changelog
-            update_changelog = True
+        if update_changelog:
+            from .changelog import add_changelog_entry
 
-    if update_changelog:
-        from .changelog import add_changelog_entry
+            # TODO(jelmer): Add note here about having verified watch file?
+            add_changelog_entry(wt, changelog_path, [summary])
+            if specific_files:
+                specific_files.append(changelog_path)
 
-        # TODO(jelmer): Add note here about having verified watch file?
-        add_changelog_entry(wt, changelog_path, [summary])
-        if specific_files:
-            specific_files.append(changelog_path)
+        committer = get_committer(wt)
 
-    committer = get_committer(wt)
-
-    with suppress(PointlessCommit):
-        wt.commit(
-            specific_files=specific_files,
-            message=summary,
-            allow_pointless=False,
-            reporter=NullCommitReporter(),
-            committer=committer,
-        )
+        with suppress(PointlessCommit):
+            wt.commit(
+                specific_files=specific_files,
+                message=summary,
+                allow_pointless=False,
+                reporter=NullCommitReporter(),
+                committer=committer,
+            )
 
     if os.environ.get("SVP_API") == "1":
         with open(os.environ["SVP_RESULT"], "w") as f:
