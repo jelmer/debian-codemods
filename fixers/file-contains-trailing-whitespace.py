@@ -53,7 +53,8 @@ def file_strip_whitespace(
     if changed:
         with open(path, 'wb') as f:
             f.writelines(newlines)
-    return changed
+        return True
+    return False
 
 
 file_strip_whitespace('debian/changelog', strip_tabs=True)
@@ -64,15 +65,19 @@ try:
 except GeneratedFile:
     changed = False
     for entry in os.scandir('debian'):
-        if entry.name.startswith('control.') and not entry.name.endswith('~'):
-            if not entry.name.endswith('.m4'):
-                if file_strip_whitespace(
-                        entry.path, strip_tabs=True,
-                        delete_new_empty_line=True):
-                    changed = True
+        if not entry.name.startswith('control.') or entry.name.endswith('~'):
+            continue
+        if entry.name.endswith('.m4'):
+            continue
+        if file_strip_whitespace(
+                entry.path, strip_tabs=True,
+                delete_new_empty_line=True):
+            changed = True
     if changed:
-        file_strip_whitespace('debian/control', strip_tabs=False)
+        file_strip_whitespace(
+            'debian/control', strip_tabs=True, delete_new_empty_line=True)
 else:
-    file_strip_whitespace('debian/control', strip_tabs=False)
+    file_strip_whitespace(
+        'debian/control', strip_tabs=True, delete_new_empty_line=True)
 
 report_result("Trim trailing whitespace.")
