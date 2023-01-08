@@ -1769,6 +1769,12 @@
 - tag: openpgp-file-has-implementation-specific-extension
   difficulty: medium
 
+# 2.5.100
+- tag: skip-systemd-native-flag-missing-pre-depends
+- tag: obsolete-runtime-tests-restriction
+  status: implemented
+- tag: package-contains-python-dot-directory
+
 # pkg-perl-tools
 - tag: debian-changelog-contains-hint
   difficulty: impossible
