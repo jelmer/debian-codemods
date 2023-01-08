@@ -672,7 +672,8 @@ def main():  # noqa: C901
                         'Existing watch file has valid entries',
                         context=svp_context(status, site=None),
                         hint='Releases %s can be found with watch entry %s' % (
-                            ', '.join(sorted(list(status[0].releases.keys()), reverse=True)),
+                            ', '.join(sorted(list(
+                                status[0].releases.keys()), reverse=True)),
                             status[0].entry))
                     return 0
                 fix_watch_issues(updater)
