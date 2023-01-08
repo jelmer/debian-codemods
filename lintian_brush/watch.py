@@ -504,7 +504,7 @@ def verify_watch_file(watch_file, source_package, expected_versions):
 
 
 def svp_context(status, site):
-    return {
+    return [{
         'entries': {
             'text': str(entry_status.entry),
             'site': entry_site,
@@ -515,9 +515,9 @@ def svp_context(status, site):
             },
             'missing_versions':
                 [str(x) for x in entry_status.missing_versions]
-        } for entry_status, entry_site in
-        zip(status or [], site or [None] * len(status or []))
-    }
+        }
+    } for entry_status, entry_site in zip(
+        status or [], site or [None] * len(status or []))]
 
 
 _changelog_policy_noted = False
