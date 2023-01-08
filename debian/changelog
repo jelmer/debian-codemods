@@ -6,6 +6,9 @@ lintian-brush (0.146) UNRELEASED; urgency=medium
   [ Colin Watson ]
   * gpg: Fix crash if home_dir is None.
 
+  [ Jelmer Vernooĳ ]
+  * Add fixer for duplicate-font-file.
+
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 21 Dec 2022 12:19:44 +0000
 
 lintian-brush (0.145) unstable; urgency=medium

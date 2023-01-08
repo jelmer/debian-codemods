@@ -372,6 +372,9 @@ INFO_FIXERS = {
         r"(choke on: \2) [\1]"),
     "systemd-service-file-refers-to-unusual-wantedby-target": (
         "^" + PATH_MATCH + r" ([^[ ]+)$", r"\2 [\1]"),
+    "duplicate-font-file": (
+        "^" + PATH_MATCH + r" also in ([^[]+)$",
+        r"also in (\2) [\1]"),
 }
 
 

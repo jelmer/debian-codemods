@@ -256,6 +256,11 @@ INFO_FIXER_TESTS = [
     ("spelling-error-in-binary", "wtH with *", "wtH with *"),
     ("spelling-error-in-binary", "usr/bin/foo wtH with",
      "wtH with [usr/bin/foo]"),
+    ("duplicate-font-file",
+     "usr/lib/R/site-library/rgl/fonts/FreeMono.ttf "
+     "also in fonts-freefont-ttf",
+     "also in (fonts-freefont-ttf) "
+     "[usr/lib/R/site-library/rgl/fonts/FreeMono.ttf]"),
 ]
 
 
