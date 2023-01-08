@@ -483,7 +483,7 @@ def verify_watch_entry(
         entry, releases=releases, missing_versions=missing_versions)
 
 
-def report_fatal(code: str, description: str, context=None) -> None:
+def report_fatal(code: str, description: str, context=None, hint=None) -> None:
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
@@ -491,6 +491,8 @@ def report_fatal(code: str, description: str, context=None) -> None:
                 'description': description,
                 'context': context}, f)
     logging.fatal('%s', description)
+    if hint:
+        logging.info('%s', hint)
 
 
 def verify_watch_file(watch_file, source_package, expected_versions):
@@ -594,8 +596,8 @@ def main():  # noqa: C901
         "--debug", help="Describe all considered changes.", action="store_true"
     )
     parser.add_argument(
-        "--verify", action="store_true",
-        help="Verify that the new watch file works")
+        "--no-verify", action="store_true",
+        help="Do not verify that the new watch file works")
     parser.add_argument(
         "--disable-net-access",
         help="Do not probe external services.",
@@ -668,7 +670,10 @@ def main():  # noqa: C901
                     report_fatal(
                         'nothing-to-do',
                         'Existing watch file has valid entries',
-                        context=svp_context(status, site=None))
+                        context=svp_context(status, site=None),
+                        hint='Releases %s can be found with watch entry %s' % (
+                            ', '.join(sorted(list(status[0].releases.keys()), reverse=True)),
+                            status[0].entry))
                     return 0
                 fix_watch_issues(updater)
                 try:
@@ -694,7 +699,7 @@ def main():  # noqa: C901
                     status = None
                     summary = (
                         'Added new watch file from %s, '
-                        'since old one is broken' % site)
+                        'since old one is broken' % site[0])
                 else:
                     site = None
                     summary = 'Fixed watch file'
@@ -720,7 +725,7 @@ def main():  # noqa: C901
                          "Unable to preserve formatting of %s" % e.path)
             return 1
 
-        if args.verify and status is None:
+        if not args.no_verify and status is None:
             with WatchEditor() as updater:
                 try:
                     status = verify_watch_file(
@@ -785,6 +790,8 @@ def main():  # noqa: C901
                 "context": svp_context(status, site),
                 "value": WATCH_FIX_VALUE,
             }, f)
+
+    logging.info('%s', summary)
 
     return 0
 
