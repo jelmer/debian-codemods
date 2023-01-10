@@ -699,8 +699,8 @@ def main():  # noqa: C901
                     site = [candidates[0].site]
                     status = None
                     summary = (
-                        'Added new watch file from %s, '
-                        'since old one is broken' % site[0])
+                        f'Update watch file from {site[0]}, '
+                        'since it was broken')
                 else:
                     site = None
                     summary = 'Fixed watch file'
