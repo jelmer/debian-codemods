@@ -2,7 +2,7 @@ lintian-brush
 =============
 
 This package contains a set of scripts to automatically fix some common issues in
-Debian packages, as reported by Lintian.
+Debian packages.
 
 Running lintian-brush
 ---------------------
@@ -194,6 +194,10 @@ Writing new fixers
 For a more extensive write-up, see the
 [guide on writing fixers](doc/fixer-writing-guide.rst).
 
+Ideally, fixers target a particular set of lintian tags. This is not strictly
+required, but makes it possible to easily find all packages that a particular
+fixer can be used on.
+
 Each fixer is a simple script that lives under ``fixers``. Scripts should
 be registered in the ``index.desc`` file in the same directory.
 
@@ -214,6 +218,9 @@ The following additional environment variables are set:
    Set to either ``allow`` or ``disallow``.
  * ``OPINIONATED``: Set to ``yes`` or ``no``. If ``no``, fixers are not expected
    to make changes in which there is no obvious single correct fix.
+
+For fixer written in python, the ``lintian_brush.fixer`` module can be used for
+convenient access to these variables.
 
 A fixer should write a short description of the changes it has made to standard
 out; this will be used for the commit message.
