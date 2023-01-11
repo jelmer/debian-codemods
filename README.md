@@ -86,6 +86,7 @@ subset of the issues:
 * executable-desktop-file
 * extended-description-contains-empty-paragraph
 * extended-description-is-empty
+* faulty-debian-qa-group-phrase
 * field-name-typo-in-dep5-copyright
 * font-package-not-multi-arch-foreign
 * global-files-wildcard-not-first-paragraph-in-dep5-copyright
@@ -183,7 +184,6 @@ subset of the issues:
 * vcs-field-uses-insecure-uri
 * vcs-field-uses-not-recommended-uri-format
 * vcs-obsolete-in-debian-infrastructure
-* wrong-debian-qa-group-name
 * wrong-section-according-to-package-name
 
 .. _writing-fixers:
