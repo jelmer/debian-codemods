@@ -55,7 +55,7 @@
     "dpkg": {
         "artful": "1.18.24ubuntu1",
         "bionic": "1.19.0.5ubuntu2",
-        "bookworm": "1.21.13",
+        "bookworm": "1.21.17",
         "breezy": "1.13.10ubuntu4",
         "bullseye": "1.20.12",
         "bullseye-proposed-updates": "1.20.12",
@@ -93,7 +93,7 @@
         "quantal": "1.16.7ubuntu6",
         "raring": "1.16.10ubuntu1",
         "saucy": "1.16.12ubuntu1",
-        "sid": "1.21.17",
+        "sid": "1.21.18",
         "squeeze": "1.15.11",
         "squeeze-security": "1.15.11",
         "stretch": "1.18.25",
