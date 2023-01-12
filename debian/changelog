@@ -10,6 +10,8 @@ lintian-brush (0.146) UNRELEASED; urgency=medium
   * Add fixer for duplicate-font-file.
   * transitional-package-should-be-oldlibs-optional: Preserve archive
     area. Closes: #1029241
+  * Update tag name: wrong-debian-qa-group-name => faulty-debian-qa-
+    group-phase.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 21 Dec 2022 12:19:44 +0000
 

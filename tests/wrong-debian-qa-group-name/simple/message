@@ -1,2 +1,2 @@
 Fix Debian QA group name.
-Fixed-Lintian-Tags: wrong-debian-qa-group-name
+Fixed-Lintian-Tags: faulty-debian-qa-group-phrase

@@ -413,7 +413,7 @@
 
 - script: wrong-debian-qa-group-name.py
   lintian-tags:
-    - wrong-debian-qa-group-name
+    - faulty-debian-qa-group-phrase
 
 - script: xc-package-type-in-debian-control.sh
   lintian-tags:
