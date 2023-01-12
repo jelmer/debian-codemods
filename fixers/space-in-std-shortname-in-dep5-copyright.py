@@ -25,7 +25,7 @@ RENAMES.update(
     {license['name'].lower(): license_id
      for license_id, license in spdx_data['licenses'].items()})
 REPLACE_SPACES.update(set(spdx_data['licenses']))
-REPLACE_SPACES = set([license_id.lower() for license_id in REPLACE_SPACES])
+REPLACE_SPACES = {license_id.lower() for license_id in REPLACE_SPACES}
 for license_id in list(REPLACE_SPACES):
     if license_id.endswith('.0'):
         REPLACE_SPACES.add(license_id[:-2])

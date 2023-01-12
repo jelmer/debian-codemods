@@ -52,7 +52,7 @@ if version_changed:
     report_result(
         "Add %s bugs in %s." %
         (', '.join(
-            sorted(set(
-                [kind for (bugno, kind) in wnpp_bugs]))),
+            sorted({
+                kind for (bugno, kind) in wnpp_bugs})),
             version_changed),
         certainty=certainty)

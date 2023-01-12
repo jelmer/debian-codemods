@@ -42,7 +42,7 @@ with control:
     issue = LintianIssue(
         control.source,
         'missing-prerequisite-for-pyproject-backend',
-        info='%s (does not satisfy %s)' % (
+        info='{} (does not satisfy {})'.format(
             build_backend, prerequisite))
     if issue.should_fix():
         control.source['Build-Depends'] = ensure_some_version(

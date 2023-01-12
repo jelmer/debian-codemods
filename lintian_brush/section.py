@@ -31,7 +31,7 @@ NAME_SECTION_MAPPINGS_PATH = os.path.join(
 def get_name_section_mappings():
     regexes = []
 
-    with open(NAME_SECTION_MAPPINGS_PATH, "r") as f:
+    with open(NAME_SECTION_MAPPINGS_PATH) as f:
         for line in f:
             if line.startswith('#'):
                 continue

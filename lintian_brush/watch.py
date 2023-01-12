@@ -183,8 +183,8 @@ def candidates_from_setup_py(
                 if d["packagetype"] == "sdist"
             ]
     filename_regex = (
-            r"%(project)s-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))" % {
-                "project": project})
+            r"{project}-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))".format(
+                project=project))
     opts = []
     # TODO(jelmer): Set uversionmangle?
     # opts.append('uversionmangle=s/(rc|a|b|c)/~$1/')
@@ -194,10 +194,10 @@ def candidates_from_setup_py(
                 certainty = "certain"
                 if has_sig:
                     opts.append("pgpsigurlmangle=s/$/.asc/")
-    url = r"https://pypi.debian.net/%(project)s/%(fname_regex)s" % {
-        "project": project,
-        "fname_regex": filename_regex,
-    }
+    url = r"https://pypi.debian.net/{project}/{fname_regex}".format(
+        project=project,
+        fname_regex=filename_regex,
+    )
     # TODO(jelmer): Add pgpsigurlmangle if has_sig==True
     w = Watch(url, opts=opts)
     yield WatchCandidate(w, "pypi", certainty=certainty, preference=1)
@@ -228,7 +228,7 @@ def find_candidates(path, good_upstream_versions, net_access=False):
 def candidates_from_upstream_metadata(
         path: str, good_upstream_versions: Set[str], net_access: bool = False):
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             inp = f.read()
     except FileNotFoundError:
         pass
@@ -318,10 +318,10 @@ def guess_github_watch_entry(
     (username, project) = parsed_url.path.strip("/").split("/")
     if project.endswith(".git"):
         project = project[:-4]
-    download_url = "https://github.com/%(user)s/%(project)s/tags" % {
-        "user": username,
-        "project": project,
-    }
+    download_url = "https://github.com/{user}/{project}/tags".format(
+        user=username,
+        project=project,
+    )
     matching_pattern = r".*\/%s\.tar\.gz" % version_pattern
     opts = [
         r"filenamemangle=s/%(pattern)s/%(project)s-$1\.tar\.gz/"
@@ -477,7 +477,7 @@ def verify_watch_entry(
     if expected_versions is None:
         return WatchEntryVerificationStatus(entry, releases=releases)
 
-    found_versions = set([str(r.version) for r in releases])
+    found_versions = {str(r.version) for r in releases}
     missing_versions = set(expected_versions) - found_versions
     return WatchEntryVerificationStatus(
         entry, releases=releases, missing_versions=missing_versions)
@@ -671,7 +671,7 @@ def main():  # noqa: C901
                         'nothing-to-do',
                         'Existing watch file has valid entries',
                         context=svp_context(status, site=None),
-                        hint='Releases %s can be found with watch entry %s' % (
+                        hint='Releases {} can be found with watch entry {}'.format(
                             ', '.join(sorted(list(
                                 status[0].releases.keys()), reverse=True)),
                             status[0].entry))

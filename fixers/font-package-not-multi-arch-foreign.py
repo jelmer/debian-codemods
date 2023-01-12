@@ -24,5 +24,5 @@ with control as updater:
 
 
 report_result(
-    'Set Multi-Arch: foreign on package%s %s.' % (
+    'Set Multi-Arch: foreign on package{} {}.'.format(
         's' if len(updated_packages) > 1 else '', ', '.join(updated_packages)))

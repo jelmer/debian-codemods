@@ -22,7 +22,7 @@ def drop_quilt_with(line, target):
     return newline
 
 
-with suppress(FileNotFoundError), open('debian/source/format', 'r') as f:
+with suppress(FileNotFoundError), open('debian/source/format') as f:
     if f.read().strip() == '3.0 (quilt)':
         with RulesEditor() as updater:
             if rules_find_patches_directory(

@@ -14,7 +14,7 @@ DEFAULT_UDD_URL = (
 
 versions: Dict[str, Dict[str, str]]
 
-with open(OUTPUT_FILENAME, 'r') as f:
+with open(OUTPUT_FILENAME) as f:
     versions = json.load(f)
 
 

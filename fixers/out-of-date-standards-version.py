@@ -103,7 +103,7 @@ def check_4_4_1():
     # Check that Files entries don't refer to directories.
     # They must be wildcards *in* the directories.
     try:
-        with open('debian/copyright', 'r') as f:
+        with open('debian/copyright') as f:
             copyright = Copyright(f, strict=False)
             for para in copyright.all_files_paragraphs():
                 for glob in para.files:
@@ -122,7 +122,7 @@ def check_4_4_1():
 
 def check_4_1_5():
     # If epoch has changed
-    with open('debian/changelog', 'r') as f:
+    with open('debian/changelog') as f:
         cl = Changelog(f, max_blocks=2)
         epochs = set()
         for block in cl:
@@ -305,7 +305,7 @@ try:
             issue = LintianIssue(
                 updater.source,
                 tag,
-                '%s%s%s' % (
+                '{}{}{}'.format(
                     current_version,
                     (' (released %s)' % dt.strftime('%Y-%m-%d')) if dt else '',
                     (' (current is %s)' %

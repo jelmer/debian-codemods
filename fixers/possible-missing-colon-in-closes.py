@@ -77,7 +77,7 @@ def fix_close_typo(package, m):
         fixed_lintian_tag(
             'all', 'misspelled-closes-bug',
             info='#%s' % m.group('bug'))
-        return '%ss: #%s' % (m.group('close'), m.group('bug'))
+        return '{}s: #{}'.format(m.group('close'), m.group('bug'))
     else:
         return m.group(0)
 
@@ -97,9 +97,9 @@ with ChangelogEditor() as updater:
             block._changes[i] = change
 
 
-if fixed_lintian_tags() == set(['possible-missing-colon-in-closes']):
+if fixed_lintian_tags() == {'possible-missing-colon-in-closes'}:
     report_result("Add missing colon in closes line.", certainty=certainty)
-elif fixed_lintian_tags() == set(['misspelled-closes-bug']):
+elif fixed_lintian_tags() == {'misspelled-closes-bug'}:
     report_result("Fix misspelling of Close ⇒ Closes.", certainty=certainty)
 else:
     report_result("Fix formatting of bug closes.", certainty=certainty)

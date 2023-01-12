@@ -50,5 +50,5 @@ else:
     report_result(
         "Update lintian override info to new format:",
         details=[
-            "%s: line %s" % (path, ', '.join(linenos_to_ranges(linenos)))
+            "{}: line {}".format(path, ', '.join(linenos_to_ranges(linenos)))
             for (path, linenos) in fixed_linenos.items()])

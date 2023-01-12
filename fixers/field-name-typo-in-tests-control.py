@@ -48,8 +48,8 @@ if typo_fixed:
     kind += 'typo' + ('s' if len(typo_fixed) > 1 else '')
 
 fixed_str = ', '.join(
-    ['%s ⇒ %s' % (old, new)
+    ['{} ⇒ {}'.format(old, new)
      for (old, new) in sorted(list(case_fixed) + list(typo_fixed))])
 
 report_result(
-    'Fix field name %s in debian/tests/control (%s).' % (kind, fixed_str))
+    'Fix field name {} in debian/tests/control ({}).'.format(kind, fixed_str))

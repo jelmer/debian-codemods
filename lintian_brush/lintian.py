@@ -66,7 +66,7 @@ _obsolete_sites = None
 def is_obsolete_site(parsed_url) -> Optional[str]:
     global _obsolete_sites
     if _obsolete_sites is None:
-        with open(OBSOLETE_SITES_PATH, 'r') as f:
+        with open(OBSOLETE_SITES_PATH) as f:
             _obsolete_sites = list(read_list_file(f, vendor=None))
     for site in _obsolete_sites:
         if parsed_url.hostname.endswith(site):
@@ -84,7 +84,7 @@ def _capitalize_field(field):
 
 
 def _read_test_fields(path, vendor):
-    with open(path, 'r') as f:
+    with open(path) as f:
         fields = list(read_list_file(f, vendor=vendor))
 
     # Older versions of lintian listed fields with all lowercase.
@@ -94,8 +94,8 @@ def _read_test_fields(path, vendor):
 
 
 def known_tests_control_fields(vendor):
-    return set(['Tests', 'Restrictions', 'Features', 'Depends',
-                'Tests-Directory', 'Test-Command'])
+    return {'Tests', 'Restrictions', 'Features', 'Depends',
+                'Tests-Directory', 'Test-Command'}
 
 
 KNOWN_SOURCE_FIELDS_PATH = os.path.join(
@@ -125,15 +125,15 @@ DEBHELPER_COMMANDS_JSON_PATH = os.path.join(
 
 def dh_commands():
     try:
-        with open(DEBHELPER_DH_COMMANDS_PATH, 'r') as f:
+        with open(DEBHELPER_DH_COMMANDS_PATH) as f:
             entries = set(read_debhelper_lintian_data_file(f, '='))
-        with open(DEBHELPER_DH_COMMANDS_MANUAL_PATH, 'r') as f:
+        with open(DEBHELPER_DH_COMMANDS_MANUAL_PATH) as f:
             entries.update(read_debhelper_lintian_data_file(f, '||'))
         return {
             cmd: {'installed_by': [pkg]}
             for (cmd, pkg) in entries}
     except FileNotFoundError:
-        with open(DEBHELPER_COMMANDS_JSON_PATH, 'r') as f:
+        with open(DEBHELPER_COMMANDS_JSON_PATH) as f:
             data = json.load(f)
         return data['commands']
 
@@ -141,12 +141,12 @@ def dh_commands():
 def dh_addons():
     try:
         with open(os.path.join(
-                LINTIAN_DATA_PATH, 'common/dh_addons'), 'r') as f:
+                LINTIAN_DATA_PATH, 'common/dh_addons')) as f:
             return {
                 addon: {'installed_by': [pkg]}
                 for (addon, pkg) in read_debhelper_lintian_data_file(f, '=')}
     except FileNotFoundError:
         with open(os.path.join(
-                LINTIAN_DATA_PATH, 'debhelper/add_ons.json'), 'r') as f:
+                LINTIAN_DATA_PATH, 'debhelper/add_ons.json')) as f:
             data = json.load(f)
             return data['add_ons']

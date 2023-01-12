@@ -31,7 +31,7 @@ def fix_header_license_references(copyright):
     fixed_lintian_tag(
         'source',
         'dep5-file-paragraph-references-header-paragraph',
-        '%s (line XX)' % (copyright.header.license.synopsis, ))
+        '{} (line XX)'.format(copyright.header.license.synopsis))
     return copyright.header.license
 
 

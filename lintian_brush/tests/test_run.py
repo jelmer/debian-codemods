@@ -413,7 +413,7 @@ Arch: all
 
 class RunLintianFixersTests(TestCaseWithTransport):
     def setUp(self):
-        super(RunLintianFixersTests, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree(".")
         self.build_tree_contents(
             [
@@ -836,7 +836,7 @@ class LintianBrushVersion(TestCase):
                 "no debian/changelog available. "
                 "Running outside of source tree?"
             )
-        with open("debian/changelog", "r") as f:
+        with open("debian/changelog") as f:
             cl = Changelog(f, max_blocks=1)
         package_version = str(cl.version)
         m = re.match(r'^\d+\.\d+', package_version)

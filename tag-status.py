@@ -10,18 +10,18 @@ from ruamel.yaml import YAML
 
 KNOWN_KEYS = ['tag', 'status', 'difficulty', 'comment']
 
-all_tags = set([
+all_tags = {
     tag.decode()
     for tag in
     subprocess.check_output(
-        ['lintian-explain-tags', '--list-tags']).splitlines()])
+        ['lintian-explain-tags', '--list-tags']).splitlines()}
 
 supported_tags = set()
 for fixer in available_lintian_fixers():
     supported_tags.update(fixer.lintian_tags)
 
 yaml = YAML()
-with open('tag-status.yaml', 'r') as f:
+with open('tag-status.yaml') as f:
     tag_status = yaml.load(f)
 
 per_tag_status = {}

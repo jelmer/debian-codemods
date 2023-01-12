@@ -92,7 +92,7 @@ class Config:
         self._obj = ConfigObj(path, raise_errors=True, file_error=True)
         for k in self._obj.keys():
             if k not in SUPPORTED_KEYS:
-                warnings.warn("unknown setting %s in %s" % (k, path))
+                warnings.warn("unknown setting {} in {}".format(k, path))
 
     @classmethod
     def from_workingtree(cls, wt, subpath):

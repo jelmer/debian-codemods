@@ -96,7 +96,7 @@ with WatchEditor() as editor:
         if not all(sigs_valid[:NUM_KEYS_TO_CHECK]):
             sys.exit(0)
         found_common_mangles = set(used_mangles[:5])
-        active_common_mangles = set([x for x in found_common_mangles if x])
+        active_common_mangles = {x for x in found_common_mangles if x}
         if pgpsigurlmangle is None and active_common_mangles:
             issue = LintianIssue(
                 'source', 'debian-watch-does-not-check-openpgp-signature', ())
@@ -134,7 +134,7 @@ with WatchEditor() as editor:
                         for fpr in missing_keys:
                             key = c.key_export_minimal(fpr)
                             if not key:
-                                warn('Unable to export key %s' % (fpr, ))
+                                warn('Unable to export key {}'.format(fpr))
                                 sys.exit(0)
                             f.write(key)
 

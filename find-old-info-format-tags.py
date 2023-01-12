@@ -41,4 +41,4 @@ for tag, count in sorted(tag_count.items(), reverse=True, key=lambda k: k[1]):
     if tag in INFO_FIXERS:
         # We already have a fixer
         continue
-    print('{:50}  {}'.format(tag, count))
+    print(f'{tag:50}  {count}')

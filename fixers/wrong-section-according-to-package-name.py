@@ -40,7 +40,7 @@ with control as updater:
             binary["Section"] = expected_section
             fixed_lintian_tag(
                 binary, 'wrong-section-according-to-package-name',
-                info='%s => %s' % (binary['Package'], expected_section))
+                info='{} => {}'.format(binary['Package'], expected_section))
 
 
 # TODO(jelmer): If there is only a single binary package without section, just

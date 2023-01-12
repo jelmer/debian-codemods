@@ -70,7 +70,7 @@ def determine_gitlab_browser_url(url: str) -> str:
         path = path + "/tree/%s" % branch
     if subpath:
         path = path + "/" + subpath
-    return "https://%s%s" % (parsed_url.hostname, path)
+    return "https://{}{}".format(parsed_url.hostname, path)
 
 
 def determine_browser_url(vcs_type, vcs_url: str) -> Optional[str]:

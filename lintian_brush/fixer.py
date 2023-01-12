@@ -102,7 +102,7 @@ class LintianIssue:
         return "".join(ret)
 
     def __repr__(self):
-        return "%s(target=%r, tag=%r, info=%r)" % (
+        return "{}(target={!r}, tag={!r}, info={!r})".format(
             type(self).__name__,
             self.target,
             self.tag,
@@ -140,7 +140,7 @@ def _override_exists(
 
 
 def fixed_lintian_tags():
-    return set([issue.tag for issue in _fixed_lintian_issues])
+    return {issue.tag for issue in _fixed_lintian_issues}
 
 
 def fixed_lintian_tag(
@@ -177,8 +177,8 @@ def report_result(description=None, certainty=None, patch_name=None,
             print('+ %s' % detail)
     if certainty:
         print("Certainty: %s" % certainty)
-    fixed_lintian_tags = set(
-        [issue.tag for issue in _fixed_lintian_issues])
+    fixed_lintian_tags = {
+        issue.tag for issue in _fixed_lintian_issues}
     if fixed_lintian_tags:
         print("Fixed-Lintian-Tags: %s" % ", ".join(sorted(fixed_lintian_tags)))
     if _overriden_issues:

@@ -111,7 +111,7 @@ def get_overrides(
             )
 
     for path in paths:
-        with suppress(FileNotFoundError), open(path, "r") as f:
+        with suppress(FileNotFoundError), open(path) as f:
             yield from iter_overrides(f)
 
 
@@ -185,7 +185,7 @@ def remove_unused(
             if override.type not in (None, unused_override[1]):
                 continue
             if override.info:
-                expected_info = "%s %s" % (override.tag, override.info)
+                expected_info = "{} {}".format(override.tag, override.info)
             else:
                 expected_info = override.tag
             if expected_info != unused_override[3]:
@@ -394,7 +394,7 @@ def fix_override_info(override):
                 # The regex should only apply once
                 if re.sub(fixer[0], fixer[1], info) != info:
                     raise AssertionError(
-                        "invalid repeatable regex for %s: %s" % (
+                        "invalid repeatable regex for {}: {}".format(
                              override.tag, fixer[0]))
             elif callable(fixer):
                 info = fixer(info) or info
@@ -413,7 +413,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.remove_unused:
         from debian.deb822 import Deb822
-        with open("debian/control", "r") as f:
+        with open("debian/control") as f:
             removed = remove_unused(Deb822.iter_paragraphs(f))
         print("Removed %d unused overrides" % len(removed))
     else:

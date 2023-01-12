@@ -36,7 +36,7 @@ OLD_RELEASE_DATES_PATH = os.path.join(
 
 def iter_standards_versions() -> Iterator[Tuple[Tuple[int, ...], datetime]]:
     try:
-        with open(RELEASE_DATES_PATH, "r") as f:
+        with open(RELEASE_DATES_PATH) as f:
             data = json.load(f)
             for release in data['releases']:
                 version = release['version']
@@ -44,7 +44,7 @@ def iter_standards_versions() -> Iterator[Tuple[Tuple[int, ...], datetime]]:
                     parse_standards_version(version),
                     parse_date(release['timestamp']))
     except FileNotFoundError:
-        with open(OLD_RELEASE_DATES_PATH, "r") as f:
+        with open(OLD_RELEASE_DATES_PATH) as f:
             for line in f:
                 if line.startswith("#") or not line.strip():
                     continue

@@ -6,7 +6,7 @@ import sys
 from lintian_brush.fixer import report_result, LintianIssue
 
 try:
-    with open('debian/source/options', 'r') as f:
+    with open('debian/source/options') as f:
         oldlines = list(f.readlines())
 except FileNotFoundError:
     sys.exit(0)

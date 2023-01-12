@@ -27,5 +27,5 @@ except FileNotFoundError:
 
 
 report_result(
-    'Set priority for library package%s %s to optional.' % (
+    'Set priority for library package{} {} to optional.'.format(
       's' if len(changed) > 1 else '', ', '.join(changed)))

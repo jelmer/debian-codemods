@@ -34,7 +34,7 @@ class DesktopEntryEditor:
         self.allow_reformatting = allow_reformatting
 
     def __enter__(self):
-        with open(self.path, "r") as f:
+        with open(self.path) as f:
             self._orig_content = f.read()
 
         self._entry = INIConfig(StringIO(self._orig_content))

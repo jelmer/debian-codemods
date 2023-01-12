@@ -17,7 +17,7 @@ try:
                     issue = LintianIssue(
                         updater.source,
                         'installable-field-mirrors-source',
-                        info='field "%s" in package %s' % (
+                        info='field "{}" in package {}'.format(
                             field, binary['Package']))
                     issue.report_fixed()
 except FileNotFoundError:
@@ -27,11 +27,11 @@ except FileNotFoundError:
 if len(removed) == 1:
     (field, binary_packages) = list(removed.items())[0]
     report_result(
-        'Remove field %s on binary package%s %s that duplicates source.' % (
+        'Remove field {} on binary package{} {} that duplicates source.'.format(
             field, 's' if len(binary_packages) != 1 else '',
             ', '.join(sorted(binary_packages))))
 elif len(removed) > 1:
     report_result(
         'Remove fields on binary packages that duplicate source.',
-        details=['Field %s from %s.' % (field, ', '.join(sorted(packages)))
+        details=['Field {} from {}.'.format(field, ', '.join(sorted(packages)))
                  for (field, packages) in sorted(removed.items())])

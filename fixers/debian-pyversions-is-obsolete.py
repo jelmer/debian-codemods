@@ -7,7 +7,7 @@ from lintian_brush.fixer import report_result, LintianIssue
 if not os.path.exists('debian/pyversions'):
     sys.exit(2)
 
-with open('debian/pyversions', 'r') as f:
+with open('debian/pyversions') as f:
     pyversions = f.read().strip()
 
 if pyversions.startswith('2.'):

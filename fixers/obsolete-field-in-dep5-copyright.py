@@ -33,7 +33,7 @@ def obsolete_field(copyright):
             del copyright.header[old_name]
             fixed_lintian_tag(
                 'source', 'obsolete-field-in-dep5-copyright',
-                info='%s %s' % (old_name, new_name))
+                info='{} {}'.format(old_name, new_name))
 
 
 with suppress(FileNotFoundError, NotMachineReadableError), \
@@ -41,4 +41,4 @@ with suppress(FileNotFoundError, NotMachineReadableError), \
     obsolete_field(updater.copyright)
 report_result(
     "Update copyright file header to use current field names (%s)" %
-    ', '.join("%s ⇒ %s" % (key, value) for (key, value) in applied_renames))
+    ', '.join("{} ⇒ {}".format(key, value) for (key, value) in applied_renames))

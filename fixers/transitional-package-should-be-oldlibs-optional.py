@@ -19,7 +19,7 @@ with control as updater:
         oldsection = binary.get('Section') or updater.source.get('Section')
         issue = LintianIssue(
             binary, 'transitional-package-not-oldlibs-optional',
-            '%s/%s' % (
+            '{}/{}'.format(
                 oldsection,
                 binary.get('Priority') or updater.source.get('Priority')))
         if issue.should_fix():

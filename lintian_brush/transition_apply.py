@@ -226,7 +226,7 @@ def main():  # noqa: C901
 
     args = parser.parse_args()
 
-    with open(args.benfile, 'r') as f:
+    with open(args.benfile) as f:
         ben = parse_ben(f)
 
     wt, subpath = WorkingTree.open_containing(args.directory)

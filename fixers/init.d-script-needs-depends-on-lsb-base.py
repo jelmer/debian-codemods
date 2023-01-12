@@ -11,7 +11,7 @@ other_service_present = set()
 
 for n in os.listdir('debian'):
     if n.endswith('.init'):
-        with open(os.path.join('debian', n), 'r') as f:
+        with open(os.path.join('debian', n)) as f:
             for line in f:
                 if line.startswith('. /lib/lsb/'):
                     needs_lsb_base.add(n.split('.')[0])

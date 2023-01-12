@@ -28,7 +28,7 @@ try:
                         continue
                     issue = LintianIssue(
                         updater.source, 'cute-field',
-                        'debian/control@%s %s vs %s' % (
+                        'debian/control@{} {} vs {}'.format(
                             para_name, field, option))
                     if issue.should_fix():
                         issue.report_fixed()
@@ -46,8 +46,8 @@ else:
     kind = ''
 
 fixed_str = ', '.join(
-    ['%s ⇒ %s' % (old, new)
+    ['{} ⇒ {}'.format(old, new)
      for (old, new) in sorted(list(case_fixed))])
 
 report_result(
-    'Fix field name %s in debian/control (%s).' % (kind, fixed_str))
+    'Fix field name {} in debian/control ({}).'.format(kind, fixed_str))

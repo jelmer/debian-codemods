@@ -158,7 +158,7 @@ Before=b.service
 
 class UpdateServiceFilesTests(TestCaseWithTransport):
     def setUp(self):
-        super(UpdateServiceFilesTests, self).setUp()
+        super().setUp()
         self.build_tree_contents(
             [
                 ("debian/",),

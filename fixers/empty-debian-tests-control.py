@@ -5,7 +5,7 @@ import os
 from lintian_brush.fixer import report_result, LintianIssue
 
 with suppress(FileNotFoundError, NotADirectoryError), \
-        open('debian/tests/control', 'r') as f:
+        open('debian/tests/control') as f:
     if f.read().strip() == '':
         issue = LintianIssue('source', 'empty-debian-tests-control')
         if issue.should_fix():

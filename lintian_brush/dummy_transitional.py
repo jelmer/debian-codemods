@@ -146,7 +146,7 @@ async def main(argv=None):
                 by_source = await find_reverse_dependencies(udd, dep)
                 for source, binaries in by_source.items():
                     for binary in binaries:
-                        print('%s / %s / %s' % (source, binary, dep))
+                        print('{} / {} / {}'.format(source, binary, dep))
         else:
             parser.print_usage()
             return 1

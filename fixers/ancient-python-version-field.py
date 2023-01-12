@@ -20,7 +20,7 @@ PYTHON_VERSIONS_PATH = os.path.join(
 
 python_versions = {}
 try:
-    with open(os.path.join(PYTHON_VERSIONS_PATH), 'r') as f:
+    with open(os.path.join(PYTHON_VERSIONS_PATH)) as f:
         for line in f:
             line = line.strip()
             if not line:

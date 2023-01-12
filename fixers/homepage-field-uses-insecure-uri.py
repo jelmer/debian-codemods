@@ -58,7 +58,7 @@ def fix_homepage(http_url):
             (https_url, e))
         return http_url
     if not https_resp.geturl().startswith('https://'):
-        warn('https URL %s redirected back to %s' % (
+        warn('https URL {} redirected back to {}'.format(
             https_url, https_resp.geturl()))
         return http_url
 

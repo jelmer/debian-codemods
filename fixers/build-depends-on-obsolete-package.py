@@ -13,7 +13,7 @@ with control as updater:
             continue
         issue = LintianIssue(
             updater.source, 'build-depends-on-obsolete-package',
-            info='%s: %s' % (field.lower(), 'dh-systemd'))
+            info='{}: {}'.format(field.lower(), 'dh-systemd'))
         if not issue.should_fix():
             continue
         updater.source[field] = drop_dependency(

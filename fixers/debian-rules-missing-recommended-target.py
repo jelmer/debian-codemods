@@ -55,7 +55,7 @@ with RulesEditor() as editor:
         if issue.should_fix():
             editor.makefile.add_rule(
                 b'build-arch',
-                components=([b'build'] if (archs - set(['all'])) else None))
+                components=([b'build'] if (archs - {'all'}) else None))
             issue.report_fixed()
 
     if not added:

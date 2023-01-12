@@ -26,7 +26,7 @@ with suppress(FileNotFoundError), Deb822Editor('debian/copyright') as updater:
             if (field.startswith('X-') and
                     field[2:] in valid_field_names):
                 if field[2:] in paragraph:
-                    warn('Both %s and %s exist.' % (
+                    warn('Both {} and {} exist.'.format(
                          field, field[2:]))
                     continue
                 value = paragraph[field]
@@ -69,8 +69,8 @@ if typo_fixed:
     kind += 'typo' + ('s' if len(typo_fixed) > 1 else '')
 
 fixed_str = ', '.join(
-    ['%s ⇒ %s' % (old, new)
+    ['{} ⇒ {}'.format(old, new)
      for (old, new) in sorted(list(case_fixed) + list(typo_fixed))])
 
 report_result(
-    'Fix field name %s in debian/copyright (%s).' % (kind, fixed_str))
+    'Fix field name {} in debian/copyright ({}).'.format(kind, fixed_str))

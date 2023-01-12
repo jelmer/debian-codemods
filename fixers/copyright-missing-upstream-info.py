@@ -25,7 +25,7 @@ def add_upstream_metadata(copyright):
         return
     import ruamel.yaml
     try:
-        with open('debian/upstream/metadata', 'r') as f:
+        with open('debian/upstream/metadata') as f:
             inp = f.read()
     except FileNotFoundError:
         upstream_metadata = {}

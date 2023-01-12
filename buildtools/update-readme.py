@@ -3,7 +3,7 @@
 from lintian_brush import available_lintian_fixers
 import re
 
-with open('README.md', 'r') as f:
+with open('README.md') as f:
     contents = f.read()
 
 fixers = available_lintian_fixers()

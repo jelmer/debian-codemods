@@ -54,7 +54,7 @@ with control as updater:
         for offset, relation in iter_relations(
                 updater.source.get(field, ''), 'debhelper'):
             if (field == 'Build-Depends' and
-                    set([r.name for r in relation]) == set(['debhelper'])):
+                    {r.name for r in relation} == {'debhelper'}):
                 # In the simple case, we'd just replace the debhelper
                 # dependency with a debhelper-compat one, so remember the
                 # location.

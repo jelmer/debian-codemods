@@ -624,7 +624,7 @@ def process_r(es, session, wt, subpath, debian_path,
     else:
         archive = 'other'
 
-    source["Source"] = "r-%s-%s" % (archive, metadata['Name'].lower())
+    source["Source"] = "r-{}-{}".format(archive, metadata['Name'].lower())
     source["Rules-Requires-Root"] = "no"
     source["Build-Depends"] = "dh-r, r-base-dev"
     source["Standards-Version"] = latest_standards_version()
@@ -638,7 +638,7 @@ def process_r(es, session, wt, subpath, debian_path,
     # For now, just assume a single binary package that is
     # architecture-dependent.
     control.add_binary({
-        "Package": "r-%s-%s" % (archive, metadata['Name'].lower()),
+        "Package": "r-{}-{}".format(archive, metadata['Name'].lower()),
         "Architecture": 'any',
         'Depends': '${R:Depends}, ${shlibs:Depends}, ${misc:Depends}',
         'Recommends': '${R:Recommends}',
@@ -1257,7 +1257,7 @@ class DebianizeFixer(BuildFixer):
         return "debianize fixer"
 
     def __repr__(self):
-        return "%s(%r, %r)" % (
+        return "{}({!r}, {!r})".format(
             type(self).__name__, self.vcs_directory,
             self.apt_repo)
 
@@ -1596,7 +1596,7 @@ def main(argv=None):  # noqa: C901
         use_packaging_branch(
             wt, args.debian_branch % {'vendor': get_vendor_name().lower()})
 
-    use_inotify = ((False if args.disable_inotify else None))
+    use_inotify = (False if args.disable_inotify else None)
     with wt.lock_write():
         try:
             debianize_result = debianize(
@@ -1762,7 +1762,7 @@ def main(argv=None):  # noqa: C901
                 elif len(e.phase) == 1:
                     phase = e.phase[0]
                 else:
-                    phase = '%s (%s)' % (e.phase[0], e.phase[1])
+                    phase = '{} ({})'.format(e.phase[0], e.phase[1])
                 logging.fatal('Error during %s: %s', phase, e.error)
                 return 1
             except UnidentifiedDebianBuildError as e:
@@ -1771,7 +1771,7 @@ def main(argv=None):  # noqa: C901
                 elif len(e.phase) == 1:
                     phase = e.phase[0]
                 else:
-                    phase = '%s (%s)' % (e.phase[0], e.phase[1])
+                    phase = '{} ({})'.format(e.phase[0], e.phase[1])
                 logging.fatal('Error during %s: %s', phase, e.description)
                 return 1
             except DebianizedPackageRequirementMismatch as e:

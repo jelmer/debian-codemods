@@ -45,7 +45,7 @@ class FixerTestCase(unittest.TestCase):
         self._test_name = name
         self._path = path
         self.maxDiff = None
-        super(FixerTestCase, self).__init__()
+        super().__init__()
 
     def setUp(self):
         self._tempdir = tempfile.mkdtemp()
@@ -61,15 +61,15 @@ class FixerTestCase(unittest.TestCase):
         )
 
     def id(self):
-        return "%s.%s.%s" % (__name__, self._fixer_name, self._test_name)
+        return "{}.{}.{}".format(__name__, self._fixer_name, self._test_name)
 
     def __str__(self):
-        return "fixer test: %s for %s" % (self._test_name, self._fixer_name)
+        return "fixer test: {} for {}".format(self._test_name, self._fixer_name)
 
     def runTest(self):
         xfail_path = os.path.join(self._path, "xfail")
         if os.path.exists(xfail_path):
-            with open(xfail_path, "r") as f:
+            with open(xfail_path) as f:
                 reason = f.read()  # noqa: F841
             unittest.expectedFailure(self)
             return
@@ -93,7 +93,7 @@ class FixerTestCase(unittest.TestCase):
             + sys.path)
         env_path = os.path.join(self._path, "env")
         if os.path.exists(env_path):
-            with open(env_path, "r") as f:
+            with open(env_path) as f:
                 for line in f:
                     key, value = line.rstrip("\n").split("=")
                     env[key] = value
@@ -148,7 +148,7 @@ class FixerTestCase(unittest.TestCase):
 
         message_path = os.path.join(self._path, "message")
         if os.path.exists(message_path) or check_message:
-            with open(message_path, "r") as f:
+            with open(message_path) as f:
                 # Assert that message on stdout matches
                 self.assertEqual(stdout.decode().strip(), f.read().strip())
 
@@ -157,14 +157,14 @@ class SaneFixerTests(unittest.TestCase):
     """Check that the test is sensible."""
 
     def id(self):
-        return "%s.%s.sane" % (__name__, self.fixer.name)
+        return "{}.{}.sane".format(__name__, self.fixer.name)
 
     def __str__(self):
         return "fixer sanity test: %s" % (self.fixer.name)
 
     def __init__(self, fixer):
         self.fixer = fixer
-        super(SaneFixerTests, self).__init__()
+        super().__init__()
 
     def runTest(self):
         self.assertTrue(
@@ -176,7 +176,7 @@ class SaneFixerTests(unittest.TestCase):
         for tag in self.fixer.lintian_tags:
             self.assertNotIn(
                 tag, renames,
-                "Tag %s has been renamed to %s" % (tag, renames.get(tag))
+                "Tag {} has been renamed to {}".format(tag, renames.get(tag))
             )
 
 

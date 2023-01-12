@@ -44,7 +44,7 @@ def cached_common_license(name):
     try:
         return _common_licenses[name]
     except KeyError:
-        with open(os.path.join(COMMON_LICENSES_DIR, name), 'r') as f:
+        with open(os.path.join(COMMON_LICENSES_DIR, name)) as f:
             _common_licenses[name] = normalize_license_text(
                 f.read())
         return _common_licenses[name]
@@ -130,9 +130,9 @@ def drop_debian_file_reference(shorttext):
 
 def debian_file_reference(name, filename):
     return '\n'.join(textwrap.wrap("""\
-On Debian systems, the full text of the %(name)s
-can be found in the file `/usr/share/common-licenses/%(filename)s'.
-""" % {'name': name, 'filename': filename}, width=78))
+On Debian systems, the full text of the {name}
+can be found in the file `/usr/share/common-licenses/{filename}'.
+""".format(name=name, filename=filename), width=78))
 
 
 def find_common_license_from_blurb(text):
@@ -166,7 +166,7 @@ def canonical_license_id(license_id):
     version = (m.group(2) or '-1')[1:]
     while version.endswith('.0'):
         version = version[:-2]
-    return '%s-%s%s' % (m.group(1), version, m.group(3) or '')
+    return '{}-{}{}'.format(m.group(1), version, m.group(3) or '')
 
 
 renames = {}
@@ -275,7 +275,7 @@ if updated:
         'refer to common license file for %s' % ', '.join(sorted(updated)))
 if set(renames.values()) - set(updated):
     done.append('use common license names: ' + ', '.join(
-        ['%s (was: %s)' % (new, old) for (old, new) in sorted(renames.items())
+        ['{} (was: {})'.format(new, old) for (old, new) in sorted(renames.items())
          if new not in updated]))
 
 

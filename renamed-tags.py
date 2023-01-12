@@ -15,7 +15,7 @@ def read_desc_files(path):
         if entry.is_dir():
             read_desc_files(entry.path)
         elif entry.name.endswith('.tag'):
-            with open(entry.path, 'r') as f:
+            with open(entry.path) as f:
                 desc = Deb822(f)
                 for renamed_from in desc.get('Renamed-From', '').splitlines():
                     if renamed_from.strip():

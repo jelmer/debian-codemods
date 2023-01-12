@@ -31,4 +31,4 @@ print("Apply multi-arch hints.")
 print("")
 
 for (binary, _hint, description, _certainty) in changes:
-    print("* %s: %s" % (binary['Package'], description))
+    print("* {}: {}".format(binary['Package'], description))

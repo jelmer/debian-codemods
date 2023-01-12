@@ -47,7 +47,7 @@ except FileNotFoundError:
 
 
 current_version = str(current_package_version())
-migrate_version = "<< %s%s" % (
+migrate_version = "<< {}{}".format(
         current_version,
         '' if current_version.endswith('~') else '~')
 
@@ -65,7 +65,7 @@ def migrate_dh_strip(line, target):
                     issue.should_fix()):
                 line = line.replace(
                         ('--dbg-package=%s' % dbg_pkg).encode('utf-8'),
-                        ("--dbgsym-migration='%s (%s)'" % (
+                        ("--dbgsym-migration='{} ({})'".format(
                             dbg_pkg, migrate_version)).encode('utf-8'))
                 dbg_migration_done.add(dbg_pkg)
                 issue.report_fixed()

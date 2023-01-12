@@ -25,5 +25,5 @@ removed.sort()
 
 report_result(
     'Remove references to obsolete targets in systemd unit files: %s.' %
-    ', '.join(['%s (%s)' % (filename, target)
+    ', '.join(['{} ({})'.format(filename, target)
                for (filename, target) in removed]))

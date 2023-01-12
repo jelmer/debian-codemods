@@ -46,8 +46,8 @@ EXPECTED_HEADER = (
     b'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0')
 
 
-UNICODE_LINE_BREAK = "\u2028".encode('utf-8')
-UNICODE_PARAGRAPH_SEPARATOR = "\u2029".encode('utf-8')
+UNICODE_LINE_BREAK = "\u2028".encode()
+UNICODE_PARAGRAPH_SEPARATOR = "\u2029".encode()
 
 
 tabs_replaced = False

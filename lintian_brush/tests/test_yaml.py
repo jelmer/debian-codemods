@@ -193,7 +193,7 @@ Newkey: newvalue
 
 class UpdateOrderedDict(TestCase):
     def setUp(self):
-        super(UpdateOrderedDict, self).setUp()
+        super().setUp()
         self._od = ordereddict()
 
     def test_empty(self):

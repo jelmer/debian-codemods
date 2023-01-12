@@ -18,14 +18,14 @@ def variable_defined(var):
     if _variables:
         return var in _variables
     k = {}
-    with open(PATH, 'r') as f:
+    with open(PATH) as f:
         for line in f:
             if line.strip().startswith('$(foreach '):
                 vs = line.strip()[len('$(foreach '):].split(',')
                 k[vs[0]] = vs[1]
     for machine in k['machine'].split(' '):
         for var in k['var'].split(' '):
-            _variables.add('DEB_%s_%s' % (machine, var))
+            _variables.add('DEB_{}_{}'.format(machine, var))
 
 
 def is_dpkg_architecture_line(line: bytes) -> Tuple[

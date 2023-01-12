@@ -17,7 +17,7 @@ if is_debcargo_package():
 
 format: Optional[str]
 try:
-    with open('debian/source/format', 'r') as f:
+    with open('debian/source/format') as f:
         format = f.read().strip()
 except FileNotFoundError:
     format = None

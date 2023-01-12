@@ -160,9 +160,9 @@ blah source: patch-file-exists-but info
 class InfoFixerTests(TestCase):
 
     def test_tags_known(self):
-        tags = set([
+        tags = {
             x.decode() for x in subprocess.check_output(
-                ["lintian-explain-tags", "--list-tags"]).splitlines(False)])
+                ["lintian-explain-tags", "--list-tags"]).splitlines(False)}
         tags.update(load_renamed_tags())
         for tag in INFO_FIXERS:
             self.assertIn(tag, tags)
@@ -178,7 +178,7 @@ class InfoFixerTests(TestCase):
                     try:
                         re.compile(v[0])
                     except re.error as e:
-                        self.fail('Invalid regex %s: %s' % (v[0], e))
+                        self.fail('Invalid regex {}: {}'.format(v[0], e))
 
 
 INFO_FIXER_TESTS = [
@@ -272,5 +272,5 @@ class InfoFixerDataTest(TestCase):
                 LintianOverride(tag=tag, info=old_info))
             self.assertEqual(
                 got_info, expected_info,
-                "Unexpected transformation for %s: %r ⇒ %r != %r" % (
+                "Unexpected transformation for {}: {!r} ⇒ {!r} != {!r}".format(
                     tag, old_info, got_info, expected_info))

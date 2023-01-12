@@ -16,7 +16,7 @@ with control as updater:
         if new_value != updater.source[name]:
             issue = LintianIssue(
                 updater.source, 'vcs-field-not-canonical',
-                '%s %s' % (updater.source[name], new_value))
+                '{} {}'.format(updater.source[name], new_value))
             if issue.should_fix():
                 issue.report_fixed()
                 updater.source[name] = new_value

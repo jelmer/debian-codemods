@@ -38,5 +38,5 @@ with control as editor:
                 changed_fields.add(field)
                 fixed_lintian_tag(editor.source, tag, info='')
 
-    report_result('Update fields %s for maintainer %s.' % (
+    report_result('Update fields {} for maintainer {}.'.format(
                   ', '.join(sorted(changed_fields)), maint))

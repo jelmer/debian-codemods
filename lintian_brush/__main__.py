@@ -446,7 +446,7 @@ def main(argv=None):  # noqa: C901
         if os.environ.get('SVP_API') == '1':
             applied = []
             if 'SVP_RESUME' in os.environ:
-                with open(os.environ['SVP_RESUME'], 'r') as f:
+                with open(os.environ['SVP_RESUME']) as f:
                     base = json.load(f)
                     applied.extend(base['applied'])
             for result, summary in overall_result.success:

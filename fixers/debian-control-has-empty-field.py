@@ -11,7 +11,7 @@ with control as updater:
                 if para.get("Package"):
                     issue = LintianIssue(
                         updater.source, 'debian-control-has-empty-field',
-                        info='field "%s" in package %s' % (
+                        info='field "{}" in package {}'.format(
                             k, para['Package']))
                     if not issue.should_fix():
                         continue
@@ -20,7 +20,7 @@ with control as updater:
                 else:
                     issue = LintianIssue(
                         updater.source, 'debian-control-has-empty-field',
-                        info='field "%s" in source paragraph' % (k, ))
+                        info='field "{}" in source paragraph'.format(k))
                     if not issue.should_fix():
                         continue
                     issue.report_fixed()
@@ -28,7 +28,7 @@ with control as updater:
                 del para[k]
 
 report_result(
-    "debian/control: Remove empty control field%s %s%s." % (
+    "debian/control: Remove empty control field{} {}{}.".format(
      "s" if len(fields) > 1 else "",
      ", ".join(fields),
      (" in package %s" % ', '.join(packages)) if packages else "",

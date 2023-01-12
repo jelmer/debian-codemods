@@ -105,7 +105,7 @@ for entry in mf.contents:
             else:
                 issue = LintianIssue(
                     'source', 'missing-build-dependency-for-dh_-command',
-                    '%s => %s' % (executable, dep))
+                    '{} => {}'.format(executable, dep))
                 if not issue.should_fix():
                     continue
                 need.append((dep, [issue], 'command', executable))
@@ -118,7 +118,7 @@ for entry in mf.contents:
                     else:
                         issue = LintianIssue(
                             'source', 'missing-build-dependency-for-dh-addon',
-                            '%s => %s' % (addon, dep))
+                            '{} => {}'.format(addon, dep))
                         need.append((dep, [issue], 'addon', addon))
 
 
@@ -152,7 +152,7 @@ with control as updater:
 if len(changed) == 1:
     (dep, issue, kind, name) = changed[0]
     report_result(
-        'Add missing build dependency on %s for %s %s.' % (dep, kind, name))
+        'Add missing build dependency on {} for {} {}.'.format(dep, kind, name))
 else:
     report_result(
         'Add missing build dependencies:' +

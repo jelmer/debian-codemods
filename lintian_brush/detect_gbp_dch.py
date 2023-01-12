@@ -53,7 +53,7 @@ class ChangelogBehaviour:
         return self.explanation
 
     def __repr__(self):
-        return "%s(update_changelog=%r, explanation=%r)" % (
+        return "{}(update_changelog={!r}, explanation={!r})".format(
             type(self).__name__, self.update_changelog,
             self.explanation)
 
@@ -211,13 +211,11 @@ def _changelog_stats(branch: Branch, history: int, debian_path: str):
                 + [r.path[1] for r in delta.renamed]
                 + [m.path[0] for m in delta.modified]
             )
-            if not set(
-                [
+            if not {
                     f
                     for f in filenames
                     if f.startswith(debian_path + '/')
-                ]
-            ):
+            }:
                 continue
             cl_path = osutils.pathjoin(debian_path, "changelog")
             if cl_path in filenames:

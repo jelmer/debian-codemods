@@ -119,7 +119,7 @@ with YamlUpdater('debian/upstream/metadata') as editor:
 
     # Homepage is set in debian/control, so don't add it to
     # debian/upstream/metadata.
-    external_present_fields = set(['Homepage'])
+    external_present_fields = {'Homepage'}
 
     # If the debian/copyright file is machine-readable, then we do
     # not need to set the Name/Contact information in the
@@ -162,7 +162,7 @@ with YamlUpdater('debian/upstream/metadata') as editor:
         'upstream-metadata-missing-bug-tracking')
 
     # A change that just says the "Name" field is a bit silly
-    if set(changed.keys()) - set(ADDON_ONLY_FIELDS) == set(['Name']):
+    if set(changed.keys()) - set(ADDON_ONLY_FIELDS) == {'Name'}:
         sys.exit(0)
 
     if not os.path.exists('debian/upstream/metadata'):
@@ -182,7 +182,7 @@ with YamlUpdater('debian/upstream/metadata') as editor:
 
 # TODO(jelmer): Add note about other origin fields?
 fields = [
-    ('%s (from %s)' % (v.field, v.origin)) if v.origin == './configure'
+    ('{} (from {})'.format(v.field, v.origin)) if v.origin == './configure'
     else v.field
     for k, v in sorted(changed.items())
     ]

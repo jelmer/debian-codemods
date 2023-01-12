@@ -91,7 +91,7 @@ name2
 
 class FindPatchBaseTests(TestCaseWithTransport):
     def setUp(self):
-        super(FindPatchBaseTests, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree(".")
         self.upstream_revid = self.tree.commit("upstream")
         self.build_tree_contents(
@@ -257,7 +257,7 @@ class ReadQuiltPatchesTests(TestCaseWithTransport):
 
 class UpstreamWithAppliedPatchesTests(TestCaseWithTransport):
     def setUp(self):
-        super(UpstreamWithAppliedPatchesTests, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree(".")
         self.build_tree_contents([("afile", "some line\n")])
         self.tree.add("afile")
@@ -309,7 +309,7 @@ blah (0.38) unstable; urgency=medium
 
 class TreePatchesNonPatchesTests(TestCaseWithTransport):
     def setUp(self):
-        super(TreePatchesNonPatchesTests, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree(".")
         self.build_tree_contents([("afile", "some line\n")])
         self.tree.add("afile")

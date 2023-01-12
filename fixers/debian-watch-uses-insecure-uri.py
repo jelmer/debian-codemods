@@ -16,7 +16,7 @@ if not os.path.exists('debian/watch'):
 
 
 def watchfile_has_http():
-    with open('debian/watch', 'r') as f:
+    with open('debian/watch') as f:
         wf = parse_watch_file(f)
 
     if not wf:
@@ -31,7 +31,7 @@ def watchfile_has_http():
 
 
 def update_watchfile(fn):
-    with open('debian/watch', 'r') as f:
+    with open('debian/watch') as f:
         old = f.readlines()
 
     new = []

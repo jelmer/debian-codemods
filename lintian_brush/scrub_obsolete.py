@@ -83,7 +83,7 @@ class Action:
         self.rel = rel
 
     def __repr__(self):
-        return "<%s(%r)>" % (type(self).__name__, PkgRelation.str(self.rel))
+        return "<{}({!r})>".format(type(self).__name__, PkgRelation.str(self.rel))
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.rel == other.rel
@@ -129,7 +129,7 @@ class ReplaceTransition(Action):
     """Replace dependency on dummy transitional package."""
 
     def __init__(self, rel, replacement):
-        super(ReplaceTransition, self).__init__(rel)
+        super().__init__(rel)
         self.replacement = replacement
 
     def __str__(self):
@@ -144,7 +144,7 @@ class ReplaceTransition(Action):
                 [PkgRelation.str(p) for p in self.replacement])
 
     def __repr__(self):
-        return "<%s(%r, %r)>" % (
+        return "<{}({!r}, {!r})>".format(
             type(self).__name__, PkgRelation.str(self.rel),
             [PkgRelation(p) for p in self.replacement])
 
@@ -555,10 +555,10 @@ class ScrubObsoleteResult:
                 for action in actions:
                     if para:
                         summary.setdefault(release, []).append(
-                            "%s: %s in %s." % (para, action, field))
+                            "{}: {} in {}.".format(para, action, field))
                     else:
                         summary.setdefault(release, []).append(
-                            "%s: %s." % (field, action))
+                            "{}: {}.".format(field, action))
         if self.maintscript_removed:
             total_entries = sum(
                 [len(entries)

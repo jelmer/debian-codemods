@@ -392,7 +392,7 @@ def upgrade_to_debhelper_10():
                 os.rename(os.path.join('debian', name),
                           os.path.join('debian', name + '.init'))
                 subitems.add(
-                    'Rename debian/%s to debian/%s.init.' % (name, name))
+                    'Rename debian/{} to debian/{}.init.'.format(name, name))
 
 
 def upgrade_to_debhelper_11():
@@ -457,12 +457,12 @@ def upgrade_to_debhelper_13():
             if os.path.isfile(tmpfile):
                 os.rename(tmpfile, tmpfile + 's')
                 subitems.add(
-                    'Rename %s to %ss.' % (tmpfile, tmpfile))
+                    'Rename {} to {}s.'.format(tmpfile, tmpfile))
         if os.path.isfile(os.path.join('debian', "tmpfile")):
             tmpfile = os.path.join('debian', "tmpfile")
             os.rename(tmpfile, tmpfile + 's')
             subitems.add(
-                'Rename %s to %ss.' % (tmpfile, tmpfile))
+                'Rename {} to {}s.'.format(tmpfile, tmpfile))
 
     update_rules([
         # The dh_missing command will now default to --fail-missing.  This can
@@ -490,13 +490,13 @@ if new_debhelper_compat_version > current_debhelper_compat_version:
         kind = "deprecated"
         fixed_lintian_tag(
             'source', "package-uses-deprecated-debhelper-compat-version",
-            info='%s' % (current_debhelper_compat_version, ))
+            info='{}'.format(current_debhelper_compat_version))
     else:
         kind = "old"
         fixed_lintian_tag(
             'source', "package-uses-old-debhelper-compat-version",
-            info='%s' % (current_debhelper_compat_version, ))
-    description = "Bump debhelper from %s %s to %s." % (
+            info='{}'.format(current_debhelper_compat_version))
+    description = "Bump debhelper from {} {} to {}.".format(
         kind, current_debhelper_compat_version, new_debhelper_compat_version)
 
     report_result(description=description, details=sorted(subitems))

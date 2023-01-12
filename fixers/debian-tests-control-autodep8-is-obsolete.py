@@ -21,11 +21,11 @@ if not issue.should_fix():
 if not os.path.exists(NEW_PATH):
     os.rename(OLD_PATH, 'debian/tests/control')
     issue.report_fixed()
-    report_result("Rename obsolete path %s to %s." % (OLD_PATH, NEW_PATH))
+    report_result("Rename obsolete path {} to {}.".format(OLD_PATH, NEW_PATH))
 else:
     merge_issue = LintianIssue(
         'source', 'debian-tests-control-and-control-autodep8',
-        info='%s %s' % (OLD_PATH, NEW_PATH))
+        info='{} {}'.format(OLD_PATH, NEW_PATH))
     if not merge_issue.should_fix():
         sys.exit(0)
     merge_issue.report_fixed()
@@ -35,4 +35,4 @@ else:
         with open(OLD_PATH, 'rb') as inf:
             outf.writelines(inf.readlines())
     os.unlink(OLD_PATH)
-    report_result("Merge %s into %s." % (OLD_PATH, NEW_PATH))
+    report_result("Merge {} into {}.".format(OLD_PATH, NEW_PATH))

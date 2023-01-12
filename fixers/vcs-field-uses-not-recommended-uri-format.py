@@ -17,7 +17,7 @@ with control as updater:
             fixed_lintian_tag(
                 updater.source, 'vcs-field-uses-not-recommended-uri-format',
                 info='vcs-git %s' % updater.source['Vcs-Git'])
-            updater.source["Vcs-Git"] = 'https://%s/%s' % (netloc, path)
+            updater.source["Vcs-Git"] = 'https://{}/{}'.format(netloc, path)
 
 
 report_result("Use recommended URI format in Vcs header.")

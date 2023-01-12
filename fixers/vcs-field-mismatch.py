@@ -23,9 +23,9 @@ with control as updater:
         if actual_vcs != vcs:
             fixed_lintian_tag(
                 'source', 'vcs-field-mismatch',
-                '%s != Vcs-%s %s' % (field, actual_vcs, vcs_url))
+                '{} != Vcs-{} {}'.format(field, actual_vcs, vcs_url))
             del updater.source["Vcs-" + vcs]
             updater.source["Vcs-" + actual_vcs] = vcs_url
             report_result(
-                "Changed vcs type from %s to %s based on URL." % (
+                "Changed vcs type from {} to {} based on URL.".format(
                     vcs, actual_vcs))

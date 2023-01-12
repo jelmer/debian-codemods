@@ -246,7 +246,7 @@ class MultiArchHintApplier:
 
 class MultiArchFixerResult(FixerResult):
     def __init__(self, description, certainty, changes):
-        super(MultiArchFixerResult, self).__init__(
+        super().__init__(
             description=description, certainty=certainty
         )
         self.changes = changes
@@ -281,7 +281,7 @@ def changes_by_description(changes) -> Dict[str, List[str]]:
 
 class MultiArchHintFixer(Fixer):
     def __init__(self, hints):
-        super(MultiArchHintFixer, self).__init__(name="multiarch-hints")
+        super().__init__(name="multiarch-hints")
         self._hints = hints
 
     def run(
@@ -315,7 +315,7 @@ class MultiArchHintFixer(Fixer):
         overall_description = ["Apply multi-arch hints."]
         for description, binaries in by_description.items():
             overall_description.append(
-                "+ %s: %s" % (", ".join(sorted(binaries)), description)
+                "+ {}: {}".format(", ".join(sorted(binaries)), description)
             )
         return MultiArchFixerResult(
             "\n".join(overall_description),

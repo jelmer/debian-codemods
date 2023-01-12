@@ -26,7 +26,7 @@ if not os.path.exists('debian/source/format'):
     missing_source_format_issue.report_fixed()
     description = "Explicitly specify source format."
 else:
-    with open('debian/source/format', 'r') as f:
+    with open('debian/source/format') as f:
         format = orig_format = f.read().strip()
 
 if orig_format not in (None, '1.0'):
@@ -70,7 +70,7 @@ if older_source_format_issue.should_fix():
                         description = (
                             "Upgrade to newer source format %s." % format)
                         try:
-                            with open('debian/source/options', 'r') as f:
+                            with open('debian/source/options') as f:
                                 options = list(f.readlines())
                         except FileNotFoundError:
                             options = []

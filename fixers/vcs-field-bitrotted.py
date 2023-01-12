@@ -152,7 +152,7 @@ def migrate_from_obsolete_infra(control):
 
     fixed_lintian_tag(
         'source', "vcs-obsolete-in-debian-infrastructure",
-        info='vcs-%s %s' % (old_vcs_type.lower(), old_vcs_url))
+        info='vcs-{} {}'.format(old_vcs_type.lower(), old_vcs_url))
 
     if (("Vcs-Cvs" in control and re.match(
             r"\@(?:cvs\.alioth|anonscm)\.debian\.org:/cvsroot/",
@@ -161,7 +161,7 @@ def migrate_from_obsolete_infra(control):
             "viewvc" in control["Vcs-Browser"])):
         fixed_lintian_tag(
             'source', "vcs-field-bitrotted",
-            info='%s %s' % (old_vcs_url or '', old_vcs_browser or ''))
+            info='{} {}'.format(old_vcs_url or '', old_vcs_browser or ''))
 
     for hdr in ["Vcs-Git", "Vcs-Bzr", "Vcs-Hg", "Vcs-Svn"]:
         if hdr == "Vcs-" + vcs_type:  # type: ignore

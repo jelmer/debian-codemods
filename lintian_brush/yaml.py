@@ -50,7 +50,7 @@ class MultiYamlUpdater:
 
     def __enter__(self) -> "MultiYamlUpdater":
         try:
-            with open(self.path, "r") as f:
+            with open(self.path) as f:
                 inp = list(f)
         except FileNotFoundError:
             self._orig: List[Any] = []
@@ -109,7 +109,7 @@ class YamlUpdater:
 
     def __enter__(self):
         try:
-            with open(self.path, "r") as f:
+            with open(self.path) as f:
                 inp = list(f)
         except FileNotFoundError:
             self._orig = {}
@@ -184,7 +184,7 @@ class YamlUpdater:
                         os.mkdir(self._dirpath)
                     if not self._force_rewrite and self._only_simple_changes():
                         try:
-                            with open(self.path, "r") as f:
+                            with open(self.path) as f:
                                 lines = list(f.readlines())
                         except FileNotFoundError:
                             lines = ["---\n"]

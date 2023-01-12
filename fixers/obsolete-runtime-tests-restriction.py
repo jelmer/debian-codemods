@@ -21,7 +21,7 @@ KNOWN_OBSOLETE_RESTRICTIONS_PATH = (
 DEPRECATED_RESTRICTIONS = []
 
 try:
-    with open(KNOWN_OBSOLETE_RESTRICTIONS_PATH, 'r') as f:
+    with open(KNOWN_OBSOLETE_RESTRICTIONS_PATH) as f:
         for line in f:
             if line.startswith('#'):
                 continue

@@ -39,6 +39,6 @@ with control as updater:
             newsv = sorted(candidates)[-1]
             newsv_str = '.'.join([str(x) for x in newsv])
             report_result(
-                'Replace invalid standards version %s with valid %s.' % (
+                'Replace invalid standards version {} with valid {}.'.format(
                     updater.source['Standards-Version'], newsv_str))
             updater.source['Standards-Version'] = newsv_str

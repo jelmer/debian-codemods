@@ -151,7 +151,7 @@ def guess_repository_url(package: str, maintainer_email: str) -> Optional[str]:
         except KeyError:
             return None
 
-    return "https://salsa.debian.org/%s/%s.git" % (team_name, package)
+    return "https://salsa.debian.org/{}/{}.git".format(team_name, package)
 
 
 def determine_browser_url(url: str) -> str:
@@ -227,33 +227,33 @@ def _salsa_path_from_alioth_url(  # noqa: C901
                 parts.pop(0)
             if (len(parts) == 3 and parts[0] in TEAM_NAME_MAP
                     and parts[2] == "trunk"):
-                return "%s/%s" % (TEAM_NAME_MAP[parts[0]], parts[1])
+                return "{}/{}".format(TEAM_NAME_MAP[parts[0]], parts[1])
             if (len(parts) == 3 and parts[0] in TEAM_NAME_MAP
                     and parts[1] == "trunk"):
-                return "%s/%s" % (TEAM_NAME_MAP[parts[0]], parts[2])
+                return "{}/{}".format(TEAM_NAME_MAP[parts[0]], parts[2])
             if (
                 len(parts) == 4
                 and parts[0] in TEAM_NAME_MAP
                 and parts[1] == "packages"
                 and parts[3] == "trunk"
             ):
-                return "%s/%s" % (TEAM_NAME_MAP[parts[0]], parts[2])
+                return "{}/{}".format(TEAM_NAME_MAP[parts[0]], parts[2])
             if (
                 len(parts) == 4
                 and parts[0] in TEAM_NAME_MAP
                 and parts[1] == "trunk"
                 and parts[2] == "packages"
             ):
-                return "%s/%s" % (TEAM_NAME_MAP[parts[0]], parts[3])
+                return "{}/{}".format(TEAM_NAME_MAP[parts[0]], parts[3])
             if (len(parts) > 3 and parts[0] in TEAM_NAME_MAP
                     and parts[-2] == "trunk"):
-                return "%s/%s" % (TEAM_NAME_MAP[parts[0]], parts[-1])
+                return "{}/{}".format(TEAM_NAME_MAP[parts[0]], parts[-1])
             if (
                 len(parts) == 3
                 and parts[0] in TEAM_NAME_MAP
                 and parts[1] in ("packages", "unstable")
             ):
-                return "%s/%s" % (TEAM_NAME_MAP[parts[0]], parts[2])
+                return "{}/{}".format(TEAM_NAME_MAP[parts[0]], parts[2])
     return None
 
 

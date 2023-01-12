@@ -71,7 +71,7 @@ class NoChanges(Exception):
     """Script didn't make any changes."""
 
     def __init__(self, fixer, comment=None, overridden_lintian_issues=None):
-        super(NoChanges, self).__init__(fixer, comment)
+        super().__init__(fixer, comment)
         self.fixer = fixer
         self.overridden_lintian_issues = overridden_lintian_issues or []
 
@@ -81,7 +81,7 @@ class NotCertainEnough(NoChanges):
 
     def __init__(self, fixer, certainty, minimum_certainty,
                  overridden_lintian_issues=None):
-        super(NotCertainEnough, self).__init__(
+        super().__init__(
             fixer, overridden_lintian_issues=overridden_lintian_issues)
         self.certainty = certainty
         self.minimum_certainty = minimum_certainty
@@ -129,7 +129,7 @@ class DescriptionMissing(Exception):
     """The fixer script did not provide a description on stdout."""
 
     def __init__(self, fixer):
-        super(DescriptionMissing, self).__init__(fixer)
+        super().__init__(fixer)
         self.fixer = fixer
 
 
@@ -137,7 +137,7 @@ class NotDebianPackage(Exception):
     """The specified directory does not contain a Debian package."""
 
     def __init__(self, tree, path):
-        super(NotDebianPackage, self).__init__(tree.abspath(path))
+        super().__init__(tree.abspath(path))
 
 
 class FixerResult:
@@ -372,11 +372,11 @@ class PythonScriptFixer(Fixer):
     """
 
     def __init__(self, name, lintian_tags, script_path):
-        super(PythonScriptFixer, self).__init__(name, lintian_tags)
+        super().__init__(name, lintian_tags)
         self.script_path = script_path
 
     def __repr__(self):
-        return "<%s(%r)>" % (self.__class__.__name__, self.name)
+        return "<{}({!r})>".format(self.__class__.__name__, self.name)
 
     def __str__(self):
         return self.name
@@ -422,7 +422,7 @@ class PythonScriptFixer(Fixer):
                     "__file__": self.script_path,
                     "__name__": "__main__",
                 }
-                with open(self.script_path, "r") as f:
+                with open(self.script_path) as f:
                     code = compile(f.read(), self.script_path, "exec")
                     exec(code, global_vars)
             except FormattingUnpreservable:
@@ -461,7 +461,7 @@ class ScriptFixer(Fixer):
     """A fixer that is implemented as a shell/python/etc script."""
 
     def __init__(self, name: str, lintian_tags: List[str], script_path: str):
-        super(ScriptFixer, self).__init__(name, lintian_tags)
+        super().__init__(name, lintian_tags)
         self.script_path = script_path
 
     def __repr__(self):
@@ -567,7 +567,7 @@ def read_desc_file(
     from ruamel.yaml import YAML
     yaml = YAML()
     dirname = os.path.dirname(path)
-    with open(path, "r") as f:
+    with open(path) as f:
         data = yaml.load(f)
     for paragraph in data:
         name = os.path.splitext(paragraph["script"])[0]
@@ -772,7 +772,7 @@ def _note_changelog_policy(policy, msg):
 
 class FailedPatchManipulation(Exception):
     def __init__(self, tree, patches_directory, reason):
-        super(FailedPatchManipulation, self).__init__(
+        super().__init__(
             tree, patches_directory, reason)
 
 
@@ -978,7 +978,7 @@ def run_lintian_fixer(  # noqa: C901
                        dirty_tracker=dirty_tracker)
             raise
 
-        summary = "Add patch %s: %s" % (patch_name, summary)
+        summary = "Add patch {}: {}".format(patch_name, summary)
 
     if only_changes_last_changelog_block(
         local_tree, basis_tree, changelog_path, changes

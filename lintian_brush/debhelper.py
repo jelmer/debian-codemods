@@ -120,7 +120,7 @@ def write_rules_template(
         )
         if env:
             for key, value in env.items():
-                f.write("export %s := %s\n" % (key, value))
+                f.write("export {} := {}\n".format(key, value))
             f.write("\n")
 
         f.write(

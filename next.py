@@ -25,7 +25,7 @@ for fixer in available_lintian_fixers():
     supported_tags.update(fixer.lintian_tags)
 
 yaml = YAML()
-with open('tag-status.yaml', 'r') as f:
+with open('tag-status.yaml') as f:
     tag_status = yaml.load(f)
 
 per_tag_status = {}
