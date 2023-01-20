@@ -2,6 +2,8 @@
 
 from lintian_brush.fixer import control, report_result, LintianIssue
 
+from typing import Optional
+
 packages = []
 
 
@@ -14,14 +16,23 @@ with control as updater:
             continue
         if "transitional package" not in binary.get("Description", ""):
             continue
+        oldsection = binary.get('Section') or updater.source.get('Section')
         issue = LintianIssue(
             binary, 'transitional-package-not-oldlibs-optional',
             '%s/%s' % (
-                binary.get('Section') or updater.source.get('Section'),
+                oldsection,
                 binary.get('Priority') or updater.source.get('Priority')))
         if issue.should_fix():
             packages.append(binary["Package"])
-            binary["Section"] = "oldlibs"
+            area: Optional[str]
+            if oldsection and '/' in oldsection:
+                area, oldsection = oldsection.split('/', 1)
+            else:
+                area = None
+            if area:
+                binary["Section"] = f"{area}/oldlibs"
+            else:
+                binary["Section"] = "oldlibs"
             if default_priority != "optional":
                 binary["Priority"] = "optional"
             elif "Priority" in binary:
