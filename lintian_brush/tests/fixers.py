@@ -61,10 +61,10 @@ class FixerTestCase(unittest.TestCase):
         )
 
     def id(self):
-        return "{}.{}.{}".format(__name__, self._fixer_name, self._test_name)
+        return f"{__name__}.{self._fixer_name}.{self._test_name}"
 
     def __str__(self):
-        return "fixer test: {} for {}".format(self._test_name, self._fixer_name)
+        return f"fixer test: {self._test_name} for {self._fixer_name}"
 
     def runTest(self):
         xfail_path = os.path.join(self._path, "xfail")
@@ -157,7 +157,7 @@ class SaneFixerTests(unittest.TestCase):
     """Check that the test is sensible."""
 
     def id(self):
-        return "{}.{}.sane".format(__name__, self.fixer.name)
+        return f"{__name__}.{self.fixer.name}.sane"
 
     def __str__(self):
         return "fixer sanity test: %s" % (self.fixer.name)
@@ -176,7 +176,7 @@ class SaneFixerTests(unittest.TestCase):
         for tag in self.fixer.lintian_tags:
             self.assertNotIn(
                 tag, renames,
-                "Tag {} has been renamed to {}".format(tag, renames.get(tag))
+                f"Tag {tag} has been renamed to {renames.get(tag)}"
             )
 
 

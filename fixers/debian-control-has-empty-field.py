@@ -20,7 +20,7 @@ with control as updater:
                 else:
                     issue = LintianIssue(
                         updater.source, 'debian-control-has-empty-field',
-                        info='field "{}" in source paragraph'.format(k))
+                        info=f'field "{k}" in source paragraph')
                     if not issue.should_fix():
                         continue
                     issue.report_fixed()

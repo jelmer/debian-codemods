@@ -178,7 +178,7 @@ class InfoFixerTests(TestCase):
                     try:
                         re.compile(v[0])
                     except re.error as e:
-                        self.fail('Invalid regex {}: {}'.format(v[0], e))
+                        self.fail(f'Invalid regex {v[0]}: {e}')
 
 
 INFO_FIXER_TESTS = [

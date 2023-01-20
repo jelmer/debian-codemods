@@ -182,7 +182,7 @@ with YamlUpdater('debian/upstream/metadata') as editor:
 
 # TODO(jelmer): Add note about other origin fields?
 fields = [
-    ('{} (from {})'.format(v.field, v.origin)) if v.origin == './configure'
+    (f'{v.field} (from {v.origin})') if v.origin == './configure'
     else v.field
     for k, v in sorted(changed.items())
     ]

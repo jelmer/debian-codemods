@@ -46,8 +46,8 @@ else:
     kind = ''
 
 fixed_str = ', '.join(
-    ['{} ⇒ {}'.format(old, new)
+    [f'{old} ⇒ {new}'
      for (old, new) in sorted(list(case_fixed))])
 
 report_result(
-    'Fix field name {} in debian/control ({}).'.format(kind, fixed_str))
+    f'Fix field name {kind} in debian/control ({fixed_str}).')

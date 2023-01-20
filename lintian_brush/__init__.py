@@ -376,7 +376,7 @@ class PythonScriptFixer(Fixer):
         self.script_path = script_path
 
     def __repr__(self):
-        return "<{}({!r})>".format(self.__class__.__name__, self.name)
+        return f"<{self.__class__.__name__}({self.name!r})>"
 
     def __str__(self):
         return self.name
@@ -978,7 +978,7 @@ def run_lintian_fixer(  # noqa: C901
                        dirty_tracker=dirty_tracker)
             raise
 
-        summary = "Add patch {}: {}".format(patch_name, summary)
+        summary = f"Add patch {patch_name}: {summary}"
 
     if only_changes_last_changelog_block(
         local_tree, basis_tree, changelog_path, changes

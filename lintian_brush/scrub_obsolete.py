@@ -83,7 +83,7 @@ class Action:
         self.rel = rel
 
     def __repr__(self):
-        return "<{}({!r})>".format(type(self).__name__, PkgRelation.str(self.rel))
+        return f"<{type(self).__name__}({PkgRelation.str(self.rel)!r})>"
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.rel == other.rel
@@ -555,10 +555,10 @@ class ScrubObsoleteResult:
                 for action in actions:
                     if para:
                         summary.setdefault(release, []).append(
-                            "{}: {} in {}.".format(para, action, field))
+                            f"{para}: {action} in {field}.")
                     else:
                         summary.setdefault(release, []).append(
-                            "{}: {}.".format(field, action))
+                            f"{field}: {action}.")
         if self.maintscript_removed:
             total_entries = sum(
                 [len(entries)

@@ -48,4 +48,4 @@ with suppress(FileNotFoundError, NotMachineReadableError), \
 report_result(
     "Fix invalid short license name in debian/copyright (%s)" % (
         ', '.join(
-            ['{} ⇒ {}'.format(old, new) for (old, new) in renames.items()])))
+            [f'{old} ⇒ {new}' for (old, new) in renames.items()])))

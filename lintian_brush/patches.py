@@ -86,7 +86,7 @@ def find_patch_base(tree):
         "upstream/%s" % upstream_version,
         "%s" % upstream_version,
         "v%s" % upstream_version,
-        "{}-{}".format(package, upstream_version),
+        f"{package}-{upstream_version}",
     ]
     tags = tree.branch.tags.get_tag_dict()
     for possible_tag in possible_tags:

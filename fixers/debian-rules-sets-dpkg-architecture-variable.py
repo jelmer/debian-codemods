@@ -25,7 +25,7 @@ def variable_defined(var):
                 k[vs[0]] = vs[1]
     for machine in k['machine'].split(' '):
         for var in k['var'].split(' '):
-            _variables.add('DEB_{}_{}'.format(machine, var))
+            _variables.add(f'DEB_{machine}_{var}')
 
 
 def is_dpkg_architecture_line(line: bytes) -> Tuple[

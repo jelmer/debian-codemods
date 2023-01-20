@@ -95,7 +95,7 @@ def _read_test_fields(path, vendor):
 
 def known_tests_control_fields(vendor):
     return {'Tests', 'Restrictions', 'Features', 'Depends',
-                'Tests-Directory', 'Test-Command'}
+            'Tests-Directory', 'Test-Command'}
 
 
 KNOWN_SOURCE_FIELDS_PATH = os.path.join(

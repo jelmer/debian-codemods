@@ -78,4 +78,4 @@ with RulesEditor() as editor:
 
 report_result(
     'Fix typo in debian/rules rules: %s'
-    % ', '.join('{} ⇒ {}'.format(old, new) for old, new in renamed))
+    % ', '.join(f'{old} ⇒ {new}' for old, new in renamed))

@@ -183,8 +183,8 @@ def candidates_from_setup_py(
                 if d["packagetype"] == "sdist"
             ]
     filename_regex = (
-            r"{project}-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))".format(
-                project=project))
+        r"{project}-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))".format(
+            project=project))
     opts = []
     # TODO(jelmer): Set uversionmangle?
     # opts.append('uversionmangle=s/(rc|a|b|c)/~$1/')
@@ -667,14 +667,16 @@ def main():  # noqa: C901
                         WatchEntryVerificationFailure):
                     status = [None]
                 if status and all(status):
+                    hint = (
+                        'Releases {} can be found with watch entry {}'.format(
+                            ', '.join(sorted(list(
+                                status[0].releases.keys()), reverse=True)),
+                            status[0].entry))
                     report_fatal(
                         'nothing-to-do',
                         'Existing watch file has valid entries',
                         context=svp_context(status, site=None),
-                        hint='Releases {} can be found with watch entry {}'.format(
-                            ', '.join(sorted(list(
-                                status[0].releases.keys()), reverse=True)),
-                            status[0].entry))
+                        hint=hint)
                     return 0
                 fix_watch_issues(updater)
                 try:

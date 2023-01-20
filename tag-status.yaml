@@ -1553,6 +1553,7 @@
 - tag: executable-manual-page
 - tag: faulty-debian-qa-group-address
 - tag: faulty-debian-qa-group-phrase
+  status: implemented
 - tag: groff-message
 - tag: linked-with-obsolete-library
 - tag: mail-address-loops-or-bounces

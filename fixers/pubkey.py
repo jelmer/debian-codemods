@@ -134,7 +134,7 @@ with WatchEditor() as editor:
                         for fpr in missing_keys:
                             key = c.key_export_minimal(fpr)
                             if not key:
-                                warn('Unable to export key {}'.format(fpr))
+                                warn(f'Unable to export key {fpr}')
                                 sys.exit(0)
                             f.write(key)
 

@@ -27,7 +27,8 @@ except FileNotFoundError:
 if len(removed) == 1:
     (field, binary_packages) = list(removed.items())[0]
     report_result(
-        'Remove field {} on binary package{} {} that duplicates source.'.format(
+        'Remove field {} on binary package{} {} that duplicates source.'
+        .format(
             field, 's' if len(binary_packages) != 1 else '',
             ', '.join(sorted(binary_packages))))
 elif len(removed) > 1:

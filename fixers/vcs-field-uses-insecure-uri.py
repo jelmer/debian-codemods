@@ -28,7 +28,7 @@ with control as updater:
             continue
         issue = LintianIssue(
             'source', "vcs-field-uses-insecure-uri",
-            info='{} {}'.format(key, updater.source[key]))
+            info=f'{key} {updater.source[key]}')
         if issue.should_fix():
             updater.source[key] = newvalue
             updated.add(key)

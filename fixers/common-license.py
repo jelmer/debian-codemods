@@ -275,7 +275,7 @@ if updated:
         'refer to common license file for %s' % ', '.join(sorted(updated)))
 if set(renames.values()) - set(updated):
     done.append('use common license names: ' + ', '.join(
-        ['{} (was: {})'.format(new, old) for (old, new) in sorted(renames.items())
+        [f'{new} (was: {old})' for (old, new) in sorted(renames.items())
          if new not in updated]))
 
 

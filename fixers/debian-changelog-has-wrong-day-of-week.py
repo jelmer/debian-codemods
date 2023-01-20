@@ -13,7 +13,7 @@ with ChangelogEditor() as updater:
         try:
             dt = email.utils.parsedate_to_datetime(block.date)
         except (TypeError, ValueError):
-            warn('Invalid date {!r} for {}'.format(block.date, block.version))
+            warn(f'Invalid date {block.date!r} for {block.version}')
             # parsedate_to_datetime is buggy and raises a TypeError
             # when the date is invalid.
             continue

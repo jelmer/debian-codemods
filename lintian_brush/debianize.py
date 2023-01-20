@@ -82,6 +82,7 @@ from ognibuild.fix_build import iterate_with_build_fixers, BuildFixer
 from ognibuild.session import SessionSetupFailure, Session
 from ognibuild.session.plain import PlainSession
 from ognibuild.session.schroot import SchrootSession
+from ognibuild.session.unshare import UnshareSession
 from ognibuild.requirements import (
     Requirement,
     )
@@ -894,6 +895,7 @@ async def find_wnpp_bugs_harder(source_name, upstream_name):
 
 def debianize(  # noqa: C901
     wt: WorkingTree, subpath: str,
+    *,
     upstream_branch: Optional[Branch], upstream_subpath: Optional[str],
     use_inotify: Optional[bool] = None,
     diligence: int = 0,
@@ -907,6 +909,7 @@ def debianize(  # noqa: C901
     consult_external_directory: bool = True,
     verbose: bool = False,
     schroot: Optional[str] = None,
+    unshare: Optional[str] = None,
     create_dist=None,
     committer: Optional[str] = None,
     upstream_version_kind: str = "auto",
@@ -958,11 +961,14 @@ def debianize(  # noqa: C901
                 wt.add(debian_path)
 
             session: Session
-            if schroot is None:
-                session = PlainSession()
-            else:
+            if schroot:
                 logging.info('Using schroot %s', schroot)
                 session = SchrootSession(schroot)
+            elif unshare:
+                logging.info('Using tarball %s for unshare', unshare)
+                session = UnshareSession.from_tarball(unshare)
+            else:
+                session = PlainSession()
 
             if upstream_branch:
                 upstream_source = UpstreamBranchSource.from_branch(
@@ -1268,6 +1274,7 @@ class DebianizeFixer(BuildFixer):
                  upstream_version_kind="release",
                  debian_revision="1",
                  schroot=None,
+                 unshare=None,
                  consult_external_directory=True,
                  use_inotify=None,
                  create_dist=None,
@@ -1286,6 +1293,7 @@ class DebianizeFixer(BuildFixer):
         self.debian_revision = debian_revision
         self.consult_external_directory = consult_external_directory
         self.schroot = schroot
+        self.unshare = unshare
         self.use_inotify = use_inotify
         self.create_dist = create_dist
         self.compat_release = compat_release
@@ -1342,7 +1350,8 @@ class DebianizeFixer(BuildFixer):
         new_subpath = ''
         debianize(
             new_wt, new_subpath,
-            upstream_branch, upstream_info.branch_subpath or '',
+            upstream_branch=upstream_branch,
+            upstream_subpath=(upstream_info.branch_subpath or ''),
             use_inotify=self.use_inotify,
             diligence=self.diligence,
             create_dist=self.create_dist,
@@ -1354,6 +1363,7 @@ class DebianizeFixer(BuildFixer):
             compat_release=self.compat_release,
             consult_external_directory=self.consult_external_directory,
             verbose=self.verbose, schroot=self.schroot,
+            unshare=self.unshare,
             debian_revision=self.debian_revision,
             upstream_version=upstream_info.version,
             upstream_version_kind=self.upstream_version_kind,
@@ -1455,6 +1465,9 @@ def main(argv=None):  # noqa: C901
         "--schroot", type=str,
         help="Schroot to use for building and apt archive access")
     parser.add_argument(
+        "--unshare", type=str,
+        help="Unshare tarball to use for building and apt archive access")
+    parser.add_argument(
         "--build-command",
         type=str,
         help="Build command (used for --iterate-fix)",
@@ -1553,6 +1566,8 @@ def main(argv=None):  # noqa: C901
     else:
         create_dist = None
 
+    metadata = {}
+
     # For now...
     if args.upstream:
         try:
@@ -1561,6 +1576,8 @@ def main(argv=None):  # noqa: C901
         except NotBranchError as e:
             logging.fatal('%s: not a valid branch: %s', args.upstream, e)
             return 1
+        metadata['Repository'] = UpstreamDatum(
+            'Repository', args.upstream, certainty='confident')
     elif args.debian_binary:
         apt_requirement = AptRequirement.from_str(args.debian_binary)
         upstream_info = find_apt_upstream(apt_requirement)
@@ -1573,6 +1590,9 @@ def main(argv=None):  # noqa: C901
             'Found relevant upstream branch at %s', upstream_info.branch_url)
         upstream_branch = Branch.open(upstream_info.branch_url)
         upstream_subpath = upstream_info.branch_subpath
+
+        metadata['Repository'] = UpstreamDatum(
+            'Repository', upstream_info.branch_url, certainty='confident')
     else:
         if wt.has_filename(os.path.join(subpath, 'debian')):
             report_fatal(
@@ -1601,7 +1621,7 @@ def main(argv=None):  # noqa: C901
         try:
             debianize_result = debianize(
                 wt, subpath,
-                upstream_branch, upstream_subpath,
+                upstream_branch=upstream_branch, upstream_subpath=upstream_subpath,
                 use_inotify=use_inotify,
                 diligence=args.diligence,
                 trust=args.trust,
@@ -1613,10 +1633,12 @@ def main(argv=None):  # noqa: C901
                 consult_external_directory=args.consult_external_directory,
                 verbose=args.verbose,
                 schroot=args.schroot,
+                unshare=args.unshare,
                 upstream_version_kind=args.upstream_version_kind,
                 debian_revision=args.debian_revision,
                 create_dist=create_dist,
                 upstream_version=args.upstream_version,
+                metadata=metadata,
             )
         except PackageVersionNotPresent:
             if args.upstream_version:
@@ -1685,11 +1707,14 @@ def main(argv=None):  # noqa: C901
     if args.iterate_fix:
         session: Session
 
-        if args.schroot is None:
-            session = PlainSession()
-        else:
+        if args.schroot:
             logging.info('Using schroot %s', args.schroot)
             session = SchrootSession(args.schroot)
+        elif args.unshare:
+            logging.info('Using tarball %s for unshare', args.unshare)
+            session = UnshareSession.from_tarball(args.unshare)
+        else:
+            session = PlainSession()
 
         with contextlib.ExitStack() as es:
             es.enter_context(session)
@@ -1746,7 +1771,8 @@ def main(argv=None):  # noqa: C901
                                 upstream_version_kind=(
                                     args.upstream_version_kind),
                                 debian_revision=args.debian_revision,
-                                schroot=args.schroot, use_inotify=use_inotify,
+                                schroot=args.schroot,
+                                unshare=args.unshare, use_inotify=use_inotify,
                                 consult_external_directory=(
                                     args.consult_external_directory),
                                 create_dist=create_dist,
@@ -1762,7 +1788,7 @@ def main(argv=None):  # noqa: C901
                 elif len(e.phase) == 1:
                     phase = e.phase[0]
                 else:
-                    phase = '{} ({})'.format(e.phase[0], e.phase[1])
+                    phase = f'{e.phase[0]} ({e.phase[1]})'
                 logging.fatal('Error during %s: %s', phase, e.error)
                 return 1
             except UnidentifiedDebianBuildError as e:
@@ -1771,7 +1797,7 @@ def main(argv=None):  # noqa: C901
                 elif len(e.phase) == 1:
                     phase = e.phase[0]
                 else:
-                    phase = '{} ({})'.format(e.phase[0], e.phase[1])
+                    phase = f'{e.phase[0]} ({e.phase[1]})'
                 logging.fatal('Error during %s: %s', phase, e.description)
                 return 1
             except DebianizedPackageRequirementMismatch as e:

@@ -76,8 +76,8 @@ if typo_fixed:
     kind += 'typo' + ('s' if len(typo_fixed) > 1 else '')
 
 fixed_str = ', '.join(
-    ['{} ⇒ {}'.format(old, new)
+    [f'{old} ⇒ {new}'
      for (old, new) in sorted(list(case_fixed) + list(typo_fixed))])
 
 report_result(
-    'Fix field name {} in debian/upstream/metadata ({}).'.format(kind, fixed_str))
+    f'Fix field name {kind} in debian/upstream/metadata ({fixed_str}).')

@@ -152,7 +152,7 @@ def migrate_from_obsolete_infra(control):
 
     fixed_lintian_tag(
         'source', "vcs-obsolete-in-debian-infrastructure",
-        info='vcs-{} {}'.format(old_vcs_type.lower(), old_vcs_url))
+        info=f'vcs-{old_vcs_type.lower()} {old_vcs_url}')
 
     if (("Vcs-Cvs" in control and re.match(
             r"\@(?:cvs\.alioth|anonscm)\.debian\.org:/cvsroot/",

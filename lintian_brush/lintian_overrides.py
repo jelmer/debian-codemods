@@ -185,7 +185,7 @@ def remove_unused(
             if override.type not in (None, unused_override[1]):
                 continue
             if override.info:
-                expected_info = "{} {}".format(override.tag, override.info)
+                expected_info = f"{override.tag} {override.info}"
             else:
                 expected_info = override.tag
             if expected_info != unused_override[3]:

@@ -25,9 +25,9 @@ try:
                 continue
             issue = LintianIssue(
                 'source', 'debian-watch-file-uses-deprecated-githubredir',
-                info='{} {}'.format(w.url, w.matching_pattern))
+                info=f'{w.url} {w.matching_pattern}')
             if issue.should_fix():
-                w.url = 'https://github.com/{}/{}/tags'.format(parts[1], parts[2])
+                w.url = f'https://github.com/{parts[1]}/{parts[2]}/tags'
                 w.matching_pattern = (
                     '.*/' + w.matching_pattern.rsplit('/', 1)[-1])
                 issue.report_fixed()
