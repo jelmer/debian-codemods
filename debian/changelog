@@ -1,4 +1,4 @@
-lintian-brush (0.146) UNRELEASED; urgency=medium
+lintian-brush (0.146) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * debianize: Add warning about state of the tool.
@@ -14,7 +14,7 @@ lintian-brush (0.146) UNRELEASED; urgency=medium
     group-phase.
   * Drop init.d-script-needs-depends-on-lsb-base. Closes: #946398
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 22 Jan 2023 02:57:10 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 22 Jan 2023 14:04:08 +0000
 
 lintian-brush (0.145) unstable; urgency=medium
 
