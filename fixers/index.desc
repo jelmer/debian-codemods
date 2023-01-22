@@ -221,10 +221,6 @@
     - malformed-dm-upload-allowed
     - dm-upload-allowed-is-obsolete
 
-- script: init.d-script-needs-depends-on-lsb-base.py
-  lintian-tags:
-    - init.d-script-needs-depends-on-lsb-base
-
 - script: maintainer-also-in-uploaders.py
   lintian-tags:
     - maintainer-also-in-uploaders

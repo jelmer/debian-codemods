@@ -12,8 +12,9 @@ lintian-brush (0.146) UNRELEASED; urgency=medium
     area. Closes: #1029241
   * Update tag name: wrong-debian-qa-group-name => faulty-debian-qa-
     group-phase.
+  * Drop init.d-script-needs-depends-on-lsb-base. Closes: #946398
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 21 Dec 2022 12:19:44 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 22 Jan 2023 02:57:10 +0000
 
 lintian-brush (0.145) unstable; urgency=medium
 
