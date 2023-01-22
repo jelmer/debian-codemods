@@ -92,7 +92,6 @@ subset of the issues:
 * global-files-wildcard-not-first-paragraph-in-dep5-copyright
 * homepage-field-uses-insecure-uri
 * homepage-in-binary-package
-* init.d-script-needs-depends-on-lsb-base
 * initial-upload-closes-no-bugs
 * insecure-copyright-format-uri
 * installable-field-mirrors-source
