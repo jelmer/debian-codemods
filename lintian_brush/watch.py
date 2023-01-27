@@ -596,6 +596,10 @@ def main():  # noqa: C901
         "--debug", help="Describe all considered changes.", action="store_true"
     )
     parser.add_argument(
+        "--force",
+        help="Force regenerating watch file, even if it the current one works",
+        action="store_true")
+    parser.add_argument(
         "--no-verify", action="store_true",
         help="Do not verify that the new watch file works")
     parser.add_argument(
@@ -660,34 +664,35 @@ def main():  # noqa: C901
             with WatchEditor(allow_reformatting=allow_reformatting,
                              allow_missing=False,
                              ) as updater:
-                try:
-                    status = verify_watch_file(
-                        updater.watch_file, package, expected_versions)
-                except (TemporaryWatchEntryVerficationError,
-                        WatchEntryVerificationFailure):
-                    status = [None]
-                if status and all(status):
-                    hint = (
-                        'Releases {} can be found with watch entry {}'.format(
-                            ', '.join(sorted(list(
-                                status[0].releases.keys()), reverse=True)),
-                            status[0].entry))
-                    report_fatal(
-                        'nothing-to-do',
-                        'Existing watch file has valid entries',
-                        context=svp_context(status, site=None),
-                        hint=hint)
-                    return 0
-                fix_watch_issues(updater)
-                try:
-                    status = verify_watch_file(
-                        updater.watch_file, package, expected_versions)
-                except WatchEntryVerificationFailure:
-                    status = [None]
-                except TemporaryWatchEntryVerficationError as e:
-                    report_fatal('temporary-verification-error', str(e))
-                    return 1
-                if status or not all(status):
+                if not args.force:
+                    try:
+                        status = verify_watch_file(
+                            updater.watch_file, package, expected_versions)
+                    except (TemporaryWatchEntryVerficationError,
+                            WatchEntryVerificationFailure):
+                        status = [None]
+                    if status and all(status):
+                        hint = (
+                            'Releases {} can be found with watch entry {}'.format(
+                                ', '.join(sorted(list(
+                                    status[0].releases.keys()), reverse=True)),
+                                status[0].entry))
+                        report_fatal(
+                            'nothing-to-do',
+                            'Existing watch file has valid entries',
+                            context=svp_context(status, site=None),
+                            hint=hint)
+                        return 0
+                    fix_watch_issues(updater)
+                    try:
+                        status = verify_watch_file(
+                            updater.watch_file, package, expected_versions)
+                    except WatchEntryVerificationFailure:
+                        status = [None]
+                    except TemporaryWatchEntryVerficationError as e:
+                        report_fatal('temporary-verification-error', str(e))
+                        return 1
+                if status is None or not all(status):
                     candidates = find_candidates(
                         '.', good_upstream_versions,
                         net_access=not args.disable_net_access)
@@ -700,12 +705,11 @@ def main():  # noqa: C901
                     updater.watch_file.entries = [candidates[0].watch]
                     site = [candidates[0].site]
                     status = None
-                    summary = (
-                        f'Update watch file from {site[0]}, '
-                        'since it was broken')
+                    summary = f'Update watch file from {site[0]}'
                 else:
                     site = None
                     summary = 'Fixed watch file'
+            specific_files = updater.changed_files
         except FileNotFoundError:
             candidates = find_candidates(
                 '.', good_upstream_versions,
@@ -722,7 +726,8 @@ def main():  # noqa: C901
             with open('debian/watch', 'w') as f:
                 wf.dump(f)
             status = None
-            summary = 'Added watch file'
+            summary = f'Added watch file from {site}'
+            specific_files = ['debian/watch']
         except FormattingUnpreservable as e:
             report_fatal('formatting-unpreservable',
                          "Unable to preserve formatting of %s" % e.path)
@@ -753,8 +758,6 @@ def main():  # noqa: C901
                         context=svp_context(status, site))
                     return 1
 
-        specific_files = updater.changed_files
-
         if update_changelog is None:
             from .detect_gbp_dch import guess_update_changelog
 
@@ -772,8 +775,7 @@ def main():  # noqa: C901
 
             # TODO(jelmer): Add note here about having verified watch file?
             add_changelog_entry(wt, changelog_path, [summary])
-            if specific_files:
-                specific_files.append(changelog_path)
+            specific_files.append(changelog_path)
 
         committer = get_committer(wt)
 
@@ -795,6 +797,12 @@ def main():  # noqa: C901
             }, f)
 
     logging.info('%s', summary)
+
+    if status is not None:
+        logging.info('Releases {} can be found with new watch entry {}'.format(
+            ', '.join(sorted(list(
+                status[0].releases.keys()), reverse=True)),
+            status[0].entry))
 
     return 0
 

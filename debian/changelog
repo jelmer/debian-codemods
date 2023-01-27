@@ -1,3 +1,10 @@
+lintian-brush (0.147) UNRELEASED; urgency=medium
+
+  * fix-watch-file: Add --force flag.
+  * fix-watch-file: Remember correct set of files to commit.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 27 Jan 2023 01:00:35 +0000
+
 lintian-brush (0.146) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
