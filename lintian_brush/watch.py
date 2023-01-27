@@ -782,7 +782,7 @@ def main():  # noqa: C901
         with suppress(PointlessCommit):
             wt.commit(
                 specific_files=specific_files,
-                message=summary,
+                message=f"{summary}\n\nChanges-By: fix-watch-file",
                 allow_pointless=False,
                 reporter=NullCommitReporter(),
                 committer=committer,
