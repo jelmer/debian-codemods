@@ -965,7 +965,7 @@ def debianize(  # noqa: C901
                 session = SchrootSession(schroot)
             elif unshare:
                 logging.info('Using tarball %s for unshare', unshare)
-                from ognibuild.session.unshare import UnshareSession
+                from ognibuild.session.unshare import UnshareSession  # type: ignore
                 session = UnshareSession.from_tarball(unshare)
             else:
                 session = PlainSession()
@@ -1712,7 +1712,7 @@ def main(argv=None):  # noqa: C901
             session = SchrootSession(args.schroot)
         elif args.unshare:
             logging.info('Using tarball %s for unshare', args.unshare)
-            from ognibuild.session.unshare import UnshareSession
+            from ognibuild.session.unshare import UnshareSession  # type: ignore
             session = UnshareSession.from_tarball(args.unshare)
         else:
             session = PlainSession()

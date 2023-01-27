@@ -660,7 +660,7 @@ def get_committer(tree: WorkingTree) -> str:
       A committer string
     """
     # TODO(jelmer): Perhaps this logic should be in Breezy?
-    if getattr(tree.branch.repository, "_git", None):
+    if hasattr(tree.branch.repository, "_git"):
         cs = tree.branch.repository._git.get_config_stack()
         user = os.environ.get("GIT_COMMITTER_NAME")
         email = os.environ.get("GIT_COMMITTER_EMAIL")

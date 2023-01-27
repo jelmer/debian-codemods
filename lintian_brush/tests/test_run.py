@@ -21,7 +21,7 @@ from datetime import datetime
 import os
 import re
 import sys
-from typing import Type, Callable
+from typing import Type, Callable, Any
 
 from debian.changelog import (
     Changelog,
@@ -972,7 +972,7 @@ class BaseScriptFixerTests:
 
     script_fixer_cls: Type[ScriptFixer]
 
-    build_tree_contents: Callable
+    build_tree_contents: Any
     assertEqual: Callable
     assertIsInstance: Callable
     assertRaises: Callable
@@ -1023,12 +1023,14 @@ foo()
 class ScriptFixerTests(
         BaseScriptFixerTests, TestCaseWithTransport):  # type: ignore
 
+    test_dir: str
     script_fixer_cls = ScriptFixer
 
 
 class PythonScriptFixerTests(
         BaseScriptFixerTests, TestCaseWithTransport):  # type: ignore
 
+    test_dir: str
     script_fixer_cls = PythonScriptFixer   # type: ignore
 
 

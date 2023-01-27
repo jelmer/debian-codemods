@@ -13,7 +13,7 @@ style::
 	flake8
 
 typing::
-	mypy --check-untyped-defs lintian_brush fixers
+	mypy lintian_brush fixers
 
 tag-status::
 	python3 tag-status.py --check
