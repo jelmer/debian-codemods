@@ -731,6 +731,8 @@ def main():  # noqa: C901
         except FormattingUnpreservable as e:
             report_fatal('formatting-unpreservable',
                          "Unable to preserve formatting of %s" % e.path)
+            if hasattr(e, 'diff'):  # debmutate >= 0.64
+                sys.stderr.writelines(e.diff())
             return 1
 
         if not args.no_verify and status is None:

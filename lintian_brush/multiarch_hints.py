@@ -528,6 +528,8 @@ def main(argv=None):  # noqa: C901
                 "formatting-unpreservable",
                 "unable to preserve formatting while editing %s" % e.path,
             )
+            if hasattr(e, 'diff'):  # debmutate >= 0.64
+                sys.stderr.writelines(e.diff())
             return 1
         except GeneratedFile as e:
             report_fatal(

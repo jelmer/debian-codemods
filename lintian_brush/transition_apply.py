@@ -22,6 +22,7 @@ import json
 import logging
 import os
 import re
+import sys
 
 from breezy.workingtree import WorkingTree
 from breezy.workspace import (
@@ -291,6 +292,8 @@ def main():  # noqa: C901
             "formatting-unpreservable",
             "unable to preserve formatting while editing %s" % e.path,
         )
+        if hasattr(e, 'diff'):  # debmutate >= 0.64
+            sys.stderr.writelines(e.diff())
         return 1
     except GeneratedFile as e:
         report_fatal(
@@ -346,6 +349,4 @@ def main():  # noqa: C901
 
 
 if __name__ == "__main__":
-    import sys
-
     sys.exit(main())
