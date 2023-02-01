@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.mypy]
+warn_redundant_casts = true
+warn_unused_configs = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "asyncpg.*",
+    "distro_info.*",
+    "decopy.*",
+    "gpg.*",
+    "iniparse.*",
+    "configobj.*",
+    "xdg.*",
+    "Levenshtein.*",
+    "semver.*",
+]
+ignore_missing_imports = true

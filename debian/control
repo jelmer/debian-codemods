@@ -34,7 +34,7 @@ Build-Depends: bash-completion,
                lintian (>= 2.105.0),
                debhelper-compat (= 13),
                debhelper (>= 13.5),
-               ognibuild
+               ognibuild (>= 0.0.18)
 Standards-Version: 4.6.1
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
@@ -55,7 +55,7 @@ Depends: devscripts,
          python3-upstream-ontologist (>= 0.1.30),
          ${misc:Depends},
          ${python3:Depends}
-Recommends: lintian (>= 2.105.0), dos2unix, gpg, python3-pyinotify, python3-asyncpg, debhelper (>= 13.5), python3-levenshtein, decopy, python3-bs4, ognibuild, python3-docutils, python3-markdown, python3-lxml, python3-tomlkit, python3-semver, python3-debianbts
+Recommends: lintian (>= 2.105.0), dos2unix, gpg, python3-pyinotify, python3-asyncpg, debhelper (>= 13.5), python3-levenshtein, decopy, python3-bs4, ognibuild (>= 0.0.18), python3-docutils, python3-markdown, python3-lxml, python3-tomlkit, python3-semver, python3-debianbts
 Suggests: gnome-pkg-tools, postgresql-common, brz-debian (>= 2.8.66), po-debconf, git-buildpackage
 Description: automatically fix lintian problems
  This package contains a set of scripts that can automatically fix more than 160
