@@ -144,7 +144,7 @@ def main():
         default=False,
     )
     parser.add_argument(
-        "--debug", help="Describe all considerd changes.", action="store_true"
+        "--debug", help="Describe all considered changes.", action="store_true"
     )
     parser.add_argument(
         '--no-create', help='Do not create the repository',
@@ -170,9 +170,9 @@ def main():
     args = parser.parse_args()
 
     if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG, format='%(message)s')
     else:
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
 
     import breezy  # noqa: E402
 

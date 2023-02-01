@@ -54,6 +54,7 @@ def guess_description(binary_name, all_binaries, summary=None):
     except KeyError:
         # Better than nothing..
         return summary
+
     if summary is None:
         if len(upstream_description) == 1:
             return upstream_description[0].rstrip('\n')

@@ -72,6 +72,7 @@ from ognibuild.debian.fix_build import (
     DetailedDebianBuildFailure,
     UnidentifiedDebianBuildError,
     build_incrementally,
+    default_fixers,
     )
 from ognibuild.dist import (  # noqa: F401
     DistNoTarball,
@@ -965,7 +966,8 @@ def debianize(  # noqa: C901
                 session = SchrootSession(schroot)
             elif unshare:
                 logging.info('Using tarball %s for unshare', unshare)
-                from ognibuild.session.unshare import UnshareSession  # type: ignore
+                from ognibuild.session.unshare import (
+                    UnshareSession)  # type: ignore
                 session = UnshareSession.from_tarball(unshare)
             else:
                 session = PlainSession()
@@ -1258,6 +1260,7 @@ def use_packaging_branch(wt: WorkingTree, branch_name: str) -> None:
 
 
 class DebianizeFixer(BuildFixer):
+    """Fixer that invokes debianize to create a package."""
 
     def __str__(self):
         return "debianize fixer"
@@ -1271,7 +1274,7 @@ class DebianizeFixer(BuildFixer):
                  trust=False, check=True, net_access=True,
                  force_new_directory=False,
                  team=None, verbose=False, force_subprocess=False,
-                 upstream_version_kind="release",
+                 upstream_version_kind="auto",
                  debian_revision="1",
                  schroot=None,
                  unshare=None,
@@ -1389,6 +1392,13 @@ def report_fatal(code, description, hint=None, details=None):
     logging.fatal('%s', description)
     if hint:
         logging.info('%s', hint)
+
+
+def default_debianize_cache_dir():
+    from xdg.BaseDirectory import xdg_cache_home
+    cache_dir = os.path.join(xdg_cache_home, 'debianize')
+    os.makedirs(cache_dir, exist_ok=True)
+    return cache_dir
 
 
 def main(argv=None):  # noqa: C901
@@ -1528,6 +1538,10 @@ def main(argv=None):  # noqa: C901
         type=str,
         default=os.environ.get('LOG_DIRECTORY'),
         help='Directory to write log files to.')
+    parser.add_argument(
+        "--dep-server-url", type=str,
+        help="ognibuild dep server to use",
+        default=os.environ.get('OGNIBUILD_DEPS'))
     parser.add_argument('upstream', nargs='?', type=str)
 
     args = parser.parse_args(argv)
@@ -1621,7 +1635,8 @@ def main(argv=None):  # noqa: C901
         try:
             debianize_result = debianize(
                 wt, subpath,
-                upstream_branch=upstream_branch, upstream_subpath=upstream_subpath,
+                upstream_branch=upstream_branch,
+                upstream_subpath=upstream_subpath,
                 use_inotify=use_inotify,
                 diligence=args.diligence,
                 trust=args.trust,
@@ -1712,7 +1727,8 @@ def main(argv=None):  # noqa: C901
             session = SchrootSession(args.schroot)
         elif args.unshare:
             logging.info('Using tarball %s for unshare', args.unshare)
-            from ognibuild.session.unshare import UnshareSession  # type: ignore
+            from ognibuild.session.unshare import (
+                UnshareSession)  # type: ignore
             session = UnshareSession.from_tarball(args.unshare)
         else:
             session = PlainSession()
@@ -1723,25 +1739,24 @@ def main(argv=None):  # noqa: C901
             if args.discard_output:
                 args.output_directory = es.enter_context(TemporaryDirectory())
             if not args.output_directory:
-                from xdg.BaseDirectory import xdg_cache_home
-                args.output_directory = os.path.join(
-                    xdg_cache_home, 'debianize')
-                os.makedirs(args.output_directory, exist_ok=True)
+                args.output_directory = default_debianize_cache_dir()
                 logging.info(
                     'Building dependencies in %s', args.output_directory)
 
             def do_build(
                     wt, subpath, incoming_directory, extra_repositories=None):
+                fixers = default_fixers(
+                    wt, subpath, apt,
+                    update_changelog=False, committer=None,
+                    dep_server_url=args.dep_server_url)
                 return build_incrementally(
-                    wt,
-                    apt,
-                    None,
-                    None,
-                    incoming_directory,
-                    args.build_command,
+                    local_tree=wt,
+                    suffix=None,
+                    build_suite=None,
+                    fixers=fixers,
+                    output_directory=incoming_directory,
+                    build_command=args.build_command,
                     build_changelog_entry=None,
-                    committer=None,
-                    update_changelog=False,
                     max_iterations=args.max_build_iterations,
                     subpath=subpath,
                     extra_repositories=extra_repositories,

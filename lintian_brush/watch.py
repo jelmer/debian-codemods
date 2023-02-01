@@ -673,7 +673,8 @@ def main():  # noqa: C901
                         status = [None]
                     if status and all(status):
                         hint = (
-                            'Releases {} can be found with watch entry {}'.format(
+                            'Releases {} can be found with watch entry {}'
+                            .format(
                                 ', '.join(sorted(list(
                                     status[0].releases.keys()), reverse=True)),
                                 status[0].entry))

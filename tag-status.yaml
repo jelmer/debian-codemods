@@ -1780,3 +1780,13 @@
 - tag: debian-changelog-contains-hint
   difficulty: impossible
 - tag: build-deps-can-be-annotated-nocheck
+
+- tag: dbus-policy-in-etc
+- tag: homepage-github-url-ends-with-dot-git
+  difficulty: easy
+- tag: homepage-gitlab-url-ends-with-dot-git
+  difficulty: easy
+- tag: homepage-salsa-url-ends-with-dot-git
+  difficulty: easy
+- tag: uses-pdm-cli
+- tag: uses-python-distutils
