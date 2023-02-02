@@ -5,7 +5,20 @@ deb-scrub-obsolete \- scrub a Debian package of no longer necessary configuratio
 deb\-scrub\-obsolete [\-h] [\-\-no\-update\-changelog] [\-\-version] [\-\-upgrade\-release=RELEASE]
 .SH DESCRIPTION
 Scrub a Debian source package from unnecessary versioned depends, conflicts and maintscripts.
-.IP
+.PP
+Specifically, it make the following categories of changes:
+.IP \[bu]
+obsolete maintscript entries for upgrades from versions older than that in $compat_release
+.IP \[bu]
+depends on packages that are essential since $compat_release
+.IP \[bu]
+build-depends on packages that are build-essential since $compat_release
+.IP \[bu]
+replacing dependencies on "transitional dummy packages" with the real thing (if satisfiable since $compat_release)
+.IP \[bu]
+conflicts with packages that are gone since before $compat_release
+.IP \[bu]
+version constraints in build-depends or depends that are met by the package in $compat_release
 .SS "optional arguments:"
 .TP
 \fB\-h\fR, \fB\-\-help\fR
@@ -30,8 +43,11 @@ For a full list options, see \fBdistro-info\fR(1).
 \fB\-\-identity\fR
 Print the identity (name and e\-mailaddress) that apply-multiarch-hints will use when committing changes, and exit.
 .TP
-\fB\-\-verbose\fR
-Print list of fixers that was run and print tracebacks for failed fixers.
+\fB\-\-debug\fR
+Print debugging information
+.TP
+\fB\-\-keep-minimum-depends-versions\fR
+Keep minimum version dependencies, even when unnecessary
 .SH ENVIRONMENT
 .TP
 \fBDEB_UPDATE_CHANGELOG\fR
