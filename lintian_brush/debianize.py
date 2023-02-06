@@ -281,7 +281,7 @@ def setup_debhelper(
     )
 
 
-def default_create_dist(session, tree, package, version, target_dir):
+def default_create_dist(session, tree, package, version, target_dir, subpath=""):
     try:
         with session:
             try:
@@ -289,7 +289,8 @@ def default_create_dist(session, tree, package, version, target_dir):
                     session, tree, target_dir,
                     include_controldir=False,
                     subdir=(package or "package"),
-                    version=version)
+                    version=version,
+                    subpath=subpath)
             except DetailedFailure as e:
                 if isinstance(
                         e.error,
@@ -298,7 +299,7 @@ def default_create_dist(session, tree, package, version, target_dir):
                         session, tree, target_dir,
                         include_controldir=True,
                         subdir=(package or "package"),
-                        version=version)
+                        version=version, subpath=subpath)
                 else:
                     raise
     except NoBuildToolsFound:
@@ -1574,9 +1575,10 @@ def main(argv=None):  # noqa: C901
 
     create_dist: Optional[Callable[[Tree, str, str, str], str]]
     if args.dist_command:
-        def create_dist(tree, package, version, target_dir):
+        def create_dist(tree, package, version, target_dir, subpath=""):
             return run_dist_command(
-                tree, package, version, target_dir, args.dist_command)
+                tree, package, version, target_dir, args.dist_command,
+                subpath=subpath)
     else:
         create_dist = None
 
