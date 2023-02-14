@@ -15,6 +15,7 @@
         "freertos-exception-2.0",
         "GCC-exception-2.0",
         "GCC-exception-3.1",
+        "GNAT-exception",
         "gnu-javamail-exception",
         "GPL-3.0-linking-exception",
         "GPL-3.0-linking-source-exception",
@@ -35,11 +36,13 @@
         "OpenJDK-assembly-exception-1.0",
         "openvpn-openssl-exception",
         "PS-or-PDF-font-exception-20170817",
+        "QPL-1.0-INRIA-2004-exception",
         "Qt-GPL-exception-1.0",
         "Qt-LGPL-exception-1.1",
         "Qwt-exception-1.0",
         "SHL-2.0",
         "SHL-2.1",
+        "SWI-exception",
         "Swift-exception",
         "u-boot-exception-2.0",
         "Universal-FOSS-exception-1.0",
@@ -124,6 +127,9 @@
         },
         "Abstyles": {
             "name": "Abstyles License"
+        },
+        "AdaCore-doc": {
+            "name": "AdaCore Doc License"
         },
         "Adobe-2006": {
             "name": "Adobe Systems Incorporated Source Code License Agreement"
@@ -221,6 +227,18 @@
         "BSD-4-Clause-UC": {
             "name": "BSD-4-Clause (University of California-Specific)"
         },
+        "BSD-4.3RENO": {
+            "name": "BSD 4.3 RENO License"
+        },
+        "BSD-4.3TAHOE": {
+            "name": "BSD 4.3 TAHOE License"
+        },
+        "BSD-Advertising-Acknowledgement": {
+            "name": "BSD Advertising Acknowledgement License"
+        },
+        "BSD-Attribution-HPND-disclaimer": {
+            "name": "BSD with Attribution and HPND disclaimer"
+        },
         "BSD-Protection": {
             "name": "BSD Protection License"
         },
@@ -262,6 +280,9 @@
         },
         "Borceux": {
             "name": "Borceux license"
+        },
+        "Brian-Gladman-3-Clause": {
+            "name": "Brian Gladman 3-Clause License"
         },
         "C-UDA-1.0": {
             "name": "Computational Use of Data Agreement v1.0"
@@ -479,6 +500,12 @@
         "CERN-OHL-W-2.0": {
             "name": "CERN Open Hardware Licence Version 2 - Weakly Reciprocal"
         },
+        "CFITSIO": {
+            "name": "CFITSIO License"
+        },
+        "CMU-Mach": {
+            "name": "CMU Mach License"
+        },
         "CNRI-Jython": {
             "name": "CNRI Jython License"
         },
@@ -508,6 +535,9 @@
         },
         "ClArtistic": {
             "name": "Clarified Artistic License"
+        },
+        "Clips": {
+            "name": "Clips License"
         },
         "Community-Spec-1.0": {
             "name": "Community Specification License 1.0"
@@ -758,14 +788,23 @@
         "Graphics-Gems": {
             "name": "Graphics Gems License"
         },
+        "HP-1986": {
+            "name": "Hewlett-Packard 1986 License"
+        },
         "HPND": {
             "name": "Historical Permission Notice and Disclaimer"
+        },
+        "HPND-Markus-Kuhn": {
+            "name": "Historical Permission Notice and Disclaimer - Markus Kuhn variant"
         },
         "HPND-export-US": {
             "name": "HPND with US Government export control warning"
         },
         "HPND-sell-variant": {
             "name": "Historical Permission Notice and Disclaimer - sell variant"
+        },
+        "HPND-sell-variant-MIT-disclaimer": {
+            "name": "HPND sell variant with MIT disclaimer"
         },
         "HTMLTIDY": {
             "name": "HTML Tidy License"
@@ -815,6 +854,9 @@
         "Interbase-1.0": {
             "name": "Interbase Public License v1.0"
         },
+        "JPL-image": {
+            "name": "JPL Image Use Policy"
+        },
         "JPNIC": {
             "name": "Japan Network Information Center License"
         },
@@ -826,6 +868,9 @@
         },
         "JasPer-2.0": {
             "name": "JasPer License"
+        },
+        "Kazlib": {
+            "name": "Kazlib License"
         },
         "Knuth-CTAN": {
             "name": "Knuth CTAN License"
@@ -986,6 +1031,9 @@
         "MakeIndex": {
             "name": "MakeIndex License"
         },
+        "Martin-Birgmeier": {
+            "name": "Martin Birgmeier License"
+        },
         "Minpack": {
             "name": "Minpack License"
         },
@@ -1100,6 +1148,9 @@
         "ODbL-1.0": {
             "name": "Open Data Commons Open Database License v1.0"
         },
+        "OFFIS": {
+            "name": "OFFIS License"
+        },
         "OFL-1.0": {
             "name": "SIL Open Font License 1.0"
         },
@@ -1213,6 +1264,9 @@
         },
         "OSL-3.0": {
             "name": "Open Software License 3.0"
+        },
+        "OpenPBS-2.3": {
+            "name": "OpenPBS v2.3 Software License"
         },
         "OpenSSL": {
             "name": "OpenSSL License"
@@ -1367,6 +1421,9 @@
         "SugarCRM-1.1.3": {
             "name": "SugarCRM Public License v1.1.3"
         },
+        "SunPro": {
+            "name": "SunPro License"
+        },
         "Symlinks": {
             "name": "Symlinks License"
         },
@@ -1391,6 +1448,9 @@
         "TPDL": {
             "name": "Time::ParseDate License"
         },
+        "TPL-1.0": {
+            "name": "THOR Public License 1.0"
+        },
         "TTWL": {
             "name": "Text-Tabs+Wrap License"
         },
@@ -1399,6 +1459,9 @@
         },
         "TU-Berlin-2.0": {
             "name": "Technische Universitaet Berlin License 2.0"
+        },
+        "UCAR": {
+            "name": "UCAR License"
         },
         "UCL-1.0": {
             "name": "Upstream Compatibility License v1.0"
@@ -1565,11 +1628,20 @@
         "psutils": {
             "name": "psutils License"
         },
+        "snprintf": {
+            "name": "snprintf License"
+        },
+        "w3m": {
+            "name": "w3m License"
+        },
         "wxWindows": {
             "name": "wxWindows Library License"
         },
         "xinetd": {
             "name": "xinetd License"
+        },
+        "xlock": {
+            "name": "xlock License"
         },
         "xpp": {
             "name": "XPP License"
