@@ -15,5 +15,32 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+# See https://wiki.debian.org/UpstreamMetadata and
+# https://dep-team.pages.debian.net/deps/dep12/
 
 ADDON_ONLY_FIELDS = ["Archive"]
+DEP12_FIELDS = [
+    'Name',
+    'Contact',
+    'Archive',
+    'ASCL-Id',
+    'Bug-Database',
+    'Bug-Submit',
+    'Cite-As',
+    'Changelog',
+    'CPE',
+    'Documentation',
+    'Donation',
+    'FAQ',
+    'Funding',
+    'Gallery',
+    'Other-References',
+    'Reference',
+    'Registration',
+    'Registry',
+    'Repository',
+    'Repository-Browse',
+    'Screenshots',
+    'Security-Contact',
+    'Webservice',
+]

@@ -19,6 +19,7 @@ from lintian_brush.fixer import (
     )
 from lintian_brush.upstream_metadata import (
     ADDON_ONLY_FIELDS,
+    DEP12_FIELDS,
     )
 from upstream_ontologist import (
     UpstreamDatum,
@@ -130,8 +131,7 @@ with YamlUpdater('debian/upstream/metadata') as editor:
 
     for key, datum in list(upstream_metadata.items()):
         # Drop keys that don't need to be in debian/upstream/metadata
-        if (key.startswith('X-')  # noqa:SIM114
-                or key in external_present_fields):
+        if key not in DEP12_FIELDS or key in external_present_fields:
             del upstream_metadata[key]
 
         # Drop everything that is below our minimum certainty
