@@ -281,7 +281,8 @@ def setup_debhelper(
     )
 
 
-def default_create_dist(session, tree, package, version, target_dir, subpath=""):
+def default_create_dist(
+        session, tree, package, version, target_dir, subpath=""):
     try:
         with session:
             try:
