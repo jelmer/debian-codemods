@@ -167,6 +167,7 @@ def candidates_from_setup_py(
         return
     current_version_filenames = None
     if net_access:
+        # TODO(jelmer): Use ognibuild.upstream.load_pypi
         json_url = "https://pypi.python.org/pypi/%s/json" % project
         logging.info('Getting %s info on pypi (%s)',
                      project, json_url)

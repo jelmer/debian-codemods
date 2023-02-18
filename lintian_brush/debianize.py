@@ -1034,7 +1034,7 @@ def debianize(  # noqa: C901
 
             if upstream_source:
                 try:
-                    upstream_vcs_tree = upstream_source.revision_tree(
+                    upstream_vcs_tree, upstream_vcs_subpath = upstream_source.revision_tree(
                         source_name, mangled_upstream_version)
                 except (PackageVersionNotPresent, NoSuchRevision):
                     logging.warning(
@@ -1043,13 +1043,19 @@ def debianize(  # noqa: C901
                         source_name, mangled_upstream_version, upstream_source)
                     exported_upstream_tree_path = None
                 else:
+                    assert upstream_vcs_subpath == ''
                     # TODO(jelmer): Don't export, just access from memory.
                     exported_upstream_tree_path = es.enter_context(
                         TemporaryDirectory())
                     dupe_vcs_tree(
                         upstream_vcs_tree, exported_upstream_tree_path)
-                    import_metadata_from_path(
-                        os.path.join(exported_upstream_tree_path, subpath))
+                    exported_upstream_tree_subpath = os.path.join(
+                        exported_upstream_tree_path, upstream_subpath)
+                    if not os.path.isdir(exported_upstream_tree_subpath):
+                        raise Exception(
+                            f'subdirectory {upstream_subpath} '
+                            f'does not exist in upstream version {upstream_version}')
+                    import_metadata_from_path(exported_upstream_tree_subpath)
 
             if (buildsystem_name is None
                     and exported_upstream_tree_path is not None):
