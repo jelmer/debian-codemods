@@ -18,7 +18,6 @@
 
 """Utility for dropping unnecessary constraints."""
 
-import asyncio
 from contextlib import suppress
 import json
 import logging
@@ -61,6 +60,10 @@ from .debhelper import drop_obsolete_maintscript_entries
 
 
 DEFAULT_VALUE_MULTIARCH_HINT = 30
+
+
+class UddError(Exception):
+    """Error accessing UDD."""
 
 
 _changelog_policy_noted = False
@@ -188,73 +191,76 @@ def conflict_obsolete(
     return False
 
 
-class UddTimeout(Exception):
-    """Timeout while connecting to UDD."""
-
-
-async def _package_version(package: str, release: str) -> Optional[Version]:
+def _package_version(package: str, release: str) -> Optional[Version]:
     from .udd import connect_udd_mirror
 
-    try:
-        async with await connect_udd_mirror() as conn:
-            version = await conn.fetchval(
-                "SELECT version FROM packages "
-                "WHERE package = $1 AND release = $2",
-                package, release)
-    except asyncio.TimeoutError as exc:
-        raise UddTimeout() from exc
-    if version is not None:
-        return Version(version)
-    return None
+    conn = connect_udd_mirror()
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT version FROM packages "
+            "WHERE package = %s AND release = %s",
+            (package, release))
+        version = cursor.fetchone()[0]
+        if version is not None:
+            return Version(version)
+        return None
 
 
-async def _package_provides(
+def _package_provides(
         package: str, release: str) -> Optional[List[PkgRelation]]:
     from .udd import connect_udd_mirror
 
-    async with await connect_udd_mirror() as conn:
-        provides = await conn.fetchval(
+    conn = connect_udd_mirror()
+    with conn.cursor() as cursor:
+        cursor.execute(
             "SELECT provides FROM packages "
-            "WHERE package = $1 AND release = $2",
-            package, release)
-    if provides is not None:
-        return [r for sublist in parse_relations(provides) for r in sublist[1]]
-    return None
+            "WHERE package = %s AND release = %s",
+            (package, release))
+        provides = cursor.fetchone()[0]
+        if provides is not None:
+            return [r for sublist in parse_relations(provides)
+                    for r in sublist[1]]
+        return None
 
 
-async def _package_essential(package: str, release: str) -> bool:
+def _package_essential(package: str, release: str) -> bool:
     from .udd import connect_udd_mirror
 
-    async with await connect_udd_mirror() as conn:
-        return await conn.fetchval(
+    conn = connect_udd_mirror()
+    with conn.cursor() as cursor:
+        cursor.execute(
             "SELECT (essential = 'yes') FROM packages "
-            "WHERE package = $1 AND release = $2",
-            package, release)
+            "WHERE package = %s AND release = %s",
+            (package, release))
+
+        return cursor.fetchone()[0]
 
 
-async def _package_build_essential(package: str, release: str) -> bool:
+def _package_build_essential(package: str, release: str) -> bool:
     from .udd import connect_udd_mirror
 
-    async with await connect_udd_mirror() as conn:
-        depends = await conn.fetchval(
-            "select depends from packages where package = $1 and release = $2",
-            'build-essential', release)
+    conn = connect_udd_mirror()
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "select depends from packages where package = %s and release = %s",
+            'build-essential', (release, ))
+        depends = cursor.fetchone()[0]
 
-    build_essential = set()
-    for _ws1, rel, _ws2 in parse_relations(depends):
-        build_essential.update([r.name for r in rel])
-    return package in build_essential
+        build_essential = set()
+        for _ws1, rel, _ws2 in parse_relations(depends):
+            build_essential.update([r.name for r in rel])
+        return package in build_essential
 
 
-async def _fetch_transitions(release: str) -> Dict[str, str]:
+def _fetch_transitions(release: str) -> Dict[str, str]:
     from .udd import connect_udd_mirror
     from .dummy_transitional import find_dummy_transitional_packages
 
     ret = {}
-    async with await connect_udd_mirror() as conn:
-        for transition in (await find_dummy_transitional_packages(
-                conn, release)).values():
-            ret[transition.from_name] = transition.to_expr
+    conn = connect_udd_mirror()
+    for transition in (find_dummy_transitional_packages(
+            conn, release)).values():
+        ret[transition.from_name] = transition.to_expr
     return ret
 
 
@@ -266,28 +272,20 @@ class PackageChecker:
         self._transitions: Optional[Dict[str, str]] = None
 
     def package_version(self, package: str) -> Optional[Version]:
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(_package_version(package, self.release))
+        return _package_version(package, self.release)
 
     def replacement(self, package: str) -> Optional[str]:
         if self._transitions is None:
-            loop = asyncio.get_event_loop()
-            self._transitions = loop.run_until_complete(
-                _fetch_transitions(self.release))
+            self._transitions = _fetch_transitions(self.release)
         return self._transitions.get(package)
 
     def package_provides(self, package):
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(
-            _package_provides(package, self.release))
+        return _package_provides(package, self.release)
 
     def is_essential(self, package: str) -> bool:
-        loop = asyncio.get_event_loop()
-        if self.build and loop.run_until_complete(
-                _package_build_essential(package, self.release)):
+        if self.build and _package_build_essential(package, self.release):
             return True
-        return loop.run_until_complete(
-            _package_essential(package, self.release))
+        return _package_essential(package, self.release)
 
 
 def drop_obsolete_depends(
@@ -920,8 +918,8 @@ def main():  # noqa: C901
             report_fatal(
                 'change-conflict', 'Generated file changes conflict: %s' % e)
             return 1
-        except UddTimeout:
-            report_fatal('udd-timeout', 'Timeout communicating with UDD')
+        except UddError as e:
+            report_fatal('udd-error', f'Error communicating with UDD: {e}')
             return 1
 
     if not result:

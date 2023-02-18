@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import asyncio
 from functools import partial
 from debmutate.changelog import ChangelogEditor
 from lintian_brush import min_certainty
@@ -19,7 +18,7 @@ certainty = 'certain'
 debbugs = None
 
 
-async def valid_bug(package, bug):
+def valid_bug(package, bug):
     if not net_access_allowed():
         return None
     global debbugs
@@ -27,7 +26,7 @@ async def valid_bug(package, bug):
         from lintian_brush.debbugs import DebBugs
         _debbugs = DebBugs()
         try:
-            await _debbugs.connect()
+            _debbugs.connect()
         except ImportError:
             # No asynpcg?
             return None
@@ -35,12 +34,11 @@ async def valid_bug(package, bug):
             warn('Unable to connect to debbugs: %s' % e)
             return None
         debbugs = _debbugs
-    return await debbugs.check_bug(package, bug)
+    return debbugs.check_bug(package, bug)
 
 
 def check_bug(package, bugno):
-    loop = asyncio.get_event_loop()
-    valid = loop.run_until_complete(valid_bug(package, bugno))
+    valid = valid_bug(package, bugno)
     if valid is not None:
         return (valid, 'certain')
     # Let's assume valid, but downgrade certainty

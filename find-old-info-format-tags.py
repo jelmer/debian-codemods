@@ -5,33 +5,31 @@
 
 import argparse
 
-import psycopg2
-
 from lintian_brush.lintian_overrides import INFO_FIXERS
+from lintian_brush.udd import connect_udd_mirror
 
 parser = argparse.ArgumentParser()
 args = parser.parse_args()
 
-conn = psycopg2.connect(
-    "postgresql://udd-mirror:udd-mirror@udd-mirror.debian.net/udd")
-cursor = conn.cursor()
-cursor.execute(
-    "SELECT package_type, package, package_version, information FROM lintian "
-    "WHERE tag = 'mismatched-override'")
+conn = connect_udd_mirror()
+with conn.cursor() as cursor:
+    cursor.execute(
+        "SELECT package_type, package, package_version, information "
+        "FROM lintian WHERE tag = 'mismatched-override'")
 
-
-tag_count = {}
-for (_pkg_type, _pkg, _version, info) in cursor.fetchall():
-    tag = info.split(' ')[0]
-    tag_count.setdefault(tag, 0)
-    tag_count[tag] += 1
-
+    tag_count = {}
+    for row in cursor:
+        (_pkg_type, _pkg, _version, info) = row
+        tag = info.split(' ')[0]
+        tag_count.setdefault(tag, 0)
+        tag_count[tag] += 1
 
 tags_with_location_info = set()
 
-cursor.execute("SELECT tag FROM lintian WHERE information LIKE '%[%]'")
-for tag, in cursor.fetchall():
-    tags_with_location_info.add(tag)
+with conn.cursor() as cursor:
+    cursor.execute("SELECT tag FROM lintian WHERE information LIKE '%%[%%]'")
+    for tag, in cursor:
+        tags_with_location_info.add(tag)
 
 
 for tag, count in sorted(tag_count.items(), reverse=True, key=lambda k: k[1]):

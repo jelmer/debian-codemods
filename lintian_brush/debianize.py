@@ -22,7 +22,6 @@ __all__ = [
     'debianize',
     ]
 
-import asyncio
 import contextlib
 from dataclasses import dataclass, field
 import errno
@@ -873,12 +872,12 @@ def get_upstream_version(
     return upstream_version, mangled_upstream_version
 
 
-async def find_wnpp_bugs_harder(source_name, upstream_name):
-    wnpp_bugs = await find_wnpp_bugs(source_name)
+def find_wnpp_bugs_harder(source_name, upstream_name):
+    wnpp_bugs = find_wnpp_bugs(source_name)
     if not wnpp_bugs and source_name != upstream_name:
-        wnpp_bugs = await find_wnpp_bugs(upstream_name)
+        wnpp_bugs = find_wnpp_bugs(upstream_name)
     if not wnpp_bugs:
-        wnpp_bugs = await find_archived_wnpp_bugs(source_name)
+        wnpp_bugs = find_archived_wnpp_bugs(source_name)
         if wnpp_bugs:
             logging.warning(
                 "Found archived ITP/RFP bugs for %s: %r",
@@ -1034,7 +1033,8 @@ def debianize(  # noqa: C901
 
             if upstream_source:
                 try:
-                    upstream_vcs_tree, upstream_vcs_subpath = upstream_source.revision_tree(
+                    (upstream_vcs_tree,
+                     upstream_vcs_subpath) = upstream_source.revision_tree(
                         source_name, mangled_upstream_version)
                 except (PackageVersionNotPresent, NoSuchRevision):
                     logging.warning(
@@ -1053,8 +1053,8 @@ def debianize(  # noqa: C901
                         exported_upstream_tree_path, upstream_subpath)
                     if not os.path.isdir(exported_upstream_tree_subpath):
                         raise Exception(
-                            f'subdirectory {upstream_subpath} '
-                            f'does not exist in upstream version {upstream_version}')
+                            f'subdirectory {upstream_subpath} does not '
+                            f'exist in upstream version {upstream_version}')
                     import_metadata_from_path(exported_upstream_tree_subpath)
 
             if (buildsystem_name is None
@@ -1105,9 +1105,8 @@ def debianize(  # noqa: C901
                 raise SourcePackageNameInvalid(source['Source'])
 
             if net_access:
-                wnpp_bugs = asyncio.run(
-                    find_wnpp_bugs_harder(
-                        source['Source'], metadata.get('Name')))
+                wnpp_bugs = find_wnpp_bugs_harder(
+                    source['Source'], metadata.get('Name'))
             else:
                 wnpp_bugs = None
 

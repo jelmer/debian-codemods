@@ -1,10 +1,9 @@
 #!/usr/bin/python3
 
-import asyncio
 import sys
 
 try:
-    import asyncpg  # noqa: F401
+    import psycopg2  # noqa: F401
 except ModuleNotFoundError:
     sys.exit(2)
 
@@ -43,9 +42,9 @@ def get_default_branch(url, branch=None):
     return head[len(b'refs/heads/'):].decode('utf-8')
 
 
-async def find_branch(vcs_type, url):
-    async with VcsWatch() as vcswatch:
-        return await vcswatch.get_branch_from_url(vcs_type, vcs_git)
+def find_branch(vcs_type, url):
+    with VcsWatch() as vcswatch:
+        return vcswatch.get_branch_from_url(vcs_type, vcs_git)
 
 
 with control as updater:
@@ -55,9 +54,8 @@ with control as updater:
         pass
     else:
         repo_url, branch, subpath = split_vcs_url(vcs_git)
-        loop = asyncio.get_event_loop()
         try:
-            new_branch = loop.run_until_complete(find_branch('Git', vcs_git))
+            new_branch = find_branch('Git', vcs_git)
         except KeyError:
             pass
         except VcsWatchError as e:

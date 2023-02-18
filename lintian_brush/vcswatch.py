@@ -28,16 +28,16 @@ class VcsWatch:
     def __init__(self):
         self._conn = None
 
-    async def __aenter__(self):
+    def __aenter__(self):
         from .udd import connect_udd_mirror
-        self._conn = await connect_udd_mirror()
+        self._conn = connect_udd_mirror()
 
-    async def __aexit__(self, exc_type, exc, tb):
+    def __aexit__(self, exc_type, exc, tb):
         if self._conn is None:
             raise RuntimeError('not in context manager')
-        return await self._conn.__aexit__(exc_type, exc, tb)
+        return self._conn.__exit__(exc_type, exc, tb)
 
-    async def get_package(self, name):
+    def get_package(self, name):
         """Get the VCS information for a package.
 
         Args:
@@ -46,29 +46,27 @@ class VcsWatch:
           Tuple with (vcs_type, vcs_url, vcs_browser)
         """
         assert self._conn is not None, "call connect() first"
-        row = await self._conn.fetchrow(
-            """
+        with self._conn.cursor() as cursor:
+            cursor.execute("""
 select vcs, url, browser, status, error from vcswatch
-where source = $1""",
-            name,
-        )
-        if row is None:
-            raise KeyError(name)
-        if row[3] == "ERROR":
-            raise VcsWatchError(row[4])
-        return row[:3]
+where source = %s""", (name, ))
+            row = cursor.fetchone()
+            if row is None:
+                raise KeyError(name)
+            if row[3] == "ERROR":
+                raise VcsWatchError(row[4])
+            return row[:3]
 
-    async def get_branch_from_url(self, vcs, url):
+    def get_branch_from_url(self, vcs, url):
         """Get the branch for a VCS URL."""
         assert self._conn is not None, "call connect() first"
-        row = await self._conn.fetchrow(
-            """
-select branch, status, error from vcswatch where url = $1 and vcs = $2""",
-            url,
-            vcs,
-        )
-        if row is None:
-            raise KeyError(url)
-        if row[1] == "ERROR":
-            raise VcsWatchError(row[2])
-        return row[0]
+        with self._conn.cursor() as cursor:
+            cursor.execute(
+                "select branch, status, error from vcswatch "
+                "where url = %s and vcs = %s", (url, vcs))
+            row = cursor.fetchone()
+            if row is None:
+                raise KeyError(url)
+            if row[1] == "ERROR":
+                raise VcsWatchError(row[2])
+            return row[0]

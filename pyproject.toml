@@ -9,7 +9,7 @@ check_untyped_defs = true
 
 [[tool.mypy.overrides]]
 module = [
-    "asyncpg.*",
+    "psycopg2.*",
     "distro_info.*",
     "decopy.*",
     "gpg.*",

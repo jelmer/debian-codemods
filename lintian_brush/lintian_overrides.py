@@ -137,7 +137,7 @@ def override_exists(
         for override in get_overrides(type=type, package=package))
 
 
-async def get_unused_overrides(
+def get_unused_overrides(
     packages: List[Tuple[str, str]]
 ) -> List[Tuple[str, str, Version, str]]:
     from .udd import connect_udd_mirror
@@ -151,13 +151,13 @@ async def get_unused_overrides(
         )
         args.extend([name, type])
 
-    async with await connect_udd_mirror() as udd:
-        return list(
-            await udd.fetch(
-                """\
+    udd = connect_udd_mirror()
+    with udd.cursor() as cursor:
+        cursor.execute("""\
 select package, package_type, package_version, information
-from lintian where tag = 'unused-override' AND (%s)
-""" % " OR ".join(extra), *args))
+from lintian where tag = 'unused-override' AND ({})
+""".format(" OR ".join(extra), *args))
+        return list(cursor)
 
 
 unused_overrides = None
@@ -196,11 +196,7 @@ def remove_unused(
     def drop_override(path, lineno, override):
         global unused_overrides
         if unused_overrides is None:
-            import asyncio
-
-            loop = asyncio.get_event_loop()
-            unused_overrides = loop.run_until_complete(
-                get_unused_overrides(packages))
+            unused_overrides = get_unused_overrides(packages)
         if (is_unused(override, unused_overrides)
                 and override.tag not in ignore_tags):
             removed.append(override)

@@ -17,7 +17,6 @@
 
 """Support for accessing UDD."""
 
-import asyncio
 import os
 
 
@@ -28,12 +27,12 @@ DEFAULT_UDD_URL = (
 _pool = None
 
 
-async def connect_udd_mirror():
-    import asyncpg
+def connect_udd_mirror():
+    import psycopg2
 
     global _pool
     if not _pool:
-        loop = asyncio.get_event_loop()
         udd_url = os.environ.get('UDD_URL', DEFAULT_UDD_URL)
-        _pool = await asyncpg.create_pool(udd_url, loop=loop)
-    return _pool.acquire()
+        _pool = psycopg2.connect(udd_url)
+        _pool.set_client_encoding('UTF8')
+    return _pool

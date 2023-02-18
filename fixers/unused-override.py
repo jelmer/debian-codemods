@@ -3,7 +3,7 @@
 import sys
 
 try:
-    import asyncpg  # noqa: F401
+    import psycopg2  # noqa: F401
 except ModuleNotFoundError:
     sys.exit(2)
 

@@ -26,13 +26,12 @@ class DebBugs:
     def __init__(self):
         self._conn = None
 
-    async def connect(self):
+    def connect(self):
         from .udd import connect_udd_mirror
 
-        pool = await connect_udd_mirror()
-        self._conn = await pool.__aenter__()
+        self._conn = connect_udd_mirror()
 
-    async def check_bug(self, package, bugid):
+    def check_bug(self, package, bugid):
         """Check that a bug belongs to a particular package.
 
         Args:
@@ -42,41 +41,39 @@ class DebBugs:
           Boolean
         """
         assert self._conn is not None, "call connect() first"
-        row = await self._conn.fetchrow(
-            """
-select package from bugs where id = $1""",
-            bugid,
-        )
-        if row is None:
-            return False
-        return row[0] == package
+        with self._conn.cursor() as cursor:
+            cursor.execute("select package from bugs where id = %s", (bugid, ))
+            row = cursor.fetchone()
+            if row is None:
+                return False
+            return row[0] == package
 
 
-async def find_archived_wnpp_bugs(source_name):
+def find_archived_wnpp_bugs(source_name):
     try:
         from .udd import connect_udd_mirror
     except ModuleNotFoundError:
-        logging.warning("asyncpg not available, unable to find wnpp bugs.")
+        logging.warning("psycopg2 not available, unable to find wnpp bugs.")
         return []
-    async with await connect_udd_mirror() as conn:
-        return [
-            (row[0], row[1])
-            for row in await conn.fetch("""\
+    conn = connect_udd_mirror()
+    with conn.cursor() as cursor:
+        cursor.execute("""
 select id, substring(title, 0, 3) from archived_bugs where package = 'wnpp' and
-title like 'ITP: ' || $1 || ' -- %' OR
-title like 'RFP: ' || $1 || ' -- %'
-""", source_name)]
+title like 'ITP: ' || %s || ' -- %%' OR
+title like 'RFP: ' || %s || ' -- %%'
+""", (source_name, source_name))
+        return [(row[0], row[1]) for row in cursor]
 
 
-async def find_wnpp_bugs(source_name):
+def find_wnpp_bugs(source_name):
     try:
         from .udd import connect_udd_mirror
     except ModuleNotFoundError:
-        logging.warning("asyncpg not available, unable to find wnpp bugs.")
+        logging.warning("psycopg2 not available, unable to find wnpp bugs.")
         return []
-    async with await connect_udd_mirror() as conn:
-        return [
-            (row[0], row['type'])
-            for row in await conn.fetch("""\
-select id, type from wnpp where source = $1 and type in ('ITP', 'RFP')
-""", source_name)]
+    conn = connect_udd_mirror()
+    with conn.cursor() as cursor:
+        cursor.execute("""
+select id, type from wnpp where source = %s and type in ('ITP', 'RFP')
+""", (source_name, ))
+        return [(row[0], row[1]) for row in cursor]

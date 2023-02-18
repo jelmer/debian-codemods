@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import asyncio
 from contextlib import suppress
 import re
 import socket
@@ -53,12 +52,12 @@ def verify_salsa_repository(url):
     return response.status == 200
 
 
-async def retrieve_vcswatch_urls(package):
+def retrieve_vcswatch_urls(package):
     try:
-        async with VcsWatch() as vcs_watch:
-            return await vcs_watch.get_package(package)
+        with VcsWatch() as vcs_watch:
+            return vcs_watch.get_package(package)
     except ImportError as exc:
-        # No asyncpg, nothing
+        # No psycopg2, nothing
         raise KeyError(package) from exc
 
 
@@ -92,10 +91,8 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
 
     # If possible, we use vcswatch to find the VCS repository URL
     if net_access:
-        loop = asyncio.get_event_loop()
         try:
-            (vcs_type, vcs_url, vcs_browser) = loop.run_until_complete(
-                retrieve_vcswatch_urls(package))
+            (vcs_type, vcs_url, vcs_browser) = retrieve_vcswatch_urls(package)
         except VcsWatchError as e:
             warn('vcswatch URL unusable: %s' % e.args[0])
         except KeyError:

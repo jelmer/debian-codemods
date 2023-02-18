@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import asyncio
 from typing import Optional
 from debmutate.changelog import ChangelogEditor, Version
 import sys
@@ -21,14 +20,11 @@ with ChangelogEditor() as editor:
     if editor.changelog[-1].bugs_closed:
         sys.exit(0)
 
-    loop = asyncio.get_event_loop()
-    wnpp_bugs = loop.run_until_complete(
-        find_wnpp_bugs(editor.changelog[-1].package))
+    wnpp_bugs = find_wnpp_bugs(editor.changelog[-1].package)
     if wnpp_bugs:
         certainty = 'certain'
     else:
-        wnpp_bugs = loop.run_until_complete(
-            find_archived_wnpp_bugs(editor.changelog[-1].package))
+        wnpp_bugs = find_archived_wnpp_bugs(editor.changelog[-1].package)
         certainty = 'confident'
 
     if not wnpp_bugs:

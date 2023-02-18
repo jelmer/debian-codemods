@@ -27,13 +27,13 @@ def update_debian(versions, key_packages):
     conn = psycopg2.connect(
         os.environ.get('UDD_URL', DEFAULT_UDD_URL))
 
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT source, release, version from sources WHERE source IN %s",
-        (key_packages, ))
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT source, release, version from sources WHERE source IN %s",
+            (key_packages, ))
 
-    for row in cursor.fetchall():
-        versions[row[0]][row[1]] = row[2]
+        for row in cursor:
+            versions[row[0]][row[1]] = row[2]
 
 
 def update_ubuntu(versions, key_packages):
