@@ -1126,10 +1126,11 @@ def debianize(  # noqa: C901
                         control.binaries, version)):
                 logging.warning(
                     'Debianized package (binary packages: %r), version %s '
-                    'did not satisfy requirement %r. '
-                    'Wrong repository (%s)?',
+                    'did not satisfy requirement %r. ',
                     [binary['Package'] for binary in control.binaries],
-                    version, requirement, upstream_branch)
+                    version, requirement)
+                if upstream_branch:
+                    logging.info('Wrong repository (%s)?', upstream_branch)
                 raise DebianizedPackageRequirementMismatch(
                     requirement, control, version,
                     upstream_branch)
@@ -1825,13 +1826,16 @@ def main(argv=None):  # noqa: C901
                 logging.fatal('Error during %s: %s', phase, e.description)
                 return 1
             except DebianizedPackageRequirementMismatch as e:
+                if upstream_branch:
+                    hint = 'Wrong repository (%s)?' % e.upstream_branch
+                else:
+                    hint = None
                 report_fatal(
                     'package-requirements-mismatch',
                     'Debianized package (binary packages: %r), version %s '
-                    'did not satisfy requirement %r. '
-                    'Wrong repository (%s)?' % (
+                    'did not satisfy requirement %r. ' % (
                         [binary['Package'] for binary in e.control.binaries],
-                        e.version, e.requirement, e.upstream_branch))
+                        e.version, e.requirement), hint=hint)
                 return 1
             logging.info('Built %r.', changes_names)
             if args.install:
