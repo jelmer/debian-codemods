@@ -712,7 +712,7 @@ def process_cargo(es, session, wt, subpath, debian_path, upstream_version,
     reset_tree(wt, wt.basis_tree(), subpath)
     from debmutate.debcargo import (
         DebcargoControlShimEditor, unmangle_debcargo_version)
-    crate = metadata.get('X-Cargo-Crate')
+    crate = metadata.get('Cargo-Crate')
     if crate is None:
         crate = metadata['Name'].replace('_', '-')
     if not wt.has_filename(debian_path):
@@ -854,10 +854,10 @@ def get_upstream_version(
     upstream_revision = upstream_source.version_as_revision(
         metadata.get("Name"), mangled_upstream_version)
 
-    if upstream_version is None and "X-Version" in metadata:
+    if upstream_version is None and "Version" in metadata:
         # They haven't done any releases yet. Assume we're ahead of
         # the next announced release?
-        next_upstream_version = debian_upstream_version(metadata["X-Version"])
+        next_upstream_version = debian_upstream_version(metadata["Version"])
         upstream_version = upstream_version_add_revision(
             upstream_source.upstream_branch, next_upstream_version,
             upstream_revision, "~"
@@ -1559,6 +1559,9 @@ def main(argv=None):  # noqa: C901
     else:
         loglevel = logging.INFO
     logging.basicConfig(level=loglevel, format='%(message)s')
+
+    # pysimplesoap is quite verbose
+    logging.getLogger('pysimplesoap.client').setLevel(logging.ERROR)
 
     logging.warning(
         'debianize is experimental and often generates packaging '

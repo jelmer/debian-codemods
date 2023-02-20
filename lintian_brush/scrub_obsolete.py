@@ -200,9 +200,9 @@ def _package_version(package: str, release: str) -> Optional[Version]:
             "SELECT version FROM packages "
             "WHERE package = %s AND release = %s",
             (package, release))
-        version = cursor.fetchone()[0]
-        if version is not None:
-            return Version(version)
+        row = cursor.fetchone()
+        if row is not None:
+            return Version(row[0])
         return None
 
 
@@ -216,9 +216,9 @@ def _package_provides(
             "SELECT provides FROM packages "
             "WHERE package = %s AND release = %s",
             (package, release))
-        provides = cursor.fetchone()[0]
-        if provides is not None:
-            return [r for sublist in parse_relations(provides)
+        row = cursor.fetchone()
+        if row is not None:
+            return [r for sublist in parse_relations(row[0])
                     for r in sublist[1]]
         return None
 
@@ -233,7 +233,10 @@ def _package_essential(package: str, release: str) -> bool:
             "WHERE package = %s AND release = %s",
             (package, release))
 
-        return cursor.fetchone()[0]
+        row = cursor.fetchone()
+        if row is not None:
+            return row[0]
+        return None
 
 
 def _package_build_essential(package: str, release: str) -> bool:
@@ -244,10 +247,10 @@ def _package_build_essential(package: str, release: str) -> bool:
         cursor.execute(
             "select depends from packages where package = %s and release = %s",
             'build-essential', (release, ))
-        depends = cursor.fetchone()[0]
+        row = cursor.fetchone()
 
         build_essential = set()
-        for _ws1, rel, _ws2 in parse_relations(depends):
+        for _ws1, rel, _ws2 in parse_relations(row[0] if row else ''):
             build_essential.update([r.name for r in rel])
         return package in build_essential
 
