@@ -246,7 +246,7 @@ def _package_build_essential(package: str, release: str) -> bool:
     with conn.cursor() as cursor:
         cursor.execute(
             "select depends from packages where package = %s and release = %s"
-            'build-essential', (release, ))
+            ('build-essential', release))
         row = cursor.fetchone()
 
         build_essential = set()
