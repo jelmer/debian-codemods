@@ -245,7 +245,7 @@ def _package_build_essential(package: str, release: str) -> bool:
     conn = connect_udd_mirror()
     with conn.cursor() as cursor:
         cursor.execute(
-            "select depends from packages where package = %s and release = %s",
+            "select depends from packages where package = %s and release = %s"
             'build-essential', (release, ))
         row = cursor.fetchone()
 
