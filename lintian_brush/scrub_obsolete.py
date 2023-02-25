@@ -223,7 +223,7 @@ def _package_provides(
         return None
 
 
-def _package_essential(package: str, release: str) -> bool:
+def _package_essential(package: str, release: str) -> Optional[bool]:
     from .udd import connect_udd_mirror
 
     conn = connect_udd_mirror()
@@ -285,7 +285,7 @@ class PackageChecker:
     def package_provides(self, package):
         return _package_provides(package, self.release)
 
-    def is_essential(self, package: str) -> bool:
+    def is_essential(self, package: str) -> Optional[bool]:
         if self.build and _package_build_essential(package, self.release):
             return True
         return _package_essential(package, self.release)

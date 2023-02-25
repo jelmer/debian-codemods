@@ -55,7 +55,7 @@ from breezy.errors import (
     NoSuchRevision,
 )
 from breezy.commit import NullCommitReporter, PointlessCommit
-from breezy.revision import NULL_REVISION
+from breezy.revision import NULL_REVISION, RevisionID
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 
@@ -114,8 +114,10 @@ from breezy.plugins.debian.merge_upstream import (
     get_existing_imported_upstream_revids,
     )
 from breezy.plugins.debian.import_dsc import UpstreamAlreadyImported
-from breezy.plugins.debian.upstream import PackageVersionNotPresent
-from breezy.plugins.debian.upstream.pristinetar import get_pristine_tar_source
+from breezy.plugins.debian.upstream import (
+    PackageVersionNotPresent, UpstreamSource)
+from breezy.plugins.debian.upstream.pristinetar import (
+    get_pristine_tar_source, BasePristineTarSource)
 from breezy.plugins.debian.upstream.branch import (
     upstream_version_add_revision,
     UpstreamBranchSource,
@@ -324,7 +326,9 @@ def default_create_dist(
 
 def import_upstream_version_from_dist(
         wt, subpath, upstream_source, source_name, upstream_version,
-        session):
+        session: Session) -> Tuple[
+            Dict[Optional[str], Tuple[RevisionID, str]],
+            Dict[Optional[str], RevisionID], str]:
     orig_dir = os.path.abspath(default_orig_dir)
 
     tag_names = {}
@@ -359,8 +363,8 @@ def import_upstream_version_from_dist(
                 upstream_source, source_name, upstream_version)
         pristine_revids = {}
         for (component, tag_name, revid,
-             _pristine_tar_imported, _subpath) in imported_revids:
-            pristine_revids[component] = revid
+             _pristine_tar_imported, subpath) in imported_revids:
+            pristine_revids[component] = (revid, subpath)
             tag_names[component] = tag_name
 
     upstream_branch_name = "upstream"
@@ -784,7 +788,7 @@ class DebianizeResult:
     """Debianize result."""
 
     upstream_branch_name: Optional[str] = None
-    tag_names: Dict[Optional[str], str] = field(default_factory=dict)
+    tag_names: Dict[Optional[str], RevisionID] = field(default_factory=dict)
     upstream_version: Optional[str] = None
     wnpp_bugs: List[Tuple[int, str]] = field(default_factory=list)
     vcs_url: Optional[str] = None
@@ -799,8 +803,11 @@ def import_build_deps(source, build_deps):
 
 
 def import_upstream_dist(
-        pristine_tar_source, wt, upstream_source, subpath, source_name,
-        upstream_version, session):
+        pristine_tar_source: BasePristineTarSource, wt: WorkingTree,
+        upstream_source: UpstreamSource, subpath: str, source_name: str,
+        upstream_version: str, session: Session
+        ) -> Tuple[Tuple[RevisionID, str], Optional[str],
+                   Dict[Optional[str], RevisionID]]:
     if pristine_tar_source.has_version(
             source_name, upstream_version, try_hard=False):
         logging.warning(
@@ -809,7 +816,7 @@ def import_upstream_dist(
         pristine_revids = pristine_tar_source\
             .version_as_revisions(source_name, upstream_version)
         upstream_branch_name = None
-        tag_names = {}
+        tag_names: Dict[Optional[str], RevisionID] = {}
     else:
         (pristine_revids, tag_names,
          upstream_branch_name) = import_upstream_version_from_dist(
@@ -818,6 +825,8 @@ def import_upstream_dist(
             source_name, upstream_version,
             session=session)
 
+    assert (isinstance(pristine_revids[None], tuple)
+            and len(pristine_revids[None])), repr(pristine_revids[None])
     return pristine_revids[None], upstream_branch_name, tag_names
 
 
@@ -1002,9 +1011,10 @@ def debianize(  # noqa: C901
                     "Using upstream version %s", mangled_upstream_version)
 
                 pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
-                ((upstream_dist_revid, upstream_dist_subpath), result.upstream_branch_name,
+                ((upstream_dist_revid, upstream_dist_subpath),
+                 result.upstream_branch_name,
                  result.tag_names) = import_upstream_dist(
-                    pristine_tar_source, wt, upstream_source, upstream_subpath,
+                    pristine_tar_source, wt, upstream_source, subpath,
                     source_name, mangled_upstream_version, session)
 
                 if wt.branch.last_revision() != upstream_dist_revid:
@@ -1014,7 +1024,8 @@ def debianize(  # noqa: C901
 
                     # Gather metadata items again now that we're at the correct
                     # revision
-                    import_metadata_from_path(wt.abspath(upstream_dist_subpath))
+                    import_metadata_from_path(
+                        wt.abspath(upstream_dist_subpath))
 
                 if wt.has_filename(debian_path) and force_new_directory:
                     shutil.rmtree(wt.abspath(debian_path))
@@ -1047,6 +1058,7 @@ def debianize(  # noqa: C901
                     # TODO(jelmer): Don't export, just access from memory.
                     exported_upstream_tree_path = es.enter_context(
                         TemporaryDirectory())
+                    assert isinstance(upstream_subpath, str)
                     dupe_vcs_tree(
                         upstream_vcs_tree, exported_upstream_tree_path)
                     exported_upstream_tree_subpath = os.path.join(
