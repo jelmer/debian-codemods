@@ -1002,7 +1002,7 @@ def debianize(  # noqa: C901
                     "Using upstream version %s", mangled_upstream_version)
 
                 pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
-                (upstream_dist_revid, result.upstream_branch_name,
+                ((upstream_dist_revid, upstream_dist_subpath), result.upstream_branch_name,
                  result.tag_names) = import_upstream_dist(
                     pristine_tar_source, wt, upstream_source, upstream_subpath,
                     source_name, mangled_upstream_version, session)
@@ -1014,7 +1014,7 @@ def debianize(  # noqa: C901
 
                     # Gather metadata items again now that we're at the correct
                     # revision
-                    import_metadata_from_path(wt.abspath(subpath))
+                    import_metadata_from_path(wt.abspath(upstream_dist_subpath))
 
                 if wt.has_filename(debian_path) and force_new_directory:
                     shutil.rmtree(wt.abspath(debian_path))
