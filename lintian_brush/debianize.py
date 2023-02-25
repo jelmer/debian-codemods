@@ -359,7 +359,7 @@ def import_upstream_version_from_dist(
                 upstream_source, source_name, upstream_version)
         pristine_revids = {}
         for (component, tag_name, revid,
-             _pristine_tar_imported) in imported_revids:
+             _pristine_tar_imported, _subpath) in imported_revids:
             pristine_revids[component] = revid
             tag_names[component] = tag_name
 
