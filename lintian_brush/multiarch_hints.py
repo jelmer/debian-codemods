@@ -113,7 +113,6 @@ def multiarch_hints_by_source(hints) -> Dict[str,  List[Any]]:
     return ret
 
 
-@contextlib.contextmanager
 def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
     """Load multi-arch hints from a URL, but use cached version if available.
     """
@@ -136,8 +135,7 @@ def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
     try:
         with download_multiarch_hints(url=url, since=last_modified) as f:
             if local_hints_path is None:
-                yield f
-                return
+                return f
             logging.info("Downloading new version of multi-arch hints.")
             with open(local_hints_path, "wb") as c:
                 c.writelines(f)
@@ -147,7 +145,7 @@ def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
     except URLError:
         raise
     assert local_hints_path is not None
-    yield open(local_hints_path, "rb")  # noqa: SIM115
+    return open(local_hints_path, "rb")  # noqa: SIM115
 
 
 @contextlib.contextmanager
