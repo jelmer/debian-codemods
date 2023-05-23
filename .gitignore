@@ -9,3 +9,4 @@ __pycache__
 lintian_brush.egg-info/
 .testrepository/
 .mypy_cache
+target
