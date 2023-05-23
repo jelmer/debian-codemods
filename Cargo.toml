@@ -1,0 +1,12 @@
+[package]
+name = "lintian-brush"
+version = "0.148.0"
+authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
+edition = "2021"
+license = "GPL-2.0+"
+description = "Automatic lintian issue fixer"
+repository = "https://salsa.debian.org/jelmer/lintian-brush.git"
+homepage = "https://salsa.debian.org/jelmer/lintian-brush"
+
+[dependencies]
+pyo3 = { version = "0.18", features=["auto-initialize"]}
