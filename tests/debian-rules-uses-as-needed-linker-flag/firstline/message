@@ -1,0 +1,2 @@
+Avoid explicitly specifying -Wl,--as-needed linker flag.
+Fixed-Lintian-Tags: debian-rules-uses-as-needed-linker-flag
