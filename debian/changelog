@@ -4,6 +4,8 @@ lintian-brush (0.148) UNRELEASED; urgency=medium
   * Maintain an explicit list of fields to add to
     debian/upstream/metadata.
   * Migrate from asyncpg to psycopg2.
+  * Bump debmutate to 0.66, which fixes shebang-stripping bug - and add
+    test.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 03 Feb 2023 17:30:14 +0000
 
