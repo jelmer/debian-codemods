@@ -35,7 +35,6 @@ from breezy.tests import (
 )
 
 from lintian_brush import (
-    Fixer,
     FixerFailed,
     FixerResult,
     FixerScriptFailed,
@@ -111,7 +110,11 @@ class AvailableLintianFixersTest(TestCaseWithTransport):
         )
 
 
-class DummyFixer(Fixer):
+class DummyFixer:
+    def __init__(self, name, tags):
+        self.name = name
+        self.lintian_tags = tags
+
     def run(self, basedir, package, *args, **kwargs):
         with open(os.path.join(basedir, "debian/control"), "a") as f:
             f.write("a new line\n")
@@ -120,7 +123,12 @@ class DummyFixer(Fixer):
         )
 
 
-class FailingFixer(Fixer):
+class FailingFixer:
+
+    def __init__(self, name, tags):
+        self.name = name
+        self.lintian_tags = tags
+
     def run(self, basedir, package, *args, **kwargs):
         with open(os.path.join(basedir, "debian/foo"), "w") as f:
             f.write("blah")
@@ -185,7 +193,11 @@ Arch: all
     def test_simple_modify_too_uncertain(self):
         tree = self.make_test_tree()
 
-        class UncertainFixer(Fixer):
+        class UncertainFixer:
+            def __init__(self, name, tags):
+                self.name = name
+                self.lintian_tags = tags
+
             def run(self, basedir, package, *args, **kwargs):
                 with open(os.path.join(basedir, "debian/somefile"), "w") as f:
                     f.write("test")
@@ -205,7 +217,11 @@ Arch: all
     def test_simple_modify_acceptably_uncertain(self):
         tree = self.make_test_tree()
 
-        class UncertainFixer(Fixer):
+        class UncertainFixer:
+            def __init__(self, name, tags):
+                self.name = name
+                self.lintian_tags = tags
+
             def run(self, basedir, package, *args, **kwargs):
                 with open(os.path.join(basedir, "debian/somefile"), "w") as f:
                     f.write("test")
@@ -223,7 +239,11 @@ Arch: all
     def test_new_file(self):
         tree = self.make_test_tree()
 
-        class NewFileFixer(Fixer):
+        class NewFileFixer:
+            def __init__(self, name, tags):
+                self.name = name
+                self.lintian_tags = tags
+
             def run(self, basedir, package, *args, **kwargs):
                 with open(os.path.join(basedir, "debian/somefile"), "w") as f:
                     f.write("test")
@@ -257,7 +277,11 @@ Arch: all
     def test_rename_file(self):
         tree = self.make_test_tree()
 
-        class RenameFileFixer(Fixer):
+        class RenameFileFixer:
+            def __init__(self, name, tags):
+                self.name = name
+                self.lintian_tags = tags
+
             def run(self, basedir, package, *args, **kwargs):
                 os.rename(
                     os.path.join(basedir, "debian/control"),
@@ -292,7 +316,11 @@ Arch: all
     def test_empty_change(self):
         tree = self.make_test_tree()
 
-        class EmptyFixer(Fixer):
+        class EmptyFixer:
+            def __init__(self, name, tags):
+                self.name = name
+                self.lintian_tags = tags
+
             def run(self, basedir, package, *args, **kwargs):
                 return FixerResult("I didn't actually change anything.")
 
@@ -325,7 +353,11 @@ Arch: all
     def test_upstream_change(self):
         tree = self.make_test_tree(version="0.1-1")
 
-        class NewFileFixer(Fixer):
+        class NewFileFixer:
+            def __init__(self, name, tags):
+                self.name = name
+                self.lintian_tags = tags
+
             def run(self, basedir, package, *args, **kwargs):
                 with open(os.path.join(basedir, "configure.ac"), "w") as f:
                     f.write("AC_INIT(foo, bar)\n")
@@ -392,7 +424,11 @@ Arch: all
         ])
         tree.commit("Add patches")
 
-        class NewFileFixer(Fixer):
+        class NewFileFixer:
+            def __init__(self, name, tags):
+                self.name = name
+                self.lintian_tags = tags
+
             def run(self, basedir, package, *args, **kwargs):
                 with open(os.path.join(basedir, "configure.ac"), "w") as f:
                     f.write("AC_INIT(foo, bar)\n")

@@ -1,5 +1,12 @@
 VERSION=$(shell dpkg-parsechangelog | grep Version: | cut -d " " -f 2)
 
+default: check
+
+.PHONY: build
+
+build:
+	./setup.py build_ext -i
+
 check:: style testsuite tag-status
 
 FIXERS = $(patsubst fixers/%.sh,%,$(wildcard fixers/*.sh)) $(patsubst fixers/%.py,%,$(wildcard fixers/*.py))
@@ -18,10 +25,10 @@ typing::
 tag-status::
 	python3 tag-status.py --check
 
-testsuite::
+testsuite:: build
 	python3 -m unittest lintian_brush.tests.test_suite
 
-testsuite-core:
+testsuite-core: build
 	python3 -m unittest lintian_brush.tests.core_test_suite
 
 README.md::

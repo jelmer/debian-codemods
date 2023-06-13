@@ -1,0 +1,16 @@
+[package]
+name = "lintian-brush-py"
+version = "0.0.0"
+authors = ["Jelmer Vernooĳ <jelmer@jelmer.uk>"]
+edition = "2018"
+license = "GPL-3.0-or-later"
+repository = "https://salsa.debian.org/jelmer/lintian-brush"
+homepage = "https://salsa.debian.org/jelmer/lintian-brush"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = ">=0.14", features = ["extension-module"] }
+lintian-brush = { path = ".." }
+serde_json = "1"

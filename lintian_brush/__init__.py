@@ -19,22 +19,16 @@
 
 from contextlib import ExitStack
 from datetime import datetime
-import errno
-import io
 import itertools
 import logging
 import os
 import re
-import subprocess
 import sys
-import tempfile
 import time
-import traceback
 from typing import (
     Optional,
     List,
     Sequence,
-    Iterator,
     Iterable,
     Tuple,
     Union,
@@ -56,6 +50,8 @@ from breezy.workspace import reset_tree, check_clean_tree
 
 from debmutate.reformatting import FormattingUnpreservable
 
+from . import _lintian_brush_rs
+
 
 __version__ = (0, 148)
 version_string = ".".join(map(str, __version__))
@@ -65,6 +61,12 @@ USER_AGENT = "lintian-brush/" + version_string
 # Too aggressive?
 DEFAULT_URLLIB_TIMEOUT = 3
 logger = logging.getLogger(__name__)
+
+
+LintianIssue = _lintian_brush_rs.LintianIssue
+FixerResult = _lintian_brush_rs.FixerResult
+UnsupportedCertainty = _lintian_brush_rs.UnsupportedCertainty
+read_desc_file = _lintian_brush_rs.read_desc_file
 
 
 class NoChanges(Exception):
@@ -94,10 +96,6 @@ class FixerFailed(Exception):
         if not isinstance(other, self.__class__):
             return False
         return self.args == other.args
-
-
-class UnsupportedCertainty(Exception):
-    """Unsupported certainty."""
 
 
 class FixerScriptFailed(FixerFailed):
@@ -140,384 +138,11 @@ class NotDebianPackage(Exception):
         super().__init__(tree.abspath(path))
 
 
-class FixerResult:
-    """Result of a fixer run."""
-
-    def __init__(
-        self,
-        description,
-        fixed_lintian_tags=None,
-        certainty=None,
-        patch_name=None,
-        revision_id=None,
-        fixed_lintian_issues=None,
-        overridden_lintian_issues=None,
-    ):
-        self.description = description
-        self.fixed_lintian_issues = fixed_lintian_issues or []
-        if fixed_lintian_tags is None:
-            fixed_lintian_tags = []
-        if fixed_lintian_tags:
-            self.fixed_lintian_issues.extend(
-                [LintianIssue(tag=tag) for tag in fixed_lintian_tags])
-        self.overridden_lintian_issues = overridden_lintian_issues or []
-        self.certainty = certainty
-        self.patch_name = patch_name
-        self.revision_id = revision_id
-
-    @property
-    def fixed_lintian_tags(self):
-        return [issue.tag for issue in self.fixed_lintian_issues]
-
-    def __repr__(self):
-        return (
-            "%s(%r, fixed_lintian_issues=%r, "
-            "overridden_lintian_issues=%r, certainty=%r, patch_name=%r, "
-            "revision_id=%r)"
-        ) % (
-            self.__class__.__name__,
-            self.description,
-            self.fixed_lintian_issues,
-            self.overridden_lintian_issues,
-            self.certainty,
-            self.patch_name,
-            self.revision_id,
-        )
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return False
-        return (
-            (self.description == other.description)
-            and (self.fixed_lintian_issues == other.fixed_lintian_issues)
-            and (self.overridden_lintian_issues
-                 == other.overridden_lintian_issues)
-            and (self.certainty == other.certainty)
-            and (self.patch_name == other.patch_name)
-            and (self.revision_id == other.revision_id)
-        )
-
-
-class Fixer:
-    """A Fixer script.
-
-    The `lintian_tags` attribute contains the name of the lintian tags this
-    fixer addresses.
-    """
-
-    def __init__(self, name: str, lintian_tags: Optional[List[str]] = None):
-        self.name = name
-        self.lintian_tags = lintian_tags or []
-
-    def run(
-        self,
-        basedir,
-        package,
-        current_version,
-        compat_release,
-        minimum_certainty=None,
-        trust_package=False,
-        allow_reformatting=False,
-        net_access=True,
-        opinionated=False,
-        diligence=0,
-    ):
-        """Apply this fixer script.
-
-        Args:
-          basedir: Directory in which to run
-          package: Name of the source package
-          current_version: The version of the package that is being created or
-            updated
-          compat_release: Compatibility level (a Debian release name)
-          trust_package: Whether to run code from the package
-          allow_reformatting: Allow reformatting of files that are being
-            changed
-          opinionated: Whether to be opinionated
-          diligence: Level of diligence
-        Returns:
-          A FixerResult object
-        """
-        raise NotImplementedError(self.run)
-
-
-class LintianIssue:
-
-    def __init__(
-            self,
-            tag: str,
-            package: Optional[str] = None,
-            package_type: Optional[str] = None,
-            info: Optional[List[str]] = None):
-        self.package = package
-        self.package_type = package_type
-        self.tag = tag
-        self.info = info
-
-    def __eq__(self, other):
-        return isinstance(self, type(other)) and (
-            self.package == other.package and
-            self.package_type == other.package_type and
-            self.tag == other.tag and
-            self.info == other.info)
-
-    def json(self):
-        return {
-            "tag": self.tag,
-            "info": self.info,
-            "package": self.package,
-            "package_type": self.package_type,
-        }
-
-    @classmethod
-    def from_str(cls, text):
-        try:
-            (before, after) = text.strip().split(':', 1)
-        except ValueError:
-            package_type = package = None
-            after = text
-        else:
-            try:
-                (package_type, package) = before.strip().split(' ')
-            except ValueError:
-                package = before
-                package_type = None
-        parts = after.strip().split(' ')
-        return cls(
-            package=package,
-            package_type=package_type,
-            tag=parts[0],
-            info=parts[1:])
-
-
-def parse_script_fixer_output(text):
-    """Parse the output from a script fixer."""
-    description = []
-    overridden_issues = []
-    fixed_issues = []
-    fixed_tags = []
-    certainty = None
-    patch_name = None
-    lines = text.splitlines()
-    i = 0
-    while i < len(lines):
-        # TODO(jelmer): Do this in a slightly less hackish manner
-        try:
-            (key, value) = lines[i].split(":", 1)
-        except ValueError:
-            description.append(lines[i])
-        else:
-            if key == "Fixed-Lintian-Tags":
-                fixed_tags.extend(
-                    [tag.strip() for tag in value.strip().split(",")])
-            elif key == "Fixed-Lintian-Issues":
-                i += 1
-                while i < len(lines) and lines[i].startswith(' '):
-                    fixed_issues.append(LintianIssue.from_str(lines[i][1:]))
-                    i += 1
-                continue
-            elif key == "Overridden-Lintian-Issues":
-                i += 1
-                while i < len(lines) and lines[i].startswith(' '):
-                    overridden_issues.append(
-                        LintianIssue.from_str(lines[i][1:]))
-                    i += 1
-                continue
-            elif key == "Certainty":
-                certainty = value.strip()
-            elif key == "Patch-Name":
-                patch_name = value.strip()
-            else:
-                description.append(lines[i])
-        i += 1
-    if certainty not in SUPPORTED_CERTAINTIES:
-        raise UnsupportedCertainty(certainty)
-    return FixerResult(
-        "\n".join(description), fixed_tags,
-        certainty, patch_name, revision_id=None,
-        fixed_lintian_issues=fixed_issues,
-        overridden_lintian_issues=overridden_issues)
-
-
-def determine_env(
-    package,
-    current_version,
-    compat_release,
-    minimum_certainty,
-    trust_package,
-    allow_reformatting,
-    net_access,
-    opinionated,
-    diligence,
-):
-    env = dict(os.environ.items())
-    env["DEB_SOURCE"] = package
-    env["CURRENT_VERSION"] = str(current_version)
-    env["COMPAT_RELEASE"] = compat_release
-    env["MINIMUM_CERTAINTY"] = minimum_certainty
-    env["TRUST_PACKAGE"] = "true" if trust_package else "false"
-    env["REFORMATTING"] = "allow" if allow_reformatting else "disallow"
-    env["NET_ACCESS"] = "allow" if net_access else "disallow"
-    env["OPINIONATED"] = "yes" if opinionated else "no"
-    env["DILIGENCE"] = str(diligence)
-    return env
-
-
-class PythonScriptFixer(Fixer):
-    """A fixer that is implemented as a python script.
-
-    This gets used just for Python scripts, and significantly speeds
-    things up because it prevents starting a new Python interpreter
-    for every fixer.
-    """
-
-    def __init__(self, name, lintian_tags, script_path):
-        super().__init__(name, lintian_tags)
-        self.script_path = script_path
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}({self.name!r})>"
-
-    def __str__(self):
-        return self.name
-
-    def run(
-        self,
-        basedir,
-        package,
-        current_version,
-        compat_release,
-        minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
-        trust_package=False,
-        allow_reformatting=False,
-        net_access=True,
-        opinionated=False,
-        diligence=0,
-    ):
-        env = determine_env(
-            package=package,
-            current_version=current_version,
-            compat_release=compat_release,
-            minimum_certainty=minimum_certainty,
-            trust_package=trust_package,
-            allow_reformatting=allow_reformatting,
-            net_access=net_access,
-            opinionated=opinionated,
-            diligence=diligence,
-        )
-        try:
-            old_env = dict(os.environ)
-            old_stderr = sys.stderr
-            old_stdout = sys.stdout
-            sys.stderr = io.StringIO()
-            sys.stdout = io.StringIO()
-            os.environ.update(env)
-            try:
-                old_cwd = os.getcwd()
-            except FileNotFoundError:
-                old_cwd = None
-            try:
-                os.chdir(basedir)
-                global_vars = {
-                    "__file__": self.script_path,
-                    "__name__": "__main__",
-                }
-                with open(self.script_path) as f:
-                    code = compile(f.read(), self.script_path, "exec")
-                    exec(code, global_vars)
-            except FormattingUnpreservable:
-                raise
-            except SystemExit as e:
-                retcode = e.code
-            except BaseException as e:
-                traceback.print_exception(
-                    type(e), e, e.__traceback__, file=sys.stderr)
-                raise FixerScriptFailed(
-                    self.script_path, 1, sys.stderr.getvalue()) from e
-            else:
-                retcode = 0
-            description = sys.stdout.getvalue()
-            err = sys.stderr.getvalue()
-        finally:
-            os.environ.clear()
-            os.environ.update(old_env)
-            sys.stderr = old_stderr
-            sys.stdout = old_stdout
-            if old_cwd is not None:
-                os.chdir(old_cwd)
-            from . import fixer
-
-            fixer.reset()
-
-        if retcode == 2:
-            raise NoChanges(self)
-        if retcode != 0:
-            raise FixerScriptFailed(self.script_path, retcode, err)
-
-        return parse_script_fixer_output(description)
-
-
-class ScriptFixer(Fixer):
-    """A fixer that is implemented as a shell/python/etc script."""
-
-    def __init__(self, name: str, lintian_tags: List[str], script_path: str):
-        super().__init__(name, lintian_tags)
-        self.script_path = script_path
-
-    def __repr__(self):
-        return "<ScriptFixer(%r)>" % self.name
-
-    def __str__(self):
-        return self.name
-
-    def run(
-        self,
-        basedir: str,
-        package: str,
-        current_version: Version,
-        compat_release: str,
-        minimum_certainty: str = DEFAULT_MINIMUM_CERTAINTY,
-        trust_package: bool = False,
-        allow_reformatting: bool = False,
-        net_access: bool = True,
-        opinionated: bool = False,
-        diligence: int = 0,
-    ):
-        env = determine_env(
-            package=package,
-            current_version=current_version,
-            compat_release=compat_release,
-            minimum_certainty=minimum_certainty,
-            trust_package=trust_package,
-            allow_reformatting=allow_reformatting,
-            net_access=net_access,
-            opinionated=opinionated,
-            diligence=diligence,
-        )
-        with tempfile.SpooledTemporaryFile() as stderr:
-            try:
-                p = subprocess.Popen(
-                    self.script_path,
-                    cwd=basedir,
-                    stdout=subprocess.PIPE,
-                    stderr=stderr,
-                    env=env,
-                )
-            except OSError as e:
-                if e.errno == errno.ENOMEM:
-                    raise MemoryError from e
-                raise
-            (description, err) = p.communicate(b"")
-            if p.returncode == 2:
-                raise NoChanges(self)
-            if p.returncode != 0:
-                stderr.seek(0)
-                raise FixerScriptFailed(
-                    self.script_path,
-                    p.returncode,
-                    stderr.read().decode("utf-8", "replace"),
-                )
-        return parse_script_fixer_output(description.decode("utf-8"))
+parse_script_fixer_output = _lintian_brush_rs.parse_script_fixer_output
+determine_env = _lintian_brush_rs.determine_env
+Fixer = _lintian_brush_rs.Fixer
+ScriptFixer = _lintian_brush_rs.ScriptFixer
+PythonScriptFixer = _lintian_brush_rs.PythonScriptFixer
 
 
 def open_binary(name):
@@ -554,31 +179,6 @@ def find_fixers_dir() -> str:
     return data_file_path("fixers", os.path.isdir)
 
 
-def read_desc_file(
-        path: str, force_subprocess: bool = False) -> Iterator[Fixer]:
-    """Read a description file.
-
-    Args:
-      path: Path to read from.
-      force_subprocess: Force running as subprocess
-    Yields:
-      Fixer objects
-    """
-    from ruamel.yaml import YAML
-    yaml = YAML()
-    dirname = os.path.dirname(path)
-    with open(path) as f:
-        data = yaml.load(f)
-    for paragraph in data:
-        name = os.path.splitext(paragraph["script"])[0]
-        script_path = os.path.join(dirname, paragraph["script"])
-        tags = paragraph.get("lintian-tags", [])
-        if script_path.endswith(".py") and not force_subprocess:
-            yield PythonScriptFixer(name, tags, script_path)
-        else:
-            yield ScriptFixer(name, tags, script_path)
-
-
 def select_fixers(
     fixers: List[Fixer], *, names: Optional[List[str]] = None,
     exclude: Optional[Iterable[str]] = None
@@ -611,24 +211,10 @@ def select_fixers(
     return ret
 
 
-def available_lintian_fixers(
-    fixers_dir: Optional[str] = None, force_subprocess: bool = False
-) -> Iterator[Fixer]:
-    """Return a list of available lintian fixers.
-
-    Args:
-      fixers_dir: Fixers directory to browse
-      force_subprocess: Force running fixers from subprocess
-    Returns:
-      Iterator over Fixer objects
-    """
+def available_lintian_fixers(fixers_dir=None, force_subprocess=False):
     if fixers_dir is None:
         fixers_dir = find_fixers_dir()
-    for n in os.listdir(fixers_dir):
-        if not n.endswith(".desc"):
-            continue
-        yield from read_desc_file(
-            os.path.join(fixers_dir, n), force_subprocess=force_subprocess)
+    return _lintian_brush_rs.available_lintian_fixers(fixers_dir, force_subprocess)
 
 
 def increment_version(v: Version) -> None:
@@ -895,7 +481,7 @@ def run_lintian_fixer(  # noqa: C901
         result = fixer.run(
             local_tree.abspath(subpath),
             package=package,
-            current_version=current_version,
+            current_version=str(current_version),
             compat_release=compat_release,
             minimum_certainty=minimum_certainty,
             trust_package=trust_package,

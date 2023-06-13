@@ -1,1 +1,4 @@
 lintian-brush source: autotools-pkg-config-macro-not-cross-compilation-safe * [tests/autotools-pkg-config-macro-not-cross-compilation-safe/complex/in/configure.ac:11]
+lintian-brush source: uses-python-distutils [tests/debian-watch-file-is-missing/native/in/setup.py:2]
+lintian-brush source: uses-python-distutils [tests/debian-watch-file-is-missing/pypi/in/setup.py:2]
+lintian-brush source: uses-python-distutils [tests/debian-watch-file-is-missing/pypi/out/setup.py:2]

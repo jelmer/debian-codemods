@@ -9,4 +9,12 @@ repository = "https://salsa.debian.org/jelmer/lintian-brush.git"
 homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 
 [dependencies]
-pyo3 = { version = "0.18", features=["auto-initialize"]}
+pyo3 = { version = "0.19", features = ["auto-initialize"], optional = true }
+serde_json = { version = "1"}
+serde_yaml = { version = ">=0.8" }
+serde = { version = "1", features = ["derive"] }
+
+[features]
+default = ["svp", "python"]
+svp = []
+python = ["dep:pyo3"]

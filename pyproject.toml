@@ -1,6 +1,7 @@
 [build-system]
 requires = [
     "setuptools>=61.2",
+    "setuptools-rust",
     "breezy>=3.3.0.dev.0",
     "python_debian",
     "debmutate",

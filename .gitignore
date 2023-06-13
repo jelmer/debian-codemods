@@ -10,3 +10,5 @@ lintian_brush.egg-info/
 .testrepository/
 .mypy_cache
 target
+lintian_brush/_lintian_brush_rs.*.so
+*.swp
