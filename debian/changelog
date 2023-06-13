@@ -7,6 +7,7 @@ lintian-brush (0.148) UNRELEASED; urgency=medium
   * Bump debmutate to 0.66, which fixes shebang-stripping bug - and add
     test.
   * Fill in Homepage field.
+  * Update standards version to 4.6.2, no changes needed.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 03 Feb 2023 17:30:14 +0000
 
