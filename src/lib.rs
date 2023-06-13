@@ -1,3 +1,6 @@
+use std::fs::File;
+use std::io::{BufReader, Read};
+use std::process::Command;
 use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, PartialOrd, Ord)]
@@ -338,4 +341,426 @@ pub fn determine_env(
     );
     env.insert("DILIGENCE".to_owned(), diligence.to_string());
     env
+}
+
+/// A fixer script
+///
+/// The `lintian_tags attribute contains the name of the lintian tags this fixer addresses.
+pub trait Fixer {
+    fn name(&self) -> &str;
+
+    fn path(&self) -> &std::path::Path;
+
+    fn lintian_tags(&self) -> Vec<&str>;
+
+    /// Apply this fixer script.
+    ///
+    /// # Arguments
+    ///
+    /// * `basedir` - Directory in which to run
+    /// * `package` - Name of the source package
+    /// * `current_version` - The version of the package that is being created or updated
+    /// * `compat_release` - Compatibility level (a Debian release name)
+    /// * `minimum_certainty` - Minimum certainty level
+    /// * `trust_package` - Whether to run code from the package
+    /// * `allow_reformatting` - Allow reformatting of files that are being changed
+    /// * `net_access` - Allow network access
+    /// * `opinionated` - Whether to be opinionated
+    /// * `diligence` - Level of diligence
+    ///
+    /// # Returns
+    ///
+    ///  A FixerResult object
+    fn run(
+        &self,
+        basedir: &std::path::Path,
+        package: &str,
+        current_version: &str,
+        compat_release: &str,
+        minimum_certainty: Option<Certainty>,
+        trust_package: Option<bool>,
+        allow_reformatting: Option<bool>,
+        net_access: Option<bool>,
+        opinionated: Option<bool>,
+        diligence: Option<i32>,
+    ) -> Result<FixerResult, FixerError>;
+}
+
+/// A fixer that is implemented as a Python script.
+///
+/// This gets used just for Python scripts, and significantly speeds things up because it prevents
+/// starting a new Python interpreter for every fixer.
+#[cfg(feature = "python")]
+pub struct PythonScriptFixer {
+    path: std::path::PathBuf,
+    name: String,
+    lintian_tags: Vec<String>,
+}
+
+#[cfg(feature = "python")]
+impl PythonScriptFixer {
+    pub fn new(name: String, lintian_tags: Vec<String>, path: std::path::PathBuf) -> Self {
+        Self {
+            path,
+            name,
+            lintian_tags,
+        }
+    }
+}
+
+#[cfg(feature = "python")]
+impl Fixer for PythonScriptFixer {
+    fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
+    fn path(&self) -> &std::path::Path {
+        self.path.as_path()
+    }
+
+    fn lintian_tags(&self) -> Vec<&str> {
+        self.lintian_tags
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+    }
+
+    fn run(
+        &self,
+        basedir: &std::path::Path,
+        package: &str,
+        current_version: &str,
+        compat_release: &str,
+        minimum_certainty: Option<Certainty>,
+        trust_package: Option<bool>,
+        allow_reformatting: Option<bool>,
+        net_access: Option<bool>,
+        opinionated: Option<bool>,
+        diligence: Option<i32>,
+    ) -> Result<FixerResult, FixerError> {
+        let env = determine_env(
+            package,
+            current_version,
+            compat_release,
+            minimum_certainty.unwrap_or(Certainty::default()),
+            trust_package.unwrap_or(false),
+            allow_reformatting.unwrap_or(false),
+            net_access.unwrap_or(true),
+            opinionated.unwrap_or(false),
+            diligence.unwrap_or(0),
+        );
+
+        use pyo3::import_exception;
+        use pyo3::prelude::*;
+        use pyo3::types::PyDict;
+
+        import_exception!(debmutate.reformatting, FormattingUnpreservable);
+
+        Python::with_gil(|py| {
+            let sys = py.import("sys")?;
+            let os = py.import("os")?;
+            let io = py.import("io")?;
+            let traceback = py.import("traceback")?;
+            let fixer_module = py.import("lintian_brush.fixer")?;
+
+            let old_env = os.getattr("environ")?.into_py(py);
+            let old_stderr = sys.getattr("stderr")?;
+            let old_stdout = sys.getattr("stdout")?;
+
+            sys.setattr("stderr", io.call_method0("StringIO")?)?;
+            sys.setattr("stdout", io.call_method0("StringIO")?)?;
+            os.setattr("environ", env)?;
+
+            let old_cwd = match os.call_method0("getcwd") {
+                Ok(cwd) => Some(cwd),
+                Err(_) => None,
+            };
+
+            os.call_method1("chdir", (basedir,))?;
+
+            let global_vars = PyDict::new(py);
+            global_vars.set_item("__file__", &self.path)?;
+            global_vars.set_item("__name__", "__main__")?;
+
+            let code = std::fs::read_to_string(&self.path)
+                .map_err(|e| FixerError::Other(format!("Failed to read script: {}", e)))?;
+
+            let script_result = PyModule::from_code(
+                py,
+                code.as_str(),
+                self.path.to_str().unwrap(),
+                self.name.as_str(),
+            );
+
+            let stdout = sys
+                .getattr("stdout")
+                .unwrap()
+                .call_method0("getvalue")
+                .unwrap()
+                .extract::<String>()
+                .unwrap();
+
+            let mut stderr = sys
+                .getattr("stderr")
+                .unwrap()
+                .call_method0("getvalue")
+                .unwrap()
+                .extract::<String>()
+                .unwrap();
+
+            os.setattr("environ", old_env).unwrap();
+            sys.setattr("stderr", old_stderr).unwrap();
+            sys.setattr("stdout", old_stdout).unwrap();
+
+            if let Some(cwd) = old_cwd {
+                os.call_method1("chdir", (cwd,))?;
+            }
+
+            fixer_module.call_method0("reset")?;
+
+            let retcode;
+            let description;
+
+            match script_result {
+                Ok(_) => {
+                    retcode = 0;
+                    description = stdout;
+                }
+                Err(e) => {
+                    if e.is_instance_of::<FormattingUnpreservable>(py) {
+                        return Err(FixerError::FormattingUnpreservable);
+                    } else if e.is_instance_of::<pyo3::exceptions::PySystemExit>(py) {
+                        retcode = e.value(py).getattr("code")?.extract()?;
+                        description = stdout;
+                    } else {
+                        let traceback_str = traceback
+                            .call_method1("format_exception", (e,))?
+                            .extract::<Vec<String>>()?;
+                        stderr = format!("{}\n{}", stderr, traceback_str.join("\n"));
+                        return Err(FixerError::ScriptFailed {
+                            path: self.path.clone(),
+                            exit_code: 1,
+                            stderr,
+                        });
+                    }
+                }
+            }
+
+            if retcode == 2 {
+                Err(FixerError::NoChanges)
+            } else if retcode != 0 {
+                Err(FixerError::ScriptFailed {
+                    path: self.path.clone(),
+                    exit_code: retcode,
+                    stderr,
+                })
+            } else {
+                Ok(parse_script_fixer_output(&description)?)
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FixerError {
+    NoChanges,
+    ScriptNotFound(std::path::PathBuf),
+    OutputParseError(OutputParseError),
+    OutputDecodeError(std::string::FromUtf8Error),
+    ScriptFailed {
+        path: std::path::PathBuf,
+        exit_code: i32,
+        stderr: String,
+    },
+    FormattingUnpreservable,
+    Other(String),
+}
+
+impl From<OutputParseError> for FixerError {
+    fn from(e: OutputParseError) -> Self {
+        FixerError::OutputParseError(e)
+    }
+}
+
+#[cfg(feature = "python")]
+impl From<pyo3::PyErr> for FixerError {
+    fn from(e: pyo3::PyErr) -> Self {
+        FixerError::Other(e.to_string())
+    }
+}
+
+impl std::fmt::Display for FixerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            FixerError::NoChanges => write!(f, "No changes"),
+            FixerError::OutputParseError(e) => write!(f, "Output parse error: {}", e),
+            FixerError::OutputDecodeError(e) => write!(f, "Output decode error: {}", e),
+            FixerError::ScriptNotFound(p) => write!(f, "Command not found: {}", p.display()),
+            FixerError::FormattingUnpreservable => write!(f, "Formatting unpreservable"),
+            FixerError::ScriptFailed {
+                path,
+                exit_code,
+                stderr,
+            } => write!(
+                f,
+                "Script failed: {} (exit code {}) (stderr: {})",
+                path.display(),
+                exit_code,
+                stderr
+            ),
+            FixerError::Other(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl std::error::Error for FixerError {}
+
+pub struct ScriptFixer {
+    path: std::path::PathBuf,
+    name: String,
+    lintian_tags: Vec<String>,
+}
+
+impl ScriptFixer {
+    pub fn new(name: String, lintian_tags: Vec<String>, path: std::path::PathBuf) -> Self {
+        Self {
+            path,
+            name,
+            lintian_tags,
+        }
+    }
+}
+
+impl Fixer for ScriptFixer {
+    fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
+    fn path(&self) -> &std::path::Path {
+        self.path.as_path()
+    }
+
+    fn lintian_tags(&self) -> Vec<&str> {
+        self.lintian_tags
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+    }
+
+    fn run(
+        &self,
+        basedir: &std::path::Path,
+        package: &str,
+        current_version: &str,
+        compat_release: &str,
+        minimum_certainty: Option<Certainty>,
+        trust_package: Option<bool>,
+        allow_reformatting: Option<bool>,
+        net_access: Option<bool>,
+        opinionated: Option<bool>,
+        diligence: Option<i32>,
+    ) -> Result<FixerResult, FixerError> {
+        let env = determine_env(
+            package,
+            current_version,
+            compat_release,
+            minimum_certainty.unwrap_or(Certainty::default()),
+            trust_package.unwrap_or(false),
+            allow_reformatting.unwrap_or(false),
+            net_access.unwrap_or(true),
+            opinionated.unwrap_or(false),
+            diligence.unwrap_or(0),
+        );
+
+        let mut cmd = Command::new(self.path.as_os_str());
+        cmd.current_dir(basedir);
+
+        for (key, value) in env.iter() {
+            cmd.env(key, value);
+        }
+
+        let output = cmd.output().map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => FixerError::ScriptNotFound(self.path.clone()),
+            _ => FixerError::Other(e.to_string()),
+        })?;
+
+        if !output.status.success() {
+            let mut stderr = String::new();
+            let mut stderr_buf = std::io::BufReader::new(&output.stderr[..]);
+            stderr_buf
+                .read_to_string(&mut stderr)
+                .map_err(|e| FixerError::Other(format!("Failed to read stderr: {}", e)))?;
+
+            if output.status.code() == Some(2) {
+                return Err(FixerError::NoChanges);
+            }
+
+            return Err(FixerError::ScriptFailed {
+                path: self.path.to_owned(),
+                exit_code: output.status.code().unwrap(),
+                stderr,
+            });
+        }
+
+        let stdout = String::from_utf8(output.stdout).map_err(FixerError::OutputDecodeError)?;
+        parse_script_fixer_output(&stdout).map_err(FixerError::OutputParseError)
+    }
+}
+
+pub fn read_desc_file<P: AsRef<std::path::Path>>(
+    path: P,
+    force_subprocess: bool,
+) -> Result<impl Iterator<Item = Box<dyn Fixer>>, Box<dyn std::error::Error>> {
+    let file = File::open(path.as_ref())?;
+    let reader = BufReader::new(file);
+
+    let data: serde_yaml::Sequence = serde_yaml::from_reader(reader)?;
+
+    let dirname = path.as_ref().parent().unwrap().to_owned();
+    let fixer_iter = data.into_iter().map(move |item| {
+        let script = item.get("script").unwrap().as_str().unwrap().to_string();
+        let lintian_tags = item
+            .get("lintian-tags")
+            .map(|tags| {
+                Some(
+                    tags.as_sequence()?
+                        .iter()
+                        .filter_map(|tag| Some(tag.as_str()?.to_owned()))
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .unwrap_or_default();
+        let name = std::path::Path::new(script.as_str())
+            .file_stem()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
+        let script_path = dirname.join(script.as_str());
+
+        load_fixer(
+            name.to_owned(),
+            lintian_tags.unwrap_or_default(),
+            script_path,
+            force_subprocess,
+        )
+    });
+
+    Ok(fixer_iter)
+}
+
+fn load_fixer(
+    name: String,
+    tags: Vec<String>,
+    script_path: std::path::PathBuf,
+    force_subprocess: bool,
+) -> Box<dyn Fixer> {
+    #[cfg(feature = "python")]
+    if script_path
+        .extension()
+        .map(|ext| ext == "py")
+        .unwrap_or(false)
+        && !force_subprocess
+    {
+        return Box::new(PythonScriptFixer::new(name, tags, script_path));
+    }
+    Box::new(ScriptFixer::new(name, tags, script_path))
 }

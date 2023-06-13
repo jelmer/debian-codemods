@@ -1,5 +1,6 @@
 #!/usr/bin/make -f
 
+export CARGO_HOME=$(shell pwd)/debian/cargo_home
 ZSH_COMPDIR = /usr/share/zsh/vendor-completions/
 
 %:
@@ -10,3 +11,11 @@ override_dh_auto_install:
 	mkdir -p debian/lintian-brush/$(ZSH_COMPDIR)
 	install -m644 debian/lintian-brush.zsh-completion \
 	    debian/lintian-brush/$(ZSH_COMPDIR)/_lintian-brush
+
+override_dh_auto_clean:
+	for I in . lintian-brush-py; do if test -f $$I/Cargo.lock.saved; then mv $$I/Cargo.lock.saved $$I/Cargo.lock; fi; done
+	dh_auto_clean
+
+override_dh_auto_build:
+	for I in . lintian-brush-py; do mv $$I/Cargo.lock $$I/Cargo.lock.saved; done
+	dh_auto_build

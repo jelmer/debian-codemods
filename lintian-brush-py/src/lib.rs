@@ -1,16 +1,20 @@
 use pyo3::class::basic::CompareOp;
-use pyo3::exceptions::{PyTypeError, PyValueError};
+use pyo3::exceptions::{PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyBytes, PyDict, PyFloat, PyList, PyString};
-use std::convert::TryInto;
 
 use pyo3::create_exception;
+use pyo3::import_exception;
 
 create_exception!(
     lintian_brush,
     UnsupportedCertainty,
     pyo3::exceptions::PyException
 );
+create_exception!(lintian_brush, ScriptNotFound, pyo3::exceptions::PyException);
+import_exception!(lintian_brush, NoChanges);
+import_exception!(lintian_brush, FixerScriptFailed);
+import_exception!(debmutate.reformatting, FormattingUnpreservable);
 
 #[pyclass(subclass)]
 struct LintianIssue(lintian_brush::LintianIssue);
@@ -166,7 +170,7 @@ impl FixerResult {
     }
 
     #[getter]
-    fn overridden_lintian_issues(&self, py: Python) -> PyResult<Vec<LintianIssue>> {
+    fn overridden_lintian_issues(&self) -> PyResult<Vec<LintianIssue>> {
         Ok(self
             .0
             .overridden_lintian_issues
@@ -218,6 +222,132 @@ pub fn determine_env(
     ))
 }
 
+#[pyclass(subclass, unsendable)]
+struct Fixer(Box<dyn lintian_brush::Fixer>);
+
+#[pymethods]
+impl Fixer {
+    #[getter]
+    fn name(&self) -> PyResult<String> {
+        Ok(self.0.name().to_string())
+    }
+
+    #[getter]
+    fn script_path(&self) -> PyResult<std::path::PathBuf> {
+        Ok(self.0.path().to_path_buf())
+    }
+
+    #[getter]
+    fn lintian_tags(&self) -> PyResult<Vec<String>> {
+        Ok(self
+            .0
+            .lintian_tags()
+            .iter()
+            .map(|s| s.to_string())
+            .collect())
+    }
+
+    fn run(
+        &self,
+        py: Python,
+        basedir: std::path::PathBuf,
+        package: &str,
+        current_version: &str,
+        compat_release: &str,
+        minimum_certainty: Option<&str>,
+        trust_package: Option<bool>,
+        allow_reformatting: Option<bool>,
+        net_access: Option<bool>,
+        opinionated: Option<bool>,
+        diligence: Option<i32>,
+    ) -> PyResult<FixerResult> {
+        let minimum_certainty = minimum_certainty
+            .map(|c| c.parse().map_err(|e| UnsupportedCertainty::new_err(e)))
+            .transpose()?;
+
+        self.0
+            .run(
+                basedir.as_path(),
+                package,
+                current_version,
+                compat_release,
+                minimum_certainty,
+                trust_package,
+                allow_reformatting,
+                net_access,
+                opinionated,
+                diligence,
+            )
+            .map_err(|e| match e {
+                lintian_brush::FixerError::NoChanges => NoChanges::new_err((py.None(),)),
+                lintian_brush::FixerError::ScriptNotFound(cmd) => {
+                    ScriptNotFound::new_err(cmd.to_object(py))
+                }
+                lintian_brush::FixerError::ScriptFailed {
+                    path,
+                    exit_code,
+                    stderr,
+                } => FixerScriptFailed::new_err((path.to_object(py), exit_code, stderr)),
+                lintian_brush::FixerError::FormattingUnpreservable => {
+                    FormattingUnpreservable::new_err(())
+                }
+                lintian_brush::FixerError::OutputDecodeError(e) => {
+                    PyValueError::new_err(format!("invalid output: {}", e))
+                }
+                lintian_brush::FixerError::OutputParseError(e) => match e {
+                    lintian_brush::OutputParseError::LintianIssueParseError(e) => {
+                        PyValueError::new_err(format!("invalid lintian issue: {}", e))
+                    }
+                    lintian_brush::OutputParseError::UnsupportedCertainty(e) => {
+                        UnsupportedCertainty::new_err(e)
+                    }
+                },
+                lintian_brush::FixerError::Other(e) => PyRuntimeError::new_err(e),
+            })
+            .map(FixerResult)
+    }
+
+    fn __str__(&self) -> PyResult<String> {
+        Ok(self.name()?)
+    }
+}
+
+#[pyclass(subclass,extends=Fixer)]
+struct ScriptFixer;
+
+#[pymethods]
+impl ScriptFixer {
+    #[new]
+    fn new(name: String, tags: Vec<String>, path: std::path::PathBuf) -> (Self, Fixer) {
+        let fixer = lintian_brush::ScriptFixer::new(name, tags, path);
+        (Self, Fixer(Box::new(fixer)))
+    }
+}
+
+#[pyclass(subclass,extends=Fixer)]
+struct PythonScriptFixer;
+
+#[pymethods]
+impl PythonScriptFixer {
+    #[new]
+    fn new(name: String, tags: Vec<String>, path: std::path::PathBuf) -> (Self, Fixer) {
+        let fixer = lintian_brush::PythonScriptFixer::new(name, tags, path);
+        (Self, Fixer(Box::new(fixer)))
+    }
+}
+
+#[pyfunction]
+fn read_desc_file(
+    path: std::path::PathBuf,
+    force_subprocess: Option<bool>,
+) -> PyResult<Vec<Fixer>> {
+    let force_subprocess = force_subprocess.unwrap_or(false);
+    Ok(lintian_brush::read_desc_file(path, force_subprocess)
+        .map_err(|e| PyValueError::new_err(e.to_string()))?
+        .map(|s| Fixer(s))
+        .collect())
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LintianIssue>()?;
@@ -228,5 +358,9 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
         py.get_type::<UnsupportedCertainty>(),
     )?;
     m.add_wrapped(wrap_pyfunction!(determine_env))?;
+    m.add_class::<Fixer>()?;
+    m.add_class::<ScriptFixer>()?;
+    m.add_class::<PythonScriptFixer>()?;
+    m.add_wrapped(wrap_pyfunction!(read_desc_file))?;
     Ok(())
 }

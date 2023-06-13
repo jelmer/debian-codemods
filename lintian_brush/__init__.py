@@ -19,17 +19,12 @@
 
 from contextlib import ExitStack
 from datetime import datetime
-import errno
-import io
 import itertools
 import logging
 import os
 import re
-import subprocess
 import sys
-import tempfile
 import time
-import traceback
 from typing import (
     Optional,
     List,
@@ -72,6 +67,7 @@ logger = logging.getLogger(__name__)
 LintianIssue = _lintian_brush_rs.LintianIssue
 FixerResult = _lintian_brush_rs.FixerResult
 UnsupportedCertainty = _lintian_brush_rs.UnsupportedCertainty
+read_desc_file = _lintian_brush_rs.read_desc_file
 
 
 class NoChanges(Exception):
@@ -143,208 +139,11 @@ class NotDebianPackage(Exception):
         super().__init__(tree.abspath(path))
 
 
-class Fixer:
-    """A Fixer script.
-
-    The `lintian_tags` attribute contains the name of the lintian tags this
-    fixer addresses.
-    """
-
-    def __init__(self, name: str, lintian_tags: Optional[List[str]] = None):
-        self.name = name
-        self.lintian_tags = lintian_tags or []
-
-    def run(
-        self,
-        basedir,
-        package,
-        current_version,
-        compat_release,
-        minimum_certainty=None,
-        trust_package=False,
-        allow_reformatting=False,
-        net_access=True,
-        opinionated=False,
-        diligence=0,
-    ):
-        """Apply this fixer script.
-
-        Args:
-          basedir: Directory in which to run
-          package: Name of the source package
-          current_version: The version of the package that is being created or
-            updated
-          compat_release: Compatibility level (a Debian release name)
-          trust_package: Whether to run code from the package
-          allow_reformatting: Allow reformatting of files that are being
-            changed
-          opinionated: Whether to be opinionated
-          diligence: Level of diligence
-        Returns:
-          A FixerResult object
-        """
-        raise NotImplementedError(self.run)
-
-
 parse_script_fixer_output = _lintian_brush_rs.parse_script_fixer_output
 determine_env = _lintian_brush_rs.determine_env
-
-
-class PythonScriptFixer(Fixer):
-    """A fixer that is implemented as a python script.
-
-    This gets used just for Python scripts, and significantly speeds
-    things up because it prevents starting a new Python interpreter
-    for every fixer.
-    """
-
-    def __init__(self, name, lintian_tags, script_path):
-        super().__init__(name, lintian_tags)
-        self.script_path = script_path
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}({self.name!r})>"
-
-    def __str__(self):
-        return self.name
-
-    def run(
-        self,
-        basedir,
-        package,
-        current_version,
-        compat_release,
-        minimum_certainty=DEFAULT_MINIMUM_CERTAINTY,
-        trust_package=False,
-        allow_reformatting=False,
-        net_access=True,
-        opinionated=False,
-        diligence=0,
-    ):
-        env = determine_env(
-            package=package,
-            current_version=current_version,
-            compat_release=compat_release,
-            minimum_certainty=minimum_certainty,
-            trust_package=trust_package,
-            allow_reformatting=allow_reformatting,
-            net_access=net_access,
-            opinionated=opinionated,
-            diligence=diligence,
-        )
-        try:
-            old_env = dict(os.environ)
-            old_stderr = sys.stderr
-            old_stdout = sys.stdout
-            sys.stderr = io.StringIO()
-            sys.stdout = io.StringIO()
-            os.environ.update(env)
-            try:
-                old_cwd = os.getcwd()
-            except FileNotFoundError:
-                old_cwd = None
-            try:
-                os.chdir(basedir)
-                global_vars = {
-                    "__file__": self.script_path,
-                    "__name__": "__main__",
-                }
-                with open(self.script_path) as f:
-                    code = compile(f.read(), self.script_path, "exec")
-                    exec(code, global_vars)
-            except FormattingUnpreservable:
-                raise
-            except SystemExit as e:
-                retcode = e.code
-            except BaseException as e:
-                traceback.print_exception(
-                    type(e), e, e.__traceback__, file=sys.stderr)
-                raise FixerScriptFailed(
-                    self.script_path, 1, sys.stderr.getvalue()) from e
-            else:
-                retcode = 0
-            description = sys.stdout.getvalue()
-            err = sys.stderr.getvalue()
-        finally:
-            os.environ.clear()
-            os.environ.update(old_env)
-            sys.stderr = old_stderr
-            sys.stdout = old_stdout
-            if old_cwd is not None:
-                os.chdir(old_cwd)
-            from . import fixer
-
-            fixer.reset()
-
-        if retcode == 2:
-            raise NoChanges(self)
-        if retcode != 0:
-            raise FixerScriptFailed(self.script_path, retcode, err)
-
-        return parse_script_fixer_output(description)
-
-
-class ScriptFixer(Fixer):
-    """A fixer that is implemented as a shell/python/etc script."""
-
-    def __init__(self, name: str, lintian_tags: List[str], script_path: str):
-        super().__init__(name, lintian_tags)
-        self.script_path = script_path
-
-    def __repr__(self):
-        return "<ScriptFixer(%r)>" % self.name
-
-    def __str__(self):
-        return self.name
-
-    def run(
-        self,
-        basedir: str,
-        package: str,
-        current_version: Version,
-        compat_release: str,
-        minimum_certainty: str = DEFAULT_MINIMUM_CERTAINTY,
-        trust_package: bool = False,
-        allow_reformatting: bool = False,
-        net_access: bool = True,
-        opinionated: bool = False,
-        diligence: int = 0,
-    ):
-        env = determine_env(
-            package=package,
-            current_version=current_version,
-            compat_release=compat_release,
-            minimum_certainty=minimum_certainty,
-            trust_package=trust_package,
-            allow_reformatting=allow_reformatting,
-            net_access=net_access,
-            opinionated=opinionated,
-            diligence=diligence,
-        )
-        with tempfile.SpooledTemporaryFile() as stderr:
-            try:
-                p = subprocess.Popen(
-                    self.script_path,
-                    cwd=basedir,
-                    stdout=subprocess.PIPE,
-                    stderr=stderr,
-                    env=env,
-                )
-            except OSError as e:
-                if e.errno == errno.ENOMEM:
-                    raise MemoryError from e
-                raise
-            (description, err) = p.communicate(b"")
-            if p.returncode == 2:
-                raise NoChanges(self)
-            if p.returncode != 0:
-                stderr.seek(0)
-                raise FixerScriptFailed(
-                    self.script_path,
-                    p.returncode,
-                    stderr.read().decode("utf-8", "replace"),
-                )
-        return parse_script_fixer_output(description.decode("utf-8"))
+Fixer = _lintian_brush_rs.Fixer
+ScriptFixer = _lintian_brush_rs.ScriptFixer
+PythonScriptFixer = _lintian_brush_rs.PythonScriptFixer
 
 
 def open_binary(name):
@@ -379,31 +178,6 @@ def data_file_path(name, check=os.path.exists):
 def find_fixers_dir() -> str:
     """Find the local directory with lintian fixer scripts."""
     return data_file_path("fixers", os.path.isdir)
-
-
-def read_desc_file(
-        path: str, force_subprocess: bool = False) -> Iterator[Fixer]:
-    """Read a description file.
-
-    Args:
-      path: Path to read from.
-      force_subprocess: Force running as subprocess
-    Yields:
-      Fixer objects
-    """
-    from ruamel.yaml import YAML
-    yaml = YAML()
-    dirname = os.path.dirname(path)
-    with open(path) as f:
-        data = yaml.load(f)
-    for paragraph in data:
-        name = os.path.splitext(paragraph["script"])[0]
-        script_path = os.path.join(dirname, paragraph["script"])
-        tags = paragraph.get("lintian-tags", [])
-        if script_path.endswith(".py") and not force_subprocess:
-            yield PythonScriptFixer(name, tags, script_path)
-        else:
-            yield ScriptFixer(name, tags, script_path)
 
 
 def select_fixers(
@@ -722,7 +496,7 @@ def run_lintian_fixer(  # noqa: C901
         result = fixer.run(
             local_tree.abspath(subpath),
             package=package,
-            current_version=current_version,
+            current_version=str(current_version),
             compat_release=compat_release,
             minimum_certainty=minimum_certainty,
             trust_package=trust_package,

@@ -7,6 +7,10 @@ Build-Depends: bash-completion,
                devscripts,
                dh-python,
                dos2unix,
+               librust-pyo3-dev (>= 0.19),
+               librust-serde-json-dev (>= 1),
+               librust-serde-yaml-dev (>= 0.8),
+               librust-serde+derive-dev (>= 1),
                python3-all,
                python3-bs4,
                python3-breezy (>= 3.3.0~),
@@ -34,14 +38,15 @@ Build-Depends: bash-completion,
                lintian (>= 2.105.0),
                debhelper-compat (= 13),
                debhelper (>= 13.5),
-               ognibuild (>= 0.0.18)
+               ognibuild (>= 0.0.18),
+               rustc
 Standards-Version: 4.6.1
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
 Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush
 
 Package: lintian-brush
-Architecture: all
+Architecture: any
 Depends: devscripts,
          python3-breezy (>= 3.3.0~),
          python3-debian,
