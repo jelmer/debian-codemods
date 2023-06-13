@@ -6,6 +6,8 @@ use pyo3::types::{PyBool, PyBytes, PyDict, PyFloat, PyList, PyString};
 use pyo3::create_exception;
 use pyo3::import_exception;
 
+use lintian_brush::Certainty;
+
 create_exception!(
     lintian_brush,
     UnsupportedCertainty,
@@ -361,6 +363,38 @@ fn available_lintian_fixers(
     )
 }
 
+#[pyfunction]
+fn certainty_sufficient(
+    actual_certainty: Option<&str>,
+    minimum_certainty: Option<&str>,
+) -> PyResult<bool> {
+    let actual_certainty = if let Some(actual_certainty) = actual_certainty {
+        actual_certainty
+            .parse()
+            .map_err(|e| UnsupportedCertainty::new_err(e))?
+    } else {
+        return Ok(true);
+    };
+    let minimum_certainty = minimum_certainty
+        .map(|c| c.parse().map_err(|e| UnsupportedCertainty::new_err(e)))
+        .transpose()?;
+    Ok(lintian_brush::certainty_sufficient(
+        actual_certainty,
+        minimum_certainty,
+    ))
+}
+
+#[pyfunction]
+fn min_certainty(certainties: Vec<&str>) -> PyResult<String> {
+    let certainties = certainties
+        .iter()
+        .map(|c| c.parse().map_err(|e| UnsupportedCertainty::new_err(e)))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(lintian_brush::min_certainty(certainties.as_slice())
+        .unwrap_or(Certainty::Certain)
+        .to_string())
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LintianIssue>()?;
@@ -376,5 +410,7 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PythonScriptFixer>()?;
     m.add_wrapped(wrap_pyfunction!(read_desc_file))?;
     m.add_wrapped(wrap_pyfunction!(available_lintian_fixers))?;
+    m.add_wrapped(wrap_pyfunction!(certainty_sufficient))?;
+    m.add_wrapped(wrap_pyfunction!(min_certainty))?;
     Ok(())
 }

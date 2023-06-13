@@ -28,7 +28,6 @@ import time
 from typing import (
     Optional,
     List,
-    Sequence,
     Iterable,
     Tuple,
     Union,
@@ -214,7 +213,8 @@ def select_fixers(
 def available_lintian_fixers(fixers_dir=None, force_subprocess=False):
     if fixers_dir is None:
         fixers_dir = find_fixers_dir()
-    return _lintian_brush_rs.available_lintian_fixers(fixers_dir, force_subprocess)
+    return _lintian_brush_rs.available_lintian_fixers(
+        fixers_dir, force_subprocess)
 
 
 def increment_version(v: Version) -> None:
@@ -312,26 +312,7 @@ def only_changes_last_changelog_block(
         return str(new_cl) == str(old_cl)
 
 
-def certainty_sufficient(
-    actual_certainty: str, minimum_certainty: Optional[str]
-) -> bool:
-    """Check if the actual certainty is sufficient.
-
-    Args:
-      actual_certainty: Actual certainty with which changes were made
-      minimum_certainty: Minimum certainty to keep changes
-    Returns:
-      boolean
-    """
-    actual_confidence = certainty_to_confidence(actual_certainty)
-    if actual_confidence is None:
-        # Actual confidence is unknown.
-        # TODO(jelmer): Should we really be ignoring this?
-        return True
-    minimum_confidence = certainty_to_confidence(minimum_certainty)
-    if minimum_confidence is None:
-        return True
-    return actual_confidence <= minimum_confidence
+certainty_sufficient = _lintian_brush_rs.certainty_sufficient
 
 
 def has_non_debian_changes(changes, subpath):
@@ -844,10 +825,7 @@ def confidence_to_certainty(confidence: Optional[int]) -> str:
         raise ValueError(confidence) from exc
 
 
-def min_certainty(certainties: Sequence[str]) -> str:
-    return confidence_to_certainty(
-        max([SUPPORTED_CERTAINTIES.index(c) for c in certainties] + [0])
-    )
+min_certainty = _lintian_brush_rs.min_certainty
 
 
 def control_files_in_root(tree: Tree, subpath: str) -> bool:

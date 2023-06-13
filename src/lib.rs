@@ -8,11 +8,11 @@ mod breezyshim;
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, PartialOrd, Ord)]
 pub enum Certainty {
+    Possible,
+    Likely,
+    Confident,
     #[default]
     Certain,
-    Confident,
-    Likely,
-    Possible,
 }
 
 impl FromStr for Certainty {
@@ -781,4 +781,29 @@ pub fn available_lintian_fixers(
     }
 
     Ok(fixers.into_iter())
+}
+
+/// Check if the actual certainty is sufficient.
+///
+/// # Arguments
+///
+/// * `actual_certainty` - Actual certainty with which changes were made
+/// * `minimum_certainty` - Minimum certainty to keep changes
+///
+/// # Returns
+///
+/// * `bool` - Whether the actual certainty is sufficient
+pub fn certainty_sufficient(
+    actual_certainty: Certainty,
+    minimum_certainty: Option<Certainty>,
+) -> bool {
+    if let Some(minimum_certainty) = minimum_certainty {
+        actual_certainty >= minimum_certainty
+    } else {
+        true
+    }
+}
+
+pub fn min_certainty(certainties: &[Certainty]) -> Option<Certainty> {
+    certainties.iter().min().cloned()
 }
