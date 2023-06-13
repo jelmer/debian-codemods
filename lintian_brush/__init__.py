@@ -56,6 +56,8 @@ from breezy.workspace import reset_tree, check_clean_tree
 
 from debmutate.reformatting import FormattingUnpreservable
 
+from . import _lintian_brush_rs
+
 
 __version__ = (0, 148)
 version_string = ".".join(map(str, __version__))
@@ -65,6 +67,10 @@ USER_AGENT = "lintian-brush/" + version_string
 # Too aggressive?
 DEFAULT_URLLIB_TIMEOUT = 3
 logger = logging.getLogger(__name__)
+
+
+LintianIssue = _lintian_brush_rs.LintianIssue
+FixerResult = _lintian_brush_rs.FixerResult
 
 
 class NoChanges(Exception):
@@ -140,64 +146,6 @@ class NotDebianPackage(Exception):
         super().__init__(tree.abspath(path))
 
 
-class FixerResult:
-    """Result of a fixer run."""
-
-    def __init__(
-        self,
-        description,
-        fixed_lintian_tags=None,
-        certainty=None,
-        patch_name=None,
-        revision_id=None,
-        fixed_lintian_issues=None,
-        overridden_lintian_issues=None,
-    ):
-        self.description = description
-        self.fixed_lintian_issues = fixed_lintian_issues or []
-        if fixed_lintian_tags is None:
-            fixed_lintian_tags = []
-        if fixed_lintian_tags:
-            self.fixed_lintian_issues.extend(
-                [LintianIssue(tag=tag) for tag in fixed_lintian_tags])
-        self.overridden_lintian_issues = overridden_lintian_issues or []
-        self.certainty = certainty
-        self.patch_name = patch_name
-        self.revision_id = revision_id
-
-    @property
-    def fixed_lintian_tags(self):
-        return [issue.tag for issue in self.fixed_lintian_issues]
-
-    def __repr__(self):
-        return (
-            "%s(%r, fixed_lintian_issues=%r, "
-            "overridden_lintian_issues=%r, certainty=%r, patch_name=%r, "
-            "revision_id=%r)"
-        ) % (
-            self.__class__.__name__,
-            self.description,
-            self.fixed_lintian_issues,
-            self.overridden_lintian_issues,
-            self.certainty,
-            self.patch_name,
-            self.revision_id,
-        )
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return False
-        return (
-            (self.description == other.description)
-            and (self.fixed_lintian_issues == other.fixed_lintian_issues)
-            and (self.overridden_lintian_issues
-                 == other.overridden_lintian_issues)
-            and (self.certainty == other.certainty)
-            and (self.patch_name == other.patch_name)
-            and (self.revision_id == other.revision_id)
-        )
-
-
 class Fixer:
     """A Fixer script.
 
@@ -239,55 +187,6 @@ class Fixer:
           A FixerResult object
         """
         raise NotImplementedError(self.run)
-
-
-class LintianIssue:
-
-    def __init__(
-            self,
-            tag: str,
-            package: Optional[str] = None,
-            package_type: Optional[str] = None,
-            info: Optional[List[str]] = None):
-        self.package = package
-        self.package_type = package_type
-        self.tag = tag
-        self.info = info
-
-    def __eq__(self, other):
-        return isinstance(self, type(other)) and (
-            self.package == other.package and
-            self.package_type == other.package_type and
-            self.tag == other.tag and
-            self.info == other.info)
-
-    def json(self):
-        return {
-            "tag": self.tag,
-            "info": self.info,
-            "package": self.package,
-            "package_type": self.package_type,
-        }
-
-    @classmethod
-    def from_str(cls, text):
-        try:
-            (before, after) = text.strip().split(':', 1)
-        except ValueError:
-            package_type = package = None
-            after = text
-        else:
-            try:
-                (package_type, package) = before.strip().split(' ')
-            except ValueError:
-                package = before
-                package_type = None
-        parts = after.strip().split(' ')
-        return cls(
-            package=package,
-            package_type=package_type,
-            tag=parts[0],
-            info=parts[1:])
 
 
 def parse_script_fixer_output(text):

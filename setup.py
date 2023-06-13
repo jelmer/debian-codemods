@@ -17,6 +17,7 @@
 
 import glob
 from setuptools import setup
+from setuptools_rust import Binding, RustExtension
 
 setup(
     data_files=[
@@ -28,4 +29,8 @@ setup(
             'key-package-versions.json',
          ]),
     ],
+    rust_extensions=[
+        RustExtension(
+            "lintian_brush._lintian_brush_rs", "lintian-brush-py/Cargo.toml",
+            binding=Binding.PyO3)],
 )
