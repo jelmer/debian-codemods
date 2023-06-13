@@ -18,11 +18,10 @@
 """Lintian-brush configuration file."""
 
 import os
-from typing import Optional
 import warnings
 
 from configobj import ConfigObj
-import distro_info
+from . import _lintian_brush_rs
 
 
 PACKAGE_CONFIG_FILENAME = "debian/lintian-brush.conf"
@@ -36,51 +35,7 @@ SUPPORTED_KEYS = [
 ]
 
 
-def _oldoldstable(debian_info):
-    distros = [x for x in debian_info._releases if x.release is not None]
-    if len(distros) < 2:
-        raise distro_info.DistroDataOutdated()
-    return distros[-3].series
-
-
-def _oldest_name(fn):
-    return min(fn(result="object"), key=lambda r: r.created).series
-
-
-def oldest_supported_lts(info):
-    return min(
-        [r for r in info.supported(result='object')
-         if info.is_lts(r.series)],
-        key=lambda r: r.created).series
-
-
-def resolve_release_codename(name: str, date=None) -> Optional[str]:
-    if '/' in name:
-        distro, name = name.split('/', 1)
-    else:
-        distro = None
-    if distro in ('debian', None):
-        debian = distro_info.DebianDistroInfo()
-        if name == 'lts':
-            return _oldest_name(debian.lts_supported)
-        if name == 'elts':
-            return _oldest_name(debian.elts_supported)
-        if name == 'oldoldstable':
-            return _oldoldstable(debian)
-        if debian.codename(name):
-            return debian.codename(name)
-        if debian.valid(name):
-            return name
-    if distro in ('ubuntu', None):
-        ubuntu = distro_info.UbuntuDistroInfo()
-        if name == 'esm':
-            return _oldest_name(ubuntu.supported_esm)
-        if name == 'lts':
-            return oldest_supported_lts(ubuntu)
-        if ubuntu.valid(name):
-            return name
-        return None
-    return None
+resolve_release_codename = _lintian_brush_rs.resolve_release_codename
 
 
 class Config:

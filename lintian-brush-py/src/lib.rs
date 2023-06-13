@@ -395,6 +395,11 @@ fn min_certainty(certainties: Vec<&str>) -> PyResult<String> {
         .to_string())
 }
 
+#[pyfunction]
+fn resolve_release_codename(name: &str, date: Option<chrono::NaiveDate>) -> Option<String> {
+    lintian_brush::release_info::resolve_release_codename(name, date)
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LintianIssue>()?;
@@ -412,5 +417,6 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(available_lintian_fixers))?;
     m.add_wrapped(wrap_pyfunction!(certainty_sufficient))?;
     m.add_wrapped(wrap_pyfunction!(min_certainty))?;
+    m.add_wrapped(wrap_pyfunction!(resolve_release_codename))?;
     Ok(())
 }

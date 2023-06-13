@@ -807,3 +807,5 @@ pub fn certainty_sufficient(
 pub fn min_certainty(certainties: &[Certainty]) -> Option<Certainty> {
     certainties.iter().min().cloned()
 }
+
+pub mod release_info;
