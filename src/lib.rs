@@ -771,3 +771,27 @@ fn load_fixer(
     }
     Box::new(ScriptFixer::new(name, tags, script_path))
 }
+
+/// Return a list of available lintian fixers.
+///
+/// # Arguments
+///
+/// * `fixers_dir` - The directory to search for fixers.
+/// * `force_subprocess` - Force the use of a subprocess for all fixers.
+pub fn available_lintian_fixers(
+    fixers_dir: &std::path::Path,
+    force_subprocess: Option<bool>,
+) -> Result<impl Iterator<Item = Box<dyn Fixer>>, Box<dyn std::error::Error>> {
+    let mut fixers = Vec::new();
+    // Scan fixers_dir for .desc files
+    for entry in std::fs::read_dir(fixers_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() && path.extension().map(|ext| ext == "desc").unwrap_or(false) {
+            let fixer_iter = read_desc_file(&path, force_subprocess.unwrap_or(false))?;
+            fixers.extend(fixer_iter);
+        }
+    }
+
+    Ok(fixers.into_iter())
+}

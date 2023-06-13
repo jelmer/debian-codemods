@@ -29,7 +29,6 @@ from typing import (
     Optional,
     List,
     Sequence,
-    Iterator,
     Iterable,
     Tuple,
     Union,
@@ -212,24 +211,10 @@ def select_fixers(
     return ret
 
 
-def available_lintian_fixers(
-    fixers_dir: Optional[str] = None, force_subprocess: bool = False
-) -> Iterator[Fixer]:
-    """Return a list of available lintian fixers.
-
-    Args:
-      fixers_dir: Fixers directory to browse
-      force_subprocess: Force running fixers from subprocess
-    Returns:
-      Iterator over Fixer objects
-    """
+def available_lintian_fixers(fixers_dir=None, force_subprocess=False):
     if fixers_dir is None:
         fixers_dir = find_fixers_dir()
-    for n in os.listdir(fixers_dir):
-        if not n.endswith(".desc"):
-            continue
-        yield from read_desc_file(
-            os.path.join(fixers_dir, n), force_subprocess=force_subprocess)
+    return _lintian_brush_rs.available_lintian_fixers(fixers_dir, force_subprocess)
 
 
 def increment_version(v: Version) -> None:

@@ -348,6 +348,19 @@ fn read_desc_file(
         .collect())
 }
 
+#[pyfunction]
+fn available_lintian_fixers(
+    fixers_dir: std::path::PathBuf,
+    force_subprocess: Option<bool>,
+) -> PyResult<Vec<Fixer>> {
+    Ok(
+        lintian_brush::available_lintian_fixers(fixers_dir.as_path(), force_subprocess)
+            .map_err(|e| PyValueError::new_err(e.to_string()))?
+            .map(|s| Fixer(s))
+            .collect(),
+    )
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LintianIssue>()?;
@@ -362,5 +375,6 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<ScriptFixer>()?;
     m.add_class::<PythonScriptFixer>()?;
     m.add_wrapped(wrap_pyfunction!(read_desc_file))?;
+    m.add_wrapped(wrap_pyfunction!(available_lintian_fixers))?;
     Ok(())
 }
