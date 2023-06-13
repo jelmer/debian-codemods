@@ -460,7 +460,6 @@ impl Fixer for PythonScriptFixer {
             let sys = py.import("sys")?;
             let os = py.import("os")?;
             let io = py.import("io")?;
-            let traceback = py.import("traceback")?;
             let fixer_module = py.import("lintian_brush.fixer")?;
 
             let old_env = os.getattr("environ")?.into_py(py);
@@ -533,10 +532,18 @@ impl Fixer for PythonScriptFixer {
                         retcode = e.value(py).getattr("code")?.extract()?;
                         description = stdout;
                     } else {
-                        let traceback_str = traceback
-                            .call_method1("format_exception", (e,))?
-                            .extract::<Vec<String>>()?;
-                        stderr = format!("{}\n{}", stderr, traceback_str.join("\n"));
+                        use pyo3::types::IntoPyDict;
+                        let traceback = py.import("traceback")?;
+                        let traceback_io = io.call_method0("StringIO")?;
+                        let kwargs = [("file", traceback_io)].into_py_dict(py);
+                        traceback.call_method(
+                            "print_exception",
+                            (e.get_type(py), &e, e.traceback(py)),
+                            Some(kwargs),
+                        )?;
+                        let traceback_str =
+                            traceback_io.call_method0("getvalue")?.extract::<String>()?;
+                        stderr = format!("{}\n{}", stderr, traceback_str);
                         return Err(FixerError::ScriptFailed {
                             path: self.path.clone(),
                             exit_code: 1,
