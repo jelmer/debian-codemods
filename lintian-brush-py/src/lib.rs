@@ -4,6 +4,14 @@ use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyBytes, PyDict, PyFloat, PyList, PyString};
 use std::convert::TryInto;
 
+use pyo3::create_exception;
+
+create_exception!(
+    lintian_brush,
+    UnsupportedCertainty,
+    pyo3::exceptions::PyException
+);
+
 #[pyclass(subclass)]
 struct LintianIssue(lintian_brush::LintianIssue);
 
@@ -169,9 +177,27 @@ impl FixerResult {
     }
 }
 
+#[pyfunction]
+fn parse_script_fixer_output(text: &str) -> PyResult<FixerResult> {
+    let result = lintian_brush::parse_script_fixer_output(text).map_err(|e| match e {
+        lintian_brush::OutputParseError::LintianIssueParseError(e) => {
+            PyValueError::new_err(format!("invalid lintian issue: {}", e))
+        }
+        lintian_brush::OutputParseError::UnsupportedCertainty(e) => {
+            UnsupportedCertainty::new_err(e)
+        }
+    })?;
+    Ok(FixerResult(result))
+}
+
 #[pymodule]
-fn _lintian_brush_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LintianIssue>()?;
     m.add_class::<FixerResult>()?;
+    m.add_wrapped(wrap_pyfunction!(parse_script_fixer_output))?;
+    m.add(
+        "UnsupportedCertainty",
+        py.get_type::<UnsupportedCertainty>(),
+    )?;
     Ok(())
 }

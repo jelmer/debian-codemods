@@ -91,8 +91,25 @@ impl LintianIssue {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum LintianIssueParseError {
+    InvalidPackageType(String),
+}
+
+impl std::fmt::Display for LintianIssueParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            LintianIssueParseError::InvalidPackageType(s) => {
+                write!(f, "Invalid package type: {}", s)
+            }
+        }
+    }
+}
+
+impl std::error::Error for LintianIssueParseError {}
+
 impl TryFrom<&str> for LintianIssue {
-    type Error = String;
+    type Error = LintianIssueParseError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let value = value.trim();
@@ -104,7 +121,9 @@ impl TryFrom<&str> for LintianIssue {
                     "source" => PackageType::Source,
                     "binary" => PackageType::Binary,
                     _ => {
-                        return Err(format!("Invalid package type: {}", package_type_str));
+                        return Err(LintianIssueParseError::InvalidPackageType(
+                            package_type_str.to_string(),
+                        ))
                     }
                 });
                 package = Some(package_str.to_string());
@@ -173,4 +192,107 @@ impl FixerResult {
             .filter_map(|issue| issue.tag.as_deref())
             .collect()
     }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum OutputParseError {
+    UnsupportedCertainty(String),
+    LintianIssueParseError(LintianIssueParseError),
+}
+
+impl std::fmt::Display for OutputParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            OutputParseError::UnsupportedCertainty(s) => {
+                write!(f, "Unsupported certainty: {}", s)
+            }
+            OutputParseError::LintianIssueParseError(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl std::error::Error for OutputParseError {}
+
+impl From<LintianIssueParseError> for OutputParseError {
+    fn from(value: LintianIssueParseError) -> Self {
+        Self::LintianIssueParseError(value)
+    }
+}
+
+pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseError> {
+    let mut description: Vec<String> = Vec::new();
+    let mut overridden_issues: Vec<LintianIssue> = Vec::new();
+    let mut fixed_lintian_issues: Vec<LintianIssue> = Vec::new();
+    let mut fixed_lintian_tags: Vec<String> = Vec::new();
+    let mut certainty: Option<String> = None;
+    let mut patch_name: Option<String> = None;
+
+    let lines: Vec<&str> = text.split_terminator('\n').collect();
+    let mut i = 0;
+
+    while i < lines.len() {
+        if let Some((key, value)) = lines[i].split_once(':') {
+            match key.trim() {
+                "Fixed-Lintian-Tags" => {
+                    fixed_lintian_tags.extend(value.split(',').map(|tag| tag.trim().to_owned()));
+                }
+                "Fixed-Lintian-Issues" => {
+                    i += 1;
+                    while i < lines.len() && lines[i].starts_with(' ') {
+                        fixed_lintian_issues.push(LintianIssue::try_from(&lines[i][1..])?);
+                        i += 1;
+                    }
+                    continue;
+                }
+                "Overridden-Lintian-Issues" => {
+                    i += 1;
+                    while i < lines.len() && lines[i].starts_with(' ') {
+                        overridden_issues.push(LintianIssue::try_from(&lines[i][1..])?);
+                        i += 1;
+                    }
+                    continue;
+                }
+                "Certainty" => {
+                    certainty = Some(value.trim().to_owned());
+                }
+                "Patch-Name" => {
+                    patch_name = Some(value.trim().to_owned());
+                }
+                _ => {
+                    description.push(lines[i].to_owned());
+                }
+            }
+        } else {
+            description.push(lines[i].to_owned());
+        }
+
+        i += 1;
+    }
+
+    let certainty = certainty
+        .map(|c| c.as_str().try_into())
+        .transpose()
+        .map_err(OutputParseError::UnsupportedCertainty)?;
+
+    let fixed_lintian_tags = if fixed_lintian_tags.is_empty() {
+        None
+    } else {
+        Some(fixed_lintian_tags)
+    };
+
+    let overridden_issues = if overridden_issues.is_empty() {
+        None
+    } else {
+        Some(overridden_issues)
+    };
+
+    Ok(FixerResult::new(
+        description.join("\n"),
+        fixed_lintian_tags,
+        certainty,
+        patch_name,
+        None,
+        fixed_lintian_issues,
+        overridden_issues,
+    ))
 }

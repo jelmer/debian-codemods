@@ -71,6 +71,7 @@ logger = logging.getLogger(__name__)
 
 LintianIssue = _lintian_brush_rs.LintianIssue
 FixerResult = _lintian_brush_rs.FixerResult
+UnsupportedCertainty = _lintian_brush_rs.UnsupportedCertainty
 
 
 class NoChanges(Exception):
@@ -100,10 +101,6 @@ class FixerFailed(Exception):
         if not isinstance(other, self.__class__):
             return False
         return self.args == other.args
-
-
-class UnsupportedCertainty(Exception):
-    """Unsupported certainty."""
 
 
 class FixerScriptFailed(FixerFailed):
@@ -189,53 +186,7 @@ class Fixer:
         raise NotImplementedError(self.run)
 
 
-def parse_script_fixer_output(text):
-    """Parse the output from a script fixer."""
-    description = []
-    overridden_issues = []
-    fixed_issues = []
-    fixed_tags = []
-    certainty = None
-    patch_name = None
-    lines = text.splitlines()
-    i = 0
-    while i < len(lines):
-        # TODO(jelmer): Do this in a slightly less hackish manner
-        try:
-            (key, value) = lines[i].split(":", 1)
-        except ValueError:
-            description.append(lines[i])
-        else:
-            if key == "Fixed-Lintian-Tags":
-                fixed_tags.extend(
-                    [tag.strip() for tag in value.strip().split(",")])
-            elif key == "Fixed-Lintian-Issues":
-                i += 1
-                while i < len(lines) and lines[i].startswith(' '):
-                    fixed_issues.append(LintianIssue.from_str(lines[i][1:]))
-                    i += 1
-                continue
-            elif key == "Overridden-Lintian-Issues":
-                i += 1
-                while i < len(lines) and lines[i].startswith(' '):
-                    overridden_issues.append(
-                        LintianIssue.from_str(lines[i][1:]))
-                    i += 1
-                continue
-            elif key == "Certainty":
-                certainty = value.strip()
-            elif key == "Patch-Name":
-                patch_name = value.strip()
-            else:
-                description.append(lines[i])
-        i += 1
-    if certainty not in SUPPORTED_CERTAINTIES:
-        raise UnsupportedCertainty(certainty)
-    return FixerResult(
-        "\n".join(description), fixed_tags,
-        certainty, patch_name, revision_id=None,
-        fixed_lintian_issues=fixed_issues,
-        overridden_lintian_issues=overridden_issues)
+parse_script_fixer_output = _lintian_brush_rs.parse_script_fixer_output
 
 
 def determine_env(

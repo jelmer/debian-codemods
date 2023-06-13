@@ -10,3 +10,7 @@ homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 
 [dependencies]
 serde_json = { version = "1"}
+
+[features]
+default-features = ["svp"]
+svp = []
