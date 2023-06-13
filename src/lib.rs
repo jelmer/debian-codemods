@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 #[derive(Clone, PartialEq, Eq, Debug, Default, PartialOrd, Ord)]
 pub enum Certainty {
     #[default]
@@ -7,10 +9,10 @@ pub enum Certainty {
     Possible,
 }
 
-impl TryFrom<&str> for Certainty {
-    type Error = String;
+impl FromStr for Certainty {
+    type Err = String;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
             "certain" => Ok(Certainty::Certain),
             "confident" => Ok(Certainty::Confident),
@@ -270,7 +272,7 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
     }
 
     let certainty = certainty
-        .map(|c| c.as_str().try_into())
+        .map(|c| c.parse())
         .transpose()
         .map_err(OutputParseError::UnsupportedCertainty)?;
 
@@ -295,4 +297,45 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
         fixed_lintian_issues,
         overridden_issues,
     ))
+}
+
+pub fn determine_env(
+    package: &str,
+    current_version: &str,
+    compat_release: &str,
+    minimum_certainty: Certainty,
+    trust_package: bool,
+    allow_reformatting: bool,
+    net_access: bool,
+    opinionated: bool,
+    diligence: i32,
+) -> std::collections::HashMap<String, String> {
+    let mut env = std::env::vars().collect::<std::collections::HashMap<_, _>>();
+    env.insert("DEB_SOURCE".to_owned(), package.to_owned());
+    env.insert("CURRENT_VERSION".to_owned(), current_version.to_string());
+    env.insert("COMPAT_RELEASE".to_owned(), compat_release.to_owned());
+    env.insert(
+        "MINIMUM_CERTAINTY".to_owned(),
+        minimum_certainty.to_string(),
+    );
+    env.insert("TRUST_PACKAGE".to_owned(), trust_package.to_string());
+    env.insert(
+        "REFORMATTING".to_owned(),
+        if allow_reformatting {
+            "allow"
+        } else {
+            "disallow"
+        }
+        .to_owned(),
+    );
+    env.insert(
+        "NET_ACCESS".to_owned(),
+        if net_access { "allow" } else { "disallow" }.to_owned(),
+    );
+    env.insert(
+        "OPINIONATED".to_owned(),
+        if opinionated { "yes" } else { "no" }.to_owned(),
+    );
+    env.insert("DILIGENCE".to_owned(), diligence.to_string());
+    env
 }

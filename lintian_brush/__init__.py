@@ -187,30 +187,7 @@ class Fixer:
 
 
 parse_script_fixer_output = _lintian_brush_rs.parse_script_fixer_output
-
-
-def determine_env(
-    package,
-    current_version,
-    compat_release,
-    minimum_certainty,
-    trust_package,
-    allow_reformatting,
-    net_access,
-    opinionated,
-    diligence,
-):
-    env = dict(os.environ.items())
-    env["DEB_SOURCE"] = package
-    env["CURRENT_VERSION"] = str(current_version)
-    env["COMPAT_RELEASE"] = compat_release
-    env["MINIMUM_CERTAINTY"] = minimum_certainty
-    env["TRUST_PACKAGE"] = "true" if trust_package else "false"
-    env["REFORMATTING"] = "allow" if allow_reformatting else "disallow"
-    env["NET_ACCESS"] = "allow" if net_access else "disallow"
-    env["OPINIONATED"] = "yes" if opinionated else "no"
-    env["DILIGENCE"] = str(diligence)
-    return env
+determine_env = _lintian_brush_rs.determine_env
 
 
 class PythonScriptFixer(Fixer):

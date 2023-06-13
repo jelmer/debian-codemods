@@ -100,8 +100,7 @@ impl FixerResult {
     ) -> PyResult<Self> {
         let certainty = certainty
             .map(|c| {
-                c.as_str()
-                    .try_into()
+                c.parse()
                     .map_err(|e| PyValueError::new_err(format!("invalid certainty: {}", e)))
             })
             .transpose()?;
@@ -190,6 +189,35 @@ fn parse_script_fixer_output(text: &str) -> PyResult<FixerResult> {
     Ok(FixerResult(result))
 }
 
+#[pyfunction]
+pub fn determine_env(
+    package: &str,
+    current_version: &str,
+    compat_release: &str,
+    minimum_certainty: &str,
+    trust_package: bool,
+    allow_reformatting: bool,
+    net_access: bool,
+    opinionated: bool,
+    diligence: i32,
+) -> PyResult<std::collections::HashMap<String, String>> {
+    let minimum_certainty = minimum_certainty
+        .parse()
+        .map_err(|e| UnsupportedCertainty::new_err(e))?;
+
+    Ok(lintian_brush::determine_env(
+        package,
+        current_version,
+        compat_release,
+        minimum_certainty,
+        trust_package,
+        allow_reformatting,
+        net_access,
+        opinionated,
+        diligence,
+    ))
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LintianIssue>()?;
@@ -199,5 +227,6 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
         "UnsupportedCertainty",
         py.get_type::<UnsupportedCertainty>(),
     )?;
+    m.add_wrapped(wrap_pyfunction!(determine_env))?;
     Ok(())
 }
