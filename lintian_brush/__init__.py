@@ -52,7 +52,7 @@ from debmutate.reformatting import FormattingUnpreservable
 from . import _lintian_brush_rs
 
 
-__version__ = (0, 148)
+__version__ = (0, 149)
 version_string = ".".join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ["certain", "confident", "likely", "possible", None]
 DEFAULT_MINIMUM_CERTAINTY = "certain"

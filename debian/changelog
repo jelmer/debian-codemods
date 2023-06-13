@@ -1,3 +1,9 @@
+lintian-brush (0.149) UNRELEASED; urgency=medium
+
+  *
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 13 Jun 2023 20:02:46 +0100
+
 lintian-brush (0.148) unstable; urgency=medium
 
   * Bump minimum upstream-ontologist to 0.134.
