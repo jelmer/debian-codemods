@@ -13,7 +13,7 @@ pyo3 = { version = "0.19", features = ["auto-initialize"], optional = true }
 serde_json = { version = "1"}
 serde_yaml = { version = ">=0.8" }
 serde = { version = "1", features = ["derive"] }
-distro-info = { git = "https://github.com/jelmer/distro-info-rs.git" }
+distro-info = { version = ">=0.4.0" }
 chrono = { version = "0.4" }
 
 [features]
