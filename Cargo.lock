@@ -121,8 +121,9 @@ dependencies = [
 
 [[package]]
 name = "distro-info"
-version = "0.3.0"
-source = "git+https://github.com/jelmer/distro-info-rs.git#40a03545299e861e507ada4affb975d0b3fd05ae"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef12237f2ced990e453ec0b69230752e73be0a357817448c50a62f8bbbe0ca71"
 dependencies = [
  "chrono",
  "csv",

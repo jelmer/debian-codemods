@@ -23,7 +23,7 @@ import os
 import shutil
 import sys
 import tempfile
-from typing import Optional, Iterable
+from typing import Optional
 
 from debian.changelog import get_maintainer, ChangelogCreateError
 import distro_info
@@ -54,38 +54,17 @@ from . import (  # noqa: E402
     SUPPORTED_CERTAINTIES,
     DEFAULT_MINIMUM_CERTAINTY,
     control_files_in_root,
+    _lintian_brush_rs
 )
 from .config import Config  # noqa: E402
 
 
-DEFAULT_ADDON_FIXERS = [
-    "debian-changelog-line-too-long",
-    "trailing-whitespace",
-    "out-of-date-standards-version",
-    "package-uses-old-debhelper-compat-version",
-    "public-upstream-key-not-minimal",
-]
-
-DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY = 10
-DEFAULT_VALUE_LINTIAN_BRUSH = 50
-# Base these scores on the importance as set in Debian?
-LINTIAN_BRUSH_TAG_VALUES = {
-    "trailing-whitespace": 0,
-}
-LINTIAN_BRUSH_TAG_DEFAULT_VALUE = 5
-
-
-def calculate_value(tags: Iterable[str]) -> int:
-    if not tags:
-        return 0
-    if not (set(tags) - set(DEFAULT_ADDON_FIXERS)):
-        value = DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY
-    else:
-        value = DEFAULT_VALUE_LINTIAN_BRUSH
-    for tag in tags:
-        value += LINTIAN_BRUSH_TAG_VALUES.get(
-            tag, LINTIAN_BRUSH_TAG_DEFAULT_VALUE)
-    return value
+calculate_value = _lintian_brush_rs.calculate_value
+LINTIAN_BRUSH_TAG_DEFAULT_VALUE = (
+    _lintian_brush_rs.LINTIAN_BRUSH_TAG_DEFAULT_VALUE)
+DEFAULT_VALUE_LINTIAN_BRUSH = _lintian_brush_rs.DEFAULT_VALUE_LINTIAN_BRUSH
+DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY = (
+    _lintian_brush_rs.DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY)
 
 
 def versions_dict():

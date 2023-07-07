@@ -1,4 +1,5 @@
 use crate::breezyshim::RevisionId;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::process::Command;
@@ -809,3 +810,40 @@ pub fn min_certainty(certainties: &[Certainty]) -> Option<Certainty> {
 }
 
 pub mod release_info;
+
+pub const DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY: i32 = 10;
+pub const DEFAULT_VALUE_LINTIAN_BRUSH: i32 = 50;
+pub const LINTIAN_BRUSH_TAG_VALUES: [(&str, i32); 1] = [("trailing-whitespace", 0)];
+pub const DEFAULT_ADDON_FIXERS: &[&str] = &[
+    "debian-changelog-line-too-long",
+    "trailing-whitespace",
+    "out-of-date-standards-version",
+    "package-uses-old-debhelper-compat-version",
+    "public-upstream-key-not-minimal",
+];
+pub const LINTIAN_BRUSH_TAG_DEFAULT_VALUE: i32 = 5;
+
+pub fn calculate_value(tags: &[&str]) -> i32 {
+    if tags.is_empty() {
+        return 0;
+    }
+
+    let default_addon_fixers: HashSet<&str> = DEFAULT_ADDON_FIXERS.iter().cloned().collect();
+    let tag_set: HashSet<&str> = tags.iter().cloned().collect();
+
+    if tag_set.is_subset(&default_addon_fixers) {
+        return DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY;
+    }
+
+    let mut value = DEFAULT_VALUE_LINTIAN_BRUSH;
+
+    for tag in tags {
+        if let Some(tag_value) = LINTIAN_BRUSH_TAG_VALUES.iter().find(|(t, _)| t == tag) {
+            value += tag_value.1;
+        } else {
+            value += LINTIAN_BRUSH_TAG_DEFAULT_VALUE;
+        }
+    }
+
+    value
+}

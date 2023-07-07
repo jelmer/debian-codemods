@@ -400,6 +400,11 @@ fn resolve_release_codename(name: &str, date: Option<chrono::NaiveDate>) -> Opti
     lintian_brush::release_info::resolve_release_codename(name, date)
 }
 
+#[pyfunction]
+fn calculate_value(tags: Vec<&str>) -> i32 {
+    lintian_brush::calculate_value(tags.as_slice())
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LintianIssue>()?;
@@ -418,5 +423,22 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(certainty_sufficient))?;
     m.add_wrapped(wrap_pyfunction!(min_certainty))?;
     m.add_wrapped(wrap_pyfunction!(resolve_release_codename))?;
+    m.add_wrapped(wrap_pyfunction!(calculate_value))?;
+    m.add(
+        "DEFAULT_VALUE_LINTIAN_BRUSH",
+        lintian_brush::DEFAULT_VALUE_LINTIAN_BRUSH,
+    )?;
+    m.add(
+        "DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY",
+        lintian_brush::DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY,
+    )?;
+    m.add(
+        "LINTIAN_BRUSH_TAG_DEFAULT_VALUE",
+        lintian_brush::LINTIAN_BRUSH_TAG_DEFAULT_VALUE,
+    )?;
+    m.add(
+        "DEFAULT_ADDON_FIXERS",
+        PyList::new(py, lintian_brush::DEFAULT_ADDON_FIXERS),
+    )?;
     Ok(())
 }
