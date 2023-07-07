@@ -356,7 +356,7 @@ fn available_lintian_fixers(
     force_subprocess: Option<bool>,
 ) -> PyResult<Vec<Fixer>> {
     Ok(
-        lintian_brush::available_lintian_fixers(fixers_dir.as_path(), force_subprocess)
+        lintian_brush::available_lintian_fixers(Some(fixers_dir.as_path()), force_subprocess)
             .map_err(|e| PyValueError::new_err(e.to_string()))?
             .map(|s| Fixer(s))
             .collect(),

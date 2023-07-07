@@ -767,9 +767,11 @@ fn load_fixer(
 /// * `fixers_dir` - The directory to search for fixers.
 /// * `force_subprocess` - Force the use of a subprocess for all fixers.
 pub fn available_lintian_fixers(
-    fixers_dir: &std::path::Path,
+    fixers_dir: Option<&std::path::Path>,
     force_subprocess: Option<bool>,
 ) -> Result<impl Iterator<Item = Box<dyn Fixer>>, Box<dyn std::error::Error>> {
+    let system_path = find_fixers_dir();
+    let fixers_dir = fixers_dir.unwrap_or_else(|| system_path.as_ref().unwrap().as_path());
     let mut fixers = Vec::new();
     // Scan fixers_dir for .desc files
     for entry in std::fs::read_dir(fixers_dir)? {
@@ -846,4 +848,49 @@ pub fn calculate_value(tags: &[&str]) -> i32 {
     }
 
     value
+}
+
+pub fn data_file_path(
+    name: &str,
+    check: impl Fn(&std::path::Path) -> bool,
+) -> Option<std::path::PathBuf> {
+    let mut path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path = path.join("..").join(name);
+    if check(&path) {
+        return Some(path);
+    }
+
+    use pyo3::Python;
+    match Python::with_gil(|py| {
+        let pkg_resources = py.import("pkg_resources").unwrap();
+        if let Ok(path) = pkg_resources.call_method1(
+            "resource_filename",
+            ("lintian_brush", format!("lintian-brush/{}", name)),
+        ) {
+            if let Ok(path) = path.extract::<std::path::PathBuf>() {
+                if check(path.as_path()) {
+                    return Some(path);
+                }
+            }
+        }
+        None
+    }) {
+        Some(path) => return Some(path),
+        None => (),
+    }
+
+    let base_paths = &["/usr/share/lintian-brush", "/usr/local/share/lintian-brush"];
+
+    for base_path in base_paths {
+        let path = std::path::Path::new(base_path).join(name);
+        if check(&path) {
+            return Some(path);
+        }
+    }
+
+    None
+}
+
+pub fn find_fixers_dir() -> Option<std::path::PathBuf> {
+    data_file_path("fixers", |path| path.is_dir())
 }
