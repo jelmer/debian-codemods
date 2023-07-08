@@ -75,7 +75,7 @@ pub struct Hint {
     pub link: String,
     #[serde(deserialize_with = "deserialize_severity")]
     pub severity: Severity,
-    pub version: String,
+    pub version: Option<String>,
 }
 
 pub fn multiarch_hints_by_source(hints: &[Hint]) -> HashMap<&str, Vec<&Hint>> {
