@@ -440,5 +440,10 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
         "DEFAULT_ADDON_FIXERS",
         PyList::new(py, lintian_brush::DEFAULT_ADDON_FIXERS),
     )?;
+    let tag_values = PyDict::new(py);
+    for (k, v) in lintian_brush::LINTIAN_BRUSH_TAG_VALUES.iter() {
+        tag_values.set_item(k, v)?;
+    }
+    m.add("LINTIAN_BRUSH_TAG_VALUES", tag_values)?;
     Ok(())
 }
