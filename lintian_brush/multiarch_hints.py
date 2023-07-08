@@ -23,11 +23,9 @@ import logging
 import os
 import re
 import sys
-import time
-from typing import Optional, Dict, List, Any, Union
+from typing import Optional, Dict, List, Any
 
 from urllib.error import HTTPError, URLError
-from urllib.request import urlopen, Request
 
 from breezy.workspace import (
     WorkspaceDirty,
@@ -40,9 +38,7 @@ from lintian_brush import (
     NotDebianPackage,
     FixerResult,
     min_certainty,
-    USER_AGENT,
     SUPPORTED_CERTAINTIES,
-    DEFAULT_URLLIB_TIMEOUT,
     certainty_sufficient,
     get_committer,
     get_dirty_tracker,
@@ -61,9 +57,7 @@ from debmutate.reformatting import GeneratedFile, FormattingUnpreservable
 from . import _lintian_brush_rs
 
 calculate_value = _lintian_brush_rs.multiarch_hints.calculate_value
-
-
-MULTIARCH_HINTS_URL = "https://dedup.debian.net/static/multiarch-hints.yaml.xz"
+MULTIARCH_HINTS_URL = _lintian_brush_rs.multiarch_hints.MULTIARCH_HINTS_URL
 
 
 def parse_multiarch_hints(f):
@@ -99,67 +93,10 @@ def multiarch_hints_by_source(hints) -> Dict[str,  List[Any]]:
     return ret
 
 
-def cache_download_multiarch_hints(url=MULTIARCH_HINTS_URL):
-    """Load multi-arch hints from a URL, but use cached version if available.
-    """
-    cache_home = os.environ.get("XDG_CACHE_HOME")
-    if not cache_home:
-        cache_home = os.path.expanduser("~/.cache")
-    cache_dir = os.path.join(cache_home, "lintian-brush")
-    try:
-        os.makedirs(cache_dir, exist_ok=True)
-    except PermissionError:
-        local_hints_path = None
-        last_modified = None
-        logging.warning("Unable to create %s; not caching.", cache_dir)
-    else:
-        local_hints_path = os.path.join(cache_dir, "multiarch-hints.yml")
-        try:
-            last_modified = os.path.getmtime(local_hints_path)
-        except FileNotFoundError:
-            last_modified = None
-    try:
-        with download_multiarch_hints(url=url, since=last_modified) as f:
-            if local_hints_path is None:
-                return f
-            logging.info("Downloading new version of multi-arch hints.")
-            with open(local_hints_path, "wb") as c:
-                c.writelines(f)
-    except HTTPError as e:
-        if e.status != 304:
-            raise
-    except URLError:
-        raise
-    assert local_hints_path is not None
-    return open(local_hints_path, "rb")  # noqa: SIM115
-
-
-@contextlib.contextmanager
-def download_multiarch_hints(url=MULTIARCH_HINTS_URL,
-                             since: Optional[Union[float, int]] = None):
-    """Load multi-arch hints from a URL.
-
-    Args:
-      url: URL to read from
-      since: Last modified timestamp
-    Returns:
-      multi-arch hints file
-    """
-    headers = {"User-Agent": USER_AGENT}
-    if since is not None:
-        headers["If-Modified-Since"] = time.strftime(
-            "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(since)
-        )
-
-    with urlopen(Request(url, headers=headers),
-                 timeout=DEFAULT_URLLIB_TIMEOUT) as f:
-        if url.endswith(".xz"):
-            import lzma
-
-            # It would be nicer if there was a content-type, but there isn't
-            # :-(
-            f = lzma.LZMAFile(f)
-        yield f
+cache_download_multiarch_hints = (
+    _lintian_brush_rs.multiarch_hints.cache_download_multiarch_hints)
+download_multiarch_hints = (
+    _lintian_brush_rs.multiarch_hints.download_multiarch_hints)
 
 
 def apply_hint_ma_foreign(binary, hint):
@@ -467,8 +404,8 @@ def main(argv=None):  # noqa: C901
                 dirty_tracker = None
 
         try:
-            with cache_download_multiarch_hints() as f:
-                hints = multiarch_hints_by_binary(parse_multiarch_hints(f))
+            text = cache_download_multiarch_hints()
+            hints = multiarch_hints_by_binary(parse_multiarch_hints(text))
         except (HTTPError, URLError, TimeoutError) as e:
             report_fatal(
                 "multiarch-hints-download-error",

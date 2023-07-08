@@ -410,6 +410,20 @@ fn calculate_multiarch_value(hints: Vec<&str>) -> i32 {
     multiarch_hints::calculate_value(hints.as_slice())
 }
 
+#[pyfunction]
+fn cache_download_multiarch_hints(py: Python, url: Option<&str>) -> PyResult<PyObject> {
+    multiarch_hints::cache_download_multiarch_hints(url)
+        .map_err(|e| PyValueError::new_err(e.to_string()))
+        .map(|b| PyBytes::new(py, b.as_slice()).to_object(py))
+}
+
+#[pyfunction]
+fn download_multiarch_hints(py: Python, url: Option<&str>) -> PyResult<PyObject> {
+    multiarch_hints::download_multiarch_hints(url, None)
+        .map_err(|e| PyValueError::new_err(e.to_string()))
+        .map(|b| PyBytes::new(py, b.unwrap().as_slice()).to_object(py))
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LintianIssue>()?;
@@ -453,6 +467,9 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
 
     let multiarch_m = PyModule::new(py, "multiarch_hints")?;
     multiarch_m.add_wrapped(wrap_pyfunction!(calculate_multiarch_value))?;
+    multiarch_m.add("MULTIARCH_HINTS_URL", multiarch_hints::MULTIARCH_HINTS_URL)?;
+    multiarch_m.add_wrapped(wrap_pyfunction!(cache_download_multiarch_hints))?;
+    multiarch_m.add_wrapped(wrap_pyfunction!(download_multiarch_hints))?;
     m.add_submodule(multiarch_m)?;
     Ok(())
 }
