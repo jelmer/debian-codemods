@@ -165,7 +165,7 @@ pub fn download_multiarch_hints(
         .into())
     } else if url.ends_with(".xz") {
         // It would be nicer if there was a content-type, but there isn't :-(
-        let mut reader = lzma::read(response)?;
+        let mut reader = xz2::read::XzDecoder::new(response);
         let mut buffer = Vec::new();
         reader.read_to_end(&mut buffer)?;
         Ok(Some(buffer))
