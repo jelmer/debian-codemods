@@ -78,6 +78,26 @@ pub struct Hint {
     pub version: String,
 }
 
+pub fn multiarch_hints_by_source(hints: &[Hint]) -> HashMap<&str, Vec<&Hint>> {
+    let mut map = HashMap::new();
+    for hint in hints {
+        map.entry(hint.source.as_str())
+            .or_insert_with(Vec::new)
+            .push(hint);
+    }
+    map
+}
+
+pub fn multiarch_hints_by_binary(hints: &[Hint]) -> HashMap<&str, Vec<&Hint>> {
+    let mut map = HashMap::new();
+    for hint in hints {
+        map.entry(hint.binary.as_str())
+            .or_insert_with(Vec::new)
+            .push(hint);
+    }
+    map
+}
+
 pub fn parse_multiarch_hints(f: &str) -> Result<Vec<Hint>, serde_yaml::Error> {
     let data = serde_yaml::from_str::<serde_yaml::Value>(f)?;
     if let Some(format) = data["format"].as_str() {
