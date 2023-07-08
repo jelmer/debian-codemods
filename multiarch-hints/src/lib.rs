@@ -98,8 +98,8 @@ pub fn multiarch_hints_by_binary(hints: &[Hint]) -> HashMap<&str, Vec<&Hint>> {
     map
 }
 
-pub fn parse_multiarch_hints(f: &str) -> Result<Vec<Hint>, serde_yaml::Error> {
-    let data = serde_yaml::from_str::<serde_yaml::Value>(f)?;
+pub fn parse_multiarch_hints(f: &[u8]) -> Result<Vec<Hint>, serde_yaml::Error> {
+    let data = serde_yaml::from_slice::<serde_yaml::Value>(f)?;
     if let Some(format) = data["format"].as_str() {
         if format != "multiarch-hints-1.0" {
             return Err(serde::de::Error::custom(format!(
