@@ -405,6 +405,11 @@ fn calculate_value(tags: Vec<&str>) -> i32 {
     lintian_brush::calculate_value(tags.as_slice())
 }
 
+#[pyfunction(name = "calculate_value")]
+fn calculate_multiarch_value(hints: Vec<&str>) -> i32 {
+    multiarch_hints::calculate_value(hints.as_slice())
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LintianIssue>()?;
@@ -445,5 +450,9 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
         tag_values.set_item(k, v)?;
     }
     m.add("LINTIAN_BRUSH_TAG_VALUES", tag_values)?;
+
+    let multiarch_m = PyModule::new(py, "multiarch_hints")?;
+    multiarch_m.add_wrapped(wrap_pyfunction!(calculate_multiarch_value))?;
+    m.add_submodule(multiarch_m)?;
     Ok(())
 }

@@ -58,23 +58,9 @@ from debmutate.control import (
     parse_relations,
 )
 from debmutate.reformatting import GeneratedFile, FormattingUnpreservable
+from . import _lintian_brush_rs
 
-
-DEFAULT_VALUE_MULTIARCH_HINT = 100
-MULTIARCH_HINTS_VALUE = {
-    "ma-foreign": 20,
-    "file-conflict": 50,
-    "ma-foreign-library": 20,
-    "dep-any": 20,
-    "ma-same": 20,
-    "arch-all": 20,
-}
-
-
-def calculate_value(hints):
-    return sum(map(MULTIARCH_HINTS_VALUE.__getitem__, hints)) + (
-        DEFAULT_VALUE_MULTIARCH_HINT
-    )
+calculate_value = _lintian_brush_rs.multiarch_hints.calculate_value
 
 
 MULTIARCH_HINTS_URL = "https://dedup.debian.net/static/multiarch-hints.yaml.xz"

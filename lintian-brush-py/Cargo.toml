@@ -15,3 +15,4 @@ pyo3 = { version = ">=0.14", features = ["extension-module", "chrono"] }
 lintian-brush = { path = ".." }
 serde_json = "1"
 chrono = "0.4"
+multiarch-hints = { path = "../multiarch-hints" }
