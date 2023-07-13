@@ -3,9 +3,10 @@
 
 import argparse
 
-from lintian_brush import available_lintian_fixers
 import psycopg2
 from ruamel.yaml import YAML
+
+from lintian_brush import available_lintian_fixers
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--exclude', type=str, default='hard',

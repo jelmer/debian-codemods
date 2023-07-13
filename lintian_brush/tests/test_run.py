@@ -17,16 +17,11 @@
 
 """Tests for lintian_brush."""
 
-from datetime import datetime
 import os
 import re
 import sys
-from typing import Type, Callable, Any
-
-from debian.changelog import (
-    Changelog,
-    Version,
-)
+from datetime import datetime
+from typing import Any, Callable, Type
 
 from breezy.config import GlobalStack
 from breezy.tests import (
@@ -34,32 +29,35 @@ from breezy.tests import (
     TestCaseWithTransport,
 )
 
+from debian.changelog import (
+    Changelog,
+    Version,
+)
 from lintian_brush import (
+    FailedPatchManipulation,
     FixerFailed,
     FixerResult,
     FixerScriptFailed,
+    ManyResult,
     NoChanges,
     NotDebianPackage,
     PythonScriptFixer,
     ScriptFixer,
-    FailedPatchManipulation,
     UnsupportedCertainty,
     available_lintian_fixers,
     certainty_sufficient,
-    min_certainty,
     certainty_to_confidence,
     confidence_to_certainty,
     get_committer,
     increment_version,
+    min_certainty,
     only_changes_last_changelog_block,
     parse_script_fixer_output,
     run_lintian_fixer,
     run_lintian_fixers,
     select_fixers,
     version_string,
-    ManyResult,
 )
-
 
 CHANGELOG_FILE = (
     "debian/changelog",

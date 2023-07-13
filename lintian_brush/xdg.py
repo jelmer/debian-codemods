@@ -17,12 +17,11 @@
 
 """Fix issues in XDG files."""
 
-from io import StringIO
 import os
-
-from iniparse.ini import INIConfig, LineContainer, OptionLine
+from io import StringIO
 
 from debmutate.reformatting import edit_formatted_file
+from iniparse.ini import INIConfig, LineContainer, OptionLine
 
 
 class DesktopEntryEditor:

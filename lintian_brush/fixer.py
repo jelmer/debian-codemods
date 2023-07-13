@@ -17,26 +17,26 @@
 
 """Helper functions for fixers."""
 
+import os
+import sys
 from collections.abc import MutableMapping
+from typing import List, Optional, Tuple, Union
+
 from debmutate.control import ControlEditor
 from debmutate.deb822 import Deb822Paragraph
 from debmutate.vendor import get_vendor_name
-import sys
-from typing import Optional, Tuple, Union, List
+
+from debian.changelog import Version
 
 from . import (
     DEFAULT_MINIMUM_CERTAINTY,
     certainty_sufficient,
 )
 from .lintian_overrides import (
-    get_overrides,
     LintianOverride,
+    get_overrides,
     load_renamed_tags,
 )
-
-
-from debian.changelog import Version
-import os
 
 
 class LintianIssue:

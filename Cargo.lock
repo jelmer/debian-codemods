@@ -529,6 +529,7 @@ version = "0.149.0"
 dependencies = [
  "chrono",
  "distro-info",
+ "log",
  "pyo3",
  "serde",
  "serde_json",

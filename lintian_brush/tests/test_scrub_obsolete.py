@@ -20,20 +20,20 @@
 from typing import Dict
 from unittest import TestCase
 
+from debmutate._deb822 import PkgRelation
+
+from debian.changelog import Version
 from lintian_brush.scrub_obsolete import (
-    name_list,
-    filter_relations,
-    drop_obsolete_depends,
-    release_aliases,
-    PackageChecker,
     DropEssential,
     DropMinimumVersion,
     DropTransition,
+    PackageChecker,
     ReplaceTransition,
-    )
-
-from debian.changelog import Version
-from debmutate._deb822 import PkgRelation
+    drop_obsolete_depends,
+    filter_relations,
+    name_list,
+    release_aliases,
+)
 
 
 class NameListTests(TestCase):

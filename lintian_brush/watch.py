@@ -17,19 +17,18 @@
 
 """Functions for working with watch files."""
 
-from collections import namedtuple
-from contextlib import suppress
-from dataclasses import dataclass
 import json
 import logging
 import os
 import re
-from typing import Set, Optional, List
-from urllib.parse import urlparse, urlunparse
 import urllib.error
-from urllib.request import urlopen, Request
+from collections import namedtuple
+from contextlib import suppress
+from dataclasses import dataclass
+from typing import List, Optional, Set
+from urllib.parse import urlparse, urlunparse
+from urllib.request import Request, urlopen
 
-from debian.changelog import Changelog
 from debmutate.reformatting import FormattingUnpreservable
 from debmutate.versions import get_snapshot_revision, strip_dfsg_suffix
 from debmutate.watch import (
@@ -39,14 +38,15 @@ from debmutate.watch import (
     apply_url_mangle,
 )
 
+from debian.changelog import Changelog
+
 from . import (
-    USER_AGENT,
     DEFAULT_URLLIB_TIMEOUT,
-    min_certainty,
+    USER_AGENT,
     certainty_to_confidence,
+    min_certainty,
 )
 from .gpg import fetch_keys
-
 
 # TODO(jelmer): Vary this depending on whether a new watch file was added or an
 # existing one was fixed?
@@ -77,8 +77,7 @@ SignatureInfo = namedtuple('SignatureInfo', ['is_valid', 'keys', 'mangle'])
 
 def probe_signature(r, *, pgpsigurlmangle=None, mangles=None,
                     gpg_context=None):
-    """Try to find the signature file for a release.
-    """
+    """Try to find the signature file for a release."""
     import gpg.errors
 
     if gpg_context is None:
@@ -290,8 +289,9 @@ def guess_launchpad_watch_entry(
 
 def guess_github_watch_entry(
         parsed_url, good_upstream_versions, net_access=False):
-    from breezy.branch import Branch
     import re
+
+    from breezy.branch import Branch
 
     if not net_access:
         return
@@ -325,8 +325,7 @@ def guess_github_watch_entry(
     )
     matching_pattern = r".*\/%s\.tar\.gz" % version_pattern
     opts = [
-        r"filenamemangle=s/%(pattern)s/%(project)s-$1\.tar\.gz/"
-        % {"pattern": matching_pattern, "project": project}
+        fr"filenamemangle=s/{matching_pattern}/{project}-$1\.tar\.gz/"
     ]
     if uversionmangle:
         opts.append(r"uversionmangle=" + ";".join(uversionmangle))
@@ -537,19 +536,20 @@ def _note_changelog_policy(policy, msg):
 
 def main():  # noqa: C901
     import argparse
-    import breezy  # noqa: E402
     import logging
 
-    breezy.initialize()  # type: ignore
-    import breezy.git  # noqa: E402
-    import breezy.bzr  # noqa: E402
+    import breezy  # noqa: E402
 
+    breezy.initialize()  # type: ignore
+    import breezy.bzr  # noqa: E402
+    import breezy.git  # noqa: E402
     from breezy.commit import NullCommitReporter, PointlessCommit
     from breezy.workingtree import WorkingTree
     from breezy.workspace import (
-        check_clean_tree,
         WorkspaceDirty,
-        )
+        check_clean_tree,
+    )
+
     from . import (
         get_committer,
         version_string,

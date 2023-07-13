@@ -17,7 +17,6 @@
 
 import unittest
 
-
 core_names = [
     "changelog",
     "config",

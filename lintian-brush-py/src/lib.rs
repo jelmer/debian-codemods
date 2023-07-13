@@ -6,6 +6,8 @@ use pyo3::types::{PyBool, PyBytes, PyDict, PyFloat, PyList, PyString};
 use pyo3::create_exception;
 use pyo3::import_exception;
 
+use std::collections::HashMap;
+
 use lintian_brush::Certainty;
 
 create_exception!(
@@ -52,6 +54,42 @@ fn json_to_py(py: Python, v: serde_json::Value) -> PyResult<PyObject> {
             Ok(dict.to_object(py))
         }
     }
+}
+
+pub fn py_to_json(py: Python, obj: PyObject) -> PyResult<serde_json::Value> {
+    if obj.is_none(py) {
+        return Ok(serde_json::Value::Null);
+    }
+    if let Ok(obj) = obj.extract::<bool>(py) {
+        return Ok(serde_json::Value::Bool(obj));
+    }
+    if let Ok(obj) = obj.extract::<i64>(py) {
+        return Ok(serde_json::Value::Number(obj.into()));
+    }
+    if let Ok(obj) = obj.extract::<u64>(py) {
+        return Ok(serde_json::Value::Number(obj.into()));
+    }
+    if let Ok(obj) = obj.extract::<f64>(py) {
+        return Ok(serde_json::json!(obj));
+    }
+    if let Ok(obj) = obj.extract::<String>(py) {
+        return Ok(serde_json::Value::String(obj));
+    }
+    if let Ok(obj) = obj.extract::<Vec<PyObject>>(py) {
+        let items: Vec<serde_json::Value> = obj
+            .into_iter()
+            .map(|o| py_to_json(py, o))
+            .collect::<PyResult<Vec<_>>>()?;
+        return Ok(serde_json::Value::Array(items));
+    }
+    if let Ok(obj) = obj.extract::<HashMap<String, PyObject>>(py) {
+        let items: serde_json::Map<String, serde_json::Value> = obj
+            .into_iter()
+            .map(|(k, v)| Ok((k, py_to_json(py, v)?)))
+            .collect::<PyResult<serde_json::Map<_, _>>>()?;
+        return Ok(serde_json::Value::Object(items));
+    }
+    Err(PyTypeError::new_err("invalid type"))
 }
 
 #[pymethods]
@@ -424,6 +462,50 @@ fn download_multiarch_hints(py: Python, url: Option<&str>) -> PyResult<PyObject>
         .map(|b| PyBytes::new(py, b.unwrap().as_slice()).to_object(py))
 }
 
+#[pyfunction]
+fn report_fatal(
+    versions: HashMap<String, String>,
+    code: &str,
+    description: &str,
+    hint: Option<&str>,
+) {
+    lintian_brush::svp::report_fatal(versions, code, description, hint)
+}
+
+#[pyfunction]
+pub fn report_success(
+    py: Python,
+    versions: HashMap<String, String>,
+    value: Option<i32>,
+    context: Option<PyObject>,
+) -> PyResult<()> {
+    let context = if let Some(context) = context {
+        Some(py_to_json(py, context)?)
+    } else {
+        None
+    };
+
+    Ok(lintian_brush::svp::report_success(versions, value, context))
+}
+
+#[pyfunction]
+pub fn report_success_debian(
+    py: Python,
+    versions: HashMap<String, String>,
+    value: Option<i32>,
+    context: Option<PyObject>,
+    changelog: Option<(bool, String)>,
+) -> PyResult<()> {
+    let context = if let Some(context) = context {
+        Some(py_to_json(py, context)?)
+    } else {
+        None
+    };
+    Ok(lintian_brush::svp::report_success_debian(
+        versions, value, context, changelog,
+    ))
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LintianIssue>()?;
@@ -471,5 +553,8 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     multiarch_m.add_wrapped(wrap_pyfunction!(cache_download_multiarch_hints))?;
     multiarch_m.add_wrapped(wrap_pyfunction!(download_multiarch_hints))?;
     m.add_submodule(multiarch_m)?;
+    m.add_function(wrap_pyfunction!(report_fatal, m)?)?;
+    m.add_function(wrap_pyfunction!(report_success, m)?)?;
+    m.add_function(wrap_pyfunction!(report_success_debian, m)?)?;
     Ok(())
 }

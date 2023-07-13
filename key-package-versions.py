@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
-from debian.changelog import Version
 import json
 import os
 from typing import Dict
+
+from debian.changelog import Version
 
 KEY_PACKAGES = ('debhelper', 'dpkg')
 

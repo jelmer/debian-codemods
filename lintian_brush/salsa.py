@@ -19,13 +19,12 @@
 
 __all__ = ["guess_repository_url", "determine_browser_url"]
 
-from contextlib import suppress
 import re
+from contextlib import suppress
 from typing import Optional
 from urllib.parse import urlparse
 
 from .vcs import determine_gitlab_browser_url
-
 
 MAINTAINER_EMAIL_MAP = {
     "pkg-javascript-devel@lists.alioth.debian.org": "js-team",
@@ -140,6 +139,7 @@ def guess_repository_url(package: str, maintainer_email: str) -> Optional[str]:
     Args:
       package: Package name
       maintainer_email: The maintainer's email address (e.g. team list address)
+
     Returns:
       A guessed repository URL
     """

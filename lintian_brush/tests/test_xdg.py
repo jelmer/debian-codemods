@@ -17,12 +17,12 @@
 
 """Tests for lintian_brush.xdg."""
 
-from ..xdg import (
-    DesktopEntryEditor,
-)
-
 from breezy.tests import (
     TestCaseWithTransport,
+)
+
+from ..xdg import (
+    DesktopEntryEditor,
 )
 
 

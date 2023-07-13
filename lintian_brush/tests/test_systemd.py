@@ -17,18 +17,18 @@
 
 """Tests for lintian_brush.systemd."""
 
+from io import StringIO
+
 from breezy.tests import (
     TestCaseWithTransport,
 )
-
-from io import StringIO
 
 from lintian_brush.systemd import (
     MissingSectionHeaderError,
     UnitFile,
     systemd_service_files,
-    update_service_file,
     update_service,
+    update_service_file,
 )
 
 

@@ -20,9 +20,10 @@
 from breezy.tests import (
     TestCase,
 )
+
 from lintian_brush.salsa import (
-    guess_repository_url,
     determine_browser_url,
+    guess_repository_url,
     salsa_url_from_alioth_url,
 )
 

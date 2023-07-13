@@ -17,40 +17,37 @@
 
 """Automatically fix lintian issues."""
 
-from contextlib import ExitStack
-from datetime import datetime
 import itertools
 import logging
 import os
 import re
 import sys
 import time
+from contextlib import ExitStack
+from datetime import datetime
 from typing import (
-    Optional,
-    List,
+    Callable,
     Iterable,
+    List,
+    Optional,
     Tuple,
     Union,
-    Callable,
 )
-
-from debian.changelog import Changelog, Version
 
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy.commit import NullCommitReporter
-from breezy.transport import NoSuchFile
 from breezy.osutils import is_inside
 from breezy.rename_map import RenameMap
+from breezy.transport import NoSuchFile
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
-from breezy.workspace import reset_tree, check_clean_tree
-
-
+from breezy.workspace import check_clean_tree, reset_tree
 from debmutate.reformatting import FormattingUnpreservable
 
-from . import _lintian_brush_rs
+from debian.changelog import Changelog, Version
 
+from . import _lintian_brush_rs
 
 __version__ = (0, 149)
 version_string = ".".join(map(str, __version__))
@@ -353,10 +350,10 @@ def _upstream_changes_to_patch(
     timestamp: Optional[datetime] = None,
 ) -> Tuple[str, List[str]]:
     from .patches import (
+        PatchSyntax,
         move_upstream_changes_to_patch,
         read_quilt_patches,
         tree_patches_directory,
-        PatchSyntax,
     )
 
     # TODO(jelmer): Apply all patches before generating a diff.
@@ -627,9 +624,9 @@ def get_dirty_tracker(
 
 def determine_update_changelog(local_tree, debian_path):
     from .detect_gbp_dch import (
-        guess_update_changelog,
         ChangelogBehaviour,
-        )
+        guess_update_changelog,
+    )
 
     changelog_path = os.path.join(debian_path, 'changelog')
 

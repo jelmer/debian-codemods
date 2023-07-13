@@ -22,8 +22,8 @@ from breezy.tests import (
 )
 
 from ..debhelper import (
-    lowest_non_deprecated_compat_level,
     highest_stable_compat_level,
+    lowest_non_deprecated_compat_level,
 )
 
 

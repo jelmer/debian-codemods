@@ -20,15 +20,16 @@
 from breezy.tests import (
     TestCase,
 )
+
 from lintian_brush import available_lintian_fixers
 from lintian_brush.__main__ import (
-    versions_dict,
-    calculate_value,
     DEFAULT_ADDON_FIXERS,
     DEFAULT_VALUE_LINTIAN_BRUSH,
     DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY,
-    LINTIAN_BRUSH_TAG_VALUES,
     LINTIAN_BRUSH_TAG_DEFAULT_VALUE,
+    LINTIAN_BRUSH_TAG_VALUES,
+    calculate_value,
+    versions_dict,
 )
 
 

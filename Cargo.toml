@@ -15,6 +15,7 @@ serde_yaml = { version = ">=0.8" }
 serde = { version = "1", features = ["derive"] }
 distro-info = { version = ">=0.4.0" }
 chrono = { version = "0.4" }
+log = "0.4.19"
 
 [features]
 default = ["svp", "python"]

@@ -17,19 +17,19 @@
 
 """Tests for lintian_brush fixers."""
 
-from debian.changelog import Changelog
 import os
-import subprocess
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 
+from debian.changelog import Changelog
 from lintian_brush import (
     available_lintian_fixers,
+    increment_version,
     parse_script_fixer_output,
     select_fixers,
-    increment_version,
 )
 from lintian_brush.lintian_overrides import (
     load_renamed_tags,
@@ -135,9 +135,8 @@ class FixerTestCase(unittest.TestCase):
             self.assertTrue(
                 set(result.fixed_lintian_tags).issubset(
                     self._fixer.lintian_tags),
-                "fixer %s claims to fix tags (%r) not declared "
-                "in index.desc (%r)"
-                % (
+                "fixer {} claims to fix tags ({!r}) not declared "
+                "in index.desc ({!r})".format(
                     self._fixer_name,
                     result.fixed_lintian_tags,
                     self._fixer.lintian_tags,

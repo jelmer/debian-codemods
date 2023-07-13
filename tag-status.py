@@ -4,9 +4,9 @@ import argparse
 import subprocess
 import sys
 
-from lintian_brush import available_lintian_fixers
-
 from ruamel.yaml import YAML
+
+from lintian_brush import available_lintian_fixers
 
 KNOWN_KEYS = ['tag', 'status', 'difficulty', 'comment']
 
@@ -35,8 +35,8 @@ for tag in supported_tags:
     existing = per_tag_status.get(tag)
     if existing and existing.get('status') != 'implemented':
         raise Exception(
-            'tag %s is marked as %s in tag-status.yaml, but implemented' %
-            (tag, existing.get('status')))
+            f"tag {tag} is marked as {existing.get('status')} "
+            f"in tag-status.yaml, but implemented")
     per_tag_status[tag] = {'status': 'implemented'}
 
 

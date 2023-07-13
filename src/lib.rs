@@ -6,6 +6,7 @@ use std::process::Command;
 use std::str::FromStr;
 
 mod breezyshim;
+pub mod svp;
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, PartialOrd, Ord)]
 pub enum Certainty {

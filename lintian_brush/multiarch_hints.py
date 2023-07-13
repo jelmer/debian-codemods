@@ -23,37 +23,37 @@ import logging
 import os
 import re
 import sys
-from typing import Optional, Dict, List, Any
-
+from typing import Any, Dict, List, Optional
 from urllib.error import HTTPError, URLError
 
 from breezy.workspace import (
     WorkspaceDirty,
     check_clean_tree,
-    )
-
-from lintian_brush import (
-    Fixer,
-    NoChanges,
-    NotDebianPackage,
-    FixerResult,
-    min_certainty,
-    SUPPORTED_CERTAINTIES,
-    certainty_sufficient,
-    get_committer,
-    get_dirty_tracker,
-    run_lintian_fixer,
-    version_string,
-    control_files_in_root,
-    control_file_present,
-    is_debcargo_package,
 )
 from debmutate.control import (
     ControlEditor,
     format_relations,
     parse_relations,
 )
-from debmutate.reformatting import GeneratedFile, FormattingUnpreservable
+from debmutate.reformatting import FormattingUnpreservable, GeneratedFile
+
+from lintian_brush import (
+    SUPPORTED_CERTAINTIES,
+    Fixer,
+    FixerResult,
+    NoChanges,
+    NotDebianPackage,
+    certainty_sufficient,
+    control_file_present,
+    control_files_in_root,
+    get_committer,
+    get_dirty_tracker,
+    is_debcargo_package,
+    min_certainty,
+    run_lintian_fixer,
+    version_string,
+)
+
 from . import _lintian_brush_rs
 
 calculate_value = _lintian_brush_rs.multiarch_hints.calculate_value
@@ -258,9 +258,10 @@ APPLIERS = [
 
 
 def versions_dict() -> Dict[str, str]:
-    import lintian_brush
     import debmutate
+
     import debian
+    import lintian_brush
     return {
         'lintian-brush': lintian_brush.version_string,
         'debmutate': debmutate.version_string,
@@ -291,14 +292,14 @@ def report_fatal(code: str, description: str, transient: bool = False) -> None:
 
 def main(argv=None):  # noqa: C901
     import argparse
-    from breezy.workingtree import WorkingTree
 
     import breezy  # noqa: E402
     from breezy.errors import NotBranchError
+    from breezy.workingtree import WorkingTree
 
     breezy.initialize()  # type: ignore
-    import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
+    import breezy.git  # noqa: E402
 
     from .config import Config
 

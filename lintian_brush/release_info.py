@@ -17,8 +17,9 @@
 
 """Information about specific Debian/Ubuntu releases."""
 
-from debian.changelog import Version
 from typing import Optional
+
+from debian.changelog import Version
 
 from . import open_binary
 

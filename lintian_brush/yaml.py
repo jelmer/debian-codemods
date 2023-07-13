@@ -17,11 +17,12 @@
 
 """Utility functions for dealing with YAML files."""
 
-from io import StringIO
 import json
 import os
+from io import StringIO
+from typing import Any, Iterator, List
+
 from ruamel.yaml import YAML
-from typing import List, Any, Iterator
 
 
 class MultiYamlUpdater:

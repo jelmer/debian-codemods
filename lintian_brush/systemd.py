@@ -29,30 +29,28 @@ __all__ = [
     "update_service_file",
 ]
 
-from io import StringIO
 import os
-from typing import Dict, Any, List
+from io import StringIO
+from typing import Any, Dict, List
 
+from debmutate.reformatting import Editor
 from iniparse.config import (
     ConfigNamespace,
     Undefined,
 )
 from iniparse.ini import (
-    LineType,
-    LineContainer,
-    SectionLine,
-    OptionLine,
-    ContinuationLine,
-    MissingSectionHeaderError,
-    ParsingError,
-    EmptyLine,
     CommentLine,
+    ContinuationLine,
+    EmptyLine,
+    LineContainer,
+    LineType,
+    MissingSectionHeaderError,
+    OptionLine,
+    ParsingError,
+    SectionLine,
     make_comment,
     readline_iterator,
 )
-
-from debmutate.reformatting import Editor
-
 
 LIST_KEYS = [
     "Before",

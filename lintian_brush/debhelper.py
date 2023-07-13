@@ -30,21 +30,22 @@ except ImportError:
 import json
 import os
 import subprocess
-from typing import Dict, Optional, List, Callable, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
+
+from debmutate._rules import (
+    dh_invoke_add_with,
+    dh_invoke_drop_with,
+    update_rules,
+)
+from debmutate.control import add_dependency, drop_dependency
 
 from debian.changelog import Version
-from debmutate.control import drop_dependency, add_dependency
-from debmutate._rules import (
-    update_rules,
-    dh_invoke_drop_with,
-    dh_invoke_add_with,
-)
 
 DEBHELPER_BUILD_STEPS = ["configure", "build", "test", "install", "clean"]
 
 
 def detect_debhelper_buildsystem(step: Optional[str] = None) -> Optional[str]:
-    """Detect the build system for debhelper
+    """Detect the build system for debhelper.
 
     Args:
       step: Optional step to determine the buildsystem for
@@ -86,6 +87,7 @@ def maximum_debhelper_compat_version(compat_release: str) -> int:
 
     Args:
       compat_release: A release name (Debian or Ubuntu, currently)
+
     Returns:
       debhelper compat version
     """

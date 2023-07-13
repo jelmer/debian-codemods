@@ -22,19 +22,19 @@ import re
 import subprocess
 
 from breezy.tests import (
-    TestCaseWithTransport,
     TestCase,
+    TestCaseWithTransport,
 )
 
 from lintian_brush.lintian_overrides import (
+    INFO_FIXERS,
     LintianOverride,
     fix_override_info,
-    overrides_paths,
-    override_exists,
-    update_overrides_file,
     get_overrides,
-    INFO_FIXERS,
     load_renamed_tags,
+    override_exists,
+    overrides_paths,
+    update_overrides_file,
 )
 
 

@@ -16,16 +16,17 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import argparse
-from dataclasses import dataclass
 import logging
 import re
 import sys
-from typing import Dict, Set
 import warnings
+from dataclasses import dataclass
+from typing import Dict, Set
+
 import yaml
+from debmutate.control import suppress_substvar_warnings
 
 from debian.deb822 import PkgRelation
-from debmutate.control import suppress_substvar_warnings
 
 
 def parse_relations(t: str):

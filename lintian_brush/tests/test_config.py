@@ -21,7 +21,6 @@ from breezy.tests import (
     TestCase,
     TestCaseWithTransport,
 )
-
 from distro_info import DebianDistroInfo
 
 from lintian_brush.config import (

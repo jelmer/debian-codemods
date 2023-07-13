@@ -17,13 +17,13 @@
 
 """Tests for lintian_brush.detect_gbp_dch."""
 
-from ..detect_gbp_dch import (
-    guess_update_changelog,
-    ChangelogBehaviour,
-)
-
 from breezy.tests import (
     TestCaseWithTransport,
+)
+
+from ..detect_gbp_dch import (
+    ChangelogBehaviour,
+    guess_update_changelog,
 )
 
 

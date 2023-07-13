@@ -18,16 +18,15 @@
 """Utility functions for dealing with changelog files."""
 
 from datetime import datetime
-
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
 from breezy.mutabletree import MutableTree
-
 from debmutate.changelog import (
     Changelog,
+)
+from debmutate.changelog import (
     changelog_add_entry as _changelog_add_entry,
 )
-
 
 DEFAULT_URGENCY = "medium"
 

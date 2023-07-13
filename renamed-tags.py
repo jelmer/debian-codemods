@@ -2,10 +2,10 @@
 
 # Extract renamed tags from lintian metadata.
 
-from debian.deb822 import Deb822
 import json
 import os
 
+from debian.deb822 import Deb822
 
 renames = {}
 

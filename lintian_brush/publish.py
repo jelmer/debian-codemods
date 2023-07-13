@@ -17,19 +17,19 @@
 
 """Publish a package."""
 
-from email.utils import parseaddr
 import logging
 import os
 import sys
+from email.utils import parseaddr
 
-from breezy.controldir import ControlDir
 from breezy.commit import NullCommitReporter, PointlessCommit
+from breezy.controldir import ControlDir
 from breezy.errors import AlreadyBranchError, AlreadyControlDirError
 from breezy.forge import UnsupportedForge
 from breezy.workingtree import WorkingTree
-from breezy.workspace import check_clean_tree, WorkspaceDirty
+from breezy.workspace import WorkspaceDirty, check_clean_tree
 from debmutate.control import ControlEditor
-from debmutate.vcs import source_package_vcs, unsplit_vcs_url, split_vcs_url
+from debmutate.vcs import source_package_vcs, split_vcs_url, unsplit_vcs_url
 
 from . import get_committer
 from .salsa import guess_repository_url
@@ -177,8 +177,8 @@ def main():
     import breezy  # noqa: E402
 
     breezy.initialize()  # type: ignore
-    import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
+    import breezy.git  # noqa: E402
     import breezy.plugins.gitlab
 
     wt, subpath = WorkingTree.open_containing(args.directory)

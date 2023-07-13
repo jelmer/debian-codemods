@@ -26,24 +26,23 @@ import sys
 
 from breezy.workingtree import WorkingTree
 from breezy.workspace import (
-    check_clean_tree,
     WorkspaceDirty,
-    )
-
-from debmutate.ben import parse_ben, SUPPORTED_KEYS
+    check_clean_tree,
+)
+from debmutate.ben import SUPPORTED_KEYS, parse_ben
 from debmutate.control import ControlEditor
 from debmutate.deb822 import ChangeConflict
 from debmutate.reformatting import (
     FormattingUnpreservable,
     GeneratedFile,
-    )
+)
 
 from . import (
+    NotDebianPackage,
     control_files_in_root,
     get_committer,
-    NotDebianPackage,
     version_string,
-    )
+)
 from .changelog import add_changelog_entry
 from .config import Config
 
@@ -135,7 +134,7 @@ def _apply_transition(control, ben):
                     break
             else:
                 raise ValueError(
-                    'unable to find replacement value for %s=%s' % field, expr)
+                    f'unable to find replacement value for {field}={expr}')
             paragraph[field[1:]] = expr.sub(replacement, value)
 
     bugno = ben_find_bugno(ben)
@@ -175,11 +174,12 @@ def apply_transition(
 
 def main():  # noqa: C901
     import argparse
+
     import breezy  # noqa: E402
 
     breezy.initialize()  # type: ignore
-    import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
+    import breezy.git  # noqa: E402
 
     parser = argparse.ArgumentParser(prog="deb-transition-apply")
     parser.add_argument(
@@ -316,8 +316,9 @@ def main():  # noqa: C901
     changelog_path = os.path.join(debian_path, "changelog")
 
     if update_changelog is None:
-        from .detect_gbp_dch import guess_update_changelog
         from debian.changelog import Changelog
+
+        from .detect_gbp_dch import guess_update_changelog
 
         with wt.get_file(changelog_path) as f:
             cl = Changelog(f, max_blocks=1)

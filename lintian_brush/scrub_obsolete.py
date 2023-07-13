@@ -18,46 +18,42 @@
 
 """Utility for dropping unnecessary constraints."""
 
-from contextlib import suppress
 import json
 import logging
 import os
 import sys
-from typing import List, Tuple, Optional, Dict, Callable, Union
+from contextlib import suppress
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from breezy.commit import PointlessCommit, NullCommitReporter
+from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.workingtree import WorkingTree
-
-from debmutate.control import PkgRelation
+from debmutate.control import (
+    ControlEditor,
+    PkgRelation,
+    format_relations,
+    guess_template_type,
+    parse_relations,
+)
 from debmutate.deb822 import ChangeConflict
 from debmutate.debhelper import MaintscriptEditor
-from debmutate.reformatting import FormattingUnpreservable
+from debmutate.reformatting import (
+    FormattingUnpreservable,
+    GeneratedFile,
+    check_generated_file,
+)
 
 from debian.changelog import Version
 from debian.deb822 import Deb822Dict
 
-from debmutate.control import (
-    ControlEditor,
-    parse_relations,
-    format_relations,
-    guess_template_type,
-)
-
-from debmutate.reformatting import (
-    check_generated_file,
-    GeneratedFile,
-)
-
-from .changelog import add_changelog_entry
 from . import (
-    get_committer,
-    control_files_in_root,
-    control_file_present,
     NotDebianPackage,
+    control_file_present,
+    control_files_in_root,
+    get_committer,
     is_debcargo_package,
-    )
+)
+from .changelog import add_changelog_entry
 from .debhelper import drop_obsolete_maintscript_entries
-
 
 DEFAULT_VALUE_MULTIARCH_HINT = 30
 
@@ -138,8 +134,8 @@ class ReplaceTransition(Action):
 
     def __str__(self):
         return (
-            "Replace dependency on transitional package %s "
-            "with replacement %s" % (
+            "Replace dependency on transitional package {} "
+            "with replacement {}".format(
                 PkgRelation.str(self.rel), name_list([
                     PkgRelation.str(p) for p in self.replacement])))
 
@@ -256,8 +252,8 @@ def _package_build_essential(package: str, release: str) -> bool:
 
 
 def _fetch_transitions(release: str) -> Dict[str, str]:
-    from .udd import connect_udd_mirror
     from .dummy_transitional import find_dummy_transitional_packages
+    from .udd import connect_udd_mirror
 
     ret = {}
     conn = connect_udd_mirror()
@@ -643,9 +639,7 @@ def scrub_obsolete(
         allow_reformatting: bool = False,
         keep_minimum_depends_versions: bool = False,
         transitions: Optional[Dict[str, str]] = None) -> ScrubObsoleteResult:
-    """Scrub obsolete entries.
-    """
-
+    """Scrub obsolete entries."""
     if control_files_in_root(wt, subpath):
         debian_path = subpath
     else:
@@ -665,8 +659,9 @@ def scrub_obsolete(
     changelog_path = os.path.join(debian_path, "changelog")
 
     if update_changelog is None:
-        from .detect_gbp_dch import guess_update_changelog
         from debian.changelog import Changelog
+
+        from .detect_gbp_dch import guess_update_changelog
 
         with wt.get_file(changelog_path) as f:
             cl = Changelog(f, max_blocks=1)
@@ -716,9 +711,10 @@ def scrub_obsolete(
 
 
 def versions_dict():
-    import lintian_brush
     import debmutate
+
     import debian
+    import lintian_brush
     return {
         "lintian-brush": lintian_brush.version_string,
         "debmutate": debmutate.version_string,
@@ -748,17 +744,18 @@ def report_okay(code: str, description: str) -> None:
 
 def main():  # noqa: C901
     import argparse
+
     import breezy  # noqa: E402
     from breezy.errors import NotBranchError
 
     breezy.initialize()  # type: ignore
-    import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
-
+    import breezy.git  # noqa: E402
     from breezy.workspace import (
-        check_clean_tree,
         WorkspaceDirty,
-        )
+        check_clean_tree,
+    )
+
     from . import (
         version_string,
     )

@@ -26,19 +26,18 @@ __all__ = [
 
 import posixpath
 import re
-from typing import Optional, Union, List, Callable
+from typing import Callable, List, Optional, Union
 from urllib.parse import urlparse, urlunparse
 
 from debmutate.vcs import split_vcs_url, unsplit_vcs_url
-
 from upstream_ontologist.vcs import (
+    canonical_git_repo_url,
     convert_cvs_list_to_str,
     drop_vcs_in_scheme,
-    find_secure_repo_url,
-    canonical_git_repo_url,
     find_public_repo_url,
-    fixup_rcp_style_git_repo_url,
+    find_secure_repo_url,
     fixup_broken_git_details,
+    fixup_rcp_style_git_repo_url,
     is_gitlab_site,
 )
 

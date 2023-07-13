@@ -22,10 +22,10 @@ from unittest import TestCase
 from lintian_brush.vcs import (
     canonicalize_vcs_url,
     determine_browser_url,
+    find_public_vcs_url,
     fixup_broken_git_url,
     fixup_rcp_style_git_url,
     sanitize_url,
-    find_public_vcs_url,
 )
 
 

@@ -23,41 +23,38 @@ import os
 import shutil
 import sys
 import tempfile
-from typing import Optional
-
-from debian.changelog import get_maintainer, ChangelogCreateError
-import distro_info
 
 import breezy
+import distro_info
 from breezy.branch import Branch
-from breezy.workingtree import WorkingTree
-from breezy.workspace import WorkspaceDirty
-
 from breezy.errors import (  # noqa: E402
     DependencyNotPresent,
     NotBranchError,
 )
+from breezy.workingtree import WorkingTree
+from breezy.workspace import WorkspaceDirty
+
+from debian.changelog import ChangelogCreateError, get_maintainer
 
 breezy.initialize()  # type: ignore
-import breezy.git  # noqa: E402
 import breezy.bzr  # noqa: E402
+import breezy.git  # noqa: E402
 
 from . import (  # noqa: E402
-    NotDebianPackage,
+    DEFAULT_MINIMUM_CERTAINTY,
+    SUPPORTED_CERTAINTIES,
     DescriptionMissing,
+    NotDebianPackage,
+    _lintian_brush_rs,
     available_lintian_fixers,
+    control_files_in_root,
     find_fixers_dir,
     get_committer,
     run_lintian_fixers,
     select_fixers,
     version_string,
-    SUPPORTED_CERTAINTIES,
-    DEFAULT_MINIMUM_CERTAINTY,
-    control_files_in_root,
-    _lintian_brush_rs
 )
 from .config import Config  # noqa: E402
-
 
 calculate_value = _lintian_brush_rs.calculate_value
 LINTIAN_BRUSH_TAG_DEFAULT_VALUE = (
@@ -67,10 +64,14 @@ DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY = (
     _lintian_brush_rs.DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY)
 DEFAULT_ADDON_FIXERS = _lintian_brush_rs.DEFAULT_ADDON_FIXERS
 LINTIAN_BRUSH_TAG_VALUES = _lintian_brush_rs.LINTIAN_BRUSH_TAG_VALUES
+report_fatal = _lintian_brush_rs.report_fatal
+report_success = _lintian_brush_rs.report_success
+report_success_debian = _lintian_brush_rs.report_success_debian
 
 
 def versions_dict():
     import debmutate
+
     import debian
     return {
         "lintian-brush": version_string,
@@ -78,19 +79,6 @@ def versions_dict():
         "debmutate": debmutate.version_string,
         "debian": debian.__version__,
     }
-
-
-def report_fatal(code: str, description: str,
-                 hint: Optional[str] = None) -> None:
-    if os.environ.get('SVP_API') == '1':
-        with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump({
-                'result_code': code,
-                'versions': versions_dict(),
-                'description': description}, f)
-    logging.fatal('%s', description)
-    if hint:
-        logging.info('%s', hint)
 
 
 def main(argv=None):  # noqa: C901
@@ -282,7 +270,7 @@ def main(argv=None):  # noqa: C901
             return 1
         if args.identity:
             print("Committer identity: %s" % get_committer(wt))
-            print("Changelog identity: %s <%s>" % get_maintainer())
+            print("Changelog identity: {} <{}>".format(*get_maintainer()))
             return 0
         since_revid = wt.last_revision()
         if args.fixers or args.exclude:
@@ -329,6 +317,7 @@ def main(argv=None):  # noqa: C901
         with wt.lock_write():
             if control_files_in_root(wt, subpath):
                 report_fatal(
+                    versions_dict(),
                     "control-files-in-root",
                     "control files live in root rather than debian/ "
                     "(LarstIQ mode)",
@@ -351,7 +340,9 @@ def main(argv=None):  # noqa: C901
                     diligence=args.diligence,
                 )
             except NotDebianPackage:
-                report_fatal("not-debian-package", "Not a Debian package")
+                report_fatal(
+                    versions_dict(),
+                    "not-debian-package", "Not a Debian package")
                 return 1
             except WorkspaceDirty:
                 logging.error(
@@ -364,12 +355,14 @@ def main(argv=None):  # noqa: C901
                 return 1
             except ChangelogCreateError as e:
                 report_fatal(
+                    versions_dict(),
                     "changelog-create-error",
                     "Error creating changelog entry: %s" % e
                 )
                 return 1
             except DescriptionMissing as e:
                 report_fatal(
+                    versions_dict(),
                     "fixer-description-missing",
                     "Fixer %s made changes but did not provide description." %
                     e.fixer)
@@ -449,20 +442,13 @@ def main(argv=None):  # noqa: C901
             failed = {
                 name: str(e)
                 for (name, e) in overall_result.failed_fixers.items()}
-            debian_context = {}
-            if overall_result.changelog_behaviour:
-                debian_context['changelog'] = (
-                    overall_result.changelog_behaviour.json())
-            with open(os.environ['SVP_RESULT'], 'w') as f:
-                json.dump({
-                    'value': calculate_value(all_fixed_lintian_tags),
-                    'debian': debian_context,
-                    'context': {
-                        'applied': applied,
-                        'failed': failed,
-                    },
-                    'versions': versions_dict(),
-                }, f)
+            report_success_debian(
+                versions_dict(), value=calculate_value(all_fixed_lintian_tags),
+                context={
+                    'applied': applied,
+                    'failed': failed,
+                }, changelog=tuple(overall_result.changelog_behaviour)
+                if overall_result.changelog_behaviour else None)
 
 
 if __name__ == "__main__":

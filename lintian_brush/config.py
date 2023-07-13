@@ -21,8 +21,8 @@ import os
 import warnings
 
 from configobj import ConfigObj
-from . import _lintian_brush_rs
 
+from . import _lintian_brush_rs
 
 PACKAGE_CONFIG_FILENAME = "debian/lintian-brush.conf"
 

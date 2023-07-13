@@ -23,48 +23,80 @@ __all__ = [
     ]
 
 import contextlib
-from dataclasses import dataclass, field
 import errno
-from functools import partial
 import json
 import logging
 import os
 import shutil
 import subprocess
 import sys
+from dataclasses import dataclass, field
+from functools import partial
 from tempfile import TemporaryDirectory
-from typing import Optional, Tuple, List, Dict, Any, Callable, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 from urllib.parse import urlparse
-
-
-from debian.changelog import Changelog, Version, get_maintainer, format_date
-from debmutate.control import (
-    ensure_some_version,
-    ensure_exact_version,
-    ensure_relation,
-    ControlEditor,
-)
-from debian.deb822 import PkgRelation
 
 from breezy import osutils
 from breezy.branch import Branch
+from breezy.commit import NullCommitReporter, PointlessCommit
 from breezy.controldir import ControlDir
 from breezy.errors import (
     AlreadyBranchError,
-    NotBranchError,
     NoSuchRevision,
+    NotBranchError,
 )
-from breezy.commit import NullCommitReporter, PointlessCommit
+from breezy.plugins.debian import default_orig_dir
+from breezy.plugins.debian.directory import vcs_git_url_to_bzr_url
+from breezy.plugins.debian.import_dsc import UpstreamAlreadyImported
+from breezy.plugins.debian.merge_upstream import (
+    do_import,
+    get_existing_imported_upstream_revids,
+    get_tarballs,
+)
+from breezy.plugins.debian.upstream import (
+    PackageVersionNotPresent,
+    UpstreamSource,
+)
+from breezy.plugins.debian.upstream.branch import (
+    DistCommandFailed,
+    UpstreamBranchSource,
+    run_dist_command,
+    upstream_version_add_revision,
+)
+from breezy.plugins.debian.upstream.pristinetar import (
+    BasePristineTarSource,
+    get_pristine_tar_source,
+)
 from breezy.revision import NULL_REVISION, RevisionID
+from breezy.transport import FileExists
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
-
-from breezy.transport import FileExists
-
+from breezy.workspace import (
+    WorkspaceDirty,
+    check_clean_tree,
+    reset_tree,
+)
+from buildlog_consultant.common import (
+    SetuptoolScmVersionIssue,
+    VcsControlDirectoryNeeded,
+)
+from debmutate.control import (
+    ControlEditor,
+    ensure_exact_version,
+    ensure_relation,
+    ensure_some_version,
+)
+from debmutate.vcs import unsplit_vcs_url
+from debmutate.versions import (
+    debianize_upstream_version,
+)
 from ognibuild import DetailedFailure, UnidentifiedError
 from ognibuild.buildlog import problem_to_upstream_requirement
 from ognibuild.buildsystem import (
-    get_buildsystem, NoBuildToolsFound, BuildSystem)
+    BuildSystem,
+    NoBuildToolsFound,
+    get_buildsystem,
+)
 from ognibuild.debian.apt import AptManager
 from ognibuild.debian.build import DEFAULT_BUILDER
 from ognibuild.debian.fix_build import (
@@ -72,91 +104,65 @@ from ognibuild.debian.fix_build import (
     UnidentifiedDebianBuildError,
     build_incrementally,
     default_fixers,
-    )
+)
+from ognibuild.debian.upstream_deps import get_project_wide_deps
 from ognibuild.dist import (  # noqa: F401
     DistNoTarball,
+)
+from ognibuild.dist import (
     create_dist as ogni_create_dist,
-    )
-from ognibuild.fix_build import iterate_with_build_fixers, BuildFixer
-
-from ognibuild.session import SessionSetupFailure, Session
-from ognibuild.session.plain import PlainSession
-from ognibuild.session.schroot import SchrootSession
+)
+from ognibuild.fix_build import BuildFixer, iterate_with_build_fixers
 from ognibuild.requirements import (
     Requirement,
-    )
+)
 from ognibuild.resolver.apt import AptRequirement
+from ognibuild.session import Session, SessionSetupFailure
+from ognibuild.session.plain import PlainSession
+from ognibuild.session.schroot import SchrootSession
 from ognibuild.upstream import (
-    find_upstream,
     find_apt_upstream,
+    find_upstream,
     go_base_name,
     load_crate_info,
 )
-from ognibuild.debian.upstream_deps import get_project_wide_deps
 from ognibuild.vcs import dupe_vcs_tree
-
+from upstream_ontologist.debian import (
+    upstream_name_to_debian_source_name as source_name_from_upstream_name,
+)
+from upstream_ontologist.debian import (
+    upstream_version_to_debian_upstream_version as debian_upstream_version,
+)
+from upstream_ontologist.debian import (
+    valid_debian_package_name,
+)
 from upstream_ontologist.guess import (
     UpstreamDatum,
     guess_upstream_info,
     summarize_upstream_metadata,
 )
-from upstream_ontologist.debian import (
-    upstream_name_to_debian_source_name as source_name_from_upstream_name,
-    upstream_version_to_debian_upstream_version as debian_upstream_version,
-    valid_debian_package_name,
-)
 
-from breezy.plugins.debian import default_orig_dir
-from breezy.plugins.debian.directory import vcs_git_url_to_bzr_url
-from breezy.plugins.debian.merge_upstream import (
-    get_tarballs,
-    do_import,
-    get_existing_imported_upstream_revids,
-    )
-from breezy.plugins.debian.import_dsc import UpstreamAlreadyImported
-from breezy.plugins.debian.upstream import (
-    PackageVersionNotPresent, UpstreamSource)
-from breezy.plugins.debian.upstream.pristinetar import (
-    get_pristine_tar_source, BasePristineTarSource)
-from breezy.plugins.debian.upstream.branch import (
-    upstream_version_add_revision,
-    UpstreamBranchSource,
-    DistCommandFailed,
-    run_dist_command,
-)
-from breezy.workspace import (
-    check_clean_tree,
-    reset_tree,
-    WorkspaceDirty,
-    )
-
-from buildlog_consultant.common import (
-    VcsControlDirectoryNeeded,
-    SetuptoolScmVersionIssue,
-)
-
-from debmutate.versions import (
-    debianize_upstream_version,
-)
-from debmutate.vcs import unsplit_vcs_url
+from debian.changelog import Changelog, Version, format_date, get_maintainer
+from debian.deb822 import PkgRelation
 
 from . import (
     available_lintian_fixers,
-    version_string,
-    run_lintian_fixers,
     get_committer,
+    run_lintian_fixers,
+    version_string,
 )
 from .debbugs import find_archived_wnpp_bugs, find_wnpp_bugs
 from .debhelper import (
     maximum_debhelper_compat_version,
+)
+from .debhelper import (
     write_rules_template as write_debhelper_rules_template,
 )
 from .publish import (
-    update_offical_vcs,
     NoVcsLocation,
+    update_offical_vcs,
 )
 from .standards_version import latest_standards_version
-
 
 Kickstarter = Callable[[WorkingTree, str], None]
 
@@ -218,7 +224,7 @@ def write_changelog_template(
         distributions="UNRELEASED",
         urgency="low",
         changes=["", "  * Initial release." + closes, ""],
-        author="%s <%s>" % author,
+        author="{} <{}>".format(*author),
         date=format_date(),
     )
     with open(path, "w") as f:
@@ -229,12 +235,13 @@ MINIMUM_CERTAINTY = "possible"  # For now..
 
 
 def versions_dict():
-    import lintian_brush
-    import debmutate
-    import debian
-    import ognibuild
     import buildlog_consultant
+    import debmutate
+    import ognibuild
     import upstream_ontologist
+
+    import debian
+    import lintian_brush
     return {
         'lintian-brush': lintian_brush.version_string,
         'debmutate': debmutate.version_string,
@@ -715,7 +722,9 @@ def process_cargo(es, session, wt, subpath, debian_path, upstream_version,
     wt.branch.generate_revision_history(NULL_REVISION)
     reset_tree(wt, wt.basis_tree(), subpath)
     from debmutate.debcargo import (
-        DebcargoControlShimEditor, unmangle_debcargo_version)
+        DebcargoControlShimEditor,
+        unmangle_debcargo_version,
+    )
     crate = metadata.get('Cargo-Crate')
     if crate is None:
         crate = metadata['Name'].replace('_', '-')
@@ -977,7 +986,8 @@ def debianize(  # noqa: C901
             elif unshare:
                 logging.info('Using tarball %s for unshare', unshare)
                 from ognibuild.session.unshare import (
-                    UnshareSession)  # type: ignore
+                    UnshareSession,  # type: ignore
+                )
                 session = UnshareSession.from_tarball(unshare)
             else:
                 session = PlainSession()
@@ -1109,7 +1119,7 @@ def debianize(  # noqa: C901
 
             if team:
                 control.source['Maintainer'] = team
-                uploader = '%s <%s>' % get_maintainer()
+                uploader = '{} <{}>'.format(*get_maintainer())
                 if uploader != team:
                     control.source['Uploaders'] = uploader
 
@@ -1426,8 +1436,8 @@ def main(argv=None):  # noqa: C901
 
     import breezy
     breezy.initialize()  # type: ignore
-    import breezy.git  # noqa: E402
     import breezy.bzr  # noqa: E402
+    import breezy.git  # noqa: E402
 
     parser = argparse.ArgumentParser(prog="debianize")
     parser.add_argument(
@@ -1752,7 +1762,8 @@ def main(argv=None):  # noqa: C901
         elif args.unshare:
             logging.info('Using tarball %s for unshare', args.unshare)
             from ognibuild.session.unshare import (
-                UnshareSession)  # type: ignore
+                UnshareSession,  # type: ignore
+            )
             session = UnshareSession.from_tarball(args.unshare)
         else:
             session = PlainSession()
@@ -1847,8 +1858,8 @@ def main(argv=None):  # noqa: C901
                     hint = None
                 report_fatal(
                     'package-requirements-mismatch',
-                    'Debianized package (binary packages: %r), version %s '
-                    'did not satisfy requirement %r. ' % (
+                    'Debianized package (binary packages: {!r}), version {} '
+                    'did not satisfy requirement {!r}. '.format(
                         [binary['Package'] for binary in e.control.binaries],
                         e.version, e.requirement), hint=hint)
                 return 1

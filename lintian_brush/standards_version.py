@@ -17,16 +17,15 @@
 
 """Standards-Version handling."""
 
-from datetime import datetime
 import json
 import os
-from typing import Tuple, Iterator
+from datetime import datetime
+from typing import Iterator, Tuple
 
 from debmutate.control import parse_standards_version
 from iso8601 import parse_date
 
 from .lintian import LINTIAN_DATA_PATH
-
 
 RELEASE_DATES_PATH = os.path.join(
     LINTIAN_DATA_PATH, "debian-policy/releases.json")

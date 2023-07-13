@@ -17,19 +17,19 @@
 
 """Utility functions for dealing with lintian overrides files."""
 
-from contextlib import suppress
-from debian.changelog import Version
-from functools import partial
 import os
 import re
-from typing import Optional, Iterator, Callable, List, Tuple
+from contextlib import suppress
+from functools import partial
+from typing import Callable, Iterator, List, Optional, Tuple
 
 from debmutate.lintian_overrides import (
-    LintianOverridesEditor,
     LintianOverride,
+    LintianOverridesEditor,
     iter_overrides,
 )
 
+from debian.changelog import Version
 
 from . import open_binary
 
@@ -48,7 +48,7 @@ def update_overrides(
         cb: Callable[
             [str, int, LintianOverride],
             Optional[LintianOverride]]) -> None:
-    """ "Call update_overrides_file on all overrides files.
+    """Call update_overrides_file on all overrides files.
 
     Args:
       cb: Callback that modifies overrides; called with path, linenumber and
@@ -67,6 +67,7 @@ def update_overrides_file(
     Args:
       cb: Callback that modifies overrides; called with an Override object
         Should return new override or None to delete override.
+
     Returns:
         Whether the file was modified
     """

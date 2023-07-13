@@ -27,11 +27,11 @@ KEY_BLOCK_END = b"-----END PGP PUBLIC KEY BLOCK-----"
 
 
 class GpgMissing(Exception):
-    """gpg command missing"""
+    """gpg command missing."""
 
 
 class GpgFailed(Exception):
-    """gpg command failed"""
+    """gpg command failed."""
 
 
 def gpg_import_export(import_options, export_options, stdin):

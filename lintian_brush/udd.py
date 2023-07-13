@@ -19,7 +19,6 @@
 
 import os
 
-
 DEFAULT_UDD_URL = (
     'postgresql://udd-mirror:udd-mirror@udd-mirror.debian.net:5432/udd')
 

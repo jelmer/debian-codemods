@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
-from lintian_brush import available_lintian_fixers
 import re
+
+from lintian_brush import available_lintian_fixers
 
 with open('README.md') as f:
     contents = f.read()

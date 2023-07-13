@@ -19,13 +19,13 @@
 
 from io import BytesIO
 
+from breezy.patches import (
+    Patch,
+    parse_patch,
+)
 from breezy.tests import (
     TestCase,
     TestCaseWithTransport,
-)
-from breezy.patches import (
-    parse_patch,
-    Patch,
 )
 
 from ..patches import (

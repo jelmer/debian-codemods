@@ -26,7 +26,6 @@ from breezy.tests import (
 from debian.changelog import (
     ChangelogCreateError,
 )
-
 from lintian_brush.changelog import (
     add_changelog_entry,
 )

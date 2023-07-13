@@ -17,9 +17,9 @@
 
 """Utility functions for dealing with licenses."""
 
-from . import open_binary
-
 import json
+
+from . import open_binary
 
 COMMON_LICENSES_DIR = "/usr/share/common-licenses"
 

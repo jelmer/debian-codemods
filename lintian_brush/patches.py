@@ -33,35 +33,33 @@ __all__ = [
 ]
 
 import contextlib
+import os
 from datetime import datetime
 from email.message import Message
 from io import BytesIO
-import os
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
-from breezy.diff import show_diff_trees
-from breezy import osutils
-from breezy.commit import filter_excluded
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
+from breezy import osutils
+from breezy.commit import filter_excluded
+from breezy.diff import show_diff_trees
 from breezy.errors import NotBranchError
-from breezy.transport import NoSuchFile
-
 from breezy.patches import (
-    parse_patches,
-    apply_patches,
     PatchSyntax,
+    apply_patches,
+    parse_patches,
 )
+from breezy.transport import NoSuchFile
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
-
-from debian.changelog import Changelog
-
 from debmutate.patch import (
     QuiltSeriesEditor,
-    read_quilt_series,
     find_common_patch_suffix,
+    read_quilt_series,
 )
+
+from debian.changelog import Changelog
 
 from . import reset_tree
 

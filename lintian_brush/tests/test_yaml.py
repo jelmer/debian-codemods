@@ -18,10 +18,9 @@
 """Tests for lintian_brush.yaml."""
 
 from breezy.tests import (
-    TestCaseInTempDir,
     TestCase,
+    TestCaseInTempDir,
 )
-
 from ruamel.yaml.compat import ordereddict
 
 from lintian_brush.yaml import (

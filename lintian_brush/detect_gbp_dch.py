@@ -20,13 +20,7 @@
 
 import logging
 import os
-from typing import Optional, Tuple, List
-
-from debian.changelog import Changelog
-from debmutate.changelog import (
-    all_sha_prefixed,
-    is_unreleased_inaugural,
-    )
+from typing import List, Optional, Tuple
 
 from breezy import osutils
 from breezy.branch import Branch
@@ -34,7 +28,12 @@ from breezy.errors import RevisionNotPresent
 from breezy.transport import NoSuchFile
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
+from debmutate.changelog import (
+    all_sha_prefixed,
+    is_unreleased_inaugural,
+)
 
+from debian.changelog import Changelog
 
 # Number of revisions to search back
 DEFAULT_BACKLOG = 50
