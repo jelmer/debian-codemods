@@ -117,4 +117,37 @@ mod tests {
         assert_eq!("trusty", resolve_release_codename("trusty", None).unwrap());
         assert!(resolve_release_codename("ubuntu/lts", None).is_some());
     }
+
+    #[test]
+    fn test_resolve_debian() {
+        assert_eq!("sid", resolve_release_codename("sid", None).unwrap());
+        assert_eq!("buster", resolve_release_codename("buster", None).unwrap());
+        assert_eq!("sid", resolve_release_codename("unstable", None).unwrap());
+        assert_eq!(
+            "sid",
+            resolve_release_codename("debian/unstable", None).unwrap()
+        );
+        assert!(resolve_release_codename("oldstable", None).is_some());
+        assert!(resolve_release_codename("oldoldstable", None).is_some());
+    }
+
+    #[test]
+    fn test_resolve_unknown() {
+        assert!(resolve_release_codename("blah", None).is_none());
+    }
+
+    #[test]
+    fn test_resolve_ubuntu() {
+        assert_eq!("trusty", resolve_release_codename("trusty", None).unwrap());
+        assert_eq!(
+            "trusty",
+            resolve_release_codename("ubuntu/trusty", None).unwrap()
+        );
+        assert!(resolve_release_codename("ubuntu/lts", None).is_some())
+    }
+
+    #[test]
+    fn test_resolve_ubuntu_esm() {
+        assert!(resolve_release_codename("ubuntu/esm", None).is_some())
+    }
 }

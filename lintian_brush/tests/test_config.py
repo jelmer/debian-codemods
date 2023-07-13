@@ -18,36 +18,13 @@
 """Tests for lintian_brush.config."""
 
 from breezy.tests import (
-    TestCase,
     TestCaseWithTransport,
 )
 from distro_info import DebianDistroInfo
 
 from lintian_brush.config import (
     Config,
-    resolve_release_codename,
 )
-
-
-class ResolveCodeNameTests(TestCase):
-    def test_resolve_debian(self):
-        self.assertEqual("sid", resolve_release_codename("sid"))
-        self.assertEqual("buster", resolve_release_codename("buster"))
-        self.assertEqual("sid", resolve_release_codename("unstable"))
-        self.assertEqual("sid", resolve_release_codename("debian/unstable"))
-        self.assertIsInstance(resolve_release_codename("oldstable"), str)
-        self.assertIsInstance(resolve_release_codename("oldoldstable"), str)
-
-    def test_resolve_unknown(self):
-        self.assertEqual(None, resolve_release_codename("blah"))
-
-    def test_resolve_ubuntu(self):
-        self.assertEqual("trusty", resolve_release_codename("trusty"))
-        self.assertEqual("trusty", resolve_release_codename("ubuntu/trusty"))
-        self.assertIsInstance(resolve_release_codename("ubuntu/lts"), str)
-
-    def test_resolve_ubuntu_esm(self):
-        self.assertIsInstance(resolve_release_codename("ubuntu/esm"), str)
 
 
 class ConfigReadTests(TestCaseWithTransport):
@@ -109,8 +86,12 @@ unknown = dunno
                 ),
             ]
         )
-        with self.assertWarns(Warning):
+        with self.assertLogs(level='WARNING') as log:
             Config("debian/lintian-brush.conf")
+            self.assertEqual(log.output, [
+                'WARNING:lintian_brush.config:unknown key '
+                'unknown in section default in '
+                'debian/lintian-brush.conf, ignoring.'])
 
     def test_missing(self):
         self.assertRaises(FileNotFoundError, Config, "blah.conf")

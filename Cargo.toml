@@ -16,11 +16,19 @@ serde = { version = "1", features = ["derive"] }
 distro-info = { version = ">=0.4.0" }
 chrono = { version = "0.4" }
 log = "0.4.19"
+configparser = "3.0.2"
+clap = { version = "4", features = ["derive", "env", "suggestions"], optional = true }
+env_logger = { version = "0.10.0", optional = true }
 
 [features]
-default = ["svp", "python"]
+default = ["svp", "python", "cli"]
 svp = []
 python = ["dep:pyo3"]
+cli = ["dep:clap", "dep:env_logger"]
 
 [workspace]
 members = ["multiarch-hints", "lintian-brush-py"]
+
+[[bin]]
+name = "lintian-brush"
+required-features = ["cli"]

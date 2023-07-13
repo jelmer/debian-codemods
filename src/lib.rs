@@ -6,6 +6,8 @@ use std::process::Command;
 use std::str::FromStr;
 
 mod breezyshim;
+pub mod config;
+pub mod py;
 pub mod svp;
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, PartialOrd, Ord)]
@@ -335,7 +337,7 @@ pub fn determine_env(
 /// A fixer script
 ///
 /// The `lintian_tags attribute contains the name of the lintian tags this fixer addresses.
-pub trait Fixer {
+pub trait Fixer: std::fmt::Debug {
     fn name(&self) -> &str;
 
     fn path(&self) -> &std::path::Path;
@@ -380,6 +382,7 @@ pub trait Fixer {
 /// This gets used just for Python scripts, and significantly speeds things up because it prevents
 /// starting a new Python interpreter for every fixer.
 #[cfg(feature = "python")]
+#[derive(Debug)]
 pub struct PythonScriptFixer {
     path: std::path::PathBuf,
     name: String,
@@ -611,6 +614,7 @@ impl std::fmt::Display for FixerError {
 
 impl std::error::Error for FixerError {}
 
+#[derive(Debug)]
 pub struct ScriptFixer {
     path: std::path::PathBuf,
     name: String,

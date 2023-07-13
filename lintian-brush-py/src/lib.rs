@@ -1,224 +1,19 @@
-use pyo3::class::basic::CompareOp;
-use pyo3::exceptions::{PyRuntimeError, PyTypeError, PyValueError};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyBool, PyBytes, PyDict, PyFloat, PyList, PyString};
+use pyo3::types::{PyBytes, PyDict, PyList, PyType};
 
-use pyo3::create_exception;
 use pyo3::import_exception;
 
 use std::collections::HashMap;
 
+use lintian_brush::py::{
+    json_to_py, py_to_json, Fixer, FixerResult, LintianIssue, PythonScriptFixer, ScriptFixer,
+    UnsupportedCertainty,
+};
 use lintian_brush::Certainty;
 
-create_exception!(
-    lintian_brush,
-    UnsupportedCertainty,
-    pyo3::exceptions::PyException
-);
-create_exception!(lintian_brush, ScriptNotFound, pyo3::exceptions::PyException);
 import_exception!(lintian_brush, NoChanges);
 import_exception!(lintian_brush, FixerScriptFailed);
-import_exception!(debmutate.reformatting, FormattingUnpreservable);
-
-#[pyclass(subclass)]
-struct LintianIssue(lintian_brush::LintianIssue);
-
-fn json_to_py(py: Python, v: serde_json::Value) -> PyResult<PyObject> {
-    match v {
-        serde_json::Value::Null => Ok(py.None()),
-        serde_json::Value::Bool(b) => Ok(PyBool::new(py, b).to_object(py)),
-        serde_json::Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                Ok(i.into_py(py))
-            } else if let Some(u) = n.as_u64() {
-                Ok(u.into_py(py))
-            } else if let Some(f) = n.as_f64() {
-                Ok(PyFloat::new(py, f).to_object(py))
-            } else {
-                Err(PyTypeError::new_err("invalid number"))?
-            }
-        }
-        serde_json::Value::String(s) => Ok(PyString::new(py, &s).to_object(py)),
-        serde_json::Value::Array(a) => {
-            let list = PyList::empty(py);
-            for v in a {
-                list.append(json_to_py(py, v)?)?;
-            }
-            Ok(list.to_object(py))
-        }
-        serde_json::Value::Object(o) => {
-            let dict = PyDict::new(py);
-            for (k, v) in o {
-                dict.set_item(k, json_to_py(py, v)?)?;
-            }
-            Ok(dict.to_object(py))
-        }
-    }
-}
-
-pub fn py_to_json(py: Python, obj: PyObject) -> PyResult<serde_json::Value> {
-    if obj.is_none(py) {
-        return Ok(serde_json::Value::Null);
-    }
-    if let Ok(obj) = obj.extract::<bool>(py) {
-        return Ok(serde_json::Value::Bool(obj));
-    }
-    if let Ok(obj) = obj.extract::<i64>(py) {
-        return Ok(serde_json::Value::Number(obj.into()));
-    }
-    if let Ok(obj) = obj.extract::<u64>(py) {
-        return Ok(serde_json::Value::Number(obj.into()));
-    }
-    if let Ok(obj) = obj.extract::<f64>(py) {
-        return Ok(serde_json::json!(obj));
-    }
-    if let Ok(obj) = obj.extract::<String>(py) {
-        return Ok(serde_json::Value::String(obj));
-    }
-    if let Ok(obj) = obj.extract::<Vec<PyObject>>(py) {
-        let items: Vec<serde_json::Value> = obj
-            .into_iter()
-            .map(|o| py_to_json(py, o))
-            .collect::<PyResult<Vec<_>>>()?;
-        return Ok(serde_json::Value::Array(items));
-    }
-    if let Ok(obj) = obj.extract::<HashMap<String, PyObject>>(py) {
-        let items: serde_json::Map<String, serde_json::Value> = obj
-            .into_iter()
-            .map(|(k, v)| Ok((k, py_to_json(py, v)?)))
-            .collect::<PyResult<serde_json::Map<_, _>>>()?;
-        return Ok(serde_json::Value::Object(items));
-    }
-    Err(PyTypeError::new_err("invalid type"))
-}
-
-#[pymethods]
-impl LintianIssue {
-    fn json(&self, py: Python) -> PyResult<PyObject> {
-        json_to_py(py, self.0.json())
-    }
-
-    #[getter]
-    fn package(&self) -> PyResult<Option<String>> {
-        Ok(self.0.package.clone())
-    }
-
-    #[getter]
-    fn package_type(&self) -> PyResult<Option<String>> {
-        Ok(self.0.package_type.as_ref().map(|t| t.to_string()))
-    }
-
-    #[getter]
-    fn tag(&self) -> PyResult<Option<String>> {
-        Ok(self.0.tag.clone())
-    }
-
-    #[getter]
-    fn info(&self) -> PyResult<Option<Vec<String>>> {
-        Ok(self.0.info.clone())
-    }
-
-    fn __richcmp__(&self, other: PyRef<Self>, op: CompareOp) -> PyResult<bool> {
-        match op {
-            CompareOp::Eq => Ok(self.0 == other.0),
-            CompareOp::Ne => Ok(self.0 != other.0),
-            _ => Err(PyTypeError::new_err("invalid comparison")),
-        }
-    }
-}
-
-#[pyclass(subclass)]
-struct FixerResult(lintian_brush::FixerResult);
-
-#[pymethods]
-impl FixerResult {
-    #[new]
-    fn new(
-        description: String,
-        fixed_lintian_tags: Option<Vec<String>>,
-        certainty: Option<String>,
-        patch_name: Option<String>,
-        revision_id: Option<Vec<u8>>,
-        fixed_lintian_issues: Option<Vec<PyRef<LintianIssue>>>,
-        overridden_lintian_issues: Option<Vec<PyRef<LintianIssue>>>,
-    ) -> PyResult<Self> {
-        let certainty = certainty
-            .map(|c| {
-                c.parse()
-                    .map_err(|e| PyValueError::new_err(format!("invalid certainty: {}", e)))
-            })
-            .transpose()?;
-        Ok(Self(lintian_brush::FixerResult::new(
-            description,
-            fixed_lintian_tags,
-            certainty,
-            patch_name,
-            revision_id.map(|r| r.into()),
-            fixed_lintian_issues
-                .map(|i| i.iter().map(|i| i.0.clone()).collect())
-                .unwrap_or_default(),
-            overridden_lintian_issues.map(|i| i.iter().map(|i| i.0.clone()).collect()),
-        )))
-    }
-
-    #[getter]
-    fn fixed_lintian_tags(&self) -> PyResult<Vec<String>> {
-        Ok(self
-            .0
-            .fixed_lintian_tags()
-            .iter()
-            .map(|s| s.to_string())
-            .collect())
-    }
-
-    #[getter]
-    fn description(&self) -> PyResult<String> {
-        Ok(self.0.description.clone())
-    }
-
-    #[getter]
-    fn certainty(&self) -> PyResult<Option<String>> {
-        Ok(self.0.certainty.as_ref().map(|c| c.to_string()))
-    }
-
-    #[getter]
-    fn patch_name(&self) -> PyResult<Option<String>> {
-        Ok(self.0.patch_name.clone())
-    }
-
-    #[getter]
-    fn revision_id(&self, py: Python) -> PyResult<Option<PyObject>> {
-        Ok(self
-            .0
-            .revision_id
-            .clone()
-            .map(|r| PyBytes::new(py, r.as_bytes()).to_object(py)))
-    }
-
-    #[setter]
-    fn set_revision_id(&mut self, revid: Option<Vec<u8>>) -> PyResult<()> {
-        self.0.revision_id = revid.map(|r| r.into());
-        Ok(())
-    }
-
-    fn __richcmp__(&self, other: PyRef<Self>, op: CompareOp) -> PyResult<bool> {
-        match op {
-            CompareOp::Eq => Ok(self.0 == other.0),
-            CompareOp::Ne => Ok(self.0 != other.0),
-            _ => Err(PyTypeError::new_err("invalid comparison")),
-        }
-    }
-
-    #[getter]
-    fn overridden_lintian_issues(&self) -> PyResult<Vec<LintianIssue>> {
-        Ok(self
-            .0
-            .overridden_lintian_issues
-            .iter()
-            .map(|i| LintianIssue(i.clone()))
-            .collect())
-    }
-}
 
 #[pyfunction]
 fn parse_script_fixer_output(text: &str) -> PyResult<FixerResult> {
@@ -262,120 +57,6 @@ pub fn determine_env(
     ))
 }
 
-#[pyclass(subclass, unsendable)]
-struct Fixer(Box<dyn lintian_brush::Fixer>);
-
-#[pymethods]
-impl Fixer {
-    #[getter]
-    fn name(&self) -> PyResult<String> {
-        Ok(self.0.name().to_string())
-    }
-
-    #[getter]
-    fn script_path(&self) -> PyResult<std::path::PathBuf> {
-        Ok(self.0.path().to_path_buf())
-    }
-
-    #[getter]
-    fn lintian_tags(&self) -> PyResult<Vec<String>> {
-        Ok(self
-            .0
-            .lintian_tags()
-            .iter()
-            .map(|s| s.to_string())
-            .collect())
-    }
-
-    fn run(
-        &self,
-        py: Python,
-        basedir: std::path::PathBuf,
-        package: &str,
-        current_version: &str,
-        compat_release: &str,
-        minimum_certainty: Option<&str>,
-        trust_package: Option<bool>,
-        allow_reformatting: Option<bool>,
-        net_access: Option<bool>,
-        opinionated: Option<bool>,
-        diligence: Option<i32>,
-    ) -> PyResult<FixerResult> {
-        let minimum_certainty = minimum_certainty
-            .map(|c| c.parse().map_err(|e| UnsupportedCertainty::new_err(e)))
-            .transpose()?;
-
-        self.0
-            .run(
-                basedir.as_path(),
-                package,
-                current_version,
-                compat_release,
-                minimum_certainty,
-                trust_package,
-                allow_reformatting,
-                net_access,
-                opinionated,
-                diligence,
-            )
-            .map_err(|e| match e {
-                lintian_brush::FixerError::NoChanges => NoChanges::new_err((py.None(),)),
-                lintian_brush::FixerError::ScriptNotFound(cmd) => {
-                    ScriptNotFound::new_err(cmd.to_object(py))
-                }
-                lintian_brush::FixerError::ScriptFailed {
-                    path,
-                    exit_code,
-                    stderr,
-                } => FixerScriptFailed::new_err((path.to_object(py), exit_code, stderr)),
-                lintian_brush::FixerError::FormattingUnpreservable => {
-                    FormattingUnpreservable::new_err(())
-                }
-                lintian_brush::FixerError::OutputDecodeError(e) => {
-                    PyValueError::new_err(format!("invalid output: {}", e))
-                }
-                lintian_brush::FixerError::OutputParseError(e) => match e {
-                    lintian_brush::OutputParseError::LintianIssueParseError(e) => {
-                        PyValueError::new_err(format!("invalid lintian issue: {}", e))
-                    }
-                    lintian_brush::OutputParseError::UnsupportedCertainty(e) => {
-                        UnsupportedCertainty::new_err(e)
-                    }
-                },
-                lintian_brush::FixerError::Other(e) => PyRuntimeError::new_err(e),
-            })
-            .map(FixerResult)
-    }
-
-    fn __str__(&self) -> PyResult<String> {
-        Ok(self.name()?)
-    }
-}
-
-#[pyclass(subclass,extends=Fixer)]
-struct ScriptFixer;
-
-#[pymethods]
-impl ScriptFixer {
-    #[new]
-    fn new(name: String, tags: Vec<String>, path: std::path::PathBuf) -> (Self, Fixer) {
-        let fixer = lintian_brush::ScriptFixer::new(name, tags, path);
-        (Self, Fixer(Box::new(fixer)))
-    }
-}
-
-#[pyclass(subclass,extends=Fixer)]
-struct PythonScriptFixer;
-
-#[pymethods]
-impl PythonScriptFixer {
-    #[new]
-    fn new(name: String, tags: Vec<String>, path: std::path::PathBuf) -> (Self, Fixer) {
-        let fixer = lintian_brush::PythonScriptFixer::new(name, tags, path);
-        (Self, Fixer(Box::new(fixer)))
-    }
-}
-
 #[pyfunction]
 fn read_desc_file(
     path: std::path::PathBuf,
@@ -409,12 +90,12 @@ fn certainty_sufficient(
     let actual_certainty = if let Some(actual_certainty) = actual_certainty {
         actual_certainty
             .parse()
-            .map_err(|e| UnsupportedCertainty::new_err(e))?
+            .map_err(UnsupportedCertainty::new_err)?
     } else {
         return Ok(true);
     };
     let minimum_certainty = minimum_certainty
-        .map(|c| c.parse().map_err(|e| UnsupportedCertainty::new_err(e)))
+        .map(|c| c.parse().map_err(UnsupportedCertainty::new_err))
         .transpose()?;
     Ok(lintian_brush::certainty_sufficient(
         actual_certainty,
@@ -426,7 +107,7 @@ fn certainty_sufficient(
 fn min_certainty(certainties: Vec<&str>) -> PyResult<String> {
     let certainties = certainties
         .iter()
-        .map(|c| c.parse().map_err(|e| UnsupportedCertainty::new_err(e)))
+        .map(|c| c.parse().map_err(UnsupportedCertainty::new_err))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(lintian_brush::min_certainty(certainties.as_slice())
         .unwrap_or(Certainty::Certain)
@@ -485,7 +166,8 @@ pub fn report_success(
         None
     };
 
-    Ok(lintian_brush::svp::report_success(versions, value, context))
+    lintian_brush::svp::report_success(versions, value, context);
+    Ok(())
 }
 
 #[pyfunction]
@@ -501,13 +183,53 @@ pub fn report_success_debian(
     } else {
         None
     };
-    Ok(lintian_brush::svp::report_success_debian(
-        versions, value, context, changelog,
-    ))
+    lintian_brush::svp::report_success_debian(versions, value, context, changelog);
+    Ok(())
+}
+
+#[pyclass]
+struct Config(lintian_brush::config::Config);
+
+#[pymethods]
+impl Config {
+    #[new]
+    fn new(path: std::path::PathBuf) -> PyResult<Self> {
+        Ok(Config(lintian_brush::config::Config::load_from_path(
+            path.as_path(),
+        )?))
+    }
+
+    #[classmethod]
+    fn from_workingtree(_cls: &PyType, py: Python, wt: PyObject, subpath: &str) -> PyResult<Self> {
+        let basedir = wt
+            .getattr(py, "basedir")?
+            .extract::<std::path::PathBuf>(py)?;
+        let path = basedir
+            .join(subpath)
+            .join(lintian_brush::config::PACKAGE_CONFIG_FILENAME);
+        Config::new(path)
+    }
+
+    pub fn compat_release(&self) -> Option<String> {
+        self.0.compat_release()
+    }
+
+    pub fn allow_reformatting(&self) -> Option<bool> {
+        self.0.allow_reformatting()
+    }
+
+    pub fn minimum_certainty(&self) -> Option<String> {
+        self.0.minimum_certainty().map(|c| c.to_string())
+    }
+
+    pub fn update_changelog(&self) -> Option<bool> {
+        self.0.update_changelog()
+    }
 }
 
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
+    pyo3_log::init();
     m.add_class::<LintianIssue>()?;
     m.add_class::<FixerResult>()?;
     m.add_wrapped(wrap_pyfunction!(parse_script_fixer_output))?;
@@ -556,5 +278,10 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(report_fatal, m)?)?;
     m.add_function(wrap_pyfunction!(report_success, m)?)?;
     m.add_function(wrap_pyfunction!(report_success_debian, m)?)?;
+    m.add(
+        "PACKAGE_CONFIG_FILENAME",
+        lintian_brush::config::PACKAGE_CONFIG_FILENAME,
+    )?;
+    m.add_class::<Config>()?;
     Ok(())
 }

@@ -18,7 +18,7 @@
 import glob
 
 from setuptools import setup
-from setuptools_rust import Binding, RustExtension
+from setuptools_rust import Binding, RustExtension, RustBin
 
 setup(
     data_files=[
@@ -31,6 +31,7 @@ setup(
          ]),
     ],
     rust_extensions=[
+        RustBin("lintian-brush", "Cargo.toml"),
         RustExtension(
             "lintian_brush._lintian_brush_rs", "lintian-brush-py/Cargo.toml",
             binding=Binding.PyO3)],
