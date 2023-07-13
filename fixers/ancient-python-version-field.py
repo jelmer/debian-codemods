@@ -2,6 +2,7 @@
 
 import os
 import sys
+
 from lintian_brush.fixer import (
     LintianIssue,
     control,

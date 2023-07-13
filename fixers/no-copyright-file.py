@@ -1,19 +1,19 @@
 #!/usr/bin/python3
 
+import os
+import sys
+
 from debian.copyright import (
     Copyright,
     FilesParagraph,
-    LicenseParagraph,
     License,
-    )
+    LicenseParagraph,
+)
 from lintian_brush.fixer import (
-    report_result,
-    meets_minimum_certainty,
     LintianIssue,
-    )
-
-import os
-import sys
+    meets_minimum_certainty,
+    report_result,
+)
 
 CERTAINTY = 'possible'
 
@@ -30,10 +30,11 @@ except ModuleNotFoundError:
     # No decopy
     sys.exit(2)
 
-from decopy.tree import RootInfo, DirInfo  # noqa: E402
-from decopy.datatypes import License as DecopyLicense  # noqa: E402
-from decopy.dep5 import Copyright as DecopyCopyright, Group  # noqa: E402
 from decopy.cmdoptions import process_options  # noqa: E402
+from decopy.datatypes import License as DecopyLicense  # noqa: E402
+from decopy.dep5 import Copyright as DecopyCopyright  # noqa: E402
+from decopy.dep5 import Group  # noqa: E402
+from decopy.tree import DirInfo, RootInfo  # noqa: E402
 
 options = process_options([
     '--root=.',

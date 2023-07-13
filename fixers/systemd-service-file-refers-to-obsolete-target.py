@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-from lintian_brush.systemd import systemd_service_files, SystemdServiceEditor
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import fixed_lintian_tag, report_result
+from lintian_brush.systemd import SystemdServiceEditor, systemd_service_files
 
 DEPRECATED_TARGETS = ['syslog.target']
 

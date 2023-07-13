@@ -1,33 +1,36 @@
 #!/usr/bin/python3
 
-from contextlib import suppress
 import re
 import socket
-from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
+import urllib.error
+from contextlib import suppress
+from email.utils import parseaddr
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
+
 from debmutate.vcs import (
     get_vcs_info,
-    )
+)
+
+from lintian_brush import DEFAULT_URLLIB_TIMEOUT, USER_AGENT
 from lintian_brush.fixer import (
     control,
-    net_access_allowed,
     fixed_lintian_tag,
-    warn,
+    net_access_allowed,
     report_result,
-    )
+    warn,
+)
 from lintian_brush.salsa import (
     determine_browser_url as determine_salsa_browser_url,
+)
+from lintian_brush.salsa import (
     guess_repository_url,
     salsa_url_from_alioth_url,
-    )
+)
 from lintian_brush.vcs import (
     determine_browser_url,
-    )
+)
 from lintian_brush.vcswatch import VcsWatch, VcsWatchError
-from email.utils import parseaddr
-import urllib.error
-from urllib.parse import urlparse
-from urllib.request import urlopen, Request
-
 
 OBSOLETE_HOSTS = [
     'anonscm.debian.org', 'alioth.debian.org', 'svn.debian.org',

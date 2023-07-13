@@ -3,7 +3,6 @@
 import os
 import subprocess
 import sys
-
 from hashlib import sha1
 
 from lintian_brush.fixer import LintianIssue, report_result

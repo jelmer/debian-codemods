@@ -1,16 +1,17 @@
 #!/usr/bin/python3
 
 import sys
+
 from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
     read_debhelper_compat_file,
-    )
+)
+
 from lintian_brush.fixer import (
     control,
-    report_result,
     fixed_lintian_tag,
-    )
-
+    report_result,
+)
 
 # Debian source package is not obliged to contain `debian/compat'.
 # Firstly, it may not use debhelper; secondly it may use modern

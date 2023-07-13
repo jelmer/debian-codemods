@@ -1,13 +1,14 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import (
-    package_is_native,
-    report_result,
-    fixed_lintian_tag,
-    opinionated,
-    )
 import os
 import sys
+
+from lintian_brush.fixer import (
+    fixed_lintian_tag,
+    opinionated,
+    package_is_native,
+    report_result,
+)
 
 if not package_is_native():
     # Nothing to do

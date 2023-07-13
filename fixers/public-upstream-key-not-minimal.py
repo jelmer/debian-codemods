@@ -4,13 +4,13 @@ import os
 import sys
 from typing import List, Optional
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import fixed_lintian_tag, report_result
 from lintian_brush.gpg import (
-    gpg_import_export,
-    GpgMissing,
-    KEY_BLOCK_START,
     KEY_BLOCK_END,
-    )
+    KEY_BLOCK_START,
+    GpgMissing,
+    gpg_import_export,
+)
 
 
 def minimize_key_block(key):

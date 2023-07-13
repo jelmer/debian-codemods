@@ -16,17 +16,17 @@ from debmutate.watch import (
 )
 
 from lintian_brush.fixer import (
-    source_package_name,
     LintianIssue,
-    report_result,
-    warn,
     diligence,
     net_access_allowed,
-    )
+    report_result,
+    source_package_name,
+    warn,
+)
 from lintian_brush.gpg import fetch_keys
 from lintian_brush.watch import (
-    probe_signature,
     KeyRetrievalFailed,
+    probe_signature,
 )
 
 NUM_KEYS_TO_CHECK = 5
@@ -77,8 +77,7 @@ with WatchEditor() as editor:
             releases = list(sorted(
                 entry.discover(source_package_name()), reverse=True))
         except HTTPError as e:
-            warn('HTTP error accessing discovery URL %s: %s.' %
-                 (e.geturl(), e))
+            warn(f'HTTP error accessing discovery URL {e.geturl()}: {e}.')
             sys.exit(0)
         for r in releases[:RELEASES_TO_INSPECT]:
             try:

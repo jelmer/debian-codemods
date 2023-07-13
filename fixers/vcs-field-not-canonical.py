@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import control, report_result, LintianIssue
+from lintian_brush.fixer import LintianIssue, control, report_result
 from lintian_brush.vcs import canonicalize_vcs_url
-
 
 fields = set()
 

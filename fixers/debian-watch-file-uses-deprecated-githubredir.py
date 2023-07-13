@@ -1,16 +1,17 @@
 #!/usr/bin/python3
 
-from debmutate.watch import WatchEditor
 from urllib.parse import urlparse
 
+from debmutate.watch import WatchEditor
+
 from lintian_brush.fixer import (
-    report_result, LintianIssue,
-    net_access_allowed,
-    source_package_name,
+    LintianIssue,
     current_package_version,
+    net_access_allowed,
+    report_result,
+    source_package_name,
 )
 from lintian_brush.watch import watch_entries_certainty
-
 
 try:
     with WatchEditor() as updater:

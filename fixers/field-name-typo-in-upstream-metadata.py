@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
-from contextlib import suppress
-from lintian_brush.yaml import YamlUpdater
-from lintian_brush.fixer import report_result, warn
 import sys
+from contextlib import suppress
+
+from lintian_brush.fixer import report_result, warn
+from lintian_brush.yaml import YamlUpdater
 
 try:
     from Levenshtein import distance

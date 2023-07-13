@@ -3,8 +3,9 @@
 import os
 import sys
 
-from lintian_brush.fixer import control, report_result, LintianIssue
 from debmutate._rules import RulesEditor
+
+from lintian_brush.fixer import LintianIssue, control, report_result
 
 
 def get_archs():

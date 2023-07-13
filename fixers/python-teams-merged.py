@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 from email.utils import parseaddr
-from lintian_brush.fixer import control, report_result, LintianIssue
+
+from lintian_brush.fixer import LintianIssue, control, report_result
 
 with control as editor:
     try:

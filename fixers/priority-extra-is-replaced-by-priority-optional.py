@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
-
+from lintian_brush.fixer import control, fixed_lintian_tag, report_result
 
 with control as updater:
     for para in updater.paragraphs:

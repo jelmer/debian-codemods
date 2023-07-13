@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import fixed_lintian_tag, report_result
 from lintian_brush.systemd import (
-    systemd_service_files, SystemdServiceEditor, Undefined
-    )
-
+    SystemdServiceEditor,
+    Undefined,
+    systemd_service_files,
+)
 
 for path in systemd_service_files():
     with SystemdServiceEditor(path) as updater:

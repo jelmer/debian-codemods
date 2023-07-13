@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
 import sys
+
 from debmutate.control import drop_dependency
-from lintian_brush.fixer import control, report_result, LintianIssue
+
+from lintian_brush.fixer import LintianIssue, control, report_result
 
 try:
     with open('debian/rules', 'rb') as f:

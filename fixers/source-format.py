@@ -1,15 +1,16 @@
 #!/usr/bin/python3
+import os
+import sys
+
 from lintian_brush.fixer import (
-    report_result,
-    opinionated,
-    package_is_native,
     LintianIssue,
     is_debcargo_package,
     meets_minimum_certainty,
+    opinionated,
+    package_is_native,
+    report_result,
     warn,
-    )
-import os
-import sys
+)
 
 if is_debcargo_package():
     sys.exit(0)
@@ -40,12 +41,13 @@ if older_source_format_issue.should_fix():
         format = '3.0 (native)'
         description = "Upgrade to newer source format %s." % format
     else:
-        from lintian_brush.patches import (
-            tree_non_patches_changes,
-            find_patches_directory,
-            )
         from breezy import errors
         from breezy.workingtree import WorkingTree
+
+        from lintian_brush.patches import (
+            find_patches_directory,
+            tree_non_patches_changes,
+        )
         patches_directory = find_patches_directory('.')
         if patches_directory not in ('debian/patches', None):
             # Non-standard patches directory.

@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 from debmutate.deb822 import Deb822Editor
-from lintian_brush.fixer import report_result, LintianIssue
+
+from lintian_brush.fixer import LintianIssue, report_result
 
 try:
     with Deb822Editor(path='debian/copyright') as updater:

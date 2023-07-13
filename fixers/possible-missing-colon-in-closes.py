@@ -1,18 +1,20 @@
 #!/usr/bin/python3
 
+import re
+import socket
 from functools import partial
+
 from debmutate.changelog import ChangelogEditor
+
 from lintian_brush import min_certainty
 from lintian_brush.fixer import (
     fixed_lintian_tag,
-    net_access_allowed,
-    meets_minimum_certainty,
-    warn,
     fixed_lintian_tags,
+    meets_minimum_certainty,
+    net_access_allowed,
     report_result,
-    )
-import re
-import socket
+    warn,
+)
 
 certainty = 'certain'
 debbugs = None

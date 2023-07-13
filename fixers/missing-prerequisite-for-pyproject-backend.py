@@ -1,9 +1,12 @@
 #!/usr/bin/python3
 
-from contextlib import suppress
-from debmutate.control import ensure_some_version, get_relation
-from lintian_brush.fixer import control, report_result, LintianIssue
 import sys
+from contextlib import suppress
+
+from debmutate.control import ensure_some_version, get_relation
+
+from lintian_brush.fixer import LintianIssue, control, report_result
+
 try:
     from tomlkit import load
 except ModuleNotFoundError:
@@ -50,7 +53,7 @@ with control:
         issue.report_fixed()
 
 report_result(
-    'Add missing build-dependency on %s.\n\n'
-    'This is necessary for build-backend %s in pyproject.toml' % (
+    'Add missing build-dependency on {}.\n\n'
+    'This is necessary for build-backend {} in pyproject.toml'.format(
         prerequisite,
         build_backend))

@@ -1,14 +1,19 @@
 #!/usr/bin/python3
-from lintian_brush import USER_AGENT, DEFAULT_URLLIB_TIMEOUT
-from lintian_brush.fixer import (
-    control, net_access_allowed, report_result, LintianIssue,
-    warn)
-import socket
 import http.client
+import socket
 import sys
 import urllib.error
 import urllib.parse
-from urllib.request import urlopen, Request
+from urllib.request import Request, urlopen
+
+from lintian_brush import DEFAULT_URLLIB_TIMEOUT, USER_AGENT
+from lintian_brush.fixer import (
+    LintianIssue,
+    control,
+    net_access_allowed,
+    report_result,
+    warn,
+)
 
 known_https = [
     'github.com', 'launchpad.net', 'pypi.python.org',
@@ -45,8 +50,7 @@ def fix_homepage(http_url):
             timeout=DEFAULT_URLLIB_TIMEOUT).read()
     except ERRORS as e:
         warn(
-            'Unable to access HTTP version of homepage %s: %s' %
-            (http_url, e))
+            f'Unable to access HTTP version of homepage {http_url}: {e}')
         return http_url
     try:
         https_resp = urlopen(
@@ -54,8 +58,7 @@ def fix_homepage(http_url):
             timeout=DEFAULT_URLLIB_TIMEOUT)
     except ERRORS as e:
         warn(
-            'Unable to access HTTPS version of homepage %s: %s' %
-            (https_url, e))
+            f'Unable to access HTTPS version of homepage {https_url}: {e}')
         return http_url
     if not https_resp.geturl().startswith('https://'):
         warn('https URL {} redirected back to {}'.format(

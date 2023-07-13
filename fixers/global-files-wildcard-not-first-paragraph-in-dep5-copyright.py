@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
 from contextlib import suppress
+
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
-from lintian_brush.fixer import report_result, LintianIssue
+
+from lintian_brush.fixer import LintianIssue, report_result
 
 with suppress(FileNotFoundError, NotMachineReadableError), \
         CopyrightEditor() as editor:

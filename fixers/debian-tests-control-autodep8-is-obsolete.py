@@ -2,6 +2,7 @@
 
 import os
 import sys
+
 from lintian_brush.fixer import LintianIssue, report_result
 
 OLD_PATH = 'debian/tests/control.autodep8'

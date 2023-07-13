@@ -1,19 +1,19 @@
 #!/usr/bin/python3
 
-from contextlib import suppress
 import os
 import re
 import sys
+from contextlib import suppress
+
+from debmutate._rules import RulesEditor, discard_pointless_override
 
 from debian.deb822 import PkgRelation
 from lintian_brush.fixer import (
-    net_access_allowed,
-    compat_release,
-    report_result,
     LintianIssue,
-    )
-from debmutate._rules import RulesEditor, discard_pointless_override
-
+    compat_release,
+    net_access_allowed,
+    report_result,
+)
 
 compat_release = compat_release()
 

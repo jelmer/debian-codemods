@@ -1,24 +1,23 @@
 #!/usr/bin/python3
 
-from contextlib import suppress
 import os
 import re
 import textwrap
+from contextlib import suppress
+from typing import Dict
+
+from debmutate.copyright import CopyrightEditor
 
 from debian.copyright import License, NotMachineReadableError
-from debmutate.copyright import CopyrightEditor
 from lintian_brush.fixer import (
+    fixed_lintian_tag,
     report_result,
     warn,
-    fixed_lintian_tag,
-    )
+)
 from lintian_brush.licenses import (
     COMMON_LICENSES_DIR,
     FULL_LICENSE_NAME,
-    )
-
-from typing import Dict
-
+)
 
 # In reality, what debian ships as "/usr/share/common-licenses/BSD" is
 # BSD-3-clause in SPDX.
@@ -191,8 +190,8 @@ def replace_full_license(para):
             renames[license.synopsis] = SPDX_RENAMES[license.synopsis]
             return
         else:
-            warn('Found full license text for %s, but unknown synopsis %s (%s)'
-                 % (license_matched, license.synopsis, canonical_id))
+            warn(f'Found full license text for {license_matched}, '
+                 f'but unknown synopsis {license.synopsis} ({canonical_id})')
         return
     if license_matched == 'Apache-2.0':
         fixed_lintian_tag(

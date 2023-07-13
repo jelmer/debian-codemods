@@ -1,15 +1,16 @@
 #!/usr/bin/python3
 
-from contextlib import suppress
 import shlex
+from contextlib import suppress
 
-from debmutate.debhelper import get_debhelper_compat_level
-from lintian_brush.fixer import report_result, LintianIssue
 from debmutate._rules import (
+    RulesEditor,
     dh_invoke_drop_argument,
     dh_invoke_drop_with,
-    RulesEditor,
-    )
+)
+from debmutate.debhelper import get_debhelper_compat_level
+
+from lintian_brush.fixer import LintianIssue, report_result
 
 removed_args = []
 unnecessary_args = []

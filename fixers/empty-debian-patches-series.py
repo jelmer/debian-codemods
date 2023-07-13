@@ -1,14 +1,13 @@
 #!/usr/bin/python3
 
-from contextlib import suppress
 import os
 import sys
+from contextlib import suppress
 
 from lintian_brush.fixer import (
     opinionated,
     report_result,
-    )
-
+)
 
 if not opinionated():
     sys.exit(0)

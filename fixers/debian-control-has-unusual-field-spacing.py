@@ -4,13 +4,13 @@ import sys
 
 from debmutate.control import (
     guess_template_type,
-    )
+)
 from debmutate.reformatting import (
-    check_generated_file,
     GeneratedFile,
-    )
+    check_generated_file,
+)
 
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import LintianIssue, report_result
 from lintian_brush.line_editor import LineEditor
 
 

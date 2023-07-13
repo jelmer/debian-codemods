@@ -1,13 +1,14 @@
 #!/usr/bin/python3
 
 import sys
-from typing import Dict, List, Any, Tuple
+from typing import Any, Dict, List, Tuple
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
-from lintian_brush.yaml import YamlUpdater, MultiYamlUpdater
 import ruamel.yaml.composer
-from ruamel.yaml.reader import ReaderError  # noqa: E402
 from ruamel.yaml.nodes import MappingNode, SequenceNode
+from ruamel.yaml.reader import ReaderError  # noqa: E402
+
+from lintian_brush.fixer import fixed_lintian_tag, report_result
+from lintian_brush.yaml import MultiYamlUpdater, YamlUpdater
 
 SEQUENCE_FIELDS = ['Reference', 'Screenshots']
 

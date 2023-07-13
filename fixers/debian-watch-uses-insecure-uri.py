@@ -4,12 +4,13 @@ import os
 import subprocess
 import sys
 
+from debmutate.watch import parse_watch_file
+
 from lintian_brush.fixer import (
+    LintianIssue,
     net_access_allowed,
     report_result,
-    LintianIssue,
-    )
-from debmutate.watch import parse_watch_file
+)
 
 if not os.path.exists('debian/watch'):
     sys.exit(0)

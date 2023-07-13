@@ -2,12 +2,13 @@
 
 import os
 import sys
+
 from lintian_brush.fixer import (
-    package_is_native,
-    report_result,
     LintianIssue,
     opinionated,
-    )
+    package_is_native,
+    report_result,
+)
 
 if not package_is_native():
     # Nothing to do

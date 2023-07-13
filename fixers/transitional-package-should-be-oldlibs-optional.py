@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import control, report_result, LintianIssue
-
 from typing import Optional
+
+from lintian_brush.fixer import LintianIssue, control, report_result
 
 packages = []
 
@@ -41,5 +41,5 @@ with control as updater:
 
 
 report_result(
-    "Move transitional package%s %s to oldlibs/optional per policy 4.0.1." %
-    (("s" if len(packages) > 1 else ""), ", ".join(packages)))
+    "Move transitional package{} {} to oldlibs/optional per policy 4.0.1."
+    .format(("s" if len(packages) > 1 else ""), ", ".join(packages)))

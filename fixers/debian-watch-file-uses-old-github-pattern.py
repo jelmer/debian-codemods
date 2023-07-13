@@ -1,11 +1,14 @@
 #!/usr/bin/python3
 
 from contextlib import suppress
+
 from debmutate.watch import WatchEditor
 
 from lintian_brush.fixer import (
-    report_result, source_package_name, current_package_version,
+    current_package_version,
     net_access_allowed,
+    report_result,
+    source_package_name,
 )
 from lintian_brush.watch import (
     fix_old_github_patterns,

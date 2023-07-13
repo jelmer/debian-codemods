@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 
 from debmutate.control import (
-    get_relation,
     add_dependency,
     drop_dependency,
-    )
-from lintian_brush.fixer import control, report_result
+    get_relation,
+)
 
+from lintian_brush.fixer import control, report_result
 
 with control as updater:
     try:

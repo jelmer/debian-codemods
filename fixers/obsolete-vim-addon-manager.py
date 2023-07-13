@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import control, LintianIssue, report_result
-from debmutate.control import get_relation, drop_dependency
 from debmutate._rules import RulesEditor
+from debmutate.control import drop_dependency, get_relation
+
 from lintian_brush.debhelper import add_sequence
+from lintian_brush.fixer import LintianIssue, control, report_result
 
 with control:
     for binary in control.binaries:

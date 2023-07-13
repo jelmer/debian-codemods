@@ -1,10 +1,12 @@
 #!/usr/bin/python3
 
-from contextlib import suppress
-from debmutate._rules import RulesEditor
-from lintian_brush.fixer import report_result, LintianIssue, opinionated
 import os
 import sys
+from contextlib import suppress
+
+from debmutate._rules import RulesEditor
+
+from lintian_brush.fixer import LintianIssue, opinionated, report_result
 
 certainty = None
 

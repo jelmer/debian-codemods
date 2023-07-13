@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import report_result, LintianIssue, control
+from lintian_brush.fixer import LintianIssue, control, report_result
 
 with control as editor:
     for binary in control.binaries:

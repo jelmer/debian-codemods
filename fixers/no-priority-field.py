@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 
+import sys
 from contextlib import suppress
+
 from lintian_brush.fixer import (
     control,
     fixed_lintian_tag,
     report_result,
-    )
-
-import sys
+)
 
 # TODO(jelmer): Support unknown-priority tag
 
@@ -41,4 +41,4 @@ with control as updater:
     elif updated:
         report_result(
             'Set priority for binary packages %s.' % (
-                ['%s (%s)' % item for item in updated.items()]))
+                ['{} ({})'.format(*item) for item in updated.items()]))

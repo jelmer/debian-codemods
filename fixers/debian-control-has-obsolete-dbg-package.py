@@ -1,18 +1,20 @@
 #!/usr/bin/python3
 import sys
-from debmutate.debhelper import (
-    ensure_minimum_debhelper_version,
-    )
-from lintian_brush.fixer import (
-    control,
-    current_package_version,
-    LintianIssue,
-    report_result,
-    )
+
 from debmutate._rules import (
     check_cdbs,
     update_rules,
-    )
+)
+from debmutate.debhelper import (
+    ensure_minimum_debhelper_version,
+)
+
+from lintian_brush.fixer import (
+    LintianIssue,
+    control,
+    current_package_version,
+    report_result,
+)
 
 minimum_version = "9.20160114"
 
@@ -88,5 +90,5 @@ if difference:
     raise Exception("packages missing %r" % difference)
 
 report_result(
-    "Transition to automatic debug package%s (from: %s)." %
-    (("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages)))
+    "Transition to automatic debug package{} (from: {}).".format(
+        ("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages)))

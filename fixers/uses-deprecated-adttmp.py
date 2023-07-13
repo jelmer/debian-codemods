@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import report_result, LintianIssue
-from lintian_brush.line_editor import LineEditor
 import os
 import re
 import sys
+
+from lintian_brush.fixer import LintianIssue, report_result
+from lintian_brush.line_editor import LineEditor
 
 if not os.path.isdir('debian/tests'):
     sys.exit(0)

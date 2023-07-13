@@ -1,13 +1,14 @@
 #!/usr/bin/python3
 
 import sys
+
 from lintian_brush.fixer import (
-    control,
-    report_result,
-    meets_minimum_certainty,
-    is_debcargo_package,
     LintianIssue,
-    )
+    control,
+    is_debcargo_package,
+    meets_minimum_certainty,
+    report_result,
+)
 
 require_root = "no"
 CERTAINTY = "possible"

@@ -1,20 +1,21 @@
 #!/usr/bin/python3
 
 from contextlib import suppress
-from lintian_brush import min_certainty
+
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
-from lintian_brush.fixer import (
-    meets_minimum_certainty,
-    trust_package,
-    report_result,
-    )
 from upstream_ontologist import (
     UpstreamDatum,
-    )
+)
 from upstream_ontologist.guess import (
     guess_upstream_metadata_items,
-    )
+)
 
+from lintian_brush import min_certainty
+from lintian_brush.fixer import (
+    meets_minimum_certainty,
+    report_result,
+    trust_package,
+)
 
 fields = []
 achieved_certainty = []

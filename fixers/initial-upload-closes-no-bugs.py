@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
-from typing import Optional
-from debmutate.changelog import ChangelogEditor, Version
 import sys
+from typing import Optional
+
+from debmutate.changelog import ChangelogEditor, Version
+
 from lintian_brush.debbugs import find_archived_wnpp_bugs, find_wnpp_bugs
 from lintian_brush.fixer import net_access_allowed, report_result
 
@@ -46,8 +48,7 @@ with ChangelogEditor() as editor:
 
 if version_changed:
     report_result(
-        "Add %s bugs in %s." %
-        (', '.join(
+        "Add {} bugs in {}.".format(', '.join(
             sorted({
                 kind for (bugno, kind) in wnpp_bugs})),
             version_changed),

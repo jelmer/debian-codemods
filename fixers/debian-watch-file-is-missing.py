@@ -5,16 +5,15 @@ import sys
 from debmutate.watch import WatchFile
 
 from lintian_brush.fixer import (
+    LintianIssue,
     current_package_version,
     net_access_allowed,
-    report_result,
     package_is_native,
-    LintianIssue,
-    )
+    report_result,
+)
 from lintian_brush.watch import (
     find_candidates,
-    )
-
+)
 
 if os.path.exists('debian/watch') or package_is_native():
     # Nothing to do here..

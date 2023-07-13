@@ -2,7 +2,7 @@
 import os
 import sys
 
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import LintianIssue, report_result
 
 if not os.path.exists('debian/pyversions'):
     sys.exit(2)

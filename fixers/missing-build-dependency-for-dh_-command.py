@@ -1,17 +1,19 @@
 #!/usr/bin/python3
 
-from debmutate.control import (
-    PkgRelation,
-    parse_relations,
-    add_dependency,
-    is_relation_implied,
-    )
-from lintian_brush.fixer import control, report_result, LintianIssue
-from lintian_brush.lintian import LINTIAN_DATA_PATH, dh_commands, dh_addons
-from debmutate._rules import Makefile, Rule, dh_invoke_get_with
 import os
 import shlex
 import sys
+
+from debmutate._rules import Makefile, Rule, dh_invoke_get_with
+from debmutate.control import (
+    PkgRelation,
+    add_dependency,
+    is_relation_implied,
+    parse_relations,
+)
+
+from lintian_brush.fixer import LintianIssue, control, report_result
+from lintian_brush.lintian import LINTIAN_DATA_PATH, dh_addons, dh_commands
 
 COMMAND_TO_DEP = {}
 
@@ -156,5 +158,5 @@ if len(changed) == 1:
 else:
     report_result(
         'Add missing build dependencies:' +
-        '\n'.join('* %s for %s %s'
-                  % (dep, kind, name) for (dep, issue, kind, name) in changed))
+        '\n'.join(f'* {dep} for {kind} {name}'
+                  for (dep, issue, kind, name) in changed))

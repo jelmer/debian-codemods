@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 
 import re
-from lintian_brush.fixer import report_result, opinionated, fixed_lintian_tag
-from debmutate._rules import update_rules, Makefile
-from typing import Set, Tuple, Optional
+from typing import Optional, Set, Tuple
+
+from debmutate._rules import Makefile, update_rules
+
+from lintian_brush.fixer import fixed_lintian_tag, opinionated, report_result
 
 architecture_included = False
 PATH = '/usr/share/dpkg/architecture.mk'

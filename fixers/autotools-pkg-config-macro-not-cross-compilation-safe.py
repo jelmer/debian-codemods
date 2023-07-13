@@ -1,14 +1,16 @@
 #!/usr/bin/python3
 
-from debmutate.control import ensure_some_version
-from lintian_brush.fixer import (
-    report_result,
-    control,
-    LintianIssue,
-    )
-from lintian_brush.line_editor import LineEditor
 import os
 import re
+
+from debmutate.control import ensure_some_version
+
+from lintian_brush.fixer import (
+    LintianIssue,
+    control,
+    report_result,
+)
+from lintian_brush.line_editor import LineEditor
 
 resolution = ""
 

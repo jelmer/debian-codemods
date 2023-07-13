@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 
 from contextlib import suppress
-from debian.copyright import License
+
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+
+from debian.copyright import License
+from lintian_brush.fixer import fixed_lintian_tag, report_result
 from lintian_brush.licenses import load_spdx_data
 
 RENAMES = {k.lower(): v for k, v in {

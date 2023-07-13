@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
 import shlex
-from lintian_brush.fixer import report_result, LintianIssue
+
 from debmutate._rules import update_rules
+
+from lintian_brush.fixer import LintianIssue, report_result
 
 
 def check_global(origline):

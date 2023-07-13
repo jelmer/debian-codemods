@@ -1,44 +1,44 @@
 #!/usr/bin/python3
-from contextlib import suppress
 import os
 import re
 import shlex
 import sys
+from contextlib import suppress
 
+from debmutate._rules import (
+    Makefile,
+    check_cdbs,
+    dh_invoke_drop_argument,
+    dh_invoke_drop_with,
+    dh_invoke_replace_argument,
+    update_rules,
+)
 from debmutate.control import (
     ensure_exact_version,
     ensure_minimum_version,
     get_relation,
-    )
+)
 from debmutate.debhelper import (
-    read_debhelper_compat_file,
     MaintscriptEditor,
     MaintscriptRemoveConffile,
-    )
+    read_debhelper_compat_file,
+)
+
 from lintian_brush.debhelper import (
+    DEBHELPER_BUILD_STEPS,
     detect_debhelper_buildsystem,
     lowest_non_deprecated_compat_level,
     maximum_debhelper_compat_version,
-    DEBHELPER_BUILD_STEPS,
-    )
+)
 from lintian_brush.fixer import (
     compat_release,
     control,
     current_package_version,
-    is_debcargo_package,
     fixed_lintian_tag,
+    is_debcargo_package,
     report_result,
     warn,
-    )
-from debmutate._rules import (
-    check_cdbs,
-    dh_invoke_drop_with,
-    dh_invoke_drop_argument,
-    dh_invoke_replace_argument,
-    update_rules,
-    Makefile,
-    )
-
+)
 
 new_debhelper_compat_version = maximum_debhelper_compat_version(
     compat_release())

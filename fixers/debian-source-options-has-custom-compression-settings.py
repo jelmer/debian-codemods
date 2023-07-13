@@ -3,7 +3,7 @@
 import os
 import sys
 
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import LintianIssue, report_result
 
 try:
     with open('debian/source/options') as f:

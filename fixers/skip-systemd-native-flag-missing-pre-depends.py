@@ -5,12 +5,12 @@ import sys
 
 from debmutate.control import (
     add_dependency,
-    )
+)
 from debmutate.debhelper import (
     get_debhelper_compat_level,
-    )
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
+)
 
+from lintian_brush.fixer import control, fixed_lintian_tag, report_result
 
 compat_version = get_debhelper_compat_level()
 if compat_version is None or compat_version <= 11:

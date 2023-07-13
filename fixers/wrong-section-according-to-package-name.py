@@ -1,16 +1,17 @@
 #!/usr/bin/python3
 
+import sys
+
 from lintian_brush.fixer import (
     control,
+    fixed_lintian_tag,
     meets_minimum_certainty,
     report_result,
-    fixed_lintian_tag,
-    )
+)
 from lintian_brush.section import (
-    get_name_section_mappings,
     find_expected_section,
-    )
-import sys
+    get_name_section_mappings,
+)
 
 CERTAINTY = 'likely'
 
@@ -46,5 +47,6 @@ with control as updater:
 # TODO(jelmer): If there is only a single binary package without section, just
 # set the section of the source package?
 report_result(
-    "Fix sections for %s." % ', '.join(['%s (%s ⇒ %s)' % v for v in fixed]),
+    "Fix sections for %s." % ', '.join(
+        ['{} ({} ⇒ {})'.format(*v) for v in fixed]),
     certainty=CERTAINTY)

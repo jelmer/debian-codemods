@@ -7,11 +7,14 @@ try:
 except ModuleNotFoundError:
     sys.exit(2)
 
-from lintian_brush.lintian_overrides import remove_unused
 from lintian_brush.fixer import (
-    control, net_access_allowed, report_result, diligence, fixed_lintian_tag,
-    )
-
+    control,
+    diligence,
+    fixed_lintian_tag,
+    net_access_allowed,
+    report_result,
+)
+from lintian_brush.lintian_overrides import remove_unused
 
 INTERMITTENT_LINTIAN_TAGS = [
     'rc-version-greater-than-expected-version',

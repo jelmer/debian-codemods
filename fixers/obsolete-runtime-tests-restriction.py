@@ -3,12 +3,11 @@
 import os
 import sys
 
-from debmutate.deb822 import Deb822Editor
 from debmutate.control import delete_from_list
+from debmutate.deb822 import Deb822Editor
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import fixed_lintian_tag, report_result
 from lintian_brush.lintian import LINTIAN_DATA_PATH
-
 
 removed_restrictions = []
 
@@ -61,9 +60,9 @@ else:
 
 
 report_result(
-    'Drop deprecated restriction%s %s. See '
+    'Drop deprecated restriction{} {}. See '
     'https://salsa.debian.org/ci-team/autopkgtest/tree/'
-    'master/doc/README.package-tests.rst' % (
+    'master/doc/README.package-tests.rst'.format(
        's' if len(removed_restrictions) > 1 else '',
        ', ' .join(removed_restrictions)),
     certainty=certainty)

@@ -2,25 +2,24 @@
 
 import os
 import sys
-
 from typing import List
 
-from debmutate.control import (
-    ensure_exact_version,
-    iter_relations,
-    is_relation_implied,
-    parse_relations,
-    format_relations,
-    )
-from debmutate.debhelper import (
-    read_debhelper_compat_file,
-    )
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
-from lintian_brush.debhelper import highest_stable_compat_level
 from debmutate._rules import (
     check_cdbs,
-    )
+)
+from debmutate.control import (
+    ensure_exact_version,
+    format_relations,
+    is_relation_implied,
+    iter_relations,
+    parse_relations,
+)
+from debmutate.debhelper import (
+    read_debhelper_compat_file,
+)
 
+from lintian_brush.debhelper import highest_stable_compat_level
+from lintian_brush.fixer import control, fixed_lintian_tag, report_result
 
 if not os.path.exists('debian/compat'):
     sys.exit(0)

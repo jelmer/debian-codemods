@@ -1,22 +1,24 @@
 #!/usr/bin/python3
 
-import os
 import logging
+import os
 import re
 import sys
-from debian.changelog import Changelog
+from typing import Dict, List
+
 from debmutate.control import (
     get_relation,
     parse_standards_version,
-    )
-from typing import Dict, List
+)
+
+from debian.changelog import Changelog
 from debian.copyright import Copyright, NotMachineReadableError
 from debian.deb822 import Deb822
 from lintian_brush.fixer import (
-    control,
-    report_result,
     LintianIssue,
-    is_debcargo_package
+    control,
+    is_debcargo_package,
+    report_result,
 )
 from lintian_brush.standards_version import iter_standards_versions
 

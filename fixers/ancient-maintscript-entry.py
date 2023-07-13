@@ -1,15 +1,15 @@
 #!/usr/bin/python3
 
-from datetime import datetime, timedelta
-import os
 import email.utils
+import os
 import sys
+from datetime import datetime, timedelta
 
 from debmutate.changelog import ChangelogEditor
 from debmutate.debhelper import MaintscriptEditor
+
 from lintian_brush.debhelper import drop_obsolete_maintscript_entries
 from lintian_brush.fixer import report_result, upgrade_release, warn
-
 
 # If there is no information from the upgrade release, default to 5 years.
 DEFAULT_AGE_THRESHOLD_DAYS = 5 * 365
@@ -27,6 +27,7 @@ for entry in os.scandir('debian'):
 # This is a little bit tricky since versions uploaded at a particular date
 # may not have made it into the release then.
 from distro_info import DebianDistroInfo  # noqa: E402
+
 try:
     [release] = [
         r for r in DebianDistroInfo().get_all('object')

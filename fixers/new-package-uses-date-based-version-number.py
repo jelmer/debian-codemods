@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 
-from debian.changelog import Version
-from debmutate.changelog import ChangelogEditor, distribution_is_unreleased
 import re
 import sys
 
-from lintian_brush.fixer import report_result, LintianIssue
+from debmutate.changelog import ChangelogEditor, distribution_is_unreleased
 
+from debian.changelog import Version
+from lintian_brush.fixer import LintianIssue, report_result
 
 with ChangelogEditor() as editor:
     if len(editor.changelog) != 1:

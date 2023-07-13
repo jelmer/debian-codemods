@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 import sys
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+
+from lintian_brush.fixer import fixed_lintian_tag, report_result
 
 EXPECTED_URL = (
     b'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/')

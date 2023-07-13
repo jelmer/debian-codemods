@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import control, LintianIssue, report_result
-from lintian_brush.lintian import is_obsolete_site
 from urllib.parse import urlparse
 
+from lintian_brush.fixer import LintianIssue, control, report_result
+from lintian_brush.lintian import is_obsolete_site
 
 with control:
     homepage = control.source.get('Homepage')

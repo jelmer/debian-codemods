@@ -1,17 +1,18 @@
 #!/usr/bin/python3
 
+from debmutate._rules import (
+    dh_invoke_drop_with,
+    update_rules,
+)
 from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
-    )
+)
+
 from lintian_brush.fixer import (
+    LintianIssue,
     control,
     report_result,
-    LintianIssue,
-    )
-from debmutate._rules import (
-    update_rules,
-    dh_invoke_drop_with,
-    )
+)
 
 
 def cb(line, target):

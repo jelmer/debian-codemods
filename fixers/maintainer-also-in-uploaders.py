@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
 import sys
+
 from debmutate.control import delete_from_list
 
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, fixed_lintian_tag, report_result
 
 # TODO(jelmer): support checking debcargo's maintainer/uploaders fields
 

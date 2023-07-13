@@ -1,15 +1,15 @@
 #!/usr/bin/python3
 
-from contextlib import suppress
-from functools import partial
 import os
 import re
+from contextlib import suppress
+from functools import partial
 from typing import Dict
 
-from debian.copyright import License, NotMachineReadableError
-
 from debmutate.copyright import CopyrightEditor
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+
+from debian.copyright import License, NotMachineReadableError
+from lintian_brush.fixer import fixed_lintian_tag, report_result
 
 SYNOPSIS_ALIAS: Dict[str, str] = {}
 updated = set()

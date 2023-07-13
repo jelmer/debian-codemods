@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
 from contextlib import suppress
+
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+
+from lintian_brush.fixer import fixed_lintian_tag, report_result
 
 renames = [
     ("Name", "Upstream-Name", "upstream_name", False),

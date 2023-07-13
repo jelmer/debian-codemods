@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
 import email.utils
+
 from debmutate.changelog import ChangelogEditor
 
-from lintian_brush.fixer import report_result, LintianIssue, warn
+from lintian_brush.fixer import LintianIssue, report_result, warn
 
 versions = []
 

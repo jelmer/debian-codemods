@@ -4,7 +4,7 @@ import os
 import sys
 
 from lintian_brush.fixer import report_result
-from lintian_brush.gpg import gpg_import_export, GpgMissing
+from lintian_brush.gpg import GpgMissing, gpg_import_export
 
 try:
     with open('debian/upstream/signing-key.pgp', 'rb') as f:

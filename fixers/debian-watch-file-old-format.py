@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
-from contextlib import suppress
 import sys
+from contextlib import suppress
 
 from debmutate.watch import WatchEditor
 
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import LintianIssue, report_result
 
 OBSOLETE_WATCH_FILE_FORMAT = 2
 WATCH_FILE_LATEST_VERSION = 4

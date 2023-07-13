@@ -1,16 +1,17 @@
 #!/usr/bin/python3
 
+import sys
 from contextlib import suppress
+
 from lintian_brush.fixer import (
-    control,
     LintianIssue,
+    control,
     report_result,
-    )
+)
 from lintian_brush.section import (
     find_expected_section,
     get_name_section_mappings,
-    )
-import sys
+)
 
 binary_sections_set = set()
 source_section_set = False

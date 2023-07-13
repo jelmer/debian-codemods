@@ -1,8 +1,9 @@
 #!/usr/bin/python3
 
-from contextlib import suppress
 import os
-from lintian_brush.fixer import report_result, LintianIssue
+from contextlib import suppress
+
+from lintian_brush.fixer import LintianIssue, report_result
 
 with suppress(FileNotFoundError, NotADirectoryError), \
         open('debian/tests/control') as f:

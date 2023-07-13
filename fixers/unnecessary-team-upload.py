@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 
-from debmutate.changelog import ChangelogEditor
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
-
-from email.utils import parseaddr
 import sys
+from email.utils import parseaddr
+
+from debmutate.changelog import ChangelogEditor
+
+from lintian_brush.fixer import control, fixed_lintian_tag, report_result
 
 TEAM_UPLOAD_LINE = '  * Team upload.'
 uploader_emails = []

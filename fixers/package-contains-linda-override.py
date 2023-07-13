@@ -2,7 +2,7 @@
 
 import os
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+from lintian_brush.fixer import fixed_lintian_tag, report_result
 
 removed = []
 

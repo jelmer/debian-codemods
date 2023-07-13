@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import os
 
-from lintian_brush.fixer import report_result, LintianIssue
+from lintian_brush.fixer import LintianIssue, report_result
 
 try:
     st = os.stat('debian/rules')

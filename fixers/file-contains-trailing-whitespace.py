@@ -2,8 +2,10 @@
 
 import os
 import re
-from debmutate.reformatting import check_generated_file, GeneratedFile
-from lintian_brush.fixer import report_result, LintianIssue
+
+from debmutate.reformatting import GeneratedFile, check_generated_file
+
+from lintian_brush.fixer import LintianIssue, report_result
 
 trailing_whitespace_re = re.compile(b'\\s*\n$')
 trailing_space_re = re.compile(b'[ ]*\n$')

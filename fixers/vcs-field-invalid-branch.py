@@ -8,15 +8,18 @@ except ModuleNotFoundError:
     sys.exit(2)
 
 from debmutate.vcs import (
-    split_vcs_url, unsplit_vcs_url,
-    )
+    split_vcs_url,
+    unsplit_vcs_url,
+)
+
 from lintian_brush.fixer import (
     control,
-    report_result, diligence, warn,
+    diligence,
     opinionated,
-    )
+    report_result,
+    warn,
+)
 from lintian_brush.vcs import determine_browser_url
-
 
 if diligence() < 1:
     # Removing unused overrides requires pro-actively contacting UDD.

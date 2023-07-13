@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
 from email.utils import parseaddr
-from typing import Optional, Dict, Tuple, List
+from typing import Dict, List, Optional, Tuple
 
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, fixed_lintian_tag, report_result
 
 REPLACEMENTS: Dict[Optional[str], Tuple[str, List[Tuple[str, str]]]] = {
     'python-modules-team@lists.alioth.debian.org':

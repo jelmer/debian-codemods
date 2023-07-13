@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
 from lintian_brush.fixer import (
+    LintianIssue,
     control,
     net_access_allowed,
     report_result,
-    LintianIssue,
-    )
+)
 from lintian_brush.vcs import find_secure_vcs_url
 
 updated = set()

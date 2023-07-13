@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 
-from contextlib import suppress
-from debmutate.deb822 import Deb822Editor
-from lintian_brush.fixer import report_result, warn, fixed_lintian_tag
 import sys
+from contextlib import suppress
+
+from debmutate.deb822 import Deb822Editor
+
+from lintian_brush.fixer import fixed_lintian_tag, report_result, warn
 
 try:
     from Levenshtein import distance
@@ -44,8 +46,8 @@ with suppress(FileNotFoundError), Deb822Editor('debian/copyright') as updater:
                     if (option in paragraph
                             and option.lower() != field.lower()):
                         warn(
-                            'Found typo (%s ⇒ %s), but %s already exists'
-                            % (field, option, option))
+                            f'Found typo ({field} ⇒ {option}), '
+                            f'but {option} already exists')
                         continue
                     del paragraph[field]
                     paragraph[option] = value

@@ -3,46 +3,47 @@
 # TODO(jelmer): Read python3 setup.py dist_info
 # TODO(jelmer): Check XS-Go-Import-Path
 
+import logging
 import os
 import sys
-from lintian_brush import (
-    min_certainty,
-    )
-from lintian_brush.fixer import (
-    current_package_version,
-    package_is_native,
-    meets_minimum_certainty,
-    net_access_allowed,
-    report_result,
-    trust_package,
-    LintianIssue,
-    )
-from lintian_brush.upstream_metadata import (
-    ADDON_ONLY_FIELDS,
-    DEP12_FIELDS,
-    )
+
 from upstream_ontologist import (
     UpstreamDatum,
     upstream_metadata_sort_key,
-    )
+)
+from upstream_ontologist.debian import (
+    debian_to_upstream_version,
+)
 from upstream_ontologist.guess import (
     check_upstream_metadata,
     extend_upstream_metadata,
+    filter_bad_guesses,
     fix_upstream_metadata,
     guess_upstream_metadata_items,
     update_from_guesses,
-    filter_bad_guesses,
-    )
-from upstream_ontologist.debian import (
-    debian_to_upstream_version,
-    )
+)
+
+from lintian_brush import (
+    min_certainty,
+)
+from lintian_brush.fixer import (
+    LintianIssue,
+    current_package_version,
+    meets_minimum_certainty,
+    net_access_allowed,
+    package_is_native,
+    report_result,
+    trust_package,
+)
+from lintian_brush.upstream_metadata import (
+    ADDON_ONLY_FIELDS,
+    DEP12_FIELDS,
+)
 from lintian_brush.yaml import (
     YamlUpdater,
     update_ordered_dict,
-    )
+)
 
-
-import logging
 # Don't clutter standard err/standard out
 logger = logging.getLogger("upstream_ontologist.guess")
 logger.setLevel(logging.ERROR)

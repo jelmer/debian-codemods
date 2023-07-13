@@ -1,11 +1,10 @@
 #!/usr/bin/python3
 
 import sys
+from email.utils import parseaddr
 
 # Import convenience functions for reporting results and checking overrides
-from lintian_brush.fixer import control, report_result, LintianIssue
-
-from email.utils import parseaddr
+from lintian_brush.fixer import LintianIssue, control, report_result
 
 PKG_PERL_EMAIL = 'pkg-perl-maintainers@lists.alioth.debian.org'
 URL_BASE = 'https://salsa.debian.org/perl-team/modules/packages'

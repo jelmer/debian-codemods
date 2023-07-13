@@ -4,12 +4,11 @@ import os
 import sys
 
 from lintian_brush.fixer import (
+    LintianIssue,
     opinionated,
     report_result,
-    LintianIssue,
-    )
+)
 from lintian_brush.patches import read_quilt_series
-
 
 if not opinionated():
     # In a lot of cases, it seems like removing the patch is not the right
@@ -54,7 +53,7 @@ for patch in os.listdir('debian/patches'):
 
 
 description = (
-      "Remove patch%s %s that %s missing from debian/patches/series." %
-      ('es' if len(removed) > 1 else '', ', '.join(sorted(removed)),
-       'is' if len(removed) == 1 else 'are'))
+      "Remove patch{} {} that {} missing from debian/patches/series.".format(
+          'es' if len(removed) > 1 else '', ', '.join(sorted(removed)),
+          'is' if len(removed) == 1 else 'are'))
 report_result(description)

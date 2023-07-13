@@ -53,7 +53,7 @@ with YamlUpdater('debian/upstream/metadata') as editor:
 
 
 report_result(
-    'Remove obsolete field%s %s from debian/upstream/metadata '
-    '(already present in machine-readable debian/copyright).' %
-    ('s' if len(removed_fields) > 1 else '',
-     ', '.join(sorted(removed_fields))))
+    'Remove obsolete field{} {} from debian/upstream/metadata '
+    '(already present in machine-readable debian/copyright).'.format(
+        's' if len(removed_fields) > 1 else '',
+        ', '.join(sorted(removed_fields))))

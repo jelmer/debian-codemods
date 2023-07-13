@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import control, report_result, fixed_lintian_tag
+from lintian_brush.fixer import control, fixed_lintian_tag, report_result
 from lintian_brush.vcs import determine_browser_url
-
 
 with control as updater:
     if "Vcs-Browser" not in updater.source:

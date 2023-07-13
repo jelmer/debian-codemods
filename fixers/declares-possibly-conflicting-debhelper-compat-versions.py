@@ -5,13 +5,13 @@ import re
 import sys
 from typing import Optional
 
-from debmutate.debhelper import (
-    read_debhelper_compat_file,
-    get_debhelper_compat_level_from_control,
-    )
-from lintian_brush.fixer import control, report_result, LintianIssue
 from debmutate._rules import update_rules
+from debmutate.debhelper import (
+    get_debhelper_compat_level_from_control,
+    read_debhelper_compat_file,
+)
 
+from lintian_brush.fixer import LintianIssue, control, report_result
 
 file_compat_version: Optional[int]
 try:

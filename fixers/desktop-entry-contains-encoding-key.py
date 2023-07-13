@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-from lintian_brush.xdg import DesktopEntryEditor
-from lintian_brush.fixer import report_result, LintianIssue
-
 import os
+
+from lintian_brush.fixer import LintianIssue, report_result
+from lintian_brush.xdg import DesktopEntryEditor
 
 paths = []
 

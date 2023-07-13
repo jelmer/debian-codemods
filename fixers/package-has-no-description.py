@@ -1,17 +1,18 @@
 #!/usr/bin/python3
 
 import sys
+from typing import List, Optional
+
+from upstream_ontologist.guess import guess_upstream_metadata
 
 from lintian_brush.fixer import (
-    control,
     LintianIssue,
+    control,
     meets_minimum_certainty,
     net_access_allowed,
     report_result,
     trust_package,
-    )
-from typing import List, Optional
-from upstream_ontologist.guess import guess_upstream_metadata
+)
 
 CERTAINTY = 'possible'
 

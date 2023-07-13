@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 
+import os
+
 from lintian_brush.fixer import (
-    report_result,
     LintianIssue,
     meets_minimum_certainty,
+    report_result,
 )
-
-import os
 
 
 def is_empty(path):
@@ -63,5 +63,5 @@ for entry in os.scandir('debian'):
 
 report_result(
     'Remove empty maintainer scripts: ' +
-    ', '.join('%s (%s)' % x for x in removed),
+    ', '.join('{} ({})'.format(*x) for x in removed),
     certainty=certainty)

@@ -1,18 +1,18 @@
 #!/usr/bin/python3
 
+import os
+import sys
+
 from lintian_brush import (
     DEFAULT_MINIMUM_CERTAINTY,
     min_certainty,
-    )
+)
 from lintian_brush.multiarch_hints import (
     apply_multiarch_hints,
     download_multiarch_hints,
     multiarch_hints_by_binary,
     parse_multiarch_hints,
-    )
-
-import os
-import sys
+)
 
 if os.environ.get('NET_ACCESS', 'disallow') != 'allow':
     sys.exit(0)

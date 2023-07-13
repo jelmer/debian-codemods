@@ -1,13 +1,15 @@
 #!/usr/bin/python3
 
 import os
+
 from debmutate.changelog import (
-    ChangelogEditor,
-    rewrap_changes,
-    any_long_lines,
     WIDTH,
-    )
-from lintian_brush.fixer import report_result, fixed_lintian_tag
+    ChangelogEditor,
+    any_long_lines,
+    rewrap_changes,
+)
+
+from lintian_brush.fixer import fixed_lintian_tag, report_result
 
 updated = []
 

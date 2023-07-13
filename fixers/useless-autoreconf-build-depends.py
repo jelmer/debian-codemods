@@ -1,23 +1,24 @@
 #!/usr/bin/python3
 import sys
 
-from debmutate.control import (
-    drop_dependency,
-    )
-from debmutate.debhelper import (
-    ensure_minimum_debhelper_version,
-    )
-from lintian_brush.debhelper import maximum_debhelper_compat_version
-from lintian_brush.fixer import (
-    compat_release,
-    control,
-    report_result,
-    LintianIssue,
-    )
 from debmutate._rules import (
     dh_invoke_drop_with,
     update_rules,
-    )
+)
+from debmutate.control import (
+    drop_dependency,
+)
+from debmutate.debhelper import (
+    ensure_minimum_debhelper_version,
+)
+
+from lintian_brush.debhelper import maximum_debhelper_compat_version
+from lintian_brush.fixer import (
+    LintianIssue,
+    compat_release,
+    control,
+    report_result,
+)
 
 
 def drop_with_autoreconf(line, target):

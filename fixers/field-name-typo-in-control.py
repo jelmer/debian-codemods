@@ -2,8 +2,8 @@
 
 import sys
 
-from lintian_brush.fixer import report_result, LintianIssue, control, vendor
-from lintian_brush.lintian import known_source_fields, known_binary_fields
+from lintian_brush.fixer import LintianIssue, control, report_result, vendor
+from lintian_brush.lintian import known_binary_fields, known_source_fields
 
 # See https://people.debian.org/~mpitt/autopkgtest/README.package-tests.html
 valid_field_names = set()

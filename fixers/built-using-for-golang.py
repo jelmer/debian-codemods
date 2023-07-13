@@ -7,8 +7,9 @@ from debmutate.control import (
     drop_dependency,
     get_relation,
     iter_relations,
-    )
-from lintian_brush.fixer import control, report_result, LintianIssue
+)
+
+from lintian_brush.fixer import LintianIssue, control, report_result
 
 added = []
 removed = []
@@ -59,8 +60,8 @@ with control as updater:
 
 if added and removed:
     report_result(
-        'Added ${misc:Built-Using} to %s and removed it from %s.' %
-        (', '.join(added), ', '.join(removed)))
+        'Added ${{misc:Built-Using}} to {} and removed it from {}.'.format(
+            ', '.join(added), ', '.join(removed)))
 
 if added:
     report_result(

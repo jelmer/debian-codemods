@@ -3,7 +3,7 @@
 import sys
 from typing import Dict, Set
 
-from lintian_brush.fixer import control, report_result, LintianIssue
+from lintian_brush.fixer import LintianIssue, control, report_result
 
 removed: Dict[str, Set[str]] = {}
 

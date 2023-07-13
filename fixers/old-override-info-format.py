@@ -3,17 +3,16 @@
 from typing import Dict, List
 
 from lintian_brush.fixer import (
-    report_result,
     LintianIssue,
     linenos_to_ranges,
+    report_result,
     shorten_path,
 )
 from lintian_brush.lintian_overrides import (
-    update_overrides,
     LintianOverride,
     fix_override_info,
+    update_overrides,
 )
-
 
 fixed_linenos: Dict[str, List[int]] = {}
 
@@ -44,8 +43,8 @@ if len(fixed_linenos) == 0:
 elif len(fixed_linenos) == 1:
     [(path, linenos)] = fixed_linenos.items()
     report_result(
-        "Update lintian override info format in %s on line %s."
-        % (shorten_path(path), ', '.join(linenos_to_ranges(linenos))))
+        "Update lintian override info format in {} on line {}.".format(
+            shorten_path(path), ', '.join(linenos_to_ranges(linenos))))
 else:
     report_result(
         "Update lintian override info to new format:",

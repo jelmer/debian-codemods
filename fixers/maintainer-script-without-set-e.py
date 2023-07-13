@@ -1,9 +1,8 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import report_result, fixed_lintian_tag
-
 import os
 
+from lintian_brush.fixer import fixed_lintian_tag, report_result
 
 SCRIPTS = ['preinst', 'prerm', 'postinst', 'config', 'postrm']
 
