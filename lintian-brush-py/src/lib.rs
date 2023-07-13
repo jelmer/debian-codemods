@@ -7,8 +7,8 @@ use pyo3::import_exception;
 use std::collections::HashMap;
 
 use lintian_brush::py::{
-    json_to_py, py_to_json, Fixer, FixerResult, LintianIssue, PythonScriptFixer, ScriptFixer,
-    UnsupportedCertainty,
+    json_to_py, py_to_json, Fixer, FixerResult, LintianIssue, ManyResult, PythonScriptFixer,
+    ScriptFixer, UnsupportedCertainty,
 };
 use lintian_brush::Certainty;
 
@@ -228,9 +228,23 @@ impl Config {
 }
 
 #[pyfunction]
+pub fn load_resume(py: Python) -> PyResult<PyObject> {
+    if let Some(resume) = lintian_brush::svp::load_resume() {
+        Ok(json_to_py(py, resume)?)
+    } else {
+        Ok(py.None())
+    }
+}
+
+#[pyfunction]
 fn increment_version(mut version: debversion::Version) -> PyResult<debversion::Version> {
     lintian_brush::increment_version(&mut version);
     Ok(version)
+}
+
+#[pyfunction]
+fn svp_enabled() -> bool {
+    lintian_brush::svp::enabled()
 }
 
 #[pymodule]
@@ -290,5 +304,8 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     )?;
     m.add_class::<Config>()?;
     m.add_wrapped(wrap_pyfunction!(increment_version))?;
+    m.add_wrapped(wrap_pyfunction!(load_resume))?;
+    m.add_wrapped(wrap_pyfunction!(svp_enabled))?;
+    m.add_class::<ManyResult>()?;
     Ok(())
 }

@@ -16,9 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import atexit
-import json
 import logging
-import os
 import shutil
 import sys
 import tempfile
@@ -63,6 +61,8 @@ LINTIAN_BRUSH_TAG_VALUES = _lintian_brush_rs.LINTIAN_BRUSH_TAG_VALUES
 report_fatal = _lintian_brush_rs.report_fatal
 report_success = _lintian_brush_rs.report_success
 report_success_debian = _lintian_brush_rs.report_success_debian
+svp_enabled = _lintian_brush_rs.svp_enabled
+load_resume = _lintian_brush_rs.load_resume
 
 
 def versions_dict() -> dict[str, str]:
@@ -258,12 +258,11 @@ def main(fixers, directory, include, dry_run, identity, modern,
             wt.branch.repository.revision_tree(since_revid), wt,
             sys.stdout.buffer
         )
-    if os.environ.get('SVP_API') == '1':
+    if svp_enabled():
         applied = []
-        if 'SVP_RESUME' in os.environ:
-            with open(os.environ['SVP_RESUME']) as f:
-                base = json.load(f)
-                applied.extend(base['applied'])
+        base = load_resume()
+        if base:
+            applied.extend(base['applied'])
         for result, summary in overall_result.success:
             applied.append(
                 {
@@ -284,7 +283,7 @@ def main(fixers, directory, include, dry_run, identity, modern,
             name: str(e)
             for (name, e) in overall_result.failed_fixers.items()}
         report_success_debian(
-            versions_dict(), value=calculate_value(all_fixed_lintian_tags),
+            versions_dict(), value=calculate_value(list(all_fixed_lintian_tags)),
             context={
                 'applied': applied,
                 'failed': failed,

@@ -11,12 +11,27 @@ pub mod config;
 pub mod py;
 pub mod svp;
 
-#[derive(Clone, PartialEq, Eq, Debug, Default, PartialOrd, Ord)]
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Debug,
+    Default,
+    PartialOrd,
+    Ord,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum Certainty {
+    #[serde(rename = "possible")]
     Possible,
+    #[serde(rename = "likely")]
     Likely,
+    #[serde(rename = "confident")]
     Confident,
     #[default]
+    #[serde(rename = "certain")]
     Certain,
 }
 
@@ -45,9 +60,11 @@ impl ToString for Certainty {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum PackageType {
+    #[serde(rename = "source")]
     Source,
+    #[serde(rename = "binary")]
     Binary,
 }
 
@@ -60,7 +77,7 @@ impl ToString for PackageType {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct LintianIssue {
     pub package: Option<String>,
     pub package_type: Option<PackageType>,
@@ -147,7 +164,7 @@ impl TryFrom<&str> for LintianIssue {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct FixerResult {
     pub description: String,
     pub certainty: Option<Certainty>,
@@ -925,5 +942,26 @@ pub fn increment_version(v: &mut debversion::Version) {
             + 1)
         .to_string())
         .to_string();
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ManyResult {
+    #[serde(rename = "applied")]
+    success: Vec<(FixerResult, String)>,
+    #[serde(rename = "failed")]
+    failed_fixers: std::collections::HashMap<String, String>,
+}
+
+impl ManyResult {
+    /// Return the minimum certainty of any successfully made change.
+    pub fn minimum_success_certainty(&self) -> Option<Certainty> {
+        min_certainty(
+            self.success
+                .iter()
+                .filter_map(|(r, unused_summary)| r.certainty)
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )
     }
 }

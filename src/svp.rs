@@ -99,3 +99,21 @@ pub fn report_fatal(
     }
     std::process::exit(1);
 }
+
+pub fn load_resume() -> Option<serde_json::Value> {
+    if std::env::var("SVP_API").ok().as_deref() == Some("1") {
+        if let Ok(resume_path) = std::env::var("SVP_RESUME") {
+            let f = std::fs::File::open(resume_path).unwrap();
+            let resume: serde_json::Value = serde_json::from_reader(f).unwrap();
+            Some(resume)
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+pub fn enabled() -> bool {
+    std::env::var("SVP_API").ok().as_deref() == Some("1")
+}

@@ -173,6 +173,16 @@ impl FixerResult {
     }
 
     #[getter]
+    fn fixed_lintian_issues(&self) -> PyResult<Vec<LintianIssue>> {
+        Ok(self
+            .0
+            .fixed_lintian_issues
+            .iter()
+            .map(|i| LintianIssue(i.clone()))
+            .collect())
+    }
+
+    #[getter]
     fn description(&self) -> PyResult<String> {
         Ok(self.0.description.clone())
     }
@@ -253,6 +263,9 @@ pub fn json_to_py(py: Python, v: serde_json::Value) -> PyResult<PyObject> {
         }
     }
 }
+
+#[pyclass]
+pub struct ManyResult(crate::ManyResult);
 
 pub fn py_to_json(py: Python, obj: PyObject) -> PyResult<serde_json::Value> {
     if obj.is_none(py) {

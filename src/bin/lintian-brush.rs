@@ -65,6 +65,10 @@ struct OutputArgs {
     #[arg(long, default_value_t = false)]
     diff: bool,
 
+    /// Enable debug output
+    #[arg(long, default_value_t = false)]
+    debug: bool,
+
     /// List available fixers
     #[arg(
         long,
@@ -211,6 +215,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(None) => std::process::exit(0),
             Err(e) => {
                 eprintln!("Error: {}", e);
+                if args.output.debug {
+                    pyo3::Python::with_gil(|py| {
+                        if let Some(traceback) = e.traceback(py) {
+                            println!("{}", traceback.format().unwrap());
+                        }
+                    });
+                }
                 std::process::exit(1);
             }
         }
