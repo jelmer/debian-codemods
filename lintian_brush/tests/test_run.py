@@ -593,7 +593,7 @@ Arch: all
 class IncrementVersionTests(TestCase):
     def assertVersion(self, expected, start):
         v = Version(start)
-        increment_version(v)
+        v = increment_version(v)
         self.assertEqual(Version(expected), v)
 
     def test_full(self):

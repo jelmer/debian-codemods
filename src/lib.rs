@@ -1,4 +1,5 @@
 use crate::breezyshim::RevisionId;
+use lazy_regex::regex_replace;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -898,4 +899,31 @@ pub fn data_file_path(
 
 pub fn find_fixers_dir() -> Option<std::path::PathBuf> {
     data_file_path("fixers", |path| path.is_dir())
+}
+
+/// Increment a version number.
+///
+/// For native packages, increment the main version number.
+/// For other packages, increment the debian revision.
+///
+/// # Arguments
+///
+///  * `v`: Version to increment (modified in place)
+pub fn increment_version(v: &mut debversion::Version) {
+    if v.debian_revision.is_some() {
+        v.debian_revision = v.debian_revision.as_ref().map(|v| {
+            {
+                regex_replace!(r"\d+$", v, |x: &str| (x.parse::<i32>().unwrap() + 1)
+                    .to_string())
+            }
+            .to_string()
+        });
+    } else {
+        v.upstream_version = regex_replace!(r"\d+$", v.upstream_version.as_ref(), |x: &str| (x
+            .parse::<i32>()
+            .unwrap()
+            + 1)
+        .to_string())
+        .to_string();
+    }
 }

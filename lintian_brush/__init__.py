@@ -20,7 +20,6 @@
 import itertools
 import logging
 import os
-import re
 import sys
 import time
 from contextlib import ExitStack
@@ -45,7 +44,7 @@ from breezy.workingtree import WorkingTree
 from breezy.workspace import check_clean_tree, reset_tree
 from debmutate.reformatting import FormattingUnpreservable
 
-from debian.changelog import Changelog, Version
+from debian.changelog import Changelog
 
 from . import _lintian_brush_rs
 
@@ -214,24 +213,7 @@ def available_lintian_fixers(fixers_dir=None, force_subprocess=False):
         fixers_dir, force_subprocess)
 
 
-def increment_version(v: Version) -> None:
-    """Increment a version number.
-
-    For native packages, increment the main version number.
-    For other packages, increment the debian revision.
-
-    Args:
-        v: Version to increment (modified in place)
-    """
-    if v.debian_revision is not None:
-        v.debian_revision = re.sub(
-            "\\d+$", lambda x: str(int(x.group()) + 1), v.debian_revision
-        )
-    else:
-        v.upstream_version = re.sub(
-            "\\d+$", lambda x: str(int(x.group()) + 1),
-            v.upstream_version or ''
-        )
+increment_version = _lintian_brush_rs.increment_version
 
 
 def get_committer(tree: WorkingTree) -> str:
@@ -449,7 +431,7 @@ def run_lintian_fixer(  # noqa: C901
         current_version = cl.version
     else:
         current_version = cl.version
-        increment_version(current_version)
+        current_version = increment_version(current_version)
     if compat_release is None:
         compat_release = "sid"
     if minimum_certainty is None:

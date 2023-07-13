@@ -227,6 +227,12 @@ impl Config {
     }
 }
 
+#[pyfunction]
+fn increment_version(mut version: debversion::Version) -> PyResult<debversion::Version> {
+    lintian_brush::increment_version(&mut version);
+    Ok(version)
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
@@ -283,5 +289,6 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
         lintian_brush::config::PACKAGE_CONFIG_FILENAME,
     )?;
     m.add_class::<Config>()?;
+    m.add_wrapped(wrap_pyfunction!(increment_version))?;
     Ok(())
 }

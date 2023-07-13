@@ -82,7 +82,7 @@ class FixerTestCase(unittest.TestCase):
                 current_version = cl.version
             else:
                 current_version = cl.version
-            increment_version(current_version)
+            current_version = increment_version(current_version)
         else:
             current_version = "1.0-1"
         env["CURRENT_VERSION"] = str(current_version)
