@@ -47,6 +47,7 @@ from . import (
     min_certainty,
 )
 from .gpg import fetch_keys
+from .svp import svp_enabled
 
 # TODO(jelmer): Vary this depending on whether a new watch file was added or an
 # existing one was fixed?
@@ -792,7 +793,7 @@ def main():  # noqa: C901
                 committer=committer,
             )
 
-    if os.environ.get("SVP_API") == "1":
+    if svp_enabled():
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump({
                 "description": summary,

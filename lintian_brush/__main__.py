@@ -49,6 +49,12 @@ from . import (  # noqa: E402
     version_string,
 )
 from .config import Config  # noqa: E402
+from .svp import (  # noqa: E402
+    report_fatal,
+    report_success_debian,
+    svp_enabled,
+    load_resume
+)
 
 calculate_value = _lintian_brush_rs.calculate_value
 LINTIAN_BRUSH_TAG_DEFAULT_VALUE = (
@@ -58,11 +64,6 @@ DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY = (
     _lintian_brush_rs.DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY)
 DEFAULT_ADDON_FIXERS = _lintian_brush_rs.DEFAULT_ADDON_FIXERS
 LINTIAN_BRUSH_TAG_VALUES = _lintian_brush_rs.LINTIAN_BRUSH_TAG_VALUES
-report_fatal = _lintian_brush_rs.report_fatal
-report_success = _lintian_brush_rs.report_success
-report_success_debian = _lintian_brush_rs.report_success_debian
-svp_enabled = _lintian_brush_rs.svp_enabled
-load_resume = _lintian_brush_rs.load_resume
 
 
 def versions_dict() -> dict[str, str]:
@@ -283,7 +284,8 @@ def main(fixers, directory, include, dry_run, identity, modern,
             name: str(e)
             for (name, e) in overall_result.failed_fixers.items()}
         report_success_debian(
-            versions_dict(), value=calculate_value(list(all_fixed_lintian_tags)),
+            versions_dict(),
+            value=calculate_value(list(all_fixed_lintian_tags)),
             context={
                 'applied': applied,
                 'failed': failed,

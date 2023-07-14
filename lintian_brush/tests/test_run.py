@@ -31,8 +31,8 @@ from breezy.tests import (
 
 from debian.changelog import (
     Changelog,
-    Version,
 )
+from debian.debian_support import Version
 from lintian_brush import (
     FailedPatchManipulation,
     FixerFailed,
@@ -650,7 +650,7 @@ blah (0.1) unstable; urgency=medium
             changes = tree.iter_changes(basis_tree)
         self.assertFalse(
             only_changes_last_changelog_block(
-                tree, tree.basis_tree(), "debian/changelog", changes
+                tree, tree.basis_tree(), "debian/changelog", list(changes)
             )
         )
 
@@ -677,7 +677,7 @@ Arch: all
             changes = tree.iter_changes(basis_tree)
         self.assertFalse(
             only_changes_last_changelog_block(
-                tree, tree.basis_tree(), "debian/changelog", changes
+                tree, tree.basis_tree(), "debian/changelog", list(changes)
             )
         )
 
@@ -715,7 +715,7 @@ blah (0.1) UNRELEASED; urgency=medium
             changes = tree.iter_changes(basis_tree)
         self.assertFalse(
             only_changes_last_changelog_block(
-                tree, tree.basis_tree(), "debian/changelog", changes
+                tree, tree.basis_tree(), "debian/changelog", list(changes)
             )
         )
 
@@ -746,7 +746,7 @@ blah (0.1) unstable; urgency=medium
             changes = tree.iter_changes(basis_tree)
         self.assertFalse(
             only_changes_last_changelog_block(
-                tree, tree.basis_tree(), "debian/changelog", changes
+                tree, tree.basis_tree(), "debian/changelog", list(changes)
             )
         )
 
@@ -778,7 +778,7 @@ blah (0.1) unstable; urgency=medium
             changes = tree.iter_changes(basis_tree)
         self.assertTrue(
             only_changes_last_changelog_block(
-                tree, tree.basis_tree(), "debian/changelog", changes
+                tree, tree.basis_tree(), "debian/changelog", list(changes)
             )
         )
 
@@ -805,7 +805,7 @@ blah (0.1) unstable; urgency=medium
             changes = tree.iter_changes(basis_tree)
             self.assertTrue(
                 only_changes_last_changelog_block(
-                    tree, basis_tree, "debian/changelog", changes
+                    tree, basis_tree, "debian/changelog", list(changes)
                 )
             )
 
@@ -858,7 +858,7 @@ blah (0.1) unstable; urgency=medium
             changes = tree.iter_changes(basis_tree)
         self.assertFalse(
             only_changes_last_changelog_block(
-                tree, tree.basis_tree(), "debian/changelog", changes
+                tree, tree.basis_tree(), "debian/changelog", list(changes)
             )
         )
 
@@ -1023,7 +1023,7 @@ class BaseScriptFixerTests:
 
     def test_noop(self):
         fixer = self.create_fixer("print('I did not do anything')\n")
-        result = fixer.run(self.test_dir, "blah", "0.1", "buster")
+        result = fixer.run(self.test_dir, "blah", Version("0.1"), "buster")
         self.assertIsInstance(result, FixerResult)
         self.assertEqual(result.description, "I did not do anything")
 
@@ -1031,7 +1031,7 @@ class BaseScriptFixerTests:
         fixer = self.create_fixer("import os; print(os.getcwd())\n")
         os.mkdir("subdir")
         os.chdir("subdir")
-        result = fixer.run(self.test_dir, "blah", "0.1", "buster")
+        result = fixer.run(self.test_dir, "blah", Version("0.1"), "buster")
         self.assertIsInstance(result, FixerResult)
         self.assertEqual(result.description, self.test_dir)
 
@@ -1044,8 +1044,8 @@ foo()
 """
         )
         e = self.assertRaises(
-            FixerScriptFailed, fixer.run, self.test_dir, "blah", "0.1",
-            "buster")
+            FixerScriptFailed, fixer.run, self.test_dir, "blah",
+            Version("0.1"), "buster")
         self.assertEqual(e.path, fixer.script_path)
         self.assertEqual(e.returncode, 1)
         self.assertEqual(

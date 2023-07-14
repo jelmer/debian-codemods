@@ -55,6 +55,7 @@ from lintian_brush import (
 )
 
 from . import _lintian_brush_rs
+from .svp import svp_enabled
 
 calculate_value = _lintian_brush_rs.multiarch_hints.calculate_value
 MULTIARCH_HINTS_URL = _lintian_brush_rs.multiarch_hints.MULTIARCH_HINTS_URL
@@ -471,7 +472,7 @@ def main(argv=None):  # noqa: C901
                 entry["certainty"] = certainty
                 applied_hints.append(entry)
                 logging.info("%s: %s", binary["Package"], description)
-            if os.environ.get('SVP_API') == '1':
+            if svp_enabled():
                 with open(os.environ['SVP_RESULT'], 'w') as f:
                     json.dump({
                         'description': "Applied multi-arch hints.",

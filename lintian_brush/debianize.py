@@ -163,6 +163,7 @@ from .publish import (
     update_offical_vcs,
 )
 from .standards_version import latest_standards_version
+from .svp import svp_enabled
 
 Kickstarter = Callable[[WorkingTree, str], None]
 
@@ -1876,7 +1877,7 @@ def main(argv=None):  # noqa: C901
     else:
         target_branch_url = None
 
-    if os.environ.get("SVP_API") == "1":
+    if svp_enabled():
         with open(os.environ['SVP_RESULT'], "w") as f:
             json.dump({
                 "description": "Debianized package",

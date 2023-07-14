@@ -1,3 +1,4 @@
+use debversion::Version;
 use pyo3::class::basic::CompareOp;
 use pyo3::create_exception;
 use pyo3::exceptions::{PyRuntimeError, PyTypeError, PyValueError};
@@ -8,7 +9,10 @@ use std::collections::HashMap;
 
 import_exception!(debmutate.reformatting, FormattingUnpreservable);
 import_exception!(lintian_brush, NoChanges);
+import_exception!(lintian_brush, DescriptionMissing);
+import_exception!(lintian_brush, NotCertainEnough);
 import_exception!(lintian_brush, FixerScriptFailed);
+import_exception!(lintian_brush, NotDebianPackage);
 create_exception!(lintian_brush, ScriptNotFound, pyo3::exceptions::PyException);
 create_exception!(
     lintian_brush,
@@ -16,19 +20,19 @@ create_exception!(
     pyo3::exceptions::PyException
 );
 
-#[pyclass(subclass, unsendable)]
+#[pyclass(subclass, unsendable, frozen)]
 pub struct Fixer(pub Box<dyn crate::Fixer>);
 
 #[pymethods]
 impl Fixer {
     #[getter]
     fn name(&self) -> PyResult<String> {
-        Ok(self.0.name().to_string())
+        Ok(self.0.name())
     }
 
     #[getter]
     fn script_path(&self) -> PyResult<std::path::PathBuf> {
-        Ok(self.0.path().to_path_buf())
+        Ok(self.0.path())
     }
 
     #[getter]
@@ -46,7 +50,7 @@ impl Fixer {
         py: Python,
         basedir: std::path::PathBuf,
         package: &str,
-        current_version: &str,
+        current_version: Version,
         compat_release: &str,
         minimum_certainty: Option<&str>,
         trust_package: Option<bool>,
@@ -63,7 +67,7 @@ impl Fixer {
             .run(
                 basedir.as_path(),
                 package,
-                current_version,
+                &current_version,
                 compat_release,
                 minimum_certainty,
                 trust_package,
@@ -94,7 +98,19 @@ impl Fixer {
                         UnsupportedCertainty::new_err(e)
                     }
                 },
+                #[cfg(feature = "python")]
+                crate::FixerError::Python(e) => e.into(),
                 crate::FixerError::Other(e) => PyRuntimeError::new_err(e),
+                crate::FixerError::NoChangesAfterOverrides(o) => NoChanges::new_err((py.None(),)),
+                crate::FixerError::DescriptionMissing => DescriptionMissing::new_err(()),
+                crate::FixerError::NotCertainEnough(certainty, minimum_certainty, os) => {
+                    NotCertainEnough::new_err((
+                        py.None(),
+                        certainty.map(|c| c.to_string()),
+                        minimum_certainty.map(|c| c.to_string()),
+                    ))
+                }
+                crate::FixerError::NotDebianPackage(p) => NotDebianPackage::new_err(p),
             })
             .map(FixerResult)
     }
@@ -104,7 +120,7 @@ impl Fixer {
     }
 }
 
-#[pyclass(subclass,extends=Fixer)]
+#[pyclass(extends=Fixer)]
 pub struct ScriptFixer;
 
 #[pymethods]
@@ -116,7 +132,7 @@ impl ScriptFixer {
     }
 }
 
-#[pyclass(subclass,extends=Fixer)]
+#[pyclass(extends=Fixer)]
 pub struct PythonScriptFixer;
 
 #[pymethods]

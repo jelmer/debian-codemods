@@ -17,7 +17,6 @@
 
 """Automatically fix lintian issues."""
 
-import itertools
 import logging
 import os
 import sys
@@ -25,23 +24,18 @@ import time
 from contextlib import ExitStack
 from datetime import datetime
 from typing import (
-    Callable,
     Iterable,
     List,
     Optional,
     Tuple,
-    Union,
 )
 
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
-from breezy.commit import NullCommitReporter
-from breezy.osutils import is_inside
-from breezy.rename_map import RenameMap
 from breezy.transport import NoSuchFile
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
-from breezy.workspace import check_clean_tree, reset_tree
+from breezy.workspace import check_clean_tree
 from debmutate.reformatting import FormattingUnpreservable
 
 from debian.changelog import Changelog
@@ -62,6 +56,8 @@ LintianIssue = _lintian_brush_rs.LintianIssue
 FixerResult = _lintian_brush_rs.FixerResult
 UnsupportedCertainty = _lintian_brush_rs.UnsupportedCertainty
 read_desc_file = _lintian_brush_rs.read_desc_file
+only_changes_last_changelog_block = (
+    _lintian_brush_rs.only_changes_last_changelog_block)
 
 
 class NoChanges(Exception):
@@ -129,8 +125,8 @@ class DescriptionMissing(Exception):
 class NotDebianPackage(Exception):
     """The specified directory does not contain a Debian package."""
 
-    def __init__(self, tree, path):
-        super().__init__(tree.abspath(path))
+    def __init__(self, abspath):
+        super().__init__(abspath)
 
 
 parse_script_fixer_output = _lintian_brush_rs.parse_script_fixer_output
@@ -249,57 +245,7 @@ def get_committer(tree: WorkingTree) -> str:
         return config.get("email")
 
 
-def only_changes_last_changelog_block(
-    tree: WorkingTree, basis_tree: Tree, changelog_path: str, changes
-) -> bool:
-    """Check whether the only change in a tree is to the last changelog entry.
-
-    Args:
-      tree: Tree to analyze
-      changelog_path: Path to the changelog file
-      changes: Changes in the tree
-    Returns:
-      boolean
-    """
-    with tree.lock_read(), basis_tree.lock_read():
-        changes_seen = False
-        for change in changes:
-            if change.path[1] == "":
-                continue
-            if change.path[1] == changelog_path:
-                changes_seen = True
-                continue
-            if not tree.has_versioned_directories() and is_inside(
-                change.path[1], changelog_path
-            ):
-                continue
-            return False
-        if not changes_seen:
-            return False
-        try:
-            new_cl = Changelog(tree.get_file_text(changelog_path))
-        except NoSuchFile:
-            return False
-        try:
-            old_cl = Changelog(basis_tree.get_file_text(changelog_path))
-        except NoSuchFile:
-            return True
-        if old_cl.distributions != "UNRELEASED":
-            return False
-        del new_cl._blocks[0]
-        del old_cl._blocks[0]
-        return str(new_cl) == str(old_cl)
-
-
 certainty_sufficient = _lintian_brush_rs.certainty_sufficient
-
-
-def has_non_debian_changes(changes, subpath):
-    for change in changes:
-        for path in change.path:
-            if path and not is_inside(os.path.join(subpath, "debian"), path):
-                return True
-    return False
 
 
 _changelog_policy_noted = False
@@ -375,195 +321,7 @@ def _upstream_changes_to_patch(
     return patch_name, specific_files
 
 
-def run_lintian_fixer(  # noqa: C901
-    local_tree: WorkingTree,
-    fixer: Fixer,
-    committer: Optional[str] = None,
-    update_changelog: Union[bool, Callable[[], bool]] = True,
-    compat_release: Optional[str] = None,
-    minimum_certainty: Optional[str] = None,
-    trust_package: bool = False,
-    allow_reformatting: bool = False,
-    dirty_tracker=None,
-    subpath: str = "",
-    net_access: bool = True,
-    opinionated: Optional[bool] = None,
-    diligence: int = 0,
-    timestamp: Optional[datetime] = None,
-    basis_tree: Optional[Tree] = None,
-    changes_by: str = "lintian-brush",
-):
-    """Run a lintian fixer on a tree.
-
-    Args:
-      local_tree: WorkingTree object
-      basis_tree: Tree
-      fixer: Fixer object to apply
-      committer: Optional committer (name and email)
-      update_changelog: Whether to add a new entry to the changelog
-      compat_release: Minimum release that the package should be usable on
-        (e.g. 'stable' or 'unstable')
-      minimum_certainty: How certain the fixer should be
-        about its changes.
-      trust_package: Whether to run code from the package if necessary
-      allow_reformatting: Whether to allow reformatting of changed files
-      dirty_tracker: Optional object that can be used to tell if the tree
-        has been changed.
-      subpath: Path in tree to operate on
-      net_access: Whether to allow accessing external services
-      opinionated: Whether to be opinionated
-      diligence: Level of diligence
-    Returns:
-      tuple with set of FixerResult, summary of the changes
-    """
-    if basis_tree is None:
-        basis_tree = local_tree.basis_tree()
-
-    changelog_path = os.path.join(subpath, "debian/changelog")
-
-    try:
-        with local_tree.get_file(changelog_path) as f:
-            cl = Changelog(f, max_blocks=1)
-    except NoSuchFile as e:
-        raise NotDebianPackage(local_tree, subpath) from e
-    package = cl.package
-    if cl.distributions == "UNRELEASED":
-        current_version = cl.version
-    else:
-        current_version = cl.version
-        current_version = increment_version(current_version)
-    if compat_release is None:
-        compat_release = "sid"
-    if minimum_certainty is None:
-        minimum_certainty = DEFAULT_MINIMUM_CERTAINTY
-    logger.debug('Running fixer %r', fixer)
-    try:
-        result = fixer.run(
-            local_tree.abspath(subpath),
-            package=package,
-            current_version=str(current_version),
-            compat_release=compat_release,
-            minimum_certainty=minimum_certainty,
-            trust_package=trust_package,
-            allow_reformatting=allow_reformatting,
-            net_access=net_access,
-            opinionated=opinionated,
-            diligence=diligence,
-        )
-    except BaseException:
-        reset_tree(local_tree, basis_tree, subpath,
-                   dirty_tracker=dirty_tracker)
-        raise
-    if not certainty_sufficient(result.certainty, minimum_certainty):
-        reset_tree(local_tree, basis_tree, subpath,
-                   dirty_tracker=dirty_tracker)
-        raise NotCertainEnough(
-            fixer, result.certainty, minimum_certainty,
-            overridden_lintian_issues=result.overridden_lintian_issues)
-    specific_files: Optional[List[str]]
-    if dirty_tracker:
-        relpaths = dirty_tracker.relpaths()
-        # Sort paths so that directories get added before the files they
-        # contain (on VCSes where it matters)
-        local_tree.add(
-            [
-                p
-                for p in sorted(relpaths)
-                if local_tree.has_filename(p) and not local_tree.is_ignored(p)
-            ]
-        )
-        specific_files = [p for p in relpaths if local_tree.is_versioned(p)]
-        if not specific_files:
-            raise NoChanges(
-                fixer, "Script didn't make any changes",
-                result.overridden_lintian_issues)
-    else:
-        local_tree.smart_add([local_tree.abspath(subpath)])
-        specific_files = [subpath] if subpath else None
-
-    if local_tree.supports_setting_file_ids():
-        RenameMap.guess_renames(basis_tree, local_tree, dry_run=False)
-
-    changes = list(
-        local_tree.iter_changes(
-            basis_tree,
-            specific_files=specific_files,
-            want_unversioned=False,
-            require_versioned=True,
-        )
-    )
-
-    if len(local_tree.get_parent_ids()) <= 1 and not changes:
-        raise NoChanges(
-            fixer, "Script didn't make any changes",
-            result.overridden_lintian_issues)
-
-    if not result.description:
-        raise DescriptionMissing(fixer)
-
-    lines = result.description.splitlines()
-    summary = lines[0]
-    details = list(itertools.takewhile(lambda line: line, lines[1:]))
-
-    # If there are upstream changes in a non-native package, perhaps
-    # export them to debian/patches
-    if (has_non_debian_changes(changes, subpath)
-            and current_version.debian_revision):
-        try:
-            patch_name, specific_files = _upstream_changes_to_patch(
-                local_tree,
-                basis_tree,
-                dirty_tracker,
-                subpath,
-                result.patch_name or fixer.name,
-                result.description,
-                timestamp=timestamp,
-            )
-        except BaseException:
-            reset_tree(local_tree, basis_tree, subpath,
-                       dirty_tracker=dirty_tracker)
-            raise
-
-        summary = f"Add patch {patch_name}: {summary}"
-
-    if only_changes_last_changelog_block(
-        local_tree, basis_tree, changelog_path, changes
-    ):
-        # If the script only changed the last entry in the changelog,
-        # don't update the changelog
-        update_changelog = False
-
-    if callable(update_changelog):
-        update_changelog = update_changelog()
-
-    if update_changelog:
-        from .changelog import add_changelog_entry
-
-        add_changelog_entry(local_tree, changelog_path, [summary] + details)
-        if specific_files:
-            specific_files.append(changelog_path)
-
-    description = result.description + "\n"
-    description += "\n"
-    description += "Changes-By: %s\n" % changes_by
-    for tag in result.fixed_lintian_tags:
-        description += "Fixes: lintian: %s\n" % tag
-        description += (
-            "See-also: https://lintian.debian.org/tags/%s.html\n" % tag)
-
-    if committer is None:
-        committer = get_committer(local_tree)
-
-    revid = local_tree.commit(
-        description,
-        allow_pointless=False,
-        reporter=NullCommitReporter(),
-        committer=committer,
-        specific_files=specific_files,
-    )
-    result.revision_id = revid
-    # TODO(jelmer): Support running sbuild & verify lintian warning is gone?
-    return result, summary
+run_lintian_fixer = _lintian_brush_rs.run_lintian_fixer
 
 
 class ManyResult:

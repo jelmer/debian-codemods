@@ -1,8 +1,7 @@
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict, PyList, PyType};
-
-use pyo3::import_exception;
 
 use std::collections::HashMap;
 
@@ -12,8 +11,15 @@ use lintian_brush::py::{
 };
 use lintian_brush::Certainty;
 
+use debversion::Version;
+
+import_exception!(debmutate.reformatting, FormattingUnpreservable);
 import_exception!(lintian_brush, NoChanges);
+import_exception!(lintian_brush, DescriptionMissing);
+import_exception!(lintian_brush, NotCertainEnough);
 import_exception!(lintian_brush, FixerScriptFailed);
+import_exception!(lintian_brush, NotDebianPackage);
+import_exception!(lintian_brush, ScriptNotFound);
 
 #[pyfunction]
 fn parse_script_fixer_output(text: &str) -> PyResult<FixerResult> {
@@ -31,7 +37,7 @@ fn parse_script_fixer_output(text: &str) -> PyResult<FixerResult> {
 #[pyfunction]
 pub fn determine_env(
     package: &str,
-    current_version: &str,
+    current_version: Version,
     compat_release: &str,
     minimum_certainty: &str,
     trust_package: bool,
@@ -46,7 +52,7 @@ pub fn determine_env(
 
     Ok(lintian_brush::determine_env(
         package,
-        current_version,
+        &current_version,
         compat_release,
         minimum_certainty,
         trust_package,
@@ -247,6 +253,211 @@ fn svp_enabled() -> bool {
     lintian_brush::svp::enabled()
 }
 
+#[derive(Debug, Clone)]
+struct PyFixer(PyObject);
+
+impl lintian_brush::Fixer for PyFixer {
+    fn name(&self) -> String {
+        Python::with_gil(|py| self.0.getattr(py, "name").unwrap().extract(py).unwrap())
+    }
+
+    fn path(&self) -> std::path::PathBuf {
+        Python::with_gil(|py| {
+            self.0
+                .getattr(py, "path")
+                .unwrap()
+                .extract::<std::path::PathBuf>(py)
+                .unwrap()
+        })
+    }
+
+    fn lintian_tags(&self) -> Vec<String> {
+        Python::with_gil(|py| {
+            self.0
+                .getattr(py, "lintian_tags")
+                .unwrap()
+                .extract(py)
+                .unwrap()
+        })
+    }
+
+    fn run(
+        &self,
+        basedir: &std::path::Path,
+        package: &str,
+        current_version: &Version,
+        compat_release: &str,
+        minimum_certainty: Option<Certainty>,
+        trust_package: Option<bool>,
+        allow_reformatting: Option<bool>,
+        net_access: Option<bool>,
+        opinionated: Option<bool>,
+        diligence: Option<i32>,
+    ) -> Result<lintian_brush::FixerResult, lintian_brush::FixerError> {
+        Python::with_gil(|py| {
+            let ob = self.0.call_method(
+                py,
+                "run",
+                (
+                    basedir,
+                    package,
+                    current_version.clone(),
+                    compat_release,
+                    minimum_certainty.map(|c| c.to_string()),
+                    trust_package,
+                    allow_reformatting,
+                    net_access,
+                    opinionated,
+                    diligence,
+                ),
+                None,
+            )?;
+            let description = ob.getattr(py, "description")?.extract(py)?;
+            let certainty = ob.getattr(py, "certainty")?.extract(py)?;
+            let patch_name = ob.getattr(py, "patch_name")?.extract(py)?;
+            let revision_id = ob.getattr(py, "revision_id")?.extract(py)?;
+            let fixed_lintian_issues = ob.getattr(py, "fixed_lintian_issues")?.extract(py)?;
+            let overridden_lintian_issues =
+                ob.getattr(py, "overridden_lintian_issues")?.extract(py)?;
+            let result = lintian_brush::FixerResult {
+                description,
+                certainty,
+                patch_name,
+                revision_id,
+                fixed_lintian_issues,
+                overridden_lintian_issues,
+            };
+            Ok(result)
+        })
+    }
+}
+
+#[pyfunction]
+fn run_lintian_fixer(
+    py: Python,
+    local_tree: PyObject,
+    fixer: PyObject,
+    committer: Option<&str>,
+    update_changelog: Option<PyObject>,
+    compat_release: Option<&str>,
+    minimum_certainty: Option<Certainty>,
+    trust_package: Option<bool>,
+    allow_reformatting: Option<bool>,
+    dirty_tracker: Option<PyObject>,
+    subpath: Option<std::path::PathBuf>,
+    net_access: Option<bool>,
+    opinionated: Option<bool>,
+    diligence: Option<i32>,
+    timestamp: Option<chrono::naive::NaiveDateTime>,
+    basis_tree: Option<PyObject>,
+    changes_by: Option<&str>,
+) -> PyResult<(FixerResult, String)> {
+    let subpath = subpath.unwrap_or_else(|| "".into());
+
+    let update_changelog = || -> bool {
+        update_changelog.map_or(false, |u| {
+            pyo3::Python::with_gil(|py| {
+                if u.as_ref(py).is_callable() {
+                    u.call0(py).unwrap().extract(py).unwrap()
+                } else {
+                    u.extract(py).unwrap()
+                }
+            })
+        })
+    };
+
+    let core_fixer;
+
+    let fixer: &Box<dyn lintian_brush::Fixer> =
+        if let Ok(fixer) = fixer.extract::<&PyCell<Fixer>>(py) {
+            &fixer.get().0
+        } else {
+            core_fixer = Some(Box::new(PyFixer(fixer)) as Box<dyn lintian_brush::Fixer>);
+            core_fixer.as_ref().unwrap()
+        };
+
+    lintian_brush::run_lintian_fixer(
+        &lintian_brush::breezyshim::WorkingTree(local_tree),
+        fixer,
+        committer,
+        update_changelog,
+        compat_release,
+        minimum_certainty,
+        trust_package,
+        allow_reformatting,
+        dirty_tracker
+            .map(lintian_brush::breezyshim::DirtyTracker)
+            .as_ref(),
+        subpath.as_path(),
+        net_access,
+        opinionated,
+        diligence,
+        timestamp,
+        basis_tree.map(|bt| {
+            Box::new(lintian_brush::breezyshim::RevisionTree(bt))
+                as Box<dyn lintian_brush::breezyshim::Tree>
+        }),
+        changes_by,
+    )
+    .map_err(|e| match e {
+        lintian_brush::FixerError::NoChanges => NoChanges::new_err((py.None(),)),
+        lintian_brush::FixerError::ScriptNotFound(cmd) => {
+            ScriptNotFound::new_err(cmd.to_object(py))
+        }
+        lintian_brush::FixerError::ScriptFailed {
+            path,
+            exit_code,
+            stderr,
+        } => FixerScriptFailed::new_err((path.to_object(py), exit_code, stderr)),
+        lintian_brush::FixerError::FormattingUnpreservable => FormattingUnpreservable::new_err(()),
+        lintian_brush::FixerError::OutputDecodeError(e) => {
+            PyValueError::new_err(format!("invalid output: {}", e))
+        }
+        lintian_brush::FixerError::OutputParseError(e) => match e {
+            lintian_brush::OutputParseError::LintianIssueParseError(e) => {
+                PyValueError::new_err(format!("invalid lintian issue: {}", e))
+            }
+            lintian_brush::OutputParseError::UnsupportedCertainty(e) => {
+                UnsupportedCertainty::new_err(e)
+            }
+        },
+        #[cfg(feature = "python")]
+        lintian_brush::FixerError::Python(e) => e.into(),
+        lintian_brush::FixerError::Other(e) => PyRuntimeError::new_err(e),
+        lintian_brush::FixerError::NoChangesAfterOverrides(o) => NoChanges::new_err((py.None(),)),
+        lintian_brush::FixerError::DescriptionMissing => DescriptionMissing::new_err(()),
+        lintian_brush::FixerError::NotCertainEnough(certainty, minimum_certainty, _) => {
+            NotCertainEnough::new_err((
+                py.None(),
+                certainty.map(|c| c.to_string()),
+                minimum_certainty.map(|c| c.to_string()),
+            ))
+        }
+        lintian_brush::FixerError::NotDebianPackage(e) => NotDebianPackage::new_err(e),
+        lintian_brush::FixerError::Python(e) => e,
+    })
+    .map(|(result, output)| (FixerResult(result), output))
+}
+
+#[pyfunction]
+fn only_changes_last_changelog_block(
+    tree: PyObject,
+    basis_tree: PyObject,
+    changelog_path: std::path::PathBuf,
+    changes: Vec<lintian_brush::breezyshim::TreeChange>,
+) -> pyo3::PyResult<bool> {
+    let tree = lintian_brush::breezyshim::WorkingTree(tree);
+    let basis_tree = Box::new(lintian_brush::breezyshim::RevisionTree(basis_tree))
+        as Box<dyn lintian_brush::breezyshim::Tree>;
+    let changelog_path = changelog_path.as_path();
+    lintian_brush::only_changes_last_changelog_block(
+        &tree,
+        &basis_tree,
+        changelog_path,
+        changes.iter(),
+    )
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
@@ -307,5 +518,7 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(load_resume))?;
     m.add_wrapped(wrap_pyfunction!(svp_enabled))?;
     m.add_class::<ManyResult>()?;
+    m.add_function(wrap_pyfunction!(run_lintian_fixer, m)?)?;
+    m.add_function(wrap_pyfunction!(only_changes_last_changelog_block, m)?)?;
     Ok(())
 }

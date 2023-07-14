@@ -121,7 +121,6 @@ struct OutputArgs {
 }
 
 #[derive(Parser, Debug)]
-#[clap(name = "lintian-brush", author = "Jelmer Vernooĳ <jelmer@debian.org>")]
 #[command(author, version)]
 struct Args {
     #[command(flatten)]
@@ -152,7 +151,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .collect();
 
     if args.output.list_fixers {
-        fixers.sort_by(|a, b| a.name().cmp(b.name()));
+        fixers.sort_by_key(|a| a.name());
         for fixer in fixers {
             println!("{}", fixer.name());
         }

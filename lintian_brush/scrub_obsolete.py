@@ -42,7 +42,7 @@ from debmutate.reformatting import (
     check_generated_file,
 )
 
-from debian.changelog import Version
+from debian.debian_support import Version
 from debian.deb822 import Deb822Dict
 
 from . import (
@@ -54,6 +54,11 @@ from . import (
 )
 from .changelog import add_changelog_entry
 from .debhelper import drop_obsolete_maintscript_entries
+from .svp import (
+    report_fatal,
+    svp_enabled,
+)
+
 
 DEFAULT_VALUE_MULTIARCH_HINT = 30
 
@@ -593,7 +598,7 @@ def _scrub_obsolete(
         if wt.has_filename(os.path.join(debian_path, "debcargo.toml")):
             control_actions = []
         else:
-            raise NotDebianPackage(wt, debian_path) from exc
+            raise NotDebianPackage(wt.abspath(debian_path)) from exc
 
     maintscript_removed = []
     for path, removed in update_maintscripts(
@@ -710,7 +715,7 @@ def scrub_obsolete(
     return result
 
 
-def versions_dict():
+def versions_dict() -> dict[str, str]:
     import debmutate
 
     import debian
@@ -720,16 +725,6 @@ def versions_dict():
         "debmutate": debmutate.version_string,
         "debian": debian.__version__,
     }
-
-
-def report_fatal(code: str, description: str) -> None:
-    if os.environ.get('SVP_API') == '1':
-        with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump({
-                'result_code': code,
-                'versions': versions_dict(),
-                'description': description}, f)
-    logging.fatal('%s', description)
 
 
 def report_okay(code: str, description: str) -> None:
@@ -882,11 +877,13 @@ def main():  # noqa: C901
             allow_reformatting = False
 
         if is_debcargo_package(wt, subpath):
-            report_fatal("nothing-to-do", "Package uses debcargo")
+            report_fatal(
+                versions_dict(), "nothing-to-do", "Package uses debcargo")
             return 1
         elif not control_file_present(wt, subpath):
             report_fatal(
-                "missing-control-file", "Unable to find debian/control")
+                versions_dict(), "missing-control-file",
+                "Unable to find debian/control")
             return 1
 
         try:
@@ -900,7 +897,7 @@ def main():  # noqa: C901
             )
         except FormattingUnpreservable as e:
             report_fatal(
-                "formatting-unpreservable",
+                versions_dict(), "formatting-unpreservable",
                 "unable to preserve formatting while editing %s" % e.path,
             )
             if hasattr(e, 'diff'):  # debmutate >= 0.64
@@ -908,18 +905,23 @@ def main():  # noqa: C901
             return 1
         except GeneratedFile as e:
             report_fatal(
-                "generated-file", "unable to edit generated file: %r" % e
+                versions_dict(), "generated-file",
+                "unable to edit generated file: %r" % e
             )
             return 1
         except NotDebianPackage:
-            report_fatal('not-debian-package', 'Not a Debian package.')
+            report_fatal(
+                versions_dict(), 'not-debian-package', 'Not a Debian package.')
             return 1
         except ChangeConflict as e:
             report_fatal(
-                'change-conflict', 'Generated file changes conflict: %s' % e)
+                versions_dict(), 'change-conflict',
+                'Generated file changes conflict: %s' % e)
             return 1
         except UddError as e:
-            report_fatal('udd-error', f'Error communicating with UDD: {e}')
+            report_fatal(
+                versions_dict(), 'udd-error',
+                f'Error communicating with UDD: {e}')
             return 1
 
     if not result:
@@ -930,7 +932,7 @@ def main():  # noqa: C901
     if result.changelog_behaviour:
         debian_context['changelog'] = result.changelog_behaviour.json()
 
-    if os.environ.get("SVP_API") == "1":
+    if svp_enabled():
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump({
                 "description": "Remove constraints unnecessary since %s."

@@ -61,7 +61,7 @@ from debmutate.patch import (
 
 from debian.changelog import Changelog
 
-from . import reset_tree
+from breezy.workspace import reset_tree
 
 # TODO(jelmer): Use debmutate version
 DEFAULT_DEBIAN_PATCHES_DIR = "debian/patches"

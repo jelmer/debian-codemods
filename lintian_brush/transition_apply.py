@@ -45,6 +45,7 @@ from . import (
 )
 from .changelog import add_changelog_entry
 from .config import Config
+from .svp import svp_enabled
 
 
 class TransitionResult:
@@ -169,7 +170,7 @@ def apply_transition(
                 allow_reformatting=allow_reformatting) as editor:
             return _apply_transition(editor, ben)
     except FileNotFoundError as exc:
-        raise NotDebianPackage(wt, debian_path) from exc
+        raise NotDebianPackage(wt.abspath(debian_path)) from exc
 
 
 def main():  # noqa: C901
@@ -337,7 +338,7 @@ def main():  # noqa: C901
             summary += ' Closes: #%d' % result.bugno
         add_changelog_entry(wt, changelog_path, [summary])
 
-    if os.environ.get("SVP_API") == "1":
+    if svp_enabled():
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump({
                 "description": "Apply transition.",

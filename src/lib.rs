@@ -1,4 +1,5 @@
 use crate::breezyshim::RevisionId;
+use debversion::Version;
 use lazy_regex::regex_replace;
 use std::collections::HashSet;
 use std::fs::File;
@@ -6,8 +7,12 @@ use std::io::{BufReader, Read};
 use std::process::Command;
 use std::str::FromStr;
 
-mod breezyshim;
+use crate::breezyshim::{reset_tree, Tree, TreeChange, WorkingTree};
+use crate::debianshim::Changelog;
+
+pub mod breezyshim;
 pub mod config;
+pub mod debianshim;
 pub mod py;
 pub mod svp;
 
@@ -60,12 +65,39 @@ impl ToString for Certainty {
     }
 }
 
+#[cfg(feature = "python")]
+impl pyo3::FromPyObject<'_> for Certainty {
+    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+        let s = ob.extract::<String>()?;
+        Certainty::from_str(&s).map_err(pyo3::exceptions::PyValueError::new_err)
+    }
+}
+
+#[cfg(feature = "python")]
+impl pyo3::ToPyObject for Certainty {
+    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+        self.to_string().to_object(py)
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum PackageType {
     #[serde(rename = "source")]
     Source,
     #[serde(rename = "binary")]
     Binary,
+}
+
+impl FromStr for PackageType {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "source" => Ok(PackageType::Source),
+            "binary" => Ok(PackageType::Binary),
+            _ => Err(format!("Invalid package type: {}", value)),
+        }
+    }
 }
 
 impl ToString for PackageType {
@@ -95,6 +127,10 @@ impl LintianIssue {
         })
     }
 
+    pub fn from_json(value: serde_json::Value) -> serde_json::Result<Self> {
+        serde_json::from_value(value)
+    }
+
     pub fn just_tag(tag: String) -> Self {
         Self {
             package: None,
@@ -108,6 +144,28 @@ impl LintianIssue {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum LintianIssueParseError {
     InvalidPackageType(String),
+}
+
+impl pyo3::FromPyObject<'_> for LintianIssue {
+    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+        let package = ob.getattr("package")?.extract::<Option<String>>()?;
+        let package_type = ob
+            .getattr("package_type")?
+            .extract::<Option<String>>()?
+            .map(|s| {
+                s.parse::<PackageType>()
+                    .map_err(|e| pyo3::exceptions::PyValueError::new_err((e,)))
+            })
+            .transpose()?;
+        let tag = ob.getattr("tag")?.extract::<Option<String>>()?;
+        let info = ob.getattr("info")?.extract::<Option<Vec<String>>>()?;
+        Ok(Self {
+            package,
+            package_type,
+            tag,
+            info,
+        })
+    }
 }
 
 impl std::fmt::Display for LintianIssueParseError {
@@ -165,6 +223,7 @@ impl TryFrom<&str> for LintianIssue {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[pyo3::pyclass]
 pub struct FixerResult {
     pub description: String,
     pub certainty: Option<Certainty>,
@@ -313,7 +372,7 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
 
 pub fn determine_env(
     package: &str,
-    current_version: &str,
+    current_version: &Version,
     compat_release: &str,
     minimum_certainty: Certainty,
     trust_package: bool,
@@ -355,12 +414,15 @@ pub fn determine_env(
 /// A fixer script
 ///
 /// The `lintian_tags attribute contains the name of the lintian tags this fixer addresses.
-pub trait Fixer: std::fmt::Debug {
-    fn name(&self) -> &str;
+pub trait Fixer: std::fmt::Debug + Sync {
+    /// Name of the fixer
+    fn name(&self) -> String;
 
-    fn path(&self) -> &std::path::Path;
+    /// Path to the fixer script
+    fn path(&self) -> std::path::PathBuf;
 
-    fn lintian_tags(&self) -> Vec<&str>;
+    /// Lintian tags this fixer addresses
+    fn lintian_tags(&self) -> Vec<String>;
 
     /// Apply this fixer script.
     ///
@@ -384,7 +446,7 @@ pub trait Fixer: std::fmt::Debug {
         &self,
         basedir: &std::path::Path,
         package: &str,
-        current_version: &str,
+        current_version: &Version,
         compat_release: &str,
         minimum_certainty: Option<Certainty>,
         trust_package: Option<bool>,
@@ -420,26 +482,23 @@ impl PythonScriptFixer {
 
 #[cfg(feature = "python")]
 impl Fixer for PythonScriptFixer {
-    fn name(&self) -> &str {
-        self.name.as_str()
+    fn name(&self) -> String {
+        self.name.clone()
     }
 
-    fn path(&self) -> &std::path::Path {
-        self.path.as_path()
+    fn path(&self) -> std::path::PathBuf {
+        self.path.clone()
     }
 
-    fn lintian_tags(&self) -> Vec<&str> {
-        self.lintian_tags
-            .iter()
-            .map(|s| s.as_str())
-            .collect::<Vec<_>>()
+    fn lintian_tags(&self) -> Vec<String> {
+        self.lintian_tags.clone()
     }
 
     fn run(
         &self,
         basedir: &std::path::Path,
         package: &str,
-        current_version: &str,
+        current_version: &Version,
         compat_release: &str,
         minimum_certainty: Option<Certainty>,
         trust_package: Option<bool>,
@@ -578,9 +637,13 @@ impl Fixer for PythonScriptFixer {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum FixerError {
     NoChanges,
+    NoChangesAfterOverrides(Vec<LintianIssue>),
+    NotCertainEnough(Option<Certainty>, Option<Certainty>, Vec<LintianIssue>),
+    NotDebianPackage(std::path::PathBuf),
+    DescriptionMissing,
     ScriptNotFound(std::path::PathBuf),
     OutputParseError(OutputParseError),
     OutputDecodeError(std::string::FromUtf8Error),
@@ -590,6 +653,8 @@ pub enum FixerError {
         stderr: String,
     },
     FormattingUnpreservable,
+    #[cfg(feature = "python")]
+    Python(pyo3::PyErr),
     Other(String),
 }
 
@@ -602,7 +667,7 @@ impl From<OutputParseError> for FixerError {
 #[cfg(feature = "python")]
 impl From<pyo3::PyErr> for FixerError {
     fn from(e: pyo3::PyErr) -> Self {
-        FixerError::Other(e.to_string())
+        FixerError::Python(e)
     }
 }
 
@@ -610,6 +675,7 @@ impl std::fmt::Display for FixerError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             FixerError::NoChanges => write!(f, "No changes"),
+            FixerError::NoChangesAfterOverrides(_) => write!(f, "No changes after overrides"),
             FixerError::OutputParseError(e) => write!(f, "Output parse error: {}", e),
             FixerError::OutputDecodeError(e) => write!(f, "Output decode error: {}", e),
             FixerError::ScriptNotFound(p) => write!(f, "Command not found: {}", p.display()),
@@ -626,6 +692,16 @@ impl std::fmt::Display for FixerError {
                 stderr
             ),
             FixerError::Other(s) => write!(f, "{}", s),
+            FixerError::Python(e) => write!(f, "{}", e),
+            FixerError::NotDebianPackage(p) => write!(f, "Not a Debian package: {}", p.display()),
+            FixerError::DescriptionMissing => {
+                write!(f, "Description missing")
+            }
+            FixerError::NotCertainEnough(old, new, _) => write!(
+                f,
+                "Not certain enough to fix (old: {:?}, new: {:?})",
+                old, new
+            ),
         }
     }
 }
@@ -650,26 +726,23 @@ impl ScriptFixer {
 }
 
 impl Fixer for ScriptFixer {
-    fn name(&self) -> &str {
-        self.name.as_str()
+    fn name(&self) -> String {
+        self.name.clone()
     }
 
-    fn path(&self) -> &std::path::Path {
-        self.path.as_path()
+    fn path(&self) -> std::path::PathBuf {
+        self.path.clone()
     }
 
-    fn lintian_tags(&self) -> Vec<&str> {
-        self.lintian_tags
-            .iter()
-            .map(|s| s.as_str())
-            .collect::<Vec<_>>()
+    fn lintian_tags(&self) -> Vec<String> {
+        self.lintian_tags.clone()
     }
 
     fn run(
         &self,
         basedir: &std::path::Path,
         package: &str,
-        current_version: &str,
+        current_version: &Version,
         compat_release: &str,
         minimum_certainty: Option<Certainty>,
         trust_package: Option<bool>,
@@ -918,6 +991,349 @@ pub fn find_fixers_dir() -> Option<std::path::PathBuf> {
     data_file_path("fixers", |path| path.is_dir())
 }
 
+/// Run a lintian fixer on a tree.
+///
+/// # Arguments
+///
+///  * `local_tree`: WorkingTree object
+///  * `basis_tree`: Tree
+///  * `fixer`: Fixer object to apply
+///  * `committer`: Optional committer (name and email)
+///  * `update_changelog`: Whether to add a new entry to the changelog
+///  * `compat_release`: Minimum release that the package should be usable on
+///  * `  (e.g. 'stable' or 'unstable')
+///  * `minimum_certainty`: How certain the fixer should be
+///  * `  about its changes.
+///  * `trust_package`: Whether to run code from the package if necessary
+///  * `allow_reformatting`: Whether to allow reformatting of changed files
+///  * `dirty_tracker`: Optional object that can be used to tell if the tree
+///  * `  has been changed.
+///  * `subpath`: Path in tree to operate on
+///  * `net_access`: Whether to allow accessing external services
+///  * `opinionated`: Whether to be opinionated
+///  * `diligence`: Level of diligence
+///
+/// # Returns
+///   tuple with set of FixerResult, summary of the changes
+pub fn run_lintian_fixer(
+    local_tree: &breezyshim::WorkingTree,
+    fixer: &Box<dyn Fixer>,
+    committer: Option<&str>,
+    update_changelog: impl FnOnce() -> bool,
+    compat_release: Option<&str>,
+    minimum_certainty: Option<Certainty>,
+    trust_package: Option<bool>,
+    allow_reformatting: Option<bool>,
+    dirty_tracker: Option<&breezyshim::DirtyTracker>,
+    subpath: &std::path::Path,
+    net_access: Option<bool>,
+    opinionated: Option<bool>,
+    diligence: Option<i32>,
+    timestamp: Option<chrono::naive::NaiveDateTime>,
+    basis_tree: Option<Box<dyn breezyshim::Tree>>,
+    changes_by: Option<&str>,
+) -> Result<(FixerResult, String), FixerError> {
+    pyo3::Python::with_gil(|py| {
+        use pyo3::import_exception;
+        import_exception!(breezy.transport, NoSuchFile);
+        let basis_tree: Box<dyn Tree> = if let Some(basis_tree) = basis_tree {
+            basis_tree
+        } else {
+            local_tree.basis_tree()
+        };
+        let changes_by = changes_by.unwrap_or("lintian-brush");
+
+        let changelog_path = subpath.join("debian/changelog");
+
+        let r = match local_tree.get_file(changelog_path.as_path()) {
+            Ok(f) => f,
+            Err(e) if e.is_instance_of::<NoSuchFile>(py) => {
+                return Err(FixerError::NotDebianPackage(local_tree.abspath(subpath)));
+            }
+            Err(e) => return Err(e.into()),
+        };
+
+        let cl = debianshim::Changelog::from_reader(r, Some(1))?;
+        let package = cl.package();
+        let current_version: Version = if cl.distributions() == "UNRELEASED" {
+            cl.version()
+        } else {
+            let mut version = cl.version();
+            increment_version(&mut version);
+            version
+        };
+
+        let compat_release = compat_release.unwrap_or("sid");
+        log::debug!("Running fixer {:?}", fixer);
+        let mut result = match fixer.run(
+            local_tree.abspath(subpath).as_path(),
+            package.as_str(),
+            &current_version,
+            compat_release,
+            minimum_certainty,
+            trust_package,
+            allow_reformatting,
+            net_access,
+            opinionated,
+            diligence,
+        ) {
+            Ok(r) => r,
+            Err(e) => {
+                reset_tree(local_tree, Some(&basis_tree), Some(subpath), dirty_tracker)?;
+                return Err(e);
+            }
+        };
+        if let Some(certainty) = result.certainty {
+            if !certainty_sufficient(certainty, minimum_certainty) {
+                reset_tree(local_tree, Some(&basis_tree), Some(subpath), dirty_tracker)?;
+                return Err(FixerError::NotCertainEnough(
+                    result.certainty,
+                    minimum_certainty,
+                    result.overridden_lintian_issues,
+                ));
+            }
+        }
+        let mut specific_files = if let Some(dirty_tracker) = dirty_tracker {
+            let mut relpaths: Vec<_> = dirty_tracker.relpaths().into_iter().collect();
+            relpaths.sort();
+            // Sort paths so that directories get added before the files they
+            // contain (on VCSes where it matters)
+            local_tree.add(
+                relpaths
+                    .iter()
+                    .filter_map(|p| {
+                        if local_tree.has_filename(p) && local_tree.is_ignored(p).is_some() {
+                            Some(p.as_path())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            )?;
+            let specific_files = relpaths
+                .into_iter()
+                .filter(|p| local_tree.is_versioned(p))
+                .collect::<Vec<_>>();
+            if specific_files.is_empty() {
+                return Err(FixerError::NoChangesAfterOverrides(
+                    result.overridden_lintian_issues,
+                ));
+            }
+            Some(specific_files)
+        } else {
+            local_tree.smart_add(&[local_tree.abspath(subpath).as_path()])?;
+            if subpath.as_os_str().is_empty() {
+                None
+            } else {
+                Some(vec![subpath.to_path_buf()])
+            }
+        };
+
+        if local_tree.supports_setting_file_ids() {
+            pyo3::Python::with_gil(|py| {
+                let rename_map_m = py.import("breezy.rename_map")?;
+                let rename_map = rename_map_m.getattr("RenameMap")?;
+                rename_map
+                    .call_method1("guess_renames", (basis_tree.obj(), &local_tree.0, false))?;
+                Ok::<(), pyo3::PyErr>(())
+            })?;
+        }
+
+        let specific_files_ref = specific_files
+            .as_ref()
+            .map(|fs| fs.iter().map(|p| p.as_path()).collect::<Vec<_>>());
+
+        let changes = local_tree
+            .iter_changes(
+                &basis_tree,
+                specific_files_ref.as_deref(),
+                Some(false),
+                Some(true),
+            )?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if local_tree.get_parent_ids()?.len() <= 1 && changes.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(
+                result.overridden_lintian_issues,
+            ));
+        }
+
+        if result.description.is_empty() {
+            reset_tree(local_tree, Some(&basis_tree), Some(subpath), dirty_tracker)?;
+            return Err(FixerError::DescriptionMissing);
+        }
+
+        let lines = result.description.split('\n').collect::<Vec<_>>();
+        let mut summary = lines[0].to_string();
+        let details = lines
+            .iter()
+            .skip(1)
+            .take_while(|l| !l.is_empty())
+            .collect::<Vec<_>>();
+
+        // If there are upstream changes in a non-native package, perhaps
+        // export them to debian/patches
+        if has_non_debian_changes(changes.as_slice(), subpath)
+            && current_version.debian_revision.is_some()
+        {
+            let (patch_name, updated_specific_files) = match _upstream_changes_to_patch(
+                local_tree,
+                &basis_tree,
+                dirty_tracker,
+                subpath,
+                &result
+                    .patch_name
+                    .as_deref()
+                    .map_or_else(|| fixer.name(), |n| n.to_string()),
+                result.description.as_str(),
+                timestamp,
+            ) {
+                Ok(r) => r,
+                Err(e) => {
+                    reset_tree(local_tree, Some(&basis_tree), Some(subpath), dirty_tracker)?;
+                    return Err(FixerError::Python(e));
+                }
+            };
+
+            specific_files = Some(updated_specific_files);
+
+            summary = format!("Add patch {}: {}", patch_name, summary);
+        }
+
+        let update_changelog = if only_changes_last_changelog_block(
+            local_tree,
+            &basis_tree,
+            changelog_path.as_path(),
+            changes.iter(),
+        )? {
+            // If the script only changed the last entry in the changelog,
+            // don't update the changelog
+            false
+        } else {
+            update_changelog()
+        };
+
+        if update_changelog {
+            let mut entry = vec![summary.as_str()];
+            entry.extend(details);
+
+            add_changelog_entry(local_tree, changelog_path.as_path(), entry.as_slice())?;
+            if let Some(specific_files) = specific_files.as_mut() {
+                specific_files.push(changelog_path);
+            }
+        }
+
+        let mut description = format!("{}\n", result.description);
+        description.push('\n');
+        description.push_str(format!("Changes-By: {}\n", changes_by).as_str());
+        for tag in result.fixed_lintian_tags() {
+            description.push_str(format!("Fixes: lintian: {}\n", tag).as_str());
+            description.push_str(
+                format!("See-also: https://lintian.debian.org/tags/{}.html\n", tag).as_str(),
+            );
+        }
+
+        let committer = committer.map_or_else(|| get_committer(local_tree), |c| c.to_string());
+
+        let specific_files_ref = specific_files
+            .as_ref()
+            .map(|fs| fs.iter().map(|p| p.as_path()).collect::<Vec<_>>());
+
+        let revid = local_tree.commit(
+            description.as_str(),
+            Some(false),
+            Some(committer.as_str()),
+            specific_files_ref.as_deref(),
+        )?;
+        result.revision_id = Some(revid);
+
+        // TODO(jelmer): Support running sbuild & verify lintian warning is gone?
+        Ok((result, summary))
+    })
+}
+
+fn add_changelog_entry(
+    working_tree: &WorkingTree,
+    changelog_path: &std::path::Path,
+    entry: &[&str],
+) -> pyo3::PyResult<()> {
+    pyo3::Python::with_gil(|py| {
+        let changelog_m = py.import("lintian_brush.changelog")?;
+        let add_changelog_entry = changelog_m.getattr("add_changelog_entry")?;
+
+        add_changelog_entry.call1((&working_tree.0, changelog_path, entry.to_vec()))?;
+        Ok(())
+    })
+}
+
+/// Check whether the only change in a tree is to the last changelog entry.
+///
+/// # Arguments
+/// * `tree`: Tree to analyze
+/// * `changelog_path`: Path to the changelog file
+/// * `changes`: Changes in the tree
+pub fn only_changes_last_changelog_block<'a>(
+    tree: &breezyshim::WorkingTree,
+    basis_tree: &Box<dyn breezyshim::Tree>,
+    changelog_path: &std::path::Path,
+    changes: impl Iterator<Item = &'a TreeChange>,
+) -> pyo3::PyResult<bool> {
+    use pyo3::import_exception;
+    import_exception!(breezy.transport, NoSuchFile);
+    pyo3::Python::with_gil(|py| {
+        let read_lock = tree.lock_read();
+        let basis_lock = basis_tree.lock_read();
+        let mut changes_seen = false;
+        for change in changes {
+            if let Some(path) = change.path.1.as_ref() {
+                if path == std::path::Path::new("") {
+                    continue;
+                }
+                if path == changelog_path {
+                    changes_seen = true;
+                    continue;
+                }
+                if !tree.has_versioned_directories() && changelog_path.starts_with(path) {
+                    continue;
+                }
+            }
+            return Ok(false);
+        }
+
+        if !changes_seen {
+            return Ok(false);
+        }
+        let new_cl = match basis_tree.get_file(changelog_path) {
+            Ok(f) => Changelog::from_reader(f, None)?,
+            Err(e) if e.is_instance_of::<NoSuchFile>(py) => {
+                return Ok(false);
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        };
+        let old_cl = match tree.get_file(changelog_path) {
+            Ok(f) => Changelog::from_reader(f, None)?,
+            Err(e) if e.is_instance_of::<NoSuchFile>(py) => {
+                return Ok(true);
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        };
+        if old_cl.distributions() != "UNRELEASED" {
+            return Ok(false);
+        }
+        new_cl.pop_first()?;
+        old_cl.pop_first()?;
+        std::mem::drop(read_lock);
+        std::mem::drop(basis_lock);
+        println!("{:?} {:?}", new_cl.to_string(), old_cl.to_string());
+        Ok(new_cl.to_string() == old_cl.to_string())
+    })
+}
+
 /// Increment a version number.
 ///
 /// For native packages, increment the main version number.
@@ -926,7 +1342,7 @@ pub fn find_fixers_dir() -> Option<std::path::PathBuf> {
 /// # Arguments
 ///
 ///  * `v`: Version to increment (modified in place)
-pub fn increment_version(v: &mut debversion::Version) {
+pub fn increment_version(v: &mut Version) {
     if v.debian_revision.is_some() {
         v.debian_revision = v.debian_revision.as_ref().map(|v| {
             {
@@ -959,9 +1375,98 @@ impl ManyResult {
         min_certainty(
             self.success
                 .iter()
-                .filter_map(|(r, unused_summary)| r.certainty)
+                .filter_map(|(r, _summary)| r.certainty)
                 .collect::<Vec<_>>()
                 .as_slice(),
         )
     }
+}
+
+fn has_non_debian_changes(changes: &[TreeChange], subpath: &std::path::Path) -> bool {
+    let debian_path = subpath.join("debian");
+    changes.iter().any(|change| {
+        [change.path.0.as_deref(), change.path.1.as_deref()]
+            .into_iter()
+            .flatten()
+            .any(|path| !path.starts_with(&debian_path))
+    })
+}
+
+pub fn get_committer(working_tree: &WorkingTree) -> String {
+    pyo3::Python::with_gil(|py| {
+        let m = py.import("lintian_brush")?;
+        let get_committer = m.getattr("get_committer")?;
+        get_committer.call1((&working_tree.0,))?.extract()
+    })
+    .unwrap()
+}
+
+fn _upstream_changes_to_patch(
+    local_tree: &WorkingTree,
+    basis_tree: &Box<dyn Tree>,
+    dirty_tracker: Option<&breezyshim::DirtyTracker>,
+    subpath: &std::path::Path,
+    patch_name: &str,
+    description: &str,
+    timestamp: Option<chrono::naive::NaiveDateTime>,
+) -> pyo3::PyResult<(String, Vec<std::path::PathBuf>)> {
+    pyo3::Python::with_gil(|py| {
+        let m = py.import("lintian_brush")?;
+        let upstream_changes_to_patch = m.getattr("_upstream_changes_to_patch")?;
+        upstream_changes_to_patch
+            .call1((
+                &local_tree.0,
+                basis_tree.obj(),
+                dirty_tracker.map(|dt| &dt.0),
+                subpath,
+                patch_name,
+                description,
+                timestamp,
+            ))?
+            .extract()
+    })
+}
+
+/// Check whether there are any control files present in a tree.
+///
+/// # Arguments
+///
+///   * `tree`: tree to check
+///   * `subpath`: subpath to check
+///
+/// # Returns
+///
+/// whether control file is present
+pub fn control_file_present(tree: &dyn Tree, subpath: &std::path::Path) -> bool {
+    for name in [
+        "debian/control",
+        "debian/control.in",
+        "control",
+        "control.in",
+        "debian/debcargo.toml",
+    ] {
+        let name = subpath.join(name);
+        if tree.has_filename(name.as_path()) {
+            return true;
+        }
+    }
+    false
+}
+
+pub fn is_debcargo_package(tree: &dyn Tree, subpath: &std::path::Path) -> bool {
+    tree.has_filename(subpath.join("debian/debcargo.toml").as_path())
+}
+
+pub fn control_files_in_root(tree: &dyn Tree, subpath: &std::path::Path) -> bool {
+    let debian_path = subpath.join("debian");
+    if tree.has_filename(debian_path.as_path()) {
+        return false;
+    }
+
+    let control_path = subpath.join("control");
+    if tree.has_filename(control_path.as_path()) {
+        return true;
+    }
+
+    tree.has_filename(subpath.join("control.in").as_path())
 }
