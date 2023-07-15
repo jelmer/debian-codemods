@@ -377,7 +377,7 @@ fn run_lintian_fixer(
         };
 
     lintian_brush::run_lintian_fixer(
-        &lintian_brush::breezyshim::WorkingTree(local_tree),
+        &breezyshim::WorkingTree(local_tree),
         fixer,
         committer,
         update_changelog,
@@ -385,18 +385,13 @@ fn run_lintian_fixer(
         minimum_certainty,
         trust_package,
         allow_reformatting,
-        dirty_tracker
-            .map(lintian_brush::breezyshim::DirtyTracker)
-            .as_ref(),
+        dirty_tracker.map(breezyshim::DirtyTracker).as_ref(),
         subpath.as_path(),
         net_access,
         opinionated,
         diligence,
         timestamp,
-        basis_tree.map(|bt| {
-            Box::new(lintian_brush::breezyshim::RevisionTree(bt))
-                as Box<dyn lintian_brush::breezyshim::Tree>
-        }),
+        basis_tree.map(|bt| Box::new(breezyshim::RevisionTree(bt)) as Box<dyn breezyshim::Tree>),
         changes_by,
     )
     .map_err(|e| match e {
@@ -444,11 +439,10 @@ fn only_changes_last_changelog_block(
     tree: PyObject,
     basis_tree: PyObject,
     changelog_path: std::path::PathBuf,
-    changes: Vec<lintian_brush::breezyshim::TreeChange>,
+    changes: Vec<breezyshim::tree::TreeChange>,
 ) -> pyo3::PyResult<bool> {
-    let tree = lintian_brush::breezyshim::WorkingTree(tree);
-    let basis_tree = Box::new(lintian_brush::breezyshim::RevisionTree(basis_tree))
-        as Box<dyn lintian_brush::breezyshim::Tree>;
+    let tree = breezyshim::WorkingTree(tree);
+    let basis_tree = Box::new(breezyshim::RevisionTree(basis_tree)) as Box<dyn breezyshim::Tree>;
     let changelog_path = changelog_path.as_path();
     lintian_brush::only_changes_last_changelog_block(
         &tree,

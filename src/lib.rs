@@ -1,4 +1,3 @@
-use crate::breezyshim::RevisionId;
 use debversion::Version;
 use lazy_regex::regex_replace;
 use std::collections::HashSet;
@@ -7,10 +6,10 @@ use std::io::{BufReader, Read};
 use std::process::Command;
 use std::str::FromStr;
 
-use crate::breezyshim::{reset_tree, Tree, TreeChange, WorkingTree};
 use crate::debianshim::Changelog;
+use breezyshim::tree::{Tree, TreeChange, WorkingTree};
+use breezyshim::{reset_tree, RevisionId};
 
-pub mod breezyshim;
 pub mod config;
 pub mod debianshim;
 pub mod py;
@@ -1048,7 +1047,9 @@ pub fn run_lintian_fixer(
         let r = match local_tree.get_file(changelog_path.as_path()) {
             Ok(f) => f,
             Err(e) if e.is_instance_of::<NoSuchFile>(py) => {
-                return Err(FixerError::NotDebianPackage(local_tree.abspath(subpath)));
+                return Err(FixerError::NotDebianPackage(
+                    local_tree.abspath(subpath).unwrap(),
+                ));
             }
             Err(e) => return Err(e.into()),
         };
@@ -1066,7 +1067,7 @@ pub fn run_lintian_fixer(
         let compat_release = compat_release.unwrap_or("sid");
         log::debug!("Running fixer {:?}", fixer);
         let mut result = match fixer.run(
-            local_tree.abspath(subpath).as_path(),
+            local_tree.abspath(subpath).unwrap().as_path(),
             package.as_str(),
             &current_version,
             compat_release,
@@ -1122,7 +1123,7 @@ pub fn run_lintian_fixer(
             }
             Some(specific_files)
         } else {
-            local_tree.smart_add(&[local_tree.abspath(subpath).as_path()])?;
+            local_tree.smart_add(&[local_tree.abspath(subpath).unwrap().as_path()])?;
             if subpath.as_os_str().is_empty() {
                 None
             } else {
