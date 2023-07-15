@@ -7,7 +7,7 @@ use std::process::Command;
 use std::str::FromStr;
 
 use crate::debianshim::Changelog;
-use breezyshim::tree::{Tree, TreeChange, WorkingTree};
+use breezyshim::tree::{CommitError, Tree, TreeChange, WorkingTree};
 use breezyshim::{reset_tree, RevisionId};
 
 pub mod config;
@@ -1241,12 +1241,17 @@ pub fn run_lintian_fixer(
             .as_ref()
             .map(|fs| fs.iter().map(|p| p.as_path()).collect::<Vec<_>>());
 
-        let revid = local_tree.commit(
-            description.as_str(),
-            Some(false),
-            Some(committer.as_str()),
-            specific_files_ref.as_deref(),
-        )?;
+        let revid = local_tree
+            .commit(
+                description.as_str(),
+                Some(false),
+                Some(committer.as_str()),
+                specific_files_ref.as_deref(),
+            )
+            .map_err(|e| match e {
+                CommitError::PointlessCommit => FixerError::NoChanges,
+                CommitError::Other(e) => FixerError::Python(e),
+            })?;
         result.revision_id = Some(revid);
 
         // TODO(jelmer): Support running sbuild & verify lintian warning is gone?

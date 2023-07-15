@@ -137,7 +137,9 @@ checksum = "630be753d4e58660abd17930c71b647fe46c27ea6b63cc59e1e3851406972e42"
 
 [[package]]
 name = "breezyshim"
-version = "0.1.2"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4042732975d87bb6874c1433fdedd82a1688eb57d87176636ffce11086e36647"
 dependencies = [
  "pyo3",
  "pyo3-file",
