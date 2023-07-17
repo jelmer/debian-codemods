@@ -6,9 +6,13 @@ use std::io::{BufReader, Read};
 use std::process::Command;
 use std::str::FromStr;
 
+use indicatif::ProgressBar;
+
 use crate::debianshim::Changelog;
+use breezyshim::dirty_tracker::{get_dirty_tracker, DirtyTracker};
 use breezyshim::tree::{CommitError, Tree, TreeChange, WorkingTree};
-use breezyshim::{reset_tree, RevisionId};
+use breezyshim::workspace::{check_clean_tree, reset_tree};
+use breezyshim::RevisionId;
 
 pub mod config;
 pub mod debianshim;
@@ -53,13 +57,13 @@ impl FromStr for Certainty {
     }
 }
 
-impl ToString for Certainty {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for Certainty {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Certainty::Certain => "certain".to_string(),
-            Certainty::Confident => "confident".to_string(),
-            Certainty::Likely => "likely".to_string(),
-            Certainty::Possible => "possible".to_string(),
+            Certainty::Certain => write!(f, "certain"),
+            Certainty::Confident => write!(f, "confident"),
+            Certainty::Likely => write!(f, "likely"),
+            Certainty::Possible => write!(f, "possible"),
         }
     }
 }
@@ -595,7 +599,11 @@ impl Fixer for PythonScriptFixer {
                 }
                 Err(e) => {
                     if e.is_instance_of::<FormattingUnpreservable>(py) {
-                        return Err(FixerError::FormattingUnpreservable);
+                        return Err(FixerError::FormattingUnpreservable(
+                            e.value(py).getattr("path")?.extract()?,
+                        ));
+                    } else if e.is_instance_of::<pyo3::exceptions::PyMemoryError>(py) {
+                        return Err(FixerError::MemoryError);
                     } else if e.is_instance_of::<pyo3::exceptions::PySystemExit>(py) {
                         retcode = e.value(py).getattr("code")?.extract()?;
                         description = stdout;
@@ -640,20 +648,22 @@ impl Fixer for PythonScriptFixer {
 pub enum FixerError {
     NoChanges,
     NoChangesAfterOverrides(Vec<LintianIssue>),
-    NotCertainEnough(Option<Certainty>, Option<Certainty>, Vec<LintianIssue>),
+    NotCertainEnough(Certainty, Option<Certainty>, Vec<LintianIssue>),
     NotDebianPackage(std::path::PathBuf),
     DescriptionMissing,
     ScriptNotFound(std::path::PathBuf),
     OutputParseError(OutputParseError),
     OutputDecodeError(std::string::FromUtf8Error),
+    FailedPatchManipulation(std::path::PathBuf, std::path::PathBuf, String),
     ScriptFailed {
         path: std::path::PathBuf,
         exit_code: i32,
         stderr: String,
     },
-    FormattingUnpreservable,
+    FormattingUnpreservable(std::path::PathBuf),
     #[cfg(feature = "python")]
     Python(pyo3::PyErr),
+    MemoryError,
     Other(String),
 }
 
@@ -678,7 +688,9 @@ impl std::fmt::Display for FixerError {
             FixerError::OutputParseError(e) => write!(f, "Output parse error: {}", e),
             FixerError::OutputDecodeError(e) => write!(f, "Output decode error: {}", e),
             FixerError::ScriptNotFound(p) => write!(f, "Command not found: {}", p.display()),
-            FixerError::FormattingUnpreservable => write!(f, "Formatting unpreservable"),
+            FixerError::FormattingUnpreservable(p) => {
+                write!(f, "Formatting unpreservable for {}", p.display())
+            }
             FixerError::ScriptFailed {
                 path,
                 exit_code,
@@ -696,10 +708,20 @@ impl std::fmt::Display for FixerError {
             FixerError::DescriptionMissing => {
                 write!(f, "Description missing")
             }
-            FixerError::NotCertainEnough(old, new, _) => write!(
+            FixerError::MemoryError => {
+                write!(f, "Memory error")
+            }
+            FixerError::NotCertainEnough(actual, minimum, _) => write!(
                 f,
-                "Not certain enough to fix (old: {:?}, new: {:?})",
-                old, new
+                "Not certain enough to fix (actual: {}, minimum : {:?})",
+                actual, minimum
+            ),
+            FixerError::FailedPatchManipulation(p, p2, s) => write!(
+                f,
+                "Failed to manipulate patch {} in {}: {}",
+                p.display(),
+                p2.display(),
+                s
             ),
         }
     }
@@ -902,6 +924,7 @@ pub fn certainty_sufficient(
     }
 }
 
+/// Return the minimum certainty from a list of certainties.
 pub fn min_certainty(certainties: &[Certainty]) -> Option<Certainty> {
     certainties.iter().min().cloned()
 }
@@ -1015,30 +1038,32 @@ pub fn find_fixers_dir() -> Option<std::path::PathBuf> {
 /// # Returns
 ///   tuple with set of FixerResult, summary of the changes
 pub fn run_lintian_fixer(
-    local_tree: &breezyshim::WorkingTree,
+    local_tree: &WorkingTree,
     fixer: &Box<dyn Fixer>,
     committer: Option<&str>,
-    update_changelog: impl FnOnce() -> bool,
+    mut update_changelog: impl FnMut() -> bool,
     compat_release: Option<&str>,
     minimum_certainty: Option<Certainty>,
     trust_package: Option<bool>,
     allow_reformatting: Option<bool>,
-    dirty_tracker: Option<&breezyshim::DirtyTracker>,
+    dirty_tracker: Option<&DirtyTracker>,
     subpath: &std::path::Path,
     net_access: Option<bool>,
     opinionated: Option<bool>,
     diligence: Option<i32>,
     timestamp: Option<chrono::naive::NaiveDateTime>,
-    basis_tree: Option<Box<dyn breezyshim::Tree>>,
+    basis_tree: Option<&Box<dyn Tree>>,
     changes_by: Option<&str>,
 ) -> Result<(FixerResult, String), FixerError> {
     pyo3::Python::with_gil(|py| {
         use pyo3::import_exception;
         import_exception!(breezy.transport, NoSuchFile);
-        let basis_tree: Box<dyn Tree> = if let Some(basis_tree) = basis_tree {
+        let mut _bt = None;
+        let basis_tree: &Box<dyn Tree> = if let Some(basis_tree) = basis_tree {
             basis_tree
         } else {
-            local_tree.basis_tree()
+            _bt = Some(local_tree.basis_tree());
+            _bt.as_ref().unwrap()
         };
         let changes_by = changes_by.unwrap_or("lintian-brush");
 
@@ -1080,7 +1105,7 @@ pub fn run_lintian_fixer(
         ) {
             Ok(r) => r,
             Err(e) => {
-                reset_tree(local_tree, Some(&basis_tree), Some(subpath), dirty_tracker)?;
+                reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
                 return Err(e);
             }
         };
@@ -1088,7 +1113,7 @@ pub fn run_lintian_fixer(
             if !certainty_sufficient(certainty, minimum_certainty) {
                 reset_tree(local_tree, Some(&basis_tree), Some(subpath), dirty_tracker)?;
                 return Err(FixerError::NotCertainEnough(
-                    result.certainty,
+                    certainty,
                     minimum_certainty,
                     result.overridden_lintian_issues,
                 ));
@@ -1161,7 +1186,7 @@ pub fn run_lintian_fixer(
         }
 
         if result.description.is_empty() {
-            reset_tree(local_tree, Some(&basis_tree), Some(subpath), dirty_tracker)?;
+            reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
             return Err(FixerError::DescriptionMissing);
         }
 
@@ -1180,7 +1205,7 @@ pub fn run_lintian_fixer(
         {
             let (patch_name, updated_specific_files) = match _upstream_changes_to_patch(
                 local_tree,
-                &basis_tree,
+                basis_tree,
                 dirty_tracker,
                 subpath,
                 &result
@@ -1192,7 +1217,7 @@ pub fn run_lintian_fixer(
             ) {
                 Ok(r) => r,
                 Err(e) => {
-                    reset_tree(local_tree, Some(&basis_tree), Some(subpath), dirty_tracker)?;
+                    reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
                     return Err(FixerError::Python(e));
                 }
             };
@@ -1204,7 +1229,7 @@ pub fn run_lintian_fixer(
 
         let update_changelog = if only_changes_last_changelog_block(
             local_tree,
-            &basis_tree,
+            basis_tree,
             changelog_path.as_path(),
             changes.iter(),
         )? {
@@ -1259,6 +1284,305 @@ pub fn run_lintian_fixer(
     })
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+pub struct ChangelogBehaviour {
+    pub update_changelog: bool,
+    pub explanation: String,
+}
+
+pub fn determine_update_changelog(
+    local_tree: &WorkingTree,
+    debian_path: &std::path::Path,
+) -> pyo3::PyResult<ChangelogBehaviour> {
+    pyo3::Python::with_gil(|py| {
+        let m = py.import("lintian_brush")?;
+        let f = m.getattr("determine_update_changelog")?;
+        let result = f.call1((local_tree.obj(), (debian_path,)))?;
+
+        Ok(ChangelogBehaviour {
+            update_changelog: result.getattr("update_changelog")?.extract()?,
+            explanation: result.getattr("explanation")?.extract()?,
+        })
+    })
+}
+
+#[derive(Debug)]
+pub enum OverallError {
+    NotDebianPackage(std::path::PathBuf),
+    WorkspaceDirty(std::path::PathBuf),
+    #[cfg(feature = "python")]
+    Python(pyo3::PyErr),
+}
+
+impl From<pyo3::PyErr> for OverallError {
+    fn from(e: pyo3::PyErr) -> Self {
+        OverallError::Python(e)
+    }
+}
+
+impl std::fmt::Display for OverallError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            OverallError::NotDebianPackage(path) => {
+                write!(f, "Not a Debian package: {}", path.display())
+            }
+            OverallError::WorkspaceDirty(path) => {
+                write!(f, "Workspace is dirty: {}", path.display())
+            }
+            #[cfg(feature = "python")]
+            OverallError::Python(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl std::error::Error for OverallError {}
+
+/// Run a set of lintian fixers on a tree.
+///
+/// # Arguments
+///
+///  * `tree`: The tree to run the fixers on
+///  * `fixers`: A set of Fixer objects
+///  * `update_changelog`: Whether to add an entry to the changelog
+///  * `verbose`: Whether to be verbose
+///  * `committer`: Optional committer (name and email)
+///  * `compat_release`: Minimum release that the package should be usable on
+///       (e.g. 'sid' or 'stretch')
+///  * `minimum_certainty`: How certain the fixer should be about its changes.
+///  * `trust_package`: Whether to run code from the package if necessary
+///  * `allow_reformatting`: Whether to allow reformatting of changed files
+///  * `use_inotify`: Use inotify to watch changes (significantly improves
+///       performance). Defaults to None (automatic)
+///  * `subpath`: Subpath in the tree in which the package lives
+///  * `net_access`: Whether to allow network access
+///  * `opinionated`: Whether to be opinionated
+///  * `diligence`: Level of diligence
+///  * `changes_by`: Name of the person making the changes
+///
+/// # Returns:
+///   Tuple with two lists:
+///     1. list of tuples with (lintian-tag, certainty, description) of fixers
+///        that ran
+///     2. dictionary mapping fixer names for fixers that failed to run to the
+///        error that occurred
+pub fn run_lintian_fixers(
+    local_tree: &WorkingTree,
+    fixers: &[&Box<dyn Fixer>],
+    mut update_changelog: Option<&mut impl FnMut() -> bool>,
+    verbose: bool,
+    committer: Option<&str>,
+    compat_release: Option<&str>,
+    minimum_certainty: Option<Certainty>,
+    trust_package: Option<bool>,
+    allow_reformatting: Option<bool>,
+    use_inotify: Option<bool>,
+    subpath: Option<&std::path::Path>,
+    net_access: Option<bool>,
+    opinionated: Option<bool>,
+    diligence: Option<i32>,
+    changes_by: Option<&str>,
+) -> Result<ManyResult, OverallError> {
+    let subpath = subpath.unwrap_or_else(|| std::path::Path::new(""));
+    let mut basis_tree = local_tree.basis_tree();
+    check_clean_tree(local_tree, &basis_tree, subpath).map_err(|e| match e {
+        breezyshim::workspace::CheckCleanTreeError::WorkspaceDirty(p) => {
+            OverallError::WorkspaceDirty(p)
+        }
+        breezyshim::workspace::CheckCleanTreeError::Python(e) => OverallError::Python(e),
+    })?;
+
+    let mut changelog_behaviour = None;
+
+    // If we don't know whether to update the changelog, then find out *once*
+    let mut update_changelog = || {
+        if let Some(update_changelog) = update_changelog.as_mut() {
+            return update_changelog();
+        }
+        let debian_path = subpath.join("debian");
+        let cb = determine_update_changelog(local_tree, debian_path.as_path()).unwrap();
+        changelog_behaviour = Some(cb);
+        changelog_behaviour.as_ref().unwrap().update_changelog
+    };
+
+    let mut ret = ManyResult::new();
+    let pb = ProgressBar::new(fixers.len() as u64);
+    let mut dirty_tracker = match get_dirty_tracker(local_tree, Some(subpath), use_inotify) {
+        Ok(dt) => dt,
+        Err(breezyshim::dirty_tracker::Error::TooManyOpenFiles) => {
+            log::warn!("Too many open files for inotify, not using it.");
+            None
+        }
+        Err(breezyshim::dirty_tracker::Error::Python(e)) => return Err(e.into()),
+    };
+    for fixer in fixers {
+        pb.set_message(format!("Running fixer {}", fixer.name()));
+        // Get now from chrono
+        let start = std::time::SystemTime::now();
+        if let Some(dirty_tracker) = dirty_tracker.as_mut() {
+            dirty_tracker.mark_clean();
+        }
+        pb.inc(1);
+        match run_lintian_fixer(
+            local_tree,
+            fixer,
+            committer,
+            &mut update_changelog,
+            compat_release,
+            minimum_certainty,
+            trust_package,
+            allow_reformatting,
+            dirty_tracker.as_ref(),
+            subpath,
+            net_access,
+            opinionated,
+            diligence,
+            None,
+            Some(&basis_tree),
+            changes_by,
+        ) {
+            Err(e) => match e {
+                FixerError::NotDebianPackage(path) => {
+                    return Err(OverallError::NotDebianPackage(path));
+                }
+                FixerError::OutputParseError(ref _e) => {
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    if verbose {
+                        log::info!("Fixer {} failed to parse output.", fixer.name());
+                    }
+                    continue;
+                }
+                FixerError::DescriptionMissing => {
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    if verbose {
+                        log::info!(
+                            "Fixer {} failed because description is missing.",
+                            fixer.name()
+                        );
+                    }
+                    continue;
+                }
+                FixerError::OutputDecodeError(ref _e) => {
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    if verbose {
+                        log::info!("Fixer {} failed to decode output.", fixer.name());
+                    }
+                    continue;
+                }
+                FixerError::FormattingUnpreservable(path) => {
+                    ret.formatting_unpreservable
+                        .insert(fixer.name(), path.clone());
+                    if verbose {
+                        log::info!(
+                            "Fixer {} was unable to preserve formatting of {}.",
+                            fixer.name(),
+                            path.display()
+                        );
+                    }
+                    continue;
+                }
+                FixerError::ScriptNotFound(ref p) => {
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    if verbose {
+                        log::info!("Fixer {} ({}) not found.", fixer.name(), p.display());
+                    }
+                    continue;
+                }
+                FixerError::ScriptFailed { .. } => {
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    if verbose {
+                        log::info!("Fixer {} failed to run.", fixer.name());
+                        eprintln!("{}", e);
+                    }
+                    continue;
+                }
+                FixerError::MemoryError => {
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    if verbose {
+                        log::info!("Ran out of memory while running fixer {}.", fixer.name());
+                    }
+                    continue;
+                }
+                FixerError::NotCertainEnough(actual_certainty, minimum_certainty, _overrides) => {
+                    if verbose {
+                        let duration = std::time::SystemTime::now().duration_since(start).unwrap();
+                        log::info!(
+                    "Fixer {} made changes but not high enough certainty (was {}, needed {}). (took: {:2}s)",
+                    fixer.name(),
+                    actual_certainty,
+                    minimum_certainty.map_or("default".to_string(), |c| c.to_string()),
+                    duration.as_secs_f32(),
+                );
+                    }
+                    continue;
+                }
+                FixerError::FailedPatchManipulation(
+                    ref _tree_path,
+                    ref _patches_directory,
+                    ref reason,
+                ) => {
+                    if verbose {
+                        log::info!("Unable to manipulate upstream patches: {}", reason);
+                    }
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    continue;
+                }
+                FixerError::NoChanges => {
+                    if verbose {
+                        let duration = std::time::SystemTime::now().duration_since(start).unwrap();
+                        log::info!(
+                            "Fixer {} made no changes. (took: {:2}s)",
+                            fixer.name(),
+                            duration.as_secs_f32(),
+                        );
+                    }
+                    continue;
+                }
+                FixerError::NoChangesAfterOverrides(os) => {
+                    if verbose {
+                        let duration = std::time::SystemTime::now().duration_since(start).unwrap();
+                        log::info!(
+                            "Fixer {} made no changes. (took: {:2}s)",
+                            fixer.name(),
+                            duration.as_secs_f32(),
+                        );
+                    }
+                    ret.overridden_lintian_issues.extend(os);
+                    continue;
+                }
+                FixerError::Python(ref ep) => {
+                    if verbose {
+                        log::info!("Fixer {} failed: {}", fixer.name(), ep);
+                    }
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    continue;
+                }
+                FixerError::Other(ref em) => {
+                    if verbose {
+                        log::info!("Fixer {} failed: {}", fixer.name(), em);
+                    }
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    continue;
+                }
+            },
+            Ok((result, summary)) => {
+                if verbose {
+                    let duration = std::time::SystemTime::now().duration_since(start).unwrap();
+                    log::info!(
+                        "Fixer {} made changes. (took {:2}s)",
+                        fixer.name(),
+                        duration.as_secs_f32(),
+                    );
+                }
+                ret.success.push((result, summary));
+                basis_tree = local_tree.basis_tree();
+            }
+        }
+    }
+    pb.finish();
+    ret.changelog_behaviour = changelog_behaviour;
+    Ok(ret)
+}
+
 fn add_changelog_entry(
     working_tree: &WorkingTree,
     changelog_path: &std::path::Path,
@@ -1280,8 +1604,8 @@ fn add_changelog_entry(
 /// * `changelog_path`: Path to the changelog file
 /// * `changes`: Changes in the tree
 pub fn only_changes_last_changelog_block<'a>(
-    tree: &breezyshim::WorkingTree,
-    basis_tree: &Box<dyn breezyshim::Tree>,
+    tree: &WorkingTree,
+    basis_tree: &Box<dyn Tree>,
     changelog_path: &std::path::Path,
     changes: impl Iterator<Item = &'a TreeChange>,
 ) -> pyo3::PyResult<bool> {
@@ -1373,6 +1697,11 @@ pub struct ManyResult {
     success: Vec<(FixerResult, String)>,
     #[serde(rename = "failed")]
     failed_fixers: std::collections::HashMap<String, String>,
+    changelog_behaviour: Option<ChangelogBehaviour>,
+    #[serde(skip)]
+    overridden_lintian_issues: Vec<LintianIssue>,
+    #[serde(skip)]
+    formatting_unpreservable: std::collections::HashMap<String, std::path::PathBuf>,
 }
 
 impl ManyResult {
@@ -1385,6 +1714,16 @@ impl ManyResult {
                 .collect::<Vec<_>>()
                 .as_slice(),
         )
+    }
+
+    pub fn new() -> Self {
+        Self {
+            success: Vec::new(),
+            failed_fixers: std::collections::HashMap::new(),
+            changelog_behaviour: None,
+            overridden_lintian_issues: Vec::new(),
+            formatting_unpreservable: std::collections::HashMap::new(),
+        }
     }
 }
 
@@ -1410,7 +1749,7 @@ pub fn get_committer(working_tree: &WorkingTree) -> String {
 fn _upstream_changes_to_patch(
     local_tree: &WorkingTree,
     basis_tree: &Box<dyn Tree>,
-    dirty_tracker: Option<&breezyshim::DirtyTracker>,
+    dirty_tracker: Option<&DirtyTracker>,
     subpath: &std::path::Path,
     patch_name: &str,
     description: &str,

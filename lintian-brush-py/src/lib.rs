@@ -1,4 +1,4 @@
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use pyo3::exceptions::{PyMemoryError, PyRuntimeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict, PyList, PyType};
@@ -20,6 +20,8 @@ import_exception!(lintian_brush, NotCertainEnough);
 import_exception!(lintian_brush, FixerScriptFailed);
 import_exception!(lintian_brush, NotDebianPackage);
 import_exception!(lintian_brush, ScriptNotFound);
+import_exception!(lintian_brush, FailedPatchManipulation);
+import_exception!(lintian_brush, WorkspaceDirty);
 
 #[pyfunction]
 fn parse_script_fixer_output(text: &str) -> PyResult<FixerResult> {
@@ -35,7 +37,7 @@ fn parse_script_fixer_output(text: &str) -> PyResult<FixerResult> {
 }
 
 #[pyfunction]
-pub fn determine_env(
+fn determine_env(
     package: &str,
     current_version: Version,
     compat_release: &str,
@@ -48,7 +50,7 @@ pub fn determine_env(
 ) -> PyResult<std::collections::HashMap<String, String>> {
     let minimum_certainty = minimum_certainty
         .parse()
-        .map_err(|e| UnsupportedCertainty::new_err(e))?;
+        .map_err(UnsupportedCertainty::new_err)?;
 
     Ok(lintian_brush::determine_env(
         package,
@@ -355,7 +357,7 @@ fn run_lintian_fixer(
     let subpath = subpath.unwrap_or_else(|| "".into());
 
     let update_changelog = || -> bool {
-        update_changelog.map_or(false, |u| {
+        update_changelog.clone().map_or(false, |u| {
             pyo3::Python::with_gil(|py| {
                 if u.as_ref(py).is_callable() {
                     u.call0(py).unwrap().extract(py).unwrap()
@@ -391,7 +393,9 @@ fn run_lintian_fixer(
         opinionated,
         diligence,
         timestamp,
-        basis_tree.map(|bt| Box::new(breezyshim::RevisionTree(bt)) as Box<dyn breezyshim::Tree>),
+        basis_tree
+            .map(|bt| Box::new(breezyshim::RevisionTree(bt)) as Box<dyn breezyshim::Tree>)
+            .as_ref(),
         changes_by,
     )
     .map_err(|e| match e {
@@ -404,7 +408,9 @@ fn run_lintian_fixer(
             exit_code,
             stderr,
         } => FixerScriptFailed::new_err((path.to_object(py), exit_code, stderr)),
-        lintian_brush::FixerError::FormattingUnpreservable => FormattingUnpreservable::new_err(()),
+        lintian_brush::FixerError::FormattingUnpreservable(p) => {
+            FormattingUnpreservable::new_err((p,))
+        }
         lintian_brush::FixerError::OutputDecodeError(e) => {
             PyValueError::new_err(format!("invalid output: {}", e))
         }
@@ -424,12 +430,16 @@ fn run_lintian_fixer(
         lintian_brush::FixerError::NotCertainEnough(certainty, minimum_certainty, _) => {
             NotCertainEnough::new_err((
                 py.None(),
-                certainty.map(|c| c.to_string()),
+                certainty.to_string(),
                 minimum_certainty.map(|c| c.to_string()),
             ))
         }
         lintian_brush::FixerError::NotDebianPackage(e) => NotDebianPackage::new_err(e),
         lintian_brush::FixerError::Python(e) => e,
+        lintian_brush::FixerError::FailedPatchManipulation(p1, p2, reason) => {
+            FailedPatchManipulation::new_err((p1, p2, reason))
+        }
+        lintian_brush::FixerError::MemoryError => PyMemoryError::new_err(()),
     })
     .map(|(result, output)| (FixerResult(result), output))
 }
@@ -450,6 +460,27 @@ fn only_changes_last_changelog_block(
         changelog_path,
         changes.iter(),
     )
+}
+
+#[pyfunction]
+fn control_file_present(tree: PyObject, path: std::path::PathBuf) -> pyo3::PyResult<bool> {
+    let tree = breezyshim::tree::RevisionTree(tree);
+    let path = path.as_path();
+    Ok(lintian_brush::control_file_present(&tree, path))
+}
+
+#[pyfunction]
+fn control_files_in_root(tree: PyObject, path: std::path::PathBuf) -> pyo3::PyResult<bool> {
+    let tree = breezyshim::tree::RevisionTree(tree);
+    let path = path.as_path();
+    Ok(lintian_brush::control_files_in_root(&tree, path))
+}
+
+#[pyfunction]
+fn is_debcargo_package(tree: PyObject, path: std::path::PathBuf) -> pyo3::PyResult<bool> {
+    let tree = breezyshim::tree::RevisionTree(tree);
+    let path = path.as_path();
+    Ok(lintian_brush::is_debcargo_package(&tree, path))
 }
 
 #[pymodule]
@@ -514,5 +545,8 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<ManyResult>()?;
     m.add_function(wrap_pyfunction!(run_lintian_fixer, m)?)?;
     m.add_function(wrap_pyfunction!(only_changes_last_changelog_block, m)?)?;
+    m.add_function(wrap_pyfunction!(control_file_present, m)?)?;
+    m.add_function(wrap_pyfunction!(control_files_in_root, m)?)?;
+    m.add_function(wrap_pyfunction!(is_debcargo_package, m)?)?;
     Ok(())
 }

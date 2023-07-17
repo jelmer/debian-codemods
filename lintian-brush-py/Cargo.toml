@@ -11,11 +11,11 @@ homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = ">=0.14", features = ["extension-module", "chrono", "serde"] }
+pyo3 = { workspace = true, features = ["extension-module", "chrono", "serde"] }
 lintian-brush = { path = ".." }
 serde_json = "1"
 chrono = "0.4"
 multiarch-hints = { path = "../multiarch-hints" }
 pyo3-log = "0.8.2"
-debversion = { version = "0.1.8", features = ["python-debian"] }
+debversion = { workspace = true, features = ["python-debian"] }
 breezyshim = { workspace = true }

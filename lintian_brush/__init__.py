@@ -563,35 +563,6 @@ def confidence_to_certainty(confidence: Optional[int]) -> str:
 
 
 min_certainty = _lintian_brush_rs.min_certainty
-
-
-def control_files_in_root(tree: Tree, subpath: str) -> bool:
-    debian_path = os.path.join(subpath, "debian")
-    if tree.has_filename(debian_path):
-        return False
-    control_path = os.path.join(subpath, "control")
-    if tree.has_filename(control_path):
-        return True
-    return tree.has_filename(control_path + ".in")
-
-
-def is_debcargo_package(tree: Tree, subpath: str) -> bool:
-    control_path = os.path.join(subpath, "debian", "debcargo.toml")
-    return tree.has_filename(control_path)
-
-
-def control_file_present(tree: Tree, subpath: str) -> bool:
-    """Check whether there are any control files present in a tree.
-
-    Args:
-      tree: Tree to check
-      subpath: subpath to check
-    Returns:
-      whether control file is present
-    """
-    for name in ["debian/control", "debian/control.in", "control",
-                 "control.in", "debian/debcargo.toml"]:
-        name = os.path.join(subpath, name)
-        if tree.has_filename(name):
-            return True
-    return False
+control_files_in_root = _lintian_brush_rs.control_files_in_root
+is_debcargo_package = _lintian_brush_rs.is_debcargo_package
+control_file_present = _lintian_brush_rs.control_file_present

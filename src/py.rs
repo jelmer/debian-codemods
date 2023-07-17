@@ -1,7 +1,7 @@
 use debversion::Version;
 use pyo3::class::basic::CompareOp;
 use pyo3::create_exception;
-use pyo3::exceptions::{PyRuntimeError, PyTypeError, PyValueError};
+use pyo3::exceptions::{PyMemoryError, PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyBytes, PyDict, PyFloat, PyList, PyString};
@@ -13,6 +13,7 @@ import_exception!(lintian_brush, DescriptionMissing);
 import_exception!(lintian_brush, NotCertainEnough);
 import_exception!(lintian_brush, FixerScriptFailed);
 import_exception!(lintian_brush, NotDebianPackage);
+import_exception!(lintian_brush, FailedPatchManipulation);
 create_exception!(lintian_brush, ScriptNotFound, pyo3::exceptions::PyException);
 create_exception!(
     lintian_brush,
@@ -86,7 +87,9 @@ impl Fixer {
                     exit_code,
                     stderr,
                 } => FixerScriptFailed::new_err((path.to_object(py), exit_code, stderr)),
-                crate::FixerError::FormattingUnpreservable => FormattingUnpreservable::new_err(()),
+                crate::FixerError::FormattingUnpreservable(p) => {
+                    FormattingUnpreservable::new_err((p,))
+                }
                 crate::FixerError::OutputDecodeError(e) => {
                     PyValueError::new_err(format!("invalid output: {}", e))
                 }
@@ -106,11 +109,15 @@ impl Fixer {
                 crate::FixerError::NotCertainEnough(certainty, minimum_certainty, os) => {
                     NotCertainEnough::new_err((
                         py.None(),
-                        certainty.map(|c| c.to_string()),
+                        certainty.to_string(),
                         minimum_certainty.map(|c| c.to_string()),
                     ))
                 }
                 crate::FixerError::NotDebianPackage(p) => NotDebianPackage::new_err(p),
+                crate::FixerError::FailedPatchManipulation(p1, p2, reason) => {
+                    FailedPatchManipulation::new_err((p1, p2, reason))
+                }
+                crate::FixerError::MemoryError => PyMemoryError::new_err(()),
             })
             .map(FixerResult)
     }
@@ -281,7 +288,7 @@ pub fn json_to_py(py: Python, v: serde_json::Value) -> PyResult<PyObject> {
 }
 
 #[pyclass]
-pub struct ManyResult(crate::ManyResult);
+pub struct ManyResult(pub crate::ManyResult);
 
 pub fn py_to_json(py: Python, obj: PyObject) -> PyResult<serde_json::Value> {
     if obj.is_none(py) {
