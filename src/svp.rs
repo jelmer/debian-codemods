@@ -79,7 +79,7 @@ pub fn report_fatal(
     code: &str,
     description: &str,
     hint: Option<&str>,
-) {
+) -> ! {
     if std::env::var("SVP_API").ok().as_deref() == Some("1") {
         let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
 

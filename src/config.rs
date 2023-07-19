@@ -1,5 +1,6 @@
 //! Lintian-brush configuration file.
 use crate::Certainty;
+use breezyshim::tree::WorkingTree;
 use configparser::ini::Ini;
 use log::warn;
 
@@ -17,6 +18,16 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn from_workingtree(
+        tree: &WorkingTree,
+        subpath: &std::path::Path,
+    ) -> std::io::Result<Self> {
+        let path = tree
+            .abspath(&subpath.join(PACKAGE_CONFIG_FILENAME))
+            .unwrap();
+        Self::load_from_path(&path)
+    }
+
     pub fn load_from_path(path: &std::path::Path) -> Result<Self, std::io::Error> {
         let mut ini = Ini::new();
         let data = std::fs::read_to_string(path)?;

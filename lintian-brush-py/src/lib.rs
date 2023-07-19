@@ -13,6 +13,7 @@ use lintian_brush::Certainty;
 
 use debversion::Version;
 
+import_exception!(debian.changelog, ChangelogCreateError);
 import_exception!(debmutate.reformatting, FormattingUnpreservable);
 import_exception!(lintian_brush, NoChanges);
 import_exception!(lintian_brush, DescriptionMissing);
@@ -400,6 +401,7 @@ fn run_lintian_fixer(
     )
     .map_err(|e| match e {
         lintian_brush::FixerError::NoChanges => NoChanges::new_err((py.None(),)),
+        lintian_brush::FixerError::ChangelogCreate(m) => ChangelogCreateError::new_err((m,)),
         lintian_brush::FixerError::ScriptNotFound(cmd) => {
             ScriptNotFound::new_err(cmd.to_object(py))
         }

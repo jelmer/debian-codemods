@@ -7,6 +7,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyBytes, PyDict, PyFloat, PyList, PyString};
 use std::collections::HashMap;
 
+import_exception!(debian.changelog, ChangelogCreateError);
 import_exception!(debmutate.reformatting, FormattingUnpreservable);
 import_exception!(lintian_brush, NoChanges);
 import_exception!(lintian_brush, DescriptionMissing);
@@ -79,6 +80,7 @@ impl Fixer {
             )
             .map_err(|e| match e {
                 crate::FixerError::NoChanges => NoChanges::new_err((py.None(),)),
+                crate::FixerError::ChangelogCreate(m) => ChangelogCreateError::new_err((m,)),
                 crate::FixerError::ScriptNotFound(cmd) => {
                     ScriptNotFound::new_err(cmd.to_object(py))
                 }

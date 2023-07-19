@@ -53,6 +53,7 @@ from breezy.patches import (
 from breezy.transport import NoSuchFile
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
+from breezy.workspace import reset_tree
 from debmutate.patch import (
     QuiltSeriesEditor,
     find_common_patch_suffix,
@@ -60,8 +61,6 @@ from debmutate.patch import (
 )
 
 from debian.changelog import Changelog
-
-from breezy.workspace import reset_tree
 
 # TODO(jelmer): Use debmutate version
 DEFAULT_DEBIAN_PATCHES_DIR = "debian/patches"

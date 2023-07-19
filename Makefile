@@ -7,20 +7,17 @@ default: check
 build:
 	./setup.py build_ext -i
 
-check:: style testsuite tag-status ruff
+check:: testsuite tag-status ruff
 
 FIXERS = $(patsubst fixers/%.sh,%,$(wildcard fixers/*.sh)) $(patsubst fixers/%.py,%,$(wildcard fixers/*.py))
 
 $(patsubst %,check-fixer-%,$(FIXERS)): check-fixer-%:
 	PYTHONPATH=$(PWD):$(PYTHONPATH) python3 -m lintian_brush.tests.fixers --fixer=$*
 
-.PHONY: style testsuite unsupported
+.PHONY: ruff testsuite unsupported
 
 ruff::
 	ruff check .
-
-style::
-	flake8
 
 typing:: build
 	mypy lintian_brush fixers

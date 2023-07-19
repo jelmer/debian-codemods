@@ -1,4 +1,15 @@
+use breezyshim::branch::{Branch, BranchOpenError};
+use breezyshim::tree::{MutableTree, Tree, WorkingTree, WorkingTreeOpenError};
 use clap::Parser;
+use distro_info::DistroInfo;
+use env_logger::fmt::Formatter;
+use lintian_brush::svp::{
+    enabled as svp_enabled, load_resume, report_fatal, report_success_debian,
+};
+use lintian_brush::{get_committer, Certainty, ChangelogBehaviour, ManyResult, OverallError};
+use std::collections::HashMap;
+use std::fmt::Write;
+use std::io::Write as _;
 
 #[derive(clap::Args, Clone, Debug)]
 #[group()]
@@ -7,19 +18,25 @@ struct FixerArgs {
     fixers: Option<Vec<String>>,
 
     /// Path to fixer scripts
-    #[arg(short, long, default_value_t = lintian_brush::find_fixers_dir().unwrap().display().to_string(), value_name="DIR")]
+    #[arg(short, long, default_value_t = lintian_brush::find_fixers_dir().unwrap().display().to_string(), value_name="DIR", help_heading = Some("Fixers"))]
     fixers_dir: String,
 
     /// Exclude fixers
-    #[arg(long, value_name = "EXCLUDE")]
+    #[arg(long, value_name = "EXCLUDE", help_heading = Some("Fixers"))]
     exclude: Option<Vec<String>>,
 
     /// Use features/compatibility levels that are not available in stable. (makes backporting
     /// harder)
-    #[arg(long)]
+    #[arg(long, conflicts_with = "compat_release")]
     modern: bool,
 
-    #[arg(long, env = "COMPAT_RELEASE", value_name = "RELEASE", hide = true)]
+    #[arg(
+        long,
+        env = "COMPAT_RELEASE",
+        value_name = "RELEASE",
+        hide = true,
+        conflicts_with = "modern"
+    )]
     compat_release: Option<String>,
 
     #[arg(long, hide = true)]
@@ -46,8 +63,8 @@ struct FixerArgs {
 #[group()]
 struct PackageArgs {
     /// Allow file reformatting and stripping of comments
-    #[arg(short, long, default_value_t = false)]
-    allow_reformatting: bool,
+    #[arg(short, long)]
+    allow_reformatting: Option<bool>,
 
     /// Whether to trust the package
     #[arg(long, default_value_t = false, hide = true)]
@@ -102,8 +119,8 @@ struct OutputArgs {
     identity: bool,
 
     /// directory to run in
-    #[arg(short, long, default_value_t = std::env::current_dir().unwrap().display().to_string(), value_name = "DIR")]
-    directory: String,
+    #[arg(short, long, default_value = std::env::current_dir().unwrap().into_os_string(), value_name = "DIR")]
+    directory: std::path::PathBuf,
 
     /// Do not probe external services
     #[arg(long, default_value_t = false)]
@@ -136,13 +153,17 @@ struct Args {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
-    if args.output.verbose {
-        env_logger::init();
-    } else {
-        env_logger::builder()
-            .filter(None, log::LevelFilter::Info)
-            .init();
-    }
+    env_logger::builder()
+        .format(|buf, record| writeln!(buf, "{}", record.args()))
+        .filter(
+            None,
+            if args.output.debug {
+                log::LevelFilter::Debug
+            } else {
+                log::LevelFilter::Info
+            },
+        )
+        .init();
 
     let mut fixers: Vec<_> = lintian_brush::available_lintian_fixers(
         Some(std::path::PathBuf::from(args.fixers.fixers_dir).as_path()),
@@ -166,64 +187,359 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{}", tag);
         }
     } else {
-        let update_changelog: Option<bool> = if args.output.update_changelog {
+        let mut update_changelog: Option<bool> = if args.output.update_changelog {
             Some(true)
         } else if args.output.no_update_changelog {
             Some(false)
         } else {
             None
         };
-        let r = pyo3::Python::with_gil(|py| {
-            let m = py.import("lintian_brush.__main__")?;
-            let main = m.getattr("main")?;
-            let kwargs = pyo3::types::PyDict::new(py);
-            kwargs.set_item("dry_run", args.output.dry_run)?;
-            kwargs.set_item("allow_reformatting", args.packages.allow_reformatting)?;
-            kwargs.set_item("trust", args.packages.trust)?;
-            kwargs.set_item("verbose", args.output.verbose)?;
-            kwargs.set_item("diff", args.output.diff)?;
-            kwargs.set_item("disable_net_access", args.output.disable_net_access)?;
-            kwargs.set_item("disable_inotify", args.output.disable_inotify)?;
-            kwargs.set_item("modern", args.fixers.modern)?;
-            kwargs.set_item(
-                "minimum_certainty",
-                args.fixers.minimum_certainty.map(|x| x.to_string()),
-            )?;
-            kwargs.set_item("opinionated", args.fixers.opinionated)?;
-            kwargs.set_item("diligence", args.fixers.diligent)?;
-            kwargs.set_item("uncertain", args.fixers.uncertain)?;
-            kwargs.set_item("yolo", args.fixers.yolo)?;
-            kwargs.set_item("identity", args.output.identity)?;
-            kwargs.set_item("update_changelog", update_changelog)?;
-            kwargs.set_item("compat_release", args.fixers.compat_release)?;
-            kwargs.set_item("exclude", args.fixers.exclude)?;
-            kwargs.set_item("include", args.fixers.fixers)?;
-            kwargs.set_item("directory", args.output.directory)?;
-            main.call(
-                (fixers
-                    .into_iter()
-                    .map(|f| lintian_brush::py::Fixer(f))
-                    .collect::<Vec<_>>(),),
-                Some(kwargs),
-            )?
-            .extract::<Option<i32>>()
-        });
 
-        match r {
-            Ok(Some(exit_code)) => std::process::exit(exit_code),
-            Ok(None) => std::process::exit(0),
+        let mut tempdir = None;
+
+        let (wt, subpath) = if args.output.dry_run {
+            let (branch, subpath) = match Branch::open_containing(
+                &url::Url::from_directory_path(&args.output.directory).unwrap(),
+            ) {
+                Ok((branch, subpath)) => (branch, subpath),
+                Err(BranchOpenError::NotBranchError(_msg)) => {
+                    log::error!("No version control directory found (e.g. a .git directory).");
+                    std::process::exit(1);
+                }
+                Err(BranchOpenError::DependencyNotPresent(name, reason)) => {
+                    log::error!(
+                        "Unable to open branch at {}: missing package {}",
+                        args.output.directory.display(),
+                        name
+                    );
+                    std::process::exit(1);
+                }
+                Err(BranchOpenError::Other(err)) => {
+                    log::error!(
+                        "Unable to open branch at {}: {}",
+                        args.output.directory.display(),
+                        err
+                    );
+                    std::process::exit(1);
+                }
+                Err(BranchOpenError::NoColocatedBranchSupport) => {
+                    panic!("NoColocatedBranchSupport should not be returned by open_containing");
+                }
+            };
+
+            let td = tempfile::tempdir()?;
+
+            // TODO(jelmer): Make a slimmer copy
+
+            let to_dir = branch.controldir().sprout(
+                url::Url::from_directory_path(td.path()).unwrap(),
+                Some(&branch),
+                Some(true),
+                Some(branch.format().supports_stacking()),
+            );
+            tempdir = Some(td);
+            (to_dir.open_workingtree()?, subpath)
+        } else {
+            match WorkingTree::open_containing(&args.output.directory) {
+                Ok((wt, subpath)) => (wt, subpath.display().to_string()),
+                Err(WorkingTreeOpenError::NotBranchError(_msg)) => {
+                    log::error!("No version control directory found (e.g. a .git directory).");
+                    std::process::exit(1);
+                }
+                Err(WorkingTreeOpenError::DependencyNotPresent(name, _reason)) => {
+                    log::error!(
+                        "Unable to open tree at {}: missing package {}",
+                        args.output.directory.display(),
+                        name
+                    );
+                    std::process::exit(1);
+                }
+                Err(WorkingTreeOpenError::Other(e)) => {
+                    log::error!(
+                        "Unable to open tree at {}: {}",
+                        args.output.directory.display(),
+                        e
+                    );
+                    std::process::exit(1);
+                }
+            }
+        };
+        if args.output.identity {
+            println!("Committer identity: {}", get_committer(&wt));
+            let (maintainer, email) = get_maintainer();
+            println!(
+                "Changelog identity: {} <{}>",
+                maintainer.as_deref().unwrap_or(""),
+                email.as_deref().unwrap_or("")
+            );
+            std::process::exit(0);
+        }
+        let since_revid = wt.last_revision().unwrap();
+        if args.fixers.fixers.is_some() || args.fixers.exclude.is_some() {
+            let include = args
+                .fixers
+                .fixers
+                .as_ref()
+                .map(|fs| fs.iter().map(|f| f.as_str()).collect::<Vec<_>>());
+            let exclude = args
+                .fixers
+                .exclude
+                .as_ref()
+                .map(|fs| fs.iter().map(|f| f.as_str()).collect::<Vec<_>>());
+            fixers =
+                match lintian_brush::select_fixers(fixers, include.as_deref(), exclude.as_deref()) {
+                    Ok(fixers) => fixers,
+                    Err(lintian_brush::UnknownFixer(f)) => {
+                        log::error!("Unknown fixer specified: {}", f);
+                        std::process::exit(1);
+                    }
+                }
+        }
+        let debian_info = distro_info::DebianDistroInfo::new().unwrap();
+        let mut compat_release = if args.fixers.modern {
+            Some(
+                debian_info
+                    .releases()
+                    .iter()
+                    .find(|release| release.series() == "sid")
+                    .unwrap()
+                    .series()
+                    .to_string(),
+            )
+        } else {
+            args.fixers.compat_release.clone()
+        };
+        let mut minimum_certainty = args.fixers.minimum_certainty;
+        let mut allow_reformatting = args.packages.allow_reformatting;
+        match lintian_brush::config::Config::from_workingtree(
+            &wt,
+            std::path::Path::new(subpath.as_str()),
+        ) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
             Err(e) => {
-                eprintln!("Error: {}", e);
-                if args.output.debug {
-                    pyo3::Python::with_gil(|py| {
-                        if let Some(traceback) = e.traceback(py) {
-                            println!("{}", traceback.format().unwrap());
-                        }
-                    });
+                log::error!("Unable to read config: {}", e);
+                std::process::exit(1);
+            }
+            Ok(cfg) => {
+                if minimum_certainty.is_none() {
+                    minimum_certainty = cfg.minimum_certainty();
+                }
+                if compat_release.is_none() {
+                    compat_release = cfg.compat_release();
+                }
+                if allow_reformatting.is_none() {
+                    allow_reformatting = cfg.allow_reformatting();
+                }
+                if update_changelog.is_none() {
+                    update_changelog = cfg.update_changelog();
+                }
+            }
+        }
+        let minimum_certainty = minimum_certainty.unwrap_or_else(|| {
+            if args.fixers.uncertain || args.fixers.yolo {
+                Certainty::Possible
+            } else {
+                Certainty::default()
+            }
+        });
+        let compat_release = compat_release.as_ref().map_or_else(
+            || {
+                debian_info
+                    .released(chrono::Local::now().naive_local().date())
+                    .into_iter()
+                    .next_back()
+                    .unwrap()
+                    .series()
+                    .to_string()
+            },
+            |s| s.clone(),
+        );
+        let write_lock = wt.lock_write();
+        if lintian_brush::control_files_in_root(&wt, std::path::Path::new(subpath.as_str())) {
+            report_fatal(
+                versions_dict(),
+                "control-files-in-root",
+                "control files live in root rather than debian/ (LarstIQ mode)",
+                None,
+            );
+        }
+
+        let mut overall_result = match lintian_brush::run_lintian_fixers(
+            &wt,
+            fixers.as_slice(),
+            update_changelog.as_ref().map(|b| (|| *b)),
+            args.output.verbose,
+            None,
+            Some(compat_release.as_str()),
+            Some(minimum_certainty),
+            Some(args.packages.trust),
+            allow_reformatting,
+            if args.output.disable_inotify {
+                Some(false)
+            } else {
+                None
+            },
+            Some(std::path::Path::new(subpath.as_str())),
+            Some(!args.output.disable_net_access),
+            Some(args.fixers.opinionated),
+            Some(args.fixers.diligent),
+            Some("lintian-brush"),
+        ) {
+            Err(OverallError::NotDebianPackage(p)) => {
+                report_fatal(
+                    versions_dict(),
+                    "not-debian-package",
+                    format!("{}: Not a Debian package", p.display()).as_str(),
+                    None,
+                );
+            }
+            Err(OverallError::WorkspaceDirty(p)) => {
+                log::error!(
+                    "{}: Please commit pending changes and remove unknown files first.",
+                    p.display()
+                );
+                if args.output.verbose {
+                    breezyshim::status::show_tree_status(&wt).unwrap();
                 }
                 std::process::exit(1);
             }
+            Err(OverallError::ChangelogCreate(e)) => {
+                report_fatal(
+                    versions_dict(),
+                    "changelog-create-error",
+                    format!("Error creating changelog entry: {}", e).as_str(),
+                    None,
+                );
+            }
+            Err(OverallError::Python(e)) => {
+                report_fatal(
+                    versions_dict(),
+                    "python-error",
+                    format!("Error running Python: {}", e).as_str(),
+                    None,
+                );
+            }
+            Ok(overall_result) => overall_result,
+        };
+        std::mem::drop(write_lock);
+        if let Some(tempdir) = tempdir {
+            if let Err(e) = tempdir.close() {
+                log::warn!("Error removing temporary directory: {}", e);
+            }
+        }
+
+        if !overall_result.overridden_lintian_issues.is_empty() {
+            if overall_result.overridden_lintian_issues.len() == 1 {
+                log::info!(
+                    "{} change skipped because of lintian overrides.",
+                    overall_result.overridden_lintian_issues.len()
+                );
+            } else {
+                log::info!(
+                    "{} changes skipped because of lintian overrides.",
+                    overall_result.overridden_lintian_issues.len()
+                );
+            }
+        }
+        if !overall_result.success.is_empty() {
+            let all_tags = overall_result.tags_count();
+            if !all_tags.is_empty() {
+                log::info!(
+                    "Lintian tags fixed: {:?}",
+                    all_tags.keys().collect::<Vec<_>>()
+                );
+            } else {
+                log::info!("Some changes were made, but there are no affected lintian tags.");
+            }
+            let min_certainty = overall_result.minimum_success_certainty();
+            if min_certainty != Some(Certainty::Certain) {
+                log::info!(
+                    "Some changes were made with lower certainty ({}); please double check the changes.",
+                    min_certainty.map_or_else(|| "unknown".to_string(), |c| c.to_string())
+                );
+            }
+        } else {
+            log::info!("No changes made.");
+        }
+        if !overall_result.failed_fixers.is_empty() && !args.output.verbose {
+            log::info!(
+                "Some fixer scripts failed to run: {:?}. Run with --verbose for details.",
+                overall_result.failed_fixers.keys().collect::<Vec<_>>(),
+            );
+        }
+        if !overall_result.formatting_unpreservable.is_empty() && !args.output.verbose {
+            log::info!(
+                "Some fixer scripts were unable to preserve formatting: {:?}. Run with --allow-reformatting to reformat {:?}.",
+                overall_result.formatting_unpreservable.keys().collect::<Vec<_>>(),
+                overall_result.formatting_unpreservable.values().collect::<Vec<_>>()
+            );
+        }
+        if args.output.diff {
+            breezyshim::diff::show_diff_trees(
+                &wt.branch()
+                    .repository()
+                    .revision_tree(&since_revid)
+                    .unwrap(),
+                &wt,
+                Box::new(std::io::stdout()),
+            )?;
+        }
+        if svp_enabled() {
+            if let Some(base) = load_resume() {
+                let base: ManyResult = serde_json::from_value(base)?;
+                overall_result.success.extend(base.success);
+            }
+            let changelog_behaviour = overall_result
+                .changelog_behaviour
+                .as_ref()
+                .map(|b| b.into());
+            report_success_debian(
+                versions_dict(),
+                Some(overall_result.value()),
+                Some(serde_json::to_value(overall_result)?),
+                changelog_behaviour,
+            )
         }
     }
     Ok(())
+}
+
+fn versions_dict() -> HashMap<String, String> {
+    let mut ret = HashMap::new();
+    ret.insert(
+        "lintian-brush".to_string(),
+        std::env::var("CARGO_PKG_VERSION").unwrap(),
+    );
+    pyo3::Python::with_gil(|py| {
+        let breezy = py.import("breezy").unwrap();
+        ret.insert(
+            "breezy".to_string(),
+            breezy.getattr("version_string").unwrap().extract().unwrap(),
+        );
+
+        let debmutate = py.import("debmutate").unwrap();
+        ret.insert(
+            "debmutate".to_string(),
+            debmutate
+                .getattr("version_string")
+                .unwrap()
+                .extract()
+                .unwrap(),
+        );
+
+        let debian = py.import("debian").unwrap();
+        ret.insert(
+            "debian".to_string(),
+            debian.getattr("__version__").unwrap().extract().unwrap(),
+        );
+    });
+    ret
+}
+
+pub fn get_maintainer() -> (Option<String>, Option<String>) {
+    pyo3::Python::with_gil(|py| {
+        let m = py.import("debian.changelog").unwrap();
+        let f = m.getattr("get_maintainer").unwrap();
+        f.call((), None).unwrap().extract().unwrap()
+    })
 }

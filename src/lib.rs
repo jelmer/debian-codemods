@@ -1,6 +1,6 @@
 use debversion::Version;
 use lazy_regex::regex_replace;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::process::Command;
@@ -527,6 +527,7 @@ impl Fixer for PythonScriptFixer {
         use pyo3::types::PyDict;
 
         import_exception!(debmutate.reformatting, FormattingUnpreservable);
+        import_exception!(debian.changelog, ChangelogCreateError);
 
         Python::with_gil(|py| {
             let sys = py.import("sys")?;
@@ -602,6 +603,10 @@ impl Fixer for PythonScriptFixer {
                         return Err(FixerError::FormattingUnpreservable(
                             e.value(py).getattr("path")?.extract()?,
                         ));
+                    } else if e.is_instance_of::<ChangelogCreateError>(py) {
+                        return Err(FixerError::ChangelogCreate(
+                            e.value(py).get_item(0)?.extract()?,
+                        ));
                     } else if e.is_instance_of::<pyo3::exceptions::PyMemoryError>(py) {
                         return Err(FixerError::MemoryError);
                     } else if e.is_instance_of::<pyo3::exceptions::PySystemExit>(py) {
@@ -655,6 +660,7 @@ pub enum FixerError {
     OutputParseError(OutputParseError),
     OutputDecodeError(std::string::FromUtf8Error),
     FailedPatchManipulation(std::path::PathBuf, std::path::PathBuf, String),
+    ChangelogCreate(String),
     ScriptFailed {
         path: std::path::PathBuf,
         exit_code: i32,
@@ -688,6 +694,7 @@ impl std::fmt::Display for FixerError {
             FixerError::OutputParseError(e) => write!(f, "Output parse error: {}", e),
             FixerError::OutputDecodeError(e) => write!(f, "Output decode error: {}", e),
             FixerError::ScriptNotFound(p) => write!(f, "Command not found: {}", p.display()),
+            FixerError::ChangelogCreate(m) => write!(f, "Changelog create error: {}", m),
             FixerError::FormattingUnpreservable(p) => {
                 write!(f, "Formatting unpreservable for {}", p.display())
             }
@@ -901,6 +908,58 @@ pub fn available_lintian_fixers(
     }
 
     Ok(fixers.into_iter())
+}
+
+#[derive(Debug)]
+pub struct UnknownFixer(pub String);
+
+impl std::fmt::Display for UnknownFixer {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Unknown fixer: {}", self.0)
+    }
+}
+
+impl std::error::Error for UnknownFixer {}
+
+/// """Select fixers by name, from a list.
+///
+/// # Arguments
+///
+/// * `fixers` - List of Fixer objects
+/// * `names` - Set of names to select
+/// * `exclude` - Set of names to exclude
+pub fn select_fixers(
+    fixers: Vec<Box<dyn Fixer>>,
+    names: Option<&[&str]>,
+    exclude: Option<&[&str]>,
+) -> Result<Vec<Box<dyn Fixer>>, UnknownFixer> {
+    let mut select_set = names.map(|names| names.iter().cloned().collect::<HashSet<_>>());
+    let mut exclude_set = exclude.map(|exclude| exclude.iter().cloned().collect::<HashSet<_>>());
+    let mut ret = vec![];
+    for f in fixers.into_iter() {
+        if let Some(select_set) = select_set.as_mut() {
+            if !select_set.remove(f.name().as_str()) {
+                continue;
+            }
+        }
+        if let Some(exclude_set) = exclude_set.as_mut() {
+            if exclude_set.remove(f.name().as_str()) {
+                continue;
+            }
+        }
+        ret.push(f);
+    }
+    if select_set.is_some() && !select_set.as_ref().unwrap().is_empty() {
+        Err(UnknownFixer(
+            select_set.unwrap().iter().next().unwrap().to_string(),
+        ))
+    } else if select_set.is_some() && !exclude_set.as_ref().unwrap().is_empty() {
+        Err(UnknownFixer(
+            exclude_set.unwrap().iter().next().unwrap().to_string(),
+        ))
+    } else {
+        Ok(ret)
+    }
 }
 
 /// Check if the actual certainty is sufficient.
@@ -1290,6 +1349,18 @@ pub struct ChangelogBehaviour {
     pub explanation: String,
 }
 
+impl From<ChangelogBehaviour> for (bool, String) {
+    fn from(b: ChangelogBehaviour) -> Self {
+        (b.update_changelog, b.explanation)
+    }
+}
+
+impl From<&ChangelogBehaviour> for (bool, String) {
+    fn from(b: &ChangelogBehaviour) -> Self {
+        (b.update_changelog, b.explanation.clone())
+    }
+}
+
 pub fn determine_update_changelog(
     local_tree: &WorkingTree,
     debian_path: &std::path::Path,
@@ -1310,6 +1381,7 @@ pub fn determine_update_changelog(
 pub enum OverallError {
     NotDebianPackage(std::path::PathBuf),
     WorkspaceDirty(std::path::PathBuf),
+    ChangelogCreate(String),
     #[cfg(feature = "python")]
     Python(pyo3::PyErr),
 }
@@ -1328,6 +1400,9 @@ impl std::fmt::Display for OverallError {
             }
             OverallError::WorkspaceDirty(path) => {
                 write!(f, "Workspace is dirty: {}", path.display())
+            }
+            OverallError::ChangelogCreate(m) => {
+                write!(f, "Failed to create changelog entry: {}", m)
             }
             #[cfg(feature = "python")]
             OverallError::Python(e) => write!(f, "{}", e),
@@ -1367,8 +1442,8 @@ impl std::error::Error for OverallError {}
 ///        error that occurred
 pub fn run_lintian_fixers(
     local_tree: &WorkingTree,
-    fixers: &[&Box<dyn Fixer>],
-    mut update_changelog: Option<&mut impl FnMut() -> bool>,
+    fixers: &[Box<dyn Fixer>],
+    mut update_changelog: Option<impl FnMut() -> bool>,
     verbose: bool,
     committer: Option<&str>,
     compat_release: Option<&str>,
@@ -1443,6 +1518,9 @@ pub fn run_lintian_fixers(
             Err(e) => match e {
                 FixerError::NotDebianPackage(path) => {
                     return Err(OverallError::NotDebianPackage(path));
+                }
+                FixerError::ChangelogCreate(m) => {
+                    return Err(OverallError::ChangelogCreate(m));
                 }
                 FixerError::OutputParseError(ref _e) => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
@@ -1694,17 +1772,37 @@ pub fn increment_version(v: &mut Version) {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ManyResult {
     #[serde(rename = "applied")]
-    success: Vec<(FixerResult, String)>,
+    pub success: Vec<(FixerResult, String)>,
     #[serde(rename = "failed")]
-    failed_fixers: std::collections::HashMap<String, String>,
-    changelog_behaviour: Option<ChangelogBehaviour>,
+    pub failed_fixers: std::collections::HashMap<String, String>,
+    pub changelog_behaviour: Option<ChangelogBehaviour>,
     #[serde(skip)]
-    overridden_lintian_issues: Vec<LintianIssue>,
+    pub overridden_lintian_issues: Vec<LintianIssue>,
     #[serde(skip)]
-    formatting_unpreservable: std::collections::HashMap<String, std::path::PathBuf>,
+    pub formatting_unpreservable: std::collections::HashMap<String, std::path::PathBuf>,
 }
 
 impl ManyResult {
+    pub fn tags_count(&self) -> HashMap<&str, u32> {
+        self.success
+            .iter()
+            .fold(HashMap::new(), |mut acc, (r, _summary)| {
+                for tag in r.fixed_lintian_tags() {
+                    *acc.entry(tag).or_insert(0) += 1;
+                }
+                acc
+            })
+    }
+
+    pub fn value(&self) -> i32 {
+        let tags = self
+            .success
+            .iter()
+            .flat_map(|(r, _summary)| r.fixed_lintian_tags())
+            .collect::<Vec<_>>();
+        calculate_value(tags.as_slice())
+    }
+
     /// Return the minimum certainty of any successfully made change.
     pub fn minimum_success_certainty(&self) -> Option<Certainty> {
         min_certainty(

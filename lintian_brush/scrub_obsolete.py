@@ -42,8 +42,8 @@ from debmutate.reformatting import (
     check_generated_file,
 )
 
-from debian.debian_support import Version
 from debian.deb822 import Deb822Dict
+from debian.debian_support import Version
 
 from . import (
     NotDebianPackage,
@@ -58,7 +58,6 @@ from .svp import (
     report_fatal,
     svp_enabled,
 )
-
 
 DEFAULT_VALUE_MULTIARCH_HINT = 30
 
