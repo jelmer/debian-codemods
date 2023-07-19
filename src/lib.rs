@@ -149,6 +149,7 @@ pub enum LintianIssueParseError {
     InvalidPackageType(String),
 }
 
+#[cfg(feature = "python")]
 impl pyo3::FromPyObject<'_> for LintianIssue {
     fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
         let package = ob.getattr("package")?.extract::<Option<String>>()?;
@@ -1769,7 +1770,7 @@ pub fn increment_version(v: &mut Version) {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 pub struct ManyResult {
     #[serde(rename = "applied")]
     pub success: Vec<(FixerResult, String)>,
@@ -1804,7 +1805,7 @@ impl ManyResult {
     }
 
     /// Return the minimum certainty of any successfully made change.
-    pub fn minimum_success_certainty(&self) -> Option<Certainty> {
+    pub fn minimum_success_certainty(&self) -> Certainty {
         min_certainty(
             self.success
                 .iter()
@@ -1812,6 +1813,7 @@ impl ManyResult {
                 .collect::<Vec<_>>()
                 .as_slice(),
         )
+        .unwrap_or(Certainty::Certain)
     }
 
     pub fn new() -> Self {
@@ -1822,6 +1824,65 @@ impl ManyResult {
             overridden_lintian_issues: Vec::new(),
             formatting_unpreservable: std::collections::HashMap::new(),
         }
+    }
+}
+
+#[cfg(test)]
+mod many_result_tests {
+    use super::*;
+
+    #[test]
+    fn test_empty() {
+        let result = ManyResult::default();
+        assert_eq!(Certainty::Certain, result.minimum_success_certainty());
+    }
+
+    #[test]
+    fn test_no_certainty() {
+        let mut result = ManyResult::default();
+        result.success.push((
+            FixerResult::new(
+                "Do bla".to_string(),
+                Some(vec!["tag-a".to_string()]),
+                None,
+                None,
+                None,
+                vec![],
+                None,
+            ),
+            "summary".to_string(),
+        ));
+        assert_eq!(Certainty::Certain, result.minimum_success_certainty());
+    }
+
+    #[test]
+    fn test_possible() {
+        let mut result = ManyResult::default();
+        result.success.push((
+            FixerResult::new(
+                "Do bla".to_string(),
+                Some(vec!["tag-a".to_string()]),
+                Some(Certainty::Possible),
+                None,
+                None,
+                vec![],
+                None,
+            ),
+            "summary".to_string(),
+        ));
+        result.success.push((
+            FixerResult::new(
+                "Do bloeh".to_string(),
+                Some(vec!["tag-b".to_string()]),
+                Some(Certainty::Certain),
+                None,
+                None,
+                vec![],
+                None,
+            ),
+            "summary".to_string(),
+        ));
+        assert_eq!(Certainty::Possible, result.minimum_success_certainty());
     }
 }
 

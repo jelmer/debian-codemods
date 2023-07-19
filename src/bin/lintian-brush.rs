@@ -451,10 +451,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 log::info!("Some changes were made, but there are no affected lintian tags.");
             }
             let min_certainty = overall_result.minimum_success_certainty();
-            if min_certainty != Some(Certainty::Certain) {
+            if min_certainty != Certainty::Certain {
                 log::info!(
                     "Some changes were made with lower certainty ({}); please double check the changes.",
-                    min_certainty.map_or_else(|| "unknown".to_string(), |c| c.to_string())
+                    min_certainty
                 );
             }
         } else {

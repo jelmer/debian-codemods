@@ -1114,24 +1114,3 @@ class SelectFixersTests(TestCase):
                 )
             ],
         )
-
-
-class ManyResultTests(TestCase):
-    def test_empty(self):
-        result = ManyResult()
-        self.assertEqual("certain", result.minimum_success_certainty())
-
-    def test_no_certainty(self):
-        result = ManyResult()
-        result.success.append(
-            (FixerResult("Do bla", ["tag-a"], None), "summary"))
-        self.assertEqual("certain", result.minimum_success_certainty())
-
-    def test_possible(self):
-        result = ManyResult()
-        result.success.append(
-            (FixerResult("Do bla", ["tag-a"], "possible"), "summary"))
-        result.success.append(
-            (FixerResult("Do bloeh", ["tag-b"], "certain"), "summary")
-        )
-        self.assertEqual("possible", result.minimum_success_certainty())

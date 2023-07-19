@@ -1,3 +1,9 @@
+lintian-brush (0.150) UNRELEASED; urgency=medium
+
+  * Port the lintian-brush command to rust.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 19 Jul 2023 10:02:02 +0100
+
 lintian-brush (0.149) unstable; urgency=medium
 
   * Port some core functionality to rust.
