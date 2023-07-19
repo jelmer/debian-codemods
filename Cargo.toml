@@ -1,6 +1,6 @@
 [package]
 name = "lintian-brush"
-version = "0.149.0"
+version = "0.150.0"
 authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
 license = "GPL-2.0+"
@@ -26,6 +26,7 @@ breezyshim = { workspace = true }
 indicatif = "0.17"
 tempfile = "3"
 url = { version = "2", features = ["serde"] }
+lazy_static = "1.4.0"
 
 [features]
 default = ["svp", "python", "cli"]
@@ -37,10 +38,16 @@ cli = ["dep:clap", "dep:env_logger"]
 members = ["multiarch-hints", "lintian-brush-py"]
 
 [workspace.dependencies]
-breezyshim = "0.1.4"
+#breezyshim = "0.1.4"
+breezyshim = { path = "../breezyshim/trunk" }
 pyo3 = "0.19"
 debversion = ">=0.1.8"
 
 [[bin]]
 name = "lintian-brush"
+required-features = ["cli"]
+
+[[bin]]
+name = "detect-gbp-dch"
+path = "src/bin/detect-gbp-dch.rs"
 required-features = ["cli"]

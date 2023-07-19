@@ -148,11 +148,9 @@ checksum = "630be753d4e58660abd17930c71b647fe46c27ea6b63cc59e1e3851406972e42"
 
 [[package]]
 name = "breezyshim"
-version = "0.1.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2aa3c4466bfd27c991a94e975d80aa548f67545e973a858de35c758eabb4863"
+version = "0.1.18"
 dependencies = [
- "debversion 0.1.9",
+ "debversion",
  "pyo3",
  "pyo3-file",
  "serde",
@@ -238,9 +236,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.3.16"
+version = "4.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74bb1b4028935821b2d6b439bba2e970bdcf740832732437ead910c632e30d7d"
+checksum = "5b0827b011f6f8ab38590295339817b0d26f344aa4932c3ced71b45b0c54b4a9"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -249,9 +247,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.3.16"
+version = "4.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ae467cbb0111869b765e13882a1dbbd6cb52f58203d8b80c44f667d4dd19843"
+checksum = "9441b403be87be858db6a23edb493e7f694761acdc3343d5a0fcaafd304cbc9e"
 dependencies = [
  "anstream",
  "anstyle",
@@ -338,16 +336,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b2466559f260f48ad25fe6317b3c8dac77b5bdb5763ac7d9d6103530663bc90"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "debversion"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "935980bccc31f32f5b431b3116a13e5a5fc774ce34509e52860feb466aee1bf8"
-dependencies = [
- "lazy-regex 3.0.0",
- "pyo3",
 ]
 
 [[package]]
@@ -869,17 +857,18 @@ checksum = "b4668fb0ea861c1df094127ac5f1da3409a82116a4ba74fca2e58ef927159bb3"
 
 [[package]]
 name = "lintian-brush"
-version = "0.149.0"
+version = "0.150.0"
 dependencies = [
  "breezyshim",
  "chrono",
  "clap",
  "configparser",
- "debversion 0.2.0",
+ "debversion",
  "distro-info",
  "env_logger",
  "indicatif",
  "lazy-regex 2.5.0",
+ "lazy_static",
  "log",
  "pyo3",
  "pyo3-file",
@@ -892,11 +881,11 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush-py"
-version = "0.0.0"
+version = "0.150.0"
 dependencies = [
  "breezyshim",
  "chrono",
- "debversion 0.2.0",
+ "debversion",
  "lintian-brush",
  "multiarch-hints",
  "pyo3",

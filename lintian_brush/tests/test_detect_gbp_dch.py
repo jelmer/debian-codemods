@@ -82,6 +82,7 @@ class GuessUpdateChangelogTests(TestCaseWithTransport):
                     "debian/gbp.conf",
                     """\
 [dch]
+pristine-tar = False
 """,
                 ),
             ]

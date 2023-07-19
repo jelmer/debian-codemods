@@ -1,7 +1,7 @@
 use pyo3::exceptions::{PyMemoryError, PyRuntimeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyList, PyType};
+use pyo3::types::{PyBytes, PyDict, PyList, PyTuple, PyType};
 
 use std::collections::HashMap;
 
@@ -427,7 +427,7 @@ fn run_lintian_fixer(
         #[cfg(feature = "python")]
         lintian_brush::FixerError::Python(e) => e.into(),
         lintian_brush::FixerError::Other(e) => PyRuntimeError::new_err(e),
-        lintian_brush::FixerError::NoChangesAfterOverrides(o) => NoChanges::new_err((py.None(),)),
+        lintian_brush::FixerError::NoChangesAfterOverrides(_o) => NoChanges::new_err((py.None(),)),
         lintian_brush::FixerError::DescriptionMissing => DescriptionMissing::new_err(()),
         lintian_brush::FixerError::NotCertainEnough(certainty, minimum_certainty, _) => {
             NotCertainEnough::new_err((
@@ -483,6 +483,69 @@ fn is_debcargo_package(tree: PyObject, path: std::path::PathBuf) -> pyo3::PyResu
     let tree = breezyshim::tree::RevisionTree(tree);
     let path = path.as_path();
     Ok(lintian_brush::is_debcargo_package(&tree, path))
+}
+
+#[pyclass]
+struct ChangelogBehaviour {
+    update_changelog: bool,
+    explanation: String,
+}
+
+#[pymethods]
+impl ChangelogBehaviour {
+    #[new]
+    fn new(update_changelog: bool, explanation: String) -> Self {
+        Self {
+            update_changelog,
+            explanation,
+        }
+    }
+
+    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::pyclass::CompareOp) -> PyResult<bool> {
+        match op {
+            pyo3::pyclass::CompareOp::Eq => Ok(self.update_changelog == other.update_changelog
+                && self.explanation == other.explanation),
+            pyo3::pyclass::CompareOp::Ne => Ok(self.update_changelog != other.update_changelog
+                || self.explanation != other.explanation),
+            _ => Err(pyo3::exceptions::PyNotImplementedError::new_err(
+                "only == and != are supported",
+            )),
+        }
+    }
+
+    fn __str__(&self) -> String {
+        self.explanation.clone()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "ChangelogBehaviour(update_changelog={}, explanation={})",
+            self.update_changelog, &self.explanation
+        )
+    }
+}
+
+#[pyfunction]
+fn guess_update_changelog(
+    tree: PyObject,
+    path: std::path::PathBuf,
+    cl: Option<PyObject>,
+) -> pyo3::PyResult<Option<PyObject>> {
+    let path = path.as_path();
+    Python::with_gil(|py| {
+        let tree = breezyshim::tree::WorkingTree(tree);
+        let cl = cl
+            .map(|cl| lintian_brush::debianshim::Changelog::from_pyobject(cl.as_ref(py)).unwrap());
+        Ok(
+            lintian_brush::detect_gbp_dch::guess_update_changelog(&tree, path, cl).map(|cb| {
+                ChangelogBehaviour {
+                    update_changelog: cb.update_changelog,
+                    explanation: cb.explanation,
+                }
+                .into_py(py)
+            }),
+        )
+    })
 }
 
 #[pymodule]
@@ -550,5 +613,15 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(control_file_present, m)?)?;
     m.add_function(wrap_pyfunction!(control_files_in_root, m)?)?;
     m.add_function(wrap_pyfunction!(is_debcargo_package, m)?)?;
+    let v = PyTuple::new(
+        py,
+        env!("CARGO_PKG_VERSION")
+            .split('.')
+            .map(|x| x.parse::<u32>().unwrap())
+            .collect::<Vec<u32>>(),
+    );
+    m.add("__version__", v)?;
+    m.add_class::<ChangelogBehaviour>()?;
+    m.add_wrapped(wrap_pyfunction!(guess_update_changelog))?;
     Ok(())
 }

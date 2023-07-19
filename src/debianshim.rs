@@ -1,23 +1,29 @@
-use pyo3::prelude::*;
-pub struct Changelog(PyObject);
 use debversion::Version;
+use pyo3::prelude::*;
+
+pub struct Changelog(PyObject, Vec<ChangeBlock>);
 
 impl Changelog {
     pub fn new(text: &str, max_blocks: Option<i32>) -> PyResult<Self> {
         Python::with_gil(|py| {
-            let changelog = py.import("debian.changelog")?;
-            let changelog = changelog.getattr("Changelog")?;
-            let changelog = changelog.call1((text, max_blocks))?;
-            Ok(Changelog(changelog.into()))
+            let m = py.import("debian.changelog")?;
+            let f = m.getattr("Changelog")?;
+            let changelog = f.call1((text, max_blocks))?;
+            Self::from_pyobject(changelog)
         })
     }
 
-    pub fn pop_first(&self) -> PyResult<()> {
+    pub fn from_pyobject(changelog: &PyAny) -> PyResult<Self> {
+        let blocks = changelog.getattr("_blocks")?.extract()?;
+        Ok(Changelog(changelog.into(), blocks))
+    }
+
+    pub fn pop_first(&mut self) {
+        self.1.remove(0);
         Python::with_gil(|py| {
-            let blocks = self.0.getattr(py, "_blocks")?;
-            blocks.as_ref(py).del_item(0)?;
-            Ok(())
-        })
+            let blocks = self.0.getattr(py, "_blocks").unwrap();
+            blocks.as_ref(py).del_item(0).unwrap();
+        });
     }
 
     pub fn from_reader(mut r: impl std::io::Read, max_blocks: Option<i32>) -> PyResult<Self> {
@@ -26,25 +32,12 @@ impl Changelog {
         Self::new(text.as_str(), max_blocks)
     }
 
-    pub fn package(&self) -> String {
-        Python::with_gil(|py| {
-            let package = self.0.getattr(py, "package").unwrap();
-            package.extract(py).unwrap()
-        })
+    pub fn len(&self) -> usize {
+        self.1.len()
     }
 
-    pub fn version(&self) -> Version {
-        Python::with_gil(|py| {
-            let version = self.0.getattr(py, "version").unwrap();
-            version.extract(py).unwrap()
-        })
-    }
-
-    pub fn distributions(&self) -> String {
-        Python::with_gil(|py| {
-            let distributions = self.0.getattr(py, "distributions").unwrap();
-            distributions.extract(py).unwrap()
-        })
+    pub fn is_empty(&self) -> bool {
+        self.1.is_empty()
     }
 }
 
@@ -53,6 +46,58 @@ impl ToString for Changelog {
         Python::with_gil(|py| {
             let s = self.0.call_method0(py, "__str__").unwrap();
             s.extract(py).unwrap()
+        })
+    }
+}
+
+impl core::ops::Index<usize> for Changelog {
+    type Output = ChangeBlock;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.1[index]
+    }
+}
+
+pub struct ChangeBlock {
+    changes: Vec<String>,
+    distributions: String,
+    version: Version,
+    package: String,
+}
+
+impl ChangeBlock {
+    pub fn changes(&self) -> &Vec<String> {
+        &self.changes
+    }
+
+    pub fn distributions(&self) -> &str {
+        self.distributions.as_str()
+    }
+
+    pub fn version(&self) -> &Version {
+        &self.version
+    }
+
+    pub fn package(&self) -> &str {
+        self.package.as_str()
+    }
+}
+
+impl FromPyObject<'_> for ChangeBlock {
+    fn extract(ob: &PyAny) -> PyResult<Self> {
+        let changes = ob.getattr("_changes")?;
+        let changes = changes.extract()?;
+        let distributions = ob.getattr("distributions")?;
+        let distributions = distributions.extract()?;
+        let version = ob.getattr("version")?;
+        let version = version.extract()?;
+        let package = ob.getattr("package")?;
+        let package = package.extract()?;
+        Ok(ChangeBlock {
+            changes,
+            distributions,
+            version,
+            package,
         })
     }
 }

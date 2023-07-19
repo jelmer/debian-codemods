@@ -1,6 +1,6 @@
 [package]
 name = "lintian-brush-py"
-version = "0.0.0"
+version = "0.150.0"
 authors = ["Jelmer Vernooĳ <jelmer@jelmer.uk>"]
 edition = "2018"
 license = "GPL-3.0-or-later"

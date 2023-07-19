@@ -9,13 +9,15 @@ use std::str::FromStr;
 use indicatif::ProgressBar;
 
 use crate::debianshim::Changelog;
+use crate::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
 use breezyshim::dirty_tracker::{get_dirty_tracker, DirtyTracker};
-use breezyshim::tree::{CommitError, Tree, TreeChange, WorkingTree};
+use breezyshim::tree::{CommitError, Error as TreeError, Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::{check_clean_tree, reset_tree};
 use breezyshim::RevisionId;
 
 pub mod config;
 pub mod debianshim;
+pub mod detect_gbp_dch;
 pub mod py;
 pub mod svp;
 
@@ -1226,267 +1228,227 @@ pub fn run_lintian_fixer(
     basis_tree: Option<&Box<dyn Tree>>,
     changes_by: Option<&str>,
 ) -> Result<(FixerResult, String), FixerError> {
-    pyo3::Python::with_gil(|py| {
-        use pyo3::import_exception;
-        import_exception!(breezy.transport, NoSuchFile);
-        let mut _bt = None;
-        let basis_tree: &Box<dyn Tree> = if let Some(basis_tree) = basis_tree {
-            basis_tree
-        } else {
-            _bt = Some(local_tree.basis_tree());
-            _bt.as_ref().unwrap()
-        };
-        let changes_by = changes_by.unwrap_or("lintian-brush");
+    let mut _bt = None;
+    let basis_tree: &Box<dyn Tree> = if let Some(basis_tree) = basis_tree {
+        basis_tree
+    } else {
+        _bt = Some(local_tree.basis_tree());
+        _bt.as_ref().unwrap()
+    };
+    let changes_by = changes_by.unwrap_or("lintian-brush");
 
-        let changelog_path = subpath.join("debian/changelog");
+    let changelog_path = subpath.join("debian/changelog");
 
-        let r = match local_tree.get_file(changelog_path.as_path()) {
-            Ok(f) => f,
-            Err(e) if e.is_instance_of::<NoSuchFile>(py) => {
-                return Err(FixerError::NotDebianPackage(
-                    local_tree.abspath(subpath).unwrap(),
-                ));
-            }
-            Err(e) => return Err(e.into()),
-        };
-
-        let cl = debianshim::Changelog::from_reader(r, Some(1))?;
-        let package = cl.package();
-        let current_version: Version = if cl.distributions() == "UNRELEASED" {
-            cl.version()
-        } else {
-            let mut version = cl.version();
-            increment_version(&mut version);
-            version
-        };
-
-        let compat_release = compat_release.unwrap_or("sid");
-        log::debug!("Running fixer {:?}", fixer);
-        let mut result = match fixer.run(
-            local_tree.abspath(subpath).unwrap().as_path(),
-            package.as_str(),
-            &current_version,
-            compat_release,
-            minimum_certainty,
-            trust_package,
-            allow_reformatting,
-            net_access,
-            opinionated,
-            diligence,
-        ) {
-            Ok(r) => r,
-            Err(e) => {
-                reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
-                return Err(e);
-            }
-        };
-        if let Some(certainty) = result.certainty {
-            if !certainty_sufficient(certainty, minimum_certainty) {
-                reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
-                return Err(FixerError::NotCertainEnough(
-                    certainty,
-                    minimum_certainty,
-                    result.overridden_lintian_issues,
-                ));
-            }
+    let r = match local_tree.get_file(changelog_path.as_path()) {
+        Ok(f) => f,
+        Err(TreeError::NoSuchFile(_pb)) => {
+            return Err(FixerError::NotDebianPackage(
+                local_tree.abspath(subpath).unwrap(),
+            ));
         }
-        let mut specific_files = if let Some(dirty_tracker) = dirty_tracker {
-            let mut relpaths: Vec<_> = dirty_tracker.relpaths().into_iter().collect();
-            relpaths.sort();
-            // Sort paths so that directories get added before the files they
-            // contain (on VCSes where it matters)
-            local_tree.add(
-                relpaths
-                    .iter()
-                    .filter_map(|p| {
-                        if local_tree.has_filename(p) && local_tree.is_ignored(p).is_some() {
-                            Some(p.as_path())
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            )?;
-            let specific_files = relpaths
-                .into_iter()
-                .filter(|p| local_tree.is_versioned(p))
-                .collect::<Vec<_>>();
-            if specific_files.is_empty() {
-                return Err(FixerError::NoChangesAfterOverrides(
-                    result.overridden_lintian_issues,
-                ));
-            }
-            Some(specific_files)
-        } else {
-            local_tree.smart_add(&[local_tree.abspath(subpath).unwrap().as_path()])?;
-            if subpath.as_os_str().is_empty() {
-                None
-            } else {
-                Some(vec![subpath.to_path_buf()])
-            }
-        };
+        Err(TreeError::Other(e)) => return Err(e.into()),
+    };
 
-        if local_tree.supports_setting_file_ids() {
-            pyo3::Python::with_gil(|py| {
-                let rename_map_m = py.import("breezy.rename_map")?;
-                let rename_map = rename_map_m.getattr("RenameMap")?;
-                rename_map
-                    .call_method1("guess_renames", (basis_tree.obj(), &local_tree.0, false))?;
-                Ok::<(), pyo3::PyErr>(())
-            })?;
+    let cl = debianshim::Changelog::from_reader(r, Some(1))?;
+    let package = cl[0].package();
+    let current_version: Version = if cl[0].distributions() == "UNRELEASED" {
+        cl[0].version().clone()
+    } else {
+        let mut version = cl[0].version().clone();
+        increment_version(&mut version);
+        version
+    };
+
+    let compat_release = compat_release.unwrap_or("sid");
+    log::debug!("Running fixer {:?}", fixer);
+    let mut result = match fixer.run(
+        local_tree.abspath(subpath).unwrap().as_path(),
+        package,
+        &current_version,
+        compat_release,
+        minimum_certainty,
+        trust_package,
+        allow_reformatting,
+        net_access,
+        opinionated,
+        diligence,
+    ) {
+        Ok(r) => r,
+        Err(e) => {
+            reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
+            return Err(e);
         }
-
-        let specific_files_ref = specific_files
-            .as_ref()
-            .map(|fs| fs.iter().map(|p| p.as_path()).collect::<Vec<_>>());
-
-        let changes = local_tree
-            .iter_changes(
-                basis_tree,
-                specific_files_ref.as_deref(),
-                Some(false),
-                Some(true),
-            )?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        if local_tree.get_parent_ids()?.len() <= 1 && changes.is_empty() {
+    };
+    if let Some(certainty) = result.certainty {
+        if !certainty_sufficient(certainty, minimum_certainty) {
+            reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
+            return Err(FixerError::NotCertainEnough(
+                certainty,
+                minimum_certainty,
+                result.overridden_lintian_issues,
+            ));
+        }
+    }
+    let mut specific_files = if let Some(dirty_tracker) = dirty_tracker {
+        let mut relpaths: Vec<_> = dirty_tracker.relpaths().into_iter().collect();
+        relpaths.sort();
+        // Sort paths so that directories get added before the files they
+        // contain (on VCSes where it matters)
+        local_tree.add(
+            relpaths
+                .iter()
+                .filter_map(|p| {
+                    if local_tree.has_filename(p) && local_tree.is_ignored(p).is_some() {
+                        Some(p.as_path())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )?;
+        let specific_files = relpaths
+            .into_iter()
+            .filter(|p| local_tree.is_versioned(p))
+            .collect::<Vec<_>>();
+        if specific_files.is_empty() {
             return Err(FixerError::NoChangesAfterOverrides(
                 result.overridden_lintian_issues,
             ));
         }
-
-        if result.description.is_empty() {
-            reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
-            return Err(FixerError::DescriptionMissing);
+        Some(specific_files)
+    } else {
+        local_tree.smart_add(&[local_tree.abspath(subpath).unwrap().as_path()])?;
+        if subpath.as_os_str().is_empty() {
+            None
+        } else {
+            Some(vec![subpath.to_path_buf()])
         }
+    };
 
-        let lines = result.description.split('\n').collect::<Vec<_>>();
-        let mut summary = lines[0].to_string();
-        let details = lines
-            .iter()
-            .skip(1)
-            .take_while(|l| !l.is_empty())
-            .collect::<Vec<_>>();
+    if local_tree.supports_setting_file_ids() {
+        pyo3::Python::with_gil(|py| {
+            let rename_map_m = py.import("breezy.rename_map")?;
+            let rename_map = rename_map_m.getattr("RenameMap")?;
+            rename_map.call_method1("guess_renames", (basis_tree.obj(), &local_tree.0, false))?;
+            Ok::<(), pyo3::PyErr>(())
+        })?;
+    }
 
-        // If there are upstream changes in a non-native package, perhaps
-        // export them to debian/patches
-        if has_non_debian_changes(changes.as_slice(), subpath)
-            && current_version.debian_revision.is_some()
-        {
-            let (patch_name, updated_specific_files) = match _upstream_changes_to_patch(
-                local_tree,
-                basis_tree,
-                dirty_tracker,
-                subpath,
-                &result
-                    .patch_name
-                    .as_deref()
-                    .map_or_else(|| fixer.name(), |n| n.to_string()),
-                result.description.as_str(),
-                timestamp,
-            ) {
-                Ok(r) => r,
-                Err(e) => {
-                    reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
-                    return Err(FixerError::Python(e));
-                }
-            };
+    let specific_files_ref = specific_files
+        .as_ref()
+        .map(|fs| fs.iter().map(|p| p.as_path()).collect::<Vec<_>>());
 
-            specific_files = Some(updated_specific_files);
+    let changes = local_tree
+        .iter_changes(
+            basis_tree,
+            specific_files_ref.as_deref(),
+            Some(false),
+            Some(true),
+        )?
+        .collect::<Result<Vec<_>, _>>()?;
 
-            summary = format!("Add patch {}: {}", patch_name, summary);
-        }
+    if local_tree.get_parent_ids()?.len() <= 1 && changes.is_empty() {
+        return Err(FixerError::NoChangesAfterOverrides(
+            result.overridden_lintian_issues,
+        ));
+    }
 
-        let update_changelog = if only_changes_last_changelog_block(
+    if result.description.is_empty() {
+        reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
+        return Err(FixerError::DescriptionMissing);
+    }
+
+    let lines = result.description.split('\n').collect::<Vec<_>>();
+    let mut summary = lines[0].to_string();
+    let details = lines
+        .iter()
+        .skip(1)
+        .take_while(|l| !l.is_empty())
+        .collect::<Vec<_>>();
+
+    // If there are upstream changes in a non-native package, perhaps
+    // export them to debian/patches
+    if has_non_debian_changes(changes.as_slice(), subpath)
+        && current_version.debian_revision.is_some()
+    {
+        let (patch_name, updated_specific_files) = match _upstream_changes_to_patch(
             local_tree,
             basis_tree,
-            changelog_path.as_path(),
-            changes.iter(),
-        )? {
-            // If the script only changed the last entry in the changelog,
-            // don't update the changelog
-            false
-        } else {
-            update_changelog()
+            dirty_tracker,
+            subpath,
+            &result
+                .patch_name
+                .as_deref()
+                .map_or_else(|| fixer.name(), |n| n.to_string()),
+            result.description.as_str(),
+            timestamp,
+        ) {
+            Ok(r) => r,
+            Err(e) => {
+                reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
+                return Err(FixerError::Python(e));
+            }
         };
 
-        if update_changelog {
-            let mut entry = vec![summary.as_str()];
-            entry.extend(details);
+        specific_files = Some(updated_specific_files);
 
-            add_changelog_entry(local_tree, changelog_path.as_path(), entry.as_slice())?;
-            if let Some(specific_files) = specific_files.as_mut() {
-                specific_files.push(changelog_path);
-            }
-        }
-
-        let mut description = format!("{}\n", result.description);
-        description.push('\n');
-        description.push_str(format!("Changes-By: {}\n", changes_by).as_str());
-        for tag in result.fixed_lintian_tags() {
-            description.push_str(format!("Fixes: lintian: {}\n", tag).as_str());
-            description.push_str(
-                format!("See-also: https://lintian.debian.org/tags/{}.html\n", tag).as_str(),
-            );
-        }
-
-        let committer = committer.map_or_else(|| get_committer(local_tree), |c| c.to_string());
-
-        let specific_files_ref = specific_files
-            .as_ref()
-            .map(|fs| fs.iter().map(|p| p.as_path()).collect::<Vec<_>>());
-
-        let revid = local_tree
-            .commit(
-                description.as_str(),
-                Some(false),
-                Some(committer.as_str()),
-                specific_files_ref.as_deref(),
-            )
-            .map_err(|e| match e {
-                CommitError::PointlessCommit => FixerError::NoChanges,
-                CommitError::Other(e) => FixerError::Python(e),
-            })?;
-        result.revision_id = Some(revid);
-
-        // TODO(jelmer): Support running sbuild & verify lintian warning is gone?
-        Ok((result, summary))
-    })
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
-pub struct ChangelogBehaviour {
-    pub update_changelog: bool,
-    pub explanation: String,
-}
-
-impl From<ChangelogBehaviour> for (bool, String) {
-    fn from(b: ChangelogBehaviour) -> Self {
-        (b.update_changelog, b.explanation)
+        summary = format!("Add patch {}: {}", patch_name, summary);
     }
-}
 
-impl From<&ChangelogBehaviour> for (bool, String) {
-    fn from(b: &ChangelogBehaviour) -> Self {
-        (b.update_changelog, b.explanation.clone())
+    let update_changelog = if only_changes_last_changelog_block(
+        local_tree,
+        basis_tree,
+        changelog_path.as_path(),
+        changes.iter(),
+    )? {
+        // If the script only changed the last entry in the changelog,
+        // don't update the changelog
+        false
+    } else {
+        update_changelog()
+    };
+
+    if update_changelog {
+        let mut entry = vec![summary.as_str()];
+        entry.extend(details);
+
+        add_changelog_entry(local_tree, changelog_path.as_path(), entry.as_slice())?;
+        if let Some(specific_files) = specific_files.as_mut() {
+            specific_files.push(changelog_path);
+        }
     }
-}
 
-pub fn determine_update_changelog(
-    local_tree: &WorkingTree,
-    debian_path: &std::path::Path,
-) -> pyo3::PyResult<ChangelogBehaviour> {
-    pyo3::Python::with_gil(|py| {
-        let m = py.import("lintian_brush")?;
-        let f = m.getattr("determine_update_changelog")?;
-        let result = f.call1((local_tree.obj(), (debian_path,)))?;
+    let mut description = format!("{}\n", result.description);
+    description.push('\n');
+    description.push_str(format!("Changes-By: {}\n", changes_by).as_str());
+    for tag in result.fixed_lintian_tags() {
+        description.push_str(format!("Fixes: lintian: {}\n", tag).as_str());
+        description
+            .push_str(format!("See-also: https://lintian.debian.org/tags/{}.html\n", tag).as_str());
+    }
 
-        Ok(ChangelogBehaviour {
-            update_changelog: result.getattr("update_changelog")?.extract()?,
-            explanation: result.getattr("explanation")?.extract()?,
-        })
-    })
+    let committer = committer.map_or_else(|| get_committer(local_tree), |c| c.to_string());
+
+    let specific_files_ref = specific_files
+        .as_ref()
+        .map(|fs| fs.iter().map(|p| p.as_path()).collect::<Vec<_>>());
+
+    let revid = local_tree
+        .commit(
+            description.as_str(),
+            Some(false),
+            Some(committer.as_str()),
+            specific_files_ref.as_deref(),
+        )
+        .map_err(|e| match e {
+            CommitError::PointlessCommit => FixerError::NoChanges,
+            CommitError::Other(e) => FixerError::Python(e),
+        })?;
+    result.revision_id = Some(revid);
+
+    // TODO(jelmer): Support running sbuild & verify lintian warning is gone?
+    Ok((result, summary))
 }
 
 #[derive(Debug)]
@@ -1586,7 +1548,7 @@ pub fn run_lintian_fixers(
             return update_changelog();
         }
         let debian_path = subpath.join("debian");
-        let cb = determine_update_changelog(local_tree, debian_path.as_path()).unwrap();
+        let cb = determine_update_changelog(local_tree, debian_path.as_path());
         changelog_behaviour = Some(cb);
         changelog_behaviour.as_ref().unwrap().update_changelog
     };
@@ -1799,59 +1761,55 @@ pub fn only_changes_last_changelog_block<'a>(
     changelog_path: &std::path::Path,
     changes: impl Iterator<Item = &'a TreeChange>,
 ) -> pyo3::PyResult<bool> {
-    use pyo3::import_exception;
-    import_exception!(breezy.transport, NoSuchFile);
-    pyo3::Python::with_gil(|py| {
-        let read_lock = tree.lock_read();
-        let basis_lock = basis_tree.lock_read();
-        let mut changes_seen = false;
-        for change in changes {
-            if let Some(path) = change.path.1.as_ref() {
-                if path == std::path::Path::new("") {
-                    continue;
-                }
-                if path == changelog_path {
-                    changes_seen = true;
-                    continue;
-                }
-                if !tree.has_versioned_directories() && changelog_path.starts_with(path) {
-                    continue;
-                }
+    let read_lock = tree.lock_read();
+    let basis_lock = basis_tree.lock_read();
+    let mut changes_seen = false;
+    for change in changes {
+        if let Some(path) = change.path.1.as_ref() {
+            if path == std::path::Path::new("") {
+                continue;
             }
-            return Ok(false);
+            if path == changelog_path {
+                changes_seen = true;
+                continue;
+            }
+            if !tree.has_versioned_directories() && changelog_path.starts_with(path) {
+                continue;
+            }
         }
+        return Ok(false);
+    }
 
-        if !changes_seen {
+    if !changes_seen {
+        return Ok(false);
+    }
+    let mut new_cl = match basis_tree.get_file(changelog_path) {
+        Ok(f) => Changelog::from_reader(f, None)?,
+        Err(TreeError::NoSuchFile(_)) => {
             return Ok(false);
         }
-        let new_cl = match basis_tree.get_file(changelog_path) {
-            Ok(f) => Changelog::from_reader(f, None)?,
-            Err(e) if e.is_instance_of::<NoSuchFile>(py) => {
-                return Ok(false);
-            }
-            Err(e) => {
-                return Err(e);
-            }
-        };
-        let old_cl = match tree.get_file(changelog_path) {
-            Ok(f) => Changelog::from_reader(f, None)?,
-            Err(e) if e.is_instance_of::<NoSuchFile>(py) => {
-                return Ok(true);
-            }
-            Err(e) => {
-                return Err(e);
-            }
-        };
-        if old_cl.distributions() != "UNRELEASED" {
-            return Ok(false);
+        Err(TreeError::Other(e)) => {
+            return Err(e);
         }
-        new_cl.pop_first()?;
-        old_cl.pop_first()?;
-        std::mem::drop(read_lock);
-        std::mem::drop(basis_lock);
-        println!("{:?} {:?}", new_cl.to_string(), old_cl.to_string());
-        Ok(new_cl.to_string() == old_cl.to_string())
-    })
+    };
+    let mut old_cl = match tree.get_file(changelog_path) {
+        Ok(f) => Changelog::from_reader(f, None)?,
+        Err(TreeError::NoSuchFile(_)) => {
+            return Ok(true);
+        }
+        Err(TreeError::Other(e)) => {
+            return Err(e);
+        }
+    };
+    if old_cl[0].distributions() != "UNRELEASED" {
+        return Ok(false);
+    }
+    new_cl.pop_first();
+    old_cl.pop_first();
+    std::mem::drop(read_lock);
+    std::mem::drop(basis_lock);
+    println!("{:?} {:?}", new_cl.to_string(), old_cl.to_string());
+    Ok(new_cl.to_string() == old_cl.to_string())
 }
 
 /// Increment a version number.
@@ -2084,4 +2042,58 @@ pub fn control_files_in_root(tree: &dyn Tree, subpath: &std::path::Path) -> bool
     }
 
     tree.has_filename(subpath.join("control.in").as_path())
+}
+
+fn note_changelog_policy(policy: bool, msg: &str) {
+    lazy_static::lazy_static! {
+        static ref CHANGELOG_POLICY_NOTED: std::sync::Mutex<bool> = std::sync::Mutex::new(false);
+    }
+    if let Ok(mut policy_noted) = CHANGELOG_POLICY_NOTED.lock() {
+        if !*policy_noted {
+            let extra = if policy {
+                "Specify --no-update-changelog to override."
+            } else {
+                "Specify --update-changelog to override."
+            };
+            log::info!("{} {}", msg, extra);
+        }
+        *policy_noted = true;
+    }
+}
+
+pub fn determine_update_changelog(
+    local_tree: &WorkingTree,
+    debian_path: &std::path::Path,
+) -> ChangelogBehaviour {
+    let changelog_path = debian_path.join("changelog");
+
+    let cl = match local_tree.get_file(changelog_path.as_path()) {
+        Ok(f) => Changelog::from_reader(f, None).unwrap(),
+
+        Err(TreeError::NoSuchFile(_)) => {
+            // If there's no changelog, then there's nothing to update!
+            return ChangelogBehaviour {
+                update_changelog: false,
+                explanation: "No changelog found".to_string(),
+            };
+        }
+        Err(e) => {
+            panic!("Error reading changelog: {}", e);
+        }
+    };
+
+    let behaviour = guess_update_changelog(local_tree, debian_path, Some(cl));
+
+    let behaviour = if let Some(behaviour) = behaviour {
+        note_changelog_policy(behaviour.update_changelog, behaviour.explanation.as_str());
+        behaviour
+    } else {
+        // If we can't make an educated guess, assume yes.
+        ChangelogBehaviour {
+            update_changelog: true,
+            explanation: "Assuming changelog should be updated".to_string(),
+        }
+    };
+
+    behaviour
 }
