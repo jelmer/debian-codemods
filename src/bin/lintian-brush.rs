@@ -129,9 +129,11 @@ struct OutputArgs {
     #[arg(long, default_value_t = false, hide = true)]
     disable_inotify: bool,
 
+    /// Document changes in the changelog [default: auto-detect]
     #[arg(long, default_value_t = false, conflicts_with = "no_update_changelog")]
     update_changelog: bool,
 
+    /// Do not document changes in the changelog (useful when using e.g. "gbp dch") [default: auto-detect]
     #[arg(long, default_value_t = false, conflicts_with = "update_changelog")]
     no_update_changelog: bool,
 }

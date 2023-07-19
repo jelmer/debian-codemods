@@ -911,7 +911,7 @@ pub fn available_lintian_fixers(
     Ok(fixers.into_iter())
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct UnknownFixer(pub String);
 
 impl std::fmt::Display for UnknownFixer {
@@ -940,6 +940,9 @@ pub fn select_fixers(
     for f in fixers.into_iter() {
         if let Some(select_set) = select_set.as_mut() {
             if !select_set.remove(f.name().as_str()) {
+                if let Some(exclude_set) = exclude_set.as_mut() {
+                    exclude_set.remove(f.name().as_str());
+                }
                 continue;
             }
         }
@@ -954,12 +957,120 @@ pub fn select_fixers(
         Err(UnknownFixer(
             select_set.unwrap().iter().next().unwrap().to_string(),
         ))
-    } else if select_set.is_some() && !exclude_set.as_ref().unwrap().is_empty() {
+    } else if exclude_set.is_some() && !exclude_set.as_ref().unwrap().is_empty() {
         Err(UnknownFixer(
             exclude_set.unwrap().iter().next().unwrap().to_string(),
         ))
     } else {
         Ok(ret)
+    }
+}
+
+#[cfg(test)]
+mod select_fixers_tests {
+    use super::*;
+
+    #[derive(Debug)]
+    struct DummyFixer<'a> {
+        name: &'a str,
+        tags: Vec<&'a str>,
+    }
+
+    impl DummyFixer<'_> {
+        fn new<'a>(name: &'a str, tags: &[&'a str]) -> DummyFixer<'a> {
+            DummyFixer {
+                name,
+                tags: tags.to_vec(),
+            }
+        }
+    }
+
+    impl<'a> Fixer for DummyFixer<'a> {
+        fn name(&self) -> String {
+            self.name.to_string()
+        }
+
+        fn path(&self) -> std::path::PathBuf {
+            unimplemented!()
+        }
+
+        fn lintian_tags(&self) -> Vec<String> {
+            self.tags.iter().map(|s| s.to_string()).collect::<Vec<_>>()
+        }
+
+        fn run(
+            &self,
+            _basedir: &std::path::Path,
+            _package: &str,
+            _current_version: &Version,
+            _compat_release: &str,
+            _minimum_certainty: Option<Certainty>,
+            _trust_package: Option<bool>,
+            _allow_reformatting: Option<bool>,
+            _net_access: Option<bool>,
+            _opinionated: Option<bool>,
+            _diligence: Option<i32>,
+        ) -> Result<FixerResult, FixerError> {
+            unimplemented!()
+        }
+    }
+
+    #[test]
+    fn test_exists() {
+        assert_eq!(
+            Ok(vec!["dummy1".to_string()]),
+            select_fixers(
+                vec![
+                    Box::new(DummyFixer::new("dummy1", &["some-tag"])),
+                    Box::new(DummyFixer::new("dummy2", &["other-tag"])),
+                ],
+                Some(vec!["dummy1"].as_slice()),
+                None
+            )
+            .map(|m| m.into_iter().map(|f| f.name()).collect::<Vec<_>>())
+        );
+    }
+
+    #[test]
+    fn test_missing() {
+        assert!(select_fixers(
+            vec![
+                Box::new(DummyFixer::new("dummy1", &["some-tag"])),
+                Box::new(DummyFixer::new("dummy2", &["other-tag"])),
+            ],
+            Some(vec!["other"].as_slice()),
+            None
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn test_exclude_missing() {
+        assert!(select_fixers(
+            vec![
+                Box::new(DummyFixer::new("dummy1", &["some-tag"])),
+                Box::new(DummyFixer::new("dummy2", &["other-tag"])),
+            ],
+            Some(vec!["dummy"].as_slice()),
+            Some(vec!["some-other"].as_slice())
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn test_exclude() {
+        assert_eq!(
+            Ok(vec!["dummy1".to_string()]),
+            select_fixers(
+                vec![
+                    Box::new(DummyFixer::new("dummy1", &["some-tag"])),
+                    Box::new(DummyFixer::new("dummy2", &["other-tag"])),
+                ],
+                Some(vec!["dummy1"].as_slice()),
+                Some(vec!["dummy2"].as_slice())
+            )
+            .map(|m| m.into_iter().map(|f| f.name()).collect::<Vec<_>>())
+        );
     }
 }
 
