@@ -1037,8 +1037,8 @@ pub fn data_file_path(
         return Some(path);
     }
 
-    use pyo3::Python;
-    match Python::with_gil(|py| {
+    #[cfg(feature = "python")]
+    match pyo3::Python::with_gil(|py| {
         let pkg_resources = py.import("pkg_resources").unwrap();
         if let Ok(path) = pkg_resources.call_method1(
             "resource_filename",
@@ -1170,7 +1170,7 @@ pub fn run_lintian_fixer(
         };
         if let Some(certainty) = result.certainty {
             if !certainty_sufficient(certainty, minimum_certainty) {
-                reset_tree(local_tree, Some(&basis_tree), Some(subpath), dirty_tracker)?;
+                reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
                 return Err(FixerError::NotCertainEnough(
                     certainty,
                     minimum_certainty,
@@ -1231,7 +1231,7 @@ pub fn run_lintian_fixer(
 
         let changes = local_tree
             .iter_changes(
-                &basis_tree,
+                basis_tree,
                 specific_files_ref.as_deref(),
                 Some(false),
                 Some(true),

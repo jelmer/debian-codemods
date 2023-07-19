@@ -104,11 +104,11 @@ impl Fixer {
                     }
                 },
                 #[cfg(feature = "python")]
-                crate::FixerError::Python(e) => e.into(),
+                crate::FixerError::Python(e) => e,
                 crate::FixerError::Other(e) => PyRuntimeError::new_err(e),
-                crate::FixerError::NoChangesAfterOverrides(o) => NoChanges::new_err((py.None(),)),
+                crate::FixerError::NoChangesAfterOverrides(_o) => NoChanges::new_err((py.None(),)),
                 crate::FixerError::DescriptionMissing => DescriptionMissing::new_err(()),
-                crate::FixerError::NotCertainEnough(certainty, minimum_certainty, os) => {
+                crate::FixerError::NotCertainEnough(certainty, minimum_certainty, _os) => {
                     NotCertainEnough::new_err((
                         py.None(),
                         certainty.to_string(),

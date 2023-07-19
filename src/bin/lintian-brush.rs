@@ -1,14 +1,13 @@
 use breezyshim::branch::{Branch, BranchOpenError};
-use breezyshim::tree::{MutableTree, Tree, WorkingTree, WorkingTreeOpenError};
+use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
 use clap::Parser;
 use distro_info::DistroInfo;
-use env_logger::fmt::Formatter;
+
 use lintian_brush::svp::{
     enabled as svp_enabled, load_resume, report_fatal, report_success_debian,
 };
-use lintian_brush::{get_committer, Certainty, ChangelogBehaviour, ManyResult, OverallError};
+use lintian_brush::{get_committer, Certainty, ManyResult, OverallError};
 use std::collections::HashMap;
-use std::fmt::Write;
 use std::io::Write as _;
 
 #[derive(clap::Args, Clone, Debug)]
@@ -206,7 +205,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     log::error!("No version control directory found (e.g. a .git directory).");
                     std::process::exit(1);
                 }
-                Err(BranchOpenError::DependencyNotPresent(name, reason)) => {
+                Err(BranchOpenError::DependencyNotPresent(name, _reason)) => {
                     log::error!(
                         "Unable to open branch at {}: missing package {}",
                         args.output.directory.display(),
