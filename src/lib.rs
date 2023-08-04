@@ -1187,6 +1187,22 @@ pub fn find_fixers_dir() -> Option<std::path::PathBuf> {
     data_file_path("fixers", |path| path.is_dir())
 }
 
+pub fn apply_or_revert<R, E>(
+    local_tree: &WorkingTree,
+    subpath: &std::path::Path,
+    basis_tree: &Box<dyn Tree>,
+    dirty_tracker: Option<&DirtyTracker>,
+    applier: impl FnOnce(&std::path::Path) -> Result<R, E>,
+) -> Result<R, E> {
+    match applier(local_tree.abspath(subpath).unwrap().as_path()) {
+        Ok(r) => Ok(r),
+        Err(e) => {
+            reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker).unwrap();
+            Err(e)
+        }
+    }
+}
+
 /// Run a lintian fixer on a tree.
 ///
 /// # Arguments
@@ -1229,13 +1245,6 @@ pub fn run_lintian_fixer(
     basis_tree: Option<&Box<dyn Tree>>,
     changes_by: Option<&str>,
 ) -> Result<(FixerResult, String), FixerError> {
-    let mut _bt = None;
-    let basis_tree: &Box<dyn Tree> = if let Some(basis_tree) = basis_tree {
-        basis_tree
-    } else {
-        _bt = Some(local_tree.basis_tree());
-        _bt.as_ref().unwrap()
-    };
     let changes_by = changes_by.unwrap_or("lintian-brush");
 
     let changelog_path = subpath.join("debian/changelog");
@@ -1260,36 +1269,41 @@ pub fn run_lintian_fixer(
         version
     };
 
-    let compat_release = compat_release.unwrap_or("sid");
-    log::debug!("Running fixer {:?}", fixer);
-    let mut result = match fixer.run(
-        local_tree.abspath(subpath).unwrap().as_path(),
-        package,
-        &current_version,
-        compat_release,
-        minimum_certainty,
-        trust_package,
-        allow_reformatting,
-        net_access,
-        opinionated,
-        diligence,
-    ) {
-        Ok(r) => r,
-        Err(e) => {
-            reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
-            return Err(e);
-        }
+    let mut _bt = None;
+    let basis_tree: &Box<dyn Tree> = if let Some(basis_tree) = basis_tree {
+        basis_tree
+    } else {
+        _bt = Some(local_tree.basis_tree());
+        _bt.as_ref().unwrap()
     };
-    if let Some(certainty) = result.certainty {
-        if !certainty_sufficient(certainty, minimum_certainty) {
-            reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
-            return Err(FixerError::NotCertainEnough(
-                certainty,
-                minimum_certainty,
-                result.overridden_lintian_issues,
-            ));
+
+    let mut result = apply_or_revert(local_tree, subpath, basis_tree, dirty_tracker, |basedir| {
+        let compat_release = compat_release.unwrap_or("sid");
+        log::debug!("Running fixer {:?}", fixer);
+        let result = fixer.run(
+            basedir,
+            package,
+            &current_version,
+            compat_release,
+            minimum_certainty,
+            trust_package,
+            allow_reformatting,
+            net_access,
+            opinionated,
+            diligence,
+        )?;
+        if let Some(certainty) = result.certainty {
+            if !certainty_sufficient(certainty, minimum_certainty) {
+                return Err(FixerError::NotCertainEnough(
+                    certainty,
+                    minimum_certainty,
+                    result.overridden_lintian_issues,
+                ));
+            }
         }
-    }
+        Ok(result)
+    })?;
+
     let mut specific_files = if let Some(dirty_tracker) = dirty_tracker {
         let mut relpaths: Vec<_> = dirty_tracker.relpaths().into_iter().collect();
         relpaths.sort();
