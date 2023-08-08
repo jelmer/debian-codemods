@@ -52,6 +52,7 @@ DEFAULT_URLLIB_TIMEOUT = 3
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_ADDON_FIXERS = _lintian_brush_rs.DEFAULT_ADDON_FIXERS
 LintianIssue = _lintian_brush_rs.LintianIssue
 FixerResult = _lintian_brush_rs.FixerResult
 UnsupportedCertainty = _lintian_brush_rs.UnsupportedCertainty
