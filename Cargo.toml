@@ -17,7 +17,7 @@ distro-info = { version = ">=0.4.0" }
 chrono = { version = "0.4" }
 log = "0.4"
 configparser = "3.0.2"
-clap = { version = "4", features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
+clap = { version = "<=4.2", features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
 env_logger = { version = "0.9", optional = true }
 lazy-regex = "2"
 debversion = { workspace = true, features = ["python-debian"] }
@@ -38,8 +38,7 @@ cli = ["dep:clap", "dep:env_logger"]
 members = ["multiarch-hints", "lintian-brush-py"]
 
 [workspace.dependencies]
-#breezyshim = "0.1.4"
-breezyshim = { path = "../breezyshim/trunk" }
+breezyshim = "0.1.4"
 pyo3 = "0.19"
 debversion = ">=0.1.8"
 

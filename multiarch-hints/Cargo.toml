@@ -11,3 +11,7 @@ reqwest = { version = "0.11", features = ["blocking"] }
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 xz2 = "0.1"
+lintian-brush = { path = ".." }
+debversion = "0.2"
+pyo3 = { version = "0.19", features = ["auto-initialize"]}
+lazy-regex = "3.0.1"
