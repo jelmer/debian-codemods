@@ -1345,7 +1345,10 @@ pub fn run_lintian_fixer(
         pyo3::Python::with_gil(|py| {
             let rename_map_m = py.import("breezy.rename_map")?;
             let rename_map = rename_map_m.getattr("RenameMap")?;
-            rename_map.call_method1("guess_renames", (basis_tree.obj(), &local_tree.0, false))?;
+            rename_map.call_method1(
+                "guess_renames",
+                (basis_tree.to_object(py), &local_tree.0, false),
+            )?;
             Ok::<(), pyo3::PyErr>(())
         })?;
     }
@@ -2004,7 +2007,7 @@ fn _upstream_changes_to_patch(
         upstream_changes_to_patch
             .call1((
                 &local_tree.0,
-                basis_tree.obj(),
+                basis_tree.to_object(py),
                 dirty_tracker.map(|dt| &dt.0),
                 subpath,
                 patch_name,
