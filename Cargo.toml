@@ -11,22 +11,22 @@ homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 [dependencies]
 pyo3 = { workspace = true, features = ["auto-initialize", "serde", "chrono"], optional = true }
 serde_json = { version = "1"}
-serde_yaml = { version = ">=0.8" }
-serde = { version = "1", features = ["derive"] }
+serde_yaml = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 distro-info = { version = ">=0.4.0" }
-chrono = { version = "0.4" }
-log = "0.4"
+chrono = { workspace = true }
+log = { workspace = true }
 configparser = "3.0.2"
 clap = { version = "<=4.2", features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
-env_logger = { version = "0.9", optional = true }
-lazy-regex = "2"
+env_logger = { workspace = true, optional = true }
+lazy-regex = { workspace = true }
 debversion = { workspace = true, features = ["python-debian"] }
-pyo3-file = "0.7.0"
+pyo3-file = { workspace = true }
 breezyshim = { workspace = true }
 indicatif = "0.17"
 tempfile = "3"
 url = { version = "2", features = ["serde"] }
-lazy_static = "1.4.0"
+lazy_static = { workspace = true }
 
 [features]
 default = ["svp", "python", "cli"]
@@ -41,6 +41,15 @@ members = ["multiarch-hints", "lintian-brush-py"]
 breezyshim = "0.1.22"
 pyo3 = "0.19"
 debversion = ">=0.1.8"
+serde_yaml = ">=0.8"
+reqwest = "0.11"
+log = "0.4"
+lazy_static = "1.4"
+serde = "1"
+chrono = "0.4"
+lazy-regex = "2"
+env_logger = "0.10"
+pyo3-file = "0.5"
 
 [[bin]]
 name = "lintian-brush"

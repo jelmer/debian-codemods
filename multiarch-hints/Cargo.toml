@@ -4,14 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-chrono = "0.4"
-lazy_static = "1.4"
-log = "0.4"
-reqwest = { version = "0.11", features = ["blocking"] }
-serde = { version = "1", features = ["derive"] }
-serde_yaml = "0.9"
+chrono = { workspace = true }
+lazy_static = { workspace = true }
+log = { workspace = true }
+reqwest = { workspace = true, features = ["blocking"] }
+serde = { workspace = true, features = ["derive"] }
+serde_yaml = { workspace = true }
 xz2 = "0.1"
 lintian-brush = { path = ".." }
-debversion = "0.2"
+debversion = { workspace = true }
 pyo3 = { version = "0.19", features = ["auto-initialize"]}
-lazy-regex = "3.0.1"
+lazy-regex = { workspace = true }
