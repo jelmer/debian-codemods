@@ -1792,16 +1792,19 @@ pub fn only_changes_last_changelog_block<'a>(
                 continue;
             }
             if !tree.has_versioned_directories() && changelog_path.starts_with(path) {
+                // Directory leading up to changelog
                 continue;
             }
         }
+        // If the change is not in the changelog, it's not just a changelog change
         return Ok(false);
     }
 
     if !changes_seen {
+        // Doesn't change the changelog at all
         return Ok(false);
     }
-    let mut new_cl = match basis_tree.get_file(changelog_path) {
+    let mut new_cl = match tree.get_file(changelog_path) {
         Ok(f) => Changelog::from_reader(f, None)?,
         Err(TreeError::NoSuchFile(_)) => {
             return Ok(false);
@@ -1810,7 +1813,7 @@ pub fn only_changes_last_changelog_block<'a>(
             return Err(e);
         }
     };
-    let mut old_cl = match tree.get_file(changelog_path) {
+    let mut old_cl = match basis_tree.get_file(changelog_path) {
         Ok(f) => Changelog::from_reader(f, None)?,
         Err(TreeError::NoSuchFile(_)) => {
             return Ok(true);
@@ -1820,13 +1823,13 @@ pub fn only_changes_last_changelog_block<'a>(
         }
     };
     if old_cl[0].distributions() != "UNRELEASED" {
+        // Not unreleased
         return Ok(false);
     }
     new_cl.pop_first();
     old_cl.pop_first();
     std::mem::drop(read_lock);
     std::mem::drop(basis_lock);
-    println!("{:?} {:?}", new_cl.to_string(), old_cl.to_string());
     Ok(new_cl.to_string() == old_cl.to_string())
 }
 
