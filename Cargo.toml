@@ -38,7 +38,7 @@ cli = ["dep:clap", "dep:env_logger"]
 members = ["multiarch-hints", "lintian-brush-py"]
 
 [workspace.dependencies]
-breezyshim = { path = "../breezyshim/trunk" }
+breezyshim = "0.1.23"
 pyo3 = "0.19"
 debversion = ">=0.1.8"
 serde_yaml = ">=0.8"
