@@ -458,8 +458,7 @@ def run_lintian_fixers(  # noqa: C901
         dirty_tracker = get_dirty_tracker(
             local_tree, subpath=subpath, use_inotify=use_inotify
         )
-        # Only Breezy >= 3.3.1 has DirtyTracker as a context manager
-        if dirty_tracker and hasattr(dirty_tracker, '__enter__'):
+        if dirty_tracker:
             from breezy.dirty_tracker import TooManyOpenFiles
             try:
                 es.enter_context(dirty_tracker)

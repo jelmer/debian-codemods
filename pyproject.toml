@@ -2,7 +2,7 @@
 requires = [
     "setuptools>=61.2",
     "setuptools-rust",
-    "breezy>=3.3.0.dev.0",
+    "breezy>=3.3.1",
     "python_debian",
     "debmutate",
 ]
@@ -33,7 +33,7 @@ authors = [{name = "Jelmer Vernooĳ", email = "jelmer@debian.org"}]
 description = "Automatic lintian issue fixer"
 requires-python = ">=3.7"
 dependencies = [
-    "breezy>=3.3.0.dev.0",
+    "breezy>=3.3.1",
     "python_debian",
     "debmutate[watch,debcargo]",
     "distro-info",
