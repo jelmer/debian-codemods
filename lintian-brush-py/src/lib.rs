@@ -388,7 +388,7 @@ fn run_lintian_fixer(
         minimum_certainty,
         trust_package,
         allow_reformatting,
-        dirty_tracker.map(breezyshim::DirtyTracker).as_ref(),
+        dirty_tracker.map(breezyshim::DirtyTracker::from).as_ref(),
         subpath.as_path(),
         net_access,
         opinionated,

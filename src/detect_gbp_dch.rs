@@ -98,7 +98,8 @@ pub fn guess_update_changelog(
     }
     if let Some(ret) = guess_update_changelog_from_tree(tree, debian_path, cl) {
         Some(ret)
-    } else if let Some(ret) = guess_update_changelog_from_branch(&tree.branch(), debian_path, None)
+    } else if let Some(ret) =
+        guess_update_changelog_from_branch(tree.branch().as_ref(), debian_path, None)
     {
         Some(ret)
     } else {
@@ -164,7 +165,7 @@ struct ChangelogStats {
 }
 
 fn changelog_stats(
-    branch: &Branch,
+    branch: &dyn Branch,
     history: usize,
     debian_path: &std::path::Path,
 ) -> ChangelogStats {
@@ -255,7 +256,7 @@ fn changelog_stats(
 ///
 ///   boolean indicating whether changelog should be updated
 pub fn guess_update_changelog_from_branch(
-    branch: &Branch,
+    branch: &dyn Branch,
     debian_path: &std::path::Path,
     history: Option<usize>,
 ) -> Option<ChangelogBehaviour> {

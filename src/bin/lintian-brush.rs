@@ -1,4 +1,6 @@
-use breezyshim::branch::{Branch, BranchOpenError};
+use breezyshim::branch::{
+    open as open_branch, open_containing as open_containing_branch, Branch, BranchOpenError,
+};
 use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
 use clap::Parser;
 use distro_info::DistroInfo;
@@ -199,7 +201,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut tempdir = None;
 
         let (wt, subpath) = if args.output.dry_run {
-            let (branch, subpath) = match Branch::open_containing(
+            let (branch, subpath) = match open_containing_branch(
                 &url::Url::from_directory_path(&args.output.directory).unwrap(),
             ) {
                 Ok((branch, subpath)) => (branch, subpath),
@@ -234,7 +236,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let to_dir = branch.controldir().sprout(
                 url::Url::from_directory_path(td.path()).unwrap(),
-                Some(&branch),
+                Some(branch.as_ref()),
                 Some(true),
                 Some(branch.format().supports_stacking()),
             );

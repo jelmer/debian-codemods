@@ -2001,6 +2001,7 @@ fn _upstream_changes_to_patch(
     description: &str,
     timestamp: Option<chrono::naive::NaiveDateTime>,
 ) -> pyo3::PyResult<(String, Vec<std::path::PathBuf>)> {
+    use pyo3::conversion::ToPyObject;
     pyo3::Python::with_gil(|py| {
         let m = py.import("lintian_brush")?;
         let upstream_changes_to_patch = m.getattr("_upstream_changes_to_patch")?;
@@ -2008,7 +2009,7 @@ fn _upstream_changes_to_patch(
             .call1((
                 &local_tree.0,
                 basis_tree.to_object(py),
-                dirty_tracker.map(|dt| &dt.0),
+                dirty_tracker.map(|dt| dt.to_object(py)),
                 subpath,
                 patch_name,
                 description,
