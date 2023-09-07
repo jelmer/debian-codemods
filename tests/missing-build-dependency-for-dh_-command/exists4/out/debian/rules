@@ -1,4 +1,0 @@
-#!/usr/bin/make
-
-%:
-	dh $@ --with python3

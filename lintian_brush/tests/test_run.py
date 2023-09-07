@@ -38,7 +38,6 @@ from lintian_brush import (
     FixerFailed,
     FixerResult,
     FixerScriptFailed,
-    ManyResult,
     NoChanges,
     NotDebianPackage,
     PythonScriptFixer,
