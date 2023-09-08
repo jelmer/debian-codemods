@@ -3,7 +3,6 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use std::path::Path;
-use std::str::FromStr;
 
 pub struct Deb822Paragraph(pub(crate) PyObject);
 

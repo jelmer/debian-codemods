@@ -101,3 +101,16 @@ impl FromPyObject<'_> for ChangeBlock {
         })
     }
 }
+
+pub struct Deb822Paragraph {
+    paragraph: PyObject,
+}
+
+impl Deb822Paragraph {
+    pub fn get(&self, key: &str) -> PyResult<Option<String>> {
+        Python::with_gil(|py| {
+            let s = self.paragraph.call_method1(py, "get", (key,))?;
+            s.extract(py)
+        })
+    }
+}
