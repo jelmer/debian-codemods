@@ -1,9 +1,9 @@
-lintian-brush (0.150) UNRELEASED; urgency=medium
+lintian-brush (0.150) unstable; urgency=medium
 
   * Port the lintian-brush command to rust.
   * Bump breezy dependency to 3.3.1
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 19 Jul 2023 10:02:02 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 Sep 2023 17:49:50 +0100
 
 lintian-brush (0.149) unstable; urgency=medium
 
