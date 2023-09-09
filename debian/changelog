@@ -1,11 +1,6 @@
-lintian-brush (0.151) UNRELEASED; urgency=medium
-
-  * Scrub environment when running tests.
-
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 09 Sep 2023 19:13:01 +0100
-
 lintian-brush (0.150) unstable; urgency=medium
 
+  * Scrub environment when running tests.
   * Port the lintian-brush command to rust.
   * Bump breezy dependency to 3.3.1
 
