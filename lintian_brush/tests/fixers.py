@@ -73,7 +73,10 @@ class FixerTestCase(unittest.TestCase):
                 reason = f.read()  # noqa: F841
             unittest.expectedFailure(self)
             return
-        env = dict(os.environ.items())
+        env = {}
+        for key in ['PATH']:
+            if key in os.environ:
+                env[key] = os.environ[key]
         cl_path = os.path.join(self._testdir, "debian/changelog")
         if os.path.exists(cl_path):
             with open(cl_path, "rb") as f:
