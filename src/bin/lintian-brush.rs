@@ -528,7 +528,7 @@ fn versions_dict() -> HashMap<String, String> {
     let mut ret = HashMap::new();
     ret.insert(
         "lintian-brush".to_string(),
-        std::env::var("CARGO_PKG_VERSION").unwrap(),
+        env!("CARGO_PKG_VERSION").to_string(),
     );
     pyo3::Python::with_gil(|py| {
         let breezy = py.import("breezy").unwrap();
