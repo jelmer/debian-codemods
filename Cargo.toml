@@ -1,6 +1,6 @@
 [package]
 name = "lintian-brush"
-version = "0.150.0"
+version = { workspace = true }
 authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
 license = "GPL-2.0+"
@@ -36,6 +36,9 @@ cli = ["dep:clap", "dep:env_logger"]
 
 [workspace]
 members = ["multiarch-hints", "lintian-brush-py"]
+
+[workspace.package]
+version = "0.150.0"
 
 [workspace.dependencies]
 breezyshim = "0.1.23"
