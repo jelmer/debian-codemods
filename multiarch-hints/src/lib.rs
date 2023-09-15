@@ -7,8 +7,8 @@ use lintian_brush::debmutateshim::{
     format_relations, parse_relations, ControlEditor, Deb822Paragraph, ParsedRelation,
 };
 use lintian_brush::{
-    add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, Certainty,
-    ChangelogError,
+    add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, ApplyError,
+    Certainty, ChangelogError,
 };
 use pyo3::PyErr;
 use reqwest::blocking::Client;
@@ -260,7 +260,7 @@ impl OverallResult {
     }
 }
 
-fn apply_hint_ma_foreign(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+fn apply_hint_ma_foreign(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<String> {
     if binary.get("Multi-Arch").as_deref() != Some("foreign") {
         binary.insert("Multi-Arch", "foreign");
         Some("Add Multi-Arch: foreign.".to_string())
@@ -269,7 +269,7 @@ fn apply_hint_ma_foreign(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<St
     }
 }
 
-fn apply_hint_ma_foreign_lib(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+fn apply_hint_ma_foreign_lib(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<String> {
     if binary.get("Multi-Arch").as_deref() == Some("foreign") {
         binary.remove("Multi-Arch");
         Some("Drop Multi-Arch: foreign.".to_string())
@@ -278,7 +278,7 @@ fn apply_hint_ma_foreign_lib(binary: &mut Deb822Paragraph, hint: &Hint) -> Optio
     }
 }
 
-fn apply_hint_file_conflict(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+fn apply_hint_file_conflict(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<String> {
     if binary.get("Multi-Arch").as_deref() == Some("same") {
         binary.remove("Multi-Arch");
         Some("Drop Multi-Arch: same.".to_string())
@@ -287,7 +287,7 @@ fn apply_hint_file_conflict(binary: &mut Deb822Paragraph, hint: &Hint) -> Option
     }
 }
 
-fn apply_hint_ma_same(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+fn apply_hint_ma_same(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<String> {
     if binary.get("Multi-Arch").as_deref() == Some("same") {
         return None;
     }
@@ -295,7 +295,7 @@ fn apply_hint_ma_same(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<Strin
     Some("Add Multi-Arch: same.".to_string())
 }
 
-fn apply_hint_arch_all(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+fn apply_hint_arch_all(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<String> {
     if binary.get("Architecture").as_deref() == Some("all") {
         return None;
     }
@@ -457,7 +457,7 @@ pub fn apply_multiarch_hints(
 ) -> Result<OverallResult, OverallError> {
     let minimum_certainty = minimum_certainty.unwrap_or(Certainty::Certain);
     let basis_tree = local_tree.basis_tree();
-    let (changes, _tree_changes, mut specific_files) = apply_or_revert(
+    let (changes, _tree_changes, mut specific_files) = match apply_or_revert(
         local_tree,
         subpath,
         &basis_tree,
@@ -499,8 +499,12 @@ pub fn apply_multiarch_hints(
             std::mem::drop(editor);
             Ok(changes)
         },
-    )
-    .unwrap();
+    ) {
+        Ok(r) => r,
+        Err(ApplyError::NoChanges(_)) => return Err(OverallError::NoChanges),
+        Err(ApplyError::TreeError(e)) => return Err(OverallError::TreeError(e)),
+        Err(ApplyError::CallbackError(_)) => panic!("Unexpected callback error"),
+    };
 
     let by_description = changes_by_description(changes.as_slice());
     let mut overall_description = vec!["Apply multi-arch hints.".to_string()];
