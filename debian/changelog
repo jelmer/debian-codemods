@@ -1,3 +1,10 @@
+lintian-brush (0.151) UNRELEASED; urgency=medium
+
+  * Finish conversion of apply-multiarch-hints to rust. Closes:
+    #1051766, #1042949
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 15 Sep 2023 19:10:40 +0100
+
 lintian-brush (0.150) unstable; urgency=medium
 
   * Scrub environment when running tests.

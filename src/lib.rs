@@ -1,5 +1,6 @@
 use debversion::Version;
 use lazy_regex::regex_replace;
+use pyo3::PyErr;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -674,7 +675,23 @@ pub enum FixerError {
     #[cfg(feature = "python")]
     Python(pyo3::PyErr),
     MemoryError,
+    TreeError(TreeError),
     Other(String),
+}
+
+impl From<ChangelogError> for FixerError {
+    fn from(e: ChangelogError) -> Self {
+        match e {
+            ChangelogError::NotDebianPackage(path) => FixerError::NotDebianPackage(path),
+            ChangelogError::Python(e) => FixerError::Python(e),
+        }
+    }
+}
+
+impl From<TreeError> for FixerError {
+    fn from(e: TreeError) -> Self {
+        FixerError::TreeError(e)
+    }
 }
 
 impl From<OutputParseError> for FixerError {
@@ -734,6 +751,7 @@ impl std::fmt::Display for FixerError {
                 p2.display(),
                 s
             ),
+            FixerError::TreeError(e) => write!(f, "Tree error: {}", e),
         }
     }
 }
@@ -1187,20 +1205,121 @@ pub fn find_fixers_dir() -> Option<std::path::PathBuf> {
     data_file_path("fixers", |path| path.is_dir())
 }
 
+#[derive(Debug)]
+pub enum ApplyError<R, E> {
+    /// Error from the callback
+    CallbackError(E),
+    /// Error from the tree
+    TreeError(TreeError),
+    /// No changes made
+    NoChanges(R),
+}
+
+impl<R, E> From<TreeError> for ApplyError<R, E> {
+    fn from(e: TreeError) -> Self {
+        ApplyError::TreeError(e)
+    }
+}
+
+/// Apply a change in a clean tree.
+///
+/// This will either run a callback in a tree, or if the callback fails,
+/// revert the tree to the original state.
+///
+/// The original tree should be clean; you can run check_clean_tree() to
+/// verify this.
+///
+/// # Arguments
+/// * `local_tree` - Local tree
+/// * `subpath` - Subpath to apply changes to
+/// * `basis_tree` - Basis tree to reset to
+/// * `dirty_tracker` - Dirty tracker
+/// * `applier` - Callback to apply changes
+///
+/// # Returns
+/// * `Result<(R, Vec<TreeChange>, Option<Vec<std::path::PathBuf>>), E>` - Result of the callback,
+///   the changes made, and the files that were changed
 pub fn apply_or_revert<R, E>(
     local_tree: &WorkingTree,
     subpath: &std::path::Path,
     basis_tree: &Box<dyn Tree>,
     dirty_tracker: Option<&DirtyTracker>,
     applier: impl FnOnce(&std::path::Path) -> Result<R, E>,
-) -> Result<R, E> {
-    match applier(local_tree.abspath(subpath).unwrap().as_path()) {
-        Ok(r) => Ok(r),
+) -> Result<(R, Vec<TreeChange>, Option<Vec<std::path::PathBuf>>), ApplyError<R, E>> {
+    let r = match applier(local_tree.abspath(subpath).unwrap().as_path()) {
+        Ok(r) => r,
         Err(e) => {
             reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker).unwrap();
-            Err(e)
+            return Err(ApplyError::CallbackError(e));
         }
+    };
+
+    let specific_files = if let Some(dirty_tracker) = dirty_tracker {
+        let mut relpaths: Vec<_> = dirty_tracker.relpaths().into_iter().collect();
+        relpaths.sort();
+        // Sort paths so that directories get added before the files they
+        // contain (on VCSes where it matters)
+        local_tree.add(
+            relpaths
+                .iter()
+                .filter_map(|p| {
+                    if local_tree.has_filename(p) && local_tree.is_ignored(p).is_some() {
+                        Some(p.as_path())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )?;
+        let specific_files = relpaths
+            .into_iter()
+            .filter(|p| local_tree.is_versioned(p))
+            .collect::<Vec<_>>();
+        if specific_files.is_empty() {
+            return Err(ApplyError::NoChanges(r));
+        }
+        Some(specific_files)
+    } else {
+        local_tree.smart_add(&[local_tree.abspath(subpath).unwrap().as_path()])?;
+        if subpath.as_os_str().is_empty() {
+            None
+        } else {
+            Some(vec![subpath.to_path_buf()])
+        }
+    };
+
+    if local_tree.supports_setting_file_ids() {
+        pyo3::Python::with_gil(|py| {
+            let rename_map_m = py.import("breezy.rename_map")?;
+            let rename_map = rename_map_m.getattr("RenameMap")?;
+            rename_map.call_method1(
+                "guess_renames",
+                (basis_tree.to_object(py), &local_tree.0, false),
+            )?;
+            Ok::<(), pyo3::PyErr>(())
+        })
+        .unwrap();
     }
+
+    let specific_files_ref = specific_files
+        .as_ref()
+        .map(|fs| fs.iter().map(|p| p.as_path()).collect::<Vec<_>>());
+
+    let changes = local_tree
+        .iter_changes(
+            basis_tree,
+            specific_files_ref.as_deref(),
+            Some(false),
+            Some(true),
+        )?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if local_tree.get_parent_ids()?.len() <= 1 && changes.is_empty() {
+        return Err(ApplyError::NoChanges(r));
+    }
+
+    Ok((r, changes, specific_files))
 }
 
 /// Run a lintian fixer on a tree.
@@ -1277,105 +1396,51 @@ pub fn run_lintian_fixer(
         _bt.as_ref().unwrap()
     };
 
-    let mut result = apply_or_revert(local_tree, subpath, basis_tree, dirty_tracker, |basedir| {
-        let compat_release = compat_release.unwrap_or("sid");
-        log::debug!("Running fixer {:?}", fixer);
-        let result = fixer.run(
-            basedir,
-            package,
-            &current_version,
-            compat_release,
-            minimum_certainty,
-            trust_package,
-            allow_reformatting,
-            net_access,
-            opinionated,
-            diligence,
-        )?;
-        if let Some(certainty) = result.certainty {
-            if !certainty_sufficient(certainty, minimum_certainty) {
-                return Err(FixerError::NotCertainEnough(
-                    certainty,
-                    minimum_certainty,
-                    result.overridden_lintian_issues,
+    let (mut result, changes, mut specific_files) =
+        match apply_or_revert(local_tree, subpath, basis_tree, dirty_tracker, |basedir| {
+            let compat_release = compat_release.unwrap_or("sid");
+            log::debug!("Running fixer {:?}", fixer);
+            let result = fixer.run(
+                basedir,
+                package,
+                &current_version,
+                compat_release,
+                minimum_certainty,
+                trust_package,
+                allow_reformatting,
+                net_access,
+                opinionated,
+                diligence,
+            )?;
+            if let Some(certainty) = result.certainty {
+                if !certainty_sufficient(certainty, minimum_certainty) {
+                    return Err(FixerError::NotCertainEnough(
+                        certainty,
+                        minimum_certainty,
+                        result.overridden_lintian_issues,
+                    ));
+                }
+            }
+
+            if result.description.is_empty() {
+                return Err(FixerError::DescriptionMissing);
+            }
+
+            Ok(result)
+        }) {
+            Ok(r) => r,
+            Err(ApplyError::NoChanges(r)) => {
+                return Err(FixerError::NoChangesAfterOverrides(
+                    r.overridden_lintian_issues,
                 ));
             }
-        }
-        Ok(result)
-    })?;
-
-    let mut specific_files = if let Some(dirty_tracker) = dirty_tracker {
-        let mut relpaths: Vec<_> = dirty_tracker.relpaths().into_iter().collect();
-        relpaths.sort();
-        // Sort paths so that directories get added before the files they
-        // contain (on VCSes where it matters)
-        local_tree.add(
-            relpaths
-                .iter()
-                .filter_map(|p| {
-                    if local_tree.has_filename(p) && local_tree.is_ignored(p).is_some() {
-                        Some(p.as_path())
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>()
-                .as_slice(),
-        )?;
-        let specific_files = relpaths
-            .into_iter()
-            .filter(|p| local_tree.is_versioned(p))
-            .collect::<Vec<_>>();
-        if specific_files.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(
-                result.overridden_lintian_issues,
-            ));
-        }
-        Some(specific_files)
-    } else {
-        local_tree.smart_add(&[local_tree.abspath(subpath).unwrap().as_path()])?;
-        if subpath.as_os_str().is_empty() {
-            None
-        } else {
-            Some(vec![subpath.to_path_buf()])
-        }
-    };
-
-    if local_tree.supports_setting_file_ids() {
-        pyo3::Python::with_gil(|py| {
-            let rename_map_m = py.import("breezy.rename_map")?;
-            let rename_map = rename_map_m.getattr("RenameMap")?;
-            rename_map.call_method1(
-                "guess_renames",
-                (basis_tree.to_object(py), &local_tree.0, false),
-            )?;
-            Ok::<(), pyo3::PyErr>(())
-        })?;
-    }
-
-    let specific_files_ref = specific_files
-        .as_ref()
-        .map(|fs| fs.iter().map(|p| p.as_path()).collect::<Vec<_>>());
-
-    let changes = local_tree
-        .iter_changes(
-            basis_tree,
-            specific_files_ref.as_deref(),
-            Some(false),
-            Some(true),
-        )?
-        .collect::<Result<Vec<_>, _>>()?;
-
-    if local_tree.get_parent_ids()?.len() <= 1 && changes.is_empty() {
-        return Err(FixerError::NoChangesAfterOverrides(
-            result.overridden_lintian_issues,
-        ));
-    }
-
-    if result.description.is_empty() {
-        reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
-        return Err(FixerError::DescriptionMissing);
-    }
+            Err(ApplyError::TreeError(e)) => {
+                return Err(e.into());
+            }
+            Err(ApplyError::CallbackError(e)) => {
+                return Err(e);
+            }
+        };
 
     let lines = result.description.split('\n').collect::<Vec<_>>();
     let mut summary = lines[0].to_string();
@@ -1474,6 +1539,7 @@ pub enum OverallError {
     NotDebianPackage(std::path::PathBuf),
     WorkspaceDirty(std::path::PathBuf),
     ChangelogCreate(String),
+    TreeError(TreeError),
     #[cfg(feature = "python")]
     Python(pyo3::PyErr),
 }
@@ -1498,6 +1564,7 @@ impl std::fmt::Display for OverallError {
             }
             #[cfg(feature = "python")]
             OverallError::Python(e) => write!(f, "{}", e),
+            OverallError::TreeError(e) => write!(f, "{}", e),
         }
     }
 }
@@ -1672,6 +1739,9 @@ pub fn run_lintian_fixers(
                     }
                     continue;
                 }
+                FixerError::TreeError(e) => {
+                    return Err(OverallError::TreeError(e));
+                }
                 FixerError::NotCertainEnough(actual_certainty, minimum_certainty, _overrides) => {
                     if verbose {
                         let duration = std::time::SystemTime::now().duration_since(start).unwrap();
@@ -1753,11 +1823,45 @@ pub fn run_lintian_fixers(
     Ok(ret)
 }
 
-fn add_changelog_entry(
+pub enum ChangelogError {
+    NotDebianPackage(std::path::PathBuf),
+    Python(PyErr),
+}
+
+impl std::fmt::Display for ChangelogError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ChangelogError::NotDebianPackage(path) => {
+                write!(f, "Not a Debian package: {}", path.display())
+            }
+            ChangelogError::Python(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl From<PyErr> for ChangelogError {
+    fn from(e: PyErr) -> Self {
+        use pyo3::import_exception;
+
+        import_exception!(breezy.transport, NoSuchFile);
+
+        pyo3::Python::with_gil(|py| {
+            if e.is_instance_of::<NoSuchFile>(py) {
+                return ChangelogError::NotDebianPackage(
+                    e.value(py).getattr("path").unwrap().extract().unwrap(),
+                );
+            } else {
+                ChangelogError::Python(e)
+            }
+        })
+    }
+}
+
+pub fn add_changelog_entry(
     working_tree: &WorkingTree,
     changelog_path: &std::path::Path,
     entry: &[&str],
-) -> pyo3::PyResult<()> {
+) -> Result<(), ChangelogError> {
     pyo3::Python::with_gil(|py| {
         let changelog_m = py.import("lintian_brush.changelog")?;
         let add_changelog_entry = changelog_m.getattr("add_changelog_entry")?;

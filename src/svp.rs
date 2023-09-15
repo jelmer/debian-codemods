@@ -5,6 +5,7 @@ struct Failure {
     result_code: String,
     versions: HashMap<String, String>,
     description: String,
+    transient: Option<bool>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -74,11 +75,32 @@ pub fn report_success_debian(
     }
 }
 
+pub fn report_nothing_to_do(versions: HashMap<String, String>, description: Option<&str>) -> ! {
+    let description = description.unwrap_or("Nothing to do");
+    if std::env::var("SVP_API").ok().as_deref() == Some("1") {
+        let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
+
+        serde_json::to_writer(
+            f,
+            &Failure {
+                result_code: "nothing-to-do".to_string(),
+                versions,
+                description: description.to_string(),
+                transient: None,
+            },
+        )
+        .unwrap();
+    }
+    log::error!("{}", description);
+    std::process::exit(0);
+}
+
 pub fn report_fatal(
     versions: HashMap<String, String>,
     code: &str,
     description: &str,
     hint: Option<&str>,
+    transient: Option<bool>,
 ) -> ! {
     if std::env::var("SVP_API").ok().as_deref() == Some("1") {
         let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
@@ -89,6 +111,7 @@ pub fn report_fatal(
                 result_code: code.to_string(),
                 versions,
                 description: description.to_string(),
+                transient,
             },
         )
         .unwrap();

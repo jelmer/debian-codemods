@@ -1,4 +1,16 @@
+use breezyshim::dirty_tracker::DirtyTracker;
+use breezyshim::tree::{CommitError, Error as TreeError, WorkingTree};
+use debversion::Version;
+use lazy_regex::regex_captures;
 use lazy_static::lazy_static;
+use lintian_brush::debmutateshim::{
+    format_relations, parse_relations, ControlEditor, Deb822Paragraph, ParsedRelation,
+};
+use lintian_brush::{
+    add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, Certainty,
+    ChangelogError,
+};
+use pyo3::PyErr;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use serde_yaml::from_value;
@@ -67,7 +79,7 @@ where
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 pub struct Hint {
     pub binary: String,
     pub description: String,
@@ -75,7 +87,13 @@ pub struct Hint {
     pub link: String,
     #[serde(deserialize_with = "deserialize_severity")]
     pub severity: Severity,
-    pub version: Option<String>,
+    pub version: Option<Version>,
+}
+
+impl Hint {
+    pub fn kind(&self) -> &str {
+        self.link.split('#').last().unwrap()
+    }
 }
 
 pub fn multiarch_hints_by_source(hints: &[Hint]) -> HashMap<&str, Vec<&Hint>> {
@@ -111,6 +129,51 @@ pub fn parse_multiarch_hints(f: &[u8]) -> Result<Vec<Hint>, serde_yaml::Error> {
         return Err(serde::de::Error::custom("Missing format"));
     }
     from_value(data["hints"].clone())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_some_entries() {
+        let hints = parse_multiarch_hints(
+            r#"\
+format: multiarch-hints-1.0
+hints:
+- binary: coinor-libcoinmp-dev
+  description: coinor-libcoinmp-dev conflicts on ...
+  link: https://wiki.debian.org/MultiArch/Hints#file-conflict
+  severity: high
+  source: coinmp
+  version: 1.8.3-2+b11
+"#
+            .as_bytes(),
+        )
+        .unwrap();
+        assert_eq!(
+            hints,
+            vec![Hint {
+                binary: "coinor-libcoimp-dev".to_string(),
+                description: "coinor-libcoinmp-dev conflicts on ...".to_string(),
+                link: "https://wiki.debian.org/MultiArch/Hints#file-conflict".to_string(),
+                severity: Severity::High,
+                version: Some("1.8.3-2+b11".parse().unwrap()),
+                source: "coinmp".to_string(),
+            }]
+        );
+    }
+
+    #[test]
+    fn test_invalid_header() {
+        let hints = parse_multiarch_hints(
+            r#"\
+format: blah
+"#
+            .as_bytes(),
+        );
+        assert!(hints.is_err());
+    }
 }
 
 pub fn cache_download_multiarch_hints(url: Option<&str>) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -172,4 +235,312 @@ pub fn download_multiarch_hints(
     } else {
         Ok(Some(response.bytes()?.to_vec()))
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Change {
+    pub binary: String,
+    pub hint: Hint,
+    pub description: String,
+    pub certainty: Certainty,
+}
+
+pub struct OverallResult {
+    pub changes: Vec<Change>,
+}
+
+impl OverallResult {
+    pub fn value(&self) -> i32 {
+        let kinds = self
+            .changes
+            .iter()
+            .map(|x| x.hint.kind())
+            .collect::<Vec<_>>();
+        calculate_value(&kinds)
+    }
+}
+
+fn apply_hint_ma_foreign(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+    if binary.get("Multi-Arch").as_deref() != Some("foreign") {
+        binary.insert("Multi-Arch", "foreign");
+        Some("Add Multi-Arch: foreign.".to_string())
+    } else {
+        None
+    }
+}
+
+fn apply_hint_ma_foreign_lib(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+    if binary.get("Multi-Arch").as_deref() == Some("foreign") {
+        binary.remove("Multi-Arch");
+        Some("Drop Multi-Arch: foreign.".to_string())
+    } else {
+        None
+    }
+}
+
+fn apply_hint_file_conflict(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+    if binary.get("Multi-Arch").as_deref() == Some("same") {
+        binary.remove("Multi-Arch");
+        Some("Drop Multi-Arch: same.".to_string())
+    } else {
+        None
+    }
+}
+
+fn apply_hint_ma_same(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+    if binary.get("Multi-Arch").as_deref() == Some("same") {
+        return None;
+    }
+    binary.insert("Multi-Arch", "same");
+    Some("Add Multi-Arch: same.".to_string())
+}
+
+fn apply_hint_arch_all(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+    if binary.get("Architecture").as_deref() == Some("all") {
+        return None;
+    }
+    binary.insert("Architecture", "all");
+    Some("Make package Architecture: all.".to_string())
+}
+
+fn apply_hint_dep_any(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+    if let Some((_whole, binary_package, dep)) = regex_captures!(
+        r"(.*) could have its dependency on (.*) annotated with :any",
+        hint.description.as_str()
+    ) {
+        assert_eq!(binary_package, binary.get("Package").unwrap());
+
+        let mut changed = false;
+        if let Some(depends) = binary.get("Depends") {
+            let mut relations = parse_relations(depends.as_str());
+            for (_head_whitespace, relation, _tail_whitespace) in &mut relations {
+                for r in relation {
+                    if r.name == dep && r.archqual.as_deref() != Some("any") {
+                        r.archqual = Some("any".to_string());
+                        changed = true;
+                    }
+                }
+            }
+            if changed {
+                let relations = relations
+                    .iter()
+                    .map(|(f, m, t)| (f.as_str(), m.as_slice(), t.as_str()))
+                    .collect::<Vec<_>>();
+                binary.insert("Depends", format_relations(relations.as_slice()).as_str());
+                return Some(format!("Add :any qualifier for {} dependency.", dep));
+            }
+        } else {
+            return None;
+        }
+    }
+    None
+}
+
+struct Applier {
+    kind: &'static str,
+    certainty: Certainty,
+    cb: fn(&mut Deb822Paragraph, &Hint) -> Option<String>,
+}
+
+lazy_static! {
+    static ref APPLIERS: Vec<Applier> = vec![
+        Applier {
+            kind: "ma-foreign",
+            certainty: Certainty::Certain,
+            cb: apply_hint_ma_foreign,
+        },
+        Applier {
+            kind: "file-conflict",
+            certainty: Certainty::Certain,
+            cb: apply_hint_file_conflict,
+        },
+        Applier {
+            kind: "ma-foreign-library",
+            certainty: Certainty::Certain,
+            cb: apply_hint_ma_foreign_lib,
+        },
+        Applier {
+            kind: "dep-any",
+            certainty: Certainty::Certain,
+            cb: apply_hint_dep_any,
+        },
+        Applier {
+            kind: "ma-same",
+            certainty: Certainty::Certain,
+            cb: apply_hint_ma_same,
+        },
+        Applier {
+            kind: "arch-all",
+            certainty: Certainty::Possible,
+            cb: apply_hint_arch_all,
+        },
+    ];
+}
+
+fn find_applier(kind: &str) -> Option<&'static Applier> {
+    APPLIERS.iter().find(|x| x.kind == kind)
+}
+
+fn changes_by_description(changes: &[Change]) -> HashMap<String, Vec<String>> {
+    let mut by_description = HashMap::new();
+    for change in changes {
+        by_description
+            .entry(change.description.clone())
+            .or_insert_with(Vec::new)
+            .push(change.binary.clone());
+    }
+    by_description
+}
+
+#[derive(Debug)]
+pub enum OverallError {
+    TreeError(TreeError),
+    NotDebianPackage(std::path::PathBuf),
+    Python(PyErr),
+    NoChanges,
+}
+
+impl std::fmt::Display for OverallError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            OverallError::NotDebianPackage(p) => {
+                write!(f, "{} is not a Debian package.", p.display())
+            }
+            OverallError::TreeError(e) => write!(f, "{}", e),
+            OverallError::Python(e) => write!(f, "{}", e),
+            OverallError::NoChanges => write!(f, "No changes to apply."),
+        }
+    }
+}
+
+impl std::error::Error for OverallError {}
+
+impl From<TreeError> for OverallError {
+    fn from(e: TreeError) -> Self {
+        OverallError::TreeError(e)
+    }
+}
+
+impl From<PyErr> for OverallError {
+    fn from(e: PyErr) -> Self {
+        OverallError::Python(e)
+    }
+}
+
+impl From<CommitError> for OverallError {
+    fn from(e: CommitError) -> Self {
+        match e {
+            CommitError::PointlessCommit => OverallError::NoChanges,
+            CommitError::Other(e) => OverallError::Python(e),
+        }
+    }
+}
+
+impl From<ChangelogError> for OverallError {
+    fn from(e: ChangelogError) -> Self {
+        match e {
+            ChangelogError::NotDebianPackage(p) => OverallError::NotDebianPackage(p),
+            ChangelogError::Python(e) => OverallError::Python(e),
+        }
+    }
+}
+
+pub fn apply_multiarch_hints(
+    local_tree: &WorkingTree,
+    subpath: &std::path::Path,
+    hints: &HashMap<&str, Vec<&Hint>>,
+    minimum_certainty: Option<Certainty>,
+    committer: Option<String>,
+    dirty_tracker: Option<&DirtyTracker>,
+    update_changelog: bool,
+    allow_reformatting: Option<bool>,
+) -> Result<OverallResult, OverallError> {
+    let minimum_certainty = minimum_certainty.unwrap_or(Certainty::Certain);
+    let basis_tree = local_tree.basis_tree();
+    let (changes, _tree_changes, mut specific_files) = apply_or_revert(
+        local_tree,
+        subpath,
+        &basis_tree,
+        dirty_tracker,
+        |path| -> Result<Vec<Change>, ()> {
+            let mut changes: Vec<Change> = vec![];
+
+            let control_path = path.join("debian/control");
+
+            let editor = ControlEditor::open(Some(control_path.as_path()), allow_reformatting);
+
+            for mut binary in editor.binaries() {
+                let package = binary.get("Package").unwrap();
+                if let Some(hints) = hints.get(package.as_str()) {
+                    for hint in hints {
+                        let kind = hint.kind();
+                        let applier = match find_applier(kind) {
+                            Some(applier) => applier,
+                            None => {
+                                log::warn!("Unknown hint kind: {}", kind);
+                                continue;
+                            }
+                        };
+                        if !certainty_sufficient(applier.certainty, Some(minimum_certainty)) {
+                            continue;
+                        }
+                        if let Some(description) = (applier.cb)(&mut binary, hint) {
+                            changes.push(Change {
+                                binary: binary.get("Package").unwrap(),
+                                hint: (*hint).clone(),
+                                description,
+                                certainty: applier.certainty,
+                            });
+                        }
+                    }
+                }
+            }
+
+            std::mem::drop(editor);
+            Ok(changes)
+        },
+    )
+    .unwrap();
+
+    let by_description = changes_by_description(changes.as_slice());
+    let mut overall_description = vec!["Apply multi-arch hints.".to_string()];
+    for (description, mut binaries) in by_description {
+        binaries.sort();
+        overall_description.push(format!(" + {}: {}", binaries.join(", "), description));
+    }
+
+    let changelog_path = subpath.join("debian/changelog");
+
+    if update_changelog {
+        add_changelog_entry(
+            local_tree,
+            changelog_path.as_path(),
+            overall_description
+                .iter()
+                .map(|x| x.as_str())
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )?;
+        if let Some(specific_files) = specific_files.as_mut() {
+            specific_files.push(changelog_path);
+        }
+    }
+
+    overall_description.push("\n".to_string());
+    overall_description.push("Changes-By: apply-multiarch-hints\n".to_string());
+
+    let committer = committer.unwrap_or_else(|| get_committer(local_tree));
+
+    let specific_files_ref = specific_files
+        .as_ref()
+        .map(|x| x.iter().map(|x| x.as_path()).collect::<Vec<_>>());
+
+    local_tree.commit(
+        overall_description.concat().as_str(),
+        Some(false),
+        Some(&committer),
+        specific_files_ref.as_deref(),
+    )?;
+
+    Ok(OverallResult { changes })
 }

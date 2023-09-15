@@ -1,6 +1,4 @@
-use breezyshim::branch::{
-    open as open_branch, open_containing as open_containing_branch, Branch, BranchOpenError,
-};
+use breezyshim::branch::{open_containing as open_containing_branch, BranchOpenError};
 use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
 use clap::Parser;
 use distro_info::DistroInfo;
@@ -364,6 +362,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "control-files-in-root",
                 "control files live in root rather than debian/ (LarstIQ mode)",
                 None,
+                None,
             );
         }
 
@@ -394,6 +393,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "not-debian-package",
                     format!("{}: Not a Debian package", p.display()).as_str(),
                     None,
+                    None,
                 );
             }
             Err(OverallError::WorkspaceDirty(p)) => {
@@ -412,6 +412,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "changelog-create-error",
                     format!("Error creating changelog entry: {}", e).as_str(),
                     None,
+                    None,
                 );
             }
             Err(OverallError::Python(e)) => {
@@ -419,6 +420,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     versions_dict(),
                     "python-error",
                     format!("Error running Python: {}", e).as_str(),
+                    None,
+                    None,
+                );
+            }
+            Err(OverallError::TreeError(e)) => {
+                report_fatal(
+                    versions_dict(),
+                    "internal-error",
+                    format!("Tree manipulation error: {}", e).as_str(),
+                    None,
                     None,
                 );
             }

@@ -62,7 +62,6 @@ debianize = [
 
 [project.scripts]
 debianize = "lintian_brush.debianize:main"
-apply-multiarch-hints = "lintian_brush.multiarch_hints:main"
 deb-scrub-obsolete = "lintian_brush.scrub_obsolete:main"
 deb-vcs-publish = "lintian_brush.publish:main"
 detect-changelog-behaviour = "lintian_brush.detect_gbp_dch:main"

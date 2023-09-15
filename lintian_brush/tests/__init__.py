@@ -24,7 +24,6 @@ core_names = [
     "detect_gbp_dch",
     "lintian",
     "lintian_overrides",
-    "multiarch_hints",
     "patches",
     "run",
     "salsa",

@@ -158,8 +158,9 @@ fn report_fatal(
     code: &str,
     description: &str,
     hint: Option<&str>,
+    transient: Option<bool>,
 ) {
-    lintian_brush::svp::report_fatal(versions, code, description, hint)
+    lintian_brush::svp::report_fatal(versions, code, description, hint, transient)
 }
 
 #[pyfunction]
@@ -442,6 +443,7 @@ fn run_lintian_fixer(
             FailedPatchManipulation::new_err((p1, p2, reason))
         }
         lintian_brush::FixerError::MemoryError => PyMemoryError::new_err(()),
+        lintian_brush::FixerError::TreeError(e) => e.into(),
     })
     .map(|(result, output)| (FixerResult(result), output))
 }

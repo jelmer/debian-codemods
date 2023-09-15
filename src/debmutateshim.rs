@@ -31,16 +31,37 @@ impl Deb822Paragraph {
     }
 }
 
-pub struct ControlEditor(pub(crate) PyObject);
+pub struct ControlEditor(PyObject);
 
 impl ControlEditor {
-    pub fn open(path: Option<&Path>) -> Self {
+    pub fn new() -> Self {
+        Python::with_gil(|py| {
+            let editor = py
+                .import("debmutate.control")
+                .unwrap()
+                .getattr("ControlEditor")
+                .unwrap()
+                .call0()
+                .unwrap();
+            let o = editor.to_object(py);
+            o.call_method0(py, "__enter__").unwrap();
+            ControlEditor(o)
+        })
+    }
+
+    pub fn open(path: Option<&Path>, allow_reformatting: Option<bool>) -> Self {
         Python::with_gil(|py| {
             let path = path.map_or_else(|| "debian/control", |p| p.to_str().unwrap());
+            let kwargs = PyDict::new(py);
+            if let Some(allow_reformatting) = allow_reformatting {
+                kwargs
+                    .set_item("allow_reformatting", allow_reformatting)
+                    .unwrap();
+            }
             let control = py
                 .import("debmutate.control")
                 .unwrap()
-                .call_method1("ControlEditor", (path,))
+                .call_method("ControlEditor", (path,), Some(kwargs))
                 .unwrap();
             let o = control.to_object(py);
             o.call_method0(py, "__enter__").unwrap();
