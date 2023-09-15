@@ -7,9 +7,11 @@ use std::path::Path;
 pub struct Deb822Paragraph(pub(crate) PyObject);
 
 impl Deb822Paragraph {
-    pub fn insert(&self, key: &str, value: &str) {
+    pub fn set(&self, key: &str, value: &str) {
         Python::with_gil(|py| {
-            self.0.call_method1(py, "insert", (key, value)).unwrap();
+            self.0
+                .call_method1(py, "__setitem__", (key, value))
+                .unwrap();
         })
     }
 

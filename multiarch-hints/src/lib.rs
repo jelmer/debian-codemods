@@ -36,6 +36,7 @@ lazy_static! {
         map.insert("dep-any", 20);
         map.insert("ma-same", 20);
         map.insert("arch-all", 20);
+        map.insert("ma-workaround", 20);
         map
     };
 }
@@ -262,7 +263,7 @@ impl OverallResult {
 
 fn apply_hint_ma_foreign(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<String> {
     if binary.get("Multi-Arch").as_deref() != Some("foreign") {
-        binary.insert("Multi-Arch", "foreign");
+        binary.set("Multi-Arch", "foreign");
         Some("Add Multi-Arch: foreign.".to_string())
     } else {
         None
@@ -291,7 +292,7 @@ fn apply_hint_ma_same(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<Stri
     if binary.get("Multi-Arch").as_deref() == Some("same") {
         return None;
     }
-    binary.insert("Multi-Arch", "same");
+    binary.set("Multi-Arch", "same");
     Some("Add Multi-Arch: same.".to_string())
 }
 
@@ -299,7 +300,7 @@ fn apply_hint_arch_all(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<Str
     if binary.get("Architecture").as_deref() == Some("all") {
         return None;
     }
-    binary.insert("Architecture", "all");
+    binary.set("Architecture", "all");
     Some("Make package Architecture: all.".to_string())
 }
 
@@ -326,14 +327,33 @@ fn apply_hint_dep_any(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<Strin
                     .iter()
                     .map(|(f, m, t)| (f.as_str(), m.as_slice(), t.as_str()))
                     .collect::<Vec<_>>();
-                binary.insert("Depends", format_relations(relations.as_slice()).as_str());
-                return Some(format!("Add :any qualifier for {} dependency.", dep));
+                binary.set("Depends", format_relations(relations.as_slice()).as_str());
+                Some(format!("Add :any qualifier for {} dependency.", dep))
+            } else {
+                None
             }
         } else {
-            return None;
+            None
         }
+    } else {
+        log::warn!("Unable to parse dep-any hint: {:?}", hint.description);
+        None
     }
-    None
+}
+
+fn apply_hint_ma_workaround(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+    if let Some((_whole, binary_package)) = regex_captures!(
+        r"(.*) should be Architecture: any \+ Multi-Arch: same",
+        hint.description.as_str()
+    ) {
+        assert_eq!(binary_package, binary.get("Package").unwrap());
+        binary.set("Multi-Arch", "same");
+        binary.set("Architecture", "any");
+        Some("Add Multi-Arch: same and set Architecture: any.".to_string())
+    } else {
+        log::warn!("Unable to parse ma-workaround hint: {:?}", hint.description);
+        None
+    }
 }
 
 struct Applier {
@@ -373,6 +393,11 @@ lazy_static! {
             kind: "arch-all",
             certainty: Certainty::Possible,
             cb: apply_hint_arch_all,
+        },
+        Applier {
+            kind: "ma-workaround",
+            certainty: Certainty::Certain,
+            cb: apply_hint_ma_workaround,
         },
     ];
 }
@@ -507,10 +532,10 @@ pub fn apply_multiarch_hints(
     };
 
     let by_description = changes_by_description(changes.as_slice());
-    let mut overall_description = vec!["Apply multi-arch hints.".to_string()];
+    let mut overall_description = vec!["Apply multi-arch hints.\n".to_string()];
     for (description, mut binaries) in by_description {
         binaries.sort();
-        overall_description.push(format!(" + {}: {}", binaries.join(", "), description));
+        overall_description.push(format!(" + {}: {}\n", binaries.join(", "), description));
     }
 
     let changelog_path = subpath.join("debian/changelog");
