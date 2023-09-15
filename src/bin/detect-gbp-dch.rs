@@ -35,7 +35,7 @@ fn main() {
 
     let (wt, subpath) = WorkingTree::open_containing(&args.directory).unwrap();
     let debian_path = if lintian_brush::control_files_in_root(&wt, subpath.as_path()) {
-        subpath.to_path_buf()
+        subpath
     } else {
         subpath.join("debian")
     };

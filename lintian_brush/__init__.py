@@ -42,7 +42,7 @@ from debian.changelog import Changelog
 
 from . import _lintian_brush_rs
 
-__version__ = (0, 150)
+__version__ = (0, 151)
 version_string = ".".join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ["certain", "confident", "likely", "possible", None]
 DEFAULT_MINIMUM_CERTAINTY = "certain"

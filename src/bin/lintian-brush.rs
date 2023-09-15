@@ -357,6 +357,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         let write_lock = wt.lock_write();
         if lintian_brush::control_files_in_root(&wt, std::path::Path::new(subpath.as_str())) {
+            drop(write_lock);
             report_fatal(
                 versions_dict(),
                 "control-files-in-root",
@@ -388,6 +389,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some("lintian-brush"),
         ) {
             Err(OverallError::NotDebianPackage(p)) => {
+                drop(write_lock);
                 report_fatal(
                     versions_dict(),
                     "not-debian-package",
@@ -397,6 +399,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             Err(OverallError::WorkspaceDirty(p)) => {
+                drop(write_lock);
                 log::error!(
                     "{}: Please commit pending changes and remove unknown files first.",
                     p.display()
@@ -407,6 +410,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::process::exit(1);
             }
             Err(OverallError::ChangelogCreate(e)) => {
+                drop(write_lock);
                 report_fatal(
                     versions_dict(),
                     "changelog-create-error",
@@ -416,6 +420,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             Err(OverallError::Python(e)) => {
+                drop(write_lock);
                 report_fatal(
                     versions_dict(),
                     "python-error",
@@ -425,6 +430,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             Err(OverallError::TreeError(e)) => {
+                drop(write_lock);
                 report_fatal(
                     versions_dict(),
                     "internal-error",

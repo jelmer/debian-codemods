@@ -105,6 +105,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
+    pyo3::Python::with_gil(|py| {
+        py.import("breezy.bzr").unwrap();
+        py.import("breezy.git").unwrap();
+    });
+
     let mut update_changelog: Option<bool> = if args.update_changelog {
         Some(true)
     } else if args.no_update_changelog {
@@ -254,6 +259,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text = match cache_download_multiarch_hints(None) {
         Ok(text) => text,
         Err(e) => {
+            drop(write_lock);
             report_fatal(
                 versions_dict(),
                 "multiarch-hints-download-error",
@@ -268,6 +274,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hints = multiarch_hints_by_binary(hints.as_slice());
 
     if lintian_brush::control_files_in_root(&wt, subpath.as_path()) {
+        drop(write_lock);
         report_fatal(
             versions_dict(),
             "control-files-in-root",
@@ -278,10 +285,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if is_debcargo_package(&wt, subpath.as_path()) {
+        drop(write_lock);
         report_nothing_to_do(versions_dict(), Some("Package uses debcargo"));
     }
 
     if !control_file_present(&wt, subpath.as_path()) {
+        drop(write_lock);
         report_fatal(
             versions_dict(),
             "missing-control-file",
@@ -299,6 +308,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None
             }
             Err(breezyshim::dirty_tracker::Error::Python(e)) => {
+                drop(write_lock);
                 report_fatal(
                     versions_dict(),
                     "dirty-tracker-error",
@@ -320,9 +330,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         allow_reformatting,
     ) {
         Err(OverallError::NoChanges) => {
+            drop(write_lock);
             report_nothing_to_do(versions_dict(), None);
         }
         Err(OverallError::NotDebianPackage(p)) => {
+            drop(write_lock);
             report_fatal(
                 versions_dict(),
                 "not-debian-package",
@@ -332,6 +344,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         Err(OverallError::Python(e)) => {
+            drop(write_lock);
             report_fatal(
                 versions_dict(),
                 "python-error",
@@ -341,6 +354,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         Err(OverallError::TreeError(e)) => {
+            drop(write_lock);
             report_fatal(
                 versions_dict(),
                 "internal-error",
