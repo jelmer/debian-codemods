@@ -105,10 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
-    pyo3::Python::with_gil(|py| {
-        py.import("breezy.bzr").unwrap();
-        py.import("breezy.git").unwrap();
-    });
+    breezyshim::init();
 
     let mut update_changelog: Option<bool> = if args.update_changelog {
         Some(true)

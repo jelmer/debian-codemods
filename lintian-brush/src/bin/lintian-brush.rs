@@ -167,6 +167,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
+    breezyshim::init();
+
     let mut fixers: Vec<_> = lintian_brush::available_lintian_fixers(
         Some(std::path::PathBuf::from(args.fixers.fixers_dir).as_path()),
         Some(args.fixers.force_subprocess),

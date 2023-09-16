@@ -28,10 +28,7 @@ fn main() {
         )
         .init();
 
-    pyo3::Python::with_gil(|py| {
-        py.import("breezy.bzr").unwrap();
-        py.import("breezy.git").unwrap();
-    });
+    breezyshim::init();
 
     let (wt, subpath) = WorkingTree::open_containing(&args.directory).unwrap();
     let debian_path = if debian_analyzer::control_files_in_root(&wt, subpath.as_path()) {
