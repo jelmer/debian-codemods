@@ -52,7 +52,7 @@ impl std::fmt::Display for Error {
         match self {
             NoVcsLocation => write!(f, "No Vcs-* location specified"),
             FileNotFound(path) => write!(f, "File not found: {}", path.display()),
-            ConflictingVcsAlreadySpecified(vcs_type, existing_url, new_url) => write!(
+            ConflictingVcsAlreadySpecified(_vcs_type, existing_url, new_url) => write!(
                 f,
                 "Conflicting Vcs-* location already specified: {} vs {}",
                 existing_url, new_url
@@ -61,7 +61,7 @@ impl std::fmt::Display for Error {
     }
 }
 
-pub fn update_offical_vcs(
+pub fn update_official_vcs(
     wt: &WorkingTree,
     subpath: &Path,
     repo_url: Option<&Url>,

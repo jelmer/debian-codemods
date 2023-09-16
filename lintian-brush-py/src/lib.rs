@@ -1,7 +1,10 @@
-use pyo3::exceptions::{PyMemoryError, PyRuntimeError, PyValueError};
-use pyo3::import_exception;
+use debian_analyzer::publish::Error as PublishError;
+use pyo3::exceptions::{
+    PyException, PyFileNotFoundError, PyMemoryError, PyRuntimeError, PyValueError,
+};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple, PyType};
+use pyo3::{create_exception, import_exception};
 
 use std::collections::HashMap;
 
@@ -23,6 +26,13 @@ import_exception!(lintian_brush, NotDebianPackage);
 import_exception!(lintian_brush, ScriptNotFound);
 import_exception!(lintian_brush, FailedPatchManipulation);
 import_exception!(lintian_brush, WorkspaceDirty);
+
+create_exception!(lintian_brush.publish, NoVcsLocation, PyException);
+create_exception!(
+    lintian_brush.publish,
+    ConflictingVcsAlreadySpecified,
+    PyException
+);
 
 #[pyfunction]
 fn parse_script_fixer_output(text: &str) -> PyResult<FixerResult> {
@@ -532,6 +542,42 @@ fn guess_update_changelog(
     })
 }
 
+#[pyfunction]
+fn update_official_vcs(
+    wt: PyObject,
+    subpath: std::path::PathBuf,
+    repo_url: Option<&str>,
+    branch: Option<&str>,
+    committer: Option<&str>,
+    force: Option<bool>,
+) -> PyResult<(String, Option<String>, Option<std::path::PathBuf>)> {
+    let wt = breezyshim::WorkingTree(wt);
+
+    let repo_url = repo_url.map(|s| s.parse().unwrap());
+
+    match debian_analyzer::publish::update_official_vcs(
+        &wt,
+        subpath.as_path(),
+        repo_url.as_ref(),
+        branch,
+        committer,
+        force,
+    ) {
+        Ok((repo_url, branch, subpath)) => Ok((repo_url.to_string(), branch, subpath)),
+        Err(PublishError::FileNotFound(p)) => Err(PyFileNotFoundError::new_err((p,))),
+        Err(PublishError::NoVcsLocation) => Err(NoVcsLocation::new_err(())),
+        Err(PublishError::ConflictingVcsAlreadySpecified(
+            vcs_type,
+            existing_vcs_url,
+            target_vcs_url,
+        )) => Err(ConflictingVcsAlreadySpecified::new_err((
+            vcs_type,
+            existing_vcs_url.to_string(),
+            target_vcs_url.to_string(),
+        ))),
+    }
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
@@ -601,5 +647,11 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add("__version__", v)?;
     m.add_class::<ChangelogBehaviour>()?;
     m.add_wrapped(wrap_pyfunction!(guess_update_changelog))?;
+    m.add_wrapped(wrap_pyfunction!(update_official_vcs))?;
+    m.add("NoVcsLocation", py.get_type::<NoVcsLocation>())?;
+    m.add(
+        "ConflictingVcsAlreadySpecified",
+        py.get_type::<ConflictingVcsAlreadySpecified>(),
+    )?;
     Ok(())
 }

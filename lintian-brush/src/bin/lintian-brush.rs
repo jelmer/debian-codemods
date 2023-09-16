@@ -1,6 +1,7 @@
 use breezyshim::branch::{open_containing as open_containing_branch, BranchOpenError};
 use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
 use clap::Parser;
+use debian_analyzer::debianshim::get_maintainer;
 use distro_info::DistroInfo;
 
 use debian_analyzer::svp::{
@@ -557,12 +558,4 @@ fn versions_dict() -> HashMap<String, String> {
         );
     });
     ret
-}
-
-pub fn get_maintainer() -> (Option<String>, Option<String>) {
-    pyo3::Python::with_gil(|py| {
-        let m = py.import("debian.changelog").unwrap();
-        let f = m.getattr("get_maintainer").unwrap();
-        f.call((), None).unwrap().extract().unwrap()
-    })
 }

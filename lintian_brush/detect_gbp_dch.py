@@ -15,7 +15,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import _lintian_brush_rs
+from ._lintian_brush_rs import ChangelogBehaviour, guess_update_changelog
 
-guess_update_changelog = _lintian_brush_rs.guess_update_changelog
-ChangelogBehaviour = _lintian_brush_rs.ChangelogBehaviour
+__all__ = [
+    'guess_update_changelog',
+    'ChangelogBehaviour',
+    ]

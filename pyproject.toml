@@ -63,7 +63,6 @@ debianize = [
 [project.scripts]
 debianize = "lintian_brush.debianize:main"
 deb-scrub-obsolete = "lintian_brush.scrub_obsolete:main"
-deb-vcs-publish = "lintian_brush.publish:main"
 fix-watch-file = "lintian_brush.watch:main"
 
 [tool.setuptools]

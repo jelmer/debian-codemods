@@ -3,6 +3,7 @@ use breezyshim::dirty_tracker::get_dirty_tracker;
 use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
 use breezyshim::workspace::check_clean_tree;
 use clap::Parser;
+use debian_analyzer::debianshim::get_maintainer;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
 use debian_analyzer::svp::{
     enabled as svp_enabled, load_resume, report_fatal, report_nothing_to_do, report_success_debian,
@@ -438,12 +439,4 @@ fn versions_dict() -> HashMap<String, String> {
         );
     });
     ret
-}
-
-pub fn get_maintainer() -> (Option<String>, Option<String>) {
-    pyo3::Python::with_gil(|py| {
-        let m = py.import("debian.changelog").unwrap();
-        let f = m.getattr("get_maintainer").unwrap();
-        f.call((), None).unwrap().extract().unwrap()
-    })
 }

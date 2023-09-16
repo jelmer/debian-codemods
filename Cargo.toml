@@ -59,3 +59,8 @@ configparser = "3.0.2"
 name = "detect-changelog-behaviour"
 path = "src/bin/detect-changelog-behaviour.rs"
 required-features = ["cli"]
+
+[[bin]]
+name = "deb-vcs-publish"
+path = "src/bin/deb-vcs-publish.rs"
+required-features = ["cli"]
