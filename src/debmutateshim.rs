@@ -1,10 +1,16 @@
 use debversion::Version;
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use std::path::Path;
 
 pub struct Deb822Paragraph(pub(crate) PyObject);
+
+impl ToPyObject for Deb822Paragraph {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.0.to_object(py)
+    }
+}
 
 impl Deb822Paragraph {
     pub fn set(&self, key: &str, value: &str) {
@@ -48,6 +54,27 @@ impl ControlEditor {
             let o = editor.to_object(py);
             o.call_method0(py, "__enter__").unwrap();
             ControlEditor(o)
+        })
+    }
+
+    pub fn edit<R, E: std::fmt::Display>(
+        &mut self,
+        cb: impl FnOnce(&mut ControlEditor) -> Result<R, E>,
+    ) -> Result<R, E> {
+        Python::with_gil(|py| {
+            self.0.call_method0(py, "__enter__").unwrap();
+            let result = cb(self);
+            let exc = if let Err(e) = &result {
+                (
+                    PyRuntimeError::new_err((e.to_string(),)).into_py(py),
+                    py.None(),
+                    py.None(),
+                )
+            } else {
+                (py.None(), py.None(), py.None())
+            };
+            self.0.call_method1(py, "__exit__", exc).unwrap();
+            result
         })
     }
 
@@ -355,4 +382,68 @@ mod tests {
             "foo (>= 1.0) [amd64]"
         );
     }
+}
+
+pub fn source_package_vcs(control: &Deb822Paragraph) -> (String, String) {
+    Python::with_gil(|py| {
+        let control = control.to_object(py);
+        let result = py
+            .import("debmutate.control")
+            .unwrap()
+            .call_method1("source_package_vcs", (control,))
+            .unwrap();
+        result.extract().unwrap()
+    })
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct VcsUrl {
+    pub repo_url: url::Url,
+    pub branch: Option<String>,
+    pub subpath: Option<String>,
+}
+
+impl FromPyObject<'_> for VcsUrl {
+    fn extract(ob: &PyAny) -> PyResult<Self> {
+        let repo_url = ob
+            .getattr("repo_url")?
+            .extract::<String>()?
+            .parse()
+            .unwrap();
+        let branch = ob.getattr("branch")?.extract()?;
+        let subpath = ob.getattr("subpath")?.extract()?;
+        Ok(VcsUrl {
+            repo_url,
+            branch,
+            subpath,
+        })
+    }
+}
+
+pub fn split_vcs_url(url: &url::Url) -> VcsUrl {
+    Python::with_gil(|py| {
+        let url = url.to_string().to_object(py);
+        let result = py
+            .import("debmutate.control")
+            .unwrap()
+            .call_method1("split_vcs_url", (url,))
+            .unwrap();
+        result.extract().unwrap()
+    })
+}
+
+pub fn unsplit_vcs_url(
+    repo_url: &url::Url,
+    branch: Option<&str>,
+    subpath: Option<&str>,
+) -> url::Url {
+    Python::with_gil(|py| {
+        let repo_url = repo_url.to_string();
+        let result = py
+            .import("debmutate.control")
+            .unwrap()
+            .call_method1("unsplit_vcs_url", (repo_url, branch, subpath))
+            .unwrap();
+        result.extract::<String>().unwrap().parse().unwrap()
+    })
 }
