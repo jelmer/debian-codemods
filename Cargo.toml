@@ -21,6 +21,7 @@ env_logger = { workspace = true, optional = true }
 serde_json.workspace = true
 chrono = { workspace = true, features = ["serde"] }
 distro-info = { version = ">=0.4.0" }
+url = "2.4.1"
 
 [features]
 default = ["python", "cli"]
@@ -28,7 +29,7 @@ python = []
 cli = ["dep:clap", "dep:env_logger"]
 
 [workspace]
-members = ["lintian-brush", "multiarch-hints", "lintian-brush-py"]
+members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize"]
 
 [workspace.package]
 version = "0.150.0"
