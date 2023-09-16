@@ -3,10 +3,11 @@ use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
 use clap::Parser;
 use distro_info::DistroInfo;
 
-use lintian_brush::svp::{
+use debian_analyzer::svp::{
     enabled as svp_enabled, load_resume, report_fatal, report_success_debian,
 };
-use lintian_brush::{get_committer, Certainty, ManyResult, OverallError};
+use debian_analyzer::{get_committer, Certainty};
+use lintian_brush::{ManyResult, OverallError};
 use std::collections::HashMap;
 use std::io::Write as _;
 
@@ -39,7 +40,7 @@ struct FixerArgs {
     compat_release: Option<String>,
 
     #[arg(long, hide = true)]
-    minimum_certainty: Option<lintian_brush::Certainty>,
+    minimum_certainty: Option<Certainty>,
 
     #[arg(long, hide = true, default_value_t = true)]
     opinionated: bool,
@@ -312,7 +313,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         let mut minimum_certainty = args.fixers.minimum_certainty;
         let mut allow_reformatting = args.packages.allow_reformatting;
-        match lintian_brush::config::Config::from_workingtree(
+        match debian_analyzer::config::Config::from_workingtree(
             &wt,
             std::path::Path::new(subpath.as_str()),
         ) {
@@ -356,7 +357,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             |s| s.clone(),
         );
         let write_lock = wt.lock_write();
-        if lintian_brush::control_files_in_root(&wt, std::path::Path::new(subpath.as_str())) {
+        if debian_analyzer::control_files_in_root(&wt, std::path::Path::new(subpath.as_str())) {
             drop(write_lock);
             report_fatal(
                 versions_dict(),

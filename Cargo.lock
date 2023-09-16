@@ -224,6 +224,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-targets 0.48.5",
 ]
@@ -331,6 +332,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b2466559f260f48ad25fe6317b3c8dac77b5bdb5763ac7d9d6103530663bc90"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "debian-analyzer"
+version = "0.150.0"
+dependencies = [
+ "breezyshim",
+ "chrono",
+ "clap",
+ "configparser",
+ "debversion",
+ "distro-info",
+ "env_logger",
+ "lazy-regex 2.5.0",
+ "log",
+ "pyo3",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -836,6 +855,7 @@ dependencies = [
  "chrono",
  "clap",
  "configparser",
+ "debian-analyzer",
  "debversion",
  "distro-info",
  "env_logger",
@@ -858,9 +878,9 @@ version = "0.150.0"
 dependencies = [
  "breezyshim",
  "chrono",
+ "debian-analyzer",
  "debversion",
  "lintian-brush",
- "multiarch-hints",
  "pyo3",
  "pyo3-log",
  "serde_json",
@@ -947,11 +967,12 @@ dependencies = [
  "breezyshim",
  "chrono",
  "clap",
+ "configparser",
+ "debian-analyzer",
  "debversion",
  "env_logger",
  "lazy-regex 2.5.0",
  "lazy_static",
- "lintian-brush",
  "log",
  "pyo3",
  "reqwest",

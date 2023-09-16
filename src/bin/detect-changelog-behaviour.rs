@@ -34,13 +34,13 @@ fn main() {
     });
 
     let (wt, subpath) = WorkingTree::open_containing(&args.directory).unwrap();
-    let debian_path = if lintian_brush::control_files_in_root(&wt, subpath.as_path()) {
+    let debian_path = if debian_analyzer::control_files_in_root(&wt, subpath.as_path()) {
         subpath
     } else {
         subpath.join("debian")
     };
     let changelog_behaviour =
-        lintian_brush::detect_gbp_dch::guess_update_changelog(&wt, debian_path.as_path(), None);
+        debian_analyzer::detect_gbp_dch::guess_update_changelog(&wt, debian_path.as_path(), None);
     if let Some(changelog_behaviour) = changelog_behaviour {
         log::info!("{}", changelog_behaviour.explanation);
         println!("{}", changelog_behaviour.update_changelog);

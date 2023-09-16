@@ -3,11 +3,11 @@ use breezyshim::dirty_tracker::get_dirty_tracker;
 use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
 use breezyshim::workspace::check_clean_tree;
 use clap::Parser;
-use lintian_brush::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
-use lintian_brush::svp::{
+use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
+use debian_analyzer::svp::{
     enabled as svp_enabled, load_resume, report_fatal, report_nothing_to_do, report_success_debian,
 };
-use lintian_brush::{control_file_present, get_committer, is_debcargo_package, Certainty};
+use debian_analyzer::{control_file_present, get_committer, is_debcargo_package, Certainty};
 use multiarch_hints::{
     apply_multiarch_hints, cache_download_multiarch_hints, multiarch_hints_by_binary,
     parse_multiarch_hints, OverallError,
@@ -218,7 +218,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let since_revid = wt.last_revision().unwrap();
     let mut minimum_certainty = args.minimum_certainty;
     let mut allow_reformatting = args.allow_reformatting;
-    match lintian_brush::config::Config::from_workingtree(&wt, subpath.as_path()) {
+    match debian_analyzer::config::Config::from_workingtree(&wt, subpath.as_path()) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => {
             log::error!("Unable to read config: {}", e);
@@ -273,7 +273,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hints = parse_multiarch_hints(text.as_slice()).unwrap();
     let hints = multiarch_hints_by_binary(hints.as_slice());
 
-    if lintian_brush::control_files_in_root(&wt, subpath.as_path()) {
+    if debian_analyzer::control_files_in_root(&wt, subpath.as_path()) {
         drop(write_lock);
         report_fatal(
             versions_dict(),

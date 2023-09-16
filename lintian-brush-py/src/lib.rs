@@ -1,15 +1,15 @@
 use pyo3::exceptions::{PyMemoryError, PyRuntimeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyList, PyTuple, PyType};
+use pyo3::types::{PyDict, PyList, PyTuple, PyType};
 
 use std::collections::HashMap;
 
+use debian_analyzer::Certainty;
 use lintian_brush::py::{
     json_to_py, py_to_json, Fixer, FixerResult, LintianIssue, ManyResult, PythonScriptFixer,
     ScriptFixer, UnsupportedCertainty,
 };
-use lintian_brush::Certainty;
 
 use debversion::Version;
 
@@ -106,7 +106,7 @@ fn certainty_sufficient(
     let minimum_certainty = minimum_certainty
         .map(|c| c.parse().map_err(UnsupportedCertainty::new_err))
         .transpose()?;
-    Ok(lintian_brush::certainty_sufficient(
+    Ok(debian_analyzer::certainty_sufficient(
         actual_certainty,
         minimum_certainty,
     ))
@@ -118,38 +118,19 @@ fn min_certainty(certainties: Vec<&str>) -> PyResult<String> {
         .iter()
         .map(|c| c.parse().map_err(UnsupportedCertainty::new_err))
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(lintian_brush::min_certainty(certainties.as_slice())
+    Ok(debian_analyzer::min_certainty(certainties.as_slice())
         .unwrap_or(Certainty::Certain)
         .to_string())
 }
 
 #[pyfunction]
 fn resolve_release_codename(name: &str, date: Option<chrono::NaiveDate>) -> Option<String> {
-    lintian_brush::release_info::resolve_release_codename(name, date)
+    debian_analyzer::release_info::resolve_release_codename(name, date)
 }
 
 #[pyfunction]
 fn calculate_value(tags: Vec<&str>) -> i32 {
     lintian_brush::calculate_value(tags.as_slice())
-}
-
-#[pyfunction(name = "calculate_value")]
-fn calculate_multiarch_value(hints: Vec<&str>) -> i32 {
-    multiarch_hints::calculate_value(hints.as_slice())
-}
-
-#[pyfunction]
-fn cache_download_multiarch_hints(py: Python, url: Option<&str>) -> PyResult<PyObject> {
-    multiarch_hints::cache_download_multiarch_hints(url)
-        .map_err(|e| PyValueError::new_err(e.to_string()))
-        .map(|b| PyBytes::new(py, b.as_slice()).to_object(py))
-}
-
-#[pyfunction]
-fn download_multiarch_hints(py: Python, url: Option<&str>) -> PyResult<PyObject> {
-    multiarch_hints::download_multiarch_hints(url, None)
-        .map_err(|e| PyValueError::new_err(e.to_string()))
-        .map(|b| PyBytes::new(py, b.unwrap().as_slice()).to_object(py))
 }
 
 #[pyfunction]
@@ -160,7 +141,7 @@ fn report_fatal(
     hint: Option<&str>,
     transient: Option<bool>,
 ) {
-    lintian_brush::svp::report_fatal(versions, code, description, hint, transient)
+    debian_analyzer::svp::report_fatal(versions, code, description, hint, transient)
 }
 
 #[pyfunction]
@@ -176,7 +157,7 @@ pub fn report_success(
         None
     };
 
-    lintian_brush::svp::report_success(versions, value, context);
+    debian_analyzer::svp::report_success(versions, value, context);
     Ok(())
 }
 
@@ -193,18 +174,18 @@ pub fn report_success_debian(
     } else {
         None
     };
-    lintian_brush::svp::report_success_debian(versions, value, context, changelog);
+    debian_analyzer::svp::report_success_debian(versions, value, context, changelog);
     Ok(())
 }
 
 #[pyclass]
-struct Config(lintian_brush::config::Config);
+struct Config(debian_analyzer::config::Config);
 
 #[pymethods]
 impl Config {
     #[new]
     fn new(path: std::path::PathBuf) -> PyResult<Self> {
-        Ok(Config(lintian_brush::config::Config::load_from_path(
+        Ok(Config(debian_analyzer::config::Config::load_from_path(
             path.as_path(),
         )?))
     }
@@ -216,7 +197,7 @@ impl Config {
             .extract::<std::path::PathBuf>(py)?;
         let path = basedir
             .join(subpath)
-            .join(lintian_brush::config::PACKAGE_CONFIG_FILENAME);
+            .join(debian_analyzer::config::PACKAGE_CONFIG_FILENAME);
         Config::new(path)
     }
 
@@ -239,7 +220,7 @@ impl Config {
 
 #[pyfunction]
 pub fn load_resume(py: Python) -> PyResult<PyObject> {
-    if let Some(resume) = lintian_brush::svp::load_resume() {
+    if let Some(resume) = debian_analyzer::svp::load_resume() {
         Ok(json_to_py(py, resume)?)
     } else {
         Ok(py.None())
@@ -254,7 +235,7 @@ fn increment_version(mut version: debversion::Version) -> PyResult<debversion::V
 
 #[pyfunction]
 fn svp_enabled() -> bool {
-    lintian_brush::svp::enabled()
+    debian_analyzer::svp::enabled()
 }
 
 #[derive(Debug, Clone)]
@@ -470,21 +451,21 @@ fn only_changes_last_changelog_block(
 fn control_file_present(tree: PyObject, path: std::path::PathBuf) -> pyo3::PyResult<bool> {
     let tree = breezyshim::tree::RevisionTree(tree);
     let path = path.as_path();
-    Ok(lintian_brush::control_file_present(&tree, path))
+    Ok(debian_analyzer::control_file_present(&tree, path))
 }
 
 #[pyfunction]
 fn control_files_in_root(tree: PyObject, path: std::path::PathBuf) -> pyo3::PyResult<bool> {
     let tree = breezyshim::tree::RevisionTree(tree);
     let path = path.as_path();
-    Ok(lintian_brush::control_files_in_root(&tree, path))
+    Ok(debian_analyzer::control_files_in_root(&tree, path))
 }
 
 #[pyfunction]
 fn is_debcargo_package(tree: PyObject, path: std::path::PathBuf) -> pyo3::PyResult<bool> {
     let tree = breezyshim::tree::RevisionTree(tree);
     let path = path.as_path();
-    Ok(lintian_brush::is_debcargo_package(&tree, path))
+    Ok(debian_analyzer::is_debcargo_package(&tree, path))
 }
 
 #[pyclass]
@@ -536,10 +517,11 @@ fn guess_update_changelog(
     let path = path.as_path();
     Python::with_gil(|py| {
         let tree = breezyshim::tree::WorkingTree(tree);
-        let cl = cl
-            .map(|cl| lintian_brush::debianshim::Changelog::from_pyobject(cl.as_ref(py)).unwrap());
+        let cl = cl.map(|cl| {
+            debian_analyzer::debianshim::Changelog::from_pyobject(cl.as_ref(py)).unwrap()
+        });
         Ok(
-            lintian_brush::detect_gbp_dch::guess_update_changelog(&tree, path, cl).map(|cb| {
+            debian_analyzer::detect_gbp_dch::guess_update_changelog(&tree, path, cl).map(|cb| {
                 ChangelogBehaviour {
                     update_changelog: cb.update_changelog,
                     explanation: cb.explanation,
@@ -592,18 +574,12 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     }
     m.add("LINTIAN_BRUSH_TAG_VALUES", tag_values)?;
 
-    let multiarch_m = PyModule::new(py, "multiarch_hints")?;
-    multiarch_m.add_wrapped(wrap_pyfunction!(calculate_multiarch_value))?;
-    multiarch_m.add("MULTIARCH_HINTS_URL", multiarch_hints::MULTIARCH_HINTS_URL)?;
-    multiarch_m.add_wrapped(wrap_pyfunction!(cache_download_multiarch_hints))?;
-    multiarch_m.add_wrapped(wrap_pyfunction!(download_multiarch_hints))?;
-    m.add_submodule(multiarch_m)?;
     m.add_function(wrap_pyfunction!(report_fatal, m)?)?;
     m.add_function(wrap_pyfunction!(report_success, m)?)?;
     m.add_function(wrap_pyfunction!(report_success_debian, m)?)?;
     m.add(
         "PACKAGE_CONFIG_FILENAME",
-        lintian_brush::config::PACKAGE_CONFIG_FILENAME,
+        debian_analyzer::config::PACKAGE_CONFIG_FILENAME,
     )?;
     m.add_class::<Config>()?;
     m.add_wrapped(wrap_pyfunction!(increment_version))?;

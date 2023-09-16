@@ -1,15 +1,15 @@
 use breezyshim::dirty_tracker::DirtyTracker;
 use breezyshim::tree::{CommitError, Error as TreeError, WorkingTree};
-use debversion::Version;
-use lazy_regex::regex_captures;
-use lazy_static::lazy_static;
-use lintian_brush::debmutateshim::{
+use debian_analyzer::debmutateshim::{
     format_relations, parse_relations, ControlEditor, Deb822Paragraph, ParsedRelation,
 };
-use lintian_brush::{
+use debian_analyzer::{
     add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, ApplyError,
     Certainty, ChangelogError,
 };
+use debversion::Version;
+use lazy_regex::regex_captures;
+use lazy_static::lazy_static;
 use pyo3::PyErr;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};

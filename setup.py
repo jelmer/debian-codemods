@@ -32,9 +32,9 @@ setup(
     ],
     rust_extensions=[
         RustBin("lintian-brush", "lintian-brush/Cargo.toml"),
-        RustBin("detect-gbp-dch", "lintian-brush/Cargo.toml"),
+        RustBin("detect-changelog-behaviour", "Cargo.toml", features=["cli"]),
         RustBin("dump-multiarch-hints", "multiarch-hints/Cargo.toml"),
-        RustBin("apply-multiarch-hints", "multiarch-hints/Cargo.toml"),
+        RustBin("apply-multiarch-hints", "multiarch-hints/Cargo.toml", features=["cli"]),
         RustExtension(
             "lintian_brush._lintian_brush_rs", "lintian-brush-py/Cargo.toml",
             binding=Binding.PyO3)],

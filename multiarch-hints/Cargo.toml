@@ -11,13 +11,23 @@ reqwest = { workspace = true, features = ["blocking"] }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }
 xz2 = "0.1"
-lintian-brush = { path = "../lintian-brush" }
+debian-analyzer = { path = ".." }
 debversion = { workspace = true, features = ["serde"] }
-pyo3 = { version = "0.19", features = ["auto-initialize"]}
+pyo3 = { workspace = true, features = ["auto-initialize"]}
 lazy-regex = { workspace = true }
 breezyshim.workspace = true
-clap.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
-env_logger.workspace = true
+env_logger = { workspace = true, optional = true }
 url = "2.4.1"
+configparser.workspace = true
+clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
+
+[features]
+default = ["cli"]
+cli = ["dep:clap", "dep:env_logger"]
+
+[[bin]]
+name = "apply-multiarch-hints"
+path = "src/bin/apply-multiarch-hints.rs"
+required-features = ["cli"]

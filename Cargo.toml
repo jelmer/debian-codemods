@@ -1,3 +1,32 @@
+[package]
+name = "debian-analyzer"
+version = { workspace = true }
+authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
+edition = "2021"
+license = "GPL-2.0+"
+description = "Debian analyzer"
+repository = "https://salsa.debian.org/jelmer/lintian-brush.git"
+homepage = "https://salsa.debian.org/jelmer/lintian-brush"
+
+[dependencies]
+pyo3 = { workspace = true, features = ["auto-initialize", "serde", "chrono"] }
+debversion = { workspace = true, features = ["serde"] }
+log = { workspace = true }
+lazy-regex = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+breezyshim.workspace = true
+configparser.workspace = true
+clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
+env_logger = { workspace = true, optional = true }
+serde_json.workspace = true
+chrono = { workspace = true, features = ["serde"] }
+distro-info = { version = ">=0.4.0" }
+
+[features]
+default = ["python", "cli"]
+python = []
+cli = ["dep:clap", "dep:env_logger"]
+
 [workspace]
 members = ["lintian-brush", "multiarch-hints", "lintian-brush-py"]
 
@@ -20,3 +49,11 @@ pyo3-file = ">=0.5"
 clap = "<=4.2"
 serde_json = "1"
 tempfile = "3"
+configparser = "3.0.2"
+
+[lib]
+
+[[bin]]
+name = "detect-changelog-behaviour"
+path = "src/bin/detect-changelog-behaviour.rs"
+required-features = ["cli"]
