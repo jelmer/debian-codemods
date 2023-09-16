@@ -1,10 +1,15 @@
 use debversion::Version;
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use pyo3::exceptions::{PyKeyError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use std::path::Path;
 
 pub struct Deb822Paragraph(pub(crate) PyObject);
+
+pub trait ControlLikeEditor: ToPyObject {
+    fn source(&self) -> Option<Deb822Paragraph>;
+    fn binaries(&self) -> Vec<Deb822Paragraph>;
+}
 
 impl ToPyObject for Deb822Paragraph {
     fn to_object(&self, py: Python) -> PyObject {
@@ -41,6 +46,12 @@ impl Deb822Paragraph {
 
 pub struct ControlEditor(PyObject);
 
+impl ToPyObject for ControlEditor {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.0.to_object(py)
+    }
+}
+
 impl ControlEditor {
     pub fn new() -> Self {
         Python::with_gil(|py| {
@@ -54,27 +65,6 @@ impl ControlEditor {
             let o = editor.to_object(py);
             o.call_method0(py, "__enter__").unwrap();
             ControlEditor(o)
-        })
-    }
-
-    pub fn edit<R, E: std::fmt::Display>(
-        &mut self,
-        cb: impl FnOnce(&mut ControlEditor) -> Result<R, E>,
-    ) -> Result<R, E> {
-        Python::with_gil(|py| {
-            self.0.call_method0(py, "__enter__").unwrap();
-            let result = cb(self);
-            let exc = if let Err(e) = &result {
-                (
-                    PyRuntimeError::new_err((e.to_string(),)).into_py(py),
-                    py.None(),
-                    py.None(),
-                )
-            } else {
-                (py.None(), py.None(), py.None())
-            };
-            self.0.call_method1(py, "__exit__", exc).unwrap();
-            result
         })
     }
 
@@ -113,8 +103,10 @@ impl ControlEditor {
             ControlEditor(o)
         })
     }
+}
 
-    pub fn source(&self) -> Option<Deb822Paragraph> {
+impl ControlLikeEditor for ControlEditor {
+    fn source(&self) -> Option<Deb822Paragraph> {
         Python::with_gil(|py| {
             let result = self.0.getattr(py, "source").unwrap();
             if result.is_none(py) {
@@ -125,7 +117,7 @@ impl ControlEditor {
         })
     }
 
-    pub fn binaries(&self) -> Vec<Deb822Paragraph> {
+    fn binaries(&self) -> Vec<Deb822Paragraph> {
         Python::with_gil(|py| {
             let elements = self.0.getattr(py, "binaries").unwrap();
             let mut binaries = vec![];
@@ -328,7 +320,7 @@ pub fn parse_relations(relations: &str) -> Vec<(String, Vec<ParsedRelation>, Str
 mod tests {
     #[test]
     fn test_create() {
-        use super::ControlEditor;
+        use super::*;
         let td = tempfile::tempdir().unwrap();
         let ce = ControlEditor::create(Some(td.path().join("control").as_path()));
         assert!(ce.source().is_some());
@@ -384,43 +376,25 @@ mod tests {
     }
 }
 
-pub fn source_package_vcs(control: &Deb822Paragraph) -> (String, String) {
+pub fn source_package_vcs(control: &Deb822Paragraph) -> Option<(String, url::Url)> {
     Python::with_gil(|py| {
         let control = control.to_object(py);
-        let result = py
+        match py
             .import("debmutate.control")
             .unwrap()
             .call_method1("source_package_vcs", (control,))
-            .unwrap();
-        result.extract().unwrap()
+        {
+            Ok(o) => o
+                .extract::<Option<(String, String)>>()
+                .unwrap()
+                .map(|(k, v)| (k, v.parse().unwrap())),
+            Err(e) if e.is_instance_of::<PyKeyError>(py) => None,
+            Err(e) => panic!("unexpected error: {}", e),
+        }
     })
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct VcsUrl {
-    pub repo_url: url::Url,
-    pub branch: Option<String>,
-    pub subpath: Option<String>,
-}
-
-impl FromPyObject<'_> for VcsUrl {
-    fn extract(ob: &PyAny) -> PyResult<Self> {
-        let repo_url = ob
-            .getattr("repo_url")?
-            .extract::<String>()?
-            .parse()
-            .unwrap();
-        let branch = ob.getattr("branch")?.extract()?;
-        let subpath = ob.getattr("subpath")?.extract()?;
-        Ok(VcsUrl {
-            repo_url,
-            branch,
-            subpath,
-        })
-    }
-}
-
-pub fn split_vcs_url(url: &url::Url) -> VcsUrl {
+pub fn split_vcs_url(url: &url::Url) -> (url::Url, Option<String>, Option<std::path::PathBuf>) {
     Python::with_gil(|py| {
         let url = url.to_string().to_object(py);
         let result = py
@@ -428,14 +402,17 @@ pub fn split_vcs_url(url: &url::Url) -> VcsUrl {
             .unwrap()
             .call_method1("split_vcs_url", (url,))
             .unwrap();
-        result.extract().unwrap()
+        let (repo_url, branch, subpath) = result
+            .extract::<(String, Option<String>, Option<std::path::PathBuf>)>()
+            .unwrap();
+        (repo_url.parse().unwrap(), branch, subpath)
     })
 }
 
 pub fn unsplit_vcs_url(
     repo_url: &url::Url,
     branch: Option<&str>,
-    subpath: Option<&str>,
+    subpath: Option<&Path>,
 ) -> url::Url {
     Python::with_gil(|py| {
         let repo_url = repo_url.to_string();
@@ -445,5 +422,77 @@ pub fn unsplit_vcs_url(
             .call_method1("unsplit_vcs_url", (repo_url, branch, subpath))
             .unwrap();
         result.extract::<String>().unwrap().parse().unwrap()
+    })
+}
+
+pub struct DebcargoControlShimEditor(PyObject);
+
+impl ToPyObject for DebcargoControlShimEditor {
+    fn to_object(&self, py: Python) -> PyObject {
+        self.0.to_object(py)
+    }
+}
+
+impl DebcargoControlShimEditor {
+    pub fn from_debian_dir(debian_dir: &Path) -> Self {
+        Python::with_gil(|py| {
+            let control = py
+                .import("debmutate.control")
+                .unwrap()
+                .getattr("DebcargoControlShimEditor")
+                .unwrap()
+                .call_method1("from_debian_dir", (debian_dir,))
+                .unwrap();
+            DebcargoControlShimEditor(control.into())
+        })
+    }
+}
+
+impl ControlLikeEditor for DebcargoControlShimEditor {
+    fn source(&self) -> Option<Deb822Paragraph> {
+        Python::with_gil(|py| {
+            let result = self.0.getattr(py, "source").unwrap();
+            if result.is_none(py) {
+                None
+            } else {
+                Some(Deb822Paragraph(result))
+            }
+        })
+    }
+
+    fn binaries(&self) -> Vec<Deb822Paragraph> {
+        Python::with_gil(|py| {
+            let elements = self.0.getattr(py, "binaries").unwrap();
+            let mut binaries = vec![];
+            for elem in elements.as_ref(py).iter().unwrap() {
+                let elem = elem.unwrap();
+                binaries.push(Deb822Paragraph(elem.to_object(py)));
+            }
+            binaries
+        })
+    }
+}
+
+pub fn edit_control<R, E: std::fmt::Display>(
+    editor: &mut dyn ControlLikeEditor,
+    cb: impl FnOnce(&mut dyn ControlLikeEditor) -> Result<R, E>,
+) -> Result<R, E> {
+    Python::with_gil(|py| {
+        editor.to_object(py).call_method0(py, "__enter__").unwrap();
+        let result = cb(editor);
+        let exc = if let Err(e) = &result {
+            (
+                PyRuntimeError::new_err((e.to_string(),)).into_py(py),
+                py.None(),
+                py.None(),
+            )
+        } else {
+            (py.None(), py.None(), py.None())
+        };
+        editor
+            .to_object(py)
+            .call_method1(py, "__exit__", exc)
+            .unwrap();
+        result
     })
 }

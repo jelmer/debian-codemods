@@ -1,3 +1,4 @@
+use breezyshim::branch::Branch;
 use breezyshim::dirty_tracker::DirtyTracker;
 use breezyshim::tree::{Error as TreeError, Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::reset_tree;
@@ -10,6 +11,7 @@ pub mod debmutateshim;
 pub mod detect_gbp_dch;
 pub mod publish;
 pub mod release_info;
+pub mod salsa;
 pub mod svp;
 pub mod vcs;
 
@@ -319,4 +321,36 @@ pub fn control_files_in_root(tree: &dyn Tree, subpath: &std::path::Path) -> bool
     }
 
     tree.has_filename(subpath.join("control.in").as_path())
+}
+
+pub fn branch_vcs_type(branch: &Box<dyn Branch>) -> String {
+    pyo3::Python::with_gil(|py| {
+        let repo = branch.to_object(py).getattr(py, "repository").unwrap();
+        if repo.as_ref(py).hasattr("_git").unwrap() {
+            Ok::<String, PyErr>("git".to_string())
+        } else {
+            Ok::<String, PyErr>("bzr".to_string())
+        }
+    })
+    .unwrap()
+}
+
+pub fn parseaddr(input: &str) -> Option<(Option<String>, Option<String>)> {
+    if let Some((_whole, name, addr)) =
+        lazy_regex::regex_captures!(r"(?:(?P<name>[^<]*)\s*<)?(?P<addr>[^<>]*)>?", input)
+    {
+        let name = Some(name.trim().to_string());
+        let addr = Some(addr.trim().to_string());
+
+        return Some((name, addr));
+    } else if let Some((_whole, addr)) = lazy_regex::regex_captures!(r"(?P<addr>[^<>]*)", input) {
+        let addr = Some(addr.trim().to_string());
+
+        return Some((None, addr));
+    } else if input.is_empty() {
+        return None;
+    } else if !input.contains('<') {
+        return Some((None, Some(input.to_string())));
+    }
+    None
 }
