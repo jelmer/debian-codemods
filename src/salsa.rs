@@ -49,3 +49,40 @@ pub fn guess_repository_url(package: &str, maintainer_email: &str) -> Option<Url
         .parse()
         .ok()
 }
+
+#[cfg(test)]
+mod guess_repository_url_tests {
+    use super::*;
+
+    #[test]
+    fn test_unknown() {
+        assert_eq!(
+            None,
+            guess_repository_url("blah", "unknown-team@lists.alioth.debian.org")
+        );
+    }
+
+    #[test]
+    fn test_individual() {
+        assert_eq!(
+            Some(
+                "https://salsa.debian.org/jelmer/lintian-brush.git"
+                    .parse()
+                    .unwrap()
+            ),
+            guess_repository_url("lintian-brush", "jelmer@debian.org")
+        );
+    }
+
+    #[test]
+    fn test_team() {
+        assert_eq!(
+            Some(
+                "https://salsa.debian.org/js-team/node-blah.git"
+                    .parse()
+                    .unwrap()
+            ),
+            guess_repository_url("node-blah", "pkg-javascript-devel@lists.alioth.debian.org")
+        );
+    }
+}
