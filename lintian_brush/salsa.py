@@ -24,32 +24,8 @@ from contextlib import suppress
 from typing import Optional
 from urllib.parse import urlparse
 
+from ._lintian_brush_rs import guess_repository_url
 from .vcs import determine_gitlab_browser_url
-
-MAINTAINER_EMAIL_MAP = {
-    "pkg-javascript-devel@lists.alioth.debian.org": "js-team",
-    "python-modules-team@lists.alioth.debian.org": "python-team/modules",
-    "python-apps-team@lists.alioth.debian.org": "python-team/applications",
-    "debian-science-maintainers@lists.alioth.debian.org": "science-team",
-    "pkg-perl-maintainers@lists.alioth.debian.org":
-        "perl-team/modules/packages",
-    "pkg-java-maintainers@lists.alioth.debian.org": "java-team",
-    "pkg-ruby-extras-maintainers@lists.alioth.debian.org": "ruby-team",
-    "pkg-clamav-devel@lists.alioth.debian.org": "clamav-team",
-    "pkg-go-maintainers@lists.alioth.debian.org": "go-team/packages",
-    "pkg-games-devel@lists.alioth.debian.org": "games-team",
-    "pkg-telepathy-maintainers@lists.alioth.debian.org": "telepathy-team",
-    "debian-fonts@lists.debian.org": "fonts-team",
-    "pkg-gnustep-maintainers@lists.alioth.debian.org": "gnustep-team",
-    "pkg-gnome-maintainers@lists.alioth.debian.org": "gnome-team",
-    "pkg-multimedia-maintainers@lists.alioth.debian.org": "multimedia-team",
-    "debian-ocaml-maint@lists.debian.org": "ocaml-team",
-    "pkg-php-pear@lists.alioth.debian.org": "php-team/pear",
-    "pkg-mpd-maintainers@lists.alioth.debian.org": "mpd-team",
-    "pkg-cli-apps-team@lists.alioth.debian.org": "dotnet-team",
-    "pkg-mono-group@lists.alioth.debian.org": "dotnet-team",
-    "team+python@tracker.debian.org": "python-team/packages",
-}
 
 TEAM_NAME_MAP = {
     "debian-xml-sgml": "xml-sgml-team",
@@ -131,27 +107,6 @@ GIT_PATH_RENAMES = {
     "pkg-privacy/packages": "pkg-privacy-team",
     "pkg-cli-libs/packages": "dotnet-team",
 }
-
-
-def guess_repository_url(package: str, maintainer_email: str) -> Optional[str]:
-    """Guess the repository URL for a package hosted on Salsa.
-
-    Args:
-      package: Package name
-      maintainer_email: The maintainer's email address (e.g. team list address)
-
-    Returns:
-      A guessed repository URL
-    """
-    if maintainer_email.endswith("@debian.org"):
-        team_name = maintainer_email.split("@")[0]
-    else:
-        try:
-            team_name = MAINTAINER_EMAIL_MAP[maintainer_email]
-        except KeyError:
-            return None
-
-    return f"https://salsa.debian.org/{team_name}/{package}.git"
 
 
 def determine_browser_url(url: str) -> str:

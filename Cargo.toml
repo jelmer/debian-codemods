@@ -23,6 +23,8 @@ chrono = { workspace = true, features = ["serde"] }
 distro-info = { version = ">=0.4.0" }
 url = "2.4.1"
 tempfile.workspace = true
+maplit = "1.0.2"
+lazy_static = "1.4.0"
 
 [features]
 default = ["python", "cli"]

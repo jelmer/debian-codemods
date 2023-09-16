@@ -1,15 +1,51 @@
-use pyo3::prelude::*;
+use std::collections::HashMap;
 use url::Url;
 
+lazy_static::lazy_static! {
+static ref MAINTAINER_EMAIL_MAP: HashMap<&'static str, &'static str> = maplit::hashmap! {
+    "pkg-javascript-devel@lists.alioth.debian.org" => "js-team",
+    "python-modules-team@lists.alioth.debian.org" => "python-team/modules",
+    "python-apps-team@lists.alioth.debian.org" => "python-team/applications",
+    "debian-science-maintainers@lists.alioth.debian.org" => "science-team",
+    "pkg-perl-maintainers@lists.alioth.debian.org" =>
+        "perl-team/modules/packages",
+    "pkg-java-maintainers@lists.alioth.debian.org" => "java-team",
+    "pkg-ruby-extras-maintainers@lists.alioth.debian.org" => "ruby-team",
+    "pkg-clamav-devel@lists.alioth.debian.org" => "clamav-team",
+    "pkg-go-maintainers@lists.alioth.debian.org" => "go-team/packages",
+    "pkg-games-devel@lists.alioth.debian.org" => "games-team",
+    "pkg-telepathy-maintainers@lists.alioth.debian.org" => "telepathy-team",
+    "debian-fonts@lists.debian.org" => "fonts-team",
+    "pkg-gnustep-maintainers@lists.alioth.debian.org" => "gnustep-team",
+    "pkg-gnome-maintainers@lists.alioth.debian.org" => "gnome-team",
+    "pkg-multimedia-maintainers@lists.alioth.debian.org" => "multimedia-team",
+    "debian-ocaml-maint@lists.debian.org" => "ocaml-team",
+    "pkg-php-pear@lists.alioth.debian.org" => "php-team/pear",
+    "pkg-mpd-maintainers@lists.alioth.debian.org" => "mpd-team",
+    "pkg-cli-apps-team@lists.alioth.debian.org" => "dotnet-team",
+    "pkg-mono-group@lists.alioth.debian.org" => "dotnet-team",
+    "team+python@tracker.debian.org" => "python-team/packages",
+};
+}
+
+/// Guess the repository URL for a package hosted on Salsa.
+///
+/// # Arguments:
+/// * `package`: Package name
+/// * `maintainer_email`: The maintainer's email address (e.g. team list address)
+///
+/// # Returns:
+/// A guessed repository URL
 pub fn guess_repository_url(package: &str, maintainer_email: &str) -> Option<Url> {
-    Python::with_gil(|py| -> PyResult<Option<Url>> {
-        let m = py.import("lintian_brush.salsa")?;
-        let guess_repository_url = m.getattr("guess_repository_url")?;
-        let url = guess_repository_url.call1((package, maintainer_email))?;
-        Ok(url
-            .extract::<Option<String>>()
-            .unwrap()
-            .map(|url| url::Url::parse(&url).unwrap()))
-    })
-    .unwrap()
+    let team_name = if maintainer_email.ends_with("@debian.org") {
+        maintainer_email.split('@').next().unwrap()
+    } else if let Some(team_name) = MAINTAINER_EMAIL_MAP.get(maintainer_email) {
+        team_name
+    } else {
+        return None;
+    };
+
+    format!("https://salsa.debian.org/{}/{}.git", team_name, package)
+        .parse()
+        .ok()
 }

@@ -578,6 +578,11 @@ fn update_official_vcs(
     }
 }
 
+#[pyfunction]
+pub fn guess_repository_url(package: &str, maintainer_email: &str) -> Option<String> {
+    debian_analyzer::salsa::guess_repository_url(package, maintainer_email).map(|u| u.to_string())
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
@@ -648,6 +653,7 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<ChangelogBehaviour>()?;
     m.add_wrapped(wrap_pyfunction!(guess_update_changelog))?;
     m.add_wrapped(wrap_pyfunction!(update_official_vcs))?;
+    m.add_wrapped(wrap_pyfunction!(guess_repository_url))?;
     m.add("NoVcsLocation", py.get_type::<NoVcsLocation>())?;
     m.add(
         "ConflictingVcsAlreadySpecified",
