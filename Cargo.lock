@@ -350,7 +350,12 @@ dependencies = [
  "pyo3",
  "serde",
  "serde_json",
+ "url",
 ]
+
+[[package]]
+name = "debianize"
+version = "0.150.0"
 
 [[package]]
 name = "debversion"
