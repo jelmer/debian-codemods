@@ -11,7 +11,7 @@ reqwest = { workspace = true, features = ["blocking"] }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }
 xz2 = "0.1"
-lintian-brush = { path = ".." }
+lintian-brush = { path = "../lintian-brush" }
 debversion = { workspace = true, features = ["serde"] }
 pyo3 = { version = "0.19", features = ["auto-initialize"]}
 lazy-regex = { workspace = true }

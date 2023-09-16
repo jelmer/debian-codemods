@@ -1,0 +1,44 @@
+[package]
+name = "lintian-brush"
+version = { workspace = true }
+authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
+edition = "2021"
+license = "GPL-2.0+"
+description = "Automatic lintian issue fixer"
+repository = "https://salsa.debian.org/jelmer/lintian-brush.git"
+homepage = "https://salsa.debian.org/jelmer/lintian-brush"
+
+[dependencies]
+pyo3 = { workspace = true, features = ["auto-initialize", "serde", "chrono"], optional = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+distro-info = { version = ">=0.4.0" }
+chrono = { workspace = true }
+log = { workspace = true }
+configparser = "3.0.2"
+clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
+env_logger = { workspace = true, optional = true }
+lazy-regex = { workspace = true }
+debversion = { workspace = true, features = ["python-debian"] }
+pyo3-file = { workspace = true }
+breezyshim = { workspace = true }
+indicatif = "0.17"
+tempfile = { workspace = true }
+url = { version = "2", features = ["serde"] }
+lazy_static = { workspace = true }
+
+[features]
+default = ["svp", "python", "cli"]
+svp = []
+python = ["dep:pyo3"]
+cli = ["dep:clap", "dep:env_logger"]
+
+[[bin]]
+name = "lintian-brush"
+required-features = ["cli"]
+
+[[bin]]
+name = "detect-gbp-dch"
+path = "src/bin/detect-gbp-dch.rs"
+required-features = ["cli"]

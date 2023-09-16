@@ -31,8 +31,8 @@ setup(
          ]),
     ],
     rust_extensions=[
-        RustBin("lintian-brush", "Cargo.toml"),
-        RustBin("detect-gbp-dch", "Cargo.toml"),
+        RustBin("lintian-brush", "lintian-brush/Cargo.toml"),
+        RustBin("detect-gbp-dch", "lintian-brush/Cargo.toml"),
         RustBin("dump-multiarch-hints", "multiarch-hints/Cargo.toml"),
         RustBin("apply-multiarch-hints", "multiarch-hints/Cargo.toml"),
         RustExtension(

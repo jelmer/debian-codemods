@@ -942,7 +942,7 @@ dependencies = [
 
 [[package]]
 name = "multiarch-hints"
-version = "0.1.0"
+version = "0.150.0"
 dependencies = [
  "breezyshim",
  "chrono",
