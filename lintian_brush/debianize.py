@@ -160,7 +160,7 @@ from .debhelper import (
 )
 from .publish import (
     NoVcsLocation,
-    update_offical_vcs,
+    update_official_vcs,
 )
 from .standards_version import latest_standards_version
 from .svp import svp_enabled
