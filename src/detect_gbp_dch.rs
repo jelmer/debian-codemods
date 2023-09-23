@@ -98,13 +98,7 @@ pub fn guess_update_changelog(
     }
     if let Some(ret) = guess_update_changelog_from_tree(tree, debian_path, cl) {
         Some(ret)
-    } else if let Some(ret) =
-        guess_update_changelog_from_branch(tree.branch().as_ref(), debian_path, None)
-    {
-        Some(ret)
-    } else {
-        None
-    }
+    } else { guess_update_changelog_from_branch(tree.branch().as_ref(), debian_path, None) }
 }
 
 pub fn guess_update_changelog_from_tree(

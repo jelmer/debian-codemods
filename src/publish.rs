@@ -5,7 +5,7 @@ use crate::debmutateshim::{
 use crate::salsa::guess_repository_url;
 use crate::vcs::determine_browser_url;
 use crate::{branch_vcs_type, get_committer, parseaddr};
-use breezyshim::branch::Branch;
+
 use breezyshim::forge::{create_project, Error as ForgeError};
 use breezyshim::tree::{CommitError, Tree, WorkingTree};
 use breezyshim::workspace::check_clean_tree;
@@ -18,7 +18,7 @@ pub fn update_control_for_vcs_url(
     vcs_url: &url::Url,
 ) {
     source.set(format!("Vcs-{}", vcs_type).as_str(), vcs_url.as_str());
-    if let Some(url) = determine_browser_url("git", &vcs_url) {
+    if let Some(url) = determine_browser_url("git", vcs_url) {
         source.set("Vcs-Browser", url.as_str());
     } else {
         source.remove("Vcs-Browser");
@@ -31,7 +31,7 @@ pub fn create_vcs_url(repo_url: &Url, summary: Option<&str>) -> Result<(), Forge
             log::info!("Created {}", repo_url);
             Ok(())
         }
-        Err(ForgeError::ProjectExists(n)) => {
+        Err(ForgeError::ProjectExists(_n)) => {
             log::debug!("{} already exists", repo_url);
             Ok(())
         }

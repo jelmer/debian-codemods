@@ -7,7 +7,7 @@ use debian_analyzer::debianshim::get_maintainer;
 use debian_analyzer::publish::{create_vcs_url, update_official_vcs};
 
 use debian_analyzer::get_committer;
-use std::collections::HashMap;
+
 use std::io::Write as _;
 
 #[derive(clap::Args, Clone, Debug)]
@@ -90,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(0);
     }
 
-    let (repo_url, branch, subpath) = match update_official_vcs(
+    let (repo_url, branch, _subpath) = match update_official_vcs(
         &wt,
         std::path::Path::new(subpath.as_str()),
         args.url.as_ref(),
