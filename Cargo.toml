@@ -21,7 +21,7 @@ env_logger = { workspace = true, optional = true }
 serde_json.workspace = true
 chrono = { workspace = true, features = ["serde"] }
 distro-info = { version = ">=0.4.0" }
-url = "2.4.1"
+url = { workspace = true }
 tempfile.workspace = true
 maplit = "1.0.2"
 lazy_static = "1.4.0"
@@ -54,6 +54,7 @@ clap = "<=4.2"
 serde_json = "1"
 tempfile = "3"
 configparser = "3.0.2"
+url = "2.4"
 
 [lib]
 

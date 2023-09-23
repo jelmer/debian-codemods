@@ -19,7 +19,7 @@ breezyshim.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 env_logger = { workspace = true, optional = true }
-url = "2.4.1"
+url = { workspace = true }
 configparser.workspace = true
 clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
 
