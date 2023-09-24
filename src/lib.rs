@@ -9,6 +9,7 @@ pub mod config;
 pub mod debianshim;
 pub mod debmutateshim;
 pub mod detect_gbp_dch;
+pub mod patches;
 pub mod publish;
 pub mod release_info;
 pub mod salsa;

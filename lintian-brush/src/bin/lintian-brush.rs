@@ -499,13 +499,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         if args.output.diff {
-            breezyshim::diff::show_diff_trees(
+            breezyshim::diff::show_diff_trees::<std::io::Stdout>(
                 &wt.branch()
                     .repository()
                     .revision_tree(&since_revid)
                     .unwrap(),
                 &wt,
                 Box::new(std::io::stdout()),
+                None,
+                None,
             )?;
         }
         if svp_enabled() {
