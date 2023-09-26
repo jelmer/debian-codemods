@@ -1,8 +1,8 @@
-use crate::debianshim::{ChangeBlock, Changelog};
 use breezyshim::branch::Branch;
 use breezyshim::graph::{Error as GraphError, Graph};
 use breezyshim::revisionid::RevisionId;
 use breezyshim::tree::{Error as TreeError, Tree, WorkingTree};
+use debian_changelog::{ChangeLog, Entry as ChangeLogEntry};
 use lazy_regex::regex;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
@@ -58,7 +58,7 @@ pub fn gbp_conf_has_dch_section(tree: &dyn Tree, debian_path: &std::path::Path) 
 pub fn guess_update_changelog(
     tree: &WorkingTree,
     debian_path: &std::path::Path,
-    mut cl: Option<Changelog>,
+    mut cl: Option<ChangeLog>,
 ) -> Option<ChangelogBehaviour> {
     if debian_path != std::path::Path::new("debian") {
         return Some(ChangelogBehaviour{
@@ -70,7 +70,7 @@ pub fn guess_update_changelog(
     if cl.is_none() {
         match tree.get_file(changelog_path.as_path()) {
             Ok(f) => {
-                cl = Some(Changelog::from_reader(f, None).unwrap());
+                cl = Some(ChangeLog::read(f).unwrap());
             }
             Err(TreeError::NoSuchFile(_)) => {
                 log::debug!("No changelog found");
@@ -87,24 +87,30 @@ pub fn guess_update_changelog(
                 explanation: "assuming changelog does not need to be updated since it is the inaugural unreleased entry".to_string()
             });
         }
-        let changes = cl[0].changes();
-        if changes.len() > 1 && changes[1].contains("generated at release time") {
-            return Some(ChangelogBehaviour {
-                update_changelog: false,
-                explanation: "last changelog entry warns changelog is generated at release time"
-                    .to_string(),
-            });
+        if let Some(first_entry) = cl.entries().next() {
+            for line in first_entry.change_lines() {
+                if line.contains("generated at release time") {
+                    return Some(ChangelogBehaviour {
+                        update_changelog: false,
+                        explanation:
+                            "last changelog entry warns changelog is generated at release time"
+                                .to_string(),
+                    });
+                }
+            }
         }
     }
     if let Some(ret) = guess_update_changelog_from_tree(tree, debian_path, cl) {
         Some(ret)
-    } else { guess_update_changelog_from_branch(tree.branch().as_ref(), debian_path, None) }
+    } else {
+        guess_update_changelog_from_branch(tree.branch().as_ref(), debian_path, None)
+    }
 }
 
 pub fn guess_update_changelog_from_tree(
     tree: &dyn Tree,
     debian_path: &std::path::Path,
-    cl: Option<Changelog>,
+    cl: Option<ChangeLog>,
 ) -> Option<ChangelogBehaviour> {
     if gbp_conf_has_dch_section(tree, debian_path) {
         return Some(ChangelogBehaviour {
@@ -115,11 +121,13 @@ pub fn guess_update_changelog_from_tree(
 
     // TODO(jelmes): Do something more clever here, perhaps looking at history of the changelog file?
     if let Some(cl) = cl {
-        if all_sha_prefixed(&cl[0]) {
-            return Some(ChangelogBehaviour {
-                update_changelog: false,
-                explanation: "Assuming changelog does not need to be updated, since all entries in last changelog entry are prefixed by git shas.".to_string()
-            });
+        if let Some(entry) = cl.entries().next() {
+            if all_sha_prefixed(&entry) {
+                return Some(ChangelogBehaviour {
+                    update_changelog: false,
+                    explanation: "Assuming changelog does not need to be updated, since all entries in last changelog entry are prefixed by git shas.".to_string()
+                });
+            }
         }
     }
 
@@ -304,13 +312,13 @@ pub fn guess_update_changelog_from_branch(
 /// # Arguments
 ///
 /// * `cl` - Changelog entry
-pub fn all_sha_prefixed(cb: &ChangeBlock) -> bool {
+pub fn all_sha_prefixed(cb: &ChangeLogEntry) -> bool {
     let mut sha_prefixed = 0;
-    for change in cb.changes() {
-        if !change.starts_with("  * ") {
+    for change in cb.change_lines() {
+        if !change.starts_with("* ") {
             continue;
         }
-        if regex!(r"  \* \[[0-9a-f]{7}\] ").is_match(change.as_str()) {
+        if regex!(r"\* \[[0-9a-f]{7}\] ").is_match(change.as_str()) {
             sha_prefixed += 1;
         } else {
             return false;
@@ -325,22 +333,34 @@ pub fn all_sha_prefixed(cb: &ChangeBlock) -> bool {
 /// # Arguments
 ///
 /// * `cl`: A changelog object to inspect
-pub fn is_unreleased_inaugural(cl: &Changelog) -> bool {
-    if cl.len() != 1 {
+pub fn is_unreleased_inaugural(cl: &ChangeLog) -> bool {
+    let mut it = cl.entries();
+    let first_entry = match it.next() {
+        None => return false,
+        Some(e) => e,
+    };
+    if it.next().is_some() {
         return false;
     }
-    if !distribution_is_unreleased(cl[0].distributions()) {
+    if !first_entry
+        .distributions()
+        .map(|ds| {
+            ds.iter()
+                .find(|d| distribution_is_unreleased(d.as_str()))
+                .is_some()
+        })
+        .unwrap_or(false)
+    {
         return false;
     }
-    let actual = cl[0]
-        .changes()
-        .iter()
+    let actual = first_entry
+        .change_lines()
         .filter(|change| !change.trim().is_empty())
         .collect::<Vec<_>>();
     if actual.len() != 1 {
         return false;
     }
-    actual[0].starts_with("  * Initial release")
+    actual[0].starts_with("* Initial release")
 }
 
 pub fn distribution_is_unreleased(distribution: &str) -> bool {

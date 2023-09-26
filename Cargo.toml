@@ -25,6 +25,7 @@ url = { workspace = true }
 tempfile.workspace = true
 maplit = "1.0.2"
 lazy_static = "1.4.0"
+debian-changelog = "0.1.1"
 
 [features]
 default = ["python", "cli"]
