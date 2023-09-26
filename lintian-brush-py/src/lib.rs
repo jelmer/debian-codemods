@@ -239,7 +239,7 @@ pub fn load_resume(py: Python) -> PyResult<PyObject> {
 
 #[pyfunction]
 fn increment_version(mut version: debversion::Version) -> PyResult<debversion::Version> {
-    lintian_brush::increment_version(&mut version);
+    debian_analyzer::changelog::increment_version(&mut version);
     Ok(version)
 }
 
@@ -418,6 +418,7 @@ fn run_lintian_fixer(
         },
         #[cfg(feature = "python")]
         lintian_brush::FixerError::Python(e) => e.into(),
+        lintian_brush::FixerError::Io(e) => e.into(),
         lintian_brush::FixerError::Other(e) => PyRuntimeError::new_err(e),
         lintian_brush::FixerError::NoChangesAfterOverrides(_o) => NoChanges::new_err((py.None(),)),
         lintian_brush::FixerError::DescriptionMissing => DescriptionMissing::new_err(()),
@@ -449,12 +450,13 @@ fn only_changes_last_changelog_block(
     let tree = breezyshim::WorkingTree(tree);
     let basis_tree = Box::new(breezyshim::RevisionTree(basis_tree)) as Box<dyn breezyshim::Tree>;
     let changelog_path = changelog_path.as_path();
-    lintian_brush::only_changes_last_changelog_block(
+    debian_analyzer::changelog::only_changes_last_changelog_block(
         &tree,
         &basis_tree,
         changelog_path,
         changes.iter(),
     )
+    .map_err(|e| PyValueError::new_err((e.to_string(),)))
 }
 
 #[pyfunction]
@@ -522,16 +524,12 @@ impl ChangelogBehaviour {
 fn guess_update_changelog(
     tree: PyObject,
     path: std::path::PathBuf,
-    cl: Option<PyObject>,
 ) -> pyo3::PyResult<Option<PyObject>> {
     let path = path.as_path();
     Python::with_gil(|py| {
         let tree = breezyshim::tree::WorkingTree(tree);
-        let cl = cl.map(|cl| {
-            debian_analyzer::debianshim::Changelog::from_pyobject(cl.as_ref(py)).unwrap()
-        });
         Ok(
-            debian_analyzer::detect_gbp_dch::guess_update_changelog(&tree, path, cl).map(|cb| {
+            debian_analyzer::detect_gbp_dch::guess_update_changelog(&tree, path, None).map(|cb| {
                 ChangelogBehaviour {
                     update_changelog: cb.update_changelog,
                     explanation: cb.explanation,

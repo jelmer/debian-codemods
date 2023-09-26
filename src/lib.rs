@@ -5,8 +5,8 @@ use breezyshim::workspace::reset_tree;
 use pyo3::PyErr;
 use std::str::FromStr;
 
+pub mod changelog;
 pub mod config;
-pub mod debianshim;
 pub mod debmutateshim;
 pub mod detect_gbp_dch;
 pub mod patches;

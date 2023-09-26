@@ -22,6 +22,7 @@ env_logger = { workspace = true, optional = true }
 url = { workspace = true }
 configparser.workspace = true
 clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
+debian-changelog.workspace = true
 
 [features]
 default = ["cli"]

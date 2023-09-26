@@ -3,12 +3,12 @@ use breezyshim::dirty_tracker::get_dirty_tracker;
 use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
 use breezyshim::workspace::check_clean_tree;
 use clap::Parser;
-use debian_analyzer::debianshim::get_maintainer;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
 use debian_analyzer::svp::{
     enabled as svp_enabled, load_resume, report_fatal, report_nothing_to_do, report_success_debian,
 };
 use debian_analyzer::{control_file_present, get_committer, is_debcargo_package, Certainty};
+use debian_changelog::get_maintainer;
 use multiarch_hints::{
     apply_multiarch_hints, cache_download_multiarch_hints, multiarch_hints_by_binary,
     parse_multiarch_hints, OverallError,

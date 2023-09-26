@@ -663,14 +663,9 @@ def scrub_obsolete(
     changelog_path = os.path.join(debian_path, "changelog")
 
     if update_changelog is None:
-        from debian.changelog import Changelog
-
         from .detect_gbp_dch import guess_update_changelog
 
-        with wt.get_file(changelog_path) as f:
-            cl = Changelog(f, max_blocks=1)
-
-        dch_guess = guess_update_changelog(wt, debian_path, cl)
+        dch_guess = guess_update_changelog(wt, debian_path)
         if dch_guess:
             update_changelog = dch_guess.update_changelog
             _note_changelog_policy(update_changelog, dch_guess.explanation)

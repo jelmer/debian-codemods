@@ -767,7 +767,7 @@ def main():  # noqa: C901
             from .detect_gbp_dch import guess_update_changelog
 
             dch_guess = guess_update_changelog(
-                wt, os.path.join(subpath, 'debian'), cl)
+                wt, os.path.join(subpath, 'debian'))
             if dch_guess:
                 update_changelog = dch_guess.update_changelog
                 _note_changelog_policy(update_changelog, dch_guess.explanation)

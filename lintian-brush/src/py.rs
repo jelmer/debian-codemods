@@ -81,6 +81,7 @@ impl Fixer {
             .map_err(|e| match e {
                 crate::FixerError::NoChanges => NoChanges::new_err((py.None(),)),
                 crate::FixerError::ChangelogCreate(m) => ChangelogCreateError::new_err((m,)),
+                crate::FixerError::Io(e) => e.into(),
                 crate::FixerError::ScriptNotFound(cmd) => {
                     ScriptNotFound::new_err(cmd.to_object(py))
                 }

@@ -3,8 +3,8 @@ use breezyshim::controldir::ControlDir;
 use breezyshim::forge::Error as ForgeError;
 use breezyshim::tree::{WorkingTree, WorkingTreeOpenError};
 use clap::Parser;
-use debian_analyzer::debianshim::get_maintainer;
 use debian_analyzer::publish::{create_vcs_url, update_official_vcs};
+use debian_changelog::get_maintainer;
 
 use debian_analyzer::get_committer;
 

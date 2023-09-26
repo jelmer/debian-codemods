@@ -28,6 +28,7 @@ url = { version = "2", features = ["serde"] }
 lazy_static = { workspace = true }
 debian-analyzer = { version = "0.150.0", path = ".." }
 distro-info = "0.4.0"
+debian-changelog = { workspace = true }
 
 [features]
 default = ["svp", "python", "cli"]

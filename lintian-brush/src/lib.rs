@@ -13,12 +13,12 @@ use breezyshim::dirty_tracker::{get_dirty_tracker, DirtyTracker};
 use breezyshim::tree::{CommitError, Error as TreeError, Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::{check_clean_tree, reset_tree};
 use breezyshim::RevisionId;
-use debian_analyzer::debianshim::Changelog;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
 use debian_analyzer::{
     add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, min_certainty,
     ApplyError, Certainty, ChangelogError,
 };
+use debian_changelog::ChangeLog;
 
 pub mod py;
 
@@ -610,8 +610,18 @@ pub enum FixerError {
     #[cfg(feature = "python")]
     Python(pyo3::PyErr),
     MemoryError,
+    Io(std::io::Error),
     TreeError(TreeError),
     Other(String),
+}
+
+impl From<debian_changelog::Error> for FixerError {
+    fn from(e: debian_changelog::Error) -> Self {
+        match e {
+            debian_changelog::Error::Io(e) => FixerError::Io(e),
+            debian_changelog::Error::Parse(e) => FixerError::ChangelogCreate(e.to_string()),
+        }
+    }
 }
 
 impl From<ChangelogError> for FixerError {
@@ -679,6 +689,7 @@ impl std::fmt::Display for FixerError {
                 "Not certain enough to fix (actual: {}, minimum : {:?})",
                 actual, minimum
             ),
+            FixerError::Io(e) => write!(f, "IO error: {}", e),
             FixerError::FailedPatchManipulation(p, p2, s) => write!(
                 f,
                 "Failed to manipulate patch {} in {}: {}",
@@ -1168,15 +1179,17 @@ pub fn run_lintian_fixer(
         Err(TreeError::Other(e)) => return Err(e.into()),
     };
 
-    let cl = Changelog::from_reader(r, Some(1))?;
-    let package = cl[0].package();
-    let current_version: Version = if cl[0].distributions() == "UNRELEASED" {
-        cl[0].version().clone()
-    } else {
-        let mut version = cl[0].version().clone();
-        increment_version(&mut version);
-        version
-    };
+    let cl = ChangeLog::read(r)?;
+    let first_entry = cl.entries().next().unwrap();
+    let package = first_entry.package().unwrap();
+    let current_version: Version =
+        if first_entry.distributions().as_deref().unwrap() == vec!["UNRELEASED"] {
+            first_entry.version().unwrap().clone()
+        } else {
+            let mut version = first_entry.version().unwrap().clone();
+            debian_analyzer::changelog::increment_version(&mut version);
+            version
+        };
 
     let mut _bt = None;
     let basis_tree: &Box<dyn Tree> = if let Some(basis_tree) = basis_tree {
@@ -1192,7 +1205,7 @@ pub fn run_lintian_fixer(
             log::debug!("Running fixer {:?}", fixer);
             let result = fixer.run(
                 basedir,
-                package,
+                package.as_str(),
                 &current_version,
                 compat_release,
                 minimum_certainty,
@@ -1269,7 +1282,7 @@ pub fn run_lintian_fixer(
         summary = format!("Add patch {}: {}", patch_name, summary);
     }
 
-    let update_changelog = if only_changes_last_changelog_block(
+    let update_changelog = if debian_analyzer::changelog::only_changes_last_changelog_block(
         local_tree,
         basis_tree,
         changelog_path.as_path(),
@@ -1330,6 +1343,7 @@ pub enum OverallError {
     WorkspaceDirty(std::path::PathBuf),
     ChangelogCreate(String),
     TreeError(TreeError),
+    IoError(std::io::Error),
     #[cfg(feature = "python")]
     Python(pyo3::PyErr),
 }
@@ -1355,6 +1369,7 @@ impl std::fmt::Display for OverallError {
             #[cfg(feature = "python")]
             OverallError::Python(e) => write!(f, "{}", e),
             OverallError::TreeError(e) => write!(f, "{}", e),
+            OverallError::IoError(e) => write!(f, "{}", e),
         }
     }
 }
@@ -1532,6 +1547,9 @@ pub fn run_lintian_fixers(
                 FixerError::TreeError(e) => {
                     return Err(OverallError::TreeError(e));
                 }
+                FixerError::Io(e) => {
+                    return Err(OverallError::IoError(e));
+                }
                 FixerError::NotCertainEnough(actual_certainty, minimum_certainty, _overrides) => {
                     if verbose {
                         let duration = std::time::SystemTime::now().duration_since(start).unwrap();
@@ -1611,99 +1629,6 @@ pub fn run_lintian_fixers(
     pb.finish();
     ret.changelog_behaviour = changelog_behaviour;
     Ok(ret)
-}
-
-/// Check whether the only change in a tree is to the last changelog entry.
-///
-/// # Arguments
-/// * `tree`: Tree to analyze
-/// * `changelog_path`: Path to the changelog file
-/// * `changes`: Changes in the tree
-pub fn only_changes_last_changelog_block<'a>(
-    tree: &WorkingTree,
-    basis_tree: &Box<dyn Tree>,
-    changelog_path: &std::path::Path,
-    changes: impl Iterator<Item = &'a TreeChange>,
-) -> pyo3::PyResult<bool> {
-    let read_lock = tree.lock_read();
-    let basis_lock = basis_tree.lock_read();
-    let mut changes_seen = false;
-    for change in changes {
-        if let Some(path) = change.path.1.as_ref() {
-            if path == std::path::Path::new("") {
-                continue;
-            }
-            if path == changelog_path {
-                changes_seen = true;
-                continue;
-            }
-            if !tree.has_versioned_directories() && changelog_path.starts_with(path) {
-                // Directory leading up to changelog
-                continue;
-            }
-        }
-        // If the change is not in the changelog, it's not just a changelog change
-        return Ok(false);
-    }
-
-    if !changes_seen {
-        // Doesn't change the changelog at all
-        return Ok(false);
-    }
-    let mut new_cl = match tree.get_file(changelog_path) {
-        Ok(f) => Changelog::from_reader(f, None)?,
-        Err(TreeError::NoSuchFile(_)) => {
-            return Ok(false);
-        }
-        Err(TreeError::Other(e)) => {
-            return Err(e);
-        }
-    };
-    let mut old_cl = match basis_tree.get_file(changelog_path) {
-        Ok(f) => Changelog::from_reader(f, None)?,
-        Err(TreeError::NoSuchFile(_)) => {
-            return Ok(true);
-        }
-        Err(TreeError::Other(e)) => {
-            return Err(e);
-        }
-    };
-    if old_cl[0].distributions() != "UNRELEASED" {
-        // Not unreleased
-        return Ok(false);
-    }
-    new_cl.pop_first();
-    old_cl.pop_first();
-    std::mem::drop(read_lock);
-    std::mem::drop(basis_lock);
-    Ok(new_cl.to_string() == old_cl.to_string())
-}
-
-/// Increment a version number.
-///
-/// For native packages, increment the main version number.
-/// For other packages, increment the debian revision.
-///
-/// # Arguments
-///
-///  * `v`: Version to increment (modified in place)
-pub fn increment_version(v: &mut Version) {
-    if v.debian_revision.is_some() {
-        v.debian_revision = v.debian_revision.as_ref().map(|v| {
-            {
-                regex_replace!(r"\d+$", v, |x: &str| (x.parse::<i32>().unwrap() + 1)
-                    .to_string())
-            }
-            .to_string()
-        });
-    } else {
-        v.upstream_version = regex_replace!(r"\d+$", v.upstream_version.as_ref(), |x: &str| (x
-            .parse::<i32>()
-            .unwrap()
-            + 1)
-        .to_string())
-        .to_string();
-    }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
@@ -1883,7 +1808,7 @@ pub fn determine_update_changelog(
     let changelog_path = debian_path.join("changelog");
 
     let cl = match local_tree.get_file(changelog_path.as_path()) {
-        Ok(f) => Changelog::from_reader(f, None).unwrap(),
+        Ok(f) => ChangeLog::read(f).unwrap(),
 
         Err(TreeError::NoSuchFile(_)) => {
             // If there's no changelog, then there's nothing to update!

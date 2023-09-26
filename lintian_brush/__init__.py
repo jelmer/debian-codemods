@@ -371,14 +371,11 @@ def determine_update_changelog(local_tree, debian_path):
 
     changelog_path = os.path.join(debian_path, 'changelog')
 
-    try:
-        with local_tree.get_file(changelog_path) as f:
-            cl = Changelog(f)
-    except NoSuchFile:
+    if not local_tree.has_filename(changelog_path):
         # If there's no changelog, then there's nothing to update!
         return False
 
-    behaviour = guess_update_changelog(local_tree, debian_path, cl)
+    behaviour = guess_update_changelog(local_tree, debian_path)
     if behaviour:
         _note_changelog_policy(
             behaviour.update_changelog, behaviour.explanation)

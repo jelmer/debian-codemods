@@ -1,7 +1,7 @@
 use breezyshim::branch::{open_containing as open_containing_branch, BranchOpenError};
 use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
 use clap::Parser;
-use debian_analyzer::debianshim::get_maintainer;
+use debian_changelog::get_maintainer;
 use distro_info::DistroInfo;
 
 use debian_analyzer::svp::{
@@ -439,6 +439,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     versions_dict(),
                     "internal-error",
                     format!("Tree manipulation error: {}", e).as_str(),
+                    None,
+                    None,
+                );
+            }
+            Err(OverallError::IoError(e)) => {
+                drop(write_lock);
+                report_fatal(
+                    versions_dict(),
+                    "io-error",
+                    format!("I/O error: {}", e).as_str(),
                     None,
                     None,
                 );
