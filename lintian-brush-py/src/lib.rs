@@ -239,7 +239,7 @@ pub fn load_resume(py: Python) -> PyResult<PyObject> {
 
 #[pyfunction]
 fn increment_version(mut version: debversion::Version) -> PyResult<debversion::Version> {
-    debian_analyzer::changelog::increment_version(&mut version);
+    version.increment_debian();
     Ok(version)
 }
 

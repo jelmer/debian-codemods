@@ -365,7 +365,7 @@ dependencies = [
 
 [[package]]
 name = "debian-changelog"
-version = "0.1.2"
+version = "0.1.4"
 dependencies = [
  "chrono",
  "debversion",
@@ -381,9 +381,9 @@ version = "0.150.0"
 
 [[package]]
 name = "debversion"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d804877135a45c7df0463cc7fde03abdaa8e5ad800d12718befb4f9e3b0bb38"
+checksum = "e65a0a572fa10f34b89addac251b7c8f40266606ee5847d769ab8db4d56ca11b"
 dependencies = [
  "lazy-regex 3.0.2",
  "pyo3",

@@ -1187,7 +1187,7 @@ pub fn run_lintian_fixer(
             first_entry.version().unwrap().clone()
         } else {
             let mut version = first_entry.version().unwrap().clone();
-            debian_analyzer::changelog::increment_version(&mut version);
+            version.increment_debian();
             version
         };
 
