@@ -1,7 +1,5 @@
 use breezyshim::tree::{Error as TreeError, Tree, TreeChange, WorkingTree};
 use debian_changelog::ChangeLog;
-use debversion::Version;
-use lazy_regex::regex_replace;
 
 /// Check whether the only change in a tree is to the last changelog entry.
 ///
@@ -11,7 +9,7 @@ use lazy_regex::regex_replace;
 /// * `changes`: Changes in the tree
 pub fn only_changes_last_changelog_block<'a>(
     tree: &WorkingTree,
-    basis_tree: &Box<dyn Tree>,
+    basis_tree: &dyn Tree,
     changelog_path: &std::path::Path,
     changes: impl Iterator<Item = &'a TreeChange>,
 ) -> Result<bool, debian_changelog::Error> {

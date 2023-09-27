@@ -452,7 +452,7 @@ fn only_changes_last_changelog_block(
     let changelog_path = changelog_path.as_path();
     debian_analyzer::changelog::only_changes_last_changelog_block(
         &tree,
-        &basis_tree,
+        basis_tree.as_ref(),
         changelog_path,
         changes.iter(),
     )

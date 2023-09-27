@@ -1191,7 +1191,7 @@ def debianize(  # noqa: C901
         )
 
         try:
-            result.vcs_url = unsplit_vcs_url(*update_offical_vcs(
+            result.vcs_url = unsplit_vcs_url(*update_official_vcs(
                 wt, subpath=subpath, committer=committer))
         except NoVcsLocation:
             logging.debug(

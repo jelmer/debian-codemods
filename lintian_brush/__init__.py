@@ -32,13 +32,10 @@ from typing import (
 
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
-from breezy.transport import NoSuchFile
 from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 from breezy.workspace import check_clean_tree
 from debmutate.reformatting import FormattingUnpreservable
-
-from debian.changelog import Changelog
 
 from . import _lintian_brush_rs
 

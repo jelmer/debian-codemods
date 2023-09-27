@@ -1284,7 +1284,7 @@ pub fn run_lintian_fixer(
 
     let update_changelog = if debian_analyzer::changelog::only_changes_last_changelog_block(
         local_tree,
-        basis_tree,
+        basis_tree.as_ref(),
         changelog_path.as_path(),
         changes.iter(),
     )? {
