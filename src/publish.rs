@@ -71,7 +71,7 @@ pub fn update_official_vcs(
 ) -> Result<(Url, Option<String>, Option<std::path::PathBuf>), Error> {
     let force = force.unwrap_or(false);
     // TODO(jelmer): Allow creation of the repository as well
-    check_clean_tree(wt, &wt.basis_tree(), subpath).unwrap();
+    check_clean_tree(wt, wt.basis_tree().as_ref(), subpath).unwrap();
 
     let debian_path = subpath.join("debian");
     let subpath = match subpath.to_string_lossy().as_ref() {
