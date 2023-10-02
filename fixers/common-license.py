@@ -128,10 +128,10 @@ def drop_debian_file_reference(shorttext):
 
 
 def debian_file_reference(name, filename):
-    return '\n'.join(textwrap.wrap("""\
+    return '\n'.join(textwrap.wrap(f"""\
 On Debian systems, the full text of the {name}
 can be found in the file `/usr/share/common-licenses/{filename}'.
-""".format(name=name, filename=filename), width=78))
+""", width=78))
 
 
 def find_common_license_from_blurb(text):

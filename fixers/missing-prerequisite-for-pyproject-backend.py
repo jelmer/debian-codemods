@@ -45,15 +45,12 @@ with control:
     issue = LintianIssue(
         control.source,
         'missing-prerequisite-for-pyproject-backend',
-        info='{} (does not satisfy {})'.format(
-            build_backend, prerequisite))
+        info=f'{build_backend} (does not satisfy {prerequisite})')
     if issue.should_fix():
         control.source['Build-Depends'] = ensure_some_version(
             control.source.get('Build-Depends', ''), prerequisite)
         issue.report_fixed()
 
 report_result(
-    'Add missing build-dependency on {}.\n\n'
-    'This is necessary for build-backend {} in pyproject.toml'.format(
-        prerequisite,
-        build_backend))
+    f'Add missing build-dependency on {prerequisite}.\n\n'
+    f'This is necessary for build-backend {build_backend} in pyproject.toml')

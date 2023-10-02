@@ -1,6 +1,4 @@
 use debversion::Version;
-use lazy_regex::regex_replace;
-use pyo3::PyErr;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -1199,8 +1197,12 @@ pub fn run_lintian_fixer(
         _bt.as_ref().unwrap()
     };
 
-    let (mut result, changes, mut specific_files) =
-        match apply_or_revert(local_tree, subpath, basis_tree, dirty_tracker, |basedir| {
+    let (mut result, changes, mut specific_files) = match apply_or_revert(
+        local_tree,
+        subpath,
+        basis_tree.as_ref(),
+        dirty_tracker,
+        |basedir| {
             let compat_release = compat_release.unwrap_or("sid");
             log::debug!("Running fixer {:?}", fixer);
             let result = fixer.run(
@@ -1230,20 +1232,21 @@ pub fn run_lintian_fixer(
             }
 
             Ok(result)
-        }) {
-            Ok(r) => r,
-            Err(ApplyError::NoChanges(r)) => {
-                return Err(FixerError::NoChangesAfterOverrides(
-                    r.overridden_lintian_issues,
-                ));
-            }
-            Err(ApplyError::TreeError(e)) => {
-                return Err(e.into());
-            }
-            Err(ApplyError::CallbackError(e)) => {
-                return Err(e);
-            }
-        };
+        },
+    ) {
+        Ok(r) => r,
+        Err(ApplyError::NoChanges(r)) => {
+            return Err(FixerError::NoChangesAfterOverrides(
+                r.overridden_lintian_issues,
+            ));
+        }
+        Err(ApplyError::TreeError(e)) => {
+            return Err(e.into());
+        }
+        Err(ApplyError::CallbackError(e)) => {
+            return Err(e);
+        }
+    };
 
     let lines = result.description.split('\n').collect::<Vec<_>>();
     let mut summary = lines[0].to_string();
@@ -1260,7 +1263,7 @@ pub fn run_lintian_fixer(
     {
         let (patch_name, updated_specific_files) = match _upstream_changes_to_patch(
             local_tree,
-            basis_tree,
+            basis_tree.as_ref(),
             dirty_tracker,
             subpath,
             &result
@@ -1272,7 +1275,12 @@ pub fn run_lintian_fixer(
         ) {
             Ok(r) => r,
             Err(e) => {
-                reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)?;
+                reset_tree(
+                    local_tree,
+                    Some(basis_tree.as_ref()),
+                    Some(subpath),
+                    dirty_tracker,
+                )?;
                 return Err(FixerError::Python(e));
             }
         };
@@ -1423,7 +1431,7 @@ pub fn run_lintian_fixers(
 ) -> Result<ManyResult, OverallError> {
     let subpath = subpath.unwrap_or_else(|| std::path::Path::new(""));
     let mut basis_tree = local_tree.basis_tree();
-    check_clean_tree(local_tree, &basis_tree, subpath).map_err(|e| match e {
+    check_clean_tree(local_tree, basis_tree.as_ref(), subpath).map_err(|e| match e {
         breezyshim::workspace::CheckCleanTreeError::WorkspaceDirty(p) => {
             OverallError::WorkspaceDirty(p)
         }
@@ -1759,7 +1767,7 @@ fn has_non_debian_changes(changes: &[TreeChange], subpath: &std::path::Path) -> 
 
 fn _upstream_changes_to_patch(
     local_tree: &WorkingTree,
-    basis_tree: &Box<dyn Tree>,
+    basis_tree: &dyn Tree,
     dirty_tracker: Option<&DirtyTracker>,
     subpath: &std::path::Path,
     patch_name: &str,

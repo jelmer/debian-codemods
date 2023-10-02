@@ -67,8 +67,7 @@ def migrate_dh_strip(line, target):
                     issue.should_fix()):
                 line = line.replace(
                         ('--dbg-package=%s' % dbg_pkg).encode('utf-8'),
-                        ("--dbgsym-migration='{} ({})'".format(
-                            dbg_pkg, migrate_version)).encode('utf-8'))
+                        (f"--dbgsym-migration='{dbg_pkg} ({migrate_version})'").encode())
                 dbg_migration_done.add(dbg_pkg)
                 issue.report_fixed()
         if b'$' in line:

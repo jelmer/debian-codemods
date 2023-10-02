@@ -184,8 +184,7 @@ def candidates_from_setup_py(
                 if d["packagetype"] == "sdist"
             ]
     filename_regex = (
-        r"{project}-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))".format(
-            project=project))
+        fr"{project}-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))")
     opts = []
     # TODO(jelmer): Set uversionmangle?
     # opts.append('uversionmangle=s/(rc|a|b|c)/~$1/')
@@ -195,10 +194,7 @@ def candidates_from_setup_py(
                 certainty = "certain"
                 if has_sig:
                     opts.append("pgpsigurlmangle=s/$/.asc/")
-    url = r"https://pypi.debian.net/{project}/{fname_regex}".format(
-        project=project,
-        fname_regex=filename_regex,
-    )
+    url = fr"https://pypi.debian.net/{project}/{filename_regex}"
     # TODO(jelmer): Add pgpsigurlmangle if has_sig==True
     w = Watch(url, opts=opts)
     yield WatchCandidate(w, "pypi", certainty=certainty, preference=1)
@@ -320,10 +316,7 @@ def guess_github_watch_entry(
     (username, project) = parsed_url.path.strip("/").split("/")
     if project.endswith(".git"):
         project = project[:-4]
-    download_url = "https://github.com/{user}/{project}/tags".format(
-        user=username,
-        project=project,
-    )
+    download_url = f"https://github.com/{username}/{project}/tags"
     matching_pattern = r".*\/%s\.tar\.gz" % version_pattern
     opts = [
         fr"filenamemangle=s/{matching_pattern}/{project}-$1\.tar\.gz/"

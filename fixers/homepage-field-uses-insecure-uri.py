@@ -61,8 +61,7 @@ def fix_homepage(http_url):
             f'Unable to access HTTPS version of homepage {https_url}: {e}')
         return http_url
     if not https_resp.geturl().startswith('https://'):
-        warn('https URL {} redirected back to {}'.format(
-            https_url, https_resp.geturl()))
+        warn(f'https URL {https_url} redirected back to {https_resp.geturl()}')
         return http_url
 
     https_contents = https_resp.read()

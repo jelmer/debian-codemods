@@ -1,7 +1,8 @@
 use breezyshim::branch::Branch;
 use breezyshim::dirty_tracker::DirtyTracker;
-use breezyshim::tree::{Error as TreeError, Tree, TreeChange, WorkingTree};
+use breezyshim::tree::{Error as TreeError, MutableTree, Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::reset_tree;
+use debian_changelog::ChangeLog;
 use pyo3::PyErr;
 use std::str::FromStr;
 
@@ -172,13 +173,24 @@ pub fn add_changelog_entry(
     changelog_path: &std::path::Path,
     entry: &[&str],
 ) -> Result<(), ChangelogError> {
-    pyo3::Python::with_gil(|py| {
-        let changelog_m = py.import("lintian_brush.changelog")?;
-        let add_changelog_entry = changelog_m.getattr("add_changelog_entry")?;
+    let f = match working_tree.get_file(changelog_path) {
+        Ok(f) => f,
+        Err(breezyshim::tree::Error::NoSuchFile(_)) => {
+            return Err(ChangelogError::NotDebianPackage(
+                working_tree.abspath(changelog_path).unwrap(),
+            ))
+        }
+        Err(e) => panic!("Unexpected error: {}", e),
+    };
+    let mut cl = ChangeLog::read(f).unwrap();
 
-        add_changelog_entry.call1((&working_tree.0, changelog_path, entry.to_vec()))?;
-        Ok(())
-    })
+    cl.auto_add_change(entry, debian_changelog::get_maintainer().unwrap());
+
+    working_tree
+        .put_file_bytes_non_atomic(changelog_path, cl.to_string().as_bytes())
+        .unwrap();
+
+    Ok(())
 }
 
 #[derive(

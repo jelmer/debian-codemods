@@ -486,7 +486,7 @@ pub fn apply_multiarch_hints(
     let (changes, _tree_changes, mut specific_files) = match apply_or_revert(
         local_tree,
         subpath,
-        &basis_tree,
+        basis_tree.as_ref(),
         dirty_tracker,
         |path| -> Result<Vec<Change>, ()> {
             let mut changes: Vec<Change> = vec![];

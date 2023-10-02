@@ -28,8 +28,7 @@ with suppress(FileNotFoundError), Deb822Editor('debian/copyright') as updater:
             if (field.startswith('X-') and
                     field[2:] in valid_field_names):
                 if field[2:] in paragraph:
-                    warn('Both {} and {} exist.'.format(
-                         field, field[2:]))
+                    warn(f'Both {field} and {field[2:]} exist.')
                     continue
                 value = paragraph[field]
                 del paragraph[field]

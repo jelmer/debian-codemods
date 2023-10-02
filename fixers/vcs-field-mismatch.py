@@ -28,5 +28,4 @@ with control as updater:
             del updater.source["Vcs-" + vcs]
             updater.source["Vcs-" + actual_vcs] = vcs_url
             report_result(
-                "Changed vcs type from {} to {} based on URL.".format(
-                    vcs, actual_vcs))
+                f"Changed vcs type from {vcs} to {actual_vcs} based on URL.")

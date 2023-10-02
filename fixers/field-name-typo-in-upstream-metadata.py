@@ -46,8 +46,7 @@ with suppress(FileNotFoundError), \
         if (field.startswith('X-') and
                 field[2:] in valid_field_names):
             if field[2:] in updater.code:
-                warn('Both {} and {} exist.'.format(
-                     field, field[2:]))
+                warn(f'Both {field} and {field[2:]} exist.')
                 continue
             value = updater.code[field]
             del updater.code[field]

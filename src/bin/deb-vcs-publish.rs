@@ -81,12 +81,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     if args.identity {
         println!("Committer identity: {}", get_committer(&wt));
-        let (maintainer, email) = get_maintainer();
-        println!(
-            "Changelog identity: {} <{}>",
-            maintainer.as_deref().unwrap_or(""),
-            email.as_deref().unwrap_or("")
-        );
+        let (maintainer, email) = get_maintainer().unwrap_or(("".to_string(), "".to_string()));
+        println!("Changelog identity: {} <{}>", maintainer, email);
         std::process::exit(0);
     }
 

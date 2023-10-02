@@ -186,16 +186,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     if args.identity {
         println!("Committer identity: {}", get_committer(&wt));
-        let (maintainer, email) = get_maintainer();
-        println!(
-            "Changelog identity: {} <{}>",
-            maintainer.as_deref().unwrap_or(""),
-            email.as_deref().unwrap_or("")
-        );
+        let (maintainer, email) = get_maintainer().unwrap_or(("".into(), "".into()));
+        println!("Changelog identity: {} <{}>", maintainer, email);
         std::process::exit(0);
     }
 
-    match check_clean_tree(&wt, &wt.basis_tree(), subpath.as_path()) {
+    match check_clean_tree(&wt, wt.basis_tree().as_ref(), subpath.as_path()) {
         Err(breezyshim::workspace::CheckCleanTreeError::WorkspaceDirty(p)) => {
             log::error!(
                 "{}: Please commit pending changes and remove unknown files first.",
@@ -384,7 +380,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if args.diff {
-        breezyshim::diff::show_diff_trees::<std::io::Stdout>(
+        breezyshim::diff::show_diff_trees(
             &wt.branch()
                 .repository()
                 .revision_tree(&since_revid)

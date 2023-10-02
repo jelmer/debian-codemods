@@ -28,8 +28,7 @@ try:
                         continue
                     issue = LintianIssue(
                         updater.source, 'cute-field',
-                        'debian/control@{} {} vs {}'.format(
-                            para_name, field, option))
+                        f'debian/control@{para_name} {field} vs {option}')
                     if issue.should_fix():
                         issue.report_fixed()
                         value = paragraph[field]
