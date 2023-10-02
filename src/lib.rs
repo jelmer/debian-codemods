@@ -53,7 +53,7 @@ impl<R, E> From<TreeError> for ApplyError<R, E> {
 pub fn apply_or_revert<R, E>(
     local_tree: &WorkingTree,
     subpath: &std::path::Path,
-    basis_tree: &Box<dyn Tree>,
+    basis_tree: &dyn Tree,
     dirty_tracker: Option<&DirtyTracker>,
     applier: impl FnOnce(&std::path::Path) -> Result<R, E>,
 ) -> Result<(R, Vec<TreeChange>, Option<Vec<std::path::PathBuf>>), ApplyError<R, E>> {
@@ -324,7 +324,7 @@ pub fn control_files_in_root(tree: &dyn Tree, subpath: &std::path::Path) -> bool
     tree.has_filename(subpath.join("control.in").as_path())
 }
 
-pub fn branch_vcs_type(branch: &Box<dyn Branch>) -> String {
+pub fn branch_vcs_type(branch: &dyn Branch) -> String {
     pyo3::Python::with_gil(|py| {
         let repo = branch.to_object(py).getattr(py, "repository").unwrap();
         if repo.as_ref(py).hasattr("_git").unwrap() {

@@ -344,11 +344,7 @@ pub fn is_unreleased_inaugural(cl: &ChangeLog) -> bool {
     }
     if !first_entry
         .distributions()
-        .map(|ds| {
-            ds.iter()
-                .find(|d| distribution_is_unreleased(d.as_str()))
-                .is_some()
-        })
+        .map(|ds| ds.iter().any(|d| distribution_is_unreleased(d.as_str())))
         .unwrap_or(false)
     {
         return false;

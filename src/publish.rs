@@ -71,7 +71,7 @@ pub fn update_official_vcs(
 ) -> Result<(Url, Option<String>, Option<std::path::PathBuf>), Error> {
     let force = force.unwrap_or(false);
     // TODO(jelmer): Allow creation of the repository as well
-    check_clean_tree(wt, &wt.basis_tree(), subpath);
+    check_clean_tree(wt, &wt.basis_tree(), subpath).unwrap();
 
     let debian_path = subpath.join("debian");
     let subpath = match subpath.to_string_lossy().as_ref() {
@@ -136,7 +136,7 @@ pub fn update_official_vcs(
         log::info!("Using repository URL: {}", repo_url);
         // TODO(jelmer): Detect vcs type in a better way
         let branch = wt.branch();
-        let vcs_type = branch_vcs_type(&branch);
+        let vcs_type = branch_vcs_type(branch.as_ref());
 
         let branch = match vcs_type.as_str() {
             "git" => Some("debian/main"),

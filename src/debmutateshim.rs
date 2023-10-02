@@ -105,6 +105,12 @@ impl ControlEditor {
     }
 }
 
+impl Default for ControlEditor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ControlLikeEditor for ControlEditor {
     fn source(&self) -> Option<Deb822Paragraph> {
         Python::with_gil(|py| {
