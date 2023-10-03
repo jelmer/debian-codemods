@@ -184,7 +184,12 @@ pub fn add_changelog_entry(
     };
     let mut cl = ChangeLog::read(f).unwrap();
 
-    cl.auto_add_change(entry, debian_changelog::get_maintainer().unwrap());
+    cl.auto_add_change(
+        entry,
+        debian_changelog::get_maintainer().unwrap(),
+        None,
+        None,
+    );
 
     working_tree
         .put_file_bytes_non_atomic(changelog_path, cl.to_string().as_bytes())
