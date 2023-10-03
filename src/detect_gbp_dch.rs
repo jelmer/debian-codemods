@@ -81,7 +81,7 @@ pub fn guess_update_changelog(
         }
     }
     if let Some(ref cl) = cl {
-        if is_unreleased_inaugural(cl) {
+        if debian_changelog::is_unreleased_inaugural(cl) {
             return Some(ChangelogBehaviour {
                 update_changelog: false,
                 explanation: "assuming changelog does not need to be updated since it is the inaugural unreleased entry".to_string()
@@ -312,6 +312,7 @@ pub fn guess_update_changelog_from_branch(
 /// # Arguments
 ///
 /// * `cl` - Changelog entry
+#[deprecated(note = "Use debian_changelog::changes::all_sha_prefixed instead")]
 pub fn all_sha_prefixed(cb: &ChangeLogEntry) -> bool {
     let mut sha_prefixed = 0;
     for change in cb.change_lines() {
@@ -326,39 +327,4 @@ pub fn all_sha_prefixed(cb: &ChangeLogEntry) -> bool {
     }
 
     sha_prefixed > 0
-}
-
-/// Check whether this is a traditional inaugural release.
-///
-/// # Arguments
-///
-/// * `cl`: A changelog object to inspect
-pub fn is_unreleased_inaugural(cl: &ChangeLog) -> bool {
-    let mut it = cl.entries();
-    let first_entry = match it.next() {
-        None => return false,
-        Some(e) => e,
-    };
-    if it.next().is_some() {
-        return false;
-    }
-    if !first_entry
-        .distributions()
-        .map(|ds| ds.iter().any(|d| distribution_is_unreleased(d.as_str())))
-        .unwrap_or(false)
-    {
-        return false;
-    }
-    let actual = first_entry
-        .change_lines()
-        .filter(|change| !change.trim().is_empty())
-        .collect::<Vec<_>>();
-    if actual.len() != 1 {
-        return false;
-    }
-    actual[0].starts_with("* Initial release")
-}
-
-pub fn distribution_is_unreleased(distribution: &str) -> bool {
-    distribution == "UNRELEASED" || distribution.starts_with("UNRELEASED-")
 }
