@@ -1457,11 +1457,6 @@ def main(*, verbose: bool, directory: str, compat_release: str | None,
     # pysimplesoap is quite verbose
     logging.getLogger('pysimplesoap.client').setLevel(logging.ERROR)
 
-    logging.warning(
-        'debianize is experimental and often generates packaging '
-        'that is incomplete or does not build as-is. '
-        'If you encounter issues, please consider filing a bug.')
-
     if compat_release is None:
         import distro_info
 

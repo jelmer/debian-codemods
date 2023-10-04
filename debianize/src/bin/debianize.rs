@@ -3,6 +3,7 @@ use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
 use clap::Parser;
 use debian_changelog::get_maintainer;
 use distro_info::DistroInfo;
+use log::warn;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
@@ -170,6 +171,9 @@ struct Args {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = Args::parse();
+
+    warn!(
+        "debianize is experimental and often generates packaging that is incomplete or does not build as-is. If you encounter issues, please consider filing a bug.");
 
     if args.release {
         if args.upstream_version_kind != UpstreamVersionKind::Auto {
