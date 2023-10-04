@@ -17,6 +17,9 @@ pub mod salsa;
 pub mod svp;
 pub mod vcs;
 
+// TODO(jelmer): Import this from ognibuild
+pub const DEFAULT_BUILDER: &str = "sbuild --no-clean-source";
+
 #[derive(Debug)]
 pub enum ApplyError<R, E> {
     /// Error from the callback

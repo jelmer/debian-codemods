@@ -381,6 +381,16 @@ dependencies = [
 [[package]]
 name = "debianize"
 version = "0.150.0"
+dependencies = [
+ "breezyshim",
+ "clap",
+ "debian-analyzer",
+ "debian-changelog",
+ "distro-info",
+ "env_logger",
+ "log",
+ "pyo3",
+]
 
 [[package]]
 name = "debversion"

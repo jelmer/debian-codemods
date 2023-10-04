@@ -7,3 +7,13 @@ license = "GPL-2.0+"
 description = "Create Debian packaging from upstream sources"
 repository = "https://salsa.debian.org/jelmer/lintian-brush.git"
 homepage = "https://salsa.debian.org/jelmer/lintian-brush"
+
+[dependencies]
+breezyshim.workspace = true
+clap.workspace = true
+debian-analyzer = { version = "0.150.0", path = ".." }
+debian-changelog.workspace = true
+distro-info = "0.4.0"
+env_logger.workspace = true
+log.workspace = true
+pyo3.workspace = true

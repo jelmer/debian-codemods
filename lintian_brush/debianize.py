@@ -1432,7 +1432,7 @@ def default_debianize_cache_dir():
     return cache_dir
 
 
-def main(argv=None):  # noqa: C901
+def main(*, verbose: bool, directory: str, compat_release: str | None, dist_command: str, upstream: str | None, debian_binary: bool, debian_branch: str, disable_inotify: bool, diligence: int, trust: bool, check: bool, disable_net_access: bool, force_new_directory: bool, force_subprocess: bool, consult_external_directory: bool, schroot: str | None, unshare: str, upstream_version_kind: str, debian_revision: str, upstream_version: str, install: bool, iterate_fix: bool, output_directory: str, discard_output: bool, build_command: str, dep_server_url: str | None, max_build_iterations: int, recursive: bool, team: str | None):  # noqa: C901
     import argparse
 
     import breezy
@@ -1440,144 +1440,7 @@ def main(argv=None):  # noqa: C901
     import breezy.bzr  # noqa: E402
     import breezy.git  # noqa: E402
 
-    parser = argparse.ArgumentParser(prog="debianize")
-    parser.add_argument(
-        "--directory", "-d",
-        metavar="DIRECTORY",
-        help="directory to run in",
-        type=str,
-        default=".",
-    )
-    parser.add_argument(
-        "--disable-inotify", action="store_true", default=False,
-        help=argparse.SUPPRESS
-    )
-    parser.add_argument(
-        "--version", action="version", version="%(prog)s " + version_string
-    )
-    parser.add_argument(
-        "--compat-release", type=str, help=argparse.SUPPRESS,
-        default=os.environ.get('DEB_COMPAT_RELEASE'))
-    parser.add_argument(
-        "--verbose", help="be verbose", action="store_true", default=False
-    )
-    parser.add_argument(
-        "--disable-net-access",
-        help="Do not probe external services.",
-        action="store_true",
-        default=False,
-    )
-    parser.add_argument(
-        "--diligent",
-        action="count",
-        default=0,
-        dest="diligence",
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--trust",
-        action="store_true",
-        help="Whether to allow running code from the package.",
-    )
-    parser.add_argument(
-        "--consult-external-directory",
-        action="store_true",
-        help="Pull in external (not maintained by upstream) directory data",
-    )
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Check guessed metadata against external sources.",
-    )
-    parser.add_argument(
-        "--force-subprocess", action="store_true", help=argparse.SUPPRESS
-    )
-    parser.add_argument(
-        "--force-new-directory", action="store_true",
-        help="Create a new debian/ directory even if one already exists.")
-    parser.add_argument(
-        "--iterate-fix", "-x", action="store_true",
-        help="Invoke deb-fix-build afterwards to build package and add "
-        "missing dependencies.")
-    parser.add_argument(
-        '--install', '-i', action='store_true',
-        help='Install package after building (implies --iterate-fix)')
-    parser.add_argument(
-        "--schroot", type=str,
-        help="Schroot to use for building and apt archive access")
-    parser.add_argument(
-        "--unshare", type=str,
-        help="Unshare tarball to use for building and apt archive access")
-    parser.add_argument(
-        "--build-command",
-        type=str,
-        help="Build command (used for --iterate-fix)",
-        default=(DEFAULT_BUILDER + " -A -s -v"),
-    )
-    parser.add_argument(
-        "--max-build-iterations",
-        type=int,
-        default=50,
-        help=argparse.SUPPRESS)
-    parser.add_argument(
-        '--release', dest='upstream-version-kind', const="release",
-        action='store_const',
-        help='Package latest upstream release rather than a snapshot.')
-    parser.add_argument(
-        '--upstream-version-kind', choices=['auto', 'release', 'snapshot'],
-        default='auto',
-        help="What kind of release to package.")
-    parser.add_argument(
-        "--recursive", "-r",
-        action="store_true",
-        help="Attempt to package dependencies if they are not yet packaged.")
-    parser.add_argument(
-        '--output-directory',
-        type=str,
-        help='Output directory.')
-    parser.add_argument(
-        '--discard-output',
-        action='store_true',
-        help='Store output in a temporary directory (just test).')
-    parser.add_argument(
-        '--debian-revision',
-        type=str,
-        default='1',
-        help='Debian revision for the new release.')
-    parser.add_argument(
-        '--upstream-version',
-        type=str,
-        help='Upstream version to package.')
-    parser.add_argument(
-        '--dist-command', type=str,
-        help='Dist command', default=os.environ.get('DIST'))
-    parser.add_argument(
-        '--team', type=str,
-        help='Maintainer team ("$NAME <$EMAIL>")')
-    parser.add_argument(
-        '--debian-branch', type=str,
-        help=('Name of Debian branch to create. Empty string to stay at '
-              'current branch.'),
-        default='%(vendor)s/main')
-    parser.add_argument(
-        '--debian-binary', type=str,
-        help=(
-            'Package whatever source will create the named Debian '
-            'binary package.'))
-    parser.add_argument(
-        '--log-directory',
-        type=str,
-        default=os.environ.get('LOG_DIRECTORY'),
-        help='Directory to write log files to.')
-    parser.add_argument(
-        "--dep-server-url", type=str,
-        help="ognibuild dep server to use",
-        default=os.environ.get('OGNIBUILD_DEPS'))
-    parser.add_argument('upstream', nargs='?', type=str)
-
-    args = parser.parse_args(argv)
-
-    if args.verbose:
+    if verbose:
         loglevel = logging.DEBUG
     else:
         loglevel = logging.INFO
@@ -1591,7 +1454,6 @@ def main(argv=None):  # noqa: C901
         'that is incomplete or does not build as-is. '
         'If you encounter issues, please consider filing a bug.')
 
-    compat_release = args.compat_release
     if compat_release is None:
         import distro_info
 
@@ -1599,40 +1461,40 @@ def main(argv=None):  # noqa: C901
         compat_release = debian_info.stable()
 
     try:
-        wt, subpath = WorkingTree.open_containing(args.directory)
+        wt, subpath = WorkingTree.open_containing(directory)
     except NotBranchError as e:
         logging.fatal(
             'please run debianize in an existing branch where '
             'it should add the packaging: %s', e)
         return 1
 
-    create_dist: Optional[Callable[[Tree, str, str, str], str]]
-    if args.dist_command:
-        def create_dist(tree, package, version, target_dir, subpath=""):
+    create_dist_fn: Optional[Callable[[Tree, str, str, str], str]]
+    if dist_command:
+        def create_dist_fn(tree, package, version, target_dir, subpath=""):
             return run_dist_command(
-                tree, package, version, target_dir, args.dist_command,
+                tree, package, version, target_dir, dist_command,
                 subpath=subpath)
     else:
-        create_dist = None
+        create_dist_fn = None
 
     metadata = {}
 
     # For now...
-    if args.upstream:
+    if upstream:
         try:
             upstream_branch, upstream_subpath = Branch.open_containing(
-                args.upstream)
+                upstream)
         except NotBranchError as e:
-            logging.fatal('%s: not a valid branch: %s', args.upstream, e)
+            logging.fatal('%s: not a valid branch: %s', upstream, e)
             return 1
         metadata['Repository'] = UpstreamDatum(
-            'Repository', args.upstream, certainty='confident')
-    elif args.debian_binary:
-        apt_requirement = AptRequirement.from_str(args.debian_binary)
+            'Repository', upstream, certainty='confident')
+    elif debian_binary:
+        apt_requirement = AptRequirement.from_str(debian_binary)
         upstream_info = find_apt_upstream(apt_requirement)
         if not upstream_info:
             logging.fatal(
-                '%s: Unable to find upstream info for %s', args.debian_binary,
+                '%s: Unable to find upstream info for %s', debian_binary,
                 apt_requirement)
             return 1
         logging.info(
@@ -1640,8 +1502,9 @@ def main(argv=None):  # noqa: C901
         upstream_branch = Branch.open(upstream_info.branch_url)
         upstream_subpath = upstream_info.branch_subpath
 
-        metadata['Repository'] = UpstreamDatum(
-            'Repository', upstream_info.branch_url, certainty='confident')
+        if upstream_info.branch_url:
+            metadata['Repository'] = UpstreamDatum(
+                'Repository', upstream_info.branch_url, certainty='confident')
     else:
         if wt.has_filename(os.path.join(subpath, 'debian')):
             report_fatal(
@@ -1659,13 +1522,13 @@ def main(argv=None):  # noqa: C901
         upstream_branch = wt.branch
         upstream_subpath = subpath
 
-    if args.debian_branch:
+    if debian_branch:
         from debmutate.vendor import get_vendor_name
 
         use_packaging_branch(
-            wt, args.debian_branch % {'vendor': get_vendor_name().lower()})
+            wt, debian_branch % {'vendor': get_vendor_name().lower()})
 
-    use_inotify = (False if args.disable_inotify else None)
+    use_inotify = (False if disable_inotify else None)
     with wt.lock_write():
         try:
             debianize_result = debianize(
@@ -1673,29 +1536,29 @@ def main(argv=None):  # noqa: C901
                 upstream_branch=upstream_branch,
                 upstream_subpath=upstream_subpath,
                 use_inotify=use_inotify,
-                diligence=args.diligence,
-                trust=args.trust,
-                check=args.check,
-                net_access=not args.disable_net_access,
-                force_new_directory=args.force_new_directory,
-                force_subprocess=args.force_subprocess,
+                diligence=diligence,
+                trust=trust,
+                check=check,
+                net_access=not disable_net_access,
+                force_new_directory=force_new_directory,
+                force_subprocess=force_subprocess,
                 compat_release=compat_release,
-                consult_external_directory=args.consult_external_directory,
-                verbose=args.verbose,
-                schroot=args.schroot,
-                unshare=args.unshare,
-                upstream_version_kind=args.upstream_version_kind,
-                debian_revision=args.debian_revision,
-                create_dist=create_dist,
-                upstream_version=args.upstream_version,
+                consult_external_directory=consult_external_directory,
+                verbose=verbose,
+                schroot=schroot,
+                unshare=unshare,
+                upstream_version_kind=upstream_version_kind,
+                debian_revision=debian_revision,
+                create_dist=create_dist_fn,
+                upstream_version=upstream_version,
                 metadata=metadata,
             )
         except PackageVersionNotPresent:
-            if args.upstream_version:
+            if upstream_version:
                 report_fatal(
                     'requested-version-missing',
                     'Requested version %s not present upstream' %
-                    args.upstream_version)
+                    upstream_version)
                 return 1
             else:
                 # For now
@@ -1751,58 +1614,58 @@ def main(argv=None):  # noqa: C901
             else:
                 raise
 
-    if args.install:
-        args.iterate_fix = True
+    if install:
+        iterate_fix = True
 
-    if args.iterate_fix:
+    if iterate_fix:
         session: Session
 
-        if args.schroot:
-            logging.info('Using schroot %s', args.schroot)
-            session = SchrootSession(args.schroot)
-        elif args.unshare:
-            logging.info('Using tarball %s for unshare', args.unshare)
+        if schroot:
+            logging.info('Using schroot %s', schroot)
+            session = SchrootSession(schroot)
+        elif unshare:
+            logging.info('Using tarball %s for unshare', unshare)
             from ognibuild.session.unshare import (
                 UnshareSession,  # type: ignore
             )
-            session = UnshareSession.from_tarball(args.unshare)
+            session = UnshareSession.from_tarball(unshare)
         else:
             session = PlainSession()
 
         with contextlib.ExitStack() as es:
             es.enter_context(session)
             apt = AptManager.from_session(session)
-            if args.discard_output:
-                args.output_directory = es.enter_context(TemporaryDirectory())
-            if not args.output_directory:
-                args.output_directory = default_debianize_cache_dir()
+            if discard_output:
+                output_directory = es.enter_context(TemporaryDirectory())
+            if not output_directory:
+                output_directory = default_debianize_cache_dir()
                 logging.info(
-                    'Building dependencies in %s', args.output_directory)
+                    'Building dependencies in %s', output_directory)
 
             def do_build(
                     wt, subpath, incoming_directory, extra_repositories=None):
                 fixers = default_fixers(
                     wt, subpath, apt,
                     update_changelog=False, committer=None,
-                    dep_server_url=args.dep_server_url)
+                    dep_server_url=dep_server_url)
                 return build_incrementally(
                     local_tree=wt,
                     suffix=None,
                     build_suite=None,
                     fixers=fixers,
                     output_directory=incoming_directory,
-                    build_command=args.build_command,
+                    build_command=build_command,
                     build_changelog_entry=None,
-                    max_iterations=args.max_build_iterations,
+                    max_iterations=max_build_iterations,
                     subpath=subpath,
                     extra_repositories=extra_repositories,
                 )
 
             try:
-                if args.recursive:
-                    vcs_directory = os.path.join(args.output_directory, 'vcs')
+                if recursive:
+                    vcs_directory = os.path.join(output_directory, 'vcs')
                     os.makedirs(vcs_directory, exist_ok=True)
-                    apt_directory = os.path.join(args.output_directory, 'apt')
+                    apt_directory = os.path.join(output_directory, 'apt')
                     os.makedirs(apt_directory, exist_ok=True)
 
                     def main_build():
@@ -1810,30 +1673,30 @@ def main(argv=None):  # noqa: C901
                             wt, subpath, apt_repo.directory,
                             extra_repositories=apt_repo.sources_lines())
                     with SimpleTrustedAptRepo(apt_directory) as apt_repo:
-                        (changes_names, cl_entry) = iterate_with_build_fixers(
+                        (changes_names, _cl_entry) = iterate_with_build_fixers(
                             [DebianizeFixer(
                                 vcs_directory, apt_repo,
-                                diligence=args.diligence,
-                                trust=args.trust,
-                                check=args.check,
-                                net_access=not args.disable_net_access,
-                                force_new_directory=args.force_new_directory,
-                                team=args.team, verbose=args.verbose,
-                                force_subprocess=args.force_subprocess,
+                                diligence=diligence,
+                                trust=trust,
+                                check=check,
+                                net_access=not disable_net_access,
+                                force_new_directory=force_new_directory,
+                                team=team, verbose=verbose,
+                                force_subprocess=force_subprocess,
                                 upstream_version_kind=(
-                                    args.upstream_version_kind),
-                                debian_revision=args.debian_revision,
-                                schroot=args.schroot,
-                                unshare=args.unshare, use_inotify=use_inotify,
+                                    upstream_version_kind),
+                                debian_revision=debian_revision,
+                                schroot=schroot,
+                                unshare=unshare, use_inotify=use_inotify,
                                 consult_external_directory=(
-                                    args.consult_external_directory),
-                                create_dist=create_dist,
+                                    consult_external_directory),
+                                create_dist=create_dist_fn,
                                 compat_release=compat_release,
                                 do_build=do_build)],
                             main_build)
                 else:
-                    (changes_names, cl_entry) = do_build(
-                        wt, subpath, args.output_directory)
+                    (changes_names, _cl_entry) = do_build(
+                        wt, subpath, output_directory)
             except DetailedDebianBuildFailure as e:
                 if e.phase is None:
                     phase = 'unknown phase'
@@ -1865,10 +1728,10 @@ def main(argv=None):  # noqa: C901
                         e.version, e.requirement), hint=hint)
                 return 1
             logging.info('Built %r.', changes_names)
-            if args.install:
+            if install:
                 subprocess.check_call(
                     ["debi"] + [
-                        os.path.join(args.output_directory, cn)
+                        os.path.join(output_directory, cn)
                         for cn in changes_names])
 
     if debianize_result.vcs_url:
@@ -1889,7 +1752,3 @@ def main(argv=None):  # noqa: C901
             }, f)
 
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
