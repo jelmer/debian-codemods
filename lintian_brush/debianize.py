@@ -29,7 +29,6 @@ import logging
 import os
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass, field
 from functools import partial
 from tempfile import TemporaryDirectory
@@ -1432,9 +1431,18 @@ def default_debianize_cache_dir():
     return cache_dir
 
 
-def main(*, verbose: bool, directory: str, compat_release: str | None, dist_command: str, upstream: str | None, debian_binary: bool, debian_branch: str, disable_inotify: bool, diligence: int, trust: bool, check: bool, disable_net_access: bool, force_new_directory: bool, force_subprocess: bool, consult_external_directory: bool, schroot: str | None, unshare: str, upstream_version_kind: str, debian_revision: str, upstream_version: str, install: bool, iterate_fix: bool, output_directory: str, discard_output: bool, build_command: str, dep_server_url: str | None, max_build_iterations: int, recursive: bool, team: str | None):  # noqa: C901
-    import argparse
-
+def main(*, verbose: bool, directory: str, compat_release: str | None,
+         dist_command: str, upstream: str | None, debian_binary: bool,
+         debian_branch: str, disable_inotify: bool, diligence: int,
+         trust: bool, check: bool, disable_net_access: bool,
+         force_new_directory: bool, force_subprocess: bool,
+         consult_external_directory: bool,
+         schroot: str | None, unshare: str, upstream_version_kind: str,
+         debian_revision: str, upstream_version: str, install: bool,
+         iterate_fix: bool, output_directory: str, discard_output: bool,
+         build_command: str, dep_server_url: str | None,
+         max_build_iterations: int, recursive: bool,
+         team: str | None):  # noqa: C901
     import breezy
     breezy.initialize()  # type: ignore
     import breezy.bzr  # noqa: E402
