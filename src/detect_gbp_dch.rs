@@ -140,7 +140,7 @@ pub fn greedy_revisions(
     length: usize,
 ) -> (Vec<RevisionId>, bool) {
     let mut ret = vec![];
-    let mut it = graph.iter_lefthand_ancestry(revid);
+    let mut it = graph.iter_lefthand_ancestry(revid, None);
     while ret.len() < length {
         ret.push(match it.next() {
             None => break,

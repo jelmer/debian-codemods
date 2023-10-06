@@ -3,6 +3,7 @@ use breezyshim::dirty_tracker::DirtyTracker;
 use breezyshim::tree::{Error as TreeError, MutableTree, Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::reset_tree;
 use debian_changelog::ChangeLog;
+#[cfg(feature = "python")]
 use pyo3::PyErr;
 use std::str::FromStr;
 
@@ -105,16 +106,7 @@ pub fn apply_or_revert<R, E>(
     };
 
     if local_tree.supports_setting_file_ids() {
-        pyo3::Python::with_gil(|py| {
-            let rename_map_m = py.import("breezy.rename_map")?;
-            let rename_map = rename_map_m.getattr("RenameMap")?;
-            rename_map.call_method1(
-                "guess_renames",
-                (basis_tree.to_object(py), &local_tree.0, false),
-            )?;
-            Ok::<(), pyo3::PyErr>(())
-        })
-        .unwrap();
+        breezyshim::rename_map::guess_renames(basis_tree, local_tree).unwrap();
     }
 
     let specific_files_ref = specific_files
@@ -153,6 +145,7 @@ impl std::fmt::Display for ChangelogError {
     }
 }
 
+#[cfg(feature = "python")]
 impl From<PyErr> for ChangelogError {
     fn from(e: PyErr) -> Self {
         use pyo3::import_exception;
@@ -291,6 +284,7 @@ pub fn min_certainty(certainties: &[Certainty]) -> Option<Certainty> {
     certainties.iter().min().cloned()
 }
 
+/// Get the committer string for a tree
 pub fn get_committer(working_tree: &WorkingTree) -> String {
     pyo3::Python::with_gil(|py| {
         let m = py.import("lintian_brush")?;
