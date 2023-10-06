@@ -577,8 +577,13 @@ fn update_official_vcs(
 }
 
 #[pyfunction]
-pub fn guess_repository_url(package: &str, maintainer_email: &str) -> Option<String> {
+fn guess_repository_url(package: &str, maintainer_email: &str) -> Option<String> {
     debian_analyzer::salsa::guess_repository_url(package, maintainer_email).map(|u| u.to_string())
+}
+
+#[pyfunction]
+fn find_fixers_dir() -> Option<std::path::PathBuf> {
+    lintian_brush::find_fixers_dir()
 }
 
 #[pymodule]
@@ -601,6 +606,7 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(min_certainty))?;
     m.add_wrapped(wrap_pyfunction!(resolve_release_codename))?;
     m.add_wrapped(wrap_pyfunction!(calculate_value))?;
+    m.add_wrapped(wrap_pyfunction!(find_fixers_dir))?;
     m.add(
         "DEFAULT_VALUE_LINTIAN_BRUSH",
         lintian_brush::DEFAULT_VALUE_LINTIAN_BRUSH,

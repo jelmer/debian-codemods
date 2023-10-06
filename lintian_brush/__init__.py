@@ -163,9 +163,7 @@ def data_file_path(name, check=os.path.exists):
     raise RuntimeError("unable to find data path: %s" % name)
 
 
-def find_fixers_dir() -> str:
-    """Find the local directory with lintian fixer scripts."""
-    return data_file_path("fixers", os.path.isdir)
+find_fixers_dir = _lintian_brush_rs.find_fixers_dir
 
 
 def select_fixers(
@@ -339,25 +337,6 @@ class ManyResult:
                 if r.certainty is not None
             ]
         )
-
-
-def get_dirty_tracker(
-        local_tree: WorkingTree, subpath: str = "",
-        use_inotify: Optional[bool] = None):
-    """Create a dirty tracker object."""
-    if use_inotify is True:
-        from breezy.dirty_tracker import DirtyTracker
-
-        return DirtyTracker(local_tree, subpath)
-    elif use_inotify is False:
-        return None
-    else:
-        try:
-            from breezy.dirty_tracker import DirtyTracker
-        except ImportError:
-            return None
-        else:
-            return DirtyTracker(local_tree, subpath)
 
 
 def determine_update_changelog(local_tree, debian_path):
@@ -545,15 +524,6 @@ def certainty_to_confidence(certainty: Optional[str]) -> Optional[int]:
     if certainty in ("unknown", None):
         return None
     return SUPPORTED_CERTAINTIES.index(certainty)
-
-
-def confidence_to_certainty(confidence: Optional[int]) -> str:
-    if confidence is None:
-        return "unknown"
-    try:
-        return SUPPORTED_CERTAINTIES[confidence] or "unknown"
-    except IndexError as exc:
-        raise ValueError(confidence) from exc
 
 
 min_certainty = _lintian_brush_rs.min_certainty
