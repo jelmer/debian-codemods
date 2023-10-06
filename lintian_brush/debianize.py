@@ -97,7 +97,6 @@ from ognibuild.buildsystem import (
     get_buildsystem,
 )
 from ognibuild.debian.apt import AptManager
-from ognibuild.debian.build import DEFAULT_BUILDER
 from ognibuild.debian.fix_build import (
     DetailedDebianBuildFailure,
     UnidentifiedDebianBuildError,
@@ -145,10 +144,10 @@ from debian.changelog import Changelog, Version, format_date, get_maintainer
 from debian.deb822 import PkgRelation
 
 from . import (
+    _lintian_brush_rs,
     available_lintian_fixers,
     get_committer,
     run_lintian_fixers,
-    version_string,
 )
 from .debbugs import find_archived_wnpp_bugs, find_wnpp_bugs
 from .debhelper import (
@@ -1424,11 +1423,7 @@ def report_fatal(code, description, hint=None, details=None):
         logging.info('%s', hint)
 
 
-def default_debianize_cache_dir():
-    from xdg.BaseDirectory import xdg_cache_home
-    cache_dir = os.path.join(xdg_cache_home, 'debianize')
-    os.makedirs(cache_dir, exist_ok=True)
-    return cache_dir
+default_debianize_cache_dir = _lintian_brush_rs.default_debianize_cache_dir
 
 
 def main(*, verbose: bool, directory: str, compat_release: str | None,

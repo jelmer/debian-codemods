@@ -194,7 +194,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
-    breezyshim::init();
+    breezyshim::init().unwrap();
 
     let ret: i32 = Python::with_gil(|py| {
         let kwargs = PyDict::new(py);

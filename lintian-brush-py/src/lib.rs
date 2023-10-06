@@ -77,6 +77,12 @@ fn determine_env(
 }
 
 #[pyfunction]
+fn default_debianize_cache_dir() -> PyResult<std::path::PathBuf> {
+    Ok(debianize::default_debianize_cache_dir()
+        .map_err(|e| PyValueError::new_err(e.to_string()))?)
+}
+
+#[pyfunction]
 fn read_desc_file(
     path: std::path::PathBuf,
     force_subprocess: Option<bool>,
@@ -658,6 +664,7 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(guess_update_changelog))?;
     m.add_wrapped(wrap_pyfunction!(update_official_vcs))?;
     m.add_wrapped(wrap_pyfunction!(guess_repository_url))?;
+    m.add_wrapped(wrap_pyfunction!(default_debianize_cache_dir))?;
     m.add("NoVcsLocation", py.get_type::<NoVcsLocation>())?;
     m.add(
         "ConflictingVcsAlreadySpecified",

@@ -17,3 +17,4 @@ distro-info = "0.4.0"
 env_logger.workspace = true
 log.workspace = true
 pyo3.workspace = true
+xdg = "2.5.2"

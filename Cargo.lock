@@ -137,9 +137,9 @@ checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
 
 [[package]]
 name = "breezyshim"
-version = "0.1.43"
+version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "964912cb10aeee9fc70a37b127ea3566112d124f0ba6b82882fe8e08427d0654"
+checksum = "57a9037a870543d31b40e2a249b5f52b11870c7bc0688e340755996ea9d99785"
 dependencies = [
  "debversion",
  "lazy_static",
@@ -390,6 +390,7 @@ dependencies = [
  "env_logger",
  "log",
  "pyo3",
+ "xdg",
 ]
 
 [[package]]
@@ -920,6 +921,7 @@ dependencies = [
  "breezyshim",
  "chrono",
  "debian-analyzer",
+ "debianize",
  "debversion",
  "lintian-brush",
  "pyo3",
@@ -2158,6 +2160,12 @@ dependencies = [
  "cfg-if",
  "windows-sys 0.48.0",
 ]
+
+[[package]]
+name = "xdg"
+version = "2.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "213b7324336b53d2414b2db8537e56544d981803139155afa84f76eeebb7a546"
 
 [[package]]
 name = "xz2"

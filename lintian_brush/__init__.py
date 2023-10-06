@@ -339,6 +339,25 @@ class ManyResult:
         )
 
 
+def get_dirty_tracker(
+        local_tree: WorkingTree, subpath: str = "",
+        use_inotify: Optional[bool] = None):
+    """Create a dirty tracker object."""
+    if use_inotify is True:
+        from breezy.dirty_tracker import DirtyTracker
+
+        return DirtyTracker(local_tree, subpath)
+    elif use_inotify is False:
+        return None
+    else:
+        try:
+            from breezy.dirty_tracker import DirtyTracker
+        except ImportError:
+            return None
+        else:
+            return DirtyTracker(local_tree, subpath)
+
+
 def determine_update_changelog(local_tree, debian_path):
     from .detect_gbp_dch import (
         ChangelogBehaviour,
