@@ -1,3 +1,9 @@
+lintian-brush (0.152) UNRELEASED; urgency=medium
+
+  * Fix compatibility with newer rust crates. Closes: #1054839
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 28 Oct 2023 01:41:32 +0100
+
 lintian-brush (0.151) unstable; urgency=medium
 
   * Finish conversion of apply-multiarch-hints to rust. Closes:
