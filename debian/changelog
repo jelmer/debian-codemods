@@ -1,4 +1,4 @@
-lintian-brush (0.152) UNRELEASED; urgency=medium
+lintian-brush (0.152) unstable; urgency=medium
 
   * Fix compatibility with newer rust crates. Closes: #1054839
 
