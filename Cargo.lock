@@ -341,6 +341,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "deb822-lossless"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4091763bee62d77e69c0e767f457bc258fc0bd1626ed98c5c4c3bb601829d28c"
+dependencies = [
+ "debversion",
+ "regex",
+ "rowan",
+ "serde",
+]
+
+[[package]]
 name = "debian-analyzer"
 version = "0.150.0"
 dependencies = [
@@ -349,6 +361,8 @@ dependencies = [
  "clap",
  "configparser",
  "debian-changelog",
+ "debian-control",
+ "debian-copyright",
  "debversion",
  "distro-info",
  "env_logger",
@@ -376,6 +390,29 @@ dependencies = [
  "rowan",
  "textwrap",
  "whoami",
+]
+
+[[package]]
+name = "debian-control"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "391bc11339739325fe24e2504fa59389542bc9db134d6ff3aff3f244b963a34c"
+dependencies = [
+ "deb822-lossless",
+ "debversion",
+ "regex",
+ "rowan",
+]
+
+[[package]]
+name = "debian-copyright"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d37deb01b98fe53b1d121e14b36a78a7f6110f9b8f6492db017ae93a3a9cd1f"
+dependencies = [
+ "deb822-lossless",
+ "debversion",
+ "regex",
 ]
 
 [[package]]
@@ -1312,9 +1349,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.9.6"
+version = "1.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebee201405406dbf528b8b672104ae6d6d63e6d118cb10e4d51abbc7b58044ff"
+checksum = "380b951a9c5e80ddfd6136919eef32310721aa4aacd4889a8d39124b026ab343"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1324,9 +1361,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.3.9"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59b23e92ee4318893fa3fe3e6fb365258efbfe6ac6ab30f090cdcbb7aa37efa9"
+checksum = "5f804c7828047e88b2d32e2d7fe5a105da8ee3264f01902f796c8e067dc2483f"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1335,9 +1372,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.7.5"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbb5fb1acd8a1a18b3dd5be62d25485eb770e05afb408a9627d14d451bae12da"
+checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
 
 [[package]]
 name = "reqwest"
