@@ -27,6 +27,7 @@ except ImportError:
     def cache(user_function):  # type: ignore
         return lru_cache(maxsize=None)(user_function)
 
+
 import json
 import os
 import subprocess
@@ -57,9 +58,10 @@ def detect_debhelper_buildsystem(step: Optional[str] = None) -> Optional[str]:
     env = dict(os.environ)
     # Necessary for debhelper (<= 13.5.2), or it'll write debian/.debhelper
     # files.
-    env['DH_NO_ACT'] = '1'
+    env["DH_NO_ACT"] = "1"
     output = subprocess.check_output(
-        ["dh_assistant", "which-build-system"], env=env).decode()
+        ["dh_assistant", "which-build-system"], env=env
+    ).decode()
     return json.loads(output)["build-system"]
 
 
@@ -68,7 +70,8 @@ def _get_lintian_compat_levels() -> Dict[str, int]:
     # TODO(jelmer): ideally we should be getting these numbers from the
     # compat-release dh_assistant, rather than what's on the system
     output = subprocess.check_output(
-        ["dh_assistant", "supported-compat-levels"]).decode()
+        ["dh_assistant", "supported-compat-levels"]
+    ).decode()
     return json.loads(output)
 
 
@@ -102,9 +105,11 @@ def maximum_debhelper_compat_version(compat_release: str) -> int:
 
 
 def write_rules_template(
-        path: str, buildsystem: Optional[str] = None,
-        addons: Optional[List[str]] = None,
-        env: Optional[Dict[str, str]] = None) -> None:
+    path: str,
+    buildsystem: Optional[str] = None,
+    addons: Optional[List[str]] = None,
+    env: Optional[Dict[str, str]] = None,
+) -> None:
     if addons is None:
         addons = []
     dh_args = ["$@"]
@@ -137,8 +142,8 @@ def write_rules_template(
 
 
 def drop_obsolete_maintscript_entries(
-        editor, should_remove: Callable[[str, Version], bool]
-        ) -> List[Tuple[int, str, Version]]:
+    editor, should_remove: Callable[[str, Version], bool]
+) -> List[Tuple[int, str, Version]]:
     """Drop obsolete entries from a maintscript file.
 
     Args:
@@ -156,8 +161,9 @@ def drop_obsolete_maintscript_entries(
             comments.append((i, None, None))
             continue
         prior_version = getattr(entry, "prior_version", None)
-        if (prior_version is not None
-                and should_remove(entry.package, Version(prior_version))):
+        if prior_version is not None and should_remove(
+            entry.package, Version(prior_version)
+        ):
             remove.extend(comments)
             remove.append((i, entry.package, Version(prior_version)))
             ret.append((i, entry.package, Version(prior_version)))
@@ -169,27 +175,33 @@ def drop_obsolete_maintscript_entries(
 
 def drop_sequence(control, rules, sequence):
     new_depends = drop_dependency(
-        control.source.get("Build-Depends", ""), "dh-" + sequence)
-    if new_depends != control.source['Build-Depends']:
+        control.source.get("Build-Depends", ""), "dh-" + sequence
+    )
+    if new_depends != control.source["Build-Depends"]:
+
         def drop_with(line, target):
             return dh_invoke_drop_with(
-                line, sequence.replace('-', '_').encode())
+                line, sequence.replace("-", "_").encode()
+            )
+
         update_rules(drop_with)
-    new_depends = drop_dependency(
-        new_depends, "dh-sequence-" + sequence)
-    if control['Build-Depends'] == new_depends:
+    new_depends = drop_dependency(new_depends, "dh-sequence-" + sequence)
+    if control["Build-Depends"] == new_depends:
         return False
-    control['Build-Depends'] = new_depends
+    control["Build-Depends"] = new_depends
     return True
 
 
 def add_sequence(control, rules, sequence):
-    control.source['Build-Depends'] = add_dependency(
-        control.source.get('Build-Depends'), 'dh-vim-addon')
+    control.source["Build-Depends"] = add_dependency(
+        control.source.get("Build-Depends"), "dh-vim-addon"
+    )
 
     def add_with(line, target):
-        if line.startswith(b'dh ') or line.startswith(b'dh_'):
+        if line.startswith(b"dh ") or line.startswith(b"dh_"):
             return dh_invoke_add_with(
-                line, sequence.replace('-', '_').encode())
+                line, sequence.replace("-", "_").encode()
+            )
         return line
+
     update_rules(add_with)

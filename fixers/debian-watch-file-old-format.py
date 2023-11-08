@@ -18,15 +18,15 @@ with suppress(FileNotFoundError), WatchEditor() as editor:
         pass
     else:
         if editor.watch_file.version <= OBSOLETE_WATCH_FILE_FORMAT:
-            tag = 'obsolete-debian-watch-file-standard'
+            tag = "obsolete-debian-watch-file-standard"
         else:
-            tag = 'older-debian-watch-file-standard'
-        issue = LintianIssue('source', tag, '%d' % editor.watch_file.version)
+            tag = "older-debian-watch-file-standard"
+        issue = LintianIssue("source", tag, "%d" % editor.watch_file.version)
         if issue.should_fix():
             editor.watch_file.version = WATCH_FILE_LATEST_VERSION
             issue.report_fixed()
 
 
 report_result(
-    'Update watch file format version to %s.'
-    % WATCH_FILE_LATEST_VERSION)
+    "Update watch file format version to %s." % WATCH_FILE_LATEST_VERSION
+)

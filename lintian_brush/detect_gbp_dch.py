@@ -18,6 +18,6 @@
 from ._lintian_brush_rs import ChangelogBehaviour, guess_update_changelog
 
 __all__ = [
-    'guess_update_changelog',
-    'ChangelogBehaviour',
-    ]
+    "guess_update_changelog",
+    "ChangelogBehaviour",
+]

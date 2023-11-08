@@ -34,7 +34,6 @@ from lintian_brush.__main__ import (
 
 
 class VersionsDictTests(TestCase):
-
     def test_expected_types(self):
         d = versions_dict()
         self.assertIsInstance(d, dict, repr(d))
@@ -44,7 +43,6 @@ class VersionsDictTests(TestCase):
 
 
 class CalculateValueTests(TestCase):
-
     def test_tags_known(self):
         known_tags = set()
         for fixer in available_lintian_fixers():
@@ -58,8 +56,10 @@ class CalculateValueTests(TestCase):
         self.assertEqual(0, calculate_value(set()))
         self.assertEqual(
             DEFAULT_VALUE_LINTIAN_BRUSH + LINTIAN_BRUSH_TAG_DEFAULT_VALUE,
-            calculate_value(['foo']))
+            calculate_value(["foo"]),
+        )
         self.assertEqual(
             DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY
             + LINTIAN_BRUSH_TAG_DEFAULT_VALUE,
-            calculate_value([DEFAULT_ADDON_FIXERS[0]]))
+            calculate_value([DEFAULT_ADDON_FIXERS[0]]),
+        )

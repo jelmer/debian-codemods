@@ -17,19 +17,19 @@ if not package_is_native():
 if not opinionated():
     sys.exit(0)
 
-for name in ['debian/upstream/signing-key.asc']:
+for name in ["debian/upstream/signing-key.asc"]:
     if not os.path.exists(name):
         continue
-    issue = LintianIssue(
-        'source', 'public-upstream-key-in-native-package', ())
+    issue = LintianIssue("source", "public-upstream-key-in-native-package", ())
     if not issue.should_fix():
         continue
     issue.report_fixed()
     os.unlink(name)
 
-if os.listdir('debian/upstream') == []:
-    os.rmdir('debian/upstream')
+if os.listdir("debian/upstream") == []:
+    os.rmdir("debian/upstream")
 
 report_result(
-    'Remove upstream signing key in native source package.',
-    certainty='certain')
+    "Remove upstream signing key in native source package.",
+    certainty="certain",
+)

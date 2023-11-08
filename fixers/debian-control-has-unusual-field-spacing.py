@@ -15,26 +15,28 @@ from lintian_brush.line_editor import LineEditor
 
 
 def rewrite_line(line):
-    if not line.split(b'#', 1)[0].strip():
+    if not line.split(b"#", 1)[0].strip():
         return line
-    if line.startswith(b' ') or line.startswith(b'\t'):
+    if line.startswith(b" ") or line.startswith(b"\t"):
         return line
-    (key, value) = line.split(b':', 1)
+    (key, value) = line.split(b":", 1)
     if not value.strip():
         return line
-    return b'%s: %s\n' % (key, value.lstrip().rstrip(b'\n'))
+    return b"%s: %s\n" % (key, value.lstrip().rstrip(b"\n"))
 
 
 def fix_field_spacing(path):
     changed = False
-    with LineEditor(path, 'b') as e:
+    with LineEditor(path, "b") as e:
         for lineno, oldline in e:
             newline = rewrite_line(oldline)
             if newline != oldline:
-                if path == 'debian/control':
+                if path == "debian/control":
                     issue = LintianIssue(
-                        'source', 'debian-control-has-unusual-field-spacing',
-                        info='line %d' % lineno)
+                        "source",
+                        "debian-control-has-unusual-field-spacing",
+                        info="line %d" % lineno,
+                    )
                     if issue.should_fix():
                         e[lineno] = newline
                         changed = True
@@ -46,24 +48,24 @@ def fix_field_spacing(path):
 
 
 try:
-    check_generated_file('debian/control')
+    check_generated_file("debian/control")
 except GeneratedFile as e:
     if e.template_path:
-        template_type = guess_template_type(e.template_path, 'debian')
+        template_type = guess_template_type(e.template_path, "debian")
         if template_type is None:
             raise
         changed = fix_field_spacing(e.template_path)
         if changed:
-            fix_field_spacing('debian/control')
+            fix_field_spacing("debian/control")
     else:
         raise
 except FileNotFoundError:
     sys.exit(0)
 else:
     try:
-        changed = fix_field_spacing('debian/control')
+        changed = fix_field_spacing("debian/control")
     except FileNotFoundError:
         sys.exit(0)
 
 if changed:
-    report_result('Strip unusual field spacing from debian/control.')
+    report_result("Strip unusual field spacing from debian/control.")

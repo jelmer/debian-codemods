@@ -24,10 +24,10 @@ with ChangelogEditor() as editor:
 
     wnpp_bugs = find_wnpp_bugs(editor.changelog[-1].package)
     if wnpp_bugs:
-        certainty = 'certain'
+        certainty = "certain"
     else:
         wnpp_bugs = find_archived_wnpp_bugs(editor.changelog[-1].package)
-        certainty = 'confident'
+        certainty = "confident"
 
     if not wnpp_bugs:
         sys.exit(0)
@@ -36,20 +36,22 @@ with ChangelogEditor() as editor:
         if not line:
             continue
 
-        if 'Initial release' in line:
-            if not line.rstrip().endswith('.'):
-                line = line.rstrip() + '.'
+        if "Initial release" in line:
+            if not line.rstrip().endswith("."):
+                line = line.rstrip() + "."
             editor.changelog[-1]._changes[i] = line + (
-                " Closes: #%s" % ', '.join(
-                    [str(bugno) for (bugno, kind) in wnpp_bugs]))
+                " Closes: #%s"
+                % ", ".join([str(bugno) for (bugno, kind) in wnpp_bugs])
+            )
             version_changed = editor.changelog[-1].version
             break
 
 
 if version_changed:
     report_result(
-        "Add {} bugs in {}.".format(', '.join(
-            sorted({
-                kind for (bugno, kind) in wnpp_bugs})),
-            version_changed),
-        certainty=certainty)
+        "Add {} bugs in {}.".format(
+            ", ".join(sorted({kind for (bugno, kind) in wnpp_bugs})),
+            version_changed,
+        ),
+        certainty=certainty,
+    )

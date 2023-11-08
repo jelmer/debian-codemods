@@ -27,12 +27,13 @@ def fix_header_license_references(copyright):
     for missing in used_licenses - seen_licenses:
         if copyright.header.license.synopsis == missing:
             copyright.add_license_paragraph(
-                LicenseParagraph.create(
-                    copyright.header.license))
+                LicenseParagraph.create(copyright.header.license)
+            )
     fixed_lintian_tag(
-        'source',
-        'dep5-file-paragraph-references-header-paragraph',
-        f'{copyright.header.license.synopsis} (line XX)')
+        "source",
+        "dep5-file-paragraph-references-header-paragraph",
+        f"{copyright.header.license.synopsis} (line XX)",
+    )
     return copyright.header.license
 
 
@@ -44,4 +45,5 @@ except (FileNotFoundError, NotMachineReadableError):
 else:
     if license:
         report_result(
-            'Add missing license paragraph for %s' % license.synopsis)
+            "Add missing license paragraph for %s" % license.synopsis
+        )

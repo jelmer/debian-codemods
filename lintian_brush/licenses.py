@@ -30,6 +30,5 @@ FULL_LICENSE_NAME = {
 
 
 def load_spdx_data():
-
     with open_binary("spdx.json") as f:
         return json.load(f)

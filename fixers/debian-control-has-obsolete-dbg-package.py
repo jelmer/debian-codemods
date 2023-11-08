@@ -29,8 +29,8 @@ try:
         for binary in updater.binaries:
             # Delete the freeradius-dbg package from debian/control
             package = binary["Package"]
-            if package.endswith('-dbg'):
-                if package.startswith('python'):
+            if package.endswith("-dbg"):
+                if package.startswith("python"):
                     # -dbgsym packages don't include _d.so files for the python
                     # interpreter
                     continue
@@ -50,27 +50,33 @@ except FileNotFoundError:
 
 current_version = str(current_package_version())
 migrate_version = "<< {}{}".format(
-        current_version,
-        '' if current_version.endswith('~') else '~')
+    current_version, "" if current_version.endswith("~") else "~"
+)
 
 rules_uses_variables = False
 
 
 def migrate_dh_strip(line, target):
     global rules_uses_variables
-    if line.startswith(b'dh_strip ') or line.startswith(b'dh '):
+    if line.startswith(b"dh_strip ") or line.startswith(b"dh "):
         for dbg_pkg in dbg_packages:
             issue = LintianIssue(
-                'source',
-                'debian-control-has-obsolete-dbg-package', info=dbg_pkg)
-            if (('--dbg-package=%s' % dbg_pkg).encode('utf-8') in line and
-                    issue.should_fix()):
+                "source",
+                "debian-control-has-obsolete-dbg-package",
+                info=dbg_pkg,
+            )
+            if ("--dbg-package=%s" % dbg_pkg).encode(
+                "utf-8"
+            ) in line and issue.should_fix():
                 line = line.replace(
-                        ('--dbg-package=%s' % dbg_pkg).encode('utf-8'),
-                        (f"--dbgsym-migration='{dbg_pkg} ({migrate_version})'").encode())
+                    ("--dbg-package=%s" % dbg_pkg).encode("utf-8"),
+                    (
+                        f"--dbgsym-migration='{dbg_pkg} ({migrate_version})'"
+                    ).encode(),
+                )
                 dbg_migration_done.add(dbg_pkg)
                 issue.report_fixed()
-        if b'$' in line:
+        if b"$" in line:
             rules_uses_variables = True
     return line
 
@@ -90,4 +96,6 @@ if difference:
 
 report_result(
     "Transition to automatic debug package{} (from: {}).".format(
-        ("s" if len(dbg_packages) > 1 else ""), ', '.join(dbg_packages)))
+        ("s" if len(dbg_packages) > 1 else ""), ", ".join(dbg_packages)
+    )
+)

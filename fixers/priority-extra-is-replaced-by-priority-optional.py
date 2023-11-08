@@ -7,7 +7,8 @@ with control as updater:
         if para.get("Priority") == "extra":
             para["Priority"] = "optional"
             fixed_lintian_tag(
-                para, 'priority-extra-is-replaced-by-priority-optional')
+                para, "priority-extra-is-replaced-by-priority-optional"
+            )
 
 
 report_result("Change priority extra to priority optional.")

@@ -51,8 +51,11 @@ def gpg_import_export(import_options, export_options, stdin):
     with tempfile.TemporaryDirectory() as td:
         try:
             p = subprocess.Popen(
-                argv, stdout=subprocess.PIPE, stdin=subprocess.PIPE,
-                env={'GNUPGHOME': td})
+                argv,
+                stdout=subprocess.PIPE,
+                stdin=subprocess.PIPE,
+                env={"GNUPGHOME": td},
+            )
         except FileNotFoundError as exc:
             # No gpg, no dice.
             raise GpgMissing() from exc
@@ -64,13 +67,12 @@ def gpg_import_export(import_options, export_options, stdin):
 
 def fetch_keys(keys, home_dir):
     import subprocess
+
     env = dict(os.environ)
     if home_dir:
-        env['GNUPGHOME'] = home_dir
+        env["GNUPGHOME"] = home_dir
     try:
-        subprocess.check_call(
-            ['gpg', '--recv-keys'] + keys,
-            env=env)
+        subprocess.check_call(["gpg", "--recv-keys"] + keys, env=env)
     except FileNotFoundError as exc:
         # No gpg, no dice.
         raise GpgMissing() from exc

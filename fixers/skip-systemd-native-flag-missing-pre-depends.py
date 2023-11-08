@@ -27,21 +27,25 @@ added = set()
 with control as updater:
     for binary in updater.binaries:
         name = binary["Package"]
-        if not os.path.exists('debian/%s.init' % name):
+        if not os.path.exists("debian/%s.init" % name):
             continue
-        if not (os.path.exists('debian/%s.service' % name) or
-                os.path.exists('debian/%s.upstart' % name)):
+        if not (
+            os.path.exists("debian/%s.service" % name)
+            or os.path.exists("debian/%s.upstart" % name)
+        ):
             continue
         if "${misc:Pre-Depends}" in binary.get("Pre-Depends", ""):
             continue
         binary["Pre-Depends"] = add_dependency(
-            binary.get("Pre-Depends", ""),
-            "${misc:Pre-Depends}")
+            binary.get("Pre-Depends", ""), "${misc:Pre-Depends}"
+        )
         added.add(name)
         fixed_lintian_tag(
-            updater.source, 'skip-systemd-native-flag-missing-pre-depends')
+            updater.source, "skip-systemd-native-flag-missing-pre-depends"
+        )
 
 
 report_result(
-    "Add missing Pre-Depends: ${misc:Pre-Depends} in %s." %
-    ", ".join(sorted(added)))
+    "Add missing Pre-Depends: ${misc:Pre-Depends} in %s."
+    % ", ".join(sorted(added))
+)

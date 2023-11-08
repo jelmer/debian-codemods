@@ -15,8 +15,10 @@ with control as updater:
     else:
         if email == "packages@qa.debian.org":
             issue = LintianIssue(
-                updater.source, 'faulty-debian-qa-group-phrase',
-                f'Maintainer {fullname}')
+                updater.source,
+                "faulty-debian-qa-group-phrase",
+                f"Maintainer {fullname}",
+            )
             if issue.should_fix():
                 updater.source["Maintainer"] = QA_MAINTAINER
                 issue.report_fixed()

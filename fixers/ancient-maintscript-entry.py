@@ -16,9 +16,10 @@ DEFAULT_AGE_THRESHOLD_DAYS = 5 * 365
 
 
 maintscripts = []
-for entry in os.scandir('debian'):
-    if (not (entry.name == "maintscript"
-             or entry.name.endswith(".maintscript"))):
+for entry in os.scandir("debian"):
+    if not (
+        entry.name == "maintscript" or entry.name.endswith(".maintscript")
+    ):
         continue
     maintscripts.append(entry.name)
 
@@ -30,8 +31,10 @@ from distro_info import DebianDistroInfo  # noqa: E402
 
 try:
     [release] = [
-        r for r in DebianDistroInfo().get_all('object')
-        if r.codename.lower() == upgrade_release()]
+        r
+        for r in DebianDistroInfo().get_all("object")
+        if r.codename.lower() == upgrade_release()
+    ]
 except ValueError:
     date_threshold = None
 else:
@@ -41,7 +44,8 @@ if date_threshold is None:
     # Release has not yet or will never be released
     # Default to 5 years
     date_threshold = (
-        datetime.now() - timedelta(days=DEFAULT_AGE_THRESHOLD_DAYS)).date()
+        datetime.now() - timedelta(days=DEFAULT_AGE_THRESHOLD_DAYS)
+    ).date()
 
 
 cl_dates = []
@@ -50,7 +54,7 @@ with ChangelogEditor() as cl:
         try:
             dt = email.utils.parsedate_to_datetime(block.date)
         except (TypeError, ValueError):
-            warn(f'Invalid date {block.date!r} for {block.version}')
+            warn(f"Invalid date {block.date!r} for {block.version}")
             # parsedate_to_datetime is buggy and raises a TypeError
             # when the date is invalid.
             # We can't reliably check anymore :(
@@ -59,22 +63,27 @@ with ChangelogEditor() as cl:
 
 
 def is_well_past(version):
-    return all(not (cl_version <= version and cl_dt.date() > date_threshold)
-               for cl_version, cl_dt in cl_dates)
+    return all(
+        not (cl_version <= version and cl_dt.date() > date_threshold)
+        for cl_version, cl_dt in cl_dates
+    )
 
 
 total_entries = 0
 ret = []
 for name in maintscripts:
-    with MaintscriptEditor(os.path.join('debian', name)) as editor:
+    with MaintscriptEditor(os.path.join("debian", name)) as editor:
         removed = drop_obsolete_maintscript_entries(
-            editor, lambda p, v: is_well_past(v))
+            editor, lambda p, v: is_well_past(v)
+        )
         if removed:
-            ret.append((os.path.join('debian', name), removed))
+            ret.append((os.path.join("debian", name), removed))
             total_entries += len(removed)
 
 if total_entries == 1:
-    report_result('Remove an obsolete maintscript entry.')
+    report_result("Remove an obsolete maintscript entry.")
 else:
-    report_result('Remove %d obsolete maintscript entries in %d files.' %
-                  (total_entries, len(ret)))
+    report_result(
+        "Remove %d obsolete maintscript entries in %d files."
+        % (total_entries, len(ret))
+    )

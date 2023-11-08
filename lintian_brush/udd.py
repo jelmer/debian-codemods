@@ -20,7 +20,8 @@
 import os
 
 DEFAULT_UDD_URL = (
-    'postgresql://udd-mirror:udd-mirror@udd-mirror.debian.net:5432/udd')
+    "postgresql://udd-mirror:udd-mirror@udd-mirror.debian.net:5432/udd"
+)
 
 
 _pool = None
@@ -31,7 +32,7 @@ def connect_udd_mirror():
 
     global _pool
     if not _pool:
-        udd_url = os.environ.get('UDD_URL', DEFAULT_UDD_URL)
+        udd_url = os.environ.get("UDD_URL", DEFAULT_UDD_URL)
         _pool = psycopg2.connect(udd_url)
-        _pool.set_client_encoding('UTF8')
+        _pool.set_client_encoding("UTF8")
     return _pool

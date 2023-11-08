@@ -12,19 +12,20 @@ from lintian_brush.fixer import (
 
 # TODO(jelmer): Bump this up if there's a way that we can verify that e.g. the
 # ITP was filed by get_maintainer() ?
-CERTAINTY = 'possible'
+CERTAINTY = "possible"
 
 if not meets_minimum_certainty(CERTAINTY):
     sys.exit(0)
 
 
 with control as updater:
-    if updater.source.get('Maintainer'):
+    if updater.source.get("Maintainer"):
         sys.exit(0)
     maintainer = get_maintainer()
-    updater.source['Maintainer'] = "{} <{}>".format(*maintainer)
-    fixed_lintian_tag(updater.source, 'required-field', 'Maintainer')
+    updater.source["Maintainer"] = "{} <{}>".format(*maintainer)
+    fixed_lintian_tag(updater.source, "required-field", "Maintainer")
 
 report_result(
-    'Set the maintainer field to: {} <{}>.'.format(*maintainer),
-    certainty=CERTAINTY)
+    "Set the maintainer field to: {} <{}>.".format(*maintainer),
+    certainty=CERTAINTY,
+)

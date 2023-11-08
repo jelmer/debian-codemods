@@ -9,8 +9,8 @@ with control as updater:
         pass
     else:
         issue = LintianIssue(
-            updater.source, 'malformed-dm-upload-allowed',
-            info=old)
+            updater.source, "malformed-dm-upload-allowed", info=old
+        )
         if issue.should_fix():
             del updater.source["DM-Upload-Allowed"]
             issue.report_fixed()
@@ -18,4 +18,5 @@ with control as updater:
 
 report_result(
     "Remove malformed and unnecessary DM-Upload-Allowed field in "
-    "debian/control.")
+    "debian/control."
+)

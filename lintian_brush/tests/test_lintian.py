@@ -25,9 +25,9 @@ from lintian_brush.lintian import read_list_file
 
 
 class ReadListFileTests(TestCase):
-
     def test_read_simple(self):
-        f = StringIO("""\
+        f = StringIO(
+            """\
 # this is a comment
 
 item1
@@ -35,13 +35,15 @@ item2
 
 # more comments
 item3
-""")
+"""
+        )
         self.assertEqual(
-            ['item1', 'item2', 'item3'],
-            list(read_list_file(f, 'debian')))
+            ["item1", "item2", "item3"], list(read_list_file(f, "debian"))
+        )
 
     def test_vendor(self):
-        f = StringIO("""\
+        f = StringIO(
+            """\
 # this is a comment
 
 @if-vendor-is-not ubuntu item1
@@ -49,7 +51,6 @@ item3
 
 # more comments
 item3
-""")
-        self.assertEqual(
-            ['item1', 'item3'],
-            list(read_list_file(f, 'debian')))
+"""
+        )
+        self.assertEqual(["item1", "item3"], list(read_list_file(f, "debian")))

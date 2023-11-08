@@ -10,16 +10,18 @@ from lintian_brush.fixer import control, fixed_lintian_tag, report_result
 
 try:
     with control as updater:
-        if 'Uploaders' in updater.source:
-            uploaders = updater.source['Uploaders'].split(',')
-            maintainer = updater.source['Maintainer']
+        if "Uploaders" in updater.source:
+            uploaders = updater.source["Uploaders"].split(",")
+            maintainer = updater.source["Maintainer"]
             if maintainer in [uploader.strip() for uploader in uploaders]:
-                updater.source['Uploaders'] = delete_from_list(
-                    updater.source['Uploaders'], maintainer)
-                if not updater.source['Uploaders'].strip():
-                    del updater.source['Uploaders']
+                updater.source["Uploaders"] = delete_from_list(
+                    updater.source["Uploaders"], maintainer
+                )
+                if not updater.source["Uploaders"].strip():
+                    del updater.source["Uploaders"]
                 fixed_lintian_tag(
-                    updater.source, 'maintainer-also-in-uploaders')
+                    updater.source, "maintainer-also-in-uploaders"
+                )
 except FileNotFoundError:
     sys.exit(0)
 

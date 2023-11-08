@@ -18,7 +18,10 @@
 """Publish a package."""
 
 __all__ = [
-    "NoVcsLocation", "ConflictingVcsAlreadySpecified", "update_official_vcs"]
+    "NoVcsLocation",
+    "ConflictingVcsAlreadySpecified",
+    "update_official_vcs",
+]
 
 from ._lintian_brush_rs import (
     ConflictingVcsAlreadySpecified,

@@ -33,23 +33,29 @@ from lintian_brush.vcs import (
 from lintian_brush.vcswatch import VcsWatch, VcsWatchError
 
 OBSOLETE_HOSTS = [
-    'anonscm.debian.org', 'alioth.debian.org', 'svn.debian.org',
-    'git.debian.org', 'bzr.debian.org', 'hg.debian.org']
+    "anonscm.debian.org",
+    "alioth.debian.org",
+    "svn.debian.org",
+    "git.debian.org",
+    "bzr.debian.org",
+    "hg.debian.org",
+]
 
 
 def is_on_obsolete_host(url):
     parsed_url = urlparse(url)
-    host = parsed_url.netloc.split('@')[-1]
+    host = parsed_url.netloc.split("@")[-1]
     return host in OBSOLETE_HOSTS
 
 
 def verify_salsa_repository(url):
-    headers = {'User-Agent': USER_AGENT}
+    headers = {"User-Agent": USER_AGENT}
     browser_url = determine_salsa_browser_url(url)
     try:
         response = urlopen(
             Request(browser_url, headers=headers),
-            timeout=DEFAULT_URLLIB_TIMEOUT)
+            timeout=DEFAULT_URLLIB_TIMEOUT,
+        )
     except socket.timeout:
         return None
     return response.status == 200
@@ -65,21 +71,23 @@ def retrieve_vcswatch_urls(package):
 
 
 class NewRepositoryURLUnknown(Exception):
-
     def __init__(self, vcs_type, vcs_url):
         self.vcs_type = vcs_type
         self.vcs_url = vcs_url
 
 
-def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
-                  net_access=False):
+def find_new_urls(
+    vcs_type, vcs_url, package, maintainer_email, net_access=False
+):
     if net_access and (
-            vcs_url.startswith('https://') or vcs_url.startswith('http://')):
-        headers = {'User-Agent': USER_AGENT}
+        vcs_url.startswith("https://") or vcs_url.startswith("http://")
+    ):
+        headers = {"User-Agent": USER_AGENT}
         try:
             response = urlopen(
                 Request(vcs_url, headers=headers),
-                timeout=DEFAULT_URLLIB_TIMEOUT)
+                timeout=DEFAULT_URLLIB_TIMEOUT,
+            )
         except (urllib.error.HTTPError, urllib.error.URLError):
             pass
         except socket.timeout:
@@ -97,7 +105,7 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
         try:
             (vcs_type, vcs_url, vcs_browser) = retrieve_vcswatch_urls(package)
         except VcsWatchError as e:
-            warn('vcswatch URL unusable: %s' % e.args[0])
+            warn("vcswatch URL unusable: %s" % e.args[0])
         except KeyError:
             pass
         else:
@@ -105,10 +113,10 @@ def find_new_urls(vcs_type, vcs_url, package, maintainer_email,
                 print("Update Vcs-* headers from vcswatch.")
                 if is_on_obsolete_host(vcs_browser):
                     vcs_browser = (
-                        determine_browser_url(vcs_type, vcs_url) or
-                        vcs_browser)
+                        determine_browser_url(vcs_type, vcs_url) or vcs_browser
+                    )
                 return (vcs_type, vcs_url, vcs_browser)
-            warn('vcswatch URL %s is still on old infrastructure.' % vcs_url)
+            warn("vcswatch URL %s is still on old infrastructure." % vcs_url)
 
     # Otherwise, attempt to guess based on maintainer email.
     guessed_url = guess_repository_url(package, maintainer_email)
@@ -140,28 +148,38 @@ def migrate_from_obsolete_infra(control):
     package = control["Source"]
     maintainer_email = parseaddr(control["Maintainer"])[1]
 
-    old_vcs_browser = control.get('Vcs-Browser')
+    old_vcs_browser = control.get("Vcs-Browser")
     old_vcs_type = vcs_type
     old_vcs_url = vcs_url
     try:
         (vcs_type, vcs_url, vcs_browser) = find_new_urls(
-            vcs_type, vcs_url, package, maintainer_email,
-            net_access=net_access_allowed())
+            vcs_type,
+            vcs_url,
+            package,
+            maintainer_email,
+            net_access=net_access_allowed(),
+        )
     except NewRepositoryURLUnknown:
         return
 
     fixed_lintian_tag(
-        'source', "vcs-obsolete-in-debian-infrastructure",
-        info=f'vcs-{old_vcs_type.lower()} {old_vcs_url}')
+        "source",
+        "vcs-obsolete-in-debian-infrastructure",
+        info=f"vcs-{old_vcs_type.lower()} {old_vcs_url}",
+    )
 
-    if (("Vcs-Cvs" in control and re.match(
+    if (
+        "Vcs-Cvs" in control
+        and re.match(
             r"\@(?:cvs\.alioth|anonscm)\.debian\.org:/cvsroot/",
-            control["Vcs-Cvs"])) or
-        ("Vcs-Svn" in control and
-            "viewvc" in control["Vcs-Browser"])):
+            control["Vcs-Cvs"],
+        )
+    ) or ("Vcs-Svn" in control and "viewvc" in control["Vcs-Browser"]):
         fixed_lintian_tag(
-            'source', "vcs-field-bitrotted",
-            info='{} {}'.format(old_vcs_url or '', old_vcs_browser or ''))
+            "source",
+            "vcs-field-bitrotted",
+            info="{} {}".format(old_vcs_url or "", old_vcs_browser or ""),
+        )
 
     for hdr in ["Vcs-Git", "Vcs-Bzr", "Vcs-Hg", "Vcs-Svn"]:
         if hdr == "Vcs-" + vcs_type:  # type: ignore

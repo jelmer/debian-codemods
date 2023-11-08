@@ -22,17 +22,17 @@ from lintian_brush.licenses import (
 # In reality, what debian ships as "/usr/share/common-licenses/BSD" is
 # BSD-3-clause in SPDX.
 SPDX_RENAMES = {
-    'BSD': 'BSD-3-clause',
-    }
+    "BSD": "BSD-3-clause",
+}
 CANONICAL_NAMES = {
-    'CC0': 'CC0-1.0',
+    "CC0": "CC0-1.0",
 }
 updated = set()
 _common_licenses: Dict[str, str] = {}
 
 
 def normalize_license_text(text):
-    return re.sub('[\n\t ]+', ' ', text).strip()
+    return re.sub("[\n\t ]+", " ", text).strip()
 
 
 def license_text_matches(text1, text2):
@@ -44,19 +44,20 @@ def cached_common_license(name):
         return _common_licenses[name]
     except KeyError:
         with open(os.path.join(COMMON_LICENSES_DIR, name)) as f:
-            _common_licenses[name] = normalize_license_text(
-                f.read())
+            _common_licenses[name] = normalize_license_text(f.read())
         return _common_licenses[name]
 
 
 _COMMON_LICENSES = [
-    ('CC0-1.0', cached_common_license('CC0-1.0').replace('Legal Code ', '')),
-] + [(SPDX_RENAMES.get(name, name), cached_common_license(name))
-     for name in os.listdir(COMMON_LICENSES_DIR)]
+    ("CC0-1.0", cached_common_license("CC0-1.0").replace("Legal Code ", "")),
+] + [
+    (SPDX_RENAMES.get(name, name), cached_common_license(name))
+    for name in os.listdir(COMMON_LICENSES_DIR)
+]
 
 
 _BLURB = {
-    'CC0-1.0': """\
+    "CC0-1.0": """\
 To the extent possible under law, the author(s) have dedicated all copyright
 and related and neighboring rights to this software to the public domain
 worldwide. This software is distributed without any warranty.
@@ -64,7 +65,7 @@ worldwide. This software is distributed without any warranty.
 You should have received a copy of the CC0 Public Domain Dedication along with
 this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 """,
-    'Apache-2.0': """\
+    "Apache-2.0": """\
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -77,7 +78,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """,
-    'GPL-2+': """\
+    "GPL-2+": """\
 This package is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
@@ -91,7 +92,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>
 """,
-    'GPL-3+': """\
+    "GPL-3+": """\
 This package is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 3 of the License, or
@@ -128,10 +129,15 @@ def drop_debian_file_reference(shorttext):
 
 
 def debian_file_reference(name, filename):
-    return '\n'.join(textwrap.wrap(f"""\
+    return "\n".join(
+        textwrap.wrap(
+            f"""\
 On Debian systems, the full text of the {name}
 can be found in the file `/usr/share/common-licenses/{filename}'.
-""", width=78))
+""",
+            width=78,
+        )
+    )
 
 
 def find_common_license_from_blurb(text):
@@ -139,7 +145,9 @@ def find_common_license_from_blurb(text):
     text_without_debian_reference = drop_debian_file_reference(text)
     for name, shorttext in _BLURB.items():
         if normalize_license_text(shorttext) in (
-                text, text_without_debian_reference):
+            text,
+            text_without_debian_reference,
+        ):
             return name
 
 
@@ -158,14 +166,14 @@ def canonical_license_id(license_id):
     #  For SPDX compatibility, versions with trailing dot-zeroes are considered
     #  to be equivalent to versions without (e.g., “2.0.0” is considered equal
     #  to “2.0” and “2”).
-    m = re.fullmatch(r'([A-Za-z0-9]+)(\-[0-9\.]+)?(\+)?', license_id)
+    m = re.fullmatch(r"([A-Za-z0-9]+)(\-[0-9\.]+)?(\+)?", license_id)
     if not m:
-        warn('Unable to get canonical name for %r' % license_id)
+        warn("Unable to get canonical name for %r" % license_id)
         return license_id
-    version = (m.group(2) or '-1')[1:]
-    while version.endswith('.0'):
+    version = (m.group(2) or "-1")[1:]
+    while version.endswith(".0"):
         version = version[:-2]
-    return '{}-{}{}'.format(m.group(1), version, m.group(3) or '')
+    return "{}-{}{}".format(m.group(1), version, m.group(3) or "")
 
 
 renames = {}
@@ -177,8 +185,9 @@ def replace_full_license(para):
     if license_matched is None:
         if os.path.exists(os.path.join(COMMON_LICENSES_DIR, license.synopsis)):
             warn(
-                'A common license shortname (%s) is used, but license '
-                'text not recognized.' % license.synopsis)
+                "A common license shortname (%s) is used, but license "
+                "text not recognized." % license.synopsis
+            )
         return
     # The full license text was found. Replace it with a blurb.
     canonical_id = canonical_license_id(license.synopsis)
@@ -190,21 +199,23 @@ def replace_full_license(para):
             renames[license.synopsis] = SPDX_RENAMES[license.synopsis]
             return
         else:
-            warn(f'Found full license text for {license_matched}, '
-                 f'but unknown synopsis {license.synopsis} ({canonical_id})')
+            warn(
+                f"Found full license text for {license_matched}, "
+                f"but unknown synopsis {license.synopsis} ({canonical_id})"
+            )
         return
-    if license_matched == 'Apache-2.0':
+    if license_matched == "Apache-2.0":
         fixed_lintian_tag(
-            'source', 'copyright-file-contains-full-apache-2-license',
-            info=())
-    if license_matched.startswith('GFDL-'):
+            "source", "copyright-file-contains-full-apache-2-license", info=()
+        )
+    if license_matched.startswith("GFDL-"):
         fixed_lintian_tag(
-            'source', 'copyright-file-contains-full-gfdl-license',
-            info=())
-    if license_matched.startswith('GPL-'):
+            "source", "copyright-file-contains-full-gfdl-license", info=()
+        )
+    if license_matched.startswith("GPL-"):
         fixed_lintian_tag(
-            'source', 'copyright-file-contains-full-gpl-license',
-            info=())
+            "source", "copyright-file-contains-full-gpl-license", info=()
+        )
     para.license = License(license.synopsis, blurb)
     return license_matched
 
@@ -218,36 +229,46 @@ def reference_common_license(para):
         return
     if para.comment is not None and COMMON_LICENSES_DIR in para.comment:
         return
-    if 'X-Comment' in para and COMMON_LICENSES_DIR in para['X-Comment']:
+    if "X-Comment" in para and COMMON_LICENSES_DIR in para["X-Comment"]:
         return
-    if 'License-Reference' in para:
+    if "License-Reference" in para:
         return
     para.license = License(
-        license.synopsis, license.text + '\n\n' + debian_file_reference(
+        license.synopsis,
+        license.text
+        + "\n\n"
+        + debian_file_reference(
             FULL_LICENSE_NAME.get(common_license, common_license),
-            common_license))
-    if common_license in ('Apache-2.0', 'Apache-2'):
+            common_license,
+        ),
+    )
+    if common_license in ("Apache-2.0", "Apache-2"):
         fixed_lintian_tag(
-            'source', 'copyright-not-using-common-license-for-apache2',
-            info=())
-    elif common_license.startswith('GPL-'):
+            "source", "copyright-not-using-common-license-for-apache2", info=()
+        )
+    elif common_license.startswith("GPL-"):
         fixed_lintian_tag(
-            'source', 'copyright-not-using-common-license-for-gpl', info=())
-    elif common_license.startswith('LGPL-'):
+            "source", "copyright-not-using-common-license-for-gpl", info=()
+        )
+    elif common_license.startswith("LGPL-"):
         fixed_lintian_tag(
-            'source', 'copyright-not-using-common-license-for-lgpl', info=())
-    elif common_license.startswith('GFDL-'):
+            "source", "copyright-not-using-common-license-for-lgpl", info=()
+        )
+    elif common_license.startswith("GFDL-"):
         fixed_lintian_tag(
-            'source', 'copyright-not-using-common-license-for-gfdl', info=())
+            "source", "copyright-not-using-common-license-for-gfdl", info=()
+        )
     fixed_lintian_tag(
-        'source', 'copyright-does-not-refer-to-common-license-file', info=())
+        "source", "copyright-does-not-refer-to-common-license-file", info=()
+    )
     if license.synopsis != common_license:
         renames[license.synopsis] = common_license
     return common_license
 
 
-with suppress(NotMachineReadableError, FileNotFoundError), \
-        CopyrightEditor() as updater:
+with suppress(
+    NotMachineReadableError, FileNotFoundError
+), CopyrightEditor() as updater:
     for para in updater.copyright.all_paragraphs():
         license = para.license
         if not license or not license.text:
@@ -271,13 +292,20 @@ with suppress(NotMachineReadableError, FileNotFoundError), \
 done = []
 if updated:
     done.append(
-        'refer to common license file for %s' % ', '.join(sorted(updated)))
+        "refer to common license file for %s" % ", ".join(sorted(updated))
+    )
 if set(renames.values()) - set(updated):
-    done.append('use common license names: ' + ', '.join(
-        [f'{new} (was: {old})' for (old, new) in sorted(renames.items())
-         if new not in updated]))
+    done.append(
+        "use common license names: "
+        + ", ".join(
+            [
+                f"{new} (was: {old})"
+                for (old, new) in sorted(renames.items())
+                if new not in updated
+            ]
+        )
+    )
 
 
 if done:
-    report_result(
-        done[0][0].capitalize() + ('; '.join(done) + '.')[1:])
+    report_result(done[0][0].capitalize() + ("; ".join(done) + ".")[1:])

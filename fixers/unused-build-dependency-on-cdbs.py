@@ -7,9 +7,9 @@ from debmutate.control import drop_dependency
 from lintian_brush.fixer import LintianIssue, control, report_result
 
 try:
-    with open('debian/rules', 'rb') as f:
+    with open("debian/rules", "rb") as f:
         for line in f:
-            if b'/usr/share/cdbs/' in line:
+            if b"/usr/share/cdbs/" in line:
                 uses_cdbs = True
                 break
         else:
@@ -22,10 +22,12 @@ if not uses_cdbs:
     with control as updater:
         for field in ["Build-Depends", "Build-Depends-Indep"]:
             new_depends = drop_dependency(
-                updater.source.get(field, ""), "cdbs")
+                updater.source.get(field, ""), "cdbs"
+            )
             if new_depends != updater.source.get(field, ""):
                 issue = LintianIssue(
-                    updater.source, 'unused-build-dependency-on-cdbs', '')
+                    updater.source, "unused-build-dependency-on-cdbs", ""
+                )
                 if issue.should_fix():
                     updater.source[field] = new_depends
                     if not updater.source[field]:

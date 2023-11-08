@@ -18,17 +18,18 @@ if is_debcargo_package():
 
 format: Optional[str]
 try:
-    with open('debian/source/format') as f:
+    with open("debian/source/format") as f:
         format = f.read().strip()
 except FileNotFoundError:
     format = None
 
-if format != '3.0 (quilt)' and os.path.exists('debian/patches/series'):
+if format != "3.0 (quilt)" and os.path.exists("debian/patches/series"):
     with control as updater:
-        updater.source['Build-Depends'] = ensure_some_version(
-            updater.source.get('Build-Depends', ''), 'quilt')
+        updater.source["Build-Depends"] = ensure_some_version(
+            updater.source.get("Build-Depends", ""), "quilt"
+        )
     if updater.changed:
-        fixed_lintian_tag(updater.source, 'quilt-series-but-no-build-dep')
+        fixed_lintian_tag(updater.source, "quilt-series-but-no-build-dep")
 
 
-report_result('Add missing dependency on quilt.')
+report_result("Add missing dependency on quilt.")

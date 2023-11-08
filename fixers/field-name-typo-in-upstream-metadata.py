@@ -12,41 +12,41 @@ except ImportError:
     sys.exit(2)
 
 valid_field_names = {
-    'Archive',
-    'ASCL-Id',
-    'Bug-Database',
-    'Bug-Submit',
-    'Cite-As',
-    'Changelog',
-    'CPE',
-    'Documentation',
-    'Donation',
-    'FAQ',
-    'Funding',
-    'Gallery',
-    'Other-References',
-    'Reference',
-    'Registration',
-    'Registry',
-    'Repository',
-    'Repository-Browse',
-    'Screenshots',
-    'Security-Contact',
-    'Webservice',
+    "Archive",
+    "ASCL-Id",
+    "Bug-Database",
+    "Bug-Submit",
+    "Cite-As",
+    "Changelog",
+    "CPE",
+    "Documentation",
+    "Donation",
+    "FAQ",
+    "Funding",
+    "Gallery",
+    "Other-References",
+    "Reference",
+    "Registration",
+    "Registry",
+    "Repository",
+    "Repository-Browse",
+    "Screenshots",
+    "Security-Contact",
+    "Webservice",
 }
 
 typo_fixed = set()
 case_fixed = set()
 
-with suppress(FileNotFoundError), \
-        YamlUpdater('debian/upstream/metadata') as updater:
+with suppress(FileNotFoundError), YamlUpdater(
+    "debian/upstream/metadata"
+) as updater:
     for field in updater.code:
         if field in valid_field_names:
             continue
-        if (field.startswith('X-') and
-                field[2:] in valid_field_names):
+        if field.startswith("X-") and field[2:] in valid_field_names:
             if field[2:] in updater.code:
-                warn(f'Both {field} and {field[2:]} exist.')
+                warn(f"Both {field} and {field[2:]} exist.")
                 continue
             value = updater.code[field]
             del updater.code[field]
@@ -67,17 +67,21 @@ with suppress(FileNotFoundError), \
 
 
 if case_fixed:
-    kind = 'case' + ('s' if len(case_fixed) > 1 else '')
+    kind = "case" + ("s" if len(case_fixed) > 1 else "")
 else:
-    kind = ''
+    kind = ""
 if typo_fixed:
     if case_fixed:
-        kind += ' and '
-    kind += 'typo' + ('s' if len(typo_fixed) > 1 else '')
+        kind += " and "
+    kind += "typo" + ("s" if len(typo_fixed) > 1 else "")
 
-fixed_str = ', '.join(
-    [f'{old} ⇒ {new}'
-     for (old, new) in sorted(list(case_fixed) + list(typo_fixed))])
+fixed_str = ", ".join(
+    [
+        f"{old} ⇒ {new}"
+        for (old, new) in sorted(list(case_fixed) + list(typo_fixed))
+    ]
+)
 
 report_result(
-    f'Fix field name {kind} in debian/upstream/metadata ({fixed_str}).')
+    f"Fix field name {kind} in debian/upstream/metadata ({fixed_str})."
+)

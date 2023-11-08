@@ -24,15 +24,20 @@ def fix_info(path, lineno, override):
     if info == override.info:
         return override
     issue = LintianIssue(
-        (override.type, override.package), 'mismatched-override',
-        override.info + ' [%s:%d]' % (path, lineno))
+        (override.type, override.package),
+        "mismatched-override",
+        override.info + " [%s:%d]" % (path, lineno),
+    )
     if issue.should_fix():
         issue.report_fixed()
         fixed_linenos.setdefault(path, []).append(lineno)
         return LintianOverride(
-            package=override.package, archlist=override.archlist,
-            type=override.type, tag=override.tag,
-            info=info)
+            package=override.package,
+            archlist=override.archlist,
+            type=override.type,
+            tag=override.tag,
+            info=info,
+        )
     return override
 
 
@@ -44,10 +49,14 @@ elif len(fixed_linenos) == 1:
     [(path, linenos)] = fixed_linenos.items()
     report_result(
         "Update lintian override info format in {} on line {}.".format(
-            shorten_path(path), ', '.join(linenos_to_ranges(linenos))))
+            shorten_path(path), ", ".join(linenos_to_ranges(linenos))
+        )
+    )
 else:
     report_result(
         "Update lintian override info to new format:",
         details=[
-            "{}: line {}".format(path, ', '.join(linenos_to_ranges(linenos)))
-            for (path, linenos) in fixed_linenos.items()])
+            "{}: line {}".format(path, ", ".join(linenos_to_ranges(linenos)))
+            for (path, linenos) in fixed_linenos.items()
+        ],
+    )

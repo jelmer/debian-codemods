@@ -15,8 +15,7 @@ def parse(t):
     return tuple([int(v) for v in t.split(".")])
 
 
-PYTHON_VERSIONS_PATH = os.path.join(
-    LINTIAN_DATA_PATH, 'python/versions')
+PYTHON_VERSIONS_PATH = os.path.join(LINTIAN_DATA_PATH, "python/versions")
 
 
 python_versions = {}
@@ -26,7 +25,7 @@ try:
             line = line.strip()
             if not line:
                 continue
-            key, value = line.split('=')
+            key, value = line.split("=")
             python_versions[key.strip()] = parse(value.strip())
 except FileNotFoundError:
     sys.exit(2)
@@ -34,35 +33,42 @@ except FileNotFoundError:
 
 with control as updater:
     # Remove anything that involves python 2.6, 2.7, 3.3
-    if ("X-Python-Version" in updater.source and
-            updater.source["X-Python-Version"].strip().startswith(">= 2.")):
+    if "X-Python-Version" in updater.source and updater.source[
+        "X-Python-Version"
+    ].strip().startswith(">= 2."):
         vers = updater.source["X-Python-Version"].split(">=")[1].strip()
-        if parse(vers) <= python_versions['old-python2']:
-            if parse(vers) <= python_versions['ancient-python2']:
-                kind = 'ancient'
+        if parse(vers) <= python_versions["old-python2"]:
+            if parse(vers) <= python_versions["ancient-python2"]:
+                kind = "ancient"
             else:
-                kind = 'old'
+                kind = "old"
         issue = LintianIssue(
-            updater.source, '%s-python-version-field' % kind,
-            'x-python-version %s' % updater.source['X-Python-Version'])
+            updater.source,
+            "%s-python-version-field" % kind,
+            "x-python-version %s" % updater.source["X-Python-Version"],
+        )
         if issue.should_fix():
             del updater.source["X-Python-Version"]
             issue.report_fixed()
-    if ("X-Python3-Version" in updater.source and
-            updater.source["X-Python3-Version"].strip().startswith(">=")):
+    if "X-Python3-Version" in updater.source and updater.source[
+        "X-Python3-Version"
+    ].strip().startswith(">="):
         vers = updater.source["X-Python3-Version"].split(">=")[1].strip()
-        if parse(vers) <= python_versions['old-python3']:
-            if parse(vers) <= python_versions['ancient-python3']:
-                kind = 'ancient'
+        if parse(vers) <= python_versions["old-python3"]:
+            if parse(vers) <= python_versions["ancient-python3"]:
+                kind = "ancient"
             else:
-                kind = 'old'
+                kind = "old"
             issue = LintianIssue(
-                updater.source, '%s-python-version-field' % kind,
-                'x-python3-version %s' % updater.source['X-Python3-Version'])
+                updater.source,
+                "%s-python-version-field" % kind,
+                "x-python3-version %s" % updater.source["X-Python3-Version"],
+            )
             if issue.should_fix():
                 del updater.source["X-Python3-Version"]
                 issue.report_fixed()
 
 
 report_result(
-    "Remove unnecessary X-Python{,3}-Version field in debian/control.")
+    "Remove unnecessary X-Python{,3}-Version field in debian/control."
+)

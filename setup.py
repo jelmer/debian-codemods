@@ -22,13 +22,18 @@ from setuptools_rust import Binding, RustBin, RustExtension
 
 setup(
     data_files=[
-        ('share/lintian-brush/fixers',
-         [n for n in glob.glob('fixers/*') if not n.endswith('/slow')]),
-        ('share/lintian-brush', [
-            'spdx.json',
-            'renamed-tags.json',
-            'key-package-versions.json',
-         ]),
+        (
+            "share/lintian-brush/fixers",
+            [n for n in glob.glob("fixers/*") if not n.endswith("/slow")],
+        ),
+        (
+            "share/lintian-brush",
+            [
+                "spdx.json",
+                "renamed-tags.json",
+                "key-package-versions.json",
+            ],
+        ),
     ],
     rust_extensions=[
         RustBin("debianize", "debianize/Cargo.toml"),
@@ -36,8 +41,15 @@ setup(
         RustBin("detect-changelog-behaviour", "Cargo.toml", features=["cli"]),
         RustBin("deb-vcs-publish", "Cargo.toml", features=["cli"]),
         RustBin("dump-multiarch-hints", "multiarch-hints/Cargo.toml"),
-        RustBin("apply-multiarch-hints", "multiarch-hints/Cargo.toml", features=["cli"]),
+        RustBin(
+            "apply-multiarch-hints",
+            "multiarch-hints/Cargo.toml",
+            features=["cli"],
+        ),
         RustExtension(
-            "lintian_brush._lintian_brush_rs", "lintian-brush-py/Cargo.toml",
-            binding=Binding.PyO3)],
+            "lintian_brush._lintian_brush_rs",
+            "lintian-brush-py/Cargo.toml",
+            binding=Binding.PyO3,
+        ),
+    ],
 )

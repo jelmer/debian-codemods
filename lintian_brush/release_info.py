@@ -28,6 +28,7 @@ _key_package_versions = None
 
 def load_key_package_versions():
     import json
+
     with open_binary("key-package-versions.json") as f:
         return json.load(f)
 

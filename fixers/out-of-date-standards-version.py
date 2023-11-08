@@ -72,11 +72,11 @@ def check_4_4_0():
     if os.path.exists("debian/compat"):
         yield "package uses debhelper"
         return
-    with open('debian/control') as f:
+    with open("debian/control") as f:
         source = next(Deb822.iter_paragraphs(f))
-        build_deps = source.get('Build-Depends', '')
+        build_deps = source.get("Build-Depends", "")
         try:
-            get_relation(build_deps, 'debhelper-compat')
+            get_relation(build_deps, "debhelper-compat")
         except KeyError:
             raise UpgradeCheckFailure("4.9", "package does not use dh")
         else:
@@ -87,16 +87,17 @@ def check_4_4_0():
 def check_4_4_1():
     # Check that there is only one Vcs field.
     vcs_fields = []
-    with open('debian/control') as f:
+    with open("debian/control") as f:
         source = next(Deb822.iter_paragraphs(f))
         for name in source:
-            if name.lower() == 'vcs-browser':
+            if name.lower() == "vcs-browser":
                 continue
-            if name.lower().startswith('vcs-'):
+            if name.lower().startswith("vcs-"):
                 vcs_fields.append(name)
     if len(vcs_fields) > 1:
         raise UpgradeCheckFailure(
-            "5.6.26", "package has more than one Vcs-<type> field")
+            "5.6.26", "package has more than one Vcs-<type> field"
+        )
     elif len(vcs_fields) == 0:
         yield "package has no Vcs-<type> fields"
     else:
@@ -105,7 +106,7 @@ def check_4_4_1():
     # Check that Files entries don't refer to directories.
     # They must be wildcards *in* the directories.
     try:
-        with open('debian/copyright') as f:
+        with open("debian/copyright") as f:
             copyright = Copyright(f, strict=False)
             for para in copyright.all_files_paragraphs():
                 for glob in para.files:
@@ -113,7 +114,8 @@ def check_4_4_1():
                         raise UpgradeCheckFailure(
                             "copyright-format",
                             "Wildcards are required to match the contents of "
-                            "directories")
+                            "directories",
+                        )
     except FileNotFoundError:
         pass
     except NotMachineReadableError:
@@ -124,7 +126,7 @@ def check_4_4_1():
 
 def check_4_1_5():
     # If epoch has changed
-    with open('debian/changelog') as f:
+    with open("debian/changelog") as f:
         cl = Changelog(f, max_blocks=2)
         epochs = set()
         for block in cl:
@@ -136,7 +138,7 @@ def check_4_1_5():
 
 
 def _poor_grep(path, needle):
-    with open(path, 'rb') as f:
+    with open(path, "rb") as f:
         lines = f.readlines()
         pat = re.compile(needle)
         return any(bool(pat.search(line)) for line in lines)
@@ -150,39 +152,47 @@ def check_4_5_0():
 
     # For now, just check if there are any postinst / preinst script that call
     # adduser / useradd
-    for entry in os.scandir('debian'):
-        if (not entry.name.endswith('.postinst') and
-                not entry.name.endswith('.preinst')):
+    for entry in os.scandir("debian"):
+        if not entry.name.endswith(".postinst") and not entry.name.endswith(
+            ".preinst"
+        ):
             continue
-        if _poor_grep(entry.path, b'(adduser|useradd)'):
+        if _poor_grep(entry.path, b"(adduser|useradd)"):
             raise UpgradeCheckUnable(
-                "9.2.1", "dynamically generated usernames should start with "
-                "an underscore")
-        if _poor_grep(entry.path, b'update-rc.d'):
+                "9.2.1",
+                "dynamically generated usernames should start with "
+                "an underscore",
+            )
+        if _poor_grep(entry.path, b"update-rc.d"):
             uses_update_rc_d = True
     yield "Package does not create users"
 
     # Including an init script is encouraged if there is no systemd unit, and
     # optional if there is (previously, it was recommended).
-    for entry in os.scandir('debian'):
-        if not entry.name.endswith('.init'):
+    for entry in os.scandir("debian"):
+        if not entry.name.endswith(".init"):
             continue
-        shortname = entry.name[:-len('.init')]
-        if (not os.path.exists('debian/%s.service' % shortname) and
-                not os.path.exists('debian/%s@.service' % shortname)):
+        shortname = entry.name[: -len(".init")]
+        if not os.path.exists(
+            "debian/%s.service" % shortname
+        ) and not os.path.exists("debian/%s@.service" % shortname):
             raise UpgradeCheckFailure(
                 "9.3.1",
                 "packages that include system services should include "
-                "systemd units")
+                "systemd units",
+            )
         # Use of update-rc.d is required if the package includes an init
         # script.
         if not uses_update_rc_d:
             raise UpgradeCheckFailure(
                 "9.3.3",
-                "update-rc usage if required if package includes init script")
+                "update-rc usage if required if package includes init script",
+            )
     if uses_update_rc_d:
-        yield ("Package does not ship any init files without matching "
-               "systemd units")
+        yield (
+            "Package does not ship any init files without matching "
+            "systemd units"
+        )
         yield "Package ships init files but uses update-rc.d"
     else:
         yield "Package does not ship init files"
@@ -193,11 +203,11 @@ def check_4_5_1():
     # verbatim into copyright file?
 
     try:
-        for entry in os.scandir('debian/patches'):
-            if entry.name.endswith('.series'):
+        for entry in os.scandir("debian/patches"):
+            if entry.name.endswith(".series"):
                 raise UpgradeCheckFailure(
-                    "4.5.1",
-                    "package contains non-default series file")
+                    "4.5.1", "package contains non-default series file"
+                )
     except FileNotFoundError:
         yield "Package does not have any patches"
     else:
@@ -212,14 +222,15 @@ def check_4_6_0():
     # TODO(jelmer): No package is allowed to install files in /usr/lib64/.
     # Previously, this prohibition only applied to packages for 64-bit
     # architectures.
-    for entry in os.scandir('debian'):
+    for entry in os.scandir("debian"):
         if not entry.is_file():
             continue
-        if _poor_grep(entry.path, b'lib64'):
+        if _poor_grep(entry.path, b"lib64"):
             raise UpgradeCheckUnable(
                 "9.1.1",
                 "unable to verify whether "
-                "package install files into /usr/lib/64")
+                "package install files into /usr/lib/64",
+            )
     else:
         yield "Package does not contain any references to lib64"
 
@@ -248,14 +259,15 @@ def check_4_6_2():
     # ``/usr/bin/x-window-manager``, start with a priority of 40, not 20, and
     # don't increase the priority based on support for the (obsolete) Debian
     # menu system.
-    for entry in os.scandir('debian'):
+    for entry in os.scandir("debian"):
         if not entry.is_file():
             continue
-        if _poor_grep(entry.path, b'x-window-manager'):
+        if _poor_grep(entry.path, b"x-window-manager"):
             raise UpgradeCheckUnable(
                 "11.8.4",
                 "unable to verify priority for "
-                "/usr/bin/x-window-manager alternative")
+                "/usr/bin/x-window-manager alternative",
+            )
     yield "Package does not provide x-window-manager alternative"
 
 
@@ -290,30 +302,31 @@ try:
             except FileNotFoundError:
                 dt = None
                 last = None
-                tag = 'out-of-date-standards-version'
+                tag = "out-of-date-standards-version"
             else:
                 last, last_dt = max(svs.items())
                 try:
                     dt = svs[parse_standards_version(current_version)]
                 except KeyError:
                     dt = None
-                    tag = 'out-of-date-standards-version'
+                    tag = "out-of-date-standards-version"
                 else:
                     age = last_dt - dt
                     if age.days > 365 * 2:
-                        tag = 'ancient-standards-version'
+                        tag = "ancient-standards-version"
                     else:
-                        tag = 'out-of-date-standards-version'
+                        tag = "out-of-date-standards-version"
             issue = LintianIssue(
                 updater.source,
                 tag,
-                '{}{}{}'.format(
+                "{}{}{}".format(
                     current_version,
-                    (' (released %s)' % dt.strftime('%Y-%m-%d')) if dt else '',
-                    (' (current is %s)' %
-                     '.'.join([str(x) for x in last]))
-                    if last is not None else '',
-                    ))
+                    (" (released %s)" % dt.strftime("%Y-%m-%d")) if dt else "",
+                    (" (current is %s)" % ".".join([str(x) for x in last]))
+                    if last is not None
+                    else "",
+                ),
+            )
             if issue.should_fix():
                 while current_version in upgrade_path:
                     target_version = upgrade_path[current_version]
@@ -322,17 +335,23 @@ try:
                         verified[target_version] = list(check_fn())
                     except UpgradeCheckFailure as e:
                         logging.info(
-                            'Upgrade checklist validation from standards '
-                            '%s ⇒ %s failed: %s: %s',
-                            current_version, target_version,
-                            e.section, e.reason)
+                            "Upgrade checklist validation from standards "
+                            "%s ⇒ %s failed: %s: %s",
+                            current_version,
+                            target_version,
+                            e.section,
+                            e.reason,
+                        )
                         break
                     except UpgradeCheckUnable as e:
                         logging.info(
-                            'Unable to validate checklist from standards '
-                            '%s ⇒ %s: %s: %s',
-                            current_version, target_version,
-                            e.section, e.reason)
+                            "Unable to validate checklist from standards "
+                            "%s ⇒ %s: %s: %s",
+                            current_version,
+                            target_version,
+                            e.section,
+                            e.reason,
+                        )
                         break
                     current_version = target_version
                 updater.source["Standards-Version"] = current_version
@@ -343,5 +362,6 @@ except FileNotFoundError:
 
 if current_version:
     report_result(
-        f'Update standards version to {current_version}, no changes needed.',
-        certainty='certain')
+        f"Update standards version to {current_version}, no changes needed.",
+        certainty="certain",
+    )

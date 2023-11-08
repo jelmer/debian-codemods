@@ -7,21 +7,29 @@ from lintian_brush.fixer import report_result
 from lintian_brush.gpg import GpgMissing, gpg_import_export
 
 try:
-    with open('debian/upstream/signing-key.pgp', 'rb') as f:
+    with open("debian/upstream/signing-key.pgp", "rb") as f:
         key = f.read()
 except FileNotFoundError:
     sys.exit(0)
 
 try:
     full = gpg_import_export(
-        ['no-import-minimal', 'no-import-clean', 'no-self-sigs-only',
-         'no-repair-keys', 'import-restore'], [], key)
+        [
+            "no-import-minimal",
+            "no-import-clean",
+            "no-self-sigs-only",
+            "no-repair-keys",
+            "import-restore",
+        ],
+        [],
+        key,
+    )
 except GpgMissing:
     sys.exit(2)
 
-with open('debian/upstream/signing-key.asc', 'wb') as f:
+with open("debian/upstream/signing-key.asc", "wb") as f:
     f.write(full)
 
-os.remove('debian/upstream/signing-key.pgp')
+os.remove("debian/upstream/signing-key.pgp")
 
 report_result("Enarmor upstream signing key.")

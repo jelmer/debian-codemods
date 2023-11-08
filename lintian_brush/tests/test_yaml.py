@@ -198,7 +198,8 @@ class UpdateOrderedDict(TestCase):
     def test_empty(self):
         update_ordered_dict(self._od, [("Contact", "Foo"), ("Blah", "blah")])
         self.assertEqual(
-            ordereddict([("Blah", "blah"), ("Contact", "Foo")]), self._od)
+            ordereddict([("Blah", "blah"), ("Contact", "Foo")]), self._od
+        )
 
     def test_modify(self):
         self._od["Contact"] = "Bar"
@@ -242,28 +243,46 @@ class UpdateOrderedDict(TestCase):
             self._od,
             [
                 ("Bug-Database", "https://github.com/csb-toolbox/CSB/issues"),
-                ("Bug-Submit",
-                 "https://github.com/csb-toolbox/CSB/issues/new"),
-                ("Repository",
-                 "https://github.com/csb-toolbox/CSB/issues.git"),
+                (
+                    "Bug-Submit",
+                    "https://github.com/csb-toolbox/CSB/issues/new",
+                ),
+                (
+                    "Repository",
+                    "https://github.com/csb-toolbox/CSB/issues.git",
+                ),
             ],
             key=upstream_metadata_sort_key,
         )
         self.assertEqual(
             ordereddict(
                 [
-                    ("Bug-Database",
-                     "https://github.com/csb-toolbox/CSB/issues"),
-                    ("Bug-Submit",
-                     "https://github.com/csb-toolbox/CSB/issues/new"),
-                    ("Registry", [
-                        ordereddict(
-                            [("Name", "OMICtools"), ("Entry", "OMICS_09827")]
-                        ),
-                        ordereddict([("Name", "bio.tools"), ("Entry", "NA")]),
-                    ]),
-                    ("Repository",
-                     "https://github.com/csb-toolbox/CSB/issues.git"),
+                    (
+                        "Bug-Database",
+                        "https://github.com/csb-toolbox/CSB/issues",
+                    ),
+                    (
+                        "Bug-Submit",
+                        "https://github.com/csb-toolbox/CSB/issues/new",
+                    ),
+                    (
+                        "Registry",
+                        [
+                            ordereddict(
+                                [
+                                    ("Name", "OMICtools"),
+                                    ("Entry", "OMICS_09827"),
+                                ]
+                            ),
+                            ordereddict(
+                                [("Name", "bio.tools"), ("Entry", "NA")]
+                            ),
+                        ],
+                    ),
+                    (
+                        "Repository",
+                        "https://github.com/csb-toolbox/CSB/issues.git",
+                    ),
                 ]
             ),
             self._od,

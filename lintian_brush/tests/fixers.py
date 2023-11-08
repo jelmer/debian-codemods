@@ -56,8 +56,10 @@ class FixerTestCase(unittest.TestCase):
             return [name for name in names if name.endswith("~")]
 
         shutil.copytree(
-            os.path.join(self._path, "in"), self._testdir, symlinks=True,
-            ignore=ignore
+            os.path.join(self._path, "in"),
+            self._testdir,
+            symlinks=True,
+            ignore=ignore,
         )
 
     def id(self):
@@ -74,7 +76,7 @@ class FixerTestCase(unittest.TestCase):
             unittest.expectedFailure(self)
             return
         env = {}
-        for key in ['PATH']:
+        for key in ["PATH"]:
             if key in os.environ:
                 env[key] = os.environ[key]
         cl_path = os.path.join(self._testdir, "debian/changelog")
@@ -91,9 +93,10 @@ class FixerTestCase(unittest.TestCase):
         env["CURRENT_VERSION"] = str(current_version)
         env["NET_ACCESS"] = "disallow"
         env["MINIMUM_CERTAINTY"] = "possible"
-        env["PYTHONPATH"] = ':'.join(
+        env["PYTHONPATH"] = ":".join(
             [os.path.dirname(os.path.dirname(os.path.dirname(__file__)))]
-            + sys.path)
+            + sys.path
+        )
         env_path = os.path.join(self._path, "env")
         if os.path.exists(env_path):
             with open(env_path) as f:
@@ -101,8 +104,10 @@ class FixerTestCase(unittest.TestCase):
                     key, value = line.rstrip("\n").split("=")
                     env[key] = value
         p = subprocess.Popen(
-            self._fixer.script_path, cwd=self._testdir, stdout=subprocess.PIPE,
-            env=env
+            self._fixer.script_path,
+            cwd=self._testdir,
+            stdout=subprocess.PIPE,
+            env=env,
         )
         (stdout, err) = p.communicate(b"")
         self.assertEqual(p.returncode, 0)
@@ -123,8 +128,8 @@ class FixerTestCase(unittest.TestCase):
         )
         (diff, stderr) = p.communicate(b"")
         self.assertIn(
-            p.returncode, (0, 1),
-            "Unexpected exit code %d" % p.returncode)
+            p.returncode, (0, 1), "Unexpected exit code %d" % p.returncode
+        )
         if diff.decode() != "":
             raise AssertionError("unexpected output: %s" % diff.decode())
         self.assertMultiLineEqual(diff.decode(), "")
@@ -137,7 +142,8 @@ class FixerTestCase(unittest.TestCase):
             result = parse_script_fixer_output(stdout.decode())
             self.assertTrue(
                 set(result.fixed_lintian_tags).issubset(
-                    self._fixer.lintian_tags),
+                    self._fixer.lintian_tags
+                ),
                 "fixer {} claims to fix tags ({!r}) not declared "
                 "in index.desc ({!r})".format(
                     self._fixer_name,
@@ -177,8 +183,9 @@ class SaneFixerTests(unittest.TestCase):
         renames = load_renamed_tags()
         for tag in self.fixer.lintian_tags:
             self.assertNotIn(
-                tag, renames,
-                f"Tag {tag} has been renamed to {renames.get(tag)}"
+                tag,
+                renames,
+                f"Tag {tag} has been renamed to {renames.get(tag)}",
             )
 
 
@@ -218,17 +225,21 @@ if __name__ == "__main__":
         help="Fixer for which to run tests.",
     )
     parser.add_argument(
-        "--exclude", type=str, action="append", help="Exclude a fixer.")
+        "--exclude", type=str, action="append", help="Exclude a fixer."
+    )
     args = parser.parse_args()
 
     fixers = list(available_lintian_fixers())
     if args.fixer:
         try:
             fixers = select_fixers(
-                fixers, names=args.fixer, exclude=args.exclude)
+                fixers, names=args.fixer, exclude=args.exclude
+            )
         except KeyError as e:
-            print("Selected fixer %s does not exist." % (
-                e.args[0]), file=sys.stderr)
+            print(
+                "Selected fixer %s does not exist." % (e.args[0]),
+                file=sys.stderr,
+            )
             sys.exit(0)
 
     suite = unittest.TestSuite()

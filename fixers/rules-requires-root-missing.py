@@ -21,7 +21,7 @@ if is_debcargo_package():
 
 with control as updater:
     if "Rules-Requires-Root" not in updater.source:
-        issue = LintianIssue(updater.source, 'silent-on-rules-requiring-root')
+        issue = LintianIssue(updater.source, "silent-on-rules-requiring-root")
         if issue.should_fix():
             # TODO: add some heuristics to set require_root = "yes" in common
             # cases, like `debian/rules binary` chown(1)'ing stuff
@@ -29,5 +29,5 @@ with control as updater:
             issue.report_fixed()
 
 report_result(
-    "Set Rules-Requires-Root: %s." % require_root,
-    certainty=CERTAINTY)
+    "Set Rules-Requires-Root: %s." % require_root, certainty=CERTAINTY
+)

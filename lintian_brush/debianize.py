@@ -18,9 +18,9 @@
 """Debianize a package."""
 
 __all__ = [
-    'NoBuildToolsFound',
-    'debianize',
-    ]
+    "NoBuildToolsFound",
+    "debianize",
+]
 
 import contextlib
 import errno
@@ -208,12 +208,14 @@ class NoUpstreamReleases(Exception):
 
 
 def write_changelog_template(
-        path, source_name, version, author=None, wnpp_bugs=None):
+    path, source_name, version, author=None, wnpp_bugs=None
+):
     if author is None:
         author = get_maintainer()
     if wnpp_bugs:
         closes = " Closes: " + ", ".join(
-            [("#%d" % (bug,)) for bug, kind in wnpp_bugs])
+            [("#%d" % (bug,)) for bug, kind in wnpp_bugs]
+        )
     else:
         closes = ""
     cl = Changelog()
@@ -241,13 +243,14 @@ def versions_dict():
 
     import debian
     import lintian_brush
+
     return {
-        'lintian-brush': lintian_brush.version_string,
-        'debmutate': debmutate.version_string,
-        'debian': debian.__version__,
-        'ognibuild': ognibuild.version_string,
-        'buildlog_consultant': buildlog_consultant.version_string,
-        'upstream_ontologist': upstream_ontologist.version_string,
+        "lintian-brush": lintian_brush.version_string,
+        "debmutate": debmutate.version_string,
+        "debian": debian.__version__,
+        "ognibuild": ognibuild.version_string,
+        "buildlog_consultant": buildlog_consultant.version_string,
+        "upstream_ontologist": upstream_ontologist.version_string,
     }
 
 
@@ -260,7 +263,7 @@ class DebianDirectoryExists(Exception):
 
 def go_import_path_from_repo(repo_url):
     parsed_url = urlparse(repo_url)
-    p = parsed_url.hostname + parsed_url.path.rstrip('/')
+    p = parsed_url.hostname + parsed_url.path.rstrip("/")
     if p.endswith(".git"):
         p = p[:-4]
     return p
@@ -273,12 +276,19 @@ def enable_dh_addon(source, addon):
 
 
 def setup_debhelper(
-        wt, debian_path, source, compat_release, addons=None, env=None,
-        buildsystem=None):
+    wt,
+    debian_path,
+    source,
+    compat_release,
+    addons=None,
+    env=None,
+    buildsystem=None,
+):
     source["Build-Depends"] = ensure_exact_version(
-            source.get("Build-Depends", ""),
-            "debhelper-compat",
-            str(maximum_debhelper_compat_version(compat_release)))
+        source.get("Build-Depends", ""),
+        "debhelper-compat",
+        str(maximum_debhelper_compat_version(compat_release)),
+    )
     for addon in addons or []:
         enable_dh_addon(source, addon)
     write_debhelper_rules_template(
@@ -289,38 +299,46 @@ def setup_debhelper(
 
 
 def default_create_dist(
-        session, tree, package, version, target_dir, subpath=""):
+    session, tree, package, version, target_dir, subpath=""
+):
     try:
         with session:
             try:
                 return ogni_create_dist(
-                    session, tree, target_dir,
+                    session,
+                    tree,
+                    target_dir,
                     include_controldir=False,
                     subdir=(package or "package"),
                     version=version,
-                    subpath=subpath)
+                    subpath=subpath,
+                )
             except DetailedFailure as e:
                 if isinstance(
-                        e.error,
-                        (VcsControlDirectoryNeeded, SetuptoolScmVersionIssue)):
+                    e.error,
+                    (VcsControlDirectoryNeeded, SetuptoolScmVersionIssue),
+                ):
                     return ogni_create_dist(
-                        session, tree, target_dir,
+                        session,
+                        tree,
+                        target_dir,
                         include_controldir=True,
                         subdir=(package or "package"),
-                        version=version, subpath=subpath)
+                        version=version,
+                        subpath=subpath,
+                    )
                 else:
                     raise
     except NoBuildToolsFound:
-        logging.info(
-            "No build tools found, falling back to simple export.")
+        logging.info("No build tools found, falling back to simple export.")
         return None
     except NotImplementedError:
         logging.info(
-            "Build system does not support dist, falling back "
-            "to export.")
+            "Build system does not support dist, falling back " "to export."
+        )
         return None
     except SessionSetupFailure as exc:
-        raise DistCommandFailed(str(exc), 'session-setup-failure') from exc
+        raise DistCommandFailed(str(exc), "session-setup-failure") from exc
     except DistNoTarball as e:
         logging.info("Build system did not create a tarball: %s", e)
         return None
@@ -331,45 +349,65 @@ def default_create_dist(
 
 
 def import_upstream_version_from_dist(
-        wt, subpath, upstream_source, source_name, upstream_version,
-        session: Session) -> Tuple[
-            Dict[Optional[str], Tuple[RevisionID, str]],
-            Dict[Optional[str], RevisionID], str]:
+    wt,
+    subpath,
+    upstream_source,
+    source_name,
+    upstream_version,
+    session: Session,
+) -> Tuple[
+    Dict[Optional[str], Tuple[RevisionID, str]],
+    Dict[Optional[str], RevisionID],
+    str,
+]:
     orig_dir = os.path.abspath(default_orig_dir)
 
     tag_names = {}
     with TemporaryDirectory() as target_dir:
         locations = upstream_source.fetch_tarballs(
-            source_name, upstream_version, target_dir, components=[None])
+            source_name, upstream_version, target_dir, components=[None]
+        )
         if source_name is None:
-            source_name = os.path.basename(locations[0]).split('_')[0]
+            source_name = os.path.basename(locations[0]).split("_")[0]
         try:
             tarball_filenames = get_tarballs(
-                orig_dir,
-                wt, source_name, upstream_version, locations)
+                orig_dir, wt, source_name, upstream_version, locations
+            )
         except FileExists as e:
             logging.warning(
-                'Tarball %s exists, reusing existing file.', e.path)
+                "Tarball %s exists, reusing existing file.", e.path
+            )
             tarball_filenames = [os.path.join(orig_dir, e.path)]
-        upstream_revisions = upstream_source\
-            .version_as_revisions(source_name, upstream_version)
+        upstream_revisions = upstream_source.version_as_revisions(
+            source_name, upstream_version
+        )
         files_excluded = None
         try:
             imported_revids = do_import(
-                wt, subpath, tarball_filenames, source_name, upstream_version,
+                wt,
+                subpath,
+                tarball_filenames,
+                source_name,
+                upstream_version,
                 current_version=None,
                 upstream_branch=upstream_source.upstream_branch,
                 upstream_revisions=upstream_revisions,
-                merge_type=None, files_excluded=files_excluded)
+                merge_type=None,
+                files_excluded=files_excluded,
+            )
         except UpstreamAlreadyImported as e:
-            logging.warning(
-                'Upstream release %s already imported.',
-                e.version)  # type: ignore
+            logging.warning("Upstream release %s already imported.", e.version)  # type: ignore
             imported_revids = get_existing_imported_upstream_revids(
-                upstream_source, source_name, upstream_version)
+                upstream_source, source_name, upstream_version
+            )
         pristine_revids = {}
-        for (component, tag_name, revid,
-             _pristine_tar_imported, subpath) in imported_revids:
+        for (
+            component,
+            tag_name,
+            revid,
+            _pristine_tar_imported,
+            subpath,
+        ) in imported_revids:
             pristine_revids[component] = (revid, subpath)
             tag_names[component] = tag_name
 
@@ -386,7 +424,6 @@ def import_upstream_version_from_dist(
 
 
 class ResetOnFailure:
-
     def __init__(self, wt, subpath=None):
         self.wt = wt
         self.subpath = subpath
@@ -401,43 +438,62 @@ class ResetOnFailure:
         return False
 
 
-def process_setup_py(es, session, wt, subpath, debian_path, upstream_version,
-                     metadata, compat_release, buildsystem,
-                     buildsystem_subpath, kickstart_from_dist):
+def process_setup_py(
+    es,
+    session,
+    wt,
+    subpath,
+    debian_path,
+    upstream_version,
+    metadata,
+    compat_release,
+    buildsystem,
+    buildsystem_subpath,
+    kickstart_from_dist,
+):
     kickstart_from_dist(wt, subpath)
-    control = es.enter_context(ControlEditor.create(
-        wt.abspath(os.path.join(debian_path, 'control'))))
+    control = es.enter_context(
+        ControlEditor.create(wt.abspath(os.path.join(debian_path, "control")))
+    )
     source = control.source
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     setup_debhelper(
-        wt, debian_path,
-        source, compat_release=compat_release,
+        wt,
+        debian_path,
+        source,
+        compat_release=compat_release,
         addons=["python3"],
-        buildsystem="pybuild")
+        buildsystem="pybuild",
+    )
     source["Testsuite"] = "autopkgtest-pkg-python"
     # TODO(jelmer): check whether project supports python 3
     source["Build-Depends"] = ensure_some_version(
-        source["Build-Depends"], "python3-all")
+        source["Build-Depends"], "python3-all"
+    )
     # TODO(Jelmer): Convert pyproject's build-system.requirements to Python
     # deps
     if buildsystem.build_backend in ("flit.build_api", "flit_core.build_api"):
         source["Build-Depends"] = ensure_some_version(
-            source["Build-Depends"], "flit")
+            source["Build-Depends"], "flit"
+        )
         source["Build-Depends"] = ensure_some_version(
-            source["Build-Depends"], "python3-toml")
+            source["Build-Depends"], "python3-toml"
+        )
     build_deps, test_deps = get_project_wide_deps(
-        session, wt, subpath, buildsystem, buildsystem_subpath)
+        session, wt, subpath, buildsystem, buildsystem_subpath
+    )
     import_build_deps(source, build_deps)
     # We're going to be running the testsuite as part of the build,
     # so import the test dependencies too.
     import_build_deps(source, test_deps)
-    upstream_name = metadata['Name']
-    if upstream_name.startswith('python-'):
-        upstream_name = upstream_name[len('python-'):]
-    source['Source'] = "python-%s" % upstream_name.lower().replace('_', '-')
-    control.add_binary({
-            "Package": "python3-%s" % upstream_name.lower().replace('_', '-'),
+    upstream_name = metadata["Name"]
+    if upstream_name.startswith("python-"):
+        upstream_name = upstream_name[len("python-") :]
+    source["Source"] = "python-%s" % upstream_name.lower().replace("_", "-")
+    control.add_binary(
+        {
+            "Package": "python3-%s" % upstream_name.lower().replace("_", "-"),
             "Depends": "${python3:Depends}",
             "Architecture": "all",
         }
@@ -445,25 +501,41 @@ def process_setup_py(es, session, wt, subpath, debian_path, upstream_version,
     return control
 
 
-def process_maven(es, session, wt, subpath, debian_path, upstream_version,
-                  metadata, compat_release, buildsystem, buildsystem_subpath,
-                  kickstart_from_dist):
+def process_maven(
+    es,
+    session,
+    wt,
+    subpath,
+    debian_path,
+    upstream_version,
+    metadata,
+    compat_release,
+    buildsystem,
+    buildsystem_subpath,
+    kickstart_from_dist,
+):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(
-        ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
+        ControlEditor.create(wt.abspath(os.path.join(debian_path, "control")))
+    )
     source = control.source
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     setup_debhelper(
-        wt, debian_path,
-        source, compat_release=compat_release,
-        buildsystem="maven")
+        wt,
+        debian_path,
+        source,
+        compat_release=compat_release,
+        buildsystem="maven",
+    )
     build_deps, test_deps = get_project_wide_deps(
-        session, wt, subpath, buildsystem, buildsystem_subpath)
+        session, wt, subpath, buildsystem, buildsystem_subpath
+    )
     import_build_deps(source, build_deps)
-    upstream_name = metadata['Name']
-    source['Source'] = upstream_name
-    control.add_binary({
+    upstream_name = metadata["Name"]
+    source["Source"] = upstream_name
+    control.add_binary(
+        {
             "Package": "lib%s-java" % upstream_name,
             "Depends": "${java:Depends}",
             "Architecture": "all",
@@ -472,121 +544,200 @@ def process_maven(es, session, wt, subpath, debian_path, upstream_version,
     return control
 
 
-def process_npm(es, session, wt, subpath, debian_path, upstream_version,
-                metadata, compat_release, buildsystem, buildsystem_subpath,
-                kickstart_from_dist):
+def process_npm(
+    es,
+    session,
+    wt,
+    subpath,
+    debian_path,
+    upstream_version,
+    metadata,
+    compat_release,
+    buildsystem,
+    buildsystem_subpath,
+    kickstart_from_dist,
+):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(
-        ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
+        ControlEditor.create(wt.abspath(os.path.join(debian_path, "control")))
+    )
     source = control.source
     setup_debhelper(
-        wt, debian_path,
-        source, compat_release=compat_release, addons=["nodejs"])
+        wt,
+        debian_path,
+        source,
+        compat_release=compat_release,
+        addons=["nodejs"],
+    )
     upstream_name = (
-        metadata['Name'].strip('@').replace('/', '-')
-        .replace('_', '-').replace('@', '').lower())
-    source['Source'] = "node-%s" % upstream_name
+        metadata["Name"]
+        .strip("@")
+        .replace("/", "-")
+        .replace("_", "-")
+        .replace("@", "")
+        .lower()
+    )
+    source["Source"] = "node-%s" % upstream_name
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     build_deps, test_deps = get_project_wide_deps(
-        session, wt, subpath, buildsystem, buildsystem_subpath)
+        session, wt, subpath, buildsystem, buildsystem_subpath
+    )
     import_build_deps(source, build_deps)
     control.add_binary(
-        {"Package": "node-%s" % upstream_name, "Architecture": "all"})
+        {"Package": "node-%s" % upstream_name, "Architecture": "all"}
+    )
     source["Testsuite"] = "autopkgtest-pkg-nodejs"
     return control
 
 
 def perl_package_name(upstream_name):
-    if upstream_name.startswith('lib'):
-        upstream_name = upstream_name[len('lib'):]
-    return ("lib%s-perl" % upstream_name.replace('::', '-')
-            .replace('_', '').lower())
+    if upstream_name.startswith("lib"):
+        upstream_name = upstream_name[len("lib") :]
+    return (
+        "lib%s-perl"
+        % upstream_name.replace("::", "-").replace("_", "").lower()
+    )
 
 
-def process_dist_zilla(es, session, wt, subpath, debian_path, upstream_version,
-                       metadata, compat_release, buildsystem,
-                       buildsystem_subpath, kickstart_from_dist):
+def process_dist_zilla(
+    es,
+    session,
+    wt,
+    subpath,
+    debian_path,
+    upstream_version,
+    metadata,
+    compat_release,
+    buildsystem,
+    buildsystem_subpath,
+    kickstart_from_dist,
+):
     kickstart_from_dist(wt, subpath)
     control = es.enter_context(
-        ControlEditor.create(wt.abspath(os.path.join(debian_path, 'control'))))
+        ControlEditor.create(wt.abspath(os.path.join(debian_path, "control")))
+    )
     source = control.source
-    upstream_name = metadata['Name']
-    source['Source'] = perl_package_name(upstream_name)
+    upstream_name = metadata["Name"]
+    source["Source"] = perl_package_name(upstream_name)
     source["Rules-Requires-Root"] = "no"
-    source['Testsuite'] = 'autopkgtest-pkg-perl'
+    source["Testsuite"] = "autopkgtest-pkg-perl"
     source["Standards-Version"] = latest_standards_version()
     build_deps, test_deps = get_project_wide_deps(
-        session, wt, subpath, buildsystem, buildsystem_subpath)
+        session, wt, subpath, buildsystem, buildsystem_subpath
+    )
     import_build_deps(source, build_deps)
     setup_debhelper(
-        wt, debian_path,
-        source, compat_release=compat_release,
-        addons=["dist-zilla"])
+        wt,
+        debian_path,
+        source,
+        compat_release=compat_release,
+        addons=["dist-zilla"],
+    )
     control.add_binary(
-        {"Package": source['Source'],
-         "Depends": "${perl:Depends}",
-         "Architecture": "all"
-         })
+        {
+            "Package": source["Source"],
+            "Depends": "${perl:Depends}",
+            "Architecture": "all",
+        }
+    )
     return control
 
 
-def process_makefile_pl(es, session, wt, subpath, debian_path,
-                        upstream_version, metadata, compat_release,
-                        buildsystem, buildsystem_subpath, kickstart_from_dist):
+def process_makefile_pl(
+    es,
+    session,
+    wt,
+    subpath,
+    debian_path,
+    upstream_version,
+    metadata,
+    compat_release,
+    buildsystem,
+    buildsystem_subpath,
+    kickstart_from_dist,
+):
     kickstart_from_dist(wt, subpath)
-    control = es.enter_context(ControlEditor.create(
-        wt.abspath(os.path.join(debian_path, 'control'))))
+    control = es.enter_context(
+        ControlEditor.create(wt.abspath(os.path.join(debian_path, "control")))
+    )
     source = control.source
-    upstream_name = metadata['Name']
-    source['Source'] = perl_package_name(upstream_name)
+    upstream_name = metadata["Name"]
+    source["Source"] = perl_package_name(upstream_name)
     source["Rules-Requires-Root"] = "no"
-    source['Testsuite'] = 'autopkgtest-pkg-perl'
+    source["Testsuite"] = "autopkgtest-pkg-perl"
     source["Standards-Version"] = latest_standards_version()
     build_deps, test_deps = get_project_wide_deps(
-        session, wt, subpath, buildsystem, buildsystem_subpath)
+        session, wt, subpath, buildsystem, buildsystem_subpath
+    )
     import_build_deps(source, build_deps)
     setup_debhelper(wt, debian_path, source, compat_release=compat_release)
     control.add_binary(
-        {"Package": source['Source'],
-         "Depends": "${perl:Depends}",
-         "Architecture": "all"
-         })
+        {
+            "Package": source["Source"],
+            "Depends": "${perl:Depends}",
+            "Architecture": "all",
+        }
+    )
     return control
 
 
-def process_perl_build_tiny(es, session, wt, subpath, debian_path,
-                            upstream_version, metadata, compat_release,
-                            buildsystem, buildsystem_subpath,
-                            kickstart_from_dist):
+def process_perl_build_tiny(
+    es,
+    session,
+    wt,
+    subpath,
+    debian_path,
+    upstream_version,
+    metadata,
+    compat_release,
+    buildsystem,
+    buildsystem_subpath,
+    kickstart_from_dist,
+):
     kickstart_from_dist(wt, subpath)
-    control = es.enter_context(ControlEditor.create(
-        wt.abspath(os.path.join(debian_path, 'control'))))
+    control = es.enter_context(
+        ControlEditor.create(wt.abspath(os.path.join(debian_path, "control")))
+    )
     source = control.source
-    upstream_name = metadata['Name']
-    source['Source'] = perl_package_name(upstream_name)
+    upstream_name = metadata["Name"]
+    source["Source"] = perl_package_name(upstream_name)
     source["Rules-Requires-Root"] = "no"
-    source['Testsuite'] = 'autopkgtest-pkg-perl'
+    source["Testsuite"] = "autopkgtest-pkg-perl"
     source["Standards-Version"] = latest_standards_version()
     source["Build-Depends"] = "libmodule-build-perl"
     build_deps, test_deps = get_project_wide_deps(
-        session, wt, subpath, buildsystem, buildsystem_subpath)
+        session, wt, subpath, buildsystem, buildsystem_subpath
+    )
     import_build_deps(source, build_deps)
     setup_debhelper(wt, debian_path, source, compat_release=compat_release)
     control.add_binary(
-        {"Package": source['Source'],
-         "Depends": "${perl:Depends}",
-         "Architecture": "all"
-         })
+        {
+            "Package": source["Source"],
+            "Depends": "${perl:Depends}",
+            "Architecture": "all",
+        }
+    )
     return control
 
 
-def process_golang(es, session, wt, subpath, debian_path, upstream_version,
-                   metadata, compat_release, buildsystem, buildsystem_subpath,
-                   kickstart_from_dist):
+def process_golang(
+    es,
+    session,
+    wt,
+    subpath,
+    debian_path,
+    upstream_version,
+    metadata,
+    compat_release,
+    buildsystem,
+    buildsystem_subpath,
+    kickstart_from_dist,
+):
     kickstart_from_dist(wt, subpath)
-    control = es.enter_context(ControlEditor.create(
-        wt.abspath(os.path.join(debian_path, 'control'))))
+    control = es.enter_context(
+        ControlEditor.create(wt.abspath(os.path.join(debian_path, "control")))
+    )
     source = control.source
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
@@ -598,104 +749,154 @@ def process_golang(es, session, wt, subpath, debian_path, upstream_version,
     source["Section"] = "devel"
     parsed_url = urlparse(metadata["Repository"])
     godebname = go_base_name(parsed_url.hostname + parsed_url.path)
-    source['Source'] = "golang-%s" % godebname
+    source["Source"] = "golang-%s" % godebname
     build_deps, test_deps = get_project_wide_deps(
-        session, wt, subpath, buildsystem, buildsystem_subpath)
+        session, wt, subpath, buildsystem, buildsystem_subpath
+    )
     import_build_deps(source, build_deps)
     source["Testsuite"] = "autopkgtest-pkg-go"
     dh_env = {}
     if os.path.isdir("examples"):
         dh_env["DH_GOLANG_EXCLUDES"] = "examples/"
     setup_debhelper(
-        wt, debian_path,
-        source, compat_release=compat_release,
+        wt,
+        debian_path,
+        source,
+        compat_release=compat_release,
         addons=["golang"],
         buildsystem="golang",
-        env=dh_env)
+        env=dh_env,
+    )
     # TODO(jelmer): Add --builddirectory=_build to dh arguments
-    control.add_binary({
-        "Package": "golang-%s-dev" % godebname,
-        "Architecture": "all",
-        "Multi-Arch": "foreign",
-        })
+    control.add_binary(
+        {
+            "Package": "golang-%s-dev" % godebname,
+            "Architecture": "all",
+            "Multi-Arch": "foreign",
+        }
+    )
     return control
 
 
-def process_r(es, session, wt, subpath, debian_path,
-              upstream_version, metadata, compat_release, buildsystem,
-              buildsystem_subpath, kickstart_from_dist):
+def process_r(
+    es,
+    session,
+    wt,
+    subpath,
+    debian_path,
+    upstream_version,
+    metadata,
+    compat_release,
+    buildsystem,
+    buildsystem_subpath,
+    kickstart_from_dist,
+):
     kickstart_from_dist(wt, subpath)
-    control = es.enter_context(ControlEditor.create(
-        wt.abspath(os.path.join(debian_path, 'control'))))
+    control = es.enter_context(
+        ControlEditor.create(wt.abspath(os.path.join(debian_path, "control")))
+    )
     source = control.source
 
-    if metadata.get('Archive') == 'CRAN':
-        archive = 'cran'
-    elif metadata.get('Archive') == 'Bioconductor':
-        archive = 'bioc'
+    if metadata.get("Archive") == "CRAN":
+        archive = "cran"
+    elif metadata.get("Archive") == "Bioconductor":
+        archive = "bioc"
     else:
-        archive = 'other'
+        archive = "other"
 
-    source["Source"] = "r-{}-{}".format(archive, metadata['Name'].lower())
+    source["Source"] = "r-{}-{}".format(archive, metadata["Name"].lower())
     source["Rules-Requires-Root"] = "no"
     source["Build-Depends"] = "dh-r, r-base-dev"
     source["Standards-Version"] = latest_standards_version()
     source["Testsuite"] = "autopkgtest-pkg-r"
     build_deps, test_deps = get_project_wide_deps(
-        session, wt, subpath, buildsystem, buildsystem_subpath)
+        session, wt, subpath, buildsystem, buildsystem_subpath
+    )
     import_build_deps(source, build_deps)
     setup_debhelper(
-        wt, debian_path, source, compat_release=compat_release,
-        buildsystem="R")
+        wt, debian_path, source, compat_release=compat_release, buildsystem="R"
+    )
     # For now, just assume a single binary package that is
     # architecture-dependent.
-    control.add_binary({
-        "Package": "r-{}-{}".format(archive, metadata['Name'].lower()),
-        "Architecture": 'any',
-        'Depends': '${R:Depends}, ${shlibs:Depends}, ${misc:Depends}',
-        'Recommends': '${R:Recommends}',
-        'Suggests': '${R:Suggests}',
-        })
+    control.add_binary(
+        {
+            "Package": "r-{}-{}".format(archive, metadata["Name"].lower()),
+            "Architecture": "any",
+            "Depends": "${R:Depends}, ${shlibs:Depends}, ${misc:Depends}",
+            "Recommends": "${R:Recommends}",
+            "Suggests": "${R:Suggests}",
+        }
+    )
     return control
 
 
-def process_octave(es, session, wt, subpath, debian_path, metadata,
-                   upstream_version, compat_release, buildsystem,
-                   buildsystem_subpath, kickstart_from_dist):
+def process_octave(
+    es,
+    session,
+    wt,
+    subpath,
+    debian_path,
+    metadata,
+    upstream_version,
+    compat_release,
+    buildsystem,
+    buildsystem_subpath,
+    kickstart_from_dist,
+):
     kickstart_from_dist(wt, subpath)
-    control = es.enter_context(ControlEditor.create(
-        wt.abspath(os.path.join(debian_path, 'control'))))
+    control = es.enter_context(
+        ControlEditor.create(wt.abspath(os.path.join(debian_path, "control")))
+    )
     source = control.source
 
-    source["Source"] = "octave-%s" % metadata['Name'].lower()
+    source["Source"] = "octave-%s" % metadata["Name"].lower()
     source["Rules-Requires-Root"] = "no"
     source["Build-Depends"] = "dh-octave"
     source["Standards-Version"] = latest_standards_version()
     build_deps, test_deps = get_project_wide_deps(
-        session, wt, subpath, buildsystem, buildsystem_subpath)
+        session, wt, subpath, buildsystem, buildsystem_subpath
+    )
     import_build_deps(source, build_deps)
     setup_debhelper(
-        wt, debian_path, source, compat_release=compat_release,
-        buildsystem="octave", addons=['octave'])
+        wt,
+        debian_path,
+        source,
+        compat_release=compat_release,
+        buildsystem="octave",
+        addons=["octave"],
+    )
     # For now, just assume a single binary package that is
     # architecture-independent.
-    control.add_binary({
-        "Package": "octave-%s" % metadata['Name'].lower(),
-        "Architecture": 'all',
-        'Depends': '${octave:Depends}, ${misc:Depends}',
-        'Description': '${octave:Upstream-Description}',
-        })
+    control.add_binary(
+        {
+            "Package": "octave-%s" % metadata["Name"].lower(),
+            "Architecture": "all",
+            "Depends": "${octave:Depends}, ${misc:Depends}",
+            "Description": "${octave:Upstream-Description}",
+        }
+    )
     return control
 
 
-def process_default(es, session, wt, subpath, debian_path, upstream_version,
-                    metadata, compat_release, buildsystem, buildsystem_subpath,
-                    kickstart_from_dist):
+def process_default(
+    es,
+    session,
+    wt,
+    subpath,
+    debian_path,
+    upstream_version,
+    metadata,
+    compat_release,
+    buildsystem,
+    buildsystem_subpath,
+    kickstart_from_dist,
+):
     kickstart_from_dist(wt, subpath)
-    control = es.enter_context(ControlEditor.create(
-        wt.abspath(os.path.join(debian_path, 'control'))))
+    control = es.enter_context(
+        ControlEditor.create(wt.abspath(os.path.join(debian_path, "control")))
+    )
     source = control.source
-    upstream_name = metadata['Name']
+    upstream_name = metadata["Name"]
     source_name = source_name_from_upstream_name(upstream_name)
     if source_name is None:
         raise SourceNameUnknown(upstream_name)
@@ -703,36 +904,47 @@ def process_default(es, session, wt, subpath, debian_path, upstream_version,
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     build_deps, test_deps = get_project_wide_deps(
-        session, wt, subpath, buildsystem, buildsystem_subpath)
+        session, wt, subpath, buildsystem, buildsystem_subpath
+    )
     import_build_deps(source, build_deps)
-    setup_debhelper(
-        wt, debian_path,
-        source, compat_release=compat_release)
+    setup_debhelper(wt, debian_path, source, compat_release=compat_release)
     # For now, just assume a single binary package that is
     # architecture-dependent.
-    for binary_name, arch in [(source['Source'], "any")]:
+    for binary_name, arch in [(source["Source"], "any")]:
         control.add_binary({"Package": binary_name, "Architecture": arch})
     return control
 
 
-def process_cargo(es, session, wt, subpath, debian_path, upstream_version,
-                  metadata, compat_release, buildsystem, buildsystem_subpath,
-                  kickstart_from_dist):
+def process_cargo(
+    es,
+    session,
+    wt,
+    subpath,
+    debian_path,
+    upstream_version,
+    metadata,
+    compat_release,
+    buildsystem,
+    buildsystem_subpath,
+    kickstart_from_dist,
+):
     wt.branch.generate_revision_history(NULL_REVISION)
     reset_tree(wt, wt.basis_tree(), subpath)
     from debmutate.debcargo import (
         DebcargoControlShimEditor,
         unmangle_debcargo_version,
     )
-    crate = metadata.get('Cargo-Crate')
+
+    crate = metadata.get("Cargo-Crate")
     if crate is None:
-        crate = metadata['Name'].replace('_', '-')
+        crate = metadata["Name"].replace("_", "-")
     if not wt.has_filename(debian_path):
         wt.mkdir(debian_path)
     if not wt.is_versioned(debian_path):
         wt.add(debian_path)
     # Only set semver_suffix if this is not the latest version
     import semver
+
     try:
         desired_version = semver.VersionInfo.parse(upstream_version)
     except ValueError as exc:
@@ -740,31 +952,49 @@ def process_cargo(es, session, wt, subpath, debian_path, upstream_version,
     data = load_crate_info(crate)
     if data is None:
         raise BuildSystemProcessError(
-            buildsystem, 'Crate does not exist' % crate)
+            buildsystem, "Crate does not exist" % crate
+        )
     features = None
     crate_version = None
-    for version_info in data['versions']:
-        available_version = semver.VersionInfo.parse(version_info['num'])
-        if ((available_version.major, available_version.minor)
-                > (desired_version.major, desired_version.minor)):
+    for version_info in data["versions"]:
+        available_version = semver.VersionInfo.parse(version_info["num"])
+        if (available_version.major, available_version.minor) > (
+            desired_version.major,
+            desired_version.minor,
+        ):
             semver_suffix = True
             break
-        if unmangle_debcargo_version(upstream_version) == version_info['num']:
-            crate_version = version_info['num']
-            features = list(version_info['features'])
+        if unmangle_debcargo_version(upstream_version) == version_info["num"]:
+            crate_version = version_info["num"]
+            features = list(version_info["features"])
     else:
         semver_suffix = False
-    control = es.enter_context(DebcargoControlShimEditor.from_debian_dir(
-        wt.abspath(debian_path), crate, crate_version, features))
-    control.debcargo_editor['semver_suffix'] = semver_suffix
-    control.debcargo_editor['overlay'] = '.'
+    control = es.enter_context(
+        DebcargoControlShimEditor.from_debian_dir(
+            wt.abspath(debian_path), crate, crate_version, features
+        )
+    )
+    control.debcargo_editor["semver_suffix"] = semver_suffix
+    control.debcargo_editor["overlay"] = "."
     return control
 
 
 Processor = Callable[
-    [contextlib.ExitStack, Session, WorkingTree, str, str, str,
-     Dict[str, Any], Optional[str], BuildSystem, str, Kickstarter],
-    ControlEditor]
+    [
+        contextlib.ExitStack,
+        Session,
+        WorkingTree,
+        str,
+        str,
+        str,
+        Dict[str, Any],
+        Optional[str],
+        BuildSystem,
+        str,
+        Kickstarter,
+    ],
+    ControlEditor,
+]
 
 
 PROCESSORS: Dict[str, Processor] = {
@@ -784,10 +1014,10 @@ PROCESSORS: Dict[str, Processor] = {
 
 def source_name_from_directory_name(path):
     d = os.path.basename(path)
-    if '-' in d:
-        parts = d.split('-')
+    if "-" in d:
+        parts = d.split("-")
         if parts[-1][0].isdigit():
-            return '-'.join(parts[:-1])
+            return "-".join(parts[:-1])
     return d
 
 
@@ -806,41 +1036,57 @@ def import_build_deps(source, build_deps):
     for build_dep in build_deps:
         for rel in build_dep.relations:
             source["Build-Depends"] = ensure_relation(
-                source.get("Build-Depends", ""),
-                PkgRelation.str([rel]))
+                source.get("Build-Depends", ""), PkgRelation.str([rel])
+            )
 
 
 def import_upstream_dist(
-        pristine_tar_source: BasePristineTarSource, wt: WorkingTree,
-        upstream_source: UpstreamSource, subpath: str, source_name: str,
-        upstream_version: str, session: Session
-        ) -> Tuple[Tuple[RevisionID, str], Optional[str],
-                   Dict[Optional[str], RevisionID]]:
+    pristine_tar_source: BasePristineTarSource,
+    wt: WorkingTree,
+    upstream_source: UpstreamSource,
+    subpath: str,
+    source_name: str,
+    upstream_version: str,
+    session: Session,
+) -> Tuple[
+    Tuple[RevisionID, str], Optional[str], Dict[Optional[str], RevisionID]
+]:
     if pristine_tar_source.has_version(
-            source_name, upstream_version, try_hard=False):
+        source_name, upstream_version, try_hard=False
+    ):
         logging.warning(
-            'Upstream version %s/%s already imported.',
-            source_name, upstream_version)
-        pristine_revids = pristine_tar_source\
-            .version_as_revisions(source_name, upstream_version)
+            "Upstream version %s/%s already imported.",
+            source_name,
+            upstream_version,
+        )
+        pristine_revids = pristine_tar_source.version_as_revisions(
+            source_name, upstream_version
+        )
         upstream_branch_name = None
         tag_names: Dict[Optional[str], RevisionID] = {}
     else:
-        (pristine_revids, tag_names,
-         upstream_branch_name) = import_upstream_version_from_dist(
-            wt, subpath,
+        (
+            pristine_revids,
+            tag_names,
+            upstream_branch_name,
+        ) = import_upstream_version_from_dist(
+            wt,
+            subpath,
             upstream_source,
-            source_name, upstream_version,
-            session=session)
+            source_name,
+            upstream_version,
+            session=session,
+        )
 
-    assert (isinstance(pristine_revids[None], tuple)
-            and len(pristine_revids[None])), repr(pristine_revids[None])
+    assert isinstance(pristine_revids[None], tuple) and len(
+        pristine_revids[None]
+    ), repr(pristine_revids[None])
     return pristine_revids[None], upstream_branch_name, tag_names
 
 
 def generic_get_source_name(wt, subpath, metadata):
     try:
-        source_name = source_name_from_upstream_name(metadata['Name'])
+        source_name = source_name_from_upstream_name(metadata["Name"])
     except KeyError:
         source_name = None
     else:
@@ -854,38 +1100,45 @@ def generic_get_source_name(wt, subpath, metadata):
 
 
 def get_upstream_version(
-        upstream_source, metadata: Dict[str, Any],
-        local_dir=None,
-        upstream_subpath: Optional[str] = None,
-        upstream_version: Optional[str] = None) -> Tuple[str, str]:
+    upstream_source,
+    metadata: Dict[str, Any],
+    local_dir=None,
+    upstream_subpath: Optional[str] = None,
+    upstream_version: Optional[str] = None,
+) -> Tuple[str, str]:
     # TODO(jelmer): if upstream_subpath != "", perhaps ignore info from
     # upstream_source?
     if upstream_version is None:
-        upstream_version, mangled_upstream_version = (
-            upstream_source.get_latest_version(metadata.get("Name"), None))
+        (
+            upstream_version,
+            mangled_upstream_version,
+        ) = upstream_source.get_latest_version(metadata.get("Name"), None)
     else:
         mangled_upstream_version = debianize_upstream_version(upstream_version)
     if upstream_version is None:
         raise NoUpstreamReleases(upstream_source, metadata.get("Name"))
 
     upstream_revision = upstream_source.version_as_revision(
-        metadata.get("Name"), mangled_upstream_version)
+        metadata.get("Name"), mangled_upstream_version
+    )
 
     if upstream_version is None and "Version" in metadata:
         # They haven't done any releases yet. Assume we're ahead of
         # the next announced release?
         next_upstream_version = debian_upstream_version(metadata["Version"])
         upstream_version = upstream_version_add_revision(
-            upstream_source.upstream_branch, next_upstream_version,
-            upstream_revision, "~"
+            upstream_source.upstream_branch,
+            next_upstream_version,
+            upstream_revision,
+            "~",
         )
     if upstream_version is None:
         upstream_version = upstream_version_add_revision(
             upstream_source.upstream_branch, "0", upstream_revision, "+"
         )
         logging.warning(
-            "Unable to determine upstream version, using %s.",
-            upstream_version)
+            "Unable to determine upstream version, using %s.", upstream_version
+        )
     return upstream_version, mangled_upstream_version
 
 
@@ -898,23 +1151,27 @@ def find_wnpp_bugs_harder(source_name, upstream_name):
         if wnpp_bugs:
             logging.warning(
                 "Found archived ITP/RFP bugs for %s: %r",
-                source_name, [bug for bug, kind in wnpp_bugs]
+                source_name,
+                [bug for bug, kind in wnpp_bugs],
             )
         else:
-            logging.warning(
-                "No relevant WNPP bugs found for %s", source_name)
+            logging.warning("No relevant WNPP bugs found for %s", source_name)
     else:
         logging.info(
             "Found WNPP bugs for %s: %r",
-            source_name, [bug for bug, kind in wnpp_bugs])
+            source_name,
+            [bug for bug, kind in wnpp_bugs],
+        )
 
     return wnpp_bugs
 
 
 def debianize(  # noqa: C901
-    wt: WorkingTree, subpath: str,
+    wt: WorkingTree,
+    subpath: str,
     *,
-    upstream_branch: Optional[Branch], upstream_subpath: Optional[str],
+    upstream_branch: Optional[Branch],
+    upstream_subpath: Optional[str],
     use_inotify: Optional[bool] = None,
     diligence: int = 0,
     trust: bool = False,
@@ -936,15 +1193,17 @@ def debianize(  # noqa: C901
     requirement: Optional[Requirement] = None,
     team: Optional[str] = None,
     buildsystem_name: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
 ):
     if committer is None:
         committer = get_committer(wt)
 
     debian_path = osutils.pathjoin(subpath, "debian")
-    if (wt.has_filename(debian_path)
-            and list(os.listdir(wt.abspath(debian_path)))
-            and not force_new_directory):
+    if (
+        wt.has_filename(debian_path)
+        and list(os.listdir(wt.abspath(debian_path)))
+        and not force_new_directory
+    ):
         raise DebianDirectoryExists(wt.abspath(subpath))
 
     metadata_items: List[UpstreamDatum] = []
@@ -958,9 +1217,13 @@ def debianize(  # noqa: C901
         assert isinstance(metadata, dict)
         metadata.update(
             summarize_upstream_metadata(
-                metadata_items, p, net_access=net_access,
+                metadata_items,
+                p,
+                net_access=net_access,
                 consult_external_directory=consult_external_directory,
-                check=check))
+                check=check,
+            )
+        )
 
     if not verbose:
         commit_reporter = NullCommitReporter()
@@ -980,35 +1243,45 @@ def debianize(  # noqa: C901
 
             session: Session
             if schroot:
-                logging.info('Using schroot %s', schroot)
+                logging.info("Using schroot %s", schroot)
                 session = SchrootSession(schroot)
             elif unshare:
-                logging.info('Using tarball %s for unshare', unshare)
+                logging.info("Using tarball %s for unshare", unshare)
                 from ognibuild.session.unshare import (
                     UnshareSession,  # type: ignore
                 )
+
                 session = UnshareSession.from_tarball(unshare)
             else:
                 session = PlainSession()
 
             if upstream_branch:
                 upstream_source = UpstreamBranchSource.from_branch(
-                    upstream_branch, version_kind=upstream_version_kind,
+                    upstream_branch,
+                    version_kind=upstream_version_kind,
                     local_dir=wt.controldir,
                     create_dist=(
-                        create_dist or partial(default_create_dist, session)))
+                        create_dist or partial(default_create_dist, session)
+                    ),
+                )
             else:
                 upstream_source = None
 
             if upstream_version is not None:
                 mangled_upstream_version = debianize_upstream_version(
-                    upstream_version)
+                    upstream_version
+                )
             else:
-                upstream_version, mangled_upstream_version = (
-                    get_upstream_version(
-                        upstream_source, metadata, local_dir=wt.controldir,
-                        upstream_subpath=upstream_subpath,
-                        upstream_version=upstream_version))
+                (
+                    upstream_version,
+                    mangled_upstream_version,
+                ) = get_upstream_version(
+                    upstream_source,
+                    metadata,
+                    local_dir=wt.controldir,
+                    upstream_subpath=upstream_subpath,
+                    upstream_version=upstream_version,
+                )
 
             result.upstream_version = upstream_version
 
@@ -1017,117 +1290,151 @@ def debianize(  # noqa: C901
             def kickstart_from_dist(wt, subpath):
                 logging.info(
                     "Kickstarting from dist tarball. "
-                    "Using upstream version %s", mangled_upstream_version)
+                    "Using upstream version %s",
+                    mangled_upstream_version,
+                )
 
                 pristine_tar_source = get_pristine_tar_source(wt, wt.branch)
-                ((upstream_dist_revid, upstream_dist_subpath),
-                 result.upstream_branch_name,
-                 result.tag_names) = import_upstream_dist(
-                    pristine_tar_source, wt, upstream_source, subpath,
-                    source_name, mangled_upstream_version, session)
+                (
+                    (upstream_dist_revid, upstream_dist_subpath),
+                    result.upstream_branch_name,
+                    result.tag_names,
+                ) = import_upstream_dist(
+                    pristine_tar_source,
+                    wt,
+                    upstream_source,
+                    subpath,
+                    source_name,
+                    mangled_upstream_version,
+                    session,
+                )
 
                 if wt.branch.last_revision() != upstream_dist_revid:
                     wt.pull(
-                        upstream_source.upstream_branch, overwrite=True,
-                        stop_revision=upstream_dist_revid)
+                        upstream_source.upstream_branch,
+                        overwrite=True,
+                        stop_revision=upstream_dist_revid,
+                    )
 
                     # Gather metadata items again now that we're at the correct
                     # revision
                     import_metadata_from_path(
-                        wt.abspath(upstream_dist_subpath))
+                        wt.abspath(upstream_dist_subpath)
+                    )
 
                 if wt.has_filename(debian_path) and force_new_directory:
                     shutil.rmtree(wt.abspath(debian_path))
                     wt.mkdir(wt.abspath(debian_path))
                     with contextlib.suppress(PointlessCommit):
                         wt.commit(
-                            'Remove old debian directory',
+                            "Remove old debian directory",
                             specific_files=[debian_path],
-                            reporter=NullCommitReporter())
+                            reporter=NullCommitReporter(),
+                        )
 
-                wt.mkdir(os.path.join(debian_path, 'source'))
-                wt.add(os.path.join(debian_path, 'source'))
+                wt.mkdir(os.path.join(debian_path, "source"))
+                wt.add(os.path.join(debian_path, "source"))
                 wt.put_file_bytes_non_atomic(
-                    os.path.join(debian_path, 'source', 'format'),
-                    b'3.0 (quilt)\n')
+                    os.path.join(debian_path, "source", "format"),
+                    b"3.0 (quilt)\n",
+                )
 
             if upstream_source:
                 try:
-                    (upstream_vcs_tree,
-                     upstream_vcs_subpath) = upstream_source.revision_tree(
-                        source_name, mangled_upstream_version)
+                    (
+                        upstream_vcs_tree,
+                        upstream_vcs_subpath,
+                    ) = upstream_source.revision_tree(
+                        source_name, mangled_upstream_version
+                    )
                 except (PackageVersionNotPresent, NoSuchRevision):
                     logging.warning(
-                        'Unable to find upstream version %s/%s '
-                        'in upstream source %r. Unable to extract metadata.',
-                        source_name, mangled_upstream_version, upstream_source)
+                        "Unable to find upstream version %s/%s "
+                        "in upstream source %r. Unable to extract metadata.",
+                        source_name,
+                        mangled_upstream_version,
+                        upstream_source,
+                    )
                     exported_upstream_tree_path = None
                 else:
-                    assert upstream_vcs_subpath == ''
+                    assert upstream_vcs_subpath == ""
                     # TODO(jelmer): Don't export, just access from memory.
                     exported_upstream_tree_path = es.enter_context(
-                        TemporaryDirectory())
+                        TemporaryDirectory()
+                    )
                     assert isinstance(upstream_subpath, str)
                     dupe_vcs_tree(
-                        upstream_vcs_tree, exported_upstream_tree_path)
+                        upstream_vcs_tree, exported_upstream_tree_path
+                    )
                     exported_upstream_tree_subpath = os.path.join(
-                        exported_upstream_tree_path, upstream_subpath)
+                        exported_upstream_tree_path, upstream_subpath
+                    )
                     if not os.path.isdir(exported_upstream_tree_subpath):
                         raise Exception(
-                            f'subdirectory {upstream_subpath} does not '
-                            f'exist in upstream version {upstream_version}')
+                            f"subdirectory {upstream_subpath} does not "
+                            f"exist in upstream version {upstream_version}"
+                        )
                     import_metadata_from_path(exported_upstream_tree_subpath)
 
-            if (buildsystem_name is None
-                    and exported_upstream_tree_path is not None):
+            if (
+                buildsystem_name is None
+                and exported_upstream_tree_path is not None
+            ):
                 buildsystem_subpath, buildsystem = get_buildsystem(
-                    os.path.join(exported_upstream_tree_path, subpath))
+                    os.path.join(exported_upstream_tree_path, subpath)
+                )
                 if buildsystem:
                     buildsystem_name = buildsystem.name
             else:
                 buildsystem = None
-                buildsystem_subpath = ''
+                buildsystem_subpath = ""
 
             if buildsystem_name:
                 try:
                     process = PROCESSORS[buildsystem_name]
                 except KeyError:
                     logging.warning(
-                        'No support in debianize for build system %s, '
-                        'falling back to default.',
-                        buildsystem_name)
+                        "No support in debianize for build system %s, "
+                        "falling back to default.",
+                        buildsystem_name,
+                    )
                     process = process_default
             else:
                 process = process_default
 
-            logging.info('Creating core packaging using %s', process.__name__)
+            logging.info("Creating core packaging using %s", process.__name__)
 
             os.chdir(wt.abspath(subpath))
 
             control = process(
-                es, session,
-                wt, subpath,
+                es,
+                session,
+                wt,
+                subpath,
                 debian_path,
                 upstream_version,
-                metadata, compat_release,
+                metadata,
+                compat_release,
                 buildsystem,
                 buildsystem_subpath,
-                kickstart_from_dist)
+                kickstart_from_dist,
+            )
 
             source = control.source
 
             if team:
-                control.source['Maintainer'] = team
-                uploader = '{} <{}>'.format(*get_maintainer())
+                control.source["Maintainer"] = team
+                uploader = "{} <{}>".format(*get_maintainer())
                 if uploader != team:
-                    control.source['Uploaders'] = uploader
+                    control.source["Uploaders"] = uploader
 
-            if not valid_debian_package_name(source['Source']):
-                raise SourcePackageNameInvalid(source['Source'])
+            if not valid_debian_package_name(source["Source"]):
+                raise SourcePackageNameInvalid(source["Source"])
 
             if net_access:
                 wnpp_bugs = find_wnpp_bugs_harder(
-                    source['Source'], metadata.get('Name'))
+                    source["Source"], metadata.get("Name")
+                )
             else:
                 wnpp_bugs = None
 
@@ -1142,19 +1449,25 @@ def debianize(  # noqa: C901
                 wnpp_bugs,
             )
 
-            if (requirement and requirement.family == 'apt' and
-                    not cast(AptRequirement, requirement).satisfied_by(
-                        control.binaries, version)):
+            if (
+                requirement
+                and requirement.family == "apt"
+                and not cast(AptRequirement, requirement).satisfied_by(
+                    control.binaries, version
+                )
+            ):
                 logging.warning(
-                    'Debianized package (binary packages: %r), version %s '
-                    'did not satisfy requirement %r. ',
-                    [binary['Package'] for binary in control.binaries],
-                    version, requirement)
+                    "Debianized package (binary packages: %r), version %s "
+                    "did not satisfy requirement %r. ",
+                    [binary["Package"] for binary in control.binaries],
+                    version,
+                    requirement,
+                )
                 if upstream_branch:
-                    logging.info('Wrong repository (%s)?', upstream_branch)
+                    logging.info("Wrong repository (%s)?", upstream_branch)
                 raise DebianizedPackageRequirementMismatch(
-                    requirement, control, version,
-                    upstream_branch)
+                    requirement, control, version, upstream_branch
+                )
 
             control.wrap_and_sort()
             control.sort_binary_packages()
@@ -1168,9 +1481,9 @@ def debianize(  # noqa: C901
         )
 
     with wt.lock_write():
-
         lintian_fixers = available_lintian_fixers(
-            force_subprocess=force_subprocess)
+            force_subprocess=force_subprocess
+        )
 
         run_lintian_fixers(
             wt,
@@ -1189,22 +1502,24 @@ def debianize(  # noqa: C901
         )
 
         try:
-            result.vcs_url = unsplit_vcs_url(*update_official_vcs(
-                wt, subpath=subpath, committer=committer))
+            result.vcs_url = unsplit_vcs_url(
+                *update_official_vcs(wt, subpath=subpath, committer=committer)
+            )
         except NoVcsLocation:
             logging.debug(
-                'No public VCS location specified and unable to guess it '
-                'based on maintainer e-mail.')
+                "No public VCS location specified and unable to guess it "
+                "based on maintainer e-mail."
+            )
         except FileNotFoundError:
             logging.info(
-                'No control file or debcargo.toml file, '
-                'not setting vcs information.')
+                "No control file or debcargo.toml file, "
+                "not setting vcs information."
+            )
 
     return result
 
 
 class SimpleTrustedAptRepo:
-
     def __init__(self, directory):
         self.directory = directory
         self.httpd = None
@@ -1221,22 +1536,23 @@ class SimpleTrustedAptRepo:
     def sources_lines(self):
         if not self.httpd:
             raise RuntimeError("httpd not yet started")
-        if os.path.exists(os.path.join(self.directory, 'Packages.gz')):
+        if os.path.exists(os.path.join(self.directory, "Packages.gz")):
             return [
-                "deb [trusted=yes] http://%s:%d/ ./" % (
-                    self.httpd.server_name, self.httpd.server_port)]
+                "deb [trusted=yes] http://%s:%d/ ./"
+                % (self.httpd.server_name, self.httpd.server_port)
+            ]
         else:
             return []
 
     def start(self):
         if self.thread is not None:
-            raise RuntimeError('thread already active')
+            raise RuntimeError("thread already active")
         import http.server
         from threading import Thread
+
         hostname = "localhost"
 
         class RequestHandler(http.server.SimpleHTTPRequestHandler):
-
             def log_message(self, format, *args):
                 return
 
@@ -1244,8 +1560,10 @@ class SimpleTrustedAptRepo:
         self.httpd = http.server.HTTPServer((hostname, 0), handler, False)
         self.httpd.server_bind()
         logging.info(
-            'Local apt repo started at http://%s:%d/',
-            self.httpd.server_name, self.httpd.server_port)
+            "Local apt repo started at http://%s:%d/",
+            self.httpd.server_name,
+            self.httpd.server_port,
+        )
         self.httpd.server_activate()
 
         def serve_forever(httpd):
@@ -1253,7 +1571,8 @@ class SimpleTrustedAptRepo:
                 httpd.serve_forever()
 
         self.thread = Thread(
-            target=serve_forever, args=(self.httpd, ), daemon=True)
+            target=serve_forever, args=(self.httpd,), daemon=True
+        )
         self.thread.start()
 
     def stop(self):
@@ -1266,11 +1585,13 @@ class SimpleTrustedAptRepo:
 
     def refresh(self):
         import gzip
+
         packages = subprocess.check_output(
-            ['dpkg-scanpackages', '-m', '.', '/dev/null'],
-            cwd=self.directory)
+            ["dpkg-scanpackages", "-m", ".", "/dev/null"], cwd=self.directory
+        )
         with gzip.GzipFile(
-                os.path.join(self.directory, 'Packages.gz'), 'wb') as f:
+            os.path.join(self.directory, "Packages.gz"), "wb"
+        ) as f:
             f.write(packages)
 
 
@@ -1282,7 +1603,7 @@ def use_packaging_branch(wt: WorkingTree, branch_name: str) -> None:
         target_branch = wt.controldir.create_branch(branch_name)
 
     target_branch.generate_revision_history(last_revision)
-    logging.info('Switching to packaging branch %s.', branch_name)
+    logging.info("Switching to packaging branch %s.", branch_name)
     wt.controldir.set_branch_reference(target_branch, name="")
     # TODO(jelmer): breezy bug?
     wt._branch = target_branch
@@ -1296,21 +1617,31 @@ class DebianizeFixer(BuildFixer):
 
     def __repr__(self):
         return "{}({!r}, {!r})".format(
-            type(self).__name__, self.vcs_directory,
-            self.apt_repo)
+            type(self).__name__, self.vcs_directory, self.apt_repo
+        )
 
-    def __init__(self, vcs_directory, apt_repo, do_build, diligence=0,
-                 trust=False, check=True, net_access=True,
-                 force_new_directory=False,
-                 team=None, verbose=False, force_subprocess=False,
-                 upstream_version_kind="auto",
-                 debian_revision="1",
-                 schroot=None,
-                 unshare=None,
-                 consult_external_directory=True,
-                 use_inotify=None,
-                 create_dist=None,
-                 compat_release=None):
+    def __init__(
+        self,
+        vcs_directory,
+        apt_repo,
+        do_build,
+        diligence=0,
+        trust=False,
+        check=True,
+        net_access=True,
+        force_new_directory=False,
+        team=None,
+        verbose=False,
+        force_subprocess=False,
+        upstream_version_kind="auto",
+        debian_revision="1",
+        schroot=None,
+        unshare=None,
+        consult_external_directory=True,
+        use_inotify=None,
+        create_dist=None,
+        compat_release=None,
+    ):
         self.vcs_directory = vcs_directory
         self.apt_repo = apt_repo
         self.diligence = diligence
@@ -1342,32 +1673,34 @@ class DebianizeFixer(BuildFixer):
         if requirement is None:
             return False
         logging.debug(
-            'Translated problem %r to requirement %r', problem, requirement)
+            "Translated problem %r to requirement %r", problem, requirement
+        )
         upstream_info = find_upstream(requirement)
         if upstream_info is None:
             logging.error(
-                'Unable to find upstream information for requirement %r',
-                requirement)
+                "Unable to find upstream information for requirement %r",
+                requirement,
+            )
             return False
         if upstream_info.branch_url:
             logging.info(
-                'Packaging %r to address %r',
-                upstream_info.branch_url, problem)
+                "Packaging %r to address %r", upstream_info.branch_url, problem
+            )
             try:
                 upstream_branch = Branch.open(upstream_info.branch_url)
             except NotBranchError as e:
                 logging.warning(
-                    'Unable to open branch %s: %r', upstream_info.branch_url,
-                    e)
+                    "Unable to open branch %s: %r", upstream_info.branch_url, e
+                )
                 upstream_branch = None
         else:
             upstream_branch = None
         if upstream_info.name is not None:
             vcs_path = os.path.join(
-                self.vcs_directory,
-                upstream_info.name.replace('/', '-'))
+                self.vcs_directory, upstream_info.name.replace("/", "-")
+            )
         else:
-            raise AssertionError('no upstream name provided')
+            raise AssertionError("no upstream name provided")
         if os.path.exists(vcs_path):
             shutil.rmtree(vcs_path)
         if upstream_branch:
@@ -1376,14 +1709,15 @@ class DebianizeFixer(BuildFixer):
             # TODO(jelmer): default to git?
             format = None
         result = ControlDir.create_branch_convenience(
-            vcs_path, force_new_tree=True,
-            format=format)
+            vcs_path, force_new_tree=True, format=format
+        )
         new_wt = result.controldir.open_workingtree()
-        new_subpath = ''
+        new_subpath = ""
         debianize(
-            new_wt, new_subpath,
+            new_wt,
+            new_subpath,
             upstream_branch=upstream_branch,
-            upstream_subpath=(upstream_info.branch_subpath or ''),
+            upstream_subpath=(upstream_info.branch_subpath or ""),
             use_inotify=self.use_inotify,
             diligence=self.diligence,
             create_dist=self.create_dist,
@@ -1394,7 +1728,8 @@ class DebianizeFixer(BuildFixer):
             force_subprocess=self.force_subprocess,
             compat_release=self.compat_release,
             consult_external_directory=self.consult_external_directory,
-            verbose=self.verbose, schroot=self.schroot,
+            verbose=self.verbose,
+            schroot=self.schroot,
             unshare=self.unshare,
             debian_revision=self.debian_revision,
             upstream_version=upstream_info.version,
@@ -1402,43 +1737,72 @@ class DebianizeFixer(BuildFixer):
             requirement=requirement,
             buildsystem_name=upstream_info.buildsystem,
             team=self.team,
-            metadata=upstream_info.metadata)
+            metadata=upstream_info.metadata,
+        )
         self.do_build(
-            new_wt, new_subpath, self.apt_repo.directory,
-            extra_repositories=self.apt_repo.sources_lines())
+            new_wt,
+            new_subpath,
+            self.apt_repo.directory,
+            extra_repositories=self.apt_repo.sources_lines(),
+        )
         self.apt_repo.refresh()
         return True
 
 
 def report_fatal(code, description, hint=None, details=None):
-    if os.environ.get('SVP_API') == '1':
-        with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump({
-                'result_code': code,
-                'versions': versions_dict(),
-                'description': description,
-                'details': details}, f)
-    logging.fatal('%s', description)
+    if os.environ.get("SVP_API") == "1":
+        with open(os.environ["SVP_RESULT"], "w") as f:
+            json.dump(
+                {
+                    "result_code": code,
+                    "versions": versions_dict(),
+                    "description": description,
+                    "details": details,
+                },
+                f,
+            )
+    logging.fatal("%s", description)
     if hint:
-        logging.info('%s', hint)
+        logging.info("%s", hint)
 
 
 default_debianize_cache_dir = _lintian_brush_rs.default_debianize_cache_dir
 
 
-def main(*, verbose: bool, directory: str, compat_release: str | None,
-         dist_command: str, upstream: str | None, debian_binary: bool,
-         debian_branch: str, disable_inotify: bool, diligence: int,
-         trust: bool, check: bool, disable_net_access: bool,
-         force_new_directory: bool, force_subprocess: bool,
-         consult_external_directory: bool,
-         schroot: str | None, unshare: str, upstream_version_kind: str,
-         debian_revision: str, upstream_version: str, install: bool,
-         iterate_fix: bool, output_directory: str, discard_output: bool,
-         build_command: str, dep_server_url: str | None,
-         max_build_iterations: int, recursive: bool,
-         team: str | None):  # noqa: C901
+def main(
+    *,
+    verbose: bool,
+    directory: str,
+    compat_release: str | None,
+    dist_command: str,
+    upstream: str | None,
+    debian_binary: bool,
+    debian_branch: str,
+    disable_inotify: bool,
+    diligence: int,
+    trust: bool,
+    check: bool,
+    disable_net_access: bool,
+    force_new_directory: bool,
+    force_subprocess: bool,
+    consult_external_directory: bool,
+    schroot: str | None,
+    unshare: str,
+    upstream_version_kind: str,
+    debian_revision: str,
+    upstream_version: str,
+    install: bool,
+    iterate_fix: bool,
+    output_directory: str,
+    discard_output: bool,
+    build_command: str,
+    dep_server_url: str | None,
+    max_build_iterations: int,
+    recursive: bool,
+    team: str | None,
+):  # noqa: C901
     import breezy
+
     breezy.initialize()  # type: ignore
     import breezy.bzr  # noqa: E402
     import breezy.git  # noqa: E402
@@ -1447,10 +1811,10 @@ def main(*, verbose: bool, directory: str, compat_release: str | None,
         loglevel = logging.DEBUG
     else:
         loglevel = logging.INFO
-    logging.basicConfig(level=loglevel, format='%(message)s')
+    logging.basicConfig(level=loglevel, format="%(message)s")
 
     # pysimplesoap is quite verbose
-    logging.getLogger('pysimplesoap.client').setLevel(logging.ERROR)
+    logging.getLogger("pysimplesoap.client").setLevel(logging.ERROR)
 
     if compat_release is None:
         import distro_info
@@ -1462,16 +1826,24 @@ def main(*, verbose: bool, directory: str, compat_release: str | None,
         wt, subpath = WorkingTree.open_containing(directory)
     except NotBranchError as e:
         logging.fatal(
-            'please run debianize in an existing branch where '
-            'it should add the packaging: %s', e)
+            "please run debianize in an existing branch where "
+            "it should add the packaging: %s",
+            e,
+        )
         return 1
 
     create_dist_fn: Optional[Callable[[Tree, str, str, str], str]]
     if dist_command:
+
         def create_dist_fn(tree, package, version, target_dir, subpath=""):
             return run_dist_command(
-                tree, package, version, target_dir, dist_command,
-                subpath=subpath)
+                tree,
+                package,
+                version,
+                target_dir,
+                dist_command,
+                subpath=subpath,
+            )
     else:
         create_dist_fn = None
 
@@ -1481,42 +1853,52 @@ def main(*, verbose: bool, directory: str, compat_release: str | None,
     if upstream:
         try:
             upstream_branch, upstream_subpath = Branch.open_containing(
-                upstream)
+                upstream
+            )
         except NotBranchError as e:
-            logging.fatal('%s: not a valid branch: %s', upstream, e)
+            logging.fatal("%s: not a valid branch: %s", upstream, e)
             return 1
-        metadata['Repository'] = UpstreamDatum(
-            'Repository', upstream, certainty='confident')
+        metadata["Repository"] = UpstreamDatum(
+            "Repository", upstream, certainty="confident"
+        )
     elif debian_binary:
         apt_requirement = AptRequirement.from_str(debian_binary)
         upstream_info = find_apt_upstream(apt_requirement)
         if not upstream_info:
             logging.fatal(
-                '%s: Unable to find upstream info for %s', debian_binary,
-                apt_requirement)
+                "%s: Unable to find upstream info for %s",
+                debian_binary,
+                apt_requirement,
+            )
             return 1
         logging.info(
-            'Found relevant upstream branch at %s', upstream_info.branch_url)
+            "Found relevant upstream branch at %s", upstream_info.branch_url
+        )
         upstream_branch = Branch.open(upstream_info.branch_url)
         upstream_subpath = upstream_info.branch_subpath
 
         if upstream_info.branch_url:
-            metadata['Repository'] = UpstreamDatum(
-                'Repository', upstream_info.branch_url, certainty='confident')
+            metadata["Repository"] = UpstreamDatum(
+                "Repository", upstream_info.branch_url, certainty="confident"
+            )
     else:
-        if wt.has_filename(os.path.join(subpath, 'debian')):
+        if wt.has_filename(os.path.join(subpath, "debian")):
             report_fatal(
-                code='debian-directory-exists',
+                code="debian-directory-exists",
                 description=(
                     f"{wt.abspath(subpath)}: "
-                    "A debian directory already exists."),
-                hint=("Run lintian-brush instead or "
-                      "specify --force-new-directory."),
+                    "A debian directory already exists."
+                ),
+                hint=(
+                    "Run lintian-brush instead or "
+                    "specify --force-new-directory."
+                ),
             )
             return 1
         logging.info(
-            'No upstream repository specified, using upstream source in %s',
-            wt.abspath(subpath))
+            "No upstream repository specified, using upstream source in %s",
+            wt.abspath(subpath),
+        )
         upstream_branch = wt.branch
         upstream_subpath = subpath
 
@@ -1524,13 +1906,15 @@ def main(*, verbose: bool, directory: str, compat_release: str | None,
         from debmutate.vendor import get_vendor_name
 
         use_packaging_branch(
-            wt, debian_branch % {'vendor': get_vendor_name().lower()})
+            wt, debian_branch % {"vendor": get_vendor_name().lower()}
+        )
 
-    use_inotify = (False if disable_inotify else None)
+    use_inotify = False if disable_inotify else None
     with wt.lock_write():
         try:
             debianize_result = debianize(
-                wt, subpath,
+                wt,
+                subpath,
                 upstream_branch=upstream_branch,
                 upstream_subpath=upstream_subpath,
                 use_inotify=use_inotify,
@@ -1554,60 +1938,65 @@ def main(*, verbose: bool, directory: str, compat_release: str | None,
         except PackageVersionNotPresent:
             if upstream_version:
                 report_fatal(
-                    'requested-version-missing',
-                    'Requested version %s not present upstream' %
-                    upstream_version)
+                    "requested-version-missing",
+                    "Requested version %s not present upstream"
+                    % upstream_version,
+                )
                 return 1
             else:
                 # For now
                 raise
         except DistCommandFailed as e:
-            report_fatal(
-                e.kind or "dist-command-failed", e.error)  # type: ignore
+            report_fatal(e.kind or "dist-command-failed", e.error)  # type: ignore
             return 1
         except WorkspaceDirty:
             report_fatal(
-                "pending-changes", "Please commit pending changes first.")
+                "pending-changes", "Please commit pending changes first."
+            )
             return 1
         except DebianDirectoryExists as e:
             report_fatal(
-                code='debian-directory-exists',
+                code="debian-directory-exists",
                 description="%s: A debian directory already exists. " % e.path,
-                hint=("Run lintian-brush instead or "
-                      "specify --force-new-directory."),
+                hint=(
+                    "Run lintian-brush instead or "
+                    "specify --force-new-directory."
+                ),
             )
             return 1
         except SourcePackageNameInvalid as e:
             report_fatal(
-                code='invalid-source-package-name',
+                code="invalid-source-package-name",
                 description=(
-                    "Generated source package name %r is not valid."
-                    % e.source))
+                    "Generated source package name %r is not valid." % e.source
+                ),
+            )
             return 1
         except NoUpstreamReleases:
             report_fatal(
-                'no-upstream-releases',
-                'The upstream project does not appear to have '
-                'made any releases.')
+                "no-upstream-releases",
+                "The upstream project does not appear to have "
+                "made any releases.",
+            )
         except NoBuildToolsFound:
             report_fatal(
-                'no-build-tools',
-                "Unable to find any build systems in upstream sources.")
+                "no-build-tools",
+                "Unable to find any build systems in upstream sources.",
+            )
             return 1
         except DetailedFailure as e:
             report_fatal(
-                'debianize-' + e.error.kind,
+                "debianize-" + e.error.kind,
                 str(e),
-                details=(e.error.json() if e.error else None))
+                details=(e.error.json() if e.error else None),
+            )
             return 1
         except BuildSystemProcessError as e:
-            report_fatal(
-                'build-system-process-error',
-                e.message)
+            report_fatal("build-system-process-error", e.message)
             return 1
         except OSError as e:
             if e.errno == errno.ENOSPC:
-                report_fatal('no-space-on-device', str(e))
+                report_fatal("no-space-on-device", str(e))
                 return 1
             else:
                 raise
@@ -1619,13 +2008,14 @@ def main(*, verbose: bool, directory: str, compat_release: str | None,
         session: Session
 
         if schroot:
-            logging.info('Using schroot %s', schroot)
+            logging.info("Using schroot %s", schroot)
             session = SchrootSession(schroot)
         elif unshare:
-            logging.info('Using tarball %s for unshare', unshare)
+            logging.info("Using tarball %s for unshare", unshare)
             from ognibuild.session.unshare import (
                 UnshareSession,  # type: ignore
             )
+
             session = UnshareSession.from_tarball(unshare)
         else:
             session = PlainSession()
@@ -1637,15 +2027,19 @@ def main(*, verbose: bool, directory: str, compat_release: str | None,
                 output_directory = es.enter_context(TemporaryDirectory())
             if not output_directory:
                 output_directory = default_debianize_cache_dir()
-                logging.info(
-                    'Building dependencies in %s', output_directory)
+                logging.info("Building dependencies in %s", output_directory)
 
             def do_build(
-                    wt, subpath, incoming_directory, extra_repositories=None):
+                wt, subpath, incoming_directory, extra_repositories=None
+            ):
                 fixers = default_fixers(
-                    wt, subpath, apt,
-                    update_changelog=False, committer=None,
-                    dep_server_url=dep_server_url)
+                    wt,
+                    subpath,
+                    apt,
+                    update_changelog=False,
+                    committer=None,
+                    dep_server_url=dep_server_url,
+                )
                 return build_incrementally(
                     local_tree=wt,
                     suffix=None,
@@ -1661,92 +2055,115 @@ def main(*, verbose: bool, directory: str, compat_release: str | None,
 
             try:
                 if recursive:
-                    vcs_directory = os.path.join(output_directory, 'vcs')
+                    vcs_directory = os.path.join(output_directory, "vcs")
                     os.makedirs(vcs_directory, exist_ok=True)
-                    apt_directory = os.path.join(output_directory, 'apt')
+                    apt_directory = os.path.join(output_directory, "apt")
                     os.makedirs(apt_directory, exist_ok=True)
 
                     def main_build():
                         return do_build(
-                            wt, subpath, apt_repo.directory,
-                            extra_repositories=apt_repo.sources_lines())
+                            wt,
+                            subpath,
+                            apt_repo.directory,
+                            extra_repositories=apt_repo.sources_lines(),
+                        )
+
                     with SimpleTrustedAptRepo(apt_directory) as apt_repo:
                         (changes_names, _cl_entry) = iterate_with_build_fixers(
-                            [DebianizeFixer(
-                                vcs_directory, apt_repo,
-                                diligence=diligence,
-                                trust=trust,
-                                check=check,
-                                net_access=not disable_net_access,
-                                force_new_directory=force_new_directory,
-                                team=team, verbose=verbose,
-                                force_subprocess=force_subprocess,
-                                upstream_version_kind=(
-                                    upstream_version_kind),
-                                debian_revision=debian_revision,
-                                schroot=schroot,
-                                unshare=unshare, use_inotify=use_inotify,
-                                consult_external_directory=(
-                                    consult_external_directory),
-                                create_dist=create_dist_fn,
-                                compat_release=compat_release,
-                                do_build=do_build)],
-                            main_build)
+                            [
+                                DebianizeFixer(
+                                    vcs_directory,
+                                    apt_repo,
+                                    diligence=diligence,
+                                    trust=trust,
+                                    check=check,
+                                    net_access=not disable_net_access,
+                                    force_new_directory=force_new_directory,
+                                    team=team,
+                                    verbose=verbose,
+                                    force_subprocess=force_subprocess,
+                                    upstream_version_kind=(
+                                        upstream_version_kind
+                                    ),
+                                    debian_revision=debian_revision,
+                                    schroot=schroot,
+                                    unshare=unshare,
+                                    use_inotify=use_inotify,
+                                    consult_external_directory=(
+                                        consult_external_directory
+                                    ),
+                                    create_dist=create_dist_fn,
+                                    compat_release=compat_release,
+                                    do_build=do_build,
+                                )
+                            ],
+                            main_build,
+                        )
                 else:
                     (changes_names, _cl_entry) = do_build(
-                        wt, subpath, output_directory)
+                        wt, subpath, output_directory
+                    )
             except DetailedDebianBuildFailure as e:
                 if e.phase is None:
-                    phase = 'unknown phase'
+                    phase = "unknown phase"
                 elif len(e.phase) == 1:
                     phase = e.phase[0]
                 else:
-                    phase = f'{e.phase[0]} ({e.phase[1]})'
-                logging.fatal('Error during %s: %s', phase, e.error)
+                    phase = f"{e.phase[0]} ({e.phase[1]})"
+                logging.fatal("Error during %s: %s", phase, e.error)
                 return 1
             except UnidentifiedDebianBuildError as e:
                 if e.phase is None:
-                    phase = 'unknown phase'
+                    phase = "unknown phase"
                 elif len(e.phase) == 1:
                     phase = e.phase[0]
                 else:
-                    phase = f'{e.phase[0]} ({e.phase[1]})'
-                logging.fatal('Error during %s: %s', phase, e.description)
+                    phase = f"{e.phase[0]} ({e.phase[1]})"
+                logging.fatal("Error during %s: %s", phase, e.description)
                 return 1
             except DebianizedPackageRequirementMismatch as e:
                 if upstream_branch:
-                    hint = 'Wrong repository (%s)?' % e.upstream_branch
+                    hint = "Wrong repository (%s)?" % e.upstream_branch
                 else:
                     hint = None
                 report_fatal(
-                    'package-requirements-mismatch',
-                    'Debianized package (binary packages: {!r}), version {} '
-                    'did not satisfy requirement {!r}. '.format(
-                        [binary['Package'] for binary in e.control.binaries],
-                        e.version, e.requirement), hint=hint)
+                    "package-requirements-mismatch",
+                    "Debianized package (binary packages: {!r}), version {} "
+                    "did not satisfy requirement {!r}. ".format(
+                        [binary["Package"] for binary in e.control.binaries],
+                        e.version,
+                        e.requirement,
+                    ),
+                    hint=hint,
+                )
                 return 1
-            logging.info('Built %r.', changes_names)
+            logging.info("Built %r.", changes_names)
             if install:
                 subprocess.check_call(
-                    ["debi"] + [
+                    ["debi"]
+                    + [
                         os.path.join(output_directory, cn)
-                        for cn in changes_names])
+                        for cn in changes_names
+                    ]
+                )
 
     if debianize_result.vcs_url:
-        target_branch_url = vcs_git_url_to_bzr_url(
-            debianize_result.vcs_url)
+        target_branch_url = vcs_git_url_to_bzr_url(debianize_result.vcs_url)
     else:
         target_branch_url = None
 
     if svp_enabled():
-        with open(os.environ['SVP_RESULT'], "w") as f:
-            json.dump({
-                "description": "Debianized package",
-                "target-branch-url": target_branch_url,
-                "versions": versions_dict(),
-                "context": {
-                    "wnpp_bugs": debianize_result.wnpp_bugs,
-                }
-            }, f)
+        with open(os.environ["SVP_RESULT"], "w") as f:
+            json.dump(
+                {
+                    "description": "Debianized package",
+                    "target-branch-url": target_branch_url,
+                    "versions": versions_dict(),
+                    "context": {
+                        "wnpp_bugs": debianize_result.wnpp_bugs,
+                    },
+                },
+                f,
+            )
 
     return 0

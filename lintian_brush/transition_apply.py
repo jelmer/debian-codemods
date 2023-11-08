@@ -49,7 +49,6 @@ from .svp import svp_enabled
 
 
 class TransitionResult:
-
     def __init__(self, ben, bugno=None):
         self.ben = ben
         self.bugno = bugno
@@ -71,8 +70,8 @@ def _note_changelog_policy(policy, msg):
 
 def control_matches(control, ors):
     for field, expr in ors:
-        if not field.startswith('.'):
-            raise ValueError('unsupported field %r' % field)
+        if not field.startswith("."):
+            raise ValueError("unsupported field %r" % field)
         for paragraph in control.paragraphs:
             try:
                 value = paragraph[field[1:]]
@@ -84,25 +83,22 @@ def control_matches(control, ors):
 
 
 class PackageNotAffected(Exception):
-
     def __init__(self, source):
         self.source = source
 
 
 class PackageAlreadyGood(Exception):
-
     def __init__(self, source):
         self.source = source
 
 
 class PackageNotBad(Exception):
-
     def __init__(self, source):
         self.source = source
 
 
 def ben_find_bugno(ben):
-    bugs = re.findall('#([0-9]+)', ben.get('notes', ''))
+    bugs = re.findall("#([0-9]+)", ben.get("notes", ""))
 
     if bugs:
         return int(bugs[0])
@@ -113,29 +109,31 @@ def ben_find_bugno(ben):
 def _apply_transition(control, ben):
     for key in ben:
         if key not in SUPPORTED_KEYS:
-            raise ValueError('unsupported key in ben file: %r' % key)
-    if (ben.get('is_affected')
-            and not control_matches(control, ben['is_affected'])):
-        raise PackageNotAffected(control.source['Source'])
-    if ben.get('is_good') and control_matches(control, ben['is_good']):
-        raise PackageAlreadyGood(control.source['Source'])
-    if ben.get('is_bad') and not control_matches(control, ben['is_bad']):
-        raise PackageNotBad(control.source['Source'])
-    for field, expr in ben['is_bad']:
-        if not field.startswith('.'):
-            raise ValueError('unsupported field %r' % field)
+            raise ValueError("unsupported key in ben file: %r" % key)
+    if ben.get("is_affected") and not control_matches(
+        control, ben["is_affected"]
+    ):
+        raise PackageNotAffected(control.source["Source"])
+    if ben.get("is_good") and control_matches(control, ben["is_good"]):
+        raise PackageAlreadyGood(control.source["Source"])
+    if ben.get("is_bad") and not control_matches(control, ben["is_bad"]):
+        raise PackageNotBad(control.source["Source"])
+    for field, expr in ben["is_bad"]:
+        if not field.startswith("."):
+            raise ValueError("unsupported field %r" % field)
         for paragraph in control.paragraphs:
             try:
                 value = paragraph[field[1:]]
             except KeyError:
                 continue
-            for goodfield, goodexpr in ben['is_good']:
+            for goodfield, goodexpr in ben["is_good"]:
                 if goodfield == field:
                     replacement = goodexpr.pattern
                     break
             else:
                 raise ValueError(
-                    f'unable to find replacement value for {field}={expr}')
+                    f"unable to find replacement value for {field}={expr}"
+                )
             paragraph[field[1:]] = expr.sub(replacement, value)
 
     bugno = ben_find_bugno(ben)
@@ -144,30 +142,27 @@ def _apply_transition(control, ben):
 
 
 def report_fatal(code: str, description: str) -> None:
-    if os.environ.get('SVP_API') == '1':
-        with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump({
-                'result_code': code,
-                'description': description}, f)
-    logging.fatal('%s', description)
+    if os.environ.get("SVP_API") == "1":
+        with open(os.environ["SVP_RESULT"], "w") as f:
+            json.dump({"result_code": code, "description": description}, f)
+    logging.fatal("%s", description)
 
 
 def report_okay(code: str, description: str) -> None:
-    if os.environ.get('SVP_API') == '1':
-        with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump({
-                'result_code': code,
-                'description': description}, f)
-    logging.info('%s', description)
+    if os.environ.get("SVP_API") == "1":
+        with open(os.environ["SVP_RESULT"], "w") as f:
+            json.dump({"result_code": code, "description": description}, f)
+    logging.info("%s", description)
 
 
 def apply_transition(
-        wt, debian_path, ben, update_changelog, allow_reformatting):
+    wt, debian_path, ben, update_changelog, allow_reformatting
+):
     control_path = os.path.join(debian_path, "control")
     try:
         with ControlEditor(
-                wt.abspath(control_path),
-                allow_reformatting=allow_reformatting) as editor:
+            wt.abspath(control_path), allow_reformatting=allow_reformatting
+        ) as editor:
             return _apply_transition(editor, ben)
     except FileNotFoundError as exc:
         raise NotDebianPackage(wt.abspath(debian_path)) from exc
@@ -233,7 +228,7 @@ def main():  # noqa: C901
 
     wt, subpath = WorkingTree.open_containing(args.directory)
     if args.identity:
-        logging.info('%s', get_committer(wt))
+        logging.info("%s", get_committer(wt))
         return 0
 
     try:
@@ -245,7 +240,7 @@ def main():  # noqa: C901
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
     else:
-        logging.basicConfig(level=logging.INFO, format='%(message)s')
+        logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     update_changelog = args.update_changelog
     allow_reformatting = args.allow_reformatting
@@ -266,48 +261,43 @@ def main():  # noqa: C901
     if control_files_in_root(wt, subpath):
         debian_path = subpath
     else:
-        debian_path = os.path.join(subpath, 'debian')
+        debian_path = os.path.join(subpath, "debian")
 
     try:
         result = apply_transition(
-            wt, debian_path, ben, update_changelog=args.update_changelog,
-            allow_reformatting=allow_reformatting
+            wt,
+            debian_path,
+            ben,
+            update_changelog=args.update_changelog,
+            allow_reformatting=allow_reformatting,
         )
     except PackageNotAffected:
-        report_okay(
-            "nothing-to-do",
-            "Package not affected by transition")
+        report_okay("nothing-to-do", "Package not affected by transition")
         return 0
     except PackageAlreadyGood:
-        report_okay(
-            "nothing-to-do",
-            "Transition already applied to package")
+        report_okay("nothing-to-do", "Transition already applied to package")
         return 0
     except PackageNotBad:
-        report_okay(
-            "nothing-to-do",
-            "Package not bad")
+        report_okay("nothing-to-do", "Package not bad")
         return 0
     except FormattingUnpreservable as e:
         report_fatal(
             "formatting-unpreservable",
             "unable to preserve formatting while editing %s" % e.path,
         )
-        if hasattr(e, 'diff'):  # debmutate >= 0.64
+        if hasattr(e, "diff"):  # debmutate >= 0.64
             sys.stderr.writelines(e.diff())
         return 1
     except GeneratedFile as e:
-        report_fatal(
-            "generated-file", "unable to edit generated file: %r" % e
-        )
+        report_fatal("generated-file", "unable to edit generated file: %r" % e)
         return 1
     except NotDebianPackage:
-        report_fatal('not-debian-package', 'Not a Debian package.')
+        report_fatal("not-debian-package", "Not a Debian package.")
         return 1
     except ChangeConflict as e:
         report_fatal(
-            'change-conflict',
-            'Generated file changes conflict: %s' % e)
+            "change-conflict", "Generated file changes conflict: %s" % e
+        )
         return 1
 
     if not result:
@@ -328,20 +318,23 @@ def main():  # noqa: C901
             update_changelog = True
 
     if update_changelog:
-        summary = 'Apply transition %s.' % ben['title']
+        summary = "Apply transition %s." % ben["title"]
         if result.bugno:
-            summary += ' Closes: #%d' % result.bugno
+            summary += " Closes: #%d" % result.bugno
         add_changelog_entry(wt, changelog_path, [summary])
 
     if svp_enabled():
         with open(os.environ["SVP_RESULT"], "w") as f:
-            json.dump({
-                "description": "Apply transition.",
-                "value": result.value(),
-                "context": ben
-            }, f)
+            json.dump(
+                {
+                    "description": "Apply transition.",
+                    "value": result.value(),
+                    "context": ben,
+                },
+                f,
+            )
 
-    logging.info("Applied transition %s", ben['title'])
+    logging.info("Applied transition %s", ben["title"])
     return 0
 
 

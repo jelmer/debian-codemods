@@ -23,7 +23,8 @@ import re
 from .lintian import LINTIAN_DATA_PATH
 
 NAME_SECTION_MAPPINGS_PATH = os.path.join(
-    LINTIAN_DATA_PATH, "fields/name_section_mappings")
+    LINTIAN_DATA_PATH, "fields/name_section_mappings"
+)
 
 
 def get_name_section_mappings():
@@ -31,7 +32,7 @@ def get_name_section_mappings():
 
     with open(NAME_SECTION_MAPPINGS_PATH) as f:
         for line in f:
-            if line.startswith('#'):
+            if line.startswith("#"):
                 continue
             if not line.strip():
                 continue

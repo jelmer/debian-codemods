@@ -41,7 +41,8 @@ from lintian_brush.fixer import (
 )
 
 new_debhelper_compat_version = maximum_debhelper_compat_version(
-    compat_release())
+    compat_release()
+)
 
 uses_cdbs = check_cdbs()
 
@@ -54,18 +55,19 @@ if uses_cdbs:
 # specifies --without autoreconf, then we can't upgrade beyond debhelper 10. If
 # we do, configure fails because debhelper >= 11 specifies --runstatedir.
 
+
 # We could choose to drop the --without autoreconf, but we don't know why the
 # maintainer chose to specify it.
 def autoreconf_disabled():
     try:
-        mf = Makefile.from_path('debian/rules')
+        mf = Makefile.from_path("debian/rules")
         for line in mf.dump_lines():
-            if re.findall(b'--without.*autoreconf', line):
+            if re.findall(b"--without.*autoreconf", line):
                 return True
 
         # Another way to disable dh_autoreconf is to add an empty override
         # rule.
-        for rule in mf.iter_rules(b'override_dh_autoreconf'):
+        for rule in mf.iter_rules(b"override_dh_autoreconf"):
             if rule.commands():
                 return False
         else:
@@ -76,28 +78,32 @@ def autoreconf_disabled():
 
 
 if autoreconf_disabled():
-    with suppress(IsADirectoryError, FileNotFoundError), \
-            open('configure', 'rb') as f:
+    with suppress(IsADirectoryError, FileNotFoundError), open(
+        "configure", "rb"
+    ) as f:
         for line in f:
-            if b'runstatedir' in line:
+            if b"runstatedir" in line:
                 break
         else:
             new_debhelper_compat_version = min(
-                new_debhelper_compat_version, 10)
+                new_debhelper_compat_version, 10
+            )
             warn(
-                'Not upgrading beyond debhelper %d, since the package '
-                'disables autoreconf but its configure does not provide '
-                '--runstatedir.' % new_debhelper_compat_version)
+                "Not upgrading beyond debhelper %d, since the package "
+                "disables autoreconf but its configure does not provide "
+                "--runstatedir." % new_debhelper_compat_version
+            )
 
 
-if os.path.exists('debian/compat'):
+if os.path.exists("debian/compat"):
     # Package currently stores compat version in debian/compat..
 
     current_debhelper_compat_version = read_debhelper_compat_file(
-        'debian/compat')
+        "debian/compat"
+    )
     if current_debhelper_compat_version < new_debhelper_compat_version:
-        with open('debian/compat', 'w') as cf:
-            cf.write('%s\n' % new_debhelper_compat_version)
+        with open("debian/compat", "w") as cf:
+            cf.write("%s\n" % new_debhelper_compat_version)
     else:
         # Nothing to do
         sys.exit(2)
@@ -106,31 +112,34 @@ if os.path.exists('debian/compat'):
         updater.source["Build-Depends"] = ensure_minimum_version(
             updater.source.get("Build-Depends", ""),
             "debhelper",
-            "%d~" % new_debhelper_compat_version)
+            "%d~" % new_debhelper_compat_version,
+        )
 else:
     try:
         # Assume that the compat version is set in Build-Depends
         with control as updater:
             try:
                 offset, debhelper_compat_relation = get_relation(
-                    updater.source.get("Build-Depends", ""),
-                    "debhelper-compat")
+                    updater.source.get("Build-Depends", ""), "debhelper-compat"
+                )
             except KeyError:
                 sys.exit(2)
             else:
                 if len(debhelper_compat_relation) > 1:
                     # Not sure how to deal with this..
                     sys.exit(2)
-                if debhelper_compat_relation[0].version[0] != '=':
+                if debhelper_compat_relation[0].version[0] != "=":
                     # Not sure how to deal with this..
                     sys.exit(2)
                 current_debhelper_compat_version = int(
-                    debhelper_compat_relation[0].version[1])
+                    debhelper_compat_relation[0].version[1]
+                )
             if current_debhelper_compat_version < new_debhelper_compat_version:
                 updater.source["Build-Depends"] = ensure_exact_version(
-                        updater.source["Build-Depends"],
-                        "debhelper-compat",
-                        "%d" % new_debhelper_compat_version)
+                    updater.source["Build-Depends"],
+                    "debhelper-compat",
+                    "%d" % new_debhelper_compat_version,
+                )
     except FileNotFoundError:
         # debcargo just uses the latest version and doesn't store debhelper
         # version explicitly.
@@ -151,11 +160,12 @@ def line_matches_command(target, line, command):
         # Whatever
         return True
 
-    if line.startswith(command + b' ') or line == command:
+    if line.startswith(command + b" ") or line == command:
         return True
 
-    return (target == (b'override_' + command) and
-            line.startswith(b'$(overridden_command)'))
+    return target == (b"override_" + command) and line.startswith(
+        b"$(overridden_command)"
+    )
 
 
 def update_line(line, orig, new, description):
@@ -185,7 +195,6 @@ def update_line_replace_argument(line, old, new, description):
 
 
 class PybuildUpgrader:
-
     def __init__(self):
         # Does the dh line specify --buildsystem=pybuild?
         self.upgraded = False
@@ -193,43 +202,62 @@ class PybuildUpgrader:
     def fix_line(self, line, target):
         """Upgrade from python_distutils to pybuild."""
         line, changed = update_line(
-            line, b'--buildsystem=python_distutils', b'--buildsystem=pybuild',
-            'Replace python_distutils buildsystem with pybuild.')
+            line,
+            b"--buildsystem=python_distutils",
+            b"--buildsystem=pybuild",
+            "Replace python_distutils buildsystem with pybuild.",
+        )
         line, changed = update_line(
-            line, b'--buildsystem python_distutils', b'--buildsystem=pybuild',
-            'Replace python_distutils buildsystem with pybuild.')
+            line,
+            b"--buildsystem python_distutils",
+            b"--buildsystem=pybuild",
+            "Replace python_distutils buildsystem with pybuild.",
+        )
         line, changed = update_line(
-            line, b'-O--buildsystem=python_distutils',
-            b'-O--buildsystem=pybuild',
-            'Replace python_distutils buildsystem with pybuild.')
+            line,
+            b"-O--buildsystem=python_distutils",
+            b"-O--buildsystem=pybuild",
+            "Replace python_distutils buildsystem with pybuild.",
+        )
         if target.decode() in DEBHELPER_BUILD_STEPS:
             step = target.decode()
-        elif target.startswith(b'override_dh_auto_'):
-            step = target[len(b'override_dh_auto_'):].decode()
+        elif target.startswith(b"override_dh_auto_"):
+            step = target[len(b"override_dh_auto_") :].decode()
         else:
             step = None
-        if line.startswith(b'dh '):
-            if b'buildsystem' not in line:
+        if line.startswith(b"dh "):
+            if b"buildsystem" not in line:
                 buildsystem = detect_debhelper_buildsystem(step)
-                if buildsystem == 'python_distutils':
-                    line += b' --buildsystem=pybuild'
+                if buildsystem == "python_distutils":
+                    line += b" --buildsystem=pybuild"
                     subitems.add(
-                        'Replace python_distutils buildsystem with pybuild.')
+                        "Replace python_distutils buildsystem with pybuild."
+                    )
                     self.upgraded = True
             else:
-                if b'buildsystem=pybuild' in line:
+                if b"buildsystem=pybuild" in line:
                     self.upgraded = True
-        if (line.startswith(b'dh_auto_') and
-            b' -- ' in line and
-            (self.upgraded or
-                re.match(b'--buildsystem[= ]pybuild', line) or
-                detect_debhelper_buildsystem(step) == 'pybuild')):
-            line, rest = line.split(b' -- ', 1)
+        if (
+            line.startswith(b"dh_auto_")
+            and b" -- " in line
+            and (
+                self.upgraded
+                or re.match(b"--buildsystem[= ]pybuild", line)
+                or detect_debhelper_buildsystem(step) == "pybuild"
+            )
+        ):
+            line, rest = line.split(b" -- ", 1)
             if step is None:
-                step = line[len(b'dh_auto_'):].split(b' ', 1)[0].decode()
-            subitems.add('Replace python_distutils buildsystem with pybuild.')
-            line = (b'PYBUILD_' + step.upper().encode() + b'_ARGS=' +
-                    shlex.quote(rest.decode()).encode() + b' ' + line)
+                step = line[len(b"dh_auto_") :].split(b" ", 1)[0].decode()
+            subitems.add("Replace python_distutils buildsystem with pybuild.")
+            line = (
+                b"PYBUILD_"
+                + step.upper().encode()
+                + b"_ARGS="
+                + shlex.quote(rest.decode()).encode()
+                + b" "
+                + line
+            )
 
         return line
 
@@ -237,8 +265,11 @@ class PybuildUpgrader:
 def upgrade_to_dh_prep(line, target):
     """Replace 'dh_clean -k' with 'dh_prep."""
     line, changed = update_line(
-        line, b'dh_clean -k', b'dh_prep',
-        'debian/rules: Replace dh_clean -k with dh_prep.')
+        line,
+        b"dh_clean -k",
+        b"dh_prep",
+        "debian/rules: Replace dh_clean -k with dh_prep.",
+    )
     return line
 
 
@@ -249,73 +280,88 @@ class DhMissingUpgrader:
         self.need_override_missing = False
 
     def fix_line(self, line, target):
-        for arg in [b'--list-missing', b'-O--list-missing']:
-            for command in [b'dh_install', b'dh']:
+        for arg in [b"--list-missing", b"-O--list-missing"]:
+            for command in [b"dh_install", b"dh"]:
                 line, changed = update_line_drop_argument(
-                    target, line, command, arg,
-                    'debian/rules: Rely on default use of dh_missing rather '
-                    'than using dh_install --list-missing.')
-        for arg in [b'--fail-missing', b'-O--fail-missing']:
-            for command in [b'dh_install', b'dh']:
+                    target,
+                    line,
+                    command,
+                    arg,
+                    "debian/rules: Rely on default use of dh_missing rather "
+                    "than using dh_install --list-missing.",
+                )
+        for arg in [b"--fail-missing", b"-O--fail-missing"]:
+            for command in [b"dh_install", b"dh"]:
                 line, changed = update_line_drop_argument(
-                    target, line, command, arg,
-                    'debian/rules: Move --fail-missing argument to dh_missing.'
-                    )
+                    target,
+                    line,
+                    command,
+                    arg,
+                    "debian/rules: Move --fail-missing argument to dh_missing.",
+                )
                 if changed:
-                    if target == b'override_dh_install' or command == b'dh':
+                    if target == b"override_dh_install" or command == b"dh":
                         self.need_override_missing = True
                     else:
                         subitems.add(
-                            'debian/rules: Move --fail-missing argument '
-                            'to dh_missing.')
-                        return [line, b'dh_missing --fail-missing']
+                            "debian/rules: Move --fail-missing argument "
+                            "to dh_missing."
+                        )
+                        return [line, b"dh_missing --fail-missing"]
         return line
 
     def fix_makefile(self, mf):
         if not self.need_override_missing:
             return
         try:
-            [rule] = list(mf.iter_rules(b'override_dh_missing'))
+            [rule] = list(mf.iter_rules(b"override_dh_missing"))
         except ValueError:
-            rule = mf.add_rule(b'override_dh_missing')
-            rule.append_command(b'dh_missing --fail-missing')
+            rule = mf.add_rule(b"override_dh_missing")
+            rule.append_command(b"dh_missing --fail-missing")
         else:
             for i, line in enumerate(rule.lines):
-                if line.startswith(b'dh_missing '):
-                    if b'--fail-missing' in line:
+                if line.startswith(b"dh_missing "):
+                    if b"--fail-missing" in line:
                         return
                     else:
-                        rule.lines[i] += b' --fail-missing'
+                        rule.lines[i] += b" --fail-missing"
             else:
                 raise Exception(
-                    'override_dh_missing exists, but has no call to '
-                    'dh_missing')
+                    "override_dh_missing exists, but has no call to "
+                    "dh_missing"
+                )
 
 
 def replace_deprecated_same_arch(line, target):
-    if not line.startswith(b'dh'):
+    if not line.startswith(b"dh"):
         return line
     line, _ = update_line_replace_argument(
-        line, b'-s', b'-a', 'Replace deprecated -s with -a.')
+        line, b"-s", b"-a", "Replace deprecated -s with -a."
+    )
     line, _ = update_line_replace_argument(
-        line, b'--same-arch', b'--arch',
-        'Replace deprecated --same-arch with --arch.')
+        line,
+        b"--same-arch",
+        b"--arch",
+        "Replace deprecated --same-arch with --arch.",
+    )
     return line
 
 
 def upgrade_to_no_stop_on_upgrade(line, target):
-    if line.startswith(b'dh ') or line.startswith(b'dh_installinit'):
+    if line.startswith(b"dh ") or line.startswith(b"dh_installinit"):
         line, changed = update_line(
-            line, b'--no-restart-on-upgrade',
-            b'--no-stop-on-upgrade',
-            'Replace --no-restart-on-upgrade with --no-stop-on-upgrade.')
+            line,
+            b"--no-restart-on-upgrade",
+            b"--no-stop-on-upgrade",
+            "Replace --no-restart-on-upgrade with --no-stop-on-upgrade.",
+        )
     return line
 
 
 def debhelper_argument_order(line, target):
-    if line.startswith(b'dh '):
-        args = line.split(b' ')
-        for possible_va in [b'$*', b'$@', b'${@}']:
+    if line.startswith(b"dh "):
+        args = line.split(b" ")
+        for possible_va in [b"$*", b"$@", b"${@}"]:
             try:
                 x = args.index(possible_va)
             except ValueError:
@@ -325,96 +371,111 @@ def debhelper_argument_order(line, target):
             return line
         val = args.pop(x)
         args.insert(1, val)
-        return b' '.join(args)
+        return b" ".join(args)
     return line
 
 
 def override_dh_auto_test_drop_options(rule):
-    if b'override_dh_auto_test' not in rule.targets:
+    if b"override_dh_auto_test" not in rule.targets:
         return
-    if (len(rule.lines) < 2
-            or rule.lines[1]
-            != b'ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))'
-            or rule.lines[-1] != b'endif'):
+    if (
+        len(rule.lines) < 2
+        or rule.lines[1] != b"ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))"
+        or rule.lines[-1] != b"endif"
+    ):
         return
     subitems.add(
         'Drop check for DEB_BUILD_OPTIONS containing "nocheck", '
-        'since debhelper now does this.')
+        "since debhelper now does this."
+    )
     del rule.lines[1]
     del rule.lines[-1]
 
 
 def upgrade_to_debhelper_12():
-
     pybuild_upgrader = PybuildUpgrader()
     dh_missing_upgrader = DhMissingUpgrader()
-    update_rules([
-        debhelper_argument_order,
-        replace_deprecated_same_arch,
-        pybuild_upgrader.fix_line,
-        upgrade_to_dh_prep,
-        upgrade_to_no_stop_on_upgrade,
-        dh_missing_upgrader.fix_line,
-        ], makefile_cb=dh_missing_upgrader.fix_makefile)
+    update_rules(
+        [
+            debhelper_argument_order,
+            replace_deprecated_same_arch,
+            pybuild_upgrader.fix_line,
+            upgrade_to_dh_prep,
+            upgrade_to_no_stop_on_upgrade,
+            dh_missing_upgrader.fix_line,
+        ],
+        makefile_cb=dh_missing_upgrader.fix_makefile,
+    )
 
 
 def upgrade_to_installsystemd(line, target):
-    line = dh_invoke_drop_with(line, b'systemd')
-    if line.startswith(b'dh_systemd_enable'):
+    line = dh_invoke_drop_with(line, b"systemd")
+    if line.startswith(b"dh_systemd_enable"):
         line, changed = update_line(
-            line, b'dh_systemd_enable', b'dh_installsystemd',
-            'Use dh_installsystemd rather than deprecated '
-            'dh_systemd_enable.')
-    if line.startswith(b'dh_systemd_start'):
+            line,
+            b"dh_systemd_enable",
+            b"dh_installsystemd",
+            "Use dh_installsystemd rather than deprecated "
+            "dh_systemd_enable.",
+        )
+    if line.startswith(b"dh_systemd_start"):
         line, changed = update_line(
-            line, b'dh_systemd_start', b'dh_installsystemd',
-            'Use dh_installsystemd rather than deprecated '
-            'dh_systemd_start.')
+            line,
+            b"dh_systemd_start",
+            b"dh_installsystemd",
+            "Use dh_installsystemd rather than deprecated "
+            "dh_systemd_start.",
+        )
     return line
 
 
 def rename_installsystemd_target(rule):
     rule.rename_target(
-        b'override_dh_systemd_enable', b'override_dh_installsystemd')
+        b"override_dh_systemd_enable", b"override_dh_installsystemd"
+    )
     rule.rename_target(
-        b'override_dh_systemd_start', b'override_dh_installsystemd')
+        b"override_dh_systemd_start", b"override_dh_installsystemd"
+    )
 
 
 def upgrade_to_debhelper_10():
-
     # dh_installinit will no longer install a file named debian/package as an
     # init script.
 
     with control as updater:
         for binary in updater.binaries:
-            name = binary['Package']
-            if os.path.isfile(os.path.join('debian', name)):
-                os.rename(os.path.join('debian', name),
-                          os.path.join('debian', name + '.init'))
-                subitems.add(
-                    f'Rename debian/{name} to debian/{name}.init.')
+            name = binary["Package"]
+            if os.path.isfile(os.path.join("debian", name)):
+                os.rename(
+                    os.path.join("debian", name),
+                    os.path.join("debian", name + ".init"),
+                )
+                subitems.add(f"Rename debian/{name} to debian/{name}.init.")
 
 
 def upgrade_to_debhelper_11():
-
     update_rules(
-        [upgrade_to_installsystemd], rule_cb=rename_installsystemd_target)
-    for name in os.listdir('debian'):
-        parts = name.split('.')
-        if len(parts) < 2 or parts[-1] != 'upstart':
+        [upgrade_to_installsystemd], rule_cb=rename_installsystemd_target
+    )
+    for name in os.listdir("debian"):
+        parts = name.split(".")
+        if len(parts) < 2 or parts[-1] != "upstart":
             continue
         if len(parts) == 3:
             package = parts[0]
             service = parts[1]
         elif len(parts) == 2:
             package = service = parts[0]
-        os.unlink(os.path.join('debian', name))
-        subitems.add('Drop obsolete upstart file %s.' % name)
-        with MaintscriptEditor('debian/%s.maintscript' % package) as e:
-            e.append(MaintscriptRemoveConffile(
-                conffile='/etc/init/%s.conf' % service,
-                prior_version=current_package_version(),
-                package=None))
+        os.unlink(os.path.join("debian", name))
+        subitems.add("Drop obsolete upstart file %s." % name)
+        with MaintscriptEditor("debian/%s.maintscript" % package) as e:
+            e.append(
+                MaintscriptRemoveConffile(
+                    conffile="/etc/init/%s.conf" % service,
+                    prior_version=current_package_version(),
+                    package=None,
+                )
+            )
 
 
 def drop_dh_missing_fail(line, target):
@@ -422,54 +483,57 @@ def drop_dh_missing_fail(line, target):
     # Note that this is not currently replacing plain calls to dh_missing with
     # empty an "override_dh_missing" rule.
 
-    if not line.startswith(b'dh_missing '):
+    if not line.startswith(b"dh_missing "):
         return line
-    argv = line.split(b' ')
-    for arg in [b'--fail-missing', b'-O--fail-missing']:
+    argv = line.split(b" ")
+    for arg in [b"--fail-missing", b"-O--fail-missing"]:
         if arg in argv:
             # If we added the --fail-missing argument first, then
             # don't announce that here.
             try:
                 subitems.remove(
-                    'debian/rules: Move --fail-missing argument '
-                    'to dh_missing.')
+                    "debian/rules: Move --fail-missing argument "
+                    "to dh_missing."
+                )
             except KeyError:
                 subitems.add(
-                    'debian/rules: Drop --fail-missing argument '
-                    'to dh_missing, which is now the default.')
+                    "debian/rules: Drop --fail-missing argument "
+                    "to dh_missing, which is now the default."
+                )
             else:
                 subitems.add(
-                    'debian/rules: Drop --fail-missing argument, '
-                    'now the default.')
+                    "debian/rules: Drop --fail-missing argument, "
+                    "now the default."
+                )
             argv.remove(arg)
-    return b' '.join(argv)
+    return b" ".join(argv)
 
 
 def upgrade_to_debhelper_13():
-
     # dh_installtempfiles will handle d/tmpfile{,s}.  It prefer the latter
     # and warns about the former.
 
     with control as updater:
         for binary in updater.binaries:
-            name = binary['Package']
-            tmpfile = os.path.join('debian', name + ".tmpfile")
+            name = binary["Package"]
+            tmpfile = os.path.join("debian", name + ".tmpfile")
             if os.path.isfile(tmpfile):
-                os.rename(tmpfile, tmpfile + 's')
-                subitems.add(
-                    f'Rename {tmpfile} to {tmpfile}s.')
-        if os.path.isfile(os.path.join('debian', "tmpfile")):
-            tmpfile = os.path.join('debian', "tmpfile")
-            os.rename(tmpfile, tmpfile + 's')
-            subitems.add(
-                f'Rename {tmpfile} to {tmpfile}s.')
+                os.rename(tmpfile, tmpfile + "s")
+                subitems.add(f"Rename {tmpfile} to {tmpfile}s.")
+        if os.path.isfile(os.path.join("debian", "tmpfile")):
+            tmpfile = os.path.join("debian", "tmpfile")
+            os.rename(tmpfile, tmpfile + "s")
+            subitems.add(f"Rename {tmpfile} to {tmpfile}s.")
 
-    update_rules([
-        # The dh_missing command will now default to --fail-missing.  This can
-        # be reverted to a non-fatal warning by explicitly passing
-        # --list-missing like it was in compat 12.
-        drop_dh_missing_fail,
-        ], rule_cb=override_dh_auto_test_drop_options)
+    update_rules(
+        [
+            # The dh_missing command will now default to --fail-missing.  This can
+            # be reverted to a non-fatal warning by explicitly passing
+            # --list-missing like it was in compat 12.
+            drop_dh_missing_fail,
+        ],
+        rule_cb=override_dh_auto_test_drop_options,
+    )
 
 
 upgrade_to_debhelper = {
@@ -480,8 +544,10 @@ upgrade_to_debhelper = {
 }
 
 
-for version in range(int(str(current_debhelper_compat_version))+1,
-                     int(str(new_debhelper_compat_version))+1):
+for version in range(
+    int(str(current_debhelper_compat_version)) + 1,
+    int(str(new_debhelper_compat_version)) + 1,
+):
     with suppress(KeyError):
         upgrade_to_debhelper[version]()
 
@@ -489,14 +555,19 @@ if new_debhelper_compat_version > current_debhelper_compat_version:
     if current_debhelper_compat_version < lowest_non_deprecated_compat_level():
         kind = "deprecated"
         fixed_lintian_tag(
-            'source', "package-uses-deprecated-debhelper-compat-version",
-            info=f'{current_debhelper_compat_version}')
+            "source",
+            "package-uses-deprecated-debhelper-compat-version",
+            info=f"{current_debhelper_compat_version}",
+        )
     else:
         kind = "old"
         fixed_lintian_tag(
-            'source', "package-uses-old-debhelper-compat-version",
-            info=f'{current_debhelper_compat_version}')
+            "source",
+            "package-uses-old-debhelper-compat-version",
+            info=f"{current_debhelper_compat_version}",
+        )
     description = "Bump debhelper from {} {} to {}.".format(
-        kind, current_debhelper_compat_version, new_debhelper_compat_version)
+        kind, current_debhelper_compat_version, new_debhelper_compat_version
+    )
 
     report_result(description=description, details=sorted(subitems))

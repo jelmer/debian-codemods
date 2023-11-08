@@ -16,17 +16,20 @@ with control as updater:
             continue
         if "transitional package" not in binary.get("Description", ""):
             continue
-        oldsection = binary.get('Section') or updater.source.get('Section')
+        oldsection = binary.get("Section") or updater.source.get("Section")
         issue = LintianIssue(
-            binary, 'transitional-package-not-oldlibs-optional',
-            '{}/{}'.format(
+            binary,
+            "transitional-package-not-oldlibs-optional",
+            "{}/{}".format(
                 oldsection,
-                binary.get('Priority') or updater.source.get('Priority')))
+                binary.get("Priority") or updater.source.get("Priority"),
+            ),
+        )
         if issue.should_fix():
             packages.append(binary["Package"])
             area: Optional[str]
-            if oldsection and '/' in oldsection:
-                area, oldsection = oldsection.split('/', 1)
+            if oldsection and "/" in oldsection:
+                area, oldsection = oldsection.split("/", 1)
             else:
                 area = None
             if area:
@@ -41,5 +44,7 @@ with control as updater:
 
 
 report_result(
-    "Move transitional package{} {} to oldlibs/optional per policy 4.0.1."
-    .format(("s" if len(packages) > 1 else ""), ", ".join(packages)))
+    "Move transitional package{} {} to oldlibs/optional per policy 4.0.1.".format(
+        ("s" if len(packages) > 1 else ""), ", ".join(packages)
+    )
+)

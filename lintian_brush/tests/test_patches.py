@@ -136,7 +136,8 @@ class FindPatchBranchTests(TestCaseWithTransport):
         master.branch.controldir.create_branch(name="patch-queue/master")
 
         self.assertEqual(
-            "patch-queue/master", find_patches_branch(master).name)
+            "patch-queue/master", find_patches_branch(master).name
+        )
 
     def test_patched_master(self):
         master = self.make_named_branch_and_tree(".", name="master")
@@ -162,9 +163,7 @@ class AppliedPatchesTests(TestCaseWithTransport):
 @@ -1 +1 @@
 -a
 +b
-""".splitlines(
-                True
-            )
+""".splitlines(True)
         )
         with AppliedPatches(tree, [patch]) as newtree:
             self.assertEqual(b"b\n", newtree.get_file_text("a"))
@@ -180,9 +179,7 @@ class AppliedPatchesTests(TestCaseWithTransport):
 +++ /dev/null
 @@ -1 +0,0 @@
 -a
-""".splitlines(
-                True
-            )
+""".splitlines(True)
         )
         with AppliedPatches(tree, [patch]) as newtree:
             self.assertFalse(newtree.has_filename("a"))
@@ -198,9 +195,7 @@ class AppliedPatchesTests(TestCaseWithTransport):
 +++ b/b
 @@ -0,0 +1 @@
 +b
-""".splitlines(
-                True
-            )
+""".splitlines(True)
         )
         with AppliedPatches(tree, [patch]) as newtree:
             self.assertEqual(b"b\n", newtree.get_file_text("b"))
@@ -229,8 +224,12 @@ class ReadQuiltPatchesTests(TestCaseWithTransport):
             ]
         )
         tree.add(
-            ["debian", "debian/patches", "debian/patches/series",
-             "debian/patches/foo"]
+            [
+                "debian",
+                "debian/patches",
+                "debian/patches/series",
+                "debian/patches/foo",
+            ]
         )
         tree.commit("add patch")
         patches = list(read_quilt_patches(tree))
@@ -248,8 +247,10 @@ class ReadQuiltPatchesTests(TestCaseWithTransport):
             [
                 ("debian/",),
                 ("debian/patches/",),
-                ("debian/patches/series",
-                 "# This file intentionally left blank.\n"),
+                (
+                    "debian/patches/series",
+                    "# This file intentionally left blank.\n",
+                ),
             ]
         )
         self.assertEqual([], list(read_quilt_patches(t)))
@@ -361,18 +362,21 @@ blah (0.38) unstable; urgency=medium
 class FindCommonPatchSuffixTests(TestCase):
     def test_simple(self):
         self.assertEqual(
-            ".blah", find_common_patch_suffix(["foo.blah", "series"]))
+            ".blah", find_common_patch_suffix(["foo.blah", "series"])
+        )
         self.assertEqual(
-            ".patch", find_common_patch_suffix(["foo.patch", "series"]))
+            ".patch", find_common_patch_suffix(["foo.patch", "series"])
+        )
+        self.assertEqual(".patch", find_common_patch_suffix(["series"]))
         self.assertEqual(
-            ".patch", find_common_patch_suffix(["series"]))
+            ".blah", find_common_patch_suffix(["series"], ".blah")
+        )
         self.assertEqual(
-            ".blah", find_common_patch_suffix(["series"], ".blah"))
-        self.assertEqual(
-            "", find_common_patch_suffix(["series", "foo", "bar"]))
+            "", find_common_patch_suffix(["series", "foo", "bar"])
+        )
         self.assertEqual(
             ".patch",
-            find_common_patch_suffix(["series", "foo.patch", "bar.patch"])
+            find_common_patch_suffix(["series", "foo.patch", "bar.patch"]),
         )
 
 
@@ -409,4 +413,5 @@ blah: bloe
         )
         tree.add("debian/rules")
         self.assertEqual(
-            "debian/patches-applied", tree_patches_directory(tree))
+            "debian/patches-applied", tree_patches_directory(tree)
+        )

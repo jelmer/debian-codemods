@@ -16,10 +16,10 @@ case_fixed = set()
 try:
     with control as updater:
         for paragraph in updater.paragraphs:
-            if paragraph.get('Source'):
-                para_name = 'source'
+            if paragraph.get("Source"):
+                para_name = "source"
             else:
-                para_name = paragraph['Package']
+                para_name = paragraph["Package"]
             for field in list(paragraph):
                 if field in valid_field_names:
                     continue
@@ -27,8 +27,10 @@ try:
                     if option.lower() != field.lower():
                         continue
                     issue = LintianIssue(
-                        updater.source, 'cute-field',
-                        f'debian/control@{para_name} {field} vs {option}')
+                        updater.source,
+                        "cute-field",
+                        f"debian/control@{para_name} {field} vs {option}",
+                    )
                     if issue.should_fix():
                         issue.report_fixed()
                         value = paragraph[field]
@@ -40,13 +42,12 @@ except FileNotFoundError:
     sys.exit(0)
 
 if case_fixed:
-    kind = 'case' + ('s' if len(case_fixed) > 1 else '')
+    kind = "case" + ("s" if len(case_fixed) > 1 else "")
 else:
-    kind = ''
+    kind = ""
 
-fixed_str = ', '.join(
-    [f'{old} ⇒ {new}'
-     for (old, new) in sorted(list(case_fixed))])
+fixed_str = ", ".join(
+    [f"{old} ⇒ {new}" for (old, new) in sorted(list(case_fixed))]
+)
 
-report_result(
-    f'Fix field name {kind} in debian/control ({fixed_str}).')
+report_result(f"Fix field name {kind} in debian/control ({fixed_str}).")

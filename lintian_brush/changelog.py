@@ -52,8 +52,8 @@ def add_changelog_entry(
     with tree.get_file(path) as f:
         cl = Changelog()
         cl.parse_changelog(
-                f, max_blocks=None, allow_empty_author=True,
-                strict=False)
+            f, max_blocks=None, allow_empty_author=True, strict=False
+        )
         _changelog_add_entry(
             cl,
             summary=summary,

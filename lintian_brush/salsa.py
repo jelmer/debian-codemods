@@ -128,8 +128,10 @@ def _salsa_path_from_alioth_url(  # noqa: C901
     # These two regular expressions come from vcswatch:
     # https://salsa.debian.org/qa/qa/blob/master/data/vcswatch/vcswatch#L165
     if vcs_type.lower() == "git":
-        pat = ("(https?|git)://(anonscm|git).debian.org/"
-               "(cgit/|git/)?collab-maint/")
+        pat = (
+            "(https?|git)://(anonscm|git).debian.org/"
+            "(cgit/|git/)?collab-maint/"
+        )
         if re.match(pat, alioth_url):
             return re.sub(pat, "debian/", alioth_url)
         pat = "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?users/"
@@ -137,18 +139,19 @@ def _salsa_path_from_alioth_url(  # noqa: C901
             return re.sub(pat, "", alioth_url)
         m = re.match(
             "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?(.+)",
-            alioth_url
+            alioth_url,
         )
         if m:
             parts = m.group(4).split("/")
             for i in range(len(parts), 0, -1):
                 subpath = "/".join(parts[:i])
                 with suppress(KeyError):
-                    return (GIT_PATH_RENAMES[subpath]
-                            + "/" + "/".join(parts[i:]))
+                    return (
+                        GIT_PATH_RENAMES[subpath] + "/" + "/".join(parts[i:])
+                    )
         m = re.match(
             "(https?|git)://(anonscm|git).debian.org/(cgit/|git/)?([^/]+)/",
-            alioth_url
+            alioth_url,
         )
         if m and m.group(4) == "debian-in" and "fonts-" in alioth_url:
             return re.sub(m.re, "fonts-team/", alioth_url)
@@ -157,7 +160,7 @@ def _salsa_path_from_alioth_url(  # noqa: C901
             return re.sub(m.re, new_name + "/", alioth_url)
         m = re.match(
             "https?://alioth.debian.org/anonscm/(git/|cgit/)?([^/]+)/",
-            alioth_url
+            alioth_url,
         )
         if m and m.group(2) in TEAM_NAME_MAP:
             new_name = TEAM_NAME_MAP[m.group(2)]
@@ -167,7 +170,7 @@ def _salsa_path_from_alioth_url(  # noqa: C901
         if alioth_url.startswith("svn://svn.debian.org/pkg-perl/trunk"):
             return alioth_url.replace(
                 "svn://svn.debian.org/pkg-perl/trunk",
-                "perl-team/modules/packages"
+                "perl-team/modules/packages",
             )
         if alioth_url.startswith("svn://svn.debian.org/pkg-lua/packages"):
             return alioth_url.replace(
@@ -180,11 +183,17 @@ def _salsa_path_from_alioth_url(  # noqa: C901
             parts = parsed_url.path.strip("/").split("/")
             if parts[0] == "svn":
                 parts.pop(0)
-            if (len(parts) == 3 and parts[0] in TEAM_NAME_MAP
-                    and parts[2] == "trunk"):
+            if (
+                len(parts) == 3
+                and parts[0] in TEAM_NAME_MAP
+                and parts[2] == "trunk"
+            ):
                 return f"{TEAM_NAME_MAP[parts[0]]}/{parts[1]}"
-            if (len(parts) == 3 and parts[0] in TEAM_NAME_MAP
-                    and parts[1] == "trunk"):
+            if (
+                len(parts) == 3
+                and parts[0] in TEAM_NAME_MAP
+                and parts[1] == "trunk"
+            ):
                 return f"{TEAM_NAME_MAP[parts[0]]}/{parts[2]}"
             if (
                 len(parts) == 4
@@ -200,8 +209,11 @@ def _salsa_path_from_alioth_url(  # noqa: C901
                 and parts[2] == "packages"
             ):
                 return f"{TEAM_NAME_MAP[parts[0]]}/{parts[3]}"
-            if (len(parts) > 3 and parts[0] in TEAM_NAME_MAP
-                    and parts[-2] == "trunk"):
+            if (
+                len(parts) > 3
+                and parts[0] in TEAM_NAME_MAP
+                and parts[-2] == "trunk"
+            ):
                 return f"{TEAM_NAME_MAP[parts[0]]}/{parts[-1]}"
             if (
                 len(parts) == 3

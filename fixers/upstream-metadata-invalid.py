@@ -10,11 +10,10 @@ from ruamel.yaml.reader import ReaderError  # noqa: E402
 from lintian_brush.fixer import fixed_lintian_tag, report_result
 from lintian_brush.yaml import MultiYamlUpdater, YamlUpdater
 
-SEQUENCE_FIELDS = ['Reference', 'Screenshots']
+SEQUENCE_FIELDS = ["Reference", "Screenshots"]
 
 try:  # noqa: C901
-    editor = YamlUpdater(
-        'debian/upstream/metadata', allow_duplicate_keys=True)
+    editor = YamlUpdater("debian/upstream/metadata", allow_duplicate_keys=True)
 
     def flatten_mapping(node):
         if not isinstance(node, MappingNode):
@@ -31,9 +30,12 @@ try:  # noqa: C901
                     node.value[vs[0][0]] = (
                         node.value[vs[0][0]][0],
                         SequenceNode(
-                            tag='tag:yaml.org,2002:seq', value=[vs[0][1]],
+                            tag="tag:yaml.org,2002:seq",
+                            value=[vs[0][1]],
                             start_mark=node.value[vs[0][0]][1].start_mark,
-                            end_mark=node.value[vs[0][0]][1].end_mark))
+                            end_mark=node.value[vs[0][0]][1].end_mark,
+                        ),
+                    )
                 primary = node.value[vs[0][0]][1]
                 for i, v in vs[1:]:
                     if isinstance(v, SequenceNode):
@@ -46,18 +48,19 @@ try:  # noqa: C901
             else:
                 # Preserve the first value.
                 # TODO(jelmer): Make a more informed choice.
-                for (i, _v) in vs[1:]:
+                for i, _v in vs[1:]:
                     to_remove.append((i, k))
         if not to_remove:
             return
         for i, _k in sorted(to_remove, reverse=True):
             editor.force_rewrite()
             del node.value[i]
-        fixed_lintian_tag('source', 'upstream-metadata-yaml-invalid')
+        fixed_lintian_tag("source", "upstream-metadata-yaml-invalid")
         report_result(
-            'Remove duplicate values for fields %s '
-            'in debian/upstream/metadata.' % ', '.join(
-                [k for (i, k) in sorted(to_remove)]))
+            "Remove duplicate values for fields %s "
+            "in debian/upstream/metadata."
+            % ", ".join([k for (i, k) in sorted(to_remove)])
+        )
 
     editor.yaml.constructor.flatten_mapping = flatten_mapping
     try:
@@ -68,22 +71,27 @@ try:  # noqa: C901
                 if len(editor.code) == 1:
                     editor.code = editor.code[0]
                     fixed_lintian_tag(
-                        'source', 'upstream-metadata-not-yaml-mapping')
+                        "source", "upstream-metadata-not-yaml-mapping"
+                    )
                     report_result(
-                        'Use YAML mapping in debian/upstream/metadata.')
-                elif all(isinstance(m, dict)
-                         and len(m) == 1 for m in editor.code):
+                        "Use YAML mapping in debian/upstream/metadata."
+                    )
+                elif all(
+                    isinstance(m, dict) and len(m) == 1 for m in editor.code
+                ):
                     old = editor.code
                     editor.code = {}
                     for entry in old:
                         editor.code.update(entry)
                         fixed_lintian_tag(
-                            'source', 'upstream-metadata-not-yaml-mapping')
+                            "source", "upstream-metadata-not-yaml-mapping"
+                        )
                     report_result(
-                        'Use YAML mapping in debian/upstream/metadata.')
+                        "Use YAML mapping in debian/upstream/metadata."
+                    )
     except ruamel.yaml.composer.ComposerError:
         ranges = []
-        with MultiYamlUpdater('debian/upstream/metadata') as multi_editor:
+        with MultiYamlUpdater("debian/upstream/metadata") as multi_editor:
             for i, m in enumerate(multi_editor):
                 if not m:
                     ranges.append(i)
@@ -91,8 +99,9 @@ try:  # noqa: C901
                 del multi_editor[i]
         if ranges:
             report_result(
-                'Discard extra empty YAML documents in '
-                'debian/upstream/metadata.')
+                "Discard extra empty YAML documents in "
+                "debian/upstream/metadata."
+            )
 
 
 except FileNotFoundError:

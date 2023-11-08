@@ -86,12 +86,16 @@ unknown = dunno
                 ),
             ]
         )
-        with self.assertLogs(level='WARNING') as log:
+        with self.assertLogs(level="WARNING") as log:
             Config("debian/lintian-brush.conf")
-            self.assertEqual(log.output, [
-                'WARNING:debian_analyzer.config:unknown key '
-                'unknown in section default in '
-                'debian/lintian-brush.conf, ignoring.'])
+            self.assertEqual(
+                log.output,
+                [
+                    "WARNING:debian_analyzer.config:unknown key "
+                    "unknown in section default in "
+                    "debian/lintian-brush.conf, ignoring."
+                ],
+            )
 
     def test_missing(self):
         self.assertRaises(FileNotFoundError, Config, "blah.conf")

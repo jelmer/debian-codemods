@@ -3,8 +3,8 @@
 from setuptools import setup
 
 setup(
-    name='dulwich',
-    description='Python Git Library',
+    name="dulwich",
+    description="Python Git Library",
     long_description="""Dulwich does this and that.
 And here is a list of bullet points:
 * a

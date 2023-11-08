@@ -11,14 +11,17 @@ with control as updater:
         if not name.startswith("Vcs-"):
             continue
         new_value = canonicalize_vcs_url(
-            name[len("Vcs-"):], updater.source[name])
+            name[len("Vcs-") :], updater.source[name]
+        )
         if new_value != updater.source[name]:
             issue = LintianIssue(
-                updater.source, 'vcs-field-not-canonical',
-                f'{updater.source[name]} {new_value}')
+                updater.source,
+                "vcs-field-not-canonical",
+                f"{updater.source[name]} {new_value}",
+            )
             if issue.should_fix():
                 issue.report_fixed()
                 updater.source[name] = new_value
                 fields.add(name)
 
-report_result("Use canonical URL in " + ', '.join(sorted(fields)) + '.')
+report_result("Use canonical URL in " + ", ".join(sorted(fields)) + ".")

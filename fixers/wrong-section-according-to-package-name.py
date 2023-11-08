@@ -13,7 +13,7 @@ from lintian_brush.section import (
     get_name_section_mappings,
 )
 
-CERTAINTY = 'likely'
+CERTAINTY = "likely"
 
 if not meets_minimum_certainty(CERTAINTY):
     sys.exit(0)
@@ -36,17 +36,24 @@ with control as updater:
         section = binary.get("Section", default_section)
         if expected_section and expected_section != section:
             fixed.append(
-                ('binary package %s' % binary["Package"],
-                 section, expected_section))
+                (
+                    "binary package %s" % binary["Package"],
+                    section,
+                    expected_section,
+                )
+            )
             binary["Section"] = expected_section
             fixed_lintian_tag(
-                binary, 'wrong-section-according-to-package-name',
-                info='{} => {}'.format(binary['Package'], expected_section))
+                binary,
+                "wrong-section-according-to-package-name",
+                info="{} => {}".format(binary["Package"], expected_section),
+            )
 
 
 # TODO(jelmer): If there is only a single binary package without section, just
 # set the section of the source package?
 report_result(
-    "Fix sections for %s." % ', '.join(
-        ['{} ({} ⇒ {})'.format(*v) for v in fixed]),
-    certainty=CERTAINTY)
+    "Fix sections for %s."
+    % ", ".join(["{} ({} ⇒ {})".format(*v) for v in fixed]),
+    certainty=CERTAINTY,
+)

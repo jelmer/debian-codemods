@@ -15,21 +15,24 @@ except FileNotFoundError:
 
 with control as updater:
     try:
-        sv = parse_standards_version(updater.source['Standards-Version'])
+        sv = parse_standards_version(updater.source["Standards-Version"])
     except KeyError:
         sys.exit(0)
-    if (sv in release_dates or
-            sv[:4] in release_dates or
-            len(sv) == 3 and
-            sv + (0, ) in release_dates):
+    if (
+        sv in release_dates
+        or sv[:4] in release_dates
+        or len(sv) == 3
+        and sv + (0,) in release_dates
+    ):
         sys.exit(0)
-    invalid_version = updater.source['Standards-Version']
+    invalid_version = updater.source["Standards-Version"]
     issue = LintianIssue(
-        'source', 'invalid-standards-version', invalid_version)
+        "source", "invalid-standards-version", invalid_version
+    )
     if issue.should_fix():
         issue.report_fixed()
         if len(sv) == 2 and (sv[0], sv[1], 0, 0) in release_dates:
-            updater.source['Standards-Version'] += '.0'
+            updater.source["Standards-Version"] += ".0"
             report_result("Add missing .0 suffix in Standards-Version.")
         elif sv > sorted(release_dates)[-1]:
             # Maybe we're just unaware of new policy releases?
@@ -38,8 +41,10 @@ with control as updater:
             # Just find the previous standards version..
             candidates = [v for v in release_dates if v < sv]
             newsv = sorted(candidates)[-1]
-            newsv_str = '.'.join([str(x) for x in newsv])
+            newsv_str = ".".join([str(x) for x in newsv])
             report_result(
-                'Replace invalid standards version {} with valid {}.'.format(
-                    updater.source['Standards-Version'], newsv_str))
-            updater.source['Standards-Version'] = newsv_str
+                "Replace invalid standards version {} with valid {}.".format(
+                    updater.source["Standards-Version"], newsv_str
+                )
+            )
+            updater.source["Standards-Version"] = newsv_str

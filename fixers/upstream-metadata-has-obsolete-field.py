@@ -6,21 +6,22 @@ from lintian_brush.fixer import report_result
 from lintian_brush.upstream_metadata import ADDON_ONLY_FIELDS
 from lintian_brush.yaml import YamlUpdater
 
-SEP_CHARS = r'\n+|\s\s+|\t+'
+SEP_CHARS = r"\n+|\s\s+|\t+"
 
 obsolete_fields = {}
 removed_fields = []
 
-with YamlUpdater('debian/upstream/metadata') as editor:
-
+with YamlUpdater("debian/upstream/metadata") as editor:
     # If the debian/copyright file is machine-readable, then we can drop the
     # Name/Contact information from the debian/upstream/metadata file.
-    if 'Name' in editor.code or 'Contact' in editor.code:
+    if "Name" in editor.code or "Contact" in editor.code:
         from debmutate.copyright import upstream_fields_in_copyright
-        obsolete_fields.update(
-            upstream_fields_in_copyright('debian/copyright'))
 
-    for field in ['Name', 'Contact']:
+        obsolete_fields.update(
+            upstream_fields_in_copyright("debian/copyright")
+        )
+
+    for field in ["Name", "Contact"]:
         try:
             um_value = editor.code[field]
         except KeyError:
@@ -48,12 +49,15 @@ with YamlUpdater('debian/upstream/metadata') as editor:
             removed_fields.append(field)
 
     if removed_fields and not (
-            set(editor.code.keys()) - set(ADDON_ONLY_FIELDS)):
+        set(editor.code.keys()) - set(ADDON_ONLY_FIELDS)
+    ):
         editor.code.clear()
 
 
 report_result(
-    'Remove obsolete field{} {} from debian/upstream/metadata '
-    '(already present in machine-readable debian/copyright).'.format(
-        's' if len(removed_fields) > 1 else '',
-        ', '.join(sorted(removed_fields))))
+    "Remove obsolete field{} {} from debian/upstream/metadata "
+    "(already present in machine-readable debian/copyright).".format(
+        "s" if len(removed_fields) > 1 else "",
+        ", ".join(sorted(removed_fields)),
+    )
+)

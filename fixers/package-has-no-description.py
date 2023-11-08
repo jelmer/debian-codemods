@@ -14,7 +14,7 @@ from lintian_brush.fixer import (
     trust_package,
 )
 
-CERTAINTY = 'possible'
+CERTAINTY = "possible"
 
 if not meets_minimum_certainty(CERTAINTY):
     sys.exit(0)
@@ -22,14 +22,15 @@ if not meets_minimum_certainty(CERTAINTY):
 
 def textwrap_description(text) -> List[str]:
     import textwrap
+
     ret = []
-    paras = text.split('\n\n')
+    paras = text.split("\n\n")
     for para in paras:
-        if '\n*' in para:
+        if "\n*" in para:
             ret.extend(para.splitlines())
         else:
             ret.extend(textwrap.wrap(para))
-        ret.append('')
+        ret.append("")
     if not ret[-1]:
         ret.pop(-1)
     return ret
@@ -37,7 +38,7 @@ def textwrap_description(text) -> List[str]:
 
 # TODO(jelmer): Use debmutate.control.format_description instead
 def format_description(summary, lines):
-    return summary + "\n" + ''.join([" %s\n" % line for line in lines])
+    return summary + "\n" + "".join([" %s\n" % line for line in lines])
 
 
 def guess_description(binary_name, all_binaries, summary=None):
@@ -46,21 +47,23 @@ def guess_description(binary_name, all_binaries, summary=None):
         return None
 
     upstream_metadata = guess_upstream_metadata(
-        '.', trust_package(), net_access_allowed())
+        ".", trust_package(), net_access_allowed()
+    )
     if summary is None:
-        summary = upstream_metadata.get('X-Summary')
+        summary = upstream_metadata.get("X-Summary")
     try:
         upstream_description = textwrap_description(
-            upstream_metadata['X-Description'])
+            upstream_metadata["X-Description"]
+        )
     except KeyError:
         # Better than nothing..
         return summary
 
     if summary is None:
         if len(upstream_description) == 1:
-            return upstream_description[0].rstrip('\n')
+            return upstream_description[0].rstrip("\n")
         return None
-    lines = [line if line else '.' for line in upstream_description]
+    lines = [line if line else "." for line in upstream_description]
 
     return format_description(summary, lines)
 
@@ -70,26 +73,28 @@ updated = []
 with control as updater:
     summary: Optional[str]
     for binary in updater.binaries:
-        existing_description = binary.get('Description')
+        existing_description = binary.get("Description")
         if not existing_description:
-            issue = LintianIssue(binary, 'required-field', 'Description')
+            issue = LintianIssue(binary, "required-field", "Description")
             summary = None
         elif len(existing_description.strip().splitlines()) == 1:
-            issue = LintianIssue(binary, 'extended-description-is-empty')
+            issue = LintianIssue(binary, "extended-description-is-empty")
             summary = existing_description.splitlines()[0]
         else:
             continue
         if not issue.should_fix():
             continue
         description = guess_description(
-            binary['Package'], list(updater.binaries), summary=summary)
+            binary["Package"], list(updater.binaries), summary=summary
+        )
         if description and description != existing_description:
-            binary['Description'] = description
-            updated.append(binary['Package'])
+            binary["Description"] = description
+            updated.append(binary["Package"])
             issue.report_fixed()
 
 
 report_result(
-    description='Add description for binary packages: %s' %
-    ', '.join(sorted(updated)),
-    certainty=CERTAINTY)
+    description="Add description for binary packages: %s"
+    % ", ".join(sorted(updated)),
+    certainty=CERTAINTY,
+)

@@ -30,19 +30,20 @@ from lintian_brush.vcswatch import VcsWatch, VcsWatchError
 
 def get_default_branch(url, branch=None):
     from dulwich.client import get_transport_and_path
+
     c, p = get_transport_and_path(url)
     result = c.fetch_pack(p, lambda rs: [], None, None)
     if branch is not None:
-        ref = b'refs/headss' + branch.encode('utf-8')
+        ref = b"refs/headss" + branch.encode("utf-8")
     else:
-        ref = b'HEAD'
+        ref = b"HEAD"
     try:
         head = result.symrefs[ref]
     except KeyError:
         return None
-    if not head.startswith(b'refs/heads/'):
-        return head.decode('utf-8')
-    return head[len(b'refs/heads/'):].decode('utf-8')
+    if not head.startswith(b"refs/heads/"):
+        return head.decode("utf-8")
+    return head[len(b"refs/heads/") :].decode("utf-8")
 
 
 def find_branch(vcs_type, url):
@@ -52,25 +53,27 @@ def find_branch(vcs_type, url):
 
 with control as updater:
     try:
-        vcs_git = updater.source['Vcs-Git']
+        vcs_git = updater.source["Vcs-Git"]
     except KeyError:
         pass
     else:
         repo_url, branch, subpath = split_vcs_url(vcs_git)
         try:
-            new_branch = find_branch('Git', vcs_git)
+            new_branch = find_branch("Git", vcs_git)
         except KeyError:
             pass
         except VcsWatchError as e:
-            warn('vcswatch URL unusable: %s' % e.args[0])
+            warn("vcswatch URL unusable: %s" % e.args[0])
         else:
             if branch != new_branch:
                 default_branch = get_default_branch(repo_url)
                 if opinionated() or new_branch not in (default_branch, branch):
-                    updater.source['Vcs-Git'] = unsplit_vcs_url(
-                        repo_url, new_branch, subpath)
+                    updater.source["Vcs-Git"] = unsplit_vcs_url(
+                        repo_url, new_branch, subpath
+                    )
                     vcs_browser = determine_browser_url(
-                        'Git', updater.source['Vcs-Git'])
+                        "Git", updater.source["Vcs-Git"]
+                    )
                     if vcs_browser is not None:
-                        updater.source['Vcs-Browser'] = vcs_browser
+                        updater.source["Vcs-Browser"] = vcs_browser
                     report_result("Set branch from vcswatch in Vcs-Git URL.")

@@ -18,15 +18,16 @@ if not opinionated():
     sys.exit(0)
 
 try:
-    os.unlink('debian/upstream/metadata')
+    os.unlink("debian/upstream/metadata")
 except FileNotFoundError:
     sys.exit(0)
 else:
-    fixed_lintian_tag('source', 'upstream-metadata-in-native-source', ())
+    fixed_lintian_tag("source", "upstream-metadata-in-native-source", ())
 
-if os.listdir('debian/upstream') == []:
-    os.rmdir('debian/upstream')
+if os.listdir("debian/upstream") == []:
+    os.rmdir("debian/upstream")
 
 report_result(
-    'Remove debian/upstream/metadata in native source package.',
-    certainty='certain')
+    "Remove debian/upstream/metadata in native source package.",
+    certainty="certain",
+)

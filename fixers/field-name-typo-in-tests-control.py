@@ -21,7 +21,7 @@ typo_fixed = set()
 
 
 try:
-    with Deb822Editor('debian/tests/control') as updater:
+    with Deb822Editor("debian/tests/control") as updater:
         for paragraph in updater.paragraphs:
             for field in paragraph:
                 if field in valid_field_names:
@@ -40,17 +40,19 @@ except FileNotFoundError:
     sys.exit(0)
 
 if case_fixed:
-    kind = 'case' + ('s' if len(case_fixed) > 1 else '')
+    kind = "case" + ("s" if len(case_fixed) > 1 else "")
 else:
-    kind = ''
+    kind = ""
 if typo_fixed:
     if case_fixed:
-        kind += ' and '
-    kind += 'typo' + ('s' if len(typo_fixed) > 1 else '')
+        kind += " and "
+    kind += "typo" + ("s" if len(typo_fixed) > 1 else "")
 
-fixed_str = ', '.join(
-    [f'{old} ⇒ {new}'
-     for (old, new) in sorted(list(case_fixed) + list(typo_fixed))])
+fixed_str = ", ".join(
+    [
+        f"{old} ⇒ {new}"
+        for (old, new) in sorted(list(case_fixed) + list(typo_fixed))
+    ]
+)
 
-report_result(
-    f'Fix field name {kind} in debian/tests/control ({fixed_str}).')
+report_result(f"Fix field name {kind} in debian/tests/control ({fixed_str}).")

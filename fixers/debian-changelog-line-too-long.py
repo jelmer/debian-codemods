@@ -29,8 +29,10 @@ def wrap_block(changelog, i):
                     continue
                 # Lintian only warns about the first block.
                 fixed_lintian_tag(
-                    'source', 'debian-changelog-line-too-long',
-                    info='line %d' % lineno)
+                    "source",
+                    "debian-changelog-line-too-long",
+                    info="line %d" % lineno,
+                )
         changelog[i]._changes = new_changes
         updated.append(changelog[i].version)
         return True
@@ -38,7 +40,7 @@ def wrap_block(changelog, i):
 
 
 with ChangelogEditor() as updater:
-    if 'CHANGELOG_THOROUGH' not in os.environ:
+    if "CHANGELOG_THOROUGH" not in os.environ:
         wrap_block(updater.changelog, 0)
     else:
         for i in range(len(updater.changelog)):
@@ -46,5 +48,6 @@ with ChangelogEditor() as updater:
 
 
 report_result(
-    'Wrap long lines in changelog entries: %s.' % (
-     ', '.join([str(v) for v in updated])))
+    "Wrap long lines in changelog entries: %s."
+    % (", ".join([str(v) for v in updated]))
+)

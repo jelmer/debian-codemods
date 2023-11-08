@@ -61,7 +61,7 @@ class MultiYamlUpdater:
                 if line != "\n" and not line.startswith("#"):
                     break
                 self._preamble.append(line)
-            self._orig_text = "".join(inp[len(self._preamble):])
+            self._orig_text = "".join(inp[len(self._preamble) :])
             self._orig = list(self.yaml.load_all(self._orig_text))
         self._code = self._orig.copy()
         return self
@@ -93,8 +93,10 @@ class MultiYamlUpdater:
 
 class YamlUpdater:
     def __init__(
-        self, path: str, remove_empty: bool = True,
-        allow_duplicate_keys: bool = False
+        self,
+        path: str,
+        remove_empty: bool = True,
+        allow_duplicate_keys: bool = False,
     ):
         self.yaml = YAML()
         self.yaml.allow_duplicate_keys = allow_duplicate_keys
@@ -123,9 +125,9 @@ class YamlUpdater:
             if "---\n" in inp:
                 for i, line in enumerate(inp):
                     if line == "---\n":
-                        self._directives = inp[len(self._preamble): i + 1]
+                        self._directives = inp[len(self._preamble) : i + 1]
                         break
-            self._orig_text = "".join(inp[len(self._preamble):])
+            self._orig_text = "".join(inp[len(self._preamble) :])
             self._orig = self.yaml.load(self._orig_text)
         self._code = self._orig.copy()
         return self
@@ -162,14 +164,17 @@ class YamlUpdater:
     def _update_lines(self, lines, f):
         for line in self._directives:
             f.write(line)
-        if "".join(lines[len(self._directives):]).startswith("{"):
+        if "".join(lines[len(self._directives) :]).startswith("{"):
             _update_json_lines(
-                self._orig, self._code, lines[len(self._directives):], f
+                self._orig, self._code, lines[len(self._directives) :], f
             )
         else:
             _update_yaml_lines(
-                self.yaml, self._orig, self._code,
-                lines[len(self._directives):], f
+                self.yaml,
+                self._orig,
+                self._code,
+                lines[len(self._directives) :],
+                f,
             )
 
     def __exit__(self, exc_type, exc_val, exc_tb):

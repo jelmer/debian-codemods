@@ -15,8 +15,10 @@ try:
         entries = fix_github_releases(updater)
         if net_access_allowed():
             certainty = watch_entries_certainty(
-                entries, source_package_name(),
-                expected_versions=[current_package_version().upstream_version])
+                entries,
+                source_package_name(),
+                expected_versions=[current_package_version().upstream_version],
+            )
         else:
             certainty = None
 except FileNotFoundError:
@@ -24,4 +26,5 @@ except FileNotFoundError:
 else:
     report_result(
         "debian/watch: Use GitHub /tags rather than /releases page.",
-        certainty=certainty)
+        certainty=certainty,
+    )

@@ -21,7 +21,8 @@ with ChangelogEditor() as editor:
         sys.exit(0)
 
     issue = LintianIssue(
-        "source", "new-package-uses-date-based-version-number", None)
+        "source", "new-package-uses-date-based-version-number", None
+    )
     if issue.should_fix():
         block.version = Version("0~%s" % block.version)
         issue.report_fixed()

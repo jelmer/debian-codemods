@@ -17,14 +17,19 @@ def rename_override_tags(path, lineno, override):
         pass  # no rename
     else:
         issue = LintianIssue(
-            (override.type, override.package), 'renamed-tag',
-            f'{override.tag} => {new_tag}')
+            (override.type, override.package),
+            "renamed-tag",
+            f"{override.tag} => {new_tag}",
+        )
         if issue.should_fix():
             issue.report_fixed()
             return LintianOverride(
-                package=override.package, archlist=override.archlist,
-                type=override.type, tag=new_tag,
-                info=override.info)
+                package=override.package,
+                archlist=override.archlist,
+                type=override.type,
+                tag=new_tag,
+                info=override.info,
+            )
     return override
 
 

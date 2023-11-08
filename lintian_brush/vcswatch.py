@@ -30,11 +30,12 @@ class VcsWatch:
 
     def __aenter__(self):
         from .udd import connect_udd_mirror
+
         self._conn = connect_udd_mirror()
 
     def __aexit__(self, exc_type, exc, tb):
         if self._conn is None:
-            raise RuntimeError('not in context manager')
+            raise RuntimeError("not in context manager")
         return self._conn.__exit__(exc_type, exc, tb)
 
     def get_package(self, name):
@@ -47,9 +48,12 @@ class VcsWatch:
         """
         assert self._conn is not None, "call connect() first"
         with self._conn.cursor() as cursor:
-            cursor.execute("""
+            cursor.execute(
+                """
 select vcs, url, browser, status, error from vcswatch
-where source = %s""", (name, ))
+where source = %s""",
+                (name,),
+            )
             row = cursor.fetchone()
             if row is None:
                 raise KeyError(name)
@@ -63,7 +67,9 @@ where source = %s""", (name, ))
         with self._conn.cursor() as cursor:
             cursor.execute(
                 "select branch, status, error from vcswatch "
-                "where url = %s and vcs = %s", (url, vcs))
+                "where url = %s and vcs = %s",
+                (url, vcs),
+            )
             row = cursor.fetchone()
             if row is None:
                 raise KeyError(url)

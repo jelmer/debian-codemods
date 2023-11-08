@@ -15,12 +15,12 @@ from lintian_brush.fixer import (
     report_result,
 )
 
-CERTAINTY = 'possible'
+CERTAINTY = "possible"
 
 if not meets_minimum_certainty(CERTAINTY):
     sys.exit(0)
 
-if os.path.exists('debian/copyright'):
+if os.path.exists("debian/copyright"):
     sys.exit(0)
 
 
@@ -36,12 +36,14 @@ from decopy.dep5 import Copyright as DecopyCopyright  # noqa: E402
 from decopy.dep5 import Group  # noqa: E402
 from decopy.tree import DirInfo, RootInfo  # noqa: E402
 
-options = process_options([
-    '--root=.',
-    '--no-progress',
-    '--mode=full',
-    '--output=debian/copyright',
-    ])
+options = process_options(
+    [
+        "--root=.",
+        "--no-progress",
+        "--mode=full",
+        "--output=debian/copyright",
+    ]
+)
 
 filetree = RootInfo.build(options)
 copyright_ = DecopyCopyright.build(filetree, options)
@@ -66,9 +68,7 @@ licenses = set()
 
 c = Copyright()
 # Print files paragraphs
-for _, group in sorted(
-        groups.items(), key=lambda i: i[1].sort_key(options)):
-
+for _, group in sorted(groups.items(), key=lambda i: i[1].sort_key(options)):
     if not group.copyright_block_valid():
         continue
 
@@ -80,11 +80,12 @@ for _, group in sorted(
         files = group.files.sorted_members()
 
     if group.copyrights:
-        holders = '\n           '.join(group.copyrights.sorted_members())
+        holders = "\n           ".join(group.copyrights.sorted_members())
     else:
-        holders = 'Unknown'
+        holders = "Unknown"
     files_paragraph = FilesParagraph.create(
-        list(files), holders, License(group.license))
+        list(files), holders, License(group.license)
+    )
 
     comments = group.get_comments()
     if comments:
@@ -95,17 +96,15 @@ for _, group in sorted(
 # Print license paragraphs
 for key in sorted(licenses):
     license_ = DecopyLicense.get(key)
-    license_paragraph = LicenseParagraph.create(
-        License(license_.name))
-    license_paragraph.comment = (
-        "Add the corresponding license text here")  # type: ignore
+    license_paragraph = LicenseParagraph.create(License(license_.name))
+    license_paragraph.comment = "Add the corresponding license text here"  # type: ignore
     c.add_license_paragraph(license_paragraph)
 
 
-issue = LintianIssue('source', 'no-copyright-file')
+issue = LintianIssue("source", "no-copyright-file")
 if issue.should_fix():
-    with open('debian/copyright', 'w') as f:
+    with open("debian/copyright", "w") as f:
         c.dump(f)
     issue.report_fixed()
 
-report_result('Create a debian/copyright file.', certainty=CERTAINTY)
+report_result("Create a debian/copyright file.", certainty=CERTAINTY)

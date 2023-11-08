@@ -15,12 +15,13 @@ conn = connect_udd_mirror()
 with conn.cursor() as cursor:
     cursor.execute(
         "SELECT package_type, package, package_version, information "
-        "FROM lintian WHERE tag = 'mismatched-override'")
+        "FROM lintian WHERE tag = 'mismatched-override'"
+    )
 
     tag_count = {}
     for row in cursor:
         (_pkg_type, _pkg, _version, info) = row
-        tag = info.split(' ')[0]
+        tag = info.split(" ")[0]
         tag_count.setdefault(tag, 0)
         tag_count[tag] += 1
 
@@ -28,7 +29,7 @@ tags_with_location_info = set()
 
 with conn.cursor() as cursor:
     cursor.execute("SELECT tag FROM lintian WHERE information LIKE '%%[%%]'")
-    for tag, in cursor:
+    for (tag,) in cursor:
         tags_with_location_info.add(tag)
 
 
@@ -39,4 +40,4 @@ for tag, count in sorted(tag_count.items(), reverse=True, key=lambda k: k[1]):
     if tag in INFO_FIXERS:
         # We already have a fixer
         continue
-    print(f'{tag:50}  {count}')
+    print(f"{tag:50}  {count}")

@@ -80,8 +80,10 @@ class LintianIssue:
 
     def override_exists(self):
         return _override_exists(
-            tag=self.tag, info=self.info, type=self.target[0],
-            package=self.target[1]
+            tag=self.tag,
+            info=self.info,
+            type=self.target[0],
+            package=self.target[1],
         )
 
     def should_fix(self):
@@ -98,7 +100,7 @@ class LintianIssue:
         if self.target[1] is not None:
             ret.append(self.target[1] + " ")
         ret.append(self.target[0])
-        ret.append(": " + self.tag + (' ' + self.info) if self.info else '')
+        ret.append(": " + self.tag + (" " + self.info) if self.info else "")
         return "".join(ret)
 
     def __repr__(self):
@@ -134,7 +136,8 @@ def _override_exists(
         if _tag_renames.get(override.tag) == tag:
             tag = override.tag
         if override.matches(
-                package=package, info=info, tag=tag, arch=arch, type=type):
+            package=package, info=info, tag=tag, arch=arch, type=type
+        ):
             return True
     return False
 
@@ -160,8 +163,9 @@ def reset() -> None:
     _overriden_issues = []
 
 
-def report_result(description=None, certainty=None, patch_name=None,
-                  details=None):
+def report_result(
+    description=None, certainty=None, patch_name=None, details=None
+):
     """Report the result of a fixer.
 
     Args:
@@ -174,17 +178,16 @@ def report_result(description=None, certainty=None, patch_name=None,
         print(description)
     if details:
         for detail in details:
-            print('+ %s' % detail)
+            print("+ %s" % detail)
     if certainty:
         print("Certainty: %s" % certainty)
-    fixed_lintian_tags = {
-        issue.tag for issue in _fixed_lintian_issues}
+    fixed_lintian_tags = {issue.tag for issue in _fixed_lintian_issues}
     if fixed_lintian_tags:
         print("Fixed-Lintian-Tags: %s" % ", ".join(sorted(fixed_lintian_tags)))
     if _overriden_issues:
         print("Overridden-Lintian-Issues:")
         for issue in _overriden_issues:
-            print(' ' + str(issue))
+            print(" " + str(issue))
     if patch_name:
         print("Patch-Name: %s" % patch_name)
     reset()
@@ -216,7 +219,7 @@ def package_is_native():
 def meets_minimum_certainty(certainty):
     return certainty_sufficient(
         certainty,
-        os.environ.get("MINIMUM_CERTAINTY", DEFAULT_MINIMUM_CERTAINTY)
+        os.environ.get("MINIMUM_CERTAINTY", DEFAULT_MINIMUM_CERTAINTY),
     )
 
 
@@ -241,12 +244,13 @@ def source_package_name():
 
 
 def is_debcargo_package():
-    return os.path.exists('debian/debcargo.toml')
+    return os.path.exists("debian/debcargo.toml")
 
 
 if is_debcargo_package():
     from debmutate.debcargo import DebcargoControlShimEditor
-    control = DebcargoControlShimEditor.from_debian_dir('debian')
+
+    control = DebcargoControlShimEditor.from_debian_dir("debian")
 else:
     control = ControlEditor()
 
@@ -266,7 +270,7 @@ def linenos_to_ranges(linenos):
             ret.append("%d-%d" % (r[0], r[-1]))
 
     for lineno in linenos:
-        if not cur_range or cur_range[-1] == lineno-1:
+        if not cur_range or cur_range[-1] == lineno - 1:
             cur_range.append(lineno)
         else:
             finalize_range(cur_range)
@@ -277,7 +281,7 @@ def linenos_to_ranges(linenos):
 
 
 def shorten_path(path):
-    ps = path.split('/')
-    if ps[0] == 'debian':
-        ps[0] = 'd'
-    return '/'.join(ps)
+    ps = path.split("/")
+    if ps[0] == "debian":
+        ps[0] = "d"
+    return "/".join(ps)

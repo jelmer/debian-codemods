@@ -21,7 +21,7 @@ import json
 import os
 from typing import Optional, TextIO
 
-LINTIAN_DATA_PATH = '/usr/share/lintian/data'
+LINTIAN_DATA_PATH = "/usr/share/lintian/data"
 
 
 def read_debhelper_lintian_data_file(f, sep):
@@ -44,22 +44,26 @@ def read_list_file(f: TextIO, vendor: Optional[str] = None):
         line = line.strip()
         if not line:
             continue
-        if line.startswith('#'):
+        if line.startswith("#"):
             continue
-        if line.startswith('@'):
+        if line.startswith("@"):
             cond, if_vendor, val = line.split(None, 2)
-            if cond == '@if-vendor-is-not':
-                if (if_vendor and vendor and
-                        if_vendor.lower() == vendor.lower()):
+            if cond == "@if-vendor-is-not":
+                if (
+                    if_vendor
+                    and vendor
+                    and if_vendor.lower() == vendor.lower()
+                ):
                     continue
                 line = val
             else:
-                raise ValueError('invalid check %r' % cond)
+                raise ValueError("invalid check %r" % cond)
         yield line
 
 
 OBSOLETE_SITES_PATH = os.path.join(
-    LINTIAN_DATA_PATH, 'obsolete-sites/obsolete-sites')
+    LINTIAN_DATA_PATH, "obsolete-sites/obsolete-sites"
+)
 _obsolete_sites = None
 
 
@@ -76,7 +80,8 @@ def is_obsolete_site(parsed_url) -> Optional[str]:
 
 
 KNOWN_TESTS_CONTROL_FIELDS_PATH = os.path.join(
-    LINTIAN_DATA_PATH, 'testsuite/known-fields')
+    LINTIAN_DATA_PATH, "testsuite/known-fields"
+)
 
 
 def _capitalize_field(field):
@@ -94,12 +99,19 @@ def _read_test_fields(path, vendor):
 
 
 def known_tests_control_fields(vendor):
-    return {'Tests', 'Restrictions', 'Features', 'Depends',
-            'Tests-Directory', 'Test-Command'}
+    return {
+        "Tests",
+        "Restrictions",
+        "Features",
+        "Depends",
+        "Tests-Directory",
+        "Test-Command",
+    }
 
 
 KNOWN_SOURCE_FIELDS_PATH = os.path.join(
-    LINTIAN_DATA_PATH, 'common/source-fields')
+    LINTIAN_DATA_PATH, "common/source-fields"
+)
 
 
 def known_source_fields(vendor):
@@ -107,7 +119,8 @@ def known_source_fields(vendor):
 
 
 KNOWN_BINARY_FIELDS_PATH = os.path.join(
-    LINTIAN_DATA_PATH, 'fields/binary-fields')
+    LINTIAN_DATA_PATH, "fields/binary-fields"
+)
 
 
 def known_binary_fields(vendor):
@@ -115,38 +128,40 @@ def known_binary_fields(vendor):
 
 
 DEBHELPER_DH_COMMANDS_PATH = os.path.join(
-    LINTIAN_DATA_PATH, 'debhelper/dh_commands')
+    LINTIAN_DATA_PATH, "debhelper/dh_commands"
+)
 DEBHELPER_DH_COMMANDS_MANUAL_PATH = os.path.join(
-    LINTIAN_DATA_PATH, 'debhelper/dh_commands-manual')
+    LINTIAN_DATA_PATH, "debhelper/dh_commands-manual"
+)
 
 DEBHELPER_COMMANDS_JSON_PATH = os.path.join(
-    LINTIAN_DATA_PATH, 'debhelper/commands.json')
+    LINTIAN_DATA_PATH, "debhelper/commands.json"
+)
 
 
 def dh_commands():
     try:
         with open(DEBHELPER_DH_COMMANDS_PATH) as f:
-            entries = set(read_debhelper_lintian_data_file(f, '='))
+            entries = set(read_debhelper_lintian_data_file(f, "="))
         with open(DEBHELPER_DH_COMMANDS_MANUAL_PATH) as f:
-            entries.update(read_debhelper_lintian_data_file(f, '||'))
-        return {
-            cmd: {'installed_by': [pkg]}
-            for (cmd, pkg) in entries}
+            entries.update(read_debhelper_lintian_data_file(f, "||"))
+        return {cmd: {"installed_by": [pkg]} for (cmd, pkg) in entries}
     except FileNotFoundError:
         with open(DEBHELPER_COMMANDS_JSON_PATH) as f:
             data = json.load(f)
-        return data['commands']
+        return data["commands"]
 
 
 def dh_addons():
     try:
-        with open(os.path.join(
-                LINTIAN_DATA_PATH, 'common/dh_addons')) as f:
+        with open(os.path.join(LINTIAN_DATA_PATH, "common/dh_addons")) as f:
             return {
-                addon: {'installed_by': [pkg]}
-                for (addon, pkg) in read_debhelper_lintian_data_file(f, '=')}
+                addon: {"installed_by": [pkg]}
+                for (addon, pkg) in read_debhelper_lintian_data_file(f, "=")
+            }
     except FileNotFoundError:
-        with open(os.path.join(
-                LINTIAN_DATA_PATH, 'debhelper/add_ons.json')) as f:
+        with open(
+            os.path.join(LINTIAN_DATA_PATH, "debhelper/add_ons.json")
+        ) as f:
             data = json.load(f)
-            return data['add_ons']
+            return data["add_ons"]

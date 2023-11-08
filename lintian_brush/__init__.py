@@ -55,7 +55,8 @@ FixerResult = _lintian_brush_rs.FixerResult
 UnsupportedCertainty = _lintian_brush_rs.UnsupportedCertainty
 read_desc_file = _lintian_brush_rs.read_desc_file
 only_changes_last_changelog_block = (
-    _lintian_brush_rs.only_changes_last_changelog_block)
+    _lintian_brush_rs.only_changes_last_changelog_block
+)
 
 
 class NoChanges(Exception):
@@ -70,10 +71,16 @@ class NoChanges(Exception):
 class NotCertainEnough(NoChanges):
     """Script made changes but with too low certainty."""
 
-    def __init__(self, fixer, certainty, minimum_certainty,
-                 overridden_lintian_issues=None):
+    def __init__(
+        self,
+        fixer,
+        certainty,
+        minimum_certainty,
+        overridden_lintian_issues=None,
+    ):
         super().__init__(
-            fixer, overridden_lintian_issues=overridden_lintian_issues)
+            fixer, overridden_lintian_issues=overridden_lintian_issues
+        )
         self.certainty = certainty
         self.minimum_certainty = minimum_certainty
 
@@ -135,28 +142,28 @@ PythonScriptFixer = _lintian_brush_rs.PythonScriptFixer
 
 
 def open_binary(name):
-    return open(data_file_path(name), 'rb')  # noqa: SIM115
+    return open(data_file_path(name), "rb")  # noqa: SIM115
 
 
 def data_file_path(name, check=os.path.exists):
     # There's probably a more Pythonic way of doing this, but
     # I haven't bothered finding out what it is yet..
-    path = os.path.abspath(os.path.join(
-        os.path.dirname(__file__), "..", name))
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", name))
     if check(path):
         return path
 
     import pkg_resources
 
-    path = pkg_resources.resource_filename(
-        __name__, f"lintian-brush/{name}")
+    path = pkg_resources.resource_filename(__name__, f"lintian-brush/{name}")
     if check(path):
         return path
 
     # Urgh.
-    for b in ['/usr/share/lintian-brush',
-              '/usr/local/share/lintian-brush',
-              os.path.join(sys.prefix, 'share/lintian-brush')]:
+    for b in [
+        "/usr/share/lintian-brush",
+        "/usr/local/share/lintian-brush",
+        os.path.join(sys.prefix, "share/lintian-brush"),
+    ]:
         path = os.path.join(b, name)
         if check(path):
             return path
@@ -167,8 +174,10 @@ find_fixers_dir = _lintian_brush_rs.find_fixers_dir
 
 
 def select_fixers(
-    fixers: List[Fixer], *, names: Optional[List[str]] = None,
-    exclude: Optional[Iterable[str]] = None
+    fixers: List[Fixer],
+    *,
+    names: Optional[List[str]] = None,
+    exclude: Optional[Iterable[str]] = None,
 ) -> List[Fixer]:
     """Select fixers by name, from a list.
 
@@ -202,7 +211,8 @@ def available_lintian_fixers(fixers_dir=None, force_subprocess=False):
     if fixers_dir is None:
         fixers_dir = find_fixers_dir()
     return _lintian_brush_rs.available_lintian_fixers(
-        fixers_dir, force_subprocess)
+        fixers_dir, force_subprocess
+    )
 
 
 increment_version = _lintian_brush_rs.increment_version
@@ -260,8 +270,7 @@ def _note_changelog_policy(policy, msg):
 
 class FailedPatchManipulation(Exception):
     def __init__(self, tree, patches_directory, reason):
-        super().__init__(
-            tree, patches_directory, reason)
+        super().__init__(tree, patches_directory, reason)
 
 
 def _upstream_changes_to_patch(
@@ -287,8 +296,10 @@ def _upstream_changes_to_patch(
         quilt_patches = list(read_quilt_patches(local_tree, patches_directory))
     except PatchSyntax as e:
         raise FailedPatchManipulation(
-            local_tree, patches_directory,
-            "Unable to parse some patches: %s" % e) from e
+            local_tree,
+            patches_directory,
+            "Unable to parse some patches: %s" % e,
+        ) from e
     if len(quilt_patches) > 0:
         raise FailedPatchManipulation(
             local_tree,
@@ -310,8 +321,9 @@ def _upstream_changes_to_patch(
         )
     except FileExistsError as e:
         raise FailedPatchManipulation(
-            local_tree, patches_directory,
-            "patch path %s already exists\n" % e.args[0]
+            local_tree,
+            patches_directory,
+            "patch path %s already exists\n" % e.args[0],
         ) from e
 
     return patch_name, specific_files
@@ -340,8 +352,10 @@ class ManyResult:
 
 
 def get_dirty_tracker(
-        local_tree: WorkingTree, subpath: str = "",
-        use_inotify: Optional[bool] = None):
+    local_tree: WorkingTree,
+    subpath: str = "",
+    use_inotify: Optional[bool] = None,
+):
     """Create a dirty tracker object."""
     if use_inotify is True:
         from breezy.dirty_tracker import DirtyTracker
@@ -364,7 +378,7 @@ def determine_update_changelog(local_tree, debian_path):
         guess_update_changelog,
     )
 
-    changelog_path = os.path.join(debian_path, 'changelog')
+    changelog_path = os.path.join(debian_path, "changelog")
 
     if not local_tree.has_filename(changelog_path):
         # If there's no changelog, then there's nothing to update!
@@ -373,11 +387,13 @@ def determine_update_changelog(local_tree, debian_path):
     behaviour = guess_update_changelog(local_tree, debian_path)
     if behaviour:
         _note_changelog_policy(
-            behaviour.update_changelog, behaviour.explanation)
+            behaviour.update_changelog, behaviour.explanation
+        )
     else:
         # If we can't make an educated guess, assume yes.
         behaviour = ChangelogBehaviour(
-            True, "Assuming changelog should be updated")
+            True, "Assuming changelog should be updated"
+        )
 
     return behaviour
 
@@ -426,6 +442,7 @@ def run_lintian_fixers(  # noqa: C901
            error that occurred
     """
     from tqdm import trange
+
     basis_tree = local_tree.basis_tree()
     check_clean_tree(local_tree, basis_tree=basis_tree, subpath=subpath)
     fixers = list(fixers)
@@ -437,26 +454,28 @@ def run_lintian_fixers(  # noqa: C901
         def update_changelog():
             nonlocal update_changelog, changelog_behaviour
             changelog_behaviour = determine_update_changelog(
-                local_tree, os.path.join(subpath, "debian"))
+                local_tree, os.path.join(subpath, "debian")
+            )
             return changelog_behaviour.update_changelog
     else:
         changelog_behaviour = None
 
     ret = ManyResult()
     with ExitStack() as es:
-        t = es.enter_context(
-            trange(len(fixers), leave=False, disable=None))  # type: ignore
+        t = es.enter_context(trange(len(fixers), leave=False, disable=None))  # type: ignore
 
         dirty_tracker = get_dirty_tracker(
             local_tree, subpath=subpath, use_inotify=use_inotify
         )
         if dirty_tracker:
             from breezy.dirty_tracker import TooManyOpenFiles
+
             try:
                 es.enter_context(dirty_tracker)
             except TooManyOpenFiles:
                 logging.warning(
-                    'Too many open files for inotify, not using it.')
+                    "Too many open files for inotify, not using it."
+                )
                 dirty_tracker = None
 
         for fixer in fixers:
@@ -486,9 +505,10 @@ def run_lintian_fixers(  # noqa: C901
                 ret.formatting_unpreservable[fixer.name] = e.path
                 if verbose:
                     logging.info(
-                        "Fixer %r was unable to preserve "
-                        "formatting of %s.", fixer.name,
-                        e.path)
+                        "Fixer %r was unable to preserve " "formatting of %s.",
+                        fixer.name,
+                        e.path,
+                    )
             except FixerFailed as e:
                 ret.failed_fixers[fixer.name] = e
                 if verbose:
@@ -498,8 +518,8 @@ def run_lintian_fixers(  # noqa: C901
                 ret.failed_fixers[fixer.name] = e
                 if verbose:
                     logging.info(
-                        "Run out of memory while running fixer %r.",
-                        fixer.name)
+                        "Run out of memory while running fixer %r.", fixer.name
+                    )
             except NotCertainEnough as e:
                 if verbose:
                     logging.info(
@@ -513,8 +533,8 @@ def run_lintian_fixers(  # noqa: C901
             except FailedPatchManipulation as e:
                 if verbose:
                     logging.info(
-                        "Unable to manipulate upstream patches: %s",
-                        e.args[2])
+                        "Unable to manipulate upstream patches: %s", e.args[2]
+                    )
                 ret.failed_fixers[fixer.name] = e
             except NoChanges as e:
                 if verbose:
@@ -524,7 +544,8 @@ def run_lintian_fixers(  # noqa: C901
                         time.time() - start,
                     )
                 ret.overridden_lintian_issues.extend(
-                    e.overridden_lintian_issues)
+                    e.overridden_lintian_issues
+                )
             else:
                 if verbose:
                     logging.info(

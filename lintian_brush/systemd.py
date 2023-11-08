@@ -114,7 +114,8 @@ class Section(ConfigNamespace):
                         line.contents.remove(option)
             if remaining:
                 obj = LineContainer(
-                    OptionLine(key, " ".join(remaining), separator="="))
+                    OptionLine(key, " ".join(remaining), separator="=")
+                )
                 self._lines[-1].add(obj)
                 self._options[key].append(obj)
         else:
@@ -262,8 +263,13 @@ class UnitFile(ConfigNamespace):
     def __str__(self):
         return self._data.__str__()
 
-    _line_types = [EmptyLine, CommentLine, SectionLine, OptionLine,
-                   ContinuationLine]
+    _line_types = [
+        EmptyLine,
+        CommentLine,
+        SectionLine,
+        OptionLine,
+        ContinuationLine,
+    ]
 
     def _parse(self, line):
         for linetype in self._line_types:

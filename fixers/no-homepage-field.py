@@ -19,8 +19,9 @@ from lintian_brush.fixer import (
 
 def guess_homepage():
     for datum in guess_upstream_metadata_items(
-            '.', trust_package=trust_package()):
-        if datum.field != 'Homepage':
+        ".", trust_package=trust_package()
+    ):
+        if datum.field != "Homepage":
             continue
         if not meets_minimum_certainty(datum.certainty):
             continue
@@ -31,21 +32,23 @@ def guess_homepage():
 
 with control as updater:
     issue: Optional[LintianIssue]
-    if 'Homepage' not in updater.source:
+    if "Homepage" not in updater.source:
         datum = guess_homepage()
-        issue = LintianIssue('source', 'no-homepage-field')
+        issue = LintianIssue("source", "no-homepage-field")
         if datum and issue.should_fix():
             updater.source["Homepage"] = datum.value
             issue.report_fixed()
-            report_result('Fill in Homepage field.', certainty=datum.certainty)
+            report_result("Fill in Homepage field.", certainty=datum.certainty)
     else:
-        hostname = urlparse(updater.source['Homepage']).hostname
-        if hostname == 'pypi.org':
+        hostname = urlparse(updater.source["Homepage"]).hostname
+        if hostname == "pypi.org":
             issue = LintianIssue(
-                'source', 'pypi-homepage', updater.source['Homepage'])
-        elif hostname == 'rubygems.org':
+                "source", "pypi-homepage", updater.source["Homepage"]
+            )
+        elif hostname == "rubygems.org":
             issue = LintianIssue(
-                'source', 'rubygem-homepage', updater.source['Homepage'])
+                "source", "rubygem-homepage", updater.source["Homepage"]
+            )
         else:
             issue = None
 
@@ -55,5 +58,6 @@ with control as updater:
                 updater.source["Homepage"] = datum.value
                 issue.report_fixed()
                 report_result(
-                    'Avoid %s in Homepage field.' % hostname,
-                    certainty=datum.certainty)
+                    "Avoid %s in Homepage field." % hostname,
+                    certainty=datum.certainty,
+                )

@@ -12,19 +12,19 @@ from lintian_brush.fixer import (
     report_result,
 )
 
-if not os.path.exists('debian/watch'):
+if not os.path.exists("debian/watch"):
     sys.exit(0)
 
 
 def watchfile_has_http():
-    with open('debian/watch') as f:
+    with open("debian/watch") as f:
         wf = parse_watch_file(f)
 
     if not wf:
         return False
 
     for entry in wf:
-        if entry.url.startswith('http://'):
+        if entry.url.startswith("http://"):
             return True
     else:
         # No plain HTTP URLs
@@ -32,24 +32,24 @@ def watchfile_has_http():
 
 
 def update_watchfile(fn):
-    with open('debian/watch') as f:
+    with open("debian/watch") as f:
         old = f.readlines()
 
     new = []
     for line in old:
         try:
-            (bef, aft) = line.split('#', 1)
+            (bef, aft) = line.split("#", 1)
         except ValueError:
             bef = line
             aft = None
         newbef = fn(bef)
         if newbef != bef:
             issue = LintianIssue(
-                'source', 'debian-watch-uses-insecure-uri',
-                bef)
+                "source", "debian-watch-uses-insecure-uri", bef
+            )
             if issue.should_fix():
                 if aft is not None:
-                    new.append('#'.join([newbef, aft]))
+                    new.append("#".join([newbef, aft]))
                 else:
                     new.append(newbef)
                 issue.report_fixed()
@@ -59,7 +59,7 @@ def update_watchfile(fn):
             new.append(line)
 
     if old != new:
-        with open('debian/watch', 'w') as f:
+        with open("debian/watch", "w") as f:
             f.writelines(new)
         return True
     return False
@@ -73,8 +73,8 @@ if not watchfile_has_http():
 # these. The method below (involving uscan) doesn't work from e.g. sbuild
 # hosts.
 def stock_replace(line):
-    for hostname in ['code.launchpad.net', 'launchpad.net', 'ftp.gnu.org']:
-        line = line.replace('http://%s/' % hostname, 'https://%s/' % hostname)
+    for hostname in ["code.launchpad.net", "launchpad.net", "ftp.gnu.org"]:
+        line = line.replace("http://%s/" % hostname, "https://%s/" % hostname)
     return line
 
 
@@ -94,7 +94,8 @@ if not net_access_allowed():
 
 def run_uscan_dehs():
     return subprocess.check_output(
-        ['uscan', '--dehs', '--report'], stderr=subprocess.PIPE)
+        ["uscan", "--dehs", "--report"], stderr=subprocess.PIPE
+    )
 
 
 try:
@@ -105,7 +106,7 @@ except subprocess.CalledProcessError:
 
 
 def replace_all(line):
-    return line.replace('http://', 'https://')
+    return line.replace("http://", "https://")
 
 
 if not update_watchfile(replace_all):
@@ -118,12 +119,13 @@ except subprocess.CalledProcessError:
 
 # uscan creates backup files.
 for path in [
-        'debian/upstream/signing-key.pgp.backup',
-        'debian/upstream-signing-key.pgp.backup']:
+    "debian/upstream/signing-key.pgp.backup",
+    "debian/upstream-signing-key.pgp.backup",
+]:
     if os.path.exists(path):
         os.unlink(path)
 
 # Make sure that reports are same up to http/https substitution in URL.
-if before.replace(b'http://', b'https://') != after:
+if before.replace(b"http://", b"https://") != after:
     # Couldn't do anything :(
     sys.exit(2)

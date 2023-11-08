@@ -9,7 +9,7 @@ from lintian_brush.fixer import LintianIssue, report_result
 
 used = []
 defined = set()
-certainty = 'certain'
+certainty = "certain"
 
 
 def extract_licenses(synopsis):
@@ -21,7 +21,7 @@ def extract_licenses(synopsis):
     ret = []
     for license in synopsis.split(" or "):
         options = [license]
-        m = re.fullmatch(r'(.*) with (.*) exception', license)
+        m = re.fullmatch(r"(.*) with (.*) exception", license)
         if m:
             license = m.group(1)
         options.append(license)
@@ -31,8 +31,10 @@ def extract_licenses(synopsis):
 
 try:  # noqa: C901
     with CopyrightEditor() as updater:
-        if (updater.copyright.header.license
-                and updater.copyright.header.license.text):
+        if (
+            updater.copyright.header.license
+            and updater.copyright.header.license.text
+        ):
             defined.add(updater.copyright.header.license.synopsis)
         for paragraph in updater.copyright.all_paragraphs():
             if not paragraph.license:
@@ -69,11 +71,13 @@ try:  # noqa: C901
                 extra_used.append(options)
 
         if extra_used:
-            sys.stderr.write('Undefined licenses in copyright: %r' %
-                             [options[0] for options in extra_used])
+            sys.stderr.write(
+                "Undefined licenses in copyright: %r"
+                % [options[0] for options in extra_used]
+            )
             # Drop the certainty since it's possible the undefined licenses
             # are actually the referenced ones.
-            certainty = 'possible'
+            certainty = "possible"
 
         for name in extra_defined:
             for paragraph in updater.copyright.all_paragraphs():
@@ -82,17 +86,19 @@ try:  # noqa: C901
                 if paragraph.license.synopsis == name:
                     continue
                 if paragraph.license.text and name in paragraph.license.text:
-                    certainty = 'possible'
+                    certainty = "possible"
                 if paragraph.comment and name in paragraph.comment:
-                    certainty = 'possible'
+                    certainty = "possible"
 
         if extra_defined and not extra_used:
             for paragraph in list(updater.copyright.all_paragraphs()):
                 if not paragraph.license:
                     continue
                 issue = LintianIssue(
-                    'source', 'unused-license-paragraph-in-dep5-copyright',
-                    info=paragraph.license.synopsis.lower())
+                    "source",
+                    "unused-license-paragraph-in-dep5-copyright",
+                    info=paragraph.license.synopsis.lower(),
+                )
                 if not issue.should_fix():
                     continue
                 if paragraph.license.synopsis in extra_defined:
@@ -102,5 +108,6 @@ except (FileNotFoundError, NotMachineReadableError):
     pass
 else:
     report_result(
-        "Remove unused license definitions for %s." % ', '.join(extra_defined),
-        certainty=certainty)
+        "Remove unused license definitions for %s." % ", ".join(extra_defined),
+        certainty=certainty,
+    )
