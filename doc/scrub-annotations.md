@@ -47,7 +47,7 @@ Alternatively, entire blocks of code can be selected using the following syntax:
 
 ```shell
 
-# begin scrub: released(trixie)
+# begin scrub: after trixie
 alternatives --add foo bar
 alternatives --add foo bar1
 # end scrub
@@ -71,7 +71,7 @@ The following expressions will initially be supported:
 Otherwise, the following are attempted one by one to interpret the expression, until one is valid:
 
 * ``$name`` is an alias for ``released:$name`` if $name is a known Debian release name
-* ``$package (>= $version)`` is an alias for ``present: $package (>= $version)``
+* ``$package >= $version`` is an alias for ``present:$package >= $version``
                                                                      0
 # Future extensions
 
