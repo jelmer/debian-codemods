@@ -34,11 +34,11 @@ been released.
 Comments can appear anywhere in the line, i.e. all of these are recognized:
 
 ```shell
-blah  # scrub: after released(trixie) # Trixie comes with blah built in
+blah  # scrub: after released:trixie # Trixie comes with blah built in
 blah  # scrub: after trixie
-blah  # scrub: blah-transition, after released(trixie)
+blah  # scrub: blah-transition, after released:trixie
 blah  # scrub: blah-transition
-blah  # Trixie comes with blah built in # after scrub(released(trixie)
+blah  # Trixie comes with blah built in # scrub: after trixie
 ```
 
 ### Block
@@ -65,17 +65,19 @@ later.
 The following expressions will initially be supported:
 
 * ``released:$name`` if the Debian release with specified codename is released. E.g. ``released:trixie``
-* ``in($suite): $package >= $version`` - if a particular suite has at least version $version of $package. E.g. ``in(unstable): systemd >= 3.5``
-* ``in($suite): !$package`` - if a particular suite no longer has a package
-* ``supported: $package >= $version`` - if all supported versions have at least verison $version of $package. E.g. ``supported: systemd >= 3.5``
-* ``transition:$name`` if a particular transition on https://release.debian.org/transitions/ has been marked as done. E.g. ``transition:fuse-to-fuse3``
-
-For package version comparisons, only ``>=`` and ``>>`` are supported, since
-they are the only conditions that will still hold true in future releases. If a package is removed
-from the archive, its latest version that was present in the archive is used.
+* ``present:$package`` if the current suite (usually unstable) contains the named package. E.g. ``present:systemd``
+* ``present:$package >= $version`` if the current suite (usually unstable) contains the named package with at least specified version. E.g. ``present:systemd >= 3.4``
 
 Otherwise, the following are attempted one by one to interpret the expression, until one is valid:
 
 * ``$name`` is an alias for ``released:$name`` if $name is a known Debian release name
-* ``$name`` is an alias for ``transition:$name`` if $name is a known transition name
-* ``$package (>= $version)`` is an alias for ``in($current\_suite): $package (>= $version)``, where ``$current_suite`` is the suite the package is being built for
+* ``$package (>= $version)`` is an alias for ``present: $package (>= $version)``
+                                                                     0
+# Future extensions
+
+In the future, we might consider other expression that check things such as:
+
+* whether a particular suite has a new enough version of a package
+* whether a package has been removed in a suite
+* whether all supported releases contain a new enough version of a package
+* whether a particular transition (as listed on https://release.debian.org/transitions/) has completed
