@@ -26,9 +26,9 @@ the other has an invalid expression.
 
 ### Single line
 
-For shell files, the comments take the format ``# cleanup: [<marker-name>, ][after <expression>]`` after a line,
+For shell files, the comments take the format ``# remove-after: [<marker-name>, ][after <expression>]`` after a line,
 indicating that the line can be removed altogether when the expression is true. For example,
-``# cleanup: released:trixie`` means that the line can be removed when trixie has
+``# remove-after: released:trixie`` means that the line can be removed when trixie has
 been released.
 
 Comments can appear anywhere in the line, i.e. all of these are recognized:
