@@ -13,10 +13,10 @@ list of markers that can be removed on the command-line.
 When parsing these expressions, we'll have to be liberal in what to accept so long as it is
 unambiguous. This is because most of these lines will have been written without
 formal verification. It might make sense for deb-scrub-obsolete to provide an option to
-validate the syntax of "# scrub" commands, perhaps allowing for bugs to be filed for
+validate the syntax of "# remove-after" commands, perhaps allowing for bugs to be filed for
 incorrect entries.
 
-If any scrub comments can not be interpreted, none of them are removed. This is so that
+If any remove-after comments can not be interpreted, none of them are removed. This is so that
 if there are related blocks that need to be removed together, we don't end up removing just one if
 the other has an invalid expression.
 
@@ -26,19 +26,18 @@ the other has an invalid expression.
 
 ### Single line
 
-For shell files, the comments take the format ``# scrub: [<marker-name>, ][after <expression>]`` after a line,
+For shell files, the comments take the format ``# cleanup: [<marker-name>, ][after <expression>]`` after a line,
 indicating that the line can be removed altogether when the expression is true. For example,
-``# scrub: released:trixie`` means that the line can be removed when trixie has
+``# cleanup: released:trixie`` means that the line can be removed when trixie has
 been released.
 
 Comments can appear anywhere in the line, i.e. all of these are recognized:
 
 ```shell
-blah  # scrub: after released:trixie # Trixie comes with blah built in
-blah  # scrub: after trixie
-blah  # scrub: blah-transition, after released:trixie
-blah  # scrub: blah-transition
-blah  # Trixie comes with blah built in # scrub: after trixie
+blah  # remove-after: released:trixie # Trixie comes with blah built in
+blah  # remove-after: trixie
+blah  # remove-after: blah-transition
+blah  # Trixie comes with blah built in # remove-after: trixie
 ```
 
 ### Block
@@ -47,10 +46,10 @@ Alternatively, entire blocks of code can be selected using the following syntax:
 
 ```shell
 
-# begin scrub: after trixie
+# begin-remove-after: trixie
 alternatives --add foo bar
 alternatives --add foo bar1
-# end scrub
+# end-remove-after
 
 ```
 
