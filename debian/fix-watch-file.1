@@ -1,0 +1,41 @@
+.TH DEB-UPDATE-WATCH "1" "November 2023" "deb-update-watch 0.152" "User Commands"
+.SH NAME
+deb-update-watch \- manual page for deb-update-watch 0.152
+.SH DESCRIPTION
+usage: deb\-update\-watch [\-h] [\-\-directory DIRECTORY] [\-\-no\-update\-changelog]
+.TP
+[\-\-update\-changelog] [\-\-version] [\-\-identity]
+[\-\-debug] [\-\-force] [\-\-no\-verify]
+[\-\-disable\-net\-access]
+.SS "options:"
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+show this help message and exit
+.TP
+\fB\-\-directory\fR DIRECTORY
+directory to run in
+.TP
+\fB\-\-no\-update\-changelog\fR
+do not update the changelog
+.TP
+\fB\-\-update\-changelog\fR
+force updating of the changelog
+.TP
+\fB\-\-version\fR
+show program's version number and exit
+.TP
+\fB\-\-identity\fR
+Print user identity that would be used when committing
+.TP
+\fB\-\-debug\fR
+Describe all considered changes.
+.TP
+\fB\-\-force\fR
+Force regenerating watch file, even if it the current
+one works
+.TP
+\fB\-\-no\-verify\fR
+Do not verify that the new watch file works
+.TP
+\fB\-\-disable\-net\-access\fR
+Do not probe external services.
