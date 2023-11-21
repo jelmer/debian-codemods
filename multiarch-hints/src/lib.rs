@@ -2,7 +2,6 @@ use breezyshim::dirty_tracker::DirtyTracker;
 use breezyshim::tree::{CommitError, Error as TreeError, WorkingTree};
 use debian_analyzer::debmutateshim::{
     format_relations, parse_relations, ControlEditor, ControlLikeEditor, Deb822Paragraph,
-    ParsedRelation,
 };
 use debian_analyzer::{
     add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, ApplyError,
