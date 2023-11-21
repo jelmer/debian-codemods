@@ -122,7 +122,7 @@ pub fn guess_update_changelog_from_tree(
     // TODO(jelmes): Do something more clever here, perhaps looking at history of the changelog file?
     if let Some(cl) = cl {
         if let Some(entry) = cl.entries().next() {
-            if all_sha_prefixed(&entry) {
+            if debian_changelog::changes::all_sha_prefixed(&entry) {
                 return Some(ChangelogBehaviour {
                     update_changelog: false,
                     explanation: "Assuming changelog does not need to be updated, since all entries in last changelog entry are prefixed by git shas.".to_string()
