@@ -1,7 +1,12 @@
+lintian-brush (0.153) UNRELEASED; urgency=medium
+
+  * Add manpages for deb-vcs-publish, fix-watch-file.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 21 Nov 2023 13:30:41 +0000
+
 lintian-brush (0.152) unstable; urgency=medium
 
   * Fix compatibility with newer rust crates. Closes: #1054839
-  * Add manpages for deb-vcs-publish, fix-watch-file.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 28 Oct 2023 01:41:32 +0100
 
