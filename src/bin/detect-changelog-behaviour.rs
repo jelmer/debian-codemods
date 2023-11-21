@@ -3,6 +3,7 @@ use clap::Parser;
 use std::io::Write as _;
 
 #[derive(Parser)]
+#[command(author, version)]
 struct Args {
     /// Be verbose
     #[clap(long)]

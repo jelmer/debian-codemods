@@ -12,7 +12,7 @@ use lazy_regex::regex_captures;
 use lazy_static::lazy_static;
 use pyo3::PyErr;
 use reqwest::blocking::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_yaml::from_value;
 use std::collections::HashMap;
 use std::error::Error;
