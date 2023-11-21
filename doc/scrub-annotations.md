@@ -36,9 +36,8 @@ trixie has been released.
 Comments can appear anywhere in the line, i.e. all of these are recognized:
 
 ```shell
-blah  # remove-after: released:trixie # Trixie comes with blah built in
+blah  # remove-after: trixie # Trixie comes with blah built in
 blah  # remove-after: trixie
-blah  # remove-after: blah-transition
 blah  # Trixie comes with blah built in # remove-after: trixie
 ```
 
@@ -65,21 +64,9 @@ removed if deb-scrub-obsolete were to run later.
 
 The following expressions will initially be supported:
 
-* ``released:$name`` if the Debian release with specified codename is released.
-   E.g. ``released:trixie``
-* ``present:$package`` if the current suite (usually unstable) contains the
-   named package. E.g. ``present:systemd``
-* ``present:$package >= $version`` if the current suite (usually unstable)
-  contains the named package with at least specified version. E.g.
-``present:systemd >= 3.4``
-
-Otherwise, the following are attempted one by one to interpret the expression,
-until one is valid:
-
-* ``$name`` is an alias for ``released:$name`` if $name is a known Debian
-  release name
-* ``$package >= $version`` is an alias for ``present:$package >= $version``
-                                                                     0
+* ``$name`` if $name is a known Debian release name, checks for whether that
+  release is out.
+                                                                    0
 # Future extensions
 
 In the future, we might consider other expression that check things such as:
@@ -89,3 +76,6 @@ In the future, we might consider other expression that check things such as:
 * whether all supported releases contain a new enough version of a package
 * whether a particular transition
   (as listed on https://release.debian.org/transitions/) has completed
+
+as well as more complicated expressions, e.g. combining expressions with "and"
+or "or".
