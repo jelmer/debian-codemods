@@ -1,4 +1,4 @@
-lintian-brush (0.153) UNRELEASED; urgency=medium
+lintian-brush (0.154) unstable; urgency=medium
 
   * Add manpages for deb-vcs-publish, fix-watch-file.
 
