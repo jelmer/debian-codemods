@@ -136,9 +136,9 @@ checksum = "327762f6e5a765692301e5bb513e0d9fef63be86bbc14528052b1cd3e6f03e07"
 
 [[package]]
 name = "breezyshim"
-version = "0.1.52"
+version = "0.1.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5838e66e436907f565e0249ca674e83381072eb584d1204472e9e67c1c08980b"
+checksum = "eea23f4f5f23fdd9d2863ef0b53d8cba28dd0f25b70dec4ae99f3e593fa77244"
 dependencies = [
  "debversion",
  "lazy_static",
@@ -313,7 +313,7 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.150.0"
+version = "0.154.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -376,7 +376,7 @@ dependencies = [
 
 [[package]]
 name = "debianize"
-version = "0.150.0"
+version = "0.154.0"
 dependencies = [
  "breezyshim",
  "clap",
@@ -850,7 +850,7 @@ checksum = "89d92a4743f9a61002fae18374ed11e7973f530cb3a3255fb354818118b2203c"
 
 [[package]]
 name = "lintian-brush"
-version = "0.150.0"
+version = "0.154.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -875,7 +875,7 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush-py"
-version = "0.150.0"
+version = "0.154.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -970,7 +970,7 @@ dependencies = [
 
 [[package]]
 name = "multiarch-hints"
-version = "0.150.0"
+version = "0.154.0"
 dependencies = [
  "breezyshim",
  "chrono",
