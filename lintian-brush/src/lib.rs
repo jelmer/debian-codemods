@@ -164,7 +164,6 @@ impl TryFrom<&str> for LintianIssue {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
-#[pyo3::pyclass]
 pub struct FixerResult {
     pub description: String,
     pub certainty: Option<Certainty>,
