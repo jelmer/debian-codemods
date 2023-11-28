@@ -115,11 +115,7 @@ pub fn find_patch_base(tree: &WorkingTree) -> Option<RevisionId> {
 /// Returns:
 /// A `Branch` instance
 pub fn find_patches_branch(tree: &WorkingTree) -> Option<Box<dyn Branch>> {
-    let local_branch_name = if let Some(name) = tree.branch().name() {
-        name
-    } else {
-        return None;
-    };
+    let local_branch_name = tree.branch().name()?;
     let branch_name = format!("patch-queue/{}", local_branch_name);
     match tree.branch().controldir().open_branch(Some(branch_name.as_str())) {
         Ok(b) => return Some(b),
@@ -190,3 +186,4 @@ pub fn add_patch(tree: &WorkingTree, patches_directory: &Path, name: &str, conte
 
     Ok(patchname)
 }
+

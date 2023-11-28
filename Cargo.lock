@@ -405,9 +405,9 @@ dependencies = [
 
 [[package]]
 name = "dep3"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfdc5987a2a474cf72512b2bc25c892d245f56b4d631f2da541bc0e015b498a0"
+checksum = "f8304768453b272b46db35b8fcd772211545f64e2af1f4e390963996b930a335"
 dependencies = [
  "chrono",
  "deb822-lossless",
@@ -1143,9 +1143,9 @@ dependencies = [
 
 [[package]]
 name = "patchkit"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f006ca4b688d37e603d461d05fd1c1ce0d3939e711e6e7ef2add707795ec1f4"
+checksum = "a30aaf3fbfe57f1d8d6a86afd2b5a56c1b977f17452a6e22fa6ccaa2bd46fc15"
 
 [[package]]
 name = "percent-encoding"
