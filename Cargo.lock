@@ -136,9 +136,9 @@ checksum = "327762f6e5a765692301e5bb513e0d9fef63be86bbc14528052b1cd3e6f03e07"
 
 [[package]]
 name = "breezyshim"
-version = "0.1.54"
+version = "0.1.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9df045d9446925fa93498dcfb0408dba0965a7b49c6e1822d170d7b22c7826d"
+checksum = "1336784f53672682fb677d0f652b46d418fe17998891a96167487db92edb9852"
 dependencies = [
  "debversion",
  "lazy_static",
@@ -301,11 +301,10 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.1.4"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4091763bee62d77e69c0e767f457bc258fc0bd1626ed98c5c4c3bb601829d28c"
+checksum = "0ff4a45c022a26ab4dd6c6a6a9ed9dff68205ac4dd96382e2157b0a94e32600e"
 dependencies = [
- "debversion",
  "regex",
  "rowan",
  "serde",
@@ -323,6 +322,7 @@ dependencies = [
  "debian-control",
  "debian-copyright",
  "debversion",
+ "dep3",
  "distro-info",
  "env_logger",
  "lazy-regex 2.5.0",
@@ -330,6 +330,7 @@ dependencies = [
  "log",
  "makefile-lossless",
  "maplit",
+ "patchkit",
  "pyo3",
  "serde",
  "serde_json",
@@ -354,14 +355,15 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.4"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "391bc11339739325fe24e2504fa59389542bc9db134d6ff3aff3f244b963a34c"
+checksum = "bce900796b745e6f254f3e65631a8a4d4737a82119dfeff003ddef83f269de55"
 dependencies = [
  "deb822-lossless",
  "debversion",
  "regex",
  "rowan",
+ "url",
 ]
 
 [[package]]
@@ -399,6 +401,16 @@ dependencies = [
  "lazy-regex 3.1.0",
  "pyo3",
  "serde",
+]
+
+[[package]]
+name = "dep3"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfdc5987a2a474cf72512b2bc25c892d245f56b4d631f2da541bc0e015b498a0"
+dependencies = [
+ "chrono",
+ "deb822-lossless",
 ]
 
 [[package]]
@@ -1128,6 +1140,12 @@ dependencies = [
  "smallvec",
  "windows-targets 0.48.5",
 ]
+
+[[package]]
+name = "patchkit"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f006ca4b688d37e603d461d05fd1c1ce0d3939e711e6e7ef2add707795ec1f4"
 
 [[package]]
 name = "percent-encoding"
@@ -1865,9 +1883,9 @@ checksum = "7ab9b36309365056cd639da3134bf87fa8f3d86008abf99e612384a6eecd459f"
 
 [[package]]
 name = "web-sys"
-version = "0.3.65"
+version = "0.3.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5db499c5f66323272151db0e666cd34f78617522fb0c1604d31a27c50c206a85"
+checksum = "50c24a44ec86bb68fbecd1b3efed7e85ea5621b39b35ef2766b66cd984f8010f"
 dependencies = [
  "js-sys",
  "wasm-bindgen",

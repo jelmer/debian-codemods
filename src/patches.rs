@@ -1,8 +1,10 @@
-use breezyshim::tree::{Tree, WorkingTree, Error as TreeError};
+use breezyshim::tree::{Tree, MutableTree, WorkingTree, Error as TreeError};
 use breezyshim::branch::{Branch};
+use breezyshim::workspace::reset_tree;
 use breezyshim::RevisionId;
 use debian_changelog::ChangeLog;
 use std::path::{Path, PathBuf};
+use std::io::Write;
 
 // TODO(jelmer): Use debmutate version
 pub const DEFAULT_DEBIAN_PATCHES_DIR: &str = "debian/patches";
@@ -96,10 +98,10 @@ pub fn find_patch_base(tree: &WorkingTree) -> Option<RevisionId> {
         format!("v{}", upstream_version),
         format!("{}-{}", package, upstream_version),
     ];
-    let tags = tree.branch().tags().get_tag_dict();
+    let tags = tree.branch().tags().unwrap().get_tag_dict().unwrap();
     for possible_tag in possible_tags {
         if let Some(revid) = tags.get(&possible_tag) {
-            return Some(revid.clone());
+            return Some(revid.into_iter().next().unwrap().clone());
         }
     }
     // TODO(jelmer): Do something clever, like look for the last merge?
@@ -139,4 +141,52 @@ pub fn find_patches_branch(tree: &WorkingTree) -> Option<Box<dyn Branch>> {
         }
     }
     None
+}
+
+/// Add a new patch.
+///
+/// # Arguments
+/// * `tree` - Tree to edit
+/// * `patches_directory` - Name of patches directory
+/// * `name` - Patch name without suffix
+/// * `contents` - Diff
+/// * `header` - RFC822 to read
+///
+/// Returns:
+/// Name of the patch that was written (including suffix)
+pub fn add_patch(tree: &WorkingTree, patches_directory: &Path, name: &str, contents: &[u8], header: Option<dep3::PatchHeader>) -> Result<String, String> {
+    if !tree.has_filename(patches_directory) {
+        let parent = patches_directory.parent().unwrap();
+        if !tree.has_filename(parent) {
+            tree.mkdir(parent).unwrap();
+        }
+        tree.mkdir(patches_directory).unwrap();
+    }
+    let series_path = patches_directory.join("series");
+    let f = tree.get_file(&series_path).unwrap();
+    let mut series = patchkit::quilt::Series::read(f).unwrap();
+
+    let patch_suffix = patchkit::quilt::find_common_patch_suffix(series.patches()).unwrap_or(".patch");
+    let patchname = format!("{}{}", name, patch_suffix);
+    let path = patches_directory.join(patchname.as_str());
+    if tree.has_filename(path.as_path()) {
+        return Err(format!("Patch {} already exists", patchname));
+    }
+
+    let mut patch_contents = Vec::new();
+    if let Some(header) = header {
+        header.write(&mut patch_contents).unwrap();
+    }
+    patch_contents.write_all(b"---\n").unwrap();
+    patch_contents.write_all(contents).unwrap();
+
+    // TODO(jelmer): Write to patches branch if applicable
+
+    series.append(patchname.as_str(), None);
+    let mut series_bytes = Vec::new();
+    series.write(&mut series_bytes).map_err(|e| format!("Failed to write series: {}", e))?;
+    tree.put_file_bytes_non_atomic(&series_path, series_bytes.as_slice()).map_err(|e| format!("Failed to write series: {}", e))?;
+    tree.add(&[series_path.as_path(), path.as_path()]).map_err(|e| format!("Failed to add patch: {}", e))?;
+
+    Ok(patchname)
 }

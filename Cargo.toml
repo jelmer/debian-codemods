@@ -29,6 +29,8 @@ debian-changelog = { workspace = true }
 debian-control = { workspace = true }
 debian-copyright = "0.1.2"
 makefile-lossless = "0.1.0"
+patchkit = "0.1.0"
+dep3 = "0.1.0"
 
 [features]
 default = ["python", "cli"]
