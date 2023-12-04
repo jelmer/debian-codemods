@@ -247,7 +247,7 @@ mod move_upstream_changes_to_patch_tests {
         let local_tree = breezyshim::controldir::ControlDir::create_standalone_workingtree(td.path(), None).unwrap();
 
         std::fs::write(td.path().join("foo"), b"foo\n").unwrap();
-        local_tree.mkdir(&std::path::Path::new("debian")).unwrap();
+        local_tree.mkdir(std::path::Path::new("debian")).unwrap();
         local_tree.add(&[std::path::Path::new("foo")]).unwrap();
 
         super::move_upstream_changes_to_patch(
