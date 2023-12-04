@@ -34,7 +34,7 @@ def add_upstream_metadata(copyright):
     else:
         code = ruamel.yaml.safe_load(inp)
         upstream_metadata = {
-            k: UpstreamDatum(k, v, "certain") for (k, v) in code.items()
+            k: UpstreamDatum(k, v, certainty="certain") for (k, v) in code.items()
         }
     for datum in guess_upstream_metadata_items(
         ".", trust_package=trust_package()

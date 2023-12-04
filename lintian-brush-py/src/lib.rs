@@ -78,8 +78,8 @@ fn determine_env(
 
 #[pyfunction]
 fn default_debianize_cache_dir() -> PyResult<std::path::PathBuf> {
-    Ok(debianize::default_debianize_cache_dir()
-        .map_err(|e| PyValueError::new_err(e.to_string()))?)
+    debianize::default_debianize_cache_dir()
+        .map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
 #[pyfunction]

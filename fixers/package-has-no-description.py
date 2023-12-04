@@ -50,10 +50,10 @@ def guess_description(binary_name, all_binaries, summary=None):
         ".", trust_package(), net_access_allowed()
     )
     if summary is None:
-        summary = upstream_metadata.get("X-Summary")
+        summary = upstream_metadata.get("Summary")
     try:
         upstream_description = textwrap_description(
-            upstream_metadata["X-Description"]
+            upstream_metadata["Description"]
         )
     except KeyError:
         # Better than nothing..

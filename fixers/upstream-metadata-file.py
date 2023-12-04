@@ -87,7 +87,7 @@ with YamlUpdater("debian/upstream/metadata") as editor:
         sys.exit(0)
 
     upstream_metadata = {
-        k: UpstreamDatum(k, v, "certain")
+        k: UpstreamDatum(str(k), v, certainty="certain")
         for (k, v) in editor.code.items()
         if v is not None
     }

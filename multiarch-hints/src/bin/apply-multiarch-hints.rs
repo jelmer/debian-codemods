@@ -106,7 +106,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
-    breezyshim::init();
+    breezyshim::init().unwrap();
 
     let mut update_changelog: Option<bool> = if args.update_changelog {
         Some(true)
