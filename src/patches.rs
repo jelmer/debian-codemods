@@ -4,7 +4,7 @@ use breezyshim::workspace::reset_tree;
 use breezyshim::RevisionId;
 use debian_changelog::ChangeLog;
 use std::path::{Path, PathBuf};
-use std::io::Write;
+use std::io::{Seek, Read, Write};
 
 // TODO(jelmer): Use debmutate version
 pub const DEFAULT_DEBIAN_PATCHES_DIR: &str = "debian/patches";
@@ -101,7 +101,7 @@ pub fn find_patch_base(tree: &WorkingTree) -> Option<RevisionId> {
     let tags = tree.branch().tags().unwrap().get_tag_dict().unwrap();
     for possible_tag in possible_tags {
         if let Some(revid) = tags.get(&possible_tag) {
-            return Some(revid.into_iter().next().unwrap().clone());
+            return Some(revid.iter().next().unwrap().clone());
         }
     }
     // TODO(jelmer): Do something clever, like look for the last merge?
@@ -150,17 +150,22 @@ pub fn find_patches_branch(tree: &WorkingTree) -> Option<Box<dyn Branch>> {
 ///
 /// Returns:
 /// Name of the patch that was written (including suffix)
-pub fn add_patch(tree: &WorkingTree, patches_directory: &Path, name: &str, contents: &[u8], header: Option<dep3::PatchHeader>) -> Result<String, String> {
+pub fn add_patch(tree: &WorkingTree, patches_directory: &Path, name: &str, contents: &[u8], header: Option<dep3::PatchHeader>) -> Result<(Vec<std::path::PathBuf>, String), String> {
     if !tree.has_filename(patches_directory) {
         let parent = patches_directory.parent().unwrap();
         if !tree.has_filename(parent) {
-            tree.mkdir(parent).unwrap();
+            tree.mkdir(parent).expect("Failed to create parent directory");
         }
         tree.mkdir(patches_directory).unwrap();
     }
     let series_path = patches_directory.join("series");
-    let f = tree.get_file(&series_path).unwrap();
-    let mut series = patchkit::quilt::Series::read(f).unwrap();
+    let mut series = match tree.get_file(&series_path) {
+        Ok(f) => patchkit::quilt::Series::read(f).unwrap(),
+        Err(TreeError::NoSuchFile(_)) => patchkit::quilt::Series::new(),
+        Err(e) => {
+            return Err(format!("Failed to read {}: {}", series_path.display(), e));
+        }
+    };
 
     let patch_suffix = patchkit::quilt::find_common_patch_suffix(series.patches()).unwrap_or(".patch");
     let patchname = format!("{}{}", name, patch_suffix);
@@ -175,6 +180,7 @@ pub fn add_patch(tree: &WorkingTree, patches_directory: &Path, name: &str, conte
     }
     patch_contents.write_all(b"---\n").unwrap();
     patch_contents.write_all(contents).unwrap();
+    tree.put_file_bytes_non_atomic(&path, patch_contents.as_slice()).map_err(|e| format!("Failed to write patch: {}", e))?;
 
     // TODO(jelmer): Write to patches branch if applicable
 
@@ -184,6 +190,96 @@ pub fn add_patch(tree: &WorkingTree, patches_directory: &Path, name: &str, conte
     tree.put_file_bytes_non_atomic(&series_path, series_bytes.as_slice()).map_err(|e| format!("Failed to write series: {}", e))?;
     tree.add(&[series_path.as_path(), path.as_path()]).map_err(|e| format!("Failed to add patch: {}", e))?;
 
-    Ok(patchname)
+    let specific_files = vec![series_path, path];
+
+    Ok((specific_files, patchname))
 }
 
+/// Move upstream changes to patch.
+///
+/// # Arguments
+///
+/// * `local_tree` - Local tree
+/// * `basis_tree` - Basis tree
+/// * `subpath` - Subpath
+/// * `patch_name` - Suggested patch name
+/// * `description` - Description
+pub fn move_upstream_changes_to_patch(
+    local_tree: &WorkingTree,
+    basis_tree: &dyn Tree,
+    subpath: &std::path::Path,
+    patch_name: &str,
+    description: &str,
+    dirty_tracker: Option<&breezyshim::dirty_tracker::DirtyTracker>,
+    timestamp: Option<chrono::NaiveDate>,
+) -> Result<(Vec<std::path::PathBuf>, String), String> {
+    let timestamp = if let Some(timestamp) = timestamp {
+        timestamp
+    } else {
+        chrono::Utc::now().naive_utc().date()
+    };
+    let mut diff = Vec::new();
+    breezyshim::diff::show_diff_trees(basis_tree, local_tree, &mut diff, None, None).map_err(|e| format!("Failed to generate diff: {}", e))?;
+    breezyshim::workspace::reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker).map_err(|e| format!("Failed to reset tree: {}", e))?;
+    // See https://dep-team.pages.debian.net/deps/dep3/ for fields.
+    let mut dep3_header = dep3::PatchHeader::new();
+    dep3_header.set_description(description);
+    dep3_header.set_origin(None, dep3::Origin::Other("lintian-brush".to_string()));
+    dep3_header.set_last_update(timestamp);
+    let patches_directory = subpath.join(tree_patches_directory(local_tree, subpath));
+    let (specific_files, patchname) = add_patch(
+        local_tree,
+        &patches_directory,
+        patch_name,
+        diff.as_slice(),
+        Some(dep3_header),
+    )?;
+    Ok((specific_files, patchname))
+}
+
+#[cfg(test)]
+mod move_upstream_changes_to_patch_tests {
+    use breezyshim::tree::MutableTree;
+    #[test]
+    fn test_simple() {
+        breezyshim::init().unwrap();
+        let td = tempfile::tempdir().unwrap();
+        let local_tree = breezyshim::controldir::ControlDir::create_standalone_workingtree(td.path(), None).unwrap();
+
+        std::fs::write(td.path().join("foo"), b"foo\n").unwrap();
+        local_tree.mkdir(&std::path::Path::new("debian")).unwrap();
+        local_tree.add(&[std::path::Path::new("foo")]).unwrap();
+
+        super::move_upstream_changes_to_patch(
+            &local_tree,
+            local_tree.basis_tree().as_ref(),
+            std::path::Path::new(""),
+            "patch",
+            "This is a description",
+            None,
+            Some(chrono::NaiveDate::from_ymd(2020, 1, 1)),
+        ).unwrap();
+
+        let path = td.path();
+
+        assert!(!path.join("foo").exists());
+        assert!(path.join("debian/patches").exists());
+        assert!(path.join("debian/patches/series").exists());
+        assert!(path.join("debian/patches/patch.patch").exists());
+
+        let series = std::fs::read_to_string(path.join("debian/patches/series")).unwrap();
+        assert_eq!(series, "patch.patch\n");
+
+        let patch = std::fs::read_to_string(path.join("debian/patches/patch.patch")).unwrap();
+        assert!(patch.starts_with(r#"Description: This is a description
+Origin: lintian-brush
+Last-Update: 2020-01-01
+---
+"#));
+
+        assert!(patch.ends_with(r#"@@ -0,0 +1,1 @@
++foo
+
+"#), "{:?}", patch);
+    }
+}

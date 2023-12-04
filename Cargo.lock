@@ -136,9 +136,7 @@ checksum = "327762f6e5a765692301e5bb513e0d9fef63be86bbc14528052b1cd3e6f03e07"
 
 [[package]]
 name = "breezyshim"
-version = "0.1.56"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1336784f53672682fb677d0f652b46d418fe17998891a96167487db92edb9852"
+version = "0.1.57"
 dependencies = [
  "debversion",
  "lazy_static",
