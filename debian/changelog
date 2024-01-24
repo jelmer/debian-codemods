@@ -1,3 +1,9 @@
+lintian-brush (0.155) UNRELEASED; urgency=medium
+
+  * Bump pyo3 dependency to 0.20, fixing FTBFS. Closes: #1061435
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 24 Jan 2024 23:56:55 +0000
+
 lintian-brush (0.154) unstable; urgency=medium
 
   * Add manpages for deb-vcs-publish, fix-watch-file.

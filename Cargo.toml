@@ -44,8 +44,8 @@ members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize"]
 version = "0.154.0"
 
 [workspace.dependencies]
-breezyshim = "0.1.58"
-pyo3 = ">=0.19"
+breezyshim = ">=0.1.58"
+pyo3 = ">=0.20"
 debversion = ">=0.1.8"
 serde_yaml = ">=0.8"
 reqwest = "0.11"
