@@ -1,17 +1,9 @@
-use breezyshim::branch::{open_containing as open_containing_branch, BranchOpenError};
-use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
 use clap::Parser;
-use debian_changelog::get_maintainer;
-use distro_info::DistroInfo;
 use log::warn;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
 
-use debian_analyzer::svp::{
-    enabled as svp_enabled, load_resume, report_fatal, report_success_debian,
-};
-use debian_analyzer::{get_committer, Certainty};
 use std::io::Write as _;
 use std::path::PathBuf;
 

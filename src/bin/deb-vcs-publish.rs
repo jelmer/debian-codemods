@@ -1,5 +1,5 @@
 use breezyshim::branch::BranchOpenError;
-use breezyshim::controldir::ControlDir;
+use breezyshim::controldir::open;
 use breezyshim::forge::Error as ForgeError;
 use breezyshim::tree::{WorkingTree, WorkingTreeOpenError};
 use clap::Parser;
@@ -118,7 +118,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let controldir = ControlDir::open(&repo_url).unwrap();
+    let controldir = open(&repo_url, None).unwrap();
     let branch = match controldir.open_branch(branch.as_deref()) {
         Ok(branch) => branch,
         Err(BranchOpenError::NotBranchError(_)) => {

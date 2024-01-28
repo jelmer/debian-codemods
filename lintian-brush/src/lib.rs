@@ -1181,9 +1181,9 @@ pub fn run_lintian_fixer(
     let package = first_entry.package().unwrap();
     let current_version: Version =
         if first_entry.distributions().as_deref().unwrap() == vec!["UNRELEASED"] {
-            first_entry.version().unwrap().clone()
+            first_entry.version().unwrap()
         } else {
-            let mut version = first_entry.version().unwrap().clone();
+            let mut version = first_entry.version().unwrap();
             version.increment_debian();
             version
         };
