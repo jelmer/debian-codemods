@@ -395,6 +395,7 @@ dependencies = [
  "clap",
  "debian-analyzer",
  "debian-changelog",
+ "debversion",
  "distro-info",
  "env_logger",
  "log",
@@ -407,6 +408,7 @@ name = "debianize-py"
 version = "0.154.0"
 dependencies = [
  "debianize",
+ "debversion",
  "pyo3",
  "pyo3-log",
 ]

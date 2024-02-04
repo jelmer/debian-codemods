@@ -13,4 +13,5 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { workspace = true, features = ["extension-module"] }
 pyo3-log = ">=0.5"
-debianize = { version = ">=0.154.0", path = "../debianize" }
+debianize = { version = ">=0.154.0", path = "../debianize", features = ["pyo3"] }
+debversion = { workspace = true }

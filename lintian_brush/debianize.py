@@ -144,6 +144,7 @@ from debian.changelog import Changelog, Version, format_date, get_maintainer
 from debian.deb822 import PkgRelation
 
 from . import (
+    _debianize_rs,
     _lintian_brush_rs,
     available_lintian_fixers,
     get_committer,
@@ -205,31 +206,6 @@ class NoUpstreamReleases(Exception):
     def __init__(self, upstream_source, name):
         self.upstream_source = upstream_source
         self.name = name
-
-
-def write_changelog_template(
-    path, source_name, version, author=None, wnpp_bugs=None
-):
-    if author is None:
-        author = get_maintainer()
-    if wnpp_bugs:
-        closes = " Closes: " + ", ".join(
-            [("#%d" % (bug,)) for bug, kind in wnpp_bugs]
-        )
-    else:
-        closes = ""
-    cl = Changelog()
-    cl.new_block(
-        package=source_name,
-        version=version,
-        distributions="UNRELEASED",
-        urgency="low",
-        changes=["", "  * Initial release." + closes, ""],
-        author="{} <{}>".format(*author),
-        date=format_date(),
-    )
-    with open(path, "w") as f:
-        f.write(cl.__str__().strip("\n") + "\n")
 
 
 MINIMUM_CERTAINTY = "possible"  # For now..
@@ -1766,7 +1742,8 @@ def report_fatal(code, description, hint=None, details=None):
         logging.info("%s", hint)
 
 
-default_debianize_cache_dir = _lintian_brush_rs.default_debianize_cache_dir
+default_debianize_cache_dir = _debianize_rs.default_debianize_cache_dir
+write_changelog_template = _debianize_rs.write_changelog_template
 
 
 def main(
