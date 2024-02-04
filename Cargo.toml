@@ -38,7 +38,7 @@ python = []
 cli = ["dep:clap", "dep:env_logger"]
 
 [workspace]
-members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize"]
+members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize", "debianize-py"]
 
 [workspace.package]
 version = "0.154.0"
