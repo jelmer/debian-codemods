@@ -988,15 +988,6 @@ PROCESSORS: Dict[str, Processor] = {
 }
 
 
-def source_name_from_directory_name(path):
-    d = os.path.basename(path)
-    if "-" in d:
-        parts = d.split("-")
-        if parts[-1][0].isdigit():
-            return "-".join(parts[:-1])
-    return d
-
-
 @dataclass
 class DebianizeResult:
     """Debianize result."""
@@ -1744,6 +1735,7 @@ def report_fatal(code, description, hint=None, details=None):
 
 default_debianize_cache_dir = _debianize_rs.default_debianize_cache_dir
 write_changelog_template = _debianize_rs.write_changelog_template
+source_name_from_directory_name = _debianize_rs.source_name_from_directory_name
 
 
 def main(

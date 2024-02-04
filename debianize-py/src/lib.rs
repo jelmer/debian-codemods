@@ -19,12 +19,18 @@ fn write_changelog_template(
     Ok(())
 }
 
+#[pyfunction]
+fn source_name_from_directory_name(path: std::path::PathBuf) -> String {
+    debianize::source_name_from_directory_name(path.as_path())
+}
+
 #[pymodule]
 fn _debianize_rs(py: Python, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
 
     m.add_function(wrap_pyfunction!(default_debianize_cache_dir, m)?)?;
     m.add_function(wrap_pyfunction!(write_changelog_template, m)?)?;
+    m.add_function(wrap_pyfunction!(source_name_from_directory_name, m)?)?;
 
     Ok(())
 }

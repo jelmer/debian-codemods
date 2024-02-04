@@ -35,8 +35,7 @@ impl ToString for BugKind {
 impl pyo3::FromPyObject<'_> for BugKind {
     fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
         let s: String = ob.extract()?;
-        s.parse()
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))
+        s.parse().map_err(pyo3::exceptions::PyValueError::new_err)
     }
 }
 
@@ -76,4 +75,17 @@ pub fn write_changelog_template(
     std::fs::write(path, buf)?;
 
     Ok(())
+}
+
+pub fn source_name_from_directory_name(path: &std::path::Path) -> String {
+    let d = path.file_name().unwrap().to_str().unwrap();
+    if d.contains('-') {
+        let mut parts = d.split('-').collect::<Vec<_>>();
+        let c = parts.last().unwrap().chars().next().unwrap();
+        if c.is_ascii_digit() {
+            parts.pop();
+            return parts.join("-");
+        }
+    }
+    d.to_string()
 }
