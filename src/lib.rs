@@ -4,7 +4,6 @@ use breezyshim::tree::{Error as TreeError, MutableTree, Tree, TreeChange, Workin
 use breezyshim::workspace::reset_tree;
 use debian_changelog::ChangeLog;
 #[cfg(feature = "python")]
-use pyo3::PyErr;
 use std::str::FromStr;
 
 pub mod changelog;
@@ -131,7 +130,7 @@ pub fn apply_or_revert<R, E>(
 
 pub enum ChangelogError {
     NotDebianPackage(std::path::PathBuf),
-    Python(PyErr),
+    Python(pyo3::PyErr),
 }
 
 impl std::fmt::Display for ChangelogError {
@@ -146,8 +145,8 @@ impl std::fmt::Display for ChangelogError {
 }
 
 #[cfg(feature = "python")]
-impl From<PyErr> for ChangelogError {
-    fn from(e: PyErr) -> Self {
+impl From<pyo3::PyErr> for ChangelogError {
+    fn from(e: pyo3::PyErr) -> Self {
         use pyo3::import_exception;
 
         import_exception!(breezy.transport, NoSuchFile);
@@ -342,9 +341,9 @@ pub fn branch_vcs_type(branch: &dyn Branch) -> String {
     pyo3::Python::with_gil(|py| {
         let repo = branch.to_object(py).getattr(py, "repository").unwrap();
         if repo.as_ref(py).hasattr("_git").unwrap() {
-            Ok::<String, PyErr>("git".to_string())
+            Ok::<String, pyo3::PyErr>("git".to_string())
         } else {
-            Ok::<String, PyErr>("bzr".to_string())
+            Ok::<String, pyo3::PyErr>("bzr".to_string())
         }
     })
     .unwrap()
