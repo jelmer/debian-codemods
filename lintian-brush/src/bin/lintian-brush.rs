@@ -542,13 +542,10 @@ fn versions_dict() -> HashMap<String, String> {
         "lintian-brush".to_string(),
         env!("CARGO_PKG_VERSION").to_string(),
     );
-    pyo3::Python::with_gil(|py| {
-        let breezy = py.import("breezy").unwrap();
-        ret.insert(
-            "breezy".to_string(),
-            breezy.getattr("version_string").unwrap().extract().unwrap(),
-        );
+    let breezy_version = breezyshim::version::version();
+    ret.insert("breezy".to_string(), breezy_version.to_string());
 
+    pyo3::Python::with_gil(|py| {
         let debmutate = py.import("debmutate").unwrap();
         ret.insert(
             "debmutate".to_string(),
