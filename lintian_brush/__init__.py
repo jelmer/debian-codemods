@@ -53,7 +53,6 @@ DEFAULT_ADDON_FIXERS = _lintian_brush_rs.DEFAULT_ADDON_FIXERS
 LintianIssue = _lintian_brush_rs.LintianIssue
 FixerResult = _lintian_brush_rs.FixerResult
 UnsupportedCertainty = _lintian_brush_rs.UnsupportedCertainty
-read_desc_file = _lintian_brush_rs.read_desc_file
 only_changes_last_changelog_block = (
     _lintian_brush_rs.only_changes_last_changelog_block
 )
