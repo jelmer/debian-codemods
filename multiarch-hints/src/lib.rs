@@ -139,8 +139,7 @@ mod tests {
     #[test]
     fn test_some_entries() {
         let hints = parse_multiarch_hints(
-            r#"\
-format: multiarch-hints-1.0
+            r#"format: multiarch-hints-1.0
 hints:
 - binary: coinor-libcoinmp-dev
   description: coinor-libcoinmp-dev conflicts on ...
@@ -155,7 +154,7 @@ hints:
         assert_eq!(
             hints,
             vec![Hint {
-                binary: "coinor-libcoimp-dev".to_string(),
+                binary: "coinor-libcoinmp-dev".to_string(),
                 description: "coinor-libcoinmp-dev conflicts on ...".to_string(),
                 link: "https://wiki.debian.org/MultiArch/Hints#file-conflict".to_string(),
                 severity: Severity::High,

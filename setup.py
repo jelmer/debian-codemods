@@ -50,6 +50,7 @@ setup(
             "lintian_brush._lintian_brush_rs",
             "lintian-brush-py/Cargo.toml",
             binding=Binding.PyO3,
+            features = ["extension-module"]
         ),
     ],
 )
