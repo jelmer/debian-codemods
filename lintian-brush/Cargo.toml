@@ -19,7 +19,7 @@ configparser.workspace = true
 clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
 env_logger = { workspace = true, optional = true }
 lazy-regex = { workspace = true }
-debversion = { workspace = true, features = ["python-debian"] }
+debversion = { workspace = true }
 breezyshim = { workspace = true }
 indicatif = "0.17"
 tempfile = { workspace = true }

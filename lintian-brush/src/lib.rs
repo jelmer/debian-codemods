@@ -1337,6 +1337,7 @@ pub fn run_lintian_fixer(
         .map_err(|e| match e {
             CommitError::PointlessCommit => FixerError::NoChanges,
             CommitError::Other(e) => FixerError::Python(e),
+            CommitError::NoWhoami => FixerError::Other("No committer specified".to_string()),
         })?;
     result.revision_id = Some(revid);
 

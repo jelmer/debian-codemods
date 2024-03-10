@@ -357,6 +357,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None,
             );
         }
+        Err(OverallError::Other(e)) => {
+            drop(write_lock);
+            report_fatal(
+                versions_dict(),
+                "internal-error",
+                format!("Error: {}", e).as_str(),
+                None,
+                None,
+            );
+        }
         Ok(overall_result) => overall_result,
     };
     std::mem::drop(write_lock);

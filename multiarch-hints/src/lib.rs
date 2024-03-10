@@ -421,6 +421,7 @@ fn changes_by_description(changes: &[Change]) -> HashMap<String, Vec<String>> {
 pub enum OverallError {
     TreeError(TreeError),
     NotDebianPackage(std::path::PathBuf),
+    Other(String),
     Python(PyErr),
     NoChanges,
 }
@@ -434,6 +435,7 @@ impl std::fmt::Display for OverallError {
             OverallError::TreeError(e) => write!(f, "{}", e),
             OverallError::Python(e) => write!(f, "{}", e),
             OverallError::NoChanges => write!(f, "No changes to apply."),
+            OverallError::Other(e) => write!(f, "{}", e),
         }
     }
 }
@@ -457,6 +459,9 @@ impl From<CommitError> for OverallError {
         match e {
             CommitError::PointlessCommit => OverallError::NoChanges,
             CommitError::Other(e) => OverallError::Python(e),
+            CommitError::NoWhoami => {
+                OverallError::Other("Unable to determine committer".to_string())
+            }
         }
     }
 }

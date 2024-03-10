@@ -10,7 +10,7 @@ homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 
 [dependencies]
 pyo3 = { workspace = true, features = ["auto-initialize", "serde", "chrono"] }
-debversion = { workspace = true, features = ["serde"] }
+debversion = { workspace = true, features = ["serde", "python-debian"] }
 log = { workspace = true }
 lazy-regex.workspace = true
 serde = { workspace = true, features = ["derive"] }
@@ -46,7 +46,7 @@ version = "0.154.0"
 [workspace.dependencies]
 breezyshim = ">=0.1.58"
 pyo3 = ">=0.20"
-debversion = ">=0.1.8"
+debversion = ">=0.3.0"
 serde_yaml = ">=0.8"
 reqwest = "0.11"
 log = "0.4"
