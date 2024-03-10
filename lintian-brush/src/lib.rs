@@ -831,6 +831,41 @@ pub fn read_desc_file<P: AsRef<std::path::Path>>(
     Ok(fixer_iter)
 }
 
+#[cfg(test)]
+mod read_desc_file_tests {
+    #[test]
+    fn test_empty() {
+        let td = tempfile::tempdir().unwrap();
+        let path = td.path().join("empty.desc");
+        std::fs::write(&path, "").unwrap();
+        assert!(super::read_desc_file(&path, false)
+            .unwrap()
+            .next()
+            .is_none());
+    }
+
+    #[test]
+    fn test_single() {
+        let td = tempfile::tempdir().unwrap();
+        let path = td.path().join("single.desc");
+        std::fs::write(
+            &path,
+            r#"---
+- script: foo.sh
+  lintian-tags:
+  - bar
+  - baz
+"#,
+        )
+        .unwrap();
+        let script_path = td.path().join("foo.sh");
+        std::fs::write(script_path, "#!/bin/sh\n").unwrap();
+        let fixer = super::read_desc_file(&path, false).unwrap().next().unwrap();
+        assert_eq!(fixer.name(), "foo");
+        assert_eq!(fixer.lintian_tags(), vec!["bar", "baz"]);
+    }
+}
+
 fn load_fixer(
     name: String,
     tags: Vec<String>,
