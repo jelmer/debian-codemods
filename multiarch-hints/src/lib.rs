@@ -10,7 +10,6 @@ use debian_analyzer::{
 use debversion::Version;
 use lazy_regex::regex_captures;
 use lazy_static::lazy_static;
-use pyo3::PyErr;
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use serde_yaml::from_value;
@@ -421,7 +420,6 @@ pub enum OverallError {
     TreeError(TreeError),
     NotDebianPackage(std::path::PathBuf),
     Other(String),
-    Python(PyErr),
     NoChanges,
 }
 
@@ -432,7 +430,6 @@ impl std::fmt::Display for OverallError {
                 write!(f, "{} is not a Debian package.", p.display())
             }
             OverallError::TreeError(e) => write!(f, "{}", e),
-            OverallError::Python(e) => write!(f, "{}", e),
             OverallError::NoChanges => write!(f, "No changes to apply."),
             OverallError::Other(e) => write!(f, "{}", e),
         }
@@ -447,17 +444,11 @@ impl From<TreeError> for OverallError {
     }
 }
 
-impl From<PyErr> for OverallError {
-    fn from(e: PyErr) -> Self {
-        OverallError::Python(e)
-    }
-}
-
 impl From<CommitError> for OverallError {
     fn from(e: CommitError) -> Self {
         match e {
             CommitError::PointlessCommit => OverallError::NoChanges,
-            CommitError::Other(e) => OverallError::Python(e),
+            CommitError::Other(e) => OverallError::Other(e.to_string()),
             CommitError::NoWhoami => {
                 OverallError::Other("Unable to determine committer".to_string())
             }
@@ -469,7 +460,7 @@ impl From<ChangelogError> for OverallError {
     fn from(e: ChangelogError) -> Self {
         match e {
             ChangelogError::NotDebianPackage(p) => OverallError::NotDebianPackage(p),
-            ChangelogError::Python(e) => OverallError::Python(e),
+            ChangelogError::Python(e) => OverallError::Other(e.to_string()),
         }
     }
 }

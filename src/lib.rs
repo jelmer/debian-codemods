@@ -217,7 +217,7 @@ pub enum Certainty {
     Certain,
 }
 
-impl FromStr for Certainty {
+impl std::str::FromStr for Certainty {
     type Err = String;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
@@ -285,6 +285,7 @@ pub fn min_certainty(certainties: &[Certainty]) -> Option<Certainty> {
 
 /// Get the committer string for a tree
 pub fn get_committer(working_tree: &WorkingTree) -> String {
+    pyo3::prepare_freethreaded_python();
     pyo3::Python::with_gil(|py| {
         let m = py.import("lintian_brush")?;
         let get_committer = m.getattr("get_committer")?;
@@ -338,6 +339,7 @@ pub fn control_files_in_root(tree: &dyn Tree, subpath: &std::path::Path) -> bool
 }
 
 pub fn branch_vcs_type(branch: &dyn Branch) -> String {
+    pyo3::prepare_freethreaded_python();
     pyo3::Python::with_gil(|py| {
         let repo = branch.to_object(py).getattr(py, "repository").unwrap();
         if repo.as_ref(py).hasattr("_git").unwrap() {

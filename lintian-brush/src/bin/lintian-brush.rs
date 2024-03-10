@@ -419,6 +419,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     None,
                 );
             }
+            #[cfg(feature = "python")]
             Err(OverallError::Python(e)) => {
                 drop(write_lock);
                 report_fatal(
@@ -445,6 +446,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     versions_dict(),
                     "io-error",
                     format!("I/O error: {}", e).as_str(),
+                    None,
+                    None,
+                );
+            }
+            Err(OverallError::Other(e)) => {
+                drop(write_lock);
+                report_fatal(
+                    versions_dict(),
+                    "other-error",
+                    format!("Other error: {}", e).as_str(),
                     None,
                     None,
                 );

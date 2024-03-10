@@ -9,7 +9,7 @@ repository = "https://salsa.debian.org/jelmer/lintian-brush.git"
 homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 
 [dependencies]
-pyo3 = { workspace = true, features = ["auto-initialize", "serde", "chrono"] }
+pyo3 = { workspace = true, features = ["serde", "chrono"] }
 debversion = { workspace = true, features = ["serde", "python-debian"] }
 log = { workspace = true }
 lazy-regex.workspace = true

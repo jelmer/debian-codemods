@@ -18,6 +18,7 @@ use debian_analyzer::{
 };
 use debian_changelog::ChangeLog;
 
+#[cfg(feature = "python")]
 pub mod py;
 
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
@@ -459,6 +460,8 @@ impl Fixer for PythonScriptFixer {
             diligence.unwrap_or(0),
         );
 
+        pyo3::prepare_freethreaded_python();
+
         use pyo3::import_exception;
         use pyo3::prelude::*;
         use pyo3::types::PyDict;
@@ -625,7 +628,7 @@ impl From<ChangelogError> for FixerError {
     fn from(e: ChangelogError) -> Self {
         match e {
             ChangelogError::NotDebianPackage(path) => FixerError::NotDebianPackage(path),
-            ChangelogError::Python(e) => FixerError::Python(e),
+            ChangelogError::Python(e) => FixerError::Other(e.to_string()),
         }
     }
 }
@@ -673,6 +676,7 @@ impl std::fmt::Display for FixerError {
                 stderr
             ),
             FixerError::Other(s) => write!(f, "{}", s),
+            #[cfg(feature = "python")]
             FixerError::Python(e) => write!(f, "{}", e),
             FixerError::NotDebianPackage(p) => write!(f, "Not a Debian package: {}", p.display()),
             FixerError::DescriptionMissing => {
@@ -1120,6 +1124,7 @@ pub fn data_file_path(
         return Some(path);
     }
 
+    pyo3::prepare_freethreaded_python();
     #[cfg(feature = "python")]
     match pyo3::Python::with_gil(|py| {
         let pkg_resources = py.import("pkg_resources").unwrap();
@@ -1208,7 +1213,7 @@ pub fn run_lintian_fixer(
                 local_tree.abspath(subpath).unwrap(),
             ));
         }
-        Err(TreeError::Other(e)) => return Err(e.into()),
+        Err(TreeError::Other(e)) => return Err(FixerError::Other(e.to_string())),
     };
 
     let cl = ChangeLog::read(r)?;
@@ -1314,8 +1319,9 @@ pub fn run_lintian_fixer(
                     Some(basis_tree.as_ref()),
                     Some(subpath),
                     dirty_tracker,
-                )?;
-                return Err(FixerError::Python(e));
+                )
+                .map_err(|e| FixerError::Other(e.to_string()))?;
+                return Err(FixerError::Other(e.to_string()));
             }
         };
 
@@ -1371,7 +1377,7 @@ pub fn run_lintian_fixer(
         )
         .map_err(|e| match e {
             CommitError::PointlessCommit => FixerError::NoChanges,
-            CommitError::Other(e) => FixerError::Python(e),
+            CommitError::Other(e) => FixerError::Other(e.to_string()),
             CommitError::NoWhoami => FixerError::Other("No committer specified".to_string()),
         })?;
     result.revision_id = Some(revid);
@@ -1387,10 +1393,12 @@ pub enum OverallError {
     ChangelogCreate(String),
     TreeError(TreeError),
     IoError(std::io::Error),
+    Other(String),
     #[cfg(feature = "python")]
     Python(pyo3::PyErr),
 }
 
+#[cfg(feature = "python")]
 impl From<pyo3::PyErr> for OverallError {
     fn from(e: pyo3::PyErr) -> Self {
         OverallError::Python(e)
@@ -1411,6 +1419,7 @@ impl std::fmt::Display for OverallError {
             }
             #[cfg(feature = "python")]
             OverallError::Python(e) => write!(f, "{}", e),
+            OverallError::Other(e) => write!(f, "{}", e),
             OverallError::TreeError(e) => write!(f, "{}", e),
             OverallError::IoError(e) => write!(f, "{}", e),
         }
@@ -1470,7 +1479,7 @@ pub fn run_lintian_fixers(
         breezyshim::workspace::CheckCleanTreeError::WorkspaceDirty(p) => {
             OverallError::WorkspaceDirty(p)
         }
-        breezyshim::workspace::CheckCleanTreeError::Python(e) => OverallError::Python(e),
+        breezyshim::workspace::CheckCleanTreeError::Python(e) => OverallError::Other(e.to_string()),
     })?;
 
     let mut changelog_behaviour = None;
@@ -1494,7 +1503,9 @@ pub fn run_lintian_fixers(
             log::warn!("Too many open files for inotify, not using it.");
             None
         }
-        Err(breezyshim::dirty_tracker::Error::Python(e)) => return Err(e.into()),
+        Err(breezyshim::dirty_tracker::Error::Python(e)) => {
+            return Err(OverallError::Other(e.to_string()))
+        }
     };
     for fixer in fixers {
         pb.set_message(format!("Running fixer {}", fixer.name()));
@@ -1640,6 +1651,7 @@ pub fn run_lintian_fixers(
                     ret.overridden_lintian_issues.extend(os);
                     continue;
                 }
+                #[cfg(feature = "python")]
                 FixerError::Python(ref ep) => {
                     if verbose {
                         log::info!("Fixer {} failed: {}", fixer.name(), ep);
@@ -1809,8 +1821,9 @@ fn _upstream_changes_to_patch(
     description: &str,
     timestamp: Option<chrono::naive::NaiveDateTime>,
 ) -> pyo3::PyResult<(String, Vec<std::path::PathBuf>)> {
-    use pyo3::conversion::ToPyObject;
+    pyo3::prepare_freethreaded_python();
     pyo3::Python::with_gil(|py| {
+        use pyo3::conversion::ToPyObject;
         let m = py.import("lintian_brush")?;
         let upstream_changes_to_patch = m.getattr("_upstream_changes_to_patch")?;
         upstream_changes_to_patch

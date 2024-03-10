@@ -337,16 +337,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None,
             );
         }
-        Err(OverallError::Python(e)) => {
-            drop(write_lock);
-            report_fatal(
-                versions_dict(),
-                "python-error",
-                format!("Error running Python: {}", e).as_str(),
-                None,
-                None,
-            );
-        }
         Err(OverallError::TreeError(e)) => {
             drop(write_lock);
             report_fatal(
