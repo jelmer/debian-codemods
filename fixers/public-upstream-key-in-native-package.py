@@ -26,8 +26,11 @@ for name in ["debian/upstream/signing-key.asc"]:
     issue.report_fixed()
     os.unlink(name)
 
-if os.listdir("debian/upstream") == []:
-    os.rmdir("debian/upstream")
+try:
+    if os.listdir("debian/upstream") == []:
+        os.rmdir("debian/upstream")
+except FileNotFoundError:
+    pass
 
 report_result(
     "Remove upstream signing key in native source package.",
