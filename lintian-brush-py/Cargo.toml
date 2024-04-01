@@ -18,7 +18,7 @@ pyo3 = { workspace = true, features = ["chrono", "serde"] }
 lintian-brush = { path = "../lintian-brush" }
 serde_json = "1"
 chrono = "0.4"
-pyo3-log = ">=0.5"
+pyo3-log = ">=0.9"
 debversion = { workspace = true, features = ["python-debian"] }
 breezyshim = { workspace = true }
 debian-analyzer = { version = ">=0.154.0", path = "..", default-features = false }
