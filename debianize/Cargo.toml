@@ -10,7 +10,7 @@ homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 
 [dependencies]
 breezyshim.workspace = true
-clap.workspace = true
+clap = { workspace = true, features = ["derive", "env"] }
 debian-analyzer = { version = ">=0.154.0", path = ".." }
 debian-changelog.workspace = true
 distro-info = "0.4.0"

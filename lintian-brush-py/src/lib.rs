@@ -116,7 +116,7 @@ fn certainty_sufficient(
 }
 
 #[pyfunction]
-fn min_certainty(certainties: Vec<&str>) -> PyResult<String> {
+fn min_certainty(certainties: Vec<String>) -> PyResult<String> {
     let certainties = certainties
         .iter()
         .map(|c| c.parse().map_err(UnsupportedCertainty::new_err))
@@ -132,7 +132,8 @@ fn resolve_release_codename(name: &str, date: Option<chrono::NaiveDate>) -> Opti
 }
 
 #[pyfunction]
-fn calculate_value(tags: Vec<&str>) -> i32 {
+fn calculate_value(tags: Vec<String>) -> i32 {
+    let tags = tags.iter().map(|s| s.as_str()).collect::<Vec<_>>();
     lintian_brush::calculate_value(tags.as_slice())
 }
 
