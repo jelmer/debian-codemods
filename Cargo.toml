@@ -33,7 +33,7 @@ patchkit = "0.1.0"
 dep3 = "0.1.0"
 
 [features]
-default = ["python", "cli"]
+default = ["python"]
 python = []
 cli = ["dep:clap", "dep:env_logger"]
 
