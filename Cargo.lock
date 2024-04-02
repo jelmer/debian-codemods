@@ -136,13 +136,13 @@ checksum = "cf4b9d6a944f767f8e5e0db018570623c85f3d925ac718db4e06d0187adb21c1"
 
 [[package]]
 name = "breezyshim"
-version = "0.1.87"
+version = "0.1.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91b104d609e30d276874188d883c70a05b78faa301a7adb2b3321781eb5f4451"
+checksum = "c29e6a22f6dde08f84a4121f418a9e6bed068f39e7e290284576502cc6b59251"
 dependencies = [
  "chrono",
  "ctor",
- "debversion 0.3.0",
+ "debversion 0.2.2",
  "lazy-regex 3.1.0",
  "lazy_static",
  "pyo3",
@@ -355,7 +355,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71be2258e81c0c1f83f5e87340a11bf5c2336b3424fb2a7c7aa1be5a00c32577"
 dependencies = [
  "chrono",
- "debversion 0.3.0",
+ "debversion 0.2.2",
  "lazy-regex 3.1.0",
  "log",
  "rowan",
@@ -409,6 +409,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e65a0a572fa10f34b89addac251b7c8f40266606ee5847d769ab8db4d56ca11b"
 dependencies = [
  "lazy-regex 3.1.0",
+ "pyo3",
 ]
 
 [[package]]
