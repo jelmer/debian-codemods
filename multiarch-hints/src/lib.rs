@@ -420,6 +420,8 @@ pub enum OverallError {
     TreeError(TreeError),
     NotDebianPackage(std::path::PathBuf),
     Other(String),
+    Python(PyErr),
+    NoWhoami,
     NoChanges,
 }
 
@@ -430,6 +432,8 @@ impl std::fmt::Display for OverallError {
                 write!(f, "{} is not a Debian package.", p.display())
             }
             OverallError::TreeError(e) => write!(f, "{}", e),
+            OverallError::Python(e) => write!(f, "{}", e),
+            OverallError::NoWhoami => write!(f, "No committer configured."),
             OverallError::NoChanges => write!(f, "No changes to apply."),
             OverallError::Other(e) => write!(f, "{}", e),
         }
@@ -448,10 +452,8 @@ impl From<CommitError> for OverallError {
     fn from(e: CommitError) -> Self {
         match e {
             CommitError::PointlessCommit => OverallError::NoChanges,
-            CommitError::Other(e) => OverallError::Other(e.to_string()),
-            CommitError::NoWhoami => {
-                OverallError::Other("Unable to determine committer".to_string())
-            }
+            CommitError::NoWhoami => OverallError::NoWhoami,
+            CommitError::Other(e) => OverallError::Python(e),
         }
     }
 }

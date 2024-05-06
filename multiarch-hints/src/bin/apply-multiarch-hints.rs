@@ -357,6 +357,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None,
             );
         }
+        Err(OverallError::NoWhoami) => {
+            drop(write_lock);
+            report_fatal(
+                versions_dict(),
+                "no-whoami",
+                "Unable to determine committer identity",
+                None,
+                None,
+            );
+        }
         Ok(overall_result) => overall_result,
     };
     std::mem::drop(write_lock);
