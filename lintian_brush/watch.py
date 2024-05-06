@@ -249,7 +249,9 @@ def candidates_from_upstream_metadata(
     else:
         import ruamel.yaml
 
-        code = ruamel.yaml.round_trip_load(inp, preserve_quotes=True)
+        yaml = ruamel.yaml.YAML()
+
+        code = yaml.load(inp, preserve_quotes=True)
 
         for field in ["Repository", "X-Download"]:
             try:

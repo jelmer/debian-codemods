@@ -32,7 +32,8 @@ def add_upstream_metadata(copyright):
     except FileNotFoundError:
         upstream_metadata = {}
     else:
-        code = ruamel.yaml.safe_load(inp)
+        yaml = ruamel.yaml.YAML()
+        code = yaml.load(inp, ruamel.yaml.SafeLoader)
         upstream_metadata = {
             k: UpstreamDatum(k, v, certainty="certain") for (k, v) in code.items()
         }
