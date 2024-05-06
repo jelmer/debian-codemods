@@ -7,6 +7,7 @@ license = "GPL-2.0+"
 description = "Create Debian packaging from upstream sources"
 repository = "https://salsa.debian.org/jelmer/lintian-brush.git"
 homepage = "https://salsa.debian.org/jelmer/lintian-brush"
+documentation = "https://docs.rs/debianize"
 
 [dependencies]
 breezyshim.workspace = true

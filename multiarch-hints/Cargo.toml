@@ -2,6 +2,9 @@
 name = "multiarch-hints"
 version = { workspace = true }
 edition = "2021"
+documentation = "https://docs.rs/multiarch-hints"
+repository = "https://salsa.debian.org/jelmer/lintian-brush"
+description = "Apply multiarch hints to Debian packages"
 
 [dependencies]
 chrono = { workspace = true }
