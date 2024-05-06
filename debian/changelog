@@ -1,6 +1,10 @@
 lintian-brush (0.155) UNRELEASED; urgency=medium
 
+  [ Jelmer Vernooĳ ]
   * Bump pyo3 dependency to 0.20, fixing FTBFS. Closes: #1061435
+
+  [ Peter Michael Green ]
+  * Add missing build-dependency on librust-pyo3-file-dev
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 24 Jan 2024 23:56:55 +0000
 
