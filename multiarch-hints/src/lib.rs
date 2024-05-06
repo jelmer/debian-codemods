@@ -420,7 +420,7 @@ pub enum OverallError {
     TreeError(TreeError),
     NotDebianPackage(std::path::PathBuf),
     Other(String),
-    Python(PyErr),
+    Python(pyo3::PyErr),
     NoWhoami,
     NoChanges,
 }
