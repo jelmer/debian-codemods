@@ -12,3 +12,4 @@ lintian_brush.egg-info/
 target
 lintian_brush/_lintian_brush_rs.*.so
 *.swp
+debianize/_debianize_rs.*.so
