@@ -9,6 +9,7 @@ import sys
 
 from upstream_ontologist import (
     UpstreamDatum,
+    UpstreamMetadata,
     upstream_metadata_sort_key,
 )
 from upstream_ontologist.debian import (
@@ -45,7 +46,7 @@ from lintian_brush.yaml import (
 )
 
 # Don't clutter standard err/standard out
-logger = logging.getLogger("upstream_ontologist.guess")
+logger = logging.getLogger("upstream_ontologist.extrapolate")
 logger.setLevel(logging.ERROR)
 
 
@@ -86,11 +87,7 @@ with YamlUpdater("debian/upstream/metadata") as editor:
     if isinstance(editor.code, str):
         sys.exit(0)
 
-    upstream_metadata = {
-        k: UpstreamDatum(str(k), v, certainty="certain")
-        for (k, v) in editor.code.items()
-        if v is not None
-    }
+    upstream_metadata = UpstreamMetadata.from_dict(editor.code, "certain")
 
     minimum_certainty = os.environ.get("MINIMUM_CERTAINTY")
     net_access = net_access_allowed()

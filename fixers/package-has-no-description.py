@@ -4,6 +4,7 @@ import sys
 from typing import List, Optional
 
 from upstream_ontologist.guess import guess_upstream_metadata
+from upstream_ontologist import UpstreamDatum
 
 from lintian_brush.fixer import (
     LintianIssue,
@@ -20,8 +21,11 @@ if not meets_minimum_certainty(CERTAINTY):
     sys.exit(0)
 
 
-def textwrap_description(text) -> List[str]:
+def textwrap_description(text: UpstreamDatum | str) -> List[str]:
     import textwrap
+
+    if isinstance(text, UpstreamDatum):
+        text = text.value
 
     ret = []
     paras = text.split("\n\n")
@@ -37,7 +41,9 @@ def textwrap_description(text) -> List[str]:
 
 
 # TODO(jelmer): Use debmutate.control.format_description instead
-def format_description(summary, lines):
+def format_description(summary: UpstreamDatum | str, lines):
+    if isinstance(summary, UpstreamDatum):
+        summary = summary.value
     return summary + "\n" + "".join([" %s\n" % line for line in lines])
 
 
