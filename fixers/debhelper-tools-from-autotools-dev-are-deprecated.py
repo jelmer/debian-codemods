@@ -24,7 +24,7 @@ def cb(line, target):
         )
         if issue.should_fix():
             issue.report_fixed()
-            return []
+            return [b"dh_update_autotools_config"]
     if line.strip() == b"dh_autotools-dev_restoreconfig":
         issue = LintianIssue(
             "source",

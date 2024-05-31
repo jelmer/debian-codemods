@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 
 configure-stamp:
+	dh_update_autotools_config
 	./configure
 	touch $@
 

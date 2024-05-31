@@ -6,6 +6,10 @@ lintian-brush (0.155) UNRELEASED; urgency=medium
   [ Peter Michael Green ]
   * Add missing build-dependency on librust-pyo3-file-dev
 
+  [ Jelmer Vernooĳ ]
+  * When removing calls to deprecated dh_autotools-dev_updateconfig,
+    substitute dh_update_autotools_config. Closes: #1071554
+
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 24 Jan 2024 23:56:55 +0000
 
 lintian-brush (0.154) unstable; urgency=medium
