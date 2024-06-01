@@ -38,12 +38,11 @@ with control as updater:
 
 if len(updated) == 1:
     description = [
-        "Use secure URI in Vcs control header %s." % list(updated)[0]
+        f"Use secure URI in Vcs control header {list(updated)[0]}."
     ]
 else:
     description = [
-        "Use secure URI in Vcs control headers: %s."
-        % ", ".join(sorted(updated))
+        "Use secure URI in Vcs control headers: {}.".format(", ".join(sorted(updated)))
     ]
 if lp_note:
     description.append("")

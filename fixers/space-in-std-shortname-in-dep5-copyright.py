@@ -58,7 +58,7 @@ def fix_spaces(copyright):
             fixed_lintian_tag(
                 "source",
                 "space-in-std-shortname-in-dep5-copyright",
-                "%s (line XX)" % paragraph.license.synopsis,
+                f"{paragraph.license.synopsis} (line XX)",
             )
             paragraph.license = License(newsynopsis, paragraph.license.text)
 

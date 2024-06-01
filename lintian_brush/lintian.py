@@ -57,7 +57,7 @@ def read_list_file(f: TextIO, vendor: Optional[str] = None):
                     continue
                 line = val
             else:
-                raise ValueError("invalid check %r" % cond)
+                raise ValueError(f"invalid check {cond!r}")
         yield line
 
 

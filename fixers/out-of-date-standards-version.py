@@ -174,8 +174,8 @@ def check_4_5_0():
             continue
         shortname = entry.name[: -len(".init")]
         if not os.path.exists(
-            "debian/%s.service" % shortname
-        ) and not os.path.exists("debian/%s@.service" % shortname):
+            f"debian/{shortname}.service"
+        ) and not os.path.exists(f"debian/{shortname}@.service"):
             raise UpgradeCheckFailure(
                 "9.3.1",
                 "packages that include system services should include "
@@ -321,8 +321,8 @@ try:
                 tag,
                 "{}{}{}".format(
                     current_version,
-                    (" (released %s)" % dt.strftime("%Y-%m-%d")) if dt else "",
-                    (" (current is %s)" % ".".join([str(x) for x in last]))
+                    (" (released {})".format(dt.strftime("%Y-%m-%d"))) if dt else "",
+                    (" (current is {})".format(".".join([str(x) for x in last])))
                     if last is not None
                     else "",
                 ),

@@ -29,7 +29,7 @@ per_tag_status = {}
 for entry in tag_status or []:
     per_tag_status[entry["tag"]] = entry
     extra_keys = set(entry.keys()) - set(KNOWN_KEYS)
-    assert not extra_keys, "Unknown keys: %r" % extra_keys
+    assert not extra_keys, f"Unknown keys: {extra_keys!r}"
 
 
 for tag in supported_tags:
@@ -57,6 +57,6 @@ elif args.check:
     retcode = 0
     for tag in sorted(all_tags):
         if tag not in per_tag_status:
-            print("Missing tag: %s" % tag)
+            print(f"Missing tag: {tag}")
             retcode = 1
     sys.exit(retcode)

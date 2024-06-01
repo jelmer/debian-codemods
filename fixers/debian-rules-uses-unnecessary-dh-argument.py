@@ -32,7 +32,7 @@ def drop_unnecessary_args(line, target):
             issue = LintianIssue(
                 "source",
                 "debian-rules-uses-unnecessary-dh-argument",
-                info="dh ... %s" % arg.decode(),
+                info=f"dh ... {arg.decode()}",
             )
             if issue.should_fix():
                 removed_args.append(arg)
@@ -44,7 +44,7 @@ def drop_unnecessary_args(line, target):
             issue = LintianIssue(
                 "source",
                 "debian-rules-uses-unnecessary-dh-argument",
-                info="dh ... -with=%s" % arg.decode(),
+                info=f"dh ... -with={arg.decode()}",
             )
             if issue.should_fix():
                 removed_args.append(b"--with=%s" % arg)
@@ -73,6 +73,5 @@ with suppress(FileNotFoundError), RulesEditor() as updater:
     updater.legacy_update(drop_unnecessary_args)
 
 report_result(
-    "Drop unnecessary dh arguments: %s"
-    % ", ".join([arg.decode() for arg in removed_args])
+    "Drop unnecessary dh arguments: {}".format(", ".join([arg.decode() for arg in removed_args]))
 )

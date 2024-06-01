@@ -15,7 +15,7 @@ for path in systemd_service_files():
                 fixed_lintian_tag(
                     "source",
                     "systemd-service-alias-without-extension",
-                    "%s" % path,
+                    f"{path}",
                 )
 
 

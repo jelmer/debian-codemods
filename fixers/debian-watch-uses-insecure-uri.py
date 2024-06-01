@@ -74,7 +74,7 @@ if not watchfile_has_http():
 # hosts.
 def stock_replace(line):
     for hostname in ["code.launchpad.net", "launchpad.net", "ftp.gnu.org"]:
-        line = line.replace("http://%s/" % hostname, "https://%s/" % hostname)
+        line = line.replace(f"http://{hostname}/", f"https://{hostname}/")
     return line
 
 

@@ -114,9 +114,9 @@ def write_rules_template(
         addons = []
     dh_args = ["$@"]
     if buildsystem:
-        dh_args.append("--buildsystem=%s" % buildsystem)
+        dh_args.append(f"--buildsystem={buildsystem}")
     for addon in addons:
-        dh_args.append("--with=%s" % addon)
+        dh_args.append(f"--with={addon}")
 
     with open(path, "w") as f:
         f.write(

@@ -49,7 +49,7 @@ def update_ubuntu(versions, key_packages):
     ubuntu = lp.distributions["ubuntu"]
     archive = ubuntu.main_archive
     for series in ubuntu.series:
-        print("  .. %s" % series.name)
+        print(f"  .. {series.name}")
         for pkg in key_packages:
             if (
                 ubuntu.current_series.name != series.name

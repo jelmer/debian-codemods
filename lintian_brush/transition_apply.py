@@ -71,7 +71,7 @@ def _note_changelog_policy(policy, msg):
 def control_matches(control, ors):
     for field, expr in ors:
         if not field.startswith("."):
-            raise ValueError("unsupported field %r" % field)
+            raise ValueError(f"unsupported field {field!r}")
         for paragraph in control.paragraphs:
             try:
                 value = paragraph[field[1:]]
@@ -109,7 +109,7 @@ def ben_find_bugno(ben):
 def _apply_transition(control, ben):
     for key in ben:
         if key not in SUPPORTED_KEYS:
-            raise ValueError("unsupported key in ben file: %r" % key)
+            raise ValueError(f"unsupported key in ben file: {key!r}")
     if ben.get("is_affected") and not control_matches(
         control, ben["is_affected"]
     ):
@@ -120,7 +120,7 @@ def _apply_transition(control, ben):
         raise PackageNotBad(control.source["Source"])
     for field, expr in ben["is_bad"]:
         if not field.startswith("."):
-            raise ValueError("unsupported field %r" % field)
+            raise ValueError(f"unsupported field {field!r}")
         for paragraph in control.paragraphs:
             try:
                 value = paragraph[field[1:]]
@@ -283,20 +283,20 @@ def main():  # noqa: C901
     except FormattingUnpreservable as e:
         report_fatal(
             "formatting-unpreservable",
-            "unable to preserve formatting while editing %s" % e.path,
+            f"unable to preserve formatting while editing {e.path}",
         )
         if hasattr(e, "diff"):  # debmutate >= 0.64
             sys.stderr.writelines(e.diff())
         return 1
     except GeneratedFile as e:
-        report_fatal("generated-file", "unable to edit generated file: %r" % e)
+        report_fatal("generated-file", f"unable to edit generated file: {e!r}")
         return 1
     except NotDebianPackage:
         report_fatal("not-debian-package", "Not a Debian package.")
         return 1
     except ChangeConflict as e:
         report_fatal(
-            "change-conflict", "Generated file changes conflict: %s" % e
+            "change-conflict", f"Generated file changes conflict: {e}"
         )
         return 1
 
@@ -318,7 +318,7 @@ def main():  # noqa: C901
             update_changelog = True
 
     if update_changelog:
-        summary = "Apply transition %s." % ben["title"]
+        summary = "Apply transition {}.".format(ben["title"])
         if result.bugno:
             summary += " Closes: #%d" % result.bugno
         add_changelog_entry(wt, changelog_path, [summary])

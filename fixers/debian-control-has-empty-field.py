@@ -37,6 +37,6 @@ report_result(
     "debian/control: Remove empty control field{} {}{}.".format(
         "s" if len(fields) > 1 else "",
         ", ".join(fields),
-        (" in package %s" % ", ".join(packages)) if packages else "",
+        (" in package {}".format(", ".join(packages))) if packages else "",
     )
 )

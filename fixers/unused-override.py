@@ -37,7 +37,7 @@ description = [
     "\n",
 ]
 for override in removed:
-    description.append("* %s\n" % override.tag)
+    description.append(f"* {override.tag}\n")
     fixed_lintian_tag(
         "source",
         "unused-override",

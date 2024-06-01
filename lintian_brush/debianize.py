@@ -246,7 +246,7 @@ def go_import_path_from_repo(repo_url):
 
 def enable_dh_addon(source, addon):
     source["Build-Depends"] = ensure_some_version(
-        source["Build-Depends"], "dh-sequence-%s" % addon
+        source["Build-Depends"], f"dh-sequence-{addon}"
     )
 
 
@@ -465,10 +465,10 @@ def process_setup_py(
     upstream_name = metadata["Name"]
     if upstream_name.startswith("python-"):
         upstream_name = upstream_name[len("python-") :]
-    source["Source"] = "python-%s" % upstream_name.lower().replace("_", "-")
+    source["Source"] = "python-{}".format(upstream_name.lower().replace("_", "-"))
     control.add_binary(
         {
-            "Package": "python3-%s" % upstream_name.lower().replace("_", "-"),
+            "Package": "python3-{}".format(upstream_name.lower().replace("_", "-")),
             "Depends": "${python3:Depends}",
             "Architecture": "all",
         }
@@ -511,7 +511,7 @@ def process_maven(
     source["Source"] = upstream_name
     control.add_binary(
         {
-            "Package": "lib%s-java" % upstream_name,
+            "Package": f"lib{upstream_name}-java",
             "Depends": "${java:Depends}",
             "Architecture": "all",
         }
@@ -552,7 +552,7 @@ def process_npm(
         .replace("@", "")
         .lower()
     )
-    source["Source"] = "node-%s" % upstream_name
+    source["Source"] = f"node-{upstream_name}"
     source["Rules-Requires-Root"] = "no"
     source["Standards-Version"] = latest_standards_version()
     build_deps, test_deps = get_project_wide_deps(
@@ -560,7 +560,7 @@ def process_npm(
     )
     import_build_deps(source, build_deps)
     control.add_binary(
-        {"Package": "node-%s" % upstream_name, "Architecture": "all"}
+        {"Package": f"node-{upstream_name}", "Architecture": "all"}
     )
     source["Testsuite"] = "autopkgtest-pkg-nodejs"
     return control
@@ -570,8 +570,7 @@ def perl_package_name(upstream_name):
     if upstream_name.startswith("lib"):
         upstream_name = upstream_name[len("lib") :]
     return (
-        "lib%s-perl"
-        % upstream_name.replace("::", "-").replace("_", "").lower()
+        "lib{}-perl".format(upstream_name.replace("::", "-").replace("_", "").lower())
     )
 
 
@@ -724,7 +723,7 @@ def process_golang(
     source["Section"] = "devel"
     parsed_url = urlparse(metadata["Repository"])
     godebname = go_base_name(parsed_url.hostname + parsed_url.path)
-    source["Source"] = "golang-%s" % godebname
+    source["Source"] = f"golang-{godebname}"
     build_deps, test_deps = get_project_wide_deps(
         session, wt, subpath, buildsystem, buildsystem_subpath
     )
@@ -745,7 +744,7 @@ def process_golang(
     # TODO(jelmer): Add --builddirectory=_build to dh arguments
     control.add_binary(
         {
-            "Package": "golang-%s-dev" % godebname,
+            "Package": f"golang-{godebname}-dev",
             "Architecture": "all",
             "Multi-Arch": "foreign",
         }
@@ -824,7 +823,7 @@ def process_octave(
     )
     source = control.source
 
-    source["Source"] = "octave-%s" % metadata["Name"].lower()
+    source["Source"] = "octave-{}".format(metadata["Name"].lower())
     source["Rules-Requires-Root"] = "no"
     source["Build-Depends"] = "dh-octave"
     source["Standards-Version"] = latest_standards_version()
@@ -844,7 +843,7 @@ def process_octave(
     # architecture-independent.
     control.add_binary(
         {
-            "Package": "octave-%s" % metadata["Name"].lower(),
+            "Package": "octave-{}".format(metadata["Name"].lower()),
             "Architecture": "all",
             "Depends": "${octave:Depends}, ${misc:Depends}",
             "Description": "${octave:Upstream-Description}",
@@ -927,7 +926,7 @@ def process_cargo(
     data = load_crate_info(crate)
     if data is None:
         raise BuildSystemProcessError(
-            buildsystem, "Crate does not exist" % crate
+            buildsystem, "Crate does not exist".format()
         )
     features = None
     crate_version = None
@@ -1905,8 +1904,7 @@ def main(
             if upstream_version:
                 report_fatal(
                     "requested-version-missing",
-                    "Requested version %s not present upstream"
-                    % upstream_version,
+                    f"Requested version {upstream_version} not present upstream",
                 )
                 return 1
             else:
@@ -1923,7 +1921,7 @@ def main(
         except DebianDirectoryExists as e:
             report_fatal(
                 code="debian-directory-exists",
-                description="%s: A debian directory already exists. " % e.path,
+                description=f"{e.path}: A debian directory already exists. ",
                 hint=(
                     "Run lintian-brush instead or "
                     "specify --force-new-directory."
@@ -1934,7 +1932,7 @@ def main(
             report_fatal(
                 code="invalid-source-package-name",
                 description=(
-                    "Generated source package name %r is not valid." % e.source
+                    f"Generated source package name {e.source!r} is not valid."
                 ),
             )
             return 1
@@ -2089,7 +2087,7 @@ def main(
                 return 1
             except DebianizedPackageRequirementMismatch as e:
                 if upstream_branch:
-                    hint = "Wrong repository (%s)?" % e.upstream_branch
+                    hint = f"Wrong repository ({e.upstream_branch})?"
                 else:
                     hint = None
                 report_fatal(

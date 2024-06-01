@@ -44,7 +44,7 @@ def textwrap_description(text: UpstreamDatum | str) -> List[str]:
 def format_description(summary: UpstreamDatum | str, lines):
     if isinstance(summary, UpstreamDatum):
         summary = summary.value
-    return summary + "\n" + "".join([" %s\n" % line for line in lines])
+    return summary + "\n" + "".join([f" {line}\n" for line in lines])
 
 
 def guess_description(binary_name, all_binaries, summary=None):
@@ -100,7 +100,6 @@ with control as updater:
 
 
 report_result(
-    description="Add description for binary packages: %s"
-    % ", ".join(sorted(updated)),
+    description="Add description for binary packages: {}".format(", ".join(sorted(updated))),
     certainty=CERTAINTY,
 )

@@ -100,9 +100,7 @@ class DropEssential(Action):
     """Drop dependency on essential package."""
 
     def __str__(self):
-        return "Drop dependency on essential package %s" % (
-            PkgRelation.str(self.rel)
-        )
+        return f"Drop dependency on essential package {PkgRelation.str(self.rel)}"
 
     def json(self):
         return ("drop-essential", PkgRelation.str(self.rel))
@@ -112,7 +110,7 @@ class DropMinimumVersion(Action):
     """Drop minimumversion."""
 
     def __str__(self):
-        return "Drop versioned constraint on %s" % PkgRelation.str(self.rel)
+        return f"Drop versioned constraint on {PkgRelation.str(self.rel)}"
 
     def json(self):
         return ("drop-minimum-version", PkgRelation.str(self.rel))
@@ -122,9 +120,9 @@ class DropTransition(Action):
     """Drop dependency on dummy transitional package."""
 
     def __str__(self):
-        return "Drop dependency on transitional package %s" % PkgRelation.str(
+        return "Drop dependency on transitional package {}".format(PkgRelation.str(
             self.rel
-        )
+        ))
 
     def json(self):
         return ("drop-transitional", PkgRelation.str(self.rel))
@@ -165,9 +163,7 @@ class DropObsoleteConflict(Action):
     """Drop conflict with obsolete package."""
 
     def __str__(self):
-        return "Drop conflict with removed package %s" % (
-            PkgRelation.str(self.rel)
-        )
+        return f"Drop conflict with removed package {PkgRelation.str(self.rel)}"
 
     def json(self):
         return ("drop-obsolete-conflict", PkgRelation.str(self.rel))
@@ -696,7 +692,7 @@ def release_aliases(name):
         if fn() == name:
             ret.append(alias)
     if ret:
-        return "(%s)" % ", ".join(ret)
+        return "({})".format(", ".join(ret))
     return ""
 
 
@@ -752,7 +748,7 @@ def scrub_obsolete(
         for release, entries in summary.items():
             rev_aliases = release_aliases(release)
             lines.append(
-                "Remove constraints unnecessary since %s" % release
+                f"Remove constraints unnecessary since {release}"
                 + ((" " + rev_aliases) if rev_aliases else "")
                 + ":"
             )
@@ -765,7 +761,7 @@ def scrub_obsolete(
         rev_aliases = release_aliases(release)
         lines.extend(
             [
-                "Remove constraints unnecessary since %s" % release
+                f"Remove constraints unnecessary since {release}"
                 + ((" " + rev_aliases) if rev_aliases else ""),
                 "",
             ]
@@ -991,7 +987,7 @@ def main():  # noqa: C901
             report_fatal(
                 versions_dict(),
                 "formatting-unpreservable",
-                "unable to preserve formatting while editing %s" % e.path,
+                f"unable to preserve formatting while editing {e.path}",
             )
             if hasattr(e, "diff"):  # debmutate >= 0.64
                 sys.stderr.writelines(e.diff())
@@ -1000,7 +996,7 @@ def main():  # noqa: C901
             report_fatal(
                 versions_dict(),
                 "generated-file",
-                "unable to edit generated file: %r" % e,
+                f"unable to edit generated file: {e!r}",
             )
             return 1
         except NotDebianPackage:
@@ -1012,7 +1008,7 @@ def main():  # noqa: C901
             report_fatal(
                 versions_dict(),
                 "change-conflict",
-                "Generated file changes conflict: %s" % e,
+                f"Generated file changes conflict: {e}",
             )
             return 1
         except UddError as e:
@@ -1035,8 +1031,7 @@ def main():  # noqa: C901
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump(
                 {
-                    "description": "Remove constraints unnecessary since %s."
-                    % upgrade_release,
+                    "description": f"Remove constraints unnecessary since {upgrade_release}.",
                     "value": result.value(),
                     "debian": debian_context,
                     "versions": versions_dict(),

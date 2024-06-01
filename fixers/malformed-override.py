@@ -37,6 +37,5 @@ def fix_malformed(path, lineno, override):
 update_overrides(fix_malformed)
 
 report_result(
-    "Remove overrides for lintian tags that are no longer supported: %s"
-    % ", ".join(removed)
+    "Remove overrides for lintian tags that are no longer supported: {}".format(", ".join(removed))
 )

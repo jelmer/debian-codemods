@@ -48,6 +48,5 @@ with ChangelogEditor() as updater:
 
 
 report_result(
-    "Wrap long lines in changelog entries: %s."
-    % (", ".join([str(v) for v in updated]))
+    "Wrap long lines in changelog entries: {}.".format(", ".join([str(v) for v in updated]))
 )

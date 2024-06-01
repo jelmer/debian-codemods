@@ -20,7 +20,7 @@ with control as updater:
             fixed_lintian_tag(
                 updater.source,
                 "vcs-field-uses-not-recommended-uri-format",
-                info="vcs-git %s" % updater.source["Vcs-Git"],
+                info="vcs-git {}".format(updater.source["Vcs-Git"]),
             )
             updater.source["Vcs-Git"] = f"https://{netloc}/{path}"
 

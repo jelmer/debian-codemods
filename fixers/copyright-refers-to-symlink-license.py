@@ -54,5 +54,5 @@ with suppress(
 
 
 report_result(
-    "Refer to specific version of license %s." % ", ".join(sorted(updated))
+    "Refer to specific version of license {}.".format(", ".join(sorted(updated)))
 )

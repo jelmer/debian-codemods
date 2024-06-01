@@ -24,7 +24,7 @@ with ChangelogEditor() as editor:
         "source", "new-package-uses-date-based-version-number", None
     )
     if issue.should_fix():
-        block.version = Version("0~%s" % block.version)
+        block.version = Version(f"0~{block.version}")
         issue.report_fixed()
 
 report_result("Use version prefix for date-based versionioning.")

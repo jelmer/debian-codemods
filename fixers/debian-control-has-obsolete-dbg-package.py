@@ -65,11 +65,9 @@ def migrate_dh_strip(line, target):
                 "debian-control-has-obsolete-dbg-package",
                 info=dbg_pkg,
             )
-            if ("--dbg-package=%s" % dbg_pkg).encode(
-                "utf-8"
-            ) in line and issue.should_fix():
+            if (f"--dbg-package={dbg_pkg}").encode() in line and issue.should_fix():
                 line = line.replace(
-                    ("--dbg-package=%s" % dbg_pkg).encode("utf-8"),
+                    (f"--dbg-package={dbg_pkg}").encode(),
                     (
                         f"--dbgsym-migration='{dbg_pkg} ({migrate_version})'"
                     ).encode(),
@@ -92,7 +90,7 @@ if difference:
     if rules_uses_variables:
         # Don't know how to deal with these yet.
         sys.exit(2)
-    raise Exception("packages missing %r" % difference)
+    raise Exception(f"packages missing {difference!r}")
 
 report_result(
     "Transition to automatic debug package{} (from: {}).".format(

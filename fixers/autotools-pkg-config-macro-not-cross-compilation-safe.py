@@ -64,15 +64,14 @@ for name in ["configure.ac", "configure.in"]:
 
 
 report_result(
-    """Use cross-build compatible macro for finding pkg-config.
+    f"""Use cross-build compatible macro for finding pkg-config.
 
 The package uses AC_PATH_PROG to discover the location of pkg-config(1). This
 macro fails to select the correct version to support cross-compilation.
 
-%s
+{resolution}
 
 Refer to https://bugs.debian.org/884798 for details.
-"""
-    % resolution,
+""",
     patch_name="ac-path-pkgconfig",
 )

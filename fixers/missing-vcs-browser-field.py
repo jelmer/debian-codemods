@@ -16,7 +16,7 @@ with control as updater:
                 fixed_lintian_tag(
                     updater.source,
                     "missing-vcs-browser-field",
-                    info="Vcs-Git %s" % vcs_git,
+                    info=f"Vcs-Git {vcs_git}",
                 )
 
 

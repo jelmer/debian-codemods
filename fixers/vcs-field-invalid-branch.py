@@ -63,7 +63,7 @@ with control as updater:
         except KeyError:
             pass
         except VcsWatchError as e:
-            warn("vcswatch URL unusable: %s" % e.args[0])
+            warn(f"vcswatch URL unusable: {e.args[0]}")
         else:
             if branch != new_branch:
                 default_branch = get_default_branch(repo_url)

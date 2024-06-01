@@ -28,5 +28,5 @@ with suppress(FileNotFoundError), WatchEditor() as editor:
 
 
 report_result(
-    "Update watch file format version to %s." % WATCH_FILE_LATEST_VERSION
+    f"Update watch file format version to {WATCH_FILE_LATEST_VERSION}."
 )

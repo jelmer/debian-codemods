@@ -25,7 +25,7 @@ except FileNotFoundError:
 
 with control as updater:
     if ensure_minimum_debhelper_version(
-        updater.source, "%s~" % minimum_version
+        updater.source, f"{minimum_version}~"
     ):
         fixed_lintian_tag(
             "source",
@@ -35,6 +35,6 @@ with control as updater:
 
 
 report_result(
-    "Bump debhelper dependency to >= %s, since that's what is "
-    "used in debian/compat." % minimum_version
+    f"Bump debhelper dependency to >= {minimum_version}, since that's what is "
+    "used in debian/compat."
 )

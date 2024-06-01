@@ -102,7 +102,7 @@ def get_overrides(
         )
     if type in ("binary", None):
         if package is not None:
-            paths.extend(["debian/%s.lintian-overrides" % package])
+            paths.extend([f"debian/{package}.lintian-overrides"])
         elif os.path.isdir("debian"):
             paths.extend(
                 [

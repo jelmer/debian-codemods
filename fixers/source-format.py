@@ -41,7 +41,7 @@ older_source_format_issue = LintianIssue(
 if older_source_format_issue.should_fix():
     if package_is_native():
         format = "3.0 (native)"
-        description = "Upgrade to newer source format %s." % format
+        description = f"Upgrade to newer source format {format}."
     else:
         from breezy import errors
         from breezy.workingtree import WorkingTree
@@ -55,18 +55,17 @@ if older_source_format_issue.should_fix():
         if patches_directory not in ("debian/patches", None):
             # Non-standard patches directory.
             warn(
-                "Tree has non-standard patches directory %s."
-                % (patches_directory)
+                f"Tree has non-standard patches directory {patches_directory}."
             )
         else:
             try:
                 tree, path = WorkingTree.open_containing(".")
             except errors.NotBranchError as e:
                 if not meets_minimum_certainty("possible"):
-                    warn("unable to open vcs to check for delta: %s" % e)
+                    warn(f"unable to open vcs to check for delta: {e}")
                     sys.exit(0)
                 format = "3.0 (quilt)"
-                description = "Upgrade to newer source format %s." % format
+                description = f"Upgrade to newer source format {format}."
             else:
                 delta = list(tree_non_patches_changes(tree, patches_directory))
                 if delta:
@@ -74,7 +73,7 @@ if older_source_format_issue.should_fix():
                     if opinionated():
                         format = "3.0 (quilt)"
                         description = (
-                            "Upgrade to newer source format %s." % format
+                            f"Upgrade to newer source format {format}."
                         )
                         try:
                             with open("debian/source/options") as f:
@@ -92,13 +91,13 @@ if older_source_format_issue.should_fix():
                             f.writelines(options)
                 else:
                     format = "3.0 (quilt)"
-                    description = "Upgrade to newer source format %s." % format
+                    description = f"Upgrade to newer source format {format}."
 
 if not os.path.exists("debian/source"):
     os.mkdir("debian/source")
 
 with open("debian/source/format", "w") as f:
-    f.write("%s\n" % format)
+    f.write(f"{format}\n")
 
 if format != "1.0":
     older_source_format_issue.report_fixed()

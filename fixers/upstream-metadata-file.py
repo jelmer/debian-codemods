@@ -214,6 +214,6 @@ fields = [
 ]
 
 report_result(
-    "Set upstream metadata fields: %s." % ", ".join(sorted(fields)),
+    "Set upstream metadata fields: {}.".format(", ".join(sorted(fields))),
     certainty=achieved_certainty,
 )

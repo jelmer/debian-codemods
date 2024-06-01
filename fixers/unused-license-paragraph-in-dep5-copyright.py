@@ -108,6 +108,6 @@ except (FileNotFoundError, NotMachineReadableError):
     pass
 else:
     report_result(
-        "Remove unused license definitions for %s." % ", ".join(extra_defined),
+        "Remove unused license definitions for {}.".format(", ".join(extra_defined)),
         certainty=certainty,
     )

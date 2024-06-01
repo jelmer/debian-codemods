@@ -68,7 +68,7 @@ class KeyRetrievalFailed(Exception):
 
 
 COMMON_PGPSIGURL_MANGLES = [
-    "s/$/.%s/" % ext for ext in ["asc", "pgp", "gpg", "sig", "sign"]
+    f"s/$/.{ext}/" for ext in ["asc", "pgp", "gpg", "sig", "sign"]
 ]
 
 
@@ -176,7 +176,7 @@ def candidates_from_setup_py(
     current_version_filenames = None
     if net_access:
         # TODO(jelmer): Use ognibuild.upstream.load_pypi
-        json_url = "https://pypi.python.org/pypi/%s/json" % project
+        json_url = f"https://pypi.python.org/pypi/{project}/json"
         logging.info("Getting %s info on pypi (%s)", project, json_url)
         pypi_data = _load_json(json_url)
         if pypi_data is None:
@@ -281,7 +281,7 @@ def candidates_from_upstream_metadata(
 
 def guess_cran_watch_entry(name):
     w = Watch(
-        r"https://cran.r-project.org/src/contrib/%s_([-\d.]*)\.tar\.gz" % name
+        rf"https://cran.r-project.org/src/contrib/{name}_([-\d.]*)\.tar\.gz"
     )
     yield WatchCandidate(w, "cran", certainty="likely", preference=0)
 
@@ -350,7 +350,7 @@ def guess_github_watch_entry(
     if project.endswith(".git"):
         project = project[:-4]
     download_url = f"https://github.com/{username}/{project}/tags"
-    matching_pattern = r".*\/%s\.tar\.gz" % version_pattern
+    matching_pattern = rf".*\/{version_pattern}\.tar\.gz"
     opts = [rf"filenamemangle=s/{matching_pattern}/{project}-$1\.tar\.gz/"]
     if uversionmangle:
         opts.append(r"uversionmangle=" + ";".join(uversionmangle))
@@ -379,7 +379,7 @@ def _load_json(url):
 def candidates_from_hackage(package, good_upstream_versions, net_access=False):
     if not net_access:
         return
-    url = "https://hackage.haskell.org/package/%s/preferred" % package
+    url = f"https://hackage.haskell.org/package/{package}/preferred"
     versions = _load_json(url)
     if versions is None:
         return
@@ -389,7 +389,7 @@ def candidates_from_hackage(package, good_upstream_versions, net_access=False):
     else:
         return
     download_url = "https://hackage.haskell.org/package/" + package
-    matching_pattern = r".*/%s-(.*).tar.gz" % package
+    matching_pattern = rf".*/{package}-(.*).tar.gz"
     w = Watch(download_url, matching_pattern)
     yield WatchCandidate(w, "hackage", certainty="certain", preference=1)
 
@@ -788,7 +788,7 @@ def main():  # noqa: C901
         except FormattingUnpreservable as e:
             report_fatal(
                 "formatting-unpreservable",
-                "Unable to preserve formatting of %s" % e.path,
+                f"Unable to preserve formatting of {e.path}",
             )
             if hasattr(e, "diff"):  # debmutate >= 0.64
                 sys.stderr.writelines(e.diff())
@@ -803,20 +803,19 @@ def main():  # noqa: C901
                 except WatchEntryVerificationFailure as e:
                     report_fatal(
                         "verification-failed",
-                        "Unable to verify watch entry: %s" % e,
+                        f"Unable to verify watch entry: {e}",
                     )
                     return 1
                 except TemporaryWatchEntryVerficationError as e:
                     report_fatal(
                         "temporary-verification-error",
-                        "Unable to verify watch entry: %s" % e,
+                        f"Unable to verify watch entry: {e}",
                     )
                     return 1
                 if not status or not all(status):
                     report_fatal(
                         "verification-failed",
-                        "Unable to watch entries; missing versions: %r"
-                        % status[0].missing_versions,
+                        f"Unable to watch entries; missing versions: {status[0].missing_versions!r}",
                         context=svp_context(status, site),
                     )
                     return 1

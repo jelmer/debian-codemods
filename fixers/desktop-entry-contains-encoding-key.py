@@ -26,10 +26,9 @@ for name in os.listdir("debian"):
 
 if len(paths) == 1:
     report_result(
-        "Remove deprecated Encoding key from desktop file %s." % paths[0]
+        f"Remove deprecated Encoding key from desktop file {paths[0]}."
     )
 else:
     report_result(
-        "Remove deprecated Encoding key from desktop files: %s."
-        % (", ".join(sorted(paths)))
+        "Remove deprecated Encoding key from desktop files: {}.".format(", ".join(sorted(paths)))
     )

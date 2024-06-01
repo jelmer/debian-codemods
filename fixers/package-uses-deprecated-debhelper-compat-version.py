@@ -103,7 +103,7 @@ if os.path.exists("debian/compat"):
     )
     if current_debhelper_compat_version < new_debhelper_compat_version:
         with open("debian/compat", "w") as cf:
-            cf.write("%s\n" % new_debhelper_compat_version)
+            cf.write(f"{new_debhelper_compat_version}\n")
     else:
         # Nothing to do
         sys.exit(2)
@@ -467,11 +467,11 @@ def upgrade_to_debhelper_11():
         elif len(parts) == 2:
             package = service = parts[0]
         os.unlink(os.path.join("debian", name))
-        subitems.add("Drop obsolete upstart file %s." % name)
-        with MaintscriptEditor("debian/%s.maintscript" % package) as e:
+        subitems.add(f"Drop obsolete upstart file {name}.")
+        with MaintscriptEditor(f"debian/{package}.maintscript") as e:
             e.append(
                 MaintscriptRemoveConffile(
-                    conffile="/etc/init/%s.conf" % service,
+                    conffile=f"/etc/init/{service}.conf",
                     prior_version=current_package_version(),
                     package=None,
                 )

@@ -168,7 +168,7 @@ def canonical_license_id(license_id):
     #  to “2.0” and “2”).
     m = re.fullmatch(r"([A-Za-z0-9]+)(\-[0-9\.]+)?(\+)?", license_id)
     if not m:
-        warn("Unable to get canonical name for %r" % license_id)
+        warn(f"Unable to get canonical name for {license_id!r}")
         return license_id
     version = (m.group(2) or "-1")[1:]
     while version.endswith(".0"):
@@ -185,8 +185,8 @@ def replace_full_license(para):
     if license_matched is None:
         if os.path.exists(os.path.join(COMMON_LICENSES_DIR, license.synopsis)):
             warn(
-                "A common license shortname (%s) is used, but license "
-                "text not recognized." % license.synopsis
+                f"A common license shortname ({license.synopsis}) is used, but license "
+                "text not recognized."
             )
         return
     # The full license text was found. Replace it with a blurb.
@@ -292,7 +292,7 @@ with suppress(
 done = []
 if updated:
     done.append(
-        "refer to common license file for %s" % ", ".join(sorted(updated))
+        "refer to common license file for {}".format(", ".join(sorted(updated)))
     )
 if set(renames.values()) - set(updated):
     done.append(

@@ -82,6 +82,6 @@ with RulesEditor() as editor:
 
 
 if len(added) == 1:
-    report_result("Add missing debian/rules target %s." % added[0])
+    report_result(f"Add missing debian/rules target {added[0]}.")
 else:
-    report_result("Add missing debian/rules targets %s." % ", ".join(added))
+    report_result("Add missing debian/rules targets {}.".format(", ".join(added)))

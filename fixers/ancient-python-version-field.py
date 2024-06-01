@@ -44,8 +44,8 @@ with control as updater:
                 kind = "old"
         issue = LintianIssue(
             updater.source,
-            "%s-python-version-field" % kind,
-            "x-python-version %s" % updater.source["X-Python-Version"],
+            f"{kind}-python-version-field",
+            "x-python-version {}".format(updater.source["X-Python-Version"]),
         )
         if issue.should_fix():
             del updater.source["X-Python-Version"]
@@ -61,8 +61,8 @@ with control as updater:
                 kind = "old"
             issue = LintianIssue(
                 updater.source,
-                "%s-python-version-field" % kind,
-                "x-python3-version %s" % updater.source["X-Python3-Version"],
+                f"{kind}-python-version-field",
+                "x-python3-version {}".format(updater.source["X-Python3-Version"]),
             )
             if issue.should_fix():
                 del updater.source["X-Python3-Version"]

@@ -45,5 +45,5 @@ except (FileNotFoundError, NotMachineReadableError):
 else:
     if license:
         report_result(
-            "Add missing license paragraph for %s" % license.synopsis
+            f"Add missing license paragraph for {license.synopsis}"
         )

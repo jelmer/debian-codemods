@@ -48,6 +48,6 @@ with open("debian/watch", "w") as f:
     issue.report_fixed()
 
 report_result(
-    "Add debian/watch file, using %s." % winner.site,
+    f"Add debian/watch file, using {winner.site}.",
     certainty=winner.certainty,
 )

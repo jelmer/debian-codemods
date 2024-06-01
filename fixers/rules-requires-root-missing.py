@@ -29,5 +29,5 @@ with control as updater:
             issue.report_fixed()
 
 report_result(
-    "Set Rules-Requires-Root: %s." % require_root, certainty=CERTAINTY
+    f"Set Rules-Requires-Root: {require_root}.", certainty=CERTAINTY
 )

@@ -66,7 +66,7 @@ def determine_gitlab_browser_url(url: str) -> str:
     if subpath and not branch:
         branch = "HEAD"
     if branch:
-        path = path + "/tree/%s" % branch
+        path = path + f"/tree/{branch}"
     if subpath:
         path = path + "/" + subpath
     return f"https://{parsed_url.hostname}{path}"

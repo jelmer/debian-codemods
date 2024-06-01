@@ -83,11 +83,11 @@ certainty = min_certainty(achieved_certainty)
 
 if len(fields) == 1:
     report_result(
-        "Set field %s in debian/copyright." % ", ".join(fields),
+        "Set field {} in debian/copyright.".format(", ".join(fields)),
         certainty=certainty,
     )
 else:
     report_result(
-        "Set fields %s in debian/copyright." % ", ".join(fields),
+        "Set fields {} in debian/copyright.".format(", ".join(fields)),
         certainty=certainty,
     )

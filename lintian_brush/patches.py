@@ -79,10 +79,10 @@ def find_patch_base(tree):
         package = cl.package
         upstream_version = cl.version.upstream_version
     possible_tags = [
-        "upstream-%s" % upstream_version,
-        "upstream/%s" % upstream_version,
-        "%s" % upstream_version,
-        "v%s" % upstream_version,
+        f"upstream-{upstream_version}",
+        f"upstream/{upstream_version}",
+        f"{upstream_version}",
+        f"v{upstream_version}",
         f"{package}-{upstream_version}",
     ]
     tags = tree.branch.tags.get_tag_dict()
@@ -103,13 +103,13 @@ def find_patches_branch(tree):
     """
     if tree.branch.name is None:
         return None
-    branch_name = "patch-queue/%s" % tree.branch.name
+    branch_name = f"patch-queue/{tree.branch.name}"
     with contextlib.suppress(NotBranchError):
         return tree.branch.controldir.open_branch(branch_name)
     if tree.branch.name == "master":
         branch_name = "patched"
     else:
-        branch_name = "patched-%s" % tree.branch.name
+        branch_name = f"patched-{tree.branch.name}"
     with contextlib.suppress(NotBranchError):
         return tree.branch.controldir.open_branch(branch_name)
     return None

@@ -12,7 +12,7 @@ fixers = available_lintian_fixers()
 tags = set()
 for fixer in fixers:
     tags.update(fixer.lintian_tags)
-replacement_text = "".join(["* %s\n" % tag for tag in sorted(tags)])
+replacement_text = "".join([f"* {tag}\n" for tag in sorted(tags)])
 
 with open("README.md", "w") as f:
     # TODO(jelmer): Use better sentinels, just in case somebody changes

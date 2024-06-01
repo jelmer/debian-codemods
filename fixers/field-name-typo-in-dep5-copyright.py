@@ -45,7 +45,7 @@ with suppress(FileNotFoundError), Deb822Editor("debian/copyright") as updater:
                 fixed_lintian_tag(
                     "source",
                     "field-name-typo-in-dep5-copyright",
-                    "%s (line XX)" % field,
+                    f"{field} (line XX)",
                 )
                 continue
 
@@ -67,7 +67,7 @@ with suppress(FileNotFoundError), Deb822Editor("debian/copyright") as updater:
                         fixed_lintian_tag(
                             "source",
                             "field-name-typo-in-dep5-copyright",
-                            "%s (line XX)" % field,
+                            f"{field} (line XX)",
                         )
                     break
 

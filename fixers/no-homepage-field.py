@@ -58,6 +58,6 @@ with control as updater:
                 updater.source["Homepage"] = datum.value
                 issue.report_fixed()
                 report_result(
-                    "Avoid %s in Homepage field." % hostname,
+                    f"Avoid {hostname} in Homepage field.",
                     certainty=datum.certainty,
                 )

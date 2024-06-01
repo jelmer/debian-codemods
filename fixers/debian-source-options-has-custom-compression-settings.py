@@ -59,4 +59,4 @@ if newlines:
 elif dropped:
     os.unlink("debian/source/options")
 
-report_result("Drop %s." % ", ".join(sorted(dropped)))
+report_result("Drop {}.".format(", ".join(sorted(dropped))))

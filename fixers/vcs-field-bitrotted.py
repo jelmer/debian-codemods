@@ -105,7 +105,7 @@ def find_new_urls(
         try:
             (vcs_type, vcs_url, vcs_browser) = retrieve_vcswatch_urls(package)
         except VcsWatchError as e:
-            warn("vcswatch URL unusable: %s" % e.args[0])
+            warn(f"vcswatch URL unusable: {e.args[0]}")
         except KeyError:
             pass
         else:
@@ -116,7 +116,7 @@ def find_new_urls(
                         determine_browser_url(vcs_type, vcs_url) or vcs_browser
                     )
                 return (vcs_type, vcs_url, vcs_browser)
-            warn("vcswatch URL %s is still on old infrastructure." % vcs_url)
+            warn(f"vcswatch URL {vcs_url} is still on old infrastructure.")
 
     # Otherwise, attempt to guess based on maintainer email.
     guessed_url = guess_repository_url(package, maintainer_email)

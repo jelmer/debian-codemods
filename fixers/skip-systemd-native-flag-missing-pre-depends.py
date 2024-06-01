@@ -27,11 +27,11 @@ added = set()
 with control as updater:
     for binary in updater.binaries:
         name = binary["Package"]
-        if not os.path.exists("debian/%s.init" % name):
+        if not os.path.exists(f"debian/{name}.init"):
             continue
         if not (
-            os.path.exists("debian/%s.service" % name)
-            or os.path.exists("debian/%s.upstart" % name)
+            os.path.exists(f"debian/{name}.service")
+            or os.path.exists(f"debian/{name}.upstart")
         ):
             continue
         if "${misc:Pre-Depends}" in binary.get("Pre-Depends", ""):
@@ -46,6 +46,5 @@ with control as updater:
 
 
 report_result(
-    "Add missing Pre-Depends: ${misc:Pre-Depends} in %s."
-    % ", ".join(sorted(added))
+    "Add missing Pre-Depends: ${{misc:Pre-Depends}} in {}.".format(", ".join(sorted(added)))
 )

@@ -51,6 +51,5 @@ with suppress(
     fix_shortname(updater.copyright)
 
 report_result(
-    "Fix invalid short license name in debian/copyright (%s)"
-    % (", ".join([f"{old} ⇒ {new}" for (old, new) in renames.items()]))
+    "Fix invalid short license name in debian/copyright ({})".format(", ".join([f"{old} ⇒ {new}" for (old, new) in renames.items()]))
 )

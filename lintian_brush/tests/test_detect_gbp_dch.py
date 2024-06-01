@@ -33,7 +33,7 @@ def make_changelog(entries):
 lintian-brush (0.1) UNRELEASED; urgency=medium
 
 """
-        + "".join(["  * %s\n" % entry for entry in entries])
+        + "".join([f"  * {entry}\n" for entry in entries])
         + """
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100

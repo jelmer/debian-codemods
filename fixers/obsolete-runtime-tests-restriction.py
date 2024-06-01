@@ -43,7 +43,7 @@ with Deb822Editor("debian/tests/control") as updater:
                 fixed_lintian_tag(
                     "source",
                     "obsolete-runtime-tests-restriction",
-                    "%s in line XX" % restriction.strip(),
+                    f"{restriction.strip()} in line XX",
                 )
         if to_delete:
             removed_restrictions.extend(to_delete)

@@ -25,6 +25,5 @@ for path in systemd_service_files():
 removed.sort()
 
 report_result(
-    "Remove references to obsolete targets in systemd unit files: %s."
-    % ", ".join([f"{filename} ({target})" for (filename, target) in removed])
+    "Remove references to obsolete targets in systemd unit files: {}.".format(", ".join([f"{filename} ({target})" for (filename, target) in removed]))
 )

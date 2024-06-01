@@ -47,6 +47,5 @@ with control as updater:
 
 
 report_result(
-    "Add missing ${misc:Depends} to Depends for %s."
-    % ", ".join(misc_depends_added)
+    "Add missing ${{misc:Depends}} to Depends for {}.".format(", ".join(misc_depends_added))
 )

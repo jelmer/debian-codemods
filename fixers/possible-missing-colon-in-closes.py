@@ -34,7 +34,7 @@ def valid_bug(package, bug):
             # No asynpcg?
             return None
         except socket.gaierror as e:
-            warn("Unable to connect to debbugs: %s" % e)
+            warn(f"Unable to connect to debbugs: {e}")
             return None
         debbugs = _debbugs
     return debbugs.check_bug(package, bug)
@@ -78,7 +78,7 @@ def fix_close_typo(package, m):
     if meets_minimum_certainty(bug_certainty) and valid:
         certainty = min_certainty([certainty, bug_certainty])
         fixed_lintian_tag(
-            "all", "misspelled-closes-bug", info="#%s" % m.group("bug")
+            "all", "misspelled-closes-bug", info="#{}".format(m.group("bug"))
         )
         return "{}s: #{}".format(m.group("close"), m.group("bug"))
     else:

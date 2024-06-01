@@ -173,18 +173,18 @@ def report_result(
         print(description)
     if details:
         for detail in details:
-            print("+ %s" % detail)
+            print(f"+ {detail}")
     if certainty:
-        print("Certainty: %s" % certainty)
+        print(f"Certainty: {certainty}")
     fixed_lintian_tags = {issue.tag for issue in _fixed_lintian_issues}
     if fixed_lintian_tags:
-        print("Fixed-Lintian-Tags: %s" % ", ".join(sorted(fixed_lintian_tags)))
+        print("Fixed-Lintian-Tags: {}".format(", ".join(sorted(fixed_lintian_tags))))
     if _overriden_issues:
         print("Overridden-Lintian-Issues:")
         for issue in _overriden_issues:
             print(" " + str(issue))
     if patch_name:
-        print("Patch-Name: %s" % patch_name)
+        print(f"Patch-Name: {patch_name}")
     reset()
 
 
@@ -227,7 +227,7 @@ def opinionated():
 
 
 def warn(msg):
-    sys.stderr.write("%s\n" % msg)
+    sys.stderr.write(f"{msg}\n")
 
 
 def diligence():

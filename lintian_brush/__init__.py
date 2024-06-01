@@ -166,7 +166,7 @@ def data_file_path(name, check=os.path.exists):
         path = os.path.join(b, name)
         if check(path):
             return path
-    raise RuntimeError("unable to find data path: %s" % name)
+    raise RuntimeError(f"unable to find data path: {name}")
 
 
 find_fixers_dir = _lintian_brush_rs.find_fixers_dir
@@ -297,7 +297,7 @@ def _upstream_changes_to_patch(
         raise FailedPatchManipulation(
             local_tree,
             patches_directory,
-            "Unable to parse some patches: %s" % e,
+            f"Unable to parse some patches: {e}",
         ) from e
     if len(quilt_patches) > 0:
         raise FailedPatchManipulation(
@@ -322,7 +322,7 @@ def _upstream_changes_to_patch(
         raise FailedPatchManipulation(
             local_tree,
             patches_directory,
-            "patch path %s already exists\n" % e.args[0],
+            f"patch path {e.args[0]} already exists\n",
         ) from e
 
     return patch_name, specific_files
@@ -478,7 +478,7 @@ def run_lintian_fixers(  # noqa: C901
                 dirty_tracker = None
 
         for fixer in fixers:
-            t.set_description("Running fixer %s" % fixer)
+            t.set_description(f"Running fixer {fixer}")
             t.update()
             start = time.time()
             if dirty_tracker:

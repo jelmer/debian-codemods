@@ -132,7 +132,7 @@ class FixerTestCase(unittest.TestCase):
             p.returncode, (0, 1), "Unexpected exit code %d" % p.returncode
         )
         if diff.decode() != "":
-            raise AssertionError("unexpected output: %s" % diff.decode())
+            raise AssertionError(f"unexpected output: {diff.decode()}")
         self.assertMultiLineEqual(diff.decode(), "")
 
         if (
@@ -165,7 +165,7 @@ class SaneFixerTests(unittest.TestCase):
         return f"{__name__}.{self.fixer.name}.sane"
 
     def __str__(self):
-        return "fixer sanity test: %s" % (self.fixer.name)
+        return f"fixer sanity test: {self.fixer.name}"
 
     def __init__(self, fixer):
         self.fixer = fixer
@@ -174,7 +174,7 @@ class SaneFixerTests(unittest.TestCase):
     def runTest(self):
         self.assertTrue(
             os.path.exists(self.fixer.script_path),
-            "Script %s missing" % self.fixer.script_path,
+            f"Script {self.fixer.script_path} missing",
         )
 
         renames = load_renamed_tags()
@@ -234,7 +234,7 @@ if __name__ == "__main__":
             )
         except KeyError as e:
             print(
-                "Selected fixer %s does not exist." % (e.args[0]),
+                f"Selected fixer {e.args[0]} does not exist.",
                 file=sys.stderr,
             )
             sys.exit(0)

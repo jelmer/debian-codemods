@@ -44,7 +44,7 @@ def package_exists(package, release, version_info):
     if not net_access_allowed():
         try:
             return package in os.environ[
-                "%s_PACKAGES" % release.upper()
+                f"{release.upper()}_PACKAGES"
             ].split(",")
         except KeyError:
             return None
@@ -57,7 +57,7 @@ def package_exists(package, release, version_info):
         args = [release, package]
         if version_info is not None:
             version_cmp, version = version_info
-            query += " AND version %s $3" % VERSION_CMP_SQL[version_cmp]
+            query += f" AND version {VERSION_CMP_SQL[version_cmp]} $3"
             args.append(version)
         with udd.cursor() as cursor:
             cursor.execute(query, tuple(args))
@@ -96,7 +96,7 @@ def eliminate_dbgsym_migration(line, target):
             issue = LintianIssue(
                 "source",
                 "debug-symbol-migration-possibly-complete",
-                "%s (line XX)" % (m.group(0).decode().strip()),
+                f"{m.group(0).decode().strip()} (line XX)",
             )
             if issue.should_fix():
                 issue.report_fixed()
