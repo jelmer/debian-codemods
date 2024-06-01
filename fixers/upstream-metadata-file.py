@@ -12,6 +12,7 @@ from upstream_ontologist import (
     UpstreamMetadata,
     upstream_metadata_sort_key,
 )
+from upstream_ontologist.vcs import convert_cvs_list_to_str
 from upstream_ontologist.debian import (
     debian_to_upstream_version,
 )
@@ -87,7 +88,16 @@ with YamlUpdater("debian/upstream/metadata") as editor:
     if isinstance(editor.code, str):
         sys.exit(0)
 
-    upstream_metadata = UpstreamMetadata.from_dict(editor.code, "certain")
+    code = dict(editor.code)
+
+    repository = code.get("Repository")
+    if repository and isinstance(repository, list):
+        code["Repository"] = convert_cvs_list_to_str(repository)
+
+    try:
+        upstream_metadata = UpstreamMetadata.from_dict(code, "certain")
+    except TypeError:
+        raise TypeError(f"Invalid upstream metadata: {code!r}")
 
     minimum_certainty = os.environ.get("MINIMUM_CERTAINTY")
     net_access = net_access_allowed()
