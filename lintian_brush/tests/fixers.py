@@ -107,10 +107,11 @@ class FixerTestCase(unittest.TestCase):
             self._fixer.script_path,
             cwd=self._testdir,
             stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             env=env,
         )
         (stdout, err) = p.communicate(b"")
-        self.assertEqual(p.returncode, 0)
+        self.assertEqual(p.returncode, 0, f"Unexpected exit code {p.returncode}: {err.decode()}")
         out_path = os.path.join(self._path, "out")
         p = subprocess.Popen(
             [

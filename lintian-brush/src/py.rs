@@ -122,6 +122,7 @@ impl Fixer {
                 }
                 crate::FixerError::MemoryError => PyMemoryError::new_err(()),
                 crate::FixerError::TreeError(e) => e.into(),
+                crate::FixerError::InvalidChangelog(p, s) => ChangelogCreateError::new_err((p, s)),
             })
             .map(FixerResult)
     }

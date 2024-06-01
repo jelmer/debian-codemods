@@ -419,6 +419,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     None,
                 );
             }
+            Err(OverallError::InvalidChangelog(p, s)) => {
+                drop(write_lock);
+                report_fatal(
+                    versions_dict(),
+                    "invalid-changelog",
+                    format!("{}: Invalid changelog: {}", p.display(), s).as_str(),
+                    None,
+                    None,
+                );
+            }
             #[cfg(feature = "python")]
             Err(OverallError::Python(e)) => {
                 drop(write_lock);

@@ -596,6 +596,7 @@ pub enum FixerError {
     NotCertainEnough(Certainty, Option<Certainty>, Vec<LintianIssue>),
     NotDebianPackage(std::path::PathBuf),
     DescriptionMissing,
+    InvalidChangelog(std::path::PathBuf, String),
     ScriptNotFound(std::path::PathBuf),
     OutputParseError(OutputParseError),
     OutputDecodeError(std::string::FromUtf8Error),
@@ -699,6 +700,9 @@ impl std::fmt::Display for FixerError {
                 s
             ),
             FixerError::TreeError(e) => write!(f, "Tree error: {}", e),
+            FixerError::InvalidChangelog(p, s) => {
+                write!(f, "Invalid changelog {}: {}", p.display(), s)
+            }
         }
     }
 }
@@ -1217,7 +1221,14 @@ pub fn run_lintian_fixer(
     };
 
     let cl = ChangeLog::read(r)?;
-    let first_entry = cl.entries().next().unwrap();
+    let first_entry = if let Some(entry) = cl.entries().next() {
+        entry
+    } else {
+        return Err(FixerError::InvalidChangelog(
+            local_tree.abspath(subpath).unwrap(),
+            "No entries in changelog".to_string(),
+        ));
+    };
     let package = first_entry.package().unwrap();
     let current_version: Version =
         if first_entry.distributions().as_deref().unwrap() == vec!["UNRELEASED"] {
@@ -1391,6 +1402,7 @@ pub enum OverallError {
     NotDebianPackage(std::path::PathBuf),
     WorkspaceDirty(std::path::PathBuf),
     ChangelogCreate(String),
+    InvalidChangelog(std::path::PathBuf, String),
     TreeError(TreeError),
     IoError(std::io::Error),
     Other(String),
@@ -1422,6 +1434,9 @@ impl std::fmt::Display for OverallError {
             OverallError::Other(e) => write!(f, "{}", e),
             OverallError::TreeError(e) => write!(f, "{}", e),
             OverallError::IoError(e) => write!(f, "{}", e),
+            OverallError::InvalidChangelog(path, e) => {
+                write!(f, "Invalid changelog at {}: {}", path.display(), e)
+            }
         }
     }
 }
@@ -1665,6 +1680,9 @@ pub fn run_lintian_fixers(
                     }
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     continue;
+                }
+                FixerError::InvalidChangelog(path, reason) => {
+                    return Err(OverallError::InvalidChangelog(path, reason));
                 }
             },
             Ok((result, summary)) => {
