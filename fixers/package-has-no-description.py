@@ -3,8 +3,8 @@
 import sys
 from typing import List, Optional
 
-from upstream_ontologist.guess import guess_upstream_metadata
 from upstream_ontologist import UpstreamDatum
+from upstream_ontologist.guess import guess_upstream_metadata
 
 from lintian_brush.fixer import (
     LintianIssue,

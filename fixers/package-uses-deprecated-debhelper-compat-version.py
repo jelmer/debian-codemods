@@ -566,8 +566,6 @@ if new_debhelper_compat_version > current_debhelper_compat_version:
             "package-uses-old-debhelper-compat-version",
             info=f"{current_debhelper_compat_version}",
         )
-    description = "Bump debhelper from {} {} to {}.".format(
-        kind, current_debhelper_compat_version, new_debhelper_compat_version
-    )
+    description = f"Bump debhelper from {kind} {current_debhelper_compat_version} to {new_debhelper_compat_version}."
 
     report_result(description=description, details=sorted(subitems))

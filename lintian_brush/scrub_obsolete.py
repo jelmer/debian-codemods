@@ -139,11 +139,8 @@ class ReplaceTransition(Action):
 
     def __str__(self):
         return (
-            "Replace dependency on transitional package {} "
-            "with replacement {}".format(
-                PkgRelation.str(self.rel),
-                name_list([PkgRelation.str(p) for p in self.replacement]),
-            )
+            f"Replace dependency on transitional package {PkgRelation.str(self.rel)} "
+            f"with replacement {name_list([PkgRelation.str(p) for p in self.replacement])}"
         )
 
     def json(self):
@@ -154,11 +151,7 @@ class ReplaceTransition(Action):
         )
 
     def __repr__(self):
-        return "<{}({!r}, {!r})>".format(
-            type(self).__name__,
-            PkgRelation.str(self.rel),
-            [PkgRelation(p) for p in self.replacement],
-        )
+        return f"<{type(self).__name__}({PkgRelation.str(self.rel)!r}, {[PkgRelation(p) for p in self.replacement]!r})>"
 
     def __eq__(self, other):
         return (

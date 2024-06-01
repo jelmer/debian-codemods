@@ -450,9 +450,7 @@ def fix_override_info(override):
                 # The regex should only apply once
                 if re.sub(fixer[0], fixer[1], info) != info:
                     raise AssertionError(
-                        "invalid repeatable regex for {}: {}".format(
-                            override.tag, fixer[0]
-                        )
+                        f"invalid repeatable regex for {override.tag}: {fixer[0]}"
                     )
             elif callable(fixer):
                 info = fixer(info) or info

@@ -334,7 +334,5 @@ class InfoFixerDataTest(TestCase):
             self.assertEqual(
                 got_info,
                 expected_info,
-                "Unexpected transformation for {}: {!r} ⇒ {!r} != {!r}".format(
-                    tag, old_info, got_info, expected_info
-                ),
+                f"Unexpected transformation for {tag}: {old_info!r} ⇒ {got_info!r} != {expected_info!r}",
             )

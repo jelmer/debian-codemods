@@ -104,12 +104,7 @@ class LintianIssue:
         return "".join(ret)
 
     def __repr__(self):
-        return "{}(target={!r}, tag={!r}, info={!r})".format(
-            type(self).__name__,
-            self.target,
-            self.tag,
-            self.info,
-        )
+        return f"{type(self).__name__}(target={self.target!r}, tag={self.tag!r}, info={self.info!r})"
 
 
 _fixed_lintian_issues: List[LintianIssue] = []

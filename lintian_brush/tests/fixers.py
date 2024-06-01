@@ -145,12 +145,8 @@ class FixerTestCase(unittest.TestCase):
                 set(result.fixed_lintian_tags).issubset(
                     self._fixer.lintian_tags
                 ),
-                "fixer {} claims to fix tags ({!r}) not declared "
-                "in index.desc ({!r})".format(
-                    self._fixer_name,
-                    result.fixed_lintian_tags,
-                    self._fixer.lintian_tags,
-                ),
+                f"fixer {self._fixer_name} claims to fix tags ({result.fixed_lintian_tags!r}) not declared "
+                f"in index.desc ({self._fixer.lintian_tags!r})",
             )
         else:
             check_message = False

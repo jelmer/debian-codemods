@@ -140,12 +140,11 @@ from upstream_ontologist.guess import (
     summarize_upstream_metadata,
 )
 
-from debian.changelog import Changelog, Version, format_date, get_maintainer
+from debian.changelog import Version, get_maintainer
 from debian.deb822 import PkgRelation
 
 from . import (
     _debianize_rs,
-    _lintian_brush_rs,
     available_lintian_fixers,
     get_committer,
     run_lintian_fixers,
@@ -1583,9 +1582,7 @@ class DebianizeFixer(BuildFixer):
         return "debianize fixer"
 
     def __repr__(self):
-        return "{}({!r}, {!r})".format(
-            type(self).__name__, self.vcs_directory, self.apt_repo
-        )
+        return f"{type(self).__name__}({self.vcs_directory!r}, {self.apt_repo!r})"
 
     def __init__(
         self,
