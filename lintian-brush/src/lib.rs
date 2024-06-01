@@ -1332,7 +1332,24 @@ pub fn run_lintian_fixer(
                     dirty_tracker,
                 )
                 .map_err(|e| FixerError::Other(e.to_string()))?;
-                return Err(FixerError::Other(e.to_string()));
+
+                pyo3::import_exception!(lintian_brush, FailedPatchManipulation);
+
+                pyo3::Python::with_gil(|py| {
+                    if e.is_instance_of::<FailedPatchManipulation>(py) {
+                        use pyo3::PyErrArguments;
+                        let args =
+                            e.arguments(py)
+                                .getattr(py, "args")?
+                                .extract::<(pyo3::PyObject, String, String)>(py)?;
+                        return Err(FixerError::FailedPatchManipulation(
+                            args.0.getattr(py, "basedir")?.extract(py)?,
+                            args.1.into(),
+                            args.2,
+                        ));
+                    }
+                    Err(FixerError::Other(e.to_string()))
+                })?
             }
         };
 
