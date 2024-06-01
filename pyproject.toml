@@ -72,6 +72,10 @@ include-package-data = false
 version = {attr = "lintian_brush.__version__"}
 
 [tool.ruff]
+target-version = "py37"
+line-length = 79
+
+[tool.ruff.lint]
 select = [
     "ANN",
     "D",
@@ -80,8 +84,6 @@ select = [
     "I",
     "UP",
 ]
-target-version = "py37"
-line-length = 79
 ignore = [
     "ANN001",
     "ANN002",
@@ -105,5 +107,5 @@ ignore = [
     "E501",
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
