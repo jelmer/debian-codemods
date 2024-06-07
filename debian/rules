@@ -13,11 +13,11 @@ override_dh_auto_install:
 	    debian/lintian-brush/$(ZSH_COMPDIR)/_lintian-brush
 
 override_dh_auto_clean:
-	for I in . lintian-brush-py; do if test -f $$I/Cargo.lock.saved; then mv $$I/Cargo.lock.saved $$I/Cargo.lock; fi; done
+	if test -f Cargo.lock.saved; then mv Cargo.lock.saved Cargo.lock; fi
 	dh_auto_clean
 
 override_dh_auto_build:
-	for I in . lintian-brush-py; do mv $$I/Cargo.lock $$I/Cargo.lock.saved; done
+	mv Cargo.lock Cargo.lock.saved
 	dh_auto_build
 
 override_dh_auto_test:
