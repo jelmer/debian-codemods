@@ -1,4 +1,4 @@
-lintian-brush (0.155) UNRELEASED; urgency=medium
+lintian-brush (0.155) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * Bump pyo3 dependency to 0.20, fixing FTBFS. Closes: #1061435
@@ -10,7 +10,7 @@ lintian-brush (0.155) UNRELEASED; urgency=medium
   * When removing calls to deprecated dh_autotools-dev_updateconfig,
     substitute dh_update_autotools_config. Closes: #1071554
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 24 Jan 2024 23:56:55 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 07 Jun 2024 13:26:47 +0100
 
 lintian-brush (0.154) unstable; urgency=medium
 
