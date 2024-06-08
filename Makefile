@@ -17,19 +17,19 @@ $(patsubst %,check-fixer-%,$(FIXERS)): check-fixer-%:
 .PHONY: ruff testsuite unsupported
 
 ruff::
-	ruff check .
+	ruff check py/ fixers/
 
 typing:: build
-	mypy lintian_brush fixers
+	mypy py/ fixers/
 
 tag-status::
 	python3 tag-status.py --check
 
 testsuite:: build
-	python3 -m unittest lintian_brush.tests.test_suite
+	PYTHONPATH=$(shell pwd)/py python3 -m unittest lintian_brush.tests.test_suite
 
 testsuite-core: build
-	python3 -m unittest lintian_brush.tests.core_test_suite
+	PYTHONPATH=$(shell pwd)/py python3 -m unittest lintian_brush.tests.core_test_suite
 
 README.md::
 	PYTHONPATH=$(PWD):$(PYTHONPATH) ./buildtools/update-readme.py

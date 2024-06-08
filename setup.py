@@ -38,8 +38,8 @@ setup(
     rust_extensions=[
         RustBin("debianize", "debianize/Cargo.toml"),
         RustBin("lintian-brush", "lintian-brush/Cargo.toml"),
-        RustBin("detect-changelog-behaviour", "Cargo.toml", features=["cli"]),
-        RustBin("deb-vcs-publish", "Cargo.toml", features=["cli"]),
+        RustBin("detect-changelog-behaviour", "analyzer/Cargo.toml", features=["cli"]),
+        RustBin("deb-vcs-publish", "analyzer/Cargo.toml", features=["cli"]),
         RustBin("dump-multiarch-hints", "multiarch-hints/Cargo.toml"),
         RustBin(
             "apply-multiarch-hints",

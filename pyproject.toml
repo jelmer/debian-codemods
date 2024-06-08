@@ -65,8 +65,11 @@ deb-scrub-obsolete = "lintian_brush.scrub_obsolete:main"
 fix-watch-file = "lintian_brush.watch:main"
 
 [tool.setuptools]
-packages = ["lintian_brush"]
 include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["py"]
+include = ["lintian_brush"]
 
 [tool.setuptools.dynamic]
 version = {attr = "lintian_brush.__version__"}

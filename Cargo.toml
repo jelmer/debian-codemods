@@ -1,4 +1,6 @@
 [workspace]
+resolver = "2"
+edition = "2021"
 members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize", "debianize-py", "analyzer"]
 
 [workspace.package]
