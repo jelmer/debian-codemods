@@ -42,7 +42,7 @@ cli = ["dep:clap", "dep:env_logger"]
 members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize", "debianize-py"]
 
 [workspace.package]
-version = "0.154.0"
+version = "0.155.0"
 
 [workspace.dependencies]
 breezyshim = ">=0.1.58"
