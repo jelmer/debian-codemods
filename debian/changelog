@@ -1,3 +1,9 @@
+lintian-brush (0.156) UNRELEASED; urgency=medium
+
+  * Re-arrange directories to allow publishing individual crates.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 08 Jun 2024 23:28:42 +0100
+
 lintian-brush (0.155) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
