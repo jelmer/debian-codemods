@@ -12,7 +12,7 @@ documentation = "https://docs.rs/debianize"
 [dependencies]
 breezyshim.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
-debian-analyzer = { version = ">=0.154.0", path = ".." }
+debian-analyzer = { version = ">=0.154.0", path = "../analyzer" }
 debian-changelog.workspace = true
 distro-info = "0.4.0"
 env_logger.workspace = true

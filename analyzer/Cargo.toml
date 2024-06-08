@@ -1,0 +1,51 @@
+[package]
+name = "debian-analyzer"
+version = { workspace = true }
+authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
+edition = "2021"
+license = "GPL-2.0+"
+description = "Debian analyzer"
+repository = "https://salsa.debian.org/jelmer/lintian-brush.git"
+homepage = "https://salsa.debian.org/jelmer/lintian-brush"
+documentation = "https://docs.rs/debian-analyzer"
+
+[dependencies]
+pyo3 = { workspace = true, features = ["serde", "chrono"] }
+debversion = { workspace = true, features = ["serde", "python-debian"] }
+log = { workspace = true }
+lazy-regex.workspace = true
+serde = { workspace = true, features = ["derive"] }
+breezyshim.workspace = true
+configparser.workspace = true
+clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
+env_logger = { workspace = true, optional = true }
+serde_json.workspace = true
+chrono = { workspace = true, features = ["serde"] }
+distro-info = { version = ">=0.4.0" }
+url = { workspace = true }
+tempfile.workspace = true
+maplit = "1.0.2"
+lazy_static = "1.4.0"
+debian-changelog = { workspace = true }
+debian-control = { workspace = true }
+debian-copyright = "0.1.2"
+makefile-lossless = "0.1.0"
+patchkit = "0.1.0"
+dep3 = "0.1.0"
+
+[features]
+default = ["python"]
+python = []
+cli = ["dep:clap", "dep:env_logger"]
+
+[lib]
+
+[[bin]]
+name = "detect-changelog-behaviour"
+path = "src/bin/detect-changelog-behaviour.rs"
+required-features = ["cli"]
+
+[[bin]]
+name = "deb-vcs-publish"
+path = "src/bin/deb-vcs-publish.rs"
+required-features = ["cli"]
