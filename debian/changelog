@@ -1,4 +1,4 @@
-lintian-brush (0.156) UNRELEASED; urgency=medium
+lintian-brush (0.156) unstable; urgency=medium
 
   * Re-arrange directories to allow publishing individual crates.
 
