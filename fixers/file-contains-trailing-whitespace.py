@@ -4,7 +4,6 @@ import os
 import re
 
 from debmutate.reformatting import GeneratedFile, check_generated_file
-
 from lintian_brush.fixer import LintianIssue, report_result
 
 trailing_whitespace_re = re.compile(b"\\s*\n$")

@@ -2,13 +2,14 @@
 
 import sys
 
-from debian.changelog import get_maintainer
 from lintian_brush.fixer import (
     control,
     fixed_lintian_tag,
     meets_minimum_certainty,
     report_result,
 )
+
+from debian.changelog import get_maintainer
 
 # TODO(jelmer): Bump this up if there's a way that we can verify that e.g. the
 # ITP was filed by get_maintainer() ?

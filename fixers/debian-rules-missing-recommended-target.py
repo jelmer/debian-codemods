@@ -4,7 +4,6 @@ import os
 import sys
 
 from debmutate._rules import RulesEditor
-
 from lintian_brush.fixer import LintianIssue, control, report_result
 
 

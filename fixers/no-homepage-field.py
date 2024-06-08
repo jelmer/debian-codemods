@@ -3,17 +3,16 @@
 from typing import Optional
 from urllib.parse import urlparse
 
-from upstream_ontologist.guess import (
-    guess_upstream_metadata_items,
-    known_bad_guess,
-)
-
 from lintian_brush.fixer import (
     LintianIssue,
     control,
     meets_minimum_certainty,
     report_result,
     trust_package,
+)
+from upstream_ontologist.guess import (
+    guess_upstream_metadata_items,
+    known_bad_guess,
 )
 
 

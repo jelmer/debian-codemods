@@ -3,7 +3,6 @@
 from contextlib import suppress
 
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
-
 from lintian_brush.fixer import LintianIssue, report_result
 
 with suppress(

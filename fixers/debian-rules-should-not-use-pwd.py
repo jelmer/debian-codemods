@@ -3,7 +3,6 @@
 from contextlib import suppress
 
 from debmutate.reformatting import check_generated_file
-
 from lintian_brush.fixer import LintianIssue, report_result
 from lintian_brush.line_editor import LineEditor
 

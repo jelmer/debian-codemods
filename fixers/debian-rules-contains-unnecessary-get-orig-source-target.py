@@ -5,7 +5,6 @@ import sys
 from contextlib import suppress
 
 from debmutate._rules import RulesEditor
-
 from lintian_brush.fixer import LintianIssue, opinionated, report_result
 
 certainty = None

@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 
 from debmutate.copyright import CopyrightEditor
+from lintian_brush.fixer import fixed_lintian_tag, report_result
 
 from debian.copyright import (
     LicenseParagraph,
     NotMachineReadableError,
 )
-from lintian_brush.fixer import fixed_lintian_tag, report_result
 
 
 def fix_header_license_references(copyright):

@@ -5,7 +5,6 @@ import socket
 from functools import partial
 
 from debmutate.changelog import ChangelogEditor
-
 from lintian_brush import min_certainty
 from lintian_brush.fixer import (
     fixed_lintian_tag,

@@ -6,14 +6,14 @@ import sys
 from contextlib import suppress
 
 from debmutate._rules import RulesEditor, discard_pointless_override
-
-from debian.deb822 import PkgRelation
 from lintian_brush.fixer import (
     LintianIssue,
     compat_release,
     net_access_allowed,
     report_result,
 )
+
+from debian.deb822 import PkgRelation
 
 compat_release = compat_release()
 

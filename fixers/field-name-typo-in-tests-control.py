@@ -3,7 +3,6 @@
 import sys
 
 from debmutate.deb822 import Deb822Editor
-
 from lintian_brush.fixer import report_result, vendor
 from lintian_brush.lintian import known_tests_control_fields
 

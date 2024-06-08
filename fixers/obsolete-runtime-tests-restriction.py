@@ -5,7 +5,6 @@ import sys
 
 from debmutate.control import delete_from_list
 from debmutate.deb822 import Deb822Editor
-
 from lintian_brush.fixer import fixed_lintian_tag, report_result
 from lintian_brush.lintian import LINTIAN_DATA_PATH
 

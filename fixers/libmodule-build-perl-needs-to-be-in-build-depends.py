@@ -5,7 +5,6 @@ from debmutate.control import (
     drop_dependency,
     get_relation,
 )
-
 from lintian_brush.fixer import LintianIssue, control, report_result
 
 with control as updater:

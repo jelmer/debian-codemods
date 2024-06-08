@@ -11,7 +11,6 @@ from urllib.request import Request, urlopen
 from debmutate.vcs import (
     get_vcs_info,
 )
-
 from lintian_brush import DEFAULT_URLLIB_TIMEOUT, USER_AGENT
 from lintian_brush.fixer import (
     control,

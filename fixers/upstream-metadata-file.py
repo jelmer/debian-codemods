@@ -7,23 +7,6 @@ import logging
 import os
 import sys
 
-from upstream_ontologist import (
-    UpstreamMetadata,
-    upstream_metadata_sort_key,
-)
-from upstream_ontologist.debian import (
-    debian_to_upstream_version,
-)
-from upstream_ontologist.guess import (
-    check_upstream_metadata,
-    extend_upstream_metadata,
-    filter_bad_guesses,
-    fix_upstream_metadata,
-    guess_upstream_metadata_items,
-    update_from_guesses,
-)
-from upstream_ontologist.vcs import convert_cvs_list_to_str
-
 from lintian_brush import (
     min_certainty,
 )
@@ -44,6 +27,22 @@ from lintian_brush.yaml import (
     YamlUpdater,
     update_ordered_dict,
 )
+from upstream_ontologist import (
+    UpstreamMetadata,
+    upstream_metadata_sort_key,
+)
+from upstream_ontologist.debian import (
+    debian_to_upstream_version,
+)
+from upstream_ontologist.guess import (
+    check_upstream_metadata,
+    extend_upstream_metadata,
+    filter_bad_guesses,
+    fix_upstream_metadata,
+    guess_upstream_metadata_items,
+    update_from_guesses,
+)
+from upstream_ontologist.vcs import convert_cvs_list_to_str
 
 # Don't clutter standard err/standard out
 logger = logging.getLogger("upstream_ontologist.extrapolate")

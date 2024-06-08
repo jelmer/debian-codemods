@@ -3,7 +3,6 @@
 from contextlib import suppress
 
 from debmutate.watch import WatchEditor
-
 from lintian_brush.fixer import (
     current_package_version,
     net_access_allowed,

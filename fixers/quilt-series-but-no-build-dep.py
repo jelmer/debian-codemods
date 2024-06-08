@@ -5,7 +5,6 @@ import sys
 from typing import Optional
 
 from debmutate.control import ensure_some_version
-
 from lintian_brush.fixer import (
     control,
     fixed_lintian_tag,

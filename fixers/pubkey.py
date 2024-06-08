@@ -14,7 +14,6 @@ except ImportError:
 from debmutate.watch import (
     WatchEditor,
 )
-
 from lintian_brush.fixer import (
     LintianIssue,
     diligence,

@@ -8,7 +8,6 @@ from debmutate.changelog import (
     any_long_lines,
     rewrap_changes,
 )
-
 from lintian_brush.fixer import fixed_lintian_tag, report_result
 
 updated = []

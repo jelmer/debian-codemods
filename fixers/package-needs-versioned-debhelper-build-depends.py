@@ -6,7 +6,6 @@ from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
     read_debhelper_compat_file,
 )
-
 from lintian_brush.fixer import (
     control,
     fixed_lintian_tag,

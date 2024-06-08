@@ -11,7 +11,6 @@ from debmutate.vcs import (
     split_vcs_url,
     unsplit_vcs_url,
 )
-
 from lintian_brush.fixer import (
     control,
     diligence,

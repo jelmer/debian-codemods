@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 from debmutate.changelog import ChangelogEditor, changes_sections
-
 from lintian_brush.fixer import report_result
 
 with ChangelogEditor() as updater:

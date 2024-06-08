@@ -3,7 +3,6 @@
 import sys
 
 from debmutate.control import drop_dependency
-
 from lintian_brush.fixer import LintianIssue, control, report_result
 
 try:

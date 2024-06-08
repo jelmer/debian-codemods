@@ -3,7 +3,6 @@
 from urllib.parse import urlparse
 
 from debmutate.watch import WatchEditor
-
 from lintian_brush.fixer import (
     LintianIssue,
     current_package_version,

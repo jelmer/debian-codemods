@@ -6,7 +6,6 @@ from debmutate._rules import (
     RulesEditor,
     dh_invoke_drop_with,
 )
-
 from lintian_brush.fixer import LintianIssue, report_result
 from lintian_brush.patches import rules_find_patches_directory
 

@@ -17,7 +17,6 @@ from debmutate.control import (
 from debmutate.debhelper import (
     read_debhelper_compat_file,
 )
-
 from lintian_brush.debhelper import highest_stable_compat_level
 from lintian_brush.fixer import control, fixed_lintian_tag, report_result
 

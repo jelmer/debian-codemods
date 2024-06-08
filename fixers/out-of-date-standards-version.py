@@ -10,10 +10,6 @@ from debmutate.control import (
     get_relation,
     parse_standards_version,
 )
-
-from debian.changelog import Changelog
-from debian.copyright import Copyright, NotMachineReadableError
-from debian.deb822 import Deb822
 from lintian_brush.fixer import (
     LintianIssue,
     control,
@@ -21,6 +17,10 @@ from lintian_brush.fixer import (
     report_result,
 )
 from lintian_brush.standards_version import iter_standards_versions
+
+from debian.changelog import Changelog
+from debian.copyright import Copyright, NotMachineReadableError
+from debian.deb822 import Deb822
 
 if is_debcargo_package():
     # Not relevant

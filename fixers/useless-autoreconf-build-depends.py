@@ -11,7 +11,6 @@ from debmutate.control import (
 from debmutate.debhelper import (
     ensure_minimum_debhelper_version,
 )
-
 from lintian_brush.debhelper import maximum_debhelper_compat_version
 from lintian_brush.fixer import (
     LintianIssue,

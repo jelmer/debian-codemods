@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 
 from debmutate.changelog import ChangelogEditor
 from debmutate.debhelper import MaintscriptEditor
-
 from lintian_brush.debhelper import drop_obsolete_maintscript_entries
 from lintian_brush.fixer import report_result, upgrade_release, warn
 
