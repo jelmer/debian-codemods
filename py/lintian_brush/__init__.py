@@ -147,7 +147,7 @@ def open_binary(name):
 def data_file_path(name, check=os.path.exists):
     # There's probably a more Pythonic way of doing this, but
     # I haven't bothered finding out what it is yet..
-    path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", name))
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", name))
     if check(path):
         return path
 

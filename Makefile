@@ -23,7 +23,7 @@ typing:: build
 	mypy py/ fixers/
 
 tag-status::
-	python3 tag-status.py --check
+	PYTHONPATH=$(shell pwd)/py python3 tag-status.py --check
 
 testsuite:: build
 	PYTHONPATH=$(shell pwd)/py python3 -m unittest lintian_brush.tests.test_suite
