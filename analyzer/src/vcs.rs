@@ -296,5 +296,87 @@ mod tests {
             ),
             Some(Url::parse("https://salsa.debian.org/foo/bar").unwrap())
         );
+
+        assert_eq!(
+            Some(Url::parse("https://salsa.debian.org/jelmer/dulwich").unwrap()),
+            determine_browser_url(
+                "git",
+                "https://salsa.debian.org/jelmer/dulwich.git",
+                Some(false)
+            )
+        );
+
+        assert_eq!(
+            Some(Url::parse("https://github.com/jelmer/dulwich").unwrap()),
+            determine_browser_url("git", "https://github.com/jelmer/dulwich.git", Some(false))
+        );
+        assert_eq!(
+            Some(Url::parse("https://github.com/jelmer/dulwich/tree/master").unwrap()),
+            determine_browser_url(
+                "git",
+                "https://github.com/jelmer/dulwich.git -b master",
+                Some(false)
+            )
+        );
+        assert_eq!(
+            Some(Url::parse("https://github.com/jelmer/dulwich/tree/master").unwrap()),
+            determine_browser_url(
+                "git",
+                "git://github.com/jelmer/dulwich -b master",
+                Some(false)
+            ),
+        );
+        assert_eq!(
+            Some(Url::parse("https://github.com/jelmer/dulwich/tree/master/blah").unwrap()),
+            determine_browser_url(
+                "git",
+                "git://github.com/jelmer/dulwich -b master [blah]",
+                Some(false)
+            ),
+        );
+        assert_eq!(
+            Some(Url::parse("https://github.com/jelmer/dulwich/tree/HEAD/blah").unwrap()),
+            determine_browser_url("git", "git://github.com/jelmer/dulwich [blah]", Some(false)),
+        );
+        assert_eq!(
+            Some(Url::parse("https://git.sv.gnu.org/cgit/rcs.git").unwrap()),
+            determine_browser_url("git", "https://git.sv.gnu.org/git/rcs.git", Some(false)),
+        );
+        assert_eq!(
+            Some(Url::parse("https://git.savannah.gnu.org/cgit/rcs.git").unwrap()),
+            determine_browser_url("git", "git://git.savannah.gnu.org/rcs.git", Some(false)),
+        );
+        assert_eq!(
+            Some(Url::parse("https://sourceforge.net/p/shorewall/debian").unwrap()),
+            determine_browser_url(
+                "git",
+                "git://git.code.sf.net/p/shorewall/debian",
+                Some(false)
+            ),
+        );
+        assert_eq!(
+            Some(Url::parse("https://sourceforge.net/p/shorewall/debian/ci/foo/tree").unwrap()),
+            determine_browser_url(
+                "git",
+                "git://git.code.sf.net/p/shorewall/debian -b foo",
+                Some(false)
+            ),
+        );
+        assert_eq!(
+            Some(Url::parse("https://sourceforge.net/p/shorewall/debian/ci/HEAD/tree/sp").unwrap()),
+            determine_browser_url(
+                "git",
+                "git://git.code.sf.net/p/shorewall/debian [sp]",
+                Some(false)
+            ),
+        );
+        assert_eq!(
+            Some(Url::parse("https://sourceforge.net/p/shorewall/debian/ci/foo/tree/sp").unwrap()),
+            determine_browser_url(
+                "git",
+                "git://git.code.sf.net/p/shorewall/debian -b foo [sp]",
+                Some(false)
+            ),
+        );
     }
 }
