@@ -343,6 +343,7 @@ dependencies = [
  "maplit",
  "patchkit",
  "pyo3",
+ "reqwest",
  "serde",
  "serde_json",
  "tempfile",

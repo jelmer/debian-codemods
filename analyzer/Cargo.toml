@@ -32,6 +32,7 @@ debian-copyright = "0.1.2"
 makefile-lossless = "0.1.0"
 patchkit = "0.1.0"
 dep3 = "0.1.0"
+reqwest = { workspace = true, features = ["blocking", "json"] }
 
 [features]
 default = ["python"]

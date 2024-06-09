@@ -18,7 +18,7 @@ pub fn update_control_for_vcs_url(
     vcs_url: &url::Url,
 ) {
     source.set(format!("Vcs-{}", vcs_type).as_str(), vcs_url.as_str());
-    if let Some(url) = determine_browser_url("git", vcs_url) {
+    if let Some(url) = determine_browser_url("git", vcs_url, None) {
         source.set("Vcs-Browser", url.as_str());
     } else {
         source.remove("Vcs-Browser");
