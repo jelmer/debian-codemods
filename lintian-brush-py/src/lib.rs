@@ -598,6 +598,11 @@ fn determine_gitlab_browser_url(url: &str) -> String {
     debian_analyzer::vcs::determine_gitlab_browser_url(url).to_string()
 }
 
+#[pyfunction]
+fn canonicalize_vcs_browser_url(url: &str) -> String {
+    debian_analyzer::vcs::canonicalize_vcs_browser_url(url).to_string()
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
@@ -672,6 +677,7 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(default_debianize_cache_dir))?;
     m.add_wrapped(wrap_pyfunction!(determine_browser_url))?;
     m.add_wrapped(wrap_pyfunction!(determine_gitlab_browser_url))?;
+    m.add_wrapped(wrap_pyfunction!(canonicalize_vcs_browser_url))?;
     m.add("NoVcsLocation", py.get_type::<NoVcsLocation>())?;
     m.add(
         "ConflictingVcsAlreadySpecified",

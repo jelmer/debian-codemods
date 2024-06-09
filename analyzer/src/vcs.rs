@@ -380,3 +380,37 @@ mod tests {
         );
     }
 }
+
+pub fn canonicalize_vcs_browser_url(url: &str) -> String {
+    let url = url.replace(
+        "https://svn.debian.org/wsvn/",
+        "https://anonscm.debian.org/viewvc/",
+    );
+    let url = url.replace(
+        "http://svn.debian.org/wsvn/",
+        "https://anonscm.debian.org/viewvc/",
+    );
+    let url = url.replace(
+        "https://git.debian.org/?p=",
+        "https://anonscm.debian.org/git/",
+    );
+    let url = url.replace(
+        "http://git.debian.org/?p=",
+        "https://anonscm.debian.org/git/",
+    );
+    let url = url.replace(
+        "https://bzr.debian.org/loggerhead/",
+        "https://anonscm.debian.org/loggerhead/",
+    );
+    let url = url.replace(
+        "http://bzr.debian.org/loggerhead/",
+        "https://anonscm.debian.org/loggerhead/",
+    );
+
+    lazy_regex::regex_replace!(
+        r"^https?://salsa.debian.org/([^/]+/[^/]+)\.git/?$",
+        &url,
+        |_, x| "https://salsa.debian.org/".to_string() + x
+    )
+    .into_owned()
+}

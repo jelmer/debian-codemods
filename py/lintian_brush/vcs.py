@@ -24,7 +24,6 @@ __all__ = [
 ]
 
 
-import re
 from typing import Callable, List, Optional, Union
 
 from debmutate.vcs import split_vcs_url, unsplit_vcs_url
@@ -57,34 +56,7 @@ def fixup_rcp_style_git_url(url: str) -> str:
 
 determine_gitlab_browser_url = _lintian_brush_rs.determine_gitlab_browser_url
 determine_browser_url = _lintian_brush_rs.determine_browser_url
-
-
-def canonicalize_vcs_browser_url(url: str) -> str:
-    url = url.replace(
-        "https://svn.debian.org/wsvn/", "https://anonscm.debian.org/viewvc/"
-    )
-    url = url.replace(
-        "http://svn.debian.org/wsvn/", "https://anonscm.debian.org/viewvc/"
-    )
-    url = url.replace(
-        "https://git.debian.org/?p=", "https://anonscm.debian.org/git/"
-    )
-    url = url.replace(
-        "http://git.debian.org/?p=", "https://anonscm.debian.org/git/"
-    )
-    url = url.replace(
-        "https://bzr.debian.org/loggerhead/",
-        "https://anonscm.debian.org/loggerhead/",
-    )
-    url = url.replace(
-        "http://bzr.debian.org/loggerhead/",
-        "https://anonscm.debian.org/loggerhead/",
-    )
-    return re.sub(
-        r"^https?://salsa.debian.org/([^/]+/[^/]+)\.git/?$",
-        "https://salsa.debian.org/\\1",
-        url,
-    )
+canonicalize_vcs_browser_url = _lintian_brush_rs.canonicalize_vcs_browser_url
 
 
 def canonical_vcs_git_url(url: str) -> str:
