@@ -400,36 +400,6 @@ pub fn source_package_vcs(control: &Deb822Paragraph) -> Option<(String, String)>
     })
 }
 
-pub fn split_vcs_url(url: &str) -> (url::Url, Option<String>, Option<std::path::PathBuf>) {
-    Python::with_gil(|py| {
-        let result = py
-            .import("debmutate.control")
-            .unwrap()
-            .call_method1("split_vcs_url", (url,))
-            .unwrap();
-        let (repo_url, branch, subpath) = result
-            .extract::<(String, Option<String>, Option<std::path::PathBuf>)>()
-            .unwrap();
-        (repo_url.parse().unwrap(), branch, subpath)
-    })
-}
-
-pub fn unsplit_vcs_url(
-    repo_url: &url::Url,
-    branch: Option<&str>,
-    subpath: Option<&Path>,
-) -> String {
-    Python::with_gil(|py| {
-        let repo_url = repo_url.to_string();
-        let result = py
-            .import("debmutate.control")
-            .unwrap()
-            .call_method1("unsplit_vcs_url", (repo_url, branch, subpath))
-            .unwrap();
-        result.extract::<String>().unwrap()
-    })
-}
-
 pub struct DebcargoControlShimEditor(PyObject);
 
 impl ToPyObject for DebcargoControlShimEditor {

@@ -86,7 +86,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(0);
     }
 
-    let (repo_url, branch, _subpath) = match update_official_vcs(
+    let parsed_vcs = match update_official_vcs(
         &wt,
         std::path::Path::new(subpath.as_str()),
         args.url.as_ref(),
@@ -101,8 +101,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
+    let repo_url: url::Url = parsed_vcs.repo_url.parse().unwrap();
+
     if !args.no_create {
-        match create_vcs_url(&repo_url, branch.as_deref()) {
+        match create_vcs_url(&repo_url, parsed_vcs.branch.as_deref()) {
             Ok(()) => {}
             Err(ForgeError::UnsupportedForge(_)) => {
                 log::error!("Unable to find a way to create {}", repo_url);
@@ -119,11 +121,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let controldir = open(&repo_url, None).unwrap();
-    let branch = match controldir.open_branch(branch.as_deref()) {
+    let branch = match controldir.open_branch(parsed_vcs.branch.as_deref()) {
         Ok(branch) => branch,
-        Err(BranchOpenError::NotBranchError(_)) => {
-            controldir.create_branch(branch.as_deref()).unwrap()
-        }
+        Err(BranchOpenError::NotBranchError(_)) => controldir
+            .create_branch(parsed_vcs.branch.as_deref())
+            .unwrap(),
         Err(e) => {
             log::error!("Unable to open or create branch: {}", e);
             std::process::exit(1);

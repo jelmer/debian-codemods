@@ -1,6 +1,6 @@
 use crate::debmutateshim::{
-    edit_control, source_package_vcs, split_vcs_url, unsplit_vcs_url, ControlEditor,
-    ControlLikeEditor, Deb822Paragraph, DebcargoControlShimEditor,
+    edit_control, source_package_vcs, ControlEditor, ControlLikeEditor, Deb822Paragraph,
+    DebcargoControlShimEditor,
 };
 use crate::salsa::guess_repository_url;
 use crate::vcs::determine_browser_url;
@@ -9,6 +9,7 @@ use crate::{branch_vcs_type, get_committer, parseaddr};
 use breezyshim::forge::{create_project, Error as ForgeError};
 use breezyshim::tree::{CommitError, Tree, WorkingTree};
 use breezyshim::workspace::check_clean_tree;
+use debian_control::vcs::ParsedVcs;
 use std::path::Path;
 use url::Url;
 
@@ -64,7 +65,7 @@ pub fn update_official_vcs(
     branch: Option<&str>,
     committer: Option<&str>,
     force: Option<bool>,
-) -> Result<(Url, Option<String>, Option<std::path::PathBuf>), Error> {
+) -> Result<ParsedVcs, Error> {
     let force = force.unwrap_or(false);
     // TODO(jelmer): Allow creation of the repository as well
     check_clean_tree(wt, wt.basis_tree().as_ref(), subpath).unwrap();
@@ -88,26 +89,23 @@ pub fn update_official_vcs(
     } else {
         return Err(Error::FileNotFound(control_path));
     };
-    let (repo_url, branch, subpath) = edit_control(editor.as_mut(), |e| {
+    let parsed_vcs: ParsedVcs = edit_control(editor.as_mut(), |e| {
         let mut source = e.source().unwrap();
 
         if let Some((vcs_type, existing_url)) = source_package_vcs(&source) {
-            let (existing_repo_url, existing_branch, existing_subpath) =
-                split_vcs_url(&existing_url);
-            let existing = (existing_repo_url, existing_branch, existing_subpath);
+            let existing: ParsedVcs = existing_url.parse().unwrap();
+            let actual = ParsedVcs {
+                repo_url: repo_url.unwrap().to_string(),
+                branch: branch.map(|s| s.to_string()),
+                subpath: subpath.map(|p| p.to_string_lossy().to_string()),
+            };
             if let Some(repo_url) = repo_url {
-                if existing
-                    != (
-                        repo_url.clone(),
-                        branch.map(|s| s.to_string()),
-                        subpath.clone(),
-                    )
-                    && !force
-                {
+                // TODO: Avoid .to_string() once ParsedVcs implements PartialEq
+                if existing.to_string() != actual.to_string() && !force {
                     return Err(Error::ConflictingVcsAlreadySpecified(
                         vcs_type,
                         existing_url,
-                        unsplit_vcs_url(repo_url, branch, subpath.as_deref()),
+                        actual.to_string(),
                     ));
                 }
             }
@@ -142,9 +140,13 @@ pub fn update_official_vcs(
             }
         };
 
-        let vcs_url = unsplit_vcs_url(&repo_url, branch, subpath.as_deref());
-        update_control_for_vcs_url(&mut source, vcs_type.as_str(), &vcs_url);
-        Ok((repo_url, branch.map(|s| s.to_string()), subpath))
+        let vcs_url = ParsedVcs {
+            repo_url: repo_url.to_string(),
+            branch: branch.map(|s| s.to_string()),
+            subpath: subpath.map(|p| p.to_string_lossy().to_string()),
+        };
+        update_control_for_vcs_url(&mut source, vcs_type.as_str(), &vcs_url.to_string());
+        Ok(vcs_url)
     })?;
 
     let committer = committer.map_or_else(|| get_committer(wt), |s| s.to_string());
@@ -161,5 +163,5 @@ pub fn update_official_vcs(
         }
     }
 
-    Ok((repo_url, branch, subpath))
+    Ok(parsed_vcs)
 }

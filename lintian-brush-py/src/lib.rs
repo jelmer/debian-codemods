@@ -556,7 +556,11 @@ fn update_official_vcs(
         committer,
         force,
     ) {
-        Ok((repo_url, branch, subpath)) => Ok((repo_url.to_string(), branch, subpath)),
+        Ok(parsed_vcs) => Ok((
+            parsed_vcs.repo_url,
+            parsed_vcs.branch,
+            parsed_vcs.subpath.map(Into::into),
+        )),
         Err(PublishError::FileNotFound(p)) => Err(PyFileNotFoundError::new_err((p,))),
         Err(PublishError::NoVcsLocation) => Err(NoVcsLocation::new_err(())),
         Err(PublishError::ConflictingVcsAlreadySpecified(
