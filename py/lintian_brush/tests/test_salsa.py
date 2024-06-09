@@ -69,7 +69,7 @@ class DetermineBrowserUrlTests(TestCase):
 
     def test_branch(self):
         self.assertEqual(
-            "https://salsa.debian.org/js-team/node-blah/tree/debian",
+            "https://salsa.debian.org/js-team/node-blah/-/tree/debian",
             determine_browser_url(
                 "https://salsa.debian.org/js-team/node-blah -b debian"
             ),
@@ -77,13 +77,13 @@ class DetermineBrowserUrlTests(TestCase):
 
     def test_subpath(self):
         self.assertEqual(
-            "https://salsa.debian.org/js-team/node-blah/tree/debian/foo",
+            "https://salsa.debian.org/js-team/node-blah/-/tree/debian/foo",
             determine_browser_url(
                 "https://salsa.debian.org/js-team/node-blah -b debian [foo]"
             ),
         )
         self.assertEqual(
-            "https://salsa.debian.org/js-team/node-blah/tree/HEAD/foo",
+            "https://salsa.debian.org/js-team/node-blah/-/tree/HEAD/foo",
             determine_browser_url(
                 "https://salsa.debian.org/js-team/node-blah [foo]"
             ),

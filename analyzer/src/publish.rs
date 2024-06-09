@@ -12,12 +12,8 @@ use breezyshim::workspace::check_clean_tree;
 use std::path::Path;
 use url::Url;
 
-pub fn update_control_for_vcs_url(
-    source: &mut Deb822Paragraph,
-    vcs_type: &str,
-    vcs_url: &url::Url,
-) {
-    source.set(format!("Vcs-{}", vcs_type).as_str(), vcs_url.as_str());
+pub fn update_control_for_vcs_url(source: &mut Deb822Paragraph, vcs_type: &str, vcs_url: &str) {
+    source.set(format!("Vcs-{}", vcs_type).as_str(), vcs_url);
     if let Some(url) = determine_browser_url("git", vcs_url, None) {
         source.set("Vcs-Browser", url.as_str());
     } else {
@@ -43,7 +39,7 @@ pub fn create_vcs_url(repo_url: &Url, summary: Option<&str>) -> Result<(), Forge
 pub enum Error {
     NoVcsLocation,
     FileNotFound(std::path::PathBuf),
-    ConflictingVcsAlreadySpecified(String, Url, Url),
+    ConflictingVcsAlreadySpecified(String, String, String),
 }
 
 impl std::fmt::Display for Error {

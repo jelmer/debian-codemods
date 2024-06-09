@@ -105,16 +105,16 @@ pub fn determine_gitlab_browser_url(url: &str) -> Url {
 
 pub fn determine_browser_url(
     vcs_type: &str,
-    vcs_url: &Url,
+    vcs_url: &str,
     net_access: Option<bool>,
 ) -> Option<Url> {
-    let parsed_vcs: ParsedVcs = vcs_url.as_str().parse().unwrap();
+    let parsed_vcs: ParsedVcs = vcs_url.parse().unwrap();
 
     let parsed_url: Url = parsed_vcs.repo_url.parse().unwrap();
 
     match parsed_url.host_str().unwrap() {
         host if is_gitlab_site(host, net_access) => {
-            return Some(determine_gitlab_browser_url(vcs_url.as_str()));
+            return Some(determine_gitlab_browser_url(vcs_url));
         }
 
         "github.com" => {
@@ -174,7 +174,7 @@ pub fn determine_browser_url(
             )
         }
         "git.code.sf.net" | "git.code.sourceforge.net" => {
-            let mut path_elements = parsed_url.path_segments().unwrap().collect::<Vec<_>>();
+            let path_elements = parsed_url.path_segments().unwrap().collect::<Vec<_>>();
             if path_elements.first() != Some(&"p") {
                 return None;
             }
@@ -253,49 +253,29 @@ mod tests {
         use url::Url;
 
         assert_eq!(
-            determine_browser_url(
-                "git",
-                &Url::parse("https://salsa.debian.org/foo/bar").unwrap(),
-                Some(false)
-            ),
+            determine_browser_url("git", "https://salsa.debian.org/foo/bar", Some(false)),
             Some(Url::parse("https://salsa.debian.org/foo/bar").unwrap())
         );
         assert_eq!(
-            determine_browser_url(
-                "git",
-                &Url::parse("https://salsa.debian.org/foo/bar.git").unwrap(),
-                Some(false)
-            ),
+            determine_browser_url("git", "https://salsa.debian.org/foo/bar.git", Some(false)),
             Some(Url::parse("https://salsa.debian.org/foo/bar").unwrap())
         );
         assert_eq!(
-            determine_browser_url(
-                "git",
-                &Url::parse("https://salsa.debian.org/foo/bar/").unwrap(),
-                Some(false)
-            ),
+            determine_browser_url("git", "https://salsa.debian.org/foo/bar/", Some(false)),
             Some(Url::parse("https://salsa.debian.org/foo/bar").unwrap())
         );
         assert_eq!(
-            determine_browser_url(
-                "git",
-                &Url::parse("https://salsa.debian.org/foo/bar/.git").unwrap(),
-                Some(false)
-            ),
+            determine_browser_url("git", "https://salsa.debian.org/foo/bar/.git", Some(false)),
             Some(Url::parse("https://salsa.debian.org/foo/bar/").unwrap())
         );
         assert_eq!(
-            determine_browser_url(
-                "git",
-                &Url::parse("https://salsa.debian.org/foo/bar.git/").unwrap(),
-                Some(false)
-            ),
+            determine_browser_url("git", "https://salsa.debian.org/foo/bar.git/", Some(false)),
             Some(Url::parse("https://salsa.debian.org/foo/bar").unwrap())
         );
         assert_eq!(
             determine_browser_url(
                 "git",
-                &Url::parse("https://salsa.debian.org/foo/bar.git/.git").unwrap(),
+                "https://salsa.debian.org/foo/bar.git/.git",
                 Some(false)
             ),
             Some(Url::parse("https://salsa.debian.org/foo/bar.git/").unwrap())
@@ -303,7 +283,7 @@ mod tests {
         assert_eq!(
             determine_browser_url(
                 "git",
-                &Url::parse("https://salsa.debian.org/foo/bar.git.git").unwrap(),
+                "https://salsa.debian.org/foo/bar.git.git",
                 Some(false)
             ),
             Some(Url::parse("https://salsa.debian.org/foo/bar").unwrap())
@@ -311,7 +291,7 @@ mod tests {
         assert_eq!(
             determine_browser_url(
                 "git",
-                &Url::parse("https://salsa.debian.org/foo/bar.git.git/").unwrap(),
+                "https://salsa.debian.org/foo/bar.git.git/",
                 Some(false)
             ),
             Some(Url::parse("https://salsa.debian.org/foo/bar").unwrap())

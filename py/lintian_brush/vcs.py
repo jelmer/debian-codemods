@@ -24,10 +24,8 @@ __all__ = [
 ]
 
 
-import posixpath
 import re
 from typing import Callable, List, Optional, Union
-from urllib.parse import urlparse, urlunparse
 
 from debmutate.vcs import split_vcs_url, unsplit_vcs_url
 from upstream_ontologist.vcs import (
@@ -38,8 +36,9 @@ from upstream_ontologist.vcs import (
     find_secure_repo_url,
     fixup_broken_git_details,
     fixup_rcp_style_git_repo_url,
-    is_gitlab_site,
 )
+
+from . import _lintian_brush_rs
 
 
 def find_public_vcs_url(url: str) -> Optional[str]:
@@ -56,95 +55,8 @@ def fixup_rcp_style_git_url(url: str) -> str:
     return unsplit_vcs_url(repo_url, branch, subpath)
 
 
-def determine_gitlab_browser_url(url: str) -> str:
-    (url, branch, subpath) = split_vcs_url(url)
-    parsed_url = urlparse(url.rstrip("/"))
-    # TODO(jelmer): Add support for branches
-    path = parsed_url.path
-    if path.endswith(".git"):
-        path = path[: -len(".git")]
-    if subpath and not branch:
-        branch = "HEAD"
-    if branch:
-        path = path + f"/tree/{branch}"
-    if subpath:
-        path = path + "/" + subpath
-    return f"https://{parsed_url.hostname}{path}"
-
-
-def determine_browser_url(vcs_type, vcs_url: str) -> Optional[str]:
-    repo_url, branch, subpath = split_vcs_url(vcs_url)
-    parsed = urlparse(repo_url.rstrip("/"))
-    if is_gitlab_site(parsed.netloc):
-        return determine_gitlab_browser_url(vcs_url)
-    if parsed.netloc == "github.com":
-        path = parsed.path
-        if path.endswith(".git"):
-            path = path[:-4]
-        if subpath and not branch:
-            branch = "HEAD"
-        if branch:
-            path = posixpath.join(path, "tree", branch)
-        if subpath:
-            path = posixpath.join(path, subpath)
-        return urlunparse(
-            (
-                "https",
-                parsed.netloc,
-                path,
-                parsed.query,
-                parsed.params,
-                parsed.fragment,
-            )
-        )
-    if (
-        parsed.netloc in ("code.launchpad.net", "launchpad.net")
-        and not branch
-        and not subpath
-    ):
-        return urlunparse(
-            (
-                "https",
-                "code.launchpad.net",
-                parsed.path,
-                parsed.query,
-                parsed.params,
-                parsed.fragment,
-            )
-        )
-    if parsed.hostname in ("git.savannah.gnu.org", "git.sv.gnu.org"):
-        path_elements = parsed.path.strip("/").split("/")
-        if parsed.scheme == "https" and path_elements[0] == "git":
-            path_elements.pop(0)
-        # Why cgit and not gitweb?
-        path_elements.insert(0, "cgit")
-        return urlunparse(
-            ("https", parsed.netloc, "/".join(path_elements), None, None, None)
-        )
-    if parsed.hostname in ("git.code.sf.net", "git.code.sourceforge.net"):
-        path_elements = parsed.path.strip("/").split("/")
-        if path_elements[0] != "p":
-            return None
-        project = path_elements[1]
-        repository = path_elements[2]
-        path_elements = ["p", project, repository]
-        if branch is not None:
-            path_elements.extend(["ci", branch, "tree"])
-        elif subpath is not None:
-            path_elements.extend(["ci", "HEAD", "tree"])
-        if subpath is not None:
-            path_elements.append(subpath)
-        return urlunparse(
-            (
-                "https",
-                "sourceforge.net",
-                "/".join(path_elements),
-                None,
-                None,
-                None,
-            )
-        )
-    return None
+determine_gitlab_browser_url = _lintian_brush_rs.determine_gitlab_browser_url
+determine_browser_url = _lintian_brush_rs.determine_browser_url
 
 
 def canonicalize_vcs_browser_url(url: str) -> str:

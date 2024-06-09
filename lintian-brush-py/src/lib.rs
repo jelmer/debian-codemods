@@ -581,6 +581,23 @@ fn find_fixers_dir() -> Option<std::path::PathBuf> {
     lintian_brush::find_fixers_dir()
 }
 
+#[pyfunction]
+fn determine_browser_url(
+    vcs_type: &str,
+    vcs_url: &str,
+    net_access: Option<bool>,
+) -> PyResult<Option<String>> {
+    Ok(
+        debian_analyzer::vcs::determine_browser_url(vcs_type, vcs_url, net_access)
+            .map(|u| u.to_string()),
+    )
+}
+
+#[pyfunction]
+fn determine_gitlab_browser_url(url: &str) -> String {
+    debian_analyzer::vcs::determine_gitlab_browser_url(url).to_string()
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
@@ -653,6 +670,8 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(update_official_vcs))?;
     m.add_wrapped(wrap_pyfunction!(guess_repository_url))?;
     m.add_wrapped(wrap_pyfunction!(default_debianize_cache_dir))?;
+    m.add_wrapped(wrap_pyfunction!(determine_browser_url))?;
+    m.add_wrapped(wrap_pyfunction!(determine_gitlab_browser_url))?;
     m.add("NoVcsLocation", py.get_type::<NoVcsLocation>())?;
     m.add(
         "ConflictingVcsAlreadySpecified",

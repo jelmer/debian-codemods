@@ -382,7 +382,7 @@ mod tests {
     }
 }
 
-pub fn source_package_vcs(control: &Deb822Paragraph) -> Option<(String, url::Url)> {
+pub fn source_package_vcs(control: &Deb822Paragraph) -> Option<(String, String)> {
     Python::with_gil(|py| {
         let control = control.to_object(py);
         match py
@@ -393,16 +393,15 @@ pub fn source_package_vcs(control: &Deb822Paragraph) -> Option<(String, url::Url
             Ok(o) => o
                 .extract::<Option<(String, String)>>()
                 .unwrap()
-                .map(|(k, v)| (k, v.parse().unwrap())),
+                .map(|(k, v)| (k, v)),
             Err(e) if e.is_instance_of::<PyKeyError>(py) => None,
             Err(e) => panic!("unexpected error: {}", e),
         }
     })
 }
 
-pub fn split_vcs_url(url: &url::Url) -> (url::Url, Option<String>, Option<std::path::PathBuf>) {
+pub fn split_vcs_url(url: &str) -> (url::Url, Option<String>, Option<std::path::PathBuf>) {
     Python::with_gil(|py| {
-        let url = url.to_string().to_object(py);
         let result = py
             .import("debmutate.control")
             .unwrap()
@@ -419,7 +418,7 @@ pub fn unsplit_vcs_url(
     repo_url: &url::Url,
     branch: Option<&str>,
     subpath: Option<&Path>,
-) -> url::Url {
+) -> String {
     Python::with_gil(|py| {
         let repo_url = repo_url.to_string();
         let result = py
@@ -427,7 +426,7 @@ pub fn unsplit_vcs_url(
             .unwrap()
             .call_method1("unsplit_vcs_url", (repo_url, branch, subpath))
             .unwrap();
-        result.extract::<String>().unwrap().parse().unwrap()
+        result.extract::<String>().unwrap()
     })
 }
 
