@@ -4,6 +4,7 @@ import os
 import re
 
 from debmutate.control import ensure_some_version
+
 from lintian_brush.fixer import (
     LintianIssue,
     control,

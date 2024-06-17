@@ -3,6 +3,7 @@
 from contextlib import suppress
 
 from debmutate.copyright import CopyrightEditor, NotMachineReadableError
+
 from lintian_brush.fixer import fixed_lintian_tag, report_result
 
 renames = [

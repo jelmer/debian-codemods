@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.watch import WatchEditor
+
 from lintian_brush.fixer import (
     current_package_version,
     net_access_allowed,

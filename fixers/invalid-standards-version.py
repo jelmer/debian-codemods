@@ -3,6 +3,7 @@
 import sys
 
 from debmutate.control import parse_standards_version
+
 from lintian_brush.fixer import LintianIssue, control, report_result
 from lintian_brush.standards_version import iter_standards_versions
 

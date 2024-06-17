@@ -4,6 +4,7 @@ import sys
 from contextlib import suppress
 
 from debmutate.deb822 import Deb822Editor
+
 from lintian_brush.fixer import fixed_lintian_tag, report_result, warn
 
 try:

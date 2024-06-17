@@ -381,8 +381,9 @@ fn run_lintian_fixer(
         diligence,
         timestamp,
         basis_tree
-            .map(|bt| Box::new(breezyshim::RevisionTree(bt)) as Box<dyn breezyshim::Tree>)
-            .as_ref(),
+            .map(breezyshim::RevisionTree)
+            .as_ref()
+            .map(|bt| bt as &dyn breezyshim::Tree),
         changes_by,
     )
     .map_err(|e| match e {

@@ -2,6 +2,7 @@
 
 from debmutate._rules import RulesEditor
 from debmutate.control import drop_dependency, get_relation
+
 from lintian_brush.debhelper import add_sequence
 from lintian_brush.fixer import LintianIssue, control, report_result
 

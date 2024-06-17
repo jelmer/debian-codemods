@@ -1203,7 +1203,7 @@ pub fn run_lintian_fixer(
     opinionated: Option<bool>,
     diligence: Option<i32>,
     timestamp: Option<chrono::naive::NaiveDateTime>,
-    basis_tree: Option<&Box<dyn Tree>>,
+    basis_tree: Option<&dyn Tree>,
     changes_by: Option<&str>,
 ) -> Result<(FixerResult, String), FixerError> {
     let changes_by = changes_by.unwrap_or("lintian-brush");
@@ -1240,19 +1240,15 @@ pub fn run_lintian_fixer(
         };
 
     let mut _bt = None;
-    let basis_tree: &Box<dyn Tree> = if let Some(basis_tree) = basis_tree {
+    let basis_tree: &dyn Tree = if let Some(basis_tree) = basis_tree {
         basis_tree
     } else {
         _bt = Some(local_tree.basis_tree());
         _bt.as_ref().unwrap()
     };
 
-    let (mut result, changes, mut specific_files) = match apply_or_revert(
-        local_tree,
-        subpath,
-        basis_tree.as_ref(),
-        dirty_tracker,
-        |basedir| {
+    let (mut result, changes, mut specific_files) =
+        match apply_or_revert(local_tree, subpath, basis_tree, dirty_tracker, |basedir| {
             let compat_release = compat_release.unwrap_or("sid");
             log::debug!("Running fixer {:?}", fixer);
             let result = fixer.run(
@@ -1282,21 +1278,20 @@ pub fn run_lintian_fixer(
             }
 
             Ok(result)
-        },
-    ) {
-        Ok(r) => r,
-        Err(ApplyError::NoChanges(r)) => {
-            return Err(FixerError::NoChangesAfterOverrides(
-                r.overridden_lintian_issues,
-            ));
-        }
-        Err(ApplyError::TreeError(e)) => {
-            return Err(e.into());
-        }
-        Err(ApplyError::CallbackError(e)) => {
-            return Err(e);
-        }
-    };
+        }) {
+            Ok(r) => r,
+            Err(ApplyError::NoChanges(r)) => {
+                return Err(FixerError::NoChangesAfterOverrides(
+                    r.overridden_lintian_issues,
+                ));
+            }
+            Err(ApplyError::TreeError(e)) => {
+                return Err(e.into());
+            }
+            Err(ApplyError::CallbackError(e)) => {
+                return Err(e);
+            }
+        };
 
     let lines = result.description.split('\n').collect::<Vec<_>>();
     let mut summary = lines[0].to_string();
@@ -1313,7 +1308,7 @@ pub fn run_lintian_fixer(
     {
         let (patch_name, updated_specific_files) = match _upstream_changes_to_patch(
             local_tree,
-            basis_tree.as_ref(),
+            basis_tree,
             dirty_tracker,
             subpath,
             &result
@@ -1325,13 +1320,8 @@ pub fn run_lintian_fixer(
         ) {
             Ok(r) => r,
             Err(e) => {
-                reset_tree(
-                    local_tree,
-                    Some(basis_tree.as_ref()),
-                    Some(subpath),
-                    dirty_tracker,
-                )
-                .map_err(|e| FixerError::Other(e.to_string()))?;
+                reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)
+                    .map_err(|e| FixerError::Other(e.to_string()))?;
 
                 pyo3::import_exception!(lintian_brush, FailedPatchManipulation);
 
@@ -1360,7 +1350,7 @@ pub fn run_lintian_fixer(
 
     let update_changelog = if debian_analyzer::changelog::only_changes_last_changelog_block(
         local_tree,
-        basis_tree.as_ref(),
+        basis_tree,
         changelog_path.as_path(),
         changes.iter(),
     )? {
@@ -1507,7 +1497,7 @@ pub fn run_lintian_fixers(
 ) -> Result<ManyResult, OverallError> {
     let subpath = subpath.unwrap_or_else(|| std::path::Path::new(""));
     let mut basis_tree = local_tree.basis_tree();
-    check_clean_tree(local_tree, basis_tree.as_ref(), subpath).map_err(|e| match e {
+    check_clean_tree(local_tree, &basis_tree, subpath).map_err(|e| match e {
         breezyshim::workspace::CheckCleanTreeError::WorkspaceDirty(p) => {
             OverallError::WorkspaceDirty(p)
         }

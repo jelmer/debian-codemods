@@ -4,6 +4,7 @@ import sys
 from contextlib import suppress
 
 from debmutate.watch import WatchEditor
+
 from lintian_brush.fixer import LintianIssue, report_result
 
 OBSOLETE_WATCH_FILE_FORMAT = 2

@@ -4,6 +4,7 @@ import sys
 from typing import Optional
 
 from debmutate.changelog import ChangelogEditor, Version
+
 from lintian_brush.debbugs import find_archived_wnpp_bugs, find_wnpp_bugs
 from lintian_brush.fixer import net_access_allowed, report_result
 

@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 from debmutate.watch import parse_watch_file
+
 from lintian_brush.fixer import (
     LintianIssue,
     net_access_allowed,

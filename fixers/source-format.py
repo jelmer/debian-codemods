@@ -45,6 +45,7 @@ if older_source_format_issue.should_fix():
     else:
         from breezy import errors
         from breezy.workingtree import WorkingTree
+
         from lintian_brush.patches import (
             find_patches_directory,
             tree_non_patches_changes,

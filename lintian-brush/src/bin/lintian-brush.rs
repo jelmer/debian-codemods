@@ -241,6 +241,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(branch.as_ref()),
                 Some(true),
                 Some(branch.format().supports_stacking()),
+                None,
             );
             tempdir = Some(td);
             (to_dir.open_workingtree()?, subpath)

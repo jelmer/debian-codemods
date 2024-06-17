@@ -4,6 +4,7 @@ import sys
 from contextlib import suppress
 
 from debmutate.control import ensure_some_version, get_relation
+
 from lintian_brush.fixer import LintianIssue, control, report_result
 
 try:

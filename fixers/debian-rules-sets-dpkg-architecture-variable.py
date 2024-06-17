@@ -4,6 +4,7 @@ import re
 from typing import Optional, Set, Tuple
 
 from debmutate._rules import Makefile, update_rules
+
 from lintian_brush.fixer import fixed_lintian_tag, opinionated, report_result
 
 architecture_included = False

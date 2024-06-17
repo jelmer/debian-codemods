@@ -8,6 +8,7 @@ from debmutate.control import (
     get_relation,
     iter_relations,
 )
+
 from lintian_brush.fixer import LintianIssue, control, report_result
 
 added = []

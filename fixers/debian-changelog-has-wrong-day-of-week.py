@@ -3,6 +3,7 @@
 import email.utils
 
 from debmutate.changelog import ChangelogEditor
+
 from lintian_brush.fixer import LintianIssue, report_result, warn
 
 versions = []

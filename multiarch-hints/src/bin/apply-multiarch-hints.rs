@@ -157,6 +157,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(branch.as_ref()),
             Some(true),
             Some(branch.format().supports_stacking()),
+            None,
         );
         tempdir = Some(td);
         (
@@ -191,7 +192,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(0);
     }
 
-    match check_clean_tree(&wt, wt.basis_tree().as_ref(), subpath.as_path()) {
+    match check_clean_tree(&wt, &wt.basis_tree(), subpath.as_path()) {
         Err(breezyshim::workspace::CheckCleanTreeError::WorkspaceDirty(p)) => {
             log::error!(
                 "{}: Please commit pending changes and remove unknown files first.",

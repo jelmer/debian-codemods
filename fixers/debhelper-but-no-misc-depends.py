@@ -4,6 +4,7 @@ from debmutate.control import (
     add_dependency,
     parse_relations,
 )
+
 from lintian_brush.fixer import LintianIssue, control, report_result
 
 uses_debhelper = False

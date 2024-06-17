@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from debmutate.control import drop_dependency
+
 from lintian_brush.fixer import LintianIssue, control, report_result
 
 with control as updater:

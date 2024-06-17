@@ -3,17 +3,16 @@
 import os
 import sys
 
-from lintian_brush.fixer import (
-    LintianIssue,
-    meets_minimum_certainty,
-    report_result,
-)
-
 from debian.copyright import (
     Copyright,
     FilesParagraph,
     License,
     LicenseParagraph,
+)
+from lintian_brush.fixer import (
+    LintianIssue,
+    meets_minimum_certainty,
+    report_result,
 )
 
 CERTAINTY = "possible"

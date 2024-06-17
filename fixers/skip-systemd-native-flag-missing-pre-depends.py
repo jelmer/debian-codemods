@@ -9,6 +9,7 @@ from debmutate.control import (
 from debmutate.debhelper import (
     get_debhelper_compat_level,
 )
+
 from lintian_brush.fixer import control, fixed_lintian_tag, report_result
 
 compat_version = get_debhelper_compat_level()

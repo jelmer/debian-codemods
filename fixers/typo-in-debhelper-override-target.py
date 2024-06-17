@@ -5,6 +5,7 @@ import sys
 from typing import List, Tuple
 
 from debmutate._rules import RulesEditor
+
 from lintian_brush.fixer import LintianIssue, report_result
 from lintian_brush.lintian import dh_commands
 

@@ -9,6 +9,7 @@ from debmutate._rules import (
     dh_invoke_drop_with,
 )
 from debmutate.debhelper import get_debhelper_compat_level
+
 from lintian_brush.fixer import LintianIssue, report_result
 
 removed_args = []

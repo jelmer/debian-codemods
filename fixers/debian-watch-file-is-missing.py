@@ -3,6 +3,7 @@ import os
 import sys
 
 from debmutate.watch import WatchFile
+
 from lintian_brush.fixer import (
     LintianIssue,
     current_package_version,

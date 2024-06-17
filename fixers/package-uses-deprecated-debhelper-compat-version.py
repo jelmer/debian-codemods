@@ -23,6 +23,7 @@ from debmutate.debhelper import (
     MaintscriptRemoveConffile,
     read_debhelper_compat_file,
 )
+
 from lintian_brush.debhelper import (
     DEBHELPER_BUILD_STEPS,
     detect_debhelper_buildsystem,

@@ -10,6 +10,7 @@ from debmutate.debhelper import (
     get_debhelper_compat_level_from_control,
     read_debhelper_compat_file,
 )
+
 from lintian_brush.fixer import LintianIssue, control, report_result
 
 file_compat_version: Optional[int]

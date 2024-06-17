@@ -4,6 +4,7 @@ import sys
 from email.utils import parseaddr
 
 from debmutate.changelog import ChangelogEditor
+
 from lintian_brush.fixer import control, fixed_lintian_tag, report_result
 
 TEAM_UPLOAD_LINE = "  * Team upload."

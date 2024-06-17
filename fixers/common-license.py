@@ -7,6 +7,8 @@ from contextlib import suppress
 from typing import Dict
 
 from debmutate.copyright import CopyrightEditor
+
+from debian.copyright import License, NotMachineReadableError
 from lintian_brush.fixer import (
     fixed_lintian_tag,
     report_result,
@@ -16,8 +18,6 @@ from lintian_brush.licenses import (
     COMMON_LICENSES_DIR,
     FULL_LICENSE_NAME,
 )
-
-from debian.copyright import License, NotMachineReadableError
 
 # In reality, what debian ships as "/usr/share/common-licenses/BSD" is
 # BSD-3-clause in SPDX.

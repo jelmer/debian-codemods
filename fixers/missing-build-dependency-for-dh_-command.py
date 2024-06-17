@@ -11,6 +11,7 @@ from debmutate.control import (
     is_relation_implied,
     parse_relations,
 )
+
 from lintian_brush.fixer import LintianIssue, control, report_result
 from lintian_brush.lintian import LINTIAN_DATA_PATH, dh_addons, dh_commands
 
