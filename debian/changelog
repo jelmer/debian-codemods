@@ -1,8 +1,8 @@
-lintian-brush (0.157) UNRELEASED; urgency=medium
+lintian-brush (0.157) unstable; urgency=medium
 
   * Bump breezyshim to latest version.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 17 Jun 2024 19:39:51 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 17 Jun 2024 19:49:00 +0100
 
 lintian-brush (0.156) unstable; urgency=medium
 
