@@ -10,6 +10,7 @@ publish = false
 
 [lib]
 crate-type = ["cdylib"]
+test = false
 
 [features]
 extension-module = ["pyo3/extension-module"]
