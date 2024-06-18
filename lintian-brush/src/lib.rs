@@ -197,7 +197,7 @@ impl FixerResult {
             patch_name,
             revision_id,
             fixed_lintian_issues,
-            overridden_lintian_issues: overridden_lintian_issues.unwrap_or(vec![]),
+            overridden_lintian_issues: overridden_lintian_issues.unwrap_or_default(),
         }
     }
     pub fn fixed_lintian_tags(&self) -> Vec<&str> {
@@ -452,7 +452,7 @@ impl Fixer for PythonScriptFixer {
             package,
             current_version,
             compat_release,
-            minimum_certainty.unwrap_or(Certainty::default()),
+            minimum_certainty.unwrap_or_default(),
             trust_package.unwrap_or(false),
             allow_reformatting.unwrap_or(false),
             net_access.unwrap_or(true),
@@ -756,7 +756,7 @@ impl Fixer for ScriptFixer {
             package,
             current_version,
             compat_release,
-            minimum_certainty.unwrap_or(Certainty::default()),
+            minimum_certainty.unwrap_or_default(),
             trust_package.unwrap_or(false),
             allow_reformatting.unwrap_or(false),
             net_access.unwrap_or(true),

@@ -323,7 +323,7 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.156.0"
+version = "0.157.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -391,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "debianize"
-version = "0.156.0"
+version = "0.157.0"
 dependencies = [
  "breezyshim",
  "clap",
@@ -407,7 +407,7 @@ dependencies = [
 
 [[package]]
 name = "debianize-py"
-version = "0.156.0"
+version = "0.157.0"
 dependencies = [
  "debianize",
  "debversion 0.3.1",
@@ -884,9 +884,9 @@ dependencies = [
 
 [[package]]
 name = "idna"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4716a3a0933a1d01c2f72450e89596eb51dd34ef3c211ccd875acdf1f8fe47ed"
+checksum = "44a986806a1cc899952ba462bc1f28afbfd5850ab6cb030ccb20dd02cc527a24"
 dependencies = [
  "icu_normalizer",
  "icu_properties",
@@ -1019,7 +1019,7 @@ checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
 
 [[package]]
 name = "lintian-brush"
-version = "0.156.0"
+version = "0.157.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -1044,7 +1044,7 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush-py"
-version = "0.156.0"
+version = "0.157.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -1136,9 +1136,9 @@ checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
 
 [[package]]
 name = "miniz_oxide"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87dfd01fe195c66b572b37921ad8803d010623c0aca821bea2302239d155cdae"
+checksum = "b8a240ddb74feaf34a79a7add65a741f3167852fba007066dcac1ca548d89c08"
 dependencies = [
  "adler",
 ]
@@ -1156,7 +1156,7 @@ dependencies = [
 
 [[package]]
 name = "multiarch-hints"
-version = "0.156.0"
+version = "0.157.0"
 dependencies = [
  "breezyshim",
  "chrono",

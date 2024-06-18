@@ -89,7 +89,7 @@ fn available_lintian_fixers(
     Ok(
         lintian_brush::available_lintian_fixers(Some(fixers_dir.as_path()), force_subprocess)
             .map_err(|e| PyValueError::new_err(e.to_string()))?
-            .map(|s| Fixer(s))
+            .map(Fixer)
             .collect(),
     )
 }

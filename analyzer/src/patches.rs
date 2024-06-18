@@ -3,7 +3,7 @@ use breezyshim::tree::{Error as TreeError, MutableTree, Tree, WorkingTree};
 use breezyshim::workspace::reset_tree;
 use breezyshim::RevisionId;
 use debian_changelog::ChangeLog;
-use std::io::{Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 // TODO(jelmer): Use debmutate version
@@ -280,7 +280,7 @@ mod move_upstream_changes_to_patch_tests {
 
         super::move_upstream_changes_to_patch(
             &local_tree,
-            local_tree.basis_tree().as_ref(),
+            &local_tree.basis_tree(),
             std::path::Path::new(""),
             "patch",
             "This is a description",

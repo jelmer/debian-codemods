@@ -25,7 +25,7 @@ fn source_name_from_directory_name(path: std::path::PathBuf) -> String {
 }
 
 #[pymodule]
-fn _debianize_rs(py: Python, m: &PyModule) -> PyResult<()> {
+fn _debianize_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     pyo3_log::init();
 
     m.add_function(wrap_pyfunction!(default_debianize_cache_dir, m)?)?;
