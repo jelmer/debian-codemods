@@ -231,7 +231,7 @@ impl FixerResult {
             .0
             .revision_id
             .clone()
-            .map(|r| PyBytes::new(py, r.as_bytes()).to_object(py)))
+            .map(|r| PyBytes::new_bound(py, r.as_bytes()).to_object(py)))
     }
 
     #[setter]
@@ -262,28 +262,28 @@ impl FixerResult {
 pub fn json_to_py(py: Python, v: serde_json::Value) -> PyResult<PyObject> {
     match v {
         serde_json::Value::Null => Ok(py.None()),
-        serde_json::Value::Bool(b) => Ok(PyBool::new(py, b).to_object(py)),
+        serde_json::Value::Bool(b) => Ok(PyBool::new_bound(py, b).to_object(py)),
         serde_json::Value::Number(n) => {
             if let Some(i) = n.as_i64() {
                 Ok(i.into_py(py))
             } else if let Some(u) = n.as_u64() {
                 Ok(u.into_py(py))
             } else if let Some(f) = n.as_f64() {
-                Ok(PyFloat::new(py, f).to_object(py))
+                Ok(PyFloat::new_bound(py, f).to_object(py))
             } else {
                 Err(PyTypeError::new_err("invalid number"))?
             }
         }
-        serde_json::Value::String(s) => Ok(PyString::new(py, &s).to_object(py)),
+        serde_json::Value::String(s) => Ok(PyString::new_bound(py, &s).to_object(py)),
         serde_json::Value::Array(a) => {
-            let list = PyList::empty(py);
+            let list = PyList::empty_bound(py);
             for v in a {
                 list.append(json_to_py(py, v)?)?;
             }
             Ok(list.to_object(py))
         }
         serde_json::Value::Object(o) => {
-            let dict = PyDict::new(py);
+            let dict = PyDict::new_bound(py);
             for (k, v) in o {
                 dict.set_item(k, json_to_py(py, v)?)?;
             }

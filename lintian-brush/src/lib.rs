@@ -470,10 +470,10 @@ impl Fixer for PythonScriptFixer {
         import_exception!(debian.changelog, ChangelogCreateError);
 
         Python::with_gil(|py| {
-            let sys = py.import("sys")?;
-            let os = py.import("os")?;
-            let io = py.import("io")?;
-            let fixer_module = py.import("lintian_brush.fixer")?;
+            let sys = py.import_bound("sys")?;
+            let os = py.import_bound("os")?;
+            let io = py.import_bound("io")?;
+            let fixer_module = py.import_bound("lintian_brush.fixer")?;
 
             let old_env = os.getattr("environ")?.into_py(py);
             let old_stderr = sys.getattr("stderr")?;
@@ -490,14 +490,14 @@ impl Fixer for PythonScriptFixer {
 
             os.call_method1("chdir", (basedir,))?;
 
-            let global_vars = PyDict::new(py);
+            let global_vars = PyDict::new_bound(py);
             global_vars.set_item("__file__", &self.path)?;
             global_vars.set_item("__name__", "__main__")?;
 
             let code = std::fs::read_to_string(&self.path)
                 .map_err(|e| FixerError::Other(format!("Failed to read script: {}", e)))?;
 
-            let script_result = PyModule::from_code(
+            let script_result = PyModule::from_code_bound(
                 py,
                 code.as_str(),
                 self.path.to_str().unwrap(),
@@ -541,26 +541,26 @@ impl Fixer for PythonScriptFixer {
                 Err(e) => {
                     if e.is_instance_of::<FormattingUnpreservable>(py) {
                         return Err(FixerError::FormattingUnpreservable(
-                            e.value(py).getattr("path")?.extract()?,
+                            e.into_value(py).bind(py).getattr("path")?.extract()?,
                         ));
                     } else if e.is_instance_of::<ChangelogCreateError>(py) {
                         return Err(FixerError::ChangelogCreate(
-                            e.value(py).get_item(0)?.extract()?,
+                            e.into_value(py).bind(py).get_item(0)?.extract()?,
                         ));
                     } else if e.is_instance_of::<pyo3::exceptions::PyMemoryError>(py) {
                         return Err(FixerError::MemoryError);
                     } else if e.is_instance_of::<pyo3::exceptions::PySystemExit>(py) {
-                        retcode = e.value(py).getattr("code")?.extract()?;
+                        retcode = e.into_value(py).bind(py).getattr("code")?.extract()?;
                         description = stdout;
                     } else {
                         use pyo3::types::IntoPyDict;
-                        let traceback = py.import("traceback")?;
+                        let traceback = py.import_bound("traceback")?;
                         let traceback_io = io.call_method0("StringIO")?;
-                        let kwargs = [("file", traceback_io)].into_py_dict(py);
+                        let kwargs = [("file", &traceback_io)].into_py_dict_bound(py);
                         traceback.call_method(
                             "print_exception",
-                            (e.get_type(py), &e, e.traceback(py)),
-                            Some(kwargs),
+                            (e.get_type_bound(py), &e, e.traceback_bound(py)),
+                            Some(&kwargs),
                         )?;
                         let traceback_str =
                             traceback_io.call_method0("getvalue")?.extract::<String>()?;
@@ -1131,7 +1131,8 @@ pub fn data_file_path(
     pyo3::prepare_freethreaded_python();
     #[cfg(feature = "python")]
     match pyo3::Python::with_gil(|py| {
-        let pkg_resources = py.import("pkg_resources").unwrap();
+        use pyo3::prelude::*;
+        let pkg_resources = py.import_bound("pkg_resources").unwrap();
         if let Ok(path) = pkg_resources.call_method1(
             "resource_filename",
             ("lintian_brush", format!("lintian-brush/{}", name)),
@@ -1846,10 +1847,10 @@ fn _upstream_changes_to_patch(
     description: &str,
     timestamp: Option<chrono::naive::NaiveDateTime>,
 ) -> pyo3::PyResult<(String, Vec<std::path::PathBuf>)> {
+    use pyo3::prelude::*;
     pyo3::prepare_freethreaded_python();
     pyo3::Python::with_gil(|py| {
-        use pyo3::conversion::ToPyObject;
-        let m = py.import("lintian_brush")?;
+        let m = py.import_bound("lintian_brush")?;
         let upstream_changes_to_patch = m.getattr("_upstream_changes_to_patch")?;
         upstream_changes_to_patch
             .call1((

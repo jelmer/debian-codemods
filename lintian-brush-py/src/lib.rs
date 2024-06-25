@@ -284,7 +284,7 @@ impl lintian_brush::Fixer for PyFixer {
         diligence: Option<i32>,
     ) -> Result<lintian_brush::FixerResult, lintian_brush::FixerError> {
         Python::with_gil(|py| {
-            let ob = self.0.call_method(
+            let ob = self.0.call_method_bound(
                 py,
                 "run",
                 (
@@ -346,7 +346,7 @@ fn run_lintian_fixer(
     let update_changelog = || -> bool {
         update_changelog.clone().map_or(false, |u| {
             pyo3::Python::with_gil(|py| {
-                if u.as_ref(py).is_callable() {
+                if u.bind(py).is_callable() {
                     u.call0(py).unwrap().extract(py).unwrap()
                 } else {
                     u.extract(py).unwrap()
@@ -616,7 +616,7 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(parse_script_fixer_output))?;
     m.add(
         "UnsupportedCertainty",
-        py.get_type::<UnsupportedCertainty>(),
+        py.get_type_bound::<UnsupportedCertainty>(),
     )?;
     m.add_wrapped(wrap_pyfunction!(determine_env))?;
     m.add_class::<Fixer>()?;
@@ -642,9 +642,9 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     )?;
     m.add(
         "DEFAULT_ADDON_FIXERS",
-        PyList::new(py, lintian_brush::DEFAULT_ADDON_FIXERS),
+        PyList::new_bound(py, lintian_brush::DEFAULT_ADDON_FIXERS),
     )?;
-    let tag_values = PyDict::new(py);
+    let tag_values = PyDict::new_bound(py);
     for (k, v) in lintian_brush::LINTIAN_BRUSH_TAG_VALUES.iter() {
         tag_values.set_item(k, v)?;
     }
@@ -667,7 +667,7 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(control_file_present, m)?)?;
     m.add_function(wrap_pyfunction!(control_files_in_root, m)?)?;
     m.add_function(wrap_pyfunction!(is_debcargo_package, m)?)?;
-    let v = PyTuple::new(
+    let v = PyTuple::new_bound(
         py,
         env!("CARGO_PKG_VERSION")
             .split('.')
@@ -683,10 +683,10 @@ fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(determine_browser_url))?;
     m.add_wrapped(wrap_pyfunction!(determine_gitlab_browser_url))?;
     m.add_wrapped(wrap_pyfunction!(canonicalize_vcs_browser_url))?;
-    m.add("NoVcsLocation", py.get_type::<NoVcsLocation>())?;
+    m.add("NoVcsLocation", py.get_type_bound::<NoVcsLocation>())?;
     m.add(
         "ConflictingVcsAlreadySpecified",
-        py.get_type::<ConflictingVcsAlreadySpecified>(),
+        py.get_type_bound::<ConflictingVcsAlreadySpecified>(),
     )?;
     Ok(())
 }

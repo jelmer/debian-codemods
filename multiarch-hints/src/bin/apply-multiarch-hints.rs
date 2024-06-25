@@ -13,6 +13,7 @@ use multiarch_hints::{
     apply_multiarch_hints, cache_download_multiarch_hints, multiarch_hints_by_binary,
     parse_multiarch_hints, OverallError,
 };
+use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::io::Write as _;
 
@@ -435,13 +436,13 @@ fn versions_dict() -> HashMap<String, String> {
         env!("CARGO_PKG_VERSION").to_string(),
     );
     pyo3::Python::with_gil(|py| {
-        let breezy = py.import("breezy").unwrap();
+        let breezy = py.import_bound("breezy").unwrap();
         ret.insert(
             "breezy".to_string(),
             breezy.getattr("version_string").unwrap().extract().unwrap(),
         );
 
-        let debmutate = py.import("debmutate").unwrap();
+        let debmutate = py.import_bound("debmutate").unwrap();
         ret.insert(
             "debmutate".to_string(),
             debmutate
@@ -451,7 +452,7 @@ fn versions_dict() -> HashMap<String, String> {
                 .unwrap(),
         );
 
-        let debian = py.import("debian").unwrap();
+        let debian = py.import_bound("debian").unwrap();
         ret.insert(
             "debian".to_string(),
             debian.getattr("__version__").unwrap().extract().unwrap(),

@@ -189,7 +189,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     breezyshim::init().unwrap();
 
     let ret: i32 = Python::with_gil(|py| {
-        let kwargs = PyDict::new(py);
+        let kwargs = PyDict::new_bound(py);
         kwargs.set_item("directory", args.directory.to_str().unwrap())?;
         kwargs.set_item("disable_inotify", args.disable_inotify)?;
         kwargs.set_item("compat_release", args.compat_release)?;
@@ -229,9 +229,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         kwargs.set_item("dep_server_url", args.dep_server_url)?;
         kwargs.set_item("upstream", args.upstream)?;
 
-        let m = PyModule::import(py, "lintian_brush.debianize")?;
+        let m = PyModule::import_bound(py, "lintian_brush.debianize")?;
         let debianize = m.getattr("main")?;
-        debianize.call((), Some(kwargs))?.extract()
+        debianize.call((), Some(&kwargs))?.extract()
     })
     .unwrap();
 
@@ -245,13 +245,13 @@ fn versions_dict() -> HashMap<String, String> {
         env!("CARGO_PKG_VERSION").to_string(),
     );
     pyo3::Python::with_gil(|py| {
-        let breezy = py.import("breezy").unwrap();
+        let breezy = py.import_bound("breezy").unwrap();
         ret.insert(
             "breezy".to_string(),
             breezy.getattr("version_string").unwrap().extract().unwrap(),
         );
 
-        let debmutate = py.import("debmutate").unwrap();
+        let debmutate = py.import_bound("debmutate").unwrap();
         ret.insert(
             "debmutate".to_string(),
             debmutate
@@ -261,7 +261,7 @@ fn versions_dict() -> HashMap<String, String> {
                 .unwrap(),
         );
 
-        let debian = py.import("debian").unwrap();
+        let debian = py.import_bound("debian").unwrap();
         ret.insert(
             "debian".to_string(),
             debian.getattr("__version__").unwrap().extract().unwrap(),

@@ -3,6 +3,7 @@ use breezyshim::dirty_tracker::DirtyTracker;
 use breezyshim::tree::{Error as TreeError, MutableTree, Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::reset_tree;
 use debian_changelog::ChangeLog;
+use pyo3::prelude::*;
 #[cfg(feature = "python")]
 use std::str::FromStr;
 
@@ -154,7 +155,12 @@ impl From<pyo3::PyErr> for ChangelogError {
         pyo3::Python::with_gil(|py| {
             if e.is_instance_of::<NoSuchFile>(py) {
                 return ChangelogError::NotDebianPackage(
-                    e.value(py).getattr("path").unwrap().extract().unwrap(),
+                    e.into_value(py)
+                        .bind(py)
+                        .getattr("path")
+                        .unwrap()
+                        .extract()
+                        .unwrap(),
                 );
             } else {
                 ChangelogError::Python(e)
@@ -287,7 +293,7 @@ pub fn min_certainty(certainties: &[Certainty]) -> Option<Certainty> {
 pub fn get_committer(working_tree: &WorkingTree) -> String {
     pyo3::prepare_freethreaded_python();
     pyo3::Python::with_gil(|py| {
-        let m = py.import("lintian_brush")?;
+        let m = py.import_bound("lintian_brush")?;
         let get_committer = m.getattr("get_committer")?;
         get_committer.call1((&working_tree.0,))?.extract()
     })
@@ -342,7 +348,7 @@ pub fn branch_vcs_type(branch: &dyn Branch) -> String {
     pyo3::prepare_freethreaded_python();
     pyo3::Python::with_gil(|py| {
         let repo = branch.to_object(py).getattr(py, "repository").unwrap();
-        if repo.as_ref(py).hasattr("_git").unwrap() {
+        if repo.bind(py).hasattr("_git").unwrap() {
             Ok::<String, pyo3::PyErr>("git".to_string())
         } else {
             Ok::<String, pyo3::PyErr>("bzr".to_string())

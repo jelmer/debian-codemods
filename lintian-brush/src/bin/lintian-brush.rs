@@ -559,6 +559,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn versions_dict() -> HashMap<String, String> {
+    use pyo3::prelude::*;
     let mut ret = HashMap::new();
     ret.insert(
         "lintian-brush".to_string(),
@@ -568,7 +569,7 @@ fn versions_dict() -> HashMap<String, String> {
     ret.insert("breezy".to_string(), breezy_version.to_string());
 
     pyo3::Python::with_gil(|py| {
-        let debmutate = py.import("debmutate").unwrap();
+        let debmutate = py.import_bound("debmutate").unwrap();
         ret.insert(
             "debmutate".to_string(),
             debmutate
@@ -578,7 +579,7 @@ fn versions_dict() -> HashMap<String, String> {
                 .unwrap(),
         );
 
-        let debian = py.import("debian").unwrap();
+        let debian = py.import_bound("debian").unwrap();
         ret.insert(
             "debian".to_string(),
             debian.getattr("__version__").unwrap().extract().unwrap(),

@@ -56,7 +56,7 @@ impl ControlEditor {
     pub fn new() -> Self {
         Python::with_gil(|py| {
             let editor = py
-                .import("debmutate.control")
+                .import_bound("debmutate.control")
                 .unwrap()
                 .getattr("ControlEditor")
                 .unwrap()
@@ -71,16 +71,16 @@ impl ControlEditor {
     pub fn open(path: Option<&Path>, allow_reformatting: Option<bool>) -> Self {
         Python::with_gil(|py| {
             let path = path.map_or_else(|| "debian/control", |p| p.to_str().unwrap());
-            let kwargs = PyDict::new(py);
+            let kwargs = PyDict::new_bound(py);
             if let Some(allow_reformatting) = allow_reformatting {
                 kwargs
                     .set_item("allow_reformatting", allow_reformatting)
                     .unwrap();
             }
             let control = py
-                .import("debmutate.control")
+                .import_bound("debmutate.control")
                 .unwrap()
-                .call_method("ControlEditor", (path,), Some(kwargs))
+                .call_method("ControlEditor", (path,), Some(&kwargs))
                 .unwrap();
             let o = control.to_object(py);
             o.call_method0(py, "__enter__").unwrap();
@@ -92,7 +92,7 @@ impl ControlEditor {
         Python::with_gil(|py| {
             let path = path.map_or_else(|| "debian/control", |p| p.to_str().unwrap());
             let control = py
-                .import("debmutate.control")
+                .import_bound("debmutate.control")
                 .unwrap()
                 .getattr("ControlEditor")
                 .unwrap()
@@ -127,7 +127,7 @@ impl ControlLikeEditor for ControlEditor {
         Python::with_gil(|py| {
             let elements = self.0.getattr(py, "binaries").unwrap();
             let mut binaries = vec![];
-            for elem in elements.as_ref(py).iter().unwrap() {
+            for elem in elements.bind(py).iter().unwrap() {
                 let elem = elem.unwrap();
                 binaries.push(Deb822Paragraph(elem.to_object(py)));
             }
@@ -165,7 +165,7 @@ impl ToPyObject for ArchRestriction {
         let enabled = self.enabled.to_object(py);
         let arch = self.arch.to_object(py);
         let ar_cls = py
-            .import("debmutate.control")
+            .import_bound("debmutate.control")
             .unwrap()
             .getattr("PkgRelation")
             .unwrap()
@@ -194,7 +194,7 @@ impl ToPyObject for BuildRestriction {
         let enabled = self.enabled.to_object(py);
         let profile = self.profile.to_object(py);
         let br_cls = py
-            .import("debmutate.control")
+            .import_bound("debmutate.control")
             .unwrap()
             .getattr("PkgRelation")
             .unwrap()
@@ -248,7 +248,7 @@ impl ToPyObject for VersionConstraint {
     fn to_object(&self, py: Python) -> PyObject {
         let operator = self.operator.to_object(py);
         let version = self.version.to_object(py);
-        PyTuple::new(py, vec![operator, version]).to_object(py)
+        PyTuple::new_bound(py, vec![operator, version]).to_object(py)
     }
 }
 
@@ -283,11 +283,11 @@ impl FromPyObject<'_> for ParsedRelation {
 impl ToPyObject for ParsedRelation {
     fn to_object(&self, py: Python) -> PyObject {
         let pr_cls = py
-            .import("debmutate._deb822")
+            .import_bound("debmutate._deb822")
             .unwrap()
             .getattr("PkgRelation")
             .unwrap();
-        let ret = PyDict::new(py);
+        let ret = PyDict::new_bound(py);
         ret.set_item("name", self.name.to_object(py)).unwrap();
         ret.set_item("archqual", self.archqual.to_object(py))
             .unwrap();
@@ -295,7 +295,7 @@ impl ToPyObject for ParsedRelation {
         ret.set_item("arch", self.arch.to_object(py)).unwrap();
         ret.set_item("restrictions", self.restrictions.to_object(py))
             .unwrap();
-        pr_cls.call((), Some(ret)).unwrap().to_object(py)
+        pr_cls.call((), Some(&ret)).unwrap().to_object(py)
     }
 }
 
@@ -304,7 +304,7 @@ pub fn format_relations(relations: &[(&str, &[ParsedRelation], &str)]) -> String
         let relations = relations.to_object(py);
         println!("relations: {}", relations);
         let result = py
-            .import("debmutate.control")
+            .import_bound("debmutate.control")
             .unwrap()
             .call_method1("format_relations", (relations,));
         result.unwrap().extract().unwrap()
@@ -314,7 +314,7 @@ pub fn format_relations(relations: &[(&str, &[ParsedRelation], &str)]) -> String
 pub fn parse_relations(relations: &str) -> Vec<(String, Vec<ParsedRelation>, String)> {
     Python::with_gil(|py| {
         let result = py
-            .import("debmutate.control")
+            .import_bound("debmutate.control")
             .unwrap()
             .call_method1("parse_relations", (relations,))
             .unwrap();
@@ -386,7 +386,7 @@ pub fn source_package_vcs(control: &Deb822Paragraph) -> Option<(String, String)>
     Python::with_gil(|py| {
         let control = control.to_object(py);
         match py
-            .import("debmutate.control")
+            .import_bound("debmutate.control")
             .unwrap()
             .call_method1("source_package_vcs", (control,))
         {
@@ -412,7 +412,7 @@ impl DebcargoControlShimEditor {
     pub fn from_debian_dir(debian_dir: &Path) -> Self {
         Python::with_gil(|py| {
             let control = py
-                .import("debmutate.control")
+                .import_bound("debmutate.control")
                 .unwrap()
                 .getattr("DebcargoControlShimEditor")
                 .unwrap()
@@ -439,7 +439,7 @@ impl ControlLikeEditor for DebcargoControlShimEditor {
         Python::with_gil(|py| {
             let elements = self.0.getattr(py, "binaries").unwrap();
             let mut binaries = vec![];
-            for elem in elements.as_ref(py).iter().unwrap() {
+            for elem in elements.bind(py).iter().unwrap() {
                 let elem = elem.unwrap();
                 binaries.push(Deb822Paragraph(elem.to_object(py)));
             }
