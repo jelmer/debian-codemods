@@ -195,7 +195,12 @@ impl Config {
     }
 
     #[classmethod]
-    fn from_workingtree(_cls: &PyType, py: Python, wt: PyObject, subpath: &str) -> PyResult<Self> {
+    fn from_workingtree(
+        _cls: &Bound<PyType>,
+        py: Python,
+        wt: PyObject,
+        subpath: &str,
+    ) -> PyResult<Self> {
         let basedir = wt
             .getattr(py, "basedir")?
             .extract::<std::path::PathBuf>(py)?;
@@ -609,7 +614,7 @@ fn canonicalize_vcs_browser_url(url: &str) -> String {
 }
 
 #[pymodule]
-fn _lintian_brush_rs(py: Python, m: &PyModule) -> PyResult<()> {
+fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     pyo3_log::init();
     m.add_class::<LintianIssue>()?;
     m.add_class::<FixerResult>()?;
