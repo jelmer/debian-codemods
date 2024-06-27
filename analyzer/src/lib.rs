@@ -250,7 +250,7 @@ impl std::fmt::Display for Certainty {
 
 #[cfg(feature = "python")]
 impl pyo3::FromPyObject<'_> for Certainty {
-    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
         let s = ob.extract::<String>()?;
         Certainty::from_str(&s).map_err(pyo3::exceptions::PyValueError::new_err)
     }

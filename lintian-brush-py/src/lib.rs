@@ -361,14 +361,15 @@ fn run_lintian_fixer(
     };
 
     let core_fixer;
+    let borrowed_fixer;
 
-    let fixer: &Box<dyn lintian_brush::Fixer> =
-        if let Ok(fixer) = fixer.extract::<&PyCell<Fixer>>(py) {
-            &fixer.get().0
-        } else {
-            core_fixer = Some(Box::new(PyFixer(fixer)) as Box<dyn lintian_brush::Fixer>);
-            core_fixer.as_ref().unwrap()
-        };
+    let fixer: &dyn lintian_brush::Fixer = if let Ok(fixer) = fixer.extract::<Bound<Fixer>>(py) {
+        borrowed_fixer = Some(fixer.borrow());
+        borrowed_fixer.as_ref().unwrap().0.as_ref()
+    } else {
+        core_fixer = Some(PyFixer(fixer));
+        core_fixer.as_ref().unwrap()
+    };
 
     lintian_brush::run_lintian_fixer(
         &breezyshim::WorkingTree(local_tree),

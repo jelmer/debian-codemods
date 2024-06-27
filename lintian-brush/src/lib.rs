@@ -89,7 +89,8 @@ pub enum LintianIssueParseError {
 
 #[cfg(feature = "python")]
 impl pyo3::FromPyObject<'_> for LintianIssue {
-    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         let package = ob.getattr("package")?.extract::<Option<String>>()?;
         let package_type = ob
             .getattr("package_type")?
@@ -1191,7 +1192,7 @@ pub fn find_fixers_dir() -> Option<std::path::PathBuf> {
 ///   tuple with set of FixerResult, summary of the changes
 pub fn run_lintian_fixer(
     local_tree: &WorkingTree,
-    fixer: &Box<dyn Fixer>,
+    fixer: &dyn Fixer,
     committer: Option<&str>,
     mut update_changelog: impl FnMut() -> bool,
     compat_release: Option<&str>,
@@ -1540,7 +1541,7 @@ pub fn run_lintian_fixers(
         pb.inc(1);
         match run_lintian_fixer(
             local_tree,
-            fixer,
+            fixer.as_ref(),
             committer,
             &mut update_changelog,
             compat_release,

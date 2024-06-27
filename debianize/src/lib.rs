@@ -33,7 +33,8 @@ impl ToString for BugKind {
 
 #[cfg(feature = "pyo3")]
 impl pyo3::FromPyObject<'_> for BugKind {
-    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         let s: String = ob.extract()?;
         s.parse().map_err(pyo3::exceptions::PyValueError::new_err)
     }

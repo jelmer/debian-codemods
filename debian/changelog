@@ -1,3 +1,9 @@
+lintian-brush (0.158) UNRELEASED; urgency=medium
+
+  * Bump pyo3 to 0.22.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 27 Jun 2024 15:44:16 +0100
+
 lintian-brush (0.157) unstable; urgency=medium
 
   * Bump breezyshim to latest version.

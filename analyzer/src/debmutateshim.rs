@@ -153,7 +153,7 @@ pub struct ArchRestriction {
 }
 
 impl FromPyObject<'_> for ArchRestriction {
-    fn extract(ob: &PyAny) -> PyResult<Self> {
+    fn extract_bound(ob: &Bound<PyAny>) -> PyResult<Self> {
         let enabled = ob.getattr("enabled")?.extract()?;
         let arch = ob.getattr("arch")?.extract()?;
         Ok(ArchRestriction { enabled, arch })
@@ -182,7 +182,7 @@ pub struct BuildRestriction {
 }
 
 impl FromPyObject<'_> for BuildRestriction {
-    fn extract(ob: &PyAny) -> PyResult<Self> {
+    fn extract_bound(ob: &Bound<PyAny>) -> PyResult<Self> {
         let enabled = ob.getattr("enabled")?.extract()?;
         let profile = ob.getattr("profile")?.extract()?;
         Ok(BuildRestriction { enabled, profile })
@@ -224,7 +224,7 @@ impl VersionConstraint {
 }
 
 impl FromPyObject<'_> for VersionConstraint {
-    fn extract(ob: &PyAny) -> PyResult<Self> {
+    fn extract_bound(ob: &Bound<PyAny>) -> PyResult<Self> {
         // Extract operator and version from ob (a tuple)
         if ob.len()? != 2 {
             return Err(PyValueError::new_err(
@@ -233,7 +233,7 @@ impl FromPyObject<'_> for VersionConstraint {
         }
         let operator = ob.get_item(0)?.extract()?;
         let version = ob.get_item(1)?;
-        if let Ok(version) = Version::extract(version) {
+        if let Ok(version) = version.extract() {
             Ok(VersionConstraint { operator, version })
         } else {
             Ok(VersionConstraint {
@@ -264,7 +264,7 @@ pub struct ParsedRelation {
 pub struct PkgRelation(Vec<Vec<ParsedRelation>>);
 
 impl FromPyObject<'_> for ParsedRelation {
-    fn extract(ob: &PyAny) -> PyResult<Self> {
+    fn extract_bound(ob: &Bound<PyAny>) -> PyResult<Self> {
         let name = ob.getattr("name")?.extract()?;
         let archqual = ob.getattr("archqual")?.extract()?;
         let version = ob.getattr("version")?.extract()?;
