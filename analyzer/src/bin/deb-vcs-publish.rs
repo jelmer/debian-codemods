@@ -1,7 +1,7 @@
-use breezyshim::branch::BranchOpenError;
 use breezyshim::controldir::open;
+use breezyshim::error::Error;
 use breezyshim::forge::Error as ForgeError;
-use breezyshim::tree::{WorkingTree, WorkingTreeOpenError};
+use breezyshim::tree::WorkingTree;
 use clap::Parser;
 use debian_analyzer::publish::{create_vcs_url, update_official_vcs};
 use debian_changelog::get_maintainer;
@@ -62,11 +62,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (wt, subpath) = match WorkingTree::open_containing(&args.directory) {
         Ok((wt, subpath)) => (wt, subpath.display().to_string()),
-        Err(WorkingTreeOpenError::NotBranchError(_msg)) => {
+        Err(Error::NotBranchError(_msg, _)) => {
             log::error!("No version control directory found (e.g. a .git directory).");
             std::process::exit(1);
         }
-        Err(WorkingTreeOpenError::DependencyNotPresent(name, _reason)) => {
+        Err(Error::DependencyNotPresent(name, _reason)) => {
             log::error!(
                 "Unable to open tree at {}: missing package {}",
                 args.directory.display(),
@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             std::process::exit(1);
         }
-        Err(WorkingTreeOpenError::Other(e)) => {
+        Err(e) => {
             log::error!("Unable to open tree at {}: {}", args.directory.display(), e);
             std::process::exit(1);
         }
@@ -123,7 +123,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let controldir = open(&repo_url, None).unwrap();
     let branch = match controldir.open_branch(parsed_vcs.branch.as_deref()) {
         Ok(branch) => branch,
-        Err(BranchOpenError::NotBranchError(_)) => controldir
+        Err(Error::NotBranchError(_, _)) => controldir
             .create_branch(parsed_vcs.branch.as_deref())
             .unwrap(),
         Err(e) => {

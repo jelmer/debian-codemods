@@ -436,7 +436,7 @@ fn run_lintian_fixer(
             FailedPatchManipulation::new_err((p1, p2, reason))
         }
         lintian_brush::FixerError::MemoryError => PyMemoryError::new_err(()),
-        lintian_brush::FixerError::TreeError(e) => e.into(),
+        lintian_brush::FixerError::BrzError(e) => e.into(),
         lintian_brush::FixerError::InvalidChangelog(p, s) => ChangelogCreateError::new_err((p, s)),
     })
     .map(|(result, output)| (FixerResult(result), output))

@@ -143,9 +143,9 @@ checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
 name = "breezyshim"
-version = "0.1.104"
+version = "0.1.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d508652518738124037d38db012fe964e4c1f71547803e7cf54c61b4290c3dd"
+checksum = "591ae2dc848028dd6532822ee608e1e5e1f8fb73a12cbea46626c9f86bdf1d09"
 dependencies = [
  "chrono",
  "ctor",
@@ -200,9 +200,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.7"
+version = "4.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5db83dced34638ad474f39f250d7fea9598bdd239eaced1bdf45d597da0f433f"
+checksum = "84b3edb18336f4df585bc9aa31dd99c036dfa5dc5e9a2939a722a188f3a8970d"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -210,9 +210,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.7"
+version = "4.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7e204572485eb3fbf28f871612191521df159bc3e15a9f5064c66dba3a8c05f"
+checksum = "c1c09dd5ada6c6c78075d6fd0da3f90d8080651e2d6cc8eb2f1aaa4034ced708"
 dependencies = [
  "anstream",
  "anstyle",
@@ -222,9 +222,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.5.5"
+version = "4.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c780290ccf4fb26629baa7a1081e68ced113f1d3ec302fa5948f1c381ebf06c6"
+checksum = "2bac35c6dafb060fd4d275d9a4ffae97917c13a6327903a8be2153cd964f7085"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -329,7 +329,7 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.157.1"
+version = "0.157.2"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -397,7 +397,7 @@ dependencies = [
 
 [[package]]
 name = "debianize"
-version = "0.157.1"
+version = "0.157.2"
 dependencies = [
  "breezyshim",
  "clap",
@@ -413,7 +413,7 @@ dependencies = [
 
 [[package]]
 name = "debianize-py"
-version = "0.157.1"
+version = "0.157.2"
 dependencies = [
  "debianize",
  "debversion",
@@ -917,7 +917,7 @@ checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
 
 [[package]]
 name = "lintian-brush"
-version = "0.157.1"
+version = "0.157.2"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -942,7 +942,7 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush-py"
-version = "0.157.1"
+version = "0.157.2"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -964,9 +964,9 @@ checksum = "78b3ae25bc7c8c38cec158d1f2757ee79e9b3740fbc7ccf0e59e4b08d793fa89"
 
 [[package]]
 name = "log"
-version = "0.4.21"
+version = "0.4.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
+checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
 name = "lzma-sys"
@@ -981,9 +981,9 @@ dependencies = [
 
 [[package]]
 name = "makefile-lossless"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd5e0a2d9a68e4c19c655158e8d6cbf8bd64524254747e66f8215a2e58c0d102"
+checksum = "98528c9312dcce9d03baaf1912a93f852c2deb18fa5673797e4126987a1f5a76"
 dependencies = [
  "log",
  "rowan",
@@ -1038,7 +1038,7 @@ dependencies = [
 
 [[package]]
 name = "multiarch-hints"
-version = "0.157.1"
+version = "0.157.2"
 dependencies = [
  "breezyshim",
  "chrono",

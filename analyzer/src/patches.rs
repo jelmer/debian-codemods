@@ -1,5 +1,6 @@
-use breezyshim::branch::{Branch, BranchOpenError};
-use breezyshim::tree::{Error as TreeError, MutableTree, Tree, WorkingTree};
+use breezyshim::branch::Branch;
+use breezyshim::error::Error;
+use breezyshim::tree::{MutableTree, Tree, WorkingTree};
 use breezyshim::workspace::reset_tree;
 use breezyshim::RevisionId;
 use debian_changelog::ChangeLog;
@@ -38,7 +39,7 @@ pub fn find_patches_directory(tree: &dyn Tree, subpath: &Path) -> Option<PathBuf
 
     let rules_file = match tree.get_file(&rules_path) {
         Ok(f) => Some(f),
-        Err(TreeError::NoSuchFile(_)) => None,
+        Err(Error::NoSuchFile(_)) => None,
         Err(e) => {
             log::warn!("Failed to read {}: {}", rules_path.display(), e);
             None
@@ -75,7 +76,7 @@ pub fn find_patches_directory(tree: &dyn Tree, subpath: &Path) -> Option<PathBuf
 pub fn find_patch_base(tree: &WorkingTree) -> Option<RevisionId> {
     let f = match tree.get_file(std::path::Path::new("debian/patches/series")) {
         Ok(f) => f,
-        Err(TreeError::NoSuchFile(_)) => return None,
+        Err(Error::NoSuchFile(_)) => return None,
         Err(e) => {
             log::warn!("Failed to read debian/patches/series: {}", e);
             return None;
@@ -123,7 +124,7 @@ pub fn find_patches_branch(tree: &WorkingTree) -> Option<Box<dyn Branch>> {
         .open_branch(Some(branch_name.as_str()))
     {
         Ok(b) => return Some(b),
-        Err(BranchOpenError::NotBranchError(..)) => {}
+        Err(Error::NotBranchError(..)) => {}
         Err(e) => {
             log::warn!("Failed to open branch {}: {}", branch_name, e);
         }
@@ -139,7 +140,7 @@ pub fn find_patches_branch(tree: &WorkingTree) -> Option<Box<dyn Branch>> {
         .open_branch(Some(branch_name.as_str()))
     {
         Ok(b) => return Some(b),
-        Err(BranchOpenError::NotBranchError(..)) => {}
+        Err(Error::NotBranchError(..)) => {}
         Err(e) => {
             log::warn!("Failed to open branch {}: {}", branch_name, e);
         }
@@ -176,7 +177,7 @@ pub fn add_patch(
     let series_path = patches_directory.join("series");
     let mut series = match tree.get_file(&series_path) {
         Ok(f) => patchkit::quilt::Series::read(f).unwrap(),
-        Err(TreeError::NoSuchFile(_)) => patchkit::quilt::Series::new(),
+        Err(Error::NoSuchFile(_)) => patchkit::quilt::Series::new(),
         Err(e) => {
             return Err(format!("Failed to read {}: {}", series_path.display(), e));
         }

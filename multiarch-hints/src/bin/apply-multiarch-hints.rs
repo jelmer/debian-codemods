@@ -1,6 +1,7 @@
-use breezyshim::branch::{open_containing as open_containing_branch, BranchOpenError};
+use breezyshim::branch::open_containing as open_containing_branch;
 use breezyshim::dirty_tracker::get_dirty_tracker;
-use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
+use breezyshim::error::Error;
+use breezyshim::tree::{MutableTree, WorkingTree};
 use breezyshim::workspace::check_clean_tree;
 use clap::Parser;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
@@ -124,11 +125,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &url::Url::from_directory_path(&args.directory).unwrap(),
         ) {
             Ok((branch, subpath)) => (branch, subpath),
-            Err(BranchOpenError::NotBranchError(_msg)) => {
+            Err(Error::NotBranchError(_msg, _)) => {
                 log::error!("No version control directory found (e.g. a .git directory).");
                 std::process::exit(1);
             }
-            Err(BranchOpenError::DependencyNotPresent(name, _reason)) => {
+            Err(Error::DependencyNotPresent(name, _reason)) => {
                 log::error!(
                     "Unable to open branch at {}: missing package {}",
                     args.directory.display(),
@@ -136,16 +137,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
                 std::process::exit(1);
             }
-            Err(BranchOpenError::Other(err)) => {
+            Err(Error::NoColocatedBranchSupport) => {
+                panic!("NoColocatedBranchSupport should not be returned by open_containing");
+            }
+            Err(err) => {
                 log::error!(
                     "Unable to open branch at {}: {}",
                     args.directory.display(),
                     err
                 );
                 std::process::exit(1);
-            }
-            Err(BranchOpenError::NoColocatedBranchSupport) => {
-                panic!("NoColocatedBranchSupport should not be returned by open_containing");
             }
         };
 
@@ -168,11 +169,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         match WorkingTree::open_containing(&args.directory) {
             Ok((wt, subpath)) => (wt, subpath),
-            Err(WorkingTreeOpenError::NotBranchError(_msg)) => {
+            Err(Error::NotBranchError(_msg, _)) => {
                 log::error!("No version control directory found (e.g. a .git directory).");
                 std::process::exit(1);
             }
-            Err(WorkingTreeOpenError::DependencyNotPresent(name, _reason)) => {
+            Err(Error::DependencyNotPresent(name, _reason)) => {
                 log::error!(
                     "Unable to open tree at {}: missing package {}",
                     args.directory.display(),
@@ -180,7 +181,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
                 std::process::exit(1);
             }
-            Err(WorkingTreeOpenError::Other(e)) => {
+            Err(e) => {
                 log::error!("Unable to open tree at {}: {}", args.directory.display(), e);
                 std::process::exit(1);
             }
@@ -194,7 +195,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     match check_clean_tree(&wt, &wt.basis_tree(), subpath.as_path()) {
-        Err(breezyshim::workspace::CheckCleanTreeError::WorkspaceDirty(p)) => {
+        Err(Error::WorkspaceDirty(p)) => {
             log::error!(
                 "{}: Please commit pending changes and remove unknown files first.",
                 p.display()
@@ -204,7 +205,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             std::process::exit(1);
         }
-        Err(breezyshim::workspace::CheckCleanTreeError::Python(e)) => {
+        Err(e) => {
             log::error!("Internal error: {}", e);
             std::process::exit(1);
         }
@@ -339,7 +340,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None,
             );
         }
-        Err(OverallError::TreeError(e)) => {
+        Err(OverallError::BrzError(e)) => {
             drop(write_lock);
             report_fatal(
                 versions_dict(),

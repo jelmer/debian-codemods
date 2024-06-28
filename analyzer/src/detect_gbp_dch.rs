@@ -1,7 +1,8 @@
 use breezyshim::branch::Branch;
+use breezyshim::error::Error;
 use breezyshim::graph::{Error as GraphError, Graph};
 use breezyshim::revisionid::RevisionId;
-use breezyshim::tree::{Error as TreeError, Tree, WorkingTree};
+use breezyshim::tree::{Tree, WorkingTree};
 use debian_changelog::{ChangeLog, Entry as ChangeLogEntry};
 use lazy_regex::regex;
 
@@ -34,7 +35,7 @@ pub fn gbp_conf_has_dch_section(tree: &dyn Tree, debian_path: &std::path::Path) 
     let gbp_conf_path = debian_path.join("gbp.conf");
     let gbp_conf_text = match tree.get_file_text(gbp_conf_path.as_path()) {
         Ok(text) => text,
-        Err(TreeError::NoSuchFile(_)) => return false,
+        Err(Error::NoSuchFile(_)) => return false,
         Err(e) => panic!("Unexpected error reading gbp.conf: {:?}", e),
     };
 
@@ -72,7 +73,7 @@ pub fn guess_update_changelog(
             Ok(f) => {
                 cl = Some(ChangeLog::read(f).unwrap());
             }
-            Err(TreeError::NoSuchFile(_)) => {
+            Err(Error::NoSuchFile(_)) => {
                 log::debug!("No changelog found");
             }
             Err(e) => {
@@ -223,7 +224,7 @@ fn changelog_stats(
         if filenames.contains(&cl_path) {
             let revtree = branch.repository().revision_tree(&rev.revision_id).unwrap();
             match revtree.get_file_lines(cl_path.as_path()) {
-                Err(TreeError::NoSuchFile(_p)) => {}
+                Err(Error::NoSuchFile(_p)) => {}
                 Err(e) => {
                     panic!("Error reading changelog: {}", e);
                 }

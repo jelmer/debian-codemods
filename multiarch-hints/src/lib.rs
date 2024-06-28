@@ -1,5 +1,6 @@
 use breezyshim::dirty_tracker::DirtyTracker;
-use breezyshim::tree::{CommitError, Error as TreeError, WorkingTree};
+use breezyshim::error::Error;
+use breezyshim::tree::WorkingTree;
 use debian_analyzer::debmutateshim::{
     format_relations, parse_relations, ControlEditor, ControlLikeEditor, Deb822Paragraph,
 };
@@ -14,7 +15,6 @@ use reqwest::blocking::Client;
 use serde::Deserialize;
 use serde_yaml::from_value;
 use std::collections::HashMap;
-use std::error::Error;
 use std::fs;
 use std::io::Read;
 use std::io::Write;
@@ -175,7 +175,9 @@ format: blah
     }
 }
 
-pub fn cache_download_multiarch_hints(url: Option<&str>) -> Result<Vec<u8>, Box<dyn Error>> {
+pub fn cache_download_multiarch_hints(
+    url: Option<&str>,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let cache_home = if let Ok(xdg_cache_home) = std::env::var("XDG_CACHE_HOME") {
         Path::new(&xdg_cache_home).to_path_buf()
     } else if let Ok(home) = std::env::var("HOME") {
@@ -209,7 +211,7 @@ pub fn cache_download_multiarch_hints(url: Option<&str>) -> Result<Vec<u8>, Box<
 pub fn download_multiarch_hints(
     url: Option<&str>,
     since: Option<SystemTime>,
-) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
+) -> Result<Option<Vec<u8>>, Box<dyn std::error::Error>> {
     let url = url.unwrap_or(MULTIARCH_HINTS_URL);
     let client = Client::builder().user_agent(USER_AGENT).build()?;
     let mut request = client.get(url).header("Accept-Encoding", "identity");
@@ -417,7 +419,7 @@ fn changes_by_description(changes: &[Change]) -> HashMap<String, Vec<String>> {
 
 #[derive(Debug)]
 pub enum OverallError {
-    TreeError(TreeError),
+    BrzError(Error),
     NotDebianPackage(std::path::PathBuf),
     Other(String),
     Python(pyo3::PyErr),
@@ -431,7 +433,7 @@ impl std::fmt::Display for OverallError {
             OverallError::NotDebianPackage(p) => {
                 write!(f, "{} is not a Debian package.", p.display())
             }
-            OverallError::TreeError(e) => write!(f, "{}", e),
+            OverallError::BrzError(e) => write!(f, "{}", e),
             OverallError::Python(e) => write!(f, "{}", e),
             OverallError::NoWhoami => write!(f, "No committer configured."),
             OverallError::NoChanges => write!(f, "No changes to apply."),
@@ -442,18 +444,13 @@ impl std::fmt::Display for OverallError {
 
 impl std::error::Error for OverallError {}
 
-impl From<TreeError> for OverallError {
-    fn from(e: TreeError) -> Self {
-        OverallError::TreeError(e)
-    }
-}
-
-impl From<CommitError> for OverallError {
-    fn from(e: CommitError) -> Self {
+impl From<Error> for OverallError {
+    fn from(e: Error) -> Self {
         match e {
-            CommitError::PointlessCommit => OverallError::NoChanges,
-            CommitError::NoWhoami => OverallError::NoWhoami,
-            CommitError::Other(e) => OverallError::Python(e),
+            Error::PointlessCommit => OverallError::NoChanges,
+            Error::NoWhoami => OverallError::NoWhoami,
+            Error::Other(e) => OverallError::Python(e),
+            e => OverallError::BrzError(e),
         }
     }
 }
@@ -524,7 +521,7 @@ pub fn apply_multiarch_hints(
     ) {
         Ok(r) => r,
         Err(ApplyError::NoChanges(_)) => return Err(OverallError::NoChanges),
-        Err(ApplyError::TreeError(e)) => return Err(OverallError::TreeError(e)),
+        Err(ApplyError::BrzError(e)) => return Err(OverallError::BrzError(e)),
         Err(ApplyError::CallbackError(_)) => panic!("Unexpected callback error"),
     };
 

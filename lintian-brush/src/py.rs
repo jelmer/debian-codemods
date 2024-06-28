@@ -121,7 +121,7 @@ impl Fixer {
                     FailedPatchManipulation::new_err((p1, p2, reason))
                 }
                 crate::FixerError::MemoryError => PyMemoryError::new_err(()),
-                crate::FixerError::TreeError(e) => e.into(),
+                crate::FixerError::BrzError(e) => e.into(),
                 crate::FixerError::InvalidChangelog(p, s) => ChangelogCreateError::new_err((p, s)),
             })
             .map(FixerResult)

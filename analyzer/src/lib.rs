@@ -1,6 +1,7 @@
 use breezyshim::branch::Branch;
 use breezyshim::dirty_tracker::DirtyTracker;
-use breezyshim::tree::{Error as TreeError, MutableTree, Tree, TreeChange, WorkingTree};
+use breezyshim::error::Error;
+use breezyshim::tree::{MutableTree, Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::reset_tree;
 use debian_changelog::ChangeLog;
 use pyo3::prelude::*;
@@ -26,14 +27,14 @@ pub enum ApplyError<R, E> {
     /// Error from the callback
     CallbackError(E),
     /// Error from the tree
-    TreeError(TreeError),
+    BrzError(Error),
     /// No changes made
     NoChanges(R),
 }
 
-impl<R, E> From<TreeError> for ApplyError<R, E> {
-    fn from(e: TreeError) -> Self {
-        ApplyError::TreeError(e)
+impl<R, E> From<Error> for ApplyError<R, E> {
+    fn from(e: Error) -> Self {
+        ApplyError::BrzError(e)
     }
 }
 
@@ -176,7 +177,7 @@ pub fn add_changelog_entry(
 ) -> Result<(), ChangelogError> {
     let f = match working_tree.get_file(changelog_path) {
         Ok(f) => f,
-        Err(breezyshim::tree::Error::NoSuchFile(_)) => {
+        Err(Error::NoSuchFile(_)) => {
             return Err(ChangelogError::NotDebianPackage(
                 working_tree.abspath(changelog_path).unwrap(),
             ))

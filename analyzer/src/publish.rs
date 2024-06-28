@@ -6,8 +6,9 @@ use crate::salsa::guess_repository_url;
 use crate::vcs::determine_browser_url;
 use crate::{branch_vcs_type, get_committer, parseaddr};
 
+use breezyshim::error::Error as BrzError;
 use breezyshim::forge::{create_project, Error as ForgeError};
-use breezyshim::tree::{CommitError, Tree, WorkingTree};
+use breezyshim::tree::{Tree, WorkingTree};
 use breezyshim::workspace::check_clean_tree;
 use debian_control::vcs::ParsedVcs;
 use std::path::Path;
@@ -157,7 +158,7 @@ pub fn update_official_vcs(
         Some(committer.as_str()),
         None,
     ) {
-        Ok(_) | Err(CommitError::PointlessCommit) => {}
+        Ok(_) | Err(BrzError::PointlessCommit) => {}
         Err(e) => {
             panic!("Failed to commit: {:?}", e);
         }

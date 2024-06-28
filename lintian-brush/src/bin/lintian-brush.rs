@@ -1,5 +1,6 @@
-use breezyshim::branch::{open_containing as open_containing_branch, BranchOpenError};
-use breezyshim::tree::{MutableTree, WorkingTree, WorkingTreeOpenError};
+use breezyshim::branch::open_containing as open_containing_branch;
+use breezyshim::error::Error;
+use breezyshim::tree::{MutableTree, WorkingTree};
 use clap::Parser;
 use debian_changelog::get_maintainer;
 use distro_info::DistroInfo;
@@ -207,11 +208,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &url::Url::from_directory_path(&args.output.directory).unwrap(),
             ) {
                 Ok((branch, subpath)) => (branch, subpath),
-                Err(BranchOpenError::NotBranchError(_msg)) => {
+                Err(Error::NotBranchError(_msg, _)) => {
                     log::error!("No version control directory found (e.g. a .git directory).");
                     std::process::exit(1);
                 }
-                Err(BranchOpenError::DependencyNotPresent(name, _reason)) => {
+                Err(Error::DependencyNotPresent(name, _reason)) => {
                     log::error!(
                         "Unable to open branch at {}: missing package {}",
                         args.output.directory.display(),
@@ -219,16 +220,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     );
                     std::process::exit(1);
                 }
-                Err(BranchOpenError::Other(err)) => {
+                Err(err) => {
                     log::error!(
                         "Unable to open branch at {}: {}",
                         args.output.directory.display(),
                         err
                     );
                     std::process::exit(1);
-                }
-                Err(BranchOpenError::NoColocatedBranchSupport) => {
-                    panic!("NoColocatedBranchSupport should not be returned by open_containing");
                 }
             };
 
@@ -248,11 +246,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         } else {
             match WorkingTree::open_containing(&args.output.directory) {
                 Ok((wt, subpath)) => (wt, subpath.display().to_string()),
-                Err(WorkingTreeOpenError::NotBranchError(_msg)) => {
+                Err(Error::NotBranchError(_msg, _)) => {
                     log::error!("No version control directory found (e.g. a .git directory).");
                     std::process::exit(1);
                 }
-                Err(WorkingTreeOpenError::DependencyNotPresent(name, _reason)) => {
+                Err(Error::DependencyNotPresent(name, _reason)) => {
                     log::error!(
                         "Unable to open tree at {}: missing package {}",
                         args.output.directory.display(),
@@ -260,7 +258,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     );
                     std::process::exit(1);
                 }
-                Err(WorkingTreeOpenError::Other(e)) => {
+                Err(e) => {
                     log::error!(
                         "Unable to open tree at {}: {}",
                         args.output.directory.display(),
@@ -441,7 +439,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     None,
                 );
             }
-            Err(OverallError::TreeError(e)) => {
+            Err(OverallError::BrzError(e)) => {
                 drop(write_lock);
                 report_fatal(
                     versions_dict(),

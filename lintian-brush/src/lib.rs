@@ -8,7 +8,8 @@ use std::str::FromStr;
 use indicatif::ProgressBar;
 
 use breezyshim::dirty_tracker::{get_dirty_tracker, DirtyTracker};
-use breezyshim::tree::{CommitError, Error as TreeError, Tree, TreeChange, WorkingTree};
+use breezyshim::error::Error;
+use breezyshim::tree::{Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::{check_clean_tree, reset_tree};
 use breezyshim::RevisionId;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
@@ -613,7 +614,7 @@ pub enum FixerError {
     Python(pyo3::PyErr),
     MemoryError,
     Io(std::io::Error),
-    TreeError(TreeError),
+    BrzError(Error),
     Other(String),
 }
 
@@ -635,9 +636,9 @@ impl From<ChangelogError> for FixerError {
     }
 }
 
-impl From<TreeError> for FixerError {
-    fn from(e: TreeError) -> Self {
-        FixerError::TreeError(e)
+impl From<Error> for FixerError {
+    fn from(e: Error) -> Self {
+        FixerError::BrzError(e)
     }
 }
 
@@ -700,7 +701,7 @@ impl std::fmt::Display for FixerError {
                 p2.display(),
                 s
             ),
-            FixerError::TreeError(e) => write!(f, "Tree error: {}", e),
+            FixerError::BrzError(e) => write!(f, "Breezy error: {}", e),
             FixerError::InvalidChangelog(p, s) => {
                 write!(f, "Invalid changelog {}: {}", p.display(), s)
             }
@@ -1214,12 +1215,12 @@ pub fn run_lintian_fixer(
 
     let r = match local_tree.get_file(changelog_path.as_path()) {
         Ok(f) => f,
-        Err(TreeError::NoSuchFile(_pb)) => {
+        Err(Error::NoSuchFile(_pb)) => {
             return Err(FixerError::NotDebianPackage(
                 local_tree.abspath(subpath).unwrap(),
             ));
         }
-        Err(TreeError::Other(e)) => return Err(FixerError::Other(e.to_string())),
+        Err(e) => return Err(FixerError::Other(e.to_string())),
     };
 
     let cl = ChangeLog::read(r)?;
@@ -1287,7 +1288,7 @@ pub fn run_lintian_fixer(
                     r.overridden_lintian_issues,
                 ));
             }
-            Err(ApplyError::TreeError(e)) => {
+            Err(ApplyError::BrzError(e)) => {
                 return Err(e.into());
             }
             Err(ApplyError::CallbackError(e)) => {
@@ -1396,9 +1397,9 @@ pub fn run_lintian_fixer(
             specific_files_ref.as_deref(),
         )
         .map_err(|e| match e {
-            CommitError::PointlessCommit => FixerError::NoChanges,
-            CommitError::NoWhoami => FixerError::Other("No committer specified".to_string()),
-            CommitError::Other(e) => FixerError::Python(e),
+            Error::PointlessCommit => FixerError::NoChanges,
+            Error::NoWhoami => FixerError::Other("No committer specified".to_string()),
+            e => FixerError::Other(e.to_string()),
         })?;
     result.revision_id = Some(revid);
 
@@ -1412,7 +1413,7 @@ pub enum OverallError {
     WorkspaceDirty(std::path::PathBuf),
     ChangelogCreate(String),
     InvalidChangelog(std::path::PathBuf, String),
-    TreeError(TreeError),
+    BrzError(Error),
     IoError(std::io::Error),
     Other(String),
     #[cfg(feature = "python")]
@@ -1441,7 +1442,7 @@ impl std::fmt::Display for OverallError {
             #[cfg(feature = "python")]
             OverallError::Python(e) => write!(f, "{}", e),
             OverallError::Other(e) => write!(f, "{}", e),
-            OverallError::TreeError(e) => write!(f, "{}", e),
+            OverallError::BrzError(e) => write!(f, "{}", e),
             OverallError::IoError(e) => write!(f, "{}", e),
             OverallError::InvalidChangelog(path, e) => {
                 write!(f, "Invalid changelog at {}: {}", path.display(), e)
@@ -1500,10 +1501,8 @@ pub fn run_lintian_fixers(
     let subpath = subpath.unwrap_or_else(|| std::path::Path::new(""));
     let mut basis_tree = local_tree.basis_tree();
     check_clean_tree(local_tree, &basis_tree, subpath).map_err(|e| match e {
-        breezyshim::workspace::CheckCleanTreeError::WorkspaceDirty(p) => {
-            OverallError::WorkspaceDirty(p)
-        }
-        breezyshim::workspace::CheckCleanTreeError::Python(e) => OverallError::Other(e.to_string()),
+        Error::WorkspaceDirty(p) => OverallError::WorkspaceDirty(p),
+        e => OverallError::Other(e.to_string()),
     })?;
 
     let mut changelog_behaviour = None;
@@ -1622,8 +1621,8 @@ pub fn run_lintian_fixers(
                     }
                     continue;
                 }
-                FixerError::TreeError(e) => {
-                    return Err(OverallError::TreeError(e));
+                FixerError::BrzError(e) => {
+                    return Err(OverallError::BrzError(e));
                 }
                 FixerError::Io(e) => {
                     return Err(OverallError::IoError(e));
@@ -1893,7 +1892,7 @@ pub fn determine_update_changelog(
     let cl = match local_tree.get_file(changelog_path.as_path()) {
         Ok(f) => ChangeLog::read(f).unwrap(),
 
-        Err(TreeError::NoSuchFile(_)) => {
+        Err(Error::NoSuchFile(_)) => {
             // If there's no changelog, then there's nothing to update!
             return ChangelogBehaviour {
                 update_changelog: false,

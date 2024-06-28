@@ -1,4 +1,5 @@
-use breezyshim::tree::{Error as TreeError, Tree, TreeChange, WorkingTree};
+use breezyshim::error::Error;
+use breezyshim::tree::{Tree, TreeChange, WorkingTree};
 use debian_changelog::ChangeLog;
 
 /// Check whether the only change in a tree is to the last changelog entry.
@@ -40,19 +41,19 @@ pub fn only_changes_last_changelog_block<'a>(
     }
     let mut new_cl = match tree.get_file(changelog_path) {
         Ok(f) => ChangeLog::read(f)?,
-        Err(TreeError::NoSuchFile(_)) => {
+        Err(Error::NoSuchFile(_)) => {
             return Ok(false);
         }
-        Err(TreeError::Other(e)) => {
+        Err(e) => {
             panic!("Error reading changelog: {}", e);
         }
     };
     let mut old_cl = match basis_tree.get_file(changelog_path) {
         Ok(f) => ChangeLog::read(f)?,
-        Err(TreeError::NoSuchFile(_)) => {
+        Err(Error::NoSuchFile(_)) => {
             return Ok(true);
         }
-        Err(TreeError::Other(e)) => {
+        Err(e) => {
             panic!("Error reading changelog: {}", e);
         }
     };
