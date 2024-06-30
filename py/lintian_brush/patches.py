@@ -26,12 +26,10 @@ __all__ = [
     "PatchApplicationBaseNotFound",
     "upstream_with_applied_patches",
     "tree_patches_directory",
-    "add_patch",
     "move_upstream_changes_to_patch",
 ]
 
 import contextlib
-import os
 
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
@@ -45,8 +43,6 @@ from breezy.patches import (
 )
 from breezy.transport import NoSuchFile
 from debmutate.patch import (
-    QuiltSeriesEditor,
-    find_common_patch_suffix,
     read_quilt_series,
 )
 
@@ -207,42 +203,3 @@ def tree_non_patches_changes(tree, patches_directory):
             if path == "":
                 continue
             yield change
-
-
-def add_patch(tree, patches_directory, name, contents, header=None):
-    """Add a new patch.
-
-    Args:
-      tree: Tree to edit
-      patches_directory: Name of patches directory
-      name: Patch name without suffix
-      contents: Diff
-      header: RFC822 to read
-    Returns:
-      Name of the patch that was written (including suffix)
-    """
-    if not tree.has_filename(patches_directory):
-        if not tree.has_filename(os.path.dirname(patches_directory)):
-            tree.mkdir(os.path.dirname(patches_directory))
-        tree.mkdir(patches_directory)
-    abs_patches_dir = tree.abspath(patches_directory)
-    patch_suffix = find_common_patch_suffix(os.listdir(abs_patches_dir))
-    patchname = name + patch_suffix
-    path = os.path.join(abs_patches_dir, patchname)
-    if tree.has_filename(path):
-        raise FileExistsError(path)
-    with open(tree.abspath(path), "wb") as f:
-        if header is not None:
-            f.write(header.as_string().encode("utf-8"))
-        f.write(contents)
-
-    # TODO(jelmer): Write to patches branch if applicable
-
-    series_path = os.path.join(abs_patches_dir, "series")
-    with QuiltSeriesEditor(series_path) as editor:
-        editor.append(patchname)
-
-    return patchname
-
-
-
