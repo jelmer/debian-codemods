@@ -248,7 +248,7 @@ pub fn move_upstream_changes_to_patch(
     // See https://dep-team.pages.debian.net/deps/dep3/ for fields.
     let mut dep3_header = dep3::PatchHeader::new();
     dep3_header.set_description(description);
-    dep3_header.set_origin(None, dep3::Origin::Other("lintian-brush".to_string()));
+    dep3_header.set_origin(None, dep3::Origin::Other("other".to_string()));
     dep3_header.set_last_update(timestamp);
     let patches_directory = subpath.join(tree_patches_directory(local_tree, subpath));
     let (specific_files, patchname) = add_patch(
@@ -269,7 +269,7 @@ mod move_upstream_changes_to_patch_tests {
     fn test_simple() {
         breezyshim::init().unwrap();
         let td = tempfile::tempdir().unwrap();
-        let local_tree = breezyshim::controldir::ControlDir::create_standalone_workingtree(
+        let local_tree = breezyshim::controldir::create_standalone_workingtree(
             td.path(),
             &ControlDirFormat::default(),
         )

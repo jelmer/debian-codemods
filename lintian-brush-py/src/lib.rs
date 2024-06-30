@@ -614,6 +614,31 @@ fn canonicalize_vcs_browser_url(url: &str) -> String {
     debian_analyzer::vcs::canonicalize_vcs_browser_url(url).to_string()
 }
 
+#[pyfunction]
+pub fn move_upstream_changes_to_patch(
+    local_tree: PyObject,
+    basis_tree: PyObject,
+    subpath: std::path::PathBuf,
+    patch_name: &str,
+    description: &str,
+    dirty_tracker: Option<PyObject>,
+    timestamp: Option<chrono::NaiveDate>,
+) -> PyResult<(Vec<std::path::PathBuf>, String)> {
+    let local_tree = breezyshim::WorkingTree(local_tree);
+    let basis_tree = breezyshim::RevisionTree(basis_tree);
+    let dirty_tracker = dirty_tracker.map(breezyshim::DirtyTracker::from);
+    debian_analyzer::patches::move_upstream_changes_to_patch(
+        &local_tree,
+        &basis_tree,
+        subpath.as_path(),
+        patch_name,
+        description,
+        dirty_tracker.as_ref(),
+        timestamp,
+    )
+    .map_err(|e| PyValueError::new_err(e.to_string()))
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     pyo3_log::init();
@@ -694,5 +719,6 @@ fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
         "ConflictingVcsAlreadySpecified",
         py.get_type_bound::<ConflictingVcsAlreadySpecified>(),
     )?;
+    m.add_wrapped(wrap_pyfunction!(move_upstream_changes_to_patch))?;
     Ok(())
 }

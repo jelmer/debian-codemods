@@ -34,16 +34,11 @@ __all__ = [
 
 import contextlib
 import os
-from datetime import datetime
-from email.message import Message
-from io import BytesIO
-from typing import List, Optional, Tuple
 
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy import osutils
 from breezy.commit import filter_excluded
-from breezy.diff import show_diff_trees
 from breezy.errors import NotBranchError
 from breezy.patches import (
     PatchSyntax,
@@ -51,9 +46,6 @@ from breezy.patches import (
     parse_patches,
 )
 from breezy.transport import NoSuchFile
-from breezy.tree import Tree
-from breezy.workingtree import WorkingTree
-from breezy.workspace import reset_tree
 from debmutate.patch import (
     QuiltSeriesEditor,
     find_common_patch_suffix,
@@ -61,6 +53,8 @@ from debmutate.patch import (
 )
 
 from debian.changelog import Changelog
+
+from ._lintian_brush_rs import move_upstream_changes_to_patch
 
 # TODO(jelmer): Use debmutate version
 DEFAULT_DEBIAN_PATCHES_DIR = "debian/patches"
@@ -309,51 +303,4 @@ def add_patch(tree, patches_directory, name, contents, header=None):
     return patchname
 
 
-def move_upstream_changes_to_patch(
-    local_tree: WorkingTree,
-    basis_tree: Tree,
-    subpath: str,
-    patch_name: str,
-    description: str,
-    dirty_tracker=None,
-    timestamp: Optional[datetime] = None,
-) -> Tuple[List[str], str]:
-    """Move upstream changes to patch.
 
-    Args:
-      local_tree: local tree
-      subpath: subpath
-      patch_name: Suggested patch name
-      description: Description
-      dirty_tracker: Dirty tracker
-    """
-    if timestamp is None:
-        timestamp = datetime.now()
-    diff = BytesIO()
-    show_diff_trees(basis_tree, local_tree, diff)
-    reset_tree(local_tree, basis_tree, subpath, dirty_tracker)
-    header = Message()
-    lines = description.splitlines()
-    # See https://dep-team.pages.debian.net/deps/dep3/ for fields.
-    header["Description"] = (
-        lines[0]
-        + "\n"
-        + "\n".join([(" " + line) if line else " ." for line in lines[1:]])
-    )
-    header["Origin"] = "other"
-    header["Last-Update"] = timestamp.strftime("%Y-%m-%d")
-    patches_directory = tree_patches_directory(local_tree, subpath)
-    patchname = add_patch(
-        local_tree,
-        os.path.join(subpath, patches_directory),
-        patch_name,
-        diff.getvalue(),
-        header,
-    )
-    specific_files = [
-        os.path.join(subpath, patches_directory),
-        os.path.join(subpath, patches_directory, "series"),
-        os.path.join(subpath, patches_directory, patchname),
-    ]
-    local_tree.add(specific_files)
-    return specific_files, patchname

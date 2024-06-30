@@ -395,8 +395,10 @@ Arch: all
         self.assertEqual(lines[0], b"Description: Created new configure.ac.\n")
         self.assertEqual(lines[1], b"Origin: other\n")
         self.assertEqual(lines[2], b"Last-Update: 2020-09-08\n")
-        self.assertEqual(lines[3], b"\n")
+        self.assertEqual(lines[3], b"---\n")
         self.assertEqual(lines[4], b"=== added file 'configure.ac'\n")
+        self.assertEqual(lines[5][:len(b"--- a/configure.ac")], b"--- a/configure.ac")
+        self.assertEqual(lines[6][:len(b"+++ b/configure.ac")], b"+++ b/configure.ac")
         self.assertEqual(lines[7], b"@@ -0,0 +1,1 @@\n")
         self.assertEqual(lines[8], b"+AC_INIT(foo, bar)\n")
 
