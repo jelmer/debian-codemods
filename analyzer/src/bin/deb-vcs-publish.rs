@@ -108,7 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(Error::UnsupportedForge(_)) => {
                 log::error!("Unable to find a way to create {}", repo_url);
             }
-            Err(Error::ForgeProjectExists(_)) | Err(Error::AlreadyControlDir(..)) => {
+            Err(Error::ForgeProjectExists(..)) | Err(Error::AlreadyControlDir(..)) => {
                 log::error!("Unable to create {}: already exists", repo_url);
                 std::process::exit(1);
             }

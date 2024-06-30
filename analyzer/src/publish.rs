@@ -29,7 +29,7 @@ pub fn create_vcs_url(repo_url: &Url, summary: Option<&str>) -> Result<(), BrzEr
             log::info!("Created {}", repo_url);
             Ok(())
         }
-        Err(BrzError::ForgeProjectExists(_n)) => {
+        Err(BrzError::ForgeProjectExists(..)) | Err(BrzError::AlreadyControlDir(..)) => {
             log::debug!("{} already exists", repo_url);
             Ok(())
         }
