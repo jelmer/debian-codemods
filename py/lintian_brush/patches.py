@@ -25,8 +25,6 @@ __all__ = [
     "read_quilt_patches",
     "PatchApplicationBaseNotFound",
     "upstream_with_applied_patches",
-    "find_patches_directory",
-    "rules_find_patches_directory",
     "tree_patches_directory",
     "add_patch",
     "move_upstream_changes_to_patch",
@@ -54,7 +52,10 @@ from debmutate.patch import (
 
 from debian.changelog import Changelog
 
-from ._lintian_brush_rs import move_upstream_changes_to_patch
+from ._lintian_brush_rs import (
+    move_upstream_changes_to_patch,
+    tree_patches_directory,
+)
 
 # TODO(jelmer): Use debmutate version
 DEFAULT_DEBIAN_PATCHES_DIR = "debian/patches"
@@ -178,65 +179,6 @@ def upstream_with_applied_patches(tree, patches):
 
     with AppliedPatches(upstream_tree, patches) as tree:
         yield tree
-
-
-def rules_find_patches_directory(makefile):
-    """Find the patches directory set in debian/rules.
-
-    Args:
-        makefile: Makefile to scan
-    Returns:
-        path to patches directory, or None if none was found in debian/rules
-    """
-    try:
-        val = makefile.get_variable(b"QUILT_PATCH_DIR")
-    except KeyError:
-        return None
-    else:
-        return val.decode()
-
-
-def find_patches_directory(path):
-    """Find the name of the patches directory, if any.
-
-    Args:
-      path: Root to package
-    Returns:
-      relative path to patches directory, or None if none exists
-    """
-    from debmutate._rules import Makefile
-
-    directory = None
-    try:
-        mf = Makefile.from_path(os.path.join(path, "debian/rules"))
-    except FileNotFoundError:
-        pass
-    else:
-        rules_directory = rules_find_patches_directory(mf)
-        if rules_directory is not None:
-            directory = rules_directory
-    if directory is None and os.path.exists(
-        os.path.join(path, DEFAULT_DEBIAN_PATCHES_DIR)
-    ):
-        directory = DEFAULT_DEBIAN_PATCHES_DIR
-    return directory
-
-
-def tree_patches_directory(tree, subpath=""):
-    """Find the name of the patches directory.
-
-    This will always return a path, even if the patches
-    directory does not yet exist.
-
-    Args:
-      tree: Tree to check
-    Returns:
-      path to patches directory, or what it should be
-    """
-    directory = find_patches_directory(tree.abspath(subpath))
-    if directory is None:
-        return DEFAULT_DEBIAN_PATCHES_DIR
-    return directory
 
 
 def tree_non_patches_changes(tree, patches_directory):

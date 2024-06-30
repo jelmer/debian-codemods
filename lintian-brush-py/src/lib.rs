@@ -639,6 +639,15 @@ pub fn move_upstream_changes_to_patch(
     .map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
+#[pyfunction]
+fn tree_patches_directory(
+    tree: PyObject,
+    subpath: Option<std::path::PathBuf>,
+) -> std::path::PathBuf {
+    let tree = breezyshim::tree::RevisionTree(tree);
+    debian_analyzer::patches::tree_patches_directory(&tree, subpath.unwrap_or_default().as_path())
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     pyo3_log::init();
@@ -714,6 +723,7 @@ fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(determine_browser_url))?;
     m.add_wrapped(wrap_pyfunction!(determine_gitlab_browser_url))?;
     m.add_wrapped(wrap_pyfunction!(canonicalize_vcs_browser_url))?;
+    m.add_wrapped(wrap_pyfunction!(tree_patches_directory))?;
     m.add("NoVcsLocation", py.get_type_bound::<NoVcsLocation>())?;
     m.add(
         "ConflictingVcsAlreadySpecified",

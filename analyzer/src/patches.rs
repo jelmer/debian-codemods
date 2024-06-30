@@ -26,12 +26,93 @@ pub fn tree_patches_directory(tree: &dyn Tree, subpath: &Path) -> PathBuf {
     find_patches_directory(tree, subpath).unwrap_or(DEFAULT_DEBIAN_PATCHES_DIR.into())
 }
 
+#[cfg(test)]
+mod tree_patches_directory_tests {
+    use breezyshim::tree::MutableTree;
+    #[test]
+    fn test_simple() {
+        let td = tempfile::tempdir().unwrap();
+        let local_tree = breezyshim::controldir::create_standalone_workingtree(
+            td.path(),
+            &breezyshim::controldir::ControlDirFormat::default(),
+        )
+        .unwrap();
+        assert_eq!(
+            super::tree_patches_directory(&local_tree, std::path::Path::new("")),
+            std::path::Path::new("debian/patches")
+        );
+    }
+
+    #[test]
+    fn test_default() {
+        let td = tempfile::tempdir().unwrap();
+        let local_tree = breezyshim::controldir::create_standalone_workingtree(
+            td.path(),
+            &breezyshim::controldir::ControlDirFormat::default(),
+        )
+        .unwrap();
+        local_tree.mkdir(std::path::Path::new("debian")).unwrap();
+        local_tree
+            .mkdir(std::path::Path::new("debian/patches"))
+            .unwrap();
+        assert_eq!(
+            super::tree_patches_directory(&local_tree, std::path::Path::new("")),
+            std::path::Path::new("debian/patches")
+        );
+    }
+
+    #[test]
+    fn test_custom() {
+        let td = tempfile::tempdir().unwrap();
+        let local_tree = breezyshim::controldir::create_standalone_workingtree(
+            td.path(),
+            &breezyshim::controldir::ControlDirFormat::default(),
+        )
+        .unwrap();
+        local_tree.mkdir(std::path::Path::new("debian")).unwrap();
+        local_tree
+            .mkdir(std::path::Path::new("debian/patches"))
+            .unwrap();
+        local_tree
+            .put_file_bytes_non_atomic(
+                std::path::Path::new("debian/rules"),
+                br#"
+QUILT_PATCH_DIR := debian/patches-applied
+
+all:
+
+blah: bloe
+	foo
+
+"#,
+            )
+            .unwrap();
+        assert_eq!(
+            super::tree_patches_directory(&local_tree, std::path::Path::new("")),
+            std::path::Path::new("debian/patches-applied")
+        );
+    }
+}
+
 /// Find the name of the patches directory in a debian/rules file
 pub fn rules_find_patches_directory(mf: &makefile_lossless::Makefile) -> Option<PathBuf> {
     let v = mf
         .variable_definitions()
         .find(|v| v.name().as_deref() == Some("QUILT_PATCH_DIR"))?;
     v.raw_value().map(PathBuf::from)
+}
+
+#[test]
+fn test_rules_find_patches_directory() {
+    let mf = makefile_lossless::Makefile::read_relaxed(
+        &br#"QUILT_PATCH_DIR := debian/patches-applied
+"#[..],
+    )
+    .unwrap();
+    assert_eq!(
+        rules_find_patches_directory(&mf),
+        Some(PathBuf::from("debian/patches-applied"))
+    );
 }
 
 pub fn find_patches_directory(tree: &dyn Tree, subpath: &Path) -> Option<PathBuf> {
@@ -301,13 +382,17 @@ mod move_upstream_changes_to_patch_tests {
         assert_eq!(series, "patch.patch\n");
 
         let patch = std::fs::read_to_string(path.join("debian/patches/patch.patch")).unwrap();
-        assert!(patch.starts_with(
-            r#"Description: This is a description
-Origin: lintian-brush
+        assert!(
+            patch.starts_with(
+                r#"Description: This is a description
+Origin: other
 Last-Update: 2020-01-01
 ---
 "#
-        ));
+            ),
+            "{:?}",
+            patch
+        );
 
         assert!(
             patch.ends_with(
