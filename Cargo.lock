@@ -143,9 +143,9 @@ checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
 name = "breezyshim"
-version = "0.1.105"
+version = "0.1.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "591ae2dc848028dd6532822ee608e1e5e1f8fb73a12cbea46626c9f86bdf1d09"
+checksum = "771b7c17cab37578c7db14e585ee6877cd78c8624de816cbf8236ad052eb31f8"
 dependencies = [
  "chrono",
  "ctor",
@@ -173,9 +173,9 @@ checksum = "514de17de45fdb8dc022b1a7975556c53c86f9f0aa5f534b98977b171857c2c9"
 
 [[package]]
 name = "cc"
-version = "1.0.101"
+version = "1.0.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac367972e516d45567c7eafc73d24e1c193dcf200a8d94e9db7b3d38b349572d"
+checksum = "2755ff20a1d93490d26ba33a6f092a38a508398a5320df5d4b3014fcccce9410"
 
 [[package]]
 name = "cfg-if"
@@ -329,7 +329,7 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.157.2"
+version = "0.157.3"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -397,7 +397,7 @@ dependencies = [
 
 [[package]]
 name = "debianize"
-version = "0.157.2"
+version = "0.157.3"
 dependencies = [
  "breezyshim",
  "clap",
@@ -413,7 +413,7 @@ dependencies = [
 
 [[package]]
 name = "debianize-py"
-version = "0.157.2"
+version = "0.157.3"
 dependencies = [
  "debianize",
  "debversion",
@@ -917,7 +917,7 @@ checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
 
 [[package]]
 name = "lintian-brush"
-version = "0.157.2"
+version = "0.157.3"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -942,7 +942,7 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush-py"
-version = "0.157.2"
+version = "0.157.3"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -1038,7 +1038,7 @@ dependencies = [
 
 [[package]]
 name = "multiarch-hints"
-version = "0.157.2"
+version = "0.157.3"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -1095,9 +1095,9 @@ checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
 name = "object"
-version = "0.36.0"
+version = "0.36.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "576dfe1fc8f9df304abb159d767a29d0476f7750fbf8aa7ad07816004a207434"
+checksum = "081b846d1d56ddfc18fdf1a922e4f6e07a11768ea1b92dec44e42b72712ccfce"
 dependencies = [
  "memchr",
 ]
