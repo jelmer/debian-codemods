@@ -7,7 +7,7 @@ use crate::vcs::determine_browser_url;
 use crate::{branch_vcs_type, get_committer, parseaddr};
 
 use breezyshim::error::Error as BrzError;
-use breezyshim::forge::{create_project, Error as ForgeError};
+use breezyshim::forge::create_project;
 use breezyshim::tree::{Tree, WorkingTree};
 use breezyshim::workspace::check_clean_tree;
 use debian_control::vcs::ParsedVcs;
@@ -23,13 +23,13 @@ pub fn update_control_for_vcs_url(source: &mut Deb822Paragraph, vcs_type: &str, 
     }
 }
 
-pub fn create_vcs_url(repo_url: &Url, summary: Option<&str>) -> Result<(), ForgeError> {
+pub fn create_vcs_url(repo_url: &Url, summary: Option<&str>) -> Result<(), BrzError> {
     match create_project(repo_url.as_str(), summary) {
         Ok(()) => {
             log::info!("Created {}", repo_url);
             Ok(())
         }
-        Err(ForgeError::ProjectExists(_n)) => {
+        Err(BrzError::ForgeProjectExists(_n)) => {
             log::debug!("{} already exists", repo_url);
             Ok(())
         }
