@@ -1,9 +1,12 @@
 use breezyshim::branch::Branch;
-use breezyshim::error::Error;
+use breezyshim::delta::filter_excluded;
+use breezyshim::error::Error as BrzError;
 use breezyshim::tree::{MutableTree, Tree, WorkingTree};
+use breezyshim::transform::{TreeTransform, PreviewTree};
 use breezyshim::workspace::reset_tree;
 use breezyshim::RevisionId;
 use debian_changelog::ChangeLog;
+use patchkit::patch::UnifiedPatch;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -120,7 +123,7 @@ pub fn find_patches_directory(tree: &dyn Tree, subpath: &Path) -> Option<PathBuf
 
     let rules_file = match tree.get_file(&rules_path) {
         Ok(f) => Some(f),
-        Err(Error::NoSuchFile(_)) => None,
+        Err(BrzError::NoSuchFile(_)) => None,
         Err(e) => {
             log::warn!("Failed to read {}: {}", rules_path.display(), e);
             None
@@ -157,7 +160,7 @@ pub fn find_patches_directory(tree: &dyn Tree, subpath: &Path) -> Option<PathBuf
 pub fn find_patch_base(tree: &WorkingTree) -> Option<RevisionId> {
     let f = match tree.get_file(std::path::Path::new("debian/patches/series")) {
         Ok(f) => f,
-        Err(Error::NoSuchFile(_)) => return None,
+        Err(BrzError::NoSuchFile(_)) => return None,
         Err(e) => {
             log::warn!("Failed to read debian/patches/series: {}", e);
             return None;
@@ -205,7 +208,7 @@ pub fn find_patches_branch(tree: &WorkingTree) -> Option<Box<dyn Branch>> {
         .open_branch(Some(branch_name.as_str()))
     {
         Ok(b) => return Some(b),
-        Err(Error::NotBranchError(..)) => {}
+        Err(BrzError::NotBranchError(..)) => {}
         Err(e) => {
             log::warn!("Failed to open branch {}: {}", branch_name, e);
         }
@@ -221,7 +224,7 @@ pub fn find_patches_branch(tree: &WorkingTree) -> Option<Box<dyn Branch>> {
         .open_branch(Some(branch_name.as_str()))
     {
         Ok(b) => return Some(b),
-        Err(Error::NotBranchError(..)) => {}
+        Err(BrzError::NotBranchError(..)) => {}
         Err(e) => {
             log::warn!("Failed to open branch {}: {}", branch_name, e);
         }
@@ -258,7 +261,7 @@ pub fn add_patch(
     let series_path = patches_directory.join("series");
     let mut series = match tree.get_file(&series_path) {
         Ok(f) => patchkit::quilt::Series::read(f).unwrap(),
-        Err(Error::NoSuchFile(_)) => patchkit::quilt::Series::new(),
+        Err(BrzError::NoSuchFile(_)) => patchkit::quilt::Series::new(),
         Err(e) => {
             return Err(format!("Failed to read {}: {}", series_path.display(), e));
         }
@@ -405,4 +408,49 @@ Last-Update: 2020-01-01
             patch
         );
     }
+}
+
+pub fn read_quilt_patches<'a>(tree: &'a dyn Tree, directory: &'a std::path::Path) -> impl Iterator<Item = UnifiedPatch> + 'a {
+    let series_path = directory.join("series");
+    let series = match tree.get_file(series_path.as_path()) {
+        Ok(series) => patchkit::quilt::Series::read(series).unwrap(),
+        Err(BrzError::NoSuchFile(..)) => { patchkit::quilt::Series::new() },
+        Err(e) => panic!("error reading series: {:?}", e)
+    };
+
+    let mut ret = vec![];
+    for patch in series.patches() {
+        let p = directory.join(patch);
+        let lines = tree.get_file_lines(p.as_path()).unwrap();
+        // TODO(jelmer): Pass on options?
+        ret.push(patchkit::patch::UnifiedPatch::parse_patches(lines.into_iter()).unwrap());
+    }
+    ret.into_iter().flatten()
+}
+
+pub fn upstream_with_applied_patches(tree: &WorkingTree, patches: Vec<UnifiedPatch>) -> Result<Box<dyn Tree>, BrzError> {
+    if let Some(patches_branch) = find_patches_branch(tree) {
+        // TODO(jelmer): Make sure it's actually rebased on current upstream
+        patches_branch.basis_tree().map(|x| Box::from(x) as Box<dyn Tree>)
+    } else {
+        let upstream_revision = find_patch_base(tree).unwrap(); // TODO: raise PatchApplicationBaseNotFound
+        let upstream_tree = tree.branch().repository().revision_tree(&upstream_revision)?;
+        Ok(Box::new(AppliedPatches::new(&upstream_tree, patches, None)?) as Box<dyn Tree>)
+    }
+}
+
+pub fn tree_non_patches_changes(tree: &WorkingTree, patches_directory: Option<&std::path::Path>) -> impl Iterator<Item = breezyshim::tree::TreeChange> {
+    let patches = match patches_directory {
+        Some(directory) => read_quilt_patches(tree, directory).collect::<Vec<_>>(),
+        None => vec![]
+    };
+
+    // TODO(jelmer): what if the patches are already applied in the tree?
+
+    let upstream_patches_tree = upstream_with_applied_patches(tree, patches).unwrap();
+    let patches_tree = AppliedPatches::new(tree, patches, None).unwrap();
+    filter_excluded(patches_tree.iter_changes(upstream_patches_tree), &[std::path::Path::new("debian")]).filter(|change| {
+        let path = change.path.1;
+        path != ""
+    })
 }
