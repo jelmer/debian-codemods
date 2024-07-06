@@ -21,7 +21,6 @@ __all__ = [
     "PatchSyntax",
     "find_patch_base",
     "find_patches_branch",
-    "AppliedPatches",
     "read_quilt_patches",
     "PatchApplicationBaseNotFound",
     "upstream_with_applied_patches",
@@ -40,6 +39,7 @@ from breezy.patches import (
     PatchSyntax,
     apply_patches,
     parse_patches,
+    AppliedPatches,
 )
 from breezy.transport import NoSuchFile
 from debmutate.patch import (
@@ -106,29 +106,6 @@ def find_patches_branch(tree):
     return None
 
 
-class AppliedPatches:
-    """Context that provides access to a tree with patches applied."""
-
-    def __init__(self, tree, patches, prefix=1):
-        self.tree = tree
-        self.patches = patches
-        self.prefix = prefix
-
-    def __enter__(self):
-        if self.patches:
-            self._tt = self.tree.preview_transform()
-            apply_patches(self._tt, self.patches, prefix=self.prefix)
-            return self._tt.get_preview_tree()
-        else:
-            self._tt = None
-            return self.tree
-
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        if self._tt:
-            self._tt.finalize()
-        return False
-
-
 def read_quilt_patches(tree, directory=DEFAULT_DEBIAN_PATCHES_DIR):
     """Read patch contents from quilt directory.
 
@@ -173,7 +150,10 @@ def upstream_with_applied_patches(tree, patches):
         raise PatchApplicationBaseNotFound(tree)
     upstream_tree = tree.branch.repository.revision_tree(upstream_revision)
 
-    with AppliedPatches(upstream_tree, patches) as tree:
+    if patches:
+        with AppliedPatches(upstream_tree, patches) as tree:
+            yield tree
+    else:
         yield tree
 
 
@@ -191,10 +171,15 @@ def tree_non_patches_changes(tree, patches_directory):
     else:
         patches = list(read_quilt_patches(tree, patches_directory))
 
+    if patches:
+        patches_tree = AppliedPatches(tree, patches)
+    else:
+        patches_tree = tree
+
     # TODO(jelmer): What if patches are already applied on tree?
     with upstream_with_applied_patches(
         tree, patches
-    ) as upstream_patches_tree, AppliedPatches(tree, patches) as patches_tree:
+    ) as upstream_patches_tree, patches_tree as patches_tree:
         for change in filter_excluded(
             patches_tree.iter_changes(upstream_patches_tree),
             exclude=["debian"],
