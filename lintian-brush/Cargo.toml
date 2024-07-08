@@ -30,6 +30,9 @@ debian-analyzer = { version = ">=0.154", path = "../analyzer" }
 distro-info = "0.4.0"
 debian-changelog = { workspace = true }
 
+[dev-dependencies]
+maplit = { workspace = true }
+
 [features]
 default = ["svp", "python", "cli"]
 svp = []
