@@ -1,6 +1,7 @@
 use breezyshim::branch::Branch;
 use breezyshim::delta::filter_excluded;
 use breezyshim::error::Error as BrzError;
+use breezyshim::patches::AppliedPatches;
 use breezyshim::tree::{MutableTree, Tree, WorkingTree};
 use breezyshim::transform::{TreeTransform, PreviewTree};
 use breezyshim::workspace::reset_tree;
@@ -186,7 +187,7 @@ pub fn find_patch_base(tree: &WorkingTree) -> Option<RevisionId> {
     let tags = tree.branch().tags().unwrap().get_tag_dict().unwrap();
     for possible_tag in possible_tags {
         if let Some(revid) = tags.get(&possible_tag) {
-            return Some(revid.iter().next().unwrap().clone());
+            return Some(revid.clone());
         }
     }
     // TODO(jelmer): Do something clever, like look for the last merge?
@@ -351,7 +352,7 @@ mod move_upstream_changes_to_patch_tests {
     use breezyshim::tree::MutableTree;
     #[test]
     fn test_simple() {
-        breezyshim::init().unwrap();
+        breezyshim::init();
         let td = tempfile::tempdir().unwrap();
         let local_tree = breezyshim::controldir::create_standalone_workingtree(
             td.path(),
@@ -447,10 +448,11 @@ pub fn tree_non_patches_changes(tree: &WorkingTree, patches_directory: Option<&s
 
     // TODO(jelmer): what if the patches are already applied in the tree?
 
-    let upstream_patches_tree = upstream_with_applied_patches(tree, patches).unwrap();
+    let upstream_patches_tree = upstream_with_applied_patches(tree, patches.clone()).unwrap();
     let patches_tree = AppliedPatches::new(tree, patches, None).unwrap();
-    filter_excluded(patches_tree.iter_changes(upstream_patches_tree), &[std::path::Path::new("debian")]).filter(|change| {
-        let path = change.path.1;
-        path != ""
-    })
+    let changes = patches_tree.iter_changes(upstream_patches_tree.as_ref(), None, None, None).unwrap().collect::<Result<Vec<_>, _>>().unwrap();
+    let  paths = [std::path::Path::new("debian")];
+    filter_excluded(changes.into_iter(), &paths[..]).filter(|change| {
+        change.path.1.as_deref() != Some(std::path::Path::new(""))
+    }).collect::<Vec<_>>().into_iter()
 }
