@@ -114,7 +114,7 @@ pub fn determine_browser_url(
 
     match parsed_url.host_str().unwrap() {
         host if is_gitlab_site(host, net_access) => {
-            return Some(determine_gitlab_browser_url(vcs_url));
+            Some(determine_gitlab_browser_url(vcs_url))
         }
 
         "github.com" => {
@@ -190,7 +190,7 @@ pub fn determine_browser_url(
             };
 
             if let Some(branch) = branch.as_deref() {
-                path_elements.extend(["ci", &branch, "tree"]);
+                path_elements.extend(["ci", branch, "tree"]);
             }
 
             if let Some(subpath) = parsed_vcs.subpath.as_ref() {
@@ -202,6 +202,40 @@ pub fn determine_browser_url(
         }
         _ => None,
     }
+}
+
+pub fn canonicalize_vcs_browser_url(url: &str) -> String {
+    let url = url.replace(
+        "https://svn.debian.org/wsvn/",
+        "https://anonscm.debian.org/viewvc/",
+    );
+    let url = url.replace(
+        "http://svn.debian.org/wsvn/",
+        "https://anonscm.debian.org/viewvc/",
+    );
+    let url = url.replace(
+        "https://git.debian.org/?p=",
+        "https://anonscm.debian.org/git/",
+    );
+    let url = url.replace(
+        "http://git.debian.org/?p=",
+        "https://anonscm.debian.org/git/",
+    );
+    let url = url.replace(
+        "https://bzr.debian.org/loggerhead/",
+        "https://anonscm.debian.org/loggerhead/",
+    );
+    let url = url.replace(
+        "http://bzr.debian.org/loggerhead/",
+        "https://anonscm.debian.org/loggerhead/",
+    );
+
+    lazy_regex::regex_replace!(
+        r"^https?://salsa.debian.org/([^/]+/[^/]+)\.git/?$",
+        &url,
+        |_, x| "https://salsa.debian.org/".to_string() + x
+    )
+    .into_owned()
 }
 
 #[cfg(test)]
@@ -379,38 +413,4 @@ mod tests {
             ),
         );
     }
-}
-
-pub fn canonicalize_vcs_browser_url(url: &str) -> String {
-    let url = url.replace(
-        "https://svn.debian.org/wsvn/",
-        "https://anonscm.debian.org/viewvc/",
-    );
-    let url = url.replace(
-        "http://svn.debian.org/wsvn/",
-        "https://anonscm.debian.org/viewvc/",
-    );
-    let url = url.replace(
-        "https://git.debian.org/?p=",
-        "https://anonscm.debian.org/git/",
-    );
-    let url = url.replace(
-        "http://git.debian.org/?p=",
-        "https://anonscm.debian.org/git/",
-    );
-    let url = url.replace(
-        "https://bzr.debian.org/loggerhead/",
-        "https://anonscm.debian.org/loggerhead/",
-    );
-    let url = url.replace(
-        "http://bzr.debian.org/loggerhead/",
-        "https://anonscm.debian.org/loggerhead/",
-    );
-
-    lazy_regex::regex_replace!(
-        r"^https?://salsa.debian.org/([^/]+/[^/]+)\.git/?$",
-        &url,
-        |_, x| "https://salsa.debian.org/".to_string() + x
-    )
-    .into_owned()
 }

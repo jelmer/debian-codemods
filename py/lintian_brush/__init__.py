@@ -268,64 +268,8 @@ def _note_changelog_policy(policy, msg):
 
 
 class FailedPatchManipulation(Exception):
-    def __init__(self, tree, patches_directory, reason):
-        super().__init__(tree, patches_directory, reason)
-
-
-def _upstream_changes_to_patch(
-    local_tree: WorkingTree,
-    basis_tree: Tree,
-    dirty_tracker,
-    subpath: str,
-    patch_name: str,
-    patch_description: str,
-    timestamp: Optional[datetime] = None,
-) -> Tuple[str, List[str]]:
-    from .patches import (
-        PatchSyntax,
-        move_upstream_changes_to_patch,
-        read_quilt_patches,
-        tree_patches_directory,
-    )
-
-    # TODO(jelmer): Apply all patches before generating a diff.
-
-    patches_directory = tree_patches_directory(local_tree, subpath)
-    try:
-        quilt_patches = list(read_quilt_patches(local_tree, patches_directory))
-    except PatchSyntax as e:
-        raise FailedPatchManipulation(
-            local_tree,
-            patches_directory,
-            f"Unable to parse some patches: {e}",
-        ) from e
-    if len(quilt_patches) > 0:
-        raise FailedPatchManipulation(
-            local_tree,
-            patches_directory,
-            "Creating patch on top of existing upstream "
-            "patches not supported.",
-        )
-
-    logging.debug("Moving upstream changes to patch %s", patch_name)
-    try:
-        specific_files, patch_name = move_upstream_changes_to_patch(
-            local_tree,
-            basis_tree,
-            subpath,
-            patch_name,
-            patch_description,
-            dirty_tracker,
-            timestamp=timestamp,
-        )
-    except FileExistsError as e:
-        raise FailedPatchManipulation(
-            local_tree,
-            patches_directory,
-            f"patch path {e.args[0]} already exists\n",
-        ) from e
-
-    return patch_name, specific_files
+    def __init__(self, reason):
+        super().__init__(reason)
 
 
 run_lintian_fixer = _lintian_brush_rs.run_lintian_fixer

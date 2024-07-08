@@ -8,6 +8,7 @@ fn default_debianize_cache_dir() -> PyResult<std::path::PathBuf> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (path, source_name, version, author=None, wnpp_bugs=None))]
 fn write_changelog_template(
     path: std::path::PathBuf,
     source_name: &str,

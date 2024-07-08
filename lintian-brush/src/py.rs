@@ -47,6 +47,7 @@ impl Fixer {
             .collect())
     }
 
+    #[pyo3(signature = (basedir, package, current_version, compat_release, minimum_certainty=None, trust_package=None, allow_reformatting=None, net_access=None, opinionated=None, diligence=None))]
     fn run(
         &self,
         py: Python,
@@ -117,8 +118,8 @@ impl Fixer {
                     ))
                 }
                 crate::FixerError::NotDebianPackage(p) => NotDebianPackage::new_err(p),
-                crate::FixerError::FailedPatchManipulation(p1, p2, reason) => {
-                    FailedPatchManipulation::new_err((p1, p2, reason))
+                crate::FixerError::FailedPatchManipulation(reason) => {
+                    FailedPatchManipulation::new_err((reason,))
                 }
                 crate::FixerError::MemoryError => PyMemoryError::new_err(()),
                 crate::FixerError::BrzError(e) => e.into(),
@@ -162,6 +163,7 @@ pub struct FixerResult(pub crate::FixerResult);
 #[pymethods]
 impl FixerResult {
     #[new]
+    #[pyo3(signature = (description, fixed_lintian_tags=None, certainty=None, patch_name=None, revision_id=None, fixed_lintian_issues=None, overridden_lintian_issues=None))]
     fn new(
         description: String,
         fixed_lintian_tags: Option<Vec<String>>,

@@ -82,6 +82,7 @@ fn default_debianize_cache_dir() -> PyResult<std::path::PathBuf> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (fixers_dir, force_subprocess=None))]
 fn available_lintian_fixers(
     fixers_dir: std::path::PathBuf,
     force_subprocess: Option<bool>,
@@ -95,6 +96,7 @@ fn available_lintian_fixers(
 }
 
 #[pyfunction]
+#[pyo3(signature = (actual_certainty=None, minimum_certainty=None))]
 fn certainty_sufficient(
     actual_certainty: Option<&str>,
     minimum_certainty: Option<&str>,
@@ -127,6 +129,7 @@ fn min_certainty(certainties: Vec<String>) -> PyResult<String> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (name, date=None))]
 fn resolve_release_codename(name: &str, date: Option<chrono::NaiveDate>) -> Option<String> {
     debian_analyzer::release_info::resolve_release_codename(name, date)
 }
@@ -432,8 +435,8 @@ fn run_lintian_fixer(
         }
         lintian_brush::FixerError::NotDebianPackage(e) => NotDebianPackage::new_err(e),
         lintian_brush::FixerError::Python(e) => e,
-        lintian_brush::FixerError::FailedPatchManipulation(p1, p2, reason) => {
-            FailedPatchManipulation::new_err((p1, p2, reason))
+        lintian_brush::FixerError::FailedPatchManipulation(reason) => {
+            FailedPatchManipulation::new_err((reason,))
         }
         lintian_brush::FixerError::MemoryError => PyMemoryError::new_err(()),
         lintian_brush::FixerError::BrzError(e) => e.into(),
@@ -543,6 +546,7 @@ fn guess_update_changelog(
 }
 
 #[pyfunction]
+#[pyo3(signature = (wt, subpath, repo_url=None, branch=None, committer=None, force=None))]
 fn update_official_vcs(
     wt: PyObject,
     subpath: std::path::PathBuf,
@@ -593,6 +597,7 @@ fn find_fixers_dir() -> Option<std::path::PathBuf> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (vcs_type, vcs_url, net_access=None))]
 fn determine_browser_url(
     vcs_type: &str,
     vcs_url: &str,
@@ -615,6 +620,7 @@ fn canonicalize_vcs_browser_url(url: &str) -> String {
 }
 
 #[pyfunction]
+#[pyo3(signature = (local_tree, basis_tree, subpath, patch_name, description, dirty_tracker=None, timestamp=None))]
 pub fn move_upstream_changes_to_patch(
     local_tree: PyObject,
     basis_tree: PyObject,
@@ -640,6 +646,7 @@ pub fn move_upstream_changes_to_patch(
 }
 
 #[pyfunction]
+#[pyo3(signature = (tree, subpath=None))]
 fn tree_patches_directory(
     tree: PyObject,
     subpath: Option<std::path::PathBuf>,

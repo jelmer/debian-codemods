@@ -602,7 +602,7 @@ pub enum FixerError {
     ScriptNotFound(std::path::PathBuf),
     OutputParseError(OutputParseError),
     OutputDecodeError(std::string::FromUtf8Error),
-    FailedPatchManipulation(std::path::PathBuf, std::path::PathBuf, String),
+    FailedPatchManipulation(String),
     ChangelogCreate(String),
     ScriptFailed {
         path: std::path::PathBuf,
@@ -694,13 +694,7 @@ impl std::fmt::Display for FixerError {
                 actual, minimum
             ),
             FixerError::Io(e) => write!(f, "IO error: {}", e),
-            FixerError::FailedPatchManipulation(p, p2, s) => write!(
-                f,
-                "Failed to manipulate patch {} in {}: {}",
-                p.display(),
-                p2.display(),
-                s
-            ),
+            FixerError::FailedPatchManipulation(s) => write!(f, "Failed to manipulate patc: {}", s),
             FixerError::BrzError(e) => write!(f, "Breezy error: {}", e),
             FixerError::InvalidChangelog(p, s) => {
                 write!(f, "Invalid changelog {}: {}", p.display(), s)
@@ -1319,30 +1313,14 @@ pub fn run_lintian_fixer(
                 .as_deref()
                 .map_or_else(|| fixer.name(), |n| n.to_string()),
             result.description.as_str(),
-            timestamp,
+            timestamp.map(|t| t.date()),
         ) {
             Ok(r) => r,
             Err(e) => {
                 reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)
                     .map_err(|e| FixerError::Other(e.to_string()))?;
 
-                pyo3::import_exception!(lintian_brush, FailedPatchManipulation);
-
-                pyo3::Python::with_gil(|py| {
-                    if e.is_instance_of::<FailedPatchManipulation>(py) {
-                        use pyo3::PyErrArguments;
-                        let args =
-                            e.arguments(py)
-                                .getattr(py, "args")?
-                                .extract::<(pyo3::PyObject, String, String)>(py)?;
-                        return Err(FixerError::FailedPatchManipulation(
-                            args.0.getattr(py, "basedir")?.extract(py)?,
-                            args.1.into(),
-                            args.2,
-                        ));
-                    }
-                    Err(FixerError::Other(e.to_string()))
-                })?
+                return Err(FixerError::FailedPatchManipulation(e.to_string()));
             }
         };
 
@@ -1640,11 +1618,7 @@ pub fn run_lintian_fixers(
                     }
                     continue;
                 }
-                FixerError::FailedPatchManipulation(
-                    ref _tree_path,
-                    ref _patches_directory,
-                    ref reason,
-                ) => {
+                FixerError::FailedPatchManipulation(ref reason) => {
                     if verbose {
                         log::info!("Unable to manipulate upstream patches: {}", reason);
                     }
@@ -1838,6 +1812,17 @@ fn has_non_debian_changes(changes: &[TreeChange], subpath: &std::path::Path) -> 
     })
 }
 
+#[derive(Debug)]
+struct FailedPatchManipulation(String);
+
+impl std::fmt::Display for FailedPatchManipulation {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Failed to manipulate patches: {}", self.0)
+    }
+}
+
+impl std::error::Error for FailedPatchManipulation {}
+
 fn _upstream_changes_to_patch(
     local_tree: &WorkingTree,
     basis_tree: &dyn Tree,
@@ -1845,25 +1830,40 @@ fn _upstream_changes_to_patch(
     subpath: &std::path::Path,
     patch_name: &str,
     description: &str,
-    timestamp: Option<chrono::naive::NaiveDateTime>,
-) -> pyo3::PyResult<(String, Vec<std::path::PathBuf>)> {
-    use pyo3::prelude::*;
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
-        let m = py.import_bound("lintian_brush")?;
-        let upstream_changes_to_patch = m.getattr("_upstream_changes_to_patch")?;
-        upstream_changes_to_patch
-            .call1((
-                &local_tree.0,
-                basis_tree.to_object(py),
-                dirty_tracker.map(|dt| dt.to_object(py)),
-                subpath,
-                patch_name,
-                description,
-                timestamp,
-            ))?
-            .extract()
-    })
+    timestamp: Option<chrono::naive::NaiveDate>,
+) -> Result<(String, Vec<std::path::PathBuf>), FailedPatchManipulation> {
+    use debian_analyzer::patches::{
+        move_upstream_changes_to_patch, read_quilt_patches, tree_patches_directory,
+    };
+
+    // TODO(jelmer): Apply all patches before generating a diff.
+
+    let patches_directory = tree_patches_directory(local_tree, subpath);
+    let quilt_patches =
+        read_quilt_patches(local_tree, patches_directory.as_path()).collect::<Vec<_>>();
+    if !quilt_patches.is_empty() {
+        return Err(FailedPatchManipulation(
+            "Creating patch on top of existing quilt patches not supported.".to_string(),
+        ));
+    }
+
+    log::debug!("Moving upstream changes to patch {}", patch_name);
+    let (specific_files, patch_name) = match move_upstream_changes_to_patch(
+        local_tree,
+        basis_tree,
+        subpath,
+        patch_name,
+        description,
+        dirty_tracker,
+        timestamp,
+    ) {
+        Ok(r) => r,
+        Err(e) => {
+            return Err(FailedPatchManipulation(e.to_string()));
+        }
+    };
+
+    Ok((patch_name, specific_files))
 }
 
 fn note_changelog_policy(policy: bool, msg: &str) {

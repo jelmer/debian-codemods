@@ -3,7 +3,6 @@ use breezyshim::delta::filter_excluded;
 use breezyshim::error::Error as BrzError;
 use breezyshim::patches::AppliedPatches;
 use breezyshim::tree::{MutableTree, Tree, WorkingTree};
-use breezyshim::transform::{TreeTransform, PreviewTree};
 use breezyshim::workspace::reset_tree;
 use breezyshim::RevisionId;
 use debian_changelog::ChangeLog;
@@ -159,18 +158,18 @@ pub fn find_patches_directory(tree: &dyn Tree, subpath: &Path) -> Option<PathBuf
 ///
 /// * `tree` - Tree to find the patch base for
 pub fn find_patch_base(tree: &WorkingTree) -> Option<RevisionId> {
-    let f = match tree.get_file(std::path::Path::new("debian/patches/series")) {
+    let f = match tree.get_file(std::path::Path::new("debian/changelog")) {
         Ok(f) => f,
         Err(BrzError::NoSuchFile(_)) => return None,
         Err(e) => {
-            log::warn!("Failed to read debian/patches/series: {}", e);
+            log::warn!("Failed to read debian/changelog: {}", e);
             return None;
         }
     };
     let cl = match ChangeLog::read(f) {
         Ok(cl) => cl,
         Err(e) => {
-            log::warn!("Failed to parse debian/patches/series: {}", e);
+            log::warn!("Failed to parse debian/changelog: {}", e);
             return None;
         }
     };
@@ -192,6 +191,57 @@ pub fn find_patch_base(tree: &WorkingTree) -> Option<RevisionId> {
     }
     // TODO(jelmer): Do something clever, like look for the last merge?
     None
+}
+
+#[cfg(test)]
+mod find_patch_base_tests {
+    use breezyshim::tree::{MutableTree, WorkingTree};
+    use breezyshim::RevisionId;
+
+    fn setup() -> (tempfile::TempDir, WorkingTree, RevisionId) {
+        let td = tempfile::tempdir().unwrap();
+        let tree = breezyshim::controldir::create_standalone_workingtree(
+            td.path(),
+            &breezyshim::controldir::ControlDirFormat::default(),
+        )
+        .unwrap();
+        let upstream_revid = tree.commit("upstream", None, None, None).unwrap();
+        tree.mkdir(std::path::Path::new("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/changelog"),
+            r#"blah (0.38) unstable; urgency=medium
+
+  * Fix something
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 19 Oct 2019 15:21:53 +0000
+"#,
+        )
+        .unwrap();
+        tree.add(&[std::path::Path::new("debian/changelog")])
+            .unwrap();
+        (td, tree, upstream_revid)
+    }
+
+    #[test]
+    fn test_none() {
+        let (td, tree, _upstream_revid) = setup();
+        assert_eq!(None, super::find_patch_base(&tree));
+        std::mem::drop(td);
+    }
+
+    #[test]
+    fn test_upstream_dash() {
+        let (td, tree, upstream_revid) = setup();
+        tree.branch()
+            .tags()
+            .unwrap()
+            .set_tag("upstream-0.38", &upstream_revid)
+            .unwrap();
+        let tags = tree.branch().tags().unwrap().get_tag_dict().unwrap();
+        assert_eq!(Some(&upstream_revid), tags.get("upstream-0.38"));
+        assert_eq!(Some(upstream_revid), super::find_patch_base(&tree));
+        std::mem::drop(td);
+    }
 }
 
 /// Find the branch that is used to track patches.
@@ -231,6 +281,87 @@ pub fn find_patches_branch(tree: &WorkingTree) -> Option<Box<dyn Branch>> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod find_patches_branch_tests {
+    use breezyshim::tree::WorkingTree;
+    fn make_named_branch_and_tree(name: &str) -> (tempfile::TempDir, WorkingTree) {
+        let td = tempfile::tempdir().unwrap();
+        let dir = breezyshim::controldir::create(
+            &url::Url::from_directory_path(td.path()).unwrap(),
+            &breezyshim::controldir::ControlDirFormat::default(),
+            None,
+        )
+        .unwrap();
+        dir.create_repository().unwrap();
+        let branch = dir.create_branch(Some(name)).unwrap();
+        dir.set_branch_reference(branch.as_ref(), None).unwrap();
+        let wt = dir.create_workingtree().unwrap();
+        (td, wt)
+    }
+
+    #[test]
+    fn test_none() {
+        let td = tempfile::tempdir().unwrap();
+        let local_tree = breezyshim::controldir::create_standalone_workingtree(
+            td.path(),
+            &breezyshim::controldir::ControlDirFormat::default(),
+        )
+        .unwrap();
+        assert!(super::find_patches_branch(&local_tree).is_none());
+    }
+
+    #[test]
+    fn test_patch_queue() {
+        let (td, master) = make_named_branch_and_tree("master");
+        master
+            .branch()
+            .controldir()
+            .create_branch(Some("patch-queue/master"))
+            .unwrap();
+
+        assert_eq!(
+            "patch-queue/master",
+            super::find_patches_branch(&master)
+                .unwrap()
+                .name()
+                .unwrap()
+                .as_str()
+        );
+
+        std::mem::drop(td);
+    }
+
+    #[test]
+    fn test_patched_master() {
+        let (td, master) = make_named_branch_and_tree("master");
+        master
+            .branch()
+            .controldir()
+            .create_branch(Some("patched"))
+            .unwrap();
+        assert_eq!(
+            "patched",
+            super::find_patches_branch(&master).unwrap().name().unwrap()
+        );
+        std::mem::drop(td);
+    }
+
+    #[test]
+    fn test_patched_other() {
+        let (td, other) = make_named_branch_and_tree("other");
+        other
+            .branch()
+            .controldir()
+            .create_branch(Some("patched-other"))
+            .unwrap();
+        assert_eq!(
+            "patched-other",
+            super::find_patches_branch(&other).unwrap().name().unwrap()
+        );
+        std::mem::drop(td);
+    }
 }
 
 /// Add a new patch.
@@ -411,12 +542,15 @@ Last-Update: 2020-01-01
     }
 }
 
-pub fn read_quilt_patches<'a>(tree: &'a dyn Tree, directory: &'a std::path::Path) -> impl Iterator<Item = UnifiedPatch> + 'a {
+pub fn read_quilt_patches<'a>(
+    tree: &'a dyn Tree,
+    directory: &'a std::path::Path,
+) -> impl Iterator<Item = UnifiedPatch> + 'a {
     let series_path = directory.join("series");
     let series = match tree.get_file(series_path.as_path()) {
         Ok(series) => patchkit::quilt::Series::read(series).unwrap(),
-        Err(BrzError::NoSuchFile(..)) => { patchkit::quilt::Series::new() },
-        Err(e) => panic!("error reading series: {:?}", e)
+        Err(BrzError::NoSuchFile(..)) => patchkit::quilt::Series::new(),
+        Err(e) => panic!("error reading series: {:?}", e),
     };
 
     let mut ret = vec![];
@@ -429,30 +563,320 @@ pub fn read_quilt_patches<'a>(tree: &'a dyn Tree, directory: &'a std::path::Path
     ret.into_iter().flatten()
 }
 
-pub fn upstream_with_applied_patches(tree: &WorkingTree, patches: Vec<UnifiedPatch>) -> Result<Box<dyn Tree>, BrzError> {
-    if let Some(patches_branch) = find_patches_branch(tree) {
-        // TODO(jelmer): Make sure it's actually rebased on current upstream
-        patches_branch.basis_tree().map(|x| Box::from(x) as Box<dyn Tree>)
-    } else {
-        let upstream_revision = find_patch_base(tree).unwrap(); // TODO: raise PatchApplicationBaseNotFound
-        let upstream_tree = tree.branch().repository().revision_tree(&upstream_revision)?;
-        Ok(Box::new(AppliedPatches::new(&upstream_tree, patches, None)?) as Box<dyn Tree>)
+#[cfg(test)]
+mod read_quilt_patches_tests {
+    use breezyshim::controldir::ControlDirFormat;
+    use breezyshim::tree::MutableTree;
+
+    #[test]
+    fn test_read_patches() {
+        let patch = "\
+--- a/a
++++ b/a
+@@ -1,5 +1,5 @@
+ line 1
+ line 2
+-line 3
++new line 3
+ line 4
+ line 5
+";
+        breezyshim::init();
+        let td = tempfile::tempdir().unwrap();
+        let tree = breezyshim::controldir::create_standalone_workingtree(
+            td.path(),
+            &ControlDirFormat::default(),
+        )
+        .unwrap();
+        tree.mkdir(std::path::Path::new("debian")).unwrap();
+        tree.mkdir(std::path::Path::new("debian/patches")).unwrap();
+        std::fs::write(td.path().join("debian/patches/series"), "foo\n").unwrap();
+        std::fs::write(td.path().join("debian/patches/foo"), patch).unwrap();
+        tree.add(
+            [
+                "debian",
+                "debian/patches",
+                "debian/patches/series",
+                "debian/patches/foo",
+            ]
+            .into_iter()
+            .map(std::path::Path::new)
+            .collect::<Vec<_>>()
+            .as_slice(),
+        )
+        .unwrap();
+        tree.commit("add patch", None, None, None).unwrap();
+        let patches = super::read_quilt_patches(&tree, std::path::Path::new("debian/patches"))
+            .collect::<Vec<_>>();
+        assert_eq!(1, patches.len());
+        assert_eq!(patch, std::str::from_utf8(&patches[0].as_bytes()).unwrap());
+    }
+
+    #[test]
+    fn test_no_series_file() {
+        breezyshim::init();
+        let td = tempfile::tempdir().unwrap();
+        let tree = breezyshim::controldir::create_standalone_workingtree(
+            td.path(),
+            &ControlDirFormat::default(),
+        )
+        .unwrap();
+        let patches = super::read_quilt_patches(&tree, std::path::Path::new("debian/patches"))
+            .collect::<Vec<_>>();
+        assert_eq!(0, patches.len());
+    }
+
+    #[test]
+    fn test_comments() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = breezyshim::controldir::create_standalone_workingtree(
+            td.path(),
+            &ControlDirFormat::default(),
+        )
+        .unwrap();
+        tree.mkdir(std::path::Path::new("debian")).unwrap();
+        tree.mkdir(std::path::Path::new("debian/patches")).unwrap();
+        tree.put_file_bytes_non_atomic(
+            std::path::Path::new("debian/patches/series"),
+            b"# This file intentionally left blank.\n",
+        )
+        .unwrap();
+        tree.add(&[std::path::Path::new("debian/patches/series")])
+            .unwrap();
+        tree.commit("add series", None, None, None).unwrap();
+        let patches = super::read_quilt_patches(&tree, std::path::Path::new("debian/patches"))
+            .collect::<Vec<_>>();
+        assert_eq!(0, patches.len());
     }
 }
 
-pub fn tree_non_patches_changes(tree: &WorkingTree, patches_directory: Option<&std::path::Path>) -> impl Iterator<Item = breezyshim::tree::TreeChange> {
-    let patches = match patches_directory {
-        Some(directory) => read_quilt_patches(tree, directory).collect::<Vec<_>>(),
-        None => vec![]
+pub fn upstream_with_applied_patches(
+    tree: WorkingTree,
+    patches: Vec<UnifiedPatch>,
+) -> breezyshim::Result<Box<dyn Tree>> {
+    if let Some(patches_branch) = find_patches_branch(&tree) {
+        Ok(Box::new(patches_branch.basis_tree()?) as Box<dyn Tree>)
+    } else {
+        let upstream_revision = find_patch_base(&tree).unwrap(); // PatchApplicationBaseNotFound(tree)
+        let upstream_tree = tree
+            .branch()
+            .repository()
+            .revision_tree(&upstream_revision)?;
+        if patches.is_empty() {
+            Ok(Box::new(tree) as Box<dyn Tree>)
+        } else {
+            Ok(Box::new(AppliedPatches::new(&upstream_tree, patches, None)?) as Box<dyn Tree>)
+        }
+    }
+}
+
+#[cfg(test)]
+mod upstream_with_applied_patches_tests {
+    use breezyshim::tree::{MutableTree, WorkingTree};
+    use breezyshim::RevisionId;
+
+    fn setup() -> (tempfile::TempDir, WorkingTree, RevisionId) {
+        let td = tempfile::tempdir().unwrap();
+        let tree = breezyshim::controldir::create_standalone_workingtree(
+            td.path(),
+            &breezyshim::controldir::ControlDirFormat::default(),
+        )
+        .unwrap();
+        std::fs::write(td.path().join("afile"), b"some line\n").unwrap();
+        tree.add(&[std::path::Path::new("afile")]).unwrap();
+        let upstream_revid = tree.commit("upstream", None, None, None).unwrap();
+        tree.mkdir(std::path::Path::new("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/changelog"),
+            r#"blah (0.38) unstable; urgency=medium
+
+  * Fix something
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 19 Oct 2019 15:21:53 +0000
+"#,
+        )
+        .unwrap();
+        tree.add(&[std::path::Path::new("debian/changelog")])
+            .unwrap();
+        tree.mkdir(std::path::Path::new("debian/patches")).unwrap();
+        std::fs::write(td.path().join("debian/patches/series"), "1.patch\n").unwrap();
+        tree.add(&[std::path::Path::new("debian/patches/series")])
+            .unwrap();
+        std::fs::write(
+            td.path().join("debian/patches/1.patch"),
+            r#"--- a/afile
++++ b/afile
+@@ -1 +1 @@
+-some line
++another line
+--- /dev/null
++++ b/newfile
+@@ -0,0 +1 @@
++new line
+"#,
+        )
+        .unwrap();
+        tree.add(&[std::path::Path::new("debian/patches/1.patch")])
+            .unwrap();
+        std::fs::write(td.path().join("unchangedfile"), b"unchanged\n").unwrap();
+        tree.add(&[std::path::Path::new("unchangedfile")]).unwrap();
+
+        (td, tree, upstream_revid)
+    }
+
+    #[test]
+    fn test_upstream_branch() {
+        let (td, tree, upstream_revid) = setup();
+        tree.branch()
+            .tags()
+            .unwrap()
+            .set_tag("upstream/0.38", &upstream_revid)
+            .unwrap();
+        let tags = tree.branch().tags().unwrap().get_tag_dict().unwrap();
+        assert_eq!(Some(&upstream_revid), tags.get("upstream/0.38"));
+        let patches = super::read_quilt_patches(&tree, std::path::Path::new("debian/patches"))
+            .collect::<Vec<_>>();
+        let t = super::upstream_with_applied_patches(tree, patches).unwrap();
+        assert_eq!(
+            b"another line\n".to_vec(),
+            t.get_file_text(std::path::Path::new("afile")).unwrap()
+        );
+        assert_eq!(
+            b"new line\n".to_vec(),
+            t.get_file_text(std::path::Path::new("newfile")).unwrap()
+        );
+        // TODO(jelmer): PreviewTree appears to be broken
+        // self.assertEqual(b'unchanged\n',
+        //                  t.get_file_text('unchangedfile'))
+        std::mem::drop(td);
+    }
+}
+
+/// Check if a Debian tree has changes vs upstream tree.
+pub fn tree_non_patches_changes(
+    tree: WorkingTree,
+    patches_directory: Option<&std::path::Path>,
+) -> breezyshim::Result<Vec<breezyshim::tree::TreeChange>> {
+    let patches = if let Some(patches_directory) = patches_directory.as_ref() {
+        read_quilt_patches(&tree, patches_directory).collect::<Vec<_>>()
+    } else {
+        vec![]
     };
 
-    // TODO(jelmer): what if the patches are already applied in the tree?
+    let patches_tree = if patches.is_empty() {
+        Box::new(tree.clone())
+    } else {
+        Box::new(AppliedPatches::new(&tree, patches.clone(), None)?) as Box<dyn Tree>
+    };
 
-    let upstream_patches_tree = upstream_with_applied_patches(tree, patches.clone()).unwrap();
-    let patches_tree = AppliedPatches::new(tree, patches, None).unwrap();
-    let changes = patches_tree.iter_changes(upstream_patches_tree.as_ref(), None, None, None).unwrap().collect::<Result<Vec<_>, _>>().unwrap();
-    let  paths = [std::path::Path::new("debian")];
-    filter_excluded(changes.into_iter(), &paths[..]).filter(|change| {
-        change.path.1.as_deref() != Some(std::path::Path::new(""))
-    }).collect::<Vec<_>>().into_iter()
+    let upstream_patches_tree = upstream_with_applied_patches(tree, patches)?;
+
+    let changes = patches_tree
+        .iter_changes(upstream_patches_tree.as_ref(), None, None, None)?
+        .map(|c| c.unwrap());
+
+    let paths = &[std::path::Path::new("debian")][..];
+
+    Ok(filter_excluded(changes, paths)
+        .filter_map(|change| {
+            if change.path.1.as_deref() == Some(std::path::Path::new("")) {
+                None
+            } else {
+                Some(change)
+            }
+        })
+        .collect())
+}
+
+#[cfg(test)]
+mod tree_non_patches_changes_tests {
+    use breezyshim::tree::{MutableTree, WorkingTree};
+    use breezyshim::RevisionId;
+    fn setup() -> (tempfile::TempDir, WorkingTree, RevisionId) {
+        breezyshim::init();
+
+        let td = tempfile::tempdir().unwrap();
+        let local_tree = breezyshim::controldir::create_standalone_workingtree(
+            td.path(),
+            &breezyshim::controldir::ControlDirFormat::default(),
+        )
+        .unwrap();
+
+        std::fs::write(td.path().join("afile"), b"some line\n").unwrap();
+        local_tree.add(&[std::path::Path::new("afile")]).unwrap();
+        let upstream_revid = local_tree.commit("upstream", None, None, None).unwrap();
+
+        local_tree.mkdir(std::path::Path::new("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/changelog"),
+            r#"blah (0.38) unstable; urgency=medium
+
+  * Fix something
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 19 Oct 2019 15:21:53 +0000
+"#,
+        )
+        .unwrap();
+        local_tree
+            .mkdir(std::path::Path::new("debian/patches"))
+            .unwrap();
+        std::fs::write(td.path().join("debian/patches/series"), "1.patch\n").unwrap();
+        std::fs::write(
+            td.path().join("debian/patches/1.patch"),
+            r#"--- a/afile
++++ b/afile
+@@ -1 +1 @@
+-some line
++another line
+"#,
+        )
+        .unwrap();
+        local_tree
+            .add(&[
+                std::path::Path::new("debian/changelog"),
+                std::path::Path::new("debian/patches"),
+                std::path::Path::new("debian/patches/series"),
+                std::path::Path::new("debian/patches/1.patch"),
+            ])
+            .unwrap();
+
+        (td, local_tree, upstream_revid)
+    }
+
+    #[test]
+    fn test_no_delta() {
+        let (td, tree, upstream_revid) = setup();
+        tree.branch()
+            .tags()
+            .unwrap()
+            .set_tag("upstream/0.38", &upstream_revid)
+            .unwrap();
+        assert_eq!(
+            Vec::<breezyshim::tree::TreeChange>::new(),
+            super::tree_non_patches_changes(tree, Some(std::path::Path::new("debian/patches")))
+                .unwrap()
+        );
+        std::mem::drop(td);
+    }
+
+    #[test]
+    fn test_delta() {
+        let (td, tree, upstream_revid) = setup();
+        tree.branch()
+            .tags()
+            .unwrap()
+            .set_tag("upstream/0.38", &upstream_revid)
+            .unwrap();
+        let tags = tree.branch().tags().unwrap().get_tag_dict().unwrap();
+        assert_eq!(Some(&upstream_revid), tags.get("upstream/0.38"));
+        std::fs::write(tree.basedir().join("anotherfile"), b"blah\n").unwrap();
+        tree.add(&[std::path::Path::new("anotherfile")]).unwrap();
+        assert_eq!(
+            1,
+            super::tree_non_patches_changes(tree, Some(std::path::Path::new("debian/patches")))
+                .unwrap()
+                .len()
+        );
+        std::mem::drop(td);
+    }
 }

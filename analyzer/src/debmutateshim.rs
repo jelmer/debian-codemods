@@ -322,66 +322,6 @@ pub fn parse_relations(relations: &str) -> Vec<(String, Vec<ParsedRelation>, Str
     })
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_create() {
-        use super::*;
-        let td = tempfile::tempdir().unwrap();
-        let ce = ControlEditor::create(Some(td.path().join("control").as_path()));
-        assert!(ce.source().is_some());
-        assert!(ce.binaries().is_empty());
-    }
-
-    #[test]
-    fn parse_relations() {
-        assert_eq!(
-            super::parse_relations("foo (>= 1.0) [amd64]"),
-            vec![(
-                "".to_string(),
-                vec![super::ParsedRelation {
-                    name: "foo".to_string(),
-                    archqual: None,
-                    version: Some(super::VersionConstraint {
-                        operator: ">=".to_string(),
-                        version: "1.0".parse().unwrap()
-                    }),
-                    arch: Some(vec![super::ArchRestriction {
-                        enabled: true,
-                        arch: "amd64".to_string()
-                    }]),
-                    restrictions: None
-                }],
-                "".to_string()
-            )]
-        );
-    }
-
-    #[test]
-    fn format_relations() {
-        assert_eq!(
-            super::format_relations(&[(
-                "",
-                &[super::ParsedRelation {
-                    name: "foo".to_string(),
-                    archqual: None,
-                    version: Some(super::VersionConstraint {
-                        operator: ">=".to_string(),
-                        version: "1.0".parse().unwrap()
-                    }),
-                    arch: Some(vec![super::ArchRestriction {
-                        enabled: true,
-                        arch: "amd64".to_string()
-                    }]),
-                    restrictions: None
-                }],
-                ""
-            )]),
-            "foo (>= 1.0) [amd64]"
-        );
-    }
-}
-
 pub fn source_package_vcs(control: &Deb822Paragraph) -> Option<(String, String)> {
     Python::with_gil(|py| {
         let control = control.to_object(py);
@@ -392,8 +332,7 @@ pub fn source_package_vcs(control: &Deb822Paragraph) -> Option<(String, String)>
         {
             Ok(o) => o
                 .extract::<Option<(String, String)>>()
-                .unwrap()
-                .map(|(k, v)| (k, v)),
+                .unwrap(),
             Err(e) if e.is_instance_of::<PyKeyError>(py) => None,
             Err(e) => panic!("unexpected error: {}", e),
         }
@@ -470,4 +409,64 @@ pub fn edit_control<R, E: std::fmt::Display>(
             .unwrap();
         result
     })
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_create() {
+        use super::*;
+        let td = tempfile::tempdir().unwrap();
+        let ce = ControlEditor::create(Some(td.path().join("control").as_path()));
+        assert!(ce.source().is_some());
+        assert!(ce.binaries().is_empty());
+    }
+
+    #[test]
+    fn parse_relations() {
+        assert_eq!(
+            super::parse_relations("foo (>= 1.0) [amd64]"),
+            vec![(
+                "".to_string(),
+                vec![super::ParsedRelation {
+                    name: "foo".to_string(),
+                    archqual: None,
+                    version: Some(super::VersionConstraint {
+                        operator: ">=".to_string(),
+                        version: "1.0".parse().unwrap()
+                    }),
+                    arch: Some(vec![super::ArchRestriction {
+                        enabled: true,
+                        arch: "amd64".to_string()
+                    }]),
+                    restrictions: None
+                }],
+                "".to_string()
+            )]
+        );
+    }
+
+    #[test]
+    fn format_relations() {
+        assert_eq!(
+            super::format_relations(&[(
+                "",
+                &[super::ParsedRelation {
+                    name: "foo".to_string(),
+                    archqual: None,
+                    version: Some(super::VersionConstraint {
+                        operator: ">=".to_string(),
+                        version: "1.0".parse().unwrap()
+                    }),
+                    arch: Some(vec![super::ArchRestriction {
+                        enabled: true,
+                        arch: "amd64".to_string()
+                    }]),
+                    restrictions: None
+                }],
+                ""
+            )]),
+            "foo (>= 1.0) [amd64]"
+        );
+    }
 }
