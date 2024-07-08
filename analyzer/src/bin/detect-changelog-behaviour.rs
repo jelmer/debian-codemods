@@ -29,7 +29,7 @@ fn main() {
         )
         .init();
 
-    breezyshim::init().unwrap();
+    breezyshim::init();
 
     let (wt, subpath) = WorkingTree::open_containing(&args.directory).unwrap();
     let debian_path = if debian_analyzer::control_files_in_root(&wt, subpath.as_path()) {

@@ -1,6 +1,5 @@
 use breezyshim::controldir::open;
 use breezyshim::error::Error;
-use breezyshim::forge::Error as ForgeError;
 use breezyshim::tree::WorkingTree;
 use clap::Parser;
 use debian_analyzer::publish::{create_vcs_url, update_official_vcs};
@@ -58,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
-    breezyshim::init().unwrap();
+    breezyshim::init();
 
     let (wt, subpath) = match WorkingTree::open_containing(&args.directory) {
         Ok((wt, subpath)) => (wt, subpath.display().to_string()),
@@ -106,15 +105,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !args.no_create {
         match create_vcs_url(&repo_url, parsed_vcs.branch.as_deref()) {
             Ok(()) => {}
-            Err(ForgeError::UnsupportedForge(_)) => {
+            Err(Error::UnsupportedForge(_)) => {
                 log::error!("Unable to find a way to create {}", repo_url);
             }
-            Err(ForgeError::ProjectExists(_)) => {
+            Err(Error::ForgeProjectExists(_)) | Err(Error::AlreadyControlDir(..)) => {
                 log::error!("Unable to create {}: already exists", repo_url);
                 std::process::exit(1);
             }
-            Err(ForgeError::LoginRequired) => {
+            Err(Error::ForgeLoginRequired) => {
                 log::error!("Unable to create {}: login required", repo_url);
+                std::process::exit(1);
+            }
+            Err(e) => {
+                log::error!("Unable to create {}: {}", repo_url, e);
                 std::process::exit(1);
             }
         }
