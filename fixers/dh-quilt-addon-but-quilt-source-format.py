@@ -8,7 +8,22 @@ from debmutate._rules import (
 )
 
 from lintian_brush.fixer import LintianIssue, report_result
-from lintian_brush.patches import rules_find_patches_directory
+
+
+def rules_find_patches_directory(makefile):
+    """Find the patches directory set in debian/rules.
+
+    Args:
+        makefile: Makefile to scan
+    Returns:
+        path to patches directory, or None if none was found in debian/rules
+    """
+    try:
+        val = makefile.get_variable(b"QUILT_PATCH_DIR")
+    except KeyError:
+        return None
+    else:
+        return val.decode()
 
 
 def drop_quilt_with(line, target):

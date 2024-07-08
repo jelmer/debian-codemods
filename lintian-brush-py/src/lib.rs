@@ -141,6 +141,7 @@ fn calculate_value(tags: Vec<String>) -> i32 {
 }
 
 #[pyfunction]
+#[pyo3(signature = (versions, code, description, hint=None, transient=None))]
 fn report_fatal(
     versions: HashMap<String, String>,
     code: &str,
@@ -152,6 +153,7 @@ fn report_fatal(
 }
 
 #[pyfunction]
+#[pyo3(signature = (versions, value=None, context=None))]
 pub fn report_success(
     py: Python,
     versions: HashMap<String, String>,
@@ -169,6 +171,7 @@ pub fn report_success(
 }
 
 #[pyfunction]
+#[pyo3(signature = (versions, value=None, context=None, changelog=None))]
 pub fn report_success_debian(
     py: Python,
     versions: HashMap<String, String>,
@@ -330,6 +333,7 @@ impl lintian_brush::Fixer for PyFixer {
 }
 
 #[pyfunction]
+#[pyo3(signature = (local_tree, fixer, committer=None, update_changelog=None, compat_release=None, minimum_certainty=None, trust_package=None, allow_reformatting=None, dirty_tracker=None, subpath=None, net_access=None, opinionated=None, diligence=None, timestamp=None, basis_tree=None, changes_by=None))]
 fn run_lintian_fixer(
     py: Python,
     local_tree: PyObject,
@@ -655,6 +659,15 @@ fn tree_patches_directory(
     debian_analyzer::patches::tree_patches_directory(&tree, subpath.unwrap_or_default().as_path())
 }
 
+#[pyfunction]
+fn find_patches_directory(
+    tree: PyObject,
+    subpath: std::path::PathBuf,
+) -> Option<std::path::PathBuf> {
+    let tree = breezyshim::tree::RevisionTree(tree);
+    debian_analyzer::patches::find_patches_directory(&tree, subpath.as_path())
+}
+
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     pyo3_log::init();
@@ -731,6 +744,7 @@ fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(determine_gitlab_browser_url))?;
     m.add_wrapped(wrap_pyfunction!(canonicalize_vcs_browser_url))?;
     m.add_wrapped(wrap_pyfunction!(tree_patches_directory))?;
+    m.add_wrapped(wrap_pyfunction!(find_patches_directory))?;
     m.add("NoVcsLocation", py.get_type_bound::<NoVcsLocation>())?;
     m.add(
         "ConflictingVcsAlreadySpecified",

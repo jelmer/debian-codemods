@@ -22,24 +22,21 @@ import os
 import sys
 import time
 from contextlib import ExitStack
-from datetime import datetime
 from typing import (
     Iterable,
     List,
     Optional,
-    Tuple,
 )
 
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
-from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 from breezy.workspace import check_clean_tree
 from debmutate.reformatting import FormattingUnpreservable
 
 from . import _lintian_brush_rs
 
-__version__ = (0, 157)
+__version__ = (0, 158)
 version_string = ".".join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ["certain", "confident", "likely", "possible", None]
 DEFAULT_MINIMUM_CERTAINTY = "certain"
