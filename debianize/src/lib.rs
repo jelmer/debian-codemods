@@ -22,11 +22,11 @@ impl std::str::FromStr for BugKind {
     }
 }
 
-impl ToString for BugKind {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for BugKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            BugKind::RFP => "RFP".to_string(),
-            BugKind::ITP => "ITP".to_string(),
+            BugKind::RFP => write!(f, "RFP"),
+            BugKind::ITP => write!(f, "ITP"),
         }
     }
 }
