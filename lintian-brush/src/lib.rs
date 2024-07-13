@@ -2111,7 +2111,7 @@ Arch: all
     #[test]
     fn test_not_debian_tree() {
         let (td, tree) = setup();
-        tree.remove(&[&std::path::Path::new("debian/changelog")])
+        tree.remove(&[(std::path::Path::new("debian/changelog"))])
             .unwrap();
         std::fs::remove_file(td.path().join("debian/changelog")).unwrap();
         tree.commit("not a debian dir", None, None, None).unwrap();
