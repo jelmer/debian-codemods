@@ -293,6 +293,7 @@ impl lintian_brush::Fixer for PyFixer {
         net_access: Option<bool>,
         opinionated: Option<bool>,
         diligence: Option<i32>,
+        timeout: Option<chrono::Duration>,
     ) -> Result<lintian_brush::FixerResult, lintian_brush::FixerError> {
         Python::with_gil(|py| {
             let ob = self.0.call_method_bound(
@@ -309,6 +310,7 @@ impl lintian_brush::Fixer for PyFixer {
                     net_access,
                     opinionated,
                     diligence,
+                    timeout,
                 ),
                 None,
             )?;
@@ -333,7 +335,7 @@ impl lintian_brush::Fixer for PyFixer {
 }
 
 #[pyfunction]
-#[pyo3(signature = (local_tree, fixer, committer=None, update_changelog=None, compat_release=None, minimum_certainty=None, trust_package=None, allow_reformatting=None, dirty_tracker=None, subpath=None, net_access=None, opinionated=None, diligence=None, timestamp=None, basis_tree=None, changes_by=None))]
+#[pyo3(signature = (local_tree, fixer, committer=None, update_changelog=None, compat_release=None, minimum_certainty=None, trust_package=None, allow_reformatting=None, dirty_tracker=None, subpath=None, net_access=None, opinionated=None, diligence=None, timestamp=None, basis_tree=None, changes_by=None, timeout=None))]
 fn run_lintian_fixer(
     py: Python,
     local_tree: PyObject,
@@ -352,6 +354,7 @@ fn run_lintian_fixer(
     timestamp: Option<chrono::naive::NaiveDateTime>,
     basis_tree: Option<PyObject>,
     changes_by: Option<&str>,
+    timeout: Option<chrono::Duration>,
 ) -> PyResult<(FixerResult, String)> {
     let subpath = subpath.unwrap_or_else(|| "".into());
 
@@ -398,6 +401,7 @@ fn run_lintian_fixer(
             .as_ref()
             .map(|bt| bt as &dyn breezyshim::Tree),
         changes_by,
+        timeout,
     )
     .map_err(|e| match e {
         lintian_brush::FixerError::NoChanges => NoChanges::new_err((py.None(),)),
@@ -445,6 +449,9 @@ fn run_lintian_fixer(
         lintian_brush::FixerError::MemoryError => PyMemoryError::new_err(()),
         lintian_brush::FixerError::BrzError(e) => e.into(),
         lintian_brush::FixerError::InvalidChangelog(p, s) => ChangelogCreateError::new_err((p, s)),
+        lintian_brush::FixerError::Timeout { timeout } => {
+            pyo3::exceptions::PyTimeoutError::new_err(format!("timeout after {:?}", timeout))
+        }
     })
     .map(|(result, output)| (FixerResult(result), output))
 }

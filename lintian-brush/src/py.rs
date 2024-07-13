@@ -47,7 +47,7 @@ impl Fixer {
             .collect())
     }
 
-    #[pyo3(signature = (basedir, package, current_version, compat_release, minimum_certainty=None, trust_package=None, allow_reformatting=None, net_access=None, opinionated=None, diligence=None))]
+    #[pyo3(signature = (basedir, package, current_version, compat_release, minimum_certainty=None, trust_package=None, allow_reformatting=None, net_access=None, opinionated=None, diligence=None, timeout=None))]
     fn run(
         &self,
         py: Python,
@@ -61,6 +61,7 @@ impl Fixer {
         net_access: Option<bool>,
         opinionated: Option<bool>,
         diligence: Option<i32>,
+        timeout: Option<chrono::Duration>,
     ) -> PyResult<FixerResult> {
         let minimum_certainty = minimum_certainty
             .map(|c| c.parse().map_err(UnsupportedCertainty::new_err))
@@ -78,6 +79,7 @@ impl Fixer {
                 net_access,
                 opinionated,
                 diligence,
+                timeout,
             )
             .map_err(|e| match e {
                 crate::FixerError::NoChanges => NoChanges::new_err((py.None(),)),
@@ -124,6 +126,12 @@ impl Fixer {
                 crate::FixerError::MemoryError => PyMemoryError::new_err(()),
                 crate::FixerError::BrzError(e) => e.into(),
                 crate::FixerError::InvalidChangelog(p, s) => ChangelogCreateError::new_err((p, s)),
+                crate::FixerError::Timeout { timeout } => {
+                    pyo3::exceptions::PyTimeoutError::new_err(format!(
+                        "timeout after {:?}",
+                        timeout
+                    ))
+                }
             })
             .map(FixerResult)
     }

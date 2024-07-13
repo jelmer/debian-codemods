@@ -381,6 +381,7 @@ pub trait Fixer: std::fmt::Debug + Sync {
     /// * `net_access` - Allow network access
     /// * `opinionated` - Whether to be opinionated
     /// * `diligence` - Level of diligence
+    /// * `timeout` - Maximum time to run the fixer
     ///
     /// # Returns
     ///
@@ -397,6 +398,7 @@ pub trait Fixer: std::fmt::Debug + Sync {
         net_access: Option<bool>,
         opinionated: Option<bool>,
         diligence: Option<i32>,
+        timeout: Option<chrono::Duration>,
     ) -> Result<FixerResult, FixerError>;
 }
 
@@ -420,6 +422,196 @@ impl PythonScriptFixer {
             name,
             lintian_tags,
         }
+    }
+}
+
+#[cfg(feature = "python")]
+fn run_inline_python_fixer(
+    path: &std::path::Path,
+    name: &str,
+    code: &str,
+    basedir: &std::path::Path,
+    env: HashMap<String, String>,
+    timeout: Option<chrono::Duration>,
+) -> Result<FixerResult, FixerError> {
+    pyo3::prepare_freethreaded_python();
+
+    use pyo3::import_exception;
+    use pyo3::prelude::*;
+    use pyo3::types::PyDict;
+
+    import_exception!(debmutate.reformatting, FormattingUnpreservable);
+    import_exception!(debian.changelog, ChangelogCreateError);
+
+    Python::with_gil(|py| {
+        let sys = py.import_bound("sys")?;
+        let os = py.import_bound("os")?;
+        let io = py.import_bound("io")?;
+        let fixer_module = py.import_bound("lintian_brush.fixer")?;
+
+        let old_env = os.getattr("environ")?.into_py(py);
+        let old_stderr = sys.getattr("stderr")?;
+        let old_stdout = sys.getattr("stdout")?;
+
+        sys.setattr("stderr", io.call_method0("StringIO")?)?;
+        sys.setattr("stdout", io.call_method0("StringIO")?)?;
+        os.setattr("environ", env)?;
+
+        let old_cwd = match os.call_method0("getcwd") {
+            Ok(cwd) => Some(cwd),
+            Err(_) => None,
+        };
+
+        os.call_method1("chdir", (basedir,))?;
+
+        let global_vars = PyDict::new_bound(py);
+        global_vars.set_item("__file__", path)?;
+        global_vars.set_item("__name__", "__main__")?;
+
+        let script_result = PyModule::from_code_bound(py, code, path.to_str().unwrap(), name);
+
+        let stdout = sys
+            .getattr("stdout")
+            .unwrap()
+            .call_method0("getvalue")
+            .unwrap()
+            .extract::<String>()
+            .unwrap();
+
+        let mut stderr = sys
+            .getattr("stderr")
+            .unwrap()
+            .call_method0("getvalue")
+            .unwrap()
+            .extract::<String>()
+            .unwrap();
+
+        os.setattr("environ", old_env).unwrap();
+        sys.setattr("stderr", old_stderr).unwrap();
+        sys.setattr("stdout", old_stdout).unwrap();
+
+        if let Some(cwd) = old_cwd {
+            os.call_method1("chdir", (cwd,))?;
+        }
+
+        fixer_module.call_method0("reset")?;
+
+        let retcode;
+        let description;
+
+        match script_result {
+            Ok(_) => {
+                retcode = 0;
+                description = stdout;
+            }
+            Err(e) => {
+                if e.is_instance_of::<FormattingUnpreservable>(py) {
+                    return Err(FixerError::FormattingUnpreservable(
+                        e.into_value(py).bind(py).getattr("path")?.extract()?,
+                    ));
+                } else if e.is_instance_of::<ChangelogCreateError>(py) {
+                    return Err(FixerError::ChangelogCreate(
+                        e.into_value(py).bind(py).get_item(0)?.extract()?,
+                    ));
+                } else if e.is_instance_of::<pyo3::exceptions::PyMemoryError>(py) {
+                    return Err(FixerError::MemoryError);
+                } else if e.is_instance_of::<pyo3::exceptions::PySystemExit>(py) {
+                    retcode = e.into_value(py).bind(py).getattr("code")?.extract()?;
+                    description = stdout;
+                } else {
+                    use pyo3::types::IntoPyDict;
+                    let traceback = py.import_bound("traceback")?;
+                    let traceback_io = io.call_method0("StringIO")?;
+                    let kwargs = [("file", &traceback_io)].into_py_dict_bound(py);
+                    traceback.call_method(
+                        "print_exception",
+                        (e.get_type_bound(py), &e, e.traceback_bound(py)),
+                        Some(&kwargs),
+                    )?;
+                    let traceback_str =
+                        traceback_io.call_method0("getvalue")?.extract::<String>()?;
+                    stderr = format!("{}\n{}", stderr, traceback_str);
+                    return Err(FixerError::ScriptFailed {
+                        path: path.to_path_buf(),
+                        exit_code: 1,
+                        stderr,
+                    });
+                }
+            }
+        }
+
+        if retcode == 2 {
+            Err(FixerError::NoChanges)
+        } else if retcode != 0 {
+            Err(FixerError::ScriptFailed {
+                path: path.to_path_buf(),
+                exit_code: retcode,
+                stderr,
+            })
+        } else {
+            Ok(parse_script_fixer_output(&description)?)
+        }
+    })
+}
+
+#[cfg(test)]
+#[cfg(feature = "python")]
+mod run_inline_python_fixer_tests {
+    #[test]
+    fn test_no_changes() {
+        let td = tempfile::tempdir().unwrap();
+        let path = td.path().join("no_changes.py");
+        let result = super::run_inline_python_fixer(
+            &path,
+            "no_changes",
+            "import sys; sys.exit(2)",
+            td.path(),
+            std::collections::HashMap::new(),
+            None,
+        );
+        assert!(
+            matches!(result, Err(super::FixerError::NoChanges),),
+            "Result: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_failed() {
+        let td = tempfile::tempdir().unwrap();
+        let path = td.path().join("no_changes.py");
+        let result = super::run_inline_python_fixer(
+            &path,
+            "some_changes",
+            "import sys; sys.exit(1)",
+            td.path(),
+            std::collections::HashMap::new(),
+            None,
+        );
+        assert!(matches!(
+            result,
+            Err(super::FixerError::ScriptFailed { exit_code: 1, .. })
+        ));
+    }
+
+    #[test]
+    #[ignore]
+    fn test_timeout() {
+        let td = tempfile::tempdir().unwrap();
+        let path = td.path().join("no_changes.py");
+        let result = super::run_inline_python_fixer(
+            &path,
+            "some_changes",
+            "import time; time.sleep(10)",
+            td.path(),
+            std::collections::HashMap::new(),
+            Some(chrono::Duration::seconds(0)),
+        );
+        assert!(
+            matches!(result, Err(super::FixerError::Timeout { .. })),
+            "Result: {:?}",
+            result
+        );
     }
 }
 
@@ -449,6 +641,7 @@ impl Fixer for PythonScriptFixer {
         net_access: Option<bool>,
         opinionated: Option<bool>,
         diligence: Option<i32>,
+        timeout: Option<chrono::Duration>,
     ) -> Result<FixerResult, FixerError> {
         let env = determine_env(
             package,
@@ -462,132 +655,17 @@ impl Fixer for PythonScriptFixer {
             diligence.unwrap_or(0),
         );
 
-        pyo3::prepare_freethreaded_python();
+        let code = std::fs::read_to_string(&self.path)
+            .map_err(|e| FixerError::Other(format!("Failed to read script: {}", e)))?;
 
-        use pyo3::import_exception;
-        use pyo3::prelude::*;
-        use pyo3::types::PyDict;
-
-        import_exception!(debmutate.reformatting, FormattingUnpreservable);
-        import_exception!(debian.changelog, ChangelogCreateError);
-
-        Python::with_gil(|py| {
-            let sys = py.import_bound("sys")?;
-            let os = py.import_bound("os")?;
-            let io = py.import_bound("io")?;
-            let fixer_module = py.import_bound("lintian_brush.fixer")?;
-
-            let old_env = os.getattr("environ")?.into_py(py);
-            let old_stderr = sys.getattr("stderr")?;
-            let old_stdout = sys.getattr("stdout")?;
-
-            sys.setattr("stderr", io.call_method0("StringIO")?)?;
-            sys.setattr("stdout", io.call_method0("StringIO")?)?;
-            os.setattr("environ", env)?;
-
-            let old_cwd = match os.call_method0("getcwd") {
-                Ok(cwd) => Some(cwd),
-                Err(_) => None,
-            };
-
-            os.call_method1("chdir", (basedir,))?;
-
-            let global_vars = PyDict::new_bound(py);
-            global_vars.set_item("__file__", &self.path)?;
-            global_vars.set_item("__name__", "__main__")?;
-
-            let code = std::fs::read_to_string(&self.path)
-                .map_err(|e| FixerError::Other(format!("Failed to read script: {}", e)))?;
-
-            let script_result = PyModule::from_code_bound(
-                py,
-                code.as_str(),
-                self.path.to_str().unwrap(),
-                self.name.as_str(),
-            );
-
-            let stdout = sys
-                .getattr("stdout")
-                .unwrap()
-                .call_method0("getvalue")
-                .unwrap()
-                .extract::<String>()
-                .unwrap();
-
-            let mut stderr = sys
-                .getattr("stderr")
-                .unwrap()
-                .call_method0("getvalue")
-                .unwrap()
-                .extract::<String>()
-                .unwrap();
-
-            os.setattr("environ", old_env).unwrap();
-            sys.setattr("stderr", old_stderr).unwrap();
-            sys.setattr("stdout", old_stdout).unwrap();
-
-            if let Some(cwd) = old_cwd {
-                os.call_method1("chdir", (cwd,))?;
-            }
-
-            fixer_module.call_method0("reset")?;
-
-            let retcode;
-            let description;
-
-            match script_result {
-                Ok(_) => {
-                    retcode = 0;
-                    description = stdout;
-                }
-                Err(e) => {
-                    if e.is_instance_of::<FormattingUnpreservable>(py) {
-                        return Err(FixerError::FormattingUnpreservable(
-                            e.into_value(py).bind(py).getattr("path")?.extract()?,
-                        ));
-                    } else if e.is_instance_of::<ChangelogCreateError>(py) {
-                        return Err(FixerError::ChangelogCreate(
-                            e.into_value(py).bind(py).get_item(0)?.extract()?,
-                        ));
-                    } else if e.is_instance_of::<pyo3::exceptions::PyMemoryError>(py) {
-                        return Err(FixerError::MemoryError);
-                    } else if e.is_instance_of::<pyo3::exceptions::PySystemExit>(py) {
-                        retcode = e.into_value(py).bind(py).getattr("code")?.extract()?;
-                        description = stdout;
-                    } else {
-                        use pyo3::types::IntoPyDict;
-                        let traceback = py.import_bound("traceback")?;
-                        let traceback_io = io.call_method0("StringIO")?;
-                        let kwargs = [("file", &traceback_io)].into_py_dict_bound(py);
-                        traceback.call_method(
-                            "print_exception",
-                            (e.get_type_bound(py), &e, e.traceback_bound(py)),
-                            Some(&kwargs),
-                        )?;
-                        let traceback_str =
-                            traceback_io.call_method0("getvalue")?.extract::<String>()?;
-                        stderr = format!("{}\n{}", stderr, traceback_str);
-                        return Err(FixerError::ScriptFailed {
-                            path: self.path.clone(),
-                            exit_code: 1,
-                            stderr,
-                        });
-                    }
-                }
-            }
-
-            if retcode == 2 {
-                Err(FixerError::NoChanges)
-            } else if retcode != 0 {
-                Err(FixerError::ScriptFailed {
-                    path: self.path.clone(),
-                    exit_code: retcode,
-                    stderr,
-                })
-            } else {
-                Ok(parse_script_fixer_output(&description)?)
-            }
-        })
+        run_inline_python_fixer(
+            &self.path,
+            self.name.as_str(),
+            code.as_str(),
+            basedir,
+            env,
+            timeout,
+        )
     }
 }
 
@@ -604,6 +682,9 @@ pub enum FixerError {
     OutputDecodeError(std::string::FromUtf8Error),
     FailedPatchManipulation(String),
     ChangelogCreate(String),
+    Timeout {
+        timeout: chrono::Duration,
+    },
     ScriptFailed {
         path: std::path::PathBuf,
         exit_code: i32,
@@ -699,6 +780,7 @@ impl std::fmt::Display for FixerError {
             FixerError::InvalidChangelog(p, s) => {
                 write!(f, "Invalid changelog {}: {}", p.display(), s)
             }
+            FixerError::Timeout { timeout } => write!(f, "Timeout after {:?}", timeout),
         }
     }
 }
@@ -747,6 +829,7 @@ impl Fixer for ScriptFixer {
         net_access: Option<bool>,
         opinionated: Option<bool>,
         diligence: Option<i32>,
+        timeout: Option<chrono::Duration>,
     ) -> Result<FixerResult, FixerError> {
         let env = determine_env(
             package,
@@ -761,6 +844,7 @@ impl Fixer for ScriptFixer {
         );
 
         let mut cmd = Command::new(self.path.as_os_str());
+        // TODO: Use timeout
         cmd.current_dir(basedir);
 
         for (key, value) in env.iter() {
@@ -1013,6 +1097,7 @@ mod select_fixers_tests {
             _net_access: Option<bool>,
             _opinionated: Option<bool>,
             _diligence: Option<i32>,
+            _timeout: Option<chrono::Duration>,
         ) -> Result<FixerResult, FixerError> {
             unimplemented!()
         }
@@ -1202,6 +1287,7 @@ pub fn run_lintian_fixer(
     timestamp: Option<chrono::naive::NaiveDateTime>,
     basis_tree: Option<&dyn Tree>,
     changes_by: Option<&str>,
+    timeout: Option<chrono::Duration>,
 ) -> Result<(FixerResult, String), FixerError> {
     let changes_by = changes_by.unwrap_or("lintian-brush");
 
@@ -1259,6 +1345,7 @@ pub fn run_lintian_fixer(
                 net_access,
                 opinionated,
                 diligence,
+                timeout,
             )?;
             if let Some(certainty) = result.certainty {
                 if !certainty_sufficient(certainty, minimum_certainty) {
@@ -1452,6 +1539,7 @@ impl std::error::Error for OverallError {}
 ///  * `opinionated`: Whether to be opinionated
 ///  * `diligence`: Level of diligence
 ///  * `changes_by`: Name of the person making the changes
+///  * `timeout`: Per-fixer timeout
 ///
 /// # Returns:
 ///   Tuple with two lists:
@@ -1475,6 +1563,7 @@ pub fn run_lintian_fixers(
     opinionated: Option<bool>,
     diligence: Option<i32>,
     changes_by: Option<&str>,
+    timeout: Option<chrono::Duration>,
 ) -> Result<ManyResult, OverallError> {
     let subpath = subpath.unwrap_or_else(|| std::path::Path::new(""));
     let mut basis_tree = local_tree.basis_tree();
@@ -1498,6 +1587,8 @@ pub fn run_lintian_fixers(
 
     let mut ret = ManyResult::new();
     let pb = ProgressBar::new(fixers.len() as u64);
+    #[cfg(test)]
+    pb.set_draw_target(indicatif::ProgressDrawTarget::hidden());
     let mut dirty_tracker = match get_dirty_tracker(local_tree, Some(subpath), use_inotify) {
         Ok(dt) => dt,
         Err(breezyshim::dirty_tracker::Error::TooManyOpenFiles) => {
@@ -1533,6 +1624,7 @@ pub fn run_lintian_fixers(
             None,
             Some(&basis_tree),
             changes_by,
+            timeout,
         ) {
             Err(e) => match e {
                 FixerError::NotDebianPackage(path) => {
@@ -1665,6 +1757,13 @@ pub fn run_lintian_fixers(
                 }
                 FixerError::InvalidChangelog(path, reason) => {
                     return Err(OverallError::InvalidChangelog(path, reason));
+                }
+                FixerError::Timeout { timeout } => {
+                    if verbose {
+                        log::info!("Fixer {} timed out after {}.", fixer.name(), timeout);
+                    }
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    continue;
                 }
             },
             Ok((result, summary)) => {
@@ -1972,6 +2071,7 @@ mod run_lintian_fixers_test {
             _net_access: Option<bool>,
             _opinionated: Option<bool>,
             _diligence: Option<i32>,
+            _timeout: Option<chrono::Duration>,
         ) -> Result<FixerResult, FixerError> {
             std::fs::write(basedir.join("debian/control"), "a new line\n").unwrap();
             Ok(FixerResult {
@@ -2030,6 +2130,7 @@ mod run_lintian_fixers_test {
             _net_access: Option<bool>,
             _opinionated: Option<bool>,
             _diligence: Option<i32>,
+            _timeout: Option<chrono::Duration>,
         ) -> Result<FixerResult, FixerError> {
             std::fs::write(basedir.join("debian/foo"), "blah").unwrap();
             std::fs::write(basedir.join("debian/control"), "foo\n").unwrap();
@@ -2089,6 +2190,7 @@ Arch: all
             None,
             None,
             None,
+            None,
         )
         .unwrap();
         std::mem::drop(lock);
@@ -2134,6 +2236,7 @@ Arch: all
                 None,
                 None,
                 None,
+                None
             ),
             Err(OverallError::NotDebianPackage(_))
         ));
@@ -2161,6 +2264,7 @@ Arch: all
             None,
             None,
             None,
+            None,
         )
         .unwrap();
         let revid = tree.last_revision().unwrap();
@@ -2170,11 +2274,16 @@ Arch: all
             vec![(
                 FixerResult::new(
                     "Fixed some tag.\nExtended description.".to_string(),
-                    Some(vec!["some-tag".to_string()]),
+                    None,
                     Some(Certainty::Certain),
                     None,
                     Some(revid),
-                    Vec::new(),
+                    vec![LintianIssue {
+                        tag: Some("some-tag".to_string()),
+                        package: Some("blah".to_string()),
+                        info: None,
+                        package_type: Some(PackageType::Source),
+                    }],
                     None,
                 ),
                 "Fixed some tag.".to_string()

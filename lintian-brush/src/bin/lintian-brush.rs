@@ -171,6 +171,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     breezyshim::init();
 
+    // TODO(jelmer): Allow changing this via arguments
+    let timeout = Some(chrono::Duration::seconds(10));
+
     let mut fixers: Vec<_> = lintian_brush::available_lintian_fixers(
         Some(std::path::PathBuf::from(args.fixers.fixers_dir).as_path()),
         Some(args.fixers.force_subprocess),
@@ -386,6 +389,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(args.fixers.opinionated),
             Some(args.fixers.diligent),
             Some("lintian-brush"),
+            timeout,
         ) {
             Err(OverallError::NotDebianPackage(p)) => {
                 drop(write_lock);
