@@ -294,7 +294,7 @@ mod find_patches_branch_tests {
             None,
         )
         .unwrap();
-        dir.create_repository().unwrap();
+        dir.create_repository(None).unwrap();
         let branch = dir.create_branch(Some(name)).unwrap();
         dir.set_branch_reference(branch.as_ref(), None).unwrap();
         let wt = dir.create_workingtree().unwrap();
@@ -448,7 +448,7 @@ pub fn move_upstream_changes_to_patch(
     subpath: &std::path::Path,
     patch_name: &str,
     description: &str,
-    dirty_tracker: Option<&breezyshim::dirty_tracker::DirtyTracker>,
+    dirty_tracker: Option<&mut breezyshim::dirty_tracker::DirtyTreeTracker>,
     timestamp: Option<chrono::NaiveDate>,
 ) -> Result<(Vec<std::path::PathBuf>, String), String> {
     let timestamp = if let Some(timestamp) = timestamp {

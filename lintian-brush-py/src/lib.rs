@@ -333,7 +333,7 @@ impl lintian_brush::Fixer for PyFixer {
 }
 
 #[pyfunction]
-#[pyo3(signature = (local_tree, fixer, committer=None, update_changelog=None, compat_release=None, minimum_certainty=None, trust_package=None, allow_reformatting=None, dirty_tracker=None, subpath=None, net_access=None, opinionated=None, diligence=None, timestamp=None, basis_tree=None, changes_by=None, timeout=None))]
+#[pyo3(signature = (local_tree, fixer, committer=None, update_changelog=None, compat_release=None, minimum_certainty=None, trust_package=None, allow_reformatting=None, subpath=None, net_access=None, opinionated=None, diligence=None, timestamp=None, basis_tree=None, changes_by=None, timeout=None))]
 fn run_lintian_fixer(
     py: Python,
     local_tree: PyObject,
@@ -344,7 +344,6 @@ fn run_lintian_fixer(
     minimum_certainty: Option<Certainty>,
     trust_package: Option<bool>,
     allow_reformatting: Option<bool>,
-    dirty_tracker: Option<PyObject>,
     subpath: Option<std::path::PathBuf>,
     net_access: Option<bool>,
     opinionated: Option<bool>,
@@ -395,7 +394,7 @@ fn run_lintian_fixer(
         committer,
         update_changelog,
         &preferences,
-        dirty_tracker.map(breezyshim::DirtyTracker::from).as_ref(),
+        &mut None,
         subpath.as_path(),
         timestamp,
         basis_tree
@@ -633,26 +632,24 @@ fn canonicalize_vcs_browser_url(url: &str) -> String {
 }
 
 #[pyfunction]
-#[pyo3(signature = (local_tree, basis_tree, subpath, patch_name, description, dirty_tracker=None, timestamp=None))]
+#[pyo3(signature = (local_tree, basis_tree, subpath, patch_name, description, timestamp=None))]
 pub fn move_upstream_changes_to_patch(
     local_tree: PyObject,
     basis_tree: PyObject,
     subpath: std::path::PathBuf,
     patch_name: &str,
     description: &str,
-    dirty_tracker: Option<PyObject>,
     timestamp: Option<chrono::NaiveDate>,
 ) -> PyResult<(Vec<std::path::PathBuf>, String)> {
     let local_tree = breezyshim::WorkingTree(local_tree);
     let basis_tree = breezyshim::RevisionTree(basis_tree);
-    let dirty_tracker = dirty_tracker.map(breezyshim::DirtyTracker::from);
     debian_analyzer::patches::move_upstream_changes_to_patch(
         &local_tree,
         &basis_tree,
         subpath.as_path(),
         patch_name,
         description,
-        dirty_tracker.as_ref(),
+        None,
         timestamp,
     )
     .map_err(|e| PyValueError::new_err(e.to_string()))

@@ -291,27 +291,6 @@ class ManyResult:
         )
 
 
-def get_dirty_tracker(
-    local_tree: WorkingTree,
-    subpath: str = "",
-    use_inotify: Optional[bool] = None,
-):
-    """Create a dirty tracker object."""
-    if use_inotify is True:
-        from breezy.dirty_tracker import DirtyTracker
-
-        return DirtyTracker(local_tree, subpath)
-    elif use_inotify is False:
-        return None
-    else:
-        try:
-            from breezy.dirty_tracker import DirtyTracker
-        except ImportError:
-            return None
-        else:
-            return DirtyTracker(local_tree, subpath)
-
-
 def determine_update_changelog(local_tree, debian_path):
     from .detect_gbp_dch import (
         ChangelogBehaviour,
@@ -404,26 +383,10 @@ def run_lintian_fixers(  # noqa: C901
     with ExitStack() as es:
         t = es.enter_context(trange(len(fixers), leave=False, disable=None))  # type: ignore
 
-        dirty_tracker = get_dirty_tracker(
-            local_tree, subpath=subpath, use_inotify=use_inotify
-        )
-        if dirty_tracker:
-            from breezy.dirty_tracker import TooManyOpenFiles
-
-            try:
-                es.enter_context(dirty_tracker)
-            except TooManyOpenFiles:
-                logging.warning(
-                    "Too many open files for inotify, not using it."
-                )
-                dirty_tracker = None
-
         for fixer in fixers:
             t.set_description(f"Running fixer {fixer}")
             t.update()
             start = time.time()
-            if dirty_tracker:
-                dirty_tracker.mark_clean()
             try:
                 result, summary = run_lintian_fixer(
                     local_tree,
@@ -434,7 +397,6 @@ def run_lintian_fixers(  # noqa: C901
                     minimum_certainty=minimum_certainty,
                     trust_package=trust_package,
                     allow_reformatting=allow_reformatting,
-                    dirty_tracker=dirty_tracker,
                     subpath=subpath,
                     net_access=net_access,
                     opinionated=opinionated,

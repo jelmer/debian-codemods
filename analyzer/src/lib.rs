@@ -1,5 +1,5 @@
 use breezyshim::branch::Branch;
-use breezyshim::dirty_tracker::DirtyTracker;
+use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::{MutableTree, Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::reset_tree;
@@ -60,7 +60,7 @@ pub fn apply_or_revert<R, E>(
     local_tree: &WorkingTree,
     subpath: &std::path::Path,
     basis_tree: &dyn Tree,
-    dirty_tracker: Option<&DirtyTracker>,
+    dirty_tracker: Option<&mut DirtyTreeTracker>,
     applier: impl FnOnce(&std::path::Path) -> Result<R, E>,
 ) -> Result<(R, Vec<TreeChange>, Option<Vec<std::path::PathBuf>>), ApplyError<R, E>> {
     let r = match applier(local_tree.abspath(subpath).unwrap().as_path()) {
@@ -71,8 +71,8 @@ pub fn apply_or_revert<R, E>(
         }
     };
 
-    let specific_files = if let Some(dirty_tracker) = dirty_tracker {
-        let mut relpaths: Vec<_> = dirty_tracker.relpaths().into_iter().collect();
+    let specific_files = if let Some(relpaths) = dirty_tracker.and_then(|x| x.relpaths()) {
+        let mut relpaths: Vec<_> = relpaths.into_iter().collect();
         relpaths.sort();
         // Sort paths so that directories get added before the files they
         // contain (on VCSes where it matters)

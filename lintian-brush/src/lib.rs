@@ -7,7 +7,7 @@ use std::str::FromStr;
 
 use indicatif::ProgressBar;
 
-use breezyshim::dirty_tracker::{get_dirty_tracker, DirtyTracker};
+use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::{Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::{check_clean_tree, reset_tree};
@@ -478,8 +478,11 @@ fn run_inline_python_fixer(
         let old_stderr = sys.getattr("stderr")?;
         let old_stdout = sys.getattr("stdout")?;
 
-        sys.setattr("stderr", io.call_method0("StringIO")?)?;
-        sys.setattr("stdout", io.call_method0("StringIO")?)?;
+        let temp_stderr = io.call_method0("StringIO")?;
+        let temp_stdout = io.call_method0("StringIO")?;
+
+        sys.setattr("stderr", &temp_stderr)?;
+        sys.setattr("stdout", &temp_stdout)?;
         os.setattr("environ", env)?;
 
         let old_cwd = match os.call_method0("getcwd") {
@@ -495,17 +498,13 @@ fn run_inline_python_fixer(
 
         let script_result = PyModule::from_code_bound(py, code, path.to_str().unwrap(), name);
 
-        let stdout = sys
-            .getattr("stdout")
-            .unwrap()
+        let stdout = temp_stdout
             .call_method0("getvalue")
             .unwrap()
             .extract::<String>()
             .unwrap();
 
-        let mut stderr = sys
-            .getattr("stderr")
-            .unwrap()
+        let mut stderr = temp_stderr
             .call_method0("getvalue")
             .unwrap()
             .extract::<String>()
@@ -1263,7 +1262,7 @@ pub fn run_lintian_fixer(
     committer: Option<&str>,
     mut update_changelog: impl FnMut() -> bool,
     preferences: &FixerPreferences,
-    dirty_tracker: Option<&DirtyTracker>,
+    dirty_tracker: &mut Option<DirtyTreeTracker>,
     subpath: &std::path::Path,
     timestamp: Option<chrono::naive::NaiveDateTime>,
     basis_tree: Option<&dyn Tree>,
@@ -1311,8 +1310,12 @@ pub fn run_lintian_fixer(
         _bt.as_ref().unwrap()
     };
 
-    let (mut result, changes, mut specific_files) =
-        match apply_or_revert(local_tree, subpath, basis_tree, dirty_tracker, |basedir| {
+    let (mut result, changes, mut specific_files) = match apply_or_revert(
+        local_tree,
+        subpath,
+        basis_tree,
+        dirty_tracker.as_mut(),
+        |basedir| {
             log::debug!("Running fixer {:?}", fixer);
             let result = fixer.run(
                 basedir,
@@ -1336,20 +1339,21 @@ pub fn run_lintian_fixer(
             }
 
             Ok(result)
-        }) {
-            Ok(r) => r,
-            Err(ApplyError::NoChanges(r)) => {
-                return Err(FixerError::NoChangesAfterOverrides(
-                    r.overridden_lintian_issues,
-                ));
-            }
-            Err(ApplyError::BrzError(e)) => {
-                return Err(e.into());
-            }
-            Err(ApplyError::CallbackError(e)) => {
-                return Err(e);
-            }
-        };
+        },
+    ) {
+        Ok(r) => r,
+        Err(ApplyError::NoChanges(r)) => {
+            return Err(FixerError::NoChangesAfterOverrides(
+                r.overridden_lintian_issues,
+            ));
+        }
+        Err(ApplyError::BrzError(e)) => {
+            return Err(e.into());
+        }
+        Err(ApplyError::CallbackError(e)) => {
+            return Err(e);
+        }
+    };
 
     let lines = result.description.split('\n').collect::<Vec<_>>();
     let mut summary = lines[0].to_string();
@@ -1364,10 +1368,10 @@ pub fn run_lintian_fixer(
     if has_non_debian_changes(changes.as_slice(), subpath)
         && current_version.debian_revision.is_some()
     {
-        let (patch_name, updated_specific_files) = match _upstream_changes_to_patch(
+        let (patch_name, updated_specific_files) = match upstream_changes_to_patch(
             local_tree,
             basis_tree,
-            dirty_tracker,
+            dirty_tracker.as_mut(),
             subpath,
             &result
                 .patch_name
@@ -1378,8 +1382,13 @@ pub fn run_lintian_fixer(
         ) {
             Ok(r) => r,
             Err(e) => {
-                reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)
-                    .map_err(|e| FixerError::Other(e.to_string()))?;
+                reset_tree(
+                    local_tree,
+                    Some(basis_tree),
+                    Some(subpath),
+                    dirty_tracker.as_mut(),
+                )
+                .map_err(|e| FixerError::Other(e.to_string()))?;
 
                 return Err(FixerError::FailedPatchManipulation(e.to_string()));
             }
@@ -1528,7 +1537,7 @@ pub fn run_lintian_fixers(
     verbose: bool,
     committer: Option<&str>,
     preferences: &FixerPreferences,
-    use_inotify: Option<bool>,
+    use_dirty_tracker: Option<bool>,
     subpath: Option<&std::path::Path>,
     changes_by: Option<&str>,
     timeout: Option<chrono::Duration>,
@@ -1557,15 +1566,13 @@ pub fn run_lintian_fixers(
     let pb = ProgressBar::new(fixers.len() as u64);
     #[cfg(test)]
     pb.set_draw_target(indicatif::ProgressDrawTarget::hidden());
-    let mut dirty_tracker = match get_dirty_tracker(local_tree, Some(subpath), use_inotify) {
-        Ok(dt) => dt,
-        Err(breezyshim::dirty_tracker::Error::TooManyOpenFiles) => {
-            log::warn!("Too many open files for inotify, not using it.");
-            None
-        }
-        Err(breezyshim::dirty_tracker::Error::Python(e)) => {
-            return Err(OverallError::Other(e.to_string()))
-        }
+    let mut dirty_tracker = if use_dirty_tracker.unwrap_or(true) {
+        Some(DirtyTreeTracker::new_in_subpath(
+            local_tree.clone(),
+            subpath,
+        ))
+    } else {
+        None
     };
     for fixer in fixers {
         pb.set_message(format!("Running fixer {}", fixer.name()));
@@ -1580,8 +1587,8 @@ pub fn run_lintian_fixers(
             fixer.as_ref(),
             committer,
             &mut update_changelog,
-            &preferences,
-            dirty_tracker.as_ref(),
+            preferences,
+            &mut dirty_tracker,
             subpath,
             None,
             Some(&basis_tree),
@@ -1884,10 +1891,10 @@ impl std::fmt::Display for FailedPatchManipulation {
 
 impl std::error::Error for FailedPatchManipulation {}
 
-fn _upstream_changes_to_patch(
+fn upstream_changes_to_patch(
     local_tree: &WorkingTree,
     basis_tree: &dyn Tree,
-    dirty_tracker: Option<&DirtyTracker>,
+    dirty_tracker: Option<&mut DirtyTreeTracker>,
     subpath: &std::path::Path,
     patch_name: &str,
     description: &str,

@@ -1,4 +1,4 @@
-use breezyshim::dirty_tracker::DirtyTracker;
+use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::WorkingTree;
 use debian_analyzer::debmutateshim::{
@@ -470,7 +470,7 @@ pub fn apply_multiarch_hints(
     hints: &HashMap<&str, Vec<&Hint>>,
     minimum_certainty: Option<Certainty>,
     committer: Option<String>,
-    dirty_tracker: Option<&DirtyTracker>,
+    dirty_tracker: Option<&mut DirtyTreeTracker>,
     update_changelog: bool,
     allow_reformatting: Option<bool>,
 ) -> Result<OverallResult, OverallError> {

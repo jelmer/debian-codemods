@@ -1,5 +1,5 @@
 use breezyshim::branch::open_containing as open_containing_branch;
-use breezyshim::dirty_tracker::get_dirty_tracker;
+use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::{MutableTree, WorkingTree};
 use breezyshim::workspace::check_clean_tree;
@@ -297,24 +297,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    let dirty_tracker =
-        match get_dirty_tracker(&wt, Some(subpath.as_path()), Some(!args.disable_inotify)) {
-            Ok(dt) => dt,
-            Err(breezyshim::dirty_tracker::Error::TooManyOpenFiles) => {
-                log::warn!("Too many open files for inotify, not using it.");
-                None
-            }
-            Err(breezyshim::dirty_tracker::Error::Python(e)) => {
-                drop(write_lock);
-                report_fatal(
-                    versions_dict(),
-                    "dirty-tracker-error",
-                    format!("Python error: {}", e).as_str(),
-                    None,
-                    None,
-                );
-            }
-        };
+    let mut dirty_tracker = if !args.disable_inotify {
+        Some(DirtyTreeTracker::new_in_subpath(
+            wt.clone(),
+            subpath.as_path(),
+        ))
+    } else {
+        None
+    };
 
     let result = match apply_multiarch_hints(
         &wt,
@@ -322,7 +312,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &hints,
         minimum_certainty,
         None,
-        dirty_tracker.as_ref(),
+        dirty_tracker.as_mut(),
         update_changelog,
         allow_reformatting,
     ) {
