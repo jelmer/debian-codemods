@@ -42,11 +42,11 @@ impl FromStr for PackageType {
     }
 }
 
-impl ToString for PackageType {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for PackageType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            PackageType::Source => "source".to_string(),
-            PackageType::Binary => "binary".to_string(),
+            PackageType::Source => write!(f, "source"),
+            PackageType::Binary => write!(f, "binary"),
         }
     }
 }
