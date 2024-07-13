@@ -365,8 +365,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "control-files-in-root",
                 "control files live in root rather than debian/ (LarstIQ mode)",
                 None,
-                None,
+                Some(false),
             );
+        }
+
+        #[cfg(feature = "python")]
+        {
+            // Ensure we can find the lintian_brush.fixer python module
+            let e = pyo3::Python::with_gil(|py| {
+                if let Err(e) = py.import_bound("lintian_brush.fixer") {
+                    Some(e)
+                } else {
+                    None
+                }
+            });
+
+            if let Some(e) = e {
+                drop(write_lock);
+                report_fatal(
+                    versions_dict(),
+                    "python-import-error",
+                    format!("Error importing lintian_brush.fixer: {}", e).as_str(),
+                    Some("Ensure that the lintian-brush Python package is in Python's sys.path."),
+                    Some(false),
+                );
+            }
         }
 
         let preferences = lintian_brush::FixerPreferences {
