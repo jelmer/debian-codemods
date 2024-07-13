@@ -236,12 +236,10 @@ class DebianDirectoryExists(Exception):
         self.path = path
 
 
-def go_import_path_from_repo(repo_url):
-    parsed_url = urlparse(repo_url)
-    p = parsed_url.hostname + parsed_url.path.rstrip("/")
-    if p.endswith(".git"):
-        p = p[:-4]
-    return p
+go_import_path_from_repo = _debianize_rs.go_import_path_from_repo
+perl_package_name = _debianize_rs.perl_package_name
+python_source_package_name = _debianize_rs.python_source_package_name
+python_binary_package_name = _debianize_rs.python_binary_package_name
 
 
 def enable_dh_addon(source, addon):
@@ -463,12 +461,10 @@ def process_setup_py(
     # so import the test dependencies too.
     import_build_deps(source, test_deps)
     upstream_name = metadata["Name"]
-    if upstream_name.startswith("python-"):
-        upstream_name = upstream_name[len("python-") :]
-    source["Source"] = "python-{}".format(upstream_name.lower().replace("_", "-"))
+    source["Source"] = python_source_package_name(upstream_name)
     control.add_binary(
         {
-            "Package": "python3-{}".format(upstream_name.lower().replace("_", "-")),
+            "Package": python_binary_package_name(upstream_name),
             "Depends": "${python3:Depends}",
             "Architecture": "all",
         }
@@ -564,14 +560,6 @@ def process_npm(
     )
     source["Testsuite"] = "autopkgtest-pkg-nodejs"
     return control
-
-
-def perl_package_name(upstream_name):
-    if upstream_name.startswith("lib"):
-        upstream_name = upstream_name[len("lib") :]
-    return (
-        "lib{}-perl".format(upstream_name.replace("::", "-").replace("_", "").lower())
-    )
 
 
 def process_dist_zilla(

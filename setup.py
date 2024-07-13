@@ -53,7 +53,7 @@ setup(
             features = ["extension-module"]
         ),
         RustExtension(
-            "debianize._debianize_rs",
+            "lintian_brush._debianize_rs",
             "debianize-py/Cargo.toml",
             binding=Binding.PyO3,
         ),

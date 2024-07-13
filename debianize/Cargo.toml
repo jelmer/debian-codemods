@@ -20,6 +20,7 @@ log.workspace = true
 pyo3.workspace = true
 xdg = "2.5.2"
 debversion.workspace = true
+url.workspace = true
 
 [features]
 pyo3 = []

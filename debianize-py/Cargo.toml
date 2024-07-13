@@ -16,3 +16,4 @@ pyo3 = { workspace = true, features = ["extension-module"] }
 pyo3-log = { workspace = true }
 debianize = { version = ">=0.154.0", path = "../debianize", features = ["pyo3"] }
 debversion = { workspace = true }
+url.workspace = true

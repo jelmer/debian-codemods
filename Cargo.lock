@@ -410,6 +410,7 @@ dependencies = [
  "env_logger",
  "log",
  "pyo3",
+ "url",
  "xdg",
 ]
 
@@ -421,6 +422,7 @@ dependencies = [
  "debversion",
  "pyo3",
  "pyo3-log",
+ "url",
 ]
 
 [[package]]

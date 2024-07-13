@@ -14,4 +14,4 @@ lintian_brush/_lintian_brush_rs.*.so
 *.swp
 debianize/_debianize_rs.*.so
 py/lintian_brush/_lintian_brush_rs.*.so
-py/debianize/_debianize_rs.*.so
+py/lintian_brush/_debianize_rs.*.so
