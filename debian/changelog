@@ -1,6 +1,7 @@
 lintian-brush (0.158) UNRELEASED; urgency=medium
 
   * Bump pyo3 to 0.22.
+  * Drop dependency on dead python3-pyinotify. Closes: #1075953
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 27 Jun 2024 15:44:16 +0100
 

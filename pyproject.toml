@@ -46,7 +46,6 @@ dependencies = [
     "python_Levenshtein",
     "iso8601",
     "iniparse",
-    "pyinotify",
 ]
 dynamic = ["version"]
 
