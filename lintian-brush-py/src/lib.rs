@@ -63,16 +63,20 @@ fn determine_env(
         .parse()
         .map_err(UnsupportedCertainty::new_err)?;
 
+    let preferences = lintian_brush::FixerPreferences {
+        minimum_certainty: Some(minimum_certainty),
+        compat_release: Some(compat_release.to_string()),
+        trust_package: Some(trust_package),
+        net_access: Some(net_access),
+        opinionated: Some(opinionated),
+        diligence: Some(diligence),
+        allow_reformatting: Some(allow_reformatting),
+    };
+
     Ok(lintian_brush::determine_env(
         package,
         &current_version,
-        compat_release,
-        minimum_certainty,
-        trust_package,
-        allow_reformatting,
-        net_access,
-        opinionated,
-        diligence,
+        &preferences,
     ))
 }
 
@@ -286,13 +290,7 @@ impl lintian_brush::Fixer for PyFixer {
         basedir: &std::path::Path,
         package: &str,
         current_version: &Version,
-        compat_release: &str,
-        minimum_certainty: Option<Certainty>,
-        trust_package: Option<bool>,
-        allow_reformatting: Option<bool>,
-        net_access: Option<bool>,
-        opinionated: Option<bool>,
-        diligence: Option<i32>,
+        preferences: &lintian_brush::FixerPreferences,
         timeout: Option<chrono::Duration>,
     ) -> Result<lintian_brush::FixerResult, lintian_brush::FixerError> {
         Python::with_gil(|py| {
@@ -303,13 +301,13 @@ impl lintian_brush::Fixer for PyFixer {
                     basedir,
                     package,
                     current_version.clone(),
-                    compat_release,
-                    minimum_certainty.map(|c| c.to_string()),
-                    trust_package,
-                    allow_reformatting,
-                    net_access,
-                    opinionated,
-                    diligence,
+                    preferences.compat_release.as_ref(),
+                    preferences.minimum_certainty.map(|c| c.to_string()),
+                    preferences.trust_package,
+                    preferences.allow_reformatting,
+                    preferences.net_access,
+                    preferences.opinionated,
+                    preferences.diligence,
                     timeout,
                 ),
                 None,
@@ -381,20 +379,24 @@ fn run_lintian_fixer(
         core_fixer.as_ref().unwrap()
     };
 
+    let preferences = lintian_brush::FixerPreferences {
+        compat_release: compat_release.map(|s| s.to_string()),
+        minimum_certainty,
+        trust_package,
+        allow_reformatting,
+        net_access,
+        opinionated,
+        diligence,
+    };
+
     lintian_brush::run_lintian_fixer(
         &breezyshim::WorkingTree(local_tree),
         fixer,
         committer,
         update_changelog,
-        compat_release,
-        minimum_certainty,
-        trust_package,
-        allow_reformatting,
+        &preferences,
         dirty_tracker.map(breezyshim::DirtyTracker::from).as_ref(),
         subpath.as_path(),
-        net_access,
-        opinionated,
-        diligence,
         timestamp,
         basis_tree
             .map(breezyshim::RevisionTree)

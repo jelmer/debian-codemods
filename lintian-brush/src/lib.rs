@@ -316,26 +316,33 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
 pub fn determine_env(
     package: &str,
     current_version: &Version,
-    compat_release: &str,
-    minimum_certainty: Certainty,
-    trust_package: bool,
-    allow_reformatting: bool,
-    net_access: bool,
-    opinionated: bool,
-    diligence: i32,
+    preferences: &FixerPreferences,
 ) -> std::collections::HashMap<String, String> {
     let mut env = std::env::vars().collect::<std::collections::HashMap<_, _>>();
     env.insert("DEB_SOURCE".to_owned(), package.to_owned());
     env.insert("CURRENT_VERSION".to_owned(), current_version.to_string());
-    env.insert("COMPAT_RELEASE".to_owned(), compat_release.to_owned());
+    env.insert(
+        "COMPAT_RELEASE".to_owned(),
+        preferences
+            .compat_release
+            .as_deref()
+            .unwrap_or("sid")
+            .to_owned(),
+    );
     env.insert(
         "MINIMUM_CERTAINTY".to_owned(),
-        minimum_certainty.to_string(),
+        preferences
+            .minimum_certainty
+            .unwrap_or_default()
+            .to_string(),
     );
-    env.insert("TRUST_PACKAGE".to_owned(), trust_package.to_string());
+    env.insert(
+        "TRUST_PACKAGE".to_owned(),
+        preferences.trust_package.unwrap_or(false).to_string(),
+    );
     env.insert(
         "REFORMATTING".to_owned(),
-        if allow_reformatting {
+        if preferences.allow_reformatting.unwrap_or(false) {
             "allow"
         } else {
             "disallow"
@@ -344,14 +351,38 @@ pub fn determine_env(
     );
     env.insert(
         "NET_ACCESS".to_owned(),
-        if net_access { "allow" } else { "disallow" }.to_owned(),
+        if preferences.net_access.unwrap_or(true) {
+            "allow"
+        } else {
+            "disallow"
+        }
+        .to_owned(),
     );
     env.insert(
         "OPINIONATED".to_owned(),
-        if opinionated { "yes" } else { "no" }.to_owned(),
+        if preferences.opinionated.unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        }
+        .to_owned(),
     );
-    env.insert("DILIGENCE".to_owned(), diligence.to_string());
+    env.insert(
+        "DILIGENCE".to_owned(),
+        preferences.diligence.unwrap_or(0).to_string(),
+    );
     env
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct FixerPreferences {
+    pub compat_release: Option<String>,
+    pub minimum_certainty: Option<Certainty>,
+    pub trust_package: Option<bool>,
+    pub allow_reformatting: Option<bool>,
+    pub net_access: Option<bool>,
+    pub opinionated: Option<bool>,
+    pub diligence: Option<i32>,
 }
 
 /// A fixer script
@@ -391,13 +422,7 @@ pub trait Fixer: std::fmt::Debug + Sync {
         basedir: &std::path::Path,
         package: &str,
         current_version: &Version,
-        compat_release: &str,
-        minimum_certainty: Option<Certainty>,
-        trust_package: Option<bool>,
-        allow_reformatting: Option<bool>,
-        net_access: Option<bool>,
-        opinionated: Option<bool>,
-        diligence: Option<i32>,
+        preferences: &FixerPreferences,
         timeout: Option<chrono::Duration>,
     ) -> Result<FixerResult, FixerError>;
 }
@@ -634,26 +659,10 @@ impl Fixer for PythonScriptFixer {
         basedir: &std::path::Path,
         package: &str,
         current_version: &Version,
-        compat_release: &str,
-        minimum_certainty: Option<Certainty>,
-        trust_package: Option<bool>,
-        allow_reformatting: Option<bool>,
-        net_access: Option<bool>,
-        opinionated: Option<bool>,
-        diligence: Option<i32>,
+        preferences: &FixerPreferences,
         timeout: Option<chrono::Duration>,
     ) -> Result<FixerResult, FixerError> {
-        let env = determine_env(
-            package,
-            current_version,
-            compat_release,
-            minimum_certainty.unwrap_or_default(),
-            trust_package.unwrap_or(false),
-            allow_reformatting.unwrap_or(false),
-            net_access.unwrap_or(true),
-            opinionated.unwrap_or(false),
-            diligence.unwrap_or(0),
-        );
+        let env = determine_env(package, current_version, preferences);
 
         let code = std::fs::read_to_string(&self.path)
             .map_err(|e| FixerError::Other(format!("Failed to read script: {}", e)))?;
@@ -822,26 +831,10 @@ impl Fixer for ScriptFixer {
         basedir: &std::path::Path,
         package: &str,
         current_version: &Version,
-        compat_release: &str,
-        minimum_certainty: Option<Certainty>,
-        trust_package: Option<bool>,
-        allow_reformatting: Option<bool>,
-        net_access: Option<bool>,
-        opinionated: Option<bool>,
-        diligence: Option<i32>,
+        preferences: &FixerPreferences,
         timeout: Option<chrono::Duration>,
     ) -> Result<FixerResult, FixerError> {
-        let env = determine_env(
-            package,
-            current_version,
-            compat_release,
-            minimum_certainty.unwrap_or_default(),
-            trust_package.unwrap_or(false),
-            allow_reformatting.unwrap_or(false),
-            net_access.unwrap_or(true),
-            opinionated.unwrap_or(false),
-            diligence.unwrap_or(0),
-        );
+        let env = determine_env(package, current_version, preferences);
 
         let mut cmd = Command::new(self.path.as_os_str());
         // TODO: Use timeout
@@ -1090,13 +1083,7 @@ mod select_fixers_tests {
             _basedir: &std::path::Path,
             _package: &str,
             _current_version: &Version,
-            _compat_release: &str,
-            _minimum_certainty: Option<Certainty>,
-            _trust_package: Option<bool>,
-            _allow_reformatting: Option<bool>,
-            _net_access: Option<bool>,
-            _opinionated: Option<bool>,
-            _diligence: Option<i32>,
+            _preferences: &FixerPreferences,
             _timeout: Option<chrono::Duration>,
         ) -> Result<FixerResult, FixerError> {
             unimplemented!()
@@ -1275,15 +1262,9 @@ pub fn run_lintian_fixer(
     fixer: &dyn Fixer,
     committer: Option<&str>,
     mut update_changelog: impl FnMut() -> bool,
-    compat_release: Option<&str>,
-    minimum_certainty: Option<Certainty>,
-    trust_package: Option<bool>,
-    allow_reformatting: Option<bool>,
+    preferences: &FixerPreferences,
     dirty_tracker: Option<&DirtyTracker>,
     subpath: &std::path::Path,
-    net_access: Option<bool>,
-    opinionated: Option<bool>,
-    diligence: Option<i32>,
     timestamp: Option<chrono::naive::NaiveDateTime>,
     basis_tree: Option<&dyn Tree>,
     changes_by: Option<&str>,
@@ -1332,26 +1313,19 @@ pub fn run_lintian_fixer(
 
     let (mut result, changes, mut specific_files) =
         match apply_or_revert(local_tree, subpath, basis_tree, dirty_tracker, |basedir| {
-            let compat_release = compat_release.unwrap_or("sid");
             log::debug!("Running fixer {:?}", fixer);
             let result = fixer.run(
                 basedir,
                 package.as_str(),
                 &current_version,
-                compat_release,
-                minimum_certainty,
-                trust_package,
-                allow_reformatting,
-                net_access,
-                opinionated,
-                diligence,
+                preferences,
                 timeout,
             )?;
             if let Some(certainty) = result.certainty {
-                if !certainty_sufficient(certainty, minimum_certainty) {
+                if !certainty_sufficient(certainty, preferences.minimum_certainty) {
                     return Err(FixerError::NotCertainEnough(
                         certainty,
-                        minimum_certainty,
+                        preferences.minimum_certainty,
                         result.overridden_lintian_issues,
                     ));
                 }
@@ -1553,15 +1527,9 @@ pub fn run_lintian_fixers(
     mut update_changelog: Option<impl FnMut() -> bool>,
     verbose: bool,
     committer: Option<&str>,
-    compat_release: Option<&str>,
-    minimum_certainty: Option<Certainty>,
-    trust_package: Option<bool>,
-    allow_reformatting: Option<bool>,
+    preferences: &FixerPreferences,
     use_inotify: Option<bool>,
     subpath: Option<&std::path::Path>,
-    net_access: Option<bool>,
-    opinionated: Option<bool>,
-    diligence: Option<i32>,
     changes_by: Option<&str>,
     timeout: Option<chrono::Duration>,
 ) -> Result<ManyResult, OverallError> {
@@ -1612,15 +1580,9 @@ pub fn run_lintian_fixers(
             fixer.as_ref(),
             committer,
             &mut update_changelog,
-            compat_release,
-            minimum_certainty,
-            trust_package,
-            allow_reformatting,
+            &preferences,
             dirty_tracker.as_ref(),
             subpath,
-            net_access,
-            opinionated,
-            diligence,
             None,
             Some(&basis_tree),
             changes_by,
@@ -2064,13 +2026,7 @@ mod run_lintian_fixers_test {
             basedir: &std::path::Path,
             package: &str,
             _current_version: &Version,
-            _compat_release: &str,
-            _minimum_certainty: Option<Certainty>,
-            _trust_package: Option<bool>,
-            _allow_reformatting: Option<bool>,
-            _net_access: Option<bool>,
-            _opinionated: Option<bool>,
-            _diligence: Option<i32>,
+            _preferences: &FixerPreferences,
             _timeout: Option<chrono::Duration>,
         ) -> Result<FixerResult, FixerError> {
             std::fs::write(basedir.join("debian/control"), "a new line\n").unwrap();
@@ -2123,13 +2079,7 @@ mod run_lintian_fixers_test {
             basedir: &std::path::Path,
             _package: &str,
             _current_version: &Version,
-            _compat_release: &str,
-            _minimum_certainty: Option<Certainty>,
-            _trust_package: Option<bool>,
-            _allow_reformatting: Option<bool>,
-            _net_access: Option<bool>,
-            _opinionated: Option<bool>,
-            _diligence: Option<i32>,
+            _preferences: &FixerPreferences,
             _timeout: Option<chrono::Duration>,
         ) -> Result<FixerResult, FixerError> {
             std::fs::write(basedir.join("debian/foo"), "blah").unwrap();
@@ -2180,13 +2130,7 @@ Arch: all
             Some(|| false),
             false,
             None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
+            &FixerPreferences::default(),
             None,
             None,
             None,
@@ -2208,6 +2152,7 @@ Arch: all
                 .unwrap()
         );
         std::mem::drop(lock);
+        std::mem::drop(td);
     }
 
     #[test]
@@ -2226,17 +2171,11 @@ Arch: all
                 Some(|| false),
                 false,
                 None,
+                &FixerPreferences::default(),
                 None,
                 None,
                 None,
                 None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None
             ),
             Err(OverallError::NotDebianPackage(_))
         ));
@@ -2254,13 +2193,7 @@ Arch: all
             Some(|| false),
             false,
             None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
+            &FixerPreferences::default(),
             None,
             None,
             None,

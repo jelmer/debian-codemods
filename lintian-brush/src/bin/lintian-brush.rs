@@ -369,25 +369,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
 
+        let preferences = lintian_brush::FixerPreferences {
+            compat_release: Some(compat_release),
+            minimum_certainty: Some(minimum_certainty),
+            allow_reformatting,
+            net_access: Some(!args.output.disable_net_access),
+            opinionated: Some(args.fixers.opinionated),
+            diligence: Some(args.fixers.diligent),
+            trust_package: Some(args.packages.trust),
+        };
+
         let mut overall_result = match lintian_brush::run_lintian_fixers(
             &wt,
             fixers.as_slice(),
             update_changelog.as_ref().map(|b| (|| *b)),
             args.output.verbose,
             None,
-            Some(compat_release.as_str()),
-            Some(minimum_certainty),
-            Some(args.packages.trust),
-            allow_reformatting,
+            &preferences,
             if args.output.disable_inotify {
                 Some(false)
             } else {
                 None
             },
             Some(std::path::Path::new(subpath.as_str())),
-            Some(!args.output.disable_net_access),
-            Some(args.fixers.opinionated),
-            Some(args.fixers.diligent),
             Some("lintian-brush"),
             timeout,
         ) {

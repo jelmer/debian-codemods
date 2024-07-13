@@ -67,18 +67,22 @@ impl Fixer {
             .map(|c| c.parse().map_err(UnsupportedCertainty::new_err))
             .transpose()?;
 
+        let preferences = crate::FixerPreferences {
+            minimum_certainty,
+            compat_release: Some(compat_release.to_string()),
+            opinionated,
+            diligence,
+            net_access,
+            allow_reformatting,
+            trust_package,
+        };
+
         self.0
             .run(
                 basedir.as_path(),
                 package,
                 &current_version,
-                compat_release,
-                minimum_certainty,
-                trust_package,
-                allow_reformatting,
-                net_access,
-                opinionated,
-                diligence,
+                &preferences,
                 timeout,
             )
             .map_err(|e| match e {
