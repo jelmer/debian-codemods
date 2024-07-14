@@ -834,39 +834,63 @@ impl Fixer for ScriptFixer {
         timeout: Option<chrono::Duration>,
     ) -> Result<FixerResult, FixerError> {
         let env = determine_env(package, current_version, preferences);
+        use wait_timeout::ChildExt;
 
         let mut cmd = Command::new(self.path.as_os_str());
-        // TODO: Use timeout
+        cmd.stdout(std::process::Stdio::piped());
+        cmd.stderr(std::process::Stdio::piped());
         cmd.current_dir(basedir);
 
         for (key, value) in env.iter() {
             cmd.env(key, value);
         }
 
-        let output = cmd.output().map_err(|e| match e.kind() {
+        let mut child = cmd.spawn().map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => FixerError::ScriptNotFound(self.path.clone()),
             _ => FixerError::Other(e.to_string()),
         })?;
 
-        if !output.status.success() {
+        let status = if let Some(timeout) = timeout {
+            let std_timeout = timeout
+                .to_std()
+                .map_err(|e| FixerError::Other(e.to_string()))?;
+            let output = child
+                .wait_timeout(std_timeout)
+                .map_err(|e| FixerError::Other(e.to_string()))?;
+
+            if output.is_none() {
+                child.kill().map_err(|e| FixerError::Other(e.to_string()))?;
+                return Err(FixerError::Timeout { timeout });
+            }
+            output.unwrap()
+        } else {
+            child.wait().map_err(|e| FixerError::Other(e.to_string()))?
+        };
+
+        if !status.success() {
             let mut stderr = String::new();
-            let mut stderr_buf = std::io::BufReader::new(&output.stderr[..]);
+            let mut stderr_buf = std::io::BufReader::new(child.stderr.as_mut().unwrap());
             stderr_buf
                 .read_to_string(&mut stderr)
                 .map_err(|e| FixerError::Other(format!("Failed to read stderr: {}", e)))?;
 
-            if output.status.code() == Some(2) {
+            if status.code() == Some(2) {
                 return Err(FixerError::NoChanges);
             }
 
             return Err(FixerError::ScriptFailed {
                 path: self.path.to_owned(),
-                exit_code: output.status.code().unwrap(),
+                exit_code: status.code().unwrap(),
                 stderr,
             });
         }
 
-        let stdout = String::from_utf8(output.stdout).map_err(FixerError::OutputDecodeError)?;
+        let mut stdout_buf = std::io::BufReader::new(child.stdout.as_mut().unwrap());
+
+        let mut stdout = String::new();
+        stdout_buf
+            .read_to_string(&mut stdout)
+            .map_err(FixerError::Io)?;
         parse_script_fixer_output(&stdout).map_err(FixerError::OutputParseError)
     }
 }

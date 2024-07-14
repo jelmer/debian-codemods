@@ -29,6 +29,7 @@ lazy_static = { workspace = true }
 debian-analyzer = { version = ">=0.154", path = "../analyzer" }
 distro-info = "0.4.0"
 debian-changelog = { workspace = true }
+wait-timeout = "0.2.0"
 
 [dev-dependencies]
 maplit = { workspace = true }
