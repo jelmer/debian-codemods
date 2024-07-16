@@ -362,8 +362,14 @@ pub fn parseaddr(input: &str) -> Option<(Option<String>, Option<String>)> {
     if let Some((_whole, name, addr)) =
         lazy_regex::regex_captures!(r"(?:(?P<name>[^<]*)\s*<)?(?P<addr>[^<>]*)>?", input)
     {
-        let name = Some(name.trim().to_string());
-        let addr = Some(addr.trim().to_string());
+        let name = match name.trim() {
+            "" => None,
+            x => Some(x.to_string()),
+        };
+        let addr = match addr.trim() {
+            "" => None,
+            x => Some(x.to_string()),
+        };
 
         return Some((name, addr));
     } else if let Some((_whole, addr)) = lazy_regex::regex_captures!(r"(?P<addr>[^<>]*)", input) {
@@ -390,4 +396,18 @@ pub fn gbp_dch(path: &std::path::Path) -> Result<(), std::io::Error> {
         ));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parseaddr() {
+        assert_eq!(
+            parseaddr("foo <bar@example.com>").unwrap(),
+            (Some("foo".to_string()), Some("bar@example.com".to_string()))
+        );
+        assert_eq!(parseaddr("foo").unwrap(), (None, Some("foo".to_string())));
+    }
 }
