@@ -1,3 +1,4 @@
+use crate::release_info;
 use breezyshim::error::Error;
 use breezyshim::tree::{Tree, TreeChange, WorkingTree};
 use debian_changelog::ChangeLog;
@@ -86,9 +87,6 @@ pub fn find_last_distribution(cl: &ChangeLog) -> Option<String> {
     None
 }
 
-pub const DEBIAN_POCKETS: &[&str] = &["", "-security", "-proposed-updates", "-backports"];
-pub const UBUNTU_POCKETS: &[&str] = &["", "-proposed", "-updates", "-security", "-backports"];
-
 /// Given a tree, find the previous upload to the distribution.
 ///
 /// When e.g. Ubuntu merges from Debian they want to build with
@@ -109,11 +107,19 @@ pub fn find_previous_upload(changelog: &ChangeLog) -> Option<debversion::Version
     // multiple debian pockets with all debian releases
     let all_debian = crate::release_info::debian_releases()
         .iter()
-        .flat_map(|r| DEBIAN_POCKETS.iter().map(move |t| format!("{}{}", r, t)))
+        .flat_map(|r| {
+            release_info::DEBIAN_POCKETS
+                .iter()
+                .map(move |t| format!("{}{}", r, t))
+        })
         .collect::<Vec<_>>();
     let all_ubuntu = crate::release_info::ubuntu_releases()
         .iter()
-        .flat_map(|r| UBUNTU_POCKETS.iter().map(move |t| format!("{}{}", r, t)))
+        .flat_map(|r| {
+            release_info::UBUNTU_POCKETS
+                .iter()
+                .map(move |t| format!("{}{}", r, t))
+        })
         .collect::<Vec<_>>();
     let match_targets = if all_debian.contains(&current_target) {
         vec![current_target]
@@ -121,7 +127,11 @@ pub fn find_previous_upload(changelog: &ChangeLog) -> Option<debversion::Version
         let mut match_targets = crate::release_info::ubuntu_releases();
         if current_target.contains('-') {
             let distro = current_target.split('-').next().unwrap();
-            match_targets.extend(DEBIAN_POCKETS.iter().map(|r| format!("{}{}", r, distro)));
+            match_targets.extend(
+                release_info::DEBIAN_POCKETS
+                    .iter()
+                    .map(|r| format!("{}{}", r, distro)),
+            );
         }
         match_targets
     } else {
