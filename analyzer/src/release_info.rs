@@ -1,6 +1,24 @@
 use chrono::{NaiveDate, Utc};
 use distro_info::DistroInfo;
 
+pub fn debian_releases() -> Vec<String> {
+    let debian = distro_info::DebianDistroInfo::new().unwrap();
+    debian
+        .all_at(Utc::now().naive_utc().date())
+        .iter()
+        .map(|r| r.series().to_string())
+        .collect()
+}
+
+pub fn ubuntu_releases() -> Vec<String> {
+    let ubuntu = distro_info::UbuntuDistroInfo::new().unwrap();
+    ubuntu
+        .all_at(Utc::now().naive_utc().date())
+        .iter()
+        .map(|r| r.series().to_string())
+        .collect()
+}
+
 pub fn resolve_release_codename(name: &str, date: Option<NaiveDate>) -> Option<String> {
     let date = date.unwrap_or(Utc::now().naive_utc().date());
     let (distro, mut name) = if let Some((distro, name)) = name.split_once('/') {
