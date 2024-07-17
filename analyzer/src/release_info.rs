@@ -1,6 +1,9 @@
 use chrono::{NaiveDate, Utc};
 use distro_info::DistroInfo;
 
+pub const DEBIAN_POCKETS: &[&str] = &["", "-security", "-proposed-updates", "-backports"];
+pub const UBUNTU_POCKETS: &[&str] = &["", "-proposed", "-updates", "-security", "-backports"];
+
 pub fn debian_releases() -> Vec<String> {
     let debian = distro_info::DebianDistroInfo::new().unwrap();
     debian
@@ -17,6 +20,44 @@ pub fn ubuntu_releases() -> Vec<String> {
         .iter()
         .map(|r| r.series().to_string())
         .collect()
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Vendor {
+    Debian,
+    Ubuntu,
+    Kali,
+}
+
+/// Infer the distribution from a suite.
+///
+/// When passed the name of a suite (anything in the distributions field of
+/// a changelog) it will infer the distribution from that (i.e. Debian or
+/// Ubuntu).
+///
+/// # Arguments
+/// * `suite`: the string containing the suite
+pub fn suite_to_distribution(suite: &str) -> Option<Vendor> {
+    let all_debian = debian_releases()
+        .iter()
+        .flat_map(|r| DEBIAN_POCKETS.iter().map(move |t| r.to_string() + t))
+        .collect::<Vec<_>>();
+    let all_ubuntu = ubuntu_releases()
+        .iter()
+        .flat_map(|r| UBUNTU_POCKETS.iter().map(move |t| r.to_string() + t))
+        .collect::<Vec<_>>();
+    if all_debian.contains(&suite.to_string()) {
+        return Some(Vendor::Debian);
+    }
+    if all_ubuntu.contains(&suite.to_string()) {
+        return Some(Vendor::Ubuntu);
+    }
+
+    if suite == "kali" || suite.starts_with("kali-") {
+        return Some(Vendor::Kali);
+    }
+
+    None
 }
 
 pub fn resolve_release_codename(name: &str, date: Option<NaiveDate>) -> Option<String> {
