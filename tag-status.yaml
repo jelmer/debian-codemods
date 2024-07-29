@@ -1790,3 +1790,13 @@
   difficulty: easy
 - tag: uses-pdm-cli
 - tag: uses-python-distutils
+- tag: uses-deprecated-python-stdlib
+  difficulty: hard
+- tag: package-installs-deprecated-python2-path
+  difficulty: medium
+- tag: gir-package-name-does-not-match
+  difficulty: medium
+- tag: systemd-diversion
+  difficulty: medium
+- tag: systemd-alternatives
+  difficulty: medium
