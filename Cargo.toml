@@ -24,5 +24,5 @@ configparser = "3"
 url = "2"
 debian-changelog = ">=0.1"
 debian-control = ">=0.1"
-pyo3-log = { git = "https://github.com/jelmer/pyo3-log", branch = "pyo3-0.22" }
+pyo3-log = ">=0.11"
 maplit = "1"
