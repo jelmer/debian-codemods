@@ -7,7 +7,7 @@ version = "0.158.1"
 
 [workspace.dependencies]
 breezyshim = ">=0.1.58"
-pyo3 = ">=0.20"
+pyo3 = ">=0.22"
 debversion = ">=0.3.0"
 serde_yaml = ">=0.8"
 reqwest = ">=0.11"
