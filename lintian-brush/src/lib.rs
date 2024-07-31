@@ -616,6 +616,7 @@ mod run_inline_python_fixer_tests {
             result,
             Err(super::FixerError::ScriptFailed { exit_code: 1, .. })
         ));
+        std::mem::drop(td);
     }
 
     #[test]
@@ -1221,7 +1222,7 @@ pub fn data_file_path(
 
     pyo3::prepare_freethreaded_python();
     #[cfg(feature = "python")]
-    match pyo3::Python::with_gil(|py| {
+    if let Some(path) = pyo3::Python::with_gil(|py| {
         use pyo3::prelude::*;
         let pkg_resources = py.import_bound("pkg_resources").unwrap();
         if let Ok(path) = pkg_resources.call_method1(
@@ -1236,8 +1237,7 @@ pub fn data_file_path(
         }
         None
     }) {
-        Some(path) => return Some(path),
-        None => (),
+        return Some(path);
     }
 
     let base_paths = &["/usr/share/lintian-brush", "/usr/local/share/lintian-brush"];
