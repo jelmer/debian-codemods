@@ -10,7 +10,7 @@ use indicatif::ProgressBar;
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::{Tree, TreeChange, WorkingTree};
-use breezyshim::workspace::{check_clean_tree, reset_tree};
+use breezyshim::workspace::{check_clean_tree, reset_tree_with_dirty_tracker};
 use breezyshim::RevisionId;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
 use debian_analyzer::{
@@ -1406,7 +1406,7 @@ pub fn run_lintian_fixer(
         ) {
             Ok(r) => r,
             Err(e) => {
-                reset_tree(
+                reset_tree_with_dirty_tracker(
                     local_tree,
                     Some(basis_tree),
                     Some(subpath),

@@ -2,7 +2,7 @@ use breezyshim::branch::Branch;
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::{MutableTree, Tree, TreeChange, WorkingTree};
-use breezyshim::workspace::reset_tree;
+use breezyshim::workspace::reset_tree_with_dirty_tracker;
 use debian_changelog::ChangeLog;
 use pyo3::prelude::*;
 #[cfg(feature = "python")]
@@ -66,7 +66,13 @@ pub fn apply_or_revert<R, E>(
     let r = match applier(local_tree.abspath(subpath).unwrap().as_path()) {
         Ok(r) => r,
         Err(e) => {
-            reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker).unwrap();
+            reset_tree_with_dirty_tracker(
+                local_tree,
+                Some(basis_tree),
+                Some(subpath),
+                dirty_tracker,
+            )
+            .unwrap();
             return Err(ApplyError::CallbackError(e));
         }
     };

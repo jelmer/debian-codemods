@@ -3,7 +3,7 @@ use breezyshim::delta::filter_excluded;
 use breezyshim::error::Error as BrzError;
 use breezyshim::patches::AppliedPatches;
 use breezyshim::tree::{MutableTree, Tree, WorkingTree};
-use breezyshim::workspace::reset_tree;
+use breezyshim::workspace::reset_tree_with_dirty_tracker;
 use breezyshim::RevisionId;
 use debian_changelog::ChangeLog;
 use patchkit::patch::UnifiedPatch;
@@ -459,7 +459,7 @@ pub fn move_upstream_changes_to_patch(
     let mut diff = Vec::new();
     breezyshim::diff::show_diff_trees(basis_tree, local_tree, &mut diff, None, None)
         .map_err(|e| format!("Failed to generate diff: {}", e))?;
-    reset_tree(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)
+    reset_tree_with_dirty_tracker(local_tree, Some(basis_tree), Some(subpath), dirty_tracker)
         .map_err(|e| format!("Failed to reset tree: {}", e))?;
     // See https://dep-team.pages.debian.net/deps/dep3/ for fields.
     let mut dep3_header = dep3::PatchHeader::new();
