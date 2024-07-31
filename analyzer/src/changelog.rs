@@ -139,6 +139,95 @@ pub fn find_previous_upload(changelog: &ChangeLog) -> Option<debversion::Version
     None
 }
 
+pub enum FindChangelogError {
+    MissingChangelog(Vec<std::path::PathBuf>),
+    AddChangelog(std::path::PathBuf),
+    BrzError(breezyshim::error::Error),
+}
+
+impl From<breezyshim::error::Error> for FindChangelogError {
+    fn from(e: breezyshim::error::Error) -> Self {
+        FindChangelogError::BrzError(e)
+    }
+}
+
+/// Find the changelog in the given tree.
+///
+/// First looks for 'debian/changelog'. If "merge" is true will also
+/// look for 'changelog'.
+///
+/// The returned changelog is created with 'allow_empty_author=True'
+/// as some people do this but still want to build.
+/// 'max_blocks' defaults to 1 to try and prevent old broken
+/// changelog entries from causing the command to fail.
+///
+/// "top_level" is a subset of "merge" mode. It indicates that the
+/// '.bzr' dir is at the same level as 'changelog' etc., rather
+/// than being at the same level as 'debian/'.
+///
+/// # Arguments
+/// * `tree`: Tree to look in
+/// * `subpath`: Path to the changelog file
+/// * `merge`: Whether this is a "merge" package
+///
+/// # Returns
+/// * (changelog, top_level) where changelog is the Changelog,
+///   and top_level is a boolean indicating whether the file is
+///   located at 'changelog' (rather than 'debian/changelog') if
+///   merge was given, False otherwise.
+pub fn find_changelog(
+    tree: &dyn Tree,
+    subpath: &std::path::Path,
+    merge: Option<bool>,
+) -> Result<(ChangeLog, bool), FindChangelogError> {
+    let mut top_level = false;
+    let lock = tree.lock_read();
+
+    let mut changelog_file = subpath.join("debian/changelog");
+    if !tree.has_filename(&changelog_file) {
+        let mut checked_files = vec![changelog_file.clone()];
+        let changelog_file = if merge.unwrap_or(false) {
+            // Assume LarstiQ's layout (.bzr in debian/)
+            let changelog_file = subpath.join("changelog");
+            top_level = true;
+            if !tree.has_filename(&changelog_file) {
+                checked_files.push(changelog_file);
+                None
+            } else {
+                Some(changelog_file)
+            }
+        } else {
+            None
+        };
+        if changelog_file.is_none() {
+            return Err(FindChangelogError::MissingChangelog(checked_files));
+        }
+    } else if merge.unwrap_or(true) && tree.has_filename(&subpath.join("changelog")) {
+        // If it is a "top_level" package and debian is a symlink to
+        // "." then it will have found debian/changelog. Try and detect
+        // this.
+        let debian_file = subpath.join("debian");
+        if tree.is_versioned(&debian_file)
+            && tree.kind(&debian_file)? == breezyshim::tree::Kind::Symlink
+            && tree.get_symlink_target(&debian_file)?.as_path() == std::path::Path::new(".")
+        {
+            changelog_file = "changelog".into();
+            top_level = true;
+        }
+    }
+    log::debug!(
+        "Using '{}' to get package information",
+        changelog_file.display()
+    );
+    if !tree.is_versioned(&changelog_file) {
+        return Err(FindChangelogError::AddChangelog(changelog_file));
+    }
+    let contents = tree.get_file_text(&changelog_file)?;
+    std::mem::drop(lock);
+    let changelog = ChangeLog::read_relaxed(contents.as_slice()).unwrap();
+    Ok((changelog, top_level))
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

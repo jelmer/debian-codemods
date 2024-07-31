@@ -143,9 +143,9 @@ checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
 name = "breezyshim"
-version = "0.1.134"
+version = "0.1.137"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f2e440d83499a65e86c14cb0fc3a33c855efe09aa6e180f519a9ba63d5e06e9"
+checksum = "c85c8d2d9992a748149697c2ac59a72fe3092eb069bcfd2c3f21a6b3c7cedd86"
 dependencies = [
  "chrono",
  "ctor",
@@ -375,9 +375,9 @@ dependencies = [
 
 [[package]]
 name = "debian-changelog"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71be2258e81c0c1f83f5e87340a11bf5c2336b3424fb2a7c7aa1be5a00c32577"
+checksum = "9608e140c8637c6e33acc349ba20872ec6184e516957506a51d1a48146ea3e34"
 dependencies = [
  "chrono",
  "debversion",
@@ -1405,8 +1405,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-log"
-version = "0.10.0"
-source = "git+https://github.com/jelmer/pyo3-log?branch=pyo3-0.22#7d91336d63df8f1b0cf3aa2d2182e842a2831513"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ac84e6eec1159bc2a575c9ae6723baa6ee9d45873e9bebad1e3ad7e8d28a443"
 dependencies = [
  "arc-swap",
  "log",
@@ -1838,9 +1839,9 @@ dependencies = [
 
 [[package]]
 name = "target-lexicon"
-version = "0.12.15"
+version = "0.12.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4873307b7c257eddcb50c9bedf158eb669578359fb28428bef438fec8e6ba7c2"
+checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
 
 [[package]]
 name = "tempfile"
