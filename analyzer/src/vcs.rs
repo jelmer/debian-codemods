@@ -257,7 +257,95 @@ pub enum PackageVcs {
     Svk(Url),
 }
 
-pub fn vcs_field(source_package: &debian_control::Source) -> Option<(String, String)> {
+pub trait VcsSource {
+    fn vcs_git(&self) -> Option<String>;
+    fn vcs_svn(&self) -> Option<String>;
+    fn vcs_bzr(&self) -> Option<String>;
+    fn vcs_hg(&self) -> Option<String>;
+    fn vcs_mtn(&self) -> Option<String>;
+    fn vcs_cvs(&self) -> Option<String>;
+    fn vcs_darcs(&self) -> Option<String>;
+    fn vcs_arch(&self) -> Option<String>;
+    fn vcs_svk(&self) -> Option<String>;
+}
+
+impl VcsSource for debian_control::Source {
+    fn vcs_git(&self) -> Option<String> {
+        self.vcs_git()
+    }
+
+    fn vcs_svn(&self) -> Option<String> {
+        self.vcs_svn()
+    }
+
+    fn vcs_bzr(&self) -> Option<String> {
+        self.vcs_bzr()
+    }
+
+    fn vcs_hg(&self) -> Option<String> {
+        self.vcs_hg()
+    }
+
+    fn vcs_mtn(&self) -> Option<String> {
+        self.vcs_mtn()
+    }
+
+    fn vcs_cvs(&self) -> Option<String> {
+        self.vcs_cvs()
+    }
+
+    fn vcs_darcs(&self) -> Option<String> {
+        self.vcs_darcs()
+    }
+
+    fn vcs_arch(&self) -> Option<String> {
+        self.vcs_arch()
+    }
+
+    fn vcs_svk(&self) -> Option<String> {
+        self.vcs_svk()
+    }
+}
+
+impl VcsSource for debian_control::apt::Source {
+    fn vcs_git(&self) -> Option<String> {
+        self.vcs_git()
+    }
+
+    fn vcs_svn(&self) -> Option<String> {
+        self.vcs_svn()
+    }
+
+    fn vcs_bzr(&self) -> Option<String> {
+        self.vcs_bzr()
+    }
+
+    fn vcs_hg(&self) -> Option<String> {
+        self.vcs_hg()
+    }
+
+    fn vcs_mtn(&self) -> Option<String> {
+        self.vcs_mtn()
+    }
+
+    fn vcs_cvs(&self) -> Option<String> {
+        self.vcs_cvs()
+    }
+
+    fn vcs_darcs(&self) -> Option<String> {
+        self.vcs_darcs()
+    }
+
+    fn vcs_arch(&self) -> Option<String> {
+        self.vcs_arch()
+    }
+
+    fn vcs_svk(&self) -> Option<String> {
+        self.vcs_svk()
+    }
+}
+
+pub fn vcs_field(source_package: &impl VcsSource) -> Option<(String, String)> {
     if let Some(value) = source_package.vcs_git() {
         return Some(("Git".to_string(), value));
     }
@@ -279,10 +367,16 @@ pub fn vcs_field(source_package: &debian_control::Source) -> Option<(String, Str
     if let Some(value) = source_package.vcs_darcs() {
         return Some(("Darcs".to_string(), value));
     }
+    if let Some(value) = source_package.vcs_arch() {
+        return Some(("Arch".to_string(), value));
+    }
+    if let Some(value) = source_package.vcs_svk() {
+        return Some(("Svk".to_string(), value));
+    }
     None
 }
 
-pub fn source_package_vcs(source_package: &debian_control::Source) -> Option<PackageVcs> {
+pub fn source_package_vcs(source_package: &impl VcsSource) -> Option<PackageVcs> {
     if let Some(value) = source_package.vcs_git() {
         let parsed_vcs: ParsedVcs = value.parse().unwrap();
         let url = parsed_vcs.repo_url.parse().unwrap();
