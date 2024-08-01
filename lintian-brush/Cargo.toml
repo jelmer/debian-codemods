@@ -10,7 +10,7 @@ homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 documentation = "https://docs.rs/lintian-brush"
 
 [dependencies]
-pyo3 = { workspace = true, features = ["serde", "chrono"] }
+pyo3 = { workspace = true, features = ["serde", "chrono"], optional = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -37,9 +37,7 @@ maplit = { workspace = true }
 [features]
 default = ["svp", "python", "cli"]
 svp = []
-# For now, we don't support running without Python. But in the future, this should be:
-# python = ["dep:pyo3"]
-python = []
+python = ["dep:pyo3"]
 cli = ["dep:clap", "dep:env_logger"]
 
 [[bin]]
