@@ -143,9 +143,9 @@ checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
 name = "breezyshim"
-version = "0.1.142"
+version = "0.1.143"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e35963780018930c1ff989236ddc44b3327d95ce7e6ea315d9ec76a1c0879c0"
+checksum = "41111aeb3781d4dc0a28a343d75a740770f4266a7b82af7dc92e1b683f6fac92"
 dependencies = [
  "chrono",
  "ctor",
@@ -335,9 +335,9 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9086252eef3fadf8ba2090c0dff8da6ff7bbfd04baf15b094f55cc12f1c9fc5"
+checksum = "11973bdcad319fa3957d75f85c1f85b26b4a5c9f4cf1db350e2dbf58be392e80"
 dependencies = [
  "regex",
  "rowan",
@@ -390,9 +390,9 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.13"
+version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c24d781770afb3bbfc9de716ec9a5ebbb3c03efd41056845706b99582ac7d04"
+checksum = "48f1596600f142ffbea9b7956edf7059888260e4430fe42690c95ae431b89a6e"
 dependencies = [
  "deb822-lossless",
  "debversion",

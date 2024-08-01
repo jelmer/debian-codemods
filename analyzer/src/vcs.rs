@@ -113,9 +113,7 @@ pub fn determine_browser_url(
     let parsed_url: Url = parsed_vcs.repo_url.parse().unwrap();
 
     match parsed_url.host_str().unwrap() {
-        host if is_gitlab_site(host, net_access) => {
-            Some(determine_gitlab_browser_url(vcs_url))
-        }
+        host if is_gitlab_site(host, net_access) => Some(determine_gitlab_browser_url(vcs_url)),
 
         "github.com" => {
             let path = parsed_url.path().trim_end_matches(".git");
@@ -238,8 +236,110 @@ pub fn canonicalize_vcs_browser_url(url: &str) -> String {
     .into_owned()
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum PackageVcs {
+    Git {
+        url: Url,
+        branch: Option<String>,
+        subpath: Option<std::path::PathBuf>,
+    },
+    Svn(Url),
+    Bzr(Url),
+    Hg {
+        url: Url,
+        branch: Option<String>,
+        subpath: Option<std::path::PathBuf>,
+    },
+    Mtn(Url),
+    Cvs(String),
+    Darcs(Url),
+    Arch(Url),
+    Svk(Url),
+}
+
+pub fn source_package_vcs(source_package: &debian_control::Source) -> Option<PackageVcs> {
+    if let Some(value) = source_package.vcs_git() {
+        let parsed_vcs: ParsedVcs = value.parse().unwrap();
+        let url = parsed_vcs.repo_url.parse().unwrap();
+        return Some(PackageVcs::Git {
+            url,
+            branch: parsed_vcs.branch,
+            subpath: parsed_vcs.subpath.map(std::path::PathBuf::from),
+        });
+    }
+    if let Some(value) = source_package.vcs_svn() {
+        let url = value.parse().unwrap();
+        return Some(PackageVcs::Svn(url));
+    }
+    if let Some(value) = source_package.vcs_bzr() {
+        let url = value.parse().unwrap();
+        return Some(PackageVcs::Bzr(url));
+    }
+    if let Some(value) = source_package.vcs_hg() {
+        let parsed_vcs: ParsedVcs = value.parse().unwrap();
+        let url = parsed_vcs.repo_url.parse().unwrap();
+        return Some(PackageVcs::Hg {
+            url,
+            branch: parsed_vcs.branch,
+            subpath: parsed_vcs.subpath.map(std::path::PathBuf::from),
+        });
+    }
+    if let Some(value) = source_package.vcs_mtn() {
+        let url = value.parse().unwrap();
+        return Some(PackageVcs::Mtn(url));
+    }
+    if let Some(value) = source_package.vcs_cvs() {
+        return Some(PackageVcs::Cvs(value.clone()));
+    }
+    if let Some(value) = source_package.vcs_darcs() {
+        let url = value.parse().unwrap();
+        return Some(PackageVcs::Darcs(url));
+    }
+    if let Some(value) = source_package.vcs_arch() {
+        let url = value.parse().unwrap();
+        return Some(PackageVcs::Arch(url));
+    }
+    if let Some(value) = source_package.vcs_svk() {
+        let url = value.parse().unwrap();
+        return Some(PackageVcs::Svk(url));
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_source_package_vcs() {
+        use super::PackageVcs;
+        use debian_control::Control;
+
+        let control: Control = r#"Source: foo
+Vcs-Git: https://salsa.debian.org/foo/bar.git
+"#
+        .parse()
+        .unwrap();
+        assert_eq!(
+            super::source_package_vcs(&control.source().unwrap()),
+            Some(PackageVcs::Git {
+                url: "https://salsa.debian.org/foo/bar.git".parse().unwrap(),
+                branch: None,
+                subpath: None
+            })
+        );
+
+        let control: Control = r#"Source: foo
+Vcs-Svn: https://svn.debian.org/svn/foo/bar
+"#
+        .parse()
+        .unwrap();
+        assert_eq!(
+            super::source_package_vcs(&control.source().unwrap()),
+            Some(PackageVcs::Svn(
+                "https://svn.debian.org/svn/foo/bar".parse().unwrap()
+            ))
+        );
+    }
+
     #[test]
     fn test_determine_gitlab_browser_url() {
         use super::determine_gitlab_browser_url;
