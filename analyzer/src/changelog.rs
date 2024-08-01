@@ -143,6 +143,7 @@ pub fn find_previous_upload(changelog: &ChangeLog) -> Option<debversion::Version
 pub enum FindChangelogError {
     MissingChangelog(Vec<std::path::PathBuf>),
     AddChangelog(std::path::PathBuf),
+    ChangelogParseError(String),
     BrzError(breezyshim::error::Error),
 }
 
@@ -155,6 +156,7 @@ impl std::fmt::Display for FindChangelogError {
             FindChangelogError::AddChangelog(file) => {
                 write!(f, "Add a changelog at {:?}", file)
             }
+            FindChangelogError::ChangelogParseError(e) => write!(f, "{}", e),
             FindChangelogError::BrzError(e) => write!(f, "{}", e),
         }
     }
