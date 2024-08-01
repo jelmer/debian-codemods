@@ -69,7 +69,7 @@ pub fn update_official_vcs(
 ) -> Result<ParsedVcs, Error> {
     let force = force.unwrap_or(false);
     // TODO(jelmer): Allow creation of the repository as well
-    check_clean_tree(wt, &wt.basis_tree(), subpath).unwrap();
+    check_clean_tree(wt, &wt.basis_tree().unwrap(), subpath).unwrap();
 
     let debian_path = subpath.join("debian");
     let subpath = match subpath.to_string_lossy().as_ref() {

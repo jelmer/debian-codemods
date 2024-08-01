@@ -1330,7 +1330,7 @@ pub fn run_lintian_fixer(
     let basis_tree: &dyn Tree = if let Some(basis_tree) = basis_tree {
         basis_tree
     } else {
-        _bt = Some(local_tree.basis_tree());
+        _bt = Some(local_tree.basis_tree().unwrap());
         _bt.as_ref().unwrap()
     };
 
@@ -1567,7 +1567,7 @@ pub fn run_lintian_fixers(
     timeout: Option<chrono::Duration>,
 ) -> Result<ManyResult, OverallError> {
     let subpath = subpath.unwrap_or_else(|| std::path::Path::new(""));
-    let mut basis_tree = local_tree.basis_tree();
+    let mut basis_tree = local_tree.basis_tree().unwrap();
     check_clean_tree(local_tree, &basis_tree, subpath).map_err(|e| match e {
         Error::WorkspaceDirty(p) => OverallError::WorkspaceDirty(p),
         e => OverallError::Other(e.to_string()),
@@ -1769,7 +1769,7 @@ pub fn run_lintian_fixers(
                     );
                 }
                 ret.success.push((result, summary));
-                basis_tree = local_tree.basis_tree();
+                basis_tree = local_tree.basis_tree().unwrap();
             }
         }
     }
@@ -2177,7 +2177,7 @@ Arch: all
         let lock = tree.lock_read().unwrap();
         assert_eq!(
             Vec::<breezyshim::tree::TreeChange>::new(),
-            tree.iter_changes(&tree.basis_tree(), None, None, None)
+            tree.iter_changes(&tree.basis_tree().unwrap(), None, None, None)
                 .unwrap()
                 .collect::<Result<Vec<_>, _>>()
                 .unwrap()

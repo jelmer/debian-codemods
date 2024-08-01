@@ -497,7 +497,7 @@ mod move_upstream_changes_to_patch_tests {
 
         super::move_upstream_changes_to_patch(
             &local_tree,
-            &local_tree.basis_tree(),
+            &local_tree.basis_tree().unwrap(),
             std::path::Path::new(""),
             "patch",
             "This is a description",

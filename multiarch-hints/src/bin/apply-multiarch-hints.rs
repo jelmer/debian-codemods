@@ -194,7 +194,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(0);
     }
 
-    match check_clean_tree(&wt, &wt.basis_tree(), subpath.as_path()) {
+    match check_clean_tree(&wt, &wt.basis_tree().unwrap(), subpath.as_path()) {
         Err(Error::WorkspaceDirty(p)) => {
             log::error!(
                 "{}: Please commit pending changes and remove unknown files first.",

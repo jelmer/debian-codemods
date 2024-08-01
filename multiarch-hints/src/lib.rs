@@ -475,7 +475,7 @@ pub fn apply_multiarch_hints(
     allow_reformatting: Option<bool>,
 ) -> Result<OverallResult, OverallError> {
     let minimum_certainty = minimum_certainty.unwrap_or(Certainty::Certain);
-    let basis_tree = local_tree.basis_tree();
+    let basis_tree = local_tree.basis_tree().unwrap();
     let (changes, _tree_changes, mut specific_files) = match apply_or_revert(
         local_tree,
         subpath,
