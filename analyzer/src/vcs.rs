@@ -257,6 +257,31 @@ pub enum PackageVcs {
     Svk(Url),
 }
 
+pub fn vcs_field(source_package: &debian_control::Source) -> Option<(String, String)> {
+    if let Some(value) = source_package.vcs_git() {
+        return Some(("Git".to_string(), value));
+    }
+    if let Some(value) = source_package.vcs_svn() {
+        return Some(("Svn".to_string(), value));
+    }
+    if let Some(value) = source_package.vcs_bzr() {
+        return Some(("Bzr".to_string(), value));
+    }
+    if let Some(value) = source_package.vcs_hg() {
+        return Some(("Hg".to_string(), value));
+    }
+    if let Some(value) = source_package.vcs_mtn() {
+        return Some(("Mtn".to_string(), value));
+    }
+    if let Some(value) = source_package.vcs_cvs() {
+        return Some(("Cvs".to_string(), value));
+    }
+    if let Some(value) = source_package.vcs_darcs() {
+        return Some(("Darcs".to_string(), value));
+    }
+    None
+}
+
 pub fn source_package_vcs(source_package: &debian_control::Source) -> Option<PackageVcs> {
     if let Some(value) = source_package.vcs_git() {
         let parsed_vcs: ParsedVcs = value.parse().unwrap();
@@ -511,6 +536,24 @@ Vcs-Svn: https://svn.debian.org/svn/foo/bar
                 "git://git.code.sf.net/p/shorewall/debian -b foo [sp]",
                 Some(false)
             ),
+        );
+    }
+
+    #[test]
+    fn test_vcs_field() {
+        use debian_control::Control;
+
+        let control: Control = r#"Source: foo
+Vcs-Git: https://salsa.debian.org/foo/bar.git
+"#
+        .parse()
+        .unwrap();
+        assert_eq!(
+            super::vcs_field(&control.source().unwrap()),
+            Some((
+                "Git".to_string(),
+                "https://salsa.debian.org/foo/bar.git".to_string()
+            ))
         );
     }
 }
