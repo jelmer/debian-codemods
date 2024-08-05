@@ -330,9 +330,7 @@ pub fn source_package_vcs(control: &Deb822Paragraph) -> Option<(String, String)>
             .unwrap()
             .call_method1("source_package_vcs", (control,))
         {
-            Ok(o) => o
-                .extract::<Option<(String, String)>>()
-                .unwrap(),
+            Ok(o) => o.extract::<Option<(String, String)>>().unwrap(),
             Err(e) if e.is_instance_of::<PyKeyError>(py) => None,
             Err(e) => panic!("unexpected error: {}", e),
         }
