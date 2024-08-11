@@ -10,6 +10,7 @@ use std::str::FromStr;
 
 pub mod changelog;
 pub mod config;
+pub mod debcommit;
 pub mod debmutateshim;
 pub mod detect_gbp_dch;
 pub mod patches;
@@ -176,6 +177,12 @@ impl From<pyo3::PyErr> for ChangelogError {
     }
 }
 
+/// Add an entry to a changelog.
+///
+/// # Arguments
+/// * `working_tree` - Working tree
+/// * `changelog_path` - Path to the changelog
+/// * `entry` - Changelog entry
 pub fn add_changelog_entry(
     working_tree: &WorkingTree,
     changelog_path: &std::path::Path,

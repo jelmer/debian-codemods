@@ -29,6 +29,16 @@ pub enum Vendor {
     Kali,
 }
 
+impl std::fmt::Display for Vendor {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Vendor::Debian => write!(f, "debian"),
+            Vendor::Ubuntu => write!(f, "ubuntu"),
+            Vendor::Kali => write!(f, "kali"),
+        }
+    }
+}
+
 /// Infer the distribution from a suite.
 ///
 /// When passed the name of a suite (anything in the distributions field of
