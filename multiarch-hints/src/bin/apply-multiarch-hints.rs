@@ -167,7 +167,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::path::PathBuf::from(subpath),
         )
     } else {
-        match breezyshim::tree::open_containing(&args.directory) {
+        match breezyshim::workingtree::open_containing(&args.directory) {
             Ok((wt, subpath)) => (wt, subpath),
             Err(Error::NotBranchError(_msg, _)) => {
                 log::error!("No version control directory found (e.g. a .git directory).");

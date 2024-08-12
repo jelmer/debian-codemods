@@ -1,6 +1,6 @@
 use breezyshim::controldir::open;
 use breezyshim::error::Error;
-use breezyshim::tree::WorkingTree;
+use breezyshim::workingtree;
 use clap::Parser;
 use debian_analyzer::publish::{create_vcs_url, update_official_vcs};
 use debian_changelog::get_maintainer;
@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     breezyshim::init();
 
-    let (wt, subpath) = match WorkingTree::open_containing(&args.directory) {
+    let (wt, subpath) = match workingtree::open_containing(&args.directory) {
         Ok((wt, subpath)) => (wt, subpath.display().to_string()),
         Err(Error::NotBranchError(_msg, _)) => {
             log::error!("No version control directory found (e.g. a .git directory).");

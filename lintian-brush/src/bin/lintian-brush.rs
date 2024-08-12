@@ -1,6 +1,7 @@
 use breezyshim::branch::open_containing as open_containing_branch;
 use breezyshim::error::Error;
-use breezyshim::tree::{MutableTree, WorkingTree};
+use breezyshim::tree::MutableTree;
+use breezyshim::workingtree;
 use clap::Parser;
 use debian_changelog::get_maintainer;
 use distro_info::DistroInfo;
@@ -247,7 +248,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             tempdir = Some(td);
             (to_dir.open_workingtree()?, subpath)
         } else {
-            match WorkingTree::open_containing(&args.output.directory) {
+            match workingtree::open_containing(&args.output.directory) {
                 Ok((wt, subpath)) => (wt, subpath.display().to_string()),
                 Err(Error::NotBranchError(_msg, _)) => {
                     log::error!("No version control directory found (e.g. a .git directory).");

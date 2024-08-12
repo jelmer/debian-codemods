@@ -1,4 +1,4 @@
-use breezyshim::tree::WorkingTree;
+use breezyshim::workingtree;
 use clap::Parser;
 use std::io::Write as _;
 
@@ -31,7 +31,7 @@ fn main() {
 
     breezyshim::init();
 
-    let (wt, subpath) = WorkingTree::open_containing(&args.directory).unwrap();
+    let (wt, subpath) = workingtree::open_containing(&args.directory).unwrap();
     let debian_path = if debian_analyzer::control_files_in_root(&wt, subpath.as_path()) {
         subpath
     } else {
