@@ -1057,14 +1057,10 @@ pub fn select_fixers(
         }
         ret.push(f);
     }
-    if select_set.is_some() && !select_set.as_ref().unwrap().is_empty() {
-        Err(UnknownFixer(
-            select_set.unwrap().iter().next().unwrap().to_string(),
-        ))
-    } else if exclude_set.is_some() && !exclude_set.as_ref().unwrap().is_empty() {
-        Err(UnknownFixer(
-            exclude_set.unwrap().iter().next().unwrap().to_string(),
-        ))
+    if let Some(select_set) = select_set.filter(|x| !x.is_empty()) {
+        Err(UnknownFixer(select_set.iter().next().unwrap().to_string()))
+    } else if let Some(exclude_set) = exclude_set.filter(|x| !x.is_empty()) {
+        Err(UnknownFixer(exclude_set.iter().next().unwrap().to_string()))
     } else {
         Ok(ret)
     }

@@ -429,8 +429,7 @@ fn run_lintian_fixer(
                 UnsupportedCertainty::new_err(e)
             }
         },
-        #[cfg(feature = "python")]
-        lintian_brush::FixerError::Python(e) => e.into(),
+        lintian_brush::FixerError::Python(e) => e,
         lintian_brush::FixerError::Io(e) => e.into(),
         lintian_brush::FixerError::Other(e) => PyRuntimeError::new_err(e),
         lintian_brush::FixerError::NoChangesAfterOverrides(_o) => NoChanges::new_err((py.None(),)),
@@ -443,7 +442,6 @@ fn run_lintian_fixer(
             ))
         }
         lintian_brush::FixerError::NotDebianPackage(e) => NotDebianPackage::new_err(e),
-        lintian_brush::FixerError::Python(e) => e,
         lintian_brush::FixerError::FailedPatchManipulation(reason) => {
             FailedPatchManipulation::new_err((reason,))
         }

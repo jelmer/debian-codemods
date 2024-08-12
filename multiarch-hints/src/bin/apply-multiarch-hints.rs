@@ -1,7 +1,7 @@
 use breezyshim::branch::open_containing as open_containing_branch;
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
-use breezyshim::tree::{MutableTree, WorkingTree};
+use breezyshim::tree::MutableTree;
 use breezyshim::workspace::check_clean_tree;
 use clap::Parser;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};

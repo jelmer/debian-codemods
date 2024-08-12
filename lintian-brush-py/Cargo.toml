@@ -17,7 +17,7 @@ extension-module = ["pyo3/extension-module"]
 
 [dependencies]
 pyo3 = { workspace = true, features = ["chrono", "serde"] }
-lintian-brush = { path = "../lintian-brush" }
+lintian-brush = { path = "../lintian-brush", features = ["python"] }
 serde_json = "1"
 chrono = "0.4"
 pyo3-log = { workspace = true }
