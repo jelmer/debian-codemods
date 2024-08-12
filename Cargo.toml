@@ -3,7 +3,7 @@ resolver = "2"
 members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize", "debianize-py", "analyzer"]
 
 [workspace.package]
-version = "0.158.7"
+version = "0.158.9"
 
 [workspace.dependencies]
 breezyshim = { version = ">=0.1.140", features = ["dirty-tracker"] }

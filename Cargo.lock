@@ -349,7 +349,7 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.158.7"
+version = "0.158.9"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -418,7 +418,7 @@ dependencies = [
 
 [[package]]
 name = "debianize"
-version = "0.158.7"
+version = "0.158.9"
 dependencies = [
  "breezyshim",
  "clap",
@@ -435,7 +435,7 @@ dependencies = [
 
 [[package]]
 name = "debianize-py"
-version = "0.158.7"
+version = "0.158.9"
 dependencies = [
  "debianize",
  "debversion",
@@ -1028,7 +1028,7 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush"
-version = "0.158.7"
+version = "0.158.9"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -1055,7 +1055,7 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush-py"
-version = "0.158.7"
+version = "0.158.9"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -1164,7 +1164,7 @@ dependencies = [
 
 [[package]]
 name = "multiarch-hints"
-version = "0.158.7"
+version = "0.158.9"
 dependencies = [
  "breezyshim",
  "chrono",
