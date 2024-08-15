@@ -9,6 +9,7 @@ use std::collections::HashMap;
 
 import_exception!(debian.changelog, ChangelogCreateError);
 import_exception!(debmutate.reformatting, FormattingUnpreservable);
+import_exception!(debmutate.reformatting, GeneratedFile);
 import_exception!(lintian_brush, NoChanges);
 import_exception!(lintian_brush, DescriptionMissing);
 import_exception!(lintian_brush, NotCertainEnough);
@@ -86,6 +87,7 @@ impl Fixer {
                 timeout,
             )
             .map_err(|e| match e {
+                crate::FixerError::GeneratedFile(p) => GeneratedFile::new_err((p,)),
                 crate::FixerError::NoChanges => NoChanges::new_err((py.None(),)),
                 crate::FixerError::ChangelogCreate(m) => ChangelogCreateError::new_err((m,)),
                 crate::FixerError::Io(e) => e.into(),

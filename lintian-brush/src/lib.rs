@@ -700,12 +700,34 @@ pub enum FixerError {
         stderr: String,
     },
     FormattingUnpreservable(std::path::PathBuf),
+    GeneratedFile(std::path::PathBuf),
     #[cfg(feature = "python")]
     Python(pyo3::PyErr),
     MemoryError,
     Io(std::io::Error),
     BrzError(Error),
     Other(String),
+}
+
+impl From<debian_analyzer::editor::EditorError> for FixerError {
+    fn from(e: debian_analyzer::editor::EditorError) -> Self {
+        match e {
+            debian_analyzer::editor::EditorError::IoError(e) => e.into(),
+            debian_analyzer::editor::EditorError::BrzError(e) => e.into(),
+            debian_analyzer::editor::EditorError::GeneratedFile(p, _) => {
+                FixerError::GeneratedFile(p)
+            }
+            debian_analyzer::editor::EditorError::FormattingUnpreservable(p, _e) => {
+                FixerError::FormattingUnpreservable(p)
+            }
+        }
+    }
+}
+
+impl From<std::io::Error> for FixerError {
+    fn from(e: std::io::Error) -> Self {
+        FixerError::Io(e)
+    }
 }
 
 impl From<debian_changelog::Error> for FixerError {
@@ -790,6 +812,7 @@ impl std::fmt::Display for FixerError {
                 write!(f, "Invalid changelog {}: {}", p.display(), s)
             }
             FixerError::Timeout { timeout } => write!(f, "Timeout after {:?}", timeout),
+            FixerError::GeneratedFile(p) => write!(f, "Generated file: {}", p.display()),
         }
     }
 }
@@ -1657,6 +1680,17 @@ pub fn run_lintian_fixers(
                         );
                     }
                     continue;
+                }
+                FixerError::GeneratedFile(p) => {
+                    ret.failed_fixers
+                        .insert(fixer.name(), format!("Generated file: {}", p.display()));
+                    if verbose {
+                        log::info!(
+                            "Fixer {} encountered generated file {}",
+                            fixer.name(),
+                            p.display()
+                        );
+                    }
                 }
                 FixerError::ScriptNotFound(ref p) => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());

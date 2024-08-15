@@ -425,6 +425,23 @@ pub enum OverallError {
     Python(pyo3::PyErr),
     NoWhoami,
     NoChanges,
+    GeneratedFile(std::path::PathBuf),
+    FormattingUnpreservable(std::path::PathBuf),
+}
+
+impl From<debian_analyzer::editor::EditorError> for OverallError {
+    fn from(e: debian_analyzer::editor::EditorError) -> Self {
+        match e {
+            debian_analyzer::editor::EditorError::GeneratedFile(p, _) => {
+                OverallError::GeneratedFile(p)
+            }
+            debian_analyzer::editor::EditorError::FormattingUnpreservable(p, _) => {
+                OverallError::FormattingUnpreservable(p)
+            }
+            debian_analyzer::editor::EditorError::BrzError(e) => OverallError::BrzError(e),
+            debian_analyzer::editor::EditorError::IoError(e) => OverallError::Other(e.to_string()),
+        }
+    }
 }
 
 impl std::fmt::Display for OverallError {
@@ -432,6 +449,12 @@ impl std::fmt::Display for OverallError {
         match self {
             OverallError::NotDebianPackage(p) => {
                 write!(f, "{} is not a Debian package.", p.display())
+            }
+            OverallError::GeneratedFile(p) => {
+                write!(f, "Generated file: {}", p.display())
+            }
+            OverallError::FormattingUnpreservable(p) => {
+                write!(f, "Formatting unpreservable: {}", p.display())
             }
             OverallError::BrzError(e) => write!(f, "{}", e),
             OverallError::Python(e) => write!(f, "{}", e),

@@ -370,6 +370,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None,
             );
         }
+        Err(OverallError::GeneratedFile(p)) => {
+            drop(write_lock);
+            report_fatal(
+                versions_dict(),
+                "generated-file",
+                format!("{}: File is generated", p.display()).as_str(),
+                None,
+                None,
+            );
+        }
+        Err(OverallError::FormattingUnpreservable(p)) => {
+            drop(write_lock);
+            report_fatal(
+                versions_dict(),
+                "unpreservable-formatting",
+                format!("{}: Unable to preserve formatting", p.display()).as_str(),
+                None,
+                None,
+            );
+        }
         Ok(overall_result) => overall_result,
     };
     std::mem::drop(write_lock);

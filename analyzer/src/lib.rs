@@ -189,17 +189,10 @@ pub fn add_changelog_entry(
     working_tree: &WorkingTree,
     changelog_path: &std::path::Path,
     entry: &[&str],
-) -> Result<(), ChangelogError> {
-    let f = match working_tree.get_file(changelog_path) {
-        Ok(f) => f,
-        Err(Error::NoSuchFile(_)) => {
-            return Err(ChangelogError::NotDebianPackage(
-                working_tree.abspath(changelog_path).unwrap(),
-            ))
-        }
-        Err(e) => panic!("Unexpected error: {}", e),
-    };
-    let mut cl = ChangeLog::read(f).unwrap();
+) -> Result<(), crate::editor::EditorError> {
+    use crate::editor::{Editor, EditorError, MutableTreeEdit};
+    let mut cl =
+        working_tree.edit_file::<debian_changelog::ChangeLog>(changelog_path, false, true)?;
 
     cl.auto_add_change(
         entry,
@@ -208,9 +201,7 @@ pub fn add_changelog_entry(
         None,
     );
 
-    working_tree
-        .put_file_bytes_non_atomic(changelog_path, cl.to_string().as_bytes())
-        .unwrap();
+    cl.commit()?;
 
     Ok(())
 }
