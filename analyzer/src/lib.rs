@@ -11,6 +11,7 @@ use std::str::FromStr;
 
 pub mod changelog;
 pub mod config;
+pub mod control;
 pub mod debcommit;
 pub mod debmutateshim;
 pub mod detect_gbp_dch;

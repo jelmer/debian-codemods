@@ -700,6 +700,20 @@ impl Marshallable for makefile_lossless::Makefile {
     }
 }
 
+impl Marshallable for deb822_lossless::Deb822 {
+    fn from_bytes(content: &[u8]) -> Self {
+        deb822_lossless::Deb822::read_relaxed(std::io::Cursor::new(content)).unwrap().0
+    }
+
+    fn missing() -> Self {
+        deb822_lossless::Deb822::new()
+    }
+
+    fn to_bytes(&self) -> Option<Vec<u8>> {
+        Some(self.to_string().into_bytes())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
