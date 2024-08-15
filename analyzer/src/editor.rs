@@ -304,6 +304,19 @@ pub trait Marshallable {
     fn format(&self) -> Option<Vec<u8>>;
 }
 
+pub trait Editor<P: Marshallable>:
+    std::ops::Deref<Target = P> + std::ops::DerefMut<Target = P>
+{
+    fn updated_content(&self) -> Option<Vec<u8>>;
+    fn rewritten_content(&self) -> Option<&[u8]>;
+
+    fn has_changed(&self) -> bool {
+        self.updated_content().as_deref() != self.rewritten_content()
+    }
+
+    fn finish(&self) -> Result<Vec<&std::path::Path>, EditorError>;
+}
+
 pub struct FsEditor<P: Marshallable> {
     path: PathBuf,
     orig_content: Option<Vec<u8>>,
@@ -378,12 +391,18 @@ impl<P: Marshallable> FsEditor<P> {
         ret.read()?;
         Ok(ret)
     }
+}
 
+impl<P: Marshallable> Editor<P> for FsEditor<P> {
     fn updated_content(&self) -> Option<Vec<u8>> {
         self.parsed.as_ref().unwrap().format()
     }
 
-    pub fn finish(&self) -> Result<Vec<&std::path::Path>, EditorError> {
+    fn rewritten_content(&self) -> Option<&[u8]> {
+        self.rewritten_content.as_deref()
+    }
+
+    fn finish(&self) -> Result<Vec<&std::path::Path>, EditorError> {
         let updated_content = self.updated_content();
 
         if let Some(updated_content) = updated_content {
@@ -406,12 +425,6 @@ impl<P: Marshallable> FsEditor<P> {
         } else {
             Ok(vec![])
         }
-    }
-
-    /// Check if any changes have been made so far
-    pub fn has_changed(&self) -> bool {
-        let updated_content = self.updated_content();
-        updated_content != self.rewritten_content && updated_content != self.orig_content
     }
 }
 
@@ -614,14 +627,6 @@ mod tests {
     }
 
     impl TestMarshall {
-        fn new(data: usize) -> Self {
-            Self { data: Some(data) }
-        }
-
-        fn set_data(&mut self, data: usize) {
-            self.data = Some(data);
-        }
-
         fn get_data(&self) -> Option<usize> {
             self.data
         }
