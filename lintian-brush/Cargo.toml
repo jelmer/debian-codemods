@@ -37,7 +37,7 @@ maplit = { workspace = true }
 [features]
 default = ["svp", "python", "cli"]
 svp = []
-python = ["dep:pyo3"]
+python = ["dep:pyo3", "debian-analyzer/python"]
 cli = ["dep:clap", "dep:env_logger"]
 
 [[bin]]

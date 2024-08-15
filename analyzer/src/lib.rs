@@ -4,8 +4,9 @@ use breezyshim::error::Error;
 use breezyshim::tree::{MutableTree, Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::reset_tree_with_dirty_tracker;
 use debian_changelog::ChangeLog;
-use pyo3::prelude::*;
 #[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 use std::str::FromStr;
 
 pub mod changelog;
@@ -13,6 +14,7 @@ pub mod config;
 pub mod debcommit;
 pub mod debmutateshim;
 pub mod detect_gbp_dch;
+pub mod editor;
 pub mod patches;
 pub mod publish;
 pub mod release_info;

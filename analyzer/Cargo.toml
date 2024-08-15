@@ -33,11 +33,14 @@ makefile-lossless = "0.1.0"
 patchkit = "0.1.0"
 dep3 = "0.1.0"
 reqwest = { workspace = true, features = ["blocking", "json"] }
+merge3 = { version = "0.2", optional = true }
+difflib = "0.4.0"
 
 [features]
-default = ["python"]
+default = ["python", "merge3"]
 python = []
 cli = ["dep:clap", "dep:env_logger"]
+merge3 = ["dep:merge3"]
 
 [lib]
 
