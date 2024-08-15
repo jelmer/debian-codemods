@@ -164,7 +164,7 @@ pub fn check_generated_file(path: &std::path::Path) -> Result<(), GeneratedFile>
 }
 
 #[derive(Debug)]
-enum EditorError {
+pub enum EditorError {
     GeneratedFile(GeneratedFile),
     FormattingUnpreservable(FormattingUnpreservable),
     IoError(std::io::Error),
@@ -296,6 +296,123 @@ pub fn edit_formatted_file(
         std::fs::remove_file(path)?;
     }
     Ok(true)
+}
+
+pub trait Marshallable {
+    fn parse(content: &[u8]) -> Self;
+    fn missing() -> Self;
+    fn format(&self) -> Option<Vec<u8>>;
+}
+
+pub struct FsEditor<P: Marshallable> {
+    path: PathBuf,
+    orig_content: Option<Vec<u8>>,
+    rewritten_content: Option<Vec<u8>>,
+    allow_generated: bool,
+    allow_reformatting: bool,
+    parsed: Option<P>,
+}
+
+impl<M: Marshallable> std::ops::Deref for FsEditor<M> {
+    type Target = M;
+
+    fn deref(&self) -> &Self::Target {
+        self.parsed.as_ref().unwrap()
+    }
+}
+
+impl<M: Marshallable> std::ops::DerefMut for FsEditor<M> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.parsed.as_mut().unwrap()
+    }
+}
+
+impl<P: Marshallable> FsEditor<P> {
+    pub fn from_env(
+        path: &std::path::Path,
+        allow_generated: bool,
+        allow_reformatting: Option<bool>,
+    ) -> Self {
+        let allow_reformatting = allow_reformatting.unwrap_or_else(|| {
+            std::env::var("REFORMATTING").unwrap_or("disallow".to_string()) == "allow"
+        });
+
+        Self {
+            path: path.to_path_buf(),
+            orig_content: None,
+            rewritten_content: None,
+            allow_generated,
+            allow_reformatting,
+            parsed: None,
+        }
+    }
+
+    /// Read the file contents and parse them
+    fn read(&mut self) -> Result<(), EditorError> {
+        self.orig_content = match std::fs::read(&self.path) {
+            Ok(c) => Some(c),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+            Err(e) => return Err(e.into()),
+        };
+        self.parsed = match self.orig_content.as_deref() {
+            Some(content) => Some(P::parse(content)),
+            None => Some(P::missing()),
+        };
+        self.rewritten_content = self.orig_content.clone();
+        Ok(())
+    }
+
+    pub fn new(
+        path: &std::path::Path,
+        allow_generated: bool,
+        allow_reformatting: bool,
+    ) -> Result<Self, EditorError> {
+        let mut ret = Self {
+            path: path.to_path_buf(),
+            orig_content: None,
+            rewritten_content: None,
+            allow_generated,
+            allow_reformatting,
+            parsed: None,
+        };
+        ret.read()?;
+        Ok(ret)
+    }
+
+    fn updated_content(&self) -> Option<Vec<u8>> {
+        self.parsed.as_ref().unwrap().format()
+    }
+
+    pub fn finish(&self) -> Result<Vec<&std::path::Path>, EditorError> {
+        let updated_content = self.updated_content();
+
+        if let Some(updated_content) = updated_content {
+            let changed = edit_formatted_file(
+                &self.path,
+                self.orig_content.as_deref(),
+                self.rewritten_content.as_deref(),
+                Some(updated_content.as_slice()),
+                self.allow_generated,
+                self.allow_reformatting,
+            )?;
+            if changed {
+                Ok(vec![&self.path])
+            } else {
+                Ok(vec![])
+            }
+        } else if self.path.exists() {
+            std::fs::remove_file(&self.path)?;
+            Ok(vec![&self.path])
+        } else {
+            Ok(vec![])
+        }
+    }
+
+    /// Check if any changes have been made so far
+    pub fn has_changed(&self) -> bool {
+        let updated_content = self.updated_content();
+        updated_content != self.rewritten_content && updated_content != self.orig_content
+    }
 }
 
 #[cfg(test)]
@@ -490,5 +607,107 @@ mod tests {
             .unwrap_err(),
             EditorError::FormattingUnpreservable(FormattingUnpreservable { .. })
         ));
+    }
+
+    struct TestMarshall {
+        data: Option<usize>,
+    }
+
+    impl TestMarshall {
+        fn new(data: usize) -> Self {
+            Self { data: Some(data) }
+        }
+
+        fn set_data(&mut self, data: usize) {
+            self.data = Some(data);
+        }
+
+        fn get_data(&self) -> Option<usize> {
+            self.data
+        }
+
+        fn unset_data(&mut self) {
+            self.data = None;
+        }
+
+        fn inc_data(&mut self) {
+            match &mut self.data {
+                Some(x) => *x += 1,
+                None => self.data = Some(1),
+            }
+        }
+    }
+
+    impl Marshallable for TestMarshall {
+        fn parse(content: &[u8]) -> Self {
+            let data = std::str::from_utf8(content).unwrap().parse().unwrap();
+            Self { data: Some(data) }
+        }
+
+        fn missing() -> Self {
+            Self { data: None }
+        }
+
+        fn format(&self) -> Option<Vec<u8>> {
+            self.data.map(|x| x.to_string().into_bytes())
+        }
+    }
+
+    #[test]
+    fn test_edit_create_file() {
+        let td = tempfile::tempdir().unwrap();
+
+        let mut editor = FsEditor::<TestMarshall>::new(&td.path().join("a"), false, false).unwrap();
+        assert!(!editor.has_changed());
+        editor.inc_data();
+        assert_eq!(editor.get_data(), Some(1));
+        assert!(editor.has_changed());
+        assert_eq!(editor.finish().unwrap(), vec![&td.path().join("a")]);
+        assert_eq!(editor.get_data(), Some(1));
+
+        assert_eq!("1", std::fs::read_to_string(td.path().join("a")).unwrap());
+    }
+
+    #[test]
+    fn test_edit_create_no_changes() {
+        let td = tempfile::tempdir().unwrap();
+
+        let editor = FsEditor::<TestMarshall>::new(&td.path().join("a"), false, false).unwrap();
+        assert!(!editor.has_changed());
+        assert_eq!(editor.finish().unwrap(), Vec::<&std::path::Path>::new());
+        assert_eq!(editor.get_data(), None);
+        assert!(!td.path().join("a").exists());
+    }
+
+    #[test]
+    fn test_edit_change() {
+        let td = tempfile::tempdir().unwrap();
+        std::fs::write(td.path().join("a"), "1").unwrap();
+
+        let mut editor = FsEditor::<TestMarshall>::new(&td.path().join("a"), false, false).unwrap();
+        assert!(!editor.has_changed());
+        editor.inc_data();
+        assert_eq!(editor.get_data(), Some(2));
+        assert!(editor.has_changed());
+        assert_eq!(editor.finish().unwrap(), vec![&td.path().join("a")]);
+        assert_eq!(editor.get_data(), Some(2));
+
+        assert_eq!("2", std::fs::read_to_string(td.path().join("a")).unwrap());
+    }
+
+    #[test]
+    fn test_edit_delete() {
+        let td = tempfile::tempdir().unwrap();
+        std::fs::write(td.path().join("a"), "1").unwrap();
+
+        let mut editor = FsEditor::<TestMarshall>::new(&td.path().join("a"), false, false).unwrap();
+        assert!(!editor.has_changed());
+        editor.unset_data();
+        assert_eq!(editor.get_data(), None);
+        assert!(editor.has_changed());
+        assert_eq!(editor.finish().unwrap(), vec![&td.path().join("a")]);
+        assert_eq!(editor.get_data(), None);
+
+        assert!(!td.path().join("a").exists());
     }
 }
