@@ -1,4 +1,4 @@
-use debian_control::relations::{Entry, Relation, VersionConstraint};
+use debian_control::relations::{Entry, Relation, Relations, VersionConstraint};
 
 /// Check if one dependency is implied by another.
 ///
@@ -80,6 +80,34 @@ pub fn is_relation_implied(inner: &Entry, outer: &Entry) -> bool {
     }
 
     false
+}
+
+/// Ensure that a relation exists.
+///
+/// This is done by either verifying that there is an existing
+/// relation that satisfies the specified relation, or
+/// by upgrading an existing relation.
+pub fn ensure_relation(rels: &mut Relations, newrel: Entry) {
+    let mut obsolete = vec![];
+    for (i, relation) in rels.entries().enumerate() {
+        if is_relation_implied(&newrel, &relation) {
+            // The new relation is already implied by an existing one.
+            return;
+        }
+        if is_relation_implied(&relation, &newrel) {
+            obsolete.push(i);
+        }
+    }
+
+    if let Some(pos) = obsolete.pop() {
+        rels.replace(pos, newrel);
+    } else {
+        rels.push(newrel);
+    }
+
+    for i in obsolete.into_iter().rev() {
+        rels.remove(i);
+    }
 }
 
 #[cfg(test)]
@@ -192,5 +220,49 @@ mod tests {
                 "python3:any | python3-dev:any"
             ));
         }
+    }
+
+    #[test]
+    fn test_ensure_relation() {
+        let mut rels: Relations = "".parse().unwrap();
+        let rel = Relation::simple("foo");
+        ensure_relation(&mut rels, rel.into());
+        assert_eq!("foo", rels.to_string());
+    }
+
+    #[test]
+    fn test_ensure_relation_upgrade() {
+        let mut rels = "foo".parse().unwrap();
+        let newrel: Entry = Relation::new(
+            "foo",
+            Some((VersionConstraint::Equal, "1.0".parse().unwrap())),
+        )
+        .into();
+        ensure_relation(&mut rels, newrel);
+        assert_eq!("foo (= 1.0)", rels.to_string());
+    }
+
+    #[test]
+    fn test_ensure_relation_new() {
+        let mut rels = "bar (= 1.0)".parse().unwrap();
+        let newrel: Entry = Relation::new(
+            "foo",
+            Some((VersionConstraint::Equal, "2.0".parse().unwrap())),
+        )
+        .into();
+        ensure_relation(&mut rels, newrel);
+        assert_eq!("bar (= 1.0), foo (= 2.0)", rels.to_string());
+    }
+
+    #[test]
+    fn test_drops_obsolete() {
+        let mut rels = "bar (= 1.0), foo (>= 2.0), foo (>= 1.0)".parse().unwrap();
+        let newrel: Entry = Relation::new(
+            "foo",
+            Some((VersionConstraint::GreaterThanEqual, "3.0".parse().unwrap())),
+        )
+        .into();
+        ensure_relation(&mut rels, newrel);
+        assert_eq!("bar (= 1.0), foo (>= 3.0)", rels.to_string());
     }
 }
