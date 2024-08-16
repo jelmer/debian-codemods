@@ -1,3 +1,5 @@
+use crate::editor::{Editor, EditorError, FsEditor};
+use crate::relations::{ensure_relation, is_relation_implied};
 use std::path::{Path, PathBuf};
 
 /// Format a description based on summary and long description lines.
@@ -39,7 +41,27 @@ enum TemplateType {
 enum TemplateExpansionError {
     Failed(String),
     ExpandCommandMissing(String),
-    UnknownTemplating(PathBuf, PathBuf),
+    UnknownTemplating(PathBuf, Option<PathBuf>),
+    Conflict(ChangeConflict),
+}
+
+impl From<EditorError> for TemplateExpansionError {
+    fn from(e: EditorError) -> Self {
+        match e {
+            EditorError::IoError(e) => TemplateExpansionError::Failed(format!("IO error: {}", e)),
+            EditorError::BrzError(e) => TemplateExpansionError::Failed(format!("Bzr error: {}", e)),
+            EditorError::GeneratedFile(p, _e) => TemplateExpansionError::UnknownTemplating(p, None),
+            EditorError::FormattingUnpreservable(p, _e) => {
+                TemplateExpansionError::UnknownTemplating(p, None)
+            }
+        }
+    }
+}
+
+impl From<ChangeConflict> for TemplateExpansionError {
+    fn from(e: ChangeConflict) -> Self {
+        TemplateExpansionError::Conflict(e)
+    }
 }
 
 impl std::fmt::Display for TemplateExpansionError {
@@ -50,13 +72,18 @@ impl std::fmt::Display for TemplateExpansionError {
                 write!(f, "Command not found: {}", s)
             }
             TemplateExpansionError::UnknownTemplating(p1, p2) => {
-                write!(
-                    f,
-                    "Unknown templating: {} -> {}",
-                    p1.display(),
-                    p2.display()
-                )
+                if let Some(p2) = p2 {
+                    write!(
+                        f,
+                        "Unknown templating: {} -> {}",
+                        p1.display(),
+                        p2.display()
+                    )
+                } else {
+                    write!(f, "Unknown templating: {}", p1.display())
+                }
             }
+            TemplateExpansionError::Conflict(c) => write!(f, "Conflict: {}", c),
         }
     }
 }
@@ -213,9 +240,152 @@ fn expand_control_template(
         TemplateType::Debcargo => unreachable!(),
         TemplateType::Directory => Err(TemplateExpansionError::UnknownTemplating(
             path.to_path_buf(),
-            template_path.to_path_buf(),
+            Some(template_path.to_path_buf()),
         )),
     }
+}
+
+#[derive(Debug, Clone)]
+struct Deb822Changes(
+    std::collections::HashMap<(String, String), Vec<(String, Option<String>, Option<String>)>>,
+);
+
+fn update_control_template(
+    template_path: &std::path::Path,
+    path: &std::path::Path,
+    changes: Deb822Changes,
+    expand_template: bool,
+) -> Result<bool, TemplateExpansionError> {
+    let template_type = guess_template_type(template_path, Some(path.parent().unwrap()));
+
+    match template_type {
+        Some(TemplateType::Directory) => {
+            // We can't handle these yet
+            return Err(TemplateExpansionError::UnknownTemplating(
+                path.to_path_buf(),
+                Some(template_path.to_path_buf()),
+            ));
+        }
+        None => {
+            return Err(TemplateExpansionError::UnknownTemplating(
+                path.to_path_buf(),
+                Some(template_path.to_path_buf()),
+            ));
+        }
+        _ => {}
+    }
+
+    let mut editor = FsEditor::<deb822_lossless::Deb822>::new(template_path, false, false).unwrap();
+
+    let resolve_conflict = match template_type {
+        Some(TemplateType::Cdbs) => Some(resolve_cdbs_template as ResolveDeb822Conflict),
+        _ => None,
+    };
+
+    apply_changes(&mut editor, changes.clone(), resolve_conflict)?;
+
+    if !editor.has_changed() {
+        // A bit odd, since there were changes to the output file. Anyway.
+        return Ok(false);
+    }
+
+    editor.commit()?;
+
+    if expand_template {
+        match template_type {
+            Some(TemplateType::Cdbs) => {
+                let mut editor =
+                    FsEditor::<deb822_lossless::Deb822>::new(path, true, false).unwrap();
+                apply_changes(&mut editor, changes, None)?;
+            }
+            _ => {
+                expand_control_template(template_path, path, template_type.unwrap())?;
+            }
+        }
+    }
+
+    Ok(true)
+}
+
+#[derive(Debug)]
+pub struct ChangeConflict {
+    para_key: (String, String),
+    field: String,
+    actual_old_value: Option<String>,
+    template_old_value: Option<String>,
+    actual_new_value: Option<String>,
+}
+
+impl std::fmt::Display for ChangeConflict {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}/{}: {} -> {} (template: {})",
+            self.para_key.0,
+            self.para_key.1,
+            self.actual_old_value.as_deref().unwrap_or(""),
+            self.actual_new_value.as_deref().unwrap_or(""),
+            self.template_old_value.as_deref().unwrap_or("")
+        )
+    }
+}
+
+impl std::error::Error for ChangeConflict {}
+
+type ResolveDeb822Conflict = fn(
+    para_key: (&str, &str),
+    field: &str,
+    actual_old_value: Option<&str>,
+    template_old_value: Option<&str>,
+    actual_new_value: Option<&str>,
+) -> Result<Option<String>, ChangeConflict>;
+
+fn resolve_cdbs_template(
+    para_key: (&str, &str),
+    field: &str,
+    actual_old_value: Option<&str>,
+    template_old_value: Option<&str>,
+    actual_new_value: Option<&str>,
+) -> Result<Option<String>, ChangeConflict> {
+    if para_key.0 == "Source"
+        && field == "Build-Depends"
+        && template_old_value.is_some()
+        && actual_old_value.is_some()
+        && actual_new_value.is_some()
+    {
+        if actual_new_value
+            .unwrap()
+            .contains(actual_old_value.unwrap())
+        {
+            // We're simply adding to the existing list
+            return Ok(Some(
+                actual_new_value
+                    .unwrap()
+                    .replace(actual_old_value.unwrap(), template_old_value.unwrap()),
+            ));
+        } else {
+            let old_rels: debian_control::relations::Relations =
+                actual_old_value.unwrap().parse().unwrap();
+            let new_rels: debian_control::relations::Relations =
+                actual_new_value.unwrap().parse().unwrap();
+            let mut ret: debian_control::relations::Relations =
+                template_old_value.unwrap().parse().unwrap();
+            for v in new_rels.entries() {
+                if old_rels.entries().any(|r| is_relation_implied(&v, &r)) {
+                    continue;
+                }
+                ensure_relation(&mut ret, v);
+            }
+            return Ok(Some(ret.to_string()));
+        }
+    }
+    Err(ChangeConflict {
+        para_key: (para_key.0.to_string(), para_key.1.to_string()),
+        field: field.to_string(),
+        actual_old_value: actual_old_value.map(|v| v.to_string()),
+        template_old_value: template_old_value.map(|v| v.to_string()),
+        actual_new_value: actual_new_value.map(|s| s.to_string()),
+    })
 }
 
 /// Guess the type for a control template.
@@ -298,4 +468,71 @@ pub fn guess_template_type(
         }
     }
     None
+}
+
+/// Apply a set of changes to this deb822 instance.
+///
+/// # Arguments
+/// * `changes` - Changes to apply
+/// * `resolve_conflict` - Callback to resolve conflicts
+pub fn apply_changes(
+    deb822: &mut deb822_lossless::Deb822,
+    mut changes: Deb822Changes,
+    resolve_conflict: Option<ResolveDeb822Conflict>,
+) -> Result<(), ChangeConflict> {
+    fn default_resolve_conflict(
+        para_key: (&str, &str),
+        field: &str,
+        actual_old_value: Option<&str>,
+        template_old_value: Option<&str>,
+        actual_new_value: Option<&str>,
+    ) -> Result<Option<String>, ChangeConflict> {
+        Err(ChangeConflict {
+            para_key: (para_key.0.to_string(), para_key.1.to_string()),
+            field: field.to_string(),
+            actual_old_value: actual_old_value.map(|v| v.to_string()),
+            template_old_value: template_old_value.map(|v| v.to_string()),
+            actual_new_value: actual_new_value.map(|s| s.to_string()),
+        })
+    }
+
+    let resolve_conflict = resolve_conflict.unwrap_or(default_resolve_conflict);
+
+    for mut paragraph in deb822.paragraphs() {
+        for item in paragraph.items().collect::<Vec<_>>() {
+            for (key, old_value, mut new_value) in changes.0.remove(&item).unwrap_or_default() {
+                if paragraph.get(&key) != old_value {
+                    new_value = resolve_conflict(
+                        (&item.0, &item.1),
+                        &key,
+                        old_value.as_deref(),
+                        paragraph.get(&key).as_deref(),
+                        new_value.as_deref(),
+                    )?;
+                }
+                if let Some(new_value) = new_value.as_ref() {
+                    paragraph.insert(&key, new_value);
+                } else {
+                    paragraph.remove(&key);
+                }
+            }
+        }
+    }
+    // Add any new paragraphs that weren't processed earlier
+    for (key, p) in changes.0.drain() {
+        let mut paragraph = deb822.add_paragraph();
+        for (field, old_value, mut new_value) in p {
+            new_value = resolve_conflict(
+                (&key.0, &key.1),
+                &field,
+                old_value.as_deref(),
+                None,
+                new_value.as_deref(),
+            )?;
+            if let Some(new_value) = new_value {
+                paragraph.insert(&field, &new_value);
+            }
+        }
+    }
+    Ok(())
 }
