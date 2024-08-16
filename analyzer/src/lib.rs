@@ -3,7 +3,6 @@ use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::{MutableTree, Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::reset_tree_with_dirty_tracker;
-use debian_changelog::ChangeLog;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
@@ -18,6 +17,7 @@ pub mod detect_gbp_dch;
 pub mod editor;
 pub mod patches;
 pub mod publish;
+pub mod relations;
 pub mod release_info;
 pub mod salsa;
 pub mod svp;
@@ -191,7 +191,7 @@ pub fn add_changelog_entry(
     changelog_path: &std::path::Path,
     entry: &[&str],
 ) -> Result<(), crate::editor::EditorError> {
-    use crate::editor::{Editor, EditorError, MutableTreeEdit};
+    use crate::editor::{Editor, MutableTreeEdit};
     let mut cl =
         working_tree.edit_file::<debian_changelog::ChangeLog>(changelog_path, false, true)?;
 

@@ -185,7 +185,7 @@ pub fn tree_check_generated_file(
         }
     }
 
-    match tree.get_file(&path) {
+    match tree.get_file(path) {
         Ok(f) => {
             let mut buf = std::io::BufReader::new(f);
             check_generated_contents(&mut buf)?;
