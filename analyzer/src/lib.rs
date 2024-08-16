@@ -21,6 +21,7 @@ pub mod relations;
 pub mod release_info;
 pub mod salsa;
 pub mod svp;
+pub mod vendor;
 pub mod vcs;
 
 // TODO(jelmer): Import this from ognibuild
