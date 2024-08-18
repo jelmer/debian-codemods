@@ -149,7 +149,7 @@ checksum = "51dc76136916f092fc9889250f141cd6f99fcaf4953a5385002037b512189254"
 dependencies = [
  "chrono",
  "ctor",
- "debian-control 0.1.18",
+ "debian-control 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "debversion",
  "dirty-tracker",
  "lazy-regex",
@@ -346,9 +346,9 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.1.20"
+version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab22e08b3d0977bcdfc26dd6434fdff6e5d0d98eafce9b1bd30b6aeaf2985225"
+checksum = "5558bfd2d6f1344651e7121a11d1f939cf35c15a2e4a788b2f4033b55ed5ddb4"
 dependencies = [
  "pyo3",
  "regex",
@@ -358,8 +358,8 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.1.20"
-source = "git+https://github.com/jelmer/deb822-lossless#45fe723dbda434ba505bb7cc999f2bd38284010f"
+version = "0.1.21"
+source = "git+https://github.com/jelmer/deb822-lossless#541028e5fdbfbb359904229aa2c72e06dbe11fed"
 dependencies = [
  "regex",
  "rowan",
@@ -374,9 +374,9 @@ dependencies = [
  "chrono",
  "clap",
  "configparser",
- "deb822-lossless 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "deb822-lossless 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "debian-changelog",
- "debian-control 0.1.20",
+ "debian-control 0.1.21 (git+https://github.com/jelmer/deb822-lossless)",
  "debian-copyright",
  "debversion",
  "dep3",
@@ -416,11 +416,11 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.18"
+version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce8a0b4ae16c79a9320638edbf142b395c967b19773c0c5c4f263d4f523836bc"
+checksum = "88e5e4c5fd4ccbba8d350aff558543f2245b5f344870d95e38f82984d0477830"
 dependencies = [
- "deb822-lossless 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "deb822-lossless 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "debversion",
  "pyo3",
  "regex",
@@ -430,10 +430,10 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.20"
-source = "git+https://github.com/jelmer/deb822-lossless#45fe723dbda434ba505bb7cc999f2bd38284010f"
+version = "0.1.21"
+source = "git+https://github.com/jelmer/deb822-lossless#541028e5fdbfbb359904229aa2c72e06dbe11fed"
 dependencies = [
- "deb822-lossless 0.1.20 (git+https://github.com/jelmer/deb822-lossless)",
+ "deb822-lossless 0.1.21 (git+https://github.com/jelmer/deb822-lossless)",
  "debversion",
  "regex",
  "rowan",
@@ -446,7 +446,7 @@ version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "932841dfa0330c99ba781a7e57643e308dd95db04b96486d8171c827f1713304"
 dependencies = [
- "deb822-lossless 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "deb822-lossless 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "debversion",
  "regex",
 ]
@@ -497,7 +497,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a755dbddee2d3a2af806ad7a305bda8630891ac4b2edbe354b0243c2ef867ec3"
 dependencies = [
  "chrono",
- "deb822-lossless 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "deb822-lossless 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

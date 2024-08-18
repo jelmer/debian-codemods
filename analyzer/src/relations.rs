@@ -1,4 +1,5 @@
 use debian_control::relations::{Entry, Relation, Relations, VersionConstraint};
+use debversion::Version;
 
 /// Check if one dependency is implied by another.
 ///
@@ -108,6 +109,142 @@ pub fn ensure_relation(rels: &mut Relations, newrel: Entry) {
     for i in obsolete.into_iter().rev() {
         rels.remove(i);
     }
+}
+
+/// Update a relation string to ensure a particular version is required.
+///
+/// # Arguments
+/// * `relations` - Package relation
+/// * `package` - Package name
+/// * `minimum_version` - Minimum version
+///
+/// # Returns
+/// True if the relation was changed
+pub fn ensure_minimum_version(
+    relations: &mut Relations,
+    package: &str,
+    minimum_version: &Version,
+) -> bool {
+    let is_obsolete = |entry: &Entry| -> bool {
+        for r in entry.relations() {
+            if r.name() != package {
+                continue;
+            }
+            if let Some((vc, v)) = r.version().as_ref() {
+                if *vc == VersionConstraint::GreaterThan && v < minimum_version {
+                    return true;
+                }
+                if *vc == VersionConstraint::GreaterThanEqual && v <= minimum_version {
+                    return true;
+                }
+            }
+        }
+        false
+    };
+
+    let mut found = false;
+    let mut changed = false;
+    let mut obsolete_relations = vec![];
+    let mut relevant_relations = vec![];
+    for (i, entry) in relations.entries().enumerate() {
+        let names = entry
+            .relations()
+            .map(|r| r.name().to_string())
+            .collect::<Vec<_>>();
+        if names.len() > 1 && names.contains(&package.to_string()) && is_obsolete(&entry) {
+            obsolete_relations.push(i);
+        }
+        if names != [package] {
+            continue;
+        }
+        found = true;
+        if entry
+            .relations()
+            .next()
+            .and_then(|r| r.version())
+            .map(|(_vc, v)| &v < minimum_version)
+            .unwrap_or(false)
+        {
+            relevant_relations.push(i);
+        }
+    }
+    if !found {
+        changed = true;
+        relations.push(
+            Relation::new(
+                package,
+                Some((VersionConstraint::GreaterThanEqual, minimum_version.clone())),
+            )
+            .into(),
+        );
+    } else {
+        for i in relevant_relations.into_iter().rev() {
+            relations.replace(
+                i,
+                Relation::new(
+                    package,
+                    Some((VersionConstraint::GreaterThanEqual, minimum_version.clone())),
+                )
+                .into(),
+            );
+            changed = true;
+        }
+    }
+    for i in obsolete_relations.into_iter().rev() {
+        relations.remove(i);
+    }
+    changed
+}
+
+/// Update a relation string to depend on a specific version.
+///
+/// # Arguments
+/// * `relation` - Package relations
+/// * `package` - Package name
+/// * `version` - Exact version to depend on
+/// * `position` - Optional position in the list to insert any new entries
+pub fn ensure_exact_version(
+    relations: &mut Relations,
+    package: &str,
+    version: &Version,
+    position: Option<usize>,
+) -> bool {
+    let mut changed = false;
+    let mut found = vec![];
+
+    for (i, entry) in relations.entries().enumerate() {
+        let names = entry
+            .relations()
+            .map(|r| r.name().to_string())
+            .collect::<Vec<_>>();
+        if names != [package] {
+            continue;
+        }
+        let relation = entry.relations().next().unwrap();
+        if relation.version().map_or(true, |(vc, v)| {
+            vc != VersionConstraint::Equal || &v != version
+        }) {
+            found.push(i);
+        }
+    }
+    if found.is_empty() {
+        changed = true;
+        let relation = Relation::new(package, Some((VersionConstraint::Equal, version.clone())));
+        if let Some(position) = position {
+            relations.insert(position, relation.into());
+        } else {
+            relations.push(relation.into());
+        }
+    } else {
+        for i in found.into_iter().rev() {
+            relations.replace(
+                i,
+                Relation::new(package, Some((VersionConstraint::Equal, version.clone()))).into(),
+            );
+            changed = true;
+        }
+    }
+    changed
 }
 
 #[cfg(test)]
@@ -273,5 +410,47 @@ mod tests {
 
         ensure_relation(&mut rels, newrel);
         assert_eq!("@cdbs@, debhelper (>= 9), foo", rels.to_string());
+    }
+
+    #[test]
+    fn test_ensure_minimum_version() {
+        let mut rels = "".parse().unwrap();
+        ensure_minimum_version(&mut rels, "foo", &"1.0".parse().unwrap());
+        assert_eq!("foo (>= 1.0)", rels.to_string());
+    }
+
+    #[test]
+    fn test_ensure_minimum_version_upgrade() {
+        let mut rels = "foo (>= 1.0)".parse().unwrap();
+        ensure_minimum_version(&mut rels, "foo", &"2.0".parse().unwrap());
+        assert_eq!("foo (>= 2.0)", rels.to_string());
+    }
+
+    #[test]
+    fn test_ensure_minimum_version_upgrade_with_or() {
+        let mut rels = "foo (>= 1.0) | bar".parse().unwrap();
+        ensure_minimum_version(&mut rels, "foo", &"2.0".parse().unwrap());
+        assert_eq!("foo (>= 2.0)", rels.to_string());
+    }
+
+    #[test]
+    fn test_ensure_exact_version() {
+        let mut rels = "".parse().unwrap();
+        ensure_exact_version(&mut rels, "foo", &"1.0".parse().unwrap(), None);
+        assert_eq!("foo (= 1.0)", rels.to_string());
+    }
+
+    #[test]
+    fn test_ensure_exact_version_upgrade() {
+        let mut rels = "foo (= 1.0)".parse().unwrap();
+        ensure_exact_version(&mut rels, "foo", &"2.0".parse().unwrap(), None);
+        assert_eq!("foo (= 2.0)", rels.to_string());
+    }
+
+    #[test]
+    fn test_ensure_exact_version_upgrade_with_position() {
+        let mut rels = "foo (= 1.0)".parse().unwrap();
+        ensure_exact_version(&mut rels, "foo", &"2.0".parse().unwrap(), Some(0));
+        assert_eq!("foo (= 2.0)", rels.to_string());
     }
 }
