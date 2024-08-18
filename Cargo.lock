@@ -149,7 +149,7 @@ checksum = "51dc76136916f092fc9889250f141cd6f99fcaf4953a5385002037b512189254"
 dependencies = [
  "chrono",
  "ctor",
- "debian-control 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "debian-control 0.1.18",
  "debversion",
  "dirty-tracker",
  "lazy-regex",
@@ -242,7 +242,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.74",
+ "syn 2.0.75",
 ]
 
 [[package]]
@@ -341,14 +341,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edb49164822f3ee45b17acd4a208cfc1251410cf0cad9a833234c9890774dd9f"
 dependencies = [
  "quote",
- "syn 2.0.74",
+ "syn 2.0.75",
 ]
 
 [[package]]
 name = "deb822-lossless"
-version = "0.1.14"
+version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11973bdcad319fa3957d75f85c1f85b26b4a5c9f4cf1db350e2dbf58be392e80"
+checksum = "ab22e08b3d0977bcdfc26dd6434fdff6e5d0d98eafce9b1bd30b6aeaf2985225"
 dependencies = [
  "pyo3",
  "regex",
@@ -358,8 +358,8 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.1.18"
-source = "git+https://github.com/jelmer/deb822-lossless#4bc661ebc5b50b020f397b6d41a0dedadd7ce4c8"
+version = "0.1.20"
+source = "git+https://github.com/jelmer/deb822-lossless#45fe723dbda434ba505bb7cc999f2bd38284010f"
 dependencies = [
  "regex",
  "rowan",
@@ -374,9 +374,9 @@ dependencies = [
  "chrono",
  "clap",
  "configparser",
- "deb822-lossless 0.1.14",
+ "deb822-lossless 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "debian-changelog",
- "debian-control 0.1.18 (git+https://github.com/jelmer/deb822-lossless)",
+ "debian-control 0.1.20",
  "debian-copyright",
  "debversion",
  "dep3",
@@ -420,7 +420,7 @@ version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce8a0b4ae16c79a9320638edbf142b395c967b19773c0c5c4f263d4f523836bc"
 dependencies = [
- "deb822-lossless 0.1.14",
+ "deb822-lossless 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "debversion",
  "pyo3",
  "regex",
@@ -430,10 +430,10 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.18"
-source = "git+https://github.com/jelmer/deb822-lossless#4bc661ebc5b50b020f397b6d41a0dedadd7ce4c8"
+version = "0.1.20"
+source = "git+https://github.com/jelmer/deb822-lossless#45fe723dbda434ba505bb7cc999f2bd38284010f"
 dependencies = [
- "deb822-lossless 0.1.18",
+ "deb822-lossless 0.1.20 (git+https://github.com/jelmer/deb822-lossless)",
  "debversion",
  "regex",
  "rowan",
@@ -446,7 +446,7 @@ version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "932841dfa0330c99ba781a7e57643e308dd95db04b96486d8171c827f1713304"
 dependencies = [
- "deb822-lossless 0.1.14",
+ "deb822-lossless 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "debversion",
  "regex",
 ]
@@ -497,7 +497,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a755dbddee2d3a2af806ad7a305bda8630891ac4b2edbe354b0243c2ef867ec3"
 dependencies = [
  "chrono",
- "deb822-lossless 0.1.14",
+ "deb822-lossless 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1041,7 +1041,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "syn 2.0.74",
+ "syn 2.0.75",
 ]
 
 [[package]]
@@ -1052,9 +1052,9 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "libc"
-version = "0.2.156"
+version = "0.2.157"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5f43f184355eefb8d17fc948dbecf6c13be3c141f20d834ae842193a448c72a"
+checksum = "374af5f94e54fa97cf75e945cce8a6b201e88a1a07e688b47dfd2a59c66dbd86"
 
 [[package]]
 name = "libredox"
@@ -1339,7 +1339,7 @@ checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.74",
+ "syn 2.0.75",
 ]
 
 [[package]]
@@ -1396,7 +1396,7 @@ checksum = "2f38a4412a78282e09a2cf38d195ea5420d15ba0602cb375210efbc877243965"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.74",
+ "syn 2.0.75",
 ]
 
 [[package]]
@@ -1501,7 +1501,7 @@ dependencies = [
  "proc-macro2",
  "pyo3-macros-backend",
  "quote",
- "syn 2.0.74",
+ "syn 2.0.75",
 ]
 
 [[package]]
@@ -1514,7 +1514,7 @@ dependencies = [
  "proc-macro2",
  "pyo3-build-config",
  "quote",
- "syn 2.0.74",
+ "syn 2.0.75",
 ]
 
 [[package]]
@@ -1773,7 +1773,7 @@ checksum = "24008e81ff7613ed8e5ba0cfaf24e2c2f1e5b8a0495711e44fcd4882fca62bcf"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.74",
+ "syn 2.0.75",
 ]
 
 [[package]]
@@ -1881,9 +1881,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.74"
+version = "2.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fceb41e3d546d0bd83421d3409b1460cc7444cd389341a4c880fe7a042cb3d7"
+checksum = "f6af063034fc1935ede7be0122941bafa9bacb949334d090b77ca98b5817c7d9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1982,9 +1982,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.39.2"
+version = "1.39.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "daa4fb1bc778bd6f04cbfc4bb2d06a7396a8f299dc33ea1900cedaa316f467b1"
+checksum = "9babc99b9923bfa4804bd74722ff02c0381021eafa4db9949217e3be8e84fff5"
 dependencies = [
  "backtrace",
  "bytes",
@@ -2224,7 +2224,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.74",
+ "syn 2.0.75",
  "wasm-bindgen-shared",
 ]
 
@@ -2258,7 +2258,7 @@ checksum = "afc340c74d9005395cf9dd098506f7f44e38f2b4a21c6aaacf9a105ea5e1e836"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.74",
+ "syn 2.0.75",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]

@@ -1,8 +1,9 @@
 use crate::editor::{Editor, EditorError, FsEditor, GeneratedFile};
-use deb822_lossless::Paragraph;
 use crate::relations::{ensure_relation, is_relation_implied};
-use std::path::{Path, PathBuf};
+use deb822_lossless::Paragraph;
+use debian_control::relations::Relations;
 use std::ops::{Deref, DerefMut};
+use std::path::{Path, PathBuf};
 
 /// Format a description based on summary and long description lines.
 pub fn format_description(summary: &str, long_description: Vec<&str>) -> String {
@@ -13,20 +14,6 @@ pub fn format_description(summary: &str, long_description: Vec<&str>) -> String 
         ret.push('\n');
     }
     ret
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_format_description() {
-        let summary = "Summary";
-        let long_description = vec!["Long", "Description"];
-        let expected = "Summary\n Long\n Description\n";
-        assert_eq!(
-            super::format_description(summary, long_description),
-            expected
-        );
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -253,8 +240,17 @@ impl Deb822Changes {
         Self(std::collections::HashMap::new())
     }
 
-    fn insert(&mut self, para_key: (String, String), field: String, old_value: Option<String>, new_value: Option<String>) {
-        self.0.entry(para_key).or_insert_with(Vec::new).push((field, old_value, new_value));
+    fn insert(
+        &mut self,
+        para_key: (String, String),
+        field: String,
+        old_value: Option<String>,
+        new_value: Option<String>,
+    ) {
+        self.0
+            .entry(para_key)
+            .or_insert_with(Vec::new)
+            .push((field, old_value, new_value));
     }
 }
 
@@ -328,7 +324,7 @@ fn update_control_template(
     Ok(true)
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ChangeConflict {
     para_key: (String, String),
     field: String,
@@ -385,12 +381,13 @@ fn resolve_cdbs_template(
                     .replace(actual_old_value.unwrap(), template_old_value.unwrap()),
             ));
         } else {
-            let old_rels: debian_control::relations::Relations =
-                actual_old_value.unwrap().parse().unwrap();
-            let new_rels: debian_control::relations::Relations =
-                actual_new_value.unwrap().parse().unwrap();
-            let mut ret: debian_control::relations::Relations =
-                template_old_value.unwrap().parse().unwrap();
+            let old_rels: Relations = actual_old_value.unwrap().parse().unwrap();
+            let new_rels: Relations = actual_new_value.unwrap().parse().unwrap();
+            let template_old_value = template_old_value.unwrap();
+            let (mut ret, errors) = Relations::parse_relaxed(template_old_value, true);
+            if !errors.is_empty() {
+                log::debug!("Errors parsing template value: {:?}", errors);
+            }
             for v in new_rels.entries() {
                 if old_rels.entries().any(|r| is_relation_implied(&v, &r)) {
                     continue;
@@ -466,14 +463,14 @@ pub fn guess_template_type(
 
             if build_depends.iter().any(|d| {
                 d.entries()
-                    .any(|e| e.relations().any(|r| r.name() == "pkg-gnome-tools"))
+                    .any(|e| e.relations().any(|r| r.name() == "gnome-pkg-tools"))
             }) {
                 return Some(TemplateType::Gnome);
             }
 
             if build_depends.iter().any(|d| {
                 d.entries()
-                    .any(|e| e.relations().any(|r| r.name() == "postgresql"))
+                    .any(|e| e.relations().any(|r| r.name() == "cdbs"))
             }) {
                 return Some(TemplateType::Cdbs);
             }
@@ -543,13 +540,15 @@ pub fn apply_changes(
     for (key, p) in changes.0.drain() {
         let mut paragraph = deb822.add_paragraph();
         for (field, old_value, mut new_value) in p {
-            new_value = resolve_conflict(
-                (&key.0, &key.1),
-                &field,
-                old_value.as_deref(),
-                None,
-                new_value.as_deref(),
-            )?;
+            if old_value.is_some() {
+                new_value = resolve_conflict(
+                    (&key.0, &key.1),
+                    &field,
+                    old_value.as_deref(),
+                    paragraph.get(&field).as_deref(),
+                    new_value.as_deref(),
+                )?;
+            }
             if let Some(new_value) = new_value {
                 paragraph.insert(&field, &new_value);
             }
@@ -589,22 +588,29 @@ impl DerefMut for FsControlEditor {
 }
 
 impl FsControlEditor {
-    pub fn new<P: AsRef<Path>>(
-        control_path: P,
-    ) -> Result<Self, EditorError> {
+    pub fn new<P: AsRef<Path>>(control_path: P) -> Result<Self, EditorError> {
         let path = control_path.as_ref();
         let mut template_only = false;
         let primary;
         if !path.exists() {
-            let template_path = if let Some(p) = find_template_path(&path) { p } else {
-                return Err(EditorError::IoError(
-                    std::io::Error::new(std::io::ErrorKind::NotFound, "No control file or template found"),
-                ));
+            let template_path = if let Some(p) = find_template_path(&path) {
+                p
+            } else {
+                return Err(EditorError::IoError(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "No control file or template found",
+                )));
             };
             template_only = true;
             let template_type = guess_template_type(&template_path, Some(path.parent().unwrap()));
             if template_type.is_none() {
-                return Err(EditorError::GeneratedFile(path.to_path_buf(), GeneratedFile{ template_path: Some(template_path), template_type: None}));
+                return Err(EditorError::GeneratedFile(
+                    path.to_path_buf(),
+                    GeneratedFile {
+                        template_path: Some(template_path),
+                        template_type: None,
+                    },
+                ));
             }
             match expand_control_template(&template_path, &path, template_type.unwrap()) {
                 Ok(_) => {}
@@ -617,7 +623,7 @@ impl FsControlEditor {
         Ok(Self {
             path: path.to_path_buf(),
             primary,
-            template_only
+            template_only,
         })
     }
 
@@ -626,10 +632,14 @@ impl FsControlEditor {
     /// # Returns
     /// A dictionary mapping tuples of (kind, name) to list of (field_name, old_value, new_value)
     pub fn changes(&self) -> Deb822Changes {
-        let orig = deb822_lossless::Deb822::read_relaxed(self.primary.orig_content().unwrap()).unwrap().0;
+        let orig = deb822_lossless::Deb822::read_relaxed(self.primary.orig_content().unwrap())
+            .unwrap()
+            .0;
         let mut changes = Deb822Changes::new();
 
-        fn by_key(ps: impl Iterator<Item = Paragraph>) -> std::collections::HashMap<(String, String), Paragraph> {
+        fn by_key(
+            ps: impl Iterator<Item = Paragraph>,
+        ) -> std::collections::HashMap<(String, String), Paragraph> {
             let mut ret = std::collections::HashMap::new();
             for p in ps {
                 if let Some(s) = p.get("Source") {
@@ -646,14 +656,21 @@ impl FsControlEditor {
 
         let orig_by_key = by_key(orig.paragraphs());
         let new_by_key = by_key(self.paragraphs());
-        let keys = orig_by_key.keys().chain(new_by_key.keys()).collect::<std::collections::HashSet<_>>();
+        let keys = orig_by_key
+            .keys()
+            .chain(new_by_key.keys())
+            .collect::<std::collections::HashSet<_>>();
         for key in keys {
             let old = orig_by_key.get(key);
             let new = new_by_key.get(key);
             if old == new {
                 continue;
             }
-            let fields = std::collections::HashSet::<String>::from_iter(old.iter().flat_map(|p| p.keys()).chain(new.iter().flat_map(|p| p.keys())));
+            let fields = std::collections::HashSet::<String>::from_iter(
+                old.iter()
+                    .flat_map(|p| p.keys())
+                    .chain(new.iter().flat_map(|p| p.keys())),
+            );
             for field in &fields {
                 let old_val = old.and_then(|x| x.get(&field));
                 let new_val = new.and_then(|x| x.get(&field));
@@ -670,18 +687,34 @@ impl FsControlEditor {
         if self.template_only {
             std::fs::remove_file(&self.path)?;
             changed_files.push(self.path.clone());
-            return Err(EditorError::IoError(std::io::Error::new(std::io::ErrorKind::NotFound, "No control file found")));
+            return Err(EditorError::IoError(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "No control file found",
+            )));
         }
         match self.primary.commit() {
             Ok(files) => {
                 changed_files.extend(files.iter().map(|p| p.to_path_buf()));
             }
-            Err(EditorError::GeneratedFile(p, GeneratedFile{template_path: tp, template_type: tt})) => {
+            Err(EditorError::GeneratedFile(
+                p,
+                GeneratedFile {
+                    template_path: tp,
+                    template_type: tt,
+                },
+            )) => {
                 if tp.is_none() {
-                    return Err(EditorError::GeneratedFile(p, GeneratedFile{template_path: tp, template_type: tt}));
+                    return Err(EditorError::GeneratedFile(
+                        p,
+                        GeneratedFile {
+                            template_path: tp,
+                            template_type: tt,
+                        },
+                    ));
                 }
                 let changes = self.changes();
-                let changed = match update_control_template(&tp.clone().unwrap(), &p, changes, true) {
+                let changed = match update_control_template(&tp.clone().unwrap(), &p, changes, true)
+                {
                     Ok(changed) => changed,
                     Err(e) => return Err(EditorError::TemplateError(tp.unwrap(), e.to_string())),
                 };
@@ -695,9 +728,10 @@ impl FsControlEditor {
                 let template_path = if let Some(p) = find_template_path(&self.path) {
                     p
                 } else {
-                    return Err(EditorError::IoError(
-                        std::io::Error::new(std::io::ErrorKind::NotFound, "No control file or template found"),
-                    ));
+                    return Err(EditorError::IoError(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "No control file or template found",
+                    )));
                 };
                 let changed = match update_control_template(
                     &template_path,
@@ -717,5 +751,470 @@ impl FsControlEditor {
         }
 
         Ok(changed_files)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_description() {
+        let summary = "Summary";
+        let long_description = vec!["Long", "Description"];
+        let expected = "Summary\n Long\n Description\n";
+        assert_eq!(format_description(summary, long_description), expected);
+    }
+
+    #[test]
+    fn test_resolve_cdbs_conflicts() {
+        let val = resolve_cdbs_template(
+            ("Source", "libnetsds-perl"),
+            "Build-Depends",
+            Some("debhelper (>= 6), foo"),
+            Some("@cdbs@, debhelper (>= 9)"),
+            Some("debhelper (>= 10), foo"),
+        )
+        .unwrap();
+
+        assert_eq!(val, Some("@cdbs@, debhelper (>= 10)".to_string()));
+
+        let val = resolve_cdbs_template(
+            ("Source", "libnetsds-perl"),
+            "Build-Depends",
+            Some("debhelper (>= 6), foo"),
+            Some("@cdbs@, foo"),
+            Some("debhelper (>= 10), foo"),
+        )
+        .unwrap();
+        assert_eq!(val, Some("@cdbs@, foo, debhelper (>= 10)".to_string()));
+        let val = resolve_cdbs_template(
+            ("Source", "libnetsds-perl"),
+            "Build-Depends",
+            Some("debhelper (>= 6), foo"),
+            Some("@cdbs@, debhelper (>= 9)"),
+            Some("debhelper (>= 10), foo"),
+        )
+        .unwrap();
+        assert_eq!(val, Some("@cdbs@, debhelper (>= 10)".to_string()));
+    }
+
+    mod guess_template_type {
+
+        #[test]
+        fn test_rules_generates_control() {
+            let td = tempfile::tempdir().unwrap();
+            std::fs::create_dir(td.path().join("debian")).unwrap();
+            std::fs::write(
+                td.path().join("debian/rules"),
+                r#"%:
+	dh $@
+
+debian/control: debian/control.in
+	cp $@ $<
+"#,
+            )
+            .unwrap();
+            assert_eq!(
+                super::guess_template_type(
+                    &td.path().join("debian/control.in"),
+                    Some(&td.path().join("debian"))
+                ),
+                Some(super::TemplateType::Rules)
+            );
+        }
+
+        #[test]
+        fn test_rules_generates_control_percent() {
+            let td = tempfile::tempdir().unwrap();
+            std::fs::create_dir(td.path().join("debian")).unwrap();
+            std::fs::write(
+                td.path().join("debian/rules"),
+                r#"%:
+	dh $@
+
+debian/%: debian/%.in
+	cp $@ $<
+"#,
+            )
+            .unwrap();
+            assert_eq!(
+                super::guess_template_type(
+                    &td.path().join("debian/control.in"),
+                    Some(&td.path().join("debian"))
+                ),
+                Some(super::TemplateType::Rules)
+            );
+        }
+
+        #[test]
+        fn test_rules_generates_control_blends() {
+            let td = tempfile::tempdir().unwrap();
+            std::fs::create_dir(td.path().join("debian")).unwrap();
+            std::fs::write(
+                td.path().join("debian/rules"),
+                r#"%:
+	dh $@
+
+include /usr/share/blends-dev/rules
+"#,
+            )
+            .unwrap();
+            assert_eq!(
+                super::guess_template_type(
+                    &td.path().join("debian/control.stub"),
+                    Some(&td.path().join("debian"))
+                ),
+                Some(super::TemplateType::Rules)
+            );
+        }
+
+        #[test]
+        fn test_empty_template() {
+            let td = tempfile::tempdir().unwrap();
+            std::fs::create_dir(td.path().join("debian")).unwrap();
+            // No paragraph
+            std::fs::write(td.path().join("debian/control.in"), "").unwrap();
+
+            assert_eq!(
+                None,
+                super::guess_template_type(
+                    &td.path().join("debian/control.in"),
+                    Some(&td.path().join("debian"))
+                )
+            );
+        }
+
+        #[test]
+        fn test_build_depends_cdbs() {
+            let td = tempfile::tempdir().unwrap();
+            std::fs::create_dir(td.path().join("debian")).unwrap();
+            std::fs::write(
+                td.path().join("debian/control.in"),
+                r#"Source: blah
+Build-Depends: cdbs
+Vcs-Git: file://
+
+Package: bar
+"#,
+            )
+            .unwrap();
+            assert_eq!(
+                Some(super::TemplateType::Cdbs),
+                super::guess_template_type(
+                    &td.path().join("debian/control.in"),
+                    Some(&td.path().join("debian"))
+                )
+            );
+        }
+
+        #[test]
+        fn test_no_build_depends() {
+            let td = tempfile::tempdir().unwrap();
+            std::fs::create_dir(td.path().join("debian")).unwrap();
+            std::fs::write(
+                td.path().join("debian/control.in"),
+                r#"Source: blah
+Vcs-Git: file://
+
+Package: bar
+"#,
+            )
+            .unwrap();
+            assert_eq!(
+                None,
+                super::guess_template_type(
+                    &td.path().join("debian/control.in"),
+                    Some(&td.path().join("debian"))
+                )
+            );
+        }
+
+        #[test]
+        fn test_gnome() {
+            let td = tempfile::tempdir().unwrap();
+            std::fs::create_dir(td.path().join("debian")).unwrap();
+            std::fs::write(
+                td.path().join("debian/control.in"),
+                r#"Foo @GNOME_TEAM@
+"#,
+            )
+            .unwrap();
+            assert_eq!(
+                Some(super::TemplateType::Gnome),
+                super::guess_template_type(
+                    &td.path().join("debian/control.in"),
+                    Some(&td.path().join("debian"))
+                )
+            );
+        }
+
+        #[test]
+        fn test_gnome_build_depends() {
+            let td = tempfile::tempdir().unwrap();
+            std::fs::create_dir(td.path().join("debian")).unwrap();
+            std::fs::write(
+                td.path().join("debian/control.in"),
+                r#"Source: blah
+Build-Depends: gnome-pkg-tools, libc6-dev
+"#,
+            )
+            .unwrap();
+            assert_eq!(
+                Some(super::TemplateType::Gnome),
+                super::guess_template_type(
+                    &td.path().join("debian/control.in"),
+                    Some(&td.path().join("debian"))
+                )
+            );
+        }
+
+        #[test]
+        fn test_cdbs() {
+            let td = tempfile::tempdir().unwrap();
+            std::fs::create_dir(td.path().join("debian")).unwrap();
+            std::fs::write(
+                td.path().join("debian/control.in"),
+                r#"Source: blah
+Build-Depends: debhelper, cdbs
+"#,
+            )
+            .unwrap();
+            assert_eq!(
+                Some(super::TemplateType::Cdbs),
+                super::guess_template_type(
+                    &td.path().join("debian/control.in"),
+                    Some(&td.path().join("debian"))
+                )
+            );
+        }
+
+        #[test]
+        fn test_multiple_paragraphs() {
+            let td = tempfile::tempdir().unwrap();
+            std::fs::create_dir(td.path().join("debian")).unwrap();
+            std::fs::write(
+                td.path().join("debian/control.in"),
+                r#"Source: blah
+Build-Depends: debhelper, cdbs
+
+Package: foo
+"#,
+            )
+            .unwrap();
+            assert_eq!(
+                Some(super::TemplateType::Cdbs),
+                super::guess_template_type(
+                    &td.path().join("debian/control.in"),
+                    Some(&td.path().join("debian"))
+                )
+            );
+        }
+
+        #[test]
+        fn test_directory() {
+            let td = tempfile::tempdir().unwrap();
+            std::fs::create_dir(td.path().join("debian")).unwrap();
+            std::fs::create_dir(td.path().join("debian/control.in")).unwrap();
+            assert_eq!(
+                Some(super::TemplateType::Directory),
+                super::guess_template_type(
+                    &td.path().join("debian/control.in"),
+                    Some(&td.path().join("debian"))
+                )
+            );
+        }
+
+        #[test]
+        fn test_debcargo() {
+            let td = tempfile::tempdir().unwrap();
+            std::fs::create_dir(td.path().join("debian")).unwrap();
+            std::fs::write(
+                td.path().join("debian/control.in"),
+                r#"Source: blah
+Build-Depends: bar
+"#,
+            )
+            .unwrap();
+            std::fs::write(
+                td.path().join("debian/debcargo.toml"),
+                r#"maintainer = Joe Example <joe@example.com>
+"#,
+            )
+            .unwrap();
+            assert_eq!(
+                Some(super::TemplateType::Debcargo),
+                super::guess_template_type(
+                    &td.path().join("debian/control.in"),
+                    Some(&td.path().join("debian"))
+                )
+            );
+        }
+    }
+
+    #[test]
+    fn test_postgresql() {
+        let td = tempfile::tempdir().unwrap();
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/control.in"),
+            r#"Source: blah
+Build-Depends: bar, postgresql
+
+Package: foo-PGVERSION
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            Some(super::TemplateType::Postgresql),
+            super::guess_template_type(
+                &td.path().join("debian/control.in"),
+                Some(&td.path().join("debian"))
+            )
+        );
+    }
+
+    #[test]
+    fn test_apply_changes() {
+        let mut deb822: deb822_lossless::Deb822 = r#"Source: blah
+Build-Depends: debhelper (>= 6), foo
+
+Package: bar
+"#
+        .parse()
+        .unwrap();
+
+        let mut changes = Deb822Changes(std::collections::HashMap::new());
+        changes.0.insert(
+            ("Source".to_string(), "blah".to_string()),
+            vec![(
+                "Build-Depends".to_string(),
+                Some("debhelper (>= 6), foo".to_string()),
+                Some("debhelper (>= 10), foo".to_string()),
+            )],
+        );
+
+        super::apply_changes(&mut deb822, changes, None).unwrap();
+
+        assert_eq!(
+            deb822.to_string(),
+            r#"Source: blah
+Build-Depends: debhelper (>= 10), foo
+
+Package: bar
+"#
+        );
+    }
+
+    #[test]
+    fn test_apply_changes_new_paragraph() {
+        let mut deb822: deb822_lossless::Deb822 = r#"Source: blah
+Build-Depends: debhelper (>= 6), foo
+
+Package: bar
+"#
+        .parse()
+        .unwrap();
+
+        let mut changes = Deb822Changes(std::collections::HashMap::new());
+        changes.0.insert(
+            ("Source".to_string(), "blah".to_string()),
+            vec![(
+                "Build-Depends".to_string(),
+                Some("debhelper (>= 6), foo".to_string()),
+                Some("debhelper (>= 10), foo".to_string()),
+            )],
+        );
+        changes.0.insert(
+            ("Package".to_string(), "blah2".to_string()),
+            vec![
+                ("Package".to_string(), None, Some("blah2".to_string())),
+                (
+                    "Description".to_string(),
+                    None,
+                    Some("Some package".to_string()),
+                ),
+            ],
+        );
+
+        super::apply_changes(&mut deb822, changes, None).unwrap();
+
+        assert_eq!(
+            deb822.to_string(),
+            r#"Source: blah
+Build-Depends: debhelper (>= 10), foo
+
+Package: bar
+
+Package: blah2
+Description: Some package
+"#
+        );
+    }
+
+    #[test]
+    fn test_apply_changes_conflict() {
+        let mut deb822: deb822_lossless::Deb822 = r#"Source: blah
+Build-Depends: debhelper (>= 6), foo
+
+Package: bar
+"#
+        .parse()
+        .unwrap();
+
+        let mut changes = Deb822Changes(std::collections::HashMap::new());
+        changes.0.insert(
+            ("Source".to_string(), "blah".to_string()),
+            vec![(
+                "Build-Depends".to_string(),
+                Some("debhelper (>= 7), foo".to_string()),
+                Some("debhelper (>= 10), foo".to_string()),
+            )],
+        );
+
+        let result = super::apply_changes(&mut deb822, changes, None);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(
+            err,
+            ChangeConflict {
+                para_key: ("Source".to_string(), "blah".to_string()),
+                field: "Build-Depends".to_string(),
+                actual_old_value: Some("debhelper (>= 7), foo".to_string()),
+                template_old_value: Some("debhelper (>= 6), foo".to_string()),
+                actual_new_value: Some("debhelper (>= 10), foo".to_string()),
+            }
+        );
+    }
+
+    #[test]
+    fn test_apply_changes_resolve_conflict() {
+        let mut deb822: deb822_lossless::Deb822 = r#"Source: blah
+Build-Depends: debhelper (>= 6), foo
+
+Package: bar
+"#
+        .parse()
+        .unwrap();
+
+        let mut changes = Deb822Changes(std::collections::HashMap::new());
+        changes.0.insert(
+            ("Source".to_string(), "blah".to_string()),
+            vec![(
+                "Build-Depends".to_string(),
+                Some("debhelper (>= 7), foo".to_string()),
+                Some("debhelper (>= 10), foo".to_string()),
+            )],
+        );
+
+        let result = super::apply_changes(&mut deb822, changes, Some(|_, _, _, _, _| Ok(None)));
+        assert!(result.is_ok());
+        assert_eq!(
+            deb822.to_string(),
+            r#"Source: blah
+
+Package: bar
+"#
+        );
     }
 }
