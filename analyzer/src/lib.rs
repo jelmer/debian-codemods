@@ -12,7 +12,6 @@ pub mod changelog;
 pub mod config;
 pub mod control;
 pub mod debcommit;
-pub mod debmutateshim;
 pub mod detect_gbp_dch;
 pub mod editor;
 pub mod patches;
@@ -143,6 +142,7 @@ pub fn apply_or_revert<R, E>(
 
 pub enum ChangelogError {
     NotDebianPackage(std::path::PathBuf),
+    #[cfg(feature = "python")]
     Python(pyo3::PyErr),
 }
 
@@ -298,15 +298,89 @@ pub fn min_certainty(certainties: &[Certainty]) -> Option<Certainty> {
     certainties.iter().min().cloned()
 }
 
-/// Get the committer string for a tree
-pub fn get_committer(working_tree: &WorkingTree) -> String {
+fn get_git_committer(working_tree: &WorkingTree) -> Option<String> {
     pyo3::prepare_freethreaded_python();
     pyo3::Python::with_gil(|py| {
-        let m = py.import_bound("lintian_brush")?;
-        let get_committer = m.getattr("get_committer")?;
-        get_committer.call1((&working_tree.0,))?.extract()
+        let repo = working_tree.branch().repository();
+        let git = match repo.to_object(py).getattr(py, "_git") {
+            Ok(x) => Some(x),
+            Err(e) if e.is_instance_of::<pyo3::exceptions::PyAttributeError>(py) => None,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        if let Some(git) = git {
+            let cs = git.call_method0(py, "get_config_stack")?;
+
+            let mut user = std::env::var("GIT_COMMITTER_NAME").ok();
+            let mut email = std::env::var("GIT_COMMITTER_EMAIL").ok();
+            if user.is_none() {
+                match cs.call_method1(py, "get", (("user",), "name")) {
+                    Ok(x) => {
+                        user = Some(
+                            std::str::from_utf8(x.extract::<&[u8]>(py)?)
+                                .unwrap()
+                                .to_string(),
+                        );
+                    }
+                    Err(e) if e.is_instance_of::<pyo3::exceptions::PyKeyError>(py) => {
+                        // Ignore
+                    }
+                    Err(e) => {
+                        return Err(e);
+                    }
+                };
+            }
+            if email.is_none() {
+                match cs.call_method1(py, "get", (("user",), "email")) {
+                    Ok(x) => {
+                        email = Some(
+                            std::str::from_utf8(x.extract::<&[u8]>(py)?)
+                                .unwrap()
+                                .to_string(),
+                        );
+                    }
+                    Err(e) if e.is_instance_of::<pyo3::exceptions::PyKeyError>(py) => {
+                        // Ignore
+                    }
+                    Err(e) => {
+                        return Err(e);
+                    }
+                };
+            }
+
+            if let (Some(user), Some(email)) = (user, email) {
+                return Ok(Some(format!("{} <{}>", user, email)));
+            }
+
+            let gs = breezyshim::config::global_stack().unwrap();
+
+            Ok(gs
+                .get("email")?
+                .map(|email| email.extract::<String>(py).unwrap()))
+        } else {
+            Ok(None)
+        }
     })
     .unwrap()
+}
+
+/// Get the committer string for a tree
+pub fn get_committer(working_tree: &WorkingTree) -> String {
+    if let Some(committer) = get_git_committer(working_tree) {
+        return committer;
+    }
+
+    let config = working_tree.branch().get_config_stack();
+
+    Python::with_gil(|py| {
+        config
+            .get("email")
+            .unwrap()
+            .map(|x| x.extract::<String>(py).unwrap())
+            .unwrap_or_default()
+    })
 }
 
 /// Check whether there are any control files present in a tree.

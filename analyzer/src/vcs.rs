@@ -257,6 +257,152 @@ pub enum PackageVcs {
     Svk(Url),
 }
 
+impl PackageVcs {
+    pub fn type_str(&self) -> &str {
+        match self {
+            PackageVcs::Git { .. } => "Git",
+            PackageVcs::Svn(_) => "Svn",
+            PackageVcs::Bzr(_) => "Bzr",
+            PackageVcs::Hg { .. } => "Hg",
+            PackageVcs::Mtn(_) => "Mtn",
+            PackageVcs::Cvs(_) => "Cvs",
+            PackageVcs::Darcs(_) => "Darcs",
+            PackageVcs::Arch(_) => "Arch",
+            PackageVcs::Svk(_) => "Svk",
+        }
+    }
+
+    pub fn url(&self) -> Option<&url::Url> {
+        match self {
+            PackageVcs::Git { url, .. } => Some(url),
+            PackageVcs::Svn(url) => Some(url),
+            PackageVcs::Bzr(url) => Some(url),
+            PackageVcs::Hg { url, .. } => Some(url),
+            PackageVcs::Mtn(url) => Some(url),
+            PackageVcs::Darcs(url) => Some(url),
+            PackageVcs::Arch(url) => Some(url),
+            PackageVcs::Svk(url) => Some(url),
+            PackageVcs::Cvs(_) => None,
+        }
+    }
+
+    pub fn branch(&self) -> Option<&str> {
+        match self {
+            PackageVcs::Git { branch, .. } => branch.as_deref(),
+            PackageVcs::Hg { branch, .. } => branch.as_deref(),
+            _ => None,
+        }
+    }
+
+    pub fn subpath(&self) -> Option<&std::path::Path> {
+        match self {
+            PackageVcs::Git { subpath, .. } => subpath.as_deref(),
+            PackageVcs::Hg { subpath, .. } => subpath.as_deref(),
+            _ => None,
+        }
+    }
+
+    pub fn location(&self) -> String {
+        match self {
+            PackageVcs::Git {
+                url,
+                branch,
+                subpath,
+            } => {
+                let mut result = url.to_string();
+                if let Some(branch) = branch {
+                    result.push_str(&format!(" -b {}", branch));
+                }
+                if let Some(subpath) = subpath {
+                    result.push_str(&format!(" [{}]", subpath.display()));
+                }
+                result
+            }
+            PackageVcs::Svn(url) => url.to_string(),
+            PackageVcs::Bzr(url) => url.to_string(),
+            PackageVcs::Hg {
+                url,
+                branch,
+                subpath,
+            } => {
+                let mut result = url.to_string();
+                if let Some(branch) = branch {
+                    result.push_str(&format!(" -b {}", branch));
+                }
+                if let Some(subpath) = subpath {
+                    result.push_str(&format!(" [{}]", subpath.display()));
+                }
+                result
+            }
+            PackageVcs::Mtn(url) => url.to_string(),
+            PackageVcs::Cvs(s) => s.clone(),
+            PackageVcs::Darcs(url) => url.to_string(),
+            PackageVcs::Arch(url) => url.to_string(),
+            PackageVcs::Svk(url) => url.to_string(),
+        }
+    }
+}
+
+impl From<PackageVcs> for ParsedVcs {
+    fn from(vcs: PackageVcs) -> Self {
+        match vcs {
+            PackageVcs::Git {
+                url,
+                branch,
+                subpath,
+            } => ParsedVcs {
+                repo_url: url.to_string(),
+                branch,
+                subpath: subpath.map(|x| x.to_string_lossy().to_string()),
+            },
+            PackageVcs::Svn(url) => ParsedVcs {
+                repo_url: url.to_string(),
+                branch: None,
+                subpath: None,
+            },
+            PackageVcs::Bzr(url) => ParsedVcs {
+                repo_url: url.to_string(),
+                branch: None,
+                subpath: None,
+            },
+            PackageVcs::Hg {
+                url,
+                branch,
+                subpath,
+            } => ParsedVcs {
+                repo_url: url.to_string(),
+                branch,
+                subpath: subpath.map(|x| x.to_string_lossy().to_string()),
+            },
+            PackageVcs::Mtn(url) => ParsedVcs {
+                repo_url: url.to_string(),
+                branch: None,
+                subpath: None,
+            },
+            PackageVcs::Cvs(s) => ParsedVcs {
+                repo_url: s,
+                branch: None,
+                subpath: None,
+            },
+            PackageVcs::Darcs(url) => ParsedVcs {
+                repo_url: url.to_string(),
+                branch: None,
+                subpath: None,
+            },
+            PackageVcs::Arch(url) => ParsedVcs {
+                repo_url: url.to_string(),
+                branch: None,
+                subpath: None,
+            },
+            PackageVcs::Svk(url) => ParsedVcs {
+                repo_url: url.to_string(),
+                branch: None,
+                subpath: None,
+            },
+        }
+    }
+}
+
 pub trait VcsSource {
     fn vcs_git(&self) -> Option<String>;
     fn vcs_svn(&self) -> Option<String>;

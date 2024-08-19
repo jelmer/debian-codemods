@@ -37,6 +37,8 @@ merge3 = { version = "0.2", optional = true }
 difflib = "0.4.0"
 nix = { version = "0.29.0", features = ["fs", "time"] }
 deb822-lossless = "0.1.14"
+toml_edit = "0.22.20"
+semver = "1.0.23"
 
 [features]
 default = ["python", "merge3"]

@@ -525,12 +525,17 @@ pub fn apply_multiarch_hints(
         subpath,
         &basis_tree,
         dirty_tracker,
-        |path| -> Result<Vec<Change>, ()> {
+        |path| -> Result<Vec<Change>, OverallError> {
             let mut changes: Vec<Change> = vec![];
 
             let control_path = path.join("debian/control");
 
-            let editor = TemplatedControlEditor::open(control_path.as_path())?;
+            let mut editor = match TemplatedControlEditor::open(control_path.as_path()) {
+                Ok(editor) => editor,
+                Err(e) => {
+                    return Err(OverallError::Other(e.to_string()));
+                }
+            };
 
             for mut binary in editor.binaries() {
                 let package = binary.name().unwrap();
