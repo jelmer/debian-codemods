@@ -11,8 +11,8 @@ pub enum TemplateType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedFile {
-    template_path: Option<PathBuf>,
-    template_type: Option<TemplateType>,
+    pub template_path: Option<PathBuf>,
+    pub template_type: Option<TemplateType>,
 }
 
 impl std::fmt::Display for GeneratedFile {
@@ -198,9 +198,19 @@ pub fn tree_check_generated_file(
 
 #[derive(Debug)]
 pub enum EditorError {
+    /// One of the files is generated from another file, and we were unable to edit it.
     GeneratedFile(PathBuf, GeneratedFile),
+
+    /// Error in a template file
+    TemplateError(PathBuf, String),
+
+    /// Unable to preserve formatting in a file.
     FormattingUnpreservable(PathBuf, FormattingUnpreservable),
+
+    /// I/O error
     IoError(std::io::Error),
+
+    /// Breezy error
     BrzError(BrzError),
 }
 
@@ -221,6 +231,7 @@ impl std::fmt::Display for EditorError {
             }
             EditorError::IoError(e) => write!(f, "I/O error: {}", e),
             EditorError::BrzError(e) => write!(f, "Breezy error: {}", e),
+            EditorError::TemplateError(p, e) => write!(f, "Error in template {}: {}", p.display(), e),
         }
     }
 }
@@ -410,13 +421,24 @@ pub trait Marshallable {
 pub trait Editor<P: Marshallable>:
     std::ops::Deref<Target = P> + std::ops::DerefMut<Target = P>
 {
+    /// The original content, if any - without reformatting
+    fn orig_content(&self) -> Option<&[u8]>;
+
+    /// The updated content, if any
     fn updated_content(&self) -> Option<Vec<u8>>;
+
+    /// The original content, but rewritten with our parser/serializer
     fn rewritten_content(&self) -> Option<&[u8]>;
 
+    /// Whether the file has changed
     fn has_changed(&self) -> bool {
         self.updated_content().as_deref() != self.rewritten_content()
     }
 
+    /// Commit the changes
+    ///
+    /// # Returns
+    /// A list of paths that were changed
     fn commit(&self) -> Result<Vec<&std::path::Path>, EditorError>;
 }
 
@@ -515,6 +537,10 @@ impl<'a, P: Marshallable> TreeEditor<'a, P> {
 }
 
 impl<'a, P: Marshallable> Editor<P> for TreeEditor<'a, P> {
+    fn orig_content(&self) -> Option<&[u8]> {
+        self.orig_content.as_deref()
+    }
+
     fn updated_content(&self) -> Option<Vec<u8>> {
         self.parsed.as_ref().unwrap().to_bytes()
     }
@@ -612,6 +638,10 @@ impl<P: Marshallable> FsEditor<P> {
 }
 
 impl<P: Marshallable> Editor<P> for FsEditor<P> {
+    fn orig_content(&self) -> Option<&[u8]> {
+        self.orig_content.as_deref()
+    }
+
     fn updated_content(&self) -> Option<Vec<u8>> {
         self.parsed.as_ref().unwrap().to_bytes()
     }

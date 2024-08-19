@@ -1,6 +1,8 @@
-use crate::editor::{Editor, EditorError, FsEditor};
+use crate::editor::{Editor, EditorError, FsEditor, GeneratedFile};
+use deb822_lossless::Paragraph;
 use crate::relations::{ensure_relation, is_relation_implied};
 use std::path::{Path, PathBuf};
+use std::ops::{Deref, DerefMut};
 
 /// Format a description based on summary and long description lines.
 pub fn format_description(summary: &str, long_description: Vec<&str>) -> String {
@@ -43,19 +45,6 @@ enum TemplateExpansionError {
     ExpandCommandMissing(String),
     UnknownTemplating(PathBuf, Option<PathBuf>),
     Conflict(ChangeConflict),
-}
-
-impl From<EditorError> for TemplateExpansionError {
-    fn from(e: EditorError) -> Self {
-        match e {
-            EditorError::IoError(e) => TemplateExpansionError::Failed(format!("IO error: {}", e)),
-            EditorError::BrzError(e) => TemplateExpansionError::Failed(format!("Bzr error: {}", e)),
-            EditorError::GeneratedFile(p, _e) => TemplateExpansionError::UnknownTemplating(p, None),
-            EditorError::FormattingUnpreservable(p, _e) => {
-                TemplateExpansionError::UnknownTemplating(p, None)
-            }
-        }
-    }
 }
 
 impl From<ChangeConflict> for TemplateExpansionError {
@@ -190,13 +179,22 @@ fn set_mtime<P: AsRef<Path>>(path: P, mtime: std::time::SystemTime) -> nix::Resu
     let duration = mtime.duration_since(std::time::UNIX_EPOCH).unwrap();
 
     let seconds = duration.as_secs() as i64;
-    let nanos = duration.subsec_nanos() as i64;
+    let nanos = duration.subsec_nanos();
 
-    let tv = TimeVal::new(seconds, nanos);
+    let tv = TimeVal::new(seconds, nanos as i32);
 
     utimes(path.as_ref(), &tv, &tv)
 }
 
+/// Expand a control template.
+///
+/// # Arguments
+/// * `template_path` - Path to the control template
+/// * `path` - Path to the control file
+/// * `template_type` - Type of the template
+///
+/// # Returns
+/// Ok if the template was successfully expanded
 fn expand_control_template(
     template_path: &std::path::Path,
     path: &std::path::Path,
@@ -250,6 +248,26 @@ struct Deb822Changes(
     std::collections::HashMap<(String, String), Vec<(String, Option<String>, Option<String>)>>,
 );
 
+impl Deb822Changes {
+    fn new() -> Self {
+        Self(std::collections::HashMap::new())
+    }
+
+    fn insert(&mut self, para_key: (String, String), field: String, old_value: Option<String>, new_value: Option<String>) {
+        self.0.entry(para_key).or_insert_with(Vec::new).push((field, old_value, new_value));
+    }
+}
+
+// Update a control file template based on changes to the file itself.
+//
+// # Arguments
+// * `template_path` - Path to the control template
+// * `path` - Path to the control file
+// * `changes` - Changes to apply
+// * `expand_template` - Whether to expand the template after updating it
+//
+// # Returns
+// Ok if the template was successfully updated
 fn update_control_template(
     template_path: &std::path::Path,
     path: &std::path::Path,
@@ -289,7 +307,10 @@ fn update_control_template(
         return Ok(false);
     }
 
-    editor.commit()?;
+    match editor.commit() {
+        Ok(_) => {}
+        Err(e) => return Err(TemplateExpansionError::Failed(e.to_string())),
+    }
 
     if expand_template {
         match template_type {
@@ -535,4 +556,166 @@ pub fn apply_changes(
         }
     }
     Ok(())
+}
+
+fn find_template_path(path: &Path) -> Option<PathBuf> {
+    for ext in &["in", "m4"] {
+        let template_path = path.with_extension(ext);
+        if template_path.exists() {
+            return Some(template_path);
+        }
+    }
+    None
+}
+
+pub struct FsControlEditor {
+    primary: FsEditor<deb822_lossless::Deb822>,
+    path: PathBuf,
+    template_only: bool,
+}
+
+impl Deref for FsControlEditor {
+    type Target = deb822_lossless::Deb822;
+
+    fn deref(&self) -> &Self::Target {
+        &self.primary
+    }
+}
+
+impl DerefMut for FsControlEditor {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.primary
+    }
+}
+
+impl FsControlEditor {
+    pub fn new<P: AsRef<Path>>(
+        control_path: P,
+    ) -> Result<Self, EditorError> {
+        let path = control_path.as_ref();
+        let mut template_only = false;
+        let primary;
+        if !path.exists() {
+            let template_path = if let Some(p) = find_template_path(&path) { p } else {
+                return Err(EditorError::IoError(
+                    std::io::Error::new(std::io::ErrorKind::NotFound, "No control file or template found"),
+                ));
+            };
+            template_only = true;
+            let template_type = guess_template_type(&template_path, Some(path.parent().unwrap()));
+            if template_type.is_none() {
+                return Err(EditorError::GeneratedFile(path.to_path_buf(), GeneratedFile{ template_path: Some(template_path), template_type: None}));
+            }
+            match expand_control_template(&template_path, &path, template_type.unwrap()) {
+                Ok(_) => {}
+                Err(e) => return Err(EditorError::TemplateError(template_path, e.to_string())),
+            }
+            primary = FsEditor::<deb822_lossless::Deb822>::new(&path, true, false)?;
+        } else {
+            primary = FsEditor::<deb822_lossless::Deb822>::new(&path, true, false)?;
+        }
+        Ok(Self {
+            path: path.to_path_buf(),
+            primary,
+            template_only
+        })
+    }
+
+    /// Return a dictionary describing the changes since the base.
+    ///
+    /// # Returns
+    /// A dictionary mapping tuples of (kind, name) to list of (field_name, old_value, new_value)
+    pub fn changes(&self) -> Deb822Changes {
+        let orig = deb822_lossless::Deb822::read_relaxed(self.primary.orig_content().unwrap()).unwrap().0;
+        let mut changes = Deb822Changes::new();
+
+        fn by_key(ps: impl Iterator<Item = Paragraph>) -> std::collections::HashMap<(String, String), Paragraph> {
+            let mut ret = std::collections::HashMap::new();
+            for p in ps {
+                if let Some(s) = p.get("Source") {
+                    ret.insert(("Source".to_string(), s), p);
+                } else if let Some(s) = p.get("Package") {
+                    ret.insert(("Package".to_string(), s), p);
+                } else {
+                    let k = p.items().next().unwrap().clone();
+                    ret.insert(k, p);
+                }
+            }
+            ret
+        }
+
+        let orig_by_key = by_key(orig.paragraphs());
+        let new_by_key = by_key(self.paragraphs());
+        let keys = orig_by_key.keys().chain(new_by_key.keys()).collect::<std::collections::HashSet<_>>();
+        for key in keys {
+            let old = orig_by_key.get(key);
+            let new = new_by_key.get(key);
+            if old == new {
+                continue;
+            }
+            let fields = std::collections::HashSet::<String>::from_iter(old.iter().flat_map(|p| p.keys()).chain(new.iter().flat_map(|p| p.keys())));
+            for field in &fields {
+                let old_val = old.and_then(|x| x.get(&field));
+                let new_val = new.and_then(|x| x.get(&field));
+                if old_val != new_val {
+                    changes.insert(key.clone(), field.to_string(), old_val, new_val);
+                }
+            }
+        }
+        changes
+    }
+
+    pub fn commit(&mut self) -> Result<Vec<PathBuf>, EditorError> {
+        let mut changed_files: Vec<PathBuf> = vec![];
+        if self.template_only {
+            std::fs::remove_file(&self.path)?;
+            changed_files.push(self.path.clone());
+            return Err(EditorError::IoError(std::io::Error::new(std::io::ErrorKind::NotFound, "No control file found")));
+        }
+        match self.primary.commit() {
+            Ok(files) => {
+                changed_files.extend(files.iter().map(|p| p.to_path_buf()));
+            }
+            Err(EditorError::GeneratedFile(p, GeneratedFile{template_path: tp, template_type: tt})) => {
+                if tp.is_none() {
+                    return Err(EditorError::GeneratedFile(p, GeneratedFile{template_path: tp, template_type: tt}));
+                }
+                let changes = self.changes();
+                let changed = match update_control_template(&tp.clone().unwrap(), &p, changes, true) {
+                    Ok(changed) => changed,
+                    Err(e) => return Err(EditorError::TemplateError(tp.unwrap(), e.to_string())),
+                };
+                changed_files = if changed {
+                    vec![tp.as_ref().unwrap().to_path_buf(), p]
+                } else {
+                    vec![]
+                };
+            }
+            Err(EditorError::IoError(e)) if e.kind() == std::io::ErrorKind::NotFound => {
+                let template_path = if let Some(p) = find_template_path(&self.path) {
+                    p
+                } else {
+                    return Err(EditorError::IoError(
+                        std::io::Error::new(std::io::ErrorKind::NotFound, "No control file or template found"),
+                    ));
+                };
+                let changed = match update_control_template(
+                    &template_path,
+                    &self.path,
+                    self.changes(),
+                    !self.template_only,
+                ) {
+                    Ok(changed) => changed,
+                    Err(e) => return Err(EditorError::TemplateError(template_path, e.to_string())),
+                };
+                if changed {
+                    changed_files.push(template_path.clone());
+                    changed_files.push(self.path.clone());
+                }
+            }
+            Err(e) => return Err(e),
+        }
+
+        Ok(changed_files)
+    }
 }
