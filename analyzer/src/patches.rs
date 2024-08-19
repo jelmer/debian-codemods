@@ -502,7 +502,7 @@ mod move_upstream_changes_to_patch_tests {
             "patch",
             "This is a description",
             None,
-            Some(chrono::NaiveDate::from_ymd(2020, 1, 1)),
+            Some(chrono::NaiveDate::from_ymd_opt(2020, 1, 1).unwrap()),
         )
         .unwrap();
 

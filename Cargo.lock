@@ -149,7 +149,7 @@ checksum = "51dc76136916f092fc9889250f141cd6f99fcaf4953a5385002037b512189254"
 dependencies = [
  "chrono",
  "ctor",
- "debian-control 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "debian-control",
  "debversion",
  "dirty-tracker",
  "lazy-regex",
@@ -346,21 +346,11 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.1.21"
+version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5558bfd2d6f1344651e7121a11d1f939cf35c15a2e4a788b2f4033b55ed5ddb4"
+checksum = "286f48b96d8b0b1430db71c92b8a641f5edf0d926d44f51bf2159aabcf526a2a"
 dependencies = [
  "pyo3",
- "regex",
- "rowan",
- "serde",
-]
-
-[[package]]
-name = "deb822-lossless"
-version = "0.1.21"
-source = "git+https://github.com/jelmer/deb822-lossless#541028e5fdbfbb359904229aa2c72e06dbe11fed"
-dependencies = [
  "regex",
  "rowan",
  "serde",
@@ -374,9 +364,9 @@ dependencies = [
  "chrono",
  "clap",
  "configparser",
- "deb822-lossless 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "deb822-lossless",
  "debian-changelog",
- "debian-control 0.1.21 (git+https://github.com/jelmer/deb822-lossless)",
+ "debian-control",
  "debian-copyright",
  "debversion",
  "dep3",
@@ -416,25 +406,13 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.21"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88e5e4c5fd4ccbba8d350aff558543f2245b5f344870d95e38f82984d0477830"
+checksum = "cdefd28dd8634f61fd45702506e4b25f8191fd9825e4104c38916a691a632f39"
 dependencies = [
- "deb822-lossless 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "deb822-lossless",
  "debversion",
  "pyo3",
- "regex",
- "rowan",
- "url",
-]
-
-[[package]]
-name = "debian-control"
-version = "0.1.21"
-source = "git+https://github.com/jelmer/deb822-lossless#541028e5fdbfbb359904229aa2c72e06dbe11fed"
-dependencies = [
- "deb822-lossless 0.1.21 (git+https://github.com/jelmer/deb822-lossless)",
- "debversion",
  "regex",
  "rowan",
  "url",
@@ -446,7 +424,7 @@ version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "932841dfa0330c99ba781a7e57643e308dd95db04b96486d8171c827f1713304"
 dependencies = [
- "deb822-lossless 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "deb822-lossless",
  "debversion",
  "regex",
 ]
@@ -497,7 +475,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a755dbddee2d3a2af806ad7a305bda8630891ac4b2edbe354b0243c2ef867ec3"
 dependencies = [
  "chrono",
- "deb822-lossless 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "deb822-lossless",
 ]
 
 [[package]]
@@ -1052,9 +1030,9 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "libc"
-version = "0.2.157"
+version = "0.2.158"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "374af5f94e54fa97cf75e945cce8a6b201e88a1a07e688b47dfd2a59c66dbd86"
+checksum = "d8adc4bb1803a324070e64a98ae98f38934d91957a99cfb3a43dcbc01bc56439"
 
 [[package]]
 name = "libredox"
@@ -1221,8 +1199,10 @@ dependencies = [
  "chrono",
  "clap",
  "configparser",
+ "deb822-lossless",
  "debian-analyzer",
  "debian-changelog",
+ "debian-control",
  "debversion",
  "env_logger",
  "lazy-regex",

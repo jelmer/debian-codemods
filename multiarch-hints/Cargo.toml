@@ -26,6 +26,8 @@ url = { workspace = true }
 configparser.workspace = true
 clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
 debian-changelog.workspace = true
+debian-control.workspace = true
+deb822-lossless = "0.1.23"
 
 [features]
 default = ["cli"]

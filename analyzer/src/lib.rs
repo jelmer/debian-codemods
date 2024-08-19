@@ -1,7 +1,7 @@
 use breezyshim::branch::Branch;
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
-use breezyshim::tree::{MutableTree, Tree, TreeChange, WorkingTree};
+use breezyshim::tree::{Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::reset_tree_with_dirty_tracker;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -21,8 +21,8 @@ pub mod relations;
 pub mod release_info;
 pub mod salsa;
 pub mod svp;
-pub mod vendor;
 pub mod vcs;
+pub mod vendor;
 
 // TODO(jelmer): Import this from ognibuild
 pub const DEFAULT_BUILDER: &str = "sbuild --no-clean-source";

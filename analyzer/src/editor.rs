@@ -231,7 +231,9 @@ impl std::fmt::Display for EditorError {
             }
             EditorError::IoError(e) => write!(f, "I/O error: {}", e),
             EditorError::BrzError(e) => write!(f, "Breezy error: {}", e),
-            EditorError::TemplateError(p, e) => write!(f, "Error in template {}: {}", p.display(), e),
+            EditorError::TemplateError(p, e) => {
+                write!(f, "Error in template {}: {}", p.display(), e)
+            }
         }
     }
 }
@@ -344,11 +346,6 @@ pub fn edit_formatted_file(
     allow_generated: bool,
     allow_reformatting: bool,
 ) -> Result<bool, EditorError> {
-    if !allow_generated {
-        check_generated_file(path)
-            .map_err(|e| EditorError::GeneratedFile(path.to_path_buf(), e))?;
-    }
-
     let (updated_contents, changed) = reformat_file(
         original_contents,
         rewritten_contents,
@@ -356,6 +353,11 @@ pub fn edit_formatted_file(
         allow_reformatting,
     )
     .map_err(|e| EditorError::FormattingUnpreservable(path.to_path_buf(), e))?;
+    if changed && !allow_generated {
+        check_generated_file(path)
+            .map_err(|e| EditorError::GeneratedFile(path.to_path_buf(), e))?;
+    }
+
     if changed {
         if let Some(updated_contents) = updated_contents {
             std::fs::write(path, updated_contents)?;
@@ -732,7 +734,9 @@ impl Marshallable for makefile_lossless::Makefile {
 
 impl Marshallable for deb822_lossless::Deb822 {
     fn from_bytes(content: &[u8]) -> Self {
-        deb822_lossless::Deb822::read_relaxed(std::io::Cursor::new(content)).unwrap().0
+        deb822_lossless::Deb822::read_relaxed(std::io::Cursor::new(content))
+            .unwrap()
+            .0
     }
 
     fn missing() -> Self {

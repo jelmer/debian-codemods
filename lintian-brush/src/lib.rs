@@ -720,6 +720,9 @@ impl From<debian_analyzer::editor::EditorError> for FixerError {
             debian_analyzer::editor::EditorError::FormattingUnpreservable(p, _e) => {
                 FixerError::FormattingUnpreservable(p)
             }
+            debian_analyzer::editor::EditorError::TemplateError(p, e) => {
+                FixerError::GeneratedFile(p)
+            }
         }
     }
 }

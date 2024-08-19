@@ -1,13 +1,14 @@
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::WorkingTree;
-use debian_analyzer::debmutateshim::{
-    format_relations, parse_relations, ControlEditor, ControlLikeEditor, Deb822Paragraph,
-};
+use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::{
     add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, ApplyError,
     Certainty, ChangelogError,
 };
+use debian_control::control::MultiArch;
+use debian_control::control::{Binary, Source};
+use debian_control::relations::Relations;
 use debversion::Version;
 use lazy_regex::regex_captures;
 use lazy_static::lazy_static;
@@ -26,26 +27,48 @@ const USER_AGENT: &str = concat!("apply-multiarch-hints/", env!("CARGO_PKG_VERSI
 
 const DEFAULT_VALUE_MULTIARCH_HINT: i32 = 100;
 
-lazy_static! {
-    static ref MULTIARCH_HINTS_VALUE: HashMap<&'static str, i32> = {
-        let mut map = HashMap::new();
-        map.insert("ma-foreign", 20);
-        map.insert("file-conflict", 50);
-        map.insert("ma-foreign-library", 20);
-        map.insert("dep-any", 20);
-        map.insert("ma-same", 20);
-        map.insert("arch-all", 20);
-        map.insert("ma-workaround", 20);
-        map
-    };
+#[derive(Debug, Clone, Copy, std::hash::Hash, PartialEq, Eq)]
+enum HintKind {
+    MaForeign,
+    FileConflict,
+    MaForeignLibrary,
+    DepAny,
+    MaSame,
+    ArchAll,
+    MaWorkaround,
 }
 
-pub fn calculate_value(hints: &[&str]) -> i32 {
-    hints
-        .iter()
-        .map(|hint| *MULTIARCH_HINTS_VALUE.get(hint).unwrap_or(&0))
-        .sum::<i32>()
-        + DEFAULT_VALUE_MULTIARCH_HINT
+impl std::str::FromStr for HintKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "ma-foreign" => Ok(HintKind::MaForeign),
+            "file-conflict" => Ok(HintKind::FileConflict),
+            "ma-foreign-library" => Ok(HintKind::MaForeignLibrary),
+            "dep-any" => Ok(HintKind::DepAny),
+            "ma-same" => Ok(HintKind::MaSame),
+            "arch-all" => Ok(HintKind::ArchAll),
+            "ma-workaround" => Ok(HintKind::MaWorkaround),
+            _ => Err(format!("Invalid hint kind: {:?}", s)),
+        }
+    }
+}
+
+fn hint_value(hint: HintKind) -> i32 {
+    match hint {
+        HintKind::MaForeign => 20,
+        HintKind::FileConflict => 50,
+        HintKind::MaForeignLibrary => 20,
+        HintKind::DepAny => 20,
+        HintKind::MaSame => 20,
+        HintKind::ArchAll => 20,
+        HintKind::MaWorkaround => 20,
+    }
+}
+
+pub fn calculate_value(hints: &[HintKind]) -> i32 {
+    hints.iter().map(|hint| hint_value(*hint)).sum::<i32>() + DEFAULT_VALUE_MULTIARCH_HINT
 }
 
 fn format_system_time(system_time: SystemTime) -> String {
@@ -255,79 +278,74 @@ impl OverallResult {
         let kinds = self
             .changes
             .iter()
-            .map(|x| x.hint.kind())
+            .map(|x| x.hint.kind().parse().unwrap())
             .collect::<Vec<_>>();
         calculate_value(&kinds)
     }
 }
 
-fn apply_hint_ma_foreign(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<String> {
-    if binary.get("Multi-Arch").as_deref() != Some("foreign") {
-        binary.set("Multi-Arch", "foreign");
+fn apply_hint_ma_foreign(binary: &mut Binary, _hint: &Hint) -> Option<String> {
+    if binary.multi_arch() != Some(MultiArch::Foreign) {
+        binary.set_multi_arch(Some(MultiArch::Foreign));
         Some("Add Multi-Arch: foreign.".to_string())
     } else {
         None
     }
 }
 
-fn apply_hint_ma_foreign_lib(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<String> {
-    if binary.get("Multi-Arch").as_deref() == Some("foreign") {
-        binary.remove("Multi-Arch");
+fn apply_hint_ma_foreign_lib(binary: &mut Binary, _hint: &Hint) -> Option<String> {
+    if binary.multi_arch() == Some(MultiArch::Foreign) {
+        binary.set_multi_arch(None);
         Some("Drop Multi-Arch: foreign.".to_string())
     } else {
         None
     }
 }
 
-fn apply_hint_file_conflict(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<String> {
-    if binary.get("Multi-Arch").as_deref() == Some("same") {
-        binary.remove("Multi-Arch");
+fn apply_hint_file_conflict(binary: &mut Binary, _hint: &Hint) -> Option<String> {
+    if binary.multi_arch() == Some(MultiArch::Same) {
+        binary.set_multi_arch(None);
         Some("Drop Multi-Arch: same.".to_string())
     } else {
         None
     }
 }
 
-fn apply_hint_ma_same(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<String> {
-    if binary.get("Multi-Arch").as_deref() == Some("same") {
+fn apply_hint_ma_same(binary: &mut Binary, _hint: &Hint) -> Option<String> {
+    if binary.multi_arch() == Some(MultiArch::Same) {
         return None;
     }
-    binary.set("Multi-Arch", "same");
+    binary.set_multi_arch(Some(MultiArch::Same));
     Some("Add Multi-Arch: same.".to_string())
 }
 
-fn apply_hint_arch_all(binary: &mut Deb822Paragraph, _hint: &Hint) -> Option<String> {
-    if binary.get("Architecture").as_deref() == Some("all") {
+fn apply_hint_arch_all(binary: &mut Binary, _hint: &Hint) -> Option<String> {
+    if binary.architecture().as_deref() == Some("all") {
         return None;
     }
-    binary.set("Architecture", "all");
+    binary.set_architecture(Some("all"));
     Some("Make package Architecture: all.".to_string())
 }
 
-fn apply_hint_dep_any(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+fn apply_hint_dep_any(binary: &mut Binary, hint: &Hint) -> Option<String> {
     if let Some((_whole, binary_package, dep)) = regex_captures!(
         r"(.*) could have its dependency on (.*) annotated with :any",
         hint.description.as_str()
     ) {
-        assert_eq!(binary_package, binary.get("Package").unwrap());
+        assert_eq!(binary_package, binary.name().unwrap());
 
         let mut changed = false;
-        if let Some(depends) = binary.get("Depends") {
-            let mut relations = parse_relations(depends.as_str());
-            for (_head_whitespace, relation, _tail_whitespace) in &mut relations {
-                for r in relation {
-                    if r.name == dep && r.archqual.as_deref() != Some("any") {
-                        r.archqual = Some("any".to_string());
+        if let Some(depends) = binary.depends() {
+            for entry in depends.entries() {
+                for mut r in entry.relations() {
+                    if r.name() == dep && r.archqual().as_deref() != Some("any") {
+                        r.set_archqual("any");
                         changed = true;
                     }
                 }
             }
             if changed {
-                let relations = relations
-                    .iter()
-                    .map(|(f, m, t)| (f.as_str(), m.as_slice(), t.as_str()))
-                    .collect::<Vec<_>>();
-                binary.set("Depends", format_relations(relations.as_slice()).as_str());
+                binary.set_depends(Some(&depends));
                 Some(format!("Add :any qualifier for {} dependency.", dep))
             } else {
                 None
@@ -341,14 +359,14 @@ fn apply_hint_dep_any(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<Strin
     }
 }
 
-fn apply_hint_ma_workaround(binary: &mut Deb822Paragraph, hint: &Hint) -> Option<String> {
+fn apply_hint_ma_workaround(binary: &mut Binary, hint: &Hint) -> Option<String> {
     if let Some((_whole, binary_package)) = regex_captures!(
         r"(.*) should be Architecture: any \+ Multi-Arch: same",
         hint.description.as_str()
     ) {
-        assert_eq!(binary_package, binary.get("Package").unwrap());
-        binary.set("Multi-Arch", "same");
-        binary.set("Architecture", "any");
+        assert_eq!(binary_package, binary.name().unwrap());
+        binary.set_multi_arch(Some(debian_control::control::MultiArch::Same));
+        binary.set_architecture(Some("any"));
         Some("Add Multi-Arch: same and set Architecture: any.".to_string())
     } else {
         log::warn!("Unable to parse ma-workaround hint: {:?}", hint.description);
@@ -359,7 +377,7 @@ fn apply_hint_ma_workaround(binary: &mut Deb822Paragraph, hint: &Hint) -> Option
 struct Applier {
     kind: &'static str,
     certainty: Certainty,
-    cb: fn(&mut Deb822Paragraph, &Hint) -> Option<String>,
+    cb: fn(&mut Binary, &Hint) -> Option<String>,
 }
 
 lazy_static! {
@@ -440,6 +458,9 @@ impl From<debian_analyzer::editor::EditorError> for OverallError {
             }
             debian_analyzer::editor::EditorError::BrzError(e) => OverallError::BrzError(e),
             debian_analyzer::editor::EditorError::IoError(e) => OverallError::Other(e.to_string()),
+            debian_analyzer::editor::EditorError::TemplateError(p, e) => {
+                OverallError::GeneratedFile(p)
+            }
         }
     }
 }
@@ -509,10 +530,10 @@ pub fn apply_multiarch_hints(
 
             let control_path = path.join("debian/control");
 
-            let editor = ControlEditor::open(Some(control_path.as_path()), allow_reformatting);
+            let editor = TemplatedControlEditor::open(control_path.as_path())?;
 
             for mut binary in editor.binaries() {
-                let package = binary.get("Package").unwrap();
+                let package = binary.name().unwrap();
                 if let Some(hints) = hints.get(package.as_str()) {
                     for hint in hints {
                         let kind = hint.kind();
@@ -528,7 +549,7 @@ pub fn apply_multiarch_hints(
                         }
                         if let Some(description) = (applier.cb)(&mut binary, hint) {
                             changes.push(Change {
-                                binary: binary.get("Package").unwrap(),
+                                binary: binary.name().unwrap(),
                                 hint: (*hint).clone(),
                                 description,
                                 certainty: applier.certainty,
@@ -538,7 +559,7 @@ pub fn apply_multiarch_hints(
                 }
             }
 
-            std::mem::drop(editor);
+            editor.commit()?;
             Ok(changes)
         },
     ) {
