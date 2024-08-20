@@ -2,7 +2,7 @@ use breezyshim::debian::error::Error as BrzDebianError;
 use breezyshim::debian::merge_upstream::{
     do_import, get_existing_imported_upstream_revids, get_tarballs,
 };
-use breezyshim::debian::upstream::{UpstreamBranchSource, UpstreamSource};
+use breezyshim::debian::upstream::{PristineTarSource, UpstreamBranchSource, UpstreamSource};
 use breezyshim::debian::{TarballKind, DEFAULT_ORIG_DIR};
 use breezyshim::error::Error as BrzError;
 use breezyshim::workingtree::WorkingTree;
@@ -253,6 +253,42 @@ pub fn import_upstream_version_from_dist(
     }
 
     Ok((pristine_revids, tag_names, upstream_branch_name.to_string()))
+}
+
+pub fn import_upstream_dist(
+    pristine_tar_source: &PristineTarSource,
+    wt: &WorkingTree,
+    upstream_source: &UpstreamBranchSource,
+    subpath: &Path,
+    source_name: &str,
+    upstream_version: &str,
+) -> Result<(RevisionId, Option<String>, HashMap<TarballKind, String>), BrzDebianError> {
+    let (mut pristine_revids, tag_names, upstream_branch_name) = if pristine_tar_source
+        .has_version(source_name, upstream_version, None, false)?
+    {
+        log::warn!(
+            "Upstream version {}/{} already imported.",
+            source_name,
+            upstream_version,
+        );
+        let pristine_revids =
+            pristine_tar_source.version_as_revisions(source_name, upstream_version, None)?;
+        let upstream_branch_name = None;
+        let tag_names = HashMap::new();
+        (pristine_revids, tag_names, upstream_branch_name)
+    } else {
+        let (pristine_revids, tag_names, upstream_branch_name) = import_upstream_version_from_dist(
+            wt,
+            subpath,
+            upstream_source,
+            source_name,
+            upstream_version,
+        )?;
+        (pristine_revids, tag_names, Some(upstream_branch_name))
+    };
+
+    let orig_revid = pristine_revids.remove(&TarballKind::Orig).unwrap().0;
+    Ok((orig_revid, upstream_branch_name, tag_names))
 }
 
 #[cfg(test)]
