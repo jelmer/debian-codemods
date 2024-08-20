@@ -6,8 +6,8 @@ members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize", 
 version = "0.158.9"
 
 [workspace.dependencies]
-#breezyshim = { version = ">=0.1.160", features = ["dirty-tracker"] }
-breezyshim = { path = "../breezyshim/trunk", features = ["dirty-tracker"] }
+breezyshim = { version = ">=0.1.160", features = ["dirty-tracker"] }
+#breezyshim = { path = "../breezyshim/trunk", features = ["dirty-tracker"] }
 pyo3 = ">=0.22"
 debversion = ">=0.3.0"
 serde_yaml = ">=0.8"
@@ -29,5 +29,5 @@ debian-control = ">=0.1"
 pyo3-log = ">=0.11"
 maplit = "1"
 buildlog-consultant = ">=0.0.39"
-#upstream-ontologist = ">=0.1.38"
-upstream-ontologist = { git = "https://github.com/jelmer/upstream-ontologist" }
+upstream-ontologist = ">=0.1.38"
+#upstream-ontologist = { git = "https://github.com/jelmer/upstream-ontologist" }
