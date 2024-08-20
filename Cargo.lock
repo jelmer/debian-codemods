@@ -502,6 +502,7 @@ dependencies = [
  "log",
  "ognibuild",
  "pyo3",
+ "reqwest",
  "tempfile",
  "tokio",
  "url",
