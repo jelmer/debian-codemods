@@ -1,3 +1,5 @@
+use breezyshim::error::Error as BrzError;
+use breezyshim::workingtree::WorkingTree;
 use debversion::Version;
 
 pub mod simple_apt_repo;
@@ -124,6 +126,29 @@ pub fn python_binary_package_name(upstream_name: &str) -> String {
         .strip_prefix("python-")
         .unwrap_or(upstream_name);
     format!("python3-{}", upstream_name.replace('_', "-").to_lowercase())
+}
+
+pub fn use_packaging_branch(wt: &WorkingTree, branch_name: &str) -> Result<(), BrzError> {
+    let last_revision = wt.last_revision();
+    let target_branch = match wt.controldir().open_branch(Some(branch_name)) {
+        Ok(b) => b,
+        Err(BrzError::NotBranchError { .. }) => wt.controldir().create_branch(Some(branch_name))?,
+        Err(e) => return Err(e),
+    };
+
+    target_branch.generate_revision_history(last_revision)?;
+    log::info!("Switching to packaging branch {}.", branch_name);
+    wt.controldir()
+        .set_branch_reference(target_branch.as_ref(), Some(""));
+    // TODO(jelmer): breezy bug?
+    pyo3::Python::with_gil(|py| {
+        use pyo3::ToPyObject;
+        let wt = wt.to_object(py);
+        wt.setattr(py, "_branch", target_branch.to_object(py))?;
+        Ok(())
+    })
+    .unwrap();
+    Ok(())
 }
 
 #[cfg(test)]
