@@ -1,6 +1,15 @@
+use breezyshim::debian::error::Error as BrzDebianError;
+use breezyshim::debian::merge_upstream::{
+    do_import, get_existing_imported_upstream_revids, get_tarballs,
+};
+use breezyshim::debian::upstream::{UpstreamBranchSource, UpstreamSource};
+use breezyshim::debian::{TarballKind, DEFAULT_ORIG_DIR};
 use breezyshim::error::Error as BrzError;
 use breezyshim::workingtree::WorkingTree;
+use breezyshim::RevisionId;
 use debversion::Version;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 pub mod simple_apt_repo;
 
@@ -129,19 +138,19 @@ pub fn python_binary_package_name(upstream_name: &str) -> String {
 }
 
 pub fn use_packaging_branch(wt: &WorkingTree, branch_name: &str) -> Result<(), BrzError> {
-    let last_revision = wt.last_revision();
+    let last_revision = wt.last_revision()?;
     let target_branch = match wt.controldir().open_branch(Some(branch_name)) {
         Ok(b) => b,
         Err(BrzError::NotBranchError { .. }) => wt.controldir().create_branch(Some(branch_name))?,
         Err(e) => return Err(e),
     };
 
-    target_branch.generate_revision_history(last_revision)?;
+    target_branch.generate_revision_history(&last_revision)?;
     log::info!("Switching to packaging branch {}.", branch_name);
     wt.controldir()
-        .set_branch_reference(target_branch.as_ref(), Some(""));
+        .set_branch_reference(target_branch.as_ref(), Some(""))?;
     // TODO(jelmer): breezy bug?
-    pyo3::Python::with_gil(|py| {
+    pyo3::Python::with_gil(|py| -> pyo3::PyResult<()> {
         use pyo3::ToPyObject;
         let wt = wt.to_object(py);
         wt.setattr(py, "_branch", target_branch.to_object(py))?;
@@ -149,6 +158,101 @@ pub fn use_packaging_branch(wt: &WorkingTree, branch_name: &str) -> Result<(), B
     })
     .unwrap();
     Ok(())
+}
+
+pub fn import_upstream_version_from_dist(
+    wt: &WorkingTree,
+    subpath: &std::path::Path,
+    upstream_source: &UpstreamBranchSource,
+    source_name: &str,
+    upstream_version: &str,
+) -> Result<
+    (
+        HashMap<TarballKind, (RevisionId, PathBuf)>,
+        HashMap<TarballKind, String>,
+        String,
+    ),
+    BrzDebianError,
+> {
+    let orig_dir = Path::new(DEFAULT_ORIG_DIR).canonicalize().unwrap();
+
+    let mut tag_names = HashMap::new();
+    let td = tempfile::tempdir().unwrap();
+    let locations = upstream_source.fetch_tarballs(
+        source_name,
+        upstream_version,
+        td.path(),
+        Some(&[TarballKind::Orig]),
+    )?;
+    let tarball_filenames = match get_tarballs(
+        &orig_dir,
+        wt,
+        &source_name,
+        upstream_version,
+        locations
+            .iter()
+            .map(|x| x.as_ref())
+            .collect::<Vec<_>>()
+            .as_slice(),
+    ) {
+        Ok(filenames) => filenames,
+        Err(BrzDebianError::BrzError(BrzError::FileExists(path, _))) => {
+            log::warn!("Tarball {} exists, reusing existing file.", path.display());
+            vec![orig_dir.join(path)]
+        }
+        Err(e) => return Err(e),
+    };
+    let upstream_revisions =
+        upstream_source.version_as_revisions(&source_name, upstream_version, None)?;
+    let files_excluded = None;
+    let imported_revids = match do_import(
+        wt,
+        subpath,
+        tarball_filenames
+            .iter()
+            .map(|x| x.as_path())
+            .collect::<Vec<_>>()
+            .as_slice(),
+        &source_name,
+        upstream_version,
+        None,
+        upstream_source.upstream_branch().as_ref(),
+        upstream_revisions,
+        None,
+        false,
+        false,
+        None,
+        files_excluded,
+    ) {
+        Ok(revids) => revids,
+        Err(BrzDebianError::UpstreamAlreadyImported(version)) => {
+            log::warn!("Upstream release {} already imported.", version);
+            get_existing_imported_upstream_revids(upstream_source, source_name, upstream_version)?
+        }
+        Err(e) => return Err(e),
+    };
+    let mut pristine_revids = HashMap::new();
+    for (component, tag_name, revid, _pristine_tar_imported, subpath) in imported_revids {
+        pristine_revids.insert(component.clone(), (revid, subpath));
+        tag_names.insert(component, tag_name);
+    }
+    std::mem::drop(td);
+
+    let upstream_branch_name = "upstream";
+    match wt.controldir().create_branch(Some(upstream_branch_name)) {
+        Ok(branch) => {
+            branch
+                .generate_revision_history(&pristine_revids.get(&TarballKind::Orig).unwrap().0)?;
+            log::info!("Created upstream branch.");
+        }
+        Err(BrzError::AlreadyBranch(..)) => {
+            log::info!("Upstream branch already exists; not creating.");
+            wt.controldir().open_branch(Some(upstream_branch_name))?;
+        }
+        Err(e) => return Err(e.into()),
+    }
+
+    Ok((pristine_revids, tag_names, upstream_branch_name.to_string()))
 }
 
 #[cfg(test)]
