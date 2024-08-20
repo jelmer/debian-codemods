@@ -28,3 +28,6 @@ debian-control = ">=0.1"
 #debian-control = { git = "https://github.com/jelmer/deb822-lossless" }
 pyo3-log = ">=0.11"
 maplit = "1"
+buildlog-consultant = ">=0.0.39"
+#upstream-ontologist = ">=0.1.38"
+upstream-ontologist = { git = "https://github.com/jelmer/upstream-ontologist" }

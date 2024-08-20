@@ -23,6 +23,7 @@ pub mod salsa;
 pub mod svp;
 pub mod vcs;
 pub mod vendor;
+pub mod versions;
 
 // TODO(jelmer): Import this from ognibuild
 pub const DEFAULT_BUILDER: &str = "sbuild --no-clean-source";
