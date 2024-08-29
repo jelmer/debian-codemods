@@ -20,6 +20,7 @@ pub mod patches;
 pub mod publish;
 pub mod relations;
 pub mod release_info;
+pub mod rules;
 pub mod salsa;
 pub mod svp;
 pub mod vcs;
