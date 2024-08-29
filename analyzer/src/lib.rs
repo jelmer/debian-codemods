@@ -13,6 +13,7 @@ pub mod config;
 pub mod control;
 pub mod debcargo;
 pub mod debcommit;
+pub mod debhelper;
 pub mod detect_gbp_dch;
 pub mod editor;
 pub mod patches;
