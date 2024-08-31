@@ -1483,18 +1483,21 @@ pub fn run_lintian_fixer(
         .as_ref()
         .map(|fs| fs.iter().map(|p| p.as_path()).collect::<Vec<_>>());
 
-    let revid = local_tree
-        .commit(
-            description.as_str(),
-            Some(false),
-            Some(committer.as_str()),
-            specific_files_ref.as_deref(),
-        )
-        .map_err(|e| match e {
-            Error::PointlessCommit => FixerError::NoChanges,
-            Error::NoWhoami => FixerError::Other("No committer specified".to_string()),
-            e => FixerError::Other(e.to_string()),
-        })?;
+    let mut builder = local_tree
+        .build_commit()
+        .message(description.as_str())
+        .allow_pointless(false)
+        .committer(committer.as_str());
+
+    if let Some(specific_files_ref) = specific_files_ref.as_ref() {
+        builder = builder.specific_files(specific_files_ref);
+    }
+
+    let revid = builder.commit().map_err(|e| match e {
+        Error::PointlessCommit => FixerError::NoChanges,
+        Error::NoWhoami => FixerError::Other("No committer specified".to_string()),
+        e => FixerError::Other(e.to_string()),
+    })?;
     result.revision_id = Some(revid);
 
     // TODO(jelmer): Support running sbuild & verify lintian warning is gone?
@@ -2180,7 +2183,10 @@ Arch: all
         std::fs::write(td.path().join("debian/changelog"), CHANGELOG_FILE).unwrap();
         tree.add(&[std::path::Path::new("debian/changelog")])
             .unwrap();
-        tree.commit("Initial thingy.", None, None, None).unwrap();
+        tree.build_commit()
+            .message("Initial thingy.")
+            .commit()
+            .unwrap();
         (td, tree)
     }
 
@@ -2225,7 +2231,10 @@ Arch: all
         tree.remove(&[(std::path::Path::new("debian/changelog"))])
             .unwrap();
         std::fs::remove_file(td.path().join("debian/changelog")).unwrap();
-        tree.commit("not a debian dir", None, None, None).unwrap();
+        tree.build_commit()
+            .message("not a debian dir")
+            .commit()
+            .unwrap();
         let lock = tree.lock_write().unwrap();
 
         assert!(matches!(

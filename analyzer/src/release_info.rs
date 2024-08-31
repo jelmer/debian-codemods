@@ -22,7 +22,7 @@ pub fn ubuntu_releases() -> Vec<String> {
         .collect()
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Vendor {
     Debian,
     Ubuntu,

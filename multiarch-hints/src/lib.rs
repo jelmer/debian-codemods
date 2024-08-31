@@ -607,12 +607,17 @@ pub fn apply_multiarch_hints(
         .as_ref()
         .map(|x| x.iter().map(|x| x.as_path()).collect::<Vec<_>>());
 
-    local_tree.commit(
-        overall_description.concat().as_str(),
-        Some(false),
-        Some(&committer),
-        specific_files_ref.as_deref(),
-    )?;
+    let mut builder = local_tree
+        .build_commit()
+        .message(overall_description.concat().as_str())
+        .allow_pointless(false)
+        .committer(&committer);
+
+    if let Some(specific_files) = specific_files_ref.as_deref() {
+        builder = builder.specific_files(specific_files);
+    }
+
+    builder.commit()?;
 
     Ok(OverallResult { changes })
 }

@@ -205,7 +205,7 @@ mod find_patch_base_tests {
             &breezyshim::controldir::ControlDirFormat::default(),
         )
         .unwrap();
-        let upstream_revid = tree.commit("upstream", None, None, None).unwrap();
+        let upstream_revid = tree.build_commit().message("upstream").commit().unwrap();
         tree.mkdir(std::path::Path::new("debian")).unwrap();
         std::fs::write(
             td.path().join("debian/changelog"),
@@ -605,7 +605,7 @@ mod read_quilt_patches_tests {
             .as_slice(),
         )
         .unwrap();
-        tree.commit("add patch", None, None, None).unwrap();
+        tree.build_commit().message("add patch").commit().unwrap();
         let patches = super::read_quilt_patches(&tree, std::path::Path::new("debian/patches"))
             .collect::<Vec<_>>();
         assert_eq!(1, patches.len());
@@ -643,7 +643,7 @@ mod read_quilt_patches_tests {
         .unwrap();
         tree.add(&[std::path::Path::new("debian/patches/series")])
             .unwrap();
-        tree.commit("add series", None, None, None).unwrap();
+        tree.build_commit().message("add series").commit().unwrap();
         let patches = super::read_quilt_patches(&tree, std::path::Path::new("debian/patches"))
             .collect::<Vec<_>>();
         assert_eq!(0, patches.len());
@@ -684,7 +684,7 @@ mod upstream_with_applied_patches_tests {
         .unwrap();
         std::fs::write(td.path().join("afile"), b"some line\n").unwrap();
         tree.add(&[std::path::Path::new("afile")]).unwrap();
-        let upstream_revid = tree.commit("upstream", None, None, None).unwrap();
+        let upstream_revid = tree.build_commit().message("upstream").commit().unwrap();
         tree.mkdir(std::path::Path::new("debian")).unwrap();
         std::fs::write(
             td.path().join("debian/changelog"),
@@ -804,7 +804,11 @@ mod tree_non_patches_changes_tests {
 
         std::fs::write(td.path().join("afile"), b"some line\n").unwrap();
         local_tree.add(&[std::path::Path::new("afile")]).unwrap();
-        let upstream_revid = local_tree.commit("upstream", None, None, None).unwrap();
+        let upstream_revid = local_tree
+            .build_commit()
+            .message("upstream")
+            .commit()
+            .unwrap();
 
         local_tree.mkdir(std::path::Path::new("debian")).unwrap();
         std::fs::write(

@@ -1,6 +1,6 @@
-use breezyshim::tree::{Tree,WorkingTree};
+use crate::release_info::{suite_to_distribution, Vendor};
+use breezyshim::tree::{Tree, WorkingTree};
 use debian_changelog::ChangeLog;
-use crate::release_info::{Vendor, suite_to_distribution};
 
 #[derive(Debug)]
 pub enum Error {
@@ -34,34 +34,59 @@ impl From<debian_changelog::Error> for Error {
 impl std::error::Error for Error {}
 
 pub fn debcommit_release(
-        tree: &WorkingTree, committer: Option<&str>, subpath: Option<&std::path::Path>, message: Option<&str>, vendor: Option<Vendor>) -> Result<String, Error>{
+    tree: &WorkingTree,
+    committer: Option<&str>,
+    subpath: Option<&std::path::Path>,
+    message: Option<&str>,
+    vendor: Option<Vendor>,
+) -> Result<String, Error> {
     let subpath = subpath.unwrap_or_else(|| std::path::Path::new(""));
     let cl_path = subpath.join("debian/changelog");
-    let (message, vendor) = if message.is_none() || vendor.is_none() {
+    let (message, vendor) = if let (Some(message), Some(vendor)) = (message, vendor) {
+        (message.to_string(), vendor)
+    } else {
         let f = tree.get_file(&cl_path)?;
         let cl = ChangeLog::read(f)?;
         let entry = cl.entries().next().unwrap();
         let message = if let Some(message) = message {
             message.to_string()
         } else {
-            format!("releasing package {} version {}", entry.package().unwrap(), entry.version().unwrap())
+            format!(
+                "releasing package {} version {}",
+                entry.package().unwrap(),
+                entry.version().unwrap()
+            )
         };
-        let vendor = if let Some(vendor) = vendor {
-            vendor
-        } else {
-            suite_to_distribution(entry.distributions().as_ref().and_then(|d| d.first()).unwrap()).unwrap()
-        };
+        let vendor = vendor.unwrap_or_else(|| {
+            suite_to_distribution(
+                entry
+                    .distributions()
+                    .as_ref()
+                    .and_then(|d| d.first())
+                    .unwrap(),
+            )
+            .unwrap()
+        });
         (message, vendor)
-    } else {
-        (message.unwrap().to_string(), vendor.unwrap())
     };
-    let tag_name = if let Ok(tag_name) = breezyshim::debian::tree_debian_tag_name(tree, tree.branch().as_ref(), Some(subpath), Some(vendor.to_string())) {
+    let tag_name = if let Ok(tag_name) = breezyshim::debian::tree_debian_tag_name(
+        tree,
+        tree.branch().as_ref(),
+        Some(subpath),
+        Some(vendor.to_string()),
+    ) {
         tag_name
     } else {
         return Err(Error::UnreleasedChanges(cl_path));
     };
 
-    let revid = tree.commit(&message, None, committer, None)?;
+    let mut builder = tree.build_commit().message(&message);
+
+    if let Some(committer) = committer {
+        builder = builder.committer(committer);
+    }
+
+    let revid = builder.commit()?;
     tree.branch().tags().unwrap().set_tag(&tag_name, &revid)?;
     Ok(tag_name)
 }

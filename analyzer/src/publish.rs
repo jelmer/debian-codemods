@@ -144,12 +144,13 @@ pub fn update_official_vcs(
 
     let committer = committer.map_or_else(|| get_committer(wt), |s| s.to_string());
 
-    match wt.commit(
-        "Set Vcs headers.",
-        Some(false),
-        Some(committer.as_str()),
-        None,
-    ) {
+    match wt
+        .build_commit()
+        .message("Set Vcs headers.")
+        .allow_pointless(false)
+        .committer(committer.as_str())
+        .commit()
+    {
         Ok(_) | Err(BrzError::PointlessCommit) => {}
         Err(e) => {
             panic!("Failed to commit: {:?}", e);
