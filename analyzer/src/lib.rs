@@ -23,6 +23,10 @@ pub mod release_info;
 pub mod rules;
 pub mod salsa;
 pub mod svp;
+#[cfg(feature = "udd")]
+pub mod udd;
+#[cfg(feature = "udd")]
+pub mod wnpp;
 pub mod vcs;
 pub mod vendor;
 pub mod versions;

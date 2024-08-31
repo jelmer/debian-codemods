@@ -39,12 +39,14 @@ nix = { version = "0.29.0", features = ["fs", "time"] }
 deb822-lossless = "0.1.14"
 toml_edit = "0.22.20"
 semver = "1.0.23"
+sqlx = { workspace = true, optional = true, features = ["postgres"] }
 
 [features]
 default = ["python", "merge3"]
 python = []
 cli = ["dep:clap", "dep:env_logger"]
 merge3 = ["dep:merge3"]
+udd = ["dep:sqlx"]
 
 [lib]
 
