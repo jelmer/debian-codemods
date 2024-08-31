@@ -1242,6 +1242,7 @@ pub fn data_file_path(
         return Some(path);
     }
 
+    #[cfg(feature = "python")]
     pyo3::prepare_freethreaded_python();
     #[cfg(feature = "python")]
     if let Some(path) = pyo3::Python::with_gil(|py| {
