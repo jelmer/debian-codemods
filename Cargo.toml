@@ -1,5 +1,6 @@
 [workspace]
-resolver = "2"
+# With resolve set to "2", dependent projects can't find debian-analyzer anymore.
+resolver = "1"
 members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize", "debianize-py", "analyzer"]
 
 [workspace.package]
@@ -31,3 +32,4 @@ maplit = "1"
 buildlog-consultant = ">=0.0.39"
 upstream-ontologist = ">=0.1.38"
 #upstream-ontologist = { git = "https://github.com/jelmer/upstream-ontologist" }
+sqlx = "0.8"
