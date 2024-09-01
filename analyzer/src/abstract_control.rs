@@ -1,5 +1,5 @@
 use crate::relations::ensure_relation;
-use debian_analyzer::relations::is_relation_implied;
+use crate::relations::is_relation_implied;
 use debian_control::relations::{Entry, Relations};
 
 /// Interface for editing debian packages, whether backed by real control files or debcargo files.
@@ -72,16 +72,14 @@ impl<'a> AbstractSource<'a> for DebcargoSource<'a> {
     }
 
     fn ensure_build_dep(&mut self, dep: Entry) {
-        // Check that one of the existing build dependencies matches the new one
-        if self
-            .build_depends()
-            .iter()
-            .any(|existing| is_relation_implied(existing, &dep))
+        // TODO: Check that it's not already there
+        if let Some(build_deps) = self
+            .toml_section_mut()
+            .get_mut("build_depends")
+            .and_then(|v| v.as_array_mut())
         {
-            return;
+            build_deps.push(dep.to_string());
         }
-
-        // If not, add it to
     }
 }
 

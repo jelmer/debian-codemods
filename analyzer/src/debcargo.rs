@@ -172,8 +172,12 @@ pub struct DebcargoSource<'a> {
 }
 
 impl<'a> DebcargoSource<'a> {
+    pub fn toml_section_mut(&mut self) -> &mut Table {
+        self.main.debcargo["source"].as_table_mut().unwrap()
+    }
+
     pub fn set_standards_version(&mut self, version: &str) -> &mut Self {
-        self.main.debcargo["source"]["standards-version"] = value(version);
+        self.toml_section_mut()["standards-version"] = value(version);
         self
     }
 
@@ -187,7 +191,7 @@ impl<'a> DebcargoSource<'a> {
     }
 
     pub fn set_homepage(&mut self, homepage: &str) -> &mut Self {
-        self.main.debcargo["source"]["homepage"] = value(homepage);
+        self.toml_section_mut()["homepage"] = value(homepage);
         self
     }
 
@@ -199,13 +203,17 @@ impl<'a> DebcargoSource<'a> {
             .and_then(|c| c.get("package"))
             .and_then(|x| x.get("homepage"))
             .and_then(|v| v.as_str());
-        self.main.debcargo["source"]["homepage"]
-            .as_str()
+        self.main
+            .debcargo
+            .get("source")
+            .and_then(|s| s.as_table())
+            .and_then(|s| s.get("homepage"))
+            .and_then(|v| v.as_str())
             .or(default_homepage)
     }
 
     pub fn set_vcs_git(&mut self, git: &str) -> &mut Self {
-        self.main.debcargo["source"]["vcs_git"] = value(git);
+        self.toml_section_mut()["vcs_git"] = value(git);
         self
     }
 
@@ -242,7 +250,7 @@ impl<'a> DebcargoSource<'a> {
     }
 
     pub fn set_vcs_browser(&mut self, browser: &str) -> &mut Self {
-        self.main.debcargo["source"]["vcs_browser"] = value(browser);
+        self.toml_section_mut()["vcs_browser"] = value(browser);
         self
     }
 
@@ -256,7 +264,7 @@ impl<'a> DebcargoSource<'a> {
     }
 
     pub fn set_section(&mut self, section: &str) -> &mut Self {
-        self.main.debcargo["source"]["section"] = value(section);
+        self.toml_section_mut()["section"] = value(section);
         self
     }
 
@@ -285,7 +293,7 @@ impl<'a> DebcargoSource<'a> {
     }
 
     pub fn set_priority(&mut self, priority: debian_control::Priority) -> &mut Self {
-        self.main.debcargo["source"]["priority"] = value(priority.to_string());
+        self.toml_section_mut()["priority"] = value(priority.to_string());
         self
     }
 
@@ -299,8 +307,7 @@ impl<'a> DebcargoSource<'a> {
     }
 
     pub fn set_rules_requires_root(&mut self, requires_root: bool) -> &mut Self {
-        self.main.debcargo["source"]["requires_root"] =
-            value(if requires_root { "yes" } else { "no" });
+        self.toml_section_mut()["requires_root"] = value(if requires_root { "yes" } else { "no" });
         self
     }
 
@@ -314,7 +321,7 @@ impl<'a> DebcargoSource<'a> {
     }
 
     pub fn set_maintainer(&mut self, maintainer: &str) -> &mut Self {
-        self.main.debcargo["source"]["maintainer"] = value(maintainer);
+        self.toml_section_mut()["maintainer"] = value(maintainer);
         self
     }
 
@@ -332,11 +339,12 @@ impl<'a> DebcargoSource<'a> {
         for u in uploaders {
             array.push(u);
         }
-        self.main.debcargo["source"]["uploaders"] = value(array);
+        self.toml_section_mut()["uploaders"] = value(array);
         self
     }
 }
 
+#[allow(dead_code)]
 pub struct DebcargoBinary<'a> {
     table: &'a mut Table,
     key: String,
