@@ -1,7 +1,7 @@
 use crate::release_info::{suite_to_distribution, Vendor};
 use breezyshim::commit::CommitReporter;
 use breezyshim::error::Error as BrzError;
-use breezyshim::tree::{Kind, MutableTree, Path, Tree, WorkingTree};
+use breezyshim::tree::{Kind, Path, Tree, WorkingTree};
 use breezyshim::RevisionId;
 use debian_changelog::ChangeLog;
 

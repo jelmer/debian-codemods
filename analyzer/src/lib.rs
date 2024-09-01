@@ -8,6 +8,7 @@ use pyo3::prelude::*;
 
 use std::str::FromStr;
 
+pub mod abstract_control;
 pub mod changelog;
 pub mod config;
 pub mod control;
@@ -25,11 +26,11 @@ pub mod salsa;
 pub mod svp;
 #[cfg(feature = "udd")]
 pub mod udd;
-#[cfg(feature = "udd")]
-pub mod wnpp;
 pub mod vcs;
 pub mod vendor;
 pub mod versions;
+#[cfg(feature = "udd")]
+pub mod wnpp;
 
 // TODO(jelmer): Import this from ognibuild
 pub const DEFAULT_BUILDER: &str = "sbuild --no-clean-source";

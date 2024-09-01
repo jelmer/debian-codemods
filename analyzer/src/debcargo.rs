@@ -1,6 +1,6 @@
 use debian_control::control::MultiArch;
-use std::collections::HashSet;
-use toml_edit::{value, DocumentMut};
+use std::collections::{HashMap, HashSet};
+use toml_edit::{value, DocumentMut, Table};
 
 pub const DEFAULT_MAINTAINER: &str =
     "Debian Rust Maintainers <pkg-rust-maintainers@alioth-lists.debian.net>";
@@ -43,10 +43,11 @@ impl DebcargoEditor {
             .and_then(|c| c["package"]["name"].as_str())
     }
 
-    fn crate_version(&self) -> Option<&str> {
+    fn crate_version(&self) -> Option<semver::Version> {
         self.cargo
             .as_ref()
             .and_then(|c| c["package"]["version"].as_str())
+            .map(|s| semver::Version::parse(s).unwrap())
     }
 
     pub fn open(&self, path: &str) -> Result<Self, std::io::Error> {
@@ -74,56 +75,75 @@ impl DebcargoEditor {
             .unwrap_or(false)
     }
 
-    /*
-    pub fn binaries(&mut self) -> impl Iterator<Item = DebcargoBinary> {
+    pub fn binaries(&mut self) -> impl Iterator<Item = DebcargoBinary<'_>> {
         let semver_suffix = self.semver_suffix();
 
-        let mut ret: Vec<(String, String)> = vec![];
-        ret.push((
-            "lib".to_string(),
+        let mut ret: HashMap<String, String> = HashMap::new();
+        ret.insert(
             debcargo_binary_name(
                 self.crate_name().unwrap(),
                 &if semver_suffix {
-                    semver_pair(self.crate_version().unwrap())
+                    semver_pair(&self.crate_version().unwrap())
                 } else {
                     "".to_string()
                 },
             ),
-        ));
+            "lib".to_string(),
+        );
 
-        if self.debcargo["bin"]
-            .as_bool()
-            .unwrap_or_else(|| !semver_suffix)
-        {
+        if self.debcargo["bin"].as_bool().unwrap_or(!semver_suffix) {
             let bin_name = self.debcargo["bin_name"]
                 .as_str()
                 .unwrap_or_else(|| self.crate_name().unwrap());
-            ret.push(("bin".to_string(), bin_name.to_owned()));
+            ret.insert(bin_name.to_owned(), "bin".to_string());
         }
 
-        struct BinIter<'a> {
-            main: &'a mut DebcargoEditor,
-            iter: std::vec::IntoIter<(String, String)>,
-        }
+        let global_summary = self.global_summary();
+        let global_description = self.global_description();
+        let crate_name = self.crate_name().unwrap().to_string();
+        let crate_version = self.crate_version().unwrap();
+        let features = self.features();
 
-        impl<'a> Iterator for BinIter<'a> {
-            type Item = DebcargoBinary;
+        self.debcargo
+            .as_table_mut()
+            .iter_mut()
+            .filter_map(move |(key, item)| {
+                let kind = ret.remove(&key.to_string())?;
+                Some(DebcargoBinary::new(
+                    kind,
+                    key.to_string(),
+                    item.as_table_mut().unwrap(),
+                    global_summary.clone(),
+                    global_description.clone(),
+                    crate_name.clone(),
+                    crate_version.clone(),
+                    semver_suffix,
+                    features.clone(),
+                ))
+            })
+    }
 
-            fn next(&mut self) -> Option<Self::Item> {
-                self.iter
-                    .next()
-                    .map(move |(k, n)| DebcargoBinary::new(self.main, k, n))
-            }
-        }
-
-        BinIter {
-            main: self,
-            iter: ret.into_iter(),
+    fn global_summary(&self) -> Option<String> {
+        if let Some(summary) = self.debcargo.get("summary").and_then(|v| v.as_str()) {
+            Some(format!("{} - Rust source code", summary))
+        } else {
+            self.cargo.as_ref().and_then(|c| {
+                c["package"]
+                    .get("description")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.split('\n').next().unwrap().to_string())
+            })
         }
     }
-    */
 
-    fn features(&self) -> Option<Vec<String>> {
+    fn global_description(&self) -> Option<String> {
+        self.debcargo
+            .get("description")
+            .and_then(|v| v.as_str())
+            .map(|description| description.to_owned())
+    }
+
+    fn features(&self) -> Option<HashSet<String>> {
         self.cargo
             .as_ref()
             .and_then(|c| c["features"].as_table())
@@ -231,7 +251,7 @@ impl<'a> DebcargoSource<'a> {
             Some(format!(
                 "rust-{}-{}",
                 crate_name?,
-                semver_pair(self.main.crate_version()?)
+                semver_pair(&self.main.crate_version()?)
             ))
         } else {
             Some(format!("rust-{}", debnormalize(self.main.crate_name()?)))
@@ -302,19 +322,41 @@ impl<'a> DebcargoSource<'a> {
 }
 
 pub struct DebcargoBinary<'a> {
-    main: &'a mut DebcargoEditor,
+    table: &'a mut Table,
     key: String,
     name: String,
     section: String,
+    global_summary: Option<String>,
+    global_description: Option<String>,
+    crate_name: String,
+    crate_version: semver::Version,
+    semver_suffix: bool,
+    features: Option<HashSet<String>>,
 }
 
 impl<'a> DebcargoBinary<'a> {
-    fn new(main: &'a mut DebcargoEditor, key: String, name: String) -> Self {
+    fn new(
+        key: String,
+        name: String,
+        table: &'a mut Table,
+        global_summary: Option<String>,
+        global_description: Option<String>,
+        crate_name: String,
+        crate_version: semver::Version,
+        semver_suffix: bool,
+        features: Option<HashSet<String>>,
+    ) -> Self {
         Self {
-            main,
             key: key.to_owned(),
             name,
             section: format!("packages.{}", key),
+            table,
+            global_summary,
+            global_description,
+            crate_name,
+            crate_version,
+            semver_suffix,
+            features,
         }
     }
 
@@ -331,43 +373,25 @@ impl<'a> DebcargoBinary<'a> {
     }
 
     pub fn section(&self) -> Option<&str> {
-        self.main.debcargo[&self.section]["section"].as_str()
+        self.table["section"].as_str()
     }
 
     pub fn summary(&self) -> Option<String> {
-        if let Some(summary) = self.main.debcargo[&self.section]
-            .get("summary")
-            .and_then(|v| v.as_str())
-        {
+        if let Some(summary) = self.table.get("summary").and_then(|v| v.as_str()) {
             Some(summary.to_string())
-        } else if let Some(summary) = self.main.debcargo.get("summary").and_then(|v| v.as_str()) {
-            Some(format!("{} - Rust source code", summary))
         } else {
-            self.main.cargo.as_ref().and_then(|c| {
-                c["package"]
-                    .get("description")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.split('\n').next().unwrap().to_string())
-            })
+            self.global_summary.clone()
         }
     }
 
     pub fn long_description(&self) -> Option<String> {
-        if let Some(description) = self.main.debcargo[&self.section]
-            .get("description")
-            .and_then(|v| v.as_str())
-        {
+        if let Some(description) = self.table.get("description").and_then(|v| v.as_str()) {
             Some(description.to_string())
-        } else if let Some(description) = self
-            .main
-            .debcargo
-            .get("description")
-            .and_then(|v| v.as_str())
-        {
-            Some(description.to_owned())
+        } else if let Some(description) = self.global_description.as_ref() {
+            Some(description.to_string())
         } else {
             match self.key.as_str() {
-                "lib" => Some(format!("Source code for Debianized Rust crate \"{}\"", self.main.crate_name().unwrap())),
+                "lib" => Some(format!("Source code for Debianized Rust crate \"{}\"", self.crate_name)),
                 "bin" => Some("This package contains the source for the Rust mio crate, packaged by debcargo for use with cargo and dh-cargo.".to_owned()),
                 _ => None,
             }
@@ -382,21 +406,21 @@ impl<'a> DebcargoBinary<'a> {
     }
 
     pub fn depends(&self) -> Option<&str> {
-        self.main.debcargo[&self.section]["depends"].as_str()
+        self.table["depends"].as_str()
     }
 
     pub fn recommends(&self) -> Option<&str> {
-        self.main.debcargo[&self.section]["recommends"].as_str()
+        self.table["recommends"].as_str()
     }
 
     pub fn suggests(&self) -> Option<&str> {
-        self.main.debcargo[&self.section]["suggests"].as_str()
+        self.table["suggests"].as_str()
     }
 
     fn default_provides(&self) -> Option<String> {
         let mut ret = HashSet::new();
-        let semver_suffix = self.main.semver_suffix();
-        let semver = semver::Version::parse(self.main.crate_version().unwrap()).unwrap();
+        let semver_suffix = self.semver_suffix;
+        let semver = &self.crate_version;
 
         let mut suffixes = vec![];
         if !semver_suffix {
@@ -414,14 +438,14 @@ impl<'a> DebcargoBinary<'a> {
             feature_suffixes.insert("".to_string());
             feature_suffixes.insert("+default".to_string());
             feature_suffixes.extend(
-                self.main
-                    .features()
+                self.features
+                    .as_ref()
                     .map(|k| k.iter().map(|k| format!("+{}", k)).collect::<HashSet<_>>())
                     .unwrap_or_default(),
             );
             for feature_suffix in feature_suffixes {
                 ret.insert(debcargo_binary_name(
-                    self.main.crate_name().unwrap(),
+                    &self.crate_name,
                     &format!("{}{}", ver_suffix, &feature_suffix),
                 ));
             }
@@ -439,23 +463,14 @@ impl<'a> DebcargoBinary<'a> {
             ))
         }
     }
-
-    pub fn provides(&self) -> Option<&str> {
-        self.main
-            .debcargo
-            .get(&self.section)
-            .and_then(|s| s.get("provides"))
-            .and_then(|v| v.as_str())
-    }
 }
 
 fn debnormalize(s: &str) -> String {
-    s.to_lowercase().replace("_", "-")
+    s.to_lowercase().replace('_', "-")
 }
 
-fn semver_pair(s: &str) -> String {
-    let sv = semver::Version::parse(s).unwrap();
-    format!("{}.{}", sv.major, sv.minor)
+fn semver_pair(s: &semver::Version) -> String {
+    format!("{}.{}", s.major, s.minor)
 }
 
 fn debcargo_binary_name(crate_name: &str, suffix: &str) -> String {
