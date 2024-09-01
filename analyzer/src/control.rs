@@ -1470,7 +1470,7 @@ Package: bar
 "#,
             )
             .unwrap();
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             assert!(editor.source().is_none());
         }
