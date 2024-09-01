@@ -1,5 +1,6 @@
 use debian_control::control::MultiArch;
 use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 use toml_edit::{value, DocumentMut, Table};
 
 pub const DEFAULT_MAINTAINER: &str =
@@ -9,6 +10,7 @@ pub const CURRENT_STANDARDS_VERSION: &str = "4.5.1";
 pub const DEFAULT_PRIORITY: debian_control::Priority = debian_control::Priority::Optional;
 
 pub struct DebcargoEditor {
+    debcargo_toml_path: Option<PathBuf>,
     debcargo: DocumentMut,
     cargo: Option<DocumentMut>,
 }
@@ -16,8 +18,9 @@ pub struct DebcargoEditor {
 impl From<DocumentMut> for DebcargoEditor {
     fn from(doc: DocumentMut) -> Self {
         Self {
-            debcargo: doc,
             cargo: None,
+            debcargo_toml_path: None,
+            debcargo: doc,
         }
     }
 }
@@ -25,16 +28,10 @@ impl From<DocumentMut> for DebcargoEditor {
 impl DebcargoEditor {
     pub fn new() -> Self {
         Self {
+            debcargo_toml_path: None,
             debcargo: DocumentMut::new(),
             cargo: None,
         }
-    }
-
-    pub fn from_string(s: &str) -> Result<Self, toml_edit::TomlError> {
-        Ok(Self {
-            debcargo: s.parse()?,
-            cargo: None,
-        })
     }
 
     fn crate_name(&self) -> Option<&str> {
@@ -50,18 +47,37 @@ impl DebcargoEditor {
             .map(|s| semver::Version::parse(s).unwrap())
     }
 
-    pub fn open(&self, path: &str) -> Result<Self, std::io::Error> {
+    pub fn open(path: &Path) -> Result<Self, std::io::Error> {
         let content = std::fs::read_to_string(path)?;
-        Ok(Self::from_string(&content).unwrap())
+        Ok(Self {
+            debcargo_toml_path: Some(path.to_path_buf()),
+            cargo: None,
+            debcargo: content.parse().unwrap(),
+        })
     }
 
-    pub fn from_directory(&self, path: &str) -> Result<Self, std::io::Error> {
-        let debcargo_toml = std::fs::read_to_string(format!("{}/debian/debcargo.toml", path))?;
-        let cargo_toml = std::fs::read_to_string(format!("{}/Cargo.toml", path))?;
+    pub fn from_directory(path: &std::path::Path) -> Result<Self, std::io::Error> {
+        let debcargo_toml_path = path.join("debian/debcargo.toml");
+        let debcargo_toml = std::fs::read_to_string(&debcargo_toml_path)?;
+        let cargo_toml = std::fs::read_to_string(path.join("cargo.toml"))?;
         Ok(Self {
+            debcargo_toml_path: Some(debcargo_toml_path),
             debcargo: debcargo_toml.parse().unwrap(),
             cargo: Some(cargo_toml.parse().unwrap()),
         })
+    }
+
+    pub fn commit(&self) -> std::io::Result<bool> {
+        let old_contents = std::fs::read_to_string(self.debcargo_toml_path.as_ref().unwrap())?;
+        let new_contents = self.debcargo.to_string();
+        if old_contents == new_contents {
+            return Ok(false);
+        }
+        std::fs::write(
+            self.debcargo_toml_path.as_ref().unwrap(),
+            new_contents.as_bytes(),
+        )?;
+        Ok(true)
     }
 
     pub fn source(&mut self) -> DebcargoSource {
@@ -498,8 +514,8 @@ mod tests {
 
     #[test]
     fn test_semver_pair() {
-        assert_eq!(super::semver_pair("1.2.3"), "1.2");
-        assert_eq!(super::semver_pair("1.2.6"), "1.2");
+        assert_eq!(super::semver_pair(&"1.2.3".parse().unwrap()), "1.2");
+        assert_eq!(super::semver_pair(&"1.2.6".parse().unwrap()), "1.2");
     }
 
     #[test]
