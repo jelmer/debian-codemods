@@ -76,7 +76,7 @@ pub fn debcommit_release(
         tree,
         tree.branch().as_ref(),
         Some(subpath),
-        Some(vendor.to_string()),
+        Some(vendor),
     ) {
         tag_name
     } else {

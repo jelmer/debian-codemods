@@ -1,5 +1,6 @@
 use chrono::{NaiveDate, Utc};
 use distro_info::DistroInfo;
+pub use breezyshim::debian::Vendor;
 
 pub const DEBIAN_POCKETS: &[&str] = &["", "-security", "-proposed-updates", "-backports"];
 pub const UBUNTU_POCKETS: &[&str] = &["", "-proposed", "-updates", "-security", "-backports"];
@@ -20,23 +21,6 @@ pub fn ubuntu_releases() -> Vec<String> {
         .iter()
         .map(|r| r.series().to_string())
         .collect()
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Vendor {
-    Debian,
-    Ubuntu,
-    Kali,
-}
-
-impl std::fmt::Display for Vendor {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Vendor::Debian => write!(f, "debian"),
-            Vendor::Ubuntu => write!(f, "ubuntu"),
-            Vendor::Kali => write!(f, "kali"),
-        }
-    }
 }
 
 /// Infer the distribution from a suite.
