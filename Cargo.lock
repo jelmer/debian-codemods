@@ -4012,6 +4012,17 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 [[package]]
 name = "scrub-obsolete"
 version = "0.158.9"
+dependencies = [
+ "breezyshim",
+ "clap 4.5.17",
+ "debian-analyzer",
+ "debian-control",
+ "env_logger 0.11.5",
+ "lazy_static",
+ "log",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "security-framework"

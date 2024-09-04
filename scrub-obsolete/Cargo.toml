@@ -1,0 +1,16 @@
+[package]
+name = "scrub-obsolete"
+edition = "2021"
+version.workspace = true
+license = "GPL-3.0+"
+
+[dependencies]
+breezyshim = { workspace = true, features = ["debian"] }
+clap = { workspace = true, features = ["derive", "env"] }
+debian-analyzer = { version = "0.158.9", path = "../analyzer", features = ["udd"] }
+debian-control = { version = "0.1.28" }
+env_logger.workspace = true
+lazy_static.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
