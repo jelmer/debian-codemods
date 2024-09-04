@@ -223,6 +223,10 @@ impl Maintscript {
         Maintscript { lines: Vec::new() }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.lines.is_empty()
+    }
+
     fn entries(&self) -> Vec<&Entry> {
         self.lines.iter().filter_map(|l| match l {
             Line::Entry(e) => Some(e),

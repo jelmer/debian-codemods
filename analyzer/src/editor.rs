@@ -748,6 +748,24 @@ impl Marshallable for deb822_lossless::Deb822 {
     }
 }
 
+impl Marshallable for crate::maintscripts::Maintscript {
+    fn from_bytes(content: &[u8]) -> Self {
+        crate::maintscripts::Maintscript::from_bytes(content)
+    }
+
+    fn missing() -> Self {
+        crate::maintscripts::Maintscript::new()
+    }
+
+    fn to_bytes(&self) -> Option<Vec<u8>> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(self.to_string().into_bytes())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
