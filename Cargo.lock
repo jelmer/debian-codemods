@@ -274,9 +274,9 @@ dependencies = [
 
 [[package]]
 name = "breezyshim"
-version = "0.1.179"
+version = "0.1.181"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1339b3c3450245f4fd885cebdb9974bd7b745143b000df2b4b27e3ef0da02935"
+checksum = "fd110e2cfc994cf27f5a334910e9c04b0d76ce898acb4794518cdb538fb29ee2"
 dependencies = [
  "chrono",
  "ctor",
@@ -322,33 +322,6 @@ dependencies = [
  "lazy_static",
  "log",
  "pyo3",
- "regex",
- "serde",
- "serde_json",
- "serde_yaml",
- "shlex",
- "text-size",
- "textwrap",
-]
-
-[[package]]
-name = "buildlog-consultant"
-version = "0.0.39"
-source = "git+https://github.com/jelmer/buildlog-consultant#5885dbba0a7a7c9b9527f89250aa264fd4f54d82"
-dependencies = [
- "chrono",
- "clap 4.5.16",
- "debian-control",
- "debversion",
- "env_logger 0.11.5",
- "fancy-regex",
- "inventory",
- "lazy-regex",
- "lazy_static",
- "log",
- "maplit",
- "pep440_rs",
- "pep508_rs",
  "regex",
  "serde",
  "serde_json",
@@ -498,9 +471,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.1.15"
+version = "1.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57b6a275aa2903740dc87da01c62040406b8812552e97129a63ea8850a17c6e6"
+checksum = "e9d013ecb737093c0e86b151a7b837993cf9ec6c502946cfb44bedc392421e0b"
 dependencies = [
  "jobserver",
  "libc",
@@ -571,9 +544,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.16"
+version = "4.5.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed6719fffa43d0d87e5fd8caeab59be1554fb028cd30edc88fc4369b17971019"
+checksum = "3e5a21b8495e732f1b3c364c9949b201ca7bae518c502c80256c96ad79eaf6ac"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -581,9 +554,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.15"
+version = "4.5.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "216aec2b177652e3846684cbfe25c9964d18ec45234f0f5da5157b207ed1aab6"
+checksum = "8cf2dd12af7a047ad9d6da2b6b249759a22a7abc0f474c1dae1777afa4b21a73"
 dependencies = [
  "anstream",
  "anstyle",
@@ -643,12 +616,6 @@ checksum = "4ca0197aee26d1ae37445ee532fefce43251d24cc7c166799f4d46817f1d3973"
 dependencies = [
  "crossbeam-utils",
 ]
-
-[[package]]
-name = "configparser"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe1d7dcda7d1da79e444bdfba1465f2f849a58b07774e1df473ee77030cb47a7"
 
 [[package]]
 name = "configparser"
@@ -929,7 +896,7 @@ dependencies = [
  "anyhow",
  "cargo",
  "chrono",
- "clap 4.5.16",
+ "clap 4.5.17",
  "env_logger 0.9.3",
  "filetime",
  "flate2",
@@ -954,8 +921,8 @@ version = "0.158.9"
 dependencies = [
  "breezyshim",
  "chrono",
- "clap 4.5.16",
- "configparser 3.1.0",
+ "clap 4.5.17",
+ "configparser",
  "deb822-lossless",
  "debian-changelog",
  "debian-control",
@@ -1042,8 +1009,7 @@ name = "debianize"
 version = "0.158.9"
 dependencies = [
  "breezyshim",
- "buildlog-consultant 0.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
- "clap 4.5.16",
+ "clap 4.5.17",
  "debian-analyzer",
  "debian-changelog",
  "debversion",
@@ -1051,14 +1017,13 @@ dependencies = [
  "env_logger 0.11.5",
  "flate2",
  "hyper 0.14.30",
- "lintian-brush",
  "log",
  "ognibuild",
  "pyo3",
  "reqwest",
  "tempfile",
  "tokio",
- "upstream-ontologist 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)",
+ "upstream-ontologist",
  "url",
  "xdg",
 ]
@@ -1237,18 +1202,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "document_tree"
-version = "0.4.0"
-source = "git+https://github.com/jelmer/rust-rst#399b999bee08e6d21eb8fccfc32b133f374c644a"
-dependencies = [
- "anyhow",
- "regex",
- "serde",
- "serde_derive",
- "url",
-]
-
-[[package]]
 name = "dotenvy"
 version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1305,19 +1258,6 @@ checksum = "a12e6657c4c97ebab115a42dcee77225f7f482cdd841cf7088c657a42e9e00e7"
 dependencies = [
  "atty",
  "humantime",
- "log",
- "regex",
- "termcolor",
-]
-
-[[package]]
-name = "env_logger"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cd405aab171cb85d6735e5c8d9db038c17d3ca007a4d2c25f337935c3d90580"
-dependencies = [
- "humantime",
- "is-terminal",
  "log",
  "regex",
  "termcolor",
@@ -2190,9 +2130,9 @@ dependencies = [
 
 [[package]]
 name = "hyper-rustls"
-version = "0.27.2"
+version = "0.27.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ee4be2c948921a1a5320b629c4193916ed787a7f7f293fd3f7f5a6c9de74155"
+checksum = "08afdbb5c31130e3034af566421053ab03787c640246a446327f550d11bcb333"
 dependencies = [
  "futures-util",
  "http 1.1.0",
@@ -2343,15 +2283,6 @@ name = "indoc"
 version = "2.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b248f5224d1d606005e02c97f5aa4e88eeb230488bcc03bc9ca4d7991399f2b5"
-
-[[package]]
-name = "ini"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a9271a5dfd4228fa56a78d7508a35c321639cc71f783bb7a5723552add87bce"
-dependencies = [
- "configparser 1.0.0",
-]
 
 [[package]]
 name = "inotify"
@@ -2611,7 +2542,7 @@ checksum = "c0ff37bd590ca25063e35af745c343cb7a0271906fb7b37e4813e8f79f00268d"
 dependencies = [
  "bitflags 2.6.0",
  "libc",
- "redox_syscall 0.5.3",
+ "redox_syscall",
 ]
 
 [[package]]
@@ -2657,8 +2588,8 @@ version = "0.158.9"
 dependencies = [
  "breezyshim",
  "chrono",
- "clap 4.5.16",
- "configparser 3.1.0",
+ "clap 4.5.17",
+ "configparser",
  "debian-analyzer",
  "debian-changelog",
  "debversion",
@@ -2717,25 +2648,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
-name = "lz4_flex"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75761162ae2b0e580d7e7c390558127e5f01b4194debd6221fd8c207fc80e3f5"
-dependencies = [
- "twox-hash",
-]
-
-[[package]]
-name = "lzma-rs"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "297e814c836ae64db86b36cf2a557ba54368d03f6afcd7d947c266692f71115e"
-dependencies = [
- "byteorder",
- "crc",
-]
-
-[[package]]
 name = "lzma-sys"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2774,9 +2686,9 @@ dependencies = [
 
 [[package]]
 name = "makefile-lossless"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98528c9312dcce9d03baaf1912a93f852c2deb18fa5673797e4126987a1f5a76"
+checksum = "c85e27a5f5acdf3f166adde6e63f540747a7306fe3bec2a118e599f3a97a9079"
 dependencies = [
  "log",
  "rowan",
@@ -2868,7 +2780,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4b277bc3c7e2bc163abc6c0069f53715b52dc34442c0e807cc8758c7113524f"
 dependencies = [
- "clap 4.5.16",
+ "clap 4.5.17",
  "difflib",
 ]
 
@@ -2941,8 +2853,8 @@ version = "0.158.9"
 dependencies = [
  "breezyshim",
  "chrono",
- "clap 4.5.16",
- "configparser 3.1.0",
+ "clap 4.5.17",
+ "configparser",
  "deb822-lossless",
  "debian-analyzer",
  "debian-changelog",
@@ -3128,50 +3040,27 @@ dependencies = [
 [[package]]
 name = "ognibuild"
 version = "0.0.24"
-source = "git+https://github.com/jelmer/ognibuild#d94b22e7bb5864baa5e1d44b173b04fd52758be1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "febb1a3e097ee8ab82abc880ccb8e6705c34214cec5fb8113b97ac63799d5a6e"
 dependencies = [
  "breezyshim",
- "buildlog-consultant 0.0.39 (git+https://github.com/jelmer/buildlog-consultant)",
+ "buildlog-consultant",
  "chrono",
- "clap 4.5.16",
  "debian-changelog",
- "debian-control",
  "debversion",
- "env_logger 0.10.2",
- "flate2",
  "fs_extra",
- "ini",
- "inventory",
- "lazy-regex",
- "lazy_static",
  "libc",
  "log",
- "lz4_flex",
- "lzma-rs",
- "maplit",
  "nix",
- "pep440_rs",
- "pep508_rs",
- "percent-encoding",
  "pyo3",
- "pyproject-toml",
- "r-description",
  "rand",
  "regex",
- "reqwest",
- "semver",
  "serde",
  "serde_json",
- "serde_yaml",
  "shlex",
- "sqlx",
  "tempfile",
- "tokio",
- "toml 0.8.19",
- "upstream-ontologist 0.1.39 (git+https://github.com/jelmer/upstream-ontologist)",
  "url",
  "whoami",
- "xmltree 0.11.0",
 ]
 
 [[package]]
@@ -3296,7 +3185,7 @@ checksum = "1e401f977ab385c9e4e3ab30627d6f26d00e2c73eef317493c4ec6d468726cf8"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall 0.5.3",
+ "redox_syscall",
  "smallvec",
  "windows-targets 0.52.6",
 ]
@@ -3613,18 +3502,18 @@ checksum = "744a264d26b88a6a7e37cbad97953fa233b94d585236310bcbc88474b4092d79"
 
 [[package]]
 name = "psm"
-version = "0.1.22"
+version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b1f9bf148c15500d44581654fb9260bc9d82970f3ef777a79a40534f6aa784f"
+checksum = "aa37f80ca58604976033fae9515a8a2989fc13797d953f7c04fb8fa36a11f205"
 dependencies = [
  "cc",
 ]
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d31cbfcd94884c3a67ec210c83efb06cb43674043458b0ad59f6947f8462c23"
+checksum = "666f0f59e259aea2d72e6012290c09877a780935cc3c18b1ceded41f3890d59c"
 dependencies = [
  "bitflags 2.6.0",
  "getopts",
@@ -3768,16 +3657,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "640c9bd8497b02465aeef5375144c26062e0dcd5939dfcbb0f5db76cb8c17c73"
 
 [[package]]
-name = "r-description"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da429c97fc7433833b8970127c543b944a91c25978311b66a0c210a86c041290"
-dependencies = [
- "deb822-lossless",
- "url",
-]
-
-[[package]]
 name = "rand"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3814,15 +3693,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f97cdb2a36ed4183de61b2f824cc45c9f1037f28afe0a322e9fff4c108b5aaa"
 dependencies = [
  "rand_core",
-]
-
-[[package]]
-name = "redox_syscall"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4722d768eff46b75989dd134e5c353f0d6296e5aaa3132e776cbdb56be7731aa"
-dependencies = [
- "bitflags 1.3.2",
 ]
 
 [[package]]
@@ -3991,19 +3861,8 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d17bab4d5d74e0ec6d96f438cae821506d05f56ffe54f6f0a181cc139272fc80"
 dependencies = [
- "document_tree 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "document_tree",
  "failure",
- "pest",
- "pest_derive",
-]
-
-[[package]]
-name = "rst_parser"
-version = "0.4.0"
-source = "git+https://github.com/jelmer/rust-rst#399b999bee08e6d21eb8fccfc32b133f374c644a"
-dependencies = [
- "anyhow",
- "document_tree 0.4.0 (git+https://github.com/jelmer/rust-rst)",
  "pest",
  "pest_derive",
 ]
@@ -4014,20 +3873,9 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "280c2b35ffdb112dbf4a927597abb7288071f03f7d9f14dd9fea8c0781af4e80"
 dependencies = [
- "document_tree 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "document_tree",
  "failure",
- "serde-xml-rs 0.3.1",
- "serde_json",
-]
-
-[[package]]
-name = "rst_renderer"
-version = "0.4.0"
-source = "git+https://github.com/jelmer/rust-rst#399b999bee08e6d21eb8fccfc32b133f374c644a"
-dependencies = [
- "anyhow",
- "document_tree 0.4.0 (git+https://github.com/jelmer/rust-rst)",
- "serde-xml-rs 0.5.1",
+ "serde-xml-rs",
  "serde_json",
 ]
 
@@ -4162,6 +4010,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
+name = "scrub-obsolete"
+version = "0.158.9"
+
+[[package]]
 name = "security-framework"
 version = "2.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4222,18 +4074,6 @@ dependencies = [
  "error-chain",
  "log",
  "serde",
- "xml-rs",
-]
-
-[[package]]
-name = "serde-xml-rs"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65162e9059be2f6a3421ebbb4fef3e74b7d9e7c60c50a0e292c6239f19f1edfa"
-dependencies = [
- "log",
- "serde",
- "thiserror",
  "xml-rs",
 ]
 
@@ -4443,9 +4283,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcfa89bea9500db4a0d038513d7a060566bfc51d46d1c014847049a45cce85e8"
+checksum = "93334716a037193fac19df402f8571269c84a00852f6a7066b5d2616dcd64d3e"
 dependencies = [
  "sqlx-core",
  "sqlx-macros",
@@ -4456,9 +4296,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-core"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d06e2f2bd861719b1f3f0c7dbe1d80c30bf59e76cf019f07d9014ed7eefb8e08"
+checksum = "d4d8060b456358185f7d50c55d9b5066ad956956fddec42ee2e8567134a8936e"
 dependencies = [
  "atoi",
  "byteorder",
@@ -4478,7 +4318,6 @@ dependencies = [
  "indexmap 2.5.0",
  "log",
  "memchr",
- "native-tls",
  "once_cell",
  "paste",
  "percent-encoding",
@@ -4488,17 +4327,15 @@ dependencies = [
  "smallvec",
  "sqlformat",
  "thiserror",
- "tokio",
- "tokio-stream",
  "tracing",
  "url",
 ]
 
 [[package]]
 name = "sqlx-macros"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f998a9defdbd48ed005a89362bd40dd2117502f15294f61c8d47034107dbbdc"
+checksum = "cac0692bcc9de3b073e8d747391827297e075c7710ff6276d9f7a1f3d58c6657"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4509,9 +4346,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-macros-core"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d100558134176a2629d46cec0c8891ba0be8910f7896abfdb75ef4ab6f4e7ce"
+checksum = "1804e8a7c7865599c9c79be146dc8a9fd8cc86935fa641d3ea58e5f0688abaa5"
 dependencies = [
  "dotenvy",
  "either",
@@ -4529,15 +4366,14 @@ dependencies = [
  "sqlx-sqlite",
  "syn 2.0.77",
  "tempfile",
- "tokio",
  "url",
 ]
 
 [[package]]
 name = "sqlx-mysql"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "936cac0ab331b14cb3921c62156d913e4c15b74fb6ec0f3146bd4ef6e4fb3c12"
+checksum = "64bb4714269afa44aef2755150a0fc19d756fb580a67db8885608cf02f47d06a"
 dependencies = [
  "atoi",
  "base64 0.22.1",
@@ -4577,9 +4413,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-postgres"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9734dbce698c67ecf67c442f768a5e90a49b2a4d61a9f1d59f73874bd4cf0710"
+checksum = "6fa91a732d854c5d7726349bb4bb879bb9478993ceb764247660aee25f67c2f8"
 dependencies = [
  "atoi",
  "base64 0.22.1",
@@ -4615,9 +4451,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-sqlite"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a75b419c3c1b1697833dd927bdc4c6545a620bc1bbafabd44e1efbe9afcd337e"
+checksum = "d5b2cf34a45953bfd3daaf3db0f7a7878ab9b7a6b91b422d24a7a9e4c857b680"
 dependencies = [
  "atoi",
  "flume",
@@ -4985,17 +4821,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-stream"
-version = "0.1.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "267ac89e0bec6e691e5813911606935d77c476ff49024f98abcea3e7b15e37af"
-dependencies = [
- "futures-core",
- "pin-project-lite",
- "tokio",
-]
-
-[[package]]
 name = "tokio-util"
 version = "0.7.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5136,16 +4961,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
-name = "twox-hash"
-version = "1.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
-dependencies = [
- "cfg-if",
- "static_assertions",
-]
-
-[[package]]
 name = "typenum"
 version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5255,7 +5070,7 @@ checksum = "0df3b4cdd22f9f4b28b7003fc6caed5b3a00667c0b49ea0b35e4aca3dad783b5"
 dependencies = [
  "breezyshim",
  "chrono",
- "configparser 3.1.0",
+ "configparser",
  "debbugs",
  "debcargo",
  "debian-changelog",
@@ -5279,8 +5094,8 @@ dependencies = [
  "python-pkginfo",
  "regex",
  "reqwest",
- "rst_parser 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rst_renderer 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rst_parser",
+ "rst_renderer",
  "rust-ini",
  "select",
  "serde",
@@ -5292,53 +5107,6 @@ dependencies = [
  "url",
  "xml",
  "xmltree 0.10.3",
-]
-
-[[package]]
-name = "upstream-ontologist"
-version = "0.1.39"
-source = "git+https://github.com/jelmer/upstream-ontologist#2cad4fc77f15e14260453c10cbcdb91bf79810c2"
-dependencies = [
- "breezyshim",
- "chrono",
- "configparser 3.1.0",
- "debbugs",
- "debcargo",
- "debian-changelog",
- "debian-control",
- "debian-copyright",
- "debian-watch",
- "distro-info",
- "gix-config",
- "html5ever 0.28.0",
- "lazy-regex",
- "lazy_static",
- "log",
- "mailparse",
- "makefile-lossless",
- "maplit",
- "opam-file-rs",
- "percent-encoding",
- "pulldown-cmark",
- "pyo3",
- "pyproject-toml",
- "python-pkginfo",
- "regex",
- "reqwest",
- "rst_parser 0.4.0 (git+https://github.com/jelmer/rust-rst)",
- "rst_renderer 0.4.0 (git+https://github.com/jelmer/rust-rst)",
- "rust-ini",
- "select",
- "semver",
- "serde",
- "serde_json",
- "serde_yaml",
- "shlex",
- "textwrap",
- "toml 0.8.19",
- "url",
- "xml",
- "xmltree 0.11.0",
 ]
 
 [[package]]
@@ -5523,11 +5291,11 @@ dependencies = [
 
 [[package]]
 name = "whoami"
-version = "1.5.1"
+version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a44ab49fad634e88f55bf8f9bb3abd2f27d7204172a112c7c9987e01c1c94ea9"
+checksum = "372d5b87f58ec45c384ba03563b03544dc5fadc3983e434b286913f5b4a9bb6d"
 dependencies = [
- "redox_syscall 0.4.1",
+ "redox_syscall",
  "wasite",
 ]
 

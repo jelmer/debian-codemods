@@ -199,13 +199,41 @@ impl std::str::FromStr for Entry {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+enum Line {
+    Comment(String),
+    Entry(Entry),
+}
+
+impl std::fmt::Display for Line {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Line::Comment(comment) => write!(f, "# {}", comment),
+            Line::Entry(entry) => write!(f, "{}", entry),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Maintscript {
-    entries: Vec<Entry>,
+    lines: Vec<Line>,
+}
+
+impl Maintscript {
+    pub fn new() -> Self {
+        Maintscript { lines: Vec::new() }
+    }
+
+    fn entries(&self) -> Vec<&Entry> {
+        self.lines.iter().filter_map(|l| match l {
+            Line::Entry(e) => Some(e),
+            _ => None,
+        }).collect()
+    }
 }
 
 impl std::fmt::Display for Maintscript {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.entries.iter().map(|e| e.to_string()).collect::<Vec<String>>().join("\n"))
+        write!(f, "{}", self.lines.iter().map(|e| e.to_string()).collect::<Vec<String>>().join("\n"))
     }
 }
 
@@ -213,13 +241,13 @@ impl std::str::FromStr for Maintscript {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let entries = s.lines().filter_map(|l|
+        let lines = s.lines().map(|l|
             if l.starts_with('#') || l.trim().is_empty() {
-                None
+                Ok(Line::Comment(l.to_string()))
             } else {
-                Some(Entry::from_str(l))
-            }).collect::<Result<Vec<Entry>, Self::Err>>()?;
-        Ok(Maintscript { entries })
+                Ok(Line::Entry(Entry::from_str(l)?))
+            }).collect::<Result<Vec<Line>, Self::Err>>()?;
+        Ok(Maintscript { lines })
     }
 }
 
@@ -233,12 +261,12 @@ mv_conffile /etc/foo.conf /etc/bar.conf 1.2.3-4
 symlink_to_dir /etc/foo /etc/bar 1.2.3-4
 dir_to_symlink /etc/foo /etc/bar 1.2.3-4";
         let maintscript = maintscript.parse::<super::Maintscript>().unwrap();
-        assert_eq!(maintscript.entries, vec![
-            super::Entry::Supports("preinst".to_string()),
-            super::Entry::RemoveConffile { conffile: "/etc/foo.conf".to_string(), prior_version: Some("1.2.3-4".parse().unwrap()), package: None },
-            super::Entry::MoveConffile { old_conffile: "/etc/foo.conf".to_string(), new_conffile: "/etc/bar.conf".to_string(), prior_version: Some("1.2.3-4".parse().unwrap()), package: None },
-            super::Entry::SymlinkToDir { pathname: "/etc/foo".to_string(), old_target: "/etc/bar".to_string(), prior_version: Some("1.2.3-4".parse().unwrap()), package: None },
-            super::Entry::DirToSymlink { pathname: "/etc/foo".to_string(), new_target: "/etc/bar".to_string(), prior_version: Some("1.2.3-4".parse().unwrap()), package: None },
+        assert_eq!(maintscript.entries(), vec![
+            &super::Entry::Supports("preinst".to_string()),
+            &super::Entry::RemoveConffile { conffile: "/etc/foo.conf".to_string(), prior_version: Some("1.2.3-4".parse().unwrap()), package: None },
+            &super::Entry::MoveConffile { old_conffile: "/etc/foo.conf".to_string(), new_conffile: "/etc/bar.conf".to_string(), prior_version: Some("1.2.3-4".parse().unwrap()), package: None },
+            &super::Entry::SymlinkToDir { pathname: "/etc/foo".to_string(), old_target: "/etc/bar".to_string(), prior_version: Some("1.2.3-4".parse().unwrap()), package: None },
+            &super::Entry::DirToSymlink { pathname: "/etc/foo".to_string(), new_target: "/etc/bar".to_string(), prior_version: Some("1.2.3-4".parse().unwrap()), package: None },
         ]);
     }
 }
