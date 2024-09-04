@@ -17,6 +17,7 @@ pub mod debcommit;
 pub mod debhelper;
 pub mod detect_gbp_dch;
 pub mod editor;
+pub mod maintscripts;
 pub mod patches;
 pub mod publish;
 pub mod relations;
