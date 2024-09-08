@@ -2,6 +2,7 @@ use debian_control::relations::{Relation,Relations};
 use std::path::PathBuf;
 
 pub mod action;
+pub mod dummy_transitional;
 
 pub const DEFAULT_VALUE_MULTIARCH_HINT: usize = 30;
 
