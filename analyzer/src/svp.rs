@@ -27,11 +27,11 @@ struct Success {
     debian: Option<DebianContext>,
 }
 
-pub fn report_success(
+pub fn report_success<T>(
     versions: HashMap<String, String>,
     value: Option<i32>,
-    context: Option<serde_json::Value>,
-) {
+    context: Option<T>
+) where T: Into<serde_json::Value> {
     if std::env::var("SVP_API").ok().as_deref() == Some("1") {
         let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
 
@@ -40,7 +40,7 @@ pub fn report_success(
             &Success {
                 versions,
                 value,
-                context,
+                context: context.map(|x| x.into()),
                 debian: None,
             },
         )
@@ -48,12 +48,12 @@ pub fn report_success(
     }
 }
 
-pub fn report_success_debian(
+pub fn report_success_debian<T>(
     versions: HashMap<String, String>,
     value: Option<i32>,
-    context: Option<serde_json::Value>,
+    context: Option<T>,
     changelog: Option<(bool, String)>,
-) {
+) where T: Into<serde_json::Value>{
     if std::env::var("SVP_API").ok().as_deref() == Some("1") {
         let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
 
@@ -62,7 +62,7 @@ pub fn report_success_debian(
             &Success {
                 versions,
                 value,
-                context,
+                context: context.map(|x| x.into()),
                 debian: Some(DebianContext {
                     changelog: changelog.map(|cl| ChangelogBehaviour {
                         update: cl.0,

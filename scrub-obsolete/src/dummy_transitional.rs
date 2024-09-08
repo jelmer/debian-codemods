@@ -31,8 +31,20 @@ pub struct TransitionalPackage {
     pub to_expr: Entry
 }
 
+impl Serialize for TransitionalPackage {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry("from_name", &self.from_name)?;
+        map.serialize_entry("to_expr", &self.to_expr.to_string())?;
+        map.end()
+    }
+}
 
-async fn find_reverse_dependencies(udd: &PgPool, package: &str) -> Result<HashMap<String, HashSet<String>>, sqlx::Error> {
+pub async fn find_reverse_dependencies(udd: &PgPool, package: &str) -> Result<HashMap<String, HashSet<String>>, sqlx::Error> {
     let mut by_source = HashMap::new();
     let fields = &[
         "recommends",
@@ -127,7 +139,7 @@ async fn find_reverse_dependencies(udd: &PgPool, package: &str) -> Result<HashMa
 }
 
 
-async fn find_dummy_transitional_packages(udd: &PgPool, release: &str) -> Result<HashMap<String, TransitionalPackage>, sqlx::Error> {
+pub async fn find_dummy_transitional_packages(udd: &PgPool, release: &str) -> Result<HashMap<String, TransitionalPackage>, sqlx::Error> {
     let mut ret = HashMap::new();
 
     let rows = sqlx::query_as::<_, (String, String, Option<String>)>(

@@ -953,9 +953,9 @@ dependencies = [
 
 [[package]]
 name = "debian-changelog"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9608e140c8637c6e33acc349ba20872ec6184e516957506a51d1a48146ea3e34"
+checksum = "80742dc11d7b49697b1e9e1f895c692bb157c9abcf1b1958e4183c1fc94e4402"
 dependencies = [
  "chrono",
  "debversion",
@@ -1041,13 +1041,15 @@ dependencies = [
 
 [[package]]
 name = "debversion"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b6c96844ac16a110ee3ea355b7e511ffe0221242caebb2cc5e1bbfd285744cf"
+checksum = "ebdce2664fc7a3a299db0383e003f872cbf8d415a6a4c59694fef55ad570b2c9"
 dependencies = [
+ "chrono",
  "lazy-regex",
  "pyo3",
  "serde",
+ "sqlx",
 ]
 
 [[package]]
@@ -3922,9 +3924,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.38.35"
+version = "0.38.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a85d50532239da68e9addb745ba38ff4612a242c1c7ceea689c4bc7c2f43c36f"
+checksum = "3f55e80d50763938498dd5ebb18647174e0c76dc38c5505294bb224624f30f36"
 dependencies = [
  "bitflags 2.6.0",
  "errno",
@@ -4015,13 +4017,20 @@ version = "0.158.9"
 dependencies = [
  "breezyshim",
  "clap 4.5.17",
+ "deb822-lossless",
  "debian-analyzer",
  "debian-control",
+ "debversion",
+ "distro-info",
  "env_logger 0.11.5",
  "lazy_static",
  "log",
+ "regex",
  "serde",
  "serde_json",
+ "serde_yaml",
+ "sqlx",
+ "tokio",
 ]
 
 [[package]]
@@ -4110,9 +4119,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.127"
+version = "1.0.128"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8043c06d9f82bd7271361ed64f415fe5e12a77fdb52e573e7f06a516dea329ad"
+checksum = "6ff5456707a1de34e7e37f2a6fd3d3f808c318259cbd01ab6377795054b483d8"
 dependencies = [
  "itoa",
  "memchr",
@@ -4833,9 +4842,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-util"
-version = "0.7.11"
+version = "0.7.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cf6b47b3771c49ac75ad09a6162f53ad4b8088b76ac60e8ec1455b31a189fe1"
+checksum = "61e7c3654c13bcd040d4a03abee2c75b1d14a37b423cf5a813ceae1cc903ec6a"
 dependencies = [
  "bytes",
  "futures-core",
