@@ -1001,6 +1001,7 @@ fn load_fixer(
     name: String,
     tags: Vec<String>,
     script_path: std::path::PathBuf,
+    #[allow(dead_code)]
     force_subprocess: bool,
 ) -> Box<dyn Fixer> {
     #[cfg(feature = "python")]
