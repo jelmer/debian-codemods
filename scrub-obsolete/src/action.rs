@@ -63,6 +63,54 @@ impl serde::Serialize for Action {
     }
 }
 
+impl<'a> serde::Deserialize<'a> for Action {
+    fn deserialize<D>(deserializer: D) -> Result<Action, D::Error>
+    where
+        D: serde::Deserializer<'a>
+    {
+        let action = serde_json::Value::deserialize(deserializer)?;
+        match action {
+            serde_json::Value::Array(ref action) => {
+                use std::str::FromStr;
+                if action.len() < 2 {
+                    return Err(serde::de::Error::custom("Action array must have at least two elements"));
+                }
+                let action_type = action[0].as_str().ok_or_else(|| serde::de::Error::custom("Action type must be a string"))?;
+                match action_type {
+                    "drop-essential" => {
+                        let rel = Relation::from_str(action[1].as_str().ok_or_else(|| serde::de::Error::custom("Relation must be a string"))?).map_err(|e| serde::de::Error::custom(e))?;
+                        Ok(Action::DropEssential(rel))
+                    }
+                    "drop-minimum-version" => {
+                        let rel = Relation::from_str(action[1].as_str().ok_or_else(|| serde::de::Error::custom("Relation must be a string"))?).map_err(|e| serde::de::Error::custom(e))?;
+                        Ok(Action::DropMinimumVersion(rel))
+                    }
+                    "drop-transitional" => {
+                        let rel = Relation::from_str(action[1].as_str().ok_or_else(|| serde::de::Error::custom("Relation must be a string"))?).map_err(|e| serde::de::Error::custom(e))?;
+                        Ok(Action::DropTransition(rel))
+                    }
+                    "inline-transitional" => {
+                        let rel = Relation::from_str(action[1].as_str().ok_or_else(|| serde::de::Error::custom("Relation must be a string"))?).map_err(|e| serde::de::Error::custom(e))?;
+                        let replacements = action[2].as_array().ok_or_else(|| serde::de::Error::custom("Replacements must be an array"))?;
+                        let replacements = replacements.iter().map(|x| {
+                            let s = x.as_str().ok_or_else(|| "Replacement must be a string".to_string())?;
+                            let r: Relation = Relation::from_str(s).map_err(|e| e.to_string())?;
+                            Ok::<Relation, String>(r)
+                        }).collect::<Result<Vec<Relation>, _>>().map_err(|e| serde::de::Error::custom(e))?;
+                        Ok(Action::ReplaceTransition(rel, replacements))
+                    }
+                    "drop-obsolete-conflict" => {
+                        let rel = Relation::from_str(action[1].as_str().ok_or_else(|| serde::de::Error::custom("Relation must be a string"))?).map_err(|e| serde::de::Error::custom(e))?;
+                        Ok(Action::DropObsoleteConflict(rel))
+                    }
+                    _ => Err(serde::de::Error::custom("Unknown action type")),
+                }
+            }
+            _ => Err(serde::de::Error::custom("Action must be an array")),
+        }
+    }
+}
+
 /// Format a list of package names for use in prose.
 ///
 /// # Arguments:

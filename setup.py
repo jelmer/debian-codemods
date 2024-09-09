@@ -57,5 +57,6 @@ setup(
             "debianize-py/Cargo.toml",
             binding=Binding.PyO3,
         ),
+        RustBin("deb-scrub-obsolete", "deb-scrub-obsolete/Cargo.toml", features=["cli"]),
     ],
 )

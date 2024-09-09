@@ -315,7 +315,7 @@ fn update_maintscripts(
     debian_path: &Path,
     checker: PackageChecker,
     allow_reformatting: bool,
-) -> Result<Vec<(PathBuf, Vec<(String, Version)>)>, ScrubObsoleteError> {
+) -> Result<Vec<(PathBuf, Vec<MaintscriptAction>)>, ScrubObsoleteError> {
     let mut ret = vec![];
     for entry in std::fs::read_dir(wt.abspath(debian_path).unwrap()).unwrap() {
         let entry = entry.unwrap();
@@ -341,10 +341,53 @@ fn update_maintscripts(
     Ok(ret)
 }
 
+pub struct MaintscriptAction {
+    pub package: String,
+    pub version: Version,
+    pub lineno: usize,
+}
+
+impl serde::Serialize for MaintscriptAction {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeTuple;
+        let mut ser = serializer.serialize_tuple(3)?;
+        ser.serialize_element(&self.lineno)?;
+        ser.serialize_element(&self.package)?;
+        ser.serialize_element(&self.version)?;
+        ser.end()
+    }
+}
+
+impl<'a> serde::Deserialize<'a> for MaintscriptAction {
+    fn deserialize<D: serde::Deserializer<'a>>(deserializer: D) -> Result<Self, D::Error> {
+        struct MaintscriptActionVisitor;
+        impl<'de> serde::de::Visitor<'de> for MaintscriptActionVisitor {
+            type Value = MaintscriptAction;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a tuple of (lineno, package, version)")
+            }
+
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let lineno = seq.next_element::<usize>()?.ok_or_else(|| serde::de::Error::invalid_length(0, &"tuple of 3"))?;
+                let package = seq.next_element::<String>()?.ok_or_else(|| serde::de::Error::invalid_length(1, &"tuple of 3"))?;
+                let version = seq.next_element::<Version>()?.ok_or_else(|| serde::de::Error::invalid_length(2, &"tuple of 3"))?;
+                Ok(MaintscriptAction {
+                    package,
+                    version,
+                    lineno,
+                })
+            }
+        }
+        deserializer.deserialize_tuple(3, MaintscriptActionVisitor)
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ScrubObsoleteResult {
     specific_files: Vec<PathBuf>,
     control_actions: Vec<(Option<String>, Vec<(String, Vec<Action>, String)>)>,
-    maintscript_removed: Vec<(PathBuf, Vec<(String, Version)>, String)>
+    maintscript_removed: Vec<(PathBuf, Vec<MaintscriptAction>, String)>
 }
 
 impl ScrubObsoleteResult {
@@ -352,7 +395,7 @@ impl ScrubObsoleteResult {
         return !self.control_actions.is_empty() || !self.maintscript_removed.is_empty();
     }
 
-    pub fn value(&self) -> usize {
+    pub fn value(&self) -> i32 {
         let mut value = DEFAULT_VALUE_MULTIARCH_HINT;
         for (_para, changes) in &self.control_actions {
             for (_field, actions, _) in changes {
@@ -362,10 +405,10 @@ impl ScrubObsoleteResult {
         for (_, removed, _) in &self.maintscript_removed {
             value += removed.len();
         }
-        value
+        value as i32
     }
 
-    fn itemized(&self) -> HashMap<String, Vec<String>> {
+    pub fn itemized(&self) -> HashMap<String, Vec<String>> {
         let mut summary = HashMap::new();
         for (para, changes) in &self.control_actions {
             for (field, actions, release) in changes {
@@ -581,14 +624,18 @@ pub fn scrub_obsolete(
 /// list of tuples with index, package, version of entries that were removed
 fn drop_obsolete_maintscript_entries(
     editor: &mut dyn Editor<debian_analyzer::maintscripts::Maintscript>, should_remove: &mut dyn FnMut(&str, &Version) -> bool,
-) -> Vec<(String, Version)> {
+) -> Vec<MaintscriptAction> {
     let mut to_remove = vec![];
     let mut ret = vec![];
     for (i, entry) in editor.entries().iter().enumerate() {
         if let (Some(package), Some(version)) = (entry.package(), entry.prior_version()) {
             if should_remove(package, version) {
                 to_remove.push(i);
-                ret.push((package.clone(), version.clone()));
+                ret.push(MaintscriptAction {
+                    package: package.clone(),
+                    version: version.clone(),
+                    lineno: i + 1
+                });
             }
         }
     }

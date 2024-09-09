@@ -51,12 +51,12 @@ pub fn report_success<T>(
     versions: HashMap<String, String>,
     value: Option<i32>,
     context: Option<T>
-) where T: Into<serde_json::Value> {
+) where T: serde::Serialize {
     write_svp_success(
         &Success {
             versions,
             value,
-            context: context.map(|x| x.into()),
+            context: context.map(|x| serde_json::to_value(x).unwrap()),
             debian: None,
         },
     ).unwrap();
@@ -67,12 +67,12 @@ pub fn report_success_debian<T>(
     value: Option<i32>,
     context: Option<T>,
     changelog: Option<(bool, String)>,
-) where T: Into<serde_json::Value>{
+) where T: serde::Serialize {
     write_svp_success(
             &Success {
                 versions,
                 value,
-                context: context.map(|x| x.into()),
+                context: context.map(|x| serde_json::to_value(x).unwrap()),
                 debian: Some(DebianContext {
                     changelog: changelog.map(|cl| ChangelogBehaviour {
                         update: cl.0,
