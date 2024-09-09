@@ -64,8 +64,8 @@ pub fn is_dep_implied(dep: &Relation, outer: &Relation) -> bool {
 /// Check if one relation implies another.
 ///
 /// # Arguments
-/// * `inner` - Inner relation
-/// * `outer` - Outer relation
+/// * `inner` - Inner relation (e.g. "bzr (>= 1.3)")
+/// * `outer` - Outer relation (e.g. "bzr (>= 1.3) | libc6")
 pub fn is_relation_implied(inner: &Entry, outer: &Entry) -> bool {
     if inner == outer {
         return true;

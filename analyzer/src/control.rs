@@ -866,7 +866,7 @@ struct Template {
 }
 
 impl Template {
-    fn new(path: PathBuf, template_path: PathBuf, template_type: TemplateType) -> Self {
+    pub fn new(path: PathBuf, template_path: PathBuf, template_type: TemplateType) -> Self {
         Self {
             path,
             template_path,

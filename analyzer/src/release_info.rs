@@ -54,6 +54,36 @@ pub fn suite_to_distribution(suite: &str) -> Option<Vendor> {
     None
 }
 
+pub fn release_aliases(name: &str, date: Option<NaiveDate>) -> Vec<String> {
+    let mut ret = vec![];
+    let debian_info = distro_info::DebianDistroInfo::new().unwrap();
+    let all_released = debian_info.released(date.unwrap_or(Utc::now().naive_utc().date()));
+    if all_released[0].series() == name {
+        ret.push("stable".to_string());
+    }
+    if all_released[1].series() == name {
+        ret.push("oldstable".to_string());
+    }
+    if all_released[2].series() == name {
+        ret.push("oldoldstable".to_string());
+    }
+
+    if name == "sid" {
+        ret.push("unstable".to_string());
+    }
+
+    let ubuntu_info = distro_info::UbuntuDistroInfo::new().unwrap();
+
+    let all_released = ubuntu_info.released(date.unwrap_or(Utc::now().naive_utc().date()));
+    for series in all_released.iter() {
+        if series.codename() == name {
+            ret.push(series.series().to_string());
+        }
+    }
+
+    ret
+}
+
 pub fn resolve_release_codename(name: &str, date: Option<NaiveDate>) -> Option<String> {
     let date = date.unwrap_or(Utc::now().naive_utc().date());
     let (distro, mut name) = if let Some((distro, name)) = name.split_once('/') {
