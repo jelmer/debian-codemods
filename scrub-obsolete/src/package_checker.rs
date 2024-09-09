@@ -1,7 +1,8 @@
 use debversion::Version;
 use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex};
 use sqlx::PgPool;
-use debian_control::relations::{Entry, Relations, Relation};
+use debian_control::lossless::relations::{Relations, Relation};
 
 async fn package_version(conn: &PgPool, package: &str, release: &str) -> Result<Option<Version>, sqlx::Error> {
     sqlx::query_scalar::<_, Version>("SELECT version FROM packages WHERE package = $1 AND release = $2")
@@ -68,29 +69,41 @@ async fn fetch_transitions(conn: &PgPool, release: &str) -> HashMap<String, Stri
 pub struct PackageChecker {
     release: String,
     build: bool,
-    transitions: Option<HashMap<String, String>>,
+    transitions: Arc<Mutex<Option<HashMap<String, String>>>>,
     conn: sqlx::PgPool,
 }
 
 impl PackageChecker {
+    /// Create a new PackageChecker for the given release.
+    ///
+    /// If `build` is true, the checker will consider build-essential packages
+    /// as essential.
     pub async fn new(release: &str, build: bool) -> Self {
         Self {
             release: release.to_string(),
             build,
-            transitions: None,
+            transitions: Arc::new(Mutex::new(None)),
             conn: debian_analyzer::udd::connect_udd_mirror().await.unwrap(),
         }
+    }
+
+    pub fn release(&self) -> &str {
+        &self.release
     }
 
     pub async fn package_version(&self, package: &str) -> Result<Option<Version>, sqlx::Error> {
         package_version(&self.conn, package, &self.release).await
     }
 
-    pub async fn replacement(&mut self, package: &str) -> Result<Option<&str>, sqlx::Error> {
-        if self.transitions.is_none() {
-            self.transitions = Some(fetch_transitions(&self.conn, &self.release).await);
+    pub async fn replacement(&self, package: &str) -> Result<Option<String>, sqlx::Error> {
+        if let Ok(mut transitions) = self.transitions.lock() {
+            if transitions.is_none() {
+                *transitions = Some(fetch_transitions(&self.conn, &self.release).await);
+            }
+            Ok(transitions.as_ref().and_then(|t| t.get(package)).map(|x| x.to_string()))
+        } else {
+            Ok(None)
         }
-        Ok(self.transitions.as_ref().and_then(|t| t.get(package)).map(|s| s.as_str()))
     }
 
     pub async fn package_provides(&self, package: &str) -> Result<Vec<(String, Option<Version>)>, sqlx::Error> {
@@ -108,5 +121,3 @@ impl PackageChecker {
         Ok(package_essential(&self.conn, package, &self.release).await?)
     }
 }
-
-

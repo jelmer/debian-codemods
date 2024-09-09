@@ -1,6 +1,6 @@
 use sqlx::{Row,PgPool};
 use std::collections::{HashMap, HashSet};
-use debian_control::relations::{Entry,Relations};
+use debian_control::lossless::relations::{Entry,Relations};
 use serde::{Deserialize, Serialize};
 
 lazy_static::lazy_static! {
@@ -159,6 +159,7 @@ pub async fn find_dummy_transitional_packages(udd: &PgPool, release: &str) -> Re
             log::debug!("Unknown syntax for dummy package description: {:?}", row.1);
             continue;
         };
+        log::debug!("{}: {:?}", row.0, r);
         if let Some(depends) = row.2 {
             let depends: Relations = depends.parse().unwrap();
             let mut entries = depends.entries();

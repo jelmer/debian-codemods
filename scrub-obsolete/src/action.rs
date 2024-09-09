@@ -1,10 +1,15 @@
-use debian_control::relations::{Relation, Relations};
+use debian_control::lossless::relations::{Relation};
 
 pub enum Action {
+    /// Drop a dependency on an essential package.
     DropEssential(Relation),
+    /// Drop a minimum version constraint on a package.
     DropMinimumVersion(Relation),
+    /// Drop a dependency on a transitional package.
     DropTransition(Relation),
+    /// Replace a dependency on a transitional package with a list of replacements.
     ReplaceTransition(Relation, Vec<Relation>),
+    /// Drop a conflict with a removed package.
     DropObsoleteConflict(Relation),
 }
 
