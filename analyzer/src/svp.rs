@@ -1,30 +1,50 @@
 use std::collections::HashMap;
 
 #[derive(Debug, serde::Serialize)]
-struct Failure {
-    result_code: String,
-    versions: HashMap<String, String>,
-    description: String,
-    transient: Option<bool>,
+pub struct Failure {
+    pub result_code: String,
+    pub versions: HashMap<String, String>,
+    pub description: String,
+    pub transient: Option<bool>,
 }
 
 #[derive(Debug, serde::Serialize)]
-struct ChangelogBehaviour {
-    update: bool,
-    explanation: String,
+pub struct ChangelogBehaviour {
+    pub update: bool,
+    pub explanation: String,
 }
 
 #[derive(Debug, serde::Serialize)]
-struct DebianContext {
-    changelog: Option<ChangelogBehaviour>,
+pub struct DebianContext {
+    pub changelog: Option<ChangelogBehaviour>,
 }
 
 #[derive(Debug, serde::Serialize)]
-struct Success {
-    versions: HashMap<String, String>,
-    value: Option<i32>,
-    context: Option<serde_json::Value>,
-    debian: Option<DebianContext>,
+pub struct Success {
+    pub versions: HashMap<String, String>,
+    pub value: Option<i32>,
+    pub context: Option<serde_json::Value>,
+    pub debian: Option<DebianContext>,
+}
+
+pub fn write_svp_success(data: &Success) -> std::io::Result<()> {
+    if enabled() {
+        let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
+
+        Ok(serde_json::to_writer(f, data)?)
+    } else {
+        Ok(())
+    }
+}
+
+pub fn write_svp_failure(data: &Failure) -> std::io::Result<()> {
+    if enabled() {
+        let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
+
+        Ok(serde_json::to_writer(f, data)?)
+    } else {
+        Ok(())
+    }
 }
 
 pub fn report_success<T>(
@@ -32,20 +52,14 @@ pub fn report_success<T>(
     value: Option<i32>,
     context: Option<T>
 ) where T: Into<serde_json::Value> {
-    if std::env::var("SVP_API").ok().as_deref() == Some("1") {
-        let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
-
-        serde_json::to_writer(
-            f,
-            &Success {
-                versions,
-                value,
-                context: context.map(|x| x.into()),
-                debian: None,
-            },
-        )
-        .unwrap();
-    }
+    write_svp_success(
+        &Success {
+            versions,
+            value,
+            context: context.map(|x| x.into()),
+            debian: None,
+        },
+    ).unwrap();
 }
 
 pub fn report_success_debian<T>(
@@ -54,11 +68,7 @@ pub fn report_success_debian<T>(
     context: Option<T>,
     changelog: Option<(bool, String)>,
 ) where T: Into<serde_json::Value>{
-    if std::env::var("SVP_API").ok().as_deref() == Some("1") {
-        let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
-
-        serde_json::to_writer(
-            f,
+    write_svp_success(
             &Success {
                 versions,
                 value,
@@ -72,17 +82,11 @@ pub fn report_success_debian<T>(
             },
         )
         .unwrap();
-    }
 }
 
 pub fn report_nothing_to_do(versions: HashMap<String, String>, description: Option<&str>) -> ! {
     let description = description.unwrap_or("Nothing to do");
-    if std::env::var("SVP_API").ok().as_deref() == Some("1") {
-        let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
-
-        serde_json::to_writer(
-            f,
-            &Failure {
+    write_svp_failure(&Failure {
                 result_code: "nothing-to-do".to_string(),
                 versions,
                 description: description.to_string(),
@@ -90,7 +94,6 @@ pub fn report_nothing_to_do(versions: HashMap<String, String>, description: Opti
             },
         )
         .unwrap();
-    }
     log::error!("{}", description);
     std::process::exit(0);
 }
@@ -102,11 +105,7 @@ pub fn report_fatal(
     hint: Option<&str>,
     transient: Option<bool>,
 ) -> ! {
-    if std::env::var("SVP_API").ok().as_deref() == Some("1") {
-        let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
-
-        serde_json::to_writer(
-            f,
+    write_svp_failure(
             &Failure {
                 result_code: code.to_string(),
                 versions,
@@ -115,7 +114,6 @@ pub fn report_fatal(
             },
         )
         .unwrap();
-    }
     log::error!("{}", description);
     if let Some(hint) = hint {
         log::info!("{}", hint);
@@ -124,7 +122,7 @@ pub fn report_fatal(
 }
 
 pub fn load_resume() -> Option<serde_json::Value> {
-    if std::env::var("SVP_API").ok().as_deref() == Some("1") {
+    if enabled() {
         if let Ok(resume_path) = std::env::var("SVP_RESUME") {
             let f = std::fs::File::open(resume_path).unwrap();
             let resume: serde_json::Value = serde_json::from_reader(f).unwrap();
