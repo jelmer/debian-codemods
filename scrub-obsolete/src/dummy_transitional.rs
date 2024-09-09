@@ -165,8 +165,7 @@ pub async fn find_dummy_transitional_packages(udd: &PgPool, release: &str) -> Re
             let e = if let Some(e) = entries.next() {
                 e
             } else {
-                log::debug!("no transition target for {}: {:?}", row.0, depends);
-                continue;
+                Entry::new()
             };
             if entries.next().is_some() {
                 log::debug!("no single transition target for {}: {:?}", row.0, depends);

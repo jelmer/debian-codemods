@@ -1,8 +1,12 @@
-use debian_control::relations::{Relation,Relations};
 use std::path::PathBuf;
+use debversion::Version;
+use std::collections::HashMap;
+use debian_control::{Source, Binary};
 
 pub mod action;
 pub mod dummy_transitional;
+pub mod package_checker;
+use package_checker::PackageChecker;
 
 pub const DEFAULT_VALUE_MULTIARCH_HINT: usize = 30;
 
