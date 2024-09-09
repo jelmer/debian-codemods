@@ -4,7 +4,7 @@ resolver = "1"
 members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize", "debianize-py", "analyzer"]
 
 [workspace.package]
-version = "0.158.11"
+version = "0.158.12"
 
 [workspace.dependencies]
 breezyshim = { version = ">=0.1.160", features = ["dirty-tracker"] }
@@ -29,7 +29,7 @@ debian-control = ">=0.1"
 #debian-control = { git = "https://github.com/jelmer/deb822-lossless" }
 pyo3-log = ">=0.11"
 maplit = "1"
-buildlog-consultant = ">=0.0.39"
-upstream-ontologist = ">=0.1.38"
+buildlog-consultant = "0.0.42"
+upstream-ontologist = "0.1.38"
 #upstream-ontologist = { git = "https://github.com/jelmer/upstream-ontologist" }
 sqlx = "0.8"

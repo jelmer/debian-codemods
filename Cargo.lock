@@ -924,7 +924,7 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.158.9"
+version = "0.158.11"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -1013,7 +1013,7 @@ dependencies = [
 
 [[package]]
 name = "debianize"
-version = "0.158.9"
+version = "0.158.11"
 dependencies = [
  "breezyshim",
  "clap 4.5.17",
@@ -1037,7 +1037,7 @@ dependencies = [
 
 [[package]]
 name = "debianize-py"
-version = "0.158.9"
+version = "0.158.11"
 dependencies = [
  "debianize",
  "debversion",
@@ -1056,7 +1056,6 @@ dependencies = [
  "lazy-regex",
  "pyo3",
  "serde",
- "sqlx",
 ]
 
 [[package]]
@@ -2594,7 +2593,7 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush"
-version = "0.158.9"
+version = "0.158.11"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -2621,7 +2620,7 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush-py"
-version = "0.158.9"
+version = "0.158.11"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -2850,7 +2849,7 @@ dependencies = [
 
 [[package]]
 name = "multiarch-hints"
-version = "0.158.9"
+version = "0.158.11"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -4009,28 +4008,6 @@ name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
-
-[[package]]
-name = "scrub-obsolete"
-version = "0.158.9"
-dependencies = [
- "breezyshim",
- "clap 4.5.17",
- "deb822-lossless",
- "debian-analyzer",
- "debian-control",
- "debversion",
- "distro-info",
- "env_logger 0.11.5",
- "lazy_static",
- "log",
- "regex",
- "serde",
- "serde_json",
- "serde_yaml",
- "sqlx",
- "tokio",
-]
 
 [[package]]
 name = "security-framework"
