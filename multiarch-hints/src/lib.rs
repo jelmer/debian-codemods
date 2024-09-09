@@ -6,9 +6,8 @@ use debian_analyzer::{
     add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, ApplyError,
     Certainty, ChangelogError,
 };
-use debian_control::control::MultiArch;
-use debian_control::control::{Binary, Source};
-use debian_control::relations::Relations;
+use debian_control::fields::MultiArch;
+use debian_control::control::Binary;
 use debversion::Version;
 use lazy_regex::regex_captures;
 use lazy_static::lazy_static;
@@ -365,7 +364,7 @@ fn apply_hint_ma_workaround(binary: &mut Binary, hint: &Hint) -> Option<String> 
         hint.description.as_str()
     ) {
         assert_eq!(binary_package, binary.name().unwrap());
-        binary.set_multi_arch(Some(debian_control::control::MultiArch::Same));
+        binary.set_multi_arch(Some(MultiArch::Same));
         binary.set_architecture(Some("any"));
         Some("Add Multi-Arch: same and set Architecture: any.".to_string())
     } else {
@@ -530,7 +529,7 @@ pub fn apply_multiarch_hints(
 
             let control_path = path.join("debian/control");
 
-            let mut editor = match TemplatedControlEditor::open(control_path.as_path()) {
+            let editor = match TemplatedControlEditor::open(control_path.as_path()) {
                 Ok(editor) => editor,
                 Err(e) => {
                     return Err(OverallError::Other(e.to_string()));
