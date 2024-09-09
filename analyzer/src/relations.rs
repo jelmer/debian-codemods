@@ -251,10 +251,12 @@ pub fn ensure_exact_version(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use debian_control::lossless::relations::{Relation,Relations};
 
     mod is_dep_implied {
-        fn parse(s: &str) -> super::Relation {
-            let rs: debian_control::relations::Relations = s.parse().unwrap();
+        use super::*;
+        fn parse(s: &str) -> Relation {
+            let rs: Relations = s.parse().unwrap();
             let mut entries = rs.entries();
             let entry = entries.next().unwrap();
             assert_eq!(entries.next(), None);
@@ -308,8 +310,10 @@ mod tests {
     }
 
     mod is_relation_implied {
+        use debian_control::lossless::relations::Relations;
+
         fn parse(s: &str) -> super::Entry {
-            let r: debian_control::relations::Relations = s.parse().unwrap();
+            let r: Relations = s.parse().unwrap();
             let mut entries = r.entries();
             let entry = entries.next().unwrap();
             assert_eq!(entries.next(), None);

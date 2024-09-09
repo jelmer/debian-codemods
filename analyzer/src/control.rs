@@ -634,7 +634,7 @@ pub struct TemplatedControlEditor {
 }
 
 impl Deref for TemplatedControlEditor {
-    type Target = FsEditor<debian_control::Control>;
+    type Target = debian_control::Control;
 
     fn deref(&self) -> &Self::Target {
         &self.primary
@@ -756,7 +756,7 @@ impl TemplatedControlEditor {
     }
 
     /// Commit the changes to the control file and template.
-    pub fn commit(&mut self) -> Result<Vec<PathBuf>, EditorError> {
+    pub fn commit(&self) -> Result<Vec<PathBuf>, EditorError> {
         let mut changed_files: Vec<PathBuf> = vec![];
         if self.template_only {
             // Remove the control file if it exists.
@@ -896,6 +896,28 @@ impl Template {
             changes,
             expand,
         )
+    }
+}
+
+impl Editor<debian_control::Control> for TemplatedControlEditor {
+    fn orig_content(&self) -> Option<&[u8]> {
+        self.primary.orig_content()
+    }
+
+    fn updated_content(&self) -> Option<Vec<u8>> {
+        self.primary.updated_content()
+    }
+
+    fn rewritten_content(&self) -> Option<&[u8]> {
+        self.primary.rewritten_content()
+    }
+
+    fn is_generated(&self) -> bool {
+        self.primary.is_generated()
+    }
+
+    fn commit(&self) -> Result<Vec<std::path::PathBuf>, EditorError> {
+        TemplatedControlEditor::commit(self)
     }
 }
 

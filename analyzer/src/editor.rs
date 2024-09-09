@@ -129,6 +129,38 @@ fn check_generated_contents(bufread: &mut dyn BufRead) -> Result<(), GeneratedFi
 
 pub const GENERATED_EXTENSIONS: &[&str] = &["in", "m4", "stub"];
 
+fn check_template_exists(path: &std::path::Path) -> Option<(PathBuf, Option<TemplateType>)> {
+    for ext in GENERATED_EXTENSIONS {
+        let template_path = path.with_extension(ext);
+        if template_path.exists() {
+            return Some((
+                template_path,
+                match ext {
+                    &"m4" => Some(TemplateType::M4),
+                    _ => None,
+                },
+            ));
+        }
+    }
+    None
+}
+
+fn tree_check_template_exists(tree: &dyn MutableTree, path: &std::path::Path) -> Option<(PathBuf, Option<TemplateType>)> {
+    for ext in GENERATED_EXTENSIONS {
+        let template_path = path.with_extension(ext);
+        if tree.has_filename(&template_path) {
+            return Some((
+                template_path,
+                match ext {
+                    &"m4" => Some(TemplateType::M4),
+                    _ => None,
+                },
+            ));
+        }
+    }
+    None
+}
+
 /// Check if a file is generated from another file.
 ///
 /// # Arguments
@@ -137,17 +169,11 @@ pub const GENERATED_EXTENSIONS: &[&str] = &["in", "m4", "stub"];
 /// # Errors
 /// * `GeneratedFile` - when a generated file is found
 pub fn check_generated_file(path: &std::path::Path) -> Result<(), GeneratedFile> {
-    for ext in GENERATED_EXTENSIONS {
-        let template_path = path.with_extension(ext);
-        if template_path.exists() {
-            return Err(GeneratedFile {
-                template_path: Some(template_path),
-                template_type: match ext {
-                    &"m4" => Some(TemplateType::M4),
-                    _ => None,
-                },
-            });
-        }
+    if let Some((template_path, template_type)) = check_template_exists(path) {
+        return Err(GeneratedFile {
+            template_path: Some(template_path),
+            template_type,
+        });
     }
 
     match std::fs::File::open(path) {
@@ -172,17 +198,11 @@ pub fn tree_check_generated_file(
     tree: &dyn MutableTree,
     path: &std::path::Path,
 ) -> Result<(), GeneratedFile> {
-    for ext in GENERATED_EXTENSIONS {
-        let template_path = path.with_extension(ext);
-        if tree.has_filename(&template_path) {
-            return Err(GeneratedFile {
-                template_path: Some(template_path),
-                template_type: match ext {
-                    &"m4" => Some(TemplateType::M4),
-                    _ => None,
-                },
-            });
-        }
+    if let Some((template_path, template_type)) = tree_check_template_exists(tree, path) {
+        return Err(GeneratedFile {
+            template_path: Some(template_path),
+            template_type,
+        });
     }
 
     match tree.get_file(path) {
@@ -437,11 +457,13 @@ pub trait Editor<P: Marshallable>:
         self.updated_content().as_deref() != self.rewritten_content()
     }
 
+    fn is_generated(&self) -> bool;
+
     /// Commit the changes
     ///
     /// # Returns
     /// A list of paths that were changed
-    fn commit(&self) -> Result<Vec<&std::path::Path>, EditorError>;
+    fn commit(&self) -> Result<Vec<std::path::PathBuf>, EditorError>;
 }
 
 // Allow calling .edit_file("debian/control") on a tree
@@ -551,7 +573,7 @@ impl<'a, P: Marshallable> Editor<P> for TreeEditor<'a, P> {
         self.rewritten_content.as_deref()
     }
 
-    fn commit(&self) -> Result<Vec<&std::path::Path>, EditorError> {
+    fn commit(&self) -> Result<Vec<std::path::PathBuf>, EditorError> {
         let updated_content = self.updated_content();
 
         let changed = edit_formatted_file(
@@ -563,9 +585,16 @@ impl<'a, P: Marshallable> Editor<P> for TreeEditor<'a, P> {
             self.allow_reformatting,
         )?;
         if changed {
-            Ok(vec![&self.path])
+            Ok(vec![self.path.clone()])
         } else {
             Ok(vec![])
+        }
+    }
+
+    fn is_generated(&self) -> bool {
+        tree_check_generated_file(self.tree, &self.path).is_ok() || {
+            let mut buf = std::io::BufReader::new(std::io::Cursor::new(self.orig_content().unwrap()));
+            check_generated_contents(&mut buf).is_err()
         }
     }
 }
@@ -652,7 +681,14 @@ impl<P: Marshallable> Editor<P> for FsEditor<P> {
         self.rewritten_content.as_deref()
     }
 
-    fn commit(&self) -> Result<Vec<&std::path::Path>, EditorError> {
+    fn is_generated(&self) -> bool {
+        check_template_exists(&self.path).is_some() || {
+            let mut buf = std::io::BufReader::new(std::io::Cursor::new(self.orig_content().unwrap()));
+            check_generated_contents(&mut buf).is_err()
+        }
+    }
+
+    fn commit(&self) -> Result<Vec<std::path::PathBuf>, EditorError> {
         let updated_content = self.updated_content();
 
         let changed = edit_formatted_file(
@@ -664,7 +700,7 @@ impl<P: Marshallable> Editor<P> for FsEditor<P> {
             self.allow_reformatting,
         )?;
         if changed {
-            Ok(vec![&self.path])
+            Ok(vec![self.path.clone()])
         } else {
             Ok(vec![])
         }
@@ -986,7 +1022,7 @@ mod tests {
         editor.inc_data();
         assert_eq!(editor.get_data(), Some(1));
         assert!(editor.has_changed());
-        assert_eq!(editor.commit().unwrap(), vec![&td.path().join("a")]);
+        assert_eq!(editor.commit().unwrap(), vec![td.path().join("a")]);
         assert_eq!(editor.get_data(), Some(1));
 
         assert_eq!("1", std::fs::read_to_string(td.path().join("a")).unwrap());
@@ -998,7 +1034,7 @@ mod tests {
 
         let editor = FsEditor::<TestMarshall>::new(&td.path().join("a"), false, false).unwrap();
         assert!(!editor.has_changed());
-        assert_eq!(editor.commit().unwrap(), Vec::<&std::path::Path>::new());
+        assert_eq!(editor.commit().unwrap(), Vec::<std::path::PathBuf>::new());
         assert_eq!(editor.get_data(), None);
         assert!(!td.path().join("a").exists());
     }
@@ -1013,7 +1049,7 @@ mod tests {
         editor.inc_data();
         assert_eq!(editor.get_data(), Some(2));
         assert!(editor.has_changed());
-        assert_eq!(editor.commit().unwrap(), vec![&td.path().join("a")]);
+        assert_eq!(editor.commit().unwrap(), vec![td.path().join("a")]);
         assert_eq!(editor.get_data(), Some(2));
 
         assert_eq!("2", std::fs::read_to_string(td.path().join("a")).unwrap());
@@ -1029,7 +1065,7 @@ mod tests {
         editor.unset_data();
         assert_eq!(editor.get_data(), None);
         assert!(editor.has_changed());
-        assert_eq!(editor.commit().unwrap(), vec![&td.path().join("a")]);
+        assert_eq!(editor.commit().unwrap(), vec![td.path().join("a")]);
         assert_eq!(editor.get_data(), None);
 
         assert!(!td.path().join("a").exists());
@@ -1051,7 +1087,7 @@ mod tests {
         editor.inc_data();
         assert_eq!(editor.get_data(), Some(1));
         assert!(editor.has_changed());
-        assert_eq!(editor.commit().unwrap(), vec![&tempdir.path().join("a")]);
+        assert_eq!(editor.commit().unwrap(), vec![tempdir.path().join("a")]);
 
         assert_eq!(
             "1",
@@ -1083,7 +1119,7 @@ mod tests {
         assert!(editor.has_changed());
         assert_eq!(
             editor.commit().unwrap(),
-            vec![&tempdir.path().join("debian/control")]
+            vec![tempdir.path().join("debian/control")]
         );
 
         assert_eq!(
