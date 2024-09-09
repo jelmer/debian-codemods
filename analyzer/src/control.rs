@@ -172,11 +172,11 @@ fn set_mtime<P: AsRef<Path>>(path: P, mtime: std::time::SystemTime) -> nix::Resu
 
     let duration = mtime.duration_since(std::time::UNIX_EPOCH).unwrap();
 
-    let seconds = duration.as_secs() as i64;
+    let seconds = duration.as_secs();
     let nanos = duration.subsec_nanos();
     let micros = nanos / 1_000;
 
-    let tv = TimeVal::new(seconds, micros as _);
+    let tv = TimeVal::new(seconds as _, micros as _);
 
     utimes(path.as_ref(), &tv, &tv)
 }
