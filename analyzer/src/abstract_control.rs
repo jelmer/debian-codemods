@@ -1,6 +1,6 @@
 use crate::relations::ensure_relation;
 use crate::relations::is_relation_implied;
-use debian_control::relations::{Entry, Relations};
+use debian_control::lossless::relations::{Entry, Relations};
 
 /// Interface for editing debian packages, whether backed by real control files or debcargo files.
 pub trait AbstractControlEditor {

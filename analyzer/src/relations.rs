@@ -1,4 +1,5 @@
-use debian_control::relations::{Entry, Relation, Relations, VersionConstraint};
+use debian_control::lossless::relations::{Entry, Relation, Relations};
+use debian_control::relations::VersionConstraint;
 use debversion::Version;
 
 /// Check if one dependency is implied by another.

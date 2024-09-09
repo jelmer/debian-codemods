@@ -702,15 +702,15 @@ impl Marshallable for debian_changelog::ChangeLog {
     }
 }
 
-impl Marshallable for debian_copyright::Copyright {
+impl Marshallable for debian_copyright::lossless::Copyright {
     fn from_bytes(content: &[u8]) -> Self {
-        debian_copyright::Copyright::from_str_relaxed(std::str::from_utf8(content).unwrap())
+        debian_copyright::lossless::Copyright::from_str_relaxed(std::str::from_utf8(content).unwrap())
             .unwrap()
             .0
     }
 
     fn missing() -> Self {
-        debian_copyright::Copyright::new()
+        debian_copyright::lossless::Copyright::new()
     }
 
     fn to_bytes(&self) -> Option<Vec<u8>> {

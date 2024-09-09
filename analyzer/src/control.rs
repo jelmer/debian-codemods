@@ -1,7 +1,7 @@
 use crate::editor::{Editor, EditorError, FsEditor, GeneratedFile};
 use crate::relations::{ensure_relation, is_relation_implied};
 use deb822_lossless::Paragraph;
-use debian_control::relations::Relations;
+use debian_control::lossless::relations::Relations;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 

@@ -1,4 +1,4 @@
-use debian_control::control::MultiArch;
+use debian_control::fields::MultiArch;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use toml_edit::{value, DocumentMut, Table};

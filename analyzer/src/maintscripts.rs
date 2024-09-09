@@ -100,6 +100,26 @@ impl Entry {
             }
         }
     }
+
+    pub fn package(&self) -> Option<&String> {
+        match self {
+            Entry::RemoveConffile { package, .. } => package.as_ref(),
+            Entry::MoveConffile { package, .. } => package.as_ref(),
+            Entry::SymlinkToDir { package, .. } => package.as_ref(),
+            Entry::DirToSymlink { package, .. } => package.as_ref(),
+            _ => None,
+        }
+    }
+
+    pub fn prior_version(&self) -> Option<&Version> {
+        match self {
+            Entry::RemoveConffile { prior_version, .. } => prior_version.as_ref(),
+            Entry::MoveConffile { prior_version, .. } => prior_version.as_ref(),
+            Entry::SymlinkToDir { prior_version, .. } => prior_version.as_ref(),
+            Entry::DirToSymlink { prior_version, .. } => prior_version.as_ref(),
+            _ => None,
+        }
+    }
 }
 
 impl std::fmt::Display for Entry {
@@ -227,11 +247,31 @@ impl Maintscript {
         self.lines.is_empty()
     }
 
-    fn entries(&self) -> Vec<&Entry> {
+    pub fn entries(&self) -> Vec<&Entry> {
         self.lines.iter().filter_map(|l| match l {
             Line::Entry(e) => Some(e),
             _ => None,
         }).collect()
+    }
+
+    pub fn remove(&mut self, index: usize) {
+        // Also remove preceding comments
+        let mut comments = vec![];
+        for (i, line) in self.lines.iter().enumerate() {
+            match line {
+                Line::Comment(_) => comments.push(i),
+                Line::Entry(_) => {
+                    if i == index {
+                        for i in comments.iter().rev() {
+                            self.lines.remove(*i);
+                        }
+                        self.lines.remove(index - comments.len());
+                        return;
+                    }
+                    comments.clear();
+                }
+            }
+        }
     }
 }
 
