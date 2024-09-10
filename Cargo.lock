@@ -1127,6 +1127,7 @@ name = "debianize"
 version = "0.158.12"
 dependencies = [
  "breezyshim",
+ "buildlog-consultant",
  "clap 4.5.17",
  "debian-analyzer 0.158.12",
  "debian-changelog",
@@ -1135,6 +1136,7 @@ dependencies = [
  "env_logger 0.11.5",
  "flate2",
  "hyper 0.14.30",
+ "lazy-regex",
  "log",
  "ognibuild",
  "pyo3",

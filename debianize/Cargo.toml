@@ -28,6 +28,8 @@ flate2 = "1.0.31"
 tokio = { version = "1.39.3", features = ["full", "rt", "signal"] }
 tempfile.workspace = true
 upstream-ontologist.workspace = true
+buildlog-consultant.workspace = true
+lazy-regex.workspace = true
 
 [features]
 pyo3 = []
