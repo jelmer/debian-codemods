@@ -2307,3 +2307,6 @@ Arch: all
         std::mem::drop(td);
     }
 }
+
+#[cfg(test)]
+mod fixer_tests;
