@@ -454,7 +454,7 @@ fn run_inline_python_fixer(
     code: &str,
     basedir: &std::path::Path,
     env: HashMap<String, String>,
-    timeout: Option<chrono::Duration>,
+    _timeout: Option<chrono::Duration>,
 ) -> Result<FixerResult, FixerError> {
     pyo3::prepare_freethreaded_python();
 
@@ -741,7 +741,7 @@ impl From<debian_analyzer::editor::EditorError> for FixerError {
             debian_analyzer::editor::EditorError::FormattingUnpreservable(p, _e) => {
                 FixerError::FormattingUnpreservable(p)
             }
-            debian_analyzer::editor::EditorError::TemplateError(p, e) => {
+            debian_analyzer::editor::EditorError::TemplateError(p, _e) => {
                 FixerError::GeneratedFile(p)
             }
         }
@@ -2315,7 +2315,7 @@ Arch: all
                 fn run(
                     &self,
                     basedir: &std::path::Path,
-                    package: &str,
+                    _package: &str,
                     _current_version: &Version,
                     _preferences: &FixerPreferences,
                     _timeout: Option<chrono::Duration>,
@@ -2396,7 +2396,7 @@ Arch: all
                 fn run(
                     &self,
                     basedir: &std::path::Path,
-                    package: &str,
+                    _package: &str,
                     _current_version: &Version,
                     _preferences: &FixerPreferences,
                     _timeout: Option<chrono::Duration>,
@@ -2438,6 +2438,7 @@ Arch: all
             assert_eq!(2, tree.branch().revno());
 
             std::mem::drop(lock_write);
+            std::mem::drop(td);
         }
 
         #[test]
@@ -2537,6 +2538,7 @@ Arch: all
             );
             std::mem::drop(basis_lock);
             std::mem::drop(lock_write);
+            std::mem::drop(td);
         }
 
         #[test]
@@ -2623,6 +2625,10 @@ Arch: all
                 orig_basis_tree.get_revision_id(),
                 basis_tree.get_revision_id()
             );
+            std::mem::drop(orig_basis_tree_lock);
+            std::mem::drop(basis_lock);
+            std::mem::drop(lock_write);
+            std::mem::drop(td);
         }
 
         #[test]
@@ -2659,8 +2665,8 @@ Arch: all
 
                 fn run(
                     &self,
-                    basedir: &std::path::Path,
-                    package: &str,
+                    _basedir: &std::path::Path,
+                    _package: &str,
                     _current_version: &Version,
                     _preferences: &FixerPreferences,
                     _timeout: Option<chrono::Duration>,
@@ -2824,6 +2830,7 @@ Arch: all
 
             std::mem::drop(basis_lock);
             std::mem::drop(lock);
+            std::mem::drop(td);
         }
 
         #[test]
@@ -2923,6 +2930,7 @@ Arch: all
                 result,
                 Err(FixerError::FailedPatchManipulation(..))
             ));
+            std::mem::drop(td);
         }
 
         fn make_package_tree(path: &Path, format: &str) -> WorkingTree {

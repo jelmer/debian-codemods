@@ -574,7 +574,7 @@ pub fn scrub_obsolete(
     update_changelog: Option<bool>,
     allow_reformatting: bool,
     keep_minimum_depends_versions: bool,
-    transitions: Option<HashMap<String, String>>,
+    #[allow(unused_variables)] transitions: Option<HashMap<String, String>>,
 ) -> Result<ScrubObsoleteResult, ScrubObsoleteError> {
     let debian_path = if debian_analyzer::control_files_in_root(&wt, subpath) {
         subpath.to_path_buf()

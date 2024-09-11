@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 include!(concat!(env!("OUT_DIR"), "/fixer_tests.rs"));
 
 fn run_fixer_testcase(
-    fixer_name: &str,
+    _fixer_name: &str,
     script_path: &Path,
     test_name: &str,
     path: &Path,

@@ -6,8 +6,8 @@ use debian_analyzer::{
     add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, ApplyError,
     Certainty, ChangelogError,
 };
-use debian_control::fields::MultiArch;
 use debian_control::control::Binary;
+use debian_control::fields::MultiArch;
 use debversion::Version;
 use lazy_regex::regex_captures;
 use lazy_static::lazy_static;
@@ -27,7 +27,7 @@ const USER_AGENT: &str = concat!("apply-multiarch-hints/", env!("CARGO_PKG_VERSI
 const DEFAULT_VALUE_MULTIARCH_HINT: i32 = 100;
 
 #[derive(Debug, Clone, Copy, std::hash::Hash, PartialEq, Eq)]
-enum HintKind {
+pub enum HintKind {
     MaForeign,
     FileConflict,
     MaForeignLibrary,
@@ -457,7 +457,7 @@ impl From<debian_analyzer::editor::EditorError> for OverallError {
             }
             debian_analyzer::editor::EditorError::BrzError(e) => OverallError::BrzError(e),
             debian_analyzer::editor::EditorError::IoError(e) => OverallError::Other(e.to_string()),
-            debian_analyzer::editor::EditorError::TemplateError(p, e) => {
+            debian_analyzer::editor::EditorError::TemplateError(p, _e) => {
                 OverallError::GeneratedFile(p)
             }
         }
@@ -515,7 +515,7 @@ pub fn apply_multiarch_hints(
     committer: Option<String>,
     dirty_tracker: Option<&mut DirtyTreeTracker>,
     update_changelog: bool,
-    allow_reformatting: Option<bool>,
+    _allow_reformatting: Option<bool>,
 ) -> Result<OverallResult, OverallError> {
     let minimum_certainty = minimum_certainty.unwrap_or(Certainty::Certain);
     let basis_tree = local_tree.basis_tree().unwrap();

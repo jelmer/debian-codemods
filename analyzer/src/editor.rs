@@ -145,7 +145,10 @@ fn check_template_exists(path: &std::path::Path) -> Option<(PathBuf, Option<Temp
     None
 }
 
-fn tree_check_template_exists(tree: &dyn MutableTree, path: &std::path::Path) -> Option<(PathBuf, Option<TemplateType>)> {
+fn tree_check_template_exists(
+    tree: &dyn MutableTree,
+    path: &std::path::Path,
+) -> Option<(PathBuf, Option<TemplateType>)> {
     for ext in GENERATED_EXTENSIONS {
         let template_path = path.with_extension(ext);
         if tree.has_filename(&template_path) {
@@ -243,10 +246,10 @@ impl From<BrzError> for EditorError {
 impl std::fmt::Display for EditorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EditorError::GeneratedFile(p, e) => {
+            EditorError::GeneratedFile(p, _e) => {
                 write!(f, "File {} is generated from another file", p.display())
             }
-            EditorError::FormattingUnpreservable(p, e) => {
+            EditorError::FormattingUnpreservable(p, _e) => {
                 write!(f, "Unable to preserve formatting in {}", p.display())
             }
             EditorError::IoError(e) => write!(f, "I/O error: {}", e),
@@ -593,7 +596,8 @@ impl<'a, P: Marshallable> Editor<P> for TreeEditor<'a, P> {
 
     fn is_generated(&self) -> bool {
         tree_check_generated_file(self.tree, &self.path).is_ok() || {
-            let mut buf = std::io::BufReader::new(std::io::Cursor::new(self.orig_content().unwrap()));
+            let mut buf =
+                std::io::BufReader::new(std::io::Cursor::new(self.orig_content().unwrap()));
             check_generated_contents(&mut buf).is_err()
         }
     }
@@ -683,7 +687,8 @@ impl<P: Marshallable> Editor<P> for FsEditor<P> {
 
     fn is_generated(&self) -> bool {
         check_template_exists(&self.path).is_some() || {
-            let mut buf = std::io::BufReader::new(std::io::Cursor::new(self.orig_content().unwrap()));
+            let mut buf =
+                std::io::BufReader::new(std::io::Cursor::new(self.orig_content().unwrap()));
             check_generated_contents(&mut buf).is_err()
         }
     }
@@ -740,9 +745,11 @@ impl Marshallable for debian_changelog::ChangeLog {
 
 impl Marshallable for debian_copyright::lossless::Copyright {
     fn from_bytes(content: &[u8]) -> Self {
-        debian_copyright::lossless::Copyright::from_str_relaxed(std::str::from_utf8(content).unwrap())
-            .unwrap()
-            .0
+        debian_copyright::lossless::Copyright::from_str_relaxed(
+            std::str::from_utf8(content).unwrap(),
+        )
+        .unwrap()
+        .0
     }
 
     fn missing() -> Self {
@@ -786,7 +793,9 @@ impl Marshallable for deb822_lossless::Deb822 {
 
 impl Marshallable for crate::maintscripts::Maintscript {
     fn from_bytes(content: &[u8]) -> Self {
-        crate::maintscripts::Maintscript::from_bytes(content)
+        use std::str::FromStr;
+        let content = std::str::from_utf8(content).unwrap();
+        crate::maintscripts::Maintscript::from_str(content).unwrap()
     }
 
     fn missing() -> Self {

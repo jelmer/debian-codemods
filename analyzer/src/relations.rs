@@ -108,7 +108,7 @@ pub fn ensure_relation(rels: &mut Relations, newrel: Entry) {
     }
 
     for i in obsolete.into_iter().rev() {
-        rels.remove(i);
+        rels.remove_entry(i);
     }
 }
 
@@ -192,7 +192,7 @@ pub fn ensure_minimum_version(
         }
     }
     for i in obsolete_relations.into_iter().rev() {
-        relations.remove(i);
+        relations.remove_entry(i);
     }
     changed
 }
@@ -251,7 +251,7 @@ pub fn ensure_exact_version(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use debian_control::lossless::relations::{Relation,Relations};
+    use debian_control::lossless::relations::{Relation, Relations};
 
     mod is_dep_implied {
         use super::*;

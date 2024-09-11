@@ -1,5 +1,4 @@
 use debversion::Version;
-use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
@@ -11,8 +10,12 @@ pub enum ParseError {
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            ParseError::UnknownCommand(command) => write!(f, "Unknown maintscript command: {}", command),
-            ParseError::MissingArgument(command) => write!(f, "Missing argument for maintscript command: {}", command),
+            ParseError::UnknownCommand(command) => {
+                write!(f, "Unknown maintscript command: {}", command)
+            }
+            ParseError::MissingArgument(command) => {
+                write!(f, "Missing argument for maintscript command: {}", command)
+            }
             ParseError::InvalidVersion(e) => write!(f, "Invalid version: {}", e),
         }
     }
@@ -51,14 +54,18 @@ pub enum Entry {
         new_target: String,
         prior_version: Option<Version>,
         package: Option<String>,
-    }
+    },
 }
 
 impl Entry {
     fn args(&self) -> Vec<String> {
         match self {
             Entry::Supports(command) => vec!["supports".to_string(), command.to_string()],
-            Entry::RemoveConffile { conffile, prior_version, package } => {
+            Entry::RemoveConffile {
+                conffile,
+                prior_version,
+                package,
+            } => {
                 let mut ret = vec!["rm_conffile".to_string(), conffile.to_string()];
                 if let Some(prior_version) = prior_version.as_ref() {
                     ret.push(prior_version.to_string());
@@ -68,8 +75,17 @@ impl Entry {
                 }
                 ret
             }
-            Entry::MoveConffile { old_conffile, new_conffile, prior_version, package } => {
-                let mut ret = vec!["mv_conffile".to_string(), old_conffile.to_string(), new_conffile.to_string()];
+            Entry::MoveConffile {
+                old_conffile,
+                new_conffile,
+                prior_version,
+                package,
+            } => {
+                let mut ret = vec![
+                    "mv_conffile".to_string(),
+                    old_conffile.to_string(),
+                    new_conffile.to_string(),
+                ];
                 if let Some(prior_version) = prior_version.as_ref() {
                     ret.push(prior_version.to_string());
                     if let Some(package) = package.as_ref() {
@@ -78,8 +94,17 @@ impl Entry {
                 }
                 ret
             }
-            Entry::SymlinkToDir { pathname, old_target, prior_version, package } => {
-                let mut ret = vec!["symlink_to_dir".to_string(), pathname.to_string(), old_target.to_string()];
+            Entry::SymlinkToDir {
+                pathname,
+                old_target,
+                prior_version,
+                package,
+            } => {
+                let mut ret = vec![
+                    "symlink_to_dir".to_string(),
+                    pathname.to_string(),
+                    old_target.to_string(),
+                ];
                 if let Some(prior_version) = prior_version.as_ref() {
                     ret.push(prior_version.to_string());
                     if let Some(package) = package.as_ref() {
@@ -88,8 +113,17 @@ impl Entry {
                 }
                 ret
             }
-            Entry::DirToSymlink { pathname, new_target, prior_version, package } => {
-                let mut ret = vec!["dir_to_symlink".to_string(), pathname.to_string(), new_target.to_string()];
+            Entry::DirToSymlink {
+                pathname,
+                new_target,
+                prior_version,
+                package,
+            } => {
+                let mut ret = vec![
+                    "dir_to_symlink".to_string(),
+                    pathname.to_string(),
+                    new_target.to_string(),
+                ];
                 if let Some(prior_version) = prior_version.as_ref() {
                     ret.push(prior_version.to_string());
                     if let Some(package) = package.as_ref() {
@@ -155,7 +189,11 @@ impl std::str::FromStr for Entry {
                 } else {
                     None
                 };
-                Ok(Entry::RemoveConffile { conffile, prior_version, package })
+                Ok(Entry::RemoveConffile {
+                    conffile,
+                    prior_version,
+                    package,
+                })
             }
             "mv_conffile" => {
                 if args.len() < 3 {
@@ -173,7 +211,12 @@ impl std::str::FromStr for Entry {
                 } else {
                     None
                 };
-                Ok(Entry::MoveConffile { old_conffile, new_conffile, prior_version, package })
+                Ok(Entry::MoveConffile {
+                    old_conffile,
+                    new_conffile,
+                    prior_version,
+                    package,
+                })
             }
             "symlink_to_dir" => {
                 if args.len() < 3 {
@@ -191,7 +234,12 @@ impl std::str::FromStr for Entry {
                 } else {
                     None
                 };
-                Ok(Entry::SymlinkToDir { pathname, old_target, prior_version, package })
+                Ok(Entry::SymlinkToDir {
+                    pathname,
+                    old_target,
+                    prior_version,
+                    package,
+                })
             }
             "dir_to_symlink" => {
                 if args.len() < 3 {
@@ -209,11 +257,14 @@ impl std::str::FromStr for Entry {
                 } else {
                     None
                 };
-                Ok(Entry::DirToSymlink { pathname, new_target, prior_version, package })
+                Ok(Entry::DirToSymlink {
+                    pathname,
+                    new_target,
+                    prior_version,
+                    package,
+                })
             }
-            n => {
-                Err(ParseError::UnknownCommand(n.to_string()))
-            }
+            n => Err(ParseError::UnknownCommand(n.to_string())),
         }
     }
 }
@@ -254,10 +305,13 @@ impl Maintscript {
     }
 
     pub fn entries(&self) -> Vec<&Entry> {
-        self.lines.iter().filter_map(|l| match l {
-            Line::Entry(e) => Some(e),
-            _ => None,
-        }).collect()
+        self.lines
+            .iter()
+            .filter_map(|l| match l {
+                Line::Entry(e) => Some(e),
+                _ => None,
+            })
+            .collect()
     }
 
     pub fn remove(&mut self, index: usize) {
@@ -283,7 +337,15 @@ impl Maintscript {
 
 impl std::fmt::Display for Maintscript {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.lines.iter().map(|e| e.to_string()).collect::<Vec<String>>().join("\n"))
+        write!(
+            f,
+            "{}",
+            self.lines
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<String>>()
+                .join("\n")
+        )
     }
 }
 
@@ -291,12 +353,16 @@ impl std::str::FromStr for Maintscript {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let lines = s.lines().map(|l|
-            if l.starts_with('#') || l.trim().is_empty() {
-                Ok(Line::Comment(l.to_string()))
-            } else {
-                Ok(Line::Entry(Entry::from_str(l)?))
-            }).collect::<Result<Vec<Line>, Self::Err>>()?;
+        let lines = s
+            .lines()
+            .map(|l| {
+                if l.starts_with('#') || l.trim().is_empty() {
+                    Ok(Line::Comment(l.to_string()))
+                } else {
+                    Ok(Line::Entry(Entry::from_str(l)?))
+                }
+            })
+            .collect::<Result<Vec<Line>, Self::Err>>()?;
         Ok(Maintscript { lines })
     }
 }
@@ -311,12 +377,34 @@ mv_conffile /etc/foo.conf /etc/bar.conf 1.2.3-4
 symlink_to_dir /etc/foo /etc/bar 1.2.3-4
 dir_to_symlink /etc/foo /etc/bar 1.2.3-4";
         let maintscript = maintscript.parse::<super::Maintscript>().unwrap();
-        assert_eq!(maintscript.entries(), vec![
-            &super::Entry::Supports("preinst".to_string()),
-            &super::Entry::RemoveConffile { conffile: "/etc/foo.conf".to_string(), prior_version: Some("1.2.3-4".parse().unwrap()), package: None },
-            &super::Entry::MoveConffile { old_conffile: "/etc/foo.conf".to_string(), new_conffile: "/etc/bar.conf".to_string(), prior_version: Some("1.2.3-4".parse().unwrap()), package: None },
-            &super::Entry::SymlinkToDir { pathname: "/etc/foo".to_string(), old_target: "/etc/bar".to_string(), prior_version: Some("1.2.3-4".parse().unwrap()), package: None },
-            &super::Entry::DirToSymlink { pathname: "/etc/foo".to_string(), new_target: "/etc/bar".to_string(), prior_version: Some("1.2.3-4".parse().unwrap()), package: None },
-        ]);
+        assert_eq!(
+            maintscript.entries(),
+            vec![
+                &super::Entry::Supports("preinst".to_string()),
+                &super::Entry::RemoveConffile {
+                    conffile: "/etc/foo.conf".to_string(),
+                    prior_version: Some("1.2.3-4".parse().unwrap()),
+                    package: None
+                },
+                &super::Entry::MoveConffile {
+                    old_conffile: "/etc/foo.conf".to_string(),
+                    new_conffile: "/etc/bar.conf".to_string(),
+                    prior_version: Some("1.2.3-4".parse().unwrap()),
+                    package: None
+                },
+                &super::Entry::SymlinkToDir {
+                    pathname: "/etc/foo".to_string(),
+                    old_target: "/etc/bar".to_string(),
+                    prior_version: Some("1.2.3-4".parse().unwrap()),
+                    package: None
+                },
+                &super::Entry::DirToSymlink {
+                    pathname: "/etc/foo".to_string(),
+                    new_target: "/etc/bar".to_string(),
+                    prior_version: Some("1.2.3-4".parse().unwrap()),
+                    package: None
+                },
+            ]
+        );
     }
 }

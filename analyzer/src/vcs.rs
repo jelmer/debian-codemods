@@ -104,7 +104,7 @@ pub fn determine_gitlab_browser_url(url: &str) -> Url {
 }
 
 pub fn determine_browser_url(
-    vcs_type: &str,
+    _vcs_type: &str,
     vcs_url: &str,
     net_access: Option<bool>,
 ) -> Option<Url> {

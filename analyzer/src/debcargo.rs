@@ -446,6 +446,7 @@ impl<'a> DebcargoBinary<'a> {
         self.table["suggests"].as_str()
     }
 
+    #[allow(dead_code)]
     fn default_provides(&self) -> Option<String> {
         let mut ret = HashSet::new();
         let semver_suffix = self.semver_suffix;

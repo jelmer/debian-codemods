@@ -511,7 +511,6 @@ mod tests {
     #[serial]
     #[test]
     fn test_git_env() {
-        use breezyshim::controldir::ControlDirFormat;
         let td = tempfile::tempdir().unwrap();
         let cd = breezyshim::controldir::create_standalone_workingtree(td.path(), "git").unwrap();
 
@@ -541,7 +540,6 @@ mod tests {
     #[serial]
     #[test]
     fn test_git_config() {
-        use breezyshim::controldir::ControlDirFormat;
         let td = tempfile::tempdir().unwrap();
         let cd = breezyshim::controldir::create_standalone_workingtree(td.path(), "git").unwrap();
 

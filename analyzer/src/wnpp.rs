@@ -1,5 +1,5 @@
 use sqlx::error::BoxDynError;
-use sqlx::{Error, PgPool, Postgres, Row};
+use sqlx::{Error, PgPool, Postgres};
 
 type BugId = i64;
 
@@ -107,28 +107,22 @@ impl DebBugs {
     }
 }
 
-pub async fn find_wnpp_bugs_harder(
-    source_name: &str,
-    upstream_name: &str,
-) -> Result<Vec<(BugId, BugKind)>, Error> {
-    let debbugs = DebBugs::default().await?;
-    let mut wnpp_bugs = debbugs.find_wnpp_bugs(source_name).await?;
-    if wnpp_bugs.is_empty() && source_name != upstream_name {
-        wnpp_bugs = debbugs.find_wnpp_bugs(upstream_name).await?;
-    }
-    if wnpp_bugs.is_empty() {
-        wnpp_bugs = debbugs.find_archived_wnpp_bugs(source_name).await?;
-        if !wnpp_bugs.is_empty() {
-            log::warn!(
-                "Found archived ITP/RFP bugs for {}: {:?}",
-                source_name,
-                wnpp_bugs
-            );
-        } else {
-            log::warn!("No relevant WNPP bugs found for {}", source_name);
+pub async fn find_wnpp_bugs_harder(names: &[&str]) -> Result<Vec<(BugId, BugKind)>, Error> {
+    for name in names {
+        let debbugs = DebBugs::default().await?;
+        let mut wnpp_bugs = debbugs.find_wnpp_bugs(name).await?;
+        if wnpp_bugs.is_empty() {
+            wnpp_bugs = debbugs.find_archived_wnpp_bugs(name).await?;
+            if !wnpp_bugs.is_empty() {
+                log::warn!("Found archived ITP/RFP bugs for {}: {:?}", name, wnpp_bugs);
+            } else {
+                log::warn!("No relevant WNPP bugs found for {}", name);
+            }
         }
-    } else {
-        log::info!("Found WNPP bugs for {}: {:?}", source_name, wnpp_bugs);
+        if !wnpp_bugs.is_empty() {
+            log::info!("Found WNPP bugs for {}: {:?}", name, wnpp_bugs);
+            return Ok(wnpp_bugs);
+        }
     }
-    Ok(wnpp_bugs)
+    Ok(vec![])
 }

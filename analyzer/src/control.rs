@@ -268,17 +268,7 @@ impl Deb822Changes {
             .push((field, old_value, new_value));
     }
 
-    fn iter(
-        &self,
-    ) -> impl Iterator<
-        Item = (
-            &(String, String),
-            &Vec<(String, Option<String>, Option<String>)>,
-        ),
-    > {
-        self.0.iter()
-    }
-
+    #[allow(dead_code)]
     fn normalized(&self) -> Vec<((&str, &str), Vec<(&str, Option<&str>, Option<&str>)>)> {
         let mut ret: Vec<_> = self
             .0
@@ -866,14 +856,6 @@ struct Template {
 }
 
 impl Template {
-    pub fn new(path: PathBuf, template_path: PathBuf, template_type: TemplateType) -> Self {
-        Self {
-            path,
-            template_path,
-            template_type,
-        }
-    }
-
     fn find(path: &Path) -> Option<Self> {
         let template_path = find_template_path(path)?;
         let template_type = guess_template_type(&template_path, Some(path.parent().unwrap()))?;
@@ -1402,7 +1384,7 @@ Testsuite: autopkgtest
 "#,
             )
             .unwrap();
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             editor.source().unwrap().set_name("foo");
             let changes = editor.changes();
@@ -1471,7 +1453,7 @@ Description: Some description
 "#,
             )
             .unwrap();
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             let binaries = editor.binaries().collect::<Vec<_>>();
             assert_eq!(binaries.len(), 1);
@@ -1745,7 +1727,7 @@ Section: extra
             )
             .unwrap();
 
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             let mut binary = editor
                 .binaries()
@@ -1779,7 +1761,7 @@ Testsuite: autopkgtest
 "#,
             )
             .unwrap();
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             editor.commit().unwrap();
 
@@ -1833,7 +1815,7 @@ debian/control: debian/control.in
             )
             .unwrap();
 
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             editor
                 .source()
@@ -1897,7 +1879,7 @@ debian/control: debian/control.in
             )
             .unwrap();
 
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             editor
                 .source()
@@ -1959,7 +1941,7 @@ debian/control: debian/control.in
             )
             .unwrap();
 
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             editor
                 .source()
@@ -2010,7 +1992,7 @@ Build-Depends: @cdbs@, libc6
             )
             .unwrap();
 
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
 
             editor
@@ -2077,7 +2059,7 @@ Description: foo
             )
             .unwrap();
 
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             editor
                 .binaries()
