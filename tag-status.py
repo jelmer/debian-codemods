@@ -6,7 +6,6 @@ import sys
 
 from ruamel.yaml import YAML
 
-from lintian_brush import available_lintian_fixers
 
 KNOWN_KEYS = ["tag", "status", "difficulty", "comment"]
 
@@ -17,9 +16,19 @@ all_tags = {
     ).splitlines()
 }
 
+yaml = YAML()
+with open('fixers/index.desc') as f:
+    fixers = yaml.load(f)
+
 supported_tags = set()
-for fixer in available_lintian_fixers():
-    supported_tags.update(fixer.lintian_tags)
+for fixer in fixers:
+    try:
+        tags = fixer['lintian-tags']
+    except KeyError:
+        pass
+    else:
+        if tags is not None:
+            supported_tags.update(tags)
 
 yaml = YAML()
 with open("tag-status.yaml") as f:
