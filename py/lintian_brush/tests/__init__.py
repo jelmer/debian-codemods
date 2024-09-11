@@ -21,7 +21,6 @@ core_names = [
     "changelog",
     "config",
     "debhelper",
-    "detect_gbp_dch",
     "lintian",
     "lintian_overrides",
     "run",

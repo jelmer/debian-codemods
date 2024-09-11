@@ -329,3 +329,347 @@ pub fn all_sha_prefixed(cb: &ChangeLogEntry) -> bool {
 
     sha_prefixed > 0
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use breezyshim::controldir::{create_standalone_workingtree, ControlDirFormat};
+    use std::path::Path;
+    fn make_changelog(entries: Vec<String>) -> String {
+        format!(
+            r###"lintian-brush (0.1) UNRELEASED; urgency=medium
+
+{}
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+"###,
+            entries
+                .iter()
+                .map(|x| format!("  * {}\n", x))
+                .collect::<Vec<_>>()
+                .concat()
+        )
+    }
+
+    #[test]
+    fn test_no_gbp_conf() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
+        assert_eq!(
+            Some(ChangelogBehaviour{
+                update_changelog: true,
+                explanation: "Assuming changelog needs to be updated, since it is always changed together with other files in the tree.".to_string(),
+            }),
+            guess_update_changelog(&tree, Path::new("debian"), None),
+        );
+    }
+
+    #[test]
+    fn test_custom_path() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
+        assert_eq!(
+            Some(ChangelogBehaviour{
+                update_changelog: true,
+                explanation: "Assuming changelog needs to be updated, since it is always changed together with other files in the tree.".to_string(),
+            }),
+            guess_update_changelog(&tree, Path::new("debian"), None),
+        );
+        assert_eq!(
+            Some(ChangelogBehaviour{
+                update_changelog: true,
+                explanation: "assuming changelog needs to be updated since gbp dch only supports a debian directory in the root of the repository".to_string(),
+            }),
+            guess_update_changelog(&tree, Path::new(""), None),
+        );
+        assert_eq!(
+            Some(ChangelogBehaviour{
+                update_changelog: true,
+                explanation: "assuming changelog needs to be updated since gbp dch only supports a debian directory in the root of the repository".to_string(),
+            }),
+            guess_update_changelog(&tree, Path::new("lala/debian"), None),
+        );
+    }
+
+    #[test]
+    fn test_gbp_conf_dch() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/gbp.conf"),
+            r#"[dch]
+pristine-tar = False
+"#,
+        )
+        .unwrap();
+        tree.add(&[Path::new("debian"), Path::new("debian/gbp.conf")])
+            .unwrap();
+        assert_eq!(Some(ChangelogBehaviour{
+                update_changelog: false,
+                explanation: "Assuming changelog does not need to be updated, since there is a [dch] section in gbp.conf.".to_string(),
+        }),
+            guess_update_changelog(&tree, Path::new("debian"), None)
+        );
+    }
+
+    #[test]
+    fn test_changelog_sha_prefixed() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/changelog"),
+            r#"blah (0.20.1) unstable; urgency=medium
+
+  [ Somebody ]
+  * [ebb7c31] do a thing
+  * [629746a] do another thing that actually requires us to wrap lines
+    and then
+
+  [ Somebody Else ]
+  * [b02b435] do another thing
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+"#,
+        )
+        .unwrap();
+        tree.add(&[Path::new("debian"), Path::new("debian/changelog")])
+            .unwrap();
+        assert_eq!(
+            Some(ChangelogBehaviour{
+                update_changelog: false,
+                explanation: "Assuming changelog does not need to be updated, since all entries in last changelog entry are prefixed by git shas.".to_string(),
+            }),
+            guess_update_changelog(&tree, Path::new("debian"), None)
+        );
+    }
+
+    #[test]
+    fn test_empty() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
+        assert_eq!(
+            Some(ChangelogBehaviour{
+                update_changelog: true,
+                explanation: "Assuming changelog needs to be updated, since it is always changed together with other files in the tree.".to_string(),
+            }),
+            guess_update_changelog(&tree, Path::new("debian"), None)
+        );
+    }
+
+    #[test]
+    fn test_update_with_change() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
+        std::fs::write(td.path().join("upstream"), b"upstream").unwrap();
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/changelog"),
+            make_changelog(vec!["initial release".to_string()]),
+        )
+        .unwrap();
+        std::fs::write(td.path().join("debian/control"), b"initial").unwrap();
+        tree.add(&[
+            Path::new("upstream"),
+            Path::new("debian"),
+            Path::new("debian/changelog"),
+            Path::new("debian/control"),
+        ])
+        .unwrap();
+        tree.build_commit()
+            .message("initial release")
+            .commit()
+            .unwrap();
+        let mut changelog_entries = vec!["initial release".to_string()];
+        for i in 0..20 {
+            std::fs::write(td.path().join("upstream"), format!("upstream {}", i)).unwrap();
+            changelog_entries.push(format!("next entry {}", i));
+            std::fs::write(
+                td.path().join("debian/changelog"),
+                make_changelog(changelog_entries.clone()),
+            )
+            .unwrap();
+            std::fs::write(td.path().join("debian/control"), format!("next {}", i)).unwrap();
+            tree.build_commit().message("Next").commit().unwrap();
+        }
+        assert_eq!(Some(ChangelogBehaviour {
+            update_changelog: true,
+            explanation: "Assuming changelog needs to be updated, since it is always changed together with other files in the tree.".to_string(),
+        }), guess_update_changelog(&tree, Path::new("debian"), None));
+    }
+
+    #[test]
+    fn test_changelog_updated_separately() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/changelog"),
+            make_changelog(vec!["initial release".to_string()]),
+        )
+        .unwrap();
+        std::fs::write(td.path().join("debian/control"), b"initial").unwrap();
+        tree.add(&[
+            Path::new("debian"),
+            Path::new("debian/changelog"),
+            Path::new("debian/control"),
+        ])
+        .unwrap();
+        tree.build_commit()
+            .message("initial release")
+            .commit()
+            .unwrap();
+        let mut changelog_entries = vec!["initial release".to_string()];
+        for i in 0..20 {
+            changelog_entries.push(format!("next entry {}", i));
+            std::fs::write(
+                td.path().join("debian/control"),
+                format!("next {}", i).as_bytes(),
+            )
+            .unwrap();
+            tree.build_commit().message("Next").commit().unwrap();
+        }
+        std::fs::write(
+            td.path().join("debian/changelog"),
+            make_changelog(changelog_entries.clone()),
+        )
+        .unwrap();
+        tree.build_commit().message("Next").commit().unwrap();
+        changelog_entries.push("final entry".to_string());
+        std::fs::write(td.path().join("debian/control"), b"more").unwrap();
+        tree.build_commit().message("Next").commit().unwrap();
+        std::fs::write(
+            td.path().join("debian/changelog"),
+            make_changelog(changelog_entries),
+        )
+        .unwrap();
+        tree.build_commit().message("Next").commit().unwrap();
+        assert_eq!(Some(ChangelogBehaviour{
+            update_changelog: false,
+            explanation: "Assuming changelog does not need to be updated, since changelog entries are usually updated in separate commits.".to_string(),
+        }), guess_update_changelog(&tree, Path::new("debian"), None));
+    }
+
+    #[test]
+    fn test_has_dch_in_messages() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
+        tree.build_commit()
+            .message("Git-Dch: ignore\n")
+            .allow_pointless(true)
+            .commit()
+            .unwrap();
+
+        assert_eq!(Some(ChangelogBehaviour{
+            update_changelog: false,
+            explanation: "Assuming changelog does not need to be updated, since there are Gbp-Dch stanzas in commit messages".to_string(),
+        }), guess_update_changelog(&tree, Path::new("debian"), None));
+    }
+
+    #[test]
+    fn test_inaugural_unreleased() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/changelog"),
+            r#"blah (0.20.1) UNRELEASED; urgency=medium
+
+  * Initial release. Closes: #123123
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+"#,
+        )
+        .unwrap();
+        tree.add(&[Path::new("debian"), Path::new("debian/changelog")])
+            .unwrap();
+        assert_eq!(Some(ChangelogBehaviour{
+            update_changelog: false,
+            explanation: "assuming changelog does not need to be updated since it is the inaugural unreleased entry".to_string(),
+        }), guess_update_changelog(&tree, Path::new("debian"), None));
+    }
+
+    #[test]
+    fn test_last_entry_warns_generated() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/changelog"),
+            r#"blah (0.20.1) UNRELEASED; urgency=medium
+
+  * WIP (generated at release time: please do not add entries below).
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+
+blah (0.20.1) unstable; urgency=medium
+
+  * Initial release. Closes: #123123
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+"#,
+        )
+        .unwrap();
+        tree.add(&[&Path::new("debian"), &Path::new("debian/changelog")])
+            .unwrap();
+        assert_eq!(
+            Some(ChangelogBehaviour {
+                update_changelog: false,
+                explanation: "last changelog entry warns changelog is generated at release time"
+                    .to_string()
+            }),
+            guess_update_changelog(&tree, Path::new("debian"), None)
+        );
+    }
+
+    #[test]
+    fn test_never_unreleased() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(td.path().join("debian/control"), b"foo").unwrap();
+        std::fs::write(
+            td.path().join("debian/changelog"),
+            r#"blah (0.20.1) unstable; urgency=medium
+
+  * Initial release. Closes: #123123
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+"#,
+        )
+        .unwrap();
+
+        tree.add(&[
+            (Path::new("debian")),
+            (Path::new("debian/control")),
+            (Path::new("debian/changelog")),
+        ])
+        .unwrap();
+        tree.build_commit().message("rev1").commit().unwrap();
+        std::fs::write(td.path().join("debian/control"), b"bar").unwrap();
+        tree.build_commit().message("rev2").commit().unwrap();
+        std::fs::write(td.path().join("debian/control"), b"bla").unwrap();
+        tree.build_commit().message("rev2").commit().unwrap();
+        std::fs::write(
+            td.path().join("debian/changelog"),
+            r#"blah (0.21.1) unstable; urgency=medium
+
+  * Next release.
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+
+blah (0.20.1) unstable; urgency=medium
+
+  * Initial release. Closes: #123123
+
+ -- Joe User <joe@example.com>  Tue, 19 Nov 2019 15:29:47 +0100
+"#,
+        )
+        .unwrap();
+        tree.build_commit().message("rev2").commit().unwrap();
+        assert_eq!(Some(ChangelogBehaviour{
+            update_changelog: false,
+            explanation: "Assuming changelog does not need to be updated, since it never uses UNRELEASED entries".to_string()
+        }), guess_update_changelog(&tree, Path::new("debian"), None));
+    }
+}
