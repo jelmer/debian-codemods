@@ -2018,7 +2018,7 @@ pub fn determine_update_changelog(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use breezyshim::controldir::ControlDirFormat;
+    use breezyshim::controldir::{create_standalone_workingtree, ControlDirFormat};
     use breezyshim::tree::{MutableTree, WorkingTree};
     use std::path::Path;
 
@@ -2127,11 +2127,8 @@ mod tests {
         fn setup(version: Option<&str>) -> (tempfile::TempDir, WorkingTree) {
             let version = version.unwrap_or("0.1");
             let td = tempfile::tempdir().unwrap();
-            let tree = breezyshim::controldir::create_standalone_workingtree(
-                td.path(),
-                &ControlDirFormat::default(),
-            )
-            .unwrap();
+            let tree =
+                create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
             tree.mkdir(std::path::Path::new("debian")).unwrap();
             std::fs::write(
                 td.path().join("debian/control"),
@@ -2926,6 +2923,109 @@ Arch: all
                 result,
                 Err(FixerError::FailedPatchManipulation(..))
             ));
+        }
+
+        fn make_package_tree(path: &Path, format: &str) -> WorkingTree {
+            let tree = create_standalone_workingtree(path, format).unwrap();
+            std::fs::create_dir(path.join("debian")).unwrap();
+            std::fs::write(
+                path.join("debian/control"),
+                r#""Source: blah
+Vcs-Git: https://example.com/blah
+Testsuite: autopkgtest
+
+Binary: blah
+Arch: all
+
+"#,
+            )
+            .unwrap();
+            std::fs::write(
+                path.join("debian/changelog"),
+                r#"blah (0.1-1) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+"#,
+            )
+            .unwrap();
+            tree.add(&[
+                Path::new("debian"),
+                Path::new("debian/changelog"),
+                Path::new("debian/control"),
+            ])
+            .unwrap();
+            tree.build_commit()
+                .message("Initial thingy.")
+                .commit()
+                .unwrap();
+            tree
+        }
+
+        fn make_change(tree: &WorkingTree, committer: Option<&str>) {
+            let lock = tree.lock_write().unwrap();
+
+            let (result, summary) = run_lintian_fixer(
+                tree,
+                &DummyFixer::new("dummy", &["some-tag"]),
+                committer,
+                || false,
+                &FixerPreferences::default(),
+                &mut None,
+                Path::new(""),
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+            assert_eq!(summary, "Fixed some tag.");
+            assert_eq!(vec!["some-tag"], result.fixed_lintian_tags());
+            assert_eq!(Some(Certainty::Certain), result.certainty);
+            assert_eq!(2, tree.branch().revno());
+            let lines = tree.get_file_lines(Path::new("debian/control")).unwrap();
+            assert_eq!(lines.last().unwrap(), b"a new line\n");
+            std::mem::drop(lock);
+        }
+
+        #[test]
+        fn test_honors_tree_committer_specified() {
+            let td = tempfile::tempdir().unwrap();
+            let tree = make_package_tree(td.path(), "git");
+
+            make_change(&tree, Some("Jane Example <jane@example.com>"));
+
+            let rev = tree
+                .branch()
+                .repository()
+                .get_revision(&tree.branch().last_revision())
+                .unwrap();
+            assert_eq!(rev.committer, "Jane Example <jane@example.com>");
+        }
+
+        #[test]
+        fn test_honors_tree_committer_config() {
+            let td = tempfile::tempdir().unwrap();
+            let tree = make_package_tree(td.path(), "git");
+            std::fs::write(
+                td.path().join(".git/config"),
+                r###"
+[user]
+  email = jane@example.com
+  name = Jane Example
+"###,
+            )
+            .unwrap();
+
+            make_change(&tree, None);
+
+            let rev = tree
+                .branch()
+                .repository()
+                .get_revision(&tree.branch().last_revision())
+                .unwrap();
+            assert_eq!(rev.committer, "Jane Example <jane@example.com>");
         }
     }
 

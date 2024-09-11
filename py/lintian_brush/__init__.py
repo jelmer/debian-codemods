@@ -20,11 +20,7 @@
 import logging
 import os
 import sys
-import time
-from contextlib import ExitStack
 from typing import (
-    Iterable,
-    List,
     Optional,
     Sequence,
 )
@@ -32,9 +28,6 @@ from typing import (
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy.workingtree import WorkingTree
-from breezy.workspace import check_clean_tree
-from debmutate.reformatting import FormattingUnpreservable
-
 
 __version__ = (0, 158)
 version_string = ".".join(map(str, __version__))
@@ -169,7 +162,9 @@ def open_binary(name):
 def data_file_path(name, check=os.path.exists):
     # There's probably a more Pythonic way of doing this, but
     # I haven't bothered finding out what it is yet..
-    path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", name))
+    path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", name)
+    )
     if check(path):
         return path
 
@@ -193,6 +188,7 @@ def data_file_path(name, check=os.path.exists):
 
 def available_lintian_fixers(fixers_dir=None, force_subprocess=False):
     from . import _lintian_brush_rs
+
     if fixers_dir is None:
         fixers_dir = _lintian_brush_rs.find_fixers_dir()
     return _lintian_brush_rs.available_lintian_fixers(

@@ -1569,7 +1569,9 @@ class DebianizeFixer(BuildFixer):
         return "debianize fixer"
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.vcs_directory!r}, {self.apt_repo!r})"
+        return (
+            f"{type(self).__name__}({self.vcs_directory!r}, {self.apt_repo!r})"
+        )
 
     def __init__(
         self,

@@ -19,94 +19,20 @@
 
 import os
 import re
-import sys
-from datetime import datetime
-from typing import Any, Callable, Type
 
-from breezy.config import GlobalStack
 from breezy.tests import (
     TestCase,
-    TestCaseWithTransport,
 )
 
 from debian.changelog import (
     Changelog,
 )
-from debian.debian_support import Version
 from lintian_brush import (
-    FailedPatchManipulation,
-    FixerFailed,
-    NoChanges,
-    NotDebianPackage,
     certainty_sufficient,
     certainty_to_confidence,
     min_certainty,
     version_string,
 )
-
-class HonorsVcsCommitter(TestCaseWithTransport):
-    def make_package_tree(self, format, version="0.1"):
-        tree = self.make_branch_and_tree(".", format=format)
-        self.build_tree_contents(
-            [
-                ("debian/",),
-                (
-                    "debian/control",
-                    """\
-Source: blah
-Vcs-Git: https://example.com/blah
-Testsuite: autopkgtest
-
-Binary: blah
-Arch: all
-
-""",
-                ),
-                (CHANGELOG_FILE[0], CHANGELOG_FILE[1] % {"version": version}),
-            ]
-        )
-        tree.add(["debian", "debian/changelog", "debian/control"])
-        tree.commit("Initial thingy.")
-        return tree
-
-    def make_change(self, tree, committer=None):
-        with tree.lock_write():
-            result, summary = run_lintian_fixer(
-                tree,
-                DummyFixer("dummy", ["some-tag"]),
-                update_changelog=False,
-                committer=committer,
-            )
-        self.assertEqual(summary, "Fixed some tag.")
-        self.assertEqual(["some-tag"], result.fixed_lintian_tags)
-        self.assertEqual("certain", result.certainty)
-        self.assertEqual(2, tree.branch.revno())
-        self.assertEqual(
-            tree.get_file_lines("debian/control")[-1], b"a new line\n"
-        )
-
-    def test_honors_tree_committer_specified(self):
-        tree = self.make_package_tree("git")
-        self.make_change(tree, committer="Jane Example <jane@example.com>")
-        rev = tree.branch.repository.get_revision(tree.branch.last_revision())
-        self.assertEqual(rev.committer, "Jane Example <jane@example.com>")
-
-    def test_honors_tree_committer_config(self):
-        tree = self.make_package_tree("git")
-        with open(os.path.join(tree.basedir, ".git/config"), "w") as f:
-            f.write(
-                """\
-[user]
-  email = jane@example.com
-  name = Jane Example
-
-"""
-            )
-
-        self.make_change(tree)
-        rev = tree.branch.repository.get_revision(tree.branch.last_revision())
-        self.assertEqual(rev.committer, "Jane Example <jane@example.com>")
-
 
 
 class LintianBrushVersion(TestCase):

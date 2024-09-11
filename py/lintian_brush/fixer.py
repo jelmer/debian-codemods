@@ -178,7 +178,11 @@ def report_result(
         print(f"Certainty: {certainty}")
     fixed_lintian_tags = {issue.tag for issue in _fixed_lintian_issues}
     if fixed_lintian_tags:
-        print("Fixed-Lintian-Tags: {}".format(", ".join(sorted(fixed_lintian_tags))))
+        print(
+            "Fixed-Lintian-Tags: {}".format(
+                ", ".join(sorted(fixed_lintian_tags))
+            )
+        )
     if _overriden_issues:
         print("Overridden-Lintian-Issues:")
         for issue in _overriden_issues:

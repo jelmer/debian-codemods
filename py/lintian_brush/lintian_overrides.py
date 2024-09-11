@@ -45,7 +45,7 @@ def overrides_paths() -> Iterator[str]:
 
 
 def update_overrides(
-    cb: Callable[[str, int, LintianOverride], Optional[LintianOverride]]
+    cb: Callable[[str, int, LintianOverride], Optional[LintianOverride]],
 ) -> None:
     """Call update_overrides_file on all overrides files.
 
@@ -142,7 +142,7 @@ def override_exists(
 
 
 def get_unused_overrides(
-    packages: List[Tuple[str, str]]
+    packages: List[Tuple[str, str]],
 ) -> List[Tuple[str, str, Version, str]]:
     from .udd import connect_udd_mirror
 

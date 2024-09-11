@@ -18,18 +18,19 @@
 """Utility functions for dealing with patches."""
 
 __all__ = [
-    'find_patches_directory',
-    'tree_has_non_patches_changes',
-    'read_quilt_series',
+    "find_patches_directory",
+    "tree_has_non_patches_changes",
+    "read_quilt_series",
 ]
+
+import os
 
 from ._lintian_brush_rs import (
     tree_has_non_patches_changes,
 )
-import os
-
 
 DEFAULT_DEBIAN_PATCHES_DIR = "debian/patches"
+
 
 def rules_find_patches_directory(makefile):
     """Find the patches directory set in debian/rules.
@@ -76,9 +77,9 @@ def find_patches_directory(path):
 # TODO(jelmer): Use debmutate version
 def read_quilt_series(f):
     for line in f:
-        if line.startswith(b'#'):
+        if line.startswith(b"#"):
             quoted = True
-            line = line.split(b'#')[1].strip()
+            line = line.split(b"#")[1].strip()
         else:
             quoted = False
         args = line.decode().split()

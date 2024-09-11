@@ -28,7 +28,9 @@ tag-status::
 testsuite:: build
 	PYTHONPATH=$(shell pwd)/py python3 -m unittest lintian_brush.tests.test_suite
 	PYTHONPATH=$(shell pwd)/py cargo test -p lintian-brush
-	PYTHONPATH=$(shell pwd)/py cargo test -p debian-analyzer
+	cargo test -p debian-analyzer
+	cargo test -p scrub-obsolete
+	cargo test -p multiarch-hints
 
 README.md::
 	PYTHONPATH=$(PWD):$(PYTHONPATH) ./buildtools/update-readme.py

@@ -4,7 +4,7 @@ use breezyshim::error::Error as BrzError;
 use breezyshim::workingtree::WorkingTree;
 use deb822_lossless::lossless::Paragraph;
 use debian_analyzer::editor::{Editor, EditorError, MutableTreeEdit};
-use debian_control::lossless::relations::{Entry, Relations};
+use debian_control::lossless::relations::{Entry, Relation, Relations};
 use debian_control::relations::VersionConstraint;
 use debian_control::{Binary, Source};
 use debversion::Version;
@@ -61,6 +61,12 @@ fn conflict_obsolete(
     }
 }
 
+/// Drop obsolete relations from a relations field.
+///
+/// # Arguments
+/// * `entry` - entry to drop relations from
+/// * `checker` - package checker to use to determine if a package is obsolete
+/// * `keep_minimum_versions` - whether to keep minimum versions of dependencies
 async fn drop_obsolete_depends(
     entry: &mut Entry,
     checker: &dyn PackageChecker,
@@ -90,7 +96,7 @@ async fn drop_obsolete_depends(
                     ))
                 }
             }
-        } else if pkgrel.version().is_some() && pkgrel.name() != "debhelper" {
+        } else if pkgrel.name() != "debhelper" {
             let compat_version = checker.package_version(&pkgrel.name()).await?;
             log::debug!(
                 "Relation: {}. Upgrade release {} has {:?} ",
@@ -98,25 +104,21 @@ async fn drop_obsolete_depends(
                 checker.release(),
                 compat_version,
             );
-            if compat_version
-                .as_ref()
-                .map(|cv| {
-                    depends_obsolete(
-                        cv,
-                        pkgrel.version().unwrap().0,
-                        &pkgrel.version().unwrap().1,
-                    )
-                })
-                .unwrap_or(false)
-            {
-                // If the package is essential, we don't need to maintain a dependency on it.
-                if checker.is_essential(&pkgrel.name()).await?.unwrap_or(false) {
-                    actions.push(Action::DropEssential(pkgrel));
-                    return Ok(actions);
-                }
-                if !keep_minimum_versions {
+
+            // If the package is essential, we don't need to maintain a dependency on it.
+            if checker.is_essential(&pkgrel.name()).await?.unwrap_or(false) {
+                to_remove.push(i);
+                actions.push(Action::DropEssential(pkgrel));
+            } else if let Some(pkgrel_version) = pkgrel.version() {
+                if compat_version
+                    .as_ref()
+                    .map(|cv| depends_obsolete(cv, pkgrel_version.0, &pkgrel_version.1))
+                    .unwrap_or(false)
+                    && !keep_minimum_versions
+                {
+                    let removed: Relation = pkgrel.to_string().parse().unwrap();
                     pkgrel.set_version(None);
-                    actions.push(Action::DropMinimumVersion(pkgrel))
+                    actions.push(Action::DropMinimumVersion(removed))
                 }
             }
         }
@@ -127,7 +129,7 @@ async fn drop_obsolete_depends(
     }
 
     for i in to_remove.into_iter().rev() {
-        entry.get_relation(i).unwrap().remove();
+        entry.remove_relation(i);
     }
 
     Ok(actions)
@@ -183,31 +185,23 @@ fn filter_relations(
 ) -> Vec<Action> {
     let old_contents = base.get(field).unwrap_or_default();
 
-    let mut relations: Relations = old_contents.parse().unwrap();
+    let relations: Relations = old_contents.parse().unwrap();
 
-    let mut to_remove = vec![];
     let mut all_actions = vec![];
-    for (i, mut entry) in relations.entries().enumerate() {
+    for mut entry in relations.entries() {
         let actions = cb(&mut entry);
         all_actions.extend(actions);
-        if !entry.is_empty() {
-            to_remove.push(i);
-        }
     }
 
-    for i in to_remove.into_iter().rev() {
-        relations.remove(i);
-    }
-
-    if !all_actions.is_empty() {
+    let new_contents = relations.to_string();
+    if new_contents != old_contents {
         if relations.is_empty() {
             base.remove(field);
         } else {
-            base.insert(field, &relations.to_string());
+            base.insert(field, &new_contents);
         }
-        return all_actions;
     }
-    vec![]
+    all_actions
 }
 
 fn update_conflicts(
@@ -880,11 +874,11 @@ mod tests {
                 .unwrap();
             assert_eq!(
                 vec![Action::DropMinimumVersion(
-                    entry.relations().next().unwrap()
+                    "simple (>= 1.0)".parse().unwrap()
                 )],
                 actions
             );
-            assert_eq!(entry.relations().count(), 0);
+            assert_eq!(entry.relations().count(), 1);
         }
 
         #[tokio::test]
@@ -899,7 +893,7 @@ mod tests {
                 .await
                 .unwrap();
             assert_eq!(
-                vec![Action::DropEssential(entry.relations().next().unwrap())],
+                vec![Action::DropEssential("simple (>= 1.0)".parse().unwrap())],
                 actions
             );
             assert_eq!(entry.to_string(), "");
@@ -935,7 +929,7 @@ mod tests {
                 .unwrap();
 
             assert_eq!(
-                vec![Action::DropEssential(entry.relations().next().unwrap(),)],
+                vec![Action::DropEssential("simple (>= 1.0)".parse().unwrap())],
                 actions
             );
             assert_eq!(entry.to_string(), "other");
