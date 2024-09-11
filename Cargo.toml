@@ -26,6 +26,7 @@ configparser = "3"
 url = "2"
 debian-changelog = ">=0.1"
 debian-control = ">=0.1"
+deb822-lossless = ">=0.1"
 #debian-control = { git = "https://github.com/jelmer/deb822-lossless" }
 pyo3-log = ">=0.11"
 maplit = "1"

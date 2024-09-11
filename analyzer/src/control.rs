@@ -1557,8 +1557,8 @@ Testsuite: autopkgtest
             assert_eq!(
                 r#"Source: blah
 # A comment
-NewField: New Field
 Testsuite: autopkgtest
+NewField: New Field
 
 "#,
                 std::fs::read_to_string(td.path().join("debian/control")).unwrap()

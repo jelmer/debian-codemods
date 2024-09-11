@@ -579,11 +579,11 @@ blah (0.1) unstable; urgency=medium
 
   * Initial release. (Closes: #911016)
 
-  -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
 "###,
             )
             .unwrap();
-            tree.build_commit().message("welease").commit().unwrap();
+            tree.build_commit().message("release").commit().unwrap();
             std::fs::write(
                 td.path().join("debian/changelog"),
                 r###"blah (0.2) unstable; urgency=medium
@@ -598,7 +598,6 @@ blah (0.1) unstable; urgency=medium
   * Initial release. (Closes: #911016)
 
  -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
-
 "###,
             )
             .unwrap();

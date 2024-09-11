@@ -212,7 +212,6 @@ impl<'a> DebcargoSource<'a> {
         self.main
             .debcargo
             .get("source")
-            .and_then(|s| s.as_table())
             .and_then(|s| s.get("homepage"))
             .and_then(|v| v.as_str())
             .or(default_homepage)
@@ -545,7 +544,7 @@ mod tests {
         editor.debcargo["source"]["homepage"] = toml_edit::value("https://example.com");
         editor.debcargo["source"]["vcs_git"] = toml_edit::value("https://example.com");
         editor.debcargo["source"]["vcs_browser"] = toml_edit::value("https://example.com");
-        editor.debcargo["source"]["section"] = toml_edit::value("rust");
+        editor.debcargo["source"]["section"] = toml_edit::value("notrust");
         editor.debcargo["source"]["priority"] = toml_edit::value("optional");
         editor.debcargo["source"]["requires_root"] = toml_edit::value("no");
         editor.debcargo["source"]["maintainer"] =
@@ -560,7 +559,7 @@ mod tests {
             editor.source().vcs_browser().as_deref(),
             Some("https://example.com")
         );
-        assert_eq!(editor.source().section(), "rust");
+        assert_eq!(editor.source().section(), "notrust");
         assert_eq!(editor.source().priority(), super::DEFAULT_PRIORITY);
         assert!(!editor.source().rules_requires_root());
         assert_eq!(
