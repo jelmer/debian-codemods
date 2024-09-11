@@ -8,7 +8,7 @@ blah (5.42+dfsg1-2) unstable; urgency=medium
 
 blah (5.42+dfsg1-1) unstable; urgency=medium
 
- * Initial Release.
- * Initial Release.
+  * Initial Release.
+  * Initial Release.
 
  -- Somebody <somebody@example.com>  Fri, 25 Jan 2019 00:15:07 +0100

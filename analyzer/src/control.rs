@@ -1526,7 +1526,7 @@ Testsuite: autopkgtest
 "#,
             )
             .unwrap();
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             assert_eq!(editor.commit().unwrap(), Vec::<&std::path::Path>::new());
         }
@@ -1544,7 +1544,7 @@ Testsuite: autopkgtest
 "#,
             )
             .unwrap();
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             editor
                 .source()
@@ -1557,8 +1557,8 @@ Testsuite: autopkgtest
             assert_eq!(
                 r#"Source: blah
 # A comment
-Testsuite: autopkgtest
 NewField: New Field
+Testsuite: autopkgtest
 
 "#,
                 std::fs::read_to_string(td.path().join("debian/control")).unwrap()
@@ -1584,7 +1584,7 @@ Multi-Arch: foreign
             )
             .unwrap();
 
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             editor
                 .source()
@@ -1631,7 +1631,7 @@ Testsuite: autopkgtest
             )
             .unwrap();
 
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             editor
                 .source()
@@ -2116,7 +2116,7 @@ Build-Depends:
             )
             .unwrap();
 
-            let mut editor =
+            let editor =
                 super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
             editor
                 .source()

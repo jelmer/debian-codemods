@@ -1,6 +1,5 @@
-use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
-use sqlx::{Error, FromRow, PgPool, Postgres, Row, ValueRef};
+use sqlx::{Error, PgPool, Postgres, Row};
 
 type BugId = i64;
 

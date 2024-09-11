@@ -1,11 +1,9 @@
 use clap::Parser;
 use breezyshim::workspace::check_clean_tree;
-use scrub_obsolete::scrub_obsolete;
-use scrub_obsolete::ScrubObsoleteError;
 use debian_analyzer::editor::EditorError;
 use debian_analyzer::release_info::resolve_release_codename;
 use debian_analyzer::{control_file_present, is_debcargo_package, get_committer};
-use debian_analyzer::svp::{report_fatal, report_success_debian, report_nothing_to_do, enabled};
+use debian_analyzer::svp::{report_fatal, report_success_debian, report_nothing_to_do};
 use breezyshim::workingtree;
 use breezyshim::tree::{Tree, MutableTree};
 use breezyshim::error::Error as BrzError;
@@ -113,7 +111,7 @@ fn main() -> Result<(), i32> {
 
     let mut update_changelog = args.update_changelog;
     let mut allow_reformatting = args.allow_reformatting;
-    let mut upgrade_release = resolve_release_codename(&args.upgrade_release, None).unwrap();
+    let upgrade_release = resolve_release_codename(&args.upgrade_release, None).unwrap();
     let mut compat_release = args.compat_release.map(|r| resolve_release_codename(&r, None).unwrap());
 
     match debian_analyzer::config::Config::from_workingtree(&wt, &subpath) {

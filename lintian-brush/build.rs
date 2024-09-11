@@ -1,8 +1,6 @@
 use quote::quote;
-use serde_yaml;
 use std::env;
 use std::fs;
-use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 

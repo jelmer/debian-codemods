@@ -48,7 +48,7 @@ if older_source_format_issue.should_fix():
 
         from lintian_brush.patches import (
             find_patches_directory,
-            tree_non_patches_changes,
+            tree_has_non_patches_changes,
         )
 
         patches_directory = find_patches_directory(".")
@@ -67,7 +67,7 @@ if older_source_format_issue.should_fix():
                 format = "3.0 (quilt)"
                 description = f"Upgrade to newer source format {format}."
             else:
-                delta = list(tree_non_patches_changes(tree, patches_directory))
+                delta = tree_has_non_patches_changes(tree, patches_directory)
                 if delta:
                     warn("Tree has non-quilt changes against upstream.")
                     if opinionated():

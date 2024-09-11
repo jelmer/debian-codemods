@@ -1,8 +1,6 @@
 use crate::relations::ensure_relation;
-use crate::relations::is_relation_implied;
-use debian_control::lossless::relations::{Entry, Relations};
-use crate::editor::MutableTreeEdit;
 use breezyshim::tree::Tree;
+use debian_control::lossless::relations::{Entry, Relations};
 use std::path::Path;
 
 /// Interface for editing debian packages, whether backed by real control files or debcargo files.
@@ -26,7 +24,6 @@ pub trait AbstractBinary {
 
 use crate::debcargo::{DebcargoBinary, DebcargoEditor, DebcargoSource};
 use debian_control::{Binary as PlainBinary, Control as PlainControl, Source as PlainSource};
-use crate::control::TemplatedControlEditor;
 
 impl AbstractControlEditor for DebcargoEditor {
     fn source<'a>(&'a mut self) -> Option<Box<dyn AbstractSource<'a> + 'a>> {
@@ -106,27 +103,25 @@ impl<E: crate::editor::Editor<PlainControl>> AbstractControlEditor for E {
     }
 }
 
-pub fn edit_control<'a>(tree: &breezyshim::workingtree::WorkingTree, subpath: &Path) -> Result<Box<dyn AbstractControlEditor + 'a>, crate::editor::EditorError> {
-    if tree
-        .has_filename(&subpath.join("debian/debcargo.toml"))
-    {
-        Ok(Box::new(
-            crate::debcargo::DebcargoEditor::from_directory(
-                &tree.abspath(&subpath).unwrap(),
-            )?,
-        ))
+pub fn edit_control<'a>(
+    tree: &breezyshim::workingtree::WorkingTree,
+    subpath: &Path,
+) -> Result<Box<dyn AbstractControlEditor + 'a>, crate::editor::EditorError> {
+    if tree.has_filename(&subpath.join("debian/debcargo.toml")) {
+        Ok(Box::new(crate::debcargo::DebcargoEditor::from_directory(
+            &tree.abspath(subpath).unwrap(),
+        )?))
     } else {
         let control_path = tree.abspath(&subpath.join(std::path::Path::new("debian/control")));
-        Ok(
-            Box::new(crate::control::TemplatedControlEditor::open(&control_path.unwrap())?)
-                as Box<dyn AbstractControlEditor>,
-        )
+        Ok(Box::new(crate::control::TemplatedControlEditor::open(
+            control_path.unwrap(),
+        )?) as Box<dyn AbstractControlEditor>)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use breezyshim::controldir::{ControlDirFormat, create_standalone_workingtree};
+    use breezyshim::controldir::{create_standalone_workingtree, ControlDirFormat};
     use breezyshim::tree::MutableTree;
     use std::path::Path;
 
@@ -136,13 +131,29 @@ mod tests {
         let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
         // Write dummy debcargo.toml
         tree.mkdir(Path::new("debian")).unwrap();
-        tree.put_file_bytes_non_atomic(Path::new("debian/debcargo.toml"), br#"""
+        std::fs::write(
+            td.path().join("debian/debcargo.toml"),
+            br#"
 maintainer = "Alice <alice@example.com>"
 homepage = "https://example.com"
 description = "Example package"
-"""#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        tree.add(&[&Path::new("debian"), &Path::new("debian/debcargo.toml")]).unwrap();
+        std::fs::write(
+            td.path().join("Cargo.toml"),
+            br#"
+[package]
+name = "example"
+version = "0.1.0"
+edition = "2018"
+"#,
+        )
+        .unwrap();
+
+        tree.add(&[(Path::new("debian")), (Path::new("debian/debcargo.toml"))])
+            .unwrap();
 
         let editor = super::edit_control(&tree, Path::new("")).unwrap();
 
@@ -155,7 +166,9 @@ description = "Example package"
         let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
         // Write dummy debian/control
         tree.mkdir(Path::new("debian")).unwrap();
-        tree.put_file_bytes_non_atomic(Path::new("debian/control"), br#"
+        tree.put_file_bytes_non_atomic(
+            Path::new("debian/control"),
+            br#"
 Source: example
 Maintainer: Alice <alice@example.com>
 Homepage: https://example.com
@@ -163,9 +176,12 @@ Homepage: https://example.com
 Package: example
 Architecture: any
 Description: Example package
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        tree.add(&[&Path::new("debian"), &Path::new("debian/control")]).unwrap();
+        tree.add(&[&Path::new("debian"), &Path::new("debian/control")])
+            .unwrap();
 
         let editor = super::edit_control(&tree, Path::new("")).unwrap();
 

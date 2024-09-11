@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use upstream_ontologist::UpstreamMetadata;
 
-mod names;
+pub mod names;
 pub mod simple_apt_repo;
 
 pub fn default_debianize_cache_dir() -> std::io::Result<std::path::PathBuf> {

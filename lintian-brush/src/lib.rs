@@ -19,9 +19,6 @@ use debian_analyzer::{
 };
 use debian_changelog::ChangeLog;
 
-#[cfg(feature = "python")]
-pub mod py;
-
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum PackageType {
     #[serde(rename = "source")]
@@ -581,8 +578,26 @@ fn run_inline_python_fixer(
 #[cfg(test)]
 #[cfg(feature = "python")]
 mod run_inline_python_fixer_tests {
+    fn setup() {
+        pyo3::Python::with_gil(|py| {
+            use pyo3::prelude::*;
+            let sys = py.import_bound("sys").unwrap();
+            let path = sys.getattr("path").unwrap();
+            let mut path: Vec<String> = path.extract().unwrap();
+            let extra_path =
+                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR").to_string() + "/../py")
+                    .canonicalize()
+                    .unwrap();
+            if !path.contains(&extra_path.to_string_lossy().to_string()) {
+                path.insert(0, extra_path.to_string_lossy().to_string());
+                sys.setattr("path", path).unwrap();
+            }
+        });
+    }
+
     #[test]
     fn test_no_changes() {
+        setup();
         let td = tempfile::tempdir().unwrap();
         let path = td.path().join("no_changes.py");
         let result = super::run_inline_python_fixer(
@@ -602,6 +617,7 @@ mod run_inline_python_fixer_tests {
 
     #[test]
     fn test_failed() {
+        setup();
         let td = tempfile::tempdir().unwrap();
         let path = td.path().join("no_changes.py");
         let result = super::run_inline_python_fixer(
@@ -612,16 +628,21 @@ mod run_inline_python_fixer_tests {
             std::collections::HashMap::new(),
             None,
         );
-        assert!(matches!(
-            result,
-            Err(super::FixerError::ScriptFailed { exit_code: 1, .. })
-        ));
+        assert!(
+            matches!(
+                result,
+                Err(super::FixerError::ScriptFailed { exit_code: 1, .. })
+            ),
+            "Result: {:?}",
+            result
+        );
         std::mem::drop(td);
     }
 
     #[test]
     #[ignore]
     fn test_timeout() {
+        setup();
         let td = tempfile::tempdir().unwrap();
         let path = td.path().join("no_changes.py");
         let result = super::run_inline_python_fixer(
@@ -1001,8 +1022,7 @@ fn load_fixer(
     name: String,
     tags: Vec<String>,
     script_path: std::path::PathBuf,
-    #[allow(dead_code)]
-    force_subprocess: bool,
+    #[allow(dead_code)] force_subprocess: bool,
 ) -> Box<dyn Fixer> {
     #[cfg(feature = "python")]
     if script_path
@@ -1391,9 +1411,13 @@ pub fn run_lintian_fixer(
     ) {
         Ok(r) => r,
         Err(ApplyError::NoChanges(r)) => {
-            return Err(FixerError::NoChangesAfterOverrides(
-                r.overridden_lintian_issues,
-            ));
+            if r.overridden_lintian_issues.is_empty() {
+                return Err(FixerError::NoChanges);
+            } else {
+                return Err(FixerError::NoChangesAfterOverrides(
+                    r.overridden_lintian_issues,
+                ));
+            }
         }
         Err(ApplyError::BrzError(e)) => {
             return Err(e.into());
@@ -1873,65 +1897,6 @@ impl ManyResult {
     }
 }
 
-#[cfg(test)]
-mod many_result_tests {
-    use super::*;
-
-    #[test]
-    fn test_empty() {
-        let result = ManyResult::default();
-        assert_eq!(Certainty::Certain, result.minimum_success_certainty());
-    }
-
-    #[test]
-    fn test_no_certainty() {
-        let mut result = ManyResult::default();
-        result.success.push((
-            FixerResult::new(
-                "Do bla".to_string(),
-                Some(vec!["tag-a".to_string()]),
-                None,
-                None,
-                None,
-                vec![],
-                None,
-            ),
-            "summary".to_string(),
-        ));
-        assert_eq!(Certainty::Certain, result.minimum_success_certainty());
-    }
-
-    #[test]
-    fn test_possible() {
-        let mut result = ManyResult::default();
-        result.success.push((
-            FixerResult::new(
-                "Do bla".to_string(),
-                Some(vec!["tag-a".to_string()]),
-                Some(Certainty::Possible),
-                None,
-                None,
-                vec![],
-                None,
-            ),
-            "summary".to_string(),
-        ));
-        result.success.push((
-            FixerResult::new(
-                "Do bloeh".to_string(),
-                Some(vec!["tag-b".to_string()]),
-                Some(Certainty::Certain),
-                None,
-                None,
-                vec![],
-                None,
-            ),
-            "summary".to_string(),
-        ));
-        assert_eq!(Certainty::Possible, result.minimum_success_certainty());
-    }
-}
-
 fn has_non_debian_changes(changes: &[TreeChange], subpath: &std::path::Path) -> bool {
     let debian_path = subpath.join("debian");
     changes.iter().any(|change| {
@@ -2051,127 +2016,126 @@ pub fn determine_update_changelog(
 }
 
 #[cfg(test)]
-mod run_lintian_fixers_test {
+mod tests {
     use super::*;
     use breezyshim::controldir::ControlDirFormat;
     use breezyshim::tree::{MutableTree, WorkingTree};
-    const CHANGELOG_FILE: &str = r#"blah (0.1) UNRELEASED; urgency=medium
+    use std::path::Path;
 
-  * Initial release. (Closes: #911016)
+    mod test_run_lintian_fixer {
+        use super::*;
 
- -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
-"#;
+        #[derive(Debug)]
+        struct DummyFixer {
+            name: String,
+            lintian_tags: Vec<String>,
+        }
 
-    #[derive(Debug)]
-    struct DummyFixer {
-        name: String,
-        lintian_tags: Vec<String>,
-    }
-
-    impl DummyFixer {
-        fn new(name: &str, lintian_tags: &[&str]) -> Self {
-            Self {
-                name: name.to_string(),
-                lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
+        impl DummyFixer {
+            fn new(name: &str, lintian_tags: &[&str]) -> Self {
+                Self {
+                    name: name.to_string(),
+                    lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
+                }
             }
         }
-    }
 
-    impl Fixer for DummyFixer {
-        fn name(&self) -> String {
-            self.name.clone()
-        }
+        impl Fixer for DummyFixer {
+            fn name(&self) -> String {
+                self.name.clone()
+            }
 
-        fn path(&self) -> std::path::PathBuf {
-            std::path::PathBuf::from("/dev/null")
-        }
+            fn path(&self) -> std::path::PathBuf {
+                std::path::PathBuf::from("/dev/null")
+            }
 
-        fn lintian_tags(&self) -> Vec<String> {
-            self.lintian_tags.clone()
-        }
+            fn lintian_tags(&self) -> Vec<String> {
+                self.lintian_tags.clone()
+            }
 
-        fn run(
-            &self,
-            basedir: &std::path::Path,
-            package: &str,
-            _current_version: &Version,
-            _preferences: &FixerPreferences,
-            _timeout: Option<chrono::Duration>,
-        ) -> Result<FixerResult, FixerError> {
-            std::fs::write(basedir.join("debian/control"), "a new line\n").unwrap();
-            Ok(FixerResult {
-                description: "Fixed some tag.\nExtended description.".to_string(),
-                patch_name: None,
-                certainty: Some(Certainty::Certain),
-                fixed_lintian_issues: vec![LintianIssue {
-                    tag: Some("some-tag".to_string()),
-                    package: Some(package.to_string()),
-                    info: None,
-                    package_type: Some(PackageType::Source),
-                }],
-                overridden_lintian_issues: vec![],
-                revision_id: None,
-            })
-        }
-    }
-
-    #[derive(Debug)]
-    struct FailingFixer {
-        name: String,
-        lintian_tags: Vec<String>,
-    }
-
-    impl FailingFixer {
-        fn new(name: &str, lintian_tags: &[&str]) -> Self {
-            Self {
-                name: name.to_string(),
-                lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
+            fn run(
+                &self,
+                basedir: &std::path::Path,
+                package: &str,
+                _current_version: &Version,
+                _preferences: &FixerPreferences,
+                _timeout: Option<chrono::Duration>,
+            ) -> Result<FixerResult, FixerError> {
+                std::fs::write(basedir.join("debian/control"), "a new line\n").unwrap();
+                Ok(FixerResult {
+                    description: "Fixed some tag.\nExtended description.".to_string(),
+                    patch_name: None,
+                    certainty: Some(Certainty::Certain),
+                    fixed_lintian_issues: vec![LintianIssue {
+                        tag: Some("some-tag".to_string()),
+                        package: Some(package.to_string()),
+                        info: None,
+                        package_type: Some(PackageType::Source),
+                    }],
+                    overridden_lintian_issues: vec![],
+                    revision_id: None,
+                })
             }
         }
-    }
 
-    impl Fixer for FailingFixer {
-        fn name(&self) -> String {
-            self.name.clone()
+        #[derive(Debug)]
+        struct FailingFixer {
+            name: String,
+            lintian_tags: Vec<String>,
         }
 
-        fn path(&self) -> std::path::PathBuf {
-            std::path::PathBuf::from("/dev/null")
+        impl FailingFixer {
+            fn new(name: &str, lintian_tags: &[&str]) -> Self {
+                Self {
+                    name: name.to_string(),
+                    lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
+                }
+            }
         }
 
-        fn lintian_tags(&self) -> Vec<String> {
-            self.lintian_tags.clone()
+        impl Fixer for FailingFixer {
+            fn name(&self) -> String {
+                self.name.clone()
+            }
+
+            fn path(&self) -> std::path::PathBuf {
+                std::path::PathBuf::from("/dev/null")
+            }
+
+            fn lintian_tags(&self) -> Vec<String> {
+                self.lintian_tags.clone()
+            }
+
+            fn run(
+                &self,
+                basedir: &std::path::Path,
+                _package: &str,
+                _current_version: &Version,
+                _preferences: &FixerPreferences,
+                _timeout: Option<chrono::Duration>,
+            ) -> Result<FixerResult, FixerError> {
+                std::fs::write(basedir.join("debian/foo"), "blah").unwrap();
+                std::fs::write(basedir.join("debian/control"), "foo\n").unwrap();
+                Err(FixerError::ScriptFailed {
+                    stderr: "Not successful".to_string(),
+                    path: std::path::PathBuf::from("/dev/null"),
+                    exit_code: 1,
+                })
+            }
         }
 
-        fn run(
-            &self,
-            basedir: &std::path::Path,
-            _package: &str,
-            _current_version: &Version,
-            _preferences: &FixerPreferences,
-            _timeout: Option<chrono::Duration>,
-        ) -> Result<FixerResult, FixerError> {
-            std::fs::write(basedir.join("debian/foo"), "blah").unwrap();
-            std::fs::write(basedir.join("debian/control"), "foo\n").unwrap();
-            Err(FixerError::ScriptFailed {
-                stderr: "Not successful".to_string(),
-                path: std::path::PathBuf::from("/dev/null"),
-                exit_code: 1,
-            })
-        }
-    }
-
-    fn setup() -> (tempfile::TempDir, WorkingTree) {
-        let td = tempfile::tempdir().unwrap();
-        let tree = breezyshim::controldir::create_standalone_workingtree(
-            td.path(),
-            &ControlDirFormat::default(),
-        )
-        .unwrap();
-        tree.mkdir(std::path::Path::new("debian")).unwrap();
-        std::fs::write(
-            td.path().join("debian/control"),
-            r#""Source: blah
+        fn setup(version: Option<&str>) -> (tempfile::TempDir, WorkingTree) {
+            let version = version.unwrap_or("0.1");
+            let td = tempfile::tempdir().unwrap();
+            let tree = breezyshim::controldir::create_standalone_workingtree(
+                td.path(),
+                &ControlDirFormat::default(),
+            )
+            .unwrap();
+            tree.mkdir(std::path::Path::new("debian")).unwrap();
+            std::fs::write(
+                td.path().join("debian/control"),
+                r#""Source: blah
 Vcs-Git: https://example.com/blah
 Testsuite: autopkgtest
 
@@ -2179,70 +2143,38 @@ Binary: blah
 Arch: all
 
 "#,
-        )
-        .unwrap();
-        tree.add(&[std::path::Path::new("debian/control")]).unwrap();
-        std::fs::write(td.path().join("debian/changelog"), CHANGELOG_FILE).unwrap();
-        tree.add(&[std::path::Path::new("debian/changelog")])
+            )
             .unwrap();
-        tree.build_commit()
-            .message("Initial thingy.")
-            .commit()
+            tree.add(&[std::path::Path::new("debian/control")]).unwrap();
+            std::fs::write(
+                td.path().join("debian/changelog"),
+                format!(
+                    r#"blah ({}) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+"#,
+                    version
+                ),
+            )
             .unwrap();
-        (td, tree)
-    }
+            tree.add(&[std::path::Path::new("debian/changelog")])
+                .unwrap();
+            tree.build_commit()
+                .message("Initial thingy.")
+                .commit()
+                .unwrap();
+            (td, tree)
+        }
 
-    #[test]
-    fn test_fails() {
-        let (td, tree) = setup();
-        let lock = tree.lock_write().unwrap();
-        let result = run_lintian_fixers(
-            &tree,
-            &[Box::new(FailingFixer::new("fail", &["some-tag"]))],
-            Some(|| false),
-            false,
-            None,
-            &FixerPreferences::default(),
-            None,
-            None,
-            None,
-            None,
-        )
-        .unwrap();
-        std::mem::drop(lock);
-        assert_eq!(0, result.success.len());
-        assert_eq!(1, result.failed_fixers.len());
-        let fixer = result.failed_fixers.get("fail").unwrap();
-        assert!(fixer.contains("Not successful"));
-
-        let lock = tree.lock_read().unwrap();
-        assert_eq!(
-            Vec::<breezyshim::tree::TreeChange>::new(),
-            tree.iter_changes(&tree.basis_tree().unwrap(), None, None, None)
-                .unwrap()
-                .collect::<Result<Vec<_>, _>>()
-                .unwrap()
-        );
-        std::mem::drop(lock);
-        std::mem::drop(td);
-    }
-
-    #[test]
-    fn test_not_debian_tree() {
-        let (td, tree) = setup();
-        tree.remove(&[(std::path::Path::new("debian/changelog"))])
-            .unwrap();
-        std::fs::remove_file(td.path().join("debian/changelog")).unwrap();
-        tree.build_commit()
-            .message("not a debian dir")
-            .commit()
-            .unwrap();
-        let lock = tree.lock_write().unwrap();
-
-        assert!(matches!(
-            run_lintian_fixers(
+        #[test]
+        fn test_fails() {
+            let (td, tree) = setup(None);
+            let lock = tree.lock_write().unwrap();
+            let result = run_lintian_fixers(
                 &tree,
-                &[Box::new(DummyFixer::new("dummy", &["some-tag"][..]))],
+                &[Box::new(FailingFixer::new("fail", &["some-tag"]))],
                 Some(|| false),
                 false,
                 None,
@@ -2251,60 +2183,846 @@ Arch: all
                 None,
                 None,
                 None,
-            ),
-            Err(OverallError::NotDebianPackage(_))
-        ));
-        std::mem::drop(lock);
-        std::mem::drop(td);
+            )
+            .unwrap();
+            std::mem::drop(lock);
+            assert_eq!(0, result.success.len());
+            assert_eq!(1, result.failed_fixers.len());
+            let fixer = result.failed_fixers.get("fail").unwrap();
+            assert!(fixer.contains("Not successful"));
+
+            let lock = tree.lock_read().unwrap();
+            assert_eq!(
+                Vec::<breezyshim::tree::TreeChange>::new(),
+                tree.iter_changes(&tree.basis_tree().unwrap(), None, None, None)
+                    .unwrap()
+                    .collect::<Result<Vec<_>, _>>()
+                    .unwrap()
+            );
+            std::mem::drop(lock);
+            std::mem::drop(td);
+        }
+
+        #[test]
+        fn test_not_debian_tree() {
+            let (td, tree) = setup(None);
+            tree.remove(&[(std::path::Path::new("debian/changelog"))])
+                .unwrap();
+            std::fs::remove_file(td.path().join("debian/changelog")).unwrap();
+            tree.build_commit()
+                .message("not a debian dir")
+                .commit()
+                .unwrap();
+            let lock = tree.lock_write().unwrap();
+
+            assert!(matches!(
+                run_lintian_fixers(
+                    &tree,
+                    &[Box::new(DummyFixer::new("dummy", &["some-tag"][..]))],
+                    Some(|| false),
+                    false,
+                    None,
+                    &FixerPreferences::default(),
+                    None,
+                    None,
+                    None,
+                    None,
+                ),
+                Err(OverallError::NotDebianPackage(_))
+            ));
+            std::mem::drop(lock);
+            std::mem::drop(td);
+        }
+
+        #[test]
+        fn test_simple_modify() {
+            let (td, tree) = setup(None);
+            let lock = tree.lock_write().unwrap();
+            let result = run_lintian_fixers(
+                &tree,
+                &[Box::new(DummyFixer::new("dummy", &["some-tag"]))],
+                Some(|| false),
+                false,
+                None,
+                &FixerPreferences::default(),
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+            let revid = tree.last_revision().unwrap();
+            std::mem::drop(lock);
+
+            assert_eq!(
+                vec![(
+                    FixerResult::new(
+                        "Fixed some tag.\nExtended description.".to_string(),
+                        None,
+                        Some(Certainty::Certain),
+                        None,
+                        Some(revid),
+                        vec![LintianIssue {
+                            tag: Some("some-tag".to_string()),
+                            package: Some("blah".to_string()),
+                            info: None,
+                            package_type: Some(PackageType::Source),
+                        }],
+                        None,
+                    ),
+                    "Fixed some tag.".to_string()
+                )],
+                result.success,
+            );
+            assert_eq!(maplit::hashmap! {}, result.failed_fixers);
+            assert_eq!(2, tree.branch().revno());
+            let lines = tree
+                .get_file_lines(std::path::Path::new("debian/control"))
+                .unwrap();
+            assert_eq!(lines.last().unwrap(), &b"a new line\n".to_vec());
+            std::mem::drop(td);
+        }
+
+        #[test]
+        fn test_simple_modify_too_uncertain() {
+            let (td, tree) = setup(None);
+
+            #[derive(Debug)]
+            struct UncertainFixer {
+                name: String,
+                lintian_tags: Vec<String>,
+            }
+
+            impl UncertainFixer {
+                fn new(name: &str, lintian_tags: &[&str]) -> Self {
+                    Self {
+                        name: name.to_string(),
+                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
+                    }
+                }
+            }
+
+            impl Fixer for UncertainFixer {
+                fn name(&self) -> String {
+                    self.name.clone()
+                }
+
+                fn path(&self) -> std::path::PathBuf {
+                    std::path::PathBuf::from("/dev/null")
+                }
+
+                fn lintian_tags(&self) -> Vec<String> {
+                    self.lintian_tags.clone()
+                }
+
+                fn run(
+                    &self,
+                    basedir: &std::path::Path,
+                    package: &str,
+                    _current_version: &Version,
+                    _preferences: &FixerPreferences,
+                    _timeout: Option<chrono::Duration>,
+                ) -> Result<FixerResult, FixerError> {
+                    std::fs::write(basedir.join("debian/somefile"), "test").unwrap();
+                    Ok(FixerResult {
+                        description: "Renamed a file.".to_string(),
+                        patch_name: None,
+                        certainty: Some(Certainty::Possible),
+                        fixed_lintian_issues: vec![],
+                        overridden_lintian_issues: vec![],
+                        revision_id: None,
+                    })
+                }
+            }
+
+            let lock_write = tree.lock_write().unwrap();
+
+            let result = run_lintian_fixer(
+                &tree,
+                &UncertainFixer::new("dummy", &["some-tag"]),
+                None,
+                || false,
+                &FixerPreferences {
+                    minimum_certainty: Some(Certainty::Certain),
+                    ..Default::default()
+                },
+                &mut None,
+                Path::new(""),
+                None,
+                None,
+                None,
+                None,
+            );
+
+            assert!(
+                matches!(result, Err(FixerError::NotCertainEnough(..))),
+                "{:?}",
+                result
+            );
+            assert_eq!(1, tree.branch().revno());
+            std::mem::drop(lock_write);
+            std::mem::drop(td);
+        }
+
+        #[test]
+        fn test_simple_modify_acceptably_uncertain() {
+            let (td, tree) = setup(None);
+
+            #[derive(Debug)]
+            struct UncertainFixer {
+                name: String,
+                lintian_tags: Vec<String>,
+            }
+
+            impl UncertainFixer {
+                fn new(name: &str, lintian_tags: &[&str]) -> Self {
+                    Self {
+                        name: name.to_string(),
+                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
+                    }
+                }
+            }
+
+            impl Fixer for UncertainFixer {
+                fn name(&self) -> String {
+                    self.name.clone()
+                }
+
+                fn path(&self) -> std::path::PathBuf {
+                    std::path::PathBuf::from("/dev/null")
+                }
+
+                fn lintian_tags(&self) -> Vec<String> {
+                    self.lintian_tags.clone()
+                }
+
+                fn run(
+                    &self,
+                    basedir: &std::path::Path,
+                    package: &str,
+                    _current_version: &Version,
+                    _preferences: &FixerPreferences,
+                    _timeout: Option<chrono::Duration>,
+                ) -> Result<FixerResult, FixerError> {
+                    std::fs::write(basedir.join("debian/somefile"), "test").unwrap();
+                    Ok(FixerResult {
+                        description: "Renamed a file.".to_string(),
+                        patch_name: None,
+                        certainty: Some(Certainty::Possible),
+                        fixed_lintian_issues: vec![],
+                        overridden_lintian_issues: vec![],
+                        revision_id: None,
+                    })
+                }
+            }
+
+            let lock_write = tree.lock_write().unwrap();
+
+            let (_result, summary) = run_lintian_fixer(
+                &tree,
+                &UncertainFixer::new("dummy", &["some-tag"]),
+                None,
+                || false,
+                &FixerPreferences {
+                    minimum_certainty: Some(Certainty::Possible),
+                    ..Default::default()
+                },
+                &mut None,
+                Path::new(""),
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+
+            assert_eq!("Renamed a file.", summary);
+
+            assert_eq!(2, tree.branch().revno());
+
+            std::mem::drop(lock_write);
+        }
+
+        #[test]
+        fn test_new_file() {
+            let (td, tree) = setup(None);
+
+            #[derive(Debug)]
+            struct NewFileFixer {
+                name: String,
+                lintian_tags: Vec<String>,
+            }
+
+            impl NewFileFixer {
+                fn new(name: &str, lintian_tags: &[&str]) -> Self {
+                    Self {
+                        name: name.to_string(),
+                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
+                    }
+                }
+            }
+
+            impl Fixer for NewFileFixer {
+                fn name(&self) -> String {
+                    self.name.clone()
+                }
+
+                fn path(&self) -> std::path::PathBuf {
+                    std::path::PathBuf::from("/dev/null")
+                }
+
+                fn lintian_tags(&self) -> Vec<String> {
+                    self.lintian_tags.clone()
+                }
+
+                fn run(
+                    &self,
+                    basedir: &std::path::Path,
+                    package: &str,
+                    _current_version: &Version,
+                    _preferences: &FixerPreferences,
+                    _timeout: Option<chrono::Duration>,
+                ) -> Result<FixerResult, FixerError> {
+                    std::fs::write(basedir.join("debian/somefile"), "test").unwrap();
+                    Ok(FixerResult {
+                        description: "Created new file.".to_string(),
+                        patch_name: None,
+                        certainty: None,
+                        fixed_lintian_issues: vec![LintianIssue {
+                            tag: Some("some-tag".to_string()),
+                            package: Some(package.to_string()),
+                            info: None,
+                            package_type: Some(PackageType::Source),
+                        }],
+                        overridden_lintian_issues: vec![],
+                        revision_id: None,
+                    })
+                }
+            }
+
+            let lock_write = tree.lock_write().unwrap();
+
+            let (result, summary) = run_lintian_fixer(
+                &tree,
+                &NewFileFixer::new("new-file", &["some-tag"]),
+                None,
+                || false,
+                &FixerPreferences::default(),
+                &mut None,
+                Path::new(""),
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+
+            assert_eq!("Created new file.", summary);
+            assert_eq!(result.certainty, None);
+            assert_eq!(result.fixed_lintian_tags(), &["some-tag"]);
+            let rev = tree
+                .branch()
+                .repository()
+                .get_revision(&tree.last_revision().unwrap())
+                .unwrap();
+            assert_eq!(
+                rev.message,
+                "Created new file.\n\nChanges-By: lintian-brush\nFixes: lintian: some-tag\nSee-also: https://lintian.debian.org/tags/some-tag.html\n"
+            );
+            assert_eq!(2, tree.branch().revno());
+            let basis_tree = tree.branch().basis_tree().unwrap();
+            let basis_lock = basis_tree.lock_read().unwrap();
+            assert_eq!(
+                basis_tree
+                    .get_file_text(Path::new("debian/somefile"))
+                    .unwrap(),
+                b"test"
+            );
+            std::mem::drop(basis_lock);
+            std::mem::drop(lock_write);
+        }
+
+        #[test]
+        fn test_rename_file() {
+            let (td, tree) = setup(None);
+
+            #[derive(Debug)]
+            struct RenameFileFixer {
+                name: String,
+                lintian_tags: Vec<String>,
+            }
+
+            impl RenameFileFixer {
+                fn new(name: &str, lintian_tags: &[&str]) -> Self {
+                    Self {
+                        name: name.to_string(),
+                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
+                    }
+                }
+            }
+
+            impl Fixer for RenameFileFixer {
+                fn name(&self) -> String {
+                    self.name.clone()
+                }
+
+                fn path(&self) -> std::path::PathBuf {
+                    std::path::PathBuf::from("/dev/null")
+                }
+
+                fn lintian_tags(&self) -> Vec<String> {
+                    self.lintian_tags.clone()
+                }
+
+                fn run(
+                    &self,
+                    basedir: &std::path::Path,
+                    _package: &str,
+                    _current_version: &Version,
+                    _preferences: &FixerPreferences,
+                    _timeout: Option<chrono::Duration>,
+                ) -> Result<FixerResult, FixerError> {
+                    std::fs::rename(
+                        basedir.join("debian/control"),
+                        basedir.join("debian/control.blah"),
+                    )
+                    .unwrap();
+                    Ok(FixerResult {
+                        description: "Renamed a file.".to_string(),
+                        patch_name: None,
+                        certainty: None,
+                        fixed_lintian_issues: vec![],
+                        overridden_lintian_issues: vec![],
+                        revision_id: None,
+                    })
+                }
+            }
+
+            let orig_basis_tree = tree.branch().basis_tree().unwrap();
+            let lock_write = tree.lock_write().unwrap();
+            let (result, summary) = run_lintian_fixer(
+                &tree,
+                &RenameFileFixer::new("rename", &["some-tag"]),
+                None,
+                || false,
+                &FixerPreferences::default(),
+                &mut None,
+                Path::new(""),
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+            assert_eq!("Renamed a file.", summary);
+            assert_eq!(result.certainty, None);
+            assert_eq!(2, tree.branch().revno());
+            let basis_tree = tree.branch().basis_tree().unwrap();
+            let basis_lock = basis_tree.lock_read().unwrap();
+            let orig_basis_tree_lock = orig_basis_tree.lock_read().unwrap();
+            assert!(!basis_tree.has_filename(Path::new("debian/control")));
+            assert!(basis_tree.has_filename(Path::new("debian/control.blah")));
+            assert_ne!(
+                orig_basis_tree.get_revision_id(),
+                basis_tree.get_revision_id()
+            );
+        }
+
+        #[test]
+        fn test_empty_change() {
+            let (td, tree) = setup(None);
+
+            #[derive(Debug)]
+            struct EmptyFixer {
+                name: String,
+                lintian_tags: Vec<String>,
+            }
+
+            impl EmptyFixer {
+                fn new(name: &str, lintian_tags: &[&str]) -> Self {
+                    Self {
+                        name: name.to_string(),
+                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
+                    }
+                }
+            }
+
+            impl Fixer for EmptyFixer {
+                fn name(&self) -> String {
+                    self.name.clone()
+                }
+
+                fn path(&self) -> std::path::PathBuf {
+                    std::path::PathBuf::from("/dev/null")
+                }
+
+                fn lintian_tags(&self) -> Vec<String> {
+                    self.lintian_tags.clone()
+                }
+
+                fn run(
+                    &self,
+                    basedir: &std::path::Path,
+                    package: &str,
+                    _current_version: &Version,
+                    _preferences: &FixerPreferences,
+                    _timeout: Option<chrono::Duration>,
+                ) -> Result<FixerResult, FixerError> {
+                    Ok(FixerResult {
+                        description: "I didn't actually change anything.".to_string(),
+                        patch_name: None,
+                        certainty: None,
+                        fixed_lintian_issues: vec![],
+                        overridden_lintian_issues: vec![],
+                        revision_id: None,
+                    })
+                }
+            }
+
+            let lock_write = tree.lock_write().unwrap();
+
+            let result = run_lintian_fixer(
+                &tree,
+                &EmptyFixer::new("empty", &["some-tag"]),
+                None,
+                || false,
+                &FixerPreferences::default(),
+                &mut None,
+                Path::new(""),
+                None,
+                None,
+                None,
+                None,
+            );
+
+            assert!(matches!(result, Err(FixerError::NoChanges)), "{:?}", result);
+            assert_eq!(1, tree.branch().revno());
+
+            assert_eq!(
+                Vec::<breezyshim::tree::TreeChange>::new(),
+                tree.iter_changes(&tree.basis_tree().unwrap(), None, None, None)
+                    .unwrap()
+                    .collect::<Result<Vec<_>, _>>()
+                    .unwrap()
+            );
+
+            std::mem::drop(lock_write);
+
+            std::mem::drop(td);
+        }
+
+        #[test]
+        fn test_upstream_change() {
+            let (td, tree) = setup(Some("0.1-1"));
+
+            #[derive(Debug)]
+            struct NewFileFixer {
+                name: String,
+                lintian_tags: Vec<String>,
+            }
+
+            impl NewFileFixer {
+                fn new(name: &str, lintian_tags: &[&str]) -> Self {
+                    Self {
+                        name: name.to_string(),
+                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
+                    }
+                }
+            }
+
+            impl Fixer for NewFileFixer {
+                fn name(&self) -> String {
+                    self.name.clone()
+                }
+
+                fn path(&self) -> std::path::PathBuf {
+                    std::path::PathBuf::from("/dev/null")
+                }
+
+                fn lintian_tags(&self) -> Vec<String> {
+                    self.lintian_tags.clone()
+                }
+
+                fn run(
+                    &self,
+                    basedir: &std::path::Path,
+                    _package: &str,
+                    _current_version: &Version,
+                    _preferences: &FixerPreferences,
+                    _timeout: Option<chrono::Duration>,
+                ) -> Result<FixerResult, FixerError> {
+                    std::fs::write(basedir.join("configure.ac"), "AC_INIT(foo, bar)\n").unwrap();
+                    Ok(FixerResult {
+                        description: "Created new configure.ac.".to_string(),
+                        patch_name: Some("add-config".to_string()),
+                        certainty: None,
+                        fixed_lintian_issues: vec![],
+                        overridden_lintian_issues: vec![],
+                        revision_id: None,
+                    })
+                }
+            }
+
+            let lock = tree.lock_write().unwrap();
+
+            let (result, summary) = run_lintian_fixer(
+                &tree,
+                &NewFileFixer::new("add-config", &["add-config"]),
+                None,
+                || false,
+                &FixerPreferences::default(),
+                &mut None,
+                Path::new(""),
+                Some(
+                    chrono::DateTime::parse_from_rfc3339("2020-09-08T00:36:35Z")
+                        .unwrap()
+                        .naive_utc(),
+                ),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+            assert_eq!(
+                summary,
+                "Add patch add-config.patch: Created new configure.ac."
+            );
+            assert_eq!(result.certainty, None);
+            let rev = tree
+                .branch()
+                .repository()
+                .get_revision(&tree.last_revision().unwrap())
+                .unwrap();
+            assert_eq!(
+                rev.message,
+                "Created new configure.ac.\n\nChanges-By: lintian-brush\n"
+            );
+            assert_eq!(2, tree.branch().revno());
+            let basis_tree = tree.branch().basis_tree().unwrap();
+            let basis_lock = basis_tree.lock_read().unwrap();
+            assert_eq!(
+                basis_tree
+                    .get_file_text(Path::new("debian/patches/series"))
+                    .unwrap(),
+                b"add-config.patch\n"
+            );
+            let lines = basis_tree
+                .get_file_lines(Path::new("debian/patches/add-config.patch"))
+                .unwrap();
+            assert_eq!(lines[0], b"Description: Created new configure.ac.\n");
+            assert_eq!(lines[1], b"Origin: other\n");
+            assert_eq!(lines[2], b"Last-Update: 2020-09-08\n");
+            assert_eq!(lines[3], b"---\n");
+            assert_eq!(lines[4], b"=== added file 'configure.ac'\n");
+            assert_eq!(
+                &lines[5][..(b"--- a/configure.ac".len())],
+                b"--- a/configure.ac"
+            );
+            assert_eq!(
+                &lines[6][..(b"+++ b/configure.ac".len())],
+                b"+++ b/configure.ac"
+            );
+            assert_eq!(lines[7], b"@@ -0,0 +1,1 @@\n");
+            assert_eq!(lines[8], b"+AC_INIT(foo, bar)\n");
+
+            std::mem::drop(basis_lock);
+            std::mem::drop(lock);
+        }
+
+        #[test]
+        fn test_upstream_change_stacked() {
+            let (td, tree) = setup(Some("0.1-1"));
+
+            std::fs::create_dir(td.path().join("debian/patches")).unwrap();
+            std::fs::write(td.path().join("debian/patches/series"), "foo\n").unwrap();
+            std::fs::write(
+                td.path().join("debian/patches/foo"),
+                r###"--- /dev/null	2020-09-07 13:26:27.546468905 +0000
++++ a	2020-09-08 01:26:25.811742671 +0000
+@@ -0,0 +1 @@
++foo
+"###,
+            )
+            .unwrap();
+            tree.add(&[
+                Path::new("debian/patches"),
+                Path::new("debian/patches/series"),
+                Path::new("debian/patches/foo"),
+            ])
+            .unwrap();
+            tree.build_commit().message("Add patches").commit().unwrap();
+
+            #[derive(Debug)]
+            struct NewFileFixer {
+                name: String,
+                lintian_tags: Vec<String>,
+            }
+
+            impl NewFileFixer {
+                fn new(name: &str, lintian_tags: &[&str]) -> Self {
+                    Self {
+                        name: name.to_string(),
+                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
+                    }
+                }
+            }
+
+            impl Fixer for NewFileFixer {
+                fn name(&self) -> String {
+                    self.name.clone()
+                }
+
+                fn path(&self) -> std::path::PathBuf {
+                    std::path::PathBuf::from("/dev/null")
+                }
+
+                fn lintian_tags(&self) -> Vec<String> {
+                    self.lintian_tags.clone()
+                }
+
+                fn run(
+                    &self,
+                    basedir: &std::path::Path,
+                    _package: &str,
+                    _current_version: &Version,
+                    _preferences: &FixerPreferences,
+                    _timeout: Option<chrono::Duration>,
+                ) -> Result<FixerResult, FixerError> {
+                    std::fs::write(basedir.join("configure.ac"), "AC_INIT(foo, bar)\n").unwrap();
+                    Ok(FixerResult {
+                        description: "Created new configure.ac.".to_string(),
+                        patch_name: Some("add-config".to_string()),
+                        certainty: None,
+                        fixed_lintian_issues: vec![],
+                        overridden_lintian_issues: vec![],
+                        revision_id: None,
+                    })
+                }
+            }
+
+            let lock = tree.lock_write().unwrap();
+
+            let result = run_lintian_fixer(
+                &tree,
+                &NewFileFixer::new("add-config", &["add-config"]),
+                None,
+                || false,
+                &FixerPreferences::default(),
+                &mut None,
+                Path::new(""),
+                Some(
+                    chrono::DateTime::parse_from_rfc3339("2020-09-08T00:36:35Z")
+                        .unwrap()
+                        .naive_utc(),
+                ),
+                None,
+                None,
+                None,
+            );
+
+            std::mem::drop(lock);
+
+            assert!(matches!(
+                result,
+                Err(FixerError::FailedPatchManipulation(..))
+            ));
+        }
     }
 
     #[test]
-    fn test_simple_modify() {
-        let (td, tree) = setup();
-        let lock = tree.lock_write().unwrap();
-        let result = run_lintian_fixers(
-            &tree,
-            &[Box::new(DummyFixer::new("dummy", &["some-tag"]))],
-            Some(|| false),
-            false,
-            None,
-            &FixerPreferences::default(),
-            None,
-            None,
-            None,
-            None,
+    fn test_find_shell_scripts() {
+        let td = tempfile::tempdir().unwrap();
+
+        let fixers = td.path().join("fixers");
+        std::fs::create_dir(&fixers).unwrap();
+
+        std::fs::create_dir(fixers.join("anotherdir")).unwrap();
+        std::fs::write(fixers.join("foo.sh"), "echo 'hello'").unwrap();
+        std::fs::write(fixers.join("bar.sh"), "echo 'hello'").unwrap();
+        std::fs::write(fixers.join("i-fix-aanother-tag.py"), "print('hello')").unwrap();
+        std::fs::write(fixers.join(".hidden"), "echo 'hello'").unwrap();
+        std::fs::write(fixers.join("backup-file.sh~"), "echo 'hello'").unwrap();
+        std::fs::write(fixers.join("no-extension"), "echo 'hello'").unwrap();
+        std::fs::write(
+            fixers.join("index.desc"),
+            r###"
+
+- script: foo.sh
+  lintian-tags:
+   - i-fix-a-tag
+
+- script: bar.sh
+  lintian-tags:
+   - i-fix-another-tag
+   - no-extension
+"###,
         )
         .unwrap();
-        let revid = tree.last_revision().unwrap();
-        std::mem::drop(lock);
 
-        assert_eq!(
-            vec![(
+        let fixers = available_lintian_fixers(Some(&fixers), Some(false))
+            .unwrap()
+            .collect::<Vec<_>>();
+        assert_eq!(2, fixers.len());
+        assert_eq!(fixers[0].name(), "foo");
+        assert_eq!(fixers[1].name(), "bar");
+    }
+
+    mod many_result_tests {
+        use super::*;
+
+        #[test]
+        fn test_empty() {
+            let result = ManyResult::default();
+            assert_eq!(Certainty::Certain, result.minimum_success_certainty());
+        }
+
+        #[test]
+        fn test_no_certainty() {
+            let mut result = ManyResult::default();
+            result.success.push((
                 FixerResult::new(
-                    "Fixed some tag.\nExtended description.".to_string(),
+                    "Do bla".to_string(),
+                    Some(vec!["tag-a".to_string()]),
                     None,
-                    Some(Certainty::Certain),
                     None,
-                    Some(revid),
-                    vec![LintianIssue {
-                        tag: Some("some-tag".to_string()),
-                        package: Some("blah".to_string()),
-                        info: None,
-                        package_type: Some(PackageType::Source),
-                    }],
+                    None,
+                    vec![],
                     None,
                 ),
-                "Fixed some tag.".to_string()
-            )],
-            result.success,
-        );
-        assert_eq!(maplit::hashmap! {}, result.failed_fixers);
-        assert_eq!(2, tree.branch().revno());
-        let lines = tree
-            .get_file_lines(std::path::Path::new("debian/control"))
-            .unwrap();
-        assert_eq!(lines.last().unwrap(), &b"a new line\n".to_vec());
-        std::mem::drop(td);
+                "summary".to_string(),
+            ));
+            assert_eq!(Certainty::Certain, result.minimum_success_certainty());
+        }
+
+        #[test]
+        fn test_possible() {
+            let mut result = ManyResult::default();
+            result.success.push((
+                FixerResult::new(
+                    "Do bla".to_string(),
+                    Some(vec!["tag-a".to_string()]),
+                    Some(Certainty::Possible),
+                    None,
+                    None,
+                    vec![],
+                    None,
+                ),
+                "summary".to_string(),
+            ));
+            result.success.push((
+                FixerResult::new(
+                    "Do bloeh".to_string(),
+                    Some(vec!["tag-b".to_string()]),
+                    Some(Certainty::Certain),
+                    None,
+                    None,
+                    vec![],
+                    None,
+                ),
+                "summary".to_string(),
+            ));
+            assert_eq!(Certainty::Possible, result.minimum_success_certainty());
+        }
     }
 }
 

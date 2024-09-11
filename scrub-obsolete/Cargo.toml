@@ -6,7 +6,6 @@ license = "GPL-3.0+"
 
 [dependencies]
 breezyshim = { workspace = true, features = ["debian"] }
-clap = { workspace = true, features = ["derive", "env"] }
 deb822-lossless = "0.1.23"
 debian-analyzer = { version = "0.158.9", path = "../analyzer", features = ["udd"] }
 debian-control = { version = "0.1.28" }
@@ -21,7 +20,17 @@ serde_json.workspace = true
 serde_yaml.workspace = true
 sqlx.workspace = true
 tokio = { version = "1.40.0", features = ["full"] }
+clap = { workspace = true, features = ["derive", "env"], optional = true }
+async-trait = "0.1.82"
+
+[features]
+default = ["cli"]
+cli = ["dep:clap"]
 
 [[bin]]
 name = "find-dummy-transitional"
 path = "src/bin/find-dummy-transitional.rs"
+required-features = ["cli"]
+
+[dev-dependencies]
+maplit.workspace = true

@@ -59,3 +59,6 @@ required-features = ["cli"]
 name = "deb-vcs-publish"
 path = "src/bin/deb-vcs-publish.rs"
 required-features = ["cli"]
+
+[dev-dependencies]
+serial_test = "3.1.1"

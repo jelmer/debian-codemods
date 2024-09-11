@@ -39,13 +39,23 @@ from debmutate.reformatting import (
 
 from . import (
     NotDebianPackage,
-    control_files_in_root,
     get_committer,
     version_string,
 )
 from .changelog import add_changelog_entry
 from .config import Config
-from .svp import svp_enabled
+
+
+def control_files_in_root(tree, path):
+    debian_path = os.path.join(path, "debian")
+    if os.path.exists(debian_path):
+        return False
+
+    control_path = os.path.join(path, "control")
+    if os.path.exists(control_path):
+        return True
+
+    return tree.has_filename(os.path.join("control.in"))
 
 
 class TransitionResult:
@@ -141,15 +151,19 @@ def _apply_transition(control, ben):
     return TransitionResult(ben, bugno=bugno)
 
 
+def svp_enabled():
+    return os.environ.get("SVP_API") == "1"
+
+
 def report_fatal(code: str, description: str) -> None:
-    if os.environ.get("SVP_API") == "1":
+    if svp_enabled():
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump({"result_code": code, "description": description}, f)
     logging.fatal("%s", description)
 
 
 def report_okay(code: str, description: str) -> None:
-    if os.environ.get("SVP_API") == "1":
+    if svp_enabled():
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump({"result_code": code, "description": description}, f)
     logging.info("%s", description)

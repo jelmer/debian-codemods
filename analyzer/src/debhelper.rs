@@ -42,7 +42,7 @@ pub fn get_debhelper_compat_level(path: &Path) -> Result<Option<u8>, std::io::Er
 
     let p = path.join("debian/control");
 
-    match std::fs::File::open(&p) {
+    match std::fs::File::open(p) {
         Ok(f) => {
             let control = debian_control::Control::read_relaxed(f).unwrap().0;
             Ok(get_debhelper_compat_level_from_control(&control))

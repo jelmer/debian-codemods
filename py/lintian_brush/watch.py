@@ -47,7 +47,6 @@ from . import (
     min_certainty,
 )
 from .gpg import fetch_keys
-from .svp import svp_enabled
 
 # TODO(jelmer): Vary this depending on whether a new watch file was added or an
 # existing one was fixed?
@@ -506,6 +505,10 @@ def verify_watch_entry(
     return WatchEntryVerificationStatus(
         entry, releases=releases, missing_versions=missing_versions
     )
+
+
+def svp_enabled():
+    return os.environ.get("SVP_API") == "1"
 
 
 def report_fatal(code: str, description: str, context=None, hint=None) -> None:

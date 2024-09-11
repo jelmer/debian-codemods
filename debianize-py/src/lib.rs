@@ -13,12 +13,12 @@ fn go_import_path_from_repo(url: &str) -> PyResult<String> {
     let url: url::Url = url
         .parse()
         .map_err(|e: url::ParseError| PyValueError::new_err((e.to_string(),)))?;
-    Ok(debianize::go_import_path_from_repo(&url))
+    Ok(debianize::names::go_import_path_from_repo(&url))
 }
 
 #[pyfunction]
 fn perl_package_name(name: &str) -> String {
-    debianize::perl_package_name(name)
+    debianize::names::perl_package_name(name)
 }
 
 #[pyfunction]
@@ -36,17 +36,17 @@ fn write_changelog_template(
 
 #[pyfunction]
 fn source_name_from_directory_name(path: std::path::PathBuf) -> String {
-    debianize::source_name_from_directory_name(path.as_path())
+    debianize::names::source_name_from_directory_name(path.as_path())
 }
 
 #[pyfunction]
 fn python_source_package_name(name: &str) -> String {
-    debianize::python_source_package_name(name)
+    debianize::names::python_source_package_name(name)
 }
 
 #[pyfunction]
 fn python_binary_package_name(name: &str) -> String {
-    debianize::python_binary_package_name(name)
+    debianize::names::python_binary_package_name(name)
 }
 
 #[pymodule]

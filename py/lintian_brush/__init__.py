@@ -26,6 +26,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Sequence,
 )
 
 import breezy.bzr  # noqa: F401
@@ -34,7 +35,6 @@ from breezy.workingtree import WorkingTree
 from breezy.workspace import check_clean_tree
 from debmutate.reformatting import FormattingUnpreservable
 
-from . import _lintian_brush_rs
 
 __version__ = (0, 158)
 version_string = ".".join(map(str, __version__))
@@ -46,13 +46,45 @@ DEFAULT_URLLIB_TIMEOUT = 3
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_ADDON_FIXERS = _lintian_brush_rs.DEFAULT_ADDON_FIXERS
-LintianIssue = _lintian_brush_rs.LintianIssue
-FixerResult = _lintian_brush_rs.FixerResult
-UnsupportedCertainty = _lintian_brush_rs.UnsupportedCertainty
-only_changes_last_changelog_block = (
-    _lintian_brush_rs.only_changes_last_changelog_block
-)
+class UnsupportedCertainty(Exception):
+    """Unsupported certainty."""
+
+
+def min_certainty(certainties: Sequence[str]) -> str:
+    return confidence_to_certainty(
+        max([SUPPORTED_CERTAINTIES.index(c) for c in certainties] + [0])
+    )
+
+
+def confidence_to_certainty(confidence: Optional[int]) -> str:
+    if confidence is None:
+        return "unknown"
+    try:
+        return SUPPORTED_CERTAINTIES[confidence] or "unknown"
+    except IndexError as exc:
+        raise ValueError(confidence) from exc
+
+
+def certainty_sufficient(
+    actual_certainty: str, minimum_certainty: Optional[str]
+) -> bool:
+    """Check if the actual certainty is sufficient.
+
+    Args:
+      actual_certainty: Actual certainty with which changes were made
+      minimum_certainty: Minimum certainty to keep changes
+    Returns:
+      boolean
+    """
+    actual_confidence = certainty_to_confidence(actual_certainty)
+    if actual_confidence is None:
+        # Actual confidence is unknown.
+        # TODO(jelmer): Should we really be ignoring this?
+        return True
+    minimum_confidence = certainty_to_confidence(minimum_certainty)
+    if minimum_confidence is None:
+        return True
+    return actual_confidence <= minimum_confidence
 
 
 class NoChanges(Exception):
@@ -130,13 +162,6 @@ class NotDebianPackage(Exception):
         super().__init__(abspath)
 
 
-parse_script_fixer_output = _lintian_brush_rs.parse_script_fixer_output
-determine_env = _lintian_brush_rs.determine_env
-Fixer = _lintian_brush_rs.Fixer
-ScriptFixer = _lintian_brush_rs.ScriptFixer
-PythonScriptFixer = _lintian_brush_rs.PythonScriptFixer
-
-
 def open_binary(name):
     return open(data_file_path(name), "rb")  # noqa: SIM115
 
@@ -166,52 +191,13 @@ def data_file_path(name, check=os.path.exists):
     raise RuntimeError(f"unable to find data path: {name}")
 
 
-find_fixers_dir = _lintian_brush_rs.find_fixers_dir
-
-
-def select_fixers(
-    fixers: List[Fixer],
-    *,
-    names: Optional[List[str]] = None,
-    exclude: Optional[Iterable[str]] = None,
-) -> List[Fixer]:
-    """Select fixers by name, from a list.
-
-    Args:
-      fixers: List of Fixer objects
-      names: Set of names to select
-      exclude: Set of names to exclude
-    Raises:
-      KeyError: if one of the names did not exist
-    """
-    select_set = set(names) if names is not None else None
-    exclude_set = set(exclude) if exclude is not None else None
-    ret = []
-    for f in fixers:
-        if select_set is not None:
-            if f.name not in select_set:
-                continue
-            select_set.remove(f.name)
-        if exclude_set and f.name in exclude_set:
-            exclude_set.remove(f.name)
-            continue
-        ret.append(f)
-    if select_set:
-        raise KeyError(select_set.pop())
-    if exclude_set:
-        raise KeyError(exclude_set.pop())
-    return ret
-
-
 def available_lintian_fixers(fixers_dir=None, force_subprocess=False):
+    from . import _lintian_brush_rs
     if fixers_dir is None:
-        fixers_dir = find_fixers_dir()
+        fixers_dir = _lintian_brush_rs.find_fixers_dir()
     return _lintian_brush_rs.available_lintian_fixers(
         fixers_dir, force_subprocess
     )
-
-
-increment_version = _lintian_brush_rs.increment_version
 
 
 def get_committer(tree: WorkingTree) -> str:
@@ -247,9 +233,6 @@ def get_committer(tree: WorkingTree) -> str:
         return config.get("email")
 
 
-certainty_sufficient = _lintian_brush_rs.certainty_sufficient
-
-
 _changelog_policy_noted = False
 
 
@@ -267,9 +250,6 @@ def _note_changelog_policy(policy, msg):
 class FailedPatchManipulation(Exception):
     def __init__(self, reason):
         super().__init__(reason)
-
-
-run_lintian_fixer = _lintian_brush_rs.run_lintian_fixer
 
 
 class ManyResult:
@@ -317,158 +297,11 @@ def determine_update_changelog(local_tree, debian_path):
     return behaviour
 
 
-def run_lintian_fixers(  # noqa: C901
-    local_tree: WorkingTree,
-    fixers: List[Fixer],
-    update_changelog: bool = True,
-    verbose: bool = False,
-    committer: Optional[str] = None,
-    compat_release: Optional[str] = None,
-    minimum_certainty: Optional[str] = None,
-    trust_package: bool = False,
-    allow_reformatting: bool = False,
-    use_inotify: Optional[bool] = None,
-    subpath: str = "",
-    net_access: bool = True,
-    opinionated: Optional[bool] = None,
-    diligence: int = 0,
-):
-    """Run a set of lintian fixers on a tree.
-
-    Args:
-      local_tree: WorkingTree object
-      fixers: A set of Fixer objects
-      update_changelog: Whether to add an entry to the changelog
-      verbose: Whether to be verbose
-      committer: Optional committer (name and email)
-      compat_release: Minimum release that the package should be usable on
-        (e.g. 'sid' or 'stretch')
-      minimum_certainty: How certain the fixer should be
-        about its changes.
-      trust_package: Whether to run code from the package if necessary
-      allow_reformatting: Whether to allow reformatting of changed files
-      use_inotify: Use inotify to watch changes (significantly improves
-        performance). Defaults to None (automatic)
-      subpath: Subpath in the tree in which the package lives
-      net_access: Whether to allow network access
-      opinionated: Whether to be opinionated
-      diligence: Level of diligence
-    Returns:
-      Tuple with two lists:
-        1. list of tuples with (lintian-tag, certainty, description) of fixers
-           that ran
-        2. dictionary mapping fixer names for fixers that failed to run to the
-           error that occurred
-    """
-    from tqdm import trange
-
-    basis_tree = local_tree.basis_tree()
-    check_clean_tree(local_tree, basis_tree=basis_tree, subpath=subpath)
-    fixers = list(fixers)
-
-    # If we don't know whether to update the changelog, then find out *once*
-    if update_changelog is None:
-        changelog_behaviour = None
-
-        def update_changelog():
-            nonlocal update_changelog, changelog_behaviour
-            changelog_behaviour = determine_update_changelog(
-                local_tree, os.path.join(subpath, "debian")
-            )
-            return changelog_behaviour.update_changelog
-    else:
-        changelog_behaviour = None
-
-    ret = ManyResult()
-    with ExitStack() as es:
-        t = es.enter_context(trange(len(fixers), leave=False, disable=None))  # type: ignore
-
-        for fixer in fixers:
-            t.set_description(f"Running fixer {fixer}")
-            t.update()
-            start = time.time()
-            try:
-                result, summary = run_lintian_fixer(
-                    local_tree,
-                    fixer,
-                    update_changelog=update_changelog,
-                    committer=committer,
-                    compat_release=compat_release,
-                    minimum_certainty=minimum_certainty,
-                    trust_package=trust_package,
-                    allow_reformatting=allow_reformatting,
-                    subpath=subpath,
-                    net_access=net_access,
-                    opinionated=opinionated,
-                    diligence=diligence,
-                    basis_tree=basis_tree,
-                )
-            except FormattingUnpreservable as e:
-                ret.formatting_unpreservable[fixer.name] = e.path
-                if verbose:
-                    logging.info(
-                        "Fixer %r was unable to preserve " "formatting of %s.",
-                        fixer.name,
-                        e.path,
-                    )
-            except FixerFailed as e:
-                ret.failed_fixers[fixer.name] = e
-                if verbose:
-                    logging.info("Fixer %r failed to run.", fixer.name)
-                    sys.stderr.write(str(e))
-            except MemoryError as e:
-                ret.failed_fixers[fixer.name] = e
-                if verbose:
-                    logging.info(
-                        "Run out of memory while running fixer %r.", fixer.name
-                    )
-            except NotCertainEnough as e:
-                if verbose:
-                    logging.info(
-                        "Fixer %r made changes but not high enough "
-                        "certainty (was %r, needed %r). (took: %.2fs)",
-                        fixer.name,
-                        e.certainty,
-                        e.minimum_certainty,
-                        time.time() - start,
-                    )
-            except FailedPatchManipulation as e:
-                if verbose:
-                    logging.info(
-                        "Unable to manipulate upstream patches: %s", e.args[2]
-                    )
-                ret.failed_fixers[fixer.name] = e
-            except NoChanges as e:
-                if verbose:
-                    logging.info(
-                        "Fixer %r made no changes. (took: %.2fs)",
-                        fixer.name,
-                        time.time() - start,
-                    )
-                ret.overridden_lintian_issues.extend(
-                    e.overridden_lintian_issues
-                )
-            else:
-                if verbose:
-                    logging.info(
-                        "Fixer %r made changes. (took %.2fs)",
-                        fixer.name,
-                        time.time() - start,
-                    )
-                ret.success.append((result, summary))
-                basis_tree = local_tree.basis_tree()
-    if changelog_behaviour:
-        ret.changelog_behaviour = changelog_behaviour
-    return ret
-
-
 def certainty_to_confidence(certainty: Optional[str]) -> Optional[int]:
     if certainty in ("unknown", None):
         return None
     return SUPPORTED_CERTAINTIES.index(certainty)
 
 
-min_certainty = _lintian_brush_rs.min_certainty
-control_files_in_root = _lintian_brush_rs.control_files_in_root
-is_debcargo_package = _lintian_brush_rs.is_debcargo_package
-control_file_present = _lintian_brush_rs.control_file_present
+def is_debcargo_package(tree, subpath):
+    return tree.has_filename(os.path.join(tree, "debian", "debcargo.toml"))

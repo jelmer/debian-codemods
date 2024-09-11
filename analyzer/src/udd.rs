@@ -1,4 +1,4 @@
-use sqlx::{Error, FromRow, PgPool, Row};
+use sqlx::{Error, PgPool};
 
 pub const DEFAULT_UDD_URL: &str =
     "postgresql://udd-mirror:udd-mirror@udd-mirror.debian.net:5432/udd";

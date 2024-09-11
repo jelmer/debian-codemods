@@ -18,7 +18,7 @@ pub fn update_control_for_vcs_url(source: &mut Source, vcs_type: &str, vcs_url: 
     if let Some(url) = determine_browser_url("git", vcs_url, None) {
         source
             .as_mut_deb822()
-            .insert("Vcs-Browser", &url.to_string());
+            .insert("Vcs-Browser", url.as_ref());
     } else {
         source.as_mut_deb822().remove("Vcs-Browser");
     }

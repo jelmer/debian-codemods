@@ -1,7 +1,7 @@
-use sqlx::{Row,PgPool};
+use debian_control::lossless::relations::{Entry, Relations};
+use serde::Serialize;
+use sqlx::{PgPool, Row};
 use std::collections::{HashMap, HashSet};
-use debian_control::lossless::relations::{Entry,Relations};
-use serde::{Deserialize, Serialize};
 
 lazy_static::lazy_static! {
     pub static ref REGEXES: Vec<regex::Regex> = vec![
@@ -28,7 +28,7 @@ lazy_static::lazy_static! {
 #[derive(Debug)]
 pub struct TransitionalPackage {
     pub from_name: String,
-    pub to_expr: Entry
+    pub to_expr: String,
 }
 
 impl Serialize for TransitionalPackage {
@@ -39,12 +39,15 @@ impl Serialize for TransitionalPackage {
         use serde::ser::SerializeMap;
         let mut map = serializer.serialize_map(Some(2))?;
         map.serialize_entry("from_name", &self.from_name)?;
-        map.serialize_entry("to_expr", &self.to_expr.to_string())?;
+        map.serialize_entry("to_expr", &self.to_expr)?;
         map.end()
     }
 }
 
-pub async fn find_reverse_dependencies(udd: &PgPool, package: &str) -> Result<HashMap<String, HashSet<String>>, sqlx::Error> {
+pub async fn find_reverse_dependencies(
+    udd: &PgPool,
+    package: &str,
+) -> Result<HashMap<String, HashSet<String>>, sqlx::Error> {
     let mut by_source = HashMap::new();
     let fields = &[
         "recommends",
@@ -87,7 +90,10 @@ pub async fn find_reverse_dependencies(udd: &PgPool, package: &str) -> Result<Ha
             for entry in parsed.entries() {
                 for rel in entry.relations() {
                     if rel.name() == package {
-                        by_source.entry(source.clone()).or_insert_with(HashSet::new).insert(binary.clone());
+                        by_source
+                            .entry(source.clone())
+                            .or_insert_with(HashSet::new)
+                            .insert(binary.clone());
                     }
                 }
             }
@@ -138,8 +144,10 @@ pub async fn find_reverse_dependencies(udd: &PgPool, package: &str) -> Result<Ha
     Ok(by_source)
 }
 
-
-pub async fn find_dummy_transitional_packages(udd: &PgPool, release: &str) -> Result<HashMap<String, TransitionalPackage>, sqlx::Error> {
+pub async fn find_dummy_transitional_packages(
+    udd: &PgPool,
+    release: &str,
+) -> Result<HashMap<String, TransitionalPackage>, sqlx::Error> {
     let mut ret = HashMap::new();
 
     let rows = sqlx::query_as::<_, (String, String, Option<String>)>(
@@ -148,7 +156,8 @@ pub async fn find_dummy_transitional_packages(udd: &PgPool, release: &str) -> Re
         FROM packages
         WHERE release = $1 AND description LIKE '%transitional%'
         "#,
-    ).bind(release)
+    )
+    .bind(release)
     .fetch_all(udd)
     .await?;
 
@@ -172,11 +181,13 @@ pub async fn find_dummy_transitional_packages(udd: &PgPool, release: &str) -> Re
                 log::debug!("no single transition target for {}: {:?}", row.0, depends);
                 continue;
             }
-            ret.insert(row.0.clone(), TransitionalPackage {
-                from_name: row.0,
-                to_expr: e
-            });
-
+            ret.insert(
+                row.0.clone(),
+                TransitionalPackage {
+                    from_name: row.0,
+                    to_expr: e.to_string(),
+                },
+            );
         } else {
             log::debug!("no replacement for {}", row.0);
         }

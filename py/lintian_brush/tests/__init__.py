@@ -26,7 +26,6 @@ core_names = [
     "lintian_overrides",
     "run",
     "salsa",
-    "scrub_obsolete",
     "systemd",
     "vcs",
     "xdg",
@@ -34,14 +33,7 @@ core_names = [
 ]
 
 
-def core_test_suite():
-    module_names = [__name__ + ".test_" + name for name in core_names]
-    loader = unittest.TestLoader()
-    return loader.loadTestsFromNames(module_names)
-
-
 def test_suite():
     module_names = [__name__ + ".test_" + name for name in core_names]
-    module_names.append(__name__ + ".fixers.test_suite")
     loader = unittest.TestLoader()
     return loader.loadTestsFromNames(module_names)

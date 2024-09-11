@@ -127,7 +127,11 @@ pub fn apply_or_revert<R, E>(
     };
 
     if local_tree.supports_setting_file_ids() {
+        let local_lock = local_tree.lock_read().unwrap();
+        let basis_lock = basis_tree.lock_read().unwrap();
         breezyshim::rename_map::guess_renames(basis_tree, local_tree).unwrap();
+        std::mem::drop(basis_lock);
+        std::mem::drop(local_lock);
     }
 
     let specific_files_ref = specific_files
@@ -493,6 +497,7 @@ pub fn gbp_dch(path: &std::path::Path) -> Result<(), std::io::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn test_parseaddr() {
@@ -501,5 +506,76 @@ mod tests {
             (Some("foo".to_string()), Some("bar@example.com".to_string()))
         );
         assert_eq!(parseaddr("foo").unwrap(), (None, Some("foo".to_string())));
+    }
+
+    #[serial]
+    #[test]
+    fn test_git_env() {
+        use breezyshim::controldir::ControlDirFormat;
+        let td = tempfile::tempdir().unwrap();
+        let cd = breezyshim::controldir::create_standalone_workingtree(td.path(), "git").unwrap();
+
+        let old_name = std::env::var("GIT_COMMITTER_NAME").ok();
+        let old_email = std::env::var("GIT_COMMITTER_EMAIL").ok();
+
+        std::env::set_var("GIT_COMMITTER_NAME", "Some Git Committer");
+        std::env::set_var("GIT_COMMITTER_EMAIL", "committer@example.com");
+
+        let committer = get_committer(&cd);
+
+        if let Some(old_name) = old_name {
+            std::env::set_var("GIT_COMMITTER_NAME", old_name);
+        } else {
+            std::env::remove_var("GIT_COMMITTER_NAME");
+        }
+
+        if let Some(old_email) = old_email {
+            std::env::set_var("GIT_COMMITTER_EMAIL", old_email);
+        } else {
+            std::env::remove_var("GIT_COMMITTER_EMAIL");
+        }
+
+        assert_eq!("Some Git Committer <committer@example.com>", committer);
+    }
+
+    #[serial]
+    #[test]
+    fn test_git_config() {
+        use breezyshim::controldir::ControlDirFormat;
+        let td = tempfile::tempdir().unwrap();
+        let cd = breezyshim::controldir::create_standalone_workingtree(td.path(), "git").unwrap();
+
+        std::fs::write(
+            td.path().join(".git/config"),
+            b"[user]\nname = Some Git Committer\nemail = other@example.com",
+        )
+        .unwrap();
+
+        assert_eq!(get_committer(&cd), "Some Git Committer <other@example.com>");
+    }
+
+    #[test]
+    fn test_min_certainty() {
+        assert_eq!(None, min_certainty(&[]));
+        assert_eq!(
+            Some(Certainty::Certain),
+            min_certainty(&[Certainty::Certain])
+        );
+        assert_eq!(
+            Some(Certainty::Possible),
+            min_certainty(&[Certainty::Possible])
+        );
+        assert_eq!(
+            Some(Certainty::Possible),
+            min_certainty(&[Certainty::Possible, Certainty::Certain])
+        );
+        assert_eq!(
+            Some(Certainty::Likely),
+            min_certainty(&[Certainty::Likely, Certainty::Certain])
+        );
+        assert_eq!(
+            Some(Certainty::Possible),
+            min_certainty(&[Certainty::Likely, Certainty::Certain, Certainty::Possible])
+        );
     }
 }

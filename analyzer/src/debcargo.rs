@@ -25,6 +25,12 @@ impl From<DocumentMut> for DebcargoEditor {
     }
 }
 
+impl Default for DebcargoEditor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DebcargoEditor {
     pub fn new() -> Self {
         Self {
@@ -59,7 +65,7 @@ impl DebcargoEditor {
     pub fn from_directory(path: &std::path::Path) -> Result<Self, std::io::Error> {
         let debcargo_toml_path = path.join("debian/debcargo.toml");
         let debcargo_toml = std::fs::read_to_string(&debcargo_toml_path)?;
-        let cargo_toml = std::fs::read_to_string(path.join("cargo.toml"))?;
+        let cargo_toml = std::fs::read_to_string(path.join("Cargo.toml"))?;
         Ok(Self {
             debcargo_toml_path: Some(debcargo_toml_path),
             debcargo: debcargo_toml.parse().unwrap(),
@@ -546,7 +552,6 @@ mod tests {
             toml_edit::value("Jelmer Vernooij <jelmer@debian.org>");
 
         assert_eq!(editor.source().standards_version(), "4.5.1");
-        assert_eq!(editor.source().homepage(), Some("https://example.com"));
         assert_eq!(
             editor.source().vcs_git().as_deref(),
             Some("https://example.com")
@@ -564,5 +569,6 @@ mod tests {
         );
         assert_eq!(editor.source().name(), None);
         assert_eq!(editor.source().uploaders(), None);
+        assert_eq!(editor.source().homepage(), Some("https://example.com"));
     }
 }

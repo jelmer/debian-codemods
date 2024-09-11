@@ -10,15 +10,35 @@ fn run_fixer_testcase(
     path: &Path,
     tags: &[&str],
 ) {
+    #[cfg(feature = "python")]
+    {
+        pyo3::Python::with_gil(|py| {
+            use pyo3::prelude::*;
+            let sys = py.import_bound("sys").unwrap();
+            let path = sys.getattr("path").unwrap();
+            let mut path: Vec<String> = path.extract().unwrap();
+            let extra_path =
+                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR").to_string() + "/../py")
+                    .canonicalize()
+                    .unwrap();
+            if !path.contains(&extra_path.to_string_lossy().to_string()) {
+                path.insert(0, extra_path.to_string_lossy().to_string());
+                sys.setattr("path", path).unwrap();
+            }
+        });
+    }
     let td = tempfile::tempdir().unwrap();
 
     let indir = path.join("in");
     let outdir = path.join("out");
 
     let testdir = td.path().join("testdir");
+    std::fs::create_dir(&testdir).unwrap();
 
     // recursively copy indir to td/in
-    let options = fs_extra::dir::CopyOptions::new();
+    let mut options = fs_extra::dir::CopyOptions::new();
+    options.copy_inside = true;
+    options.content_only = true;
     fs_extra::dir::copy(indir, &testdir, &options).unwrap();
 
     let xfail_path = path.join("xfail");
@@ -63,7 +83,10 @@ fn run_fixer_testcase(
     env.insert("NET_ACCESS".to_owned(), "disallow".to_string());
     env.insert("MINIMUM_CERTAINTY".to_owned(), "possible".to_string());
     env.insert("PYTHONPATH".to_owned(), {
-        let p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let p = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../py")
+            .canonicalize()
+            .unwrap();
         let mut path = pyo3::Python::with_gil(|py| {
             use pyo3::prelude::*;
             py.import_bound("sys")

@@ -212,7 +212,7 @@ impl std::str::FromStr for Entry {
                 Ok(Entry::DirToSymlink { pathname, new_target, prior_version, package })
             }
             n => {
-                return Err(ParseError::UnknownCommand(n.to_string()));
+                Err(ParseError::UnknownCommand(n.to_string()))
             }
         }
     }
@@ -236,6 +236,12 @@ impl std::fmt::Display for Line {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Maintscript {
     lines: Vec<Line>,
+}
+
+impl Default for Maintscript {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Maintscript {

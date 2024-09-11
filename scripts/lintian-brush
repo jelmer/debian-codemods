@@ -1,4 +1,0 @@
-#!/usr/bin/python3
-
-from lintian_brush.__main__ import main
-main()

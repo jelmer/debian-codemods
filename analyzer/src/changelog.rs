@@ -259,6 +259,7 @@ pub fn find_changelog(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     #[test]
     fn test_find_previous_upload() {
         let cl = r#"test (1.0-1) unstable; urgency=medium
@@ -289,5 +290,336 @@ test (1.0-0) unstable; urgency=medium
             super::find_previous_upload(&cl),
             Some("1.0-0".parse().unwrap())
         );
+    }
+
+    mod test_only_changes_last_changelog_block {
+        use super::*;
+        use breezyshim::controldir::{create_standalone_workingtree, ControlDirFormat};
+        use breezyshim::tree::Path;
+        use breezyshim::tree::Tree;
+        fn make_package_tree(p: &std::path::Path) -> breezyshim::tree::WorkingTree {
+            let tree = create_standalone_workingtree(p, &ControlDirFormat::default()).unwrap();
+            std::fs::create_dir_all(p.join("debian")).unwrap();
+
+            std::fs::write(
+                p.join("debian/control"),
+                r###"Source: blah
+Vcs-Git: https://example.com/blah
+Testsuite: autopkgtest
+
+Binary: blah
+Arch: all
+
+"###,
+            )
+            .unwrap();
+            std::fs::write(
+                p.join("debian/changelog"),
+                r###"blah (0.2) UNRELEASED; urgency=medium
+
+  * And a change.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+
+blah (0.1) unstable; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+"###,
+            )
+            .unwrap();
+            tree.add(&[
+                Path::new("debian"),
+                Path::new("debian/changelog"),
+                Path::new("debian/control"),
+            ])
+            .unwrap();
+            tree.build_commit()
+                .message("Initial thingy.")
+                .commit()
+                .unwrap();
+            tree
+        }
+
+        #[test]
+        fn test_no_changes() {
+            let td = tempfile::tempdir().unwrap();
+            let tree = make_package_tree(td.path());
+            let basis_tree = tree.basis_tree().unwrap();
+            let lock_read = tree.lock_read();
+            let basis_lock_read = basis_tree.lock_read();
+            let changes = tree
+                .iter_changes(&basis_tree, None, None, None)
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            assert!(!only_changes_last_changelog_block(
+                &tree,
+                &tree.basis_tree().unwrap(),
+                Path::new("debian/changelog"),
+                changes.iter()
+            )
+            .unwrap());
+            std::mem::drop(basis_lock_read);
+            std::mem::drop(lock_read);
+        }
+
+        #[test]
+        fn test_other_change() {
+            let td = tempfile::tempdir().unwrap();
+            let tree = make_package_tree(td.path());
+            std::fs::write(
+                td.path().join("debian/control"),
+                r###"Source: blah
+Vcs-Bzr: https://example.com/blah
+Testsuite: autopkgtest
+
+Binary: blah
+Arch: all
+"###,
+            )
+            .unwrap();
+            let basis_tree = tree.basis_tree().unwrap();
+            let lock_read = tree.lock_read();
+            let basis_lock_read = basis_tree.lock_read();
+            let changes = tree
+                .iter_changes(&basis_tree, None, None, None)
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            assert!(!only_changes_last_changelog_block(
+                &tree,
+                &tree.basis_tree().unwrap(),
+                Path::new("debian/changelog"),
+                changes.iter()
+            )
+            .unwrap());
+            std::mem::drop(basis_lock_read);
+            std::mem::drop(lock_read);
+        }
+
+        #[test]
+        fn test_other_changes() {
+            let td = tempfile::tempdir().unwrap();
+            let tree = make_package_tree(td.path());
+            std::fs::write(
+                td.path().join("debian/control"),
+                r###"Source: blah
+Vcs-Bzr: https://example.com/blah
+Testsuite: autopkgtest
+
+Binary: blah
+Arch: all
+
+"###,
+            )
+            .unwrap();
+            std::fs::write(
+                td.path().join("debian/changelog"),
+                r###"blah (0.1) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #911016)
+  * Some other change.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+"###,
+            )
+            .unwrap();
+            let basis_tree = tree.basis_tree().unwrap();
+            let lock_read = tree.lock_read();
+            let basis_lock_read = basis_tree.lock_read();
+            let changes = tree
+                .iter_changes(&basis_tree, None, None, None)
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            assert!(!only_changes_last_changelog_block(
+                &tree,
+                &tree.basis_tree().unwrap(),
+                Path::new("debian/changelog"),
+                changes.iter()
+            )
+            .unwrap());
+            std::mem::drop(basis_lock_read);
+            std::mem::drop(lock_read);
+        }
+
+        #[test]
+        fn test_changes_to_other_changelog_entries() {
+            let td = tempfile::tempdir().unwrap();
+            let tree = make_package_tree(td.path());
+            std::fs::write(
+                td.path().join("debian/changelog"),
+                r###"blah (0.2) UNRELEASED; urgency=medium
+
+  * debian/changelog: And a change.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+
+blah (0.1) unstable; urgency=medium
+
+  * debian/changelog: Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+"###,
+            )
+            .unwrap();
+            let basis_tree = tree.basis_tree().unwrap();
+            let lock_read = tree.lock_read();
+            let basis_lock_read = basis_tree.lock_read();
+            let changes = tree
+                .iter_changes(&basis_tree, None, None, None)
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            assert!(!only_changes_last_changelog_block(
+                &tree,
+                &tree.basis_tree().unwrap(),
+                Path::new("debian/changelog"),
+                changes.iter()
+            )
+            .unwrap());
+            std::mem::drop(basis_lock_read);
+            std::mem::drop(lock_read);
+        }
+
+        #[test]
+        fn test_changes_to_last_only() {
+            let td = tempfile::tempdir().unwrap();
+            let tree = make_package_tree(td.path());
+            std::fs::write(
+                td.path().join("debian/changelog"),
+                r###"blah (0.2) UNRELEASED; urgency=medium
+
+  * And a change.
+  * Not a team upload.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+
+blah (0.1) unstable; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+"###,
+            )
+            .unwrap();
+            let basis_tree = tree.basis_tree().unwrap();
+            let lock_read = tree.lock_read();
+            let basis_lock_read = basis_tree.lock_read();
+            let changes = tree
+                .iter_changes(&basis_tree, None, None, None)
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            assert!(only_changes_last_changelog_block(
+                &tree,
+                &tree.basis_tree().unwrap(),
+                Path::new("debian/changelog"),
+                changes.iter()
+            )
+            .unwrap());
+            std::mem::drop(basis_lock_read);
+            std::mem::drop(lock_read);
+        }
+
+        #[test]
+        fn test_only_new_changelog() {
+            use breezyshim::tree::MutableTree;
+            let td = tempfile::tempdir().unwrap();
+            let tree = create_standalone_workingtree(td.path(), "git").unwrap();
+            let lock_write = tree.lock_write();
+            std::fs::create_dir_all(td.path().join("debian")).unwrap();
+            std::fs::write(
+                td.path().join("debian/changelog"),
+                r###"blah (0.1) unstable; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+"###,
+            )
+            .unwrap();
+            let basis_tree = tree.basis_tree().unwrap();
+            let lock_read = tree.lock_read();
+            let basis_lock_read = basis_tree.lock_read();
+            tree.add(&[Path::new("debian"), Path::new("debian/changelog")])
+                .unwrap();
+            let changes = tree
+                .iter_changes(&basis_tree, None, None, None)
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            assert!(only_changes_last_changelog_block(
+                &tree,
+                &tree.basis_tree().unwrap(),
+                Path::new("debian/changelog"),
+                changes.iter()
+            )
+            .unwrap());
+            std::mem::drop(basis_lock_read);
+            std::mem::drop(lock_read);
+            std::mem::drop(lock_write);
+        }
+
+        #[test]
+        fn test_changes_to_last_only_but_released() {
+            let td = tempfile::tempdir().unwrap();
+            let tree = make_package_tree(td.path());
+            std::fs::write(
+                td.path().join("debian/changelog"),
+                r###"blah (0.2) unstable; urgency=medium
+
+  * And a change.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+
+blah (0.1) unstable; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+  -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+"###,
+            )
+            .unwrap();
+            tree.build_commit().message("welease").commit().unwrap();
+            std::fs::write(
+                td.path().join("debian/changelog"),
+                r###"blah (0.2) unstable; urgency=medium
+
+  * And a change.
+  * Team Upload.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+
+blah (0.1) unstable; urgency=medium
+
+  * Initial release. (Closes: #911016)
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+
+"###,
+            )
+            .unwrap();
+            let basis_tree = tree.basis_tree().unwrap();
+            let lock_read = tree.lock_read();
+            let basis_lock_read = basis_tree.lock_read();
+            let changes = tree
+                .iter_changes(&basis_tree, None, None, None)
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+
+            assert!(!only_changes_last_changelog_block(
+                &tree,
+                &tree.basis_tree().unwrap(),
+                Path::new("debian/changelog"),
+                changes.iter()
+            )
+            .unwrap());
+            std::mem::drop(basis_lock_read);
+            std::mem::drop(lock_read);
+        }
     }
 }
