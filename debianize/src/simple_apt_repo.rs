@@ -28,6 +28,10 @@ impl SimpleTrustedAptRepo {
         }
     }
 
+    pub fn directory(&self) -> &Path {
+        &self.directory
+    }
+
     pub fn url(&self) -> Option<url::Url> {
         if let Some(addr) = self.server_addr.lock().unwrap().as_ref() {
             url::Url::parse(&format!("http://{}:{}/", addr.ip(), addr.port())).ok()
