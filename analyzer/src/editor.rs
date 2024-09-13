@@ -590,7 +590,8 @@ impl<'a, P: Marshallable> Editor<P> for TreeEditor<'a, P> {
     fn commit(&self) -> Result<Vec<std::path::PathBuf>, EditorError> {
         let updated_content = self.updated_content();
 
-        let changed = edit_formatted_file(
+        let changed = tree_edit_formatted_file(
+            self.tree,
             &self.path,
             self.orig_content.as_deref(),
             self.rewritten_content.as_deref(),
