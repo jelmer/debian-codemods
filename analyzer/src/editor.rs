@@ -302,6 +302,17 @@ fn update_with_merge3(
     )
 }
 
+/// Reformat a file.
+///
+/// # Arguments
+/// * `original_contents` - The original contents of the file
+/// * `rewritten_contents` - The contents rewritten with our parser/serializer
+/// * `updated_contents` - Updated contents rewritten with our parser/serializer after changes were
+///  made
+///  * `allow_reformatting` - Whether to allow reformatting of the file
+///
+///  # Returns
+///  A tuple with the new contents and a boolean indicating whether the file was changed`
 fn reformat_file<'a>(
     original_contents: Option<&'a [u8]>,
     rewritten_contents: Option<&'a [u8]>,
@@ -439,7 +450,7 @@ pub fn tree_edit_formatted_file(
 
 pub trait Marshallable {
     fn from_bytes(content: &[u8]) -> Self;
-    fn missing() -> Self;
+    fn empty() -> Self;
     fn to_bytes(&self) -> Option<Vec<u8>>;
 }
 
@@ -537,9 +548,9 @@ impl<'a, P: Marshallable> TreeEditor<'a, P> {
         };
         self.parsed = match self.orig_content.as_deref() {
             Some(content) => Some(P::from_bytes(content)),
-            None => Some(P::missing()),
+            None => Some(P::empty()),
         };
-        self.rewritten_content = self.orig_content.clone();
+        self.rewritten_content.clone_from(&self.orig_content);
         Ok(())
     }
 
@@ -648,7 +659,7 @@ impl<P: Marshallable> FsEditor<P> {
         };
         self.parsed = match self.orig_content.as_deref() {
             Some(content) => Some(P::from_bytes(content)),
-            None => Some(P::missing()),
+            None => Some(P::empty()),
         };
         self.rewritten_content = self.orig_content.clone();
         Ok(())
@@ -719,7 +730,7 @@ impl Marshallable for debian_control::Control {
             .0
     }
 
-    fn missing() -> Self {
+    fn empty() -> Self {
         debian_control::Control::new()
     }
 
@@ -734,7 +745,7 @@ impl Marshallable for debian_changelog::ChangeLog {
         debian_changelog::ChangeLog::read_relaxed(std::io::Cursor::new(content)).unwrap()
     }
 
-    fn missing() -> Self {
+    fn empty() -> Self {
         debian_changelog::ChangeLog::new()
     }
 
@@ -752,7 +763,7 @@ impl Marshallable for debian_copyright::lossless::Copyright {
         .0
     }
 
-    fn missing() -> Self {
+    fn empty() -> Self {
         debian_copyright::lossless::Copyright::new()
     }
 
@@ -766,7 +777,7 @@ impl Marshallable for makefile_lossless::Makefile {
         makefile_lossless::Makefile::read_relaxed(std::io::Cursor::new(content)).unwrap()
     }
 
-    fn missing() -> Self {
+    fn empty() -> Self {
         makefile_lossless::Makefile::new()
     }
 
@@ -782,7 +793,7 @@ impl Marshallable for deb822_lossless::Deb822 {
             .0
     }
 
-    fn missing() -> Self {
+    fn empty() -> Self {
         deb822_lossless::Deb822::new()
     }
 
@@ -798,7 +809,7 @@ impl Marshallable for crate::maintscripts::Maintscript {
         crate::maintscripts::Maintscript::from_str(content).unwrap()
     }
 
-    fn missing() -> Self {
+    fn empty() -> Self {
         crate::maintscripts::Maintscript::new()
     }
 
@@ -1013,7 +1024,7 @@ mod tests {
             Self { data: Some(data) }
         }
 
-        fn missing() -> Self {
+        fn empty() -> Self {
             Self { data: None }
         }
 
