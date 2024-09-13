@@ -661,7 +661,7 @@ impl<P: Marshallable> FsEditor<P> {
             Some(content) => Some(P::from_bytes(content)),
             None => Some(P::empty()),
         };
-        self.rewritten_content = self.orig_content.clone();
+        self.rewritten_content.clone_from(&self.orig_content);
         Ok(())
     }
 

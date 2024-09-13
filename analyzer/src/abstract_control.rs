@@ -55,6 +55,7 @@ impl<'a> AbstractSource<'a> for PlainSource {
     fn ensure_build_dep(&mut self, dep: Entry) {
         if let Some(mut build_deps) = self.build_depends() {
             ensure_relation(&mut build_deps, dep);
+            self.set_build_depends(&build_deps);
         } else {
             self.set_build_depends(&Relations::from(vec![dep]));
         }
@@ -121,9 +122,11 @@ pub fn edit_control<'a>(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use breezyshim::controldir::{create_standalone_workingtree, ControlDirFormat};
     use breezyshim::tree::MutableTree;
     use std::path::Path;
+    use std::str::FromStr;
 
     #[test]
     fn test_edit_control_debcargo() {
@@ -180,11 +183,55 @@ Description: Example package
         )
         .unwrap();
 
-        tree.add(&[&Path::new("debian"), &Path::new("debian/control")])
+        tree.add(&[(Path::new("debian")), (Path::new("debian/control"))])
             .unwrap();
 
         let editor = super::edit_control(&tree, Path::new("")).unwrap();
 
         editor.commit();
+    }
+
+    #[test]
+    fn test_edit_source_ensure_build_depends() {
+        let td = tempfile::tempdir().unwrap();
+        let tree = create_standalone_workingtree(td.path(), &ControlDirFormat::default()).unwrap();
+        // Write dummy debian/control
+        tree.mkdir(Path::new("debian")).unwrap();
+        tree.put_file_bytes_non_atomic(
+            Path::new("debian/control"),
+            br#"
+Source: example
+Maintainer: Alice <alice@example.com>
+Build-Depends: libc6
+
+Package: example
+Architecture: any
+Description: Example package
+"#,
+        )
+        .unwrap();
+        tree.add(&[Path::new("debian/control")]).unwrap();
+
+        let mut editor = super::edit_control(&tree, Path::new("")).unwrap();
+        let mut source = editor.source().unwrap();
+        source.ensure_build_dep(
+            debian_control::lossless::relations::Entry::from_str("libssl-dev").unwrap(),
+        );
+        std::mem::drop(source);
+        editor.commit();
+
+        let text = tree.get_file_text(Path::new("debian/control")).unwrap();
+        assert_eq!(
+            std::str::from_utf8(&text).unwrap(),
+            r#"
+Source: example
+Maintainer: Alice <alice@example.com>
+Build-Depends: libc6, libssl-dev
+
+Package: example
+Architecture: any
+Description: Example package
+"#
+        );
     }
 }
