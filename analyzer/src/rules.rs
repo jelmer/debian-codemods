@@ -1,4 +1,3 @@
-
 /// Add a particular value to a with argument.
 pub fn dh_invoke_add_with(line: &str, with_argument: &str) -> String {
     if line.contains(with_argument) {

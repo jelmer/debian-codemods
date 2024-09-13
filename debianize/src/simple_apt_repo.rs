@@ -1,15 +1,15 @@
-use hyper::service::{make_service_fn, service_fn};
-use std::process::Command;
-use hyper::{Body, Request, Response, Server, StatusCode};
-use std::sync::{Arc, Mutex, mpsc};
-use std::net::SocketAddr;
-use std::thread::{self, JoinHandle};
-use std::io;
-use std::fs;
-use std::path::{Path, PathBuf};
 use flate2::write::GzEncoder;
 use flate2::Compression;
+use hyper::service::{make_service_fn, service_fn};
+use hyper::{Body, Request, Response, Server, StatusCode};
+use std::fs;
+use std::io;
 use std::io::Write;
+use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::sync::{mpsc, Arc, Mutex};
+use std::thread::{self, JoinHandle};
 
 pub struct SimpleTrustedAptRepo {
     directory: PathBuf,
@@ -38,7 +38,10 @@ impl SimpleTrustedAptRepo {
 
     pub fn start(&mut self) -> io::Result<()> {
         if self.thread.is_some() {
-            return Err(io::Error::new(io::ErrorKind::Other, "server already active"));
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "server already active",
+            ));
         }
 
         let directory = Arc::new(self.directory.clone());
@@ -55,11 +58,15 @@ impl SimpleTrustedAptRepo {
                     async move {
                         let path = directory.join(req.uri().path().trim_start_matches('/'));
                         match fs::read(path) {
-                            Ok(contents) => Ok::<_, hyper::Error>(Response::new(Body::from(contents))),
-                            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Response::builder()
-                                .status(StatusCode::NOT_FOUND)
-                                .body(Body::from("File not found"))
-                                .unwrap()),
+                            Ok(contents) => {
+                                Ok::<_, hyper::Error>(Response::new(Body::from(contents)))
+                            }
+                            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                                Ok(Response::builder()
+                                    .status(StatusCode::NOT_FOUND)
+                                    .body(Body::from("File not found"))
+                                    .unwrap())
+                            }
                             Err(e) => {
                                 log::error!("Error reading file: {}", e);
                                 Ok(Response::builder()
@@ -94,7 +101,11 @@ impl SimpleTrustedAptRepo {
 
         let server_addr = start_rx.recv().unwrap();
 
-        log::info!("Local apt repo started at http://{}:{}/", server_addr.ip(), server_addr.port());
+        log::info!(
+            "Local apt repo started at http://{}:{}/",
+            server_addr.ip(),
+            server_addr.port()
+        );
 
         self.thread = Some(handle);
 
@@ -120,7 +131,11 @@ impl SimpleTrustedAptRepo {
         let packages_path = Path::new(&self.directory).join("Packages.gz");
         if packages_path.exists() {
             let addr = server_addr.unwrap();
-            vec![format!("deb [trusted=yes] http://{}:{}/ ./", addr.ip(), addr.port())]
+            vec![format!(
+                "deb [trusted=yes] http://{}:{}/ ./",
+                addr.ip(),
+                addr.port()
+            )]
         } else {
             vec![]
         }
@@ -143,12 +158,14 @@ impl SimpleTrustedAptRepo {
             let mut encoder = GzEncoder::new(file, Compression::default());
             encoder.write_all(&output.stdout)?;
         } else {
-            return Err(io::Error::new(io::ErrorKind::Other, "Failed to run dpkg-scanpackages"));
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Failed to run dpkg-scanpackages",
+            ));
         }
 
         Ok(())
     }
-
 }
 
 impl Drop for SimpleTrustedAptRepo {

@@ -1,6 +1,6 @@
+pub use breezyshim::debian::Vendor;
 use chrono::{NaiveDate, Utc};
 use distro_info::DistroInfo;
-pub use breezyshim::debian::Vendor;
 
 pub const DEBIAN_POCKETS: &[&str] = &["", "-security", "-proposed-updates", "-backports"];
 pub const UBUNTU_POCKETS: &[&str] = &["", "-proposed", "-updates", "-security", "-backports"];

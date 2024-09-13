@@ -47,19 +47,17 @@ pub fn write_svp_failure(data: &Failure) -> std::io::Result<()> {
     }
 }
 
-pub fn report_success<T>(
-    versions: HashMap<String, String>,
-    value: Option<i32>,
-    context: Option<T>
-) where T: serde::Serialize {
-    write_svp_success(
-        &Success {
-            versions,
-            value,
-            context: context.map(|x| serde_json::to_value(x).unwrap()),
-            debian: None,
-        },
-    ).unwrap();
+pub fn report_success<T>(versions: HashMap<String, String>, value: Option<i32>, context: Option<T>)
+where
+    T: serde::Serialize,
+{
+    write_svp_success(&Success {
+        versions,
+        value,
+        context: context.map(|x| serde_json::to_value(x).unwrap()),
+        debian: None,
+    })
+    .unwrap();
 }
 
 pub fn report_success_debian<T>(
@@ -67,33 +65,32 @@ pub fn report_success_debian<T>(
     value: Option<i32>,
     context: Option<T>,
     changelog: Option<(bool, String)>,
-) where T: serde::Serialize {
-    write_svp_success(
-            &Success {
-                versions,
-                value,
-                context: context.map(|x| serde_json::to_value(x).unwrap()),
-                debian: Some(DebianContext {
-                    changelog: changelog.map(|cl| ChangelogBehaviour {
-                        update: cl.0,
-                        explanation: cl.1,
-                    }),
-                }),
-            },
-        )
-        .unwrap();
+) where
+    T: serde::Serialize,
+{
+    write_svp_success(&Success {
+        versions,
+        value,
+        context: context.map(|x| serde_json::to_value(x).unwrap()),
+        debian: Some(DebianContext {
+            changelog: changelog.map(|cl| ChangelogBehaviour {
+                update: cl.0,
+                explanation: cl.1,
+            }),
+        }),
+    })
+    .unwrap();
 }
 
 pub fn report_nothing_to_do(versions: HashMap<String, String>, description: Option<&str>) -> ! {
     let description = description.unwrap_or("Nothing to do");
     write_svp_failure(&Failure {
-                result_code: "nothing-to-do".to_string(),
-                versions,
-                description: description.to_string(),
-                transient: None,
-            },
-        )
-        .unwrap();
+        result_code: "nothing-to-do".to_string(),
+        versions,
+        description: description.to_string(),
+        transient: None,
+    })
+    .unwrap();
     log::error!("{}", description);
     std::process::exit(0);
 }
@@ -105,15 +102,13 @@ pub fn report_fatal(
     hint: Option<&str>,
     transient: Option<bool>,
 ) -> ! {
-    write_svp_failure(
-            &Failure {
-                result_code: code.to_string(),
-                versions,
-                description: description.to_string(),
-                transient,
-            },
-        )
-        .unwrap();
+    write_svp_failure(&Failure {
+        result_code: code.to_string(),
+        versions,
+        description: description.to_string(),
+        transient,
+    })
+    .unwrap();
     log::error!("{}", description);
     if let Some(hint) = hint {
         log::info!("{}", hint);
