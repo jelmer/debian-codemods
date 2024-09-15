@@ -186,16 +186,6 @@ def data_file_path(name, check=os.path.exists):
     raise RuntimeError(f"unable to find data path: {name}")
 
 
-def available_lintian_fixers(fixers_dir=None, force_subprocess=False):
-    from . import _lintian_brush_rs
-
-    if fixers_dir is None:
-        fixers_dir = _lintian_brush_rs.find_fixers_dir()
-    return _lintian_brush_rs.available_lintian_fixers(
-        fixers_dir, force_subprocess
-    )
-
-
 def get_committer(tree: WorkingTree) -> str:
     """Get the committer string for a tree.
 
@@ -301,3 +291,23 @@ def certainty_to_confidence(certainty: Optional[str]) -> Optional[int]:
 
 def is_debcargo_package(tree, subpath):
     return tree.has_filename(os.path.join(tree, "debian", "debcargo.toml"))
+
+
+def fixable_lintian_tags():
+    from ruamel.yaml import YAML
+    yaml = YAML()
+    with open('fixers/index.desc') as f:
+        fixers = yaml.load(f)
+
+    supported_tags = set()
+    for fixer in fixers:
+        try:
+            tags = fixer['lintian-tags']
+        except KeyError:
+            pass
+        else:
+            if tags is not None:
+                supported_tags.update(tags)
+
+    return supported_tags
+

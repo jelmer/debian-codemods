@@ -6,7 +6,7 @@ import argparse
 import psycopg2
 from ruamel.yaml import YAML
 
-from lintian_brush import available_lintian_fixers
+from lintian_brush import fixable_lintian_tags
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -27,9 +27,7 @@ with conn.cursor() as cursor:
         "WHERE tag_type NOT IN ('classification') GROUP BY 1 ORDER BY 2 DESC"
     )
 
-    supported_tags = set()
-    for fixer in available_lintian_fixers():
-        supported_tags.update(fixer.lintian_tags)
+    supported_tags = set(fixable_lintian_tags())
 
     yaml = YAML()
     with open("tag-status.yaml") as f:

@@ -1,21 +1,8 @@
 #!/usr/bin/python3
 
 import re
-from ruamel.yaml import YAML
-
-yaml = YAML()
-with open('fixers/index.desc') as f:
-    fixers = yaml.load(f)
-
-supported_tags = set()
-for fixer in fixers:
-    try:
-        tags = fixer['lintian-tags']
-    except KeyError:
-        pass
-    else:
-        if tags is not None:
-            supported_tags.update(tags)
+from lintian_brush import fixable_lintian_tags
+supported_tags = fixable_lintian_tags()
 
 with open("README.md") as f:
     contents = f.read()
