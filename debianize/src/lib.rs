@@ -1,3 +1,4 @@
+use breezyshim::branch::Branch;
 use breezyshim::debian::error::Error as BrzDebianError;
 use breezyshim::debian::merge_upstream::{
     do_import, get_existing_imported_upstream_revids, get_tarballs,
@@ -15,6 +16,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use upstream_ontologist::UpstreamMetadata;
 
+pub mod fixer;
 pub mod names;
 pub mod simple_apt_repo;
 
@@ -266,4 +268,16 @@ pub fn last_resort_upstream_version(
         upstream_version
     );
     Ok(upstream_version)
+}
+
+pub fn debianize(
+    wt: &WorkingTree,
+    subpath: &Path,
+    upstream_branch: Option<&dyn Branch>,
+    upstream_subpath: Option<&Path>,
+    preferences: &DebianizePreferences,
+    buildsystem: Option<&str>,
+    version: Option<&str>,
+) {
+    todo!();
 }
