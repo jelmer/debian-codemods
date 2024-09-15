@@ -43,15 +43,6 @@ impl sqlx::Decode<'_, Postgres> for BugKind {
     }
 }
 
-#[cfg(feature = "pyo3")]
-impl pyo3::FromPyObject<'_> for BugKind {
-    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
-        use pyo3::prelude::*;
-        let s: String = ob.extract()?;
-        s.parse().map_err(pyo3::exceptions::PyValueError::new_err)
-    }
-}
-
 /// Read DebBugs data through UDD.
 pub struct DebBugs {
     pool: PgPool,
