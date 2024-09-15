@@ -422,3 +422,23 @@ pub fn debianize(
 ) {
     todo!();
 }
+
+pub(crate) struct ResetOnFailure<'a>(&'a WorkingTree, PathBuf);
+
+impl<'a> ResetOnFailure<'a> {
+    pub fn new(wt: &'a WorkingTree, subpath: &Path) -> Result<Self, BrzError> {
+        breezyshim::workspace::check_clean_tree(wt, &wt.basis_tree().unwrap(), subpath)?;
+        Ok(Self(wt, subpath.to_path_buf()))
+    }
+}
+
+impl<'a> Drop for ResetOnFailure<'a> {
+    fn drop(&mut self) {
+        if std::thread::panicking() {
+            match breezyshim::workspace::reset_tree(self.0, None, Some(&self.1)) {
+                Ok(_) => {}
+                Err(e) => log::error!("Failed to reset tree: {:?}", e),
+            }
+        }
+    }
+}
