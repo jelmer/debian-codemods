@@ -11,6 +11,7 @@ use breezyshim::error::Error as BrzError;
 use breezyshim::workingtree::WorkingTree;
 use breezyshim::RevisionId;
 use debian_analyzer::versions::debianize_upstream_version;
+use debian_analyzer::wnpp::{find_wnpp_bugs_harder, BugKind};
 use debian_analyzer::Certainty;
 use debversion::Version;
 use ognibuild::dependencies::debian::DebianDependency;
@@ -26,56 +27,20 @@ pub fn default_debianize_cache_dir() -> std::io::Result<std::path::PathBuf> {
     xdg::BaseDirectories::with_prefix("debianize")?.create_cache_directory("")
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum BugKind {
-    RFP,
-    ITP,
-}
-
-impl std::str::FromStr for BugKind {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "RFP" => Ok(BugKind::RFP),
-            "ITP" => Ok(BugKind::ITP),
-            _ => Err(format!("Unknown bug kind: {}", s)),
-        }
-    }
-}
-
-impl std::fmt::Display for BugKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            BugKind::RFP => write!(f, "RFP"),
-            BugKind::ITP => write!(f, "ITP"),
-        }
-    }
-}
-
-#[cfg(feature = "pyo3")]
-impl pyo3::FromPyObject<'_> for BugKind {
-    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
-        use pyo3::prelude::*;
-        let s: String = ob.extract()?;
-        s.parse().map_err(pyo3::exceptions::PyValueError::new_err)
-    }
-}
-
 pub fn write_changelog_template(
     path: &std::path::Path,
     source_name: &str,
     version: &Version,
     author: Option<(String, String)>,
-    wnpp_bugs: Option<Vec<(BugKind, u32)>>,
+    wnpp_bugs: Vec<(i64, BugKind)>,
 ) -> Result<(), std::io::Error> {
     let author = author.unwrap_or_else(|| debian_changelog::get_maintainer().unwrap());
-    let closes = if let Some(wnpp_bugs) = wnpp_bugs {
+    let closes = if wnpp_bugs.len() > 0 {
         format!(
             " Closes: {}",
             wnpp_bugs
                 .iter()
-                .map(|(_k, n)| format!("#{}", n))
+                .map(|(n, _k)| format!("#{}", n))
                 .collect::<Vec<_>>()
                 .join(", ")
         )
