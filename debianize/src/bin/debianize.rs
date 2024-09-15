@@ -7,36 +7,7 @@ use std::collections::HashMap;
 use std::io::Write as _;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UpstreamVersionKind {
-    Auto,
-    Release,
-    Snapshot,
-}
-
-impl ToString for UpstreamVersionKind {
-    fn to_string(&self) -> String {
-        match self {
-            UpstreamVersionKind::Auto => "auto",
-            UpstreamVersionKind::Release => "release",
-            UpstreamVersionKind::Snapshot => "snapshot",
-        }
-        .to_string()
-    }
-}
-
-impl std::str::FromStr for UpstreamVersionKind {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "auto" => Ok(UpstreamVersionKind::Auto),
-            "release" => Ok(UpstreamVersionKind::Release),
-            "snapshot" => Ok(UpstreamVersionKind::Snapshot),
-            _ => Err(format!("Unknown upstream version kind: {}", s)),
-        }
-    }
-}
+use breezyshim::debian::VersionKind;
 
 /// Create Debian packaging for upstream projects, in version control
 #[derive(Parser, Debug)]
@@ -151,7 +122,7 @@ struct Args {
 
     /// What kind of release to package
     #[arg(long, default_value = "auto")]
-    upstream_version_kind: UpstreamVersionKind,
+    upstream_version_kind: VersionKind,
 
     /// Package latest upstream release rather than a snapshot
     #[arg(long)]
@@ -168,10 +139,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "debianize is experimental and often generates packaging that is incomplete or does not build as-is. If you encounter issues, please consider filing a bug.");
 
     if args.release {
-        if args.upstream_version_kind != UpstreamVersionKind::Auto {
+        if args.upstream_version_kind != VersionKind::Auto {
             return Err("Cannot specify --release and --upstream-version-kind".into());
         }
-        args.upstream_version_kind = UpstreamVersionKind::Release;
+        args.upstream_version_kind = VersionKind::Release;
     }
 
     env_logger::builder()

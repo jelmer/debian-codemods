@@ -4,9 +4,11 @@ use breezyshim::error::Error as BrzError;
 use breezyshim::workingtree::WorkingTree;
 use buildlog_consultant::Problem;
 use ognibuild::buildlog::problem_to_dependency;
+use ognibuild::debian::context::{Error, Phase};
+use ognibuild::debian::fix_build::DebianBuildFixer;
 use ognibuild::dependencies::debian::DebianDependency;
 use ognibuild::dependency::Dependency;
-use ognibuild::fix_build::{BuildFixer, Error as BuildError};
+use ognibuild::fix_build::InterimError;
 use ognibuild::upstream::find_upstream;
 use std::path::Path;
 
@@ -30,7 +32,13 @@ impl std::fmt::Debug for DebianizeFixer {
     }
 }
 
-impl BuildFixer<crate::Error> for DebianizeFixer {
+impl std::fmt::Display for DebianizeFixer {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "DebianizeFixer")
+    }
+}
+
+impl DebianBuildFixer for DebianizeFixer {
     fn can_fix(&self, problem: &dyn Problem) -> bool {
         let dep = if let Some(dep) = problem_to_dependency(problem) {
             dep
@@ -41,7 +49,7 @@ impl BuildFixer<crate::Error> for DebianizeFixer {
         find_upstream(dep.as_ref()).is_some()
     }
 
-    fn fix(&self, problem: &dyn Problem, phase: &[&str]) -> Result<bool, crate::Error> {
+    fn fix(&self, problem: &dyn Problem, phase: &Phase) -> Result<bool, InterimError<Error>> {
         let dep = match problem_to_dependency(problem) {
             Some(dep) => dep,
             None => {
@@ -83,9 +91,9 @@ impl BuildFixer<crate::Error> for DebianizeFixer {
             panic!("no upstream name provided");
         };
         if vcs_path.exists() {
-            std::fs::remove_dir_all(&vcs_path)?;
+            std::fs::remove_dir_all(&vcs_path).map_err(|e| InterimError::Other(e.into()))?;
         }
-        let format = if let Some(upstream_branch) = upstream_branch {
+        let format = if let Some(upstream_branch) = upstream_branch.as_ref() {
             Some(upstream_branch.controldir().cloning_metadir())
         } else {
             // TODO(jelmer): default to git?
@@ -114,7 +122,7 @@ impl BuildFixer<crate::Error> for DebianizeFixer {
             self.apt_repo.directory(),
             self.apt_repo.sources_lines(),
         );
-        self.apt_repo.refresh();
+        self.apt_repo.refresh().map_err(|e| InterimError::Other(e.into()))?;
         Ok(true)
     }
 }

@@ -6,12 +6,14 @@ use breezyshim::debian::merge_upstream::{
 use breezyshim::debian::upstream::{
     upstream_version_add_revision, PristineTarSource, UpstreamBranchSource, UpstreamSource,
 };
-use breezyshim::debian::{TarballKind, DEFAULT_ORIG_DIR};
+use breezyshim::debian::{TarballKind, VersionKind, DEFAULT_ORIG_DIR};
 use breezyshim::error::Error as BrzError;
 use breezyshim::workingtree::WorkingTree;
 use breezyshim::RevisionId;
 use debian_analyzer::versions::debianize_upstream_version;
+use debian_analyzer::Certainty;
 use debversion::Version;
+use ognibuild::dependencies::debian::DebianDependency;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use upstream_ontologist::UpstreamMetadata;
@@ -140,7 +142,7 @@ pub fn import_upstream_version_from_dist(
     let mut tag_names = HashMap::new();
     let td = tempfile::tempdir().unwrap();
     let locations = upstream_source.fetch_tarballs(
-        source_name,
+        Some(source_name),
         upstream_version,
         td.path(),
         Some(&[TarballKind::Orig]),
@@ -148,7 +150,7 @@ pub fn import_upstream_version_from_dist(
     let tarball_filenames = match get_tarballs(
         &orig_dir,
         wt,
-        &source_name,
+        source_name,
         upstream_version,
         locations
             .iter()
@@ -164,7 +166,7 @@ pub fn import_upstream_version_from_dist(
         Err(e) => return Err(e),
     };
     let upstream_revisions =
-        upstream_source.version_as_revisions(&source_name, upstream_version, None)?;
+        upstream_source.version_as_revisions(Some(source_name), upstream_version, None)?;
     let files_excluded = None;
     let imported_revids = match do_import(
         wt,
@@ -225,7 +227,7 @@ pub fn import_upstream_dist(
     upstream_version: &str,
 ) -> Result<(RevisionId, Option<String>, HashMap<TarballKind, String>), BrzDebianError> {
     let (mut pristine_revids, tag_names, upstream_branch_name) = if pristine_tar_source
-        .has_version(source_name, upstream_version, None, false)?
+        .has_version(Some(source_name), upstream_version, None, false)?
     {
         log::warn!(
             "Upstream version {}/{} already imported.",
@@ -233,7 +235,7 @@ pub fn import_upstream_dist(
             upstream_version,
         );
         let pristine_revids =
-            pristine_tar_source.version_as_revisions(source_name, upstream_version, None)?;
+            pristine_tar_source.version_as_revisions(Some(source_name), upstream_version, None)?;
         let upstream_branch_name = None;
         let tag_names = HashMap::new();
         (pristine_revids, tag_names, upstream_branch_name)
@@ -269,6 +271,145 @@ pub fn last_resort_upstream_version(
     );
     Ok(upstream_version)
 }
+
+#[derive(Debug, Clone)]
+pub enum SessionPreferences {
+    Plain,
+    Schroot(String),
+    Unshare(String),
+}
+
+#[derive(Debug, Clone)]
+struct DebianizePreferences {
+    use_inotify: Option<bool>,
+    diligence: u8,
+    trust: bool,
+    check: bool,
+    net_access: bool,
+    force_subprocess: bool,
+    force_new_directory: bool,
+    compat_release: Option<String>,
+    minimum_certainty: Certainty,
+    consult_external_directory: bool,
+    verbose: bool,
+    session: SessionPreferences,
+    create_dist: Option<bool>,
+    committer: Option<String>,
+    upstream_version_kind: VersionKind,
+    debian_revision: String,
+    team: Option<String>,
+    author: Option<String>,
+}
+
+impl Default for DebianizePreferences {
+    fn default() -> Self {
+        let author = debian_changelog::get_maintainer();
+        Self {
+            use_inotify: None,
+            diligence: 0,
+            trust: false,
+            check: false,
+            net_access: true,
+            force_subprocess: false,
+            force_new_directory: false,
+            compat_release: None,
+            minimum_certainty: Certainty::Confident,
+            consult_external_directory: true,
+            verbose: false,
+            session: SessionPreferences::Plain,
+            create_dist: None,
+            committer: None,
+            upstream_version_kind: VersionKind::Auto,
+            debian_revision: "1".to_string(),
+            team: None,
+            author: author.map(|(name, email)| format!("{} <{}>", name, email)),
+        }
+    }
+}
+
+impl From<DebianizePreferences> for lintian_brush::FixerPreferences {
+    fn from(p: DebianizePreferences) -> Self {
+        Self {
+            diligence: Some(p.diligence.into()),
+            net_access: Some(p.net_access),
+            compat_release: p.compat_release,
+            minimum_certainty: Some(p.minimum_certainty),
+            trust_package: Some(p.trust),
+            opinionated: Some(true),
+            allow_reformatting: Some(true),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum Error {
+    DebianDirectoryExists(PathBuf),
+    DebianizedPackageRequirementMismatch {
+        dep: DebianDependency,
+        binary_names: Vec<String>,
+        version: Version,
+        branch: Option<url::Url>,
+    },
+    NoVcsLocation,
+    NoUpstreamReleases(Option<String>),
+    PointlessCommit,
+    SourcePackageNameInvalid(String),
+    SubdirectoryNotFound {
+        subpath: PathBuf,
+        version: Option<String>,
+    },
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use Error::*;
+        match self {
+            DebianDirectoryExists(path) => {
+                write!(f, "Debian directory already exists at {}.", path.display())
+            }
+            DebianizedPackageRequirementMismatch {
+                dep,
+                binary_names,
+                version,
+                branch,
+            } => {
+                write!(
+                f,
+                "Debianized package {} (version: {}) from {} does not match requirements for {}.",
+                binary_names.join(", "),
+                version,
+                branch.as_ref().map_or_else(|| "unknown branch".to_string(), |b| b.to_string()),
+                dep.relation_string(),
+            )
+            }
+            NoVcsLocation => {
+                write!(f, "No VCS location found.")
+            }
+            NoUpstreamReleases(source_name) => {
+                write!(
+                    f,
+                    "No upstream releases found for {}.",
+                    source_name.as_deref().unwrap_or("unknown")
+                )
+            }
+            PointlessCommit => write!(f, "Pointless commit."),
+            SourcePackageNameInvalid(name) => write!(f, "Invalid source package name: {}.", name),
+            SubdirectoryNotFound { subpath, version } => {
+                write!(
+                    f,
+                    "Subdirectory {} not found in upstream source{}.",
+                    subpath.display(),
+                    version
+                        .as_ref()
+                        .map(|v| format!(" for version {}", v))
+                        .unwrap_or_default()
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 pub fn debianize(
     wt: &WorkingTree,
