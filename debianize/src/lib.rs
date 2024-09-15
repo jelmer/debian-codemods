@@ -18,7 +18,9 @@ use ognibuild::dependencies::debian::valid_debian_package_name;
 use ognibuild::dependencies::debian::DebianDependency;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use upstream_ontologist::UpstreamMetadata;
+use upstream_ontologist::{
+    guess_upstream_info, summarize_upstream_metadata, ProviderError, UpstreamMetadata,
+};
 
 pub mod fixer;
 pub mod names;
@@ -426,11 +428,33 @@ fn generic_get_source_name(
 
     if source_name.is_none() {
         source_name = Some(names::upstream_name_to_debian_source_name(
-            wt.abspath(&subpath).unwrap().to_str().unwrap(),
+            wt.abspath(subpath).unwrap().to_str().unwrap(),
         ));
         if !valid_debian_package_name(source_name.as_ref().unwrap()) {
             source_name = None;
         }
     }
-    return source_name;
+    source_name
+}
+
+fn import_metadata_from_path(
+    tree: &WorkingTree,
+    subpath: &Path,
+    metadata: &mut UpstreamMetadata,
+    preferences: &DebianizePreferences,
+) -> Result<(), ProviderError> {
+    let p = tree.abspath(subpath).unwrap();
+    let metadata_items =
+        guess_upstream_info(&p, Some(preferences.trust)).collect::<Result<Vec<_>, _>>()?;
+    metadata.update(
+        summarize_upstream_metadata(
+            metadata_items.into_iter(),
+            &p,
+            Some(preferences.net_access),
+            Some(preferences.consult_external_directory),
+            Some(preferences.check),
+        )?
+        .into_iter(),
+    );
+    Ok(())
 }
