@@ -11,9 +11,6 @@ check:: testsuite tag-status ruff
 
 FIXERS = $(patsubst fixers/%.sh,%,$(wildcard fixers/*.sh)) $(patsubst fixers/%.py,%,$(wildcard fixers/*.py))
 
-$(patsubst %,check-fixer-%,$(FIXERS)): check-fixer-%:
-	PYTHONPATH=$(PWD):$(PYTHONPATH) python3 -m lintian_brush.tests.fixers --fixer=$*
-
 .PHONY: ruff testsuite unsupported
 
 ruff::
@@ -33,15 +30,12 @@ testsuite:: build
 	cargo test -p multiarch-hints
 
 README.md::
-	PYTHONPATH=$(PWD):$(PYTHONPATH) ./buildtools/update-readme.py
+	PYTHONPATH=$(PWD)/py:$(PYTHONPATH) ./buildtools/update-readme.py
 
 lintian-tags:
 	lintian-explain-tags --list-tags > lintian-tags
 
 .PHONY: lintian-tags lintian-brush-tags
-
-lintian-brush-tags:
-	PYTHONPATH=$(PWD):$(PYTHONPATH) python3 -m lintian_brush --list-tags 2> lintian-brush-tags
 
 unsupported: lintian-tags lintian-brush-tags
 	awk 'NR==FNR{a[$$0]=1;next}!a[$$0]' lintian-brush-tags lintian-tags
