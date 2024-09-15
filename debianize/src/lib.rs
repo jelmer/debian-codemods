@@ -14,6 +14,7 @@ use debian_analyzer::versions::debianize_upstream_version;
 use debian_analyzer::wnpp::{find_wnpp_bugs_harder, BugKind};
 use debian_analyzer::Certainty;
 use debversion::Version;
+use ognibuild::dependencies::debian::valid_debian_package_name;
 use ognibuild::dependencies::debian::DebianDependency;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -406,4 +407,30 @@ impl<'a> Drop for ResetOnFailure<'a> {
             }
         }
     }
+}
+
+fn generic_get_source_name(
+    wt: &WorkingTree,
+    subpath: &Path,
+    metadata: &UpstreamMetadata,
+) -> Option<String> {
+    let mut source_name = if let Some(name) = metadata.name() {
+        let mut source_name = Some(names::upstream_name_to_debian_source_name(name));
+        if !valid_debian_package_name(source_name.as_ref().unwrap()) {
+            source_name = None;
+        }
+        source_name
+    } else {
+        None
+    };
+
+    if source_name.is_none() {
+        source_name = Some(names::upstream_name_to_debian_source_name(
+            wt.abspath(&subpath).unwrap().to_str().unwrap(),
+        ));
+        if !valid_debian_package_name(source_name.as_ref().unwrap()) {
+            source_name = None;
+        }
+    }
+    return source_name;
 }
