@@ -695,6 +695,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
 
 [[package]]
+name = "deb-transition-apply"
+version = "0.158.14"
+dependencies = [
+ "deb822-lossless",
+ "debian-analyzer 0.158.14",
+ "debian-control",
+ "lazy-regex",
+ "regex",
+]
+
+[[package]]
 name = "deb822-derive"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

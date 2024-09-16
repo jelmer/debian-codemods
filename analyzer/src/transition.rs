@@ -2,12 +2,12 @@ use crate::benfile::{Assignment,Expr,read_benfile};
 
 #[derive(Debug, Default)]
 pub struct Transition {
-    title: Option<String>,
-    is_good: Option<Expr>,
-    is_bad: Option<Expr>,
-    is_affected: Option<Expr>,
-    notes: Option<String>,
-    export: Option<bool>
+    pub title: Option<String>,
+    pub is_good: Option<Expr>,
+    pub is_bad: Option<Expr>,
+    pub is_affected: Option<Expr>,
+    pub notes: Option<String>,
+    pub export: Option<bool>
 }
 
 impl std::convert::TryFrom<Vec<Assignment>> for Transition {
@@ -74,16 +74,11 @@ export = false;
 "###;
         let transition = read_transition(&mut input.as_bytes()).unwrap();
         assert_eq!(transition.title, Some("libsoup2.4 -> libsoup3".to_string()));
-        assert_eq!(transition.is_affected, Some(Expr::Or(
-                    Box::new(Expr::FieldRegex("build-depends".to_string(), "libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev".to_string())),
-                        Box::new(Expr::Or(
-                            Box::new(Expr::FieldRegex("build-depends-arch".to_string(), "libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev".to_string())),
-                            Box::new(Expr::Or(
-                                Box::new(Expr::FieldRegex("build-depends".to_string(), "gir1.2-soup-2.4|gir1.2-soup-3.0".to_string())),
-                                Box::new(Expr::FieldRegex("depends".to_string(), "gir1.2-soup-2.4".to_string()))
-                            ))
-                        ))
-                    )));
+        assert_eq!(transition.is_affected, Some(Expr::Or(vec![
+            Box::new(Expr::FieldRegex("build-depends-arch".to_string(), "libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev".to_string())),
+            Box::new(Expr::FieldRegex("build-depends".to_string(), "gir1.2-soup-2.4|gir1.2-soup-3.0".to_string())),
+            Box::new(Expr::FieldRegex("depends".to_string(), "gir1.2-soup-2.4".to_string()))
+        ])));
         assert_eq!(transition.is_good, Some(Expr::FieldRegex("depends".to_string(), "libsoup-3.0-0|gir1.2-soup-3.0".to_string())));
         assert_eq!(transition.is_bad, Some(Expr::FieldRegex("depends".to_string(), "libsoup-2.4-1|libsoup-gnome-2.4-1|gir1.2-soup-2.4".to_string())));
         assert_eq!(transition.notes, Some("https://bugs.debian.org/cgi-bin/pkgreport.cgi?users=pkg-gnome-maintainers@lists.alioth.debian.org&tag=libsoup2".to_string()));

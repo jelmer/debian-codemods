@@ -248,9 +248,9 @@ pub enum Expr {
     /// !<query>
     Not(Box<Expr>),
     /// <query> | <query>
-    Or(Box<Expr>, Box<Expr>),
+    Or(Vec<Box<Expr>>),
     /// <query> & <query>
-    And(Box<Expr>, Box<Expr>),
+    And(Vec<Box<Expr>>),
     /// Field ~ /regex/
     FieldRegex(String, String),
     /// Field ~ "string"
@@ -310,8 +310,8 @@ impl std::fmt::Debug for Expr {
         match self {
             Expr::Bool(b) => write!(f, "Bool({})", b),
             Expr::Not(expr) => write!(f, "Not({:?})", expr),
-            Expr::Or(left, right) => write!(f, "Or({:?}, {:?})", left, right),
-            Expr::And(left, right) => write!(f, "And({:?}, {:?})", left, right),
+            Expr::Or(exprs) => write!(f, "Or({:?})", exprs),
+            Expr::And(exprs) => write!(f, "And({:?})", exprs),
             Expr::FieldRegex(field, regex) => write!(f, "FieldRegex({}, {})", field, regex),
             Expr::FieldString(field, string) => write!(f, "FieldString({}, {})", field, string),
             Expr::Source => write!(f, "Source"),
@@ -422,12 +422,30 @@ impl Parser {
 
         match self.tokens.peek() {
             Some(&Token::And) => {
-                self.tokens.next();
-                Ok(Expr::And(Box::new(expr), Box::new(self.parse()?)))
+                let mut ands = vec![Box::new(expr)];
+                while self.tokens.peek() == Some(&Token::And) {
+                    self.tokens.next().unwrap();
+                    match self.parse()? {
+                        Expr::And(new_ands) => {
+                            ands.extend(new_ands);
+                        }
+                        next_expr => { ands.push(Box::new(next_expr)); }
+                    }
+                }
+                Ok(Expr::And(ands))
             }
             Some(&Token::Or) => {
-                self.tokens.next();
-                Ok(Expr::Or(Box::new(expr), Box::new(self.parse()?)))
+                let mut ors = vec![Box::new(expr)];
+                while self.tokens.peek() == Some(&Token::Or) {
+                    self.tokens.next().unwrap();
+                    match self.parse()? {
+                        Expr::Or(new_ors) => {
+                            ors.extend(new_ors);
+                        }
+                        next_expr => { ors.push(Box::new(next_expr)); }
+                    }
+                }
+                Ok(Expr::Or(ors))
             }
             _ => Ok(expr),
         }
@@ -489,12 +507,13 @@ mod tests {
         }
         let mut parser = Parser::new(tokens);
 
-        assert_eq!(Ok(Expr::And(
+        assert_eq!(Ok(Expr::And(vec![
             Box::new(Expr::Bool(true)),
-            Box::new(Expr::Or(
+            Box::new(Expr::Or(vec![
                 Box::new(Expr::FieldRegex("field".to_string(), "regex".to_string())),
                 Box::new(Expr::FieldComparison("field".to_string(), Comparison::MuchLessThan, "comparison".to_string()))
-            )))), parser.parse());
+            ]
+            ))])), parser.parse());
     }
 
     #[test]
@@ -518,17 +537,12 @@ export = false;
         assert_eq!(assignments[1],
             Assignment {
                 field: "is_affected".to_string(),
-                expr: Expr::Or(
+                expr: Expr::Or(vec![
                     Box::new(Expr::FieldRegex("build-depends".to_string(), "libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev".to_string())),
-                        Box::new(Expr::Or(
-                            Box::new(Expr::FieldRegex("build-depends-arch".to_string(), "libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev".to_string())),
-                            Box::new(Expr::Or(
-                                Box::new(Expr::FieldRegex("build-depends".to_string(), "gir1.2-soup-2.4|gir1.2-soup-3.0".to_string())),
-                                Box::new(Expr::FieldRegex("depends".to_string(), "gir1.2-soup-2.4".to_string()))
-                            ))
-                        ))
-                    )
-            }
+                    Box::new(Expr::FieldRegex("build-depends-arch".to_string(), "libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev".to_string())),
+                    Box::new(Expr::FieldRegex("build-depends".to_string(), "gir1.2-soup-2.4|gir1.2-soup-3.0".to_string())),
+                    Box::new(Expr::FieldRegex("depends".to_string(), "gir1.2-soup-2.4".to_string()))
+            ]) }
         );
         assert_eq!(assignments[4],
             Assignment {
