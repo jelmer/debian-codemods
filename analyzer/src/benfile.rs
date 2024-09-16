@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum Token {
     True,
     False,
@@ -11,10 +11,13 @@ enum Token {
     LParen,
     RParen,
     Field(String),
+    Identifier(String),
     Regex(String),
     Source,
     Comparison(Comparison),
     String(String),
+    Semicolon,
+    Tilde,
 }
 
 struct Lexer<'a> {
@@ -66,45 +69,63 @@ impl<'a> Lexer<'a> {
             }
             Some('.') => {
                 self.input = &self.input[1..];
-                let field = self.consume_while(|c| c.is_alphanumeric());
+                let field = self.consume_while(|c| Self::is_valid_field_char(c));
                 Ok(Some(Token::Field(field.to_string())))
+            }
+            Some('/') => {
+                self.input = &self.input[1..];
+                let regex = self.consume_until('/');
+                self.input = &self.input[1..];
+                Ok(Some(Token::Regex(regex.to_string())))
+            }
+            Some('"') => {
+                self.input = &self.input[1..];
+                // consume until next ", but allow escaping with \
+                let in_escape = std::sync::atomic::AtomicBool::new(false);
+                let string = self.consume_while(move |c| {
+                    if in_escape.swap(false, std::sync::atomic::Ordering::SeqCst) {
+                        true
+                    } else if c == '\\' {
+                        in_escape.store(true, std::sync::atomic::Ordering::SeqCst);
+                        true
+                    } else {
+                        c != '"'
+                    }
+                });
+                self.input = &self.input[1..];
+                Ok(Some(Token::String(string.to_string())))
             }
             Some('~') => {
                 self.input = &self.input[1..];
-                match self.current_char() {
-                    Some('/') => {
-                    self.input = &self.input[1..];
-                    let regex = self.consume_until('/');
-                    self.input = &self.input[1..];
-                    Ok(Some(Token::Regex(regex.to_string())))
-                    }
-                    Some('"') => {
-                        self.input = &self.input[1..];
-                        let string = self.consume_until('"');
-                        self.input = &self.input[1..];
-                        Ok(Some(Token::String(string.to_string())))
-                    }
-                    Some(c) => Err(format!("Expected / or \" after ~, not {}", c)),
-                    None => Err("Unexpected end of input".to_string()),
-                }
+                Ok(Some(Token::Tilde))
             }
             Some('<' | '>' | '=') if self.is_comparison() => {
                 let comparison = self.consume_comparison()?;
                 Ok(Some(Token::Comparison(comparison)))
             }
-            Some('"') => {
-                self.input = &self.input[1..];
-                let string = self.consume_until('"');
-                self.input = &self.input[1..];
-                Ok(Some(Token::String(string.to_string())))
-            }
             Some('s') if self.input.starts_with("source") => {
                 self.input = &self.input[6..];
                 Ok(Some(Token::Source))
             }
+            Some(';') => {
+                self.input = &self.input[1..];
+                Ok(Some(Token::Semicolon))
+            }
+            Some(c) if Self::is_valid_identifier_char(c) => {
+                let identifier = self.consume_while(|c| Self::is_valid_identifier_char(c));
+                Ok(Some(Token::Identifier(identifier.to_string())))
+            }
             None => Ok(None),
             Some(c) => Err(format!("Unexpected character: {}", c)),
         }
+    }
+
+    fn is_valid_identifier_char(c: char) -> bool {
+        c.is_alphanumeric() || c == '_'
+    }
+
+    fn is_valid_field_char(c: char) -> bool {
+        c.is_alphanumeric() || c == '-'
     }
 
     fn current_char(&mut self) -> Option<char> {
@@ -242,6 +263,49 @@ enum Expr {
     /// <comparison> "<string>"
     Comparison(Comparison, String),
     FieldComparison(String, Comparison, String),
+    String(String),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Assignment {
+    field: String,
+    expr: Expr,
+}
+
+impl std::str::FromStr for Assignment {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut lexer = Lexer::new(s);
+        let mut tokens = vec![];
+
+        while let Some(token) = lexer.next_token()? {
+            tokens.push(token);
+        }
+
+        let mut parser = Parser::new(tokens);
+        let assignment = parser.parse_assignment()?;
+        match assignment {
+            Some(assignment) => Ok(assignment),
+            None => Err("Expected assignment".to_string()),
+        }
+    }
+}
+
+impl std::str::FromStr for Expr {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut lexer = Lexer::new(s);
+        let mut tokens = vec![];
+
+        while let Some(token) = lexer.next_token()? {
+            tokens.push(token);
+        }
+
+        let mut parser = Parser::new(tokens);
+        parser.parse()
+    }
 }
 
 impl std::fmt::Debug for Expr {
@@ -259,6 +323,7 @@ impl std::fmt::Debug for Expr {
             Expr::FieldComparison(field, comp, string) => {
                 write!(f, "FieldComparison({}, {}, {})", field, comp, string)
             }
+            Expr::String(string) => write!(f, "String({})", string),
         }
     }
 }
@@ -274,62 +339,116 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Option<Expr> {
-        let expr = match self.tokens.next()? {
+    pub fn parse_multiple(&mut self) -> Result<Vec<Assignment>, String> {
+        let mut assignments = vec![];
+        while let Some(assignment) = self.parse_assignment()? {
+            assignments.push(assignment);
+        }
+        Ok(assignments)
+    }
+
+    pub fn parse_assignment(&mut self) -> Result<Option<Assignment>, String> {
+        let field = match  self.tokens.next() {
+            Some(Token::Identifier(field)) => field,
+            None => return Ok(None),
+            n => {
+                return Err(format!("Expected identifier, got {:?}", n));
+            }
+        };
+        if self.tokens.next() != Some(Token::Comparison(Comparison::Equal)) {
+            return Err("Expected =".to_string());
+        }
+        let expr = self.parse()?;
+        if self.tokens.next() == Some(Token::Semicolon) {
+            Ok(Some(Assignment { field, expr }))
+        } else {
+            Err(format!("Expected ;, got {:?}", self.tokens.peek()))
+        }
+    }
+
+    pub fn parse(&mut self) -> Result<Expr, String> {
+        let expr: Expr = match self.tokens.next(){
             // true
-            Token::True => Some(Expr::True),
+            Some(Token::True) => Ok(Expr::True),
             // false
-            Token::False => Some(Expr::False),
+            Some(Token::False) => Ok(Expr::False),
+            // "string"
+            Some(Token::String(string)) => Ok(Expr::String(string)),
             // ( <query> )
-            Token::LParen => {
-                let expr = self.parse();
-                if self.tokens.next()? == Token::RParen {
-                    expr
-                } else {
-                    None
+            Some(Token::LParen) => {
+                let expr = self.parse()?;
+                match self.tokens.next() {
+                    Some(Token::RParen) => Ok(expr),
+                    Some(n) => Err(format!("Expected ), got {:?}", n)),
+                    None => Err("Expected ), got end of file".to_string()),
                 }
             }
             //  ! <query>
-            Token::Not => Some(Expr::Not(Box::new(self.parse()?))),
-            Token::Field(field) => match self.tokens.next()? {
-                // <query> ~ /regex/
-                Token::Regex(regex) => Some(Expr::FieldRegex(field, regex)),
-                // <query> ~ "string"
-                Token::String(string) => Some(Expr::FieldString(field, string)),
-                // <query> ~ "<string>" <comparison> "<string>"
-                Token::Comparison(comp) => {
-                    if let Token::String(comp_str) = self.tokens.next()? {
-                        Some(Expr::FieldComparison(field, comp, comp_str))
-                    } else {
-                        None
+            Some(Token::Not) => Ok(Expr::Not(Box::new(self.parse()?))),
+            Some(Token::Field(field)) => {
+                if self.tokens.next() != Some(Token::Tilde) {
+                    return Err(format!("Expected ~, got {:?}", self.tokens.peek()));
+                }
+
+                match self.tokens.next() {
+                    // <query> ~ /regex/
+                    Some(Token::Regex(regex)) => Ok(Expr::FieldRegex(field, regex)),
+                    // <query> ~ "<string>" <comparison> "<string>"
+                    Some(Token::String(comp_str)) => {
+                        let n = self.tokens.peek().cloned();
+                        match n {
+                            Some(Token::Comparison(comp)) => {
+                                self.tokens.next();
+                                if let Some(Token::String(comp_str2)) = self.tokens.next() {
+                                    Ok(Expr::FieldComparison(field, comp.clone(), comp_str2))
+                                } else {
+                                    Err("Expected string".to_string())
+                                }
+                            }
+                            // <query> ~ "string"
+                            _ => Ok(Expr::FieldString(field, comp_str)),
+                        }
                     }
+                    _ => Err(format!("Expected regex or string, got {:?}", self.tokens.peek())),
                 }
-                _ => None,
             },
-            Token::Source => Some(Expr::Source),
+            Some(Token::Source) => Ok(Expr::Source),
             // <query> "<string>"
-            Token::Comparison(comp) => {
-                if let Token::String(comp_str) = self.tokens.next()? {
-                    Some(Expr::Comparison(comp, comp_str))
+            Some(Token::Comparison(comp)) => {
+                if let Some(Token::String(comp_str)) = self.tokens.next() {
+                    Ok(Expr::Comparison(comp, comp_str))
                 } else {
-                    None
+                    Err("Expected string".to_string())
                 }
-            }
-            _ => None,
+            },
+            n => Err(format!("Unexpected token: {:?}", n)),
         }?;
 
         match self.tokens.peek() {
             Some(&Token::And) => {
                 self.tokens.next();
-                Some(Expr::And(Box::new(expr), Box::new(self.parse()?)))
+                Ok(Expr::And(Box::new(expr), Box::new(self.parse()?)))
             }
             Some(&Token::Or) => {
                 self.tokens.next();
-                Some(Expr::Or(Box::new(expr), Box::new(self.parse()?)))
+                Ok(Expr::Or(Box::new(expr), Box::new(self.parse()?)))
             }
-            _ => Some(expr),
+            _ => Ok(expr),
         }
     }
+}
+
+pub fn read_benfile<R: std::io::Read>(mut reader: R) -> Result<Vec<Assignment>, String> {
+    let mut text = String::new();
+    reader.read_to_string(&mut text).map_err(|e| e.to_string())?;
+    let mut lexer = Lexer::new(&text);
+    let mut tokens = vec![];
+    while let Some(token) = lexer.next_token()? {
+        tokens.push(token);
+    }
+    let mut parser = Parser::new(tokens);
+    let assignments = parser.parse_multiple()?;
+    Ok(assignments)
 }
 
 #[cfg(test)]
@@ -352,9 +471,11 @@ mod tests {
                 Token::True,
                 Token::And,
                 Token::Field("field".to_string()),
+                Token::Tilde,
                 Token::Regex("regex".to_string()),
                 Token::Or,
                 Token::Field("field".to_string()),
+                Token::Tilde,
                 Token::String("string".to_string()),
                 Token::Comparison(Comparison::MuchLessThan),
                 Token::String("comparison".to_string())
@@ -372,11 +493,59 @@ mod tests {
         }
         let mut parser = Parser::new(tokens);
 
-        assert_eq!(Some(Expr::And(
+        assert_eq!(Ok(Expr::And(
             Box::new(Expr::True),
             Box::new(Expr::Or(
                 Box::new(Expr::FieldRegex("field".to_string(), "regex".to_string())),
-                Box::new(Expr::FieldString("field".to_string(), "string".to_string()))
+                Box::new(Expr::FieldComparison("field".to_string(), Comparison::MuchLessThan, "comparison".to_string()))
             )))), parser.parse());
+    }
+
+    #[test]
+    fn test_parse_benfile() {
+        let input = r###"title = "libsoup2.4 -> libsoup3";
+is_affected = .build-depends ~ /libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev/ | .build-depends-arch ~ /libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev/ | .build-depends ~ /gir1.2-soup-2.4|gir1.2-soup-3.0/ | .depends ~ /gir1.2-soup-2.4/;
+is_good = .depends ~ /libsoup-3.0-0|gir1.2-soup-3.0/;
+is_bad = .depends ~ /libsoup-2.4-1|libsoup-gnome-2.4-1|gir1.2-soup-2.4/;
+notes = "https://bugs.debian.org/cgi-bin/pkgreport.cgi?users=pkg-gnome-maintainers@lists.alioth.debian.org&tag=libsoup2";
+export = false;
+"###;
+        let assignments = read_benfile(input.as_bytes()).unwrap();
+        assert_eq!(assignments.len(), 6);
+        assert_eq!(
+            assignments[0],
+            Assignment {
+                field: "title".to_string(),
+                expr: Expr::String("libsoup2.4 -> libsoup3".to_string())
+            }
+        );
+        assert_eq!(assignments[1],
+            Assignment {
+                field: "is_affected".to_string(),
+                expr: Expr::Or(
+                    Box::new(Expr::FieldRegex("build-depends".to_string(), "libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev".to_string())),
+                        Box::new(Expr::Or(
+                            Box::new(Expr::FieldRegex("build-depends-arch".to_string(), "libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev".to_string())),
+                            Box::new(Expr::Or(
+                                Box::new(Expr::FieldRegex("build-depends".to_string(), "gir1.2-soup-2.4|gir1.2-soup-3.0".to_string())),
+                                Box::new(Expr::FieldRegex("depends".to_string(), "gir1.2-soup-2.4".to_string()))
+                            ))
+                        ))
+                    )
+            }
+        );
+        assert_eq!(assignments[4],
+            Assignment {
+                field: "notes".to_string(),
+                expr: Expr::String("https://bugs.debian.org/cgi-bin/pkgreport.cgi?users=pkg-gnome-maintainers@lists.alioth.debian.org&tag=libsoup2".to_string())
+            }
+        );
+
+        assert_eq!(assignments[5],
+            Assignment {
+                field: "export".to_string(),
+                expr: Expr::False
+            }
+        );
     }
 }
