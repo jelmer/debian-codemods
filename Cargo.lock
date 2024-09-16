@@ -698,10 +698,15 @@ checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
 name = "deb-transition-apply"
 version = "0.158.14"
 dependencies = [
+ "breezyshim",
+ "clap",
  "deb822-lossless",
  "debian-analyzer 0.158.14",
  "debian-control",
+ "env_logger 0.10.2",
  "lazy-regex",
+ "lazy_static",
+ "log",
  "regex",
 ]
 

@@ -58,5 +58,6 @@ setup(
             binding=Binding.PyO3,
         ),
         RustBin("deb-scrub-obsolete", "scrub-obsolete/Cargo.toml", features=["cli"]),
+        RustBin("deb-transition-apply", "transition-apply/Cargo.toml", features=["cli"]),
     ],
 )
