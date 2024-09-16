@@ -9,6 +9,7 @@ use pyo3::prelude::*;
 use std::str::FromStr;
 
 pub mod abstract_control;
+pub mod benfile;
 pub mod changelog;
 pub mod config;
 pub mod control;
