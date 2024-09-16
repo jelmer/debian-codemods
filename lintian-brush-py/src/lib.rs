@@ -1,8 +1,8 @@
 use debian_analyzer::publish::Error as PublishError;
-use pyo3::exceptions::{PyException, PyFileNotFoundError, PyValueError};
+use pyo3::exceptions::{PyException, PyFileNotFoundError};
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyTuple, PyType};
-use pyo3::{create_exception, import_exception};
+use pyo3::types::PyTuple;
+use pyo3::create_exception;
 
 create_exception!(lintian_brush.publish, NoVcsLocation, PyException);
 create_exception!(
@@ -10,62 +10,6 @@ create_exception!(
     ConflictingVcsAlreadySpecified,
     PyException
 );
-
-#[pyfunction]
-fn default_debianize_cache_dir() -> PyResult<std::path::PathBuf> {
-    debianize::default_debianize_cache_dir().map_err(|e| PyValueError::new_err(e.to_string()))
-}
-
-#[pyfunction]
-#[pyo3(signature = (name, date=None))]
-fn resolve_release_codename(name: &str, date: Option<chrono::NaiveDate>) -> Option<String> {
-    debian_analyzer::release_info::resolve_release_codename(name, date)
-}
-
-#[pyclass]
-struct Config(debian_analyzer::config::Config);
-
-#[pymethods]
-impl Config {
-    #[new]
-    fn new(path: std::path::PathBuf) -> PyResult<Self> {
-        Ok(Config(debian_analyzer::config::Config::load_from_path(
-            path.as_path(),
-        )?))
-    }
-
-    #[classmethod]
-    fn from_workingtree(
-        _cls: &Bound<PyType>,
-        py: Python,
-        wt: PyObject,
-        subpath: &str,
-    ) -> PyResult<Self> {
-        let basedir = wt
-            .getattr(py, "basedir")?
-            .extract::<std::path::PathBuf>(py)?;
-        let path = basedir
-            .join(subpath)
-            .join(debian_analyzer::config::PACKAGE_CONFIG_FILENAME);
-        Config::new(path)
-    }
-
-    pub fn compat_release(&self) -> Option<String> {
-        self.0.compat_release()
-    }
-
-    pub fn allow_reformatting(&self) -> Option<bool> {
-        self.0.allow_reformatting()
-    }
-
-    pub fn minimum_certainty(&self) -> Option<String> {
-        self.0.minimum_certainty().map(|c| c.to_string())
-    }
-
-    pub fn update_changelog(&self) -> Option<bool> {
-        self.0.update_changelog()
-    }
-}
 
 #[pyclass]
 struct ChangelogBehaviour {
@@ -174,11 +118,6 @@ fn guess_repository_url(package: &str, maintainer_email: &str) -> Option<String>
 }
 
 #[pyfunction]
-fn find_fixers_dir() -> Option<std::path::PathBuf> {
-    lintian_brush::find_fixers_dir()
-}
-
-#[pyfunction]
 #[pyo3(signature = (vcs_type, vcs_url, net_access=None))]
 fn determine_browser_url(
     vcs_type: &str,
@@ -199,30 +138,6 @@ fn determine_gitlab_browser_url(url: &str) -> String {
 #[pyfunction]
 fn canonicalize_vcs_browser_url(url: &str) -> String {
     debian_analyzer::vcs::canonicalize_vcs_browser_url(url).to_string()
-}
-
-#[pyfunction]
-#[pyo3(signature = (local_tree, basis_tree, subpath, patch_name, description, timestamp=None))]
-pub fn move_upstream_changes_to_patch(
-    local_tree: PyObject,
-    basis_tree: PyObject,
-    subpath: std::path::PathBuf,
-    patch_name: &str,
-    description: &str,
-    timestamp: Option<chrono::NaiveDate>,
-) -> PyResult<(Vec<std::path::PathBuf>, String)> {
-    let local_tree = breezyshim::WorkingTree(local_tree);
-    let basis_tree = breezyshim::RevisionTree(basis_tree);
-    debian_analyzer::patches::move_upstream_changes_to_patch(
-        &local_tree,
-        &basis_tree,
-        subpath.as_path(),
-        patch_name,
-        description,
-        None,
-        timestamp,
-    )
-    .map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
 #[pyfunction]
@@ -260,31 +175,6 @@ fn tree_has_non_patches_changes(
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     pyo3_log::init();
-    m.add_wrapped(wrap_pyfunction!(resolve_release_codename))?;
-    m.add_wrapped(wrap_pyfunction!(find_fixers_dir))?;
-    m.add(
-        "DEFAULT_VALUE_LINTIAN_BRUSH",
-        lintian_brush::DEFAULT_VALUE_LINTIAN_BRUSH,
-    )?;
-    m.add(
-        "DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY",
-        lintian_brush::DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY,
-    )?;
-    m.add(
-        "LINTIAN_BRUSH_TAG_DEFAULT_VALUE",
-        lintian_brush::LINTIAN_BRUSH_TAG_DEFAULT_VALUE,
-    )?;
-    let tag_values = PyDict::new_bound(py);
-    for (k, v) in lintian_brush::LINTIAN_BRUSH_TAG_VALUES.iter() {
-        tag_values.set_item(k, v)?;
-    }
-    m.add("LINTIAN_BRUSH_TAG_VALUES", tag_values)?;
-
-    m.add(
-        "PACKAGE_CONFIG_FILENAME",
-        debian_analyzer::config::PACKAGE_CONFIG_FILENAME,
-    )?;
-    m.add_class::<Config>()?;
     let v = PyTuple::new_bound(
         py,
         env!("CARGO_PKG_VERSION")
@@ -298,7 +188,6 @@ fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(guess_update_changelog))?;
     m.add_wrapped(wrap_pyfunction!(update_official_vcs))?;
     m.add_wrapped(wrap_pyfunction!(guess_repository_url))?;
-    m.add_wrapped(wrap_pyfunction!(default_debianize_cache_dir))?;
     m.add_wrapped(wrap_pyfunction!(determine_browser_url))?;
     m.add_wrapped(wrap_pyfunction!(determine_gitlab_browser_url))?;
     m.add_wrapped(wrap_pyfunction!(canonicalize_vcs_browser_url))?;
@@ -309,6 +198,5 @@ fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
         "ConflictingVcsAlreadySpecified",
         py.get_type_bound::<ConflictingVcsAlreadySpecified>(),
     )?;
-    m.add_wrapped(wrap_pyfunction!(move_upstream_changes_to_patch))?;
     Ok(())
 }
