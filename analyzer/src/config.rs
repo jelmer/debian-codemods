@@ -118,12 +118,13 @@ mod tests {
         std::fs::write(
             td.path().join("debian/lintian-brush.conf"),
             "compat-release = testing\n",
-        ).unwrap();
-        let cfg =  Config::load_from_path(&td.path().join("debian/lintian-brush.conf")).unwrap();
-        use distro_info::DistroInfo;
-        let ddi = distro_info::DebianDistroInfo::new().unwrap();
+        )
+        .unwrap();
+        let cfg = Config::load_from_path(&td.path().join("debian/lintian-brush.conf")).unwrap();
 
-        assert_eq!(cfg.compat_release(), Some(ddi.releases().iter().find(|r| r.codename() == "testing").unwrap().codename().clone()));
+        let testing = crate::release_info::resolve_release_codename("testing", None);
+
+        assert_eq!(cfg.compat_release(), testing);
     }
 
     #[test]
@@ -133,8 +134,9 @@ mod tests {
         std::fs::write(
             td.path().join("debian/lintian-brush.conf"),
             "minimum-certainty = possible\n",
-        ).unwrap();
-        let cfg =  Config::load_from_path(&td.path().join("debian/lintian-brush.conf")).unwrap();
+        )
+        .unwrap();
+        let cfg = Config::load_from_path(&td.path().join("debian/lintian-brush.conf")).unwrap();
 
         assert_eq!(cfg.minimum_certainty(), Some(Certainty::Possible));
     }
@@ -146,8 +148,9 @@ mod tests {
         std::fs::write(
             td.path().join("debian/lintian-brush.conf"),
             "update-changelog = True\n",
-        ).unwrap();
-        let cfg =  Config::load_from_path(&td.path().join("debian/lintian-brush.conf")).unwrap();
+        )
+        .unwrap();
+        let cfg = Config::load_from_path(&td.path().join("debian/lintian-brush.conf")).unwrap();
 
         assert_eq!(cfg.update_changelog(), Some(true));
     }
@@ -159,8 +162,9 @@ mod tests {
         std::fs::write(
             td.path().join("debian/lintian-brush.conf"),
             "unknown = dunno\n",
-        ).unwrap();
-        let cfg =  Config::load_from_path(&td.path().join("debian/lintian-brush.conf")).unwrap();
+        )
+        .unwrap();
+        let cfg = Config::load_from_path(&td.path().join("debian/lintian-brush.conf")).unwrap();
         assert_eq!(cfg.compat_release(), None);
     }
 
@@ -168,7 +172,7 @@ mod tests {
     fn test_missing() {
         let td = tempfile::tempdir().unwrap();
         let path = td.path().join("debian/lintian-brush.conf");
-        let cfg =  Config::load_from_path(&path);
+        let cfg = Config::load_from_path(&path);
         assert!(cfg.is_err());
     }
 }

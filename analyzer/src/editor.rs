@@ -425,6 +425,7 @@ pub fn tree_edit_formatted_file(
     allow_generated: bool,
     allow_reformatting: bool,
 ) -> Result<bool, EditorError> {
+    assert!(path.is_relative());
     if !allow_generated {
         tree_check_generated_file(tree, path)
             .map_err(|e| EditorError::GeneratedFile(path.to_path_buf(), e))?;
@@ -441,7 +442,7 @@ pub fn tree_edit_formatted_file(
         if let Some(updated_contents) = updated_contents {
             tree.put_file_bytes_non_atomic(path, updated_contents.as_ref())?;
             tree.add(&[path])?;
-        } else {
+        } else if tree.has_filename(path) {
             tree.remove(&[path])?;
         }
     }
@@ -560,6 +561,7 @@ impl<'a, P: Marshallable> TreeEditor<'a, P> {
         allow_generated: bool,
         allow_reformatting: bool,
     ) -> Result<Self, EditorError> {
+        assert!(path.is_relative());
         let mut ret = Self {
             tree,
             path: path.to_path_buf(),
@@ -1101,14 +1103,14 @@ mod tests {
             create_standalone_workingtree(tempdir.path(), &ControlDirFormat::default()).unwrap();
 
         let mut editor = tree
-            .edit_file::<TestMarshall>(&tempdir.path().join("a"), false, false)
+            .edit_file::<TestMarshall>(std::path::Path::new("a"), false, false)
             .unwrap();
 
         assert!(!editor.has_changed());
         editor.inc_data();
         assert_eq!(editor.get_data(), Some(1));
         assert!(editor.has_changed());
-        assert_eq!(editor.commit().unwrap(), vec![tempdir.path().join("a")]);
+        assert_eq!(editor.commit().unwrap(), vec![std::path::Path::new("a")]);
 
         assert_eq!(
             "1",
@@ -1128,7 +1130,7 @@ mod tests {
 
         let mut editor = tree
             .edit_file::<debian_control::Control>(
-                &tempdir.path().join("debian/control"),
+                std::path::Path::new("debian/control"),
                 false,
                 false,
             )
@@ -1140,7 +1142,7 @@ mod tests {
         assert!(editor.has_changed());
         assert_eq!(
             editor.commit().unwrap(),
-            vec![tempdir.path().join("debian/control")]
+            vec![std::path::Path::new("debian/control")]
         );
 
         assert_eq!(

@@ -11,8 +11,8 @@ pub const DEFAULT_PRIORITY: debian_control::Priority = debian_control::Priority:
 
 pub struct DebcargoEditor {
     debcargo_toml_path: Option<PathBuf>,
-    debcargo: DocumentMut,
-    cargo: Option<DocumentMut>,
+    pub debcargo: DocumentMut,
+    pub cargo: Option<DocumentMut>,
 }
 
 impl From<DocumentMut> for DebcargoEditor {
