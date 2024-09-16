@@ -243,11 +243,8 @@ impl std::str::FromStr for Comparison {
 }
 
 #[derive(PartialEq, Eq, Clone)]
-enum Expr {
-    /// true
-    True,
-    /// false
-    False,
+pub enum Expr {
+    Bool(bool),
     /// !<query>
     Not(Box<Expr>),
     /// <query> | <query>
@@ -268,8 +265,8 @@ enum Expr {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Assignment {
-    field: String,
-    expr: Expr,
+    pub field: String,
+    pub expr: Expr,
 }
 
 impl std::str::FromStr for Assignment {
@@ -311,8 +308,7 @@ impl std::str::FromStr for Expr {
 impl std::fmt::Debug for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Expr::True => write!(f, "True"),
-            Expr::False => write!(f, "False"),
+            Expr::Bool(b) => write!(f, "Bool({})", b),
             Expr::Not(expr) => write!(f, "Not({:?})", expr),
             Expr::Or(left, right) => write!(f, "Or({:?}, {:?})", left, right),
             Expr::And(left, right) => write!(f, "And({:?}, {:?})", left, right),
@@ -369,9 +365,9 @@ impl Parser {
     pub fn parse(&mut self) -> Result<Expr, String> {
         let expr: Expr = match self.tokens.next(){
             // true
-            Some(Token::True) => Ok(Expr::True),
+            Some(Token::True) => Ok(Expr::Bool(true)),
             // false
-            Some(Token::False) => Ok(Expr::False),
+            Some(Token::False) => Ok(Expr::Bool(false)),
             // "string"
             Some(Token::String(string)) => Ok(Expr::String(string)),
             // ( <query> )
@@ -494,7 +490,7 @@ mod tests {
         let mut parser = Parser::new(tokens);
 
         assert_eq!(Ok(Expr::And(
-            Box::new(Expr::True),
+            Box::new(Expr::Bool(true)),
             Box::new(Expr::Or(
                 Box::new(Expr::FieldRegex("field".to_string(), "regex".to_string())),
                 Box::new(Expr::FieldComparison("field".to_string(), Comparison::MuchLessThan, "comparison".to_string()))
@@ -544,7 +540,7 @@ export = false;
         assert_eq!(assignments[5],
             Assignment {
                 field: "export".to_string(),
-                expr: Expr::False
+                expr: Expr::Bool(false)
             }
         );
     }
