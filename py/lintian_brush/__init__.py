@@ -89,65 +89,6 @@ class NoChanges(Exception):
         self.overridden_lintian_issues = overridden_lintian_issues or []
 
 
-class NotCertainEnough(NoChanges):
-    """Script made changes but with too low certainty."""
-
-    def __init__(
-        self,
-        fixer,
-        certainty,
-        minimum_certainty,
-        overridden_lintian_issues=None,
-    ):
-        super().__init__(
-            fixer, overridden_lintian_issues=overridden_lintian_issues
-        )
-        self.certainty = certainty
-        self.minimum_certainty = minimum_certainty
-
-
-class FixerFailed(Exception):
-    """Base class for fixer script failures."""
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return self.args == other.args
-
-
-class FixerScriptFailed(FixerFailed):
-    """Script failed to run."""
-
-    def __init__(self, path, returncode, errors):
-        self.path = path
-        self.returncode = returncode
-        self.errors = errors
-
-    def __str__(self):
-        return "Script %s failed with exit code: %d\n%s\n" % (
-            self.path,
-            self.returncode,
-            self.errors,
-        )
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return (
-            self.path == other.path
-            and self.returncode == other.returncode
-            and self.errors == other.errors
-        )
-
-
-class DescriptionMissing(Exception):
-    """The fixer script did not provide a description on stdout."""
-
-    def __init__(self, fixer):
-        super().__init__(fixer)
-        self.fixer = fixer
-
-
 class NotDebianPackage(Exception):
     """The specified directory does not contain a Debian package."""
 
@@ -255,32 +196,6 @@ class ManyResult:
                 if r.certainty is not None
             ]
         )
-
-
-def determine_update_changelog(local_tree, debian_path):
-    from .detect_gbp_dch import (
-        ChangelogBehaviour,
-        guess_update_changelog,
-    )
-
-    changelog_path = os.path.join(debian_path, "changelog")
-
-    if not local_tree.has_filename(changelog_path):
-        # If there's no changelog, then there's nothing to update!
-        return False
-
-    behaviour = guess_update_changelog(local_tree, debian_path)
-    if behaviour:
-        _note_changelog_policy(
-            behaviour.update_changelog, behaviour.explanation
-        )
-    else:
-        # If we can't make an educated guess, assume yes.
-        behaviour = ChangelogBehaviour(
-            True, "Assuming changelog should be updated"
-        )
-
-    return behaviour
 
 
 def certainty_to_confidence(certainty: Optional[str]) -> Optional[int]:

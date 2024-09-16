@@ -1,22 +1,8 @@
 use debian_analyzer::publish::Error as PublishError;
-use pyo3::exceptions::{PyException, PyFileNotFoundError, PyTypeError, PyValueError};
+use pyo3::exceptions::{PyException, PyFileNotFoundError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PyTuple, PyType};
+use pyo3::types::{PyDict, PyTuple, PyType};
 use pyo3::{create_exception, import_exception};
-
-use std::collections::HashMap;
-
-import_exception!(debian.changelog, ChangelogCreateError);
-import_exception!(debmutate.reformatting, FormattingUnpreservable);
-import_exception!(debmutate.reformatting, GeneratedFile);
-import_exception!(lintian_brush, NoChanges);
-import_exception!(lintian_brush, DescriptionMissing);
-import_exception!(lintian_brush, NotCertainEnough);
-import_exception!(lintian_brush, FixerScriptFailed);
-import_exception!(lintian_brush, NotDebianPackage);
-import_exception!(lintian_brush, ScriptNotFound);
-import_exception!(lintian_brush, FailedPatchManipulation);
-import_exception!(lintian_brush, WorkspaceDirty);
 
 create_exception!(lintian_brush.publish, NoVcsLocation, PyException);
 create_exception!(
@@ -34,12 +20,6 @@ fn default_debianize_cache_dir() -> PyResult<std::path::PathBuf> {
 #[pyo3(signature = (name, date=None))]
 fn resolve_release_codename(name: &str, date: Option<chrono::NaiveDate>) -> Option<String> {
     debian_analyzer::release_info::resolve_release_codename(name, date)
-}
-
-#[pyfunction]
-fn calculate_value(tags: Vec<String>) -> i32 {
-    let tags = tags.iter().map(|s| s.as_str()).collect::<Vec<_>>();
-    lintian_brush::calculate_value(tags.as_slice())
 }
 
 #[pyclass]
@@ -281,7 +261,6 @@ fn tree_has_non_patches_changes(
 fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     pyo3_log::init();
     m.add_wrapped(wrap_pyfunction!(resolve_release_codename))?;
-    m.add_wrapped(wrap_pyfunction!(calculate_value))?;
     m.add_wrapped(wrap_pyfunction!(find_fixers_dir))?;
     m.add(
         "DEFAULT_VALUE_LINTIAN_BRUSH",
