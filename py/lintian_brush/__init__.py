@@ -80,22 +80,6 @@ def certainty_sufficient(
     return actual_confidence <= minimum_confidence
 
 
-class NoChanges(Exception):
-    """Script didn't make any changes."""
-
-    def __init__(self, fixer, comment=None, overridden_lintian_issues=None):
-        super().__init__(fixer, comment)
-        self.fixer = fixer
-        self.overridden_lintian_issues = overridden_lintian_issues or []
-
-
-class NotDebianPackage(Exception):
-    """The specified directory does not contain a Debian package."""
-
-    def __init__(self, abspath):
-        super().__init__(abspath)
-
-
 def open_binary(name):
     return open(data_file_path(name), "rb")  # noqa: SIM115
 
@@ -174,38 +158,10 @@ def _note_changelog_policy(policy, msg):
     _changelog_policy_noted = True
 
 
-class FailedPatchManipulation(Exception):
-    def __init__(self, reason):
-        super().__init__(reason)
-
-
-class ManyResult:
-    def __init__(self):
-        self.success = []
-        self.failed_fixers = {}
-        self.formatting_unpreservable = {}
-        self.overridden_lintian_issues = []
-        self.changelog_behaviour = None
-
-    def minimum_success_certainty(self) -> str:
-        """Return the minimum certainty of any successfully made change."""
-        return min_certainty(
-            [
-                r.certainty
-                for r, unused_summary in self.success
-                if r.certainty is not None
-            ]
-        )
-
-
 def certainty_to_confidence(certainty: Optional[str]) -> Optional[int]:
     if certainty in ("unknown", None):
         return None
     return SUPPORTED_CERTAINTIES.index(certainty)
-
-
-def is_debcargo_package(tree, subpath):
-    return tree.has_filename(os.path.join(tree, "debian", "debcargo.toml"))
 
 
 def fixable_lintian_tags():
