@@ -176,6 +176,8 @@ pub fn resolve_release_codename(name: &str, date: Option<NaiveDate>) -> Option<S
     None
 }
 
+include!(concat!(env!("OUT_DIR"), "/key_package_versions.rs"));
+
 #[cfg(test)]
 mod tests {
     use super::resolve_release_codename;
@@ -232,5 +234,11 @@ mod tests {
     #[test]
     fn test_resolve_ubuntu_esm() {
         assert!(resolve_release_codename("ubuntu/esm", None).is_some())
+    }
+
+    #[test]
+    fn test_debhelper_versions() {
+        assert!(super::debhelper_versions.get("sid").is_some());
+        assert!(super::debhelper_versions.get("trixie").is_some());
     }
 }

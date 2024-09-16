@@ -60,5 +60,9 @@ name = "deb-vcs-publish"
 path = "src/bin/deb-vcs-publish.rs"
 required-features = ["cli"]
 
+[build-dependencies]
+quote = "1.0.37"
+serde_json.workspace = true
+
 [dev-dependencies]
 serial_test = "3.1.1"
