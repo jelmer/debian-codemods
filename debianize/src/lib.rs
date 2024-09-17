@@ -24,7 +24,7 @@ use upstream_ontologist::{
 
 pub mod fixer;
 pub mod names;
-//pub mod processors;
+pub mod processors;
 pub mod simple_apt_repo;
 
 pub fn default_debianize_cache_dir() -> std::io::Result<std::path::PathBuf> {
