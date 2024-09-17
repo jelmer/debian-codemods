@@ -1,5 +1,4 @@
 use quote::quote;
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 fn main() {

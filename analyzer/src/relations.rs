@@ -121,6 +121,21 @@ pub fn ensure_relation(rels: &mut Relations, newrel: Entry) {
 ///
 /// # Returns
 /// True if the relation was changed
+///
+/// # Examples
+/// ```rust
+/// use debian_control::lossless::relations::Relations;
+/// use debian_analyzer::relations::ensure_minimum_version;
+/// let mut rels: Relations = "".parse().unwrap();
+/// ensure_minimum_version(&mut rels, "foo", &"1.0".parse().unwrap());
+/// assert_eq!("foo (>= 1.0)", rels.to_string());
+/// ensure_minimum_version(&mut rels, "foo", &"2.0".parse().unwrap());
+/// assert_eq!("foo (>= 2.0)", rels.to_string());
+///
+/// let mut rels: Relations = "foo (= 1.0)".parse().unwrap();
+/// ensure_minimum_version(&mut rels, "foo", &"2.0".parse().unwrap());
+/// assert_eq!("foo (>= 2.0)", rels.to_string());
+/// ```
 pub fn ensure_minimum_version(
     relations: &mut Relations,
     package: &str,
@@ -204,6 +219,19 @@ pub fn ensure_minimum_version(
 /// * `package` - Package name
 /// * `version` - Exact version to depend on
 /// * `position` - Optional position in the list to insert any new entries
+///
+/// # Examples
+/// ```rust
+/// use debian_control::lossless::relations::Relations;
+/// use debian_analyzer::relations::ensure_exact_version;
+/// let mut rels: Relations = "".parse().unwrap();
+/// ensure_exact_version(&mut rels, "foo", &"1.0".parse().unwrap(), None);
+/// assert_eq!("foo (= 1.0)", rels.to_string());
+///
+/// let mut rels: Relations = "foo (= 1.0)".parse().unwrap();
+/// ensure_exact_version(&mut rels, "foo", &"2.0".parse().unwrap(), None);
+/// assert_eq!("foo (= 2.0)", rels.to_string());
+/// ```
 pub fn ensure_exact_version(
     relations: &mut Relations,
     package: &str,
@@ -246,6 +274,43 @@ pub fn ensure_exact_version(
         }
     }
     changed
+}
+
+/// Ensure that a relation exists for a particular package.
+///
+/// # Arguments
+/// * `relations` - Relations to update
+/// * `package` - Package name
+///
+/// # Examples
+/// ```rust
+/// use debian_control::lossless::relations::Relations;
+/// use debian_analyzer::relations::ensure_some_version;
+///
+/// let mut rels: Relations = "".parse().unwrap();
+/// ensure_some_version(&mut rels, "foo");
+/// assert_eq!("foo", rels.to_string());
+///
+/// let mut rels: Relations = "foo".parse().unwrap();
+/// ensure_some_version(&mut rels, "foo");
+/// assert_eq!("foo", rels.to_string());
+///
+/// let mut rels: Relations = "foo (>= 1), bar".parse().unwrap();
+/// ensure_some_version(&mut rels, "foo");
+/// assert_eq!("foo (>= 1), bar", rels.to_string());
+/// ```
+pub fn ensure_some_version(relations: &mut Relations, package: &str) -> bool {
+    for entry in relations.entries() {
+        let names = entry
+            .relations()
+            .map(|r| r.name().to_string())
+            .collect::<Vec<_>>();
+        if names == [package] {
+            return false;
+        }
+    }
+    relations.push(Relation::simple(package).into());
+    true
 }
 
 #[cfg(test)]

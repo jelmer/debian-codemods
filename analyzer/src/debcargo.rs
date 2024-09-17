@@ -507,6 +507,10 @@ fn debcargo_binary_name(crate_name: &str, suffix: &str) -> String {
     format!("librust-{}{}-dev", debnormalize(crate_name), suffix)
 }
 
+pub fn unmangle_debcargo_version(version: &str) -> String {
+    version.replace("~", "-")
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
