@@ -110,9 +110,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.88"
+version = "1.0.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e1496f8fb1fbf272686b8d37f523dab3e4a7443300055e74cdaa449f3114356"
+checksum = "86fdf8605db99b54d3cd748a44c6d04df638eb5dafb219b135d0149bd0db01f6"
 
 [[package]]
 name = "arbitrary"
@@ -402,9 +402,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.1.18"
+version = "1.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b62ac837cdb5cb22e10a256099b4fc502b1dfe560cb282963a974d7abd80e476"
+checksum = "2d74707dde2ba56f86ae90effb3b43ddd369504387e718014de010cec7959800"
 dependencies = [
  "shlex",
 ]
@@ -703,7 +703,7 @@ dependencies = [
  "deb822-lossless",
  "debian-analyzer 0.158.14",
  "debian-control",
- "env_logger 0.10.2",
+ "env_logger 0.11.5",
  "lazy-regex",
  "lazy_static",
  "log",
@@ -776,6 +776,7 @@ dependencies = [
  "nix",
  "patchkit",
  "pyo3",
+ "quote",
  "reqwest",
  "semver",
  "serde",
@@ -839,9 +840,9 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.1.35"
+version = "0.1.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fdbea0903818eef501a0f2a5640a23003ceca0cee5265befdb3cef0734d4092"
+checksum = "2dabdd9751f6bc327c09269d58efcc1882791d44a264162ebac569bfba86661d"
 dependencies = [
  "chrono",
  "deb822-lossless",
@@ -891,27 +892,19 @@ dependencies = [
  "flate2",
  "hyper 0.14.30",
  "lazy-regex",
+ "lazy_static",
  "lintian-brush",
  "log",
  "ognibuild",
  "pyo3",
  "reqwest",
+ "semver",
  "tempfile",
  "tokio",
+ "toml_edit",
  "upstream-ontologist",
  "url",
  "xdg",
-]
-
-[[package]]
-name = "debianize-py"
-version = "0.158.14"
-dependencies = [
- "debianize",
- "debversion",
- "pyo3",
- "pyo3-log",
- "url",
 ]
 
 [[package]]
@@ -1996,9 +1989,9 @@ dependencies = [
 
 [[package]]
 name = "iana-time-zone"
-version = "0.1.60"
+version = "0.1.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7ffbb5a1b541ea2561f8c41c087286cc091e21e556a4f09a8f6cbf17b69b141"
+checksum = "235e081f3925a06703c2d0117ea8b91f042756fd6e7a6e5d901e8ca1a996b220"
 dependencies = [
  "android_system_properties",
  "core-foundation-sys",
@@ -2747,7 +2740,7 @@ dependencies = [
 [[package]]
 name = "ognibuild"
 version = "0.0.24"
-source = "git+https://github.com/jelmer/ognibuild#a4c44cd46628b93b495c44f525b6d31e351a121a"
+source = "git+https://github.com/jelmer/ognibuild#e6c2e3c221435c476b33e0d19e7d6b60b0683735"
 dependencies = [
  "axum",
  "breezyshim",
@@ -3232,9 +3225,9 @@ checksum = "007d8adb5ddab6f8e3f491ac63566a7d5002cc7ed73901f72057943fa71ae1ae"
 
 [[package]]
 name = "pyo3"
-version = "0.22.2"
+version = "0.22.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "831e8e819a138c36e212f3af3fd9eeffed6bf1510a805af35b0edee5ffa59433"
+checksum = "15ee168e30649f7f234c3d49ef5a7a6cbf5134289bc46c29ff3155fa3221c225"
 dependencies = [
  "cfg-if",
  "chrono",
@@ -3252,9 +3245,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-build-config"
-version = "0.22.2"
+version = "0.22.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e8730e591b14492a8945cdff32f089250b05f5accecf74aeddf9e8272ce1fa8"
+checksum = "e61cef80755fe9e46bb8a0b8f20752ca7676dcc07a5277d8b7768c6172e529b3"
 dependencies = [
  "once_cell",
  "target-lexicon",
@@ -3262,9 +3255,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-ffi"
-version = "0.22.2"
+version = "0.22.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e97e919d2df92eb88ca80a037969f44e5e70356559654962cbb3316d00300c6"
+checksum = "67ce096073ec5405f5ee2b8b31f03a68e02aa10d5d4f565eca04acc41931fa1c"
 dependencies = [
  "libc",
  "pyo3-build-config",
@@ -3292,9 +3285,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-macros"
-version = "0.22.2"
+version = "0.22.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb57983022ad41f9e683a599f2fd13c3664d7063a3ac5714cae4b7bee7d3f206"
+checksum = "2440c6d12bc8f3ae39f1e775266fa5122fd0c8891ce7520fa6048e683ad3de28"
 dependencies = [
  "proc-macro2",
  "pyo3-macros-backend",
@@ -3304,9 +3297,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-macros-backend"
-version = "0.22.2"
+version = "0.22.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec480c0c51ddec81019531705acac51bcdbeae563557c982aa8263bb96880372"
+checksum = "1be962f0e06da8f8465729ea2cb71a416d2257dff56cbe40a70d3e62a93ae5d1"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -4580,9 +4573,9 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.22.20"
+version = "0.22.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "583c44c02ad26b0c3f3066fe629275e50627026c51ac2e595cca4c230ce1ce1d"
+checksum = "3b072cee73c449a636ffd6f32bd8de3a9f7119139aff882f44943ce2986dc5cf"
 dependencies = [
  "indexmap",
  "serde",
@@ -4778,7 +4771,7 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 [[package]]
 name = "upstream-ontologist"
 version = "0.1.39"
-source = "git+https://github.com/jelmer/upstream-ontologist#f45736cdb68a447ea76c5d8af9b9f49e747a0be4"
+source = "git+https://github.com/jelmer/upstream-ontologist#8c95d200c64e3a3291d11b851097d89c3983b3ce"
 dependencies = [
  "breezyshim",
  "chrono",

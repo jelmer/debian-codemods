@@ -1,7 +1,7 @@
 [workspace]
 # With resolve set to "2", dependent projects can't find debian-analyzer anymore.
 resolver = "1"
-members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize", "debianize-py", "analyzer", "scrub-obsolete", "transition-apply"]
+members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize", "analyzer", "scrub-obsolete", "transition-apply"]
 
 [workspace.package]
 version = "0.158.14"

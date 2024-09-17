@@ -32,6 +32,9 @@ buildlog-consultant.workspace = true
 lazy-regex.workspace = true
 lintian-brush = { path = "../lintian-brush", version = ">=0.155.0", default-features = false, features = ["python"] }
 debian-control.workspace = true
+lazy_static = "1.5.0"
+semver = "1.0.23"
+toml_edit = "0.22.21"
 
 [features]
 pyo3 = []

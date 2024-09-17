@@ -24,6 +24,7 @@ use upstream_ontologist::{
 
 pub mod fixer;
 pub mod names;
+//pub mod processors;
 pub mod simple_apt_repo;
 
 pub fn default_debianize_cache_dir() -> std::io::Result<std::path::PathBuf> {
@@ -318,6 +319,8 @@ pub enum Error {
         version: Version,
         branch: Option<url::Url>,
     },
+    EditorError(debian_analyzer::editor::EditorError),
+    MissingUpstreamInfo(String),
     NoVcsLocation,
     NoUpstreamReleases(Option<String>),
     PointlessCommit,
@@ -326,6 +329,30 @@ pub enum Error {
         subpath: PathBuf,
         version: Option<String>,
     },
+    IoError(std::io::Error),
+    BrzError(BrzError),
+}
+
+impl From<BrzError> for Error {
+    fn from(e: BrzError) -> Self {
+        Error::BrzError(e)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::IoError(e)
+    }
+}
+
+impl From<debian_analyzer::editor::EditorError> for Error {
+    fn from(e: debian_analyzer::editor::EditorError) -> Self {
+        match e {
+            debian_analyzer::editor::EditorError::IoError(e) => Error::IoError(e),
+            debian_analyzer::editor::EditorError::BrzError(e) => Error::BrzError(e),
+            e => Error::EditorError(e),
+        }
+    }
 }
 
 impl std::fmt::Display for Error {
@@ -373,6 +400,10 @@ impl std::fmt::Display for Error {
                         .unwrap_or_default()
                 )
             }
+            IoError(e) => write!(f, "I/O error: {}", e),
+            BrzError(e) => write!(f, "Breezy error: {}", e),
+            MissingUpstreamInfo(name) => write!(f, "Missing upstream information for {}.", name),
+            EditorError(e) => write!(f, "Editor error: {}", e),
         }
     }
 }
@@ -417,7 +448,7 @@ fn generic_get_source_name(
     metadata: &UpstreamMetadata,
 ) -> Option<String> {
     let mut source_name = if let Some(name) = metadata.name() {
-        let mut source_name = Some(names::upstream_name_to_debian_source_name(name));
+        let mut source_name = names::upstream_name_to_debian_source_name(name);
         if !valid_debian_package_name(source_name.as_ref().unwrap()) {
             source_name = None;
         }
@@ -427,9 +458,9 @@ fn generic_get_source_name(
     };
 
     if source_name.is_none() {
-        source_name = Some(names::upstream_name_to_debian_source_name(
+        source_name = names::upstream_name_to_debian_source_name(
             wt.abspath(subpath).unwrap().to_str().unwrap(),
-        ));
+        );
         if !valid_debian_package_name(source_name.as_ref().unwrap()) {
             source_name = None;
         }

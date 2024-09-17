@@ -49,7 +49,7 @@ pub fn debian_to_upstream_version(version: &str) -> &str {
     version.split("+dfsg").next().unwrap_or_default()
 }
 
-pub fn upstream_name_to_debian_source_name(mut upstream_name: &str) -> String {
+pub fn upstream_name_to_debian_source_name(mut upstream_name: &str) -> Option<String> {
     if let Some((_, _, abbrev)) = lazy_regex::regex_captures!(r"^(.{10,})\((.*)\)", upstream_name) {
         upstream_name = abbrev;
     }
@@ -60,14 +60,17 @@ pub fn upstream_name_to_debian_source_name(mut upstream_name: &str) -> String {
     }
 
     // Convert to lowercase and replace characters
-    upstream_name.to_lowercase().replace(['_', ' ', '/'], "-")
+    Some(upstream_name.to_lowercase().replace(['_', ' ', '/'], "-"))
 }
 
-pub fn upstream_package_to_debian_source_name(family: &str, name: &str) -> String {
+pub fn upstream_package_to_debian_source_name(family: &str, name: &str) -> Option<String> {
     match family {
-        "rust" => format!("rust-{}", name.to_lowercase()),
-        "perl" => format!("lib{}-perl", name.to_lowercase().replace("::", "-")),
-        "node" => format!("node-{}", name.to_lowercase()),
+        "rust" => Some(format!("rust-{}", name.to_lowercase())),
+        "perl" => Some(format!(
+            "lib{}-perl",
+            name.to_lowercase().replace("::", "-")
+        )),
+        "node" => Some(format!("node-{}", name.to_lowercase())),
         _ => upstream_name_to_debian_source_name(name),
     }
 }
@@ -79,6 +82,19 @@ pub fn upstream_package_to_debian_binary_name(family: &str, name: &str) -> Strin
         "node" => format!("node-{}", name.to_lowercase()),
         _ => name.to_lowercase().replace('_', "-"),
     }
+}
+
+pub fn go_base_name(package: &str) -> String {
+    let (mut hostname, path) = package.split_once('/').unwrap();
+    if hostname == "github.com" {
+        hostname = "github";
+    }
+    if hostname == "gopkg.in" {
+        hostname = "gopkg";
+    }
+    let path = path.trim_end_matches('/').replace(['/', '_'], "-");
+    let path = path.strip_suffix(".git").unwrap_or(&path);
+    [hostname, path].concat()
 }
 
 #[cfg(test)]
