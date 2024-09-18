@@ -8,6 +8,20 @@ pub struct Failure {
     pub transient: Option<bool>,
 }
 
+impl std::fmt::Display for Failure {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}: {}", self.result_code, self.description)
+    }
+}
+
+impl std::error::Error for Failure {}
+
+impl std::fmt::Display for Success {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Success")
+    }
+}
+
 #[derive(Debug, serde::Serialize)]
 pub struct ChangelogBehaviour {
     pub update: bool,

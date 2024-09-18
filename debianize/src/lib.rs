@@ -250,24 +250,24 @@ pub enum SessionPreferences {
 
 #[derive(Debug, Clone)]
 struct DebianizePreferences {
-    use_inotify: Option<bool>,
-    diligence: u8,
-    trust: bool,
-    check: bool,
-    net_access: bool,
-    force_subprocess: bool,
-    force_new_directory: bool,
-    compat_release: Option<String>,
-    minimum_certainty: Certainty,
-    consult_external_directory: bool,
-    verbose: bool,
-    session: SessionPreferences,
-    create_dist: Option<bool>,
-    committer: Option<String>,
-    upstream_version_kind: VersionKind,
-    debian_revision: String,
-    team: Option<String>,
-    author: Option<String>,
+    pub use_inotify: Option<bool>,
+    pub diligence: u8,
+    pub trust: bool,
+    pub check: bool,
+    pub net_access: bool,
+    pub force_subprocess: bool,
+    pub force_new_directory: bool,
+    pub compat_release: Option<String>,
+    pub minimum_certainty: Certainty,
+    pub consult_external_directory: bool,
+    pub verbose: bool,
+    pub session: SessionPreferences,
+    pub create_dist: Option<bool>,
+    pub committer: Option<String>,
+    pub upstream_version_kind: VersionKind,
+    pub debian_revision: String,
+    pub team: Option<String>,
+    pub author: Option<String>,
 }
 
 impl Default for DebianizePreferences {
@@ -416,8 +416,8 @@ pub fn debianize(
     upstream_branch: Option<&dyn Branch>,
     upstream_subpath: Option<&Path>,
     preferences: &DebianizePreferences,
-    buildsystem: Option<&str>,
     version: Option<&str>,
+    upstream_metadata: &UpstreamMetadata,
 ) {
     todo!();
 }

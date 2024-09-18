@@ -17,13 +17,26 @@ pub struct DebianizeFixer {
     vcs_directory: std::path::PathBuf,
     apt_repo: SimpleTrustedAptRepo,
     do_build: Box<dyn Fn(&WorkingTree, &std::path::Path, &std::path::Path, Vec<String>)>,
-    verbose: bool,
-    schroot: Option<String>,
-    unshare: Option<String>,
-    consult_external_directory: bool,
-    compat_release: Option<String>,
     dependency: Option<Box<dyn Dependency>>,
     preferences: DebianizePreferences,
+}
+
+impl DebianizeFixer {
+    pub fn new(
+        vcs_directory: std::path::PathBuf,
+        apt_repo: SimpleTrustedAptRepo,
+        do_build: Box<dyn Fn(&WorkingTree, &std::path::Path, &std::path::Path, Vec<String>)>,
+        dependency: Option<Box<dyn Dependency>>,
+        preferences: DebianizePreferences,
+    ) -> Self {
+        Self {
+            vcs_directory,
+            apt_repo,
+            do_build,
+            dependency,
+            preferences,
+        }
+    }
 }
 
 impl std::fmt::Debug for DebianizeFixer {
@@ -113,8 +126,8 @@ impl DebianBuildFixer for DebianizeFixer {
             upstream_branch.as_deref(),
             upstream_subpath,
             &self.preferences,
-            upstream_info.buildsystem(),
             upstream_info.version(),
+            &upstream_info
         );
         (self.do_build)(
             &new_wt,
