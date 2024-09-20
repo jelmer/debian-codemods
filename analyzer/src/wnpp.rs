@@ -3,7 +3,7 @@ use sqlx::{Error, PgPool, Postgres};
 
 type BugId = i64;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub enum BugKind {
     RFP,
     ITP,

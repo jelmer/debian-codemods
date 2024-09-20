@@ -5,53 +5,55 @@ use breezyshim::workingtree::WorkingTree;
 use buildlog_consultant::Problem;
 use ognibuild::buildlog::problem_to_dependency;
 use ognibuild::debian::context::{Error, Phase};
-use ognibuild::debian::fix_build::DebianBuildFixer;
+use ognibuild::debian::fix_build::{DebianBuildFixer,  IterateBuildError};
 use ognibuild::dependencies::debian::DebianDependency;
 use ognibuild::dependency::Dependency;
-use ognibuild::fix_build::InterimError;
+use ognibuild::fix_build::{InterimError};
+use ognibuild::debian::build::BuildOnceResult;
 use ognibuild::upstream::find_upstream;
 use std::path::Path;
 
 /// Fixer that invokes debianize to create a package.
-pub struct DebianizeFixer {
+pub struct DebianizeFixer<'a> {
     vcs_directory: std::path::PathBuf,
     apt_repo: SimpleTrustedAptRepo,
-    do_build: Box<dyn Fn(&WorkingTree, &std::path::Path, &std::path::Path, Vec<String>)>,
-    dependency: Option<Box<dyn Dependency>>,
-    preferences: DebianizePreferences,
+    do_build: Box<dyn for <'b, 'c, 'd> Fn(&'b WorkingTree, &'c std::path::Path, &'d std::path::Path, Vec<&str>) -> Result<BuildOnceResult, IterateBuildError>>,
+    preferences: &'a DebianizePreferences,
 }
 
-impl DebianizeFixer {
+impl<'a> DebianizeFixer<'a> {
     pub fn new(
         vcs_directory: std::path::PathBuf,
         apt_repo: SimpleTrustedAptRepo,
-        do_build: Box<dyn Fn(&WorkingTree, &std::path::Path, &std::path::Path, Vec<String>)>,
-        dependency: Option<Box<dyn Dependency>>,
-        preferences: DebianizePreferences,
+        do_build: Box<dyn for <'b, 'c, 'd> Fn(&'b WorkingTree, &'c std::path::Path, &'d std::path::Path, Vec<&str>) -> Result<BuildOnceResult, IterateBuildError>>,
+        preferences: &'a DebianizePreferences,
     ) -> Self {
         Self {
             vcs_directory,
             apt_repo,
             do_build,
-            dependency,
             preferences,
         }
     }
+
+    pub fn apt_repo(&self) -> &SimpleTrustedAptRepo {
+        &self.apt_repo
+    }
 }
 
-impl std::fmt::Debug for DebianizeFixer {
+impl<'a> std::fmt::Debug for DebianizeFixer<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "DebianizeFixer")
     }
 }
 
-impl std::fmt::Display for DebianizeFixer {
+impl<'a> std::fmt::Display for DebianizeFixer<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "DebianizeFixer")
     }
 }
 
-impl DebianBuildFixer for DebianizeFixer {
+impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
     fn can_fix(&self, problem: &dyn Problem) -> bool {
         let dep = if let Some(dep) = problem_to_dependency(problem) {
             dep
@@ -120,21 +122,33 @@ impl DebianBuildFixer for DebianizeFixer {
         .unwrap();
         let new_wt = result.controldir().open_workingtree().unwrap();
         let new_subpath = Path::new("");
-        crate::debianize(
+        match crate::debianize(
             &new_wt,
             new_subpath,
             upstream_branch.as_deref(),
             upstream_subpath,
-            &self.preferences,
+            self.preferences,
             upstream_info.version(),
             &upstream_info
-        );
-        (self.do_build)(
+        ) {
+            Ok(_) => {}
+            Err(e) => {
+                log::error!("Failed to debianize: {:?}", e);
+                return Ok(false);
+            }
+        }
+        match (self.do_build)(
             &new_wt,
             new_subpath,
             self.apt_repo.directory(),
-            self.apt_repo.sources_lines(),
-        );
+            self.apt_repo.sources_lines().iter().map(|s| s.as_str()).collect(),
+        ) {
+            Ok(_) => {}
+            Err(e) => {
+                log::error!("Failed to build: {:?}", e);
+                return Ok(false);
+            }
+        }
         self.apt_repo.refresh().map_err(|e| InterimError::Other(e.into()))?;
         Ok(true)
     }

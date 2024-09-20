@@ -8,6 +8,7 @@ use breezyshim::debian::upstream::{
 };
 use breezyshim::debian::{TarballKind, VersionKind, DEFAULT_ORIG_DIR};
 use breezyshim::error::Error as BrzError;
+use breezyshim::tree::Tree;
 use breezyshim::workingtree::WorkingTree;
 use breezyshim::RevisionId;
 use debian_analyzer::versions::debianize_upstream_version;
@@ -248,8 +249,7 @@ pub enum SessionPreferences {
     Unshare(String),
 }
 
-#[derive(Debug, Clone)]
-struct DebianizePreferences {
+pub struct DebianizePreferences {
     pub use_inotify: Option<bool>,
     pub diligence: u8,
     pub trust: bool,
@@ -262,7 +262,7 @@ struct DebianizePreferences {
     pub consult_external_directory: bool,
     pub verbose: bool,
     pub session: SessionPreferences,
-    pub create_dist: Option<bool>,
+    pub create_dist: Option<Box<dyn for <'a, 'b, 'c, 'd, 'e>Fn(&'a dyn Tree, &'b str, &'c Version, &'d Path, &'e Path) -> Result<bool, breezyshim::debian::error::Error>>>,
     pub committer: Option<String>,
     pub upstream_version_kind: VersionKind,
     pub debian_revision: String,
@@ -323,7 +323,6 @@ pub enum Error {
     MissingUpstreamInfo(String),
     NoVcsLocation,
     NoUpstreamReleases(Option<String>),
-    PointlessCommit,
     SourcePackageNameInvalid(String),
     SubdirectoryNotFound {
         subpath: PathBuf,
@@ -387,7 +386,6 @@ impl std::fmt::Display for Error {
                     source_name.as_deref().unwrap_or("unknown")
                 )
             }
-            PointlessCommit => write!(f, "Pointless commit."),
             SourcePackageNameInvalid(name) => write!(f, "Invalid source package name: {}.", name),
             SubdirectoryNotFound { subpath, version } => {
                 write!(
@@ -418,8 +416,17 @@ pub fn debianize(
     preferences: &DebianizePreferences,
     version: Option<&str>,
     upstream_metadata: &UpstreamMetadata,
-) {
-    todo!();
+) -> Result<DebianizeResult, Error> {
+    Ok(DebianizeResult::default())
+}
+
+#[derive(Default, serde::Serialize)]
+pub struct DebianizeResult {
+    pub vcs_url: Option<url::Url>,
+    pub wnpp_bugs: Vec<(i64, BugKind)>,
+    pub upstream_version: Option<String>,
+    pub tag_names: HashMap<String, RevisionId>,
+    pub upstream_branch_name: Option<String>,
 }
 
 pub(crate) struct ResetOnFailure<'a>(&'a WorkingTree, PathBuf);
