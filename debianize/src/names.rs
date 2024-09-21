@@ -103,14 +103,14 @@ mod tests {
 
     #[test]
     fn test_gnu() {
-        assert_eq!("lala", upstream_name_to_debian_source_name("GNU Lala"));
+        assert_eq!(Some("lala"), upstream_name_to_debian_source_name("GNU Lala").as_deref());
     }
 
     #[test]
     fn test_abbrev() {
         assert_eq!(
-            "mun",
-            upstream_name_to_debian_source_name("Made Up Name (MUN)")
+            Some("mun"),
+            upstream_name_to_debian_source_name("Made Up Name (MUN)").as_deref()
         );
     }
 

@@ -19,3 +19,8 @@ regex = "1.10.6"
 
 [features]
 cli = ["dep:clap", "dep:env_logger"]
+
+[[bin]]
+name = "deb-transition-apply"
+path = "src/main.rs"
+required-features = ["cli"]

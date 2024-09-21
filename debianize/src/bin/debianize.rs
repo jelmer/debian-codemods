@@ -433,7 +433,7 @@ fn main() -> Result<(), i32> {
         #[cfg(target_os = "linux")]
         let session = if let Some(schroot) = args.schroot {
             log::info!("Using schroot {}", schroot);
-            ognibuild::session::schroot::SchrootSession::new(schroot).unwrap()
+            ognibuild::session::schroot::SchrootSession::new(&schroot, None).unwrap()
         } else if let Some(unshare) = args.unshare {
             log::info!("Using tarball {} for unshare", unshare);
             ognibuild::session::unshare::UnshareSession::from_tarball(unshare)

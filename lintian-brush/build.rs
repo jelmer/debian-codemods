@@ -11,8 +11,8 @@ fn main() {
     let mut dest = fs::File::create(dest_path).unwrap();
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    let fixers_dir = Path::new(&manifest_dir).join("../fixers");
-    let test_dir = Path::new(&manifest_dir).join("../tests");
+    let fixers_dir = Path::new(&manifest_dir).join("fixers");
+    let test_dir = Path::new(&manifest_dir).join("tests");
 
     // Load the fixers/index.desc file as yaml
     let f = fs::File::open(fixers_dir.join("index.desc")).unwrap();

@@ -9,15 +9,13 @@ build:
 
 check:: testsuite tag-status ruff
 
-FIXERS = $(patsubst fixers/%.sh,%,$(wildcard fixers/*.sh)) $(patsubst fixers/%.py,%,$(wildcard fixers/*.py))
-
 .PHONY: ruff testsuite unsupported
 
 ruff::
-	ruff check py/ fixers/
+	ruff check py/ lintian-brush/fixers/
 
 typing:: build
-	mypy py/ fixers/
+	mypy py/ lintian-brush/fixers/
 
 tag-status::
 	PYTHONPATH=$(shell pwd)/py python3 tag-status.py --check

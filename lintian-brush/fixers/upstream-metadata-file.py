@@ -11,9 +11,8 @@ from upstream_ontologist import (
     UpstreamMetadata,
     upstream_metadata_sort_key,
 )
-from upstream_ontologist.debian import (
-    debian_to_upstream_version,
-)
+
+
 from upstream_ontologist.guess import (
     check_upstream_metadata,
     extend_upstream_metadata,
@@ -44,6 +43,16 @@ from lintian_brush.yaml import (
     YamlUpdater,
     update_ordered_dict,
 )
+
+
+def debian_to_upstream_version(v):
+    v = v.upstream_version
+    if "~" in v:
+        return v.split("~")[0]
+    if "+" in v:
+        return v.split("+")[0]
+    return v
+
 
 # Don't clutter standard err/standard out
 logger = logging.getLogger("upstream_ontologist.extrapolate")
