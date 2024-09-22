@@ -1,26 +1,26 @@
+use breezyshim::debian::directory::vcs_git_url_to_bzr_url;
+use breezyshim::tree::Tree;
+use breezyshim::workingtree::WorkingTree;
 use clap::Parser;
+use debversion::Version;
 use log::warn;
 use pyo3::prelude::*;
 use std::collections::HashMap;
-use debversion::Version;
-use breezyshim::tree::Tree;
-use breezyshim::workingtree::WorkingTree;
-use breezyshim::debian::directory::vcs_git_url_to_bzr_url;
 
 use std::io::Write as _;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 
-use breezyshim::tree::MutableTree;
 use breezyshim::debian::VersionKind;
+use breezyshim::tree::MutableTree;
 
 use ognibuild::upstream::FindUpstream;
 
+use debian_analyzer::svp::{self, report_fatal, report_nothing_to_do, report_success_debian};
+use debianize::simple_apt_repo::SimpleTrustedAptRepo;
+use debianize::{Error, SessionPreferences};
 use ognibuild::debian::fix_build::IterateBuildError;
 use ognibuild::dependencies::debian::DebianDependency;
 use upstream_ontologist::{Certainty, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata};
-use debian_analyzer::svp::{self,report_fatal, report_nothing_to_do, report_success_debian};
-use debianize::simple_apt_repo::SimpleTrustedAptRepo;
-use debianize::{Error,SessionPreferences};
 
 /// Create Debian packaging for upstream projects, in version control
 #[derive(Parser, Debug)]
@@ -84,7 +84,7 @@ struct Args {
 
     /// Unshare tarball to use for building apt archive access
     #[arg(long)]
-    unshare: Option<String>,
+    unshare: Option<PathBuf>,
 
     /// Build command (used for --iterate-fix)
     #[arg(long, default_value_t = format!("{} -A -s v", debian_analyzer::DEFAULT_BUILDER))]
@@ -187,18 +187,36 @@ fn main() -> Result<(), i32> {
     };
 
     let dist_command = args.dist_command.clone();
-    let create_dist_fn: Option<Box<dyn for<'a, 'b, 'c, 'd, 'e> Fn(&'a dyn Tree, &'b str, &'c Version, &'d Path, &'e Path) -> Result<bool, breezyshim::debian::error::Error>>> = if let Some(dist_command) = dist_command {
-        Some(Box::new(move |tree: &dyn Tree, package: &str, version: &Version, target_dir: &Path, subpath: &Path| -> Result<bool, breezyshim::debian::error::Error> {
-            breezyshim::debian::upstream::run_dist_command(
-                tree,
-                Some(package),
-                version,
-                target_dir,
-                &dist_command,
-                false,
-                subpath,
+    let create_dist_fn: Option<
+        Box<
+            dyn for<'a, 'b, 'c, 'd, 'e> Fn(
+                &'a dyn Tree,
+                &'b str,
+                &'c Version,
+                &'d Path,
+                &'e Path,
             )
-        }))
+                -> Result<bool, breezyshim::debian::error::Error>,
+        >,
+    > = if let Some(dist_command) = dist_command {
+        Some(Box::new(
+            move |tree: &dyn Tree,
+                  package: &str,
+                  version: &Version,
+                  target_dir: &Path,
+                  subpath: &Path|
+                  -> Result<bool, breezyshim::debian::error::Error> {
+                breezyshim::debian::upstream::run_dist_command(
+                    tree,
+                    Some(package),
+                    version,
+                    target_dir,
+                    &dist_command,
+                    false,
+                    subpath,
+                )
+            },
+        ))
     } else {
         None
     };
@@ -209,12 +227,13 @@ fn main() -> Result<(), i32> {
     let (upstream_branch, upstream_subpath) = if let Some(upstream) = args.upstream {
         match breezyshim::branch::open_containing(&upstream.parse().unwrap()) {
             Ok((upstream_branch, upstream_subpath)) => {
-                metadata.insert(
-                    UpstreamDatumWithMetadata {
-                        datum: UpstreamDatum::Repository(upstream),
-                        certainty: Some(Certainty::Confident),
-                        origin: Some(upstream_ontologist::Origin::Other("command-line".to_string())),
-                    });
+                metadata.insert(UpstreamDatumWithMetadata {
+                    datum: UpstreamDatum::Repository(upstream),
+                    certainty: Some(Certainty::Confident),
+                    origin: Some(upstream_ontologist::Origin::Other(
+                        "command-line".to_string(),
+                    )),
+                });
                 (upstream_branch, PathBuf::from(upstream_subpath))
             }
             Err(e) => {
@@ -235,17 +254,15 @@ fn main() -> Result<(), i32> {
         }
         let upstream_info = upstream_info.unwrap();
         if let Some(url) = upstream_info.repository() {
-            log::info!(
-                "Found relevant upstream branch at {}", url
-            );
-            let (upstream_branch, upstream_subpath) = breezyshim::branch::open_containing(&url.parse().unwrap()).unwrap();
+            log::info!("Found relevant upstream branch at {}", url);
+            let (upstream_branch, upstream_subpath) =
+                breezyshim::branch::open_containing(&url.parse().unwrap()).unwrap();
 
-            metadata.insert(
-                UpstreamDatumWithMetadata {
-                    datum: UpstreamDatum::Repository(url.to_owned()),
-                    certainty: Some(Certainty::Confident),
-                    origin: None,
-                });
+            metadata.insert(UpstreamDatumWithMetadata {
+                datum: UpstreamDatum::Repository(url.to_owned()),
+                certainty: Some(Certainty::Confident),
+                origin: None,
+            });
             (upstream_branch, PathBuf::from(upstream_subpath))
         } else {
             log::error!(
@@ -260,9 +277,12 @@ fn main() -> Result<(), i32> {
             report_fatal(
                 versions_dict(),
                 "debian-directory-exists",
-                &format!("{}: A debian directory already exists.", wt.abspath(&subpath).unwrap().display()),
+                &format!(
+                    "{}: A debian directory already exists.",
+                    wt.abspath(&subpath).unwrap().display()
+                ),
                 Some("Run lintian-brush instead or specify --force-new-directory."),
-                None
+                None,
             );
         }
         log::info!(
@@ -276,8 +296,10 @@ fn main() -> Result<(), i32> {
         use debian_analyzer::vendor::get_vendor_name;
 
         debianize::use_packaging_branch(
-            &wt, &debian_branch.replace("%(vendor)s", &get_vendor_name().unwrap().to_lowercase())
-        ).unwrap();
+            &wt,
+            &debian_branch.replace("%(vendor)s", &get_vendor_name().unwrap().to_lowercase()),
+        )
+        .unwrap();
     }
 
     let use_inotify = if args.disable_inotify {
@@ -298,12 +320,12 @@ fn main() -> Result<(), i32> {
         minimum_certainty: debian_analyzer::Certainty::Confident,
         consult_external_directory: args.consult_external_directory,
         verbose: args.verbose,
-        session: if let Some(schroot) = args.schroot {
+        session: if let Some(schroot) = args.schroot.as_ref() {
             log::info!("Using schroot {}", schroot);
-            SessionPreferences::Schroot(schroot)
-        } else if let Some(unshare) = args.unshare {
-            log::info!("Using tarball {} for unshare", unshare);
-            SessionPreferences::Unshare(unshare)
+            SessionPreferences::Schroot(schroot.to_string())
+        } else if let Some(unshare) = args.unshare.as_ref() {
+            log::info!("Using tarball {} for unshare", unshare.display());
+            SessionPreferences::Unshare(unshare.to_path_buf())
         } else {
             SessionPreferences::Plain
         },
@@ -325,7 +347,7 @@ fn main() -> Result<(), i32> {
         &preferences,
         args.upstream_version.as_deref(),
         &metadata,
-        ) {
+    ) {
         Ok(debianize_result) => debianize_result,
         Err(Error::SubdirectoryNotFound { subpath, version }) => {
             report_fatal(
@@ -333,7 +355,7 @@ fn main() -> Result<(), i32> {
                 "subdirectory-not-found",
                 &format!("Subdirectory not found: {}", subpath.display()),
                 None,
-                None
+                None,
             );
         }
         Err(Error::BrzError(e)) => {
@@ -342,7 +364,7 @@ fn main() -> Result<(), i32> {
                 "vcs-error",
                 &format!("Error running brz: {}", e),
                 None,
-                None
+                None,
             );
         }
         Err(Error::IoError(e)) => {
@@ -351,7 +373,7 @@ fn main() -> Result<(), i32> {
                 "io-error",
                 &format!("Error reading files: {}", e),
                 None,
-                None
+                None,
             );
         }
         Err(Error::DebianDirectoryExists(e)) => {
@@ -360,16 +382,27 @@ fn main() -> Result<(), i32> {
                 "debian-directory-exists",
                 &format!("{}: A debian directory already exists.", e.display()),
                 Some("Run lintian-brush instead or specify --force-new-directory."),
-                None
+                None,
             );
         }
-        Err(Error::DebianizedPackageRequirementMismatch { dep, binary_names, version, branch }) => {
+        Err(Error::DebianizedPackageRequirementMismatch {
+            dep,
+            binary_names,
+            version,
+            branch,
+        }) => {
             report_fatal(
                 versions_dict(),
                 "debianized-package-requirement-mismatch",
-                &format!("{}: {} requires {} but the debianized package requires {}", dep.relation_string(), binary_names.join(", "), version, branch.map_or("unknown".to_string(), |m| m.to_string())),
+                &format!(
+                    "{}: {} requires {} but the debianized package requires {}",
+                    dep.relation_string(),
+                    binary_names.join(", "),
+                    version,
+                    branch.map_or("unknown".to_string(), |m| m.to_string())
+                ),
                 None,
-                None
+                None,
             );
         }
         Err(Error::EditorError(e)) => {
@@ -378,7 +411,7 @@ fn main() -> Result<(), i32> {
                 "editor-error",
                 &format!("Error editing files: {}", e),
                 None,
-                None
+                None,
             );
         }
         Err(Error::MissingUpstreamInfo(e)) => {
@@ -387,7 +420,7 @@ fn main() -> Result<(), i32> {
                 "missing-upstream-info",
                 &format!("Missing upstream info: {}", e),
                 None,
-                None
+                None,
             );
         }
         Err(Error::NoVcsLocation) => {
@@ -396,7 +429,7 @@ fn main() -> Result<(), i32> {
                 "no-vcs-location",
                 "No VCS location found for the upstream branch.",
                 None,
-                None
+                None,
             );
         }
         Err(Error::NoUpstreamReleases(o)) => {
@@ -409,7 +442,7 @@ fn main() -> Result<(), i32> {
                     "No upstream releases found.".to_string()
                 },
                 None,
-                None
+                None,
             );
         }
         Err(Error::SourcePackageNameInvalid(name)) => {
@@ -418,7 +451,7 @@ fn main() -> Result<(), i32> {
                 "invalid-source-package-name",
                 &format!("Generated source package name {} is not valid.", name),
                 None,
-                None
+                None,
             );
         }
     };
@@ -431,15 +464,20 @@ fn main() -> Result<(), i32> {
 
     if args.iterate_fix {
         #[cfg(target_os = "linux")]
-        let session = if let Some(schroot) = args.schroot {
-            log::info!("Using schroot {}", schroot);
-            ognibuild::session::schroot::SchrootSession::new(&schroot, None).unwrap()
-        } else if let Some(unshare) = args.unshare {
-            log::info!("Using tarball {} for unshare", unshare);
-            ognibuild::session::unshare::UnshareSession::from_tarball(unshare)
-        } else {
-            ognibuild::session::plain::PlainSession::new()
-        };
+        let session: std::rc::Rc<dyn ognibuild::session::Session> =
+            if let Some(schroot) = args.schroot.as_ref() {
+                log::info!("Using schroot {}", schroot);
+                std::rc::Rc::new(
+                    ognibuild::session::schroot::SchrootSession::new(schroot, None).unwrap(),
+                ) as _
+            } else if let Some(unshare) = args.unshare.as_ref() {
+                log::info!("Using tarball {} for unshare", unshare.display());
+                std::rc::Rc::new(
+                    ognibuild::session::unshare::UnshareSession::from_tarball(unshare).unwrap(),
+                ) as _
+            } else {
+                std::rc::Rc::new(ognibuild::session::plain::PlainSession::new()) as _
+            };
 
         #[cfg(not(target_os = "linux"))]
         let session = std::rc::Rc::new(ognibuild::session::plain::PlainSession::new());
@@ -457,10 +495,21 @@ fn main() -> Result<(), i32> {
             output_directory
         };
 
-        let committer = preferences.committer.as_ref().map(|c| breezyshim::config::parse_username(c)).clone();
+        let committer = preferences
+            .committer
+            .as_ref()
+            .map(|c| breezyshim::config::parse_username(c))
+            .clone();
         let build_command = args.build_command.clone();
 
-        let do_build = move |wt: &WorkingTree, subpath: &Path, incoming_directory: &Path, extra_repositories: Vec<&str>| -> Result<ognibuild::debian::build::BuildOnceResult, IterateBuildError> {
+        let do_build = move |wt: &WorkingTree,
+                             subpath: &Path,
+                             incoming_directory: &Path,
+                             extra_repositories: Vec<&str>|
+              -> Result<
+            ognibuild::debian::build::BuildOnceResult,
+            IterateBuildError,
+        > {
             let apt = ognibuild::debian::apt::AptManager::from_session(session.as_ref());
             let context = ognibuild::debian::context::DebianPackagingContext::new(
                 wt.clone(),
@@ -469,17 +518,18 @@ fn main() -> Result<(), i32> {
                 false,
                 Box::new(breezyshim::commit::ReportCommitToLog::new()),
             );
-            let fixers = ognibuild::debian::fixers::default_fixers(
-                &context,
-                &apt,
-            );
+            let fixers = ognibuild::debian::fixers::default_fixers(&context, &apt);
             ognibuild::debian::fix_build::build_incrementally(
                 wt,
                 None,
                 None,
                 incoming_directory,
                 &build_command.clone(),
-                fixers.iter().map(|f| f.as_ref()).collect::<Vec<_>>().as_slice(),
+                fixers
+                    .iter()
+                    .map(|f| f.as_ref())
+                    .collect::<Vec<_>>()
+                    .as_slice(),
                 None,
                 Some(args.max_build_iterations),
                 subpath,
@@ -487,7 +537,7 @@ fn main() -> Result<(), i32> {
                 None,
                 None,
                 Some(extra_repositories),
-                !context.update_changelog
+                !context.update_changelog,
             )
         };
 
@@ -502,7 +552,7 @@ fn main() -> Result<(), i32> {
                 vcs_directory,
                 apt_repo,
                 Box::new(do_build),
-                &preferences
+                &preferences,
             );
             ognibuild::debian::fix_build::build_incrementally(
                 &wt,
@@ -517,13 +567,18 @@ fn main() -> Result<(), i32> {
                 None,
                 None,
                 None,
-                Some(debianize_fixer.apt_repo().sources_lines().iter().map(|l| l.as_str()).collect()),
-                false
+                Some(
+                    debianize_fixer
+                        .apt_repo()
+                        .sources_lines()
+                        .iter()
+                        .map(|l| l.as_str())
+                        .collect(),
+                ),
+                false,
             )
         } else {
-            do_build(
-                &wt, &subpath, &output_directory, vec![]
-            )
+            do_build(&wt, &subpath, &output_directory, vec![])
         };
         let buildonceresult = match r {
             Ok(r) => r,
@@ -533,7 +588,7 @@ fn main() -> Result<(), i32> {
                     "fixer-limit-reached",
                     &format!("Reached fixer limit of {} iterations.", n),
                     None,
-                    None
+                    None,
                 );
             }
             Err(IterateBuildError::MissingPhase) => {
@@ -542,10 +597,15 @@ fn main() -> Result<(), i32> {
                     "missing-phase",
                     "No build phase was specified.",
                     None,
-                    None
+                    None,
                 );
             }
-            Err(IterateBuildError::Unidentified { retcode, lines, secondary, phase }) => {
+            Err(IterateBuildError::Unidentified {
+                retcode,
+                lines,
+                secondary,
+                phase,
+            }) => {
                 let hint = if secondary.is_some() {
                     Some("Try running with --verbose.")
                 } else {
@@ -560,7 +620,7 @@ fn main() -> Result<(), i32> {
                         format!("Error: {}", lines.join("\n"))
                     },
                     hint,
-                    None
+                    None,
                 );
             }
             Err(IterateBuildError::Persistent(phase, problem)) => {
@@ -569,7 +629,7 @@ fn main() -> Result<(), i32> {
                     "detailed-error",
                     &format!("Error during {}: {}", phase, problem),
                     None,
-                    None
+                    None,
                 );
             }
             Err(IterateBuildError::ResetTree(e)) => {
@@ -578,7 +638,7 @@ fn main() -> Result<(), i32> {
                     "reset-tree",
                     &format!("Error resetting tree: {}", e),
                     None,
-                    None
+                    None,
                 );
             }
             Err(IterateBuildError::Other(output)) => {
@@ -587,14 +647,19 @@ fn main() -> Result<(), i32> {
                     "other-error",
                     &format!("Error: {}", output),
                     None,
-                    None
+                    None,
                 );
             }
         };
         log::info!("Built {:?}.", buildonceresult.changes_names);
         if args.install {
             std::process::Command::new("debi")
-                .args(buildonceresult.changes_names.iter().map(|cn| output_directory.join(cn)))
+                .args(
+                    buildonceresult
+                        .changes_names
+                        .iter()
+                        .map(|cn| output_directory.join(cn)),
+                )
                 .status()
                 .unwrap();
         }
@@ -607,12 +672,7 @@ fn main() -> Result<(), i32> {
     };
 
     if svp::enabled() {
-        svp::report_success_debian(
-            versions_dict(),
-            Some(100),
-            Some(debianize_result),
-            None
-        );
+        svp::report_success_debian(versions_dict(), Some(100), Some(debianize_result), None);
     }
 
     return Ok(());

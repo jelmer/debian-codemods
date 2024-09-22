@@ -246,7 +246,7 @@ pub fn last_resort_upstream_version(
 pub enum SessionPreferences {
     Plain,
     Schroot(String),
-    Unshare(String),
+    Unshare(PathBuf),
 }
 
 pub struct DebianizePreferences {
@@ -262,7 +262,18 @@ pub struct DebianizePreferences {
     pub consult_external_directory: bool,
     pub verbose: bool,
     pub session: SessionPreferences,
-    pub create_dist: Option<Box<dyn for <'a, 'b, 'c, 'd, 'e>Fn(&'a dyn Tree, &'b str, &'c Version, &'d Path, &'e Path) -> Result<bool, breezyshim::debian::error::Error>>>,
+    pub create_dist: Option<
+        Box<
+            dyn for<'a, 'b, 'c, 'd, 'e> Fn(
+                &'a dyn Tree,
+                &'b str,
+                &'c Version,
+                &'d Path,
+                &'e Path,
+            )
+                -> Result<bool, breezyshim::debian::error::Error>,
+        >,
+    >,
     pub committer: Option<String>,
     pub upstream_version_kind: VersionKind,
     pub debian_revision: String,
