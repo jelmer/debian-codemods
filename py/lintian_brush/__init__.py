@@ -144,20 +144,6 @@ def get_committer(tree: WorkingTree) -> str:
         return config.get("email")
 
 
-_changelog_policy_noted = False
-
-
-def _note_changelog_policy(policy, msg):
-    global _changelog_policy_noted
-    if not _changelog_policy_noted:
-        if policy:
-            extra = "Specify --no-update-changelog to override."
-        else:
-            extra = "Specify --update-changelog to override."
-        logging.info("%s %s", msg, extra)
-    _changelog_policy_noted = True
-
-
 def certainty_to_confidence(certainty: Optional[str]) -> Optional[int]:
     if certainty in ("unknown", None):
         return None
@@ -167,7 +153,8 @@ def certainty_to_confidence(certainty: Optional[str]) -> Optional[int]:
 def fixable_lintian_tags():
     from ruamel.yaml import YAML
     yaml = YAML()
-    with open('fixers/index.desc') as f:
+    path = os.path.join(os.path.dirname(__file__), '../../lintian-brush/fixers/index.desc')
+    with open(path) as f:
         fixers = yaml.load(f)
 
     supported_tags = set()

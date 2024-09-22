@@ -18,14 +18,11 @@ typing:: build
 	mypy py/ lintian-brush/fixers/
 
 tag-status::
-	PYTHONPATH=$(shell pwd)/py python3 tag-status.py --check
+	PYTHONPATH=$(shell pwd)/py python3 lintian-brush/tag-status.py --check
 
 testsuite:: build
 	PYTHONPATH=$(shell pwd)/py python3 -m unittest lintian_brush.tests.test_suite
-	PYTHONPATH=$(shell pwd)/py cargo test -p lintian-brush
-	cargo test -p debian-analyzer
-	cargo test -p scrub-obsolete
-	cargo test -p multiarch-hints
+	PYTHONPATH=$(shell pwd)/py cargo test 
 
 README.md::
 	PYTHONPATH=$(PWD)/py:$(PYTHONPATH) ./buildtools/update-readme.py
@@ -56,8 +53,8 @@ update-key-package-versions:
 	brz diff key-package-versions.json || brz commit -m "Update key package versions" key-package-versions.json
 
 update-renamed-tags:
-	python3 renamed-tags.py
-	brz diff renamed-tags.json || brz commit -m "Update renamed tags" renamed-tags.json
+	python3 lintian-brush/renamed-tags.py
+	brz diff lintian-brush/renamed-tags.json || brz commit -m "Update renamed tags" lintian-brush/renamed-tags.json
 
 update: update-spdx update-readme update-renamed-tags update-key-package-versions
 

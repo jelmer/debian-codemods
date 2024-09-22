@@ -1,10 +1,13 @@
 #!/usr/bin/python3
 
 import argparse
+import os
 import subprocess
 import sys
 
 from ruamel.yaml import YAML
+
+from lintian_brush import fixable_lintian_tags
 
 
 KNOWN_KEYS = ["tag", "status", "difficulty", "comment"]
@@ -16,11 +19,12 @@ all_tags = {
     ).splitlines()
 }
 
-from lintian_brush import fixable_lintian_tags
 supported_tags = fixable_lintian_tags()
 
+path = os.path.join(os.path.dirname(__file__), "tag-status.yaml")
+
 yaml = YAML()
-with open("tag-status.yaml") as f:
+with open(path) as f:
     tag_status = yaml.load(f)
 
 per_tag_status = {}

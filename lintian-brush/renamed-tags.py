@@ -24,6 +24,7 @@ def read_desc_files(path):
 
 read_desc_files("/usr/share/lintian/tags/")
 
+path = os.path.dirname(os.path.realpath(__file__))
 
-with open("renamed-tags.json", "w") as f:
+with open(os.path.join(path, "renamed-tags.json"), "w") as f:
     json.dump(renames, f, indent=4, sort_keys=True)

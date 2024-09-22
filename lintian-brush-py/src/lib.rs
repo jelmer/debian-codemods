@@ -1,66 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 
-#[pyclass]
-struct ChangelogBehaviour {
-    update_changelog: bool,
-    explanation: String,
-}
-
-#[pymethods]
-impl ChangelogBehaviour {
-    #[new]
-    fn new(update_changelog: bool, explanation: String) -> Self {
-        Self {
-            update_changelog,
-            explanation,
-        }
-    }
-
-    fn __richcmp__(&self, other: PyRef<Self>, op: pyo3::pyclass::CompareOp) -> PyResult<bool> {
-        match op {
-            pyo3::pyclass::CompareOp::Eq => Ok(self.update_changelog == other.update_changelog
-                && self.explanation == other.explanation),
-            pyo3::pyclass::CompareOp::Ne => Ok(self.update_changelog != other.update_changelog
-                || self.explanation != other.explanation),
-            _ => Err(pyo3::exceptions::PyNotImplementedError::new_err(
-                "only == and != are supported",
-            )),
-        }
-    }
-
-    fn __str__(&self) -> String {
-        self.explanation.clone()
-    }
-
-    fn __repr__(&self) -> String {
-        format!(
-            "ChangelogBehaviour(update_changelog={}, explanation={})",
-            self.update_changelog, &self.explanation
-        )
-    }
-}
-
-#[pyfunction]
-fn guess_update_changelog(
-    tree: PyObject,
-    path: std::path::PathBuf,
-) -> pyo3::PyResult<Option<PyObject>> {
-    let path = path.as_path();
-    Python::with_gil(|py| {
-        let tree = breezyshim::tree::WorkingTree(tree);
-        Ok(
-            debian_analyzer::detect_gbp_dch::guess_update_changelog(&tree, path, None).map(|cb| {
-                ChangelogBehaviour {
-                    update_changelog: cb.update_changelog,
-                    explanation: cb.explanation,
-                }
-                .into_py(py)
-            }),
-        )
-    })
-}
-
 #[pyfunction]
 fn guess_repository_url(package: &str, maintainer_email: &str) -> Option<String> {
     debian_analyzer::salsa::guess_repository_url(package, maintainer_email).map(|u| u.to_string())
@@ -132,9 +72,7 @@ fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
             .collect::<Vec<u32>>(),
     );
     m.add("__version__", v)?;
-    m.add_class::<ChangelogBehaviour>()?;
     m.add_wrapped(wrap_pyfunction!(tree_has_non_patches_changes))?;
-    m.add_wrapped(wrap_pyfunction!(guess_update_changelog))?;
     m.add_wrapped(wrap_pyfunction!(guess_repository_url))?;
     m.add_wrapped(wrap_pyfunction!(determine_browser_url))?;
     m.add_wrapped(wrap_pyfunction!(determine_gitlab_browser_url))?;
