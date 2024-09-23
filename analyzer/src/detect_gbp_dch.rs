@@ -4,7 +4,6 @@ use breezyshim::graph::{Error as GraphError, Graph};
 use breezyshim::revisionid::RevisionId;
 use breezyshim::tree::{Tree, WorkingTree};
 use debian_changelog::{ChangeLog, Entry as ChangeLogEntry};
-use lazy_regex::regex;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
 pub struct ChangelogBehaviour {
@@ -313,21 +312,15 @@ pub fn guess_update_changelog_from_branch(
 /// # Arguments
 ///
 /// * `cl` - Changelog entry
-#[deprecated(note = "Use debian_changelog::changes::all_sha_prefixed instead")]
 pub fn all_sha_prefixed(cb: &ChangeLogEntry) -> bool {
-    let mut sha_prefixed = 0;
-    for change in cb.change_lines() {
-        if !change.starts_with("* ") {
-            continue;
-        }
-        if regex!(r"\* \[[0-9a-f]{7}\] ").is_match(change.as_str()) {
-            sha_prefixed += 1;
-        } else {
-            return false;
-        }
-    }
-
-    sha_prefixed > 0
+    let changes = cb.change_lines().collect::<Vec<_>>();
+    debian_changelog::changes::all_sha_prefixed(
+        changes
+            .iter()
+            .map(|x| x.as_str())
+            .collect::<Vec<_>>()
+            .as_slice(),
+    )
 }
 
 #[cfg(test)]
