@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 
 import re
+
 from lintian_brush import fixable_lintian_tags
+
 supported_tags = fixable_lintian_tags()
 
 with open("README.md") as f:
