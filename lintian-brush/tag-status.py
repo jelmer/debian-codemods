@@ -9,7 +9,6 @@ from ruamel.yaml import YAML
 
 from lintian_brush import fixable_lintian_tags
 
-
 KNOWN_KEYS = ["tag", "status", "difficulty", "comment"]
 
 all_tags = {

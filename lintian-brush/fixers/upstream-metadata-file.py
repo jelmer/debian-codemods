@@ -11,8 +11,6 @@ from upstream_ontologist import (
     UpstreamMetadata,
     upstream_metadata_sort_key,
 )
-
-
 from upstream_ontologist.guess import (
     check_upstream_metadata,
     extend_upstream_metadata,
