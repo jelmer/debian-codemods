@@ -344,7 +344,7 @@ impl Parser {
     }
 
     pub fn parse_assignment(&mut self) -> Result<Option<Assignment>, String> {
-        let field = match  self.tokens.next() {
+        let field = match self.tokens.next() {
             Some(Token::Identifier(field)) => field,
             None => return Ok(None),
             n => {
@@ -363,7 +363,7 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Result<Expr, String> {
-        let expr: Expr = match self.tokens.next(){
+        let expr: Expr = match self.tokens.next() {
             // true
             Some(Token::True) => Ok(Expr::Bool(true)),
             // false
@@ -405,9 +405,12 @@ impl Parser {
                             _ => Ok(Expr::FieldString(field, comp_str)),
                         }
                     }
-                    _ => Err(format!("Expected regex or string, got {:?}", self.tokens.peek())),
+                    _ => Err(format!(
+                        "Expected regex or string, got {:?}",
+                        self.tokens.peek()
+                    )),
                 }
-            },
+            }
             Some(Token::Source) => Ok(Expr::Source),
             // <query> "<string>"
             Some(Token::Comparison(comp)) => {
@@ -416,7 +419,7 @@ impl Parser {
                 } else {
                     Err("Expected string".to_string())
                 }
-            },
+            }
             n => Err(format!("Unexpected token: {:?}", n)),
         }?;
 
@@ -429,7 +432,9 @@ impl Parser {
                         Expr::And(new_ands) => {
                             ands.extend(new_ands);
                         }
-                        next_expr => { ands.push(Box::new(next_expr)); }
+                        next_expr => {
+                            ands.push(Box::new(next_expr));
+                        }
                     }
                 }
                 Ok(Expr::And(ands))
@@ -442,7 +447,9 @@ impl Parser {
                         Expr::Or(new_ors) => {
                             ors.extend(new_ors);
                         }
-                        next_expr => { ors.push(Box::new(next_expr)); }
+                        next_expr => {
+                            ors.push(Box::new(next_expr));
+                        }
                     }
                 }
                 Ok(Expr::Or(ors))
@@ -454,7 +461,9 @@ impl Parser {
 
 pub fn read_benfile<R: std::io::Read>(mut reader: R) -> Result<Vec<Assignment>, String> {
     let mut text = String::new();
-    reader.read_to_string(&mut text).map_err(|e| e.to_string())?;
+    reader
+        .read_to_string(&mut text)
+        .map_err(|e| e.to_string())?;
     let mut lexer = Lexer::new(&text);
     let mut tokens = vec![];
     while let Some(token) = lexer.next_token()? {
@@ -507,13 +516,20 @@ mod tests {
         }
         let mut parser = Parser::new(tokens);
 
-        assert_eq!(Ok(Expr::And(vec![
-            Box::new(Expr::Bool(true)),
-            Box::new(Expr::Or(vec![
-                Box::new(Expr::FieldRegex("field".to_string(), "regex".to_string())),
-                Box::new(Expr::FieldComparison("field".to_string(), Comparison::MuchLessThan, "comparison".to_string()))
-            ]
-            ))])), parser.parse());
+        assert_eq!(
+            Ok(Expr::And(vec![
+                Box::new(Expr::Bool(true)),
+                Box::new(Expr::Or(vec![
+                    Box::new(Expr::FieldRegex("field".to_string(), "regex".to_string())),
+                    Box::new(Expr::FieldComparison(
+                        "field".to_string(),
+                        Comparison::MuchLessThan,
+                        "comparison".to_string()
+                    ))
+                ]))
+            ])),
+            parser.parse()
+        );
     }
 
     #[test]
@@ -534,15 +550,29 @@ export = false;
                 expr: Expr::String("libsoup2.4 -> libsoup3".to_string())
             }
         );
-        assert_eq!(assignments[1],
+        assert_eq!(
+            assignments[1],
             Assignment {
                 field: "is_affected".to_string(),
                 expr: Expr::Or(vec![
-                    Box::new(Expr::FieldRegex("build-depends".to_string(), "libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev".to_string())),
-                    Box::new(Expr::FieldRegex("build-depends-arch".to_string(), "libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev".to_string())),
-                    Box::new(Expr::FieldRegex("build-depends".to_string(), "gir1.2-soup-2.4|gir1.2-soup-3.0".to_string())),
-                    Box::new(Expr::FieldRegex("depends".to_string(), "gir1.2-soup-2.4".to_string()))
-            ]) }
+                    Box::new(Expr::FieldRegex(
+                        "build-depends".to_string(),
+                        "libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev".to_string()
+                    )),
+                    Box::new(Expr::FieldRegex(
+                        "build-depends-arch".to_string(),
+                        "libsoup2.4-dev|libsoup-gnome2.4-dev|libsoup-3.0-dev".to_string()
+                    )),
+                    Box::new(Expr::FieldRegex(
+                        "build-depends".to_string(),
+                        "gir1.2-soup-2.4|gir1.2-soup-3.0".to_string()
+                    )),
+                    Box::new(Expr::FieldRegex(
+                        "depends".to_string(),
+                        "gir1.2-soup-2.4".to_string()
+                    ))
+                ])
+            }
         );
         assert_eq!(assignments[4],
             Assignment {
@@ -551,7 +581,8 @@ export = false;
             }
         );
 
-        assert_eq!(assignments[5],
+        assert_eq!(
+            assignments[5],
             Assignment {
                 field: "export".to_string(),
                 expr: Expr::Bool(false)

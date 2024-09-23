@@ -1,7 +1,7 @@
-use deb822_lossless::{Deb822,Paragraph};
-use debian_control::lossless::Control;
-use debian_analyzer::benfile::{Expr, Comparison};
+use deb822_lossless::{Deb822, Paragraph};
+use debian_analyzer::benfile::{Comparison, Expr};
 use debian_analyzer::transition::Transition;
+use debian_control::lossless::Control;
 use regex::Regex;
 
 fn find_expr_by_field_name<'a>(expr: &'a Expr, field_name: &'a str) -> Option<&'a Expr> {
@@ -9,14 +9,15 @@ fn find_expr_by_field_name<'a>(expr: &'a Expr, field_name: &'a str) -> Option<&'
         Expr::Or(exprs) => exprs,
         _ => return None,
     };
-    exprs.iter().find(|expr| {
-        match expr.as_ref() {
+    exprs
+        .iter()
+        .find(|expr| match expr.as_ref() {
             Expr::FieldRegex(f, _) => f == field_name,
             Expr::FieldString(f, _n) => f == field_name,
             Expr::FieldComparison(f, _, _) => f == field_name,
             _ => false,
-        }
-    }).map(|e| e.as_ref())
+        })
+        .map(|e| e.as_ref())
 }
 
 #[derive(Debug)]
@@ -46,29 +47,34 @@ fn map_bad_to_good(bad: &Expr, good: &Expr) -> Result<Vec<(String, Match, Match)
         Expr::And(entries) => entries,
         _ => return Err("bad must be an And".to_string()),
     };
-    let ret = entries.iter().map(|entry| {
-        let (f, o) = match entry.as_ref() {
-            Expr::FieldRegex(f, regex) => {
-                (f.to_string(), Match::Regex(Regex::new(&regex).unwrap()))
-            }
-            Expr::FieldString(f, s) => (f.to_string(), Match::String(s.to_string())),
-            Expr::FieldComparison(f, c, s) => (f.to_string(), Match::Comparison(c.clone(), s.to_string())),
-            _ => return Err(format!("unable to find replacement value for {:?}", entry)),
-        };
+    let ret = entries
+        .iter()
+        .map(|entry| {
+            let (f, o) = match entry.as_ref() {
+                Expr::FieldRegex(f, regex) => {
+                    (f.to_string(), Match::Regex(Regex::new(&regex).unwrap()))
+                }
+                Expr::FieldString(f, s) => (f.to_string(), Match::String(s.to_string())),
+                Expr::FieldComparison(f, c, s) => {
+                    (f.to_string(), Match::Comparison(c.clone(), s.to_string()))
+                }
+                _ => return Err(format!("unable to find replacement value for {:?}", entry)),
+            };
 
-        let replacement = if let Some(good) = find_expr_by_field_name(good, &f) {
-            used.push(f.clone());
-            match good {
-                Expr::FieldString(_, s) => Match::String(s.to_string()),
-                Expr::FieldRegex(_, r) => Match::Regex(Regex::new(&r).unwrap()),
-                Expr::FieldComparison(_, c, s) => Match::Comparison(c.clone(), s.to_string()),
-                _ => return Err(format!("unable to find replacement value for {}", f)),
-            }
-        } else {
-            return Err(format!("unable to find replacement value for {}", f));
-        };
-        Ok((f, o, replacement))
-    }).collect();
+            let replacement = if let Some(good) = find_expr_by_field_name(good, &f) {
+                used.push(f.clone());
+                match good {
+                    Expr::FieldString(_, s) => Match::String(s.to_string()),
+                    Expr::FieldRegex(_, r) => Match::Regex(Regex::new(&r).unwrap()),
+                    Expr::FieldComparison(_, c, s) => Match::Comparison(c.clone(), s.to_string()),
+                    _ => return Err(format!("unable to find replacement value for {}", f)),
+                }
+            } else {
+                return Err(format!("unable to find replacement value for {}", f));
+            };
+            Ok((f, o, replacement))
+        })
+        .collect();
 
     let exprs = match good {
         Expr::Or(exprs) => exprs,
@@ -114,9 +120,7 @@ fn para_matches(para: &Paragraph, expr: &Expr) -> bool {
                 return false;
             }
         }
-        Expr::Not(e) => {
-            !para_matches(para, &e)
-        }
+        Expr::Not(e) => !para_matches(para, &e),
         _ => unreachable!(),
     }
 }
@@ -124,24 +128,11 @@ fn para_matches(para: &Paragraph, expr: &Expr) -> bool {
 fn control_matches(control: &Deb822, expr: &Expr) -> bool {
     match expr {
         Expr::Bool(b) => *b,
-        Expr::And(exprs) => {
-            exprs.iter().all(|expr| {
-                control_matches(control, expr)
-            })
-        }
-        Expr::Or(exprs) => {
-            exprs.iter().any(|expr| {
-                control_matches(control, expr)
-            })
-        }
-        o => {
-            control.paragraphs().any(|para| {
-                para_matches(&para, o)
-            })
-        }
+        Expr::And(exprs) => exprs.iter().all(|expr| control_matches(control, expr)),
+        Expr::Or(exprs) => exprs.iter().any(|expr| control_matches(control, expr)),
+        o => control.paragraphs().any(|para| para_matches(&para, o)),
     }
 }
-
 
 fn transition_find_bugno(transition: &Transition) -> Vec<i32> {
     let notes = if let Some(notes) = &transition.notes {
@@ -150,7 +141,10 @@ fn transition_find_bugno(transition: &Transition) -> Vec<i32> {
         return vec![];
     };
     let bugs_re = lazy_regex::regex!("#([0-9]+)");
-    bugs_re.find_iter(&notes).map(|m| m.as_str()[1..].parse().unwrap()).collect()
+    bugs_re
+        .find_iter(&notes)
+        .map(|m| m.as_str()[1..].parse().unwrap())
+        .collect()
 }
 
 #[derive(Debug)]
@@ -202,7 +196,11 @@ pub fn apply_transition(control: &mut Control, transition: &Transition) -> Trans
         return TransitionResult::PackageNotBad(control.source().unwrap().to_string());
     }
 
-    let map = map_bad_to_good(transition.is_bad.as_ref().unwrap(), transition.is_good.as_ref().unwrap()).unwrap();
+    let map = map_bad_to_good(
+        transition.is_bad.as_ref().unwrap(),
+        transition.is_good.as_ref().unwrap(),
+    )
+    .unwrap();
 
     let deb822 = control.as_mut_deb822();
 
@@ -217,7 +215,12 @@ pub fn apply_transition(control: &mut Control, transition: &Transition) -> Trans
                 let new_value = match (&bad, &good) {
                     (Match::String(o), Match::String(n)) => old_value.replace(o, n),
                     (Match::Regex(o), Match::String(n)) => o.replace(&old_value, n).to_string(),
-                    (_, _) => { return TransitionResult::Unsupported(format!("unsupported bad/good combination for field {}: {:?} -> {:?}", field, bad, good)); }
+                    (_, _) => {
+                        return TransitionResult::Unsupported(format!(
+                            "unsupported bad/good combination for field {}: {:?} -> {:?}",
+                            field, bad, good
+                        ));
+                    }
                 };
                 para.insert(&field, &new_value);
             }

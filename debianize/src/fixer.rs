@@ -4,12 +4,12 @@ use breezyshim::error::Error as BrzError;
 use breezyshim::workingtree::WorkingTree;
 use buildlog_consultant::Problem;
 use ognibuild::buildlog::problem_to_dependency;
+use ognibuild::debian::build::BuildOnceResult;
 use ognibuild::debian::context::{Error, Phase};
-use ognibuild::debian::fix_build::{DebianBuildFixer,  IterateBuildError};
+use ognibuild::debian::fix_build::{DebianBuildFixer, IterateBuildError};
 use ognibuild::dependencies::debian::DebianDependency;
 use ognibuild::dependency::Dependency;
-use ognibuild::fix_build::{InterimError};
-use ognibuild::debian::build::BuildOnceResult;
+use ognibuild::fix_build::InterimError;
 use ognibuild::upstream::find_upstream;
 use std::path::Path;
 
@@ -17,7 +17,14 @@ use std::path::Path;
 pub struct DebianizeFixer<'a> {
     vcs_directory: std::path::PathBuf,
     apt_repo: SimpleTrustedAptRepo,
-    do_build: Box<dyn for <'b, 'c, 'd> Fn(&'b WorkingTree, &'c std::path::Path, &'d std::path::Path, Vec<&str>) -> Result<BuildOnceResult, IterateBuildError>>,
+    do_build: Box<
+        dyn for<'b, 'c, 'd> Fn(
+            &'b WorkingTree,
+            &'c std::path::Path,
+            &'d std::path::Path,
+            Vec<&str>,
+        ) -> Result<BuildOnceResult, IterateBuildError>,
+    >,
     preferences: &'a DebianizePreferences,
 }
 
@@ -25,7 +32,14 @@ impl<'a> DebianizeFixer<'a> {
     pub fn new(
         vcs_directory: std::path::PathBuf,
         apt_repo: SimpleTrustedAptRepo,
-        do_build: Box<dyn for <'b, 'c, 'd> Fn(&'b WorkingTree, &'c std::path::Path, &'d std::path::Path, Vec<&str>) -> Result<BuildOnceResult, IterateBuildError>>,
+        do_build: Box<
+            dyn for<'b, 'c, 'd> Fn(
+                &'b WorkingTree,
+                &'c std::path::Path,
+                &'d std::path::Path,
+                Vec<&str>,
+            ) -> Result<BuildOnceResult, IterateBuildError>,
+        >,
         preferences: &'a DebianizePreferences,
     ) -> Self {
         Self {
@@ -129,7 +143,7 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
             upstream_subpath,
             self.preferences,
             upstream_info.version(),
-            &upstream_info
+            &upstream_info,
         ) {
             Ok(_) => {}
             Err(e) => {
@@ -141,7 +155,11 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
             &new_wt,
             new_subpath,
             self.apt_repo.directory(),
-            self.apt_repo.sources_lines().iter().map(|s| s.as_str()).collect(),
+            self.apt_repo
+                .sources_lines()
+                .iter()
+                .map(|s| s.as_str())
+                .collect(),
         ) {
             Ok(_) => {}
             Err(e) => {
@@ -149,7 +167,9 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
                 return Ok(false);
             }
         }
-        self.apt_repo.refresh().map_err(|e| InterimError::Other(e.into()))?;
+        self.apt_repo
+            .refresh()
+            .map_err(|e| InterimError::Other(e.into()))?;
         Ok(true)
     }
 }

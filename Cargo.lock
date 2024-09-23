@@ -2290,7 +2290,6 @@ dependencies = [
  "breezyshim",
  "chrono",
  "debian-analyzer 0.158.14",
- "debianize",
  "debversion",
  "lintian-brush",
  "pyo3",

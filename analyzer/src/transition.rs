@@ -91,7 +91,10 @@ export = false;
                     "build-depends".to_string(),
                     "gir1.2-soup-2.4|gir1.2-soup-3.0".to_string()
                 )),
-                Box::new(Expr::FieldRegex("depends".to_string(), "gir1.2-soup-2.4".to_string()))
+                Box::new(Expr::FieldRegex(
+                    "depends".to_string(),
+                    "gir1.2-soup-2.4".to_string()
+                ))
             ]))
         );
         assert_eq!(

@@ -1,7 +1,13 @@
-FROM debian:sid-slim
+FROM debian:sid-slim AS build
 RUN apt -y update && apt install -y git dctrl-tools
 COPY . /code
+WORKDIR /code
 RUN apt satisfy -y "$(grep-dctrl -n -w -s Build-Depends '' /code/debian/control)"
+RUN cargo build --release -p lintian-brush
+RUN ./setup.py build_ext -i
+
+FROM debian:sid-slim
+COPY --from=build /code/target/release/lintian-brush /lintian-brush
 ENV PYTHONPATH=/code
 VOLUME /data
-ENTRYPOINT ["/code/scripts/lintian-brush", "-d", "/data"]
+ENTRYPOINT ["/lintian-brush", "-d", "/data"]

@@ -1,15 +1,15 @@
-use clap::Parser;
-use std::path::{Path,PathBuf};
-use std::io::Write;
-use std::collections::HashMap;
 use breezyshim::error::Error as BrzError;
+use breezyshim::workingtree::{self, WorkingTree};
+use clap::Parser;
 use deb_transition_apply::TransitionResult;
 use debian_analyzer::config::Config;
-use debian_analyzer::transition::Transition;
-use debian_analyzer::svp::{enabled, report_fatal, report_success_debian, report_nothing_to_do};
-use debian_analyzer::editor::EditorError;
 use debian_analyzer::control::TemplatedControlEditor;
-use breezyshim::workingtree::{self, WorkingTree};
+use debian_analyzer::editor::EditorError;
+use debian_analyzer::svp::{enabled, report_fatal, report_nothing_to_do, report_success_debian};
+use debian_analyzer::transition::Transition;
+use std::collections::HashMap;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 struct Args {
@@ -41,19 +41,29 @@ struct Args {
     benfile: PathBuf,
 }
 
-fn apply_transition(wt: &WorkingTree, debian_path: &Path, transition: &Transition) -> Result<TransitionResult, EditorError> {
+fn apply_transition(
+    wt: &WorkingTree,
+    debian_path: &Path,
+    transition: &Transition,
+) -> Result<TransitionResult, EditorError> {
     use debian_analyzer::control::TemplatedControlEditor;
 
     let control_path = debian_path.join("control");
 
     let mut editor = TemplatedControlEditor::create(wt.abspath(&control_path).unwrap())?;
 
-    Ok(deb_transition_apply::apply_transition(&mut editor, transition))
+    Ok(deb_transition_apply::apply_transition(
+        &mut editor,
+        transition,
+    ))
 }
 
 fn versions_dict() -> HashMap<String, String> {
     let mut versions = HashMap::new();
-    versions.insert("deb-transition-apply".to_string(), env!("CARGO_PKG_VERSION").to_string());
+    versions.insert(
+        "deb-transition-apply".to_string(),
+        env!("CARGO_PKG_VERSION").to_string(),
+    );
     versions
 }
 
@@ -100,9 +110,7 @@ fn main() -> Result<(), i32> {
     };
 
     let transition = match debian_analyzer::transition::read_transition(&mut f) {
-        Ok(transition) => {
-            transition
-        }
+        Ok(transition) => transition,
         Err(e) => {
             log::error!("Unable to read benfile: {}", e);
             std::process::exit(1);
@@ -112,7 +120,11 @@ fn main() -> Result<(), i32> {
     let (wt, subpath) = match breezyshim::workingtree::open_containing(&args.directory) {
         Ok((wt, sp)) => (wt, sp),
         Err(e) => {
-            log::error!("No working tree found in {}: {}", args.directory.display(), e);
+            log::error!(
+                "No working tree found in {}: {}",
+                args.directory.display(),
+                e
+            );
             std::process::exit(1);
         }
     };
@@ -125,7 +137,10 @@ fn main() -> Result<(), i32> {
     match breezyshim::workspace::check_clean_tree(&wt, &wt.basis_tree().unwrap(), &subpath) {
         Ok(_) => {}
         Err(BrzError::WorkspaceDirty(..)) => {
-            log::info!("{}: Please commit pending changes first.", wt.basedir().display());
+            log::info!(
+                "{}: Please commit pending changes first.",
+                wt.basedir().display()
+            );
             return Ok(());
         }
         Err(e) => {
@@ -156,7 +171,7 @@ fn main() -> Result<(), i32> {
                 allow_reformatting = cfg.allow_reformatting();
             }
         }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {},
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => {
             log::error!("Unable to read config: {}", e);
             std::process::exit(1);
@@ -171,11 +186,7 @@ fn main() -> Result<(), i32> {
         subpath.join("debian")
     };
 
-    let (result, bugnos) = match crate::apply_transition(
-            &wt,
-            &debian_path,
-            &transition,
-        ) {
+    let (result, bugnos) = match crate::apply_transition(&wt, &debian_path, &transition) {
         Ok(crate::TransitionResult::PackageNotAffected(..)) => {
             report_nothing_to_do(versions_dict(), Some("Package not affected by transition"));
         }
@@ -187,7 +198,13 @@ fn main() -> Result<(), i32> {
         }
         Ok(TransitionResult::TransitionSuccess(result, bugnos)) => (result, bugnos),
         Ok(TransitionResult::Unsupported(..)) => {
-            report_fatal(versions_dict(), "unsupported-transition", "Unsupported transition", None, Some(false));
+            report_fatal(
+                versions_dict(),
+                "unsupported-transition",
+                "Unsupported transition",
+                None,
+                Some(false),
+            );
         }
         Err(e) => {
             log::error!("Unable to apply transition: {}", e);
@@ -197,10 +214,16 @@ fn main() -> Result<(), i32> {
 
     let changelog_path = debian_path.join("changelog");
 
-    let (update_changelog, changelog_explanation) = if let Some(update_changelog) = update_changelog {
-        (update_changelog, "Specified by --update-changelog or --no-update-changelog".to_string())
+    let (update_changelog, changelog_explanation) = if let Some(update_changelog) = update_changelog
+    {
+        (
+            update_changelog,
+            "Specified by --update-changelog or --no-update-changelog".to_string(),
+        )
     } else {
-        if let Some(dch_guess) = debian_analyzer::detect_gbp_dch::guess_update_changelog(&wt, &debian_path, None) {
+        if let Some(dch_guess) =
+            debian_analyzer::detect_gbp_dch::guess_update_changelog(&wt, &debian_path, None)
+        {
             note_changelog_policy(dch_guess.update_changelog, &dch_guess.explanation);
             (dch_guess.update_changelog, dch_guess.explanation)
         } else {
@@ -211,10 +234,17 @@ fn main() -> Result<(), i32> {
     if update_changelog {
         let mut summary = format!("Apply transition {}. ", transition.title.unwrap());
         if !bugnos.is_empty() {
-            summary.push_str(&format!("Closes: {}", bugnos.iter().map(|b| format!("#{}", b)).collect::<Vec<_>>().join(", ")));
+            summary.push_str(&format!(
+                "Closes: {}",
+                bugnos
+                    .iter()
+                    .map(|b| format!("#{}", b))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
         }
         match debian_analyzer::add_changelog_entry(&wt, &changelog_path, &[&summary]) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => {
                 log::error!("Unable to update changelog: {}", e);
                 std::process::exit(1);
@@ -222,6 +252,11 @@ fn main() -> Result<(), i32> {
         }
     }
 
-    report_success_debian(versions_dict(), Some(10), Some(result), Some((update_changelog, changelog_explanation)));
+    report_success_debian(
+        versions_dict(),
+        Some(10),
+        Some(result),
+        Some((update_changelog, changelog_explanation)),
+    );
     Ok(())
 }

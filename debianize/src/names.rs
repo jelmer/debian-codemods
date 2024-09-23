@@ -103,7 +103,10 @@ mod tests {
 
     #[test]
     fn test_gnu() {
-        assert_eq!(Some("lala"), upstream_name_to_debian_source_name("GNU Lala").as_deref());
+        assert_eq!(
+            Some("lala"),
+            upstream_name_to_debian_source_name("GNU Lala").as_deref()
+        );
     }
 
     #[test]
