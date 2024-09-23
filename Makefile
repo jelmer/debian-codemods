@@ -59,7 +59,7 @@ update-renamed-tags:
 update: update-spdx update-readme update-renamed-tags update-key-package-versions
 
 next:
-	python3 next.py
+	PYTHONPATH=$(shell pwd)/py python3 lintian-brush/next.py
 
 docker:
 	buildah build -t ghcr.io/jelmer/lintian-brush:latest Dockerfile.lintian-brush .
