@@ -20,8 +20,6 @@ module = [
     "decopy.*",
     "gpg.*",
     "iniparse.*",
-    "configobj.*",
-    "xdg.*",
     "Levenshtein.*",
     "semver.*",
 ]
@@ -38,7 +36,6 @@ dependencies = [
     "debmutate[watch,debcargo]",
     "distro-info",
     "upstream-ontologist[readme,pyproject,setup.cfg,debian_rules,debian_watch,debian_changelog,cargo]>=0.1.29",
-    "tqdm",
     "ruamel.yaml",
     "psycopg2",
     "semver",
@@ -52,16 +49,6 @@ dynamic = ["version"]
 [project.urls]
 Homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 Repository = "https://salsa.debian.org/jelmer/lintian-brush"
-
-[project.optional-dependencies]
-debianize = [
-    "ognibuild>=0.0.18",
-    "buildlog-consultant",
-]
-
-[project.scripts]
-deb-scrub-obsolete = "lintian_brush.scrub_obsolete:main"
-fix-watch-file = "lintian_brush.watch:main"
 
 [tool.setuptools]
 include-package-data = false
