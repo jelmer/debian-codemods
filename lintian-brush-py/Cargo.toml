@@ -24,7 +24,6 @@ pyo3-log = { workspace = true }
 debversion = { workspace = true, features = ["python-debian"] }
 breezyshim = { workspace = true }
 debian-analyzer = { version = ">=0.154.0", path = "../analyzer", default-features = false }
-debianize = { version = ">=0.154.0", path = "../debianize" }
 url.workspace = true
 
 [package.metadata.cargo-all-features]
