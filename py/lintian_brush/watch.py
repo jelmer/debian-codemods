@@ -29,16 +29,10 @@ from typing import List, Optional, Set
 from urllib.parse import urlparse, urlunparse
 from urllib.request import Request, urlopen
 
-from debmutate.reformatting import FormattingUnpreservable
-from debmutate.versions import get_snapshot_revision, strip_dfsg_suffix
 from debmutate.watch import (
     Watch,
-    WatchEditor,
-    WatchFile,
     apply_url_mangle,
 )
-
-from debian.changelog import Changelog
 
 from . import (
     DEFAULT_URLLIB_TIMEOUT,

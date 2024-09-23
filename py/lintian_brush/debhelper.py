@@ -18,11 +18,10 @@
 
 """Debhelper utility functions."""
 
-from functools import cache
-
 import json
 import os
 import subprocess
+from functools import cache
 from typing import Callable, Dict, List, Optional, Tuple
 
 from debmutate._rules import (
