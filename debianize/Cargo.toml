@@ -22,7 +22,7 @@ xdg = "2.5.2"
 debversion.workspace = true
 url.workspace = true
 #ognibuild = ">=0.0.24"
-ognibuild = { git = "https://github.com/jelmer/ognibuild", features = ["upstream", "debian"] }
+ognibuild = { version = ">=0.0.25", features = ["upstream", "debian"] }
 hyper = { version = "0.14", features = ["full", "runtime", "server"] }
 flate2 = "1.0.31"
 tokio = { version = "1.39.3", features = ["full", "rt", "signal"] }
