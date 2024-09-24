@@ -882,7 +882,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "toml_edit",
- "upstream-ontologist 0.1.40 (git+https://github.com/jelmer/upstream-ontologist)",
+ "upstream-ontologist",
  "url",
  "xdg",
 ]
@@ -2759,7 +2759,7 @@ dependencies = [
  "tokio",
  "toml",
  "toml_edit",
- "upstream-ontologist 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
+ "upstream-ontologist",
  "url",
  "whoami",
  "xmltree",
@@ -4739,53 +4739,6 @@ name = "upstream-ontologist"
 version = "0.1.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52b1e8d9365b3326d81ba7dbceb06f0e6a3a6b9817796a615bd2ad20aedec481"
-dependencies = [
- "breezyshim",
- "chrono",
- "configparser 3.1.0",
- "debbugs",
- "debian-changelog",
- "debian-control",
- "debian-copyright",
- "debian-watch",
- "distro-info",
- "gix-config",
- "html5ever 0.29.0",
- "lazy-regex",
- "lazy_static",
- "log",
- "mailparse",
- "makefile-lossless",
- "maplit",
- "opam-file-rs",
- "percent-encoding",
- "pulldown-cmark",
- "pyo3",
- "pyproject-toml",
- "python-pkginfo",
- "quote",
- "regex",
- "reqwest",
- "rst_renderer",
- "rust-ini",
- "select",
- "semver",
- "serde",
- "serde_json",
- "serde_yaml",
- "shlex",
- "textwrap",
- "toml",
- "uo_rst_parser",
- "url",
- "xml",
- "xmltree",
-]
-
-[[package]]
-name = "upstream-ontologist"
-version = "0.1.40"
-source = "git+https://github.com/jelmer/upstream-ontologist#ecb5ef34817d779bebaf11e005966954ba835b94"
 dependencies = [
  "breezyshim",
  "chrono",
