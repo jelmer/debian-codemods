@@ -166,21 +166,6 @@ fn pg_buildext_updatecontrol(path: &std::path::Path) -> Result<(), TemplateExpan
     Ok(())
 }
 
-fn set_mtime<P: AsRef<Path>>(path: P, mtime: std::time::SystemTime) -> nix::Result<()> {
-    use nix::sys::stat::utimes;
-    use nix::sys::time::TimeVal;
-
-    let duration = mtime.duration_since(std::time::UNIX_EPOCH).unwrap();
-
-    let seconds = duration.as_secs();
-    let nanos = duration.subsec_nanos();
-    let micros = nanos / 1_000;
-
-    let tv = TimeVal::new(seconds as _, micros as _);
-
-    utimes(path.as_ref(), &tv, &tv)
-}
-
 /// Expand a control template.
 ///
 /// # Arguments
@@ -206,7 +191,7 @@ fn expand_control_template(
             while let Ok(metadata) = std::fs::metadata(template_path) {
                 if Some(metadata.modified().unwrap()) == path_time {
                     // Wait until mtime has changed, so that make knows to regenerate.
-                    set_mtime(template_path, std::time::SystemTime::now()).unwrap();
+                    filetime::set_file_mtime(template_path, filetime::FileTime::now()).unwrap();
                 } else {
                     break;
                 }
@@ -1368,7 +1353,6 @@ Package: bar
     }
 
     mod control_editor {
-        use std::os::unix::fs::PermissionsExt;
         #[test]
         fn test_do_not_edit() {
             let td = tempfile::tempdir().unwrap();
@@ -1774,8 +1758,10 @@ Testsuite: autopkgtest
             );
         }
 
+        #[cfg(unix)]
         #[test]
         fn test_update_template() {
+            use std::os::unix::fs::PermissionsExt;
             let td = tempfile::tempdir().unwrap();
             std::fs::create_dir(td.path().join("debian")).unwrap();
             std::fs::write(
@@ -1850,8 +1836,10 @@ Uploaders: testvalue
             );
         }
 
+        #[cfg(unix)]
         #[test]
         fn test_update_template_only() {
+            use std::os::unix::fs::PermissionsExt;
             let td = tempfile::tempdir().unwrap();
             std::fs::create_dir(td.path().join("debian")).unwrap();
             std::fs::write(
@@ -1901,8 +1889,10 @@ Uploaders: @lintian-brush-test@
             assert!(!td.path().join("debian/control").exists());
         }
 
+        #[cfg(unix)]
         #[test]
         fn test_update_template_invalid_tokens() {
+            use std::os::unix::fs::PermissionsExt;
             let td = tempfile::tempdir().unwrap();
             std::fs::create_dir(td.path().join("debian")).unwrap();
             std::fs::write(
