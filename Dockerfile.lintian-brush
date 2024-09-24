@@ -7,7 +7,9 @@ RUN cargo build --release -p lintian-brush
 RUN ./setup.py build_ext -i
 
 FROM debian:sid-slim
+RUN apt -y update && apt satisfy -y python3-all-dev python3-debian python3-breezy python3-debmutate python3-distro-info python3-upstream-ontologist python3-ruamel.yaml python3-psycopg2 python3-semver python3-tomlkit python3-levenshtein python3-iso8601 python3-iniparse
 COPY --from=build /code/target/release/lintian-brush /lintian-brush
+COPY lintian-brush/fixers /usr/share/lintian-brush/fixers
 ENV PYTHONPATH=/code
 VOLUME /data
 ENTRYPOINT ["/lintian-brush", "-d", "/data"]
