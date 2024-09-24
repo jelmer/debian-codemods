@@ -943,6 +943,15 @@ impl Fixer for ScriptFixer {
     }
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct DescEntry {
+    script: String,
+    #[serde(rename = "lintian-tags")]
+    lintian_tags: Option<Vec<String>>,
+    #[serde(rename = "force-subprocess")]
+    force_subprocess: Option<bool>,
+}
+
 pub fn read_desc_file<P: AsRef<std::path::Path>>(
     path: P,
     force_subprocess: bool,
@@ -950,22 +959,13 @@ pub fn read_desc_file<P: AsRef<std::path::Path>>(
     let file = File::open(path.as_ref())?;
     let reader = BufReader::new(file);
 
-    let data: serde_yaml::Sequence = serde_yaml::from_reader(reader)?;
+    let data: Vec<DescEntry> = serde_yaml::from_reader(reader)?;
 
     let dirname = path.as_ref().parent().unwrap().to_owned();
     let fixer_iter = data.into_iter().map(move |item| {
-        let script = item.get("script").unwrap().as_str().unwrap().to_string();
-        let lintian_tags = item
-            .get("lintian-tags")
-            .map(|tags| {
-                Some(
-                    tags.as_sequence()?
-                        .iter()
-                        .filter_map(|tag| Some(tag.as_str()?.to_owned()))
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .unwrap_or_default();
+        let script = item.script;
+        let lintian_tags = item.lintian_tags;
+        let force_subprocess = item.force_subprocess.unwrap_or(force_subprocess);
         let name = std::path::Path::new(script.as_str())
             .file_stem()
             .and_then(|name| name.to_str())

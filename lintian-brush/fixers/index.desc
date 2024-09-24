@@ -386,6 +386,8 @@
     - upstream-metadata-file-is-missing
     - upstream-metadata-missing-bug-tracking
     - upstream-metadata-missing-repository
+  # See https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1076245
+  force-subprocess: true
 
 - script: debian-watch-file-is-missing.py
   lintian-tags:
