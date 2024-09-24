@@ -675,14 +675,14 @@ checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
 
 [[package]]
 name = "deb-transition-apply"
-version = "0.158.14"
+version = "0.158.15"
 dependencies = [
  "breezyshim",
  "clap",
  "deb822-lossless",
- "debian-analyzer 0.158.14",
+ "debian-analyzer 0.158.15",
  "debian-control",
- "env_logger 0.11.5",
+ "env_logger 0.10.2",
  "lazy-regex",
  "lazy_static",
  "log",
@@ -732,44 +732,6 @@ dependencies = [
 [[package]]
 name = "debian-analyzer"
 version = "0.158.14"
-dependencies = [
- "breezyshim",
- "chrono",
- "clap",
- "configparser 3.1.0",
- "deb822-lossless",
- "debian-changelog",
- "debian-control",
- "debian-copyright",
- "debversion",
- "dep3",
- "difflib",
- "distro-info",
- "env_logger 0.11.5",
- "filetime",
- "lazy-regex",
- "lazy_static",
- "log",
- "makefile-lossless",
- "maplit",
- "merge3",
- "patchkit",
- "pyo3",
- "quote",
- "reqwest",
- "semver",
- "serde",
- "serde_json",
- "serial_test",
- "sqlx",
- "tempfile",
- "toml_edit",
- "url",
-]
-
-[[package]]
-name = "debian-analyzer"
-version = "0.158.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bb5dc8ee3e7379c5cb63c64e281dc9ab2a4d9c3e54cdd3624671a6fc8e41a84"
 dependencies = [
@@ -797,6 +759,44 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "tempfile",
+ "toml_edit",
+ "url",
+]
+
+[[package]]
+name = "debian-analyzer"
+version = "0.158.15"
+dependencies = [
+ "breezyshim",
+ "chrono",
+ "clap",
+ "configparser 3.1.0",
+ "deb822-lossless",
+ "debian-changelog",
+ "debian-control",
+ "debian-copyright",
+ "debversion",
+ "dep3",
+ "difflib",
+ "distro-info",
+ "env_logger 0.10.2",
+ "filetime",
+ "lazy-regex",
+ "lazy_static",
+ "log",
+ "makefile-lossless",
+ "maplit",
+ "merge3",
+ "patchkit",
+ "pyo3",
+ "quote",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_json",
+ "serial_test",
+ "sqlx",
  "tempfile",
  "toml_edit",
  "url",
@@ -857,17 +857,17 @@ dependencies = [
 
 [[package]]
 name = "debianize"
-version = "0.158.14"
+version = "0.158.15"
 dependencies = [
  "breezyshim",
  "buildlog-consultant",
  "clap",
- "debian-analyzer 0.158.14",
+ "debian-analyzer 0.158.15",
  "debian-changelog",
  "debian-control",
  "debversion",
  "distro-info",
- "env_logger 0.11.5",
+ "env_logger 0.10.2",
  "flate2",
  "hyper 0.14.30",
  "lazy-regex",
@@ -2266,17 +2266,17 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush"
-version = "0.158.14"
+version = "0.158.15"
 dependencies = [
  "breezyshim",
  "chrono",
  "clap",
  "configparser 3.1.0",
- "debian-analyzer 0.158.14",
+ "debian-analyzer 0.158.15",
  "debian-changelog",
  "debversion",
  "distro-info",
- "env_logger 0.11.5",
+ "env_logger 0.10.2",
  "fs_extra",
  "indicatif",
  "lazy-regex",
@@ -2295,11 +2295,11 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush-py"
-version = "0.158.14"
+version = "0.158.15"
 dependencies = [
  "breezyshim",
  "chrono",
- "debian-analyzer 0.158.14",
+ "debian-analyzer 0.158.15",
  "debversion",
  "lintian-brush",
  "pyo3",
@@ -2539,18 +2539,18 @@ dependencies = [
 
 [[package]]
 name = "multiarch-hints"
-version = "0.158.14"
+version = "0.158.15"
 dependencies = [
  "breezyshim",
  "chrono",
  "clap",
  "configparser 3.1.0",
  "deb822-lossless",
- "debian-analyzer 0.158.14",
+ "debian-analyzer 0.158.15",
  "debian-changelog",
  "debian-control",
  "debversion",
- "env_logger 0.11.5",
+ "env_logger 0.10.2",
  "lazy-regex",
  "lazy_static",
  "log",
@@ -2722,7 +2722,7 @@ dependencies = [
  "chrono",
  "clap",
  "deb822-lossless",
- "debian-analyzer 0.158.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "debian-analyzer 0.158.14",
  "debian-changelog",
  "debian-control",
  "debversion",
@@ -3654,17 +3654,17 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "scrub-obsolete"
-version = "0.158.14"
+version = "0.158.15"
 dependencies = [
  "async-trait",
  "breezyshim",
  "clap",
  "deb822-lossless",
- "debian-analyzer 0.158.14",
+ "debian-analyzer 0.158.15",
  "debian-control",
  "debversion",
  "distro-info",
- "env_logger 0.11.5",
+ "env_logger 0.10.2",
  "lazy_static",
  "log",
  "maplit",

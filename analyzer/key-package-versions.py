@@ -6,9 +6,13 @@ from typing import Dict
 
 from debian.changelog import Version
 
-KEY_PACKAGES = ("debhelper", "dpkg")
+import argparse
 
-OUTPUT_FILENAME = "key-package-versions.json"
+parser = argparse.ArgumentParser()
+parser.add_argument("output", help="Output file", type=str, default="key-package-versions.json")
+args = parser.parse_args()
+
+KEY_PACKAGES = ("debhelper", "dpkg")
 
 DEFAULT_UDD_URL = (
     "postgresql://udd-mirror:udd-mirror@udd-mirror.debian.net/udd"
@@ -16,7 +20,7 @@ DEFAULT_UDD_URL = (
 
 versions: Dict[str, Dict[str, str]]
 
-with open(OUTPUT_FILENAME) as f:
+with open(args.output, "r") as f:
     versions = json.load(f)
 
 
@@ -75,5 +79,5 @@ print("Downloading Ubuntu key package information")
 update_ubuntu(versions, KEY_PACKAGES)
 
 
-with open(OUTPUT_FILENAME, "w") as f:
+with open(args.output, "w") as f:
     json.dump(versions, f, indent=4, sort_keys=True)

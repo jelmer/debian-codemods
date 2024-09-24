@@ -49,8 +49,8 @@ update-spdx:
 	brz diff spdx.json || brz commit -m "Update SPDX license data" spdx.json
 
 update-key-package-versions:
-	python3 key-package-versions.py
-	brz diff key-package-versions.json || brz commit -m "Update key package versions" key-package-versions.json
+	python3 analyzer/key-package-versions.py analyzer/key-package-versions.json
+	brz diff analyzer/key-package-versions.json || brz commit -m "Update key package versions" analyzer/key-package-versions.json
 
 update-renamed-tags:
 	python3 lintian-brush/renamed-tags.py
