@@ -37,9 +37,9 @@ merge3 = { version = "0.2", optional = true }
 difflib = "0.4.0"
 deb822-lossless = { workspace = true }
 toml_edit = "0.22.20"
-semver = "1.0.23"
+semver = "1"
 sqlx = { workspace = true, optional = true, features = ["postgres"] }
-filetime = "0.2.25"
+filetime = "0.2"
 
 [features]
 default = ["python", "merge3"]
