@@ -3,7 +3,7 @@ debian/deb-scrub-obsolete.1
 debian/deb-vcs-publish.1
 debian/debianize.1
 debian/detect-changelog-behaviour.1
+debian/dump-multiarch-hints.1
 debian/fix-watch-file.1
 debian/lintian-brush.1
 debian/lintian-brush.conf.5
-debian/dump-multiarch-hints.1
