@@ -334,6 +334,7 @@ mod tests {
     use super::*;
     use breezyshim::controldir::{create_standalone_workingtree, ControlDirFormat};
     use std::path::Path;
+    pub const COMMITTER: &str = "Test User <test@example.com>";
     fn make_changelog(entries: Vec<String>) -> String {
         format!(
             r###"lintian-brush (0.1) UNRELEASED; urgency=medium
@@ -477,6 +478,7 @@ pristine-tar = False
         .unwrap();
         tree.build_commit()
             .message("initial release")
+            .committer(COMMITTER)
             .commit()
             .unwrap();
         let mut changelog_entries = vec!["initial release".to_string()];
@@ -489,7 +491,11 @@ pristine-tar = False
             )
             .unwrap();
             std::fs::write(td.path().join("debian/control"), format!("next {}", i)).unwrap();
-            tree.build_commit().message("Next").commit().unwrap();
+            tree.build_commit()
+                .committer(COMMITTER)
+                .message("Next")
+                .commit()
+                .unwrap();
         }
         assert_eq!(Some(ChangelogBehaviour {
             update_changelog: true,
@@ -516,6 +522,7 @@ pristine-tar = False
         .unwrap();
         tree.build_commit()
             .message("initial release")
+            .committer(COMMITTER)
             .commit()
             .unwrap();
         let mut changelog_entries = vec!["initial release".to_string()];
@@ -526,23 +533,39 @@ pristine-tar = False
                 format!("next {}", i).as_bytes(),
             )
             .unwrap();
-            tree.build_commit().message("Next").commit().unwrap();
+            tree.build_commit()
+                .committer(COMMITTER)
+                .message("Next")
+                .commit()
+                .unwrap();
         }
         std::fs::write(
             td.path().join("debian/changelog"),
             make_changelog(changelog_entries.clone()),
         )
         .unwrap();
-        tree.build_commit().message("Next").commit().unwrap();
+        tree.build_commit()
+            .committer(COMMITTER)
+            .message("Next")
+            .commit()
+            .unwrap();
         changelog_entries.push("final entry".to_string());
         std::fs::write(td.path().join("debian/control"), b"more").unwrap();
-        tree.build_commit().message("Next").commit().unwrap();
+        tree.build_commit()
+            .committer(COMMITTER)
+            .message("Next")
+            .commit()
+            .unwrap();
         std::fs::write(
             td.path().join("debian/changelog"),
             make_changelog(changelog_entries),
         )
         .unwrap();
-        tree.build_commit().message("Next").commit().unwrap();
+        tree.build_commit()
+            .committer(COMMITTER)
+            .message("Next")
+            .commit()
+            .unwrap();
         assert_eq!(Some(ChangelogBehaviour{
             update_changelog: false,
             explanation: "Assuming changelog does not need to be updated, since changelog entries are usually updated in separate commits.".to_string(),
@@ -556,6 +579,7 @@ pristine-tar = False
         tree.build_commit()
             .message("Git-Dch: ignore\n")
             .allow_pointless(true)
+            .committer(COMMITTER)
             .commit()
             .unwrap();
 
@@ -644,11 +668,23 @@ blah (0.20.1) unstable; urgency=medium
             (Path::new("debian/changelog")),
         ])
         .unwrap();
-        tree.build_commit().message("rev1").commit().unwrap();
+        tree.build_commit()
+            .committer(COMMITTER)
+            .message("rev1")
+            .commit()
+            .unwrap();
         std::fs::write(td.path().join("debian/control"), b"bar").unwrap();
-        tree.build_commit().message("rev2").commit().unwrap();
+        tree.build_commit()
+            .committer(COMMITTER)
+            .message("rev2")
+            .commit()
+            .unwrap();
         std::fs::write(td.path().join("debian/control"), b"bla").unwrap();
-        tree.build_commit().message("rev2").commit().unwrap();
+        tree.build_commit()
+            .committer(COMMITTER)
+            .message("rev2")
+            .commit()
+            .unwrap();
         std::fs::write(
             td.path().join("debian/changelog"),
             r#"blah (0.21.1) unstable; urgency=medium
@@ -665,7 +701,11 @@ blah (0.20.1) unstable; urgency=medium
 "#,
         )
         .unwrap();
-        tree.build_commit().message("rev2").commit().unwrap();
+        tree.build_commit()
+            .committer(COMMITTER)
+            .message("rev2")
+            .commit()
+            .unwrap();
         assert_eq!(Some(ChangelogBehaviour{
             update_changelog: false,
             explanation: "Assuming changelog does not need to be updated, since it never uses UNRELEASED entries".to_string()
