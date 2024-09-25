@@ -10,12 +10,18 @@ pub trait AbstractControlEditor {
     fn binaries<'a>(&'a mut self) -> Vec<Box<dyn AbstractBinary + 'a>>;
 
     fn commit(&self) -> bool;
+
+    fn wrap_and_sort(&mut self);
 }
 
 pub trait AbstractSource<'a> {
     fn name(&self) -> Option<String>;
 
     fn ensure_build_dep(&mut self, dep: Entry);
+
+    fn set_maintainer(&mut self, maintainer: &str);
+
+    fn set_uploaders(&mut self, uploaders: &[&str]);
 }
 
 pub trait AbstractBinary {
@@ -39,6 +45,8 @@ impl AbstractControlEditor for DebcargoEditor {
     fn commit(&self) -> bool {
         DebcargoEditor::commit(self).unwrap()
     }
+
+    fn wrap_and_sort(&mut self) {}
 }
 
 impl AbstractBinary for PlainBinary {
@@ -59,6 +67,14 @@ impl<'a> AbstractSource<'a> for PlainSource {
         } else {
             self.set_build_depends(&Relations::from(vec![dep]));
         }
+    }
+
+    fn set_maintainer(&mut self, maintainer: &str) {
+        (self as &mut debian_control::lossless::Source).set_maintainer(maintainer);
+    }
+
+    fn set_uploaders(&mut self, uploaders: &[&str]) {
+        (self as &mut debian_control::lossless::Source).set_uploaders(uploaders);
     }
 }
 
@@ -83,6 +99,15 @@ impl<'a> AbstractSource<'a> for DebcargoSource<'a> {
             build_deps.push(dep.to_string());
         }
     }
+
+    fn set_maintainer(&mut self, maintainer: &str) {
+        (self as &mut crate::debcargo::DebcargoSource).set_maintainer(maintainer);
+    }
+
+    fn set_uploaders(&mut self, uploaders: &[&str]) {
+        (self as &mut crate::debcargo::DebcargoSource)
+            .set_uploaders(uploaders.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+    }
 }
 
 impl<E: crate::editor::Editor<PlainControl>> AbstractControlEditor for E {
@@ -101,6 +126,14 @@ impl<E: crate::editor::Editor<PlainControl>> AbstractControlEditor for E {
             .commit()
             .unwrap()
             .is_empty()
+    }
+
+    fn wrap_and_sort(&mut self) {
+        (self as &mut dyn crate::editor::Editor<PlainControl>).wrap_and_sort(
+            deb822_lossless::Indentation::Spaces(4),
+            false,
+            None,
+        )
     }
 }
 
