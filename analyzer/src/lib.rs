@@ -1,12 +1,9 @@
-use breezyshim::branch::Branch;
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::{Tree, TreeChange, WorkingTree};
 use breezyshim::workspace::reset_tree_with_dirty_tracker;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
-
-use std::str::FromStr;
 
 pub mod abstract_control;
 pub mod benfile;
@@ -278,6 +275,7 @@ impl std::fmt::Display for Certainty {
 #[cfg(feature = "python")]
 impl pyo3::FromPyObject<'_> for Certainty {
     fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use std::str::FromStr;
         let s = ob.extract::<String>()?;
         Certainty::from_str(&s).map_err(pyo3::exceptions::PyValueError::new_err)
     }
@@ -394,13 +392,11 @@ pub fn get_committer(working_tree: &WorkingTree) -> String {
 
     let config = working_tree.branch().get_config_stack();
 
-    Python::with_gil(|py| {
-        config
-            .get("email")
-            .unwrap()
-            .map(|x| x.extract::<String>(py).unwrap())
-            .unwrap_or_default()
-    })
+    config
+        .get("email")
+        .unwrap()
+        .map(|x| x.to_string())
+        .unwrap_or_default()
 }
 
 /// Check whether there are any control files present in a tree.
@@ -445,19 +441,6 @@ pub fn control_files_in_root(tree: &dyn Tree, subpath: &std::path::Path) -> bool
     }
 
     tree.has_filename(subpath.join("control.in").as_path())
-}
-
-pub fn branch_vcs_type(branch: &dyn Branch) -> String {
-    pyo3::prepare_freethreaded_python();
-    pyo3::Python::with_gil(|py| {
-        let repo = branch.to_object(py).getattr(py, "repository").unwrap();
-        if repo.bind(py).hasattr("_git").unwrap() {
-            Ok::<String, pyo3::PyErr>("git".to_string())
-        } else {
-            Ok::<String, pyo3::PyErr>("bzr".to_string())
-        }
-    })
-    .unwrap()
 }
 
 pub fn parseaddr(input: &str) -> Option<(Option<String>, Option<String>)> {
@@ -514,6 +497,7 @@ mod tests {
         assert_eq!(parseaddr("foo").unwrap(), (None, Some("foo".to_string())));
     }
 
+    #[cfg(feature = "python")]
     #[serial]
     #[test]
     fn test_git_env() {

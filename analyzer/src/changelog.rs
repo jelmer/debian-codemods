@@ -260,7 +260,7 @@ pub fn find_changelog(
 #[cfg(test)]
 mod tests {
     use super::*;
-    pub const COMMITTER = "Test User <example@example.com>";
+    pub const COMMITTER: &str = "Test User <example@example.com>";
     #[test]
     fn test_find_previous_upload() {
         let cl = r#"test (1.0-1) unstable; urgency=medium
@@ -585,9 +585,11 @@ blah (0.1) unstable; urgency=medium
 "###,
             )
             .unwrap();
-            tree.build_commit().message("release")
+            tree.build_commit()
+                .message("release")
                 .committer(COMMITTER)
-                .commit().unwrap();
+                .commit()
+                .unwrap();
             std::fs::write(
                 td.path().join("debian/changelog"),
                 r###"blah (0.2) unstable; urgency=medium

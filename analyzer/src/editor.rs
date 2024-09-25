@@ -97,10 +97,10 @@ fn check_preserve_formatting(
     text: Option<&[u8]>,
     allow_reformatting: bool,
 ) -> Result<(), FormattingUnpreservable> {
-    if rewritten_text == text {
+    if allow_reformatting {
         return Ok(());
     }
-    if allow_reformatting {
+    if rewritten_text == text {
         return Ok(());
     }
     Err(FormattingUnpreservable {
@@ -298,7 +298,7 @@ fn update_with_merge3(
     }
     Some(
         m3.merge_lines(false, &merge3::StandardMarkers::default())
-            .join(&b"\n"[..]),
+            .concat(),
     )
 }
 
@@ -322,6 +322,7 @@ fn reformat_file<'a>(
     if updated_contents == rewritten_contents || updated_contents == original_contents {
         return Ok((updated_contents.map(Cow::Borrowed), false));
     }
+    #[allow(unused_mut)]
     let mut updated_contents = updated_contents.map(std::borrow::Cow::Borrowed);
     match check_preserve_formatting(rewritten_contents, original_contents, allow_reformatting) {
         Ok(()) => {}
@@ -380,6 +381,9 @@ pub fn edit_formatted_file(
     allow_generated: bool,
     allow_reformatting: bool,
 ) -> Result<bool, EditorError> {
+    if original_contents == updated_contents {
+        return Ok(false);
+    }
     let (updated_contents, changed) = reformat_file(
         original_contents,
         rewritten_contents,
@@ -426,6 +430,9 @@ pub fn tree_edit_formatted_file(
     allow_reformatting: bool,
 ) -> Result<bool, EditorError> {
     assert!(path.is_relative());
+    if original_contents == updated_contents {
+        return Ok(false);
+    }
     if !allow_generated {
         tree_check_generated_file(tree, path)
             .map_err(|e| EditorError::GeneratedFile(path.to_path_buf(), e))?;
@@ -551,7 +558,7 @@ impl<'a, P: Marshallable> TreeEditor<'a, P> {
             Some(content) => Some(P::from_bytes(content)),
             None => Some(P::empty()),
         };
-        self.rewritten_content.clone_from(&self.orig_content);
+        self.rewritten_content = self.parsed.as_ref().unwrap().to_bytes();
         Ok(())
     }
 
@@ -664,7 +671,7 @@ impl<P: Marshallable> FsEditor<P> {
             Some(content) => Some(P::from_bytes(content)),
             None => Some(P::empty()),
         };
-        self.rewritten_content.clone_from(&self.orig_content);
+        self.rewritten_content = self.parsed.as_ref().unwrap().to_bytes();
         Ok(())
     }
 
@@ -739,6 +746,21 @@ impl Marshallable for debian_control::Control {
 
     fn to_bytes(&self) -> Option<Vec<u8>> {
         self.source()?;
+        Some(self.to_string().into_bytes())
+    }
+}
+
+impl Marshallable for debian_control::lossy::Control {
+    fn from_bytes(content: &[u8]) -> Self {
+        use std::str::FromStr;
+        debian_control::lossy::Control::from_str(std::str::from_utf8(content).unwrap()).unwrap()
+    }
+
+    fn empty() -> Self {
+        debian_control::lossy::Control::new()
+    }
+
+    fn to_bytes(&self) -> Option<Vec<u8>> {
         Some(self.to_string().into_bytes())
     }
 }
@@ -1148,6 +1170,205 @@ mod tests {
         assert_eq!(
             "Source: blah\nHomepage: https://example.com/\n",
             std::fs::read_to_string(tempdir.path().join("debian/control")).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_merge3() {
+        let td = tempfile::tempdir().unwrap();
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/control"),
+            r#"Source: blah
+Testsuite: autopkgtest
+
+Package: blah
+Description: Some description
+ And there are more lines
+ And more lines
+# A comment
+Multi-Arch: foreign
+"#,
+        )
+        .unwrap();
+
+        let mut editor = super::FsEditor::<debian_control::lossy::Control>::new(
+            &td.path().join("debian/control"),
+            false,
+            false,
+        )
+        .unwrap();
+        editor.source.homepage = Some("https://example.com".parse().unwrap());
+
+        #[cfg(feature = "merge3")]
+        {
+            editor.commit().unwrap();
+            assert_eq!(
+                r#"Source: blah
+Homepage: https://example.com/
+Testsuite: autopkgtest
+
+Package: blah
+Multi-Arch: foreign
+Description: Some description
+ And there are more lines
+ And more lines
+"#,
+                editor.to_string()
+            );
+        }
+        #[cfg(not(feature = "merge3"))]
+        {
+            let result = editor.commit();
+            let updated_content =
+                std::fs::read_to_string(td.path().join("debian/control")).unwrap();
+            assert!(result.is_err(), "{:?}", updated_content);
+            assert!(
+                matches!(
+                    result.as_ref().unwrap_err(),
+                    super::EditorError::FormattingUnpreservable(_, _)
+                ),
+                "{:?} {:?}",
+                result,
+                updated_content
+            );
+            assert_eq!(
+                r#"Source: blah
+Testsuite: autopkgtest
+
+Package: blah
+Description: Some description
+ And there are more lines
+ And more lines
+# A comment
+Multi-Arch: foreign
+"#,
+                updated_content
+            );
+        }
+    }
+
+    #[test]
+    fn test_reformat_file_preserved() {
+        let (updated_content, changed) = reformat_file(
+            Some(b"original\n"),
+            Some(b"original\n"),
+            Some(b"updated\n"),
+            false,
+        )
+        .unwrap();
+        assert_eq!(updated_content, Some(Cow::Borrowed(&b"updated\n"[..])));
+        assert!(changed);
+    }
+
+    #[test]
+    fn test_reformat_file_not_preserved_allowed() {
+        let (updated_content, changed) = reformat_file(
+            Some(b"original\n#comment\n"),
+            Some(b"original\n"),
+            Some(b"updated\n"),
+            true,
+        )
+        .unwrap();
+        assert_eq!(updated_content, Some(Cow::Borrowed(&b"updated\n"[..])));
+        assert!(changed);
+    }
+
+    #[test]
+    fn test_reformat_file_not_preserved_not_allowed() {
+        let err = reformat_file(
+            Some(b"original\n#comment\n"),
+            Some(b"original\n"),
+            Some(b"updated\n"),
+            false,
+        )
+        .unwrap_err();
+        assert!(matches!(err, FormattingUnpreservable { .. }));
+    }
+
+    #[test]
+    fn test_reformat_file_not_preserved_merge3() {
+        let r = reformat_file(
+            Some(b"original\noriginal 2\noriginal 3\n#comment\noriginal 4\n"),
+            Some(b"original\noriginal 2\noriginal 3\noriginal 4\n"),
+            Some(b"updated\noriginal 2\noriginal 3\n#comment\noriginal 4\n"),
+            false,
+        );
+        #[cfg(feature = "merge3")]
+        {
+            let (updated_content, changed) = r.unwrap();
+            let updated = std::str::from_utf8(updated_content.as_ref().unwrap().as_ref()).unwrap();
+            assert_eq!(
+                updated,
+                "updated\noriginal 2\noriginal 3\n#comment\noriginal 4\n"
+            );
+            assert!(changed);
+        }
+        #[cfg(not(feature = "merge3"))]
+        {
+            assert!(matches!(r.unwrap_err(), FormattingUnpreservable { .. }));
+        }
+    }
+
+    #[test]
+    fn test_edit_formatted_file_preservable() {
+        let td = tempfile::tempdir().unwrap();
+        std::fs::write(td.path().join("a"), "some content\n").unwrap();
+        assert!(edit_formatted_file(
+            &td.path().join("a"),
+            Some("some content\n".as_bytes()),
+            Some("some content\n".as_bytes()),
+            Some("new content\n".as_bytes()),
+            false,
+            false
+        )
+        .unwrap());
+        assert_eq!(
+            "new content\n",
+            std::fs::read_to_string(td.path().join("a")).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_edit_formatted_file_not_preservable() {
+        let td = tempfile::tempdir().unwrap();
+        std::fs::write(td.path().join("a"), "some content\n#extra\n").unwrap();
+        assert!(matches!(
+            edit_formatted_file(
+                &td.path().join("a"),
+                Some("some content\n#extra\n".as_bytes()),
+                Some("some content\n".as_bytes()),
+                Some("new content\n".as_bytes()),
+                false,
+                false
+            )
+            .unwrap_err(),
+            EditorError::FormattingUnpreservable(_, FormattingUnpreservable { .. })
+        ));
+
+        assert_eq!(
+            "some content\n#extra\n",
+            std::fs::read_to_string(td.path().join("a")).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_edit_formatted_file_not_preservable_allowed() {
+        let td = tempfile::tempdir().unwrap();
+        std::fs::write(td.path().join("a"), "some content\n").unwrap();
+        assert!(edit_formatted_file(
+            &td.path().join("a"),
+            Some("some content\n#extra\n".as_bytes()),
+            Some("some content\n".as_bytes()),
+            Some("new content\n".as_bytes()),
+            false,
+            true
+        )
+        .is_ok());
+
+        assert_eq!(
+            "new content\n",
+            std::fs::read_to_string(td.path().join("a")).unwrap()
         );
     }
 }

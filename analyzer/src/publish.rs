@@ -1,6 +1,6 @@
 use crate::salsa::guess_repository_url;
 use crate::vcs::determine_browser_url;
-use crate::{branch_vcs_type, get_committer, parseaddr};
+use crate::{get_committer, parseaddr};
 use debian_control::control::Source;
 
 use breezyshim::error::Error as BrzError;
@@ -11,10 +11,18 @@ use debian_control::vcs::ParsedVcs;
 use std::path::Path;
 use url::Url;
 
-pub fn update_control_for_vcs_url(source: &mut Source, vcs_type: &str, vcs_url: &str) {
-    source
-        .as_mut_deb822()
-        .insert(format!("Vcs-{}", vcs_type).as_str(), vcs_url);
+pub fn update_control_for_vcs_url(
+    source: &mut Source,
+    vcs_type: breezyshim::foreign::VcsType,
+    vcs_url: &str,
+) {
+    source.as_mut_deb822().insert(
+        match vcs_type {
+            breezyshim::foreign::VcsType::Git => "Vcs-Git",
+            breezyshim::foreign::VcsType::Bazaar => "Vcs-Bzr",
+        },
+        vcs_url,
+    );
     if let Some(url) = determine_browser_url("git", vcs_url, None) {
         source.as_mut_deb822().insert("Vcs-Browser", url.as_ref());
     } else {
@@ -120,24 +128,19 @@ pub fn update_official_vcs(
         }
     };
     log::info!("Using repository URL: {}", repo_url);
-    // TODO(jelmer): Detect vcs type in a better way
     let branch = wt.branch();
-    let vcs_type = branch_vcs_type(branch.as_ref());
 
-    let branch = match vcs_type.as_str() {
-        "git" => Some("debian/main"),
-        "bzr" => None,
-        _ => {
-            panic!("Unknown VCS type");
-        }
+    let branch_name = match branch.vcs_type() {
+        breezyshim::foreign::VcsType::Git => Some("debian/main"),
+        breezyshim::foreign::VcsType::Bazaar => None,
     };
 
     let vcs_url = ParsedVcs {
         repo_url: repo_url.to_string(),
-        branch: branch.map(|s| s.to_string()),
+        branch: branch_name.map(|s| s.to_string()),
         subpath: subpath.map(|p| p.to_string_lossy().to_string()),
     };
-    update_control_for_vcs_url(&mut source, vcs_type.as_str(), &vcs_url.to_string());
+    update_control_for_vcs_url(&mut source, branch.vcs_type(), &vcs_url.to_string());
     let parsed_vcs = vcs_url.clone();
 
     let committer = committer.map_or_else(|| get_committer(wt), |s| s.to_string());

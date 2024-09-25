@@ -1532,60 +1532,6 @@ NewField: New Field
         }
 
         #[test]
-        fn test_merge3() {
-            let td = tempfile::tempdir().unwrap();
-            std::fs::create_dir(td.path().join("debian")).unwrap();
-            std::fs::write(
-                td.path().join("debian/control"),
-                r#"Source: blah
-Testsuite: autopkgtest
-
-Package: blah
-Description: Some description
- And there are more lines
- And more lines
-# A comment
-Multi-Arch: foreign
-"#,
-            )
-            .unwrap();
-
-            let editor =
-                super::TemplatedControlEditor::open(td.path().join("debian/control")).unwrap();
-            editor
-                .source()
-                .unwrap()
-                .as_mut_deb822()
-                .insert("NewField", "New Field");
-
-            #[cfg(feature = "merge3")]
-            {
-                editor.commit().unwrap();
-                assert_eq!(
-                    r#"Source: blah
-Testsuite: autopkgtest
-NewField: New Field
-
-Package: blah
-Description: Some description
- And there are more lines
- And more lines
-# A comment
-Multi-Arch: foreign
-"#,
-                    editor.as_deb822().to_string()
-                );
-            }
-            #[cfg(not(feature = "merge3"))]
-            {
-                assert!(matches!(
-                    editor.commit().unwrap_err(),
-                    super::EditorError::GeneratedFile(_, _)
-                ));
-            }
-        }
-
-        #[test]
         fn test_modify_source() {
             let td = tempfile::tempdir().unwrap();
             std::fs::create_dir(td.path().join("debian")).unwrap();
