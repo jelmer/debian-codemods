@@ -195,6 +195,7 @@ pub fn find_patch_base(tree: &WorkingTree) -> Option<RevisionId> {
 
 #[cfg(test)]
 mod find_patch_base_tests {
+    const COMMITTER: &str = "Test Suite <test@suite.example.com>";
     use breezyshim::tree::{MutableTree, WorkingTree};
     use breezyshim::RevisionId;
 
@@ -205,7 +206,12 @@ mod find_patch_base_tests {
             &breezyshim::controldir::ControlDirFormat::default(),
         )
         .unwrap();
-        let upstream_revid = tree.build_commit().message("upstream").commit().unwrap();
+        let upstream_revid = tree
+            .build_commit()
+            .message("upstream")
+            .committer(COMMITTER)
+            .commit()
+            .unwrap();
         tree.mkdir(std::path::Path::new("debian")).unwrap();
         std::fs::write(
             td.path().join("debian/changelog"),
@@ -565,6 +571,7 @@ pub fn read_quilt_patches<'a>(
 
 #[cfg(test)]
 mod read_quilt_patches_tests {
+    const COMMITTER: &str = "Test Suite <test@suite.example.com>";
     use breezyshim::controldir::ControlDirFormat;
     use breezyshim::tree::MutableTree;
 
@@ -605,7 +612,11 @@ mod read_quilt_patches_tests {
             .as_slice(),
         )
         .unwrap();
-        tree.build_commit().message("add patch").commit().unwrap();
+        tree.build_commit()
+            .message("add patch")
+            .committer(COMMITTER)
+            .commit()
+            .unwrap();
         let patches = super::read_quilt_patches(&tree, std::path::Path::new("debian/patches"))
             .collect::<Vec<_>>();
         assert_eq!(1, patches.len());
@@ -643,7 +654,11 @@ mod read_quilt_patches_tests {
         .unwrap();
         tree.add(&[std::path::Path::new("debian/patches/series")])
             .unwrap();
-        tree.build_commit().message("add series").commit().unwrap();
+        tree.build_commit()
+            .message("add series")
+            .committer(COMMITTER)
+            .commit()
+            .unwrap();
         let patches = super::read_quilt_patches(&tree, std::path::Path::new("debian/patches"))
             .collect::<Vec<_>>();
         assert_eq!(0, patches.len());
@@ -672,6 +687,7 @@ pub fn upstream_with_applied_patches(
 
 #[cfg(test)]
 mod upstream_with_applied_patches_tests {
+    const COMMITTER: &str = "Test Suite <test@suite.example.com>";
     use breezyshim::tree::{MutableTree, WorkingTree};
     use breezyshim::RevisionId;
 
@@ -684,7 +700,12 @@ mod upstream_with_applied_patches_tests {
         .unwrap();
         std::fs::write(td.path().join("afile"), b"some line\n").unwrap();
         tree.add(&[std::path::Path::new("afile")]).unwrap();
-        let upstream_revid = tree.build_commit().message("upstream").commit().unwrap();
+        let upstream_revid = tree
+            .build_commit()
+            .message("upstream")
+            .committer(COMMITTER)
+            .commit()
+            .unwrap();
         tree.mkdir(std::path::Path::new("debian")).unwrap();
         std::fs::write(
             td.path().join("debian/changelog"),
@@ -790,6 +811,7 @@ pub fn tree_non_patches_changes(
 
 #[cfg(test)]
 mod tree_non_patches_changes_tests {
+    const COMMITTER: &str = "Test Suite <test@suite.example.com>";
     use breezyshim::tree::{MutableTree, WorkingTree};
     use breezyshim::RevisionId;
     fn setup() -> (tempfile::TempDir, WorkingTree, RevisionId) {
@@ -807,6 +829,7 @@ mod tree_non_patches_changes_tests {
         let upstream_revid = local_tree
             .build_commit()
             .message("upstream")
+            .committer(COMMITTER)
             .commit()
             .unwrap();
 
