@@ -169,6 +169,7 @@ impl std::fmt::Display for ChangelogError {
             ChangelogError::NotDebianPackage(path) => {
                 write!(f, "Not a Debian package: {}", path.display())
             }
+            #[cfg(feature = "python")]
             ChangelogError::Python(e) => write!(f, "{}", e),
         }
     }
@@ -315,6 +316,7 @@ pub fn min_certainty(certainties: &[Certainty]) -> Option<Certainty> {
     certainties.iter().min().cloned()
 }
 
+#[cfg(feature = "python")]
 fn get_git_committer(working_tree: &WorkingTree) -> Option<String> {
     pyo3::prepare_freethreaded_python();
     pyo3::Python::with_gil(|py| {
@@ -385,6 +387,7 @@ fn get_git_committer(working_tree: &WorkingTree) -> Option<String> {
 
 /// Get the committer string for a tree
 pub fn get_committer(working_tree: &WorkingTree) -> String {
+    #[cfg(feature = "python")]
     if let Some(committer) = get_git_committer(working_tree) {
         return committer;
     }
