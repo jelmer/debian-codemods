@@ -3,5 +3,5 @@ include HACKING.md
 include LICENSE
 include README.md
 include TODO
-include lintian_brush/py.typed
-include renamed-tags.json spdx.json key-package-versions.json
+include py/lintian_brush/py.typed
+include lintian-brush/renamed-tags.json spdx.json analyzer/key-package-versions.json
