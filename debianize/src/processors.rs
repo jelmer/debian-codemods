@@ -519,9 +519,18 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
             toml_edit::value(crate_version.to_string());
     }
     if let Some(features) = features {
+        let features_section = control.cargo.as_mut().unwrap()["features"]
+            .as_table_mut()
+            .unwrap();
         for (feature, reqs) in features.iter() {
-            control.cargo.as_mut().unwrap()["features"][feature] =
-                reqs.into_iter().collect::<toml_edit::Array>().into();
+            features_section[feature] = toml_edit::value(toml_edit::Array::new());
+
+            for req in reqs.iter() {
+                features_section[feature]
+                    .as_array_mut()
+                    .unwrap()
+                    .push(toml_edit::Value::from(req.to_string()));
+            }
         }
     }
     control.debcargo["semver_suffix"] = toml_edit::value(semver_suffix);

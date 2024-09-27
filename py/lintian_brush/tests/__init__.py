@@ -18,7 +18,6 @@
 import unittest
 
 core_names = [
-    "changelog",
     "debhelper",
     "lintian",
     "lintian_overrides",

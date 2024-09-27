@@ -516,7 +516,7 @@ fn main() -> Result<(), i32> {
                 subpath,
                 committer.clone(),
                 false,
-                Box::new(breezyshim::commit::ReportCommitToLog::new()),
+                Some(Box::new(breezyshim::commit::ReportCommitToLog::new())),
             );
             let fixers = ognibuild::debian::fixers::default_fixers(&context, &apt);
             ognibuild::debian::fix_build::build_incrementally(

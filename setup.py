@@ -30,8 +30,8 @@ setup(
             "share/lintian-brush",
             [
                 "spdx.json",
-                "renamed-tags.json",
-                "key-package-versions.json",
+                "lintian-brush/renamed-tags.json",
+                "analyzer/key-package-versions.json",
             ],
         ),
     ],
