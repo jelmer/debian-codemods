@@ -19,9 +19,9 @@ serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
 sqlx.workspace = true
-tokio = { version = "1.40.0", features = ["full"] }
+tokio = { workspace = true, features = ["full"] }
 clap = { workspace = true, features = ["derive", "env"], optional = true }
-async-trait = "0.1.82"
+async-trait = "0.1"
 
 [features]
 default = ["cli"]

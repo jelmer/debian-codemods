@@ -25,7 +25,7 @@ distro-info = { version = ">=0.4.0" }
 url = { workspace = true }
 tempfile.workspace = true
 maplit = "1.0.2"
-lazy_static = "1.4.0"
+lazy_static = { workspace = true }
 debian-changelog = { workspace = true }
 debian-control = { workspace = true }
 debian-copyright = { workspace = true }
@@ -36,8 +36,8 @@ reqwest = { workspace = true, features = ["blocking", "json"] }
 merge3 = { version = "0.2", optional = true }
 difflib = "0.4.0"
 deb822-lossless = { workspace = true }
-toml_edit = "0.22.20"
-semver = "1"
+toml_edit = { workspace = true }
+semver = { workspace = true }
 sqlx = { workspace = true, optional = true, features = ["postgres"] }
 filetime = "0.2"
 

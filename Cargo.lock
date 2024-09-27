@@ -344,7 +344,35 @@ dependencies = [
  "debian-control",
  "debversion",
  "env_logger 0.11.5",
- "fancy-regex",
+ "fancy-regex 0.13.0",
+ "inventory",
+ "lazy-regex",
+ "lazy_static",
+ "log",
+ "maplit",
+ "pep440_rs",
+ "pep508_rs",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "shlex",
+ "text-size",
+ "textwrap",
+]
+
+[[package]]
+name = "buildlog-consultant"
+version = "0.0.43"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e17db5e1ba960013930cd037b4c73008a70e0536303933c982679196ee4051b"
+dependencies = [
+ "chrono",
+ "clap",
+ "debian-control",
+ "debversion",
+ "env_logger 0.11.5",
+ "fancy-regex 0.11.0",
  "inventory",
  "lazy-regex",
  "lazy_static",
@@ -861,7 +889,7 @@ name = "debianize"
 version = "0.158.0"
 dependencies = [
  "breezyshim",
- "buildlog-consultant",
+ "buildlog-consultant 0.0.43",
  "clap",
  "debian-analyzer 0.158.16",
  "debian-changelog",
@@ -1186,6 +1214,16 @@ dependencies = [
  "quote",
  "syn 1.0.109",
  "synstructure",
+]
+
+[[package]]
+name = "fancy-regex"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b95f7c0680e4142284cf8b22c14a476e87d61b004a3a0861872b32ef7ead40a2"
+dependencies = [
+ "bit-set",
+ "regex",
 ]
 
 [[package]]
@@ -2719,7 +2757,7 @@ checksum = "fcf34524fadf749364a5b5883f49014127281667270a2de6daed7e1e0c591940"
 dependencies = [
  "axum",
  "breezyshim",
- "buildlog-consultant",
+ "buildlog-consultant 0.0.42",
  "chrono",
  "clap",
  "deb822-lossless",
@@ -4702,9 +4740,9 @@ dependencies = [
 
 [[package]]
 name = "upstream-ontologist"
-version = "0.1.42"
+version = "0.1.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87cd35854c01a87f966899b2494b52d89bba6a9b78e05807d7099511a76e9153"
+checksum = "90af94de821bf5e12e2bc7ccae590c96f535c577b612350f926adf047f9f5f8e"
 dependencies = [
  "breezyshim",
  "chrono",

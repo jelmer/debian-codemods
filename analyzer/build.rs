@@ -32,11 +32,13 @@ fn main() {
             })
             .collect::<Vec<_>>();
 
+
         let key = quote::format_ident!("{}_versions", key);
         use std::io::Write;
 
         let code = quote! {
             lazy_static::lazy_static! {
+                #[allow(non_upper_case_globals)]
                 pub static ref #key: std::collections::HashMap<&'static str, debversion::Version> = {
                     let mut map = std::collections::HashMap::new();
                     #(#versions)*
