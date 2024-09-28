@@ -16,20 +16,20 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use upstream_ontologist::UpstreamMetadata;
 
-struct ProcessorContext {
-    session: Box<dyn Session>,
-    wt: WorkingTree,
+struct ProcessorContext<'a> {
+    session: &'a dyn Session,
+    wt: &'a WorkingTree,
     subpath: PathBuf,
     debian_path: PathBuf,
     upstream_version: String,
-    metadata: UpstreamMetadata,
+    metadata: &'a UpstreamMetadata,
     compat_release: String,
     buildsystem: Box<dyn BuildSystem>,
     buildsystem_subpath: PathBuf,
     _kickstart_from_dist: Option<Box<dyn FnOnce(&WorkingTree, &Path) -> Result<(), Error>>>,
 }
 
-impl ProcessorContext {
+impl<'a> ProcessorContext<'a> {
     fn kickstart_tree(&mut self, sourceful: bool) -> Result<(), Error> {
         if sourceful {
             (self._kickstart_from_dist.take().unwrap())(&self.wt, &self.subpath)?;
@@ -50,7 +50,7 @@ impl ProcessorContext {
 
     fn create_control_file(&self) -> Result<TreeEditor<Control>, Error> {
         Ok(TreeEditor::<Control>::new(
-            &self.wt,
+            self.wt,
             &self.debian_path.join("control"),
             false,
             true,
@@ -73,7 +73,7 @@ impl ProcessorContext {
 
     fn get_project_wide_deps(&self) -> (Relations, Relations) {
         let (build_deps, test_deps) =
-            get_project_wide_deps(self.session.as_ref(), self.buildsystem.as_ref());
+            get_project_wide_deps(self.session, self.buildsystem.as_ref());
         let mut build_ret = Relations::new();
         for dep in build_deps {
             let rs: Relations = dep.into();
@@ -540,12 +540,12 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
 }
 
 pub fn process(
-    session: Box<dyn Session>,
-    wt: WorkingTree,
+    session: &dyn Session,
+    wt: &WorkingTree,
     subpath: PathBuf,
     debian_path: PathBuf,
     upstream_version: String,
-    metadata: UpstreamMetadata,
+    metadata: &UpstreamMetadata,
     compat_release: String,
     buildsystem: Box<dyn BuildSystem>,
     buildsystem_subpath: PathBuf,
