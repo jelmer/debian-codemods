@@ -1,3 +1,4 @@
+use crate::names::upstream_name_to_debian_source_name as source_name_from_upstream_name;
 use breezyshim::branch::Branch;
 use breezyshim::debian::error::Error as BrzDebianError;
 use breezyshim::debian::merge_upstream::{
@@ -194,18 +195,21 @@ pub fn import_upstream_dist(
     upstream_source: &UpstreamBranchSource,
     subpath: &Path,
     source_name: &str,
-    upstream_version: &str,
+    upstream_version: &UpstreamVersion,
 ) -> Result<(RevisionId, Option<String>, HashMap<TarballKind, String>), BrzDebianError> {
     let (mut pristine_revids, tag_names, upstream_branch_name) = if pristine_tar_source
-        .has_version(Some(source_name), upstream_version, None, false)?
+        .has_version(Some(source_name), &upstream_version.version, None, false)?
     {
         log::warn!(
             "Upstream version {}/{} already imported.",
             source_name,
-            upstream_version,
+            upstream_version.version,
         );
-        let pristine_revids =
-            pristine_tar_source.version_as_revisions(Some(source_name), upstream_version, None)?;
+        let pristine_revids = pristine_tar_source.version_as_revisions(
+            Some(source_name),
+            &upstream_version.version,
+            None,
+        )?;
         let upstream_branch_name = None;
         let tag_names = HashMap::new();
         (pristine_revids, tag_names, upstream_branch_name)
@@ -215,7 +219,7 @@ pub fn import_upstream_dist(
             subpath,
             upstream_source,
             source_name,
-            upstream_version,
+            &upstream_version.version,
         )?;
         (pristine_revids, tag_names, Some(upstream_branch_name))
     };
@@ -341,6 +345,13 @@ pub enum Error {
     },
     IoError(std::io::Error),
     BrzError(BrzError),
+    SqlxError(sqlx::Error),
+}
+
+impl From<sqlx::Error> for Error {
+    fn from(e: sqlx::Error) -> Self {
+        Error::SqlxError(e)
+    }
 }
 
 impl From<BrzError> for Error {
@@ -413,6 +424,7 @@ impl std::fmt::Display for Error {
             BrzError(e) => write!(f, "Breezy error: {}", e),
             MissingUpstreamInfo(name) => write!(f, "Missing upstream information for {}.", name),
             EditorError(e) => write!(f, "Editor error: {}", e),
+            SqlxError(e) => write!(f, "SQLx error: {}", e),
         }
     }
 }
@@ -495,15 +507,17 @@ fn import_metadata_from_path(
     let p = tree.abspath(subpath).unwrap();
     let metadata_items =
         guess_upstream_info(&p, Some(preferences.trust)).collect::<Result<Vec<_>, _>>()?;
-    metadata.update(
-        summarize_upstream_metadata(
-            metadata_items.into_iter(),
-            &p,
-            Some(preferences.net_access),
-            Some(preferences.consult_external_directory),
-            Some(preferences.check),
-        )?
-        .into_iter(),
-    );
+    metadata.update(summarize_upstream_metadata(
+        metadata_items.into_iter(),
+        &p,
+        Some(preferences.net_access),
+        Some(preferences.consult_external_directory),
+        Some(preferences.check),
+    )?);
     Ok(())
+}
+
+pub struct UpstreamVersion {
+    pub version: String,
+    pub mangled_version: String,
 }

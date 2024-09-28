@@ -874,6 +874,7 @@ dependencies = [
  "reqwest",
  "semver",
  "serde",
+ "sqlx",
  "tempfile",
  "tokio",
  "toml_edit",

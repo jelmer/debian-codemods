@@ -367,6 +367,15 @@ fn main() -> Result<(), i32> {
                 None,
             );
         }
+        Err(Error::SqlxError(e)) => {
+            report_fatal(
+                versions_dict(),
+                "sql-error",
+                &format!("Error running SQL: {}", e),
+                None,
+                None,
+            );
+        }
         Err(Error::IoError(e)) => {
             report_fatal(
                 versions_dict(),
