@@ -52,3 +52,5 @@ quote = "1.0.37"
 serde.workspace = true
 serde_yaml.workspace = true
 
+[package.metadata.cargo-all-features]
+max_combination_size = 2

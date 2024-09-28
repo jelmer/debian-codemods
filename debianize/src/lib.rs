@@ -521,3 +521,65 @@ pub struct UpstreamVersion {
     pub version: String,
     pub mangled_version: String,
 }
+
+impl From<String> for UpstreamVersion {
+    fn from(v: String) -> Self {
+        Self {
+            version: v.clone(),
+            mangled_version: debianize_upstream_version(&v),
+        }
+    }
+}
+
+/// Determine the upstream version to use.
+pub fn determine_upstream_version(
+    upstream_source: &UpstreamBranchSource,
+    metadata: &UpstreamMetadata,
+    version_kind: VersionKind,
+) -> Result<UpstreamVersion, Error> {
+    let name = metadata.name();
+
+    // Ask the upstream source for the latest version.
+    if let Some((upstream_version, mangled_version)) =
+        upstream_source.get_latest_version(name, None).unwrap()
+    {
+        return Ok(UpstreamVersion {
+            version: upstream_version,
+            mangled_version,
+        });
+    }
+
+    if version_kind == VersionKind::Release {
+        return Err(Error::NoUpstreamReleases(
+            metadata.name().map(|x| x.to_string()),
+        ));
+    }
+
+    let upstream_revision = upstream_source.upstream_branch().last_revision();
+
+    if let Some(next_upstream_version) = metadata.version() {
+        // They haven't done any releases yet. Assume we're ahead of the next announced release?
+        let next_upstream_version = debianize_upstream_version(next_upstream_version);
+        let upstream_version = upstream_version_add_revision(
+            upstream_source.upstream_branch().as_ref(),
+            &next_upstream_version,
+            &upstream_revision,
+            Some("~"),
+        )
+        .unwrap();
+        return Ok(UpstreamVersion::from(upstream_version));
+    }
+
+    let upstream_version = upstream_version_add_revision(
+        upstream_source.upstream_branch().as_ref(),
+        "0",
+        &upstream_revision,
+        Some("+"),
+    )
+    .unwrap();
+    log::warn!(
+        "Unable to determine upstream version, using {}.",
+        upstream_version
+    );
+    Ok(UpstreamVersion::from(upstream_version))
+}
