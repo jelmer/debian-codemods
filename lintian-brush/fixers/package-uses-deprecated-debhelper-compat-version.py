@@ -201,19 +201,19 @@ class PybuildUpgrader:
 
     def fix_line(self, line, target):
         """Upgrade from python_distutils to pybuild."""
-        line, changed = update_line(
+        line, _ = update_line(
             line,
             b"--buildsystem=python_distutils",
             b"--buildsystem=pybuild",
             "Replace python_distutils buildsystem with pybuild.",
         )
-        line, changed = update_line(
+        line, _ = update_line(
             line,
             b"--buildsystem python_distutils",
             b"--buildsystem=pybuild",
             "Replace python_distutils buildsystem with pybuild.",
         )
-        line, changed = update_line(
+        line, _ = update_line(
             line,
             b"-O--buildsystem=python_distutils",
             b"-O--buildsystem=pybuild",
