@@ -5,7 +5,7 @@ use deb_transition_apply::TransitionResult;
 use debian_analyzer::config::Config;
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::editor::EditorError;
-use debian_analyzer::svp::{enabled, report_fatal, report_nothing_to_do, report_success_debian};
+use debian_analyzer::svp::{ChangelogBehaviour,enabled, report_fatal, report_nothing_to_do, report_success_debian};
 use debian_analyzer::transition::Transition;
 use std::collections::HashMap;
 use std::io::Write;
@@ -217,7 +217,7 @@ fn main() -> Result<(), i32> {
     let changelog_behaviour = if let Some(update_changelog) = update_changelog
     {
         ChangelogBehaviour {
-            update: update_changelog,
+            update_changelog,
             explanation: "Specified by --update-changelog or --no-update-changelog".to_string(),
         }
     } else {
@@ -228,7 +228,7 @@ fn main() -> Result<(), i32> {
             dch_guess
         } else {
             ChangelogBehaviour {
-                update: true,
+                update_changelog: true,
                 explanation: "No changelog policy detected".to_string(),
             }
         }

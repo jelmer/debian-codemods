@@ -674,7 +674,7 @@ dependencies = [
  "breezyshim",
  "clap",
  "deb822-lossless",
- "debian-analyzer 0.158.17",
+ "debian-analyzer 0.158.18",
  "debian-control",
  "env_logger",
  "lazy-regex",
@@ -725,7 +725,7 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.158.17"
+version = "0.158.18"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -763,9 +763,9 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.158.17"
+version = "0.158.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "717df57534cce59faed86bebdad4d825596984dfe71a42a4fe9eef23b191be58"
+checksum = "54f7afc38b398fa22a928dc540eeb3e980fbba11a8bad57170e80011b0d1ae0d"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -857,7 +857,7 @@ dependencies = [
  "breezyshim",
  "buildlog-consultant",
  "clap",
- "debian-analyzer 0.158.17",
+ "debian-analyzer 0.158.18",
  "debian-changelog",
  "debian-control",
  "debversion",
@@ -2243,7 +2243,7 @@ dependencies = [
  "chrono",
  "clap",
  "configparser",
- "debian-analyzer 0.158.17",
+ "debian-analyzer 0.158.18",
  "debian-changelog",
  "debversion",
  "distro-info",
@@ -2271,7 +2271,7 @@ version = "0.158.0"
 dependencies = [
  "breezyshim",
  "chrono",
- "debian-analyzer 0.158.17",
+ "debian-analyzer 0.158.18",
  "debversion",
  "lintian-brush",
  "pyo3",
@@ -2518,7 +2518,7 @@ dependencies = [
  "clap",
  "configparser",
  "deb822-lossless",
- "debian-analyzer 0.158.17",
+ "debian-analyzer 0.158.18",
  "debian-changelog",
  "debian-control",
  "debversion",
@@ -2695,7 +2695,7 @@ dependencies = [
  "chrono",
  "clap",
  "deb822-lossless",
- "debian-analyzer 0.158.17 (registry+https://github.com/rust-lang/crates.io-index)",
+ "debian-analyzer 0.158.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "debian-changelog",
  "debian-control",
  "debversion",
@@ -3612,7 +3612,7 @@ dependencies = [
  "breezyshim",
  "clap",
  "deb822-lossless",
- "debian-analyzer 0.158.17",
+ "debian-analyzer 0.158.18",
  "debian-control",
  "debversion",
  "distro-info",
