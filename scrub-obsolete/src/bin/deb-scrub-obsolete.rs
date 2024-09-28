@@ -12,6 +12,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 #[derive(Parser)]
+#[command(author, version)]
 struct Args {
     /// directory to run in
     #[clap(short, long, default_value = ".")]

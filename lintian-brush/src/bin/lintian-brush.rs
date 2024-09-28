@@ -13,6 +13,7 @@ use debian_analyzer::{get_committer, Certainty};
 use lintian_brush::{ManyResult, OverallError};
 use std::collections::HashMap;
 use std::io::Write as _;
+use std::path::PathBuf;
 
 #[derive(clap::Args, Clone, Debug)]
 #[group()]
@@ -21,8 +22,8 @@ struct FixerArgs {
     fixers: Option<Vec<String>>,
 
     /// Path to fixer scripts
-    #[arg(short, long, default_value_t = lintian_brush::find_fixers_dir().unwrap().display().to_string(), value_name="DIR", help_heading = Some("Fixers"))]
-    fixers_dir: String,
+    #[arg(short, long)]
+    fixers_dir: Option<PathBuf>,
 
     /// Exclude fixers
     #[arg(long, value_name = "EXCLUDE", help_heading = Some("Fixers"))]
@@ -155,7 +156,7 @@ struct Args {
     output: OutputArgs,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), i32> {
     let args = Args::parse();
 
     env_logger::builder()
@@ -175,11 +176,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // TODO(jelmer): Allow changing this via arguments
     let timeout = Some(chrono::Duration::seconds(10));
 
-    let mut fixers: Vec<_> = lintian_brush::available_lintian_fixers(
-        Some(std::path::PathBuf::from(args.fixers.fixers_dir).as_path()),
+    let fixers_iter = match lintian_brush::available_lintian_fixers(
+        args.fixers.fixers_dir.as_deref(),
         Some(args.fixers.force_subprocess),
-    )?
-    .collect();
+    ) {
+        Ok(fixers) => fixers,
+        Err(e) => {
+            log::error!("Error loading fixers: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    let mut fixers: Vec<_> = fixers_iter.collect();
 
     if args.output.list_fixers {
         fixers.sort_by_key(|a| a.name());
@@ -234,19 +242,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             };
 
-            let td = tempfile::tempdir()?;
+            let td = match tempfile::tempdir() {
+                Ok(td) => td,
+                Err(e) => {
+                    log::error!("Unable to create temporary directory: {}", e);
+                    std::process::exit(1);
+                }
+            };
 
             // TODO(jelmer): Make a slimmer copy
 
-            let to_dir = branch.controldir().sprout(
+            let to_dir = match branch.controldir().sprout(
                 url::Url::from_directory_path(td.path()).unwrap(),
                 Some(branch.as_ref()),
                 Some(true),
                 Some(branch.format().supports_stacking()),
                 None,
-            )?;
+            ) {
+                Ok(to_dir) => to_dir,
+                Err(e) => {
+                    log::error!("Unable to create temporary branch: {}", e);
+                    std::process::exit(1);
+                }
+            };
             tempdir = Some(td);
-            (to_dir.open_workingtree()?, subpath)
+            (to_dir.open_workingtree().unwrap(), subpath)
         } else {
             match workingtree::open_containing(&args.output.directory) {
                 Ok((wt, subpath)) => (wt, subpath.display().to_string()),
@@ -544,10 +564,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             log::info!("No changes made.");
         }
         if !overall_result.failed_fixers.is_empty() && !args.output.verbose {
-            log::info!(
-                "Some fixer scripts failed to run: {:?}. Run with --verbose for details.",
-                overall_result.failed_fixers.keys().collect::<Vec<_>>(),
-            );
+            log::info!("Some fixer scripts failed to run:");
+            for (name, reason) in overall_result.failed_fixers.iter() {
+                log::info!("  {}: {}", name, reason);
+            }
+            log::info!("Run with --verbose for details.");
         }
         if !overall_result.formatting_unpreservable.is_empty() && !args.output.verbose {
             log::info!(
@@ -566,21 +587,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Box::new(std::io::stdout()),
                 None,
                 None,
-            )?;
+            ).unwrap();
         }
         if svp_enabled() {
-            if let Some(base) = load_resume() {
-                let base: ManyResult = serde_json::from_value(base)?;
+            if let Some(base) = load_resume::<ManyResult>() {
                 overall_result.success.extend(base.success);
             }
             let changelog_behaviour = overall_result
-                .changelog_behaviour
-                .as_ref()
-                .map(|b| b.into());
+                .changelog_behaviour.clone();
             report_success_debian(
                 versions_dict(),
                 Some(overall_result.value()),
-                Some(serde_json::to_value(overall_result)?),
+                Some(overall_result),
                 changelog_behaviour,
             )
         }

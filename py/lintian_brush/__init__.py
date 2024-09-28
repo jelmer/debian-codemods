@@ -93,6 +93,18 @@ def data_file_path(name, check=os.path.exists):
     if check(path):
         return path
 
+    path = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "..", "lintian-brush", name)
+    )
+    if check(path):
+        return path
+
+    path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "analyzer", name)
+    )
+    if check(path):
+        return path
+
     import pkg_resources
 
     path = pkg_resources.resource_filename(__name__, f"lintian-brush/{name}")

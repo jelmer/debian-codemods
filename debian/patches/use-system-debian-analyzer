@@ -1,0 +1,91 @@
+Index: lintian-brush/Cargo.toml
+===================================================================
+--- lintian-brush.orig/Cargo.toml
++++ lintian-brush/Cargo.toml
+@@ -1,7 +1,7 @@
+ [workspace]
+ # With resolve set to "2", dependent projects can't find debian-analyzer anymore.
+ resolver = "1"
+-members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize", "analyzer", "scrub-obsolete", "transition-apply"]
++members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize", "scrub-obsolete", "transition-apply"]
+ 
+ [workspace.package]
+ version = "0.158.0"
+Index: lintian-brush/debianize/Cargo.toml
+===================================================================
+--- lintian-brush.orig/debianize/Cargo.toml
++++ lintian-brush/debianize/Cargo.toml
+@@ -12,7 +12,7 @@ documentation = "https://docs.rs/debiani
+ [dependencies]
+ breezyshim.workspace = true
+ clap = { workspace = true, features = ["derive", "env"] }
+-debian-analyzer = { version = ">=0.154.0", path = "../analyzer", features = ["udd"] }
++debian-analyzer = { version = ">=0.154.0", features = ["udd"] }
+ debian-changelog.workspace = true
+ distro-info = "0.4.0"
+ env_logger.workspace = true
+Index: lintian-brush/lintian-brush-py/Cargo.toml
+===================================================================
+--- lintian-brush.orig/lintian-brush-py/Cargo.toml
++++ lintian-brush/lintian-brush-py/Cargo.toml
+@@ -23,7 +23,7 @@ chrono = "0.4"
+ pyo3-log = { workspace = true }
+ debversion = { workspace = true, features = ["python-debian"] }
+ breezyshim = { workspace = true }
+-debian-analyzer = { version = ">=0.154.0", path = "../analyzer", default-features = false }
++debian-analyzer = { version = ">=0.154.0", default-features = false }
+ url.workspace = true
+ 
+ [package.metadata.cargo-all-features]
+Index: lintian-brush/lintian-brush/Cargo.toml
+===================================================================
+--- lintian-brush.orig/lintian-brush/Cargo.toml
++++ lintian-brush/lintian-brush/Cargo.toml
+@@ -26,7 +26,7 @@ indicatif = "0.17"
+ tempfile = { workspace = true }
+ url = { version = "2", features = ["serde"] }
+ lazy_static = { workspace = true }
+-debian-analyzer = { version = ">=0.154", path = "../analyzer" }
++debian-analyzer = { version = ">=0.154" }
+ distro-info = "0.4.0"
+ debian-changelog = { workspace = true }
+ wait-timeout = "0.2.0"
+Index: lintian-brush/multiarch-hints/Cargo.toml
+===================================================================
+--- lintian-brush.orig/multiarch-hints/Cargo.toml
++++ lintian-brush/multiarch-hints/Cargo.toml
+@@ -14,7 +14,7 @@ reqwest = { workspace = true, features =
+ serde = { workspace = true, features = ["derive"] }
+ serde_yaml = { workspace = true }
+ xz2 = "0.1"
+-debian-analyzer = { path = "../analyzer" }
++debian-analyzer = { version = ">=0.154" }
+ debversion = { workspace = true, features = ["serde"] }
+ pyo3 = { workspace = true }
+ lazy-regex = { workspace = true }
+Index: lintian-brush/scrub-obsolete/Cargo.toml
+===================================================================
+--- lintian-brush.orig/scrub-obsolete/Cargo.toml
++++ lintian-brush/scrub-obsolete/Cargo.toml
+@@ -7,7 +7,7 @@ license = "GPL-3.0+"
+ [dependencies]
+ breezyshim = { workspace = true, features = ["debian"] }
+ deb822-lossless = { workspace = true }
+-debian-analyzer = { path = "../analyzer", features = ["udd"] }
++debian-analyzer = { version = ">=0.154", features = ["udd"] }
+ debian-control = { workspace = true }
+ debversion = { workspace = true, features = ["sqlx"] }
+ distro-info = "0.4.0"
+Index: lintian-brush/transition-apply/Cargo.toml
+===================================================================
+--- lintian-brush.orig/transition-apply/Cargo.toml
++++ lintian-brush/transition-apply/Cargo.toml
+@@ -9,7 +9,7 @@ version.workspace = true
+ breezyshim.workspace = true
+ clap = { workspace = true, features = ["derive"], optional = true }
+ deb822-lossless = "0.1.26"
+-debian-analyzer = { version = "0.158.14", path = "../analyzer" }
++debian-analyzer = { version = ">=0.158", path = "../analyzer" }
+ debian-control.workspace = true
+ env_logger = { workspace = true, optional = true }
+ lazy-regex.workspace = true

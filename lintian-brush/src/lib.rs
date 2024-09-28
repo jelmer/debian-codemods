@@ -835,7 +835,7 @@ impl std::fmt::Display for FixerError {
             FixerError::InvalidChangelog(p, s) => {
                 write!(f, "Invalid changelog {}: {}", p.display(), s)
             }
-            FixerError::Timeout { timeout } => write!(f, "Timeout after {:?}", timeout),
+            FixerError::Timeout { timeout } => write!(f, "Timeout after {}", humantime::format_duration(timeout.to_std().unwrap())),
             FixerError::GeneratedFile(p) => write!(f, "Generated file: {}", p.display()),
         }
     }
@@ -952,10 +952,41 @@ struct DescEntry {
     force_subprocess: Option<bool>,
 }
 
+#[derive(Debug)]
+pub enum FixerDiscoverError {
+    Io(std::io::Error),
+    Yaml(serde_yaml::Error),
+    NoFixersDir,
+}
+
+impl From<std::io::Error> for FixerDiscoverError {
+    fn from(e: std::io::Error) -> Self {
+        Self::Io(e)
+    }
+}
+
+impl From<serde_yaml::Error> for FixerDiscoverError {
+    fn from(e: serde_yaml::Error) -> Self {
+        Self::Yaml(e)
+    }
+}
+
+impl std::fmt::Display for FixerDiscoverError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            FixerDiscoverError::Io(e) => write!(f, "IO error: {}", e),
+            FixerDiscoverError::Yaml(e) => write!(f, "YAML error: {}", e),
+            FixerDiscoverError::NoFixersDir => write!(f, "No fixers directory found"),
+        }
+    }
+}
+
+impl std::error::Error for FixerDiscoverError {}
+
 pub fn read_desc_file<P: AsRef<std::path::Path>>(
     path: P,
     force_subprocess: bool,
-) -> Result<impl Iterator<Item = Box<dyn Fixer>>, Box<dyn std::error::Error>> {
+) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
     let file = File::open(path.as_ref())?;
     let reader = BufReader::new(file);
 
@@ -1045,9 +1076,17 @@ fn load_fixer(
 pub fn available_lintian_fixers(
     fixers_dir: Option<&std::path::Path>,
     force_subprocess: Option<bool>,
-) -> Result<impl Iterator<Item = Box<dyn Fixer>>, Box<dyn std::error::Error>> {
-    let system_path = find_fixers_dir();
-    let fixers_dir = fixers_dir.unwrap_or_else(|| system_path.as_ref().unwrap().as_path());
+) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
+    let fixers_dir = if let Some(fixers_dir) = fixers_dir {
+        fixers_dir.to_path_buf()
+    } else {
+        let system_path = find_fixers_dir();
+        if let Some(system_path) = system_path {
+            system_path
+        } else {
+            return Err(FixerDiscoverError::NoFixersDir);
+        }
+    };
     let mut fixers = Vec::new();
     // Scan fixers_dir for .desc files
     for entry in std::fs::read_dir(fixers_dir)? {
@@ -1378,38 +1417,42 @@ pub fn run_lintian_fixer(
         _bt.as_ref().unwrap()
     };
 
+    let make_changes = |basedir: &std::path::Path| -> Result<_, FixerError> {
+        log::debug!("Running fixer {:?}", fixer);
+        let result = fixer.run(
+            basedir,
+            package.as_str(),
+            &current_version,
+            preferences,
+            timeout,
+        )?;
+        if let Some(certainty) = result.certainty {
+            if !certainty_sufficient(certainty, preferences.minimum_certainty) {
+                return Err(FixerError::NotCertainEnough(
+                    certainty,
+                    preferences.minimum_certainty,
+                    result.overridden_lintian_issues,
+                ));
+            }
+        }
+
+        Ok(result)
+    };
+
     let (mut result, changes, mut specific_files) = match apply_or_revert(
         local_tree,
         subpath,
         basis_tree,
         dirty_tracker.as_mut(),
-        |basedir| {
-            log::debug!("Running fixer {:?}", fixer);
-            let result = fixer.run(
-                basedir,
-                package.as_str(),
-                &current_version,
-                preferences,
-                timeout,
-            )?;
-            if let Some(certainty) = result.certainty {
-                if !certainty_sufficient(certainty, preferences.minimum_certainty) {
-                    return Err(FixerError::NotCertainEnough(
-                        certainty,
-                        preferences.minimum_certainty,
-                        result.overridden_lintian_issues,
-                    ));
-                }
-            }
-
-            if result.description.is_empty() {
+        make_changes,
+    ) {
+        Ok(r) => {
+            if r.0.description.is_empty() {
                 return Err(FixerError::DescriptionMissing);
             }
 
-            Ok(result)
-        },
-    ) {
-        Ok(r) => r,
+            r
+        }
         Err(ApplyError::NoChanges(r)) => {
             if r.overridden_lintian_issues.is_empty() {
                 return Err(FixerError::NoChanges);
@@ -2022,6 +2065,8 @@ mod tests {
     use breezyshim::tree::{MutableTree, WorkingTree};
     use std::path::Path;
 
+    pub const COMMITTER: &str = "Testsuite <lintian-brush@example.com>";
+
     mod test_run_lintian_fixer {
         use super::*;
 
@@ -2160,6 +2205,7 @@ Arch: all
                 .unwrap();
             tree.build_commit()
                 .message("Initial thingy.")
+                .committer(COMMITTER)
                 .commit()
                 .unwrap();
             (td, tree)
@@ -2208,6 +2254,7 @@ Arch: all
             std::fs::remove_file(td.path().join("debian/changelog")).unwrap();
             tree.build_commit()
                 .message("not a debian dir")
+                .committer(COMMITTER)
                 .commit()
                 .unwrap();
             let lock = tree.lock_write().unwrap();
@@ -2240,7 +2287,7 @@ Arch: all
                 &[Box::new(DummyFixer::new("dummy", &["some-tag"]))],
                 Some(|| false),
                 false,
-                None,
+                Some(COMMITTER),
                 &FixerPreferences::default(),
                 None,
                 None,
@@ -2337,7 +2384,7 @@ Arch: all
             let result = run_lintian_fixer(
                 &tree,
                 &UncertainFixer::new("dummy", &["some-tag"]),
-                None,
+                Some(COMMITTER),
                 || false,
                 &FixerPreferences {
                     minimum_certainty: Some(Certainty::Certain),
@@ -2418,7 +2465,7 @@ Arch: all
             let (_result, summary) = run_lintian_fixer(
                 &tree,
                 &UncertainFixer::new("dummy", &["some-tag"]),
-                None,
+                Some("Testsuite <lintian-brush@example.com>"),
                 || false,
                 &FixerPreferences {
                     minimum_certainty: Some(Certainty::Possible),
@@ -2503,7 +2550,7 @@ Arch: all
             let (result, summary) = run_lintian_fixer(
                 &tree,
                 &NewFileFixer::new("new-file", &["some-tag"]),
-                None,
+                Some(COMMITTER),
                 || false,
                 &FixerPreferences::default(),
                 &mut None,
@@ -2602,7 +2649,7 @@ Arch: all
             let (result, summary) = run_lintian_fixer(
                 &tree,
                 &RenameFileFixer::new("rename", &["some-tag"]),
-                None,
+                Some(COMMITTER),
                 || false,
                 &FixerPreferences::default(),
                 &mut None,
@@ -2687,7 +2734,7 @@ Arch: all
             let result = run_lintian_fixer(
                 &tree,
                 &EmptyFixer::new("empty", &["some-tag"]),
-                None,
+                Some(COMMITTER),
                 || false,
                 &FixerPreferences::default(),
                 &mut None,
@@ -2771,7 +2818,7 @@ Arch: all
             let (result, summary) = run_lintian_fixer(
                 &tree,
                 &NewFileFixer::new("add-config", &["add-config"]),
-                None,
+                Some(COMMITTER),
                 || false,
                 &FixerPreferences::default(),
                 &mut None,
@@ -2854,7 +2901,10 @@ Arch: all
                 Path::new("debian/patches/foo"),
             ])
             .unwrap();
-            tree.build_commit().message("Add patches").commit().unwrap();
+            tree.build_commit()
+                .committer(COMMITTER)
+
+                .message("Add patches").commit().unwrap();
 
             #[derive(Debug)]
             struct NewFileFixer {
@@ -2909,7 +2959,7 @@ Arch: all
             let result = run_lintian_fixer(
                 &tree,
                 &NewFileFixer::new("add-config", &["add-config"]),
-                None,
+                Some(COMMITTER),
                 || false,
                 &FixerPreferences::default(),
                 &mut None,
@@ -2965,6 +3015,7 @@ Arch: all
             ])
             .unwrap();
             tree.build_commit()
+                .committer(COMMITTER)
                 .message("Initial thingy.")
                 .commit()
                 .unwrap();

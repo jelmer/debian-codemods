@@ -76,6 +76,12 @@ struct AppliedHint {
     certainty: Certainty,
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct MultiArchResult {
+    #[serde(rename = "applied-hints")]
+    applied_hints: Vec<AppliedHint>,
+}
+
 fn note_changelog_policy(policy: bool, msg: &str) {
     lazy_static::lazy_static! {
         static ref CHANGELOG_POLICY_NOTED: std::sync::Mutex<bool> = std::sync::Mutex::new(false);
@@ -425,15 +431,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
     if svp_enabled() {
-        if let Some(base) = load_resume() {
-            let base: Vec<AppliedHint> = serde_json::from_value(base)?;
+        if let Some(base) = load_resume::<Vec<AppliedHint>>() {
             applied_hints.extend(base);
         }
-        let changelog_behaviour = changelog_behaviour.as_ref().map(|b| b.into());
         report_success_debian(
             versions_dict(),
             Some(result.value()),
-            Some(serde_json::json! ({ "applied-hints": serde_json::to_value(applied_hints)?})),
+            Some(MultiArchResult { applied_hints }),
             changelog_behaviour,
         )
     }

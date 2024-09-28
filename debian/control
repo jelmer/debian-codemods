@@ -30,6 +30,7 @@ Build-Depends: bash-completion,
                librust-env-logger-dev (>= 0.9),
                librust-flate2-dev,
                librust-fs-extra-dev,
+               librust-humantime-dev,
                librust-indicatif-dev (>= 0.17),
                librust-lazy-regex-dev (>= 2),
                librust-lazy-static-dev (>= 1.4),
@@ -78,7 +79,7 @@ Build-Depends: bash-completion,
                python3-setuptools,
                python3-setuptools-rust,
                python3-tomlkit,
-               python3-upstream-ontologist (>= 0.1.41),
+               python3-upstream-ontologist (>= 0.1.42),
                rustc
 Standards-Version: 4.6.2
 Rules-Requires-Root: no

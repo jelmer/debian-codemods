@@ -2,6 +2,7 @@ use clap::CommandFactory;
 use clap::Parser;
 
 #[derive(Parser)]
+#[command(author, version)]
 struct Args {
     #[clap(long, default_value = "sid")]
     release: String,
