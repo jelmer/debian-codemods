@@ -1,3 +1,4 @@
+//! Salsa location guessing utilities
 use std::collections::HashMap;
 use url::Url;
 

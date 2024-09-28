@@ -1,3 +1,4 @@
+//! Detect whether the changelog should be updated.
 use breezyshim::branch::Branch;
 use breezyshim::error::Error;
 use breezyshim::graph::{Error as GraphError, Graph};
@@ -7,9 +8,13 @@ use debian_changelog::{ChangeLog, Entry as ChangeLogEntry};
 use lazy_regex::regex;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
+/// Behaviour for updating the changelog.
 pub struct ChangelogBehaviour {
     #[serde(rename = "update")]
+    /// Whether the changelog should be updated.
     pub update_changelog: bool,
+
+    /// Explanation for the decision.
     pub explanation: String,
 }
 
@@ -31,7 +36,7 @@ const DEFAULT_BACKLOG: usize = 50;
 // TODO(jelmer): Check that what's added in the changelog is actually based on
 // what was in the commit messages?
 
-pub fn gbp_conf_has_dch_section(tree: &dyn Tree, debian_path: &std::path::Path) -> bool {
+fn gbp_conf_has_dch_section(tree: &dyn Tree, debian_path: &std::path::Path) -> bool {
     let gbp_conf_path = debian_path.join("gbp.conf");
     let gbp_conf_text = match tree.get_file_text(gbp_conf_path.as_path()) {
         Ok(text) => text,
@@ -108,6 +113,7 @@ pub fn guess_update_changelog(
     }
 }
 
+/// Guess whether the changelog should be updated by looking at tree contents
 pub fn guess_update_changelog_from_tree(
     tree: &dyn Tree,
     debian_path: &std::path::Path,
@@ -135,7 +141,7 @@ pub fn guess_update_changelog_from_tree(
     None
 }
 
-pub fn greedy_revisions(
+fn greedy_revisions(
     graph: &Graph,
     revid: &RevisionId,
     length: usize,

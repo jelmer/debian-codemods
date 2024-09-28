@@ -1,3 +1,6 @@
+//! This module provides functions to manipulate debian/rules file.
+
+
 /// Add a particular value to a with argument.
 pub fn dh_invoke_add_with(line: &str, with_argument: &str) -> String {
     if line.contains(with_argument) {
@@ -15,6 +18,7 @@ pub fn dh_invoke_add_with(line: &str, with_argument: &str) -> String {
     .to_string()
 }
 
+/// Obtain the value of a with argument.
 pub fn dh_invoke_get_with(line: &str) -> Vec<String> {
     let mut ret = Vec::new();
     for m in lazy_regex::regex!("[ \t]--with[ =]([^ \t]+)").find_iter(line) {

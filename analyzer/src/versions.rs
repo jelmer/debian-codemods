@@ -1,3 +1,5 @@
+//! Debian version handling utilities.
+
 /// Make an upstream version string suitable for Debian.
 ///
 /// # Arguments

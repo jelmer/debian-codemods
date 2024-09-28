@@ -1,3 +1,4 @@
+//! Debhelper utilities.
 use std::path::Path;
 
 /// Parse the debhelper compat level from a string.

@@ -1,12 +1,27 @@
+//! Handling of transitions
+//!
+//! See https://release.debian.org/transitions/ for more information about transitions.
 use crate::benfile::{read_benfile, Assignment, Expr};
 
 #[derive(Debug, Default)]
+/// A transition
 pub struct Transition {
+    /// The title of the transition
     pub title: Option<String>,
+
+    /// Expression to check if the transition has been applied
     pub is_good: Option<Expr>,
+
+    /// Expression to check if the transition has not been applied
     pub is_bad: Option<Expr>,
+
+    /// Expression to check if a package is involved in the transition
     pub is_affected: Option<Expr>,
+
+    /// Notes about the transition
     pub notes: Option<String>,
+
+    /// Whether to export the transition
     pub export: Option<bool>,
 }
 
@@ -56,6 +71,7 @@ impl std::convert::TryFrom<Vec<Assignment>> for Transition {
     }
 }
 
+/// Read a transition from a reader
 pub fn read_transition<R: std::io::Read>(reader: &mut R) -> Result<Transition, String> {
     let benfile = read_benfile(reader).map_err(|e| e.to_string())?;
     Transition::try_from(benfile)

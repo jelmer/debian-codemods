@@ -1,3 +1,5 @@
+//! Library for manipulating Debian packages.
+#![deny(missing_docs)]
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::{Tree, TreeChange, WorkingTree};
@@ -34,9 +36,11 @@ pub mod versions;
 pub mod wnpp;
 
 // TODO(jelmer): Import this from ognibuild
+/// Default builder
 pub const DEFAULT_BUILDER: &str = "sbuild --no-clean-source";
 
 #[derive(Debug)]
+/// Error applying a change
 pub enum ApplyError<R, E> {
     /// Error from the callback
     CallbackError(E),
@@ -154,9 +158,12 @@ pub fn apply_or_revert<R, E>(
     Ok((r, changes, specific_files))
 }
 
+/// A changelog error
 pub enum ChangelogError {
+    /// Not a Debian package
     NotDebianPackage(std::path::PathBuf),
     #[cfg(feature = "python")]
+    /// Python error
     Python(pyo3::PyErr),
 }
 
@@ -235,15 +242,20 @@ pub fn add_changelog_entry(
     serde::Serialize,
     serde::Deserialize,
 )]
+/// Certainty of a change.
 pub enum Certainty {
     #[serde(rename = "possible")]
+    /// Possible change, basically a guess
     Possible,
     #[serde(rename = "likely")]
+    /// Likely to be correct, but not certain
     Likely,
     #[serde(rename = "confident")]
+    /// Confident change, but not absolutely certain
     Confident,
     #[default]
     #[serde(rename = "certain")]
+    /// Absolutely certain change
     Certain,
 }
 
@@ -425,10 +437,12 @@ pub fn control_file_present(tree: &dyn Tree, subpath: &std::path::Path) -> bool 
     false
 }
 
+/// Check whether the package in a tree uses debcargo.
 pub fn is_debcargo_package(tree: &dyn Tree, subpath: &std::path::Path) -> bool {
     tree.has_filename(subpath.join("debian/debcargo.toml").as_path())
 }
 
+/// Check whether the package in a tree has control files in the root, rather than in debian/.
 pub fn control_files_in_root(tree: &dyn Tree, subpath: &std::path::Path) -> bool {
     let debian_path = subpath.join("debian");
     if tree.has_filename(debian_path.as_path()) {
@@ -443,6 +457,7 @@ pub fn control_files_in_root(tree: &dyn Tree, subpath: &std::path::Path) -> bool
     tree.has_filename(subpath.join("control.in").as_path())
 }
 
+/// Parse a Debian name and email address from a string.
 pub fn parseaddr(input: &str) -> Option<(Option<String>, Option<String>)> {
     if let Some((_whole, name, addr)) =
         lazy_regex::regex_captures!(r"(?:(?P<name>[^<]*)\s*<)?(?P<addr>[^<>]*)>?", input)
@@ -469,6 +484,7 @@ pub fn parseaddr(input: &str) -> Option<(Option<String>, Option<String>)> {
     None
 }
 
+/// Run gbp dch
 pub fn gbp_dch(path: &std::path::Path) -> Result<(), std::io::Error> {
     let mut cmd = std::process::Command::new("gbp");
     cmd.arg("dch").arg("--ignore-branch");

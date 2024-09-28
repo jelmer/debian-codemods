@@ -1,3 +1,4 @@
+//! File parsing for the benfile format.
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
@@ -69,7 +70,7 @@ impl<'a> Lexer<'a> {
             }
             Some('.') => {
                 self.input = &self.input[1..];
-                let field = self.consume_while(|c| Self::is_valid_field_char(c));
+                let field = self.consume_while(Self::is_valid_field_char);
                 Ok(Some(Token::Field(field.to_string())))
             }
             Some('/') => {
@@ -112,7 +113,7 @@ impl<'a> Lexer<'a> {
                 Ok(Some(Token::Semicolon))
             }
             Some(c) if Self::is_valid_identifier_char(c) => {
-                let identifier = self.consume_while(|c| Self::is_valid_identifier_char(c));
+                let identifier = self.consume_while(Self::is_valid_identifier_char);
                 Ok(Some(Token::Identifier(identifier.to_string())))
             }
             None => Ok(None),
@@ -201,13 +202,21 @@ impl<'a> Lexer<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+/// The comparison operators supported by the benfile format.
 pub enum Comparison {
+    /// <
     LessThan,
+    /// <<
     MuchLessThan,
+    /// <=
     LessOrEqual,
+    /// >
     GreaterThan,
+    /// >>
     MuchGreaterThan,
+    /// >=
     GreaterOrEqual,
+    /// =
     Equal,
 }
 
@@ -243,7 +252,9 @@ impl std::str::FromStr for Comparison {
 }
 
 #[derive(PartialEq, Eq, Clone)]
+/// The expression types supported by the benfile format.
 pub enum Expr {
+    /// true or false
     Bool(bool),
     /// !<query>
     Not(Box<Expr>),
@@ -259,13 +270,18 @@ pub enum Expr {
     Source,
     /// <comparison> "<string>"
     Comparison(Comparison, String),
+    /// <field> ~ "<string>"
     FieldComparison(String, Comparison, String),
+    /// "string"
     String(String),
 }
 
 #[derive(Debug, PartialEq, Eq)]
+/// An assignment in a benfile.
 pub struct Assignment {
+    /// The field being assigned to.
     pub field: String,
+    /// The expression being assigned.
     pub expr: Expr,
 }
 
@@ -459,6 +475,7 @@ impl Parser {
     }
 }
 
+/// Read a benfile from a reader and return a vector of assignments.
 pub fn read_benfile<R: std::io::Read>(mut reader: R) -> Result<Vec<Assignment>, String> {
     let mut text = String::new();
     reader

@@ -1,3 +1,4 @@
+//! Information about the distribution vendor
 use deb822_lossless::{Deb822, Paragraph};
 
 fn load_vendor_file(name: Option<&str>) -> std::io::Result<Deb822> {
@@ -10,9 +11,15 @@ fn load_vendor_file(name: Option<&str>) -> std::io::Result<Deb822> {
     Ok(f.parse().unwrap())
 }
 
+/// Information about a distribution vendor
 pub struct Vendor {
+    /// The name of the vendor (e.g. "Debian", "Ubuntu")
     pub name: String,
+
+    /// The URL of the bug tracker (e.g. "https://bugs.debian.org/")
     pub bugs: url::Url,
+
+    /// The homepage of the vendor (e.g. "https://www.debian.org/")
     pub url: url::Url,
 }
 
@@ -39,12 +46,14 @@ impl From<Paragraph> for Vendor {
     }
 }
 
+/// Get the vendor information for a given vendor name
 pub fn get_vendor(name: Option<&str>) -> std::io::Result<Vendor> {
     let data = load_vendor_file(name)?;
 
     Ok(data.paragraphs().next().unwrap().into())
 }
 
+/// Get the vendor name for the current system
 pub fn get_vendor_name() -> std::io::Result<String> {
     if let Ok(vendor) = std::env::var("DEB_VENDOR") {
         Ok(vendor)

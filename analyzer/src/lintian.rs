@@ -1,13 +1,25 @@
+//! Lintian data structures and utilities
+
+/// The path to the Lintian data directory
 pub const LINTIAN_DATA_PATH: &str = "/usr/share/lintian/data";
+
+/// The path to the Lintian tags file
 pub const RELEASE_DATES_PATH: &str = "/usr/share/lintian/data/debian-policy/release-dates.json";
 
 #[derive(Debug, Clone, serde::Deserialize)]
+/// A release of the Debian Policy
 pub struct PolicyRelease {
+    /// The version of the release
     pub version: StandardsVersion,
+    /// When the release was published
     pub timestamp: chrono::DateTime<chrono::Utc>,
+    /// List of bug numbers closed by this release
     pub closes: Vec<i32>,
+    /// The epoch of the release
     pub epoch: Option<i32>,
+    /// The author of the release
     pub author: Option<String>,
+    /// The changes made in this release
     pub changes: Vec<String>,
 }
 
@@ -26,6 +38,7 @@ struct PolicyReleases {
 }
 
 #[derive(Debug, Clone)]
+/// A version of the Debian Policy
 pub struct StandardsVersion(Vec<i32>);
 
 impl StandardsVersion {
@@ -101,6 +114,7 @@ impl std::fmt::Display for StandardsVersion {
     }
 }
 
+/// Returns an iterator over all known standards versions
 pub fn iter_standards_versions() -> impl Iterator<Item = PolicyRelease> {
     let data = std::fs::read(RELEASE_DATES_PATH).expect("Failed to read release dates");
     let data: PolicyReleases =
@@ -108,6 +122,7 @@ pub fn iter_standards_versions() -> impl Iterator<Item = PolicyRelease> {
     data.releases.into_iter()
 }
 
+/// Returns the latest standards version
 pub fn latest_standards_version() -> StandardsVersion {
     iter_standards_versions()
         .next()

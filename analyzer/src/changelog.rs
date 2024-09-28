@@ -1,3 +1,4 @@
+//! Functions for working with debian/changelog files.
 use crate::release_info;
 use breezyshim::error::Error;
 use breezyshim::tree::{Tree, TreeChange, WorkingTree};
@@ -74,6 +75,7 @@ pub fn only_changes_last_changelog_block<'a>(
     Ok(new_cl.to_string() == old_cl.to_string())
 }
 
+/// Find the last distribution the package was uploaded to.
 pub fn find_last_distribution(cl: &ChangeLog) -> Option<String> {
     for block in cl.entries() {
         if block.is_unreleased() != Some(true) {
@@ -150,10 +152,18 @@ pub fn find_previous_upload(changelog: &ChangeLog) -> Option<debversion::Version
 }
 
 #[derive(Debug)]
+/// Error type for find_changelog
 pub enum FindChangelogError {
+    /// No changelog found in the given files
     MissingChangelog(Vec<std::path::PathBuf>),
+
+    /// Add a changelog at the given file
     AddChangelog(std::path::PathBuf),
+
+    /// Error parsing the changelog
     ChangelogParseError(String),
+
+    /// Error from breezyshim
     BrzError(breezyshim::error::Error),
 }
 

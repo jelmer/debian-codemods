@@ -1,3 +1,5 @@
+//! Abstract interface for editing debian packages, whether backed by real control files or
+//! debcargo files.
 use crate::relations::ensure_relation;
 use breezyshim::tree::Tree;
 use debian_control::lossless::relations::{Entry, Relations};
@@ -5,26 +7,37 @@ use std::path::Path;
 
 /// Interface for editing debian packages, whether backed by real control files or debcargo files.
 pub trait AbstractControlEditor {
+    /// Get the source package.
     fn source<'a>(&'a mut self) -> Option<Box<dyn AbstractSource + 'a>>;
 
+    /// Get the binary packages.
     fn binaries<'a>(&'a mut self) -> Vec<Box<dyn AbstractBinary + 'a>>;
 
+    /// Commit the changes.
     fn commit(&self) -> bool;
 
+    /// Wrap and sort the control file.
     fn wrap_and_sort(&mut self);
 }
 
+/// An abstract source package.
 pub trait AbstractSource<'a> {
+    /// Get the name of the source package.
     fn name(&self) -> Option<String>;
 
+    /// Ensure that a build dependency is present.
     fn ensure_build_dep(&mut self, dep: Entry);
 
+    /// Set the maintainer of the source package.
     fn set_maintainer(&mut self, maintainer: &str);
 
+    /// Set the uploaders of the source package.
     fn set_uploaders(&mut self, uploaders: &[&str]);
 }
 
+/// An abstract binary package.
 pub trait AbstractBinary {
+    /// Get the name of the binary package.
     fn name(&self) -> Option<String>;
 }
 
@@ -137,6 +150,7 @@ impl<E: crate::editor::Editor<PlainControl>> AbstractControlEditor for E {
     }
 }
 
+/// Open a control file for editing.
 pub fn edit_control<'a>(
     tree: &breezyshim::workingtree::WorkingTree,
     subpath: &Path,

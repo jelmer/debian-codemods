@@ -1,7 +1,10 @@
+//! Resulting functions for the SVP API
 use std::collections::HashMap;
 
+pub use crate::detect_gbp_dch::ChangelogBehaviour;
+
 #[derive(Debug, serde::Serialize)]
-pub struct Failure {
+struct Failure {
     pub result_code: String,
     pub versions: HashMap<String, String>,
     pub description: String,
@@ -23,25 +26,20 @@ impl std::fmt::Display for Success {
 }
 
 #[derive(Debug, serde::Serialize)]
-pub struct ChangelogBehaviour {
-    pub update: bool,
-    pub explanation: String,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct DebianContext {
+struct DebianContext {
     pub changelog: Option<ChangelogBehaviour>,
 }
 
 #[derive(Debug, serde::Serialize)]
-pub struct Success {
+struct Success {
     pub versions: HashMap<String, String>,
     pub value: Option<i32>,
     pub context: Option<serde_json::Value>,
     pub debian: Option<DebianContext>,
 }
 
-pub fn write_svp_success(data: &Success) -> std::io::Result<()> {
+/// Write a success to the SVP API
+fn write_svp_success(data: &Success) -> std::io::Result<()> {
     if enabled() {
         let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
 
@@ -51,7 +49,8 @@ pub fn write_svp_success(data: &Success) -> std::io::Result<()> {
     }
 }
 
-pub fn write_svp_failure(data: &Failure) -> std::io::Result<()> {
+/// Write a failure to the SVP API
+fn write_svp_failure(data: &Failure) -> std::io::Result<()> {
     if enabled() {
         let f = std::fs::File::create(std::env::var("SVP_RESULT").unwrap()).unwrap();
 
@@ -61,6 +60,7 @@ pub fn write_svp_failure(data: &Failure) -> std::io::Result<()> {
     }
 }
 
+/// Report success
 pub fn report_success<T>(versions: HashMap<String, String>, value: Option<i32>, context: Option<T>)
 where
     T: serde::Serialize,
@@ -74,11 +74,12 @@ where
     .unwrap();
 }
 
+/// Report success with Debian-specific context
 pub fn report_success_debian<T>(
     versions: HashMap<String, String>,
     value: Option<i32>,
     context: Option<T>,
-    changelog: Option<(bool, String)>,
+    changelog: Option<ChangelogBehaviour>,
 ) where
     T: serde::Serialize,
 {
@@ -87,15 +88,13 @@ pub fn report_success_debian<T>(
         value,
         context: context.map(|x| serde_json::to_value(x).unwrap()),
         debian: Some(DebianContext {
-            changelog: changelog.map(|cl| ChangelogBehaviour {
-                update: cl.0,
-                explanation: cl.1,
-            }),
+            changelog,
         }),
     })
     .unwrap();
 }
 
+/// Report that there is nothing to do
 pub fn report_nothing_to_do(versions: HashMap<String, String>, description: Option<&str>) -> ! {
     let description = description.unwrap_or("Nothing to do");
     write_svp_failure(&Failure {
@@ -109,6 +108,7 @@ pub fn report_nothing_to_do(versions: HashMap<String, String>, description: Opti
     std::process::exit(0);
 }
 
+/// Report a fatal error
 pub fn report_fatal(
     versions: HashMap<String, String>,
     code: &str,
@@ -130,11 +130,12 @@ pub fn report_fatal(
     std::process::exit(1);
 }
 
-pub fn load_resume() -> Option<serde_json::Value> {
+/// Load the resume file if it exists
+pub fn load_resume<T: serde::de::DeserializeOwned>() -> Option<T> {
     if enabled() {
         if let Ok(resume_path) = std::env::var("SVP_RESUME") {
             let f = std::fs::File::open(resume_path).unwrap();
-            let resume: serde_json::Value = serde_json::from_reader(f).unwrap();
+            let resume: T = serde_json::from_reader(f).unwrap();
             Some(resume)
         } else {
             None
@@ -144,6 +145,7 @@ pub fn load_resume() -> Option<serde_json::Value> {
     }
 }
 
+/// Check if the SVP API is enabled
 pub fn enabled() -> bool {
     std::env::var("SVP_API").ok().as_deref() == Some("1")
 }

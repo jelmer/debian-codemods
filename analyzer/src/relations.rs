@@ -1,3 +1,4 @@
+//! Functions for working with package relations.
 use debian_control::lossless::relations::{Entry, Relation, Relations};
 use debian_control::relations::VersionConstraint;
 use debversion::Version;

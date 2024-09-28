@@ -1,9 +1,14 @@
+//! Maintscript file parsing and generation
 use debversion::Version;
 
 #[derive(Debug, PartialEq, Eq)]
+/// An error that occurred while parsing a maintscript file
 pub enum ParseError {
+    /// An unknown maintscript command
     UnknownCommand(String),
+    /// A maintscript command is missing an argument
     MissingArgument(String),
+    /// An invalid version was encountered
     InvalidVersion(debversion::ParseError),
 }
 
@@ -30,34 +35,56 @@ impl From<debversion::ParseError> for ParseError {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+/// An entry in a maintscript file
 pub enum Entry {
+    /// A command that is supported by the maintscript
     Supports(String),
+    /// Remove a conffile
     RemoveConffile {
+        /// The pathname of the conffile
         conffile: String,
+        /// The version of the package that is being upgraded
         prior_version: Option<Version>,
+        /// The name of the package that is being upgraded
         package: Option<String>,
     },
+    /// Move a conffile
     MoveConffile {
+        /// The old pathname of the conffile
         old_conffile: String,
+        /// The new pathname of the conffile
         new_conffile: String,
+        /// The version of the package that is being upgraded
         prior_version: Option<Version>,
+        /// The name of the package that is being upgraded
         package: Option<String>,
     },
+    /// Convert a symlink to a directory
     SymlinkToDir {
+        /// The pathname of the symlink
         pathname: String,
+        /// The old target of the symlink
         old_target: String,
+        /// The version of the package that is being upgraded
         prior_version: Option<Version>,
+        /// The name of the package that is being upgraded
         package: Option<String>,
     },
+    /// Convert a directory to a symlink
     DirToSymlink {
+        /// The pathname of the directory
         pathname: String,
+        /// The new target of the symlink
         new_target: String,
+        /// The version of the package that is being upgraded
         prior_version: Option<Version>,
+        /// The name of the package that is being upgraded
         package: Option<String>,
     },
 }
 
 impl Entry {
+    /// Get the arguments of the entry
     fn args(&self) -> Vec<String> {
         match self {
             Entry::Supports(command) => vec!["supports".to_string(), command.to_string()],
@@ -135,6 +162,7 @@ impl Entry {
         }
     }
 
+    /// Get the name of the package that is being upgraded
     pub fn package(&self) -> Option<&String> {
         match self {
             Entry::RemoveConffile { package, .. } => package.as_ref(),
@@ -145,6 +173,7 @@ impl Entry {
         }
     }
 
+    /// Get the version of the package that is being upgraded
     pub fn prior_version(&self) -> Option<&Version> {
         match self {
             Entry::RemoveConffile { prior_version, .. } => prior_version.as_ref(),
@@ -270,8 +299,11 @@ impl std::str::FromStr for Entry {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+/// A line in a maintscript file
 enum Line {
+    /// A comment
     Comment(String),
+    /// An entry
     Entry(Entry),
 }
 
@@ -285,6 +317,7 @@ impl std::fmt::Display for Line {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+/// A maintscript file
 pub struct Maintscript {
     lines: Vec<Line>,
 }
@@ -296,14 +329,17 @@ impl Default for Maintscript {
 }
 
 impl Maintscript {
+    /// Create a new maintscript file
     pub fn new() -> Self {
         Maintscript { lines: Vec::new() }
     }
 
+    /// Check if the maintscript file is empty
     pub fn is_empty(&self) -> bool {
         self.lines.is_empty()
     }
 
+    /// Iterate over the entries in the maintscript file
     pub fn entries(&self) -> Vec<&Entry> {
         self.lines
             .iter()
@@ -314,6 +350,7 @@ impl Maintscript {
             .collect()
     }
 
+    /// Remove an entry from the maintscript file
     pub fn remove(&mut self, index: usize) {
         // Also remove preceding comments
         let mut comments = vec![];

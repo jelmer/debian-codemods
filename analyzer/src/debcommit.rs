@@ -1,3 +1,4 @@
+//! Functions for creating commits with debcommit-like behavior.
 use crate::release_info::{suite_to_distribution, Vendor};
 use breezyshim::commit::CommitReporter;
 use breezyshim::error::Error as BrzError;
@@ -6,9 +7,15 @@ use breezyshim::RevisionId;
 use debian_changelog::ChangeLog;
 
 #[derive(Debug)]
+/// Errors that can occur when creating a commit.
 pub enum Error {
+    /// Unreleased changes in a changelog file.
     UnreleasedChanges(std::path::PathBuf),
+
+    /// Error parsing a changelog file.
     ChangelogError(debian_changelog::Error),
+
+    /// Error from breezyshim.
     BrzError(breezyshim::error::Error),
 }
 
@@ -36,6 +43,7 @@ impl From<debian_changelog::Error> for Error {
 
 impl std::error::Error for Error {}
 
+/// Create a commit with a tag for a release.
 pub fn debcommit_release(
     tree: &WorkingTree,
     committer: Option<&str>,
@@ -94,6 +102,7 @@ pub fn debcommit_release(
     Ok(tag_name)
 }
 
+/// Find changes in a changelog file.
 pub fn changelog_changes(
     tree: &dyn Tree,
     basis_tree: &dyn Tree,
@@ -171,6 +180,7 @@ pub fn strip_changelog_message(changes: &[&str]) -> Vec<String> {
     }
 }
 
+/// Create a commit message based on the new entries in changelog.
 pub fn changelog_commit_message(
     tree: &dyn Tree,
     basis_tree: &dyn Tree,
@@ -250,6 +260,7 @@ pub fn debcommit(
     builder.commit()
 }
 
+/// Find newly added changelog entries.
 pub fn new_changelog_entries(old_text: &[Vec<u8>], new_text: &[Vec<u8>]) -> Vec<String> {
     let mut sm = difflib::sequencematcher::SequenceMatcher::new(old_text, new_text);
     let mut changes = vec![];

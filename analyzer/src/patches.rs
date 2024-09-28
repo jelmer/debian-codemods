@@ -1,3 +1,4 @@
+//! Functions for working with patches in a Debian package.
 use breezyshim::branch::Branch;
 use breezyshim::delta::filter_excluded;
 use breezyshim::error::Error as BrzError;
@@ -11,6 +12,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 // TODO(jelmer): Use debmutate version
+/// Default name of the patches directory.
 pub const DEFAULT_DEBIAN_PATCHES_DIR: &str = "debian/patches";
 
 /// Find the name of the patches directory.
@@ -118,6 +120,7 @@ fn test_rules_find_patches_directory() {
     );
 }
 
+/// Find the patches directory for a package
 pub fn find_patches_directory(tree: &dyn Tree, subpath: &Path) -> Option<PathBuf> {
     let rules_path = subpath.join("debian/rules");
 
@@ -548,6 +551,7 @@ Last-Update: 2020-01-01
     }
 }
 
+/// Read quilt patches from a directory.
 pub fn read_quilt_patches<'a>(
     tree: &'a dyn Tree,
     directory: &'a std::path::Path,
@@ -665,6 +669,7 @@ mod read_quilt_patches_tests {
     }
 }
 
+/// Get the upstream tree with patches applied.
 pub fn upstream_with_applied_patches(
     tree: WorkingTree,
     patches: Vec<UnifiedPatch>,

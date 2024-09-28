@@ -1,9 +1,12 @@
+//! Information about version control systems.
 use debian_control::vcs::ParsedVcs;
 use log::debug;
 use url::Url;
 
+/// List of known GitLab sites.
 pub const KNOWN_GITLAB_SITES: &[&str] = &["salsa.debian.org", "invent.kde.org", "0xacab.org"];
 
+/// Check if a particular host is a GitLab instance.
 pub fn is_gitlab_site(hostname: &str, net_access: Option<bool>) -> bool {
     if KNOWN_GITLAB_SITES.contains(&hostname) {
         return true;
@@ -20,6 +23,7 @@ pub fn is_gitlab_site(hostname: &str, net_access: Option<bool>) -> bool {
     }
 }
 
+/// Check if a particular host is a GitLab instance.
 pub fn probe_gitlab_host(hostname: &str) -> bool {
     use reqwest::header::HeaderMap;
     let url = format!("https://{}/api/v4/version", hostname);
@@ -65,6 +69,7 @@ pub fn probe_gitlab_host(hostname: &str) -> bool {
     }
 }
 
+/// Determine the URL of the browser for a GitLab repository.
 pub fn determine_gitlab_browser_url(url: &str) -> Url {
     let parsed_vcs: ParsedVcs = url.trim_end_matches('/').parse().unwrap();
 
@@ -103,6 +108,7 @@ pub fn determine_gitlab_browser_url(url: &str) -> Url {
     Url::parse(&url).unwrap()
 }
 
+/// Determine the URL of the browser for a VCS repository.
 pub fn determine_browser_url(
     _vcs_type: &str,
     vcs_url: &str,
@@ -202,6 +208,7 @@ pub fn determine_browser_url(
     }
 }
 
+/// Canonicalize a VCS browser URL.
 pub fn canonicalize_vcs_browser_url(url: &str) -> String {
     let url = url.replace(
         "https://svn.debian.org/wsvn/",
@@ -236,28 +243,56 @@ pub fn canonicalize_vcs_browser_url(url: &str) -> String {
     .into_owned()
 }
 
+/// VCS information for a package.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum PackageVcs {
+    /// Git repository.
     Git {
+        /// URL of the repository.
         url: Url,
+
+        /// Branch name.
         branch: Option<String>,
+
+        /// Subpath within the repository.
         subpath: Option<std::path::PathBuf>,
     },
+    /// Subversion repository.
     Svn(Url),
+
+    /// Bazaar repository.
     Bzr(Url),
+
+    /// Mercurial repository.
     Hg {
+        /// URL of the repository.
         url: Url,
+
+        /// Branch name.
         branch: Option<String>,
+
+        /// Subpath within the repository.
         subpath: Option<std::path::PathBuf>,
     },
+
+    /// Monotone repository.
     Mtn(Url),
+
+    /// CVS repository.
     Cvs(String),
+
+    /// Darcs repository.
     Darcs(Url),
+
+    /// Arch repository.
     Arch(Url),
+
+    /// Svk repository.
     Svk(Url),
 }
 
 impl PackageVcs {
+    /// Get the type of the VCS repository as a string.
     pub fn type_str(&self) -> &str {
         match self {
             PackageVcs::Git { .. } => "Git",
@@ -272,6 +307,7 @@ impl PackageVcs {
         }
     }
 
+    /// Get the URL of the VCS repository.
     pub fn url(&self) -> Option<&url::Url> {
         match self {
             PackageVcs::Git { url, .. } => Some(url),
@@ -286,6 +322,7 @@ impl PackageVcs {
         }
     }
 
+    /// Get the branch name of the VCS repository.
     pub fn branch(&self) -> Option<&str> {
         match self {
             PackageVcs::Git { branch, .. } => branch.as_deref(),
@@ -294,6 +331,7 @@ impl PackageVcs {
         }
     }
 
+    /// Get the subpath of the VCS repository.
     pub fn subpath(&self) -> Option<&std::path::Path> {
         match self {
             PackageVcs::Git { subpath, .. } => subpath.as_deref(),
@@ -302,6 +340,7 @@ impl PackageVcs {
         }
     }
 
+    /// Get the location of the VCS repository.
     pub fn location(&self) -> String {
         match self {
             PackageVcs::Git {
@@ -403,15 +442,33 @@ impl From<PackageVcs> for ParsedVcs {
     }
 }
 
+/// Trait for types that can provide VCS information.
 pub trait VcsSource {
+    /// Get the Vcs-Git field.
     fn vcs_git(&self) -> Option<String>;
+
+    /// Get the Vcs-Svn field.
     fn vcs_svn(&self) -> Option<String>;
+
+    /// Get the Vcs-Bzr field.
     fn vcs_bzr(&self) -> Option<String>;
+
+    /// Get the Vcs-Hg field.
     fn vcs_hg(&self) -> Option<String>;
+
+    /// Get the Vcs-Mtn field.
     fn vcs_mtn(&self) -> Option<String>;
+
+    /// Get the Vcs-Cvs field.
     fn vcs_cvs(&self) -> Option<String>;
+
+    /// Get the Vcs-Darcs field.
     fn vcs_darcs(&self) -> Option<String>;
+
+    /// Get the Vcs-Arch field.
     fn vcs_arch(&self) -> Option<String>;
+
+    /// Get the Vcs-Svk field.
     fn vcs_svk(&self) -> Option<String>;
 }
 
@@ -491,6 +548,7 @@ impl VcsSource for debian_control::apt::Source {
     }
 }
 
+/// Determine the VCS field for a source package.
 pub fn vcs_field(source_package: &impl VcsSource) -> Option<(String, String)> {
     if let Some(value) = source_package.vcs_git() {
         return Some(("Git".to_string(), value));
@@ -522,6 +580,7 @@ pub fn vcs_field(source_package: &impl VcsSource) -> Option<(String, String)> {
     None
 }
 
+/// Determine the VCS URL for a source package.
 pub fn source_package_vcs(source_package: &impl VcsSource) -> Option<PackageVcs> {
     if let Some(value) = source_package.vcs_git() {
         let parsed_vcs: ParsedVcs = value.parse().unwrap();

@@ -11,13 +11,16 @@ const SUPPORTED_KEYS: &[&str] = &[
     "update-changelog",
 ];
 
+/// Configuration file name
 pub const PACKAGE_CONFIG_FILENAME: &str = "debian/lintian-brush.conf";
 
+/// Configuration file
 pub struct Config {
     obj: Ini,
 }
 
 impl Config {
+    /// Load configuration from a working tree
     pub fn from_workingtree(
         tree: &WorkingTree,
         subpath: &std::path::Path,
@@ -28,6 +31,7 @@ impl Config {
         Self::load_from_path(&path)
     }
 
+    /// Load configuration from a path
     pub fn load_from_path(path: &std::path::Path) -> Result<Self, std::io::Error> {
         let mut ini = Ini::new();
         let data = std::fs::read_to_string(path)?;
@@ -60,6 +64,7 @@ impl Config {
         Ok(Config { obj: ini })
     }
 
+    /// Return the compatibility release.
     pub fn compat_release(&self) -> Option<String> {
         if let Some(value) = self.obj.get("default", "compat-release") {
             let codename = crate::release_info::resolve_release_codename(value.as_str(), None);
@@ -72,6 +77,7 @@ impl Config {
         }
     }
 
+    /// Return whether reformatting is allowed.
     pub fn allow_reformatting(&self) -> Option<bool> {
         match self.obj.getbool("default", "allow-reformatting") {
             Ok(value) => value,
@@ -82,6 +88,7 @@ impl Config {
         }
     }
 
+    /// Return the minimum certainty level for changes to be applied.
     pub fn minimum_certainty(&self) -> Option<Certainty> {
         self.obj
             .get("default", "minimum-certainty")
@@ -96,6 +103,7 @@ impl Config {
             })
     }
 
+    /// Return whether the changelog should be updated.
     pub fn update_changelog(&self) -> Option<bool> {
         match self.obj.getbool("default", "update-changelog") {
             Ok(value) => value,

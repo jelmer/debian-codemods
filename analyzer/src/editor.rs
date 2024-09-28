@@ -1,3 +1,4 @@
+//! Editing files
 use breezyshim::error::Error as BrzError;
 use breezyshim::tree::MutableTree;
 use std::borrow::Cow;
@@ -5,13 +6,19 @@ use std::io::BufRead;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The type of template used to generate a file.
 pub enum TemplateType {
+    /// M4 template
     M4,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Error indicating that a file is generated from another file.
 pub struct GeneratedFile {
+    /// The path to the template file
     pub template_path: Option<PathBuf>,
+
+    /// The type of template
     pub template_type: Option<TemplateType>,
 }
 
@@ -28,8 +35,12 @@ impl std::fmt::Display for GeneratedFile {
 impl std::error::Error for GeneratedFile {}
 
 #[derive(Clone, PartialEq, Eq)]
+/// Error indicating that formatting could not be preserved.
 pub struct FormattingUnpreservable {
+    /// The original contents of the file
     original_contents: Option<Vec<u8>>,
+
+    /// The contents rewritten with our parser/serializer
     rewritten_contents: Option<Vec<u8>>,
 }
 
@@ -63,6 +74,7 @@ impl std::fmt::Display for FormattingUnpreservable {
 impl std::error::Error for FormattingUnpreservable {}
 
 impl FormattingUnpreservable {
+    /// Get a unified diff of the original and rewritten contents.
     pub fn diff(&self) -> Vec<String> {
         let original_lines = std::str::from_utf8(self.original_contents.as_deref().unwrap_or(b""))
             .unwrap()
@@ -109,6 +121,7 @@ fn check_preserve_formatting(
     })
 }
 
+/// Number of lines to scan for generated file indicators.
 pub const DO_NOT_EDIT_SCAN_LINES: usize = 20;
 
 fn check_generated_contents(bufread: &mut dyn BufRead) -> Result<(), GeneratedFile> {
@@ -127,6 +140,7 @@ fn check_generated_contents(bufread: &mut dyn BufRead) -> Result<(), GeneratedFi
     Ok(())
 }
 
+/// List of extensions for template files.
 pub const GENERATED_EXTENSIONS: &[&str] = &["in", "m4", "stub"];
 
 fn check_template_exists(path: &std::path::Path) -> Option<(PathBuf, Option<TemplateType>)> {
@@ -220,6 +234,7 @@ pub fn tree_check_generated_file(
 }
 
 #[derive(Debug)]
+/// Error that can occur when editing a file.
 pub enum EditorError {
     /// One of the files is generated from another file, and we were unable to edit it.
     GeneratedFile(PathBuf, GeneratedFile),
@@ -270,6 +285,7 @@ impl From<std::io::Error> for EditorError {
 }
 
 #[cfg(feature = "merge3")]
+/// Update a file with a three-way merge.
 fn update_with_merge3(
     original_contents: &[u8],
     rewritten_contents: &[u8],
@@ -456,12 +472,19 @@ pub fn tree_edit_formatted_file(
     Ok(changed)
 }
 
+/// A trait for types that can be edited
 pub trait Marshallable {
+    /// Parse the contents of a file
     fn from_bytes(content: &[u8]) -> Self;
+
+    /// Create an empty instance
     fn empty() -> Self;
+
+    /// Serialize the contents of a file
     fn to_bytes(&self) -> Option<Vec<u8>>;
 }
 
+/// An editor for a file
 pub trait Editor<P: Marshallable>:
     std::ops::Deref<Target = P> + std::ops::DerefMut<Target = P>
 {
@@ -479,6 +502,7 @@ pub trait Editor<P: Marshallable>:
         self.updated_content().as_deref() != self.rewritten_content()
     }
 
+    /// Check if the file is generated
     fn is_generated(&self) -> bool;
 
     /// Commit the changes
@@ -488,8 +512,9 @@ pub trait Editor<P: Marshallable>:
     fn commit(&self) -> Result<Vec<std::path::PathBuf>, EditorError>;
 }
 
-// Allow calling .edit_file("debian/control") on a tree
+/// Allow calling .edit_file("debian/control") on a tree
 pub trait MutableTreeEdit {
+    /// Edit a file in a tree
     fn edit_file<P: Marshallable>(
         &self,
         path: &std::path::Path,
@@ -509,6 +534,7 @@ impl<T: MutableTree> MutableTreeEdit for T {
     }
 }
 
+/// An editor for a file in a breezy tree
 pub struct TreeEditor<'a, P: Marshallable> {
     tree: &'a dyn MutableTree,
     path: PathBuf,
@@ -534,6 +560,7 @@ impl<'a, P: Marshallable> std::ops::DerefMut for TreeEditor<'a, P> {
 }
 
 impl<'a, P: Marshallable> TreeEditor<'a, P> {
+    /// Create a new editor, with preferences being read from the environment
     pub fn from_env(
         tree: &'a dyn MutableTree,
         path: &std::path::Path,
@@ -562,6 +589,7 @@ impl<'a, P: Marshallable> TreeEditor<'a, P> {
         Ok(())
     }
 
+    /// Create a new editor
     pub fn new(
         tree: &'a dyn MutableTree,
         path: &std::path::Path,
@@ -624,6 +652,7 @@ impl<'a, P: Marshallable> Editor<P> for TreeEditor<'a, P> {
     }
 }
 
+/// An editor for a file
 pub struct FsEditor<P: Marshallable> {
     path: PathBuf,
     orig_content: Option<Vec<u8>>,
@@ -648,6 +677,7 @@ impl<M: Marshallable> std::ops::DerefMut for FsEditor<M> {
 }
 
 impl<P: Marshallable> FsEditor<P> {
+    /// Create a new editor, with preferences being read from the environment
     pub fn from_env(
         path: &std::path::Path,
         allow_generated: bool,
@@ -675,6 +705,7 @@ impl<P: Marshallable> FsEditor<P> {
         Ok(())
     }
 
+    /// Create a new editor
     pub fn new(
         path: &std::path::Path,
         allow_generated: bool,

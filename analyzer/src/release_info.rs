@@ -1,10 +1,16 @@
+//! Debian and Ubuntu release information.
+
 pub use breezyshim::debian::Vendor;
 use chrono::{NaiveDate, Utc};
 use distro_info::DistroInfo;
 
+/// Pocket names for Debian.
 pub const DEBIAN_POCKETS: &[&str] = &["", "-security", "-proposed-updates", "-backports"];
+
+/// Pocket names for Ubuntu.
 pub const UBUNTU_POCKETS: &[&str] = &["", "-proposed", "-updates", "-security", "-backports"];
 
+/// List of all Debian releases.
 pub fn debian_releases() -> Vec<String> {
     let debian = distro_info::DebianDistroInfo::new().unwrap();
     debian
@@ -14,6 +20,7 @@ pub fn debian_releases() -> Vec<String> {
         .collect()
 }
 
+/// List of all Ubuntu releases.
 pub fn ubuntu_releases() -> Vec<String> {
     let ubuntu = distro_info::UbuntuDistroInfo::new().unwrap();
     ubuntu
@@ -54,6 +61,7 @@ pub fn suite_to_distribution(suite: &str) -> Option<Vendor> {
     None
 }
 
+/// Find aliases for a particular release.
 pub fn release_aliases(name: &str, date: Option<NaiveDate>) -> Vec<String> {
     let mut ret = vec![];
     let debian_info = distro_info::DebianDistroInfo::new().unwrap();
@@ -84,6 +92,7 @@ pub fn release_aliases(name: &str, date: Option<NaiveDate>) -> Vec<String> {
     ret
 }
 
+/// Resolve a release codename or series name to a series name.
 pub fn resolve_release_codename(name: &str, date: Option<NaiveDate>) -> Option<String> {
     let date = date.unwrap_or(Utc::now().naive_utc().date());
     let (distro, mut name) = if let Some((distro, name)) = name.split_once('/') {

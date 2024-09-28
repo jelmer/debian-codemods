@@ -1,3 +1,4 @@
+//! Tools for working with Debian control files.
 use crate::editor::{Editor, EditorError, FsEditor, GeneratedFile};
 use crate::relations::{ensure_relation, is_relation_implied};
 use deb822_lossless::Paragraph;
@@ -17,6 +18,7 @@ pub fn format_description(summary: &str, long_description: Vec<&str>) -> String 
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
+/// The type of a control file template.
 pub enum TemplateType {
     /// A rule in the debian/rules file that generates the control file.
     Rules,
@@ -340,12 +342,18 @@ fn update_control_template(
 }
 
 #[derive(Debug, PartialEq, Eq)]
+/// A change conflict.
 pub struct ChangeConflict {
-    para_key: (String, String),
-    field: String,
-    actual_old_value: Option<String>,
-    template_old_value: Option<String>,
-    actual_new_value: Option<String>,
+    /// Paragraph key, i.e. ("Source", "foo")
+    pub para_key: (String, String),
+    /// Field that conflicted
+    pub field: String,
+    /// Old value in the control file
+    pub actual_old_value: Option<String>,
+    /// Old value in the template
+    pub template_old_value: Option<String>,
+    /// New value in the control file
+    pub actual_new_value: Option<String>,
 }
 
 impl std::fmt::Display for ChangeConflict {
@@ -623,6 +631,7 @@ impl DerefMut for TemplatedControlEditor {
 }
 
 impl TemplatedControlEditor {
+    /// Create a new control file editor.
     pub fn create<P: AsRef<Path>>(control_path: P) -> Result<Self, EditorError> {
         if control_path.as_ref().exists() {
             return Err(EditorError::IoError(std::io::Error::new(
@@ -633,14 +642,17 @@ impl TemplatedControlEditor {
         Self::new(control_path, true)
     }
 
+    /// Return the type of the template used to generate the control file.
     pub fn template_type(&self) -> Option<TemplateType> {
         self.template.as_ref().map(|t| t.template_type)
     }
 
+    /// Open an existing control file.
     pub fn open<P: AsRef<Path>>(control_path: P) -> Result<Self, EditorError> {
         Self::new(control_path, false)
     }
 
+    /// Create a new control file editor.
     pub fn new<P: AsRef<Path>>(control_path: P, allow_missing: bool) -> Result<Self, EditorError> {
         let path = control_path.as_ref();
         let (template, template_only) = if !path.exists() {

@@ -1,3 +1,4 @@
+//! Publishing utilities for updating Vcs-* headers and creating VCS repositories.
 use crate::salsa::guess_repository_url;
 use crate::vcs::determine_browser_url;
 use crate::{get_committer, parseaddr};
@@ -11,6 +12,7 @@ use debian_control::vcs::ParsedVcs;
 use std::path::Path;
 use url::Url;
 
+/// Update the Vcs-* headers in the control file for the given source package.
 pub fn update_control_for_vcs_url(
     source: &mut Source,
     vcs_type: breezyshim::foreign::VcsType,
@@ -30,6 +32,7 @@ pub fn update_control_for_vcs_url(
     }
 }
 
+/// Create a VCS repository for the given source package.
 pub fn create_vcs_url(repo_url: &Url, summary: Option<&str>) -> Result<(), BrzError> {
     match create_project(repo_url.as_str(), summary) {
         Ok(()) => {
@@ -44,10 +47,14 @@ pub fn create_vcs_url(repo_url: &Url, summary: Option<&str>) -> Result<(), BrzEr
     }
 }
 
+/// Error type for the publish module.
 #[derive(Debug, Clone)]
 pub enum Error {
+    /// No Vcs-* location specified.
     NoVcsLocation,
+    /// File not found.
     FileNotFound(std::path::PathBuf),
+    /// Conflicting Vcs-* location already specified.
     ConflictingVcsAlreadySpecified(String, String, String),
 }
 
@@ -66,6 +73,7 @@ impl std::fmt::Display for Error {
     }
 }
 
+/// Update the official VCS location for the given source package.
 pub fn update_official_vcs(
     wt: &WorkingTree,
     subpath: &Path,

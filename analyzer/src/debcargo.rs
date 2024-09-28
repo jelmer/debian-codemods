@@ -1,17 +1,34 @@
+//! debcargo.toml file manipulation
+
+// TODO: Reuse the debcargo crate for more of this.
+
 use debian_control::fields::MultiArch;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use toml_edit::{value, DocumentMut, Table};
 
+/// The default maintainer for Rust packages.
 pub const DEFAULT_MAINTAINER: &str =
     "Debian Rust Maintainers <pkg-rust-maintainers@alioth-lists.debian.net>";
+
+/// The default section for Rust packages.
 pub const DEFAULT_SECTION: &str = "rust";
+
+/// The current standards version.
 pub const CURRENT_STANDARDS_VERSION: &str = "4.5.1";
+
+/// The default priority for Rust packages.
 pub const DEFAULT_PRIORITY: debian_control::Priority = debian_control::Priority::Optional;
 
+/// A wrapper around a debcargo.toml file.
 pub struct DebcargoEditor {
+    /// Path to the debcargo.toml file.
     debcargo_toml_path: Option<PathBuf>,
+
+    /// The contents of the debcargo.toml file.
     pub debcargo: DocumentMut,
+
+    /// The contents of the Cargo.toml file.
     pub cargo: Option<DocumentMut>,
 }
 
@@ -32,6 +49,7 @@ impl Default for DebcargoEditor {
 }
 
 impl DebcargoEditor {
+    /// Create a new DebcargoEditor with no contents.
     pub fn new() -> Self {
         Self {
             debcargo_toml_path: None,
@@ -40,12 +58,14 @@ impl DebcargoEditor {
         }
     }
 
+    /// Return the name of the crate.
     fn crate_name(&self) -> Option<&str> {
         self.cargo
             .as_ref()
             .and_then(|c| c["package"]["name"].as_str())
     }
 
+    /// Return the version of the crate.
     fn crate_version(&self) -> Option<semver::Version> {
         self.cargo
             .as_ref()
@@ -53,6 +73,7 @@ impl DebcargoEditor {
             .map(|s| semver::Version::parse(s).unwrap())
     }
 
+    /// Open a debcargo.toml file.
     pub fn open(path: &Path) -> Result<Self, std::io::Error> {
         let content = std::fs::read_to_string(path)?;
         Ok(Self {
@@ -62,6 +83,7 @@ impl DebcargoEditor {
         })
     }
 
+    /// Open a debcargo.toml file in a directory.
     pub fn from_directory(path: &std::path::Path) -> Result<Self, std::io::Error> {
         let debcargo_toml_path = path.join("debian/debcargo.toml");
         let debcargo_toml = std::fs::read_to_string(&debcargo_toml_path)?;
@@ -73,6 +95,7 @@ impl DebcargoEditor {
         })
     }
 
+    /// Commit changes to the debcargo.toml file.
     pub fn commit(&self) -> std::io::Result<bool> {
         let old_contents = std::fs::read_to_string(self.debcargo_toml_path.as_ref().unwrap())?;
         let new_contents = self.debcargo.to_string();
@@ -86,6 +109,7 @@ impl DebcargoEditor {
         Ok(true)
     }
 
+    /// Return the source package
     pub fn source(&mut self) -> DebcargoSource {
         DebcargoSource { main: self }
     }
@@ -97,6 +121,7 @@ impl DebcargoEditor {
             .unwrap_or(false)
     }
 
+    /// Return an iterator over the binaries in the package.
     pub fn binaries(&mut self) -> impl Iterator<Item = DebcargoBinary<'_>> {
         let semver_suffix = self.semver_suffix();
 
@@ -173,20 +198,24 @@ impl DebcargoEditor {
     }
 }
 
+/// The source package in a debcargo.toml file.
 pub struct DebcargoSource<'a> {
     main: &'a mut DebcargoEditor,
 }
 
 impl<'a> DebcargoSource<'a> {
+    /// Return the source section of the debcargo.toml file.
     pub fn toml_section_mut(&mut self) -> &mut Table {
         self.main.debcargo["source"].as_table_mut().unwrap()
     }
 
+    /// Set the standards version.
     pub fn set_standards_version(&mut self, version: &str) -> &mut Self {
         self.toml_section_mut()["standards-version"] = value(version);
         self
     }
 
+    /// Return the standards version.
     pub fn standards_version(&self) -> &str {
         self.main
             .debcargo
@@ -196,11 +225,13 @@ impl<'a> DebcargoSource<'a> {
             .unwrap_or(CURRENT_STANDARDS_VERSION)
     }
 
+    /// Set the homepage.
     pub fn set_homepage(&mut self, homepage: &str) -> &mut Self {
         self.toml_section_mut()["homepage"] = value(homepage);
         self
     }
 
+    /// Return the homepage.
     pub fn homepage(&self) -> Option<&str> {
         let default_homepage = self
             .main
@@ -217,11 +248,13 @@ impl<'a> DebcargoSource<'a> {
             .or(default_homepage)
     }
 
+    /// Set the VCS Git URL.
     pub fn set_vcs_git(&mut self, git: &str) -> &mut Self {
         self.toml_section_mut()["vcs_git"] = value(git);
         self
     }
 
+    /// Return the VCS Git URL.
     pub fn vcs_git(&self) -> Option<String> {
         let default_git = self.main.crate_name().map(|c| {
             format!(
@@ -238,6 +271,7 @@ impl<'a> DebcargoSource<'a> {
             .map_or(default_git, |s| Some(s.to_string()))
     }
 
+    /// Get the VCS browser URL.
     pub fn vcs_browser(&self) -> Option<String> {
         let default_vcs_browser = self.main.crate_name().map(|c| {
             format!(
@@ -254,11 +288,13 @@ impl<'a> DebcargoSource<'a> {
             .map_or(default_vcs_browser, |s| Some(s.to_string()))
     }
 
+    /// Set the VCS browser URL.
     pub fn set_vcs_browser(&mut self, browser: &str) -> &mut Self {
         self.toml_section_mut()["vcs_browser"] = value(browser);
         self
     }
 
+    /// Get the section.
     pub fn section(&self) -> &str {
         self.main
             .debcargo
@@ -268,11 +304,13 @@ impl<'a> DebcargoSource<'a> {
             .unwrap_or(DEFAULT_SECTION)
     }
 
+    /// Set the section.
     pub fn set_section(&mut self, section: &str) -> &mut Self {
         self.toml_section_mut()["section"] = value(section);
         self
     }
 
+    /// Get the name of the package.
     pub fn name(&self) -> Option<String> {
         let semver_suffix = self.main.semver_suffix();
         if semver_suffix {
@@ -287,6 +325,7 @@ impl<'a> DebcargoSource<'a> {
         }
     }
 
+    /// Get the priority.
     pub fn priority(&self) -> debian_control::Priority {
         self.main
             .debcargo
@@ -297,11 +336,13 @@ impl<'a> DebcargoSource<'a> {
             .unwrap_or(DEFAULT_PRIORITY)
     }
 
+    /// Set the priority.
     pub fn set_priority(&mut self, priority: debian_control::Priority) -> &mut Self {
         self.toml_section_mut()["priority"] = value(priority.to_string());
         self
     }
 
+    /// Get whether the package build requires root.
     pub fn rules_requires_root(&self) -> bool {
         self.main
             .debcargo
@@ -311,11 +352,13 @@ impl<'a> DebcargoSource<'a> {
             .unwrap_or(false)
     }
 
+    /// Set whether the package build requires root.
     pub fn set_rules_requires_root(&mut self, requires_root: bool) -> &mut Self {
         self.toml_section_mut()["requires_root"] = value(if requires_root { "yes" } else { "no" });
         self
     }
 
+    /// Get the maintainer.
     pub fn maintainer(&self) -> &str {
         self.main
             .debcargo
@@ -325,11 +368,13 @@ impl<'a> DebcargoSource<'a> {
             .unwrap_or(DEFAULT_MAINTAINER)
     }
 
+    /// Set the maintainer.
     pub fn set_maintainer(&mut self, maintainer: &str) -> &mut Self {
         self.toml_section_mut()["maintainer"] = value(maintainer);
         self
     }
 
+    /// Get the uploaders.
     pub fn uploaders(&self) -> Option<Vec<String>> {
         self.main
             .debcargo
@@ -339,6 +384,7 @@ impl<'a> DebcargoSource<'a> {
             .map(|a| a.iter().map(|v| v.as_str().unwrap().to_string()).collect())
     }
 
+    /// Set the uploaders.
     pub fn set_uploaders(&mut self, uploaders: Vec<String>) -> &mut Self {
         let mut array = toml_edit::Array::new();
         for u in uploaders {
@@ -350,6 +396,7 @@ impl<'a> DebcargoSource<'a> {
 }
 
 #[allow(dead_code)]
+/// A binary package in a debcargo.toml file.
 pub struct DebcargoBinary<'a> {
     table: &'a mut Table,
     key: String,
@@ -389,22 +436,27 @@ impl<'a> DebcargoBinary<'a> {
         }
     }
 
+    /// Get the name of the binary package.
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// Get the architecture.
     pub fn architecture(&self) -> Option<&str> {
         Some("any")
     }
 
+    /// Get the multi-architecture setting.
     pub fn multi_arch(&self) -> Option<MultiArch> {
         Some(MultiArch::Same)
     }
 
+    /// Get the package section.
     pub fn section(&self) -> Option<&str> {
         self.table["section"].as_str()
     }
 
+    /// Get the package summary.
     pub fn summary(&self) -> Option<String> {
         if let Some(summary) = self.table.get("summary").and_then(|v| v.as_str()) {
             Some(summary.to_string())
@@ -413,6 +465,7 @@ impl<'a> DebcargoBinary<'a> {
         }
     }
 
+    /// Get the package long description.
     pub fn long_description(&self) -> Option<String> {
         if let Some(description) = self.table.get("description").and_then(|v| v.as_str()) {
             Some(description.to_string())
@@ -427,6 +480,7 @@ impl<'a> DebcargoBinary<'a> {
         }
     }
 
+    /// Return the package description.
     pub fn description(&self) -> Option<String> {
         Some(crate::control::format_description(
             &self.summary()?,
@@ -434,14 +488,17 @@ impl<'a> DebcargoBinary<'a> {
         ))
     }
 
+    /// Get the extra dependencies.
     pub fn depends(&self) -> Option<&str> {
         self.table["depends"].as_str()
     }
 
+    /// Get the extra recommends.
     pub fn recommends(&self) -> Option<&str> {
         self.table["recommends"].as_str()
     }
 
+    /// Get the extra suggests.
     pub fn suggests(&self) -> Option<&str> {
         self.table["suggests"].as_str()
     }
@@ -507,6 +564,7 @@ fn debcargo_binary_name(crate_name: &str, suffix: &str) -> String {
     format!("librust-{}{}-dev", debnormalize(crate_name), suffix)
 }
 
+/// Unmangle a debcargo version.
 pub fn unmangle_debcargo_version(version: &str) -> String {
     version.replace("~", "-")
 }
