@@ -1,11 +1,15 @@
+//! Accessing WNPP bugs in the Debian Bug Tracking System.
 use sqlx::error::BoxDynError;
 use sqlx::{Error, PgPool, Postgres};
 
 type BugId = i64;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+/// Type of WNPP bug.
 pub enum BugKind {
+    /// Request for packaging
     RFP,
+    /// Intent to package
     ITP,
 }
 
@@ -49,10 +53,12 @@ pub struct DebBugs {
 }
 
 impl DebBugs {
+    /// Create a new DebBugs instance.
     pub fn new(pool: PgPool) -> Self {
         DebBugs { pool }
     }
 
+    /// Create a new DebBugs instance with a default connection.
     pub async fn default() -> Result<Self, Error> {
         Ok(DebBugs {
             pool: crate::udd::connect_udd_mirror().await?,
@@ -74,6 +80,7 @@ impl DebBugs {
         Ok(actual_package.as_deref() == Some(package))
     }
 
+    /// Find archived ITP/RFP bugs for a package.
     pub async fn find_archived_wnpp_bugs(
         &self,
         source_name: &str,
@@ -88,6 +95,7 @@ impl DebBugs {
         .await
     }
 
+    /// Find ITP/RFP bugs for a package.
     pub async fn find_wnpp_bugs(&self, source_name: &str) -> Result<Vec<(BugId, BugKind)>, Error> {
         sqlx::query_as::<_, (BugId, BugKind)>(
             "select id, type from wnpp where source = $1 and type in ('ITP', 'RFP')",
@@ -98,6 +106,7 @@ impl DebBugs {
     }
 }
 
+/// Find WNPP bugs for a package, trying multiple names.
 pub async fn find_wnpp_bugs_harder(names: &[&str]) -> Result<Vec<(BugId, BugKind)>, Error> {
     for name in names {
         let debbugs = DebBugs::default().await?;
