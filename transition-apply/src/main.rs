@@ -214,24 +214,27 @@ fn main() -> Result<(), i32> {
 
     let changelog_path = debian_path.join("changelog");
 
-    let (update_changelog, changelog_explanation) = if let Some(update_changelog) = update_changelog
+    let changelog_behaviour = if let Some(update_changelog) = update_changelog
     {
-        (
-            update_changelog,
-            "Specified by --update-changelog or --no-update-changelog".to_string(),
-        )
+        ChangelogBehaviour {
+            update: update_changelog,
+            explanation: "Specified by --update-changelog or --no-update-changelog".to_string(),
+        }
     } else {
         if let Some(dch_guess) =
             debian_analyzer::detect_gbp_dch::guess_update_changelog(&wt, &debian_path, None)
         {
             note_changelog_policy(dch_guess.update_changelog, &dch_guess.explanation);
-            (dch_guess.update_changelog, dch_guess.explanation)
+            dch_guess
         } else {
-            (true, "No changelog policy detected".to_string())
+            ChangelogBehaviour {
+                update: true,
+                explanation: "No changelog policy detected".to_string(),
+            }
         }
     };
 
-    if update_changelog {
+    if changelog_behaviour.update_changelog {
         let mut summary = format!("Apply transition {}. ", transition.title.unwrap());
         if !bugnos.is_empty() {
             summary.push_str(&format!(
@@ -256,7 +259,7 @@ fn main() -> Result<(), i32> {
         versions_dict(),
         Some(10),
         Some(result),
-        Some((update_changelog, changelog_explanation)),
+        Some(changelog_behaviour)
     );
     Ok(())
 }
