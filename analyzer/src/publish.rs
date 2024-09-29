@@ -22,6 +22,11 @@ pub fn update_control_for_vcs_url(
         match vcs_type {
             breezyshim::foreign::VcsType::Git => "Vcs-Git",
             breezyshim::foreign::VcsType::Bazaar => "Vcs-Bzr",
+            breezyshim::foreign::VcsType::Svn => "Vcs-Svn",
+            breezyshim::foreign::VcsType::Hg => "Vcs-Hg",
+            breezyshim::foreign::VcsType::Cvs => "Vcs-Cvs",
+            breezyshim::foreign::VcsType::Darcs => "Vcs-Darcs",
+            breezyshim::foreign::VcsType::Fossil => "Vcs-Fossil",
         },
         vcs_url,
     );
@@ -140,7 +145,7 @@ pub fn update_official_vcs(
 
     let branch_name = match branch.vcs_type() {
         breezyshim::foreign::VcsType::Git => Some("debian/main"),
-        breezyshim::foreign::VcsType::Bazaar => None,
+        _ => None,
     };
 
     let vcs_url = ParsedVcs {
