@@ -5,6 +5,7 @@ edition = "2021"
 documentation = "https://docs.rs/multiarch-hints"
 repository = "https://salsa.debian.org/jelmer/lintian-brush"
 description = "Apply multiarch hints to Debian packages"
+license = "GPL-2.0+"
 
 [dependencies]
 chrono = { workspace = true }
@@ -14,7 +15,7 @@ reqwest = { workspace = true, features = ["blocking"] }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }
 xz2 = "0.1"
-debian-analyzer = { path = "../analyzer" }
+debian-analyzer = { path = "../analyzer", version = ">=0.158" }
 debversion = { workspace = true, features = ["serde"] }
 pyo3 = { workspace = true }
 lazy-regex = { workspace = true }
