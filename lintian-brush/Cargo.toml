@@ -1,6 +1,6 @@
 [package]
 name = "lintian-brush"
-version = { workspace = true }
+version = "0.158.19"
 authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
 license = "GPL-2.0+"

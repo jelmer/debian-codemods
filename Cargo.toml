@@ -7,7 +7,7 @@ members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "debianize", 
 version = "0.158.0"
 
 [workspace.dependencies]
-breezyshim = { version = ">=0.1.204", features = ["dirty-tracker"] }
+breezyshim = { version = ">=0.1.205", features = ["dirty-tracker"] }
 #breezyshim = { path = "../breezyshim/trunk", features = ["dirty-tracker"] }
 pyo3 = ">=0.22"
 debversion = ">=0.3.0"
@@ -33,10 +33,11 @@ maplit = "1"
 buildlog-consultant = ">=0.0.43"
 upstream-ontologist = ">=0.1.43"
 #upstream-ontologist = { git = "https://github.com/jelmer/upstream-ontologist" }
-sqlx = "0.8"
+sqlx = ">=0.8"
 semver = "1"
 toml_edit = ">=0.22"
 tokio = ">=1.39"
+debian-analyzer = { path = "analyzer" }
 
 #debian-control = { path = "../deb822-lossless/debian-control" }
 #deb822-lossless = { path = "../deb822-lossless" }
