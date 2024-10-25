@@ -27,6 +27,8 @@ pub fn update_control_for_vcs_url(
             breezyshim::foreign::VcsType::Cvs => "Vcs-Cvs",
             breezyshim::foreign::VcsType::Darcs => "Vcs-Darcs",
             breezyshim::foreign::VcsType::Fossil => "Vcs-Fossil",
+            breezyshim::foreign::VcsType::Arch => "Vcs-Arch",
+            breezyshim::foreign::VcsType::Svk => "Vcs-Svk",
         },
         vcs_url,
     );
