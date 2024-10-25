@@ -40,6 +40,8 @@ toml_edit = { workspace = true }
 semver = { workspace = true }
 sqlx = { workspace = true, optional = true, features = ["postgres"] }
 filetime = "0.2"
+sha1 = "0.10.6"
+hex = "0.4.3"
 
 [features]
 default = ["python", "merge3"]

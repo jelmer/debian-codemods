@@ -752,6 +752,7 @@ dependencies = [
  "distro-info",
  "env_logger",
  "filetime",
+ "hex",
  "lazy-regex",
  "lazy_static",
  "log",
@@ -766,6 +767,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
+ "sha1",
  "sqlx",
  "tempfile",
  "toml_edit",
@@ -1998,6 +2000,10 @@ dependencies = [
  "unicode-bidi",
  "unicode-normalization",
 ]
+
+[[package]]
+name = "import-uncommitted"
+version = "0.158.0"
 
 [[package]]
 name = "indexmap"
