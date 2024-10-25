@@ -8,7 +8,7 @@ use std::path::Path;
 /// Interface for editing debian packages, whether backed by real control files or debcargo files.
 pub trait AbstractControlEditor {
     /// Get the source package.
-    fn source<'a>(&'a mut self) -> Option<Box<dyn AbstractSource + 'a>>;
+    fn source<'a>(&'a mut self) -> Option<Box<dyn AbstractSource<'a> + 'a>>;
 
     /// Get the binary packages.
     fn binaries<'a>(&'a mut self) -> Vec<Box<dyn AbstractBinary + 'a>>;
@@ -46,7 +46,7 @@ use debian_control::{Binary as PlainBinary, Control as PlainControl, Source as P
 
 impl AbstractControlEditor for DebcargoEditor {
     fn source<'a>(&'a mut self) -> Option<Box<dyn AbstractSource<'a> + 'a>> {
-        Some(Box::new(DebcargoEditor::source(self)) as Box<dyn AbstractSource>)
+        Some(Box::new(DebcargoEditor::source(self)) as Box<dyn AbstractSource<'a>>)
     }
 
     fn binaries<'a>(&'a mut self) -> Vec<Box<dyn AbstractBinary + 'a>> {
@@ -124,7 +124,7 @@ impl<'a> AbstractSource<'a> for DebcargoSource<'a> {
 }
 
 impl<E: crate::editor::Editor<PlainControl>> AbstractControlEditor for E {
-    fn source<'a>(&'a mut self) -> Option<Box<dyn AbstractSource + 'a>> {
+    fn source<'a>(&'a mut self) -> Option<Box<dyn AbstractSource<'a> + 'a>> {
         PlainControl::source(self).map(|s| Box::new(s) as Box<dyn AbstractSource>)
     }
 
