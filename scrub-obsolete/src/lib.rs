@@ -198,7 +198,7 @@ fn filter_relations(
         if relations.is_empty() {
             base.remove(field);
         } else {
-            base.insert(field, &new_contents);
+            base.set(field, &new_contents);
         }
     }
     all_actions
@@ -731,7 +731,7 @@ mod tests {
         #[test]
         fn test_keep() {
             let mut control = Paragraph::new();
-            control.insert("Depends", "foo");
+            control.set("Depends", "foo");
             assert_eq!(
                 Vec::<Action>::new(),
                 filter_relations(&mut control, "Depends", |_oldrel| vec![])
@@ -741,7 +741,7 @@ mod tests {
         #[test]
         fn test_drop_last() {
             let mut control = Paragraph::new();
-            control.insert("Depends", "foo");
+            control.set("Depends", "foo");
             assert_eq!(
                 Vec::<Action>::new(),
                 filter_relations(&mut control, "Depends", |oldrel| {
@@ -755,7 +755,7 @@ mod tests {
         #[test]
         fn test_drop_first() {
             let mut control = Paragraph::new();
-            control.insert("Depends", "foo, bar");
+            control.set("Depends", "foo, bar");
             assert_eq!(
                 Vec::<Action>::new(),
                 filter_relations(&mut control, "Depends", |oldrel| {
@@ -773,7 +773,7 @@ mod tests {
         #[test]
         fn test_keep_last_comma() {
             let mut control = Paragraph::new();
-            control.insert("Depends", "foo, bar, ");
+            control.set("Depends", "foo, bar, ");
             assert_eq!(
                 Vec::<Action>::new(),
                 filter_relations(&mut control, "Depends", |oldrel| {
@@ -791,7 +791,7 @@ mod tests {
         #[test]
         fn test_drop_just_comma() {
             let mut control = Paragraph::new();
-            control.insert("Depends", "foo, ");
+            control.set("Depends", "foo, ");
             assert_eq!(
                 Vec::<Action>::new(),
                 filter_relations(&mut control, "Depends", |oldrel| {

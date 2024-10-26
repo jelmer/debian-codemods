@@ -5,7 +5,6 @@ use breezyshim::workspace::check_clean_tree;
 use clap::Parser;
 use debian_analyzer::editor::EditorError;
 use debian_analyzer::release_info::resolve_release_codename;
-use debian_analyzer::svp::{report_fatal, report_nothing_to_do, report_success_debian};
 use debian_analyzer::{control_file_present, get_committer, is_debcargo_package};
 use std::collections::HashMap;
 use std::io::Write;
@@ -113,6 +112,8 @@ fn main() -> Result<(), i32> {
         }
     }
 
+    let svp = debian_analyzer::svp::Reporter::new(versions_dict());
+
     let mut update_changelog = args.update_changelog;
     let mut allow_reformatting = args.allow_reformatting;
     let upgrade_release = resolve_release_codename(&args.upgrade_release, None).unwrap();
@@ -152,16 +153,9 @@ fn main() -> Result<(), i32> {
     let allow_reformatting = allow_reformatting.unwrap_or(false);
 
     if is_debcargo_package(&wt, &subpath) {
-        report_fatal(
-            versions_dict(),
-            "nothing-to-do",
-            "Package uses debcargo",
-            None,
-            None,
-        );
+        svp.report_fatal("nothing-to-do", "Package uses debcargo", None, None);
     } else if !control_file_present(&wt, &subpath) {
-        report_fatal(
-            versions_dict(),
+        svp.report_fatal(
             "missing-control-file",
             "Unable to find debian/control",
             None,
@@ -186,8 +180,7 @@ fn main() -> Result<(), i32> {
             for line in e.diff() {
                 log::info!("{}", line);
             }
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "formatting-unpreservable",
                 &format!(
                     "unable to preserve formatting while editing {}",
@@ -198,8 +191,7 @@ fn main() -> Result<(), i32> {
             );
         }
         Err(scrub_obsolete::ScrubObsoleteError::EditorError(EditorError::GeneratedFile(p, _e))) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "generated-file",
                 &format!("unable to edit generated file: {:?}", p),
                 None,
@@ -207,17 +199,10 @@ fn main() -> Result<(), i32> {
             );
         }
         Err(scrub_obsolete::ScrubObsoleteError::NotDebianPackage(_)) => {
-            report_fatal(
-                versions_dict(),
-                "not-debian-package",
-                "Not a Debian package.",
-                None,
-                None,
-            );
+            svp.report_fatal("not-debian-package", "Not a Debian package.", None, None);
         }
         Err(scrub_obsolete::ScrubObsoleteError::EditorError(EditorError::TemplateError(p, _e))) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "change-conflict",
                 &format!("Generated file changes conflict: {}", p.display()),
                 None,
@@ -225,8 +210,7 @@ fn main() -> Result<(), i32> {
             );
         }
         Err(scrub_obsolete::ScrubObsoleteError::SqlxError(e)) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "udd-error",
                 &format!("Error communicating with UDD: {}", e),
                 None,
@@ -237,29 +221,17 @@ fn main() -> Result<(), i32> {
             scrub_obsolete::ScrubObsoleteError::BrzError(e)
             | scrub_obsolete::ScrubObsoleteError::EditorError(EditorError::BrzError(e)),
         ) => {
-            report_fatal(
-                versions_dict(),
-                "brz-error",
-                &format!("Error: {}", e),
-                None,
-                None,
-            );
+            svp.report_fatal("brz-error", &format!("Error: {}", e), None, None);
         }
         Err(scrub_obsolete::ScrubObsoleteError::EditorError(EditorError::IoError(e))) => {
-            report_fatal(
-                versions_dict(),
-                "io-error",
-                &format!("Error: {}", e),
-                None,
-                None,
-            );
+            svp.report_fatal("io-error", &format!("Error: {}", e), None, None);
         }
     };
 
     std::mem::drop(lock_write);
 
     if result.any_changes() {
-        report_nothing_to_do(versions_dict(), Some("no obsolete constraints"));
+        svp.report_nothing_to_do(Some("no obsolete constraints"), None);
     }
 
     log::info!("Scrub obsolete settings.");
@@ -269,7 +241,7 @@ fn main() -> Result<(), i32> {
         }
     }
 
-    report_success_debian(versions_dict(), Some(result.value()), Some(result), None);
+    svp.report_success_debian(Some(result.value()), Some(result), None);
 
     Ok(())
 }

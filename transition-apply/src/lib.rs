@@ -1,4 +1,4 @@
-use deb822_lossless::{Deb822, Paragraph};
+use deb822_lossless::lossless::{Deb822, Paragraph};
 use debian_analyzer::benfile::{Comparison, Expr};
 use debian_analyzer::transition::Transition;
 use debian_control::lossless::Control;

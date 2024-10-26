@@ -1391,7 +1391,7 @@ pub fn run_lintian_fixer(
     };
 
     let cl = ChangeLog::read(r)?;
-    let first_entry = if let Some(entry) = cl.entries().next() {
+    let first_entry = if let Some(entry) = cl.iter().next() {
         entry
     } else {
         return Err(FixerError::InvalidChangelog(

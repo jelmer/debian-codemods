@@ -5,9 +5,7 @@ use breezyshim::tree::MutableTree;
 use breezyshim::workspace::check_clean_tree;
 use clap::Parser;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
-use debian_analyzer::svp::{
-    enabled as svp_enabled, load_resume, report_fatal, report_nothing_to_do, report_success_debian,
-};
+use debian_analyzer::svp::{Reporter};
 use debian_analyzer::{control_file_present, get_committer, is_debcargo_package, Certainty};
 use debian_changelog::get_maintainer;
 use multiarch_hints::{
@@ -257,14 +255,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    let svp = Reporter::new(versions_dict());
+
     let write_lock = wt.lock_write();
 
     let text = match cache_download_multiarch_hints(None) {
         Ok(text) => text,
         Err(e) => {
             drop(write_lock);
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "multiarch-hints-download-error",
                 format!("Unable to download multiarch hints: {:?}", e).as_str(),
                 None,
@@ -278,8 +277,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if debian_analyzer::control_files_in_root(&wt, subpath.as_path()) {
         drop(write_lock);
-        report_fatal(
-            versions_dict(),
+        svp.report_fatal(
             "control-files-in-root",
             "control files live in root rather than debian/ (LarstIQ mode)",
             None,
@@ -289,13 +287,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if is_debcargo_package(&wt, subpath.as_path()) {
         drop(write_lock);
-        report_nothing_to_do(versions_dict(), Some("Package uses debcargo"));
+        svp.report_nothing_to_do(Some("Package uses debcargo"), None);
     }
 
     if !control_file_present(&wt, subpath.as_path()) {
         drop(write_lock);
-        report_fatal(
-            versions_dict(),
+        svp.report_fatal(
             "missing-control-file",
             "Unable to find debian/control",
             None,
@@ -324,12 +321,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ) {
         Err(OverallError::NoChanges) => {
             drop(write_lock);
-            report_nothing_to_do(versions_dict(), None);
+            svp.report_nothing_to_do(None, None);
         }
         Err(OverallError::NotDebianPackage(p)) => {
             drop(write_lock);
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "not-debian-package",
                 format!("{}: Not a Debian package", p.display()).as_str(),
                 None,
@@ -338,8 +334,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(OverallError::BrzError(e)) => {
             drop(write_lock);
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "internal-error",
                 format!("Tree manipulation error: {}", e).as_str(),
                 None,
@@ -348,8 +343,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(OverallError::Other(e)) => {
             drop(write_lock);
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "internal-error",
                 format!("Error: {}", e).as_str(),
                 None,
@@ -358,8 +352,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(OverallError::NoWhoami) => {
             drop(write_lock);
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "no-whoami",
                 "Unable to determine committer identity",
                 None,
@@ -368,8 +361,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(OverallError::Python(e)) => {
             drop(write_lock);
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "internal-error",
                 format!("Python error: {}", e).as_str(),
                 None,
@@ -378,8 +370,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(OverallError::GeneratedFile(p)) => {
             drop(write_lock);
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "generated-file",
                 format!("{}: File is generated", p.display()).as_str(),
                 None,
@@ -388,8 +379,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(OverallError::FormattingUnpreservable(p)) => {
             drop(write_lock);
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "unpreservable-formatting",
                 format!("{}: Unable to preserve formatting", p.display()).as_str(),
                 None,
@@ -430,12 +420,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             None,
         )?;
     }
-    if svp_enabled() {
-        if let Some(base) = load_resume::<Vec<AppliedHint>>() {
+    if svp.enabled() {
+        if let Some(base) = svp.load_resume::<Vec<AppliedHint>>() {
             applied_hints.extend(base);
         }
-        report_success_debian(
-            versions_dict(),
+        svp.report_success_debian(
             Some(result.value()),
             Some(MultiArchResult { applied_hints }),
             changelog_behaviour,
