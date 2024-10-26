@@ -2,11 +2,13 @@
     "exception_ids": [
         "389-exception",
         "Asterisk-exception",
+        "Asterisk-linking-protocols-exception",
         "Autoconf-exception-2.0",
         "Autoconf-exception-3.0",
         "Autoconf-exception-generic",
         "Autoconf-exception-generic-3.0",
         "Autoconf-exception-macro",
+        "Bison-exception-1.24",
         "Bison-exception-2.2",
         "Bootloader-exception",
         "Classpath-exception-2.0",
@@ -14,21 +16,30 @@
         "cryptsetup-OpenSSL-exception",
         "DigiRule-FOSS-exception",
         "eCos-exception-2.0",
+        "erlang-otp-linking-exception",
         "Fawkes-Runtime-exception",
         "FLTK-exception",
+        "fmt-exception",
         "Font-exception-2.0",
         "freertos-exception-2.0",
         "GCC-exception-2.0",
+        "GCC-exception-2.0-note",
         "GCC-exception-3.1",
+        "Gmsh-exception",
         "GNAT-exception",
+        "GNOME-examples-exception",
+        "GNU-compiler-exception",
         "gnu-javamail-exception",
+        "GPL-3.0-389-ds-base-exception",
         "GPL-3.0-interface-exception",
         "GPL-3.0-linking-exception",
         "GPL-3.0-linking-source-exception",
         "GPL-CC-1.0",
         "GStreamer-exception-2005",
         "GStreamer-exception-2008",
+        "harbour-exception",
         "i2p-gpl-java-exception",
+        "Independent-modules-exception",
         "KiCad-libraries-exception",
         "LGPL-3.0-linking-exception",
         "libpri-OpenH323-exception",
@@ -43,16 +54,23 @@
         "OCCT-exception-1.0",
         "OpenJDK-assembly-exception-1.0",
         "openvpn-openssl-exception",
+        "PCRE2-exception",
         "PS-or-PDF-font-exception-20170817",
         "QPL-1.0-INRIA-2004-exception",
         "Qt-GPL-exception-1.0",
         "Qt-LGPL-exception-1.1",
         "Qwt-exception-1.0",
+        "romic-exception",
+        "RRDtool-FLOSS-exception-2.0",
+        "SANE-exception",
         "SHL-2.0",
         "SHL-2.1",
+        "stunnel-exception",
         "SWI-exception",
         "Swift-exception",
+        "Texinfo-exception",
         "u-boot-exception-2.0",
+        "UBDL-exception",
         "Universal-FOSS-exception-1.0",
         "vsftpd-openssl-exception",
         "WxWindows-exception-3.1",
@@ -61,6 +79,9 @@
     "licenses": {
         "0BSD": {
             "name": "BSD Zero Clause License"
+        },
+        "3D-Slicer-1.0": {
+            "name": "3D Slicer License v1.0"
         },
         "AAL": {
             "name": "Attribution Assurance License"
@@ -101,11 +122,17 @@
         "AGPL-3.0-or-later": {
             "name": "GNU Affero General Public License v3.0 or later"
         },
+        "AMD-newlib": {
+            "name": "AMD newlib License"
+        },
         "AMDPLPA": {
             "name": "AMD's plpa_map.c License"
         },
         "AML": {
             "name": "Apple MIT License"
+        },
+        "AML-glslang": {
+            "name": "AML glslang variant License"
         },
         "AMPAS": {
             "name": "Academy of Motion Picture Arts and Sciences BSD"
@@ -149,8 +176,14 @@
         "Adobe-2006": {
             "name": "Adobe Systems Incorporated Source Code License Agreement"
         },
+        "Adobe-Display-PostScript": {
+            "name": "Adobe Display PostScript License"
+        },
         "Adobe-Glyph": {
             "name": "Adobe Glyph List License"
+        },
+        "Adobe-Utopia": {
+            "name": "Adobe Utopia Font License"
         },
         "Afmparse": {
             "name": "Afmparse License"
@@ -191,6 +224,9 @@
         "BSD-2-Clause": {
             "name": "BSD 2-Clause \"Simplified\" License"
         },
+        "BSD-2-Clause-Darwin": {
+            "name": "BSD 2-Clause - Ian Darwin variant"
+        },
         "BSD-2-Clause-FreeBSD": {
             "name": "BSD 2-Clause FreeBSD License"
         },
@@ -203,6 +239,9 @@
         "BSD-2-Clause-Views": {
             "name": "BSD 2-Clause with views sentence"
         },
+        "BSD-2-Clause-first-lines": {
+            "name": "BSD 2-Clause - first lines requirement"
+        },
         "BSD-3-Clause": {
             "name": "BSD 3-Clause \"New\" or \"Revised\" License"
         },
@@ -211,6 +250,9 @@
         },
         "BSD-3-Clause-Clear": {
             "name": "BSD 3-Clause Clear License"
+        },
+        "BSD-3-Clause-HP": {
+            "name": "Hewlett-Packard BSD variant license"
         },
         "BSD-3-Clause-LBNL": {
             "name": "Lawrence Berkeley National Labs BSD variant license"
@@ -235,6 +277,12 @@
         },
         "BSD-3-Clause-Sun": {
             "name": "BSD 3-Clause Sun Microsystems"
+        },
+        "BSD-3-Clause-acpica": {
+            "name": "BSD 3-Clause acpica variant"
+        },
+        "BSD-3-Clause-flex": {
+            "name": "BSD 3-Clause Flex variant"
         },
         "BSD-4-Clause": {
             "name": "BSD 4-Clause \"Original\" or \"Old\" License"
@@ -266,8 +314,14 @@
         "BSD-Source-Code": {
             "name": "BSD Source Code Attribution"
         },
+        "BSD-Source-beginning-file": {
+            "name": "BSD Source Code Attribution - beginning of file variant"
+        },
         "BSD-Systemics": {
             "name": "Systemics BSD variant license"
+        },
+        "BSD-Systemics-W3Works": {
+            "name": "Systemics W3Works BSD variant license"
         },
         "BSL-1.0": {
             "name": "Boost Software License 1.0"
@@ -305,8 +359,14 @@
         "Boehm-GC": {
             "name": "Boehm-Demers-Weiser GC License"
         },
+        "Boehm-GC-without-fee": {
+            "name": "Boehm-Demers-Weiser GC License (without fee)"
+        },
         "Borceux": {
             "name": "Borceux license"
+        },
+        "Brian-Gladman-2-Clause": {
+            "name": "Brian Gladman 2-Clause License"
         },
         "Brian-Gladman-3-Clause": {
             "name": "Brian Gladman 3-Clause License"
@@ -340,6 +400,9 @@
         },
         "CC-BY-3.0-AT": {
             "name": "Creative Commons Attribution 3.0 Austria"
+        },
+        "CC-BY-3.0-AU": {
+            "name": "Creative Commons Attribution 3.0 Australia"
         },
         "CC-BY-3.0-DE": {
             "name": "Creative Commons Attribution 3.0 Germany"
@@ -536,6 +599,9 @@
         "CMU-Mach": {
             "name": "CMU Mach License"
         },
+        "CMU-Mach-nodoc": {
+            "name": "CMU    Mach - no notices-in-documentation variant"
+        },
         "CNRI-Jython": {
             "name": "CNRI Jython License"
         },
@@ -562,6 +628,12 @@
         },
         "Caldera": {
             "name": "Caldera License"
+        },
+        "Caldera-no-preamble": {
+            "name": "Caldera License (without preamble)"
+        },
+        "Catharon": {
+            "name": "Catharon License"
         },
         "ClArtistic": {
             "name": "Clarified Artistic License"
@@ -593,6 +665,9 @@
         "D-FSL-1.0": {
             "name": "Deutsche Freie Software Lizenz"
         },
+        "DEC-3-Clause": {
+            "name": "DEC 3-Clause License"
+        },
         "DL-DE-BY-2.0": {
             "name": "Data licence Germany \u2013 attribution \u2013 version 2.0"
         },
@@ -605,8 +680,20 @@
         "DRL-1.0": {
             "name": "Detection Rule License 1.0"
         },
+        "DRL-1.1": {
+            "name": "Detection Rule License 1.1"
+        },
         "DSDP": {
             "name": "DSDP License"
+        },
+        "DocBook-Schema": {
+            "name": "DocBook Schema License"
+        },
+        "DocBook-Stylesheet": {
+            "name": "DocBook Stylesheet License"
+        },
+        "DocBook-XML": {
+            "name": "DocBook XML License"
         },
         "Dotseqn": {
             "name": "Dotseqn License"
@@ -665,6 +752,9 @@
         "FSFAP": {
             "name": "FSF All Permissive License"
         },
+        "FSFAP-no-warranty-disclaimer": {
+            "name": "FSF All Permissive License (without Warranty)"
+        },
         "FSFUL": {
             "name": "FSF Unlimited License"
         },
@@ -691,6 +781,12 @@
         },
         "FreeImage": {
             "name": "FreeImage Public License v1.0"
+        },
+        "Furuseth": {
+            "name": "Furuseth License"
+        },
+        "GCR-docs": {
+            "name": "Gnome GCR Documentation License"
         },
         "GD": {
             "name": "GD License"
@@ -764,9 +860,6 @@
         "GLWTPL": {
             "name": "Good Luck With That Public License"
         },
-        "GNU-compiler-exception": {
-            "name": "GNU Compiler Exception"
-        },
         "GPL-1.0": {
             "name": "GNU General Public License v1.0 only"
         },
@@ -836,6 +929,12 @@
         "Graphics-Gems": {
             "name": "Graphics Gems License"
         },
+        "Gutmann": {
+            "name": "Gutmann License"
+        },
+        "HIDAPI": {
+            "name": "HIDAPI License"
+        },
         "HP-1986": {
             "name": "Hewlett-Packard 1986 License"
         },
@@ -845,14 +944,62 @@
         "HPND": {
             "name": "Historical Permission Notice and Disclaimer"
         },
+        "HPND-DEC": {
+            "name": "Historical Permission Notice and Disclaimer - DEC variant"
+        },
+        "HPND-Fenneberg-Livingston": {
+            "name": "Historical Permission Notice and Disclaimer - Fenneberg-Livingston variant"
+        },
+        "HPND-INRIA-IMAG": {
+            "name": "Historical Permission Notice and Disclaimer    - INRIA-IMAG variant"
+        },
+        "HPND-Intel": {
+            "name": "Historical Permission Notice and Disclaimer - Intel variant"
+        },
+        "HPND-Kevlin-Henney": {
+            "name": "Historical Permission Notice and Disclaimer - Kevlin Henney variant"
+        },
+        "HPND-MIT-disclaimer": {
+            "name": "Historical Permission Notice and Disclaimer with MIT disclaimer"
+        },
         "HPND-Markus-Kuhn": {
             "name": "Historical Permission Notice and Disclaimer - Markus Kuhn variant"
+        },
+        "HPND-Netrek": {
+            "name": "Historical Permission Notice and Disclaimer - Netrek variant"
         },
         "HPND-Pbmplus": {
             "name": "Historical Permission Notice and Disclaimer - Pbmplus variant"
         },
+        "HPND-UC": {
+            "name": "Historical Permission Notice and Disclaimer - University of California variant"
+        },
+        "HPND-UC-export-US": {
+            "name": "Historical Permission Notice and Disclaimer - University of California, US export warning"
+        },
+        "HPND-doc": {
+            "name": "Historical Permission Notice and Disclaimer - documentation variant"
+        },
+        "HPND-doc-sell": {
+            "name": "Historical Permission Notice and Disclaimer - documentation sell variant"
+        },
         "HPND-export-US": {
             "name": "HPND with US Government export control warning"
+        },
+        "HPND-export-US-acknowledgement": {
+            "name": "HPND with US Government export control warning and acknowledgment"
+        },
+        "HPND-export-US-modify": {
+            "name": "HPND with US Government export control warning and modification rqmt"
+        },
+        "HPND-export2-US": {
+            "name": "HPND with US Government export control and 2 disclaimers"
+        },
+        "HPND-merchantability-variant": {
+            "name": "Historical Permission Notice and Disclaimer - merchantability variant"
+        },
+        "HPND-sell-MIT-disclaimer-xserver": {
+            "name": "Historical Permission Notice and Disclaimer - sell xserver variant with MIT disclaimer"
         },
         "HPND-sell-regexpr": {
             "name": "Historical Permission Notice and Disclaimer - sell regexpr variant"
@@ -862,6 +1009,9 @@
         },
         "HPND-sell-variant-MIT-disclaimer": {
             "name": "HPND sell variant with MIT disclaimer"
+        },
+        "HPND-sell-variant-MIT-disclaimer-rev": {
+            "name": "HPND sell variant with MIT disclaimer - reverse"
         },
         "HTMLTIDY": {
             "name": "HTML Tidy License"
@@ -895,6 +1045,9 @@
         },
         "ISC": {
             "name": "ISC License"
+        },
+        "ISC-Veillard": {
+            "name": "ISC Veillard variant"
         },
         "ImageMagick": {
             "name": "ImageMagick License"
@@ -931,6 +1084,9 @@
         },
         "JasPer-2.0": {
             "name": "JasPer License"
+        },
+        "Kastrup": {
+            "name": "Kastrup License"
         },
         "Kazlib": {
             "name": "Kazlib License"
@@ -985,6 +1141,9 @@
         },
         "LOOP": {
             "name": "Common Lisp LOOP License"
+        },
+        "LPD-document": {
+            "name": "LPD Documentation License"
         },
         "LPL-1.0": {
             "name": "Lucent Public License Version 1.0"
@@ -1061,8 +1220,14 @@
         "MIT-CMU": {
             "name": "CMU License"
         },
+        "MIT-Click": {
+            "name": "MIT Click License"
+        },
         "MIT-Festival": {
             "name": "MIT Festival Variant"
+        },
+        "MIT-Khronos-old": {
+            "name": "MIT Khronos - old variant"
         },
         "MIT-Modern-Variant": {
             "name": "MIT License Modern Variant"
@@ -1118,11 +1283,20 @@
         "MTLL": {
             "name": "Matrix Template Library License"
         },
+        "Mackerras-3-Clause": {
+            "name": "Mackerras 3-Clause License"
+        },
+        "Mackerras-3-Clause-acknowledgment": {
+            "name": "Mackerras 3-Clause - acknowledgment variant"
+        },
         "MakeIndex": {
             "name": "MakeIndex License"
         },
         "Martin-Birgmeier": {
             "name": "Martin Birgmeier License"
+        },
+        "McPhee-slideshow": {
+            "name": "McPhee Slideshow License"
         },
         "Minpack": {
             "name": "Minpack License"
@@ -1154,8 +1328,14 @@
         "NBPL-1.0": {
             "name": "Net Boolean Public License v1"
         },
+        "NCBI-PD": {
+            "name": "NCBI Public Domain Notice"
+        },
         "NCGL-UK-2.0": {
             "name": "Non-Commercial Government Licence"
+        },
+        "NCL": {
+            "name": "NCL Source Code License"
         },
         "NCSA": {
             "name": "University of Illinois/NCSA Open Source License"
@@ -1228,6 +1408,9 @@
         },
         "O-UDA-1.0": {
             "name": "Open Use of Data Agreement v1.0"
+        },
+        "OAR": {
+            "name": "OAR License"
         },
         "OCCT-PL": {
             "name": "Open CASCADE Technology Public License"
@@ -1370,6 +1553,15 @@
         "OpenSSL": {
             "name": "OpenSSL License"
         },
+        "OpenSSL-standalone": {
+            "name": "OpenSSL License - standalone"
+        },
+        "OpenVision": {
+            "name": "OpenVision License"
+        },
+        "PADL": {
+            "name": "PADL License"
+        },
         "PDDL-1.0": {
             "name": "Open Data Commons Public Domain Dedication & License 1.0"
         },
@@ -1379,6 +1571,9 @@
         "PHP-3.01": {
             "name": "PHP License v3.01"
         },
+        "PPL": {
+            "name": "Peer Production License"
+        },
         "PSF-2.0": {
             "name": "Python Software Foundation License 2.0"
         },
@@ -1387,6 +1582,9 @@
         },
         "Parity-7.0.0": {
             "name": "The Parity Public License 7.0.0"
+        },
+        "Pixar": {
+            "name": "Pixar License"
         },
         "Plexus": {
             "name": "Plexus Classworlds License"
@@ -1439,11 +1637,14 @@
         "Ruby": {
             "name": "Ruby License"
         },
-        "SANE-exception": {
-            "name": "SANE Exception"
+        "Ruby-pty": {
+            "name": "Ruby pty extension license"
         },
         "SAX-PD": {
             "name": "Sax Public Domain Notice"
+        },
+        "SAX-PD-2.0": {
+            "name": "Sax Public Domain Notice 2.0"
         },
         "SCEA": {
             "name": "SCEA Shared Source License"
@@ -1456,6 +1657,9 @@
         },
         "SGI-B-2.0": {
             "name": "SGI Free Software License B v2.0"
+        },
+        "SGI-OpenGL": {
+            "name": "SGI OpenGL License"
         },
         "SGP4": {
             "name": "SGP4 Permission Notice"
@@ -1493,6 +1697,9 @@
         "SSH-short": {
             "name": "SSH short notice"
         },
+        "SSLeay-standalone": {
+            "name": "SSLeay License - standalone"
+        },
         "SSPL-1.0": {
             "name": "Server Side Public License, v 1"
         },
@@ -1510,6 +1717,9 @@
         },
         "Sendmail-8.23": {
             "name": "Sendmail License 8.23"
+        },
+        "Sendmail-Open-Source-1.1": {
+            "name": "Sendmail Open Source License v1.1"
         },
         "SimPL-2.0": {
             "name": "Simple Public License 2.0"
@@ -1535,6 +1745,12 @@
         "SugarCRM-1.1.3": {
             "name": "SugarCRM Public License v1.1.3"
         },
+        "Sun-PPP": {
+            "name": "Sun PPP License"
+        },
+        "Sun-PPP-2000": {
+            "name": "Sun PPP License (2000)"
+        },
         "SunPro": {
             "name": "SunPro License"
         },
@@ -1549,6 +1765,9 @@
         },
         "TCP-wrappers": {
             "name": "TCP Wrappers License"
+        },
+        "TGPPL-1.0": {
+            "name": "Transitive Grace Period Public Licence 1.0"
         },
         "TMate": {
             "name": "TMate Open Source License"
@@ -1580,8 +1799,8 @@
         "TermReadKey": {
             "name": "TermReadKey License"
         },
-        "Texinfo-exception": {
-            "name": "Texinfo exception"
+        "TrustedQSL": {
+            "name": "TrustedQSL License"
         },
         "UCAR": {
             "name": "UCAR License"
@@ -1589,11 +1808,20 @@
         "UCL-1.0": {
             "name": "Upstream Compatibility License v1.0"
         },
+        "UMich-Merit": {
+            "name": "Michigan/Merit Networks License"
+        },
         "UPL-1.0": {
             "name": "Universal Permissive License v1.0"
         },
         "URT-RLE": {
             "name": "Utah Raster Toolkit Run Length Encoded License"
+        },
+        "Ubuntu-font-1.0": {
+            "name": "Ubuntu Font Licence v1.0"
+        },
+        "Unicode-3.0": {
+            "name": "Unicode License v3"
         },
         "Unicode-DFS-2015": {
             "name": "Unicode License Agreement - Data Files and Software (2015)"
@@ -1646,6 +1874,9 @@
         "X11-distribute-modifications-variant": {
             "name": "X11 License Distribution Modification Variant"
         },
+        "X11-swapped": {
+            "name": "X11 swapped final paragraphs"
+        },
         "XFree86-1.1": {
             "name": "XFree86 License 1.1"
         },
@@ -1697,6 +1928,12 @@
         "Zlib": {
             "name": "zlib License"
         },
+        "any-OSI": {
+            "name": "Any OSI License"
+        },
+        "bcrypt-Solar-Designer": {
+            "name": "bcrypt Solar Designer License"
+        },
         "blessing": {
             "name": "SQLite Blessing"
         },
@@ -1721,6 +1958,9 @@
         "curl": {
             "name": "curl License"
         },
+        "cve-tou": {
+            "name": "Common Vulnerability Enumeration ToU License"
+        },
         "diffmark": {
             "name": "diffmark license"
         },
@@ -1739,11 +1979,20 @@
         "etalab-2.0": {
             "name": "Etalab Open License 2.0"
         },
+        "fwlw": {
+            "name": "fwlw License"
+        },
         "gSOAP-1.3b": {
             "name": "gSOAP Public License v1.3b"
         },
         "gnuplot": {
             "name": "gnuplot License"
+        },
+        "gtkbook": {
+            "name": "gtkbook License"
+        },
+        "hdparm": {
+            "name": "hdparm License"
         },
         "iMatix": {
             "name": "iMatix Standard Function Library Agreement"
@@ -1760,6 +2009,15 @@
         "libutil-David-Nugent": {
             "name": "libutil David Nugent License"
         },
+        "lsof": {
+            "name": "lsof License"
+        },
+        "magaz": {
+            "name": "magaz License"
+        },
+        "mailprio": {
+            "name": "mailprio License"
+        },
         "metamail": {
             "name": "metamail License"
         },
@@ -1772,6 +2030,9 @@
         "mplus": {
             "name": "mplus Font License"
         },
+        "pkgconf": {
+            "name": "pkgconf License"
+        },
         "pnmstitch": {
             "name": "pnmstitch License"
         },
@@ -1781,17 +2042,29 @@
         "psutils": {
             "name": "psutils License"
         },
+        "python-ldap": {
+            "name": "Python ldap License"
+        },
+        "radvd": {
+            "name": "radvd License"
+        },
         "snprintf": {
             "name": "snprintf License"
+        },
+        "softSurfer": {
+            "name": "softSurfer License"
         },
         "ssh-keyscan": {
             "name": "ssh-keyscan License"
         },
-        "stunnel-exception": {
-            "name": "stunnel Exception"
-        },
         "swrule": {
             "name": "swrule License"
+        },
+        "threeparttable": {
+            "name": "threeparttable License"
+        },
+        "ulem": {
+            "name": "ulem License"
         },
         "w3m": {
             "name": "w3m License"
@@ -1802,11 +2075,17 @@
         "xinetd": {
             "name": "xinetd License"
         },
+        "xkeyboard-config-Zinoviev": {
+            "name": "xkeyboard-config Zinoviev License"
+        },
         "xlock": {
             "name": "xlock License"
         },
         "xpp": {
             "name": "XPP License"
+        },
+        "xzoom": {
+            "name": "xzoom License"
         },
         "zlib-acknowledgement": {
             "name": "zlib/libpng License with Acknowledgement"
