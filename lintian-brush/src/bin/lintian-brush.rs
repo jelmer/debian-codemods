@@ -6,9 +6,6 @@ use clap::Parser;
 use debian_changelog::get_maintainer;
 use distro_info::DistroInfo;
 
-use debian_analyzer::svp::{
-    enabled as svp_enabled, load_resume, report_fatal, report_success_debian,
-};
 use debian_analyzer::{get_committer, Certainty};
 use lintian_brush::{ManyResult, OverallError};
 use std::collections::HashMap;
@@ -298,6 +295,9 @@ fn main() -> Result<(), i32> {
             println!("Changelog identity: {} <{}>", maintainer, email);
             std::process::exit(0);
         }
+
+        let svp = debian_analyzer::svp::Reporter::new(versions_dict());
+
         let since_revid = wt.last_revision().unwrap();
         if args.fixers.fixers.is_some() || args.fixers.exclude.is_some() {
             let include = args
@@ -381,8 +381,7 @@ fn main() -> Result<(), i32> {
         let write_lock = wt.lock_write();
         if debian_analyzer::control_files_in_root(&wt, std::path::Path::new(subpath.as_str())) {
             drop(write_lock);
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "control-files-in-root",
                 "control files live in root rather than debian/ (LarstIQ mode)",
                 None,
@@ -403,8 +402,7 @@ fn main() -> Result<(), i32> {
 
             if let Some(e) = e {
                 drop(write_lock);
-                report_fatal(
-                    versions_dict(),
+                svp.report_fatal(
                     "python-import-error",
                     format!("Error importing lintian_brush.fixer: {}", e).as_str(),
                     Some("Ensure that the lintian-brush Python package is in Python's sys.path."),
@@ -441,8 +439,7 @@ fn main() -> Result<(), i32> {
         ) {
             Err(OverallError::NotDebianPackage(p)) => {
                 drop(write_lock);
-                report_fatal(
-                    versions_dict(),
+                svp.report_fatal(
                     "not-debian-package",
                     format!("{}: Not a Debian package", p.display()).as_str(),
                     None,
@@ -462,8 +459,7 @@ fn main() -> Result<(), i32> {
             }
             Err(OverallError::ChangelogCreate(e)) => {
                 drop(write_lock);
-                report_fatal(
-                    versions_dict(),
+                svp.report_fatal(
                     "changelog-create-error",
                     format!("Error creating changelog entry: {}", e).as_str(),
                     None,
@@ -472,8 +468,7 @@ fn main() -> Result<(), i32> {
             }
             Err(OverallError::InvalidChangelog(p, s)) => {
                 drop(write_lock);
-                report_fatal(
-                    versions_dict(),
+                svp.report_fatal(
                     "invalid-changelog",
                     format!("{}: Invalid changelog: {}", p.display(), s).as_str(),
                     None,
@@ -483,8 +478,7 @@ fn main() -> Result<(), i32> {
             #[cfg(feature = "python")]
             Err(OverallError::Python(e)) => {
                 drop(write_lock);
-                report_fatal(
-                    versions_dict(),
+                svp.report_fatal(
                     "python-error",
                     format!("Error running Python: {}", e).as_str(),
                     None,
@@ -493,8 +487,7 @@ fn main() -> Result<(), i32> {
             }
             Err(OverallError::BrzError(e)) => {
                 drop(write_lock);
-                report_fatal(
-                    versions_dict(),
+                svp.report_fatal(
                     "internal-error",
                     format!("Tree manipulation error: {}", e).as_str(),
                     None,
@@ -503,18 +496,11 @@ fn main() -> Result<(), i32> {
             }
             Err(OverallError::IoError(e)) => {
                 drop(write_lock);
-                report_fatal(
-                    versions_dict(),
-                    "io-error",
-                    format!("I/O error: {}", e).as_str(),
-                    None,
-                    None,
-                );
+                svp.report_fatal("io-error", format!("I/O error: {}", e).as_str(), None, None);
             }
             Err(OverallError::Other(e)) => {
                 drop(write_lock);
-                report_fatal(
-                    versions_dict(),
+                svp.report_fatal(
                     "other-error",
                     format!("Other error: {}", e).as_str(),
                     None,
@@ -587,16 +573,15 @@ fn main() -> Result<(), i32> {
                 Box::new(std::io::stdout()),
                 None,
                 None,
-            ).unwrap();
+            )
+            .unwrap();
         }
-        if svp_enabled() {
-            if let Some(base) = load_resume::<ManyResult>() {
+        if svp.enabled() {
+            if let Some(base) = svp.load_resume::<ManyResult>() {
                 overall_result.success.extend(base.success);
             }
-            let changelog_behaviour = overall_result
-                .changelog_behaviour.clone();
-            report_success_debian(
-                versions_dict(),
+            let changelog_behaviour = overall_result.changelog_behaviour.clone();
+            svp.report_success_debian(
                 Some(overall_result.value()),
                 Some(overall_result),
                 changelog_behaviour,
