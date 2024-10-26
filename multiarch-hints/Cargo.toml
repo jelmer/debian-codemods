@@ -36,5 +36,5 @@ cli = ["dep:clap", "dep:env_logger"]
 
 [[bin]]
 name = "apply-multiarch-hints"
-path = "src/bin/apply-multiarch-hints.rs"
+path = "src/main.rs"
 required-features = ["cli"]
