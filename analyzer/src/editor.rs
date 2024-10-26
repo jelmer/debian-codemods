@@ -545,7 +545,7 @@ pub struct TreeEditor<'a, P: Marshallable> {
     parsed: Option<P>,
 }
 
-impl<'a, P: Marshallable> std::ops::Deref for TreeEditor<'a, P> {
+impl<P: Marshallable> std::ops::Deref for TreeEditor<'_, P> {
     type Target = P;
 
     fn deref(&self) -> &Self::Target {
@@ -553,7 +553,7 @@ impl<'a, P: Marshallable> std::ops::Deref for TreeEditor<'a, P> {
     }
 }
 
-impl<'a, P: Marshallable> std::ops::DerefMut for TreeEditor<'a, P> {
+impl<P: Marshallable> std::ops::DerefMut for TreeEditor<'_, P> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.parsed.as_mut().unwrap()
     }
@@ -611,7 +611,7 @@ impl<'a, P: Marshallable> TreeEditor<'a, P> {
     }
 }
 
-impl<'a, P: Marshallable> Editor<P> for TreeEditor<'a, P> {
+impl<P: Marshallable> Editor<P> for TreeEditor<'_, P> {
     fn orig_content(&self) -> Option<&[u8]> {
         self.orig_content.as_deref()
     }

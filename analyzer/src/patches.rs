@@ -176,7 +176,7 @@ pub fn find_patch_base(tree: &WorkingTree) -> Option<RevisionId> {
             return None;
         }
     };
-    let entry = cl.entries().next()?;
+    let entry = cl.iter().next()?;
     let package = entry.package().unwrap();
     let upstream_version = entry.version().unwrap().upstream_version;
     let possible_tags = vec![

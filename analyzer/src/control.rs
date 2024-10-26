@@ -552,7 +552,7 @@ fn apply_changes(
                     )?;
                 }
                 if let Some(new_value) = new_value.as_ref() {
-                    paragraph.insert(&key, new_value);
+                    paragraph.set(&key, new_value);
                 } else {
                     paragraph.remove(&key);
                 }
@@ -573,7 +573,7 @@ fn apply_changes(
                 )?;
             }
             if let Some(new_value) = new_value {
-                paragraph.insert(&field, &new_value);
+                paragraph.set(&field, &new_value);
             }
         }
     }
@@ -1528,7 +1528,7 @@ Testsuite: autopkgtest
                 .source()
                 .unwrap()
                 .as_mut_deb822()
-                .insert("NewField", "New Field");
+                .set("NewField", "New Field");
 
             editor.commit().unwrap();
 
@@ -1561,7 +1561,7 @@ Testsuite: autopkgtest
                 .source()
                 .unwrap()
                 .as_mut_deb822()
-                .insert("XS-Vcs-Git", "git://github.com/example/example");
+                .set("XS-Vcs-Git", "git://github.com/example/example");
 
             editor.commit().unwrap();
 
@@ -1765,7 +1765,7 @@ debian/control: debian/control.in
                 .source()
                 .unwrap()
                 .as_mut_deb822()
-                .insert("Testsuite", "autopkgtest8");
+                .set("Testsuite", "autopkgtest8");
 
             assert_eq!(
                 editor.commit().unwrap(),
@@ -1831,7 +1831,7 @@ debian/control: debian/control.in
                 .source()
                 .unwrap()
                 .as_mut_deb822()
-                .insert("Testsuite", "autopkgtest8");
+                .set("Testsuite", "autopkgtest8");
 
             editor.commit().unwrap();
 
@@ -1895,7 +1895,7 @@ debian/control: debian/control.in
                 .source()
                 .unwrap()
                 .as_mut_deb822()
-                .insert("Testsuite", "autopkgtest8");
+                .set("Testsuite", "autopkgtest8");
             editor.commit().unwrap();
 
             assert_eq!(
@@ -1947,7 +1947,7 @@ Build-Depends: @cdbs@, libc6
                 .source()
                 .unwrap()
                 .as_mut_deb822()
-                .insert("Build-Depends", "some-foo, libc6, some-bar");
+                .set("Build-Depends", "some-foo, libc6, some-bar");
 
             assert_eq!(
                 editor
@@ -2052,7 +2052,7 @@ Build-Depends:
                 .source()
                 .unwrap()
                 .as_mut_deb822()
-                .insert("Build-Depends", "\ndebhelper-compat (= 12),\nuuid-dev");
+                .set("Build-Depends", "\ndebhelper-compat (= 12),\nuuid-dev");
 
             editor.commit().unwrap();
 

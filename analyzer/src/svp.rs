@@ -36,6 +36,10 @@ struct Success {
     pub value: Option<i32>,
     pub context: Option<serde_json::Value>,
     pub debian: Option<DebianContext>,
+    #[serde(rename = "target-branch-url")]
+    pub target_branch_url: Option<url::Url>,
+    #[serde(rename = "commit-message")]
+    pub commit_message: Option<String>,
 }
 
 /// Write a success to the SVP API
@@ -70,6 +74,8 @@ where
         value,
         context: context.map(|x| serde_json::to_value(x).unwrap()),
         debian: None,
+        target_branch_url: None,
+        commit_message: None,
     })
     .unwrap();
 }
@@ -87,15 +93,19 @@ pub fn report_success_debian<T>(
         versions,
         value,
         context: context.map(|x| serde_json::to_value(x).unwrap()),
-        debian: Some(DebianContext {
-            changelog,
-        }),
+        debian: Some(DebianContext { changelog }),
+        target_branch_url: None,
+        commit_message: None,
     })
     .unwrap();
 }
 
 /// Report that there is nothing to do
-pub fn report_nothing_to_do(versions: HashMap<String, String>, description: Option<&str>) -> ! {
+pub fn report_nothing_to_do(
+    versions: HashMap<String, String>,
+    description: Option<&str>,
+    hint: Option<&str>,
+) -> ! {
     let description = description.unwrap_or("Nothing to do");
     write_svp_failure(&Failure {
         result_code: "nothing-to-do".to_string(),
@@ -105,6 +115,10 @@ pub fn report_nothing_to_do(versions: HashMap<String, String>, description: Opti
     })
     .unwrap();
     log::error!("{}", description);
+    if let Some(hint) = hint {
+        log::info!("{}", hint);
+    }
+
     std::process::exit(0);
 }
 
@@ -148,4 +162,94 @@ pub fn load_resume<T: serde::de::DeserializeOwned>() -> Option<T> {
 /// Check if the SVP API is enabled
 pub fn enabled() -> bool {
     std::env::var("SVP_API").ok().as_deref() == Some("1")
+}
+
+/// A reporter for the SVP API
+pub struct Reporter {
+    versions: HashMap<String, String>,
+    target_branch_url: Option<url::Url>,
+    commit_message: Option<String>,
+}
+
+impl Reporter {
+    /// Create a new reporter
+    pub fn new(versions: HashMap<String, String>) -> Self {
+        Self {
+            versions,
+            target_branch_url: None,
+            commit_message: None,
+        }
+    }
+
+    /// Check if the SVP API is enabled
+    pub fn enabled(&self) -> bool {
+        enabled()
+    }
+
+    /// Load the resume file if it exists
+    pub fn load_resume<T: serde::de::DeserializeOwned>(&self) -> Option<T> {
+        load_resume()
+    }
+
+    /// Set the target branch URL
+    pub fn set_target_branch_url(&mut self, url: url::Url) {
+        self.target_branch_url = Some(url);
+    }
+
+    /// Set the commit message
+    pub fn set_commit_message(&mut self, message: String) {
+        self.commit_message = Some(message);
+    }
+
+    /// Report success
+    pub fn report_success<T>(self, value: Option<i32>, context: Option<T>)
+    where
+        T: serde::Serialize,
+    {
+        write_svp_success(&Success {
+            versions: self.versions,
+            value,
+            context: context.map(|x| serde_json::to_value(x).unwrap()),
+            debian: None,
+            target_branch_url: self.target_branch_url,
+            commit_message: self.commit_message,
+        })
+        .unwrap();
+    }
+
+    /// Report success with Debian-specific context
+    pub fn report_success_debian<T>(
+        self,
+        value: Option<i32>,
+        context: Option<T>,
+        changelog: Option<ChangelogBehaviour>,
+    ) where
+        T: serde::Serialize,
+    {
+        write_svp_success(&Success {
+            versions: self.versions,
+            value,
+            context: context.map(|x| serde_json::to_value(x).unwrap()),
+            debian: Some(DebianContext { changelog }),
+            target_branch_url: self.target_branch_url,
+            commit_message: self.commit_message,
+        })
+        .unwrap();
+    }
+
+    /// Report that there is nothing to do
+    pub fn report_nothing_to_do(self, description: Option<&str>, hint: Option<&str>) -> ! {
+        report_nothing_to_do(self.versions, description, hint);
+    }
+
+    /// Report a fatal error
+    pub fn report_fatal(
+        self,
+        code: &str,
+        description: &str,
+        hint: Option<&str>,
+        transient: Option<bool>,
+    ) -> ! {
+        report_fatal(self.versions, code, description, hint, transient);
+    }
 }

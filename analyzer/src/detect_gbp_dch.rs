@@ -93,7 +93,7 @@ pub fn guess_update_changelog(
                 explanation: "assuming changelog does not need to be updated since it is the inaugural unreleased entry".to_string()
             });
         }
-        if let Some(first_entry) = cl.entries().next() {
+        if let Some(first_entry) = cl.iter().next() {
             for line in first_entry.change_lines() {
                 if line.contains("generated at release time") {
                     return Some(ChangelogBehaviour {
@@ -128,7 +128,7 @@ pub fn guess_update_changelog_from_tree(
 
     // TODO(jelmes): Do something more clever here, perhaps looking at history of the changelog file?
     if let Some(cl) = cl {
-        if let Some(entry) = cl.entries().next() {
+        if let Some(entry) = cl.iter().next() {
             if all_sha_prefixed(&entry) {
                 return Some(ChangelogBehaviour {
                     update_changelog: false,
@@ -141,11 +141,7 @@ pub fn guess_update_changelog_from_tree(
     None
 }
 
-fn greedy_revisions(
-    graph: &Graph,
-    revid: &RevisionId,
-    length: usize,
-) -> (Vec<RevisionId>, bool) {
+fn greedy_revisions(graph: &Graph, revid: &RevisionId, length: usize) -> (Vec<RevisionId>, bool) {
     let mut ret = vec![];
     let mut it = graph.iter_lefthand_ancestry(revid, None);
     while ret.len() < length {

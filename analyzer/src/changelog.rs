@@ -77,7 +77,7 @@ pub fn only_changes_last_changelog_block<'a>(
 
 /// Find the last distribution the package was uploaded to.
 pub fn find_last_distribution(cl: &ChangeLog) -> Option<String> {
-    for block in cl.entries() {
+    for block in cl.iter() {
         if block.is_unreleased() != Some(true) {
             if let Some(distributions) = block.distributions() {
                 if distributions.len() == 1 {
@@ -142,7 +142,7 @@ pub fn find_previous_upload(changelog: &ChangeLog) -> Option<debversion::Version
         // the same target count.
         vec![current_target]
     };
-    for block in changelog.entries().skip(1) {
+    for block in changelog.iter().skip(1) {
         if match_targets.contains(&block.distributions().unwrap()[0]) {
             return block.version().clone();
         }

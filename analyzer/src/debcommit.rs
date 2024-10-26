@@ -58,7 +58,7 @@ pub fn debcommit_release(
     } else {
         let f = tree.get_file(&cl_path)?;
         let cl = ChangeLog::read(f)?;
-        let entry = cl.entries().next().unwrap();
+        let entry = cl.iter().next().unwrap();
         let message = if let Some(message) = message {
             message.to_string()
         } else {
