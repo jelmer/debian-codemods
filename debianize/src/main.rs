@@ -15,7 +15,6 @@ use breezyshim::tree::MutableTree;
 
 use ognibuild::upstream::FindUpstream;
 
-use debian_analyzer::svp::{self, report_fatal, report_nothing_to_do, report_success_debian};
 use debianize::simple_apt_repo::SimpleTrustedAptRepo;
 use debianize::{Error, SessionPreferences};
 use ognibuild::debian::fix_build::IterateBuildError;
@@ -221,6 +220,8 @@ fn main() -> Result<(), i32> {
         None
     };
 
+    let mut svp = debian_analyzer::svp::Reporter::new(versions_dict());
+
     let mut metadata = UpstreamMetadata::new();
 
     // For now...
@@ -274,8 +275,7 @@ fn main() -> Result<(), i32> {
         }
     } else {
         if wt.has_filename(&subpath.join("debian")) {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "debian-directory-exists",
                 &format!(
                     "{}: A debian directory already exists.",
@@ -349,9 +349,11 @@ fn main() -> Result<(), i32> {
         &metadata,
     ) {
         Ok(debianize_result) => debianize_result,
-        Err(Error::SubdirectoryNotFound { subpath, version }) => {
-            report_fatal(
-                versions_dict(),
+        Err(Error::SubdirectoryNotFound {
+            subpath,
+            version: _,
+        }) => {
+            svp.report_fatal(
                 "subdirectory-not-found",
                 &format!("Subdirectory not found: {}", subpath.display()),
                 None,
@@ -359,8 +361,7 @@ fn main() -> Result<(), i32> {
             );
         }
         Err(Error::BrzError(e)) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "vcs-error",
                 &format!("Error running brz: {}", e),
                 None,
@@ -368,8 +369,7 @@ fn main() -> Result<(), i32> {
             );
         }
         Err(Error::SqlxError(e)) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "sql-error",
                 &format!("Error running SQL: {}", e),
                 None,
@@ -377,8 +377,7 @@ fn main() -> Result<(), i32> {
             );
         }
         Err(Error::IoError(e)) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "io-error",
                 &format!("Error reading files: {}", e),
                 None,
@@ -386,8 +385,7 @@ fn main() -> Result<(), i32> {
             );
         }
         Err(Error::DebianDirectoryExists(e)) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "debian-directory-exists",
                 &format!("{}: A debian directory already exists.", e.display()),
                 Some("Run lintian-brush instead or specify --force-new-directory."),
@@ -400,8 +398,7 @@ fn main() -> Result<(), i32> {
             version,
             branch,
         }) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "debianized-package-requirement-mismatch",
                 &format!(
                     "{}: {} requires {} but the debianized package requires {}",
@@ -415,8 +412,7 @@ fn main() -> Result<(), i32> {
             );
         }
         Err(Error::EditorError(e)) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "editor-error",
                 &format!("Error editing files: {}", e),
                 None,
@@ -424,8 +420,7 @@ fn main() -> Result<(), i32> {
             );
         }
         Err(Error::MissingUpstreamInfo(e)) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "missing-upstream-info",
                 &format!("Missing upstream info: {}", e),
                 None,
@@ -433,8 +428,7 @@ fn main() -> Result<(), i32> {
             );
         }
         Err(Error::NoVcsLocation) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "no-vcs-location",
                 "No VCS location found for the upstream branch.",
                 None,
@@ -442,8 +436,7 @@ fn main() -> Result<(), i32> {
             );
         }
         Err(Error::NoUpstreamReleases(o)) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "no-upstream-releases",
                 &if let Some(n) = o {
                     format!("{}: No upstream releases found.", n)
@@ -455,8 +448,7 @@ fn main() -> Result<(), i32> {
             );
         }
         Err(Error::SourcePackageNameInvalid(name)) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "invalid-source-package-name",
                 &format!("Generated source package name {} is not valid.", name),
                 None,
@@ -592,8 +584,7 @@ fn main() -> Result<(), i32> {
         let buildonceresult = match r {
             Ok(r) => r,
             Err(IterateBuildError::FixerLimitReached(n)) => {
-                report_fatal(
-                    versions_dict(),
+                svp.report_fatal(
                     "fixer-limit-reached",
                     &format!("Reached fixer limit of {} iterations.", n),
                     None,
@@ -601,16 +592,10 @@ fn main() -> Result<(), i32> {
                 );
             }
             Err(IterateBuildError::MissingPhase) => {
-                report_fatal(
-                    versions_dict(),
-                    "missing-phase",
-                    "No build phase was specified.",
-                    None,
-                    None,
-                );
+                svp.report_fatal("missing-phase", "No build phase was specified.", None, None);
             }
             Err(IterateBuildError::Unidentified {
-                retcode,
+                retcode: _,
                 lines,
                 secondary,
                 phase,
@@ -620,8 +605,7 @@ fn main() -> Result<(), i32> {
                 } else {
                     None
                 };
-                report_fatal(
-                    versions_dict(),
+                svp.report_fatal(
                     "unidentified-error",
                     &if let Some(phase) = phase {
                         format!("Error during {}: {}", phase, lines.join("\n"))
@@ -633,8 +617,7 @@ fn main() -> Result<(), i32> {
                 );
             }
             Err(IterateBuildError::Persistent(phase, problem)) => {
-                report_fatal(
-                    versions_dict(),
+                svp.report_fatal(
                     "detailed-error",
                     &format!("Error during {}: {}", phase, problem),
                     None,
@@ -642,8 +625,7 @@ fn main() -> Result<(), i32> {
                 );
             }
             Err(IterateBuildError::ResetTree(e)) => {
-                report_fatal(
-                    versions_dict(),
+                svp.report_fatal(
                     "reset-tree",
                     &format!("Error resetting tree: {}", e),
                     None,
@@ -651,13 +633,7 @@ fn main() -> Result<(), i32> {
                 );
             }
             Err(IterateBuildError::Other(output)) => {
-                report_fatal(
-                    versions_dict(),
-                    "other-error",
-                    &format!("Error: {}", output),
-                    None,
-                    None,
-                );
+                svp.report_fatal("other-error", &format!("Error: {}", output), None, None);
             }
         };
         log::info!("Built {:?}.", buildonceresult.changes_names);
@@ -674,17 +650,20 @@ fn main() -> Result<(), i32> {
         }
     }
 
-    let target_branch_url = if let Some(url) = debianize_result.vcs_url.as_ref() {
-        Some(vcs_git_url_to_bzr_url(&url.to_string()))
-    } else {
-        None
-    };
+    let target_branch_url = debianize_result
+        .vcs_url
+        .as_ref()
+        .map(|url| vcs_git_url_to_bzr_url(url.as_ref()));
 
-    if svp::enabled() {
-        svp::report_success_debian(versions_dict(), Some(100), Some(debianize_result), None);
+    if let Some(target_branch_url) = target_branch_url {
+        svp.set_target_branch_url(target_branch_url);
     }
 
-    return Ok(());
+    if svp.enabled() {
+        svp.report_success_debian(Some(100), Some(debianize_result), None);
+    }
+
+    Ok(())
 }
 
 fn versions_dict() -> HashMap<String, String> {

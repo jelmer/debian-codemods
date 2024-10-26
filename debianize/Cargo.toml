@@ -44,3 +44,7 @@ pyo3 = []
 [dev-dependencies]
 reqwest = { workspace = true, features = ["blocking"] }
 tempfile.workspace = true
+
+[[bin]]
+name = "debianize"
+path = "src/main.rs"
