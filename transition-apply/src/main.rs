@@ -5,7 +5,9 @@ use deb_transition_apply::TransitionResult;
 use debian_analyzer::config::Config;
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::editor::EditorError;
-use debian_analyzer::svp::{ChangelogBehaviour,enabled, report_fatal, report_nothing_to_do, report_success_debian};
+use debian_analyzer::svp::{
+    report_fatal, report_nothing_to_do, report_success_debian, ChangelogBehaviour,
+};
 use debian_analyzer::transition::Transition;
 use std::collections::HashMap;
 use std::io::Write;
@@ -149,6 +151,8 @@ fn main() -> Result<(), i32> {
         }
     };
 
+    let mut svp = debian_analyzer::svp::Reporter::new(versions_dict());
+
     let mut update_changelog = if args.update_changelog {
         Some(true)
     } else if args.no_update_changelog {
@@ -188,18 +192,17 @@ fn main() -> Result<(), i32> {
 
     let (result, bugnos) = match crate::apply_transition(&wt, &debian_path, &transition) {
         Ok(crate::TransitionResult::PackageNotAffected(..)) => {
-            report_nothing_to_do(versions_dict(), Some("Package not affected by transition"));
+            svp.report_nothing_to_do(Some("Package not affected by transition"), None);
         }
         Ok(crate::TransitionResult::PackageAlreadyGood(..)) => {
-            report_nothing_to_do(versions_dict(), Some("Package is already in a good state"));
+            svp.report_nothing_to_do(Some("Package is already in a good state"), None);
         }
         Ok(crate::TransitionResult::PackageNotBad(..)) => {
-            report_nothing_to_do(versions_dict(), Some("Package is not in a bad state"));
+            svp.report_nothing_to_do(Some("Package is not in a bad state"), None);
         }
         Ok(TransitionResult::TransitionSuccess(result, bugnos)) => (result, bugnos),
         Ok(TransitionResult::Unsupported(..)) => {
-            report_fatal(
-                versions_dict(),
+            svp.report_fatal(
                 "unsupported-transition",
                 "Unsupported transition",
                 None,
@@ -214,8 +217,7 @@ fn main() -> Result<(), i32> {
 
     let changelog_path = debian_path.join("changelog");
 
-    let changelog_behaviour = if let Some(update_changelog) = update_changelog
-    {
+    let changelog_behaviour = if let Some(update_changelog) = update_changelog {
         ChangelogBehaviour {
             update_changelog,
             explanation: "Specified by --update-changelog or --no-update-changelog".to_string(),
@@ -255,11 +257,6 @@ fn main() -> Result<(), i32> {
         }
     }
 
-    report_success_debian(
-        versions_dict(),
-        Some(10),
-        Some(result),
-        Some(changelog_behaviour)
-    );
+    svp.report_success_debian(Some(10), Some(result), Some(changelog_behaviour));
     Ok(())
 }
