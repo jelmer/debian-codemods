@@ -1,0 +1,22 @@
+[package]
+name = "import-uncommitted"
+edition = "2021"
+version.workspace = true
+
+[dependencies]
+breezyshim = { workspace = true, features = ["debian", "sqlx"] }
+clap = { workspace = true, features = ["derive", "env"] }
+debian-analyzer = { workspace = true, features = ["udd"] }
+debian-changelog.workspace = true
+debian-control.workspace = true
+debversion.workspace = true
+env_logger.workspace = true
+log.workspace = true
+serde = { workspace = true, features = ["derive"] }
+sqlx.workspace = true
+tempfile.workspace = true
+url.workspace = true
+
+[[bin]]
+name = "deb-import-uncommitted"
+path = "src/main.rs"
