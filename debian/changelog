@@ -1,4 +1,4 @@
-lintian-brush (0.158) UNRELEASED; urgency=medium
+lintian-brush (0.158) experimental; urgency=medium
 
   * Bump pyo3 to 0.22.
   * Drop dependency on dead python3-pyinotify. Closes: #1075953
