@@ -21,7 +21,7 @@ use ognibuild::dependencies::debian::DebianDependency;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use upstream_ontologist::{
-    guess_upstream_info, summarize_upstream_metadata, ProviderError, UpstreamMetadata,
+    get_upstream_info, summarize_upstream_metadata, ProviderError, UpstreamMetadata,
 };
 
 pub mod fixer;
@@ -505,15 +505,14 @@ fn import_metadata_from_path(
     preferences: &DebianizePreferences,
 ) -> Result<(), ProviderError> {
     let p = tree.abspath(subpath).unwrap();
-    let metadata_items =
-        guess_upstream_info(&p, Some(preferences.trust)).collect::<Result<Vec<_>, _>>()?;
-    metadata.update(summarize_upstream_metadata(
-        metadata_items.into_iter(),
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    metadata.update(rt.block_on(get_upstream_info(
         &p,
+        Some(preferences.trust),
         Some(preferences.net_access),
         Some(preferences.consult_external_directory),
         Some(preferences.check),
-    )?);
+    ))?);
     Ok(())
 }
 
