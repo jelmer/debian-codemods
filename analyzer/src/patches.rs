@@ -7,7 +7,8 @@ use breezyshim::tree::{MutableTree, Tree, WorkingTree};
 use breezyshim::workspace::reset_tree_with_dirty_tracker;
 use breezyshim::RevisionId;
 use debian_changelog::ChangeLog;
-use patchkit::patch::UnifiedPatch;
+use patchkit::quilt::QuiltPatch;
+use patchkit::unified::UnifiedPatch;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -564,13 +565,24 @@ pub fn read_quilt_patches<'a>(
     };
 
     let mut ret = vec![];
-    for patch in series.patches() {
+    for entry in series.iter() {
+        let (patch, options) = match entry {
+            patchkit::quilt::SeriesEntry::Patch {
+                name: patch,
+                options,
+            } => (patch, options),
+            patchkit::quilt::SeriesEntry::Comment(_) => continue,
+        };
         let p = directory.join(patch);
-        let lines = tree.get_file_lines(p.as_path()).unwrap();
-        // TODO(jelmer): Pass on options?
-        ret.push(patchkit::patch::UnifiedPatch::parse_patches(lines.into_iter()).unwrap());
+        let lines = tree.get_file_text(p.as_path()).unwrap();
+        let patch = QuiltPatch {
+            name: patch.to_string(),
+            patch: lines,
+            options: options.to_vec(),
+        };
+        ret.push(patch);
     }
-    ret.into_iter().flatten()
+    ret.into_iter().flat_map(|p| p.parse().unwrap())
 }
 
 #[cfg(test)]

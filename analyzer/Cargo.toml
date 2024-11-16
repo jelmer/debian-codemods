@@ -30,7 +30,7 @@ debian-changelog = { workspace = true }
 debian-control = { workspace = true }
 debian-copyright = { workspace = true }
 makefile-lossless = "0.1.0"
-patchkit = "0.1.0"
+patchkit = "0.2.1"
 dep3 = "0.1.0"
 reqwest = { workspace = true, features = ["blocking", "json"] }
 merge3 = { version = "0.2", optional = true }
