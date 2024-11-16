@@ -1800,3 +1800,5 @@
   difficulty: medium
 - tag: systemd-alternatives
   difficulty: medium
+- tag: appstream-metadata-validation-failed
+  difficulty: hard
