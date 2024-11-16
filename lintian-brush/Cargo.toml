@@ -27,7 +27,7 @@ indicatif = "0.17"
 tempfile = { workspace = true }
 url = { version = "2", features = ["serde"] }
 lazy_static = { workspace = true }
-debian-analyzer = { path = "../analyzer", version = ">=0.158.19" }
+debian-analyzer = { path = "../analyzer", version = ">=0.158.19", features = ["svp"] }
 distro-info = "0.4.0"
 debian-changelog = { workspace = true }
 wait-timeout = "0.2.0"

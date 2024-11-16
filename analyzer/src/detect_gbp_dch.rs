@@ -18,6 +18,7 @@ pub struct ChangelogBehaviour {
     pub explanation: String,
 }
 
+#[cfg(feature = "svp")]
 impl From<ChangelogBehaviour> for svp_client::ChangelogBehaviour {
     fn from(b: ChangelogBehaviour) -> Self {
         svp_client::ChangelogBehaviour {

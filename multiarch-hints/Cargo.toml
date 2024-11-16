@@ -15,7 +15,7 @@ reqwest = { workspace = true, features = ["blocking"] }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }
 xz2 = "0.1"
-debian-analyzer = { path = "../analyzer", version = ">=0.158" }
+debian-analyzer = { path = "../analyzer", version = ">=0.158", features = ["svp"] }
 debversion = { workspace = true, features = ["serde"] }
 pyo3 = { workspace = true }
 lazy-regex = { workspace = true }

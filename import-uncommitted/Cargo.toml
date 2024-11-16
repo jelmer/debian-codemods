@@ -6,7 +6,7 @@ version.workspace = true
 [dependencies]
 breezyshim = { workspace = true, features = ["debian", "sqlx"] }
 clap = { workspace = true, features = ["derive", "env"] }
-debian-analyzer = { workspace = true, features = ["udd"] }
+debian-analyzer = { workspace = true, features = ["udd", "svp"] }
 debian-changelog.workspace = true
 debian-control.workspace = true
 debversion.workspace = true

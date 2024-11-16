@@ -7,7 +7,7 @@ license = "GPL-3.0+"
 [dependencies]
 breezyshim = { workspace = true, features = ["debian"] }
 deb822-lossless = { workspace = true }
-debian-analyzer = { path = "../analyzer", features = ["udd"] }
+debian-analyzer = { path = "../analyzer", features = ["udd", "svp"] }
 debian-control = { workspace = true }
 debversion = { workspace = true, features = ["sqlx"] }
 distro-info = "0.4.0"
