@@ -29,7 +29,7 @@ import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy.workingtree import WorkingTree
 
-__version__ = (0, 158)
+__version__ = (0, 159)
 version_string = ".".join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ["certain", "confident", "likely", "possible", None]
 DEFAULT_MINIMUM_CERTAINTY = "certain"

@@ -1802,3 +1802,12 @@
   difficulty: medium
 - tag: appstream-metadata-validation-failed
   difficulty: hard
+- tag: invalid-dep3-format-patch-bug-field-default-value
+  difficulty: medium
+- tag: invalid-dep3-format-patch-bug-not-contain-url
+- tag: invalid-dep3-format-patch-maybe-bug-debian
+- tag: invalid-dep3-format-patch-no-description-and-subject
+- tag: invalid-dep3-format-patch-no-origin
+- tag: invalid-dep3-format-patch-origin-field-default-value
+- tag: invalid-dep3-format-patch-wrong-bug-debian-url
+- tag: invalid-dep3-format-patch-wrong-last-update

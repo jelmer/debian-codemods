@@ -18,7 +18,7 @@ typing:: build
 	mypy py/ lintian-brush/fixers/
 
 tag-status::
-	PYTHONPATH=$(shell pwd)/py python3 lintian-brush/tag-status.py --check
+	$(MAKE) -C lintian-brush tag-status
 
 testsuite:: build
 	PYTHONPATH=$(shell pwd)/py python3 -m unittest lintian_brush.tests.test_suite
@@ -49,13 +49,12 @@ update-key-package-versions:
 	brz diff analyzer/key-package-versions.json || brz commit -m "Update key package versions" analyzer/key-package-versions.json
 
 update-renamed-tags:
-	python3 lintian-brush/renamed-tags.py
-	brz diff lintian-brush/renamed-tags.json || brz commit -m "Update renamed tags" lintian-brush/renamed-tags.json
+	$(MAKE) -C lintian-brush update-renamed-tags
 
 update: update-spdx update-readme update-renamed-tags update-key-package-versions
 
 next:
-	PYTHONPATH=$(shell pwd)/py python3 lintian-brush/next.py
+	$(MAKE) -C lintian-brush next
 
 docker:
 	buildah build -t ghcr.io/jelmer/lintian-brush:latest Dockerfile.lintian-brush .

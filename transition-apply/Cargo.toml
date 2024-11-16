@@ -10,13 +10,14 @@ license = "GPL-3.0+"
 breezyshim.workspace = true
 clap = { workspace = true, features = ["derive"], optional = true }
 deb822-lossless.workspace = true
-debian-analyzer = { version = "0.158.14", path = "../analyzer" }
+debian-analyzer = { version = "0.158.14", path = "../analyzer", features = ["svp"] }
 debian-control.workspace = true
 env_logger = { workspace = true, optional = true }
 lazy-regex.workspace = true
 lazy_static.workspace = true
 log.workspace = true
 regex = "1.10.6"
+svp-client.workspace = true
 
 [features]
 cli = ["dep:clap", "dep:env_logger"]

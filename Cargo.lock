@@ -702,6 +702,7 @@ dependencies = [
  "lazy_static",
  "log",
  "regex",
+ "svp-client",
 ]
 
 [[package]]

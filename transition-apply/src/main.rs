@@ -225,7 +225,7 @@ fn main() -> Result<(), i32> {
             debian_analyzer::detect_gbp_dch::guess_update_changelog(&wt, &debian_path, None)
         {
             note_changelog_policy(dch_guess.update_changelog, &dch_guess.explanation);
-            dch_guess
+            dch_guess.into()
         } else {
             ChangelogBehaviour {
                 update_changelog: true,
