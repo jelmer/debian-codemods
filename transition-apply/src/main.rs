@@ -5,13 +5,11 @@ use deb_transition_apply::TransitionResult;
 use debian_analyzer::config::Config;
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::editor::EditorError;
-use debian_analyzer::svp::{
-    report_fatal, report_nothing_to_do, report_success_debian, ChangelogBehaviour,
-};
 use debian_analyzer::transition::Transition;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use svp_client::{ChangelogBehaviour, Reporter};
 
 #[derive(Parser)]
 struct Args {
@@ -151,7 +149,7 @@ fn main() -> Result<(), i32> {
         }
     };
 
-    let mut svp = debian_analyzer::svp::Reporter::new(versions_dict());
+    let mut svp = Reporter::new(versions_dict());
 
     let mut update_changelog = if args.update_changelog {
         Some(true)

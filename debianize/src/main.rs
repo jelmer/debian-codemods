@@ -220,7 +220,7 @@ fn main() -> Result<(), i32> {
         None
     };
 
-    let mut svp = debian_analyzer::svp::Reporter::new(versions_dict());
+    let mut svp = svp_client::Reporter::new(versions_dict());
 
     let mut metadata = UpstreamMetadata::new();
 

@@ -65,7 +65,7 @@ fn run_fixer_testcase(
     let current_version = match std::fs::File::open(&cl_path) {
         Ok(f) => {
             let cl = ChangeLog::read(f).unwrap();
-            let first_entry = cl.entries().next().unwrap();
+            let first_entry = cl.iter().next().unwrap();
             let version = first_entry.version().unwrap();
             if first_entry.distributions().as_deref().unwrap() == vec!["UNRELEASED"] {
                 version

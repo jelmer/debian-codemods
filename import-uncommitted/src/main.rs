@@ -8,7 +8,6 @@ use breezyshim::workingtree::WorkingTree;
 use breezyshim::RevisionId;
 use clap::Parser;
 use debian_analyzer::editor::MutableTreeEdit;
-use debian_analyzer::svp;
 use debian_changelog::ChangeLog;
 use debian_control::lossless::Control;
 use debversion::Version;
@@ -557,7 +556,7 @@ pub fn main() {
 
     breezyshim::init();
 
-    let mut svp = svp::Reporter::new(versions_dict());
+    let mut svp = svp_client::Reporter::new(versions_dict());
 
     let apt: Box<dyn Apt> = if let Some(apt_repository) = args.apt_repository {
         Box::new(
@@ -783,7 +782,7 @@ pub fn main() {
         None
     };
 
-    if svp::enabled() {
+    if svp_client::enabled() {
         let commit_message = if ret.len() == 1 {
             let (_tag_name, version, _rs) = &ret[0];
             let commit_message = format!("Import missing upload: {}", version);

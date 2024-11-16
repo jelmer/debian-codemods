@@ -26,7 +26,6 @@ pub mod release_info;
 pub mod rules;
 pub mod salsa;
 pub mod snapshot;
-pub mod svp;
 pub mod transition;
 #[cfg(feature = "udd")]
 pub mod udd;

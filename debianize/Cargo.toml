@@ -37,6 +37,7 @@ semver = { workspace = true }
 toml_edit = { workspace = true }
 serde.workspace = true
 sqlx.workspace = true
+svp-client.workspace = true
 
 [features]
 pyo3 = []

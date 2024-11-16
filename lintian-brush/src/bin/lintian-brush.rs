@@ -296,7 +296,7 @@ fn main() -> Result<(), i32> {
             std::process::exit(0);
         }
 
-        let svp = debian_analyzer::svp::Reporter::new(versions_dict());
+        let svp = svp_client::Reporter::new(versions_dict());
 
         let since_revid = wt.last_revision().unwrap();
         if args.fixers.fixers.is_some() || args.fixers.exclude.is_some() {
@@ -584,7 +584,7 @@ fn main() -> Result<(), i32> {
             svp.report_success_debian(
                 Some(overall_result.value()),
                 Some(overall_result),
-                changelog_behaviour,
+                changelog_behaviour.map(|b| b.into()),
             )
         }
     }

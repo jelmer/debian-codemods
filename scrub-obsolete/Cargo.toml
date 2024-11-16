@@ -22,6 +22,7 @@ sqlx.workspace = true
 tokio = { workspace = true, features = ["full"] }
 clap = { workspace = true, features = ["derive", "env"], optional = true }
 async-trait = "0.1"
+svp-client = { workspace = true }
 
 [features]
 default = ["cli"]

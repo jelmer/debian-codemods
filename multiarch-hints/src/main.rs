@@ -5,7 +5,6 @@ use breezyshim::tree::MutableTree;
 use breezyshim::workspace::check_clean_tree;
 use clap::Parser;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
-use debian_analyzer::svp::{Reporter};
 use debian_analyzer::{control_file_present, get_committer, is_debcargo_package, Certainty};
 use debian_changelog::get_maintainer;
 use multiarch_hints::{
@@ -15,6 +14,7 @@ use multiarch_hints::{
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::io::Write as _;
+use svp_client::Reporter;
 
 #[derive(Parser, Debug)]
 #[command(author, version)]
@@ -427,7 +427,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         svp.report_success_debian(
             Some(result.value()),
             Some(MultiArchResult { applied_hints }),
-            changelog_behaviour,
+            changelog_behaviour.map(|x| x.into()),
         )
     }
     Ok(())

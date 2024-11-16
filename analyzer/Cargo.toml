@@ -42,6 +42,7 @@ sqlx = { workspace = true, optional = true, features = ["postgres"] }
 filetime = "0.2"
 sha1 = "0.10.6"
 hex = "0.4.3"
+svp-client.workspace = true
 
 [features]
 default = ["python", "merge3"]

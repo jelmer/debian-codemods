@@ -779,6 +779,7 @@ dependencies = [
  "serial_test",
  "sha1",
  "sqlx",
+ "svp-client",
  "tempfile",
  "toml_edit",
  "url",
@@ -900,6 +901,7 @@ dependencies = [
  "semver",
  "serde",
  "sqlx",
+ "svp-client",
  "tempfile",
  "tokio",
  "toml_edit",
@@ -2173,6 +2175,7 @@ dependencies = [
  "log",
  "serde",
  "sqlx",
+ "svp-client",
  "tempfile",
  "url",
 ]
@@ -2465,6 +2468,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "svp-client",
  "tempfile",
  "url",
  "wait-timeout",
@@ -2742,6 +2746,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "svp-client",
  "tempfile",
  "url",
  "xz2",
@@ -3852,6 +3857,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "sqlx",
+ "svp-client",
  "tokio",
 ]
 
@@ -4407,6 +4413,18 @@ name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "svp-client"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cbf71541e926b5bd10daa99f2f1670a5526b4758aa792ffb45eaaf146add439"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "url",
+]
 
 [[package]]
 name = "syn"

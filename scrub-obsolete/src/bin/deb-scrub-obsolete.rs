@@ -112,7 +112,7 @@ fn main() -> Result<(), i32> {
         }
     }
 
-    let svp = debian_analyzer::svp::Reporter::new(versions_dict());
+    let svp = svp_client::Reporter::new(versions_dict());
 
     let mut update_changelog = args.update_changelog;
     let mut allow_reformatting = args.allow_reformatting;

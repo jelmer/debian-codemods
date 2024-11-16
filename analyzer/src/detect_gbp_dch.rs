@@ -18,6 +18,15 @@ pub struct ChangelogBehaviour {
     pub explanation: String,
 }
 
+impl From<ChangelogBehaviour> for svp_client::ChangelogBehaviour {
+    fn from(b: ChangelogBehaviour) -> Self {
+        svp_client::ChangelogBehaviour {
+            update_changelog: b.update_changelog,
+            explanation: b.explanation,
+        }
+    }
+}
+
 impl From<ChangelogBehaviour> for (bool, String) {
     fn from(b: ChangelogBehaviour) -> Self {
         (b.update_changelog, b.explanation)

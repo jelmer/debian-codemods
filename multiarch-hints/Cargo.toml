@@ -29,6 +29,7 @@ clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", 
 debian-changelog.workspace = true
 debian-control.workspace = true
 deb822-lossless = "0.2.1"
+svp-client = { workspace = true }
 
 [features]
 default = ["cli"]
