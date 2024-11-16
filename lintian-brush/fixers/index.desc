@@ -658,3 +658,7 @@
 - script: missing-prerequisite-for-pyproject-backend.py
   lintian-tags:
     - missing-prerequisite-for-pyproject-backend
+
+- script: dep3-format-patch-author-or-from-is-better.py
+  lintian-tags:
+    - dep3-format-patch-author-or-from-is-better

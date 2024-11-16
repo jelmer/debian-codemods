@@ -71,5 +71,7 @@ fn main() {
         dest.write_all("}\n".as_bytes()).unwrap();
     }
 
-    println!("cargo::rerun-if-changed=build.rs");
+    // rebuild if build.rs or fixers/index.desc changes
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=fixers/index.desc");
 }
