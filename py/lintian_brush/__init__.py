@@ -94,7 +94,9 @@ def data_file_path(name, check=os.path.exists):
         return path
 
     path = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "..", "lintian-brush", name)
+        os.path.join(
+            os.path.dirname(__file__), "..", "..", "lintian-brush", name
+        )
     )
     if check(path):
         return path
@@ -164,15 +166,18 @@ def certainty_to_confidence(certainty: Optional[str]) -> Optional[int]:
 
 def fixable_lintian_tags():
     from ruamel.yaml import YAML
+
     yaml = YAML()
-    path = os.path.join(os.path.dirname(__file__), '../../lintian-brush/fixers/index.desc')
+    path = os.path.join(
+        os.path.dirname(__file__), "../../lintian-brush/fixers/index.desc"
+    )
     with open(path) as f:
         fixers = yaml.load(f)
 
     supported_tags = set()
     for fixer in fixers:
         try:
-            tags = fixer['lintian-tags']
+            tags = fixer["lintian-tags"]
         except KeyError:
             pass
         else:
@@ -180,4 +185,3 @@ def fixable_lintian_tags():
                 supported_tags.update(tags)
 
     return supported_tags
-

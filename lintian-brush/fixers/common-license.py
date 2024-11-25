@@ -292,7 +292,9 @@ with suppress(
 done = []
 if updated:
     done.append(
-        "refer to common license file for {}".format(", ".join(sorted(updated)))
+        "refer to common license file for {}".format(
+            ", ".join(sorted(updated))
+        )
     )
 if set(renames.values()) - set(updated):
     done.append(

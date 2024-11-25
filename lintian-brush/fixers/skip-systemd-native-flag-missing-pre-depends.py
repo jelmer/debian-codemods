@@ -46,5 +46,7 @@ with control as updater:
 
 
 report_result(
-    "Add missing Pre-Depends: ${{misc:Pre-Depends}} in {}.".format(", ".join(sorted(added)))
+    "Add missing Pre-Depends: ${{misc:Pre-Depends}} in {}.".format(
+        ", ".join(sorted(added))
+    )
 )

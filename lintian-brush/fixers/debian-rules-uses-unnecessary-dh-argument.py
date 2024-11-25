@@ -73,5 +73,7 @@ with suppress(FileNotFoundError), RulesEditor() as updater:
     updater.legacy_update(drop_unnecessary_args)
 
 report_result(
-    "Drop unnecessary dh arguments: {}".format(", ".join([arg.decode() for arg in removed_args]))
+    "Drop unnecessary dh arguments: {}".format(
+        ", ".join([arg.decode() for arg in removed_args])
+    )
 )

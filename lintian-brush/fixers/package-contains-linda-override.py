@@ -13,7 +13,9 @@ for name in os.listdir("debian"):
         fixed_lintian_tag(
             "source",
             "package-contains-linda-override",
-            "usr/share/linda/overrides/{}".format(name[: -len(".linda-overrides")]),
+            "usr/share/linda/overrides/{}".format(
+                name[: -len(".linda-overrides")]
+            ),
         )
 
 report_result("Remove obsolete linda overrides: " + ", ".join(removed))

@@ -20,9 +20,9 @@ with control as editor:
                 editor.source, "python-teams-merged", info=(old_maintainer,)
             )
             if issue.should_fix():
-                editor.source[
-                    "Maintainer"
-                ] = "Debian Python Team <team+python@tracker.debian.org>"
+                editor.source["Maintainer"] = (
+                    "Debian Python Team <team+python@tracker.debian.org>"
+                )
                 issue.report_fixed()
 
 report_result("Update maintainer email for merge of DPMT and PAPT.")

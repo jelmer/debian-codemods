@@ -24,9 +24,7 @@ except FileNotFoundError:
     sys.exit(0)
 
 with control as updater:
-    if ensure_minimum_debhelper_version(
-        updater.source, f"{minimum_version}~"
-    ):
+    if ensure_minimum_debhelper_version(updater.source, f"{minimum_version}~"):
         fixed_lintian_tag(
             "source",
             "no-versioned-debhelper-prerequisite",

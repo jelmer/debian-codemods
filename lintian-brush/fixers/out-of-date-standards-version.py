@@ -321,8 +321,14 @@ try:
                 tag,
                 "{}{}{}".format(
                     current_version,
-                    (" (released {})".format(dt.strftime("%Y-%m-%d"))) if dt else "",
-                    (" (current is {})".format(".".join([str(x) for x in last])))
+                    (" (released {})".format(dt.strftime("%Y-%m-%d")))
+                    if dt
+                    else "",
+                    (
+                        " (current is {})".format(
+                            ".".join([str(x) for x in last])
+                        )
+                    )
                     if last is not None
                     else "",
                 ),

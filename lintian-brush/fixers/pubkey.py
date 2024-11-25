@@ -145,7 +145,9 @@ with WatchEditor() as editor:
 
                 issue.report_fixed()
                 if description is None:
-                    description = "Add upstream signing keys ({}).".format(", ".join(missing_keys))
+                    description = "Add upstream signing keys ({}).".format(
+                        ", ".join(missing_keys)
+                    )
 
 
 if description:

@@ -30,5 +30,7 @@ if len(paths) == 1:
     )
 else:
     report_result(
-        "Remove deprecated Encoding key from desktop files: {}.".format(", ".join(sorted(paths)))
+        "Remove deprecated Encoding key from desktop files: {}.".format(
+            ", ".join(sorted(paths))
+        )
     )

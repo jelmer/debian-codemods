@@ -34,7 +34,7 @@ def variable_defined(var):
 
 
 def is_pkg_info_var_line(
-    line: bytes
+    line: bytes,
 ) -> Tuple[Optional[str], bool, bool, Optional[bool]]:
     m = var_sre.match(line.strip())
     if not m:

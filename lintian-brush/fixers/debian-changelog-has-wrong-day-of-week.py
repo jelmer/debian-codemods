@@ -34,9 +34,13 @@ with ChangelogEditor() as updater:
 
 if len(versions) == 1:
     report_result(
-        "Fix day-of-week for changelog entry {}.".format(", ".join([str(v) for v in versions]))
+        "Fix day-of-week for changelog entry {}.".format(
+            ", ".join([str(v) for v in versions])
+        )
     )
 else:
     report_result(
-        "Fix day-of-week for changelog entries {}.".format(", ".join([str(v) for v in versions]))
+        "Fix day-of-week for changelog entries {}.".format(
+            ", ".join([str(v) for v in versions])
+        )
     )

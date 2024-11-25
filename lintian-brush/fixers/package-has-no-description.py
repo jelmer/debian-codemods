@@ -100,6 +100,8 @@ with control as updater:
 
 
 report_result(
-    description="Add description for binary packages: {}".format(", ".join(sorted(updated))),
+    description="Add description for binary packages: {}".format(
+        ", ".join(sorted(updated))
+    ),
     certainty=CERTAINTY,
 )

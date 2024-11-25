@@ -47,5 +47,7 @@ with suppress(
 ), CopyrightEditor() as updater:
     obsolete_field(updater.copyright)
 report_result(
-    "Update copyright file header to use current field names ({})".format(", ".join(f"{key} ⇒ {value}" for (key, value) in applied_renames))
+    "Update copyright file header to use current field names ({})".format(
+        ", ".join(f"{key} ⇒ {value}" for (key, value) in applied_renames)
+    )
 )

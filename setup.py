@@ -38,7 +38,11 @@ setup(
     rust_extensions=[
         RustBin("debianize", "debianize/Cargo.toml"),
         RustBin("lintian-brush", "lintian-brush/Cargo.toml"),
-        RustBin("detect-changelog-behaviour", "analyzer/Cargo.toml", features=["cli"]),
+        RustBin(
+            "detect-changelog-behaviour",
+            "analyzer/Cargo.toml",
+            features=["cli"],
+        ),
         RustBin("deb-vcs-publish", "analyzer/Cargo.toml", features=["cli"]),
         RustBin("dump-multiarch-hints", "multiarch-hints/Cargo.toml"),
         RustBin(
@@ -50,9 +54,15 @@ setup(
             "lintian_brush._lintian_brush_rs",
             "lintian-brush-py/Cargo.toml",
             binding=Binding.PyO3,
-            features = ["extension-module"]
+            features=["extension-module"],
         ),
-        RustBin("deb-scrub-obsolete", "scrub-obsolete/Cargo.toml", features=["cli"]),
-        RustBin("deb-transition-apply", "transition-apply/Cargo.toml", features=["cli"]),
+        RustBin(
+            "deb-scrub-obsolete", "scrub-obsolete/Cargo.toml", features=["cli"]
+        ),
+        RustBin(
+            "deb-transition-apply",
+            "transition-apply/Cargo.toml",
+            features=["cli"],
+        ),
     ],
 )

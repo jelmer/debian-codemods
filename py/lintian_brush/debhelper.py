@@ -46,7 +46,7 @@ def detect_debhelper_buildsystem(step: Optional[str] = None) -> Optional[str]:
     """
     if os.path.exists("configure.ac") or os.path.exists("configure.in"):
         return "autoconf"
-    env = {'PATH': os.environ['PATH']}
+    env = {"PATH": os.environ["PATH"]}
     # Necessary for debhelper (<= 13.5.2), or it'll write debian/.debhelper
     # files.
     env["DH_NO_ACT"] = "1"

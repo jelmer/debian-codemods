@@ -53,6 +53,8 @@ with control as updater:
         )
     elif binary_sections_set:
         report_result(
-            "Section field set for binary packages {} based on name.".format(", ".join(sorted(binary_sections_set))),
+            "Section field set for binary packages {} based on name.".format(
+                ", ".join(sorted(binary_sections_set))
+            ),
             certainty="certain",
         )

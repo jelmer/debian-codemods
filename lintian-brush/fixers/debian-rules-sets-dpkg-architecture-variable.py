@@ -31,7 +31,7 @@ def variable_defined(var):
 
 
 def is_dpkg_architecture_line(
-    line: bytes
+    line: bytes,
 ) -> Tuple[Optional[str], bool, bool, Optional[bool]]:
     m = re.match(b"([A-Z_]+)[ \t]*([:?]?=)[ \t]*(.*)", line.strip())
     if not m:

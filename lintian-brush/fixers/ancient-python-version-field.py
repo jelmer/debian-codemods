@@ -62,7 +62,9 @@ with control as updater:
             issue = LintianIssue(
                 updater.source,
                 f"{kind}-python-version-field",
-                "x-python3-version {}".format(updater.source["X-Python3-Version"]),
+                "x-python3-version {}".format(
+                    updater.source["X-Python3-Version"]
+                ),
             )
             if issue.should_fix():
                 del updater.source["X-Python3-Version"]

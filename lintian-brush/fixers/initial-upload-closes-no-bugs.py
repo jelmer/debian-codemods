@@ -40,7 +40,9 @@ with ChangelogEditor() as editor:
             if not line.rstrip().endswith("."):
                 line = line.rstrip() + "."
             editor.changelog[-1]._changes[i] = line + (
-                " Closes: #{}".format(", ".join([str(bugno) for (bugno, kind) in wnpp_bugs]))
+                " Closes: #{}".format(
+                    ", ".join([str(bugno) for (bugno, kind) in wnpp_bugs])
+                )
             )
             version_changed = editor.changelog[-1].version
             break

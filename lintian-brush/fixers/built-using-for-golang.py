@@ -73,9 +73,13 @@ if added and removed:
 
 if added:
     report_result(
-        "Add missing ${{misc:Built-Using}} to Built-Using on {}.".format(", ".join(added))
+        "Add missing ${{misc:Built-Using}} to Built-Using on {}.".format(
+            ", ".join(added)
+        )
     )
 if removed:
     report_result(
-        "Remove unnecessary ${{misc:Built-Using}} for {}".format(", ".join(removed))
+        "Remove unnecessary ${{misc:Built-Using}} for {}".format(
+            ", ".join(removed)
+        )
     )

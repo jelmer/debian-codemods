@@ -65,7 +65,9 @@ def migrate_dh_strip(line, target):
                 "debian-control-has-obsolete-dbg-package",
                 info=dbg_pkg,
             )
-            if (f"--dbg-package={dbg_pkg}").encode() in line and issue.should_fix():
+            if (
+                f"--dbg-package={dbg_pkg}"
+            ).encode() in line and issue.should_fix():
                 line = line.replace(
                     (f"--dbg-package={dbg_pkg}").encode(),
                     (

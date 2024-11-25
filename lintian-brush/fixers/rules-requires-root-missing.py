@@ -28,6 +28,4 @@ with control as updater:
             updater.source["Rules-Requires-Root"] = require_root
             issue.report_fixed()
 
-report_result(
-    f"Set Rules-Requires-Root: {require_root}.", certainty=CERTAINTY
-)
+report_result(f"Set Rules-Requires-Root: {require_root}.", certainty=CERTAINTY)

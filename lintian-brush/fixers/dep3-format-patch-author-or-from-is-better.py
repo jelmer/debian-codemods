@@ -20,7 +20,7 @@ for patch in patches:
     path = os.path.join(patches_path, patch)
 
     with LineEditor(path) as f:
-        for (lineno, line) in f:
+        for lineno, line in f:
             (key, value) = line.split(":", 1)
             if key.strip() == "Origin":
                 # If the Origin field is present and looks like an email address, use it as the author.
@@ -37,4 +37,6 @@ for patch in patches:
                 break
 
 
-report_result("Use Author instead of Origin in patch headers.", certainty="confident")
+report_result(
+    "Use Author instead of Origin in patch headers.", certainty="confident"
+)

@@ -58,7 +58,9 @@ try:  # noqa: C901
         fixed_lintian_tag("source", "upstream-metadata-yaml-invalid")
         report_result(
             "Remove duplicate values for fields {} "
-            "in debian/upstream/metadata.".format(", ".join([k for (i, k) in sorted(to_remove)]))
+            "in debian/upstream/metadata.".format(
+                ", ".join([k for (i, k) in sorted(to_remove)])
+            )
         )
 
     editor.yaml.constructor.flatten_mapping = flatten_mapping

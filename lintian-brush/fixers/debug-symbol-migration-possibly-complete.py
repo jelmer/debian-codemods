@@ -43,9 +43,9 @@ VERSION_CMP_SQL = {
 def package_exists(package, release, version_info):
     if not net_access_allowed():
         try:
-            return package in os.environ[
-                f"{release.upper()}_PACKAGES"
-            ].split(",")
+            return package in os.environ[f"{release.upper()}_PACKAGES"].split(
+                ","
+            )
         except KeyError:
             return None
     try:

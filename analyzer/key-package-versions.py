@@ -8,7 +8,9 @@ from typing import Dict
 from debian.changelog import Version
 
 parser = argparse.ArgumentParser()
-parser.add_argument("output", help="Output file", type=str, default="key-package-versions.json")
+parser.add_argument(
+    "output", help="Output file", type=str, default="key-package-versions.json"
+)
 args = parser.parse_args()
 
 KEY_PACKAGES = ("debhelper", "dpkg")
