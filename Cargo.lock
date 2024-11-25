@@ -689,7 +689,7 @@ dependencies = [
  "breezyshim",
  "clap",
  "deb822-lossless",
- "debian-analyzer 0.158.22",
+ "debian-analyzer 0.158.23",
  "debian-control",
  "env_logger",
  "lazy-regex",
@@ -742,6 +742,44 @@ dependencies = [
 [[package]]
 name = "debian-analyzer"
 version = "0.158.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "019e4736d6d1a837e532fd2fce477cce757eb03f00b343f189517c5a6a64d094"
+dependencies = [
+ "breezyshim",
+ "chrono",
+ "configparser",
+ "deb822-lossless",
+ "debian-changelog",
+ "debian-control",
+ "debian-copyright",
+ "debversion",
+ "dep3",
+ "difflib",
+ "distro-info",
+ "filetime",
+ "hex",
+ "lazy-regex",
+ "lazy_static",
+ "log",
+ "makefile-lossless",
+ "maplit",
+ "merge3",
+ "patchkit 0.1.9",
+ "pyo3",
+ "quote",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_json",
+ "sha1",
+ "tempfile",
+ "toml_edit",
+ "url",
+]
+
+[[package]]
+name = "debian-analyzer"
+version = "0.158.23"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -775,44 +813,6 @@ dependencies = [
  "sha1",
  "sqlx",
  "svp-client",
- "tempfile",
- "toml_edit",
- "url",
-]
-
-[[package]]
-name = "debian-analyzer"
-version = "0.158.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "019e4736d6d1a837e532fd2fce477cce757eb03f00b343f189517c5a6a64d094"
-dependencies = [
- "breezyshim",
- "chrono",
- "configparser",
- "deb822-lossless",
- "debian-changelog",
- "debian-control",
- "debian-copyright",
- "debversion",
- "dep3",
- "difflib",
- "distro-info",
- "filetime",
- "hex",
- "lazy-regex",
- "lazy_static",
- "log",
- "makefile-lossless",
- "maplit",
- "merge3",
- "patchkit 0.1.9",
- "pyo3",
- "quote",
- "reqwest",
- "semver",
- "serde",
- "serde_json",
- "sha1",
  "tempfile",
  "toml_edit",
  "url",
@@ -878,7 +878,7 @@ dependencies = [
  "breezyshim",
  "buildlog-consultant",
  "clap",
- "debian-analyzer 0.158.22",
+ "debian-analyzer 0.158.23",
  "debian-changelog",
  "debian-control",
  "debversion",
@@ -2162,7 +2162,7 @@ version = "0.158.0"
 dependencies = [
  "breezyshim",
  "clap",
- "debian-analyzer 0.158.22",
+ "debian-analyzer 0.158.23",
  "debian-changelog",
  "debian-control",
  "debversion",
@@ -2437,7 +2437,7 @@ dependencies = [
  "chrono",
  "clap",
  "configparser",
- "debian-analyzer 0.158.22",
+ "debian-analyzer 0.158.23",
  "debian-changelog",
  "debversion",
  "distro-info",
@@ -2466,7 +2466,7 @@ version = "0.158.0"
 dependencies = [
  "breezyshim",
  "chrono",
- "debian-analyzer 0.158.22",
+ "debian-analyzer 0.158.23",
  "debversion",
  "lintian-brush",
  "pyo3",
@@ -2719,7 +2719,7 @@ dependencies = [
  "clap",
  "configparser",
  "deb822-lossless",
- "debian-analyzer 0.158.22",
+ "debian-analyzer 0.158.23",
  "debian-changelog",
  "debian-control",
  "debversion",
@@ -2897,7 +2897,7 @@ dependencies = [
  "chrono",
  "clap",
  "deb822-lossless",
- "debian-analyzer 0.158.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "debian-analyzer 0.158.22",
  "debian-changelog",
  "debian-control",
  "debversion",
@@ -3765,9 +3765,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.17"
+version = "0.23.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f1a745511c54ba6d4465e8d5dfbd81b45791756de28d4981af70d6dca128f1e"
+checksum = "9c9cc1d47e243d655ace55ed38201c19ae02c148ae56412ab8750e8f0166ab7f"
 dependencies = [
  "once_cell",
  "rustls-pki-types",
@@ -3855,7 +3855,7 @@ dependencies = [
  "breezyshim",
  "clap",
  "deb822-lossless",
- "debian-analyzer 0.158.22",
+ "debian-analyzer 0.158.23",
  "debian-control",
  "debversion",
  "distro-info",
