@@ -18,10 +18,10 @@ typos = {
     "lgpl3": "LGPL-3.0",
 }
 for i in [1, 2, 3]:
-    typos["gplv%d" % i] = "GPL-%d" % i
-    typos["gplv%d+" % i] = "GPL-%d+" % i
-    typos["gpl%d" % i] = "GPL-%d" % i
-    typos["gpl%d+" % i] = "GPL-%d+" % i
+    typos[f"gplv{i}"] = f"GPL-{i}"
+    typos[f"gplv{i}+"] = f"GPL-{i}+"
+    typos[f"gpl{i}"] = f"GPL-{i}"
+    typos[f"gpl{i}+"] = f"GPL-{i}+"
 
 renames = {}
 

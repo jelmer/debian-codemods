@@ -150,8 +150,7 @@ def get_unused_overrides(
     extra = []
     for type, name in packages:
         extra.append(
-            "package = $%d AND package_type = $%d"
-            % (len(args) + 1, len(args) + 2)
+            f"package = ${len(args) + 1} AND package_type = ${len(args) + 2}"
         )
         args.extend([name, type])
 
@@ -472,6 +471,6 @@ if __name__ == "__main__":
 
         with open("debian/control") as f:
             removed = remove_unused(Deb822.iter_paragraphs(f))
-        print("Removed %d unused overrides" % len(removed))
+        print(f"Removed {len(removed)} unused overrides")
     else:
         parser.print_usage()

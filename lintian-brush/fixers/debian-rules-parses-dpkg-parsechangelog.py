@@ -78,7 +78,7 @@ def drop_pkg_info_line(line):
         fixed_lintian_tag(
             "source",
             "debian-rules-parses-dpkg-parsechangelog",
-            info="%s (line %d)" % (variable, lineno),
+            info=f"{variable} (line {lineno})"
         )
     if not pkg_info_included:
         pkg_info_included = True

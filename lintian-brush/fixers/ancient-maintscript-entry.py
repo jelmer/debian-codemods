@@ -84,6 +84,5 @@ if total_entries == 1:
     report_result("Remove an obsolete maintscript entry.")
 else:
     report_result(
-        "Remove %d obsolete maintscript entries in %d files."
-        % (total_entries, len(ret))
+        f"Remove {total_entries} obsolete maintscript entries in {len(ret)} files."
     )

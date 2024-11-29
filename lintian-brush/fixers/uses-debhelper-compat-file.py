@@ -67,7 +67,7 @@ with control as updater:
                 # location.
                 insert_position = offset - len(to_delete)
             if is_relation_implied(
-                relation, "debhelper (>= %d)" % debhelper_compat_version
+                relation, f"debhelper (>= {debhelper_compat_version})"
             ):
                 to_delete.append(offset)
 
@@ -92,7 +92,7 @@ with control as updater:
     updater.source["Build-Depends"] = ensure_exact_version(
         updater.source.get("Build-Depends", ""),
         "debhelper-compat",
-        "%d" % debhelper_compat_version,
+        f"{debhelper_compat_version}",
         position=insert_position,
     )
     fixed_lintian_tag(updater.source, "uses-debhelper-compat-file", ())

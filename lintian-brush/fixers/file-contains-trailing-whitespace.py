@@ -35,7 +35,7 @@ def file_strip_whitespace(
                     issue = LintianIssue(
                         "source",
                         "trailing-whitespace",
-                        info="%s (line %d)" % (path, lineno),
+                        info=f"{path} (line {lineno})"
                     )
                     if issue.should_fix():
                         issue.report_fixed()
@@ -50,7 +50,7 @@ def file_strip_whitespace(
             issue = LintianIssue(
                 "source",
                 "trailing-whitespace",
-                info="%s (line %d)" % (path, len(newlines) - 1),
+                info=f"{path} (line {len(newlines) - 1})"
             )
             if issue.should_fix():
                 issue.report_fixed()

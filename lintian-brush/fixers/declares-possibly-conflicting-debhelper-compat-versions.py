@@ -46,7 +46,7 @@ def drop_explicit_dh_compat(line):
             issue = LintianIssue(
                 "source",
                 "declares-possibly-conflicting-debhelper-compat-versions",
-                info="rules=%d compat=%d" % (rules_version, compat_version),
+                info=f"rules={rules_version} compat={compat_version}",
             )
             if issue.should_fix():
                 issue.report_fixed()

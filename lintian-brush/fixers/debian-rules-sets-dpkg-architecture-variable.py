@@ -74,7 +74,7 @@ def drop_arch_line(line):
         fixed_lintian_tag(
             "source",
             "debian-rules-sets-dpkg-architecture-variable",
-            info="%s (line %d)" % (variable, lineno),
+            info=f"{variable} (line {lineno})"
         )
     if not architecture_included:
         architecture_included = True
@@ -107,7 +107,7 @@ def update_assignment_kind(line):
     fixed_lintian_tag(
         "source",
         "debian-rules-sets-dpkg-architecture-variable",
-        info="%s (line %d)" % (variable, lineno),
+        info=f"{variable} (line {lineno})"
     )
     if architecture_included:
         message = "Rely on existing architecture.mk include."

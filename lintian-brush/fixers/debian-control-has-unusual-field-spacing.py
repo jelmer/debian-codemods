@@ -35,7 +35,7 @@ def fix_field_spacing(path):
                     issue = LintianIssue(
                         "source",
                         "debian-control-has-unusual-field-spacing",
-                        info="line %d" % lineno,
+                        info=f"line {lineno}"
                     )
                     if issue.should_fix():
                         e[lineno] = newline

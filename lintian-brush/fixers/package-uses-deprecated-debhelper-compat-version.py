@@ -74,7 +74,6 @@ def autoreconf_disabled():
             return True
     except FileNotFoundError:
         return False
-    return False
 
 
 if autoreconf_disabled():
@@ -89,9 +88,7 @@ if autoreconf_disabled():
                 new_debhelper_compat_version, 10
             )
             warn(
-                "Not upgrading beyond debhelper %d, since the package "
-                "disables autoreconf but its configure does not provide "
-                "--runstatedir." % new_debhelper_compat_version
+                f"Not upgrading beyond debhelper {new_debhelper_compat_version}, since the package disables autoreconf but its configure does not provide --runstatedir."
             )
 
 
@@ -112,7 +109,7 @@ if os.path.exists("debian/compat"):
         updater.source["Build-Depends"] = ensure_minimum_version(
             updater.source.get("Build-Depends", ""),
             "debhelper",
-            "%d~" % new_debhelper_compat_version,
+            f"{new_debhelper_compat_version}~"
         )
 else:
     try:
@@ -138,7 +135,7 @@ else:
                 updater.source["Build-Depends"] = ensure_exact_version(
                     updater.source["Build-Depends"],
                     "debhelper-compat",
-                    "%d" % new_debhelper_compat_version,
+                    f"{new_debhelper_compat_version}"
                 )
     except FileNotFoundError:
         # debcargo just uses the latest version and doesn't store debhelper

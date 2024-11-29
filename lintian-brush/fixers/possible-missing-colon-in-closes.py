@@ -64,9 +64,9 @@ def fix_close_colon(package, m):
         fixed_lintian_tag(
             "all",
             "possible-missing-colon-in-closes",
-            info="%s #%d" % (m.group("closes"), bugno),
+            info=f"{m.group('closes')} #{bugno}"
         )
-        return "%s: #%d" % (m.group("closes"), bugno)
+        return f"{m.group('closes')}: #{bugno}"
     else:
         return m.group(0)
 

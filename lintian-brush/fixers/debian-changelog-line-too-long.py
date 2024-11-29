@@ -31,7 +31,7 @@ def wrap_block(changelog, i):
                 fixed_lintian_tag(
                     "source",
                     "debian-changelog-line-too-long",
-                    info="line %d" % lineno,
+                    info=f"line {lineno}"
                 )
         changelog[i]._changes = new_changes
         updated.append(changelog[i].version)

@@ -33,7 +33,7 @@ for lineno, line in enumerate(oldlines, 1):
             issue = LintianIssue(
                 "source",
                 "custom-compression-in-debian-source-options",
-                "%s (line %d)" % (line.rstrip("\n"), lineno),
+                f"{line.rstrip('\n')} (line {lineno})",
             )
             if issue.should_fix():
                 drop_prior_comments(newlines)
@@ -44,7 +44,7 @@ for lineno, line in enumerate(oldlines, 1):
             issue = LintianIssue(
                 "source",
                 "custom-compression-in-debian-source-options",
-                "%s (line %d)" % (line.rstrip("\n"), lineno),
+                f"{line.rstrip('\n')} (line {lineno})"
             )
             if issue.should_fix():
                 drop_prior_comments(newlines)

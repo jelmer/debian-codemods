@@ -14,7 +14,7 @@ with suppress(FileNotFoundError), LineEditor("debian/rules", "b") as e:
         newline = line.replace(b"$(PWD)", b"$(CURDIR)")
         if newline != line:
             issue = LintianIssue(
-                "source", "debian-rules-calls-pwd", info="line %d" % lineno
+                "source", "debian-rules-calls-pwd", info=f"line {lineno}"
             )
             if issue.should_fix():
                 e[lineno] = newline

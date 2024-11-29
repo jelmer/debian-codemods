@@ -26,7 +26,7 @@ def fix_info(path, lineno, override):
     issue = LintianIssue(
         (override.type, override.package),
         "mismatched-override",
-        override.info + " [%s:%d]" % (path, lineno),
+        override.info + f" [{path}:{lineno}]"
     )
     if issue.should_fix():
         issue.report_fixed()

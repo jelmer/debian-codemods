@@ -33,7 +33,7 @@ removed = remove_unused(
 )
 
 description = [
-    "Remove %d unused lintian overrides.\n" % len(removed),
+    f"Remove {len(removed)} unused lintian overrides.\n"
     "\n",
 ]
 for override in removed:

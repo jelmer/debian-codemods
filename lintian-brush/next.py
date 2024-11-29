@@ -45,4 +45,4 @@ with conn.cursor() as cursor:
         difficulty = per_tag_status.get(tag, {}).get("difficulty", "unknown")
         if difficulty in exclude_difficulties:
             continue
-        print("%s %s %d/%d" % (tag, difficulty, package_count, tag_count))
+        print(f"{tag} {difficulty} {package_count}/{tag_count}")

@@ -21,7 +21,7 @@ for entry in os.scandir("debian/tests"):
             issue = LintianIssue(
                 "source",
                 "uses-deprecated-adttmp",
-                info="%s (line %d)" % (entry.path, lineno),
+                info=f"{entry.path} (line {lineno})"
             )
             if issue.should_fix():
                 e[lineno] = newline

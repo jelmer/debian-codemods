@@ -36,7 +36,7 @@ def update_configure_ac(path):
             issue = LintianIssue(
                 "source",
                 "autotools-pkg-config-macro-not-cross-compilation-" "safe",
-                info="%s (line %d)" % (name, lineno),
+                info=f"{name} (line {lineno})"
             )
             if not issue.should_fix():
                 continue

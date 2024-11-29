@@ -68,7 +68,7 @@ try:
                 issue = LintianIssue(
                     "source",
                     "tab-in-license-text",
-                    info="debian/copyright (paragraph at line %d)" % lineno,
+                    info=f"debian/copyright (paragraph at line {lineno})",
                 )
                 if issue.should_fix():
                     for option in [

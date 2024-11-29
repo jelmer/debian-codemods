@@ -25,7 +25,7 @@ def fix_malformed(path, lineno, override):
     issue = LintianIssue(
         (override.type, override.package),
         "malformed-override",
-        "Unknown tag %s in line %d" % (override.tag, lineno),
+        f"Unknown tag {override.tag} in line {lineno}",
     )
     if issue.should_fix():
         issue.report_fixed()

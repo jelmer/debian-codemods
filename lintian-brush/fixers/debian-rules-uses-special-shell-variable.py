@@ -18,7 +18,7 @@ with suppress(FileNotFoundError), LineEditor("debian/rules", "b") as e:
             issue = LintianIssue(
                 "source",
                 "debian-rules-uses-special-shell-variable",
-                info="line %d" % lineno,
+                info=f"line {lineno}"
             )
             if issue.should_fix():
                 e[lineno] = newline

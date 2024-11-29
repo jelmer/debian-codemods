@@ -30,7 +30,7 @@ with control as updater:
         fixed_lintian_tag(
             "source",
             "no-versioned-debhelper-prerequisite",
-            info="%d" % minimum_version,
+            info=f"{minimum_version}"
         )
 
 

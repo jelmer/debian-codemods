@@ -21,7 +21,7 @@ with suppress(FileNotFoundError), WatchEditor() as editor:
             tag = "obsolete-debian-watch-file-standard"
         else:
             tag = "older-debian-watch-file-standard"
-        issue = LintianIssue("source", tag, "%d" % editor.watch_file.version)
+        issue = LintianIssue("source", tag, f"{editor.watch_file.version}")
         if issue.should_fix():
             editor.watch_file.version = WATCH_FILE_LATEST_VERSION
             issue.report_fixed()

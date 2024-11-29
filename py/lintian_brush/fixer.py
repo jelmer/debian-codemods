@@ -264,9 +264,9 @@ def linenos_to_ranges(linenos):
 
     def finalize_range(r):
         if len(r) == 1:
-            ret.append("%d" % r[0])
+            ret.append(f"{r[0]}")
         else:
-            ret.append("%d-%d" % (r[0], r[-1]))
+            ret.append(f"{r[0]}-{r[-1]}")
 
     for lineno in linenos:
         if not cur_range or cur_range[-1] == lineno - 1:

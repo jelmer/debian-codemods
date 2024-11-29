@@ -1,3 +1,4 @@
+# ruff: noqa
 class BuildSystemProcessError(Exception):
     """Error processing buildsystem-specific part of debianization."""
 

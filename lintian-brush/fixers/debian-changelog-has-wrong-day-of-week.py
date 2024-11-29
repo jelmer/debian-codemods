@@ -25,8 +25,7 @@ with ChangelogEditor() as updater:
         issue = LintianIssue(
             "source",
             "debian-changelog-has-wrong-day-of-week",
-            info="%04d-%02d-%02d is a %s"
-            % (dt.year, dt.month, dt.day, dt.strftime("%A")),
+            info=f"{dt.day:04d}-{dt.month:02d}-{dt.year:02d} is a {dt.strftime('%A')}",
         )
         if newdate[:3] != block.date[:3] and issue.should_fix():
             block.date = newdate
