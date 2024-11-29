@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
-from lintian_brush.fixer import LintianIssue, report_result
-from lintian_brush.line_editor import LineEditor
 import os
 import sys
+
+from lintian_brush.fixer import LintianIssue, report_result
+from lintian_brush.line_editor import LineEditor
 
 patches_path = "debian/patches"
 if not os.path.isdir(patches_path):

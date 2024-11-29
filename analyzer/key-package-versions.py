@@ -1,12 +1,11 @@
 #!/usr/bin/python3
 
+import argparse
 import json
 import os
 from typing import Dict
 
 from debian.changelog import Version
-
-import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("output", help="Output file", type=str, default="key-package-versions.json")
@@ -20,7 +19,7 @@ DEFAULT_UDD_URL = (
 
 versions: Dict[str, Dict[str, str]]
 
-with open(args.output, "r") as f:
+with open(args.output) as f:
     versions = json.load(f)
 
 
