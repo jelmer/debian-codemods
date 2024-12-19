@@ -1,0 +1,5 @@
+#!/bin/sh -e
+
+COUNT=$(lintian-brush --list-fixers | wc -l)
+
+[[ $COUNT -gt 10 ]]

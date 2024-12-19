@@ -5,3 +5,7 @@ Restrictions: allow-stderr
 Test-Command: lintian-brush --version
 Depends: @
 Restrictions: allow-stderr
+
+Test: lintian-brush-fixer-count
+Depends: @
+Restrictions: allow-stderr

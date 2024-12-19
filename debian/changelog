@@ -1,3 +1,9 @@
+lintian-brush (0.160) UNRELEASED; urgency=medium
+
+  * Fix installing of fixers. Closes: #1090831
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 19 Dec 2024 21:19:06 +0000
+
 lintian-brush (0.159) unstable; urgency=medium
 
   * Add fixer for dep3-format-patch-author-or-from-is-better
