@@ -1,6 +1,7 @@
-lintian-brush (0.159) UNRELEASED; urgency=medium
+lintian-brush (0.159) unstable; urgency=medium
 
   * Add fixer for dep3-format-patch-author-or-from-is-better
+  * Upload to unstable.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 16 Nov 2024 13:29:46 +0000
 
