@@ -1,1 +1,2 @@
 lintian-brush: binary-package-depends-on-toolchain-package Recommends: debhelper (>= 13.5)
+lintian-brush: no-manual-page [usr/bin/deb-transition-apply]
