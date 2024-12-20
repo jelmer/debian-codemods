@@ -2,4 +2,10 @@
 
 COUNT=$(lintian-brush --list-fixers | wc -l)
 
-[[ $COUNT -gt 10 ]]
+if [ $COUNT -lt 10 ]; then
+	echo "lintian-brush has only $COUNT fixers, something is wrong"
+	exit 1
+fi
+
+echo "lintian-brush has $COUNT fixers"
+exit 0
