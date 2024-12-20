@@ -1,4 +1,4 @@
-lintian-brush (0.160) UNRELEASED; urgency=medium
+lintian-brush (0.160) unstable; urgency=medium
 
   * Fix installing of fixers. Closes: #1090831
 
