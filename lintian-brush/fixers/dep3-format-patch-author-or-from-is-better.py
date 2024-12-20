@@ -21,7 +21,11 @@ for patch in patches:
 
     with LineEditor(path) as f:
         for lineno, line in f:
-            (key, value) = line.split(":", 1)
+            try:
+                (key, value) = line.split(":", 1)
+            except ValueError:
+                # Not a key-value pair.
+                continue
             if key.strip() == "Origin":
                 # If the Origin field is present and looks like an email address, use it as the author.
                 issue = LintianIssue(
