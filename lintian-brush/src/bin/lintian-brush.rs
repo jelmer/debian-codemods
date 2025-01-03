@@ -378,6 +378,23 @@ fn main() -> Result<(), i32> {
             },
             |s| s.clone(),
         );
+
+        if args.output.verbose {
+            log::info!("Using parameters:");
+            log::info!(" compatibility release: {}", compat_release);
+            log::info!(" minimum certainty: {}", minimum_certainty);
+            if let Some(allow_reformatting) = allow_reformatting {
+                log::info!(" allow reformatting: {}", allow_reformatting);
+            } else {
+                log::info!(" allow reformatting: auto");
+            }
+            if let Some(update_changelog) = update_changelog {
+                log::info!(" update changelog: {}", update_changelog);
+            } else {
+                log::info!(" update changelog: auto");
+            }
+        }
+
         let write_lock = wt.lock_write();
         if debian_analyzer::control_files_in_root(&wt, std::path::Path::new(subpath.as_str())) {
             drop(write_lock);
