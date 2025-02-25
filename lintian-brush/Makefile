@@ -1,3 +1,5 @@
+.DEFAULT: check
+
 tag-status:
 	PYTHONPATH=$(shell pwd)/../py python3 tag-status.py --check
 
@@ -7,3 +9,8 @@ update-renamed-tags:
 
 next:
 	PYTHONPATH=$(shell pwd)/../py python3 next.py
+
+check:: testsuite
+
+testsuite::
+	PYTHONPATH=$(shell pwd)/../py cargo test 
