@@ -32,7 +32,6 @@ fn main() {
             })
             .collect::<Vec<_>>();
 
-
         let key = quote::format_ident!("{}_versions", key);
         use std::io::Write;
 

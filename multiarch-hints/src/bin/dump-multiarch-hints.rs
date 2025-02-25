@@ -2,8 +2,7 @@ use clap::Parser;
 
 #[derive(Parser)]
 #[command(author, version)]
-struct Args {
-}
+struct Args {}
 
 fn main() {
     let _args = Args::parse();

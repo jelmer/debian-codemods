@@ -835,7 +835,11 @@ impl std::fmt::Display for FixerError {
             FixerError::InvalidChangelog(p, s) => {
                 write!(f, "Invalid changelog {}: {}", p.display(), s)
             }
-            FixerError::Timeout { timeout } => write!(f, "Timeout after {}", humantime::format_duration(timeout.to_std().unwrap())),
+            FixerError::Timeout { timeout } => write!(
+                f,
+                "Timeout after {}",
+                humantime::format_duration(timeout.to_std().unwrap())
+            ),
             FixerError::GeneratedFile(p) => write!(f, "Generated file: {}", p.display()),
         }
     }
@@ -2903,8 +2907,9 @@ Arch: all
             .unwrap();
             tree.build_commit()
                 .committer(COMMITTER)
-
-                .message("Add patches").commit().unwrap();
+                .message("Add patches")
+                .commit()
+                .unwrap();
 
             #[derive(Debug)]
             struct NewFileFixer {

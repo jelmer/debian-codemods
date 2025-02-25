@@ -481,7 +481,10 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
 
     let rt = tokio::runtime::Runtime::new().unwrap();
 
-    let data = rt.block_on(upstream_ontologist::providers::rust::load_crate_info(&cratename))
+    let data = rt
+        .block_on(upstream_ontologist::providers::rust::load_crate_info(
+            &cratename,
+        ))
         .map_err(|e| {
             Error::MissingUpstreamInfo(format!(
                 "Unable to load crate info for {}: {}",
