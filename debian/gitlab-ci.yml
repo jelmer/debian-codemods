@@ -4,3 +4,28 @@ include:
  - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/pipeline-jobs.yml
 variables:
   SALSA_CI_DISABLE_BLHC: 1
+
+stages:
+  - provisioning
+  - build
+  - test
+  - publish
+  - lint
+
+cargo-fmt:
+  stage: lint
+  image: rust:latest
+  script:
+    - cargo fmt --all -- --check
+  tags:
+    - rust
+
+ruff:
+  stage: lint
+  image: python:latest
+  script:
+    - pip install ruff
+    - ruff
+  cache:
+    paths:
+      - ~/.cache/pip
