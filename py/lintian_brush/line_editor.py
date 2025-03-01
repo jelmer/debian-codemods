@@ -21,12 +21,16 @@
 class LineEditor:
     """Edit a file line by line."""
 
-    def __init__(self, path, mode=""):
+    def __init__(self, path, mode="", encoding='utf-8'):
         self.path = path
         self.mode = mode
+        self.encoding = encoding
 
     def __enter__(self):
-        with open(self.path, "r" + self.mode) as f:
+        kwargs = {}
+        if not "b" in self.mode:
+            kwargs["encoding"] = self.encoding
+        with open(self.path, "r" + self.mode, **kwargs) as f:
             self._oldlines = list(f)
         self._newlines = list(self._oldlines)
         return self
