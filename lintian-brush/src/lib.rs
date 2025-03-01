@@ -448,6 +448,8 @@ impl PythonScriptFixer {
 }
 
 #[cfg(feature = "python")]
+// PyO3 macros rely on a gil-refs feature that is not available in lintian-brush
+#[allow(unexpected_cfgs)]
 fn run_inline_python_fixer(
     path: &std::path::Path,
     name: &str,
