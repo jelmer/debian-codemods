@@ -10,6 +10,7 @@
 
 # First, update overrides for matching by other fixers
 
+fixers:
 - script: old-override-info-format.py
   lintian-tags:
     - mismatched-override

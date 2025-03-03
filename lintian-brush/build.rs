@@ -24,9 +24,14 @@ fn main() {
         lintian_tags: Option<Vec<String>>,
     }
 
-    let fixers: Vec<Fixer> = serde_yaml::from_reader(f).unwrap();
+    #[derive(serde::Deserialize)]
+    struct Fixers {
+        fixers: Vec<Fixer>,
+    }
 
-    for fixer in fixers {
+    let fixers_file: Fixers = serde_yaml::from_reader(f).unwrap();
+
+    for fixer in fixers_file.fixers {
         let script = fixer.script.clone();
 
         let script_path = fixers_dir.join(&script).to_str().unwrap().to_string();

@@ -950,12 +950,17 @@ impl Fixer for ScriptFixer {
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct DescEntry {
+struct FixerDescEntry {
     script: String,
     #[serde(rename = "lintian-tags")]
     lintian_tags: Option<Vec<String>>,
     #[serde(rename = "force-subprocess")]
     force_subprocess: Option<bool>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct FixerDescFile {
+    fixers: Vec<FixerDescEntry>,
 }
 
 #[derive(Debug)]
@@ -996,10 +1001,10 @@ pub fn read_desc_file<P: AsRef<std::path::Path>>(
     let file = File::open(path.as_ref())?;
     let reader = BufReader::new(file);
 
-    let data: Vec<DescEntry> = serde_yaml::from_reader(reader)?;
+    let data: FixerDescFile = serde_yaml::from_reader(reader)?;
 
     let dirname = path.as_ref().parent().unwrap().to_owned();
-    let fixer_iter = data.into_iter().map(move |item| {
+    let fixer_iter = data.fixers.into_iter().map(move |item| {
         let script = item.script;
         let lintian_tags = item.lintian_tags;
         let force_subprocess = item.force_subprocess.unwrap_or(force_subprocess);
@@ -3113,6 +3118,7 @@ Arch: all
             fixers.join("index.desc"),
             r###"
 
+fixers:
 - script: foo.sh
   lintian-tags:
    - i-fix-a-tag
