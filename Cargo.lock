@@ -770,7 +770,7 @@ dependencies = [
  "lazy-regex",
  "lazy_static",
  "log",
- "makefile-lossless",
+ "makefile-lossless 0.2.0",
  "maplit",
  "merge3",
  "patchkit",
@@ -811,7 +811,7 @@ dependencies = [
  "lazy-regex",
  "lazy_static",
  "log",
- "makefile-lossless",
+ "makefile-lossless 0.1.7",
  "maplit",
  "merge3",
  "patchkit",
@@ -2646,6 +2646,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "makefile-lossless"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07ea491a96d7e6a435fa6723adfd304918c2569ac62e5d0ae506a0037f5beecb"
+dependencies = [
+ "log",
+ "rowan 0.16.1",
+]
+
+[[package]]
 name = "maplit"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2980,7 +2990,7 @@ dependencies = [
  "log",
  "lz4_flex",
  "lzma-rs",
- "makefile-lossless",
+ "makefile-lossless 0.1.7",
  "maplit",
  "nix",
  "pep508_rs",
@@ -5100,7 +5110,7 @@ dependencies = [
  "lazy-regex",
  "lazy_static",
  "log",
- "makefile-lossless",
+ "makefile-lossless 0.1.7",
  "maplit",
  "opam-file-rs",
  "percent-encoding",
