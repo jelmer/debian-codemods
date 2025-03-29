@@ -1,6 +1,6 @@
 [package]
 name = "debian-analyzer"
-version = "0.158.25"
+version = "0.158.26"
 authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
 license = "GPL-2.0+"
