@@ -3605,7 +3605,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94278584d73149797c58a3b0ae102343348e755515bad64a75709eea96930952"
 dependencies = [
  "deb822-lossless",
- "rowan 0.16.1",
+ "rowan 0.15.16",
  "serde",
  "url",
 ]
