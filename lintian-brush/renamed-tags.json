@@ -141,6 +141,7 @@
     "manpage-without-executable": "spare-manual-page",
     "menu-method-should-include-menu-h": "menu-method-lacks-include",
     "missing-build-dependency": "rules-require-build-prerequisite",
+    "missing-built-using-field-for-golang-package": "missing-static-built-using-field-for-golang-package",
     "missing-depends-line": "undeclared-elf-prerequisites",
     "missing-python-build-dependency": "rules-require-build-prerequisite",
     "national-encoding-in-debconf-template": "national-encoding",
