@@ -11,6 +11,7 @@
         "Bison-exception-1.24",
         "Bison-exception-2.2",
         "Bootloader-exception",
+        "CGAL-linking-exception",
         "Classpath-exception-2.0",
         "CLISP-exception-2.0",
         "cryptsetup-OpenSSL-exception",
@@ -49,12 +50,14 @@
         "LLVM-exception",
         "LZMA-exception",
         "mif-exception",
+        "mxml-exception",
         "Nokia-Qt-exception-1.1",
         "OCaml-LGPL-linking-exception",
         "OCCT-exception-1.0",
         "OpenJDK-assembly-exception-1.0",
         "openvpn-openssl-exception",
         "PCRE2-exception",
+        "polyparse-exception",
         "PS-or-PDF-font-exception-20170817",
         "QPL-1.0-INRIA-2004-exception",
         "Qt-GPL-exception-1.0",
@@ -539,6 +542,12 @@
         "CC-PDDC": {
             "name": "Creative Commons Public Domain Dedication and Certification"
         },
+        "CC-PDM-1.0": {
+            "name": "Creative    Commons Public Domain Mark 1.0 Universal"
+        },
+        "CC-SA-1.0": {
+            "name": "Creative Commons Share Alike 1.0 Generic"
+        },
         "CC0-1.0": {
             "name": "Creative Commons Zero v1.0 Universal"
         },
@@ -656,6 +665,9 @@
         "Crossword": {
             "name": "Crossword License"
         },
+        "CryptoSwift": {
+            "name": "CryptoSwift License"
+        },
         "CrystalStacker": {
             "name": "CrystalStacker License"
         },
@@ -685,6 +697,9 @@
         },
         "DSDP": {
             "name": "DSDP License"
+        },
+        "DocBook-DTD": {
+            "name": "DocBook DTD License"
         },
         "DocBook-Schema": {
             "name": "DocBook Schema License"
@@ -763,6 +778,12 @@
         },
         "FSFULLRWD": {
             "name": "FSF Unlimited License (With License Retention and Warranty Disclaimer)"
+        },
+        "FSL-1.1-ALv2": {
+            "name": "Functional Source License, Version 1.1, ALv2 Future License"
+        },
+        "FSL-1.1-MIT": {
+            "name": "Functional Source License, Version 1.1, MIT Future License"
         },
         "FTL": {
             "name": "Freetype Project License"
@@ -917,6 +938,9 @@
         "GPL-3.0-with-autoconf-exception": {
             "name": "GNU General Public License v3.0 w/Autoconf exception"
         },
+        "Game-Programming-Gems": {
+            "name": "Game Programming Gems License"
+        },
         "Giftware": {
             "name": "Giftware License"
         },
@@ -1060,6 +1084,9 @@
         },
         "Inner-Net-2.0": {
             "name": "Inner Net License v2.0"
+        },
+        "InnoSetup": {
+            "name": "Inno Setup License"
         },
         "Intel": {
             "name": "Intel Open Source License"
@@ -1210,6 +1237,9 @@
         },
         "Lucida-Bitmap-Fonts": {
             "name": "Lucida Bitmap Fonts License"
+        },
+        "MIPS": {
+            "name": "MIPS License"
         },
         "MIT": {
             "name": "MIT License"
@@ -1679,6 +1709,9 @@
         "SL": {
             "name": "SL License"
         },
+        "SMAIL-GPL": {
+            "name": "SMAIL General Public License"
+        },
         "SMLNJ": {
             "name": "Standard ML of New Jersey License"
         },
@@ -1798,6 +1831,9 @@
         },
         "TermReadKey": {
             "name": "TermReadKey License"
+        },
+        "ThirdEye": {
+            "name": "ThirdEye License"
         },
         "TrustedQSL": {
             "name": "TrustedQSL License"
@@ -1931,6 +1967,9 @@
         "any-OSI": {
             "name": "Any OSI License"
         },
+        "any-OSI-perl-modules": {
+            "name": "Any OSI License - Perl Modules"
+        },
         "bcrypt-Solar-Designer": {
             "name": "bcrypt Solar Designer License"
         },
@@ -1985,6 +2024,9 @@
         "gSOAP-1.3b": {
             "name": "gSOAP Public License v1.3b"
         },
+        "generic-xts": {
+            "name": "Generic XTS License"
+        },
         "gnuplot": {
             "name": "gnuplot License"
         },
@@ -2017,6 +2059,9 @@
         },
         "mailprio": {
             "name": "mailprio License"
+        },
+        "man2html": {
+            "name": "man2html License"
         },
         "metamail": {
             "name": "metamail License"
@@ -2068,6 +2113,9 @@
         },
         "w3m": {
             "name": "w3m License"
+        },
+        "wwl": {
+            "name": "WWL License"
         },
         "wxWindows": {
             "name": "wxWindows Library License"
