@@ -75,6 +75,7 @@ subset of the issues:
 * debian-watch-uses-insecure-uri
 * debug-symbol-migration-possibly-complete
 * declares-possibly-conflicting-debhelper-compat-versions
+* dep3-format-patch-author-or-from-is-better
 * dep5-file-paragraph-references-header-paragraph
 * desktop-entry-contains-encoding-key
 * desktop-entry-file-has-crs
