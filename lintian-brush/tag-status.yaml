@@ -1811,3 +1811,14 @@
 - tag: invalid-dep3-format-patch-origin-field-default-value
 - tag: invalid-dep3-format-patch-wrong-bug-debian-url
 - tag: invalid-dep3-format-patch-wrong-last-update
+- tag: aliased-location
+- tag: build-depends-on-obsolete-bootstrap
+  difficulty: medium
+- tag: debian-rules-calls-nproc
+- tag: depends-on-obsolete-bootstrap
+- tag: invalid-value-in-static-built-using-field
+- tag: locale-uses-language-group-code
+- tag: missing-static-built-using-field-for-golang-package
+  difficulty: easy
+- tag: trailing-comma-in-maintainer-field
+  difficulty: easy

@@ -5,8 +5,8 @@ import sys
 from debian.changelog import Version
 from lintian_brush.fixer import (
     LintianIssue,
-    control,
     compat_release,
+    control,
     is_debcargo_package,
     meets_minimum_certainty,
     report_result,
@@ -26,7 +26,7 @@ oldest_dpkg_version = key_package_version("dpkg", compat_release())
 
 with control as updater:
     current_require_root = updater.source.get("Rules-Requires-Root")
-    if not current_require_root and dpkg_version < Version("1.22.13"):
+    if not current_require_root and oldest_dpkg_version < Version("1.22.13"):
         issue = LintianIssue(updater.source, "silent-on-rules-requiring-root")
         if issue.should_fix():
             # TODO: add some heuristics to set require_root = "yes" in common

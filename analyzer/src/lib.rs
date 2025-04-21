@@ -180,6 +180,9 @@ impl std::fmt::Display for ChangelogError {
 }
 
 #[cfg(feature = "python")]
+// This is needed because import_exception! checks the gil-refs
+// feature which we don't provide.
+#[allow(unexpected_cfgs)]
 impl From<pyo3::PyErr> for ChangelogError {
     fn from(e: pyo3::PyErr) -> Self {
         use pyo3::import_exception;

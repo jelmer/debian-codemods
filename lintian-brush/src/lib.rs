@@ -1031,7 +1031,9 @@ mod read_desc_file_tests {
     fn test_empty() {
         let td = tempfile::tempdir().unwrap();
         let path = td.path().join("empty.desc");
-        std::fs::write(&path, "").unwrap();
+        std::fs::write(&path, r#"---
+fixers:
+"#).unwrap();
         assert!(super::read_desc_file(&path, false)
             .unwrap()
             .next()
@@ -1045,6 +1047,7 @@ mod read_desc_file_tests {
         std::fs::write(
             &path,
             r#"---
+fixers:
 - script: foo.sh
   lintian-tags:
   - bar

@@ -28,7 +28,7 @@ class LineEditor:
 
     def __enter__(self):
         kwargs = {}
-        if not "b" in self.mode:
+        if "b" not in self.mode:
             kwargs["encoding"] = self.encoding
         with open(self.path, "r" + self.mode, **kwargs) as f:
             self._oldlines = list(f)

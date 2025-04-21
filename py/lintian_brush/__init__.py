@@ -172,7 +172,7 @@ def fixable_lintian_tags():
         os.path.dirname(__file__), "../../lintian-brush/fixers/index.desc"
     )
     with open(path) as f:
-        fixers = yaml.load(f)
+        fixers = yaml.load(f)["fixers"]
 
     supported_tags = set()
     for fixer in fixers:
