@@ -23,9 +23,11 @@ debversion.workspace = true
 url.workspace = true
 #ognibuild = ">=0.0.24"
 ognibuild = { version = ">=0.0.25", features = ["upstream", "debian"] }
-hyper = { version = "0.14", features = ["full", "runtime", "server"] }
+hyper = { version = "1.5", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio", "server", "server-auto"], default-features = false }
+http-body-util = "0.1"
 flate2 = "1"
-tokio = { workspace = true, features = ["full", "rt", "signal"] }
+tokio = { workspace = true, features = ["full", "rt", "signal", "net", "macros"] }
 tempfile.workspace = true
 upstream-ontologist.workspace = true
 buildlog-consultant.workspace = true

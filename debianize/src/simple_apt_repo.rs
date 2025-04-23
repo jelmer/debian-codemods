@@ -1,7 +1,11 @@
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Request, Response, Server, StatusCode};
+use http_body_util::Full;
+use hyper::body::Bytes;
+use hyper::server::conn::http1;
+use hyper::service::service_fn;
+use hyper::{Request, Response, StatusCode};
+use hyper_util::rt::TokioIo;
 use std::fs;
 use std::io;
 use std::io::Write;
@@ -54,51 +58,88 @@ impl SimpleTrustedAptRepo {
         let (start_tx, start_rx) = mpsc::channel::<SocketAddr>();
         let server_addr = Arc::clone(&self.server_addr);
 
-        let make_svc = make_service_fn(move |_conn| {
-            let directory = Arc::clone(&directory);
-            async move {
-                Ok::<_, hyper::Error>(service_fn(move |req: Request<Body>| {
-                    let directory = Arc::clone(&directory);
-                    async move {
-                        let path = directory.join(req.uri().path().trim_start_matches('/'));
-                        match fs::read(path) {
-                            Ok(contents) => {
-                                Ok::<_, hyper::Error>(Response::new(Body::from(contents)))
-                            }
-                            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                                Ok(Response::builder()
-                                    .status(StatusCode::NOT_FOUND)
-                                    .body(Body::from("File not found"))
-                                    .unwrap())
-                            }
-                            Err(e) => {
-                                log::error!("Error reading file: {}", e);
-                                Ok(Response::builder()
-                                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                                    .body(Body::from("Internal server error"))
-                                    .unwrap())
-                            }
-                        }
-                    }
-                }))
+        // Create an async function that will handle requests
+        async fn handle_request(
+            req: Request<hyper::body::Incoming>,
+            directory: Arc<PathBuf>,
+        ) -> Result<Response<Full<Bytes>>, hyper::Error> {
+            let path = directory.join(req.uri().path().trim_start_matches('/'));
+            match fs::read(path) {
+                Ok(contents) => Ok(Response::new(Full::new(Bytes::from(contents)))),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Response::builder()
+                    .status(StatusCode::NOT_FOUND)
+                    .body(Full::new(Bytes::from("File not found")))
+                    .unwrap()),
+                Err(e) => {
+                    log::error!("Error reading file: {}", e);
+                    Ok(Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from("Internal server error")))
+                        .unwrap())
+                }
             }
-        });
+        }
 
         let addr = SocketAddr::from(([127, 0, 0, 1], 0));
 
         let handle = thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(async {
-                let server = Server::bind(&addr).serve(make_svc);
-                let bound_addr = server.local_addr();
-                let server_future = server.with_graceful_shutdown(async {
-                    shutdown_rx.await.ok();
-                });
+                let listener = match tokio::net::TcpListener::bind(addr).await {
+                    Ok(l) => l,
+                    Err(e) => {
+                        log::error!("Failed to bind to address: {}", e);
+                        return;
+                    }
+                };
+
+                let bound_addr = listener.local_addr().unwrap();
                 *server_addr.lock().unwrap() = Some(bound_addr);
                 start_tx.send(bound_addr).unwrap();
 
-                if let Err(e) = server_future.await {
-                    log::error!("server error: {}", e);
+                let directory_clone = Arc::clone(&directory);
+                let (close_tx, mut close_rx) = tokio::sync::mpsc::channel::<()>(1);
+
+                // Spawn a task to handle the shutdown signal
+                tokio::spawn(async move {
+                    shutdown_rx.await.ok();
+                    let _ = close_tx.send(()).await;
+                });
+
+                // Accept connections in a loop
+                loop {
+                    tokio::select! {
+                        // Check if we should shut down
+                        _ = close_rx.recv() => {
+                            break;
+                        }
+                        // Accept new connections
+                        conn_result = listener.accept() => {
+                            match conn_result {
+                                Ok((stream, _)) => {
+                                    let io = TokioIo::new(stream);
+                                    let directory_ref = Arc::clone(&directory_clone);
+
+                                    // Spawn a task to handle the connection
+                                    tokio::task::spawn(async move {
+                                        let service = service_fn(move |req| {
+                                            let dir_ref = Arc::clone(&directory_ref);
+                                            handle_request(req, dir_ref)
+                                        });
+
+                                        if let Err(err) = http1::Builder::new()
+                                            .serve_connection(io, service)
+                                            .await {
+                                            log::error!("Failed to serve connection: {}", err);
+                                        }
+                                    });
+                                }
+                                Err(e) => {
+                                    log::error!("Failed to accept connection: {}", e);
+                                }
+                            }
+                        }
+                    }
                 }
             });
         });

@@ -1,3 +1,9 @@
+lintian-brush (0.162) UNRELEASED; urgency=medium
+
+  * Bump the version of hyper to 1.5
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Apr 2025 11:18:21 +0100
+
 lintian-brush (0.161) unstable; urgency=medium
 
   * dep3-format-patch-author-or-from-is-better: Cope with commented out
