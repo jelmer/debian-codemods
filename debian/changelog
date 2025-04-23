@@ -6,6 +6,7 @@ lintian-brush (0.161) UNRELEASED; urgency=medium
   * rules-requires-root-missing: only set Rules-Requires-Root when
     dpkg < 1.22.13 needs to be supported, and delete it if only
     dpkg >= 1.22.13 is supported. Closes: #1091929
+  * Update hyper used. Closes: #1102593
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 22 Dec 2024 19:10:53 +0000
 
