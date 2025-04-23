@@ -1,4 +1,4 @@
-lintian-brush (0.162) UNRELEASED; urgency=medium
+lintian-brush (0.162) unstable; urgency=medium
 
   * Bump the version of hyper to 1.5
 
