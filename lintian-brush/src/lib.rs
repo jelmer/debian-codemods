@@ -1031,9 +1031,13 @@ mod read_desc_file_tests {
     fn test_empty() {
         let td = tempfile::tempdir().unwrap();
         let path = td.path().join("empty.desc");
-        std::fs::write(&path, r#"---
+        std::fs::write(
+            &path,
+            r#"---
 fixers:
-"#).unwrap();
+"#,
+        )
+        .unwrap();
         assert!(super::read_desc_file(&path, false)
             .unwrap()
             .next()

@@ -1,4 +1,3 @@
-use crate::names::upstream_name_to_debian_source_name as source_name_from_upstream_name;
 use breezyshim::branch::Branch;
 use breezyshim::debian::error::Error as BrzDebianError;
 use breezyshim::debian::merge_upstream::{
@@ -13,16 +12,14 @@ use breezyshim::tree::Tree;
 use breezyshim::workingtree::WorkingTree;
 use breezyshim::RevisionId;
 use debian_analyzer::versions::debianize_upstream_version;
-use debian_analyzer::wnpp::{find_wnpp_bugs_harder, BugKind};
+use debian_analyzer::wnpp::BugKind;
 use debian_analyzer::Certainty;
 use debversion::Version;
 use ognibuild::dependencies::debian::valid_debian_package_name;
 use ognibuild::dependencies::debian::DebianDependency;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use upstream_ontologist::{
-    get_upstream_info, summarize_upstream_metadata, ProviderError, UpstreamMetadata,
-};
+use upstream_ontologist::{get_upstream_info, ProviderError, UpstreamMetadata};
 
 pub mod fixer;
 pub mod names;
@@ -246,6 +243,175 @@ pub fn last_resort_upstream_version(
     Ok(upstream_version)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_write_changelog_template() {
+        let td = tempdir().unwrap();
+        let path = td.path().join("changelog");
+
+        let source_name = "test-package";
+        let version = Version {
+            epoch: None,
+            upstream_version: "1.0".to_string(),
+            debian_revision: Some("1".to_string()),
+        };
+        let author = Some(("Test Author".to_string(), "test@example.com".to_string()));
+        let wnpp_bugs = vec![(123456, BugKind::ITP)];
+
+        write_changelog_template(&path, source_name, &version, author, wnpp_bugs).unwrap();
+
+        let content = fs::read_to_string(&path).unwrap();
+        assert!(content.contains("test-package (1.0-1) UNRELEASED"));
+        assert!(content.contains("* Initial release. Closes: #123456"));
+        assert!(content.contains("Test Author <test@example.com>"));
+    }
+
+    #[test]
+    fn test_write_changelog_template_no_bugs() {
+        let td = tempdir().unwrap();
+        let path = td.path().join("changelog");
+
+        let source_name = "test-package";
+        let version = Version {
+            epoch: None,
+            upstream_version: "1.0".to_string(),
+            debian_revision: Some("1".to_string()),
+        };
+        let author = Some(("Test Author".to_string(), "test@example.com".to_string()));
+        let wnpp_bugs = vec![];
+
+        write_changelog_template(&path, source_name, &version, author, wnpp_bugs).unwrap();
+
+        let content = fs::read_to_string(&path).unwrap();
+        assert!(content.contains("test-package (1.0-1) UNRELEASED"));
+        assert!(content.contains("* Initial release."));
+        assert!(!content.contains("Closes:"));
+        assert!(content.contains("Test Author <test@example.com>"));
+    }
+
+    #[test]
+    fn test_default_debianize_cache_dir() {
+        // This test is a bit tricky to verify as it accesses the real XDG dirs
+        // We'll just check that it returns a result (doesn't error out)
+        let result = default_debianize_cache_dir();
+        assert!(result.is_ok());
+    }
+
+    // We'll skip testing the debianize stub function since it requires a WorkingTree
+    // which is difficult to create in a test environment without actual repository data
+
+    #[test]
+    fn test_upstream_version_from() {
+        // Test the From<String> implementation for UpstreamVersion
+        let version_str = "1.2.3".to_string();
+        let upstream_version = UpstreamVersion::from(version_str.clone());
+
+        assert_eq!(upstream_version.version, "1.2.3");
+        assert_eq!(
+            upstream_version.mangled_version,
+            debianize_upstream_version(&version_str)
+        );
+    }
+
+    #[test]
+    fn test_debianize_preferences_default() {
+        // Test the default implementation of DebianizePreferences
+        let prefs = DebianizePreferences::default();
+
+        assert_eq!(prefs.use_inotify, None);
+        assert_eq!(prefs.diligence, 0);
+        assert_eq!(prefs.trust, false);
+        assert_eq!(prefs.check, false);
+        assert_eq!(prefs.net_access, true);
+        assert_eq!(prefs.force_subprocess, false);
+        assert_eq!(prefs.force_new_directory, false);
+        assert_eq!(prefs.compat_release, None);
+        assert_eq!(prefs.minimum_certainty, Certainty::Confident);
+        assert_eq!(prefs.consult_external_directory, true);
+        assert_eq!(prefs.verbose, false);
+        match prefs.session {
+            SessionPreferences::Plain => {}
+            _ => panic!("Expected SessionPreferences::Plain"),
+        }
+        assert!(prefs.create_dist.is_none());
+        assert!(prefs.committer.is_none());
+        assert_eq!(prefs.upstream_version_kind, VersionKind::Auto);
+        assert_eq!(prefs.debian_revision, "1".to_string());
+        assert!(prefs.team.is_none());
+    }
+
+    #[test]
+    fn test_debianize_preferences_into_fixer_preferences() {
+        // Test the conversion from DebianizePreferences to lintian_brush::FixerPreferences
+        let debianize_prefs = DebianizePreferences {
+            use_inotify: Some(true),
+            diligence: 2,
+            trust: true,
+            check: true,
+            net_access: false,
+            force_subprocess: true,
+            force_new_directory: true,
+            compat_release: Some("stable".to_string()),
+            minimum_certainty: Certainty::Certain,
+            consult_external_directory: false,
+            verbose: true,
+            session: SessionPreferences::Plain,
+            create_dist: None,
+            committer: None,
+            upstream_version_kind: VersionKind::Release,
+            debian_revision: "2".to_string(),
+            team: None,
+            author: None,
+        };
+
+        let fixer_prefs: lintian_brush::FixerPreferences = debianize_prefs.into();
+
+        assert_eq!(fixer_prefs.diligence, Some(2));
+        assert_eq!(fixer_prefs.net_access, Some(false));
+        assert_eq!(fixer_prefs.compat_release, Some("stable".to_string()));
+        assert_eq!(fixer_prefs.minimum_certainty, Some(Certainty::Certain));
+        assert_eq!(fixer_prefs.trust_package, Some(true));
+        assert_eq!(fixer_prefs.opinionated, Some(true));
+        assert_eq!(fixer_prefs.allow_reformatting, Some(true));
+    }
+
+    #[test]
+    fn test_error_display() {
+        // Test the Display implementation for Error
+        let error = Error::NoVcsLocation;
+        assert_eq!(format!("{}", error), "No VCS location found.");
+
+        let error = Error::SourcePackageNameInvalid("invalid:name".to_string());
+        assert_eq!(
+            format!("{}", error),
+            "Invalid source package name: invalid:name."
+        );
+
+        let error = Error::IoError(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "File not found",
+        ));
+        assert_eq!(format!("{}", error), "I/O error: File not found");
+
+        let error = Error::NoUpstreamReleases(Some("test-package".to_string()));
+        assert_eq!(
+            format!("{}", error),
+            "No upstream releases found for test-package."
+        );
+
+        let error = Error::NoUpstreamReleases(None);
+        assert_eq!(
+            format!("{}", error),
+            "No upstream releases found for unknown."
+        );
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum SessionPreferences {
     Plain,
@@ -432,13 +598,13 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 pub fn debianize(
-    wt: &WorkingTree,
-    subpath: &Path,
-    upstream_branch: Option<&dyn Branch>,
-    upstream_subpath: Option<&Path>,
-    preferences: &DebianizePreferences,
-    version: Option<&str>,
-    upstream_metadata: &UpstreamMetadata,
+    _wt: &WorkingTree,
+    _subpath: &Path,
+    _upstream_branch: Option<&dyn Branch>,
+    _upstream_subpath: Option<&Path>,
+    _preferences: &DebianizePreferences,
+    _version: Option<&str>,
+    _upstream_metadata: &UpstreamMetadata,
 ) -> Result<DebianizeResult, Error> {
     Ok(DebianizeResult::default())
 }

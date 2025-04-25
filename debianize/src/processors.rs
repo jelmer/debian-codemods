@@ -7,7 +7,7 @@ use debian_analyzer::lintian::latest_standards_version;
 use debian_analyzer::relations::{ensure_exact_version, ensure_relation, ensure_some_version};
 use debian_control::fields::MultiArch;
 use debian_control::lossless::relations::Relations;
-use debian_control::lossless::{Binary, Control, Source};
+use debian_control::lossless::{Control, Source};
 use debversion::Version;
 use ognibuild::buildsystem::BuildSystem;
 use ognibuild::debian::upstream_deps::get_project_wide_deps;
@@ -582,5 +582,123 @@ pub fn process(
         "R" => process_r(&mut context),
         "octave" => process_octave(&mut context),
         _ => process_default(&mut context),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_debhelper_rules() {
+        let mut output = Vec::new();
+
+        // Simple case
+        debhelper_rules(&mut output, None, HashMap::new()).unwrap();
+        let rules_content = String::from_utf8(output).unwrap();
+        assert!(rules_content.contains("#!/usr/bin/make -f"));
+        assert!(rules_content.contains("%:\n\tdh $@\n"));
+        assert!(!rules_content.contains("--buildsystem="));
+
+        // With buildsystem
+        let mut output = Vec::new();
+        debhelper_rules(&mut output, Some("python"), HashMap::new()).unwrap();
+        let rules_content = String::from_utf8(output).unwrap();
+        assert!(rules_content.contains("dh $@ --buildsystem=python"));
+
+        // With environment variables
+        let mut output = Vec::new();
+        let mut env = HashMap::new();
+        env.insert("TEST_VAR", "test-value");
+        env.insert("ANOTHER_VAR", "another-value");
+        debhelper_rules(&mut output, None, env).unwrap();
+        let rules_content = String::from_utf8(output).unwrap();
+        assert!(rules_content.contains("export TEST_VAR=test-value"));
+        assert!(rules_content.contains("export ANOTHER_VAR=another-value"));
+    }
+
+    #[test]
+    fn test_enable_dh_addon() {
+        // Create a test source with no build dependencies
+        let mut control = debian_control::lossless::Control::new();
+        let mut source = control.add_source("test-package");
+
+        // Enable an addon
+        enable_dh_addon(&mut source, "python3");
+
+        // Verify build dependency string contains the addon
+        let build_deps = source.build_depends().unwrap();
+        let deps_string = build_deps.to_string();
+        assert!(deps_string.contains("dh-sequence-python3"));
+
+        // Enable another addon
+        enable_dh_addon(&mut source, "nodejs");
+
+        // Verify both addons are in the dependencies string
+        let build_deps = source.build_depends().unwrap();
+        let deps_string = build_deps.to_string();
+        assert!(deps_string.contains("dh-sequence-python3"));
+        assert!(deps_string.contains("dh-sequence-nodejs"));
+    }
+
+    #[test]
+    fn test_import_build_deps() {
+        // Create a test source with initial build dependencies
+        let mut control = debian_control::lossless::Control::new();
+        let mut source = control.add_source("test-package");
+        source.set_build_depends(&"debhelper-compat (= 13)".parse().unwrap());
+
+        // Create test Relations with parsed Relations string
+        let new_build_deps: debian_control::lossless::relations::Relations =
+            "python3-all, dh-python".parse().unwrap();
+
+        // Import the build dependencies
+        import_build_deps(&mut source, &new_build_deps);
+
+        // Verify all dependencies are present using string matching
+        let build_deps = source.build_depends().unwrap();
+        let deps_string = build_deps.to_string();
+        assert!(deps_string.contains("debhelper-compat (= 13)"));
+        assert!(deps_string.contains("python3-all"));
+        assert!(deps_string.contains("dh-python"));
+
+        // Add a dependency with version
+        let versioned_deps: debian_control::lossless::relations::Relations =
+            "python3-all (>= 3.9)".parse().unwrap();
+
+        // Import the versioned dependency
+        import_build_deps(&mut source, &versioned_deps);
+
+        // Verify the versioned dependency is now present
+        let build_deps = source.build_depends().unwrap();
+        let deps_string = build_deps.to_string();
+        assert!(deps_string.contains("python3-all (>= 3.9)"));
+    }
+
+    #[test]
+    fn test_debhelper_config() {
+        // Test the DebhelperConfig struct and defaults
+        let config = DebhelperConfig {
+            addons: vec!["python3", "nodejs"],
+            env: {
+                let mut env = HashMap::new();
+                env.insert("TEST_VAR", "test-value");
+                env
+            },
+            buildsystem: Some("pybuild"),
+        };
+
+        assert_eq!(config.addons.len(), 2);
+        assert_eq!(config.addons[0], "python3");
+        assert_eq!(config.addons[1], "nodejs");
+        assert_eq!(config.env.get("TEST_VAR"), Some(&"test-value"));
+        assert_eq!(config.buildsystem, Some("pybuild"));
+
+        // Test default implementation
+        let default_config = DebhelperConfig::default();
+        assert!(default_config.addons.is_empty());
+        assert!(default_config.env.is_empty());
+        assert_eq!(default_config.buildsystem, None);
     }
 }

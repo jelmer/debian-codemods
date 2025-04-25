@@ -7,8 +7,6 @@ use ognibuild::buildlog::problem_to_dependency;
 use ognibuild::debian::build::BuildOnceResult;
 use ognibuild::debian::context::{Error, Phase};
 use ognibuild::debian::fix_build::{DebianBuildFixer, IterateBuildError};
-use ognibuild::dependencies::debian::DebianDependency;
-use ognibuild::dependency::Dependency;
 use ognibuild::fix_build::InterimError;
 use ognibuild::upstream::find_upstream;
 use std::path::Path;
@@ -78,7 +76,7 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
         find_upstream(dep.as_ref()).is_some()
     }
 
-    fn fix(&self, problem: &dyn Problem, phase: &Phase) -> Result<bool, InterimError<Error>> {
+    fn fix(&self, problem: &dyn Problem, _phase: &Phase) -> Result<bool, InterimError<Error>> {
         let dep = match problem_to_dependency(problem) {
             Some(dep) => dep,
             None => {
@@ -171,5 +169,116 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
             .refresh()
             .map_err(|e| InterimError::Other(e.into()))?;
         Ok(true)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_fixer_display_and_debug() {
+        let td = tempfile::tempdir().unwrap();
+        let apt_repo = crate::simple_apt_repo::SimpleTrustedAptRepo::new(td.path().to_path_buf());
+        let prefs = DebianizePreferences::default();
+
+        // Just test the fmt trait implementations
+        let fixer = DebianizeFixer {
+            vcs_directory: PathBuf::from("/tmp/vcs"),
+            apt_repo,
+            do_build: Box::new(|_, _, _, _| unreachable!()),
+            preferences: &prefs,
+        };
+
+        assert_eq!(format!("{}", fixer), "DebianizeFixer");
+        assert_eq!(format!("{:?}", fixer), "DebianizeFixer");
+    }
+
+    #[test]
+    fn test_fixer_new() {
+        let td = tempfile::tempdir().unwrap();
+        let apt_repo = crate::simple_apt_repo::SimpleTrustedAptRepo::new(td.path().to_path_buf());
+        let prefs = DebianizePreferences::default();
+
+        // Test constructor
+        let fixer = DebianizeFixer::new(
+            PathBuf::from("/tmp/vcs"),
+            apt_repo,
+            Box::new(|_, _, _, _| {
+                Ok(BuildOnceResult {
+                    source_package: "test".to_string(),
+                    version: "1.0-1".parse().unwrap(),
+                    changes_names: vec![],
+                })
+            }),
+            &prefs,
+        );
+
+        assert_eq!(fixer.vcs_directory, PathBuf::from("/tmp/vcs"));
+        assert!(fixer.apt_repo().url().is_none()); // The repo isn't started yet
+    }
+
+    #[test]
+    fn test_apt_repo_accessor() {
+        let td = tempfile::tempdir().unwrap();
+        let apt_repo = crate::simple_apt_repo::SimpleTrustedAptRepo::new(td.path().to_path_buf());
+        let prefs = DebianizePreferences::default();
+
+        let fixer = DebianizeFixer {
+            vcs_directory: PathBuf::from("/tmp/vcs"),
+            apt_repo,
+            do_build: Box::new(|_, _, _, _| unreachable!()),
+            preferences: &prefs,
+        };
+
+        // Test that we can access the apt repo
+        let repo = fixer.apt_repo();
+        assert_eq!(repo.directory(), td.path());
+    }
+
+    #[test]
+    fn test_can_fix_no_dependency() {
+        // Create a problem that can't be converted to a dependency
+        #[derive(Debug)]
+        struct MockProblem;
+
+        impl std::fmt::Display for MockProblem {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(f, "Mock Problem")
+            }
+        }
+
+        impl Problem for MockProblem {
+            fn kind(&self) -> std::borrow::Cow<'_, str> {
+                "mock".into()
+            }
+
+            fn json(&self) -> serde_json::Value {
+                serde_json::json!({
+                    "type": "mock",
+                    "message": "This is a mock problem"
+                })
+            }
+
+            fn as_any(&self) -> &(dyn std::any::Any + 'static) {
+                self
+            }
+        }
+
+        let td = tempfile::tempdir().unwrap();
+        let apt_repo = crate::simple_apt_repo::SimpleTrustedAptRepo::new(td.path().to_path_buf());
+        let prefs = DebianizePreferences::default();
+
+        let fixer = DebianizeFixer {
+            vcs_directory: PathBuf::from("/tmp/vcs"),
+            apt_repo,
+            do_build: Box::new(|_, _, _, _| unreachable!()),
+            preferences: &prefs,
+        };
+
+        // Test that the fixer can't fix this problem
+        let problem = MockProblem;
+        assert!(!fixer.can_fix(&problem));
     }
 }

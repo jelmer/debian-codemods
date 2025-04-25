@@ -94,7 +94,7 @@ pub fn go_base_name(package: &str) -> String {
     }
     let path = path.trim_end_matches('/').replace(['/', '_'], "-");
     let path = path.strip_suffix(".git").unwrap_or(&path);
-    [hostname, path].concat()
+    format!("{}-{}", hostname, path)
 }
 
 #[cfg(test)]
@@ -115,6 +115,101 @@ mod tests {
             Some("mun"),
             upstream_name_to_debian_source_name("Made Up Name (MUN)").as_deref()
         );
+    }
+
+    #[test]
+    fn test_upstream_name_to_debian_source_name() {
+        // Test handling of spaces
+        assert_eq!(
+            Some("foo-bar"),
+            upstream_name_to_debian_source_name("Foo Bar").as_deref()
+        );
+
+        // Test handling of slashes
+        assert_eq!(
+            Some("foo-bar-baz"),
+            upstream_name_to_debian_source_name("foo/bar/baz").as_deref()
+        );
+
+        // Test handling of underscores
+        assert_eq!(
+            Some("foo-bar"),
+            upstream_name_to_debian_source_name("foo_bar").as_deref()
+        );
+
+        // Test mix of special characters
+        assert_eq!(
+            Some("complex-package-name"),
+            upstream_name_to_debian_source_name("Complex_Package/Name").as_deref()
+        );
+    }
+
+    #[test]
+    fn test_upstream_package_to_debian_source_name() {
+        // Test rust packages
+        assert_eq!(
+            Some("rust-foobar"),
+            upstream_package_to_debian_source_name("rust", "FooBar").as_deref()
+        );
+
+        // Test perl packages
+        assert_eq!(
+            Some("libfoo-bar-perl"),
+            upstream_package_to_debian_source_name("perl", "Foo::Bar").as_deref()
+        );
+
+        // Test node packages
+        assert_eq!(
+            Some("node-foobar"),
+            upstream_package_to_debian_source_name("node", "FooBar").as_deref()
+        );
+
+        // Test fallback to upstream_name_to_debian_source_name
+        assert_eq!(
+            Some("foobar"),
+            upstream_package_to_debian_source_name("unknown", "FooBar").as_deref()
+        );
+    }
+
+    #[test]
+    fn test_upstream_package_to_debian_binary_name() {
+        // Test rust packages
+        assert_eq!(
+            "rust-foobar",
+            upstream_package_to_debian_binary_name("rust", "FooBar")
+        );
+
+        // Test perl packages
+        assert_eq!(
+            "libfoo-bar-perl",
+            upstream_package_to_debian_binary_name("perl", "Foo::Bar")
+        );
+
+        // Test node packages
+        assert_eq!(
+            "node-foobar",
+            upstream_package_to_debian_binary_name("node", "FooBar")
+        );
+
+        // Test fallback
+        assert_eq!(
+            "foobar",
+            upstream_package_to_debian_binary_name("unknown", "FooBar")
+        );
+
+        // Test underscore replacement
+        assert_eq!(
+            "foo-bar",
+            upstream_package_to_debian_binary_name("unknown", "foo_bar")
+        );
+    }
+
+    #[test]
+    fn test_debian_to_upstream_version() {
+        assert_eq!(debian_to_upstream_version("1.0"), "1.0");
+        assert_eq!(debian_to_upstream_version("1.0+dfsg1"), "1.0");
+        assert_eq!(debian_to_upstream_version("2.3.4+dfsg2.3"), "2.3.4");
+        assert_eq!(debian_to_upstream_version("0.1.0+dfsg+repack"), "0.1.0");
     }
 
     #[test]
@@ -189,5 +284,12 @@ mod tests {
             python_binary_package_name("foo_bar_baz"),
             "python3-foo-bar-baz"
         );
+    }
+
+    #[test]
+    fn test_go_base_name() {
+        assert_eq!(go_base_name("github.com/foo/bar"), "github-foo-bar");
+        assert_eq!(go_base_name("gopkg.in/yaml.v2"), "gopkg-yaml.v2");
+        assert_eq!(go_base_name("github.com/foo/bar.git"), "github-foo-bar");
     }
 }

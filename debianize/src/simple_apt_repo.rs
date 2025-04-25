@@ -223,6 +223,12 @@ impl Drop for SimpleTrustedAptRepo {
 mod tests {
     use super::*;
     use flate2::read::GzDecoder;
+    use std::fs::File;
+    use std::io::Read;
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+
     #[test]
     fn test_simple() {
         let td = tempfile::tempdir().unwrap();
@@ -244,6 +250,10 @@ mod tests {
 
         let sources_lines = repo.sources_lines();
         assert_eq!(sources_lines.len(), 1);
+        // Verify sources line format includes "trusted=yes" option
+        assert!(sources_lines[0].contains("[trusted=yes]"));
+        assert!(sources_lines[0].starts_with("deb [trusted=yes] http://127.0.0.1:"));
+        assert!(sources_lines[0].ends_with("/ ./"));
 
         // Verify that the server is running
         let url = format!("{}Packages.gz", repo.url().unwrap());
@@ -251,11 +261,189 @@ mod tests {
         assert_eq!(response.status(), reqwest::StatusCode::OK);
         let mut decoder = GzDecoder::new(response);
         let mut data = String::new();
-        use std::io::Read;
         decoder.read_to_string(&mut data).unwrap();
         assert_eq!(data, "Hello, world!");
 
         // Stop the server
         repo.stop();
+    }
+
+    #[test]
+    fn test_directory() {
+        let td = tempfile::tempdir().unwrap();
+        let repo = SimpleTrustedAptRepo::new(td.path().to_path_buf());
+
+        assert_eq!(repo.directory(), td.path());
+    }
+
+    #[test]
+    fn test_url_when_not_started() {
+        let td = tempfile::tempdir().unwrap();
+        let repo = SimpleTrustedAptRepo::new(td.path().to_path_buf());
+
+        assert_eq!(repo.url(), None);
+    }
+
+    #[test]
+    fn test_url_when_started() {
+        let td = tempfile::tempdir().unwrap();
+        let mut repo = SimpleTrustedAptRepo::new(td.path().to_path_buf());
+
+        repo.start().unwrap();
+
+        let url = repo.url().unwrap();
+        assert!(url.to_string().starts_with("http://127.0.0.1:"));
+        assert!(url.to_string().ends_with("/"));
+
+        repo.stop();
+    }
+
+    #[test]
+    fn test_start_twice_fails() {
+        let td = tempfile::tempdir().unwrap();
+        let mut repo = SimpleTrustedAptRepo::new(td.path().to_path_buf());
+
+        repo.start().unwrap();
+        let err = repo.start().unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::Other);
+        assert_eq!(err.to_string(), "server already active");
+
+        repo.stop();
+    }
+
+    #[test]
+    fn test_stop_when_not_started() {
+        let td = tempfile::tempdir().unwrap();
+        let mut repo = SimpleTrustedAptRepo::new(td.path().to_path_buf());
+
+        // Should not panic
+        repo.stop();
+    }
+
+    #[test]
+    fn test_server_404() {
+        let td = tempfile::tempdir().unwrap();
+        let mut repo = SimpleTrustedAptRepo::new(td.path().to_path_buf());
+
+        repo.start().unwrap();
+
+        // Request a file that doesn't exist
+        let url = format!("{}nonexistent-file", repo.url().unwrap());
+        let response = reqwest::blocking::get(url).unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::NOT_FOUND);
+
+        repo.stop();
+    }
+
+    #[test]
+    fn test_server_500() {
+        let td = tempfile::tempdir().unwrap();
+        let mut repo = SimpleTrustedAptRepo::new(td.path().to_path_buf());
+
+        repo.start().unwrap();
+
+        // Create a directory that can't be read as a file
+        let dir_path = td.path().join("directory");
+        fs::create_dir(&dir_path).unwrap();
+
+        // Request the directory as a file - this should trigger a server error
+        let url = format!("{}directory", repo.url().unwrap());
+        let response = reqwest::blocking::get(url).unwrap();
+        assert_eq!(
+            response.status(),
+            reqwest::StatusCode::INTERNAL_SERVER_ERROR
+        );
+
+        repo.stop();
+    }
+
+    #[test]
+    fn test_refresh() {
+        // Skip this test if dpkg-scanpackages is not available
+        if Command::new("dpkg-scanpackages")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            return;
+        }
+
+        let td = tempfile::tempdir().unwrap();
+        let repo = SimpleTrustedAptRepo::new(td.path().to_path_buf());
+
+        // Create a dummy .deb file
+        let deb_path = td.path().join("test_1.0-1_all.deb");
+        File::create(&deb_path).unwrap();
+
+        // Refresh should create a Packages.gz file
+        repo.refresh().unwrap();
+
+        // Verify that Packages.gz was created
+        let packages_path = td.path().join("Packages.gz");
+        assert!(packages_path.exists());
+
+        // Verify the content is a valid gzip file with dpkg-scanpackages output
+        let file = File::open(packages_path).unwrap();
+        let mut decoder = GzDecoder::new(file);
+        let mut content = String::new();
+        decoder.read_to_string(&mut content).unwrap();
+        assert!(content.contains("Package:") || content.contains("Filename:"));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_refresh_failed_command() {
+        // Only run this test if dpkg-scanpackages is available
+        if Command::new("dpkg-scanpackages")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            return;
+        }
+
+        let td = tempfile::tempdir().unwrap();
+        let repo = SimpleTrustedAptRepo::new(td.path().to_path_buf());
+
+        // Create a dummy .deb file
+        let deb_path = td.path().join("test_1.0-1_all.deb");
+        File::create(&deb_path).unwrap();
+
+        // Make the directory read-only to force a failure
+        let mut perms = fs::metadata(td.path()).unwrap().permissions();
+        perms.set_mode(0o500); // r-x for owner, nothing for others
+        fs::set_permissions(td.path(), perms).unwrap();
+
+        // Refresh should fail because we can't write to the directory
+        let result = repo.refresh();
+        assert!(result.is_err());
+
+        // Reset permissions for cleanup
+        let mut perms = fs::metadata(td.path()).unwrap().permissions();
+        perms.set_mode(0o755); // rwx for owner, rx for others
+        fs::set_permissions(td.path(), perms).unwrap();
+    }
+
+    #[test]
+    fn test_drop_stops_server() {
+        let td = tempfile::tempdir().unwrap();
+        let url;
+
+        {
+            let mut repo = SimpleTrustedAptRepo::new(td.path().to_path_buf());
+            repo.start().unwrap();
+            url = repo.url().unwrap().to_string();
+
+            // Server should be running
+            let response = reqwest::blocking::get(format!("{}Packages.gz", url));
+            assert!(response.is_ok());
+            assert_eq!(response.unwrap().status(), reqwest::StatusCode::NOT_FOUND);
+
+            // Let repo drop out of scope, which should stop the server
+        }
+
+        // Server should no longer be running
+        let response = reqwest::blocking::get(url);
+        assert!(response.is_err());
     }
 }
