@@ -694,7 +694,7 @@ version = "0.163.0"
 dependencies = [
  "breezyshim",
  "clap",
- "deb822-lossless",
+ "deb822-lossless 0.2.4",
  "debian-analyzer 0.158.27",
  "debian-control",
  "env_logger",
@@ -707,9 +707,20 @@ dependencies = [
 
 [[package]]
 name = "deb822-derive"
-version = "0.2.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c066b0ac5a5781e328e48b61d041ac68ba2bbad5f46d13db275292d9aced266c"
+checksum = "7b6e5cafe61e77421a090e2a33b8a2e4e2ff1b106fd906ebade111307064d981"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.101",
+]
+
+[[package]]
+name = "deb822-derive"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86bf2d0fa4ce2457e94bd7efb15aeadc115297f04b660bd0da706729e0d91442"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -718,11 +729,11 @@ dependencies = [
 
 [[package]]
 name = "deb822-fast"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3a661cb496c6f7b8f7208d16561954ba1bafcb946ad93ff8bedeb110ec5ac70"
+checksum = "c9ea8fe9a58604b036be1759540ab0dbc8da57474a67715459653f06a467e38c"
 dependencies = [
- "deb822-derive",
+ "deb822-derive 0.3.0",
 ]
 
 [[package]]
@@ -731,8 +742,20 @@ version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "812bb5c8052a89edc6d45d1bc3b3400e8186dd166e9b0a9520bfa5a2bd8477ee"
 dependencies = [
- "deb822-derive",
+ "deb822-derive 0.2.0",
  "pyo3",
+ "regex",
+ "rowan 0.16.1",
+ "serde",
+]
+
+[[package]]
+name = "deb822-lossless"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6336404073bb257d3e15c6af29c380ee78199ed03bc84e359155ef95b98ac67"
+dependencies = [
+ "deb822-fast",
  "regex",
  "rowan 0.16.1",
  "serde",
@@ -762,7 +785,7 @@ dependencies = [
  "chrono",
  "clap",
  "configparser",
- "deb822-lossless",
+ "deb822-lossless 0.2.4",
  "debian-changelog",
  "debian-control",
  "debian-copyright",
@@ -804,7 +827,7 @@ dependencies = [
  "breezyshim",
  "chrono",
  "configparser",
- "deb822-lossless",
+ "deb822-lossless 0.2.4",
  "debian-changelog",
  "debian-control",
  "debian-copyright",
@@ -855,7 +878,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9e04c1b1377047a3ee5ef6914f48187fd363f6e9287c3e6d72539f0a8cc2573"
 dependencies = [
  "chrono",
- "deb822-lossless",
+ "deb822-lossless 0.2.4",
  "debversion 0.4.5",
  "pyo3",
  "regex",
@@ -869,7 +892,7 @@ version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e893a383c33c4e2689fd3c3121d6e82193211f65e7c483463c816f6b7c29857e"
 dependencies = [
- "deb822-lossless",
+ "deb822-lossless 0.2.4",
  "debversion 0.4.5",
  "regex",
 ]
@@ -954,7 +977,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22009dcff95c439fb3317f9726556e9e3e5ece2ec7c249b667a66f8f35e05018"
 dependencies = [
  "chrono",
- "deb822-lossless",
+ "deb822-lossless 0.2.4",
  "url",
 ]
 
@@ -2762,7 +2785,7 @@ dependencies = [
  "chrono",
  "clap",
  "configparser",
- "deb822-lossless",
+ "deb822-lossless 0.2.4",
  "debian-analyzer 0.158.27",
  "debian-changelog",
  "debian-control",
@@ -2909,7 +2932,7 @@ dependencies = [
  "buildlog-consultant",
  "chrono",
  "clap",
- "deb822-lossless",
+ "deb822-lossless 0.3.0",
  "debian-analyzer 0.158.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "debian-changelog",
  "debian-control",
@@ -3514,13 +3537,13 @@ checksum = "640c9bd8497b02465aeef5375144c26062e0dcd5939dfcbb0f5db76cb8c17c73"
 
 [[package]]
 name = "r-description"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "176c6ad71dc5790c358698ce36bec82a85039a7eda753ca85aea557ec509866d"
+checksum = "7fe3393d9093043150fe262c2ac86d413a78266af434de1f984d9d6aa53b1177"
 dependencies = [
- "deb822-derive",
+ "deb822-derive 0.3.0",
  "deb822-fast",
- "deb822-lossless",
+ "deb822-lossless 0.3.0",
  "rowan 0.16.1",
  "serde",
  "url",
@@ -3912,7 +3935,7 @@ dependencies = [
  "async-trait",
  "breezyshim",
  "clap",
- "deb822-lossless",
+ "deb822-lossless 0.2.4",
  "debian-analyzer 0.158.27",
  "debian-control",
  "debversion 0.4.5",
