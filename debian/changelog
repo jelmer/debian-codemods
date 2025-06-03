@@ -1,3 +1,9 @@
+lintian-brush (0.163) UNRELEASED; urgency=medium
+
+  * Add support for X-DH-Compat header. Closes: #1106883
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 03 Jun 2025 22:37:02 +0100
+
 lintian-brush (0.162) unstable; urgency=medium
 
   * Bump the version of hyper to 1.5

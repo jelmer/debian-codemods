@@ -28,6 +28,10 @@ pub fn read_debhelper_compat_file(path: &Path) -> Result<Option<u8>, std::io::Er
 pub fn get_debhelper_compat_level_from_control(control: &debian_control::Control) -> Option<u8> {
     let source = control.source()?;
 
+    if let Some(dh_compat) = source.as_deb822().get("X-DH-Compat") {
+        return parse_debhelper_compat(dh_compat.as_str());
+    }
+
     let build_depends = source.build_depends()?;
 
     let rels = build_depends
@@ -156,6 +160,23 @@ Build-Depends: debhelper-compat (= 9)
 
 Package: foo
 Architecture: any
+";
+
+        let control = debian_control::Control::read_relaxed(&mut text.as_bytes())
+            .unwrap()
+            .0;
+
+        assert_eq!(
+            super::get_debhelper_compat_level_from_control(&control),
+            Some(9)
+        );
+    }
+
+    #[test]
+    fn test_get_debhelper_compat_level_from_control_x_dh_compat() {
+        let text = "Source: foo
+X-DH-Compat: 9
+Build-Depends: debhelper
 ";
 
         let control = debian_control::Control::read_relaxed(&mut text.as_bytes())
