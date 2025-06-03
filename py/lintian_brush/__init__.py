@@ -29,7 +29,7 @@ import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy.workingtree import WorkingTree
 
-__version__ = (0, 162)
+__version__ = (0, 163)
 version_string = ".".join(map(str, __version__))
 SUPPORTED_CERTAINTIES = ["certain", "confident", "likely", "possible", None]
 DEFAULT_MINIMUM_CERTAINTY = "certain"
@@ -44,12 +44,14 @@ class UnsupportedCertainty(Exception):
 
 
 def min_certainty(certainties: Sequence[str]) -> str:
+    """Get the minimum certainty from a list of certainties."""
     return confidence_to_certainty(
         max([SUPPORTED_CERTAINTIES.index(c) for c in certainties] + [0])
     )
 
 
 def confidence_to_certainty(confidence: Optional[int]) -> str:
+    """Convert a confidence level to a certainty string."""
     if confidence is None:
         return "unknown"
     try:
