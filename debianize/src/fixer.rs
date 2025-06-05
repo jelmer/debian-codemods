@@ -17,7 +17,7 @@ pub struct DebianizeFixer<'a> {
     apt_repo: SimpleTrustedAptRepo,
     do_build: Box<
         dyn for<'b, 'c, 'd> Fn(
-            &'b WorkingTree,
+            &'b dyn WorkingTree,
             &'c std::path::Path,
             &'d std::path::Path,
             Vec<&str>,
@@ -32,7 +32,7 @@ impl<'a> DebianizeFixer<'a> {
         apt_repo: SimpleTrustedAptRepo,
         do_build: Box<
             dyn for<'b, 'c, 'd> Fn(
-                &'b WorkingTree,
+                &'b dyn WorkingTree,
                 &'c std::path::Path,
                 &'d std::path::Path,
                 Vec<&str>,

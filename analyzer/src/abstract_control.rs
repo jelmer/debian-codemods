@@ -1,7 +1,6 @@
 //! Abstract interface for editing debian packages, whether backed by real control files or
 //! debcargo files.
 use crate::relations::ensure_relation;
-use breezyshim::tree::Tree;
 use debian_control::lossless::relations::{Entry, Relations};
 use std::path::Path;
 
@@ -152,7 +151,7 @@ impl<E: crate::editor::Editor<PlainControl>> AbstractControlEditor for E {
 
 /// Open a control file for editing.
 pub fn edit_control<'a>(
-    tree: &breezyshim::workingtree::WorkingTree,
+    tree: &dyn breezyshim::workingtree::WorkingTree,
     subpath: &Path,
 ) -> Result<Box<dyn AbstractControlEditor + 'a>, crate::editor::EditorError> {
     if tree.has_filename(&subpath.join("debian/debcargo.toml")) {
@@ -169,9 +168,8 @@ pub fn edit_control<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use breezyshim::controldir::{create_standalone_workingtree, ControlDirFormat};
-    use breezyshim::tree::MutableTree;
+    use breezyshim::prelude::*;
     use std::path::Path;
     use std::str::FromStr;
 

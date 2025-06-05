@@ -40,7 +40,7 @@ fn find_missing_versions(
     Ok(missing_versions)
 }
 
-fn is_noop_upload(tree: &WorkingTree, basis_tree: &dyn Tree, subpath: &Path) -> bool {
+fn is_noop_upload(tree: &dyn WorkingTree, basis_tree: &dyn Tree, subpath: &Path) -> bool {
     let mut changes = tree.iter_changes(basis_tree, None, None, None).unwrap();
     let change = loop {
         let change = if let Some(change) = changes.next() {
@@ -246,7 +246,7 @@ fn contains_git_attributes(tree: &dyn Tree, subpath: &Path) -> bool {
 }
 
 fn import_uncommitted(
-    tree: &WorkingTree,
+    tree: &dyn WorkingTree,
     subpath: &Path,
     apt: &dyn Apt,
     source_name: &str,

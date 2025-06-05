@@ -22,7 +22,7 @@ pub struct Config {
 impl Config {
     /// Load configuration from a working tree
     pub fn from_workingtree(
-        tree: &WorkingTree,
+        tree: &dyn WorkingTree,
         subpath: &std::path::Path,
     ) -> std::io::Result<Self> {
         let path = tree

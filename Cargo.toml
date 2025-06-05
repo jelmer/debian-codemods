@@ -7,10 +7,10 @@ members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "analyzer", "
 version = "0.163.0"
 
 [workspace.dependencies]
-breezyshim = { version = ">=0.1.205", features = ["dirty-tracker"] }
+breezyshim = { version = "0.5.0", features = ["dirty-tracker"] }
 #breezyshim = { path = "../breezyshim/trunk", features = ["dirty-tracker"] }
-pyo3 = ">=0.22,<0.24"
-debversion = ">=0.3.0"
+pyo3 = ">=0.25,<0.26"
+debversion = ">=0.4.0"
 serde_yaml = ">=0.8"
 reqwest = ">=0.11"
 log = "0.4"
@@ -27,7 +27,7 @@ url = "2"
 debian-copyright = ">=0.1.26"
 debian-changelog = "0.2"
 debian-control = ">=0.1.37"
-deb822-lossless = "0.2"
+deb822-lossless = "0.3"
 pyo3-log = ">=0.11"
 maplit = "1"
 buildlog-consultant = ">=0.0.43"

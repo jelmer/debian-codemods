@@ -1,7 +1,8 @@
 //! Functions for working with debian/changelog files.
 use crate::release_info;
 use breezyshim::error::Error;
-use breezyshim::tree::{Tree, TreeChange, WorkingTree};
+use breezyshim::prelude::*;
+use breezyshim::tree::TreeChange;
 use debian_changelog::ChangeLog;
 
 /// Check whether the only change in a tree is to the last changelog entry.
@@ -11,7 +12,7 @@ use debian_changelog::ChangeLog;
 /// * `changelog_path`: Path to the changelog file
 /// * `changes`: Changes in the tree
 pub fn only_changes_last_changelog_block<'a>(
-    tree: &WorkingTree,
+    tree: &dyn WorkingTree,
     basis_tree: &dyn Tree,
     changelog_path: &std::path::Path,
     changes: impl Iterator<Item = &'a TreeChange>,
@@ -270,6 +271,7 @@ pub fn find_changelog(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use breezyshim::workingtree::GenericWorkingTree;
     pub const COMMITTER: &str = "Test User <example@example.com>";
     #[test]
     fn test_find_previous_upload() {
@@ -307,8 +309,7 @@ test (1.0-0) unstable; urgency=medium
         use super::*;
         use breezyshim::controldir::{create_standalone_workingtree, ControlDirFormat};
         use breezyshim::tree::Path;
-        use breezyshim::tree::Tree;
-        fn make_package_tree(p: &std::path::Path) -> breezyshim::tree::WorkingTree {
+        fn make_package_tree(p: &std::path::Path) -> GenericWorkingTree {
             let tree = create_standalone_workingtree(p, &ControlDirFormat::default()).unwrap();
             std::fs::create_dir_all(p.join("debian")).unwrap();
 

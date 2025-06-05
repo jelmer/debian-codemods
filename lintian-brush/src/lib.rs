@@ -1382,7 +1382,7 @@ pub fn find_fixers_dir() -> Option<std::path::PathBuf> {
 /// # Returns
 ///   tuple with set of FixerResult, summary of the changes
 pub fn run_lintian_fixer(
-    local_tree: &WorkingTree,
+    local_tree: &dyn WorkingTree,
     fixer: &dyn Fixer,
     committer: Option<&str>,
     mut update_changelog: impl FnMut() -> bool,
@@ -1667,7 +1667,7 @@ impl std::error::Error for OverallError {}
 ///     2. dictionary mapping fixer names for fixers that failed to run to the
 ///        error that occurred
 pub fn run_lintian_fixers(
-    local_tree: &WorkingTree,
+    local_tree: &dyn WorkingTree,
     fixers: &[Box<dyn Fixer>],
     mut update_changelog: Option<impl FnMut() -> bool>,
     verbose: bool,
@@ -1980,7 +1980,7 @@ impl std::fmt::Display for FailedPatchManipulation {
 impl std::error::Error for FailedPatchManipulation {}
 
 fn upstream_changes_to_patch(
-    local_tree: &WorkingTree,
+    local_tree: &dyn WorkingTree,
     basis_tree: &dyn Tree,
     dirty_tracker: Option<&mut DirtyTreeTracker>,
     subpath: &std::path::Path,
@@ -2040,7 +2040,7 @@ fn note_changelog_policy(policy: bool, msg: &str) {
 }
 
 pub fn determine_update_changelog(
-    local_tree: &WorkingTree,
+    local_tree: &dyn WorkingTree,
     debian_path: &std::path::Path,
 ) -> ChangelogBehaviour {
     let changelog_path = debian_path.join("changelog");
@@ -2080,7 +2080,7 @@ pub fn determine_update_changelog(
 mod tests {
     use super::*;
     use breezyshim::controldir::{create_standalone_workingtree, ControlDirFormat};
-    use breezyshim::tree::{MutableTree, WorkingTree};
+    use breezyshim::tree::{GenericWorkingTree, MutableTree, WorkingTree};
     use std::path::Path;
 
     pub const COMMITTER: &str = "Testsuite <lintian-brush@example.com>";
@@ -2187,7 +2187,7 @@ mod tests {
             }
         }
 
-        fn setup(version: Option<&str>) -> (tempfile::TempDir, WorkingTree) {
+        fn setup(version: Option<&str>) -> (tempfile::TempDir, GenericWorkingTree) {
             let version = version.unwrap_or("0.1");
             let td = tempfile::tempdir().unwrap();
             let tree =
@@ -3002,7 +3002,7 @@ Arch: all
             std::mem::drop(td);
         }
 
-        fn make_package_tree(path: &Path, format: &str) -> WorkingTree {
+        fn make_package_tree(path: &Path, format: &str) -> GenericWorkingTree {
             let tree = create_standalone_workingtree(path, format).unwrap();
             std::fs::create_dir(path.join("debian")).unwrap();
             std::fs::write(
@@ -3041,7 +3041,7 @@ Arch: all
             tree
         }
 
-        fn make_change(tree: &WorkingTree, committer: Option<&str>) {
+        fn make_change(tree: &GenericWorkingTree, committer: Option<&str>) {
             let lock = tree.lock_write().unwrap();
 
             let (result, summary) = run_lintian_fixer(

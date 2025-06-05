@@ -1,9 +1,8 @@
 //! Detect whether the changelog should be updated.
-use breezyshim::branch::Branch;
 use breezyshim::error::Error;
 use breezyshim::graph::{Error as GraphError, Graph};
+use breezyshim::prelude::*;
 use breezyshim::revisionid::RevisionId;
-use breezyshim::tree::{Tree, WorkingTree};
 use debian_changelog::{ChangeLog, Entry as ChangeLogEntry};
 use lazy_regex::regex;
 
@@ -72,7 +71,7 @@ fn gbp_conf_has_dch_section(tree: &dyn Tree, debian_path: &std::path::Path) -> b
 /// * `True` if the changelog should be updated
 /// * `False` if the changelog should not be updated
 pub fn guess_update_changelog(
-    tree: &WorkingTree,
+    tree: &dyn WorkingTree,
     debian_path: &std::path::Path,
     mut cl: Option<ChangeLog>,
 ) -> Option<ChangelogBehaviour> {
@@ -119,7 +118,7 @@ pub fn guess_update_changelog(
     if let Some(ret) = guess_update_changelog_from_tree(tree, debian_path, cl) {
         Some(ret)
     } else {
-        guess_update_changelog_from_branch(tree.branch().as_ref(), debian_path, None)
+        guess_update_changelog_from_branch(&tree.branch(), debian_path, None)
     }
 }
 

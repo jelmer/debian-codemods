@@ -1,8 +1,10 @@
 //! Functions for creating commits with debcommit-like behavior.
 use crate::release_info::{suite_to_distribution, Vendor};
-use breezyshim::commit::CommitReporter;
+use breezyshim::branch::Branch;
+use breezyshim::commit::PyCommitReporter;
 use breezyshim::error::Error as BrzError;
-use breezyshim::tree::{Kind, Path, Tree, WorkingTree};
+use breezyshim::tree::{Kind, Path, PyTree, Tree, WorkingTree};
+use breezyshim::workingtree::PyWorkingTree;
 use breezyshim::RevisionId;
 use debian_changelog::ChangeLog;
 
@@ -45,7 +47,7 @@ impl std::error::Error for Error {}
 
 /// Create a commit with a tag for a release.
 pub fn debcommit_release(
-    tree: &WorkingTree,
+    tree: &dyn PyWorkingTree,
     committer: Option<&str>,
     subpath: Option<&std::path::Path>,
     message: Option<&str>,
@@ -80,12 +82,9 @@ pub fn debcommit_release(
         });
         (message, vendor)
     };
-    let tag_name = if let Ok(tag_name) = breezyshim::debian::tree_debian_tag_name(
-        tree,
-        tree.branch().as_ref(),
-        Some(subpath),
-        Some(vendor),
-    ) {
+    let tag_name = if let Ok(tag_name) =
+        breezyshim::debian::tree_debian_tag_name(tree, &tree.branch(), Some(subpath), Some(vendor))
+    {
         tag_name
     } else {
         return Err(Error::UnreleasedChanges(cl_path));
@@ -105,7 +104,7 @@ pub fn debcommit_release(
 /// Find changes in a changelog file.
 pub fn changelog_changes(
     tree: &dyn Tree,
-    basis_tree: &dyn Tree,
+    basis_tree: &dyn PyTree,
     cl_path: &Path,
 ) -> Result<Option<Vec<String>>, BrzError> {
     let mut changes = vec![];
@@ -183,7 +182,7 @@ pub fn strip_changelog_message(changes: &[&str]) -> Vec<String> {
 /// Create a commit message based on the new entries in changelog.
 pub fn changelog_commit_message(
     tree: &dyn Tree,
-    basis_tree: &dyn Tree,
+    basis_tree: &dyn PyTree,
     path: &Path,
 ) -> Result<String, BrzError> {
     let changes = changelog_changes(tree, basis_tree, path)?;
@@ -211,11 +210,11 @@ pub fn changelog_commit_message(
 /// # Returns
 /// Created revision id
 pub fn debcommit(
-    tree: &WorkingTree,
+    tree: &dyn WorkingTree,
     committer: Option<&str>,
     subpath: &Path,
     paths: Option<&[&Path]>,
-    reporter: Option<&dyn CommitReporter>,
+    reporter: Option<&dyn PyCommitReporter>,
     message: Option<&str>,
 ) -> Result<RevisionId, BrzError> {
     let message = message.map_or_else(

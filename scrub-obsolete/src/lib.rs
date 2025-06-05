@@ -316,7 +316,7 @@ fn drop_old_relations(
 }
 
 fn update_maintscripts(
-    wt: &WorkingTree,
+    wt: &dyn WorkingTree,
     debian_path: &Path,
     checker: &dyn PackageChecker,
     allow_reformatting: bool,
@@ -469,7 +469,7 @@ impl ScrubObsoleteResult {
 }
 
 async fn _scrub_obsolete(
-    wt: &WorkingTree,
+    wt: &dyn WorkingTree,
     debian_path: &Path,
     compat_release: &str,
     upgrade_release: &str,
@@ -567,7 +567,7 @@ impl From<sqlx::Error> for ScrubObsoleteError {
 
 /// Scrub obsolete entries.
 pub fn scrub_obsolete(
-    wt: WorkingTree,
+    wt: &dyn WorkingTree,
     subpath: &Path,
     compat_release: &str,
     upgrade_release: &str,
@@ -576,7 +576,7 @@ pub fn scrub_obsolete(
     keep_minimum_depends_versions: bool,
     #[allow(unused_variables)] transitions: Option<HashMap<String, String>>,
 ) -> Result<ScrubObsoleteResult, ScrubObsoleteError> {
-    let debian_path = if debian_analyzer::control_files_in_root(&wt, subpath) {
+    let debian_path = if debian_analyzer::control_files_in_root(wt, subpath) {
         subpath.to_path_buf()
     } else {
         subpath.join("debian")
@@ -585,7 +585,7 @@ pub fn scrub_obsolete(
     let rt = tokio::runtime::Runtime::new().unwrap();
 
     let result = rt.block_on(_scrub_obsolete(
-        &wt,
+        wt,
         &debian_path,
         compat_release,
         upgrade_release,
@@ -605,7 +605,7 @@ pub fn scrub_obsolete(
     let update_changelog = if let Some(update_changelog) = update_changelog {
         update_changelog
     } else if let Some(dch_guess) =
-        debian_analyzer::detect_gbp_dch::guess_update_changelog(&wt, &debian_path, None)
+        debian_analyzer::detect_gbp_dch::guess_update_changelog(wt, &debian_path, None)
     {
         note_changelog_policy(dch_guess.update_changelog, &dch_guess.explanation);
         dch_guess.update_changelog
@@ -627,7 +627,7 @@ pub fn scrub_obsolete(
             lines.extend(entries.iter().map(|x| format!("* {}", x)));
         }
         debian_analyzer::add_changelog_entry(
-            &wt,
+            wt,
             &changelog_path,
             lines
                 .iter()
@@ -651,7 +651,7 @@ pub fn scrub_obsolete(
     }
     lines.extend(["".to_string(), "Changes-By: deb-scrub-obsolete".to_string()]);
 
-    let committer = debian_analyzer::get_committer(&wt);
+    let committer = debian_analyzer::get_committer(wt);
 
     match wt
         .build_commit()

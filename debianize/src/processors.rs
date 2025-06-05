@@ -18,7 +18,7 @@ use upstream_ontologist::UpstreamMetadata;
 
 struct ProcessorContext<'a> {
     session: &'a dyn Session,
-    wt: &'a WorkingTree,
+    wt: &'a dyn WorkingTree,
     subpath: PathBuf,
     debian_path: PathBuf,
     upstream_version: String,
@@ -26,7 +26,7 @@ struct ProcessorContext<'a> {
     compat_release: String,
     buildsystem: Box<dyn BuildSystem>,
     buildsystem_subpath: PathBuf,
-    _kickstart_from_dist: Option<Box<dyn FnOnce(&WorkingTree, &Path) -> Result<(), Error>>>,
+    _kickstart_from_dist: Option<Box<dyn FnOnce(&dyn WorkingTree, &Path) -> Result<(), Error>>>,
 }
 
 impl<'a> ProcessorContext<'a> {
@@ -134,7 +134,7 @@ struct DebhelperConfig<'a> {
 }
 
 fn bootstrap_debhelper(
-    wt: &WorkingTree,
+    wt: &dyn WorkingTree,
     debian_path: &Path,
     source: &mut Source,
     compat_release: &str,
@@ -546,7 +546,7 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
 
 pub fn process(
     session: &dyn Session,
-    wt: &WorkingTree,
+    wt: &dyn WorkingTree,
     subpath: PathBuf,
     debian_path: PathBuf,
     upstream_version: String,
@@ -554,7 +554,7 @@ pub fn process(
     compat_release: String,
     buildsystem: Box<dyn BuildSystem>,
     buildsystem_subpath: PathBuf,
-    _kickstart_from_dist: Option<Box<dyn FnOnce(&WorkingTree, &Path) -> Result<(), Error>>>,
+    _kickstart_from_dist: Option<Box<dyn FnOnce(&dyn WorkingTree, &Path) -> Result<(), Error>>>,
 ) -> Result<(), Error> {
     let bs_name = buildsystem.name().to_string();
     let mut context = ProcessorContext {

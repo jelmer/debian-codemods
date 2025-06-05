@@ -1,9 +1,10 @@
 //! Functions for working with patches in a Debian package.
-use breezyshim::branch::Branch;
 use breezyshim::delta::filter_excluded;
 use breezyshim::error::Error as BrzError;
 use breezyshim::patches::AppliedPatches;
-use breezyshim::tree::{MutableTree, Tree, WorkingTree};
+use breezyshim::prelude::*;
+use breezyshim::tree::{MutableTree, PyTree, Tree};
+use breezyshim::workingtree::{PyWorkingTree, WorkingTree};
 use breezyshim::workspace::reset_tree_with_dirty_tracker;
 use breezyshim::RevisionId;
 use debian_changelog::ChangeLog;
@@ -28,13 +29,14 @@ pub const DEFAULT_DEBIAN_PATCHES_DIR: &str = "debian/patches";
 /// # Returns
 ///
 /// Path to patches directory, or what it should be
-pub fn tree_patches_directory(tree: &dyn Tree, subpath: &Path) -> PathBuf {
+pub fn tree_patches_directory(tree: &dyn PyTree, subpath: &Path) -> PathBuf {
     find_patches_directory(tree, subpath).unwrap_or(DEFAULT_DEBIAN_PATCHES_DIR.into())
 }
 
 #[cfg(test)]
 mod tree_patches_directory_tests {
-    use breezyshim::tree::MutableTree;
+    use super::*;
+
     #[test]
     fn test_simple() {
         let td = tempfile::tempdir().unwrap();
@@ -122,7 +124,7 @@ fn test_rules_find_patches_directory() {
 }
 
 /// Find the patches directory for a package
-pub fn find_patches_directory(tree: &dyn Tree, subpath: &Path) -> Option<PathBuf> {
+pub fn find_patches_directory(tree: &dyn PyTree, subpath: &Path) -> Option<PathBuf> {
     let rules_path = subpath.join("debian/rules");
 
     let rules_file = match tree.get_file(&rules_path) {
@@ -161,7 +163,7 @@ pub fn find_patches_directory(tree: &dyn Tree, subpath: &Path) -> Option<PathBuf
 /// Find the base revision to apply patches to.
 ///
 /// * `tree` - Tree to find the patch base for
-pub fn find_patch_base(tree: &WorkingTree) -> Option<RevisionId> {
+pub fn find_patch_base(tree: &dyn WorkingTree) -> Option<RevisionId> {
     let f = match tree.get_file(std::path::Path::new("debian/changelog")) {
         Ok(f) => f,
         Err(BrzError::NoSuchFile(_)) => return None,
@@ -200,10 +202,12 @@ pub fn find_patch_base(tree: &WorkingTree) -> Option<RevisionId> {
 #[cfg(test)]
 mod find_patch_base_tests {
     const COMMITTER: &str = "Test Suite <test@suite.example.com>";
+    use super::*;
     use breezyshim::tree::{MutableTree, WorkingTree};
+    use breezyshim::workingtree::GenericWorkingTree;
     use breezyshim::RevisionId;
 
-    fn setup() -> (tempfile::TempDir, WorkingTree, RevisionId) {
+    fn setup() -> (tempfile::TempDir, GenericWorkingTree, RevisionId) {
         let td = tempfile::tempdir().unwrap();
         let tree = breezyshim::controldir::create_standalone_workingtree(
             td.path(),
@@ -260,7 +264,7 @@ mod find_patch_base_tests {
 ///
 /// Returns:
 /// A `Branch` instance
-pub fn find_patches_branch(tree: &WorkingTree) -> Option<Box<dyn Branch>> {
+pub fn find_patches_branch(tree: &dyn WorkingTree) -> Option<Box<dyn Branch>> {
     let local_branch_name = tree.branch().name()?;
     let branch_name = format!("patch-queue/{}", local_branch_name);
     match tree
@@ -295,8 +299,10 @@ pub fn find_patches_branch(tree: &WorkingTree) -> Option<Box<dyn Branch>> {
 
 #[cfg(test)]
 mod find_patches_branch_tests {
-    use breezyshim::tree::WorkingTree;
-    fn make_named_branch_and_tree(name: &str) -> (tempfile::TempDir, WorkingTree) {
+    use super::*;
+    use breezyshim::workingtree::{GenericWorkingTree, WorkingTree};
+
+    fn make_named_branch_and_tree(name: &str) -> (tempfile::TempDir, GenericWorkingTree) {
         let td = tempfile::tempdir().unwrap();
         let dir = breezyshim::controldir::create(
             &url::Url::from_directory_path(td.path()).unwrap(),
@@ -386,7 +392,7 @@ mod find_patches_branch_tests {
 /// Returns:
 /// Name of the patch that was written (including suffix)
 pub fn add_patch(
-    tree: &WorkingTree,
+    tree: &dyn PyWorkingTree,
     patches_directory: &Path,
     name: &str,
     contents: &[u8],
@@ -452,15 +458,19 @@ pub fn add_patch(
 /// * `subpath` - Subpath
 /// * `patch_name` - Suggested patch name
 /// * `description` - Description
-pub fn move_upstream_changes_to_patch(
-    local_tree: &WorkingTree,
-    basis_tree: &dyn Tree,
+pub fn move_upstream_changes_to_patch<T, U>(
+    local_tree: &T,
+    basis_tree: &U,
     subpath: &std::path::Path,
     patch_name: &str,
     description: &str,
     dirty_tracker: Option<&mut breezyshim::dirty_tracker::DirtyTreeTracker>,
     timestamp: Option<chrono::NaiveDate>,
-) -> Result<(Vec<std::path::PathBuf>, String), String> {
+) -> Result<(Vec<std::path::PathBuf>, String), String>
+where
+    T: PyWorkingTree,
+    U: PyTree,
+{
     let timestamp = if let Some(timestamp) = timestamp {
         timestamp
     } else {
@@ -489,8 +499,10 @@ pub fn move_upstream_changes_to_patch(
 
 #[cfg(test)]
 mod move_upstream_changes_to_patch_tests {
+    use super::*;
     use breezyshim::controldir::ControlDirFormat;
     use breezyshim::tree::MutableTree;
+
     #[test]
     fn test_simple() {
         breezyshim::init();
@@ -588,6 +600,7 @@ pub fn read_quilt_patches<'a>(
 #[cfg(test)]
 mod read_quilt_patches_tests {
     const COMMITTER: &str = "Test Suite <test@suite.example.com>";
+    use super::*;
     use breezyshim::controldir::ControlDirFormat;
     use breezyshim::tree::MutableTree;
 
@@ -683,11 +696,11 @@ mod read_quilt_patches_tests {
 
 /// Get the upstream tree with patches applied.
 pub fn upstream_with_applied_patches(
-    tree: WorkingTree,
+    tree: breezyshim::workingtree::GenericWorkingTree,
     patches: Vec<UnifiedPatch>,
-) -> breezyshim::Result<Box<dyn Tree>> {
+) -> breezyshim::Result<Box<dyn PyTree>> {
     if let Some(patches_branch) = find_patches_branch(&tree) {
-        Ok(Box::new(patches_branch.basis_tree()?) as Box<dyn Tree>)
+        Ok(Box::new(patches_branch.basis_tree()?) as Box<dyn PyTree>)
     } else {
         let upstream_revision = find_patch_base(&tree).unwrap(); // PatchApplicationBaseNotFound(tree)
         let upstream_tree = tree
@@ -695,9 +708,9 @@ pub fn upstream_with_applied_patches(
             .repository()
             .revision_tree(&upstream_revision)?;
         if patches.is_empty() {
-            Ok(Box::new(tree) as Box<dyn Tree>)
+            Ok(Box::new(tree.clone()) as Box<dyn PyTree>)
         } else {
-            Ok(Box::new(AppliedPatches::new(&upstream_tree, patches, None)?) as Box<dyn Tree>)
+            Ok(Box::new(AppliedPatches::new(&upstream_tree, patches, None)?) as Box<dyn PyTree>)
         }
     }
 }
@@ -705,10 +718,12 @@ pub fn upstream_with_applied_patches(
 #[cfg(test)]
 mod upstream_with_applied_patches_tests {
     const COMMITTER: &str = "Test Suite <test@suite.example.com>";
+    use super::*;
     use breezyshim::tree::{MutableTree, WorkingTree};
+    use breezyshim::workingtree::GenericWorkingTree;
     use breezyshim::RevisionId;
 
-    fn setup() -> (tempfile::TempDir, WorkingTree, RevisionId) {
+    fn setup() -> (tempfile::TempDir, GenericWorkingTree, RevisionId) {
         let td = tempfile::tempdir().unwrap();
         let tree = breezyshim::controldir::create_standalone_workingtree(
             td.path(),
@@ -792,7 +807,7 @@ mod upstream_with_applied_patches_tests {
 
 /// Check if a Debian tree has changes vs upstream tree.
 pub fn tree_non_patches_changes(
-    tree: WorkingTree,
+    tree: breezyshim::workingtree::GenericWorkingTree,
     patches_directory: Option<&std::path::Path>,
 ) -> breezyshim::Result<Vec<breezyshim::tree::TreeChange>> {
     let patches = if let Some(patches_directory) = patches_directory.as_ref() {
@@ -829,9 +844,12 @@ pub fn tree_non_patches_changes(
 #[cfg(test)]
 mod tree_non_patches_changes_tests {
     const COMMITTER: &str = "Test Suite <test@suite.example.com>";
+    use super::*;
     use breezyshim::tree::{MutableTree, WorkingTree};
+    use breezyshim::workingtree::GenericWorkingTree;
     use breezyshim::RevisionId;
-    fn setup() -> (tempfile::TempDir, WorkingTree, RevisionId) {
+
+    fn setup() -> (tempfile::TempDir, GenericWorkingTree, RevisionId) {
         breezyshim::init();
 
         let td = tempfile::tempdir().unwrap();

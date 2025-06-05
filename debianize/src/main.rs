@@ -503,7 +503,7 @@ fn main() -> Result<(), i32> {
             .clone();
         let build_command = args.build_command.clone();
 
-        let do_build = move |wt: &WorkingTree,
+        let do_build = move |wt: &dyn WorkingTree,
                              subpath: &Path,
                              incoming_directory: &Path,
                              extra_repositories: Vec<&str>|

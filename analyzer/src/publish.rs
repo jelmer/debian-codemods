@@ -4,9 +4,11 @@ use crate::vcs::determine_browser_url;
 use crate::{get_committer, parseaddr};
 use debian_control::control::Source;
 
+use breezyshim::branch::Branch;
 use breezyshim::error::Error as BrzError;
 use breezyshim::forge::create_project;
 use breezyshim::tree::WorkingTree;
+use breezyshim::workingtree::PyWorkingTree;
 use breezyshim::workspace::check_clean_tree;
 use debian_control::vcs::ParsedVcs;
 use std::path::Path;
@@ -82,7 +84,7 @@ impl std::fmt::Display for Error {
 
 /// Update the official VCS location for the given source package.
 pub fn update_official_vcs(
-    wt: &WorkingTree,
+    wt: &dyn PyWorkingTree,
     subpath: &Path,
     repo_url: Option<&Url>,
     branch: Option<&str>,

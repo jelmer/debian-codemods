@@ -68,7 +68,7 @@ pub fn write_changelog_template(
     Ok(())
 }
 
-pub fn use_packaging_branch(wt: &WorkingTree, branch_name: &str) -> Result<(), BrzError> {
+pub fn use_packaging_branch(wt: &dyn WorkingTree, branch_name: &str) -> Result<(), BrzError> {
     let last_revision = wt.last_revision()?;
     let target_branch = match wt.controldir().open_branch(Some(branch_name)) {
         Ok(b) => b,
@@ -92,7 +92,7 @@ pub fn use_packaging_branch(wt: &WorkingTree, branch_name: &str) -> Result<(), B
 }
 
 pub fn import_upstream_version_from_dist(
-    wt: &WorkingTree,
+    wt: &dyn WorkingTree,
     subpath: &std::path::Path,
     upstream_source: &UpstreamBranchSource,
     source_name: &str,
@@ -188,7 +188,7 @@ pub fn import_upstream_version_from_dist(
 
 pub fn import_upstream_dist(
     pristine_tar_source: &PristineTarSource,
-    wt: &WorkingTree,
+    wt: &dyn WorkingTree,
     upstream_source: &UpstreamBranchSource,
     subpath: &Path,
     source_name: &str,
@@ -598,7 +598,7 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 pub fn debianize(
-    _wt: &WorkingTree,
+    _wt: &dyn WorkingTree,
     _subpath: &Path,
     _upstream_branch: Option<&dyn Branch>,
     _upstream_subpath: Option<&Path>,
@@ -618,10 +618,10 @@ pub struct DebianizeResult {
     pub upstream_branch_name: Option<String>,
 }
 
-pub(crate) struct ResetOnFailure<'a>(&'a WorkingTree, PathBuf);
+pub(crate) struct ResetOnFailure<'a>(&'a dyn WorkingTree, PathBuf);
 
 impl<'a> ResetOnFailure<'a> {
-    pub fn new(wt: &'a WorkingTree, subpath: &Path) -> Result<Self, BrzError> {
+    pub fn new(wt: &'a dyn WorkingTree, subpath: &Path) -> Result<Self, BrzError> {
         breezyshim::workspace::check_clean_tree(wt, &wt.basis_tree().unwrap(), subpath)?;
         Ok(Self(wt, subpath.to_path_buf()))
     }
@@ -639,7 +639,7 @@ impl<'a> Drop for ResetOnFailure<'a> {
 }
 
 fn generic_get_source_name(
-    wt: &WorkingTree,
+    wt: &dyn WorkingTree,
     subpath: &Path,
     metadata: &UpstreamMetadata,
 ) -> Option<String> {
@@ -665,7 +665,7 @@ fn generic_get_source_name(
 }
 
 fn import_metadata_from_path(
-    tree: &WorkingTree,
+    tree: &dyn WorkingTree,
     subpath: &Path,
     metadata: &mut UpstreamMetadata,
     preferences: &DebianizePreferences,

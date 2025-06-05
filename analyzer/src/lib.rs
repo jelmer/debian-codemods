@@ -1,8 +1,11 @@
 //! Library for manipulating Debian packages.
 #![deny(missing_docs)]
+use breezyshim::branch::Branch;
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
-use breezyshim::tree::{Tree, TreeChange, WorkingTree};
+use breezyshim::repository::PyRepository;
+use breezyshim::tree::{MutableTree, PyTree, Tree, TreeChange, WorkingTree};
+use breezyshim::workingtree::PyWorkingTree;
 use breezyshim::workspace::reset_tree_with_dirty_tracker;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
@@ -74,13 +77,17 @@ impl<R, E> From<Error> for ApplyError<R, E> {
 /// # Returns
 /// * `Result<(R, Vec<TreeChange>, Option<Vec<std::path::PathBuf>>), E>` - Result of the callback,
 ///   the changes made, and the files that were changed
-pub fn apply_or_revert<R, E>(
-    local_tree: &WorkingTree,
+pub fn apply_or_revert<R, E, T, U>(
+    local_tree: &T,
     subpath: &std::path::Path,
-    basis_tree: &dyn Tree,
+    basis_tree: &U,
     dirty_tracker: Option<&mut DirtyTreeTracker>,
     applier: impl FnOnce(&std::path::Path) -> Result<R, E>,
-) -> Result<(R, Vec<TreeChange>, Option<Vec<std::path::PathBuf>>), ApplyError<R, E>> {
+) -> Result<(R, Vec<TreeChange>, Option<Vec<std::path::PathBuf>>), ApplyError<R, E>>
+where
+    T: PyWorkingTree + breezyshim::tree::PyMutableTree,
+    U: PyTree,
+{
     let r = match applier(local_tree.abspath(subpath).unwrap().as_path()) {
         Ok(r) => r,
         Err(e) => {
@@ -212,8 +219,8 @@ impl From<pyo3::PyErr> for ChangelogError {
 /// * `working_tree` - Working tree
 /// * `changelog_path` - Path to the changelog
 /// * `entry` - Changelog entry
-pub fn add_changelog_entry(
-    working_tree: &WorkingTree,
+pub fn add_changelog_entry<T: WorkingTree>(
+    working_tree: &T,
     changelog_path: &std::path::Path,
     entry: &[&str],
 ) -> Result<(), crate::editor::EditorError> {
@@ -297,9 +304,16 @@ impl pyo3::FromPyObject<'_> for Certainty {
 }
 
 #[cfg(feature = "python")]
-impl pyo3::ToPyObject for Certainty {
-    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
-        self.to_string().to_object(py)
+impl<'py> pyo3::IntoPyObject<'py> for Certainty {
+    type Target = pyo3::types::PyString;
+
+    type Output = pyo3::Bound<'py, Self::Target>;
+
+    type Error = pyo3::PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        let s = self.to_string();
+        Ok(pyo3::types::PyString::new(py, &s))
     }
 }
 
@@ -330,7 +344,7 @@ pub fn min_certainty(certainties: &[Certainty]) -> Option<Certainty> {
 }
 
 #[cfg(feature = "python")]
-fn get_git_committer(working_tree: &WorkingTree) -> Option<String> {
+fn get_git_committer(working_tree: &dyn PyWorkingTree) -> Option<String> {
     pyo3::prepare_freethreaded_python();
     pyo3::Python::with_gil(|py| {
         let repo = working_tree.branch().repository();
@@ -399,7 +413,7 @@ fn get_git_committer(working_tree: &WorkingTree) -> Option<String> {
 }
 
 /// Get the committer string for a tree
-pub fn get_committer(working_tree: &WorkingTree) -> String {
+pub fn get_committer(working_tree: &dyn PyWorkingTree) -> String {
     #[cfg(feature = "python")]
     if let Some(committer) = get_git_committer(working_tree) {
         return committer;

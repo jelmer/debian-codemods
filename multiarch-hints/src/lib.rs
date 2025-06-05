@@ -508,7 +508,7 @@ impl From<ChangelogError> for OverallError {
 }
 
 pub fn apply_multiarch_hints(
-    local_tree: &WorkingTree,
+    local_tree: &dyn WorkingTree,
     subpath: &std::path::Path,
     hints: &HashMap<&str, Vec<&Hint>>,
     minimum_certainty: Option<Certainty>,

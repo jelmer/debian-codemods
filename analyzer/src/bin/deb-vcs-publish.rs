@@ -1,5 +1,6 @@
 use breezyshim::controldir::open;
 use breezyshim::error::Error;
+use breezyshim::prelude::*;
 use breezyshim::workingtree;
 use clap::Parser;
 use debian_analyzer::publish::{create_vcs_url, update_official_vcs};

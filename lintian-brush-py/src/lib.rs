@@ -54,7 +54,7 @@ fn tree_has_non_patches_changes(
     tree: PyObject,
     patches_directory: Option<std::path::PathBuf>,
 ) -> PyResult<bool> {
-    let tree = breezyshim::workingtree::WorkingTree(tree);
+    let tree = breezyshim::workingtree::GenericWorkingTree(tree);
     Ok(
         !debian_analyzer::patches::tree_non_patches_changes(tree, patches_directory.as_deref())?
             .is_empty(),

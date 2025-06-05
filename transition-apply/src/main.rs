@@ -42,7 +42,7 @@ struct Args {
 }
 
 fn apply_transition(
-    wt: &WorkingTree,
+    wt: &dyn WorkingTree,
     debian_path: &Path,
     transition: &Transition,
 ) -> Result<TransitionResult, EditorError> {
