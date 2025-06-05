@@ -45,6 +45,8 @@ fn main() {
             Err(e) => panic!("Failed to read test directory: {}", e),
         };
 
+        dest.write_all("#[allow(non_snake_case)]\n".as_bytes())
+            .unwrap();
         dest.write_all(format!("mod {} {{\n", fixer_name.replace('-', "_")).as_bytes())
             .unwrap();
 
