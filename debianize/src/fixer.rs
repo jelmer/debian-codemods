@@ -1,7 +1,7 @@
 use crate::simple_apt_repo::SimpleTrustedAptRepo;
 use crate::DebianizePreferences;
 use breezyshim::error::Error as BrzError;
-use breezyshim::workingtree::WorkingTree;
+use breezyshim::workingtree::GenericWorkingTree;
 use buildlog_consultant::Problem;
 use ognibuild::buildlog::problem_to_dependency;
 use ognibuild::debian::build::BuildOnceResult;
@@ -17,7 +17,7 @@ pub struct DebianizeFixer<'a> {
     apt_repo: SimpleTrustedAptRepo,
     do_build: Box<
         dyn for<'b, 'c, 'd> Fn(
-            &'b dyn WorkingTree,
+            &'b GenericWorkingTree,
             &'c std::path::Path,
             &'d std::path::Path,
             Vec<&str>,
@@ -32,7 +32,7 @@ impl<'a> DebianizeFixer<'a> {
         apt_repo: SimpleTrustedAptRepo,
         do_build: Box<
             dyn for<'b, 'c, 'd> Fn(
-                &'b dyn WorkingTree,
+                &'b GenericWorkingTree,
                 &'c std::path::Path,
                 &'d std::path::Path,
                 Vec<&str>,

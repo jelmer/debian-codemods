@@ -36,7 +36,7 @@ setup(
         ),
     ],
     rust_extensions=[
-        # RustBin("debianize", "debianize/Cargo.toml"),
+        RustBin("debianize", "debianize/Cargo.toml"),
         RustBin("lintian-brush", "lintian-brush/Cargo.toml"),
         RustBin(
             "detect-changelog-behaviour",

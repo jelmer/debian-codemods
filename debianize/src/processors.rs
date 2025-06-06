@@ -1,5 +1,5 @@
 use crate::Error;
-use breezyshim::tree::{MutableTree, Tree};
+use breezyshim::branch::Branch;
 use breezyshim::workingtree::WorkingTree;
 use debian_analyzer::debhelper::maximum_debhelper_compat_version;
 use debian_analyzer::editor::{Editor, TreeEditor};
@@ -32,7 +32,7 @@ struct ProcessorContext<'a> {
 impl<'a> ProcessorContext<'a> {
     fn kickstart_tree(&mut self, sourceful: bool) -> Result<(), Error> {
         if sourceful {
-            (self._kickstart_from_dist.take().unwrap())(&self.wt, &self.subpath)?;
+            (self._kickstart_from_dist.take().unwrap())(self.wt, &self.subpath)?;
         } else {
             self.wt
                 .branch()
@@ -63,7 +63,7 @@ impl<'a> ProcessorContext<'a> {
         config: DebhelperConfig,
     ) -> Result<(), Error> {
         bootstrap_debhelper(
-            &self.wt,
+            self.wt,
             &self.debian_path,
             source,
             &self.compat_release,

@@ -8,8 +8,8 @@ use breezyshim::debian::upstream::{
 };
 use breezyshim::debian::{TarballKind, VersionKind, DEFAULT_ORIG_DIR};
 use breezyshim::error::Error as BrzError;
-use breezyshim::tree::Tree;
-use breezyshim::workingtree::WorkingTree;
+use breezyshim::tree::PyTree;
+use breezyshim::workingtree::{GenericWorkingTree, WorkingTree};
 use breezyshim::RevisionId;
 use debian_analyzer::versions::debianize_upstream_version;
 use debian_analyzer::wnpp::BugKind;
@@ -68,7 +68,7 @@ pub fn write_changelog_template(
     Ok(())
 }
 
-pub fn use_packaging_branch(wt: &dyn WorkingTree, branch_name: &str) -> Result<(), BrzError> {
+pub fn use_packaging_branch(wt: &GenericWorkingTree, branch_name: &str) -> Result<(), BrzError> {
     let last_revision = wt.last_revision()?;
     let target_branch = match wt.controldir().open_branch(Some(branch_name)) {
         Ok(b) => b,
@@ -82,9 +82,11 @@ pub fn use_packaging_branch(wt: &dyn WorkingTree, branch_name: &str) -> Result<(
         .set_branch_reference(target_branch.as_ref(), Some(""))?;
     // TODO(jelmer): breezy bug?
     pyo3::Python::with_gil(|py| -> pyo3::PyResult<()> {
-        use pyo3::ToPyObject;
-        let wt = wt.to_object(py);
-        wt.setattr(py, "_branch", target_branch.to_object(py))?;
+        use pyo3::types::PyAnyMethods;
+        use pyo3::IntoPyObject;
+        let wt_py = wt.clone().into_pyobject(py)?;
+        let branch_py = target_branch.into_pyobject(py)?;
+        wt_py.setattr("_branch", branch_py)?;
         Ok(())
     })
     .unwrap();
@@ -92,7 +94,7 @@ pub fn use_packaging_branch(wt: &dyn WorkingTree, branch_name: &str) -> Result<(
 }
 
 pub fn import_upstream_version_from_dist(
-    wt: &dyn WorkingTree,
+    wt: &GenericWorkingTree,
     subpath: &std::path::Path,
     upstream_source: &UpstreamBranchSource,
     source_name: &str,
@@ -135,7 +137,7 @@ pub fn import_upstream_version_from_dist(
     };
     let upstream_revisions =
         upstream_source.version_as_revisions(Some(source_name), upstream_version, None)?;
-    let files_excluded = None;
+    let files_excluded: Option<&[&std::path::Path]> = None;
     let imported_revids = match do_import(
         wt,
         subpath,
@@ -188,7 +190,7 @@ pub fn import_upstream_version_from_dist(
 
 pub fn import_upstream_dist(
     pristine_tar_source: &PristineTarSource,
-    wt: &dyn WorkingTree,
+    wt: &GenericWorkingTree,
     upstream_source: &UpstreamBranchSource,
     subpath: &Path,
     source_name: &str,
@@ -435,7 +437,7 @@ pub struct DebianizePreferences {
     pub create_dist: Option<
         Box<
             dyn for<'a, 'b, 'c, 'd, 'e> Fn(
-                &'a dyn Tree,
+                &'a dyn PyTree,
                 &'b str,
                 &'c Version,
                 &'d Path,
@@ -618,10 +620,10 @@ pub struct DebianizeResult {
     pub upstream_branch_name: Option<String>,
 }
 
-pub(crate) struct ResetOnFailure<'a>(&'a dyn WorkingTree, PathBuf);
+pub(crate) struct ResetOnFailure<'a>(&'a GenericWorkingTree, PathBuf);
 
 impl<'a> ResetOnFailure<'a> {
-    pub fn new(wt: &'a dyn WorkingTree, subpath: &Path) -> Result<Self, BrzError> {
+    pub fn new(wt: &'a GenericWorkingTree, subpath: &Path) -> Result<Self, BrzError> {
         breezyshim::workspace::check_clean_tree(wt, &wt.basis_tree().unwrap(), subpath)?;
         Ok(Self(wt, subpath.to_path_buf()))
     }
@@ -731,7 +733,16 @@ pub fn determine_upstream_version(
             &upstream_revision,
             Some("~"),
         )
-        .unwrap();
+        .map_err(|e| match e {
+            BrzDebianError::BrzError(brz_err) => Error::BrzError(brz_err),
+            _ => Error::BrzError(BrzError::Other(pyo3::PyErr::new::<
+                pyo3::exceptions::PyRuntimeError,
+                _,
+            >(format!(
+                "Debian error: {:?}",
+                e
+            )))),
+        })?;
         return Ok(UpstreamVersion::from(upstream_version));
     }
 
@@ -741,7 +752,13 @@ pub fn determine_upstream_version(
         &upstream_revision,
         Some("+"),
     )
-    .unwrap();
+    .map_err(|e| match e {
+        BrzDebianError::BrzError(brz_err) => Error::BrzError(brz_err),
+        _ => Error::BrzError(BrzError::Other(pyo3::PyErr::new::<
+            pyo3::exceptions::PyRuntimeError,
+            _,
+        >(format!("Debian error: {:?}", e)))),
+    })?;
     log::warn!(
         "Unable to determine upstream version, using {}.",
         upstream_version

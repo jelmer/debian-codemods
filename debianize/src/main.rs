@@ -1,6 +1,7 @@
+use breezyshim::branch::Branch;
 use breezyshim::debian::directory::vcs_git_url_to_bzr_url;
-use breezyshim::tree::Tree;
-use breezyshim::workingtree::WorkingTree;
+use breezyshim::tree::{PyTree, Tree};
+use breezyshim::workingtree::{GenericWorkingTree, WorkingTree};
 use clap::Parser;
 use debversion::Version;
 use log::warn;
@@ -189,7 +190,7 @@ fn main() -> Result<(), i32> {
     let create_dist_fn: Option<
         Box<
             dyn for<'a, 'b, 'c, 'd, 'e> Fn(
-                &'a dyn Tree,
+                &'a dyn PyTree,
                 &'b str,
                 &'c Version,
                 &'d Path,
@@ -199,7 +200,7 @@ fn main() -> Result<(), i32> {
         >,
     > = if let Some(dist_command) = dist_command {
         Some(Box::new(
-            move |tree: &dyn Tree,
+            move |tree: &dyn PyTree,
                   package: &str,
                   version: &Version,
                   target_dir: &Path,
@@ -289,7 +290,7 @@ fn main() -> Result<(), i32> {
             "No upstream repository specified, using upstream source in {}",
             wt.abspath(&subpath).unwrap().display()
         );
-        (wt.branch(), subpath.clone())
+        (Box::new(wt.branch()) as Box<dyn Branch>, subpath.clone())
     };
 
     if let Some(debian_branch) = args.debian_branch {
@@ -503,7 +504,7 @@ fn main() -> Result<(), i32> {
             .clone();
         let build_command = args.build_command.clone();
 
-        let do_build = move |wt: &dyn WorkingTree,
+        let do_build = move |wt: &GenericWorkingTree,
                              subpath: &Path,
                              incoming_directory: &Path,
                              extra_repositories: Vec<&str>|
@@ -673,13 +674,13 @@ fn versions_dict() -> HashMap<String, String> {
         env!("CARGO_PKG_VERSION").to_string(),
     );
     pyo3::Python::with_gil(|py| {
-        let breezy = py.import_bound("breezy").unwrap();
+        let breezy = py.import("breezy").unwrap();
         ret.insert(
             "breezy".to_string(),
             breezy.getattr("version_string").unwrap().extract().unwrap(),
         );
 
-        let debmutate = py.import_bound("debmutate").unwrap();
+        let debmutate = py.import("debmutate").unwrap();
         ret.insert(
             "debmutate".to_string(),
             debmutate
@@ -689,7 +690,7 @@ fn versions_dict() -> HashMap<String, String> {
                 .unwrap(),
         );
 
-        let debian = py.import_bound("debian").unwrap();
+        let debian = py.import("debian").unwrap();
         ret.insert(
             "debian".to_string(),
             debian.getattr("__version__").unwrap().extract().unwrap(),

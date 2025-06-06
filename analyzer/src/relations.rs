@@ -251,9 +251,10 @@ pub fn ensure_exact_version(
             continue;
         }
         let relation = entry.relations().next().unwrap();
-        if relation.version().is_none_or(|(vc, v)| {
-            vc != VersionConstraint::Equal || &v != version
-        }) {
+        if relation
+            .version()
+            .is_none_or(|(vc, v)| vc != VersionConstraint::Equal || &v != version)
+        {
             found.push(i);
         }
     }

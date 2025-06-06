@@ -411,9 +411,7 @@ fn main() -> Result<(), i32> {
         #[cfg(feature = "python")]
         {
             // Ensure we can find the lintian_brush.fixer python module
-            let e = pyo3::Python::with_gil(|py| {
-                py.import("lintian_brush.fixer").err()
-            });
+            let e = pyo3::Python::with_gil(|py| py.import("lintian_brush.fixer").err());
 
             if let Some(e) = e {
                 drop(write_lock);
