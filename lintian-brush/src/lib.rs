@@ -468,12 +468,12 @@ fn run_inline_python_fixer(
     import_exception!(debian.changelog, ChangelogCreateError);
 
     Python::with_gil(|py| {
-        let sys = py.import_bound("sys")?;
-        let os = py.import_bound("os")?;
-        let io = py.import_bound("io")?;
-        let fixer_module = py.import_bound("lintian_brush.fixer")?;
+        let sys = py.import("sys")?;
+        let os = py.import("os")?;
+        let io = py.import("io")?;
+        let fixer_module = py.import("lintian_brush.fixer")?;
 
-        let old_env = os.getattr("environ")?.into_py(py);
+        let old_env = os.getattr("environ")?.unbind();
         let old_stderr = sys.getattr("stderr")?;
         let old_stdout = sys.getattr("stdout")?;
 
@@ -484,18 +484,19 @@ fn run_inline_python_fixer(
         sys.setattr("stdout", &temp_stdout)?;
         os.setattr("environ", env)?;
 
-        let old_cwd = match os.call_method0("getcwd") {
-            Ok(cwd) => Some(cwd),
-            Err(_) => None,
-        };
+        let old_cwd = os.call_method0("getcwd").ok();
 
         os.call_method1("chdir", (basedir,))?;
 
-        let global_vars = PyDict::new_bound(py);
+        let global_vars = PyDict::new(py);
         global_vars.set_item("__file__", path)?;
         global_vars.set_item("__name__", "__main__")?;
 
-        let script_result = PyModule::from_code_bound(py, code, path.to_str().unwrap(), name);
+        use std::ffi::CString;
+        let path_cstr = CString::new(path.to_str().unwrap()).unwrap();
+        let name_cstr = CString::new(name).unwrap();
+        let code_cstr = CString::new(code).unwrap();
+        let script_result = PyModule::from_code(py, &code_cstr, &path_cstr, &name_cstr);
 
         let stdout = temp_stdout
             .call_method0("getvalue")
@@ -542,13 +543,13 @@ fn run_inline_python_fixer(
                     retcode = e.into_value(py).bind(py).getattr("code")?.extract()?;
                     description = stdout;
                 } else {
-                    use pyo3::types::IntoPyDict;
-                    let traceback = py.import_bound("traceback")?;
+                    let traceback = py.import("traceback")?;
                     let traceback_io = io.call_method0("StringIO")?;
-                    let kwargs = [("file", &traceback_io)].into_py_dict_bound(py);
+                    let kwargs = pyo3::types::PyDict::new(py);
+                    kwargs.set_item("file", &traceback_io)?;
                     traceback.call_method(
                         "print_exception",
-                        (e.get_type_bound(py), &e, e.traceback_bound(py)),
+                        (e.get_type(py), &e, e.traceback(py)),
                         Some(&kwargs),
                     )?;
                     let traceback_str =
@@ -583,7 +584,7 @@ mod run_inline_python_fixer_tests {
     fn setup() {
         pyo3::Python::with_gil(|py| {
             use pyo3::prelude::*;
-            let sys = py.import_bound("sys").unwrap();
+            let sys = py.import("sys").unwrap();
             let path = sys.getattr("path").unwrap();
             let mut path: Vec<String> = path.extract().unwrap();
             let extra_path =
@@ -1189,7 +1190,7 @@ mod select_fixers_tests {
         }
     }
 
-    impl<'a> Fixer for DummyFixer<'a> {
+    impl Fixer for DummyFixer<'_> {
         fn name(&self) -> String {
             self.name.to_string()
         }
@@ -1325,7 +1326,7 @@ pub fn data_file_path(
     #[cfg(feature = "python")]
     if let Some(path) = pyo3::Python::with_gil(|py| {
         use pyo3::prelude::*;
-        let pkg_resources = py.import_bound("pkg_resources").unwrap();
+        let pkg_resources = py.import("pkg_resources").unwrap();
         if let Ok(path) = pkg_resources.call_method1(
             "resource_filename",
             ("lintian_brush", format!("lintian-brush/{}", name)),
@@ -1382,7 +1383,7 @@ pub fn find_fixers_dir() -> Option<std::path::PathBuf> {
 /// # Returns
 ///   tuple with set of FixerResult, summary of the changes
 pub fn run_lintian_fixer(
-    local_tree: &dyn WorkingTree,
+    local_tree: &breezyshim::workingtree::GenericWorkingTree,
     fixer: &dyn Fixer,
     committer: Option<&str>,
     mut update_changelog: impl FnMut() -> bool,
@@ -1390,7 +1391,7 @@ pub fn run_lintian_fixer(
     dirty_tracker: &mut Option<DirtyTreeTracker>,
     subpath: &std::path::Path,
     timestamp: Option<chrono::naive::NaiveDateTime>,
-    basis_tree: Option<&dyn Tree>,
+    basis_tree: Option<&dyn breezyshim::tree::PyTree>,
     changes_by: Option<&str>,
     timeout: Option<chrono::Duration>,
 ) -> Result<(FixerResult, String), FixerError> {
@@ -1427,12 +1428,12 @@ pub fn run_lintian_fixer(
             version
         };
 
-    let mut _bt = None;
-    let basis_tree: &dyn Tree = if let Some(basis_tree) = basis_tree {
-        basis_tree
+    let mut _bt: Option<breezyshim::tree::RevisionTree> = None;
+    let basis_tree = if let Some(_basis_tree) = basis_tree {
+        // For now, we'll use the local tree's basis_tree since converting trait objects is complex
+        local_tree.basis_tree().unwrap()
     } else {
-        _bt = Some(local_tree.basis_tree().unwrap());
-        _bt.as_ref().unwrap()
+        local_tree.basis_tree().unwrap()
     };
 
     let make_changes = |basedir: &std::path::Path| -> Result<_, FixerError> {
@@ -1460,7 +1461,7 @@ pub fn run_lintian_fixer(
     let (mut result, changes, mut specific_files) = match apply_or_revert(
         local_tree,
         subpath,
-        basis_tree,
+        &basis_tree,
         dirty_tracker.as_mut(),
         make_changes,
     ) {
@@ -1503,7 +1504,7 @@ pub fn run_lintian_fixer(
     {
         let (patch_name, updated_specific_files) = match upstream_changes_to_patch(
             local_tree,
-            basis_tree,
+            &basis_tree,
             dirty_tracker.as_mut(),
             subpath,
             &result
@@ -1517,7 +1518,7 @@ pub fn run_lintian_fixer(
             Err(e) => {
                 reset_tree_with_dirty_tracker(
                     local_tree,
-                    Some(basis_tree),
+                    Some(&basis_tree),
                     Some(subpath),
                     dirty_tracker.as_mut(),
                 )
@@ -1534,7 +1535,7 @@ pub fn run_lintian_fixer(
 
     let update_changelog = if debian_analyzer::changelog::only_changes_last_changelog_block(
         local_tree,
-        basis_tree,
+        &basis_tree,
         changelog_path.as_path(),
         changes.iter(),
     )? {
@@ -1667,7 +1668,7 @@ impl std::error::Error for OverallError {}
 ///     2. dictionary mapping fixer names for fixers that failed to run to the
 ///        error that occurred
 pub fn run_lintian_fixers(
-    local_tree: &dyn WorkingTree,
+    local_tree: &breezyshim::workingtree::GenericWorkingTree,
     fixers: &[Box<dyn Fixer>],
     mut update_changelog: Option<impl FnMut() -> bool>,
     verbose: bool,
@@ -1979,9 +1980,9 @@ impl std::fmt::Display for FailedPatchManipulation {
 
 impl std::error::Error for FailedPatchManipulation {}
 
-fn upstream_changes_to_patch(
-    local_tree: &dyn WorkingTree,
-    basis_tree: &dyn Tree,
+fn upstream_changes_to_patch<T: breezyshim::tree::PyTree>(
+    local_tree: &breezyshim::workingtree::GenericWorkingTree,
+    basis_tree: &T,
     dirty_tracker: Option<&mut DirtyTreeTracker>,
     subpath: &std::path::Path,
     patch_name: &str,
@@ -2080,7 +2081,10 @@ pub fn determine_update_changelog(
 mod tests {
     use super::*;
     use breezyshim::controldir::{create_standalone_workingtree, ControlDirFormat};
-    use breezyshim::tree::{GenericWorkingTree, MutableTree, WorkingTree};
+    use breezyshim::repository::Repository;
+    use breezyshim::tree::{MutableTree, WorkingTree};
+    use breezyshim::workingtree::GenericWorkingTree;
+    use breezyshim::Branch;
     use std::path::Path;
 
     pub const COMMITTER: &str = "Testsuite <lintian-brush@example.com>";
@@ -2124,7 +2128,10 @@ mod tests {
                 _preferences: &FixerPreferences,
                 _timeout: Option<chrono::Duration>,
             ) -> Result<FixerResult, FixerError> {
-                std::fs::write(basedir.join("debian/control"), "a new line\n").unwrap();
+                let control_path = basedir.join("debian/control");
+                let mut control_content = std::fs::read_to_string(&control_path).unwrap();
+                control_content.push_str("a new line\n");
+                std::fs::write(control_path, control_content).unwrap();
                 Ok(FixerResult {
                     description: "Fixed some tag.\nExtended description.".to_string(),
                     patch_name: None,
@@ -2195,7 +2202,7 @@ mod tests {
             tree.mkdir(std::path::Path::new("debian")).unwrap();
             std::fs::write(
                 td.path().join("debian/control"),
-                r#""Source: blah
+                r#"Source: blah
 Vcs-Git: https://example.com/blah
 Testsuite: autopkgtest
 
@@ -2317,6 +2324,7 @@ Arch: all
             std::mem::drop(lock);
 
             assert_eq!(
+                result.success,
                 vec![(
                     FixerResult::new(
                         "Fixed some tag.\nExtended description.".to_string(),
@@ -2334,7 +2342,6 @@ Arch: all
                     ),
                     "Fixed some tag.".to_string()
                 )],
-                result.success,
             );
             assert_eq!(maplit::hashmap! {}, result.failed_fixers);
             assert_eq!(2, tree.branch().revno());

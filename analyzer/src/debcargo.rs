@@ -203,7 +203,7 @@ pub struct DebcargoSource<'a> {
     main: &'a mut DebcargoEditor,
 }
 
-impl<'a> DebcargoSource<'a> {
+impl DebcargoSource<'_> {
     /// Return the source section of the debcargo.toml file.
     pub fn toml_section_mut(&mut self) -> &mut Table {
         self.main.debcargo["source"].as_table_mut().unwrap()

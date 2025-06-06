@@ -67,7 +67,7 @@ impl AbstractBinary for PlainBinary {
     }
 }
 
-impl<'a> AbstractSource<'a> for PlainSource {
+impl AbstractSource<'_> for PlainSource {
     fn name(&self) -> Option<String> {
         self.name()
     }
@@ -90,7 +90,7 @@ impl<'a> AbstractSource<'a> for PlainSource {
     }
 }
 
-impl<'a> AbstractBinary for DebcargoBinary<'a> {
+impl AbstractBinary for DebcargoBinary<'_> {
     fn name(&self) -> Option<String> {
         Some(self.name().to_string())
     }

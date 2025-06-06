@@ -1,4 +1,4 @@
-use deb822_lossless::lossless::{Deb822, Paragraph};
+use deb822_lossless::{Deb822, Paragraph};
 use debian_analyzer::benfile::{Comparison, Expr};
 use debian_analyzer::transition::Transition;
 use debian_control::lossless::Control;
@@ -27,7 +27,7 @@ enum Match {
     Comparison(Comparison, String),
 }
 
-fn compare(operator: &Comparison, value: &str, other: &str) -> bool {
+fn compare(_operator: &Comparison, _value: &str, _other: &str) -> bool {
     todo!()
 }
 
@@ -52,7 +52,7 @@ fn map_bad_to_good(bad: &Expr, good: &Expr) -> Result<Vec<(String, Match, Match)
         .map(|entry| {
             let (f, o) = match entry.as_ref() {
                 Expr::FieldRegex(f, regex) => {
-                    (f.to_string(), Match::Regex(Regex::new(&regex).unwrap()))
+                    (f.to_string(), Match::Regex(Regex::new(regex).unwrap()))
                 }
                 Expr::FieldString(f, s) => (f.to_string(), Match::String(s.to_string())),
                 Expr::FieldComparison(f, c, s) => {
@@ -65,7 +65,7 @@ fn map_bad_to_good(bad: &Expr, good: &Expr) -> Result<Vec<(String, Match, Match)
                 used.push(f.clone());
                 match good {
                     Expr::FieldString(_, s) => Match::String(s.to_string()),
-                    Expr::FieldRegex(_, r) => Match::Regex(Regex::new(&r).unwrap()),
+                    Expr::FieldRegex(_, r) => Match::Regex(Regex::new(r).unwrap()),
                     Expr::FieldComparison(_, c, s) => Match::Comparison(c.clone(), s.to_string()),
                     _ => return Err(format!("unable to find replacement value for {}", f)),
                 }
@@ -85,7 +85,7 @@ fn map_bad_to_good(bad: &Expr, good: &Expr) -> Result<Vec<(String, Match, Match)
     for expr in exprs {
         match expr.as_ref() {
             Expr::FieldRegex(f, _) | Expr::FieldString(f, _) | Expr::FieldComparison(f, _, _) => {
-                if !used.contains(&f) {
+                if !used.contains(f) {
                     return Err(format!("extra field in good: {}", f));
                 }
             }
@@ -100,27 +100,27 @@ fn map_bad_to_good(bad: &Expr, good: &Expr) -> Result<Vec<(String, Match, Match)
 fn para_matches(para: &Paragraph, expr: &Expr) -> bool {
     match expr {
         Expr::FieldRegex(f, regex) => {
-            if let Some(value) = para.get(&f) {
-                Regex::new(&regex).unwrap().is_match(&value)
+            if let Some(value) = para.get(f) {
+                Regex::new(regex).unwrap().is_match(&value)
             } else {
-                return false;
+                false
             }
         }
         Expr::FieldString(f, s) => {
-            if let Some(value) = para.get(&f) {
+            if let Some(value) = para.get(f) {
                 value == *s
             } else {
-                return false;
+                false
             }
         }
         Expr::FieldComparison(f, c, s) => {
-            if let Some(value) = para.get(&f) {
-                compare(c, &value, &s)
+            if let Some(value) = para.get(f) {
+                compare(c, &value, s)
             } else {
-                return false;
+                false
             }
         }
-        Expr::Not(e) => !para_matches(para, &e),
+        Expr::Not(e) => !para_matches(para, e),
         _ => unreachable!(),
     }
 }
@@ -142,7 +142,7 @@ fn transition_find_bugno(transition: &Transition) -> Vec<i32> {
     };
     let bugs_re = lazy_regex::regex!("#([0-9]+)");
     bugs_re
-        .find_iter(&notes)
+        .find_iter(notes)
         .map(|m| m.as_str()[1..].parse().unwrap())
         .collect()
 }
@@ -227,7 +227,7 @@ pub fn apply_transition(control: &mut Control, transition: &Transition) -> Trans
         }
     }
 
-    let bugnos = transition_find_bugno(&transition);
+    let bugnos = transition_find_bugno(transition);
 
     TransitionResult::TransitionSuccess(control.source().unwrap().to_string(), bugnos)
 }

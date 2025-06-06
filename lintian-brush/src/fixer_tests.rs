@@ -14,7 +14,7 @@ fn run_fixer_testcase(
     {
         pyo3::Python::with_gil(|py| {
             use pyo3::prelude::*;
-            let sys = py.import_bound("sys").unwrap();
+            let sys = py.import("sys").unwrap();
             let path = sys.getattr("path").unwrap();
             let mut path: Vec<String> = path.extract().unwrap();
             let extra_path =
@@ -89,7 +89,7 @@ fn run_fixer_testcase(
             .unwrap();
         let mut path = pyo3::Python::with_gil(|py| {
             use pyo3::prelude::*;
-            py.import_bound("sys")
+            py.import("sys")
                 .unwrap()
                 .getattr("path")
                 .unwrap()

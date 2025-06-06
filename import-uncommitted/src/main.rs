@@ -3,8 +3,10 @@ use breezyshim::debian::error::Error as DebianError;
 use breezyshim::debian::import_dsc::{DistributionBranch, DistributionBranchSet};
 use breezyshim::debian::upstream::UpstreamSource;
 use breezyshim::error::Error as BrzError;
-use breezyshim::tree::Tree;
+use breezyshim::repository::Repository;
+use breezyshim::tree::{PyTree, Tree};
 use breezyshim::workingtree::WorkingTree;
+use breezyshim::Branch;
 use breezyshim::RevisionId;
 use clap::Parser;
 use debian_analyzer::editor::MutableTreeEdit;
@@ -40,7 +42,7 @@ fn find_missing_versions(
     Ok(missing_versions)
 }
 
-fn is_noop_upload(tree: &dyn WorkingTree, basis_tree: &dyn Tree, subpath: &Path) -> bool {
+fn is_noop_upload(tree: &dyn WorkingTree, basis_tree: &dyn PyTree, subpath: &Path) -> bool {
     let mut changes = tree.iter_changes(basis_tree, None, None, None).unwrap();
     let change = loop {
         let change = if let Some(change) = changes.next() {
@@ -306,12 +308,8 @@ fn import_uncommitted(
 
     let mut ret = Vec::new();
     let dbs = DistributionBranchSet::new();
-    let db = DistributionBranch::new(
-        tree.branch().as_ref(),
-        tree.branch().as_ref(),
-        Some(tree),
-        None,
-    );
+    let branch = tree.branch();
+    let db = DistributionBranch::new(&branch, &branch, None, None);
     dbs.add_branch(&db);
 
     let merge_into = if let Some(ref tree_version) = tree_version {
@@ -448,7 +446,7 @@ fn import_uncommitted(
     if let Some(merge_into) = merge_into.as_ref() {
         let to_merge = tree.last_revision().unwrap();
         tree.update(Some(merge_into)).unwrap();
-        match tree.merge_from_branch(tree.branch().as_ref(), Some(&to_merge)) {
+        match tree.merge_from_branch(&tree.branch(), Some(&to_merge)) {
             Ok(_) => {}
             Err(BrzError::ConflictsInTree) => {
                 return Err(Error::ConflictsInTree);

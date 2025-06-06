@@ -1,7 +1,9 @@
 use breezyshim::branch::open_containing as open_containing_branch;
 use breezyshim::error::Error;
+use breezyshim::repository::Repository;
 use breezyshim::tree::MutableTree;
 use breezyshim::workingtree;
+use breezyshim::{Branch, WorkingTree};
 use clap::Parser;
 use debian_changelog::get_maintainer;
 use distro_info::DistroInfo;
@@ -251,7 +253,7 @@ fn main() -> Result<(), i32> {
 
             let to_dir = match branch.controldir().sprout(
                 url::Url::from_directory_path(td.path()).unwrap(),
-                Some(branch.as_ref()),
+                None,
                 Some(true),
                 Some(branch.format().supports_stacking()),
                 None,
@@ -410,11 +412,7 @@ fn main() -> Result<(), i32> {
         {
             // Ensure we can find the lintian_brush.fixer python module
             let e = pyo3::Python::with_gil(|py| {
-                if let Err(e) = py.import_bound("lintian_brush.fixer") {
-                    Some(e)
-                } else {
-                    None
-                }
+                py.import("lintian_brush.fixer").err()
             });
 
             if let Some(e) = e {
@@ -619,7 +617,7 @@ fn versions_dict() -> HashMap<String, String> {
     ret.insert("breezy".to_string(), breezy_version.to_string());
 
     pyo3::Python::with_gil(|py| {
-        let debmutate = py.import_bound("debmutate").unwrap();
+        let debmutate = py.import("debmutate").unwrap();
         ret.insert(
             "debmutate".to_string(),
             debmutate
@@ -629,7 +627,7 @@ fn versions_dict() -> HashMap<String, String> {
                 .unwrap(),
         );
 
-        let debian = py.import_bound("debian").unwrap();
+        let debian = py.import("debian").unwrap();
         ret.insert(
             "debian".to_string(),
             debian.getattr("__version__").unwrap().extract().unwrap(),

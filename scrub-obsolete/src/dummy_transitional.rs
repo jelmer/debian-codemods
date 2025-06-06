@@ -74,7 +74,7 @@ pub async fn find_reverse_dependencies(
             builder.push(" OR ");
         }
 
-        builder.push(&format!("{} LIKE CONCAT('%', ", field));
+        builder.push(format!("{} LIKE CONCAT('%', ", field));
         builder.push_bind(package);
         builder.push("::text, '%%')");
     }
@@ -121,7 +121,7 @@ pub async fn find_reverse_dependencies(
         if i > 0 {
             builder.push(" OR ");
         }
-        builder.push(&format!("{} LIKE CONCAT('%', ", field));
+        builder.push(format!("{} LIKE CONCAT('%', ", field));
         builder.push_bind(package);
         builder.push("::text, '%%')");
     }

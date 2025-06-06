@@ -90,7 +90,7 @@ pub fn maximum_debhelper_compat_version(compat_release: &str) -> u8 {
                 .parse()
                 .unwrap()
         })
-        .unwrap_or_else(|| lowest_non_deprecated_compat_level())
+        .unwrap_or_else(lowest_non_deprecated_compat_level)
 }
 
 /// Ask dh_assistant for the supported compat levels.

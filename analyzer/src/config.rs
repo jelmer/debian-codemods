@@ -95,9 +95,8 @@ impl Config {
             .and_then(|value| {
                 value
                     .parse::<Certainty>()
-                    .map_err(|e| {
+                    .inspect_err(|e| {
                         warn!("invalid minimum-certainty value {}, ignoring.", value);
-                        e
                     })
                     .ok()
             })

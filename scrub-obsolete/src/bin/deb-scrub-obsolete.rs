@@ -2,6 +2,7 @@ use breezyshim::error::Error as BrzError;
 use breezyshim::tree::MutableTree;
 use breezyshim::workingtree;
 use breezyshim::workspace::check_clean_tree;
+use breezyshim::WorkingTree;
 use clap::Parser;
 use debian_analyzer::editor::EditorError;
 use debian_analyzer::release_info::resolve_release_codename;
@@ -164,7 +165,7 @@ fn main() -> Result<(), i32> {
     }
 
     let result = match scrub_obsolete::scrub_obsolete(
-        wt,
+        &wt,
         &subpath,
         &compat_release,
         &upgrade_release,

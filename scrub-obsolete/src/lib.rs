@@ -1,8 +1,8 @@
 use crate::action::Action;
 use breezyshim::commit::NullCommitReporter;
 use breezyshim::error::Error as BrzError;
-use breezyshim::workingtree::WorkingTree;
-use deb822_lossless::lossless::Paragraph;
+use breezyshim::workingtree::{GenericWorkingTree, WorkingTree};
+use deb822_lossless::Paragraph;
 use debian_analyzer::editor::{Editor, EditorError, MutableTreeEdit};
 use debian_control::lossless::relations::{Entry, Relation, Relations};
 use debian_control::relations::VersionConstraint;
@@ -316,7 +316,7 @@ fn drop_old_relations(
 }
 
 fn update_maintscripts(
-    wt: &dyn WorkingTree,
+    wt: &GenericWorkingTree,
     debian_path: &Path,
     checker: &dyn PackageChecker,
     allow_reformatting: bool,
@@ -469,7 +469,7 @@ impl ScrubObsoleteResult {
 }
 
 async fn _scrub_obsolete(
-    wt: &dyn WorkingTree,
+    wt: &GenericWorkingTree,
     debian_path: &Path,
     compat_release: &str,
     upgrade_release: &str,
@@ -567,7 +567,7 @@ impl From<sqlx::Error> for ScrubObsoleteError {
 
 /// Scrub obsolete entries.
 pub fn scrub_obsolete(
-    wt: &dyn WorkingTree,
+    wt: &GenericWorkingTree,
     subpath: &Path,
     compat_release: &str,
     upgrade_release: &str,
@@ -713,7 +713,7 @@ fn drop_obsolete_maintscript_entries(
 mod tests {
     use super::*;
     use async_trait::async_trait;
-    use deb822_lossless::lossless::Paragraph;
+    use deb822_lossless::Paragraph;
     use std::collections::{HashMap, HashSet};
 
     #[cfg(test)]
@@ -814,7 +814,7 @@ mod tests {
     }
 
     #[async_trait]
-    impl<'a> crate::package_checker::PackageChecker for DummyChecker<'a> {
+    impl crate::package_checker::PackageChecker for DummyChecker<'_> {
         fn release(&self) -> &str {
             "release"
         }

@@ -1,6 +1,6 @@
 [package]
 name = "debianize"
-version = { workspace = true }
+version = "0.163.0"
 authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
 license = "GPL-2.0+"
@@ -10,43 +10,43 @@ homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 documentation = "https://docs.rs/debianize"
 
 [dependencies]
-breezyshim.workspace = true
-clap = { workspace = true, features = ["derive", "env"] }
+breezyshim = { workspace = true, features = ["dirty-tracker"] }
+clap = { version = "4", features = ["derive", "env"] }
 debian-analyzer = { version = ">=0.154.0", path = "../analyzer", features = ["udd", "svp"] }
-debian-changelog.workspace = true
+debian-changelog = ">=0.2.0"
 distro-info = "0.4.0"
-env_logger.workspace = true
-log.workspace = true
-pyo3.workspace = true
+env_logger = "0.10"
+log = "0.4"
+pyo3 = ">=0.25,<0.26"
 xdg = "2.5.2"
-debversion.workspace = true
-url.workspace = true
+debversion = ">=0.4.0"
+url = "2"
 #ognibuild = ">=0.0.24"
-ognibuild = { version = ">=0.0.25", features = ["upstream", "debian"] }
+ognibuild = { version = ">=0.0.29", features = ["upstream", "debian"] }
 hyper = { version = "1.5", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["tokio", "server", "server-auto"], default-features = false }
 http-body-util = "0.1"
 flate2 = "1"
-tokio = { workspace = true, features = ["full", "rt", "signal", "net", "macros"] }
-tempfile.workspace = true
-upstream-ontologist.workspace = true
-buildlog-consultant.workspace = true
-lazy-regex.workspace = true
+tokio = { version = "1", features = ["full", "rt", "signal", "net", "macros"] }
+tempfile = "3"
+upstream-ontologist = ">=0.1.0"
+buildlog-consultant = ">=0.1.0"
+lazy-regex = ">=2"
 lintian-brush = { path = "../lintian-brush", version = ">=0.155.0", default-features = false, features = ["python"] }
-debian-control.workspace = true
-lazy_static = { workspace = true }
-semver = { workspace = true }
-toml_edit = { workspace = true }
-serde.workspace = true
-sqlx.workspace = true
-svp-client.workspace = true
+debian-control = ">=0.1.0"
+lazy_static = "1"
+semver = "1"
+toml_edit = "0.22"
+serde = "1"
+sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls"] }
+svp-client = ">=0.1.0"
 
 [features]
 pyo3 = []
 
 [dev-dependencies]
-reqwest = { workspace = true, features = ["blocking"] }
-tempfile.workspace = true
+reqwest = { version = ">=0.11", features = ["blocking"] }
+tempfile = "3"
 json = "0.12"
 serde_json = "1.0"
 

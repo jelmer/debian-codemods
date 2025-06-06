@@ -2,12 +2,13 @@
 # With resolve set to "2", dependent projects can't find debian-analyzer anymore.
 resolver = "1"
 members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "analyzer", "scrub-obsolete", "transition-apply", "import-uncommitted"]
+exclude = ["debianize"]
 
 [workspace.package]
 version = "0.163.0"
 
 [workspace.dependencies]
-breezyshim = { version = "0.5.0", features = ["dirty-tracker"] }
+breezyshim = { version = "0.5.3", features = ["dirty-tracker"] }
 #breezyshim = { path = "../breezyshim/trunk", features = ["dirty-tracker"] }
 pyo3 = ">=0.25,<0.26"
 debversion = ">=0.4.0"

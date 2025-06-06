@@ -644,7 +644,7 @@ blah (0.20.1) unstable; urgency=medium
 "#,
         )
         .unwrap();
-        tree.add(&[&Path::new("debian"), &Path::new("debian/changelog")])
+        tree.add(&[Path::new("debian"), Path::new("debian/changelog")])
             .unwrap();
         assert_eq!(
             Some(ChangelogBehaviour {

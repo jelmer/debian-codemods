@@ -64,14 +64,12 @@ fn tree_has_non_patches_changes(
 #[pymodule]
 fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     pyo3_log::init();
-    let v = PyTuple::new_bound(
-        py,
-        env!("CARGO_PKG_VERSION")
-            .split('.')
-            .map(|x| x.parse::<u32>().unwrap())
-            .collect::<Vec<u32>>(),
-    );
-    m.add("__version__", v)?;
+    let version_parts: Vec<u32> = env!("CARGO_PKG_VERSION")
+        .split('.')
+        .map(|x| x.parse::<u32>().unwrap())
+        .collect();
+    let v = PyTuple::new(py, &version_parts)?;
+    m.add("__version__", &v)?;
     m.add_wrapped(wrap_pyfunction!(tree_has_non_patches_changes))?;
     m.add_wrapped(wrap_pyfunction!(guess_repository_url))?;
     m.add_wrapped(wrap_pyfunction!(determine_browser_url))?;

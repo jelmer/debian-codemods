@@ -1,8 +1,10 @@
 use breezyshim::branch::open_containing as open_containing_branch;
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
+use breezyshim::repository::Repository;
 use breezyshim::tree::MutableTree;
 use breezyshim::workspace::check_clean_tree;
+use breezyshim::{Branch, WorkingTree};
 use clap::Parser;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
 use debian_analyzer::{control_file_present, get_committer, is_debcargo_package, Certainty};
@@ -160,7 +162,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let to_dir = branch.controldir().sprout(
             url::Url::from_directory_path(td.path()).unwrap(),
-            Some(branch.as_ref()),
+            None,
             Some(true),
             Some(branch.format().supports_stacking()),
             None,
@@ -440,13 +442,13 @@ fn versions_dict() -> HashMap<String, String> {
         env!("CARGO_PKG_VERSION").to_string(),
     );
     pyo3::Python::with_gil(|py| {
-        let breezy = py.import_bound("breezy").unwrap();
+        let breezy = py.import("breezy").unwrap();
         ret.insert(
             "breezy".to_string(),
             breezy.getattr("version_string").unwrap().extract().unwrap(),
         );
 
-        let debmutate = py.import_bound("debmutate").unwrap();
+        let debmutate = py.import("debmutate").unwrap();
         ret.insert(
             "debmutate".to_string(),
             debmutate
@@ -456,7 +458,7 @@ fn versions_dict() -> HashMap<String, String> {
                 .unwrap(),
         );
 
-        let debian = py.import_bound("debian").unwrap();
+        let debian = py.import("debian").unwrap();
         ret.insert(
             "debian".to_string(),
             debian.getattr("__version__").unwrap().extract().unwrap(),

@@ -1,6 +1,7 @@
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::WorkingTree;
+use breezyshim::workingtree::GenericWorkingTree;
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::{
     add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, ApplyError,
@@ -114,7 +115,7 @@ pub struct Hint {
 
 impl Hint {
     pub fn kind(&self) -> &str {
-        self.link.split('#').last().unwrap()
+        self.link.split('#').next_back().unwrap()
     }
 }
 
@@ -508,7 +509,7 @@ impl From<ChangelogError> for OverallError {
 }
 
 pub fn apply_multiarch_hints(
-    local_tree: &dyn WorkingTree,
+    local_tree: &GenericWorkingTree,
     subpath: &std::path::Path,
     hints: &HashMap<&str, Vec<&Hint>>,
     minimum_certainty: Option<Certainty>,
