@@ -304,7 +304,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut dirty_tracker = if !args.disable_inotify {
         Some(DirtyTreeTracker::new_in_subpath(
-            wt.clone(),
+            Clone::clone(&wt),
             subpath.as_path(),
         ))
     } else {
