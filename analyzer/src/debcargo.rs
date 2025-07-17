@@ -457,20 +457,20 @@ impl<'a> DebcargoBinary<'a> {
     }
 
     /// Get the package summary.
-    pub fn summary(&self) -> Option<String> {
+    pub fn summary(&self) -> Option<&str> {
         if let Some(summary) = self.table.get("summary").and_then(|v| v.as_str()) {
-            Some(summary.to_string())
+            Some(summary)
         } else {
-            self.global_summary.clone()
+            self.global_summary.as_deref()
         }
     }
 
     /// Get the package long description.
-    pub fn long_description(&self) -> Option<String> {
+    pub fn long_description(&self) -> Option<&str> {
         if let Some(description) = self.table.get("description").and_then(|v| v.as_str()) {
-            Some(description.to_string())
+            Some(description)
         } else if let Some(description) = self.global_description.as_ref() {
-            Some(description.to_string())
+            Some(description.as_str())
         } else {
             match self.key.as_str() {
                 "lib" => Some(format!("Source code for Debianized Rust crate \"{}\"", self.crate_name)),

@@ -56,7 +56,7 @@ fn map_bad_to_good(bad: &Expr, good: &Expr) -> Result<Vec<(String, Match, Match)
                 }
                 Expr::FieldString(f, s) => (f.to_string(), Match::String(s.to_string())),
                 Expr::FieldComparison(f, c, s) => {
-                    (f.to_string(), Match::Comparison(c.clone(), s.to_string()))
+                    (f.to_string(), Match::Comparison(*c, s.to_string()))
                 }
                 _ => return Err(format!("unable to find replacement value for {:?}", entry)),
             };
@@ -66,7 +66,7 @@ fn map_bad_to_good(bad: &Expr, good: &Expr) -> Result<Vec<(String, Match, Match)
                 match good {
                     Expr::FieldString(_, s) => Match::String(s.to_string()),
                     Expr::FieldRegex(_, r) => Match::Regex(Regex::new(r).unwrap()),
-                    Expr::FieldComparison(_, c, s) => Match::Comparison(c.clone(), s.to_string()),
+                    Expr::FieldComparison(_, c, s) => Match::Comparison(*c, s.to_string()),
                     _ => return Err(format!("unable to find replacement value for {}", f)),
                 }
             } else {

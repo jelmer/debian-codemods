@@ -412,7 +412,7 @@ impl Parser {
                             Some(Token::Comparison(comp)) => {
                                 self.tokens.next();
                                 if let Some(Token::String(comp_str2)) = self.tokens.next() {
-                                    Ok(Expr::FieldComparison(field, comp.clone(), comp_str2))
+                                    Ok(Expr::FieldComparison(field, comp, comp_str2))
                                 } else {
                                     Err("Expected string".to_string())
                                 }

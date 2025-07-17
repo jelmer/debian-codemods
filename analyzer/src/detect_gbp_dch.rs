@@ -204,30 +204,16 @@ fn changelog_stats(
             .repository()
             .get_revision_deltas(revs.as_slice(), None),
     ) {
-        let mut filenames = vec![];
-        for a in delta.added {
-            if let Some(p) = a.path.1 {
-                filenames.push(p.clone());
-            }
-        }
-        for r in delta.removed {
-            if let Some(p) = r.path.0 {
-                filenames.push(p.clone());
-            }
-        }
-        for r in delta.renamed {
-            if let Some(p) = r.path.0 {
-                filenames.push(p.clone());
-            }
-            if let Some(p) = r.path.1 {
-                filenames.push(p.clone());
-            }
-        }
-        for m in delta.modified {
-            if let Some(p) = m.path.0 {
-                filenames.push(p.clone());
-            }
-        }
+        let filenames: Vec<_> = delta
+            .added
+            .iter()
+            .filter_map(|a| a.path.1.as_ref())
+            .chain(delta.removed.iter().filter_map(|r| r.path.0.as_ref()))
+            .chain(delta.renamed.iter().filter_map(|r| r.path.0.as_ref()))
+            .chain(delta.renamed.iter().filter_map(|r| r.path.1.as_ref()))
+            .chain(delta.modified.iter().filter_map(|m| m.path.0.as_ref()))
+            .cloned()
+            .collect();
         if !filenames.iter().any(|f| f.starts_with(debian_path)) {
             continue;
         }
