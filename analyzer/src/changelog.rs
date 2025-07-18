@@ -82,7 +82,7 @@ pub fn find_last_distribution(cl: &ChangeLog) -> Option<String> {
         if block.is_unreleased() != Some(true) {
             if let Some(distributions) = block.distributions() {
                 if distributions.len() == 1 {
-                    return Some(distributions[0].clone());
+                    return Some(distributions[0].to_string());
                 }
             }
         }
@@ -225,7 +225,7 @@ pub fn find_changelog(
 
     let mut changelog_file = subpath.join("debian/changelog");
     if !tree.has_filename(&changelog_file) {
-        let mut checked_files = vec![changelog_file.clone()];
+        let mut checked_files = vec![changelog_file.to_path_buf()];
         let changelog_file = if merge.unwrap_or(false) {
             // Assume LarstiQ's layout (.bzr in debian/)
             let changelog_file = subpath.join("changelog");

@@ -34,13 +34,19 @@ pub fn probe_gitlab_host(hostname: &str) -> bool {
     let client = reqwest::blocking::Client::builder()
         .default_headers(headers)
         .build()
-        .unwrap();
+        .expect("Failed to build HTTP client");
 
-    let http_url: reqwest::Url = Into::<String>::into(url.clone()).parse().unwrap();
+    let http_url: reqwest::Url = url.parse().expect("Invalid URL format");
 
-    let request = client.get(http_url).build().unwrap();
+    let request = client
+        .get(http_url)
+        .build()
+        .expect("Failed to build request");
 
-    let response = client.execute(request).unwrap();
+    let response = match client.execute(request) {
+        Ok(r) => r,
+        Err(_) => return false,
+    };
 
     match response.status().as_u16() {
         401 => {

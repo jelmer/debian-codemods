@@ -15,7 +15,7 @@ pub fn debian_releases() -> Vec<String> {
     let debian = distro_info::DebianDistroInfo::new().unwrap();
     debian
         .all_at(Utc::now().naive_utc().date())
-        .iter()
+        .into_iter()
         .map(|r| r.series().to_string())
         .collect()
 }
@@ -25,7 +25,7 @@ pub fn ubuntu_releases() -> Vec<String> {
     let ubuntu = distro_info::UbuntuDistroInfo::new().unwrap();
     ubuntu
         .all_at(Utc::now().naive_utc().date())
-        .iter()
+        .into_iter()
         .map(|r| r.series().to_string())
         .collect()
 }
@@ -41,11 +41,11 @@ pub fn ubuntu_releases() -> Vec<String> {
 pub fn suite_to_distribution(suite: &str) -> Option<Vendor> {
     let all_debian = debian_releases()
         .iter()
-        .flat_map(|r| DEBIAN_POCKETS.iter().map(move |t| r.to_string() + t))
+        .flat_map(|r| DEBIAN_POCKETS.iter().map(move |t| format!("{}{}", r, t)))
         .collect::<Vec<_>>();
     let all_ubuntu = ubuntu_releases()
         .iter()
-        .flat_map(|r| UBUNTU_POCKETS.iter().map(move |t| r.to_string() + t))
+        .flat_map(|r| UBUNTU_POCKETS.iter().map(move |t| format!("{}{}", r, t)))
         .collect::<Vec<_>>();
     if all_debian.contains(&suite.to_string()) {
         return Some(Vendor::Debian);

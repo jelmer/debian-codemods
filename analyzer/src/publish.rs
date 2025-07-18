@@ -158,7 +158,7 @@ pub fn update_official_vcs(
         subpath: subpath.map(|p| p.to_string_lossy().to_string()),
     };
     update_control_for_vcs_url(&mut source, branch.vcs_type(), &vcs_url.to_string());
-    let parsed_vcs = vcs_url.clone();
+    let parsed_vcs = vcs_url;
 
     let committer = committer.map_or_else(|| get_committer(wt), |s| s.to_string());
 

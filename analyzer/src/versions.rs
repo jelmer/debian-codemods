@@ -8,28 +8,40 @@
 /// # Returns
 /// mangled version string for use in Debian versions
 pub fn debianize_upstream_version(version: &str) -> String {
-    let mut version = version.to_string();
-    if version.chars().filter(|c| *c == '_').count() == 1
-        && version.chars().filter(|c| *c == '.').count() > 1
-    {
+    use std::borrow::Cow;
+
+    let mut version = Cow::Borrowed(version);
+
+    // Count underscores and dots to determine if we need to modify
+    let underscore_count = version.chars().filter(|c| *c == '_').count();
+    let dot_count = version.chars().filter(|c| *c == '.').count();
+
+    if underscore_count == 1 && dot_count > 1 {
         // This is a style commonly used for perl packages.
         // Most debian packages seem to just drop the underscore.
         // See
         // http://blogs.perl.org/users/grinnz/2018/04/a-guide-to-versions-in-perl.html
-        version = version.replace('_', "");
+        version = Cow::Owned(version.replace('_', ""));
+    } else if underscore_count > 0 && dot_count == 0 {
+        version = Cow::Owned(version.replace('_', "."));
     }
-    if version.contains('_') && !version.contains('.') {
-        version = version.replace('_', ".");
+
+    // Replace pre-release indicators
+    if version.contains("-rc") || version.contains("-beta") || version.contains("-alpha") {
+        let mut owned = version.into_owned();
+        owned = owned.replace("-rc", "~rc");
+        owned = owned.replace("-beta", "~beta");
+        owned = owned.replace("-alpha", "~alpha");
+        version = Cow::Owned(owned);
     }
-    version = version.replace("-rc", "~rc");
-    version = version.replace("-beta", "~beta");
-    version = version.replace("-alpha", "~alpha");
+
     if let Some((_, a, b, c, d)) =
         lazy_regex::regex_captures!(r"(.*)\.([0-9])(a|b|rc|alpha|beta)([0-9]*)", &version)
     {
-        version = format!("{}.{}~{}{}", a, b, c, d);
+        return format!("{}.{}~{}{}", a, b, c, d);
     }
-    version
+
+    version.into_owned()
 }
 
 /// Check whether an upstream version string matches a upstream release.

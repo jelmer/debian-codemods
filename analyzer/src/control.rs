@@ -540,7 +540,8 @@ fn apply_changes(
     let resolve_conflict = resolve_conflict.unwrap_or(default_resolve_conflict);
 
     for mut paragraph in deb822.paragraphs() {
-        for item in paragraph.items().collect::<Vec<_>>() {
+        let items: Vec<_> = paragraph.items().collect();
+        for item in items {
             for (key, old_value, mut new_value) in changes.0.remove(&item).unwrap_or_default() {
                 if paragraph.get(&key) != old_value {
                     new_value = resolve_conflict(
@@ -707,7 +708,7 @@ impl TemplatedControlEditor {
                 } else if let Some(s) = p.get("Package") {
                     ret.insert(("Package".to_string(), s), p);
                 } else {
-                    let k = p.items().next().unwrap().clone();
+                    let k = p.items().next().unwrap();
                     ret.insert(k, p);
                 }
             }
