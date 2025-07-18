@@ -933,6 +933,10 @@ impl Fixer for ScriptFixer {
                 return Err(FixerError::NoChanges);
             }
 
+            if status.code().is_none() {
+                return Err(FixerError::Other("Script terminated by signal".to_string()));
+            }
+
             return Err(FixerError::ScriptFailed {
                 path: self.path.to_owned(),
                 exit_code: status.code().unwrap(),
@@ -1705,7 +1709,7 @@ pub fn run_lintian_fixers(
     pb.set_draw_target(indicatif::ProgressDrawTarget::hidden());
     let mut dirty_tracker = if use_dirty_tracker.unwrap_or(true) {
         Some(DirtyTreeTracker::new_in_subpath(
-            local_tree.clone(),
+            Clone::clone(&local_tree),
             subpath,
         ))
     } else {
@@ -3214,3 +3218,136 @@ fixers:
 
 #[cfg(test)]
 mod fixer_tests;
+
+#[cfg(test)]
+mod script_fixer_tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn test_script_terminated_by_signal() {
+        // Create a test script that will be killed
+        let td = tempfile::tempdir().unwrap();
+        let script_path = td.path().join("test_script.sh");
+
+        // Write a script that will be killed immediately by calling kill on itself
+        std::fs::write(&script_path, "#!/bin/bash\nkill -TERM $$\n").unwrap();
+        std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        // Create a script fixer
+        let fixer = ScriptFixer::new(
+            "test_fixer".to_string(),
+            vec!["test-tag".to_string()],
+            script_path.clone(),
+        );
+
+        // Create a test working directory with debian/control
+        let work_dir = td.path().join("work");
+        std::fs::create_dir_all(&work_dir).unwrap();
+        std::fs::create_dir_all(work_dir.join("debian")).unwrap();
+        std::fs::write(work_dir.join("debian/control"), "Source: test\n").unwrap();
+
+        let version: Version = "1.0-1".parse().unwrap();
+        let preferences = FixerPreferences::default();
+        let result = fixer.run(&work_dir, "test", &version, &preferences, None);
+
+        // The result should be an error about script being terminated by signal
+        match result {
+            Err(FixerError::Other(msg)) => {
+                assert_eq!(msg, "Script terminated by signal");
+            }
+            other => panic!(
+                "Expected FixerError::Other with signal message, got: {:?}",
+                other
+            ),
+        }
+    }
+
+    #[test]
+    fn test_script_exit_code_2() {
+        // Test that exit code 2 returns NoChanges error
+        let td = tempfile::tempdir().unwrap();
+        let script_path = td.path().join("test_script.sh");
+
+        // Write a script that exits with code 2
+        std::fs::write(&script_path, "#!/bin/bash\nexit 2\n").unwrap();
+        std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let fixer = ScriptFixer::new(
+            "test_fixer".to_string(),
+            vec!["test-tag".to_string()],
+            script_path.clone(),
+        );
+
+        let work_dir = td.path().join("work");
+        std::fs::create_dir_all(&work_dir).unwrap();
+        std::fs::create_dir_all(work_dir.join("debian")).unwrap();
+        std::fs::write(work_dir.join("debian/control"), "Source: test\n").unwrap();
+
+        let version: Version = "1.0-1".parse().unwrap();
+        let preferences = FixerPreferences::default();
+        let result = fixer.run(&work_dir, "test", &version, &preferences, None);
+
+        match result {
+            Err(FixerError::NoChanges) => {}
+            other => panic!("Expected FixerError::NoChanges, got: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_script_success() {
+        // Test successful script execution
+        let td = tempfile::tempdir().unwrap();
+        let script_path = td.path().join("test_script.sh");
+
+        // Write a script that succeeds and outputs valid fixer result
+        std::fs::write(
+            &script_path,
+            "#!/bin/bash\necho 'Fixed: test issue'\necho 'Fixed-Lintian-Tags: test-tag'\nexit 0\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let fixer = ScriptFixer::new(
+            "test_fixer".to_string(),
+            vec!["test-tag".to_string()],
+            script_path.clone(),
+        );
+
+        let work_dir = td.path().join("work");
+        std::fs::create_dir_all(&work_dir).unwrap();
+        std::fs::create_dir_all(work_dir.join("debian")).unwrap();
+        std::fs::write(work_dir.join("debian/control"), "Source: test\n").unwrap();
+
+        let version: Version = "1.0-1".parse().unwrap();
+        let preferences = FixerPreferences::default();
+        let result = fixer.run(&work_dir, "test", &version, &preferences, None);
+
+        match result {
+            Ok(fixer_result) => {
+                assert_eq!(fixer_result.description, "Fixed: test issue");
+                assert_eq!(fixer_result.fixed_lintian_tags(), vec!["test-tag"]);
+            }
+            Err(e) => panic!("Expected success, got error: {:?}", e),
+        }
+    }
+
+    #[test]
+    fn test_parse_script_fixer_output() {
+        // Test basic parsing
+        let output = "Fixed: test issue\nFixed-Lintian-Tags: tag1, tag2\n";
+        let result = parse_script_fixer_output(output).unwrap();
+        assert_eq!(result.description, "Fixed: test issue");
+        assert_eq!(result.fixed_lintian_tags(), vec!["tag1", "tag2"]);
+
+        // Test with certainty
+        let output = "Fixed: test issue\nCertainty: possible\n";
+        let result = parse_script_fixer_output(output).unwrap();
+        assert_eq!(result.certainty, Some(Certainty::Possible));
+
+        // Test with patch header
+        let output = "Fixed: test issue\nPatch-Name: fix.patch\n";
+        let result = parse_script_fixer_output(output).unwrap();
+        assert_eq!(result.patch_name, Some("fix.patch".to_string()));
+    }
+}
