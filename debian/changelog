@@ -2,6 +2,8 @@ lintian-brush (0.163) UNRELEASED; urgency=medium
 
   * Add support for X-DH-Compat header. Closes: #1106883
   * Bump breezyshim to 0.5 and pyo03 to 0.25
+  * Bump python3-upstream-ontologist dependency to 0.2.2; older versions
+    trigger a infinite memory usage bug.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 03 Jun 2025 22:37:02 +0100
 

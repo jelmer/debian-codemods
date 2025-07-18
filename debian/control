@@ -78,7 +78,7 @@ Build-Depends: bash-completion,
                python3-setuptools,
                python3-setuptools-rust,
                python3-tomlkit,
-               python3-upstream-ontologist (>= 0.1.42),
+               python3-upstream-ontologist (>= 0.2.2),
                rustc
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
@@ -98,7 +98,7 @@ Depends: devscripts,
          python3-iso8601,
          python3-pkg-resources,
          python3-ruamel.yaml,
-         python3-upstream-ontologist (>= 0.1.34),
+         python3-upstream-ontologist (>= 0.2.2),
          ${misc:Depends},
          ${python3:Depends},
          ${shlibs:Depends}
