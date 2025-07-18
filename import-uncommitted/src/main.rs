@@ -4,7 +4,7 @@ use breezyshim::debian::import_dsc::{DistributionBranch, DistributionBranchSet};
 use breezyshim::debian::upstream::UpstreamSource;
 use breezyshim::error::Error as BrzError;
 use breezyshim::repository::Repository;
-use breezyshim::tree::{PyTree, Tree};
+use breezyshim::tree::{MutableTree, PyTree, Tree};
 use breezyshim::workingtree::WorkingTree;
 use breezyshim::Branch;
 use breezyshim::RevisionId;
@@ -215,7 +215,7 @@ fn set_vcs_git_url(
         let mut vcs_git: debian_control::vcs::ParsedVcs = vcs_git_base.parse().unwrap();
         vcs_git.repo_url = format!(
             "{}/{}.git",
-            vcs_git.repo_url.trim_end_matches("/"),
+            vcs_git.repo_url.trim_end_matches('/'),
             source.name().unwrap()
         );
 
@@ -235,16 +235,13 @@ fn set_vcs_git_url(
 }
 
 fn contains_git_attributes(tree: &dyn Tree, subpath: &Path) -> bool {
-    for entry in tree
-        .list_files(None, Some(subpath), Some(true), Some(true))
+    tree.list_files(None, Some(subpath), Some(true), Some(true))
         .unwrap()
-    {
-        let entry = entry.unwrap();
-        if entry.0.file_name() == Some(std::ffi::OsStr::new(".gitattributes")) {
-            return true;
-        }
-    }
-    false
+        .any(|entry| {
+            entry
+                .map(|e| e.0.file_name() == Some(std::ffi::OsStr::new(".gitattributes")))
+                .unwrap_or(false)
+        })
 }
 
 fn import_uncommitted(
@@ -829,10 +826,178 @@ pub fn main() {
 }
 
 fn versions_dict() -> HashMap<String, String> {
-    let mut versions = HashMap::new();
-    versions.insert(
+    HashMap::from([(
         "breezyshim".to_string(),
         breezyshim::version::version().to_string(),
-    );
-    versions
+    )])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use debian_changelog::{ChangeLog, Entry};
+    use debversion::Version;
+    use std::io::Cursor;
+
+    #[test]
+    fn test_find_missing_versions_empty_changelog() {
+        let changelog_content = "";
+        let changelog = ChangeLog::read(changelog_content.as_bytes()).unwrap();
+        let result = find_missing_versions(&changelog, None).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_find_missing_versions_no_tree_version() {
+        let changelog_content = r#"package (2.0-1) unstable; urgency=medium
+
+  * New upstream version
+
+ -- Maintainer <maint@example.com>  Mon, 01 Jan 2024 12:00:00 +0000
+
+package (1.0-1) unstable; urgency=medium
+
+  * Initial release
+
+ -- Maintainer <maint@example.com>  Mon, 01 Jan 2023 12:00:00 +0000
+"#;
+        let changelog = ChangeLog::read(changelog_content.as_bytes()).unwrap();
+        let result = find_missing_versions(&changelog, None).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], Version::parse("2.0-1").unwrap());
+        assert_eq!(result[1], Version::parse("1.0-1").unwrap());
+    }
+
+    #[test]
+    fn test_find_missing_versions_with_tree_version() {
+        let changelog_content = r#"package (3.0-1) unstable; urgency=medium
+
+  * Latest version
+
+ -- Maintainer <maint@example.com>  Mon, 01 Jan 2025 12:00:00 +0000
+
+package (2.0-1) unstable; urgency=medium
+
+  * New upstream version
+
+ -- Maintainer <maint@example.com>  Mon, 01 Jan 2024 12:00:00 +0000
+
+package (1.0-1) unstable; urgency=medium
+
+  * Initial release
+
+ -- Maintainer <maint@example.com>  Mon, 01 Jan 2023 12:00:00 +0000
+"#;
+        let changelog = ChangeLog::read(changelog_content.as_bytes()).unwrap();
+        let tree_version = Version::parse("1.0-1").unwrap();
+        let result = find_missing_versions(&changelog, Some(&tree_version)).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], Version::parse("3.0-1").unwrap());
+        assert_eq!(result[1], Version::parse("2.0-1").unwrap());
+    }
+
+    #[test]
+    fn test_find_missing_versions_tree_version_not_found() {
+        let changelog_content = r#"package (2.0-1) unstable; urgency=medium
+
+  * New upstream version
+
+ -- Maintainer <maint@example.com>  Mon, 01 Jan 2024 12:00:00 +0000
+"#;
+        let changelog = ChangeLog::read(changelog_content.as_bytes()).unwrap();
+        let tree_version = Version::parse("1.0-1").unwrap();
+        let result = find_missing_versions(&changelog, Some(&tree_version));
+        assert!(result.is_err());
+        match result {
+            Err(Error::TreeVersionNotInArchiveChangelog(v)) => {
+                assert_eq!(v, tree_version);
+            }
+            _ => panic!("Expected TreeVersionNotInArchiveChangelog error"),
+        }
+    }
+
+    #[test]
+    fn test_find_missing_versions_exact_match() {
+        let changelog_content = r#"package (1.0-1) unstable; urgency=medium
+
+  * Initial release
+
+ -- Maintainer <maint@example.com>  Mon, 01 Jan 2023 12:00:00 +0000
+"#;
+        let changelog = ChangeLog::read(changelog_content.as_bytes()).unwrap();
+        let tree_version = Version::parse("1.0-1").unwrap();
+        let result = find_missing_versions(&changelog, Some(&tree_version)).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_versions_dict() {
+        let versions = versions_dict();
+        assert!(versions.contains_key("breezyshim"));
+        assert!(!versions["breezyshim"].is_empty());
+    }
+
+    #[test]
+    fn test_set_vcs_git_url_with_base() {
+        use debian_control::lossless::Control;
+
+        let control_content = r#"Source: test-package
+Section: misc
+Priority: optional
+Maintainer: Test Maintainer <test@example.com>
+Build-Depends: debhelper (>= 10)
+Standards-Version: 4.1.0
+
+Package: test-package
+Architecture: any
+Depends: ${misc:Depends}
+Description: Test package
+ This is a test package.
+"#;
+        let control = Control::parse(control_content).unwrap();
+
+        let (old_url, new_url) = set_vcs_git_url(
+            &control,
+            Some("https://salsa.debian.org/maintainer"),
+            Some("https://salsa.debian.org/maintainer"),
+        );
+
+        assert!(old_url.is_none());
+        assert_eq!(
+            new_url,
+            Some("https://salsa.debian.org/maintainer/test-package.git".to_string())
+        );
+    }
+
+    #[test]
+    fn test_set_vcs_git_url_no_base() {
+        use debian_control::lossless::Control;
+
+        let control_content = r#"Source: test-package
+Section: misc
+Priority: optional
+Maintainer: Test Maintainer <test@example.com>
+Build-Depends: debhelper (>= 10)
+Standards-Version: 4.1.0
+Vcs-Git: https://github.com/original/test-package.git
+
+Package: test-package
+Architecture: any
+Depends: ${misc:Depends}
+Description: Test package
+ This is a test package.
+"#;
+        let control = Control::parse(control_content).unwrap();
+
+        let (old_url, new_url) = set_vcs_git_url(&control, None, None);
+
+        assert_eq!(
+            old_url,
+            Some("https://github.com/original/test-package.git".to_string())
+        );
+        assert_eq!(
+            new_url,
+            Some("https://github.com/original/test-package.git".to_string())
+        );
+    }
 }

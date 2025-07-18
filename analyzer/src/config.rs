@@ -66,15 +66,13 @@ impl Config {
 
     /// Return the compatibility release.
     pub fn compat_release(&self) -> Option<String> {
-        if let Some(value) = self.obj.get("default", "compat-release") {
-            let codename = crate::release_info::resolve_release_codename(value.as_str(), None);
+        self.obj.get("default", "compat-release").and_then(|value| {
+            let codename = crate::release_info::resolve_release_codename(&value, None);
             if codename.is_none() {
                 warn!("unknown compat release {}, ignoring.", value);
             }
             codename
-        } else {
-            None
-        }
+        })
     }
 
     /// Return whether reformatting is allowed.
@@ -95,7 +93,7 @@ impl Config {
             .and_then(|value| {
                 value
                     .parse::<Certainty>()
-                    .inspect_err(|e| {
+                    .inspect_err(|_e| {
                         warn!("invalid minimum-certainty value {}, ignoring.", value);
                     })
                     .ok()

@@ -104,10 +104,10 @@ blah: bloe
 
 /// Find the name of the patches directory in a debian/rules file
 pub fn rules_find_patches_directory(mf: &makefile_lossless::Makefile) -> Option<PathBuf> {
-    let v = mf
-        .variable_definitions()
-        .find(|v| v.name().as_deref() == Some("QUILT_PATCH_DIR"))?;
-    v.raw_value().map(PathBuf::from)
+    mf.variable_definitions()
+        .find(|v| v.name().as_deref() == Some("QUILT_PATCH_DIR"))?
+        .raw_value()
+        .map(PathBuf::from)
 }
 
 #[test]
@@ -182,21 +182,15 @@ pub fn find_patch_base(tree: &dyn WorkingTree) -> Option<RevisionId> {
     let entry = cl.iter().next()?;
     let package = entry.package().unwrap();
     let upstream_version = entry.version().unwrap().upstream_version;
-    let possible_tags = vec![
+    let possible_tags = [
         format!("upstream-{}", upstream_version),
         format!("upstream/{}", upstream_version),
-        format!("{}", upstream_version),
+        upstream_version.to_string(),
         format!("v{}", upstream_version),
         format!("{}-{}", package, upstream_version),
     ];
     let tags = tree.branch().tags().unwrap().get_tag_dict().unwrap();
-    for possible_tag in possible_tags {
-        if let Some(revid) = tags.get(&possible_tag) {
-            return Some(revid.clone());
-        }
-    }
-    // TODO(jelmer): Do something clever, like look for the last merge?
-    None
+    possible_tags.iter().find_map(|tag| tags.get(tag).cloned())
 }
 
 #[cfg(test)]
@@ -703,13 +697,13 @@ pub fn upstream_with_applied_patches(
         Ok(Box::new(patches_branch.basis_tree()?) as Box<dyn PyTree>)
     } else {
         let upstream_revision = find_patch_base(&tree).unwrap(); // PatchApplicationBaseNotFound(tree)
-        let upstream_tree = tree
-            .branch()
-            .repository()
-            .revision_tree(&upstream_revision)?;
         if patches.is_empty() {
-            Ok(Box::new(tree.clone()) as Box<dyn PyTree>)
+            Ok(Box::new(Clone::clone(&tree)) as Box<dyn PyTree>)
         } else {
+            let upstream_tree = tree
+                .branch()
+                .repository()
+                .revision_tree(&upstream_revision)?;
             Ok(Box::new(AppliedPatches::new(&upstream_tree, patches, None)?) as Box<dyn PyTree>)
         }
     }
@@ -817,7 +811,7 @@ pub fn tree_non_patches_changes(
     };
 
     let patches_tree = if patches.is_empty() {
-        Box::new(tree.clone())
+        Box::new(Clone::clone(&tree))
     } else {
         Box::new(AppliedPatches::new(&tree, patches.clone(), None)?) as Box<dyn Tree>
     };

@@ -56,7 +56,7 @@ fn map_bad_to_good(bad: &Expr, good: &Expr) -> Result<Vec<(String, Match, Match)
                 }
                 Expr::FieldString(f, s) => (f.to_string(), Match::String(s.to_string())),
                 Expr::FieldComparison(f, c, s) => {
-                    (f.to_string(), Match::Comparison(*c, s.to_string()))
+                    (f.to_string(), Match::Comparison(c.clone(), s.to_string()))
                 }
                 _ => return Err(format!("unable to find replacement value for {:?}", entry)),
             };
@@ -66,7 +66,7 @@ fn map_bad_to_good(bad: &Expr, good: &Expr) -> Result<Vec<(String, Match, Match)
                 match good {
                     Expr::FieldString(_, s) => Match::String(s.to_string()),
                     Expr::FieldRegex(_, r) => Match::Regex(Regex::new(r).unwrap()),
-                    Expr::FieldComparison(_, c, s) => Match::Comparison(*c, s.to_string()),
+                    Expr::FieldComparison(_, c, s) => Match::Comparison(c.clone(), s.to_string()),
                     _ => return Err(format!("unable to find replacement value for {}", f)),
                 }
             } else {
@@ -135,16 +135,16 @@ fn control_matches(control: &Deb822, expr: &Expr) -> bool {
 }
 
 fn transition_find_bugno(transition: &Transition) -> Vec<i32> {
-    let notes = if let Some(notes) = &transition.notes {
-        notes
-    } else {
-        return vec![];
-    };
-    let bugs_re = lazy_regex::regex!("#([0-9]+)");
-    bugs_re
-        .find_iter(notes)
-        .map(|m| m.as_str()[1..].parse().unwrap())
-        .collect()
+    transition
+        .notes
+        .as_ref()
+        .map(|notes| {
+            lazy_regex::regex!("#([0-9]+)")
+                .find_iter(notes)
+                .map(|m| m.as_str()[1..].parse().unwrap())
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 #[derive(Debug)]
@@ -158,20 +158,11 @@ pub enum TransitionResult {
 
 impl TransitionResult {
     pub fn is_success(&self) -> bool {
-        match self {
-            TransitionResult::TransitionSuccess(_, _) => true,
-            _ => false,
-        }
+        matches!(self, TransitionResult::TransitionSuccess(_, _))
     }
 
     pub fn is_noop(&self) -> bool {
-        match self {
-            TransitionResult::PackageNotAffected(_) => true,
-            TransitionResult::PackageAlreadyGood(_) => true,
-            TransitionResult::PackageNotBad(_) => true,
-            TransitionResult::TransitionSuccess(_, _) => false,
-            TransitionResult::Unsupported(_) => true,
-        }
+        !matches!(self, TransitionResult::TransitionSuccess(_, _))
     }
 }
 
@@ -206,23 +197,20 @@ pub fn apply_transition(control: &mut Control, transition: &Transition) -> Trans
 
     for (field, bad, good) in map {
         for mut para in deb822.paragraphs() {
-            let old_value = if let Some(v) = para.get(&field) {
-                v
-            } else {
-                continue;
-            };
-            if bad.applies(&old_value) {
-                let new_value = match (&bad, &good) {
-                    (Match::String(o), Match::String(n)) => old_value.replace(o, n),
-                    (Match::Regex(o), Match::String(n)) => o.replace(&old_value, n).to_string(),
-                    (_, _) => {
-                        return TransitionResult::Unsupported(format!(
-                            "unsupported bad/good combination for field {}: {:?} -> {:?}",
-                            field, bad, good
-                        ));
-                    }
-                };
-                para.insert(&field, &new_value);
+            if let Some(old_value) = para.get(&field) {
+                if bad.applies(&old_value) {
+                    let new_value = match (&bad, &good) {
+                        (Match::String(o), Match::String(n)) => old_value.replace(o, n),
+                        (Match::Regex(o), Match::String(n)) => o.replace(&old_value, n).to_string(),
+                        (_, _) => {
+                            return TransitionResult::Unsupported(format!(
+                                "unsupported bad/good combination for field {}: {:?} -> {:?}",
+                                field, bad, good
+                            ));
+                        }
+                    };
+                    para.insert(&field, &new_value);
+                }
             }
         }
     }

@@ -312,16 +312,17 @@ impl DebcargoSource<'_> {
 
     /// Get the name of the package.
     pub fn name(&self) -> Option<String> {
+        let crate_name = self.main.crate_name()?;
         let semver_suffix = self.main.semver_suffix();
         if semver_suffix {
-            let crate_name = self.main.crate_name().map(debnormalize);
+            let crate_version = self.main.crate_version()?;
             Some(format!(
                 "rust-{}-{}",
-                crate_name?,
-                semver_pair(&self.main.crate_version()?)
+                debnormalize(crate_name),
+                semver_pair(&crate_version)
             ))
         } else {
-            Some(format!("rust-{}", debnormalize(self.main.crate_name()?)))
+            Some(format!("rust-{}", debnormalize(crate_name)))
         }
     }
 
@@ -381,7 +382,12 @@ impl DebcargoSource<'_> {
             .get("source")
             .and_then(|s| s.get("uploaders"))
             .and_then(|x| x.as_array())
-            .map(|a| a.iter().map(|v| v.as_str().unwrap().to_string()).collect())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str())
+                    .map(|s| s.to_string())
+                    .collect()
+            })
     }
 
     /// Set the uploaders.
@@ -466,15 +472,15 @@ impl<'a> DebcargoBinary<'a> {
     }
 
     /// Get the package long description.
-    pub fn long_description(&self) -> Option<&str> {
+    pub fn long_description(&self) -> Option<String> {
         if let Some(description) = self.table.get("description").and_then(|v| v.as_str()) {
-            Some(description)
+            Some(description.to_string())
         } else if let Some(description) = self.global_description.as_ref() {
-            Some(description.as_str())
+            Some(description.clone())
         } else {
             match self.key.as_str() {
                 "lib" => Some(format!("Source code for Debianized Rust crate \"{}\"", self.crate_name)),
-                "bin" => Some("This package contains the source for the Rust mio crate, packaged by debcargo for use with cargo and dh-cargo.".to_owned()),
+                "bin" => Some("This package contains the source for the Rust mio crate, packaged by debcargo for use with cargo and dh-cargo.".to_string()),
                 _ => None,
             }
         }
@@ -483,8 +489,8 @@ impl<'a> DebcargoBinary<'a> {
     /// Return the package description.
     pub fn description(&self) -> Option<String> {
         Some(crate::control::format_description(
-            &self.summary()?,
-            self.long_description()?.split('\n').collect(),
+            self.summary()?,
+            self.long_description()?.lines().collect(),
         ))
     }
 
