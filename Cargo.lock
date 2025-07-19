@@ -410,7 +410,7 @@ dependencies = [
  "clap",
  "debian-control",
  "debversion",
- "env_logger 0.11.8",
+ "env_logger",
  "fancy-regex",
  "inventory",
  "lazy-regex",
@@ -748,7 +748,7 @@ dependencies = [
  "deb822-lossless 0.3.0",
  "debian-analyzer 0.158.28",
  "debian-control",
- "env_logger 0.11.8",
+ "env_logger",
  "lazy-regex",
  "lazy_static",
  "log",
@@ -844,7 +844,7 @@ dependencies = [
  "dep3",
  "difflib",
  "distro-info",
- "env_logger 0.11.8",
+ "env_logger",
  "filetime",
  "hex",
  "lazy-regex",
@@ -973,7 +973,7 @@ dependencies = [
  "debian-control",
  "debversion",
  "distro-info",
- "env_logger 0.10.2",
+ "env_logger",
  "flate2",
  "http-body-util",
  "hyper",
@@ -1220,16 +1220,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "env_filter"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "186e05a59d4c50738528153b83b0b0194d3a29507dfec16eccd4b342903397d0"
-dependencies = [
- "log",
- "regex",
-]
-
-[[package]]
 name = "env_logger"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1240,19 +1230,6 @@ dependencies = [
  "log",
  "regex",
  "termcolor",
-]
-
-[[package]]
-name = "env_logger"
-version = "0.11.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13c863f0904021b108aa8b2f55046443e6b1ebde8fd4a15c399893aae4fa069f"
-dependencies = [
- "anstream",
- "anstyle",
- "env_filter",
- "jiff",
- "log",
 ]
 
 [[package]]
@@ -2251,7 +2228,7 @@ dependencies = [
  "debian-changelog",
  "debian-control",
  "debversion",
- "env_logger 0.11.8",
+ "env_logger",
  "log",
  "serde",
  "sqlx",
@@ -2572,7 +2549,7 @@ dependencies = [
  "debian-changelog",
  "debversion",
  "distro-info",
- "env_logger 0.11.8",
+ "env_logger",
  "fs_extra",
  "humantime",
  "indicatif",
@@ -2855,7 +2832,7 @@ dependencies = [
  "debian-changelog",
  "debian-control",
  "debversion",
- "env_logger 0.11.8",
+ "env_logger",
  "lazy-regex",
  "lazy_static",
  "log",
@@ -3003,7 +2980,7 @@ dependencies = [
  "debian-control",
  "debversion",
  "dirs",
- "env_logger 0.11.8",
+ "env_logger",
  "flate2",
  "fs_extra",
  "inventory",
@@ -3999,7 +3976,7 @@ dependencies = [
  "debian-control",
  "debversion",
  "distro-info",
- "env_logger 0.11.8",
+ "env_logger",
  "lazy_static",
  "log",
  "maplit",
