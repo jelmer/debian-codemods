@@ -514,7 +514,7 @@ fn main() -> Result<(), i32> {
         > {
             let apt = ognibuild::debian::apt::AptManager::from_session(session.as_ref());
             let context = ognibuild::debian::context::DebianPackagingContext::new(
-                wt.clone(),
+                Clone::clone(&wt),
                 subpath,
                 committer.clone(),
                 false,

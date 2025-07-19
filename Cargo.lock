@@ -314,59 +314,9 @@ checksum = "26c4925bc979b677330a8c7fe7a8c94af2dbb4a2d37b4a20a80d884400f46baa"
 
 [[package]]
 name = "breezyshim"
-version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17bbc502c3444ac819d7a5f82a54d4663a3690ca4e2c3d7baa36a17e7d951b44"
-dependencies = [
- "chrono",
- "ctor",
- "deb822-lossless 0.3.0",
- "debian-changelog",
- "debian-control",
- "debversion",
- "difflib",
- "dirty-tracker",
- "lazy-regex",
- "lazy_static",
- "log",
- "patchkit",
- "percent-encoding",
- "pyo3",
- "pyo3-filelike",
- "serde",
- "tempfile",
- "url",
-]
-
-[[package]]
-name = "breezyshim"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9065928e4632fabbaba71de5ea32680785f97c2d40e5de8e7a0a696fb5a951e2"
-dependencies = [
- "chrono",
- "ctor",
- "deb822-lossless 0.3.0",
- "debian-changelog",
- "debian-control",
- "debversion",
- "difflib",
- "lazy-regex",
- "lazy_static",
- "log",
- "patchkit",
- "percent-encoding",
- "pyo3",
- "pyo3-filelike",
- "serde",
- "tempfile",
- "url",
-]
-
-[[package]]
-name = "breezyshim"
-version = "0.6.0"
-source = "git+https://github.com/breezy-team/breezyshim#f8e8bfd1cca3a83104100bdcc7003bf08352483f"
 dependencies = [
  "chrono",
  "ctor",
@@ -410,7 +360,7 @@ dependencies = [
  "clap",
  "debian-control",
  "debversion",
- "env_logger",
+ "env_logger 0.11.8",
  "fancy-regex",
  "inventory",
  "lazy-regex",
@@ -743,12 +693,12 @@ checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 name = "deb-transition-apply"
 version = "0.163.0"
 dependencies = [
- "breezyshim 0.6.0 (git+https://github.com/breezy-team/breezyshim)",
+ "breezyshim",
  "clap",
  "deb822-lossless 0.3.0",
- "debian-analyzer 0.158.28",
+ "debian-analyzer",
  "debian-control",
- "env_logger",
+ "env_logger 0.11.8",
  "lazy-regex",
  "lazy_static",
  "log",
@@ -830,11 +780,12 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.158.28"
+version = "0.159.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d52ecfe3fa3071d9ddcfcba3bd713bb2f2d82cebfa385e81a84dd7bdb07e060"
 dependencies = [
- "breezyshim 0.6.0 (git+https://github.com/breezy-team/breezyshim)",
+ "breezyshim",
  "chrono",
- "clap",
  "configparser",
  "deb822-lossless 0.3.0",
  "debian-changelog",
@@ -844,7 +795,6 @@ dependencies = [
  "dep3",
  "difflib",
  "distro-info",
- "env_logger",
  "filetime",
  "hex",
  "lazy-regex",
@@ -860,48 +810,9 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "serial_test",
  "sha1",
  "sqlx",
  "svp-client",
- "tempfile",
- "toml_edit 0.23.2",
- "url",
-]
-
-[[package]]
-name = "debian-analyzer"
-version = "0.158.28"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42c1549c5ea5c6325abf90af53bb9dae102bfe64bd11701ea58c80b71c164460"
-dependencies = [
- "breezyshim 0.5.6",
- "chrono",
- "configparser",
- "deb822-lossless 0.3.0",
- "debian-changelog",
- "debian-control",
- "debian-copyright",
- "debversion",
- "dep3",
- "difflib",
- "distro-info",
- "filetime",
- "hex",
- "lazy-regex",
- "lazy_static",
- "log",
- "makefile-lossless",
- "maplit",
- "merge3",
- "patchkit",
- "pyo3",
- "quote",
- "reqwest",
- "semver",
- "serde",
- "serde_json",
- "sha1",
  "tempfile",
  "toml_edit 0.23.2",
  "url",
@@ -965,15 +876,15 @@ dependencies = [
 name = "debianize"
 version = "0.163.0"
 dependencies = [
- "breezyshim 0.6.0 (git+https://github.com/breezy-team/breezyshim)",
+ "breezyshim",
  "buildlog-consultant",
  "clap",
- "debian-analyzer 0.158.28",
+ "debian-analyzer",
  "debian-changelog",
  "debian-control",
  "debversion",
  "distro-info",
- "env_logger",
+ "env_logger 0.10.2",
  "flate2",
  "http-body-util",
  "hyper",
@@ -993,7 +904,7 @@ dependencies = [
  "svp-client",
  "tempfile",
  "tokio",
- "toml_edit 0.22.27",
+ "toml_edit 0.23.2",
  "upstream-ontologist",
  "url",
  "xdg",
@@ -1220,6 +1131,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_filter"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "186e05a59d4c50738528153b83b0b0194d3a29507dfec16eccd4b342903397d0"
+dependencies = [
+ "log",
+ "regex",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1230,6 +1151,19 @@ dependencies = [
  "log",
  "regex",
  "termcolor",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.11.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13c863f0904021b108aa8b2f55046443e6b1ebde8fd4a15c399893aae4fa069f"
+dependencies = [
+ "anstream",
+ "anstyle",
+ "env_filter",
+ "jiff",
+ "log",
 ]
 
 [[package]]
@@ -2222,13 +2156,13 @@ dependencies = [
 name = "import-uncommitted"
 version = "0.163.0"
 dependencies = [
- "breezyshim 0.6.0 (git+https://github.com/breezy-team/breezyshim)",
+ "breezyshim",
  "clap",
- "debian-analyzer 0.158.28",
+ "debian-analyzer",
  "debian-changelog",
  "debian-control",
  "debversion",
- "env_logger",
+ "env_logger 0.11.8",
  "log",
  "serde",
  "sqlx",
@@ -2541,15 +2475,15 @@ dependencies = [
 name = "lintian-brush"
 version = "0.158.19"
 dependencies = [
- "breezyshim 0.6.0 (git+https://github.com/breezy-team/breezyshim)",
+ "breezyshim",
  "chrono",
  "clap",
  "configparser",
- "debian-analyzer 0.158.28",
+ "debian-analyzer",
  "debian-changelog",
  "debversion",
  "distro-info",
- "env_logger",
+ "env_logger 0.11.8",
  "fs_extra",
  "humantime",
  "indicatif",
@@ -2572,9 +2506,9 @@ dependencies = [
 name = "lintian-brush-py"
 version = "0.163.0"
 dependencies = [
- "breezyshim 0.6.0 (git+https://github.com/breezy-team/breezyshim)",
+ "breezyshim",
  "chrono",
- "debian-analyzer 0.158.28",
+ "debian-analyzer",
  "debversion",
  "lintian-brush",
  "pyo3",
@@ -2823,16 +2757,16 @@ dependencies = [
 name = "multiarch-hints"
 version = "0.163.0"
 dependencies = [
- "breezyshim 0.6.0 (git+https://github.com/breezy-team/breezyshim)",
+ "breezyshim",
  "chrono",
  "clap",
  "configparser",
  "deb822-lossless 0.3.0",
- "debian-analyzer 0.158.28",
+ "debian-analyzer",
  "debian-changelog",
  "debian-control",
  "debversion",
- "env_logger",
+ "env_logger 0.11.8",
  "lazy-regex",
  "lazy_static",
  "log",
@@ -2965,22 +2899,22 @@ dependencies = [
 
 [[package]]
 name = "ognibuild"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72f913f359e0689fbf471173d070d6e1da95aa92cd4f50d1b83d48f3e31622e2"
+checksum = "40818ccc997aa2137b8c37f1b72b2608ddbcd490283f9092280feb63bd931c91"
 dependencies = [
  "axum",
- "breezyshim 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "breezyshim",
  "buildlog-consultant",
  "chrono",
  "clap",
  "deb822-lossless 0.3.0",
- "debian-analyzer 0.158.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "debian-analyzer",
  "debian-changelog",
  "debian-control",
  "debversion",
  "dirs",
- "env_logger",
+ "env_logger 0.11.8",
  "flate2",
  "fs_extra",
  "inventory",
@@ -3941,15 +3875,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "scc"
-version = "2.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22b2d775fb28f245817589471dd49c5edf64237f4a19d10ce9a92ff4651a27f4"
-dependencies = [
- "sdd",
-]
-
-[[package]]
 name = "schannel"
 version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3969,14 +3894,14 @@ name = "scrub-obsolete"
 version = "0.163.0"
 dependencies = [
  "async-trait",
- "breezyshim 0.6.0 (git+https://github.com/breezy-team/breezyshim)",
+ "breezyshim",
  "clap",
  "deb822-lossless 0.3.0",
- "debian-analyzer 0.158.28",
+ "debian-analyzer",
  "debian-control",
  "debversion",
  "distro-info",
- "env_logger",
+ "env_logger 0.11.8",
  "lazy_static",
  "log",
  "maplit",
@@ -3988,12 +3913,6 @@ dependencies = [
  "svp-client",
  "tokio",
 ]
-
-[[package]]
-name = "sdd"
-version = "3.0.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "490dcfcbfef26be6800d11870ff2df8774fa6e86d047e3e8c8a76b25655e41ca"
 
 [[package]]
 name = "security-framework"
@@ -4133,31 +4052,6 @@ dependencies = [
  "ryu",
  "serde",
  "unsafe-libyaml",
-]
-
-[[package]]
-name = "serial_test"
-version = "3.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b258109f244e1d6891bf1053a55d63a5cd4f8f4c30cf9a1280989f80e7a1fa9"
-dependencies = [
- "futures",
- "log",
- "once_cell",
- "parking_lot",
- "scc",
- "serial_test_derive",
-]
-
-[[package]]
-name = "serial_test_derive"
-version = "3.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d69265a08751de7844521fd15003ae0a888e035773ba05695c5c759a6f89eef"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.104",
 ]
 
 [[package]]
@@ -4911,7 +4805,6 @@ dependencies = [
  "serde",
  "serde_spanned 0.6.9",
  "toml_datetime 0.6.11",
- "toml_write",
  "winnow",
 ]
 
@@ -4936,12 +4829,6 @@ checksum = "97200572db069e74c512a14117b296ba0a80a30123fbbb5aa1f4a348f639ca30"
 dependencies = [
  "winnow",
 ]
-
-[[package]]
-name = "toml_write"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
 name = "toml_writer"
@@ -5151,7 +5038,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01f77651d20345e54e1655532e5d5dd7cef65b0c42a7aa6be9f651bf67f90429"
 dependencies = [
  "async-trait",
- "breezyshim 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "breezyshim",
  "chrono",
  "configparser",
  "debbugs",

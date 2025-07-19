@@ -8,7 +8,7 @@ use breezyshim::debian::upstream::{
 };
 use breezyshim::debian::{TarballKind, VersionKind, DEFAULT_ORIG_DIR};
 use breezyshim::error::Error as BrzError;
-use breezyshim::tree::PyTree;
+use breezyshim::tree::{MutableTree, PyTree};
 use breezyshim::workingtree::{GenericWorkingTree, WorkingTree};
 use breezyshim::RevisionId;
 use debian_analyzer::versions::debianize_upstream_version;
@@ -82,11 +82,10 @@ pub fn use_packaging_branch(wt: &GenericWorkingTree, branch_name: &str) -> Resul
         .set_branch_reference(target_branch.as_ref(), Some(""))?;
     // TODO(jelmer): breezy bug?
     pyo3::Python::with_gil(|py| -> pyo3::PyResult<()> {
-        use pyo3::types::PyAnyMethods;
         use pyo3::IntoPyObject;
-        let wt_py = wt.clone().into_pyobject(py)?;
+        let wt_py = wt.to_object(py);
         let branch_py = target_branch.into_pyobject(py)?;
-        wt_py.setattr("_branch", branch_py)?;
+        wt_py.setattr(py, "_branch", branch_py)?;
         Ok(())
     })
     .unwrap();

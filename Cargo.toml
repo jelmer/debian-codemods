@@ -8,7 +8,7 @@ version = "0.163.0"
 
 [workspace.dependencies]
 #breezyshim = { version = "0.5.5", features = ["dirty-tracker"] }
-breezyshim = { git = "https://github.com/breezy-team/breezyshim", features = ["dirty-tracker"] }
+breezyshim = { version = "0.6", features = ["dirty-tracker"] }
 #breezyshim = { path = "../breezyshim/trunk", features = ["dirty-tracker"] }
 pyo3 = ">=0.25,<0.26"
 debversion = ">=0.4.0"
@@ -38,7 +38,7 @@ sqlx = ">=0.8"
 semver = "1"
 toml_edit = ">=0.22"
 tokio = ">=1.39"
-debian-analyzer = { version = "0.158.28" }
+debian-analyzer = { version = "0.159.0" }
 svp-client = "0.2.0"
 #debian-control = { path = "../deb822-lossless/debian-control" }
 #deb822-lossless = { path = "../deb822-lossless" }

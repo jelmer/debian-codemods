@@ -23,7 +23,7 @@ chrono = "0.4"
 pyo3-log = { workspace = true }
 debversion = { workspace = true, features = ["python-debian"] }
 breezyshim = { workspace = true }
-debian-analyzer = { version = ">=0.154.0", path = "../analyzer", default-features = false }
+debian-analyzer = { workspace = true, default-features = false }
 url.workspace = true
 
 [package.metadata.cargo-all-features]

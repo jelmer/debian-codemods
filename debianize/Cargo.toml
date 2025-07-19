@@ -12,7 +12,7 @@ documentation = "https://docs.rs/debianize"
 [dependencies]
 breezyshim = { workspace = true, features = ["dirty-tracker"] }
 clap = { version = "4", features = ["derive", "env"] }
-debian-analyzer = { version = ">=0.154.0", path = "../analyzer", features = ["udd", "svp"] }
+debian-analyzer = { workspace = true, features = ["udd", "svp"] }
 debian-changelog = ">=0.2.0"
 distro-info = "0.4.0"
 env_logger = "0.10"
@@ -22,7 +22,7 @@ xdg = "2.5.2"
 debversion = ">=0.4.0"
 url = "2"
 #ognibuild = ">=0.0.24"
-ognibuild = { version = ">=0.0.29", features = ["upstream", "debian"] }
+ognibuild = { version = ">=0.1.1", features = ["upstream", "debian"] }
 hyper = { version = "1.5", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["tokio", "server", "server-auto"], default-features = false }
 http-body-util = "0.1"
@@ -36,7 +36,7 @@ lintian-brush = { path = "../lintian-brush", version = ">=0.155.0", default-feat
 debian-control = ">=0.1.0"
 lazy_static = "1"
 semver = "1"
-toml_edit = "0.22"
+toml_edit = "0.23"
 serde = "1"
 sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls"] }
 svp-client = ">=0.1.0"

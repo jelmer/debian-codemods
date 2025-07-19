@@ -835,9 +835,8 @@ fn versions_dict() -> HashMap<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use debian_changelog::{ChangeLog, Entry};
+    use debian_changelog::ChangeLog;
     use debversion::Version;
-    use std::io::Cursor;
 
     #[test]
     fn test_find_missing_versions_empty_changelog() {
@@ -864,8 +863,8 @@ package (1.0-1) unstable; urgency=medium
         let changelog = ChangeLog::read(changelog_content.as_bytes()).unwrap();
         let result = find_missing_versions(&changelog, None).unwrap();
         assert_eq!(result.len(), 2);
-        assert_eq!(result[0], Version::parse("2.0-1").unwrap());
-        assert_eq!(result[1], Version::parse("1.0-1").unwrap());
+        assert_eq!(result[0], "2.0-1".parse::<Version>().unwrap());
+        assert_eq!(result[1], "1.0-1".parse::<Version>().unwrap());
     }
 
     #[test]
@@ -889,11 +888,11 @@ package (1.0-1) unstable; urgency=medium
  -- Maintainer <maint@example.com>  Mon, 01 Jan 2023 12:00:00 +0000
 "#;
         let changelog = ChangeLog::read(changelog_content.as_bytes()).unwrap();
-        let tree_version = Version::parse("1.0-1").unwrap();
+        let tree_version = "1.0-1".parse::<Version>().unwrap();
         let result = find_missing_versions(&changelog, Some(&tree_version)).unwrap();
         assert_eq!(result.len(), 2);
-        assert_eq!(result[0], Version::parse("3.0-1").unwrap());
-        assert_eq!(result[1], Version::parse("2.0-1").unwrap());
+        assert_eq!(result[0], "3.0-1".parse::<Version>().unwrap());
+        assert_eq!(result[1], "2.0-1".parse::<Version>().unwrap());
     }
 
     #[test]
@@ -905,7 +904,7 @@ package (1.0-1) unstable; urgency=medium
  -- Maintainer <maint@example.com>  Mon, 01 Jan 2024 12:00:00 +0000
 "#;
         let changelog = ChangeLog::read(changelog_content.as_bytes()).unwrap();
-        let tree_version = Version::parse("1.0-1").unwrap();
+        let tree_version = "1.0-1".parse::<Version>().unwrap();
         let result = find_missing_versions(&changelog, Some(&tree_version));
         assert!(result.is_err());
         match result {
@@ -925,7 +924,7 @@ package (1.0-1) unstable; urgency=medium
  -- Maintainer <maint@example.com>  Mon, 01 Jan 2023 12:00:00 +0000
 "#;
         let changelog = ChangeLog::read(changelog_content.as_bytes()).unwrap();
-        let tree_version = Version::parse("1.0-1").unwrap();
+        let tree_version = "1.0-1".parse::<Version>().unwrap();
         let result = find_missing_versions(&changelog, Some(&tree_version)).unwrap();
         assert!(result.is_empty());
     }
@@ -954,7 +953,7 @@ Depends: ${misc:Depends}
 Description: Test package
  This is a test package.
 "#;
-        let control = Control::parse(control_content).unwrap();
+        let control = Control::read(control_content.as_bytes()).unwrap();
 
         let (old_url, new_url) = set_vcs_git_url(
             &control,
@@ -987,7 +986,7 @@ Depends: ${misc:Depends}
 Description: Test package
  This is a test package.
 "#;
-        let control = Control::parse(control_content).unwrap();
+        let control = Control::read(control_content.as_bytes()).unwrap();
 
         let (old_url, new_url) = set_vcs_git_url(&control, None, None);
 
