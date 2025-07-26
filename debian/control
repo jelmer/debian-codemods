@@ -1,4 +1,4 @@
-Source: lintian-brush
+Source: debian-codemods
 Section: devel
 Priority: optional
 Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
