@@ -12,7 +12,7 @@ breezyshim = { version = "0.6", features = ["dirty-tracker"] }
 #breezyshim = { path = "../breezyshim/trunk", features = ["dirty-tracker"] }
 pyo3 = ">=0.25,<0.26"
 debversion = ">=0.4.0"
-serde_yaml = ">=0.8"
+serde_yaml = ">=0.9"
 reqwest = ">=0.11"
 log = "0.4"
 lazy_static = "1"
