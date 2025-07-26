@@ -36,7 +36,7 @@ upstream-ontologist = ">=0.1.43"
 #upstream-ontologist = { git = "https://github.com/jelmer/upstream-ontologist" }
 sqlx = ">=0.8"
 semver = "1"
-toml_edit = ">=0.22"
+toml_edit = ">=0.23"
 tokio = ">=1.39"
 debian-analyzer = { version = "0.159.0" }
 svp-client = "0.2.0"
