@@ -58,6 +58,5 @@ def drop_explicit_dh_compat(line):
 
 update_rules(global_line_cb=drop_explicit_dh_compat)
 report_result(
-    "Avoid setting debhelper compat version in debian/rules "
-    "and debian/compat."
+    "Avoid setting debhelper compat version in debian/rules and debian/compat."
 )

@@ -156,7 +156,7 @@ def candidates_from_setup_py(
 
     try:
         result = run_setup(os.path.abspath(path), stop_after="config")
-    except BaseException:  # noqa: PIE786
+    except BaseException:
         import traceback
 
         traceback.print_exc()

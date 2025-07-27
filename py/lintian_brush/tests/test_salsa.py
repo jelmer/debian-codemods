@@ -188,8 +188,7 @@ class SalsaUrlFromAliothUrlTests(TestCase):
             "https://salsa.debian.org/qt-kde-team/kde/kruler.git",
             salsa_url_from_alioth_url(
                 "git",
-                "https://anonscm.debian.org/git/pkg-kde/applications/"
-                "kruler",
+                "https://anonscm.debian.org/git/pkg-kde/applications/kruler",
             ),
         )
         self.assertEqual(

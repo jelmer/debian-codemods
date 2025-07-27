@@ -12,7 +12,7 @@ patches_path = "debian/patches"
 if not os.path.isdir(patches_path):
     sys.exit(0)
 
-with open(os.path.join(patches_path, "series"), 'rb') as series:
+with open(os.path.join(patches_path, "series"), "rb") as series:
     patches = list(read_quilt_series(series))
 
 if not patches:

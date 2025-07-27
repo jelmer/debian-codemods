@@ -109,7 +109,7 @@ if os.path.exists("debian/compat"):
         updater.source["Build-Depends"] = ensure_minimum_version(
             updater.source.get("Build-Depends", ""),
             "debhelper",
-            f"{new_debhelper_compat_version}~"
+            f"{new_debhelper_compat_version}~",
         )
 else:
     try:
@@ -135,7 +135,7 @@ else:
                 updater.source["Build-Depends"] = ensure_exact_version(
                     updater.source["Build-Depends"],
                     "debhelper-compat",
-                    f"{new_debhelper_compat_version}"
+                    f"{new_debhelper_compat_version}",
                 )
     except FileNotFoundError:
         # debcargo just uses the latest version and doesn't store debhelper
@@ -324,8 +324,7 @@ class DhMissingUpgrader:
                         rule.lines[i] += b" --fail-missing"
             else:
                 raise Exception(
-                    "override_dh_missing exists, but has no call to "
-                    "dh_missing"
+                    "override_dh_missing exists, but has no call to dh_missing"
                 )
 
 
@@ -412,16 +411,14 @@ def upgrade_to_installsystemd(line, target):
             line,
             b"dh_systemd_enable",
             b"dh_installsystemd",
-            "Use dh_installsystemd rather than deprecated "
-            "dh_systemd_enable.",
+            "Use dh_installsystemd rather than deprecated dh_systemd_enable.",
         )
     if line.startswith(b"dh_systemd_start"):
         line, changed = update_line(
             line,
             b"dh_systemd_start",
             b"dh_installsystemd",
-            "Use dh_installsystemd rather than deprecated "
-            "dh_systemd_start.",
+            "Use dh_installsystemd rather than deprecated dh_systemd_start.",
         )
     return line
 
@@ -489,8 +486,7 @@ def drop_dh_missing_fail(line, target):
             # don't announce that here.
             try:
                 subitems.remove(
-                    "debian/rules: Move --fail-missing argument "
-                    "to dh_missing."
+                    "debian/rules: Move --fail-missing argument to dh_missing."
                 )
             except KeyError:
                 subitems.add(

@@ -21,7 +21,7 @@
 class LineEditor:
     """Edit a file line by line."""
 
-    def __init__(self, path, mode="", encoding='utf-8'):
+    def __init__(self, path, mode="", encoding="utf-8"):
         self.path = path
         self.mode = mode
         self.encoding = encoding

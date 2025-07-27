@@ -33,8 +33,7 @@ removed = remove_unused(
 )
 
 description = [
-    f"Remove {len(removed)} unused lintian overrides.\n"
-    "\n",
+    f"Remove {len(removed)} unused lintian overrides.\n\n",
 ]
 for override in removed:
     description.append(f"* {override.tag}\n")
