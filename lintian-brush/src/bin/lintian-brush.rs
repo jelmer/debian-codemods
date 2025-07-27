@@ -42,6 +42,15 @@ struct FixerArgs {
     )]
     compat_release: Option<String>,
 
+    #[arg(
+        long,
+        env = "UPGRADE_RELEASE",
+        value_name = "RELEASE",
+        hide = true,
+        default_value = "oldstable"
+    )]
+    upgrade_release: Option<String>,
+
     #[arg(long, hide = true)]
     minimum_certainty: Option<Certainty>,
 
@@ -335,6 +344,22 @@ fn main() -> Result<(), i32> {
         } else {
             args.fixers.compat_release.clone()
         };
+        let mut upgrade_release: Option<String> =
+            if let Some(upgrade_release) = args.fixers.upgrade_release.as_ref() {
+                Some(upgrade_release.clone())
+            } else if let Some(compat_release) = compat_release.as_ref() {
+                // Pick two releases back from the compat release (unstable/sid => stable => oldstable)
+                debian_info
+                    .releases()
+                    .iter()
+                    .rev()
+                    .filter(|release| release.series() != compat_release)
+                    .take(2)
+                    .next()
+                    .map(|release| release.series().to_string())
+            } else {
+                None
+            };
         let mut minimum_certainty = args.fixers.minimum_certainty;
         let mut allow_reformatting = args.packages.allow_reformatting;
         match debian_analyzer::config::Config::from_workingtree(
@@ -380,6 +405,16 @@ fn main() -> Result<(), i32> {
             },
             |s| s.clone(),
         );
+
+        let upgrade_release = upgrade_release.as_ref().map_or_else(|| {
+            debian_info
+                .released(chrono::Local::now().naive_local().date())
+                .into_iter()
+                .next_back()
+                .unwrap()
+                .series()
+                .to_string()
+        }, |s| s.clone());
 
         if args.output.verbose {
             log::info!("Using parameters:");
@@ -432,6 +467,7 @@ fn main() -> Result<(), i32> {
             opinionated: Some(args.fixers.opinionated),
             diligence: Some(args.fixers.diligent),
             trust_package: Some(args.packages.trust),
+            upgrade_release: Some(upgrade_release),
         };
 
         let mut overall_result = match lintian_brush::run_lintian_fixers(

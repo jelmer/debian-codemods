@@ -152,7 +152,7 @@ def candidates_from_setup_py(
     # Import setuptools in case it replaces distutils
     with suppress(ImportError):
         import setuptools  # noqa: F401
-    from distutils.core import run_setup
+    from distutils.core import run_setup  # type: ignore
 
     try:
         result = run_setup(os.path.abspath(path), stop_after="config")

@@ -318,14 +318,12 @@ pub fn determine_env(
     let mut env = std::env::vars().collect::<std::collections::HashMap<_, _>>();
     env.insert("DEB_SOURCE".to_owned(), package.to_owned());
     env.insert("CURRENT_VERSION".to_owned(), current_version.to_string());
-    env.insert(
-        "COMPAT_RELEASE".to_owned(),
-        preferences
-            .compat_release
-            .as_deref()
-            .unwrap_or("sid")
-            .to_owned(),
-    );
+    if let Some(compat_release) = preferences.compat_release.as_ref() {
+        env.insert("COMPAT_RELEASE".to_owned(), compat_release.to_owned());
+    }
+    if let Some(upgrade_release) = preferences.upgrade_release.as_ref() {
+        env.insert("UPGRADE_RELEASE".to_owned(), upgrade_release.to_owned());
+    }
     env.insert(
         "MINIMUM_CERTAINTY".to_owned(),
         preferences
@@ -380,6 +378,7 @@ pub struct FixerPreferences {
     pub net_access: Option<bool>,
     pub opinionated: Option<bool>,
     pub diligence: Option<i32>,
+    pub upgrade_release: Option<String>,
 }
 
 /// A fixer script

@@ -488,6 +488,7 @@ impl From<DebianizePreferences> for lintian_brush::FixerPreferences {
             trust_package: Some(p.trust),
             opinionated: Some(true),
             allow_reformatting: Some(true),
+            upgrade_release: None,
         }
     }
 }

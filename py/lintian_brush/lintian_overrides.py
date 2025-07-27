@@ -21,7 +21,7 @@ import os
 import re
 from contextlib import suppress
 from functools import partial
-from typing import Callable, Iterator, List, Optional, Tuple
+from typing import Callable, Iterator, List, Optional, Tuple, Union
 
 from debmutate.lintian_overrides import (
     LintianOverride,
@@ -71,7 +71,7 @@ def update_overrides_file(
         Whether the file was modified
     """
     with LintianOverridesEditor(path=path) as editor:
-        new_lines = []
+        new_lines: List[Union[str, LintianOverride]] = []
         comments: List[str] = []
         for lineno, entry in enumerate(editor.lines, 1):
             if isinstance(entry, LintianOverride):

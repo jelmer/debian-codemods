@@ -77,5 +77,13 @@ fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(canonicalize_vcs_browser_url))?;
     m.add_wrapped(wrap_pyfunction!(tree_patches_directory))?;
     m.add_wrapped(wrap_pyfunction!(find_patches_directory))?;
+    m.add(
+        "DPKG_VERSIONS",
+        debian_analyzer::release_info::dpkg_versions.clone(),
+    )?;
+    m.add(
+        "DEBHELPER_VERSIONS",
+        debian_analyzer::release_info::debhelper_versions.clone(),
+    )?;
     Ok(())
 }

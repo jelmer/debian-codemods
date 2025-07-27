@@ -21,6 +21,7 @@ core_names = [
     "debhelper",
     "lintian",
     "lintian_overrides",
+    "release_info",
     "run",
     "salsa",
     "systemd",

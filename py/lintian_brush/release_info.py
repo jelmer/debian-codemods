@@ -21,22 +21,13 @@ from typing import Optional
 
 from debian.changelog import Version
 
-from . import open_binary
-
-_key_package_versions = None
-
-
-def load_key_package_versions():
-    import json
-
-    with open_binary("key-package-versions.json") as f:
-        return json.load(f)
-
 
 def key_package_version(package: str, release: str) -> Optional[Version]:
-    global _key_package_versions
-    if _key_package_versions is None:
-        _key_package_versions = load_key_package_versions()
-    # TODO(jelmer): Fall back to querying UDD directly if we can't find the
-    # release?
-    return _key_package_versions[package].get(release)
+    """Return the version of a package in a specific release."""
+    from ._lintian_brush_rs import DEBHELPER_VERSIONS, DPKG_VERSIONS
+
+    if package == "dpkg":
+        return DPKG_VERSIONS.get(release)
+    if package == "debhelper":
+        return DEBHELPER_VERSIONS.get(release)
+    raise ValueError(f"Unknown package {package!r} for release {release!r}")
