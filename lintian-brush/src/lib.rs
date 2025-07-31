@@ -388,11 +388,11 @@ pub trait Fixer: std::fmt::Debug + Sync {
     /// Name of the fixer
     fn name(&self) -> String;
 
-    /// Path to the fixer script
-    fn path(&self) -> std::path::PathBuf;
-
     /// Lintian tags this fixer addresses
     fn lintian_tags(&self) -> Vec<String>;
+
+    /// Enable downcasting to concrete types
+    fn as_any(&self) -> &dyn std::any::Any;
 
     /// Apply this fixer script.
     ///
@@ -421,6 +421,12 @@ pub trait Fixer: std::fmt::Debug + Sync {
         preferences: &FixerPreferences,
         timeout: Option<chrono::Duration>,
     ) -> Result<FixerResult, FixerError>;
+}
+
+/// Trait for external fixers that have a file path
+pub trait ExternalFixer: Fixer {
+    /// Path to the fixer script
+    fn path(&self) -> std::path::PathBuf;
 }
 
 /// A fixer that is implemented as a Python script.
@@ -669,12 +675,12 @@ impl Fixer for PythonScriptFixer {
         self.name.clone()
     }
 
-    fn path(&self) -> std::path::PathBuf {
-        self.path.clone()
-    }
-
     fn lintian_tags(&self) -> Vec<String> {
         self.lintian_tags.clone()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 
     fn run(
@@ -698,6 +704,13 @@ impl Fixer for PythonScriptFixer {
             env,
             timeout,
         )
+    }
+}
+
+#[cfg(feature = "python")]
+impl ExternalFixer for PythonScriptFixer {
+    fn path(&self) -> std::path::PathBuf {
+        self.path.clone()
     }
 }
 
@@ -871,12 +884,12 @@ impl Fixer for ScriptFixer {
         self.name.clone()
     }
 
-    fn path(&self) -> std::path::PathBuf {
-        self.path.clone()
-    }
-
     fn lintian_tags(&self) -> Vec<String> {
         self.lintian_tags.clone()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 
     fn run(
@@ -950,6 +963,12 @@ impl Fixer for ScriptFixer {
             .read_to_string(&mut stdout)
             .map_err(FixerError::Io)?;
         parse_script_fixer_output(&stdout).map_err(FixerError::OutputParseError)
+    }
+}
+
+impl ExternalFixer for ScriptFixer {
+    fn path(&self) -> std::path::PathBuf {
+        self.path.clone()
     }
 }
 
@@ -1075,7 +1094,8 @@ fn load_fixer(
     name: String,
     tags: Vec<String>,
     script_path: std::path::PathBuf,
-    #[allow(dead_code)] force_subprocess: bool,
+    #[cfg_attr(not(feature = "python"), allow(unused_variables))]
+    force_subprocess: bool,
 ) -> Box<dyn Fixer> {
     #[cfg(feature = "python")]
     if script_path
@@ -1179,31 +1199,31 @@ mod select_fixers_tests {
     use super::*;
 
     #[derive(Debug)]
-    struct DummyFixer<'a> {
-        name: &'a str,
-        tags: Vec<&'a str>,
+    struct DummyFixer {
+        name: String,
+        tags: Vec<String>,
     }
 
-    impl DummyFixer<'_> {
-        fn new<'a>(name: &'a str, tags: &[&'a str]) -> DummyFixer<'a> {
+    impl DummyFixer {
+        fn new(name: &str, tags: &[&str]) -> DummyFixer {
             DummyFixer {
-                name,
-                tags: tags.to_vec(),
+                name: name.to_string(),
+                tags: tags.iter().map(|s| s.to_string()).collect(),
             }
         }
     }
 
-    impl Fixer for DummyFixer<'_> {
+    impl Fixer for DummyFixer {
         fn name(&self) -> String {
-            self.name.to_string()
-        }
-
-        fn path(&self) -> std::path::PathBuf {
-            unimplemented!()
+            self.name.clone()
         }
 
         fn lintian_tags(&self) -> Vec<String> {
-            self.tags.iter().map(|s| s.to_string()).collect::<Vec<_>>()
+            self.tags.clone()
+        }
+
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
         }
 
         fn run(
@@ -2115,12 +2135,12 @@ mod tests {
                 self.name.clone()
             }
 
-            fn path(&self) -> std::path::PathBuf {
-                std::path::PathBuf::from("/dev/null")
-            }
-
             fn lintian_tags(&self) -> Vec<String> {
                 self.lintian_tags.clone()
+            }
+
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
             }
 
             fn run(
@@ -2171,12 +2191,12 @@ mod tests {
                 self.name.clone()
             }
 
-            fn path(&self) -> std::path::PathBuf {
-                std::path::PathBuf::from("/dev/null")
-            }
-
             fn lintian_tags(&self) -> Vec<String> {
                 self.lintian_tags.clone()
+            }
+
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
             }
 
             fn run(
@@ -2379,12 +2399,12 @@ Arch: all
                     self.name.clone()
                 }
 
-                fn path(&self) -> std::path::PathBuf {
-                    std::path::PathBuf::from("/dev/null")
-                }
-
                 fn lintian_tags(&self) -> Vec<String> {
                     self.lintian_tags.clone()
+                }
+
+                fn as_any(&self) -> &dyn std::any::Any {
+                    self
                 }
 
                 fn run(
@@ -2460,12 +2480,12 @@ Arch: all
                     self.name.clone()
                 }
 
-                fn path(&self) -> std::path::PathBuf {
-                    std::path::PathBuf::from("/dev/null")
-                }
-
                 fn lintian_tags(&self) -> Vec<String> {
                     self.lintian_tags.clone()
+                }
+
+                fn as_any(&self) -> &dyn std::any::Any {
+                    self
                 }
 
                 fn run(
@@ -2540,12 +2560,12 @@ Arch: all
                     self.name.clone()
                 }
 
-                fn path(&self) -> std::path::PathBuf {
-                    std::path::PathBuf::from("/dev/null")
-                }
-
                 fn lintian_tags(&self) -> Vec<String> {
                     self.lintian_tags.clone()
+                }
+
+                fn as_any(&self) -> &dyn std::any::Any {
+                    self
                 }
 
                 fn run(
@@ -2640,12 +2660,12 @@ Arch: all
                     self.name.clone()
                 }
 
-                fn path(&self) -> std::path::PathBuf {
-                    std::path::PathBuf::from("/dev/null")
-                }
-
                 fn lintian_tags(&self) -> Vec<String> {
                     self.lintian_tags.clone()
+                }
+
+                fn as_any(&self) -> &dyn std::any::Any {
+                    self
                 }
 
                 fn run(
@@ -2730,12 +2750,12 @@ Arch: all
                     self.name.clone()
                 }
 
-                fn path(&self) -> std::path::PathBuf {
-                    std::path::PathBuf::from("/dev/null")
-                }
-
                 fn lintian_tags(&self) -> Vec<String> {
                     self.lintian_tags.clone()
+                }
+
+                fn as_any(&self) -> &dyn std::any::Any {
+                    self
                 }
 
                 fn run(
@@ -2813,12 +2833,12 @@ Arch: all
                     self.name.clone()
                 }
 
-                fn path(&self) -> std::path::PathBuf {
-                    std::path::PathBuf::from("/dev/null")
-                }
-
                 fn lintian_tags(&self) -> Vec<String> {
                     self.lintian_tags.clone()
+                }
+
+                fn as_any(&self) -> &dyn std::any::Any {
+                    self
                 }
 
                 fn run(
@@ -2955,12 +2975,12 @@ Arch: all
                     self.name.clone()
                 }
 
-                fn path(&self) -> std::path::PathBuf {
-                    std::path::PathBuf::from("/dev/null")
-                }
-
                 fn lintian_tags(&self) -> Vec<String> {
                     self.lintian_tags.clone()
+                }
+
+                fn as_any(&self) -> &dyn std::any::Any {
+                    self
                 }
 
                 fn run(
