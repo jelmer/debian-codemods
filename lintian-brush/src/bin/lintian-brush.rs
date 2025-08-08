@@ -437,15 +437,18 @@ fn main() -> Result<(), i32> {
             |s| s.clone(),
         );
 
-        let upgrade_release = upgrade_release.as_ref().map_or_else(|| {
-            debian_info
-                .released(chrono::Local::now().naive_local().date())
-                .into_iter()
-                .next_back()
-                .unwrap()
-                .series()
-                .to_string()
-        }, |s| s.clone());
+        let upgrade_release = upgrade_release.as_ref().map_or_else(
+            || {
+                debian_info
+                    .released(chrono::Local::now().naive_local().date())
+                    .into_iter()
+                    .next_back()
+                    .unwrap()
+                    .series()
+                    .to_string()
+            },
+            |s| s.clone(),
+        );
 
         if args.output.verbose {
             log::info!("Using parameters:");

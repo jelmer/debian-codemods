@@ -31,7 +31,7 @@ enum SessionType {
 
 impl std::str::FromStr for SessionType {
     type Err = String;
-    
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some((session_type, value)) = s.split_once(':') {
             match session_type {
@@ -558,7 +558,10 @@ fn main() -> Result<(), i32> {
                 std::rc::Rc::new(ognibuild::session::plain::PlainSession::new()) as _
             }
             SessionType::Schroot(ref name) => {
-                let schroot_name = name.clone().or_else(|| std::env::var("SCHROOT").ok()).unwrap_or_else(|| "unstable".to_string());
+                let schroot_name = name
+                    .clone()
+                    .or_else(|| std::env::var("SCHROOT").ok())
+                    .unwrap_or_else(|| "unstable".to_string());
                 log::info!("Using schroot {}", schroot_name);
                 std::rc::Rc::new(
                     ognibuild::session::schroot::SchrootSession::new(&schroot_name, None).unwrap(),

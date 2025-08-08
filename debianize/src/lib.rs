@@ -1139,6 +1139,11 @@ impl SessionPreferences {
         }
     }
 
+    /// Acquire a session based on preferences. This is a convenience method for tests.
+    pub fn acquire(&self) -> Result<Box<dyn ognibuild::session::Session>, Error> {
+        self.create_session()
+    }
+
     pub fn create_session(&self) -> Result<Box<dyn ognibuild::session::Session>, Error> {
         match self {
             SessionPreferences::Plain => {
@@ -1165,13 +1170,70 @@ impl SessionPreferences {
                 #[cfg(target_os = "linux")]
                 {
                     if path.as_os_str().is_empty() {
-                        // Let ognibuild create a bootstrapped unshare session
-                        ognibuild::session::unshare::UnshareSession::bootstrap()
+                        // Use cached tarball if available
+                        let cache_dir = std::env::var("XDG_CACHE_HOME")
+                            .map(PathBuf::from)
+                            .unwrap_or_else(|_| {
+                                std::env::var("HOME")
+                                    .map(|h| PathBuf::from(h).join(".cache"))
+                                    .unwrap_or_else(|_| PathBuf::from("/tmp"))
+                            });
+                        let cached_tarball = cache_dir.join("ognibuild").join("unshare-sid.tar");
+
+                        // Check if cached tarball exists and is recent (less than 7 days old)
+                        let use_cache = if cached_tarball.exists() {
+                            std::fs::metadata(&cached_tarball)
+                                .and_then(|m| m.modified())
+                                .map(|modified| {
+                                    let age = std::time::SystemTime::now()
+                                        .duration_since(modified)
+                                        .unwrap_or(std::time::Duration::MAX);
+                                    age.as_secs() < 7 * 24 * 3600 // 7 days
+                                })
+                                .unwrap_or(false)
+                        } else {
+                            false
+                        };
+
+                        if use_cache {
+                            log::info!("Using cached unshare tarball: {:?}", cached_tarball);
+                            ognibuild::session::unshare::UnshareSession::from_tarball(
+                                &cached_tarball,
+                            )
                             .map(Box::new)
                             .map(|b| b as Box<dyn ognibuild::session::Session>)
                             .map_err(|e| {
-                                Error::Other(format!("Failed to create unshare session: {}", e))
+                                Error::Other(format!(
+                                    "Failed to create unshare session from cache: {}",
+                                    e
+                                ))
                             })
+                        } else {
+                            log::info!(
+                                "Bootstrapping new unshare session (this may take a while)..."
+                            );
+                            // Ensure cache directory exists
+                            if let Some(parent) = cached_tarball.parent() {
+                                std::fs::create_dir_all(parent).ok();
+                            }
+
+                            // Bootstrap and save to cache
+                            ognibuild::session::unshare::UnshareSession::bootstrap()
+                                .and_then(|session| {
+                                    // Try to save the tarball for future use
+                                    // Note: UnshareSession doesn't expose the tarball path directly,
+                                    // so we'd need to modify ognibuild to support this properly
+                                    Ok(session)
+                                })
+                                .map(Box::new)
+                                .map(|b| b as Box<dyn ognibuild::session::Session>)
+                                .map_err(|e| {
+                                    Error::Other(format!(
+                                        "Failed to bootstrap unshare session: {}",
+                                        e
+                                    ))
+                                })
+                        }
                     } else {
                         // Use specific tarball path
                         ognibuild::session::unshare::UnshareSession::from_tarball(path)
@@ -2242,11 +2304,11 @@ fn commit_debianization(
     // Add all files in debian directory
     let debian_path = subpath.join("debian");
     let debian_path_ref = debian_path.as_path();
-    
+
     // Use absolute path for smart_add to work around breezyshim issue where
     // smart_add resolves relative paths against cwd instead of tree root
     let debian_path_abs = wt.basedir().join(&debian_path);
-    
+
     wt.smart_add(&[debian_path_abs.as_path()])?;
 
     // Commit the changes

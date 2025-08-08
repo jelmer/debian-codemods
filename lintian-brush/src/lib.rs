@@ -1094,8 +1094,7 @@ fn load_fixer(
     name: String,
     tags: Vec<String>,
     script_path: std::path::PathBuf,
-    #[cfg_attr(not(feature = "python"), allow(unused_variables))]
-    force_subprocess: bool,
+    #[cfg_attr(not(feature = "python"), allow(unused_variables))] force_subprocess: bool,
 ) -> Box<dyn Fixer> {
     #[cfg(feature = "python")]
     if script_path

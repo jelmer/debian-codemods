@@ -360,7 +360,7 @@ dependencies = [
  "clap",
  "debian-control",
  "debversion",
- "env_logger 0.11.8",
+ "env_logger 0.10.2",
  "fancy-regex",
  "inventory",
  "lazy-regex",
@@ -2914,8 +2914,7 @@ dependencies = [
 [[package]]
 name = "ognibuild"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d70130c5a81cae5279392c1a11b79e0d19b7fa36b416437490072429a575f6a"
+source = "git+https://github.com/jelmer/ognibuild#e758f3e393e731da11f4b283024638ccf229a7b9"
 dependencies = [
  "axum",
  "breezyshim",
@@ -2928,7 +2927,7 @@ dependencies = [
  "debian-control",
  "debversion",
  "dirs",
- "env_logger 0.11.8",
+ "env_logger 0.10.2",
  "flate2",
  "fs_extra",
  "inventory",

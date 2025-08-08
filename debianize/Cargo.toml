@@ -22,8 +22,7 @@ pyo3 = ">=0.25,<0.26"
 xdg = "2.5.2"
 debversion = ">=0.4.0"
 url = "2"
-#ognibuild = ">=0.0.24"
-ognibuild = { version = ">=0.1.1", features = ["upstream", "debian"] }
+ognibuild = { git = "https://github.com/jelmer/ognibuild", features = ["upstream", "debian"] }
 hyper = { version = "1.5", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["tokio", "server", "server-auto"], default-features = false }
 http-body-util = "0.1"
