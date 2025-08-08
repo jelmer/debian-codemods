@@ -11,6 +11,7 @@ documentation = "https://docs.rs/debianize"
 
 [dependencies]
 breezyshim = { workspace = true, features = ["debian"] }
+cargo-lock = "10"
 clap = { version = "4", features = ["derive", "env"] }
 debian-analyzer = { workspace = true, features = ["udd", "svp"] }
 debian-changelog = "0.2.1"

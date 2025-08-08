@@ -92,6 +92,9 @@ pub fn go_base_name(package: &str) -> String {
     if hostname == "gopkg.in" {
         hostname = "gopkg";
     }
+    if hostname == "golang.org" {
+        hostname = "golang";
+    }
     let path = path.trim_end_matches('/').replace(['/', '_'], "-");
     let path = path.strip_suffix(".git").unwrap_or(&path);
     format!("{}-{}", hostname, path)

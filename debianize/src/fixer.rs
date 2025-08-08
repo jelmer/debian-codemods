@@ -1,11 +1,42 @@
 use crate::simple_apt_repo::SimpleTrustedAptRepo;
 use crate::DebianizePreferences;
-use breezyshim::branch::{GenericBranch, PyBranch};
+use breezyshim::branch::{Branch, GenericBranch, PyBranch};
 use breezyshim::error::Error as BrzError;
 use breezyshim::workingtree::GenericWorkingTree;
 
 /// Default VCS format for new repositories
 const DEFAULT_VCS_FORMAT: &str = "git";
+
+/// Extract branch name from URL if present
+/// Supports common patterns like #branch=name, ?branch=name, or GitHub/GitLab tree URLs
+pub fn extract_branch_from_url(url: &url::Url) -> Option<String> {
+    // Check URL fragment (e.g., #branch=main)
+    if let Some(fragment) = url.fragment() {
+        if let Some(branch) = fragment.strip_prefix("branch=") {
+            return Some(branch.to_string());
+        }
+    }
+
+    // Check query parameters (e.g., ?branch=main)
+    for (key, value) in url.query_pairs() {
+        if key == "branch" {
+            return Some(value.to_string());
+        }
+    }
+
+    // Check for GitHub/GitLab tree URLs (e.g., /tree/branch_name)
+    let path = url.path();
+    if let Some(pos) = path.find("/tree/") {
+        let branch_part = &path[pos + 6..];
+        if let Some(end) = branch_part.find('/') {
+            return Some(branch_part[..end].to_string());
+        } else if !branch_part.is_empty() {
+            return Some(branch_part.to_string());
+        }
+    }
+
+    None
+}
 use buildlog_consultant::Problem;
 use ognibuild::buildlog::problem_to_dependency;
 use ognibuild::debian::build::BuildOnceResult;
@@ -102,10 +133,59 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
             log::info!("Packaging {:?} to address {:?}", url, problem);
 
             // Parse URL and extract branch information if present
-            let url: url::Url = url.parse().unwrap();
+            let mut url: url::Url = url.parse().unwrap();
+
+            // Extract branch name if present in URL
+            let branch_name = extract_branch_from_url(&url);
+
+            // Clean up URL for branch opening (remove fragment/query that specified branch)
+            if branch_name.is_some() {
+                url.set_fragment(None);
+                // Remove branch from query if it was there
+                let filtered_query: String = url
+                    .query_pairs()
+                    .filter(|(k, _)| k != "branch")
+                    .map(|(k, v)| format!("{}={}", k, v))
+                    .collect::<Vec<_>>()
+                    .join("&");
+                url.set_query(if filtered_query.is_empty() {
+                    None
+                } else {
+                    Some(&filtered_query)
+                });
+            }
 
             let upstream_branch = match breezyshim::branch::open(&url) {
-                Ok(branch) => Some(branch),
+                Ok(branch) => {
+                    // If a specific branch was requested, try to switch to it
+                    if let Some(branch_name) = &branch_name {
+                        log::info!("Opening specific branch: {}", branch_name);
+                        match branch.controldir().get_branches() {
+                            Ok(mut branches) => {
+                                if let Some(specific_branch) = branches.remove(branch_name) {
+                                    log::info!("Successfully switched to branch: {}", branch_name);
+                                    Some(specific_branch as Box<dyn Branch>)
+                                } else {
+                                    log::warn!(
+                                        "Branch '{}' not found, using default branch",
+                                        branch_name
+                                    );
+                                    Some(branch)
+                                }
+                            }
+                            Err(e) => {
+                                log::warn!(
+                                    "Unable to get branches for {}: {}, using default",
+                                    url,
+                                    e
+                                );
+                                Some(branch)
+                            }
+                        }
+                    } else {
+                        Some(branch)
+                    }
+                }
                 Err(e @ BrzError::NotBranchError { .. }) => {
                     log::warn!("Unable to open branch {}: {}", url, e);
                     None
@@ -145,7 +225,8 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
             new_subpath,
             upstream_branch.as_ref().and_then(|b| {
                 // Try to downcast to GenericBranch which implements PyBranch
-                b.as_any().downcast_ref::<GenericBranch>()
+                b.as_any()
+                    .downcast_ref::<GenericBranch>()
                     .map(|gb| gb as &dyn PyBranch)
             }),
             upstream_subpath,
@@ -290,5 +371,34 @@ mod tests {
         // Test that the fixer can't fix this problem
         let problem = MockProblem;
         assert!(!fixer.can_fix(&problem));
+    }
+
+    #[test]
+    fn test_extract_branch_from_url() {
+        // Test fragment style
+        let url = url::Url::parse("https://github.com/user/repo#branch=develop").unwrap();
+        assert_eq!(extract_branch_from_url(&url), Some("develop".to_string()));
+
+        // Test query parameter style
+        let url = url::Url::parse("https://github.com/user/repo?branch=feature-123").unwrap();
+        assert_eq!(
+            extract_branch_from_url(&url),
+            Some("feature-123".to_string())
+        );
+
+        // Test GitHub tree URL style
+        let url = url::Url::parse("https://github.com/user/repo/tree/main").unwrap();
+        assert_eq!(extract_branch_from_url(&url), Some("main".to_string()));
+
+        // Test GitLab tree URL with path
+        let url = url::Url::parse("https://gitlab.com/user/repo/tree/release-1.0/src").unwrap();
+        assert_eq!(
+            extract_branch_from_url(&url),
+            Some("release-1.0".to_string())
+        );
+
+        // Test URL without branch
+        let url = url::Url::parse("https://github.com/user/repo").unwrap();
+        assert_eq!(extract_branch_from_url(&url), None);
     }
 }

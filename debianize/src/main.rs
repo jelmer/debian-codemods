@@ -346,7 +346,9 @@ fn main() -> Result<(), i32> {
     let debianize_result = match debianize::debianize(
         &wt,
         &subpath,
-        upstream_branch.as_any().downcast_ref::<GenericBranch>()
+        upstream_branch
+            .as_any()
+            .downcast_ref::<GenericBranch>()
             .map(|gb| gb as &dyn PyBranch),
         Some(&upstream_subpath),
         &preferences,
@@ -732,7 +734,25 @@ fn versions_dict() -> HashMap<String, String> {
             debian.getattr("__version__").unwrap().extract().unwrap(),
         );
 
-        // TODO(jelmer): Read dependencies from Cargo.lock
+        // Read key dependency versions from Cargo.lock if available
+        if let Ok(lockfile) = cargo_lock::Lockfile::load("Cargo.lock") {
+            // Add versions for important dependencies
+            let important_deps = [
+                "breezyshim",
+                "debian-analyzer",
+                "ognibuild",
+                "upstream-ontologist",
+            ];
+            for dep_name in &important_deps {
+                if let Some(package) = lockfile
+                    .packages
+                    .iter()
+                    .find(|p| p.name.as_str() == *dep_name)
+                {
+                    ret.insert(dep_name.to_string(), package.version.to_string());
+                }
+            }
+        }
     });
     ret
 }
