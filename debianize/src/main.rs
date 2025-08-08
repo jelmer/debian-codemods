@@ -143,6 +143,14 @@ struct Args {
 
     /// Upstream to package
     upstream: Option<String>,
+
+    /// Package requirement specification (e.g., ">=1.0.0")
+    #[arg(long)]
+    requirement: Option<String>,
+
+    /// Force specific build system (override detection)
+    #[arg(long)]
+    buildsystem: Option<String>,
 }
 
 fn main() -> Result<(), i32> {

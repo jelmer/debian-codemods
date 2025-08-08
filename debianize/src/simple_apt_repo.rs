@@ -186,6 +186,91 @@ impl SimpleTrustedAptRepo {
         }
     }
 
+    /// Add a .deb package to the repository
+    ///
+    /// This copies the specified .deb file to the repository directory
+    /// and refreshes the metadata.
+    pub fn add_package(&self, deb_path: &Path) -> io::Result<()> {
+        if !deb_path.exists() {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Package file not found: {:?}", deb_path),
+            ));
+        }
+
+        let filename = deb_path
+            .file_name()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid deb filename"))?;
+
+        let dest_path = self.directory.join(filename);
+        fs::copy(deb_path, &dest_path)?;
+
+        log::info!("Added package {:?} to repository", filename);
+
+        // Refresh the repository metadata
+        self.refresh()?;
+
+        Ok(())
+    }
+
+    /// Add multiple .deb packages to the repository
+    pub fn add_packages(&self, deb_paths: &[&Path]) -> io::Result<()> {
+        for path in deb_paths {
+            let filename = path.file_name().ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidInput, "Invalid deb filename")
+            })?;
+
+            let dest_path = self.directory.join(filename);
+            fs::copy(path, &dest_path)?;
+
+            log::info!("Added package {:?} to repository", filename);
+        }
+
+        // Refresh the repository metadata once after adding all packages
+        self.refresh()?;
+
+        Ok(())
+    }
+
+    /// List all .deb packages in the repository
+    pub fn list_packages(&self) -> io::Result<Vec<String>> {
+        let mut packages = Vec::new();
+
+        for entry in fs::read_dir(&self.directory)? {
+            let entry = entry?;
+            let path = entry.path();
+            if let Some(extension) = path.extension() {
+                if extension == "deb" {
+                    if let Some(filename) = path.file_name() {
+                        packages.push(filename.to_string_lossy().to_string());
+                    }
+                }
+            }
+        }
+
+        Ok(packages)
+    }
+
+    /// Remove a package from the repository
+    pub fn remove_package(&self, package_name: &str) -> io::Result<()> {
+        let package_path = self.directory.join(package_name);
+
+        if !package_path.exists() {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Package not found: {}", package_name),
+            ));
+        }
+
+        fs::remove_file(&package_path)?;
+        log::info!("Removed package {} from repository", package_name);
+
+        // Refresh the repository metadata
+        self.refresh()?;
+
+        Ok(())
+    }
+
     /// Refresh the repository metadata
     ///
     /// This method runs `dpkg-scanpackages` to generate the `Packages.gz` file.
