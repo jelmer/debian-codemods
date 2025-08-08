@@ -609,9 +609,13 @@ mod tests {
         assert_eq!(prefs.minimum_certainty, Certainty::Confident);
         assert_eq!(prefs.consult_external_directory, true);
         assert_eq!(prefs.verbose, false);
+        // Default session should be isolated (Unshare on Linux, Plain on other platforms)
         match prefs.session {
+            #[cfg(target_os = "linux")]
+            SessionPreferences::Unshare(ref path) if path.as_os_str().is_empty() => {}
+            #[cfg(not(target_os = "linux"))]
             SessionPreferences::Plain => {}
-            _ => panic!("Expected SessionPreferences::Plain"),
+            _ => panic!("Expected default isolated session (Unshare on Linux, Plain otherwise)"),
         }
         assert!(prefs.create_dist.is_none());
         assert!(prefs.committer.is_none());
@@ -1121,6 +1125,20 @@ pub enum SessionPreferences {
 }
 
 impl SessionPreferences {
+    /// Create a default isolated session preference.
+    /// On Linux, this uses UnshareSession (ognibuild will handle setup).
+    /// On other platforms, falls back to PlainSession.
+    pub fn default_isolated() -> Self {
+        #[cfg(target_os = "linux")]
+        {
+            SessionPreferences::Unshare(PathBuf::new()) // Empty path - ognibuild will handle setup
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            SessionPreferences::Plain
+        }
+    }
+
     pub fn create_session(&self) -> Result<Box<dyn ognibuild::session::Session>, Error> {
         match self {
             SessionPreferences::Plain => {
@@ -1146,12 +1164,23 @@ impl SessionPreferences {
             SessionPreferences::Unshare(path) => {
                 #[cfg(target_os = "linux")]
                 {
-                    ognibuild::session::unshare::UnshareSession::from_tarball(path)
-                        .map(Box::new)
-                        .map(|b| b as Box<dyn ognibuild::session::Session>)
-                        .map_err(|e| {
-                            Error::Other(format!("Failed to create unshare session: {}", e))
-                        })
+                    if path.as_os_str().is_empty() {
+                        // Let ognibuild create a bootstrapped unshare session
+                        ognibuild::session::unshare::UnshareSession::bootstrap()
+                            .map(Box::new)
+                            .map(|b| b as Box<dyn ognibuild::session::Session>)
+                            .map_err(|e| {
+                                Error::Other(format!("Failed to create unshare session: {}", e))
+                            })
+                    } else {
+                        // Use specific tarball path
+                        ognibuild::session::unshare::UnshareSession::from_tarball(path)
+                            .map(Box::new)
+                            .map(|b| b as Box<dyn ognibuild::session::Session>)
+                            .map_err(|e| {
+                                Error::Other(format!("Failed to create unshare session: {}", e))
+                            })
+                    }
                 }
                 #[cfg(not(target_os = "linux"))]
                 {
@@ -1214,7 +1243,7 @@ impl Default for DebianizePreferences {
             minimum_certainty: Certainty::Confident,
             consult_external_directory: true,
             verbose: false,
-            session: SessionPreferences::Plain,
+            session: SessionPreferences::default_isolated(),
             create_dist: None,
             committer: None,
             upstream_version_kind: VersionKind::Auto,

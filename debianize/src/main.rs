@@ -22,6 +22,35 @@ use ognibuild::debian::fix_build::IterateBuildError;
 use ognibuild::dependencies::debian::DebianDependency;
 use upstream_ontologist::{Certainty, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata};
 
+#[derive(Debug, Clone)]
+enum SessionType {
+    Plain,
+    Schroot(Option<String>),
+    Unshare(Option<PathBuf>),
+}
+
+impl std::str::FromStr for SessionType {
+    type Err = String;
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some((session_type, value)) = s.split_once(':') {
+            match session_type {
+                "plain" => Ok(SessionType::Plain),
+                "schroot" => Ok(SessionType::Schroot(Some(value.to_string()))),
+                "unshare" => Ok(SessionType::Unshare(Some(PathBuf::from(value)))),
+                _ => Err(format!("Invalid session type: {}", session_type)),
+            }
+        } else {
+            match s {
+                "plain" => Ok(SessionType::Plain),
+                "schroot" => Ok(SessionType::Schroot(None)),
+                "unshare" => Ok(SessionType::Unshare(None)),
+                _ => Err(format!("Invalid session type: {}", s)),
+            }
+        }
+    }
+}
+
 /// Create Debian packaging for upstream projects, in version control
 #[derive(Parser, Debug)]
 #[command(author, version)]
@@ -78,13 +107,9 @@ struct Args {
     #[arg(long, short('i'))]
     install: bool,
 
-    /// Schroot to use for building apt archive access
-    #[arg(long, env = "SCHROOT")]
-    schroot: Option<String>,
-
-    /// Unshare tarball to use for building apt archive access
-    #[arg(long)]
-    unshare: Option<PathBuf>,
+    /// Session type for isolation: plain, schroot[:name], unshare[:tarball]
+    #[arg(long, default_value = "unshare")]
+    session: SessionType,
 
     /// Build command (used for --iterate-fix)
     #[arg(long, default_value_t = format!("{} -A -s v", debian_analyzer::DEFAULT_BUILDER))]
@@ -329,14 +354,30 @@ fn main() -> Result<(), i32> {
         minimum_certainty: debian_analyzer::Certainty::Confident,
         consult_external_directory: args.consult_external_directory,
         verbose: args.verbose,
-        session: if let Some(schroot) = args.schroot.as_ref() {
-            log::info!("Using schroot {}", schroot);
-            SessionPreferences::Schroot(schroot.to_string())
-        } else if let Some(unshare) = args.unshare.as_ref() {
-            log::info!("Using tarball {} for unshare", unshare.display());
-            SessionPreferences::Unshare(unshare.to_path_buf())
-        } else {
-            SessionPreferences::Plain
+        session: match args.session {
+            SessionType::Plain => {
+                log::info!("Using plain session (no isolation)");
+                SessionPreferences::Plain
+            }
+            SessionType::Schroot(ref name) => {
+                let schroot_name = name.clone().or_else(|| std::env::var("SCHROOT").ok());
+                if let Some(name) = schroot_name {
+                    log::info!("Using schroot: {}", name);
+                    SessionPreferences::Schroot(name)
+                } else {
+                    log::info!("Using default schroot session");
+                    SessionPreferences::Schroot("unstable".to_string()) // Default schroot name
+                }
+            }
+            SessionType::Unshare(ref tarball) => {
+                if let Some(path) = tarball {
+                    log::info!("Using unshare with tarball: {}", path.display());
+                    SessionPreferences::Unshare(path.clone())
+                } else {
+                    log::info!("Using default unshare session");
+                    SessionPreferences::Unshare(PathBuf::new()) // Empty path for default
+                }
+            }
         },
         create_dist: create_dist_fn,
         committer: None,
@@ -512,20 +553,31 @@ fn main() -> Result<(), i32> {
 
     if args.iterate_fix {
         #[cfg(target_os = "linux")]
-        let session: std::rc::Rc<dyn ognibuild::session::Session> =
-            if let Some(schroot) = args.schroot.as_ref() {
-                log::info!("Using schroot {}", schroot);
-                std::rc::Rc::new(
-                    ognibuild::session::schroot::SchrootSession::new(schroot, None).unwrap(),
-                ) as _
-            } else if let Some(unshare) = args.unshare.as_ref() {
-                log::info!("Using tarball {} for unshare", unshare.display());
-                std::rc::Rc::new(
-                    ognibuild::session::unshare::UnshareSession::from_tarball(unshare).unwrap(),
-                ) as _
-            } else {
+        let session: std::rc::Rc<dyn ognibuild::session::Session> = match &args.session {
+            SessionType::Plain => {
                 std::rc::Rc::new(ognibuild::session::plain::PlainSession::new()) as _
-            };
+            }
+            SessionType::Schroot(ref name) => {
+                let schroot_name = name.clone().or_else(|| std::env::var("SCHROOT").ok()).unwrap_or_else(|| "unstable".to_string());
+                log::info!("Using schroot {}", schroot_name);
+                std::rc::Rc::new(
+                    ognibuild::session::schroot::SchrootSession::new(&schroot_name, None).unwrap(),
+                ) as _
+            }
+            SessionType::Unshare(ref tarball) => {
+                if let Some(path) = tarball {
+                    log::info!("Using tarball {} for unshare", path.display());
+                    std::rc::Rc::new(
+                        ognibuild::session::unshare::UnshareSession::from_tarball(path).unwrap(),
+                    ) as _
+                } else {
+                    log::info!("Using bootstrapped unshare session");
+                    std::rc::Rc::new(
+                        ognibuild::session::unshare::UnshareSession::bootstrap().unwrap(),
+                    ) as _
+                }
+            }
+        };
 
         #[cfg(not(target_os = "linux"))]
         let session = std::rc::Rc::new(ognibuild::session::plain::PlainSession::new());
