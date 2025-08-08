@@ -220,10 +220,6 @@ fn test_debianize_simple_python_package() {
     // Create empty upstream metadata (debianize will detect from setup.py)
     let metadata = UpstreamMetadata::new();
 
-    // Change to the working tree directory to avoid path issues
-    let original_dir = std::env::current_dir().unwrap();
-    std::env::set_current_dir(wt.basedir()).unwrap();
-
     // Run debianize
     let result = debianize(
         &wt,
@@ -234,9 +230,6 @@ fn test_debianize_simple_python_package() {
         None, // Auto-detect version
         &metadata,
     );
-
-    // Restore original directory
-    std::env::set_current_dir(original_dir).unwrap();
 
     // Check that debianize succeeded
     assert!(result.is_ok(), "Debianize failed: {:?}", result.err());
@@ -453,10 +446,6 @@ setup(
 
     let metadata = UpstreamMetadata::new();
 
-    // Change to the working tree directory to avoid path issues
-    let original_dir = std::env::current_dir().unwrap();
-    std::env::set_current_dir(wt.basedir()).unwrap();
-
     // Run debianize
     let result = debianize(
         &wt,
@@ -467,9 +456,6 @@ setup(
         None,
         &metadata,
     );
-
-    // Restore original directory
-    std::env::set_current_dir(original_dir).unwrap();
 
     assert!(result.is_ok(), "Debianize failed: {:?}", result.err());
 

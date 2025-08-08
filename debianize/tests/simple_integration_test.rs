@@ -162,10 +162,6 @@ build-backend = "setuptools.build_meta"
     eprintln!("Running debianize with working tree at: {:?}", wt.basedir());
     eprintln!("Current directory: {:?}", std::env::current_dir().unwrap());
 
-    // Change to the working tree directory to avoid path issues
-    let original_dir = std::env::current_dir().unwrap();
-    std::env::set_current_dir(wt.basedir()).unwrap();
-
     let result = debianize(
         &wt,
         Path::new(""),
@@ -175,12 +171,6 @@ build-backend = "setuptools.build_meta"
         None,
         &metadata,
     );
-
-    // Restore original directory - use unwrap_or_else in case the dir was cleaned up
-    std::env::set_current_dir(&original_dir).unwrap_or_else(|_| {
-        // If original dir no longer exists, just change to a safe location
-        std::env::set_current_dir("/tmp").unwrap();
-    });
 
     // Check result
     assert!(result.is_ok(), "Debianize failed: {:?}", result.err());
@@ -333,10 +323,6 @@ setup(
     eprintln!("  repo_path: {:?}", repo_path);
     eprintln!("  wt.basedir(): {:?}", wt.basedir());
 
-    // Change to the working tree directory to avoid path issues
-    let original_dir = std::env::current_dir().unwrap();
-    std::env::set_current_dir(wt.basedir()).unwrap();
-
     // Run debianize
     let result = debianize(
         &wt,
@@ -347,12 +333,6 @@ setup(
         None,
         &metadata,
     );
-
-    // Restore original directory - use unwrap_or_else in case the dir was cleaned up
-    std::env::set_current_dir(&original_dir).unwrap_or_else(|_| {
-        // If original dir no longer exists, just change to a safe location
-        std::env::set_current_dir("/tmp").unwrap();
-    });
 
     assert!(result.is_ok(), "Debianize failed: {:?}", result.err());
 

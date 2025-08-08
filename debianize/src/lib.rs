@@ -2242,7 +2242,12 @@ fn commit_debianization(
     // Add all files in debian directory
     let debian_path = subpath.join("debian");
     let debian_path_ref = debian_path.as_path();
-    wt.smart_add(&[debian_path_ref])?;
+    
+    // Use absolute path for smart_add to work around breezyshim issue where
+    // smart_add resolves relative paths against cwd instead of tree root
+    let debian_path_abs = wt.basedir().join(&debian_path);
+    
+    wt.smart_add(&[debian_path_abs.as_path()])?;
 
     // Commit the changes
     let message = format!("Import upstream version {}", upstream_version);
