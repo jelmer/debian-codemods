@@ -31,7 +31,6 @@ setup(
             [
                 "spdx.json",
                 "lintian-brush/renamed-tags.json",
-                "analyzer/key-package-versions.json",
             ],
         ),
     ],

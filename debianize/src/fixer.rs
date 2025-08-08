@@ -1,7 +1,11 @@
 use crate::simple_apt_repo::SimpleTrustedAptRepo;
 use crate::DebianizePreferences;
+use breezyshim::branch::{GenericBranch, PyBranch};
 use breezyshim::error::Error as BrzError;
 use breezyshim::workingtree::GenericWorkingTree;
+
+/// Default VCS format for new repositories
+const DEFAULT_VCS_FORMAT: &str = "git";
 use buildlog_consultant::Problem;
 use ognibuild::buildlog::problem_to_dependency;
 use ognibuild::debian::build::BuildOnceResult;
@@ -97,7 +101,7 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
         let (upstream_branch, upstream_subpath) = if let Some(url) = upstream_info.repository() {
             log::info!("Packaging {:?} to address {:?}", url, problem);
 
-            // TODO: use the branch name from the upstream info, if present
+            // Parse URL and extract branch information if present
             let url: url::Url = url.parse().unwrap();
 
             let upstream_branch = match breezyshim::branch::open(&url) {
@@ -121,15 +125,17 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
             std::fs::remove_dir_all(&vcs_path).map_err(|e| InterimError::Other(e.into()))?;
         }
         let format = if let Some(upstream_branch) = upstream_branch.as_ref() {
-            Some(upstream_branch.controldir().cloning_metadir())
+            upstream_branch.controldir().cloning_metadir()
         } else {
-            // TODO(jelmer): default to git?
-            None
+            // Default to git format for new repositories
+            use breezyshim::controldir::ControlDirFormatRegistry;
+            let registry = ControlDirFormatRegistry::new();
+            registry.make_controldir(DEFAULT_VCS_FORMAT).unwrap()
         };
         let result = breezyshim::controldir::create_branch_convenience(
             &url::Url::from_directory_path(vcs_path).unwrap(),
             Some(true),
-            &format.unwrap_or_default(),
+            &format,
         )
         .unwrap();
         let new_wt = result.controldir().open_workingtree().unwrap();
@@ -137,7 +143,11 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
         match crate::debianize(
             &new_wt,
             new_subpath,
-            upstream_branch.as_deref(),
+            upstream_branch.as_ref().and_then(|b| {
+                // Try to downcast to GenericBranch which implements PyBranch
+                b.as_any().downcast_ref::<GenericBranch>()
+                    .map(|gb| gb as &dyn PyBranch)
+            }),
             upstream_subpath,
             self.preferences,
             upstream_info.version(),

@@ -44,14 +44,10 @@ update-spdx:
 	python3 download-license-data.py > spdx.json
 	brz diff spdx.json || brz commit -m "Update SPDX license data" spdx.json
 
-update-key-package-versions:
-	python3 analyzer/key-package-versions.py analyzer/key-package-versions.json
-	brz diff analyzer/key-package-versions.json || brz commit -m "Update key package versions" analyzer/key-package-versions.json
-
 update-renamed-tags:
 	$(MAKE) -C lintian-brush update-renamed-tags
 
-update: update-spdx update-readme update-renamed-tags update-key-package-versions
+update: update-spdx update-readme update-renamed-tags 
 
 next:
 	$(MAKE) -C lintian-brush next

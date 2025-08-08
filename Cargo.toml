@@ -2,14 +2,13 @@
 # With resolve set to "2", dependent projects can't find debian-analyzer anymore.
 resolver = "1"
 members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "scrub-obsolete", "transition-apply", "import-uncommitted", "debianize"]
+exclude = ["breezyshim-fixed"]
 
 [workspace.package]
 version = "0.163.0"
 
 [workspace.dependencies]
-#breezyshim = { version = "0.5.5", features = ["dirty-tracker"] }
-breezyshim = { version = "0.6", features = ["dirty-tracker"] }
-#breezyshim = { path = "../breezyshim/trunk", features = ["dirty-tracker"] }
+breezyshim = { version = "0.6.1", features = ["dirty-tracker"] }
 pyo3 = ">=0.25,<0.26"
 debversion = ">=0.4.0"
 serde_yaml = ">=0.9"
@@ -38,7 +37,7 @@ sqlx = ">=0.8"
 semver = "1"
 toml_edit = ">=0.23"
 tokio = ">=1.39"
-debian-analyzer = { version = "0.159.0" }
+debian-analyzer = { version = "0.159.1" }
 svp-client = "0.2.0"
 #debian-control = { path = "../deb822-lossless/debian-control" }
 #deb822-lossless = { path = "../deb822-lossless" }

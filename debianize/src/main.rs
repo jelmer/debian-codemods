@@ -1,4 +1,4 @@
-use breezyshim::branch::Branch;
+use breezyshim::branch::{Branch, GenericBranch, PyBranch};
 use breezyshim::debian::directory::vcs_git_url_to_bzr_url;
 use breezyshim::tree::{PyTree, Tree};
 use breezyshim::workingtree::{GenericWorkingTree, WorkingTree};
@@ -336,6 +336,9 @@ fn main() -> Result<(), i32> {
         debian_revision: args.debian_revision,
         team: None,
         author: None,
+        compat_level: None,
+        check_wnpp: true,
+        run_fixers: true,
     };
 
     let lock_write = wt.lock_write();
@@ -343,7 +346,8 @@ fn main() -> Result<(), i32> {
     let debianize_result = match debianize::debianize(
         &wt,
         &subpath,
-        Some(upstream_branch.as_ref()),
+        upstream_branch.as_any().downcast_ref::<GenericBranch>()
+            .map(|gb| gb as &dyn PyBranch),
         Some(&upstream_subpath),
         &preferences,
         args.upstream_version.as_deref(),
@@ -453,6 +457,38 @@ fn main() -> Result<(), i32> {
                 "invalid-source-package-name",
                 &format!("Generated source package name {} is not valid.", name),
                 None,
+                None,
+            );
+        }
+        Err(Error::SourceNameUnknown(name)) => {
+            svp.report_fatal(
+                "source-name-unknown",
+                &format!(
+                    "Unable to determine source package name{}",
+                    name.as_ref()
+                        .map(|n| format!(" from {}", n))
+                        .unwrap_or_default()
+                ),
+                None,
+                None,
+            );
+        }
+        Err(Error::Other(msg)) => {
+            svp.report_fatal("other-error", &msg, None, None);
+        }
+        Err(Error::ProviderError(e)) => {
+            svp.report_fatal(
+                "provider-error",
+                &format!("Error getting upstream metadata: {:?}", e),
+                None,
+                None,
+            );
+        }
+        Err(Error::UncommittedChanges) => {
+            svp.report_fatal(
+                "uncommitted-changes",
+                "There are uncommitted changes in the working tree.",
+                Some("Commit your changes or use --force to ignore them."),
                 None,
             );
         }
