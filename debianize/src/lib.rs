@@ -1570,10 +1570,6 @@ pub fn debianize(
     };
     let maintainer = format!("{} <{}>", maintainer_name, maintainer_email);
 
-    // Detect buildsystem and create proper control file using processors
-    let detected_buildsystem = detect_buildsystem_name(wt, subpath);
-    log::debug!("Detected buildsystem: {}", detected_buildsystem);
-
     // Create buildsystem instance for enhanced dependency resolution
     // If subpath is empty, use the working tree's base directory
     let buildsystem_path = if subpath.as_os_str().is_empty() {
@@ -2330,45 +2326,6 @@ fn basic_import_upstream_version(
     }
 
     Ok(upstream_branch_name.to_string())
-}
-
-/// Detect the buildsystem name for a given tree and subpath
-fn detect_buildsystem_name(wt: &dyn PyWorkingTree, subpath: &Path) -> String {
-    // Check for common build files in order of preference
-    let common_buildfiles = [
-        ("setup.py", "setup.py"),
-        ("pyproject.toml", "setup.py"), // Modern Python projects
-        ("package.json", "npm"),
-        ("pom.xml", "maven"),
-        ("dist.ini", "dist-zilla"),
-        ("META.json", "dist-inkt"),
-        ("Build.PL", "perl-build-tiny"),
-        ("Makefile.PL", "makefile.pl"),
-        ("Cargo.toml", "cargo"),
-        ("go.mod", "golang"),
-        ("DESCRIPTION", "R"),
-        ("DESCRIPTION.in", "octave"),
-        ("Makefile", "make"),
-        ("CMakeLists.txt", "cmake"),
-        ("configure.ac", "autotools"),
-        ("configure.in", "autotools"),
-    ];
-
-    for (filename, buildsystem_name) in &common_buildfiles {
-        let build_file_path = subpath.join(filename);
-        if wt.has_filename(&build_file_path) {
-            log::debug!(
-                "Found build file: {}, using buildsystem: {}",
-                filename,
-                buildsystem_name
-            );
-            return buildsystem_name.to_string();
-        }
-    }
-
-    // Default to a generic buildsystem
-    log::debug!("No specific build system detected, using default");
-    "default".to_string()
 }
 
 /// Unsplit VCS URL into type and URL string

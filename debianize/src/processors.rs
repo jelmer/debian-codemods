@@ -320,28 +320,6 @@ fn process_dist_zilla(context: &mut ProcessorContext) -> Result<(), Error> {
     Ok(())
 }
 
-fn process_makefile_pl(context: &mut ProcessorContext) -> Result<(), Error> {
-    context.kickstart_tree(true)?;
-    let mut control = context.create_control_file()?;
-    let upstream_name = context.metadata.name().unwrap();
-    let mut source = control.add_source(&crate::names::perl_package_name(upstream_name));
-    if let Some(ref maintainer) = context.maintainer {
-        source.set_maintainer(maintainer);
-    }
-    source.set_rules_requires_root(false);
-    source.set_testsuite("autopkgtest-pkg-perl");
-    source.set_standards_version(&latest_standards_version().to_string());
-    let (build_deps, _test_deps) = context.get_project_wide_deps();
-    import_build_deps(&mut source, &build_deps);
-    context.bootstrap_debhelper(&mut source, DebhelperConfig::default())?;
-    let binary_name = source.name().unwrap();
-    let mut binary = control.add_binary(&binary_name);
-    binary.set_architecture(Some("all"));
-    binary.set_depends(Some(&"${perl:Depends}".parse().unwrap()));
-    control.commit()?;
-    Ok(())
-}
-
 fn process_perl_build_tiny(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
     let mut control = context.create_control_file()?;
@@ -529,6 +507,79 @@ fn process_default(context: &mut ProcessorContext) -> Result<(), Error> {
     Ok(())
 }
 
+fn process_cmake(context: &mut ProcessorContext) -> Result<(), Error> {
+    context.kickstart_tree(true)?;
+    let mut control = context.create_control_file()?;
+    let upstream_name = context.metadata.name().unwrap_or("unknown");
+    let source_name = crate::names::upstream_name_to_debian_source_name(upstream_name)
+        .unwrap_or_else(|| upstream_name.to_string());
+
+    let mut source = control.add_source(&source_name);
+    if let Some(ref maintainer) = context.maintainer {
+        source.set_maintainer(maintainer);
+    }
+    source.set_standards_version(&latest_standards_version().to_string());
+    source.set_rules_requires_root(false);
+
+    // CMake-specific build dependencies
+    let mut build_depends = Relations::new();
+    ensure_some_version(&mut build_depends, "cmake");
+    source.set_build_depends(&build_depends);
+
+    context.bootstrap_debhelper(
+        &mut source,
+        DebhelperConfig {
+            buildsystem: Some("cmake"),
+            ..Default::default()
+        },
+    )?;
+
+    let (additional_build_deps, _test_deps) = context.get_project_wide_deps();
+    import_build_deps(&mut source, &additional_build_deps);
+
+    // Add binary package
+    let binary_name = source.name().unwrap();
+    let mut binary = control.add_binary(&binary_name);
+    binary.set_architecture(Some("any"));
+
+    control.commit()?;
+    Ok(())
+}
+
+fn process_make(context: &mut ProcessorContext) -> Result<(), Error> {
+    context.kickstart_tree(true)?;
+    let mut control = context.create_control_file()?;
+    let upstream_name = context.metadata.name().unwrap_or("unknown");
+    let source_name = crate::names::upstream_name_to_debian_source_name(upstream_name)
+        .unwrap_or_else(|| upstream_name.to_string());
+
+    let mut source = control.add_source(&source_name);
+    if let Some(ref maintainer) = context.maintainer {
+        source.set_maintainer(maintainer);
+    }
+    source.set_standards_version(&latest_standards_version().to_string());
+    source.set_rules_requires_root(false);
+
+    context.bootstrap_debhelper(
+        &mut source,
+        DebhelperConfig {
+            buildsystem: Some("makefile"),
+            ..Default::default()
+        },
+    )?;
+
+    let (additional_build_deps, _test_deps) = context.get_project_wide_deps();
+    import_build_deps(&mut source, &additional_build_deps);
+
+    // Add binary package
+    let binary_name = source.name().unwrap();
+    let mut binary = control.add_binary(&binary_name);
+    binary.set_architecture(Some("any"));
+
+    control.commit()?;
+    Ok(())
+}
+
 fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(false)?;
 
@@ -639,16 +690,16 @@ pub fn process(
     };
     match bs_name.as_str() {
         "setup.py" => process_setup_py(&mut context),
-        "npm" => process_npm(&mut context),
-        "maven" => process_maven(&mut context),
-        "dist-zilla" => process_dist_zilla(&mut context),
-        "dist-inkt" => process_dist_zilla(&mut context),
-        "perl-build-tiny" => process_perl_build_tiny(&mut context),
-        "makefile.pl" => process_makefile_pl(&mut context),
+        "node" => process_npm(&mut context),
+        "gradle" => process_maven(&mut context), // For Java/gradle projects
+        "Dist::Zilla" => process_dist_zilla(&mut context),
+        "Module::Build::Tiny" => process_perl_build_tiny(&mut context),
         "cargo" => process_cargo(&mut context),
         "golang" => process_golang(&mut context),
         "R" => process_r(&mut context),
         "octave" => process_octave(&mut context),
+        "cmake" => process_cmake(&mut context),
+        "make" => process_make(&mut context), // Handles autotools too
         _ => process_default(&mut context),
     }
 }
