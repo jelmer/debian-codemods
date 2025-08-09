@@ -3,6 +3,50 @@ use std::path::{Path, PathBuf};
 
 include!(concat!(env!("OUT_DIR"), "/fixer_tests.rs"));
 
+#[test]
+fn test_all_test_dirs_have_matching_fixers() {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let fixers_dir = Path::new(manifest_dir).join("fixers");
+    let tests_dir = Path::new(manifest_dir).join("tests");
+
+    // Get list of all fixer names from all_lintian_fixers() (including disabled ones)
+    let all_fixers = all_lintian_fixers(Some(&fixers_dir), None).expect("Failed to get all fixers");
+
+    let fixer_names: std::collections::HashSet<String> =
+        all_fixers.map(|f| f.name().to_string()).collect();
+
+    // Get list of test directories
+    let test_dirs = std::fs::read_dir(&tests_dir).expect("Failed to read tests directory");
+
+    let mut tests_without_fixers = Vec::new();
+
+    for entry in test_dirs {
+        let entry = entry.expect("Failed to read directory entry");
+        let path = entry.path();
+
+        if path.is_dir() {
+            let test_name = entry.file_name().to_string_lossy().to_string();
+
+            // Skip README.md and slow directory
+            if test_name == "slow" || test_name.starts_with('.') {
+                continue;
+            }
+
+            // Check if there's a matching fixer
+            if !fixer_names.contains(&test_name) {
+                tests_without_fixers.push(test_name);
+            }
+        }
+    }
+
+    if !tests_without_fixers.is_empty() {
+        panic!(
+            "The following test directories have no matching fixers in all_lintian_fixers():\n{}",
+            tests_without_fixers.join("\n")
+        );
+    }
+}
+
 fn run_fixer_testcase(
     _fixer_name: &str,
     script_path: &Path,

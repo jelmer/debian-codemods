@@ -35,9 +35,10 @@ fixers:
       - no-copyright-file
 
   # Copyright related fixers. Fix format URL before semantic fixes.
-  - script: insecure-copyright-format-uri.py
+  - script: copyright-format-uri.py
     lintian-tags:
       - insecure-copyright-format-uri
+      - wiki-copyright-format-uri
 
   - script: unversioned-copyright-format-uri.py
     lintian-tags:
@@ -297,9 +298,10 @@ fixers:
 
   # TODO(jelmer): Temporarily disabled, since this triggers unnecessarily
   # (e.g. for nfdump). See https://bugs.debian.org/946398
-  # - script: skip-systemd-native-flag-missing-pre-depends.py
-  #   lintian-tags:
-  #   - skip-systemd-native-flag-missing-pre-depends
+  - script: skip-systemd-native-flag-missing-pre-depends.py
+    enabled: false
+    lintian-tags:
+      - skip-systemd-native-flag-missing-pre-depends
 
   - script: patch-file-present-but-not-mentioned-in-series.py
     lintian-tags:
@@ -614,9 +616,10 @@ fixers:
 
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
-  # - script: newer-debconf-templates.py
-  #   lintian-tags:
-  #   - newer-debconf-templates
+  - script: newer-debconf-templates.py
+    enabled: false
+    lintian-tags:
+      - newer-debconf-templates
 
   - script: public-upstream-key-in-native-package.py
     lintian-tags:

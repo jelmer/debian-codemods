@@ -979,6 +979,12 @@ struct FixerDescEntry {
     lintian_tags: Option<Vec<String>>,
     #[serde(rename = "force-subprocess")]
     force_subprocess: Option<bool>,
+    #[serde(default = "default_enabled")]
+    enabled: bool,
+}
+
+fn default_enabled() -> bool {
+    true
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -1017,7 +1023,7 @@ impl std::fmt::Display for FixerDiscoverError {
 
 impl std::error::Error for FixerDiscoverError {}
 
-pub fn read_desc_file<P: AsRef<std::path::Path>>(
+pub fn read_all_desc_file<P: AsRef<std::path::Path>>(
     path: P,
     force_subprocess: bool,
 ) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
@@ -1028,6 +1034,7 @@ pub fn read_desc_file<P: AsRef<std::path::Path>>(
 
     let dirname = path.as_ref().parent().unwrap().to_owned();
     let fixer_iter = data.fixers.into_iter().map(move |item| {
+        // Include all fixers, even disabled ones
         let script = item.script;
         let lintian_tags = item.lintian_tags;
         let force_subprocess = item.force_subprocess.unwrap_or(force_subprocess);
@@ -1043,6 +1050,41 @@ pub fn read_desc_file<P: AsRef<std::path::Path>>(
             script_path,
             force_subprocess,
         )
+    });
+
+    Ok(fixer_iter)
+}
+
+pub fn read_desc_file<P: AsRef<std::path::Path>>(
+    path: P,
+    force_subprocess: bool,
+) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
+    let file = File::open(path.as_ref())?;
+    let reader = BufReader::new(file);
+
+    let data: FixerDescFile = serde_yaml::from_reader(reader)?;
+
+    let dirname = path.as_ref().parent().unwrap().to_owned();
+    let fixer_iter = data.fixers.into_iter().filter_map(move |item| {
+        // Skip disabled fixers
+        if !item.enabled {
+            return None;
+        }
+        let script = item.script;
+        let lintian_tags = item.lintian_tags;
+        let force_subprocess = item.force_subprocess.unwrap_or(force_subprocess);
+        let name = std::path::Path::new(script.as_str())
+            .file_stem()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
+        let script_path = dirname.join(script.as_str());
+
+        Some(load_fixer(
+            name.to_owned(),
+            lintian_tags.unwrap_or_default(),
+            script_path,
+            force_subprocess,
+        ))
     });
 
     Ok(fixer_iter)
@@ -1108,7 +1150,40 @@ fn load_fixer(
     Box::new(ScriptFixer::new(name, tags, script_path))
 }
 
-/// Return a list of available lintian fixers.
+/// Return a list of all lintian fixers (including disabled ones).
+///
+/// # Arguments
+///
+/// * `fixers_dir` - The directory to search for fixers.
+/// * `force_subprocess` - Force the use of a subprocess for all fixers.
+pub fn all_lintian_fixers(
+    fixers_dir: Option<&std::path::Path>,
+    force_subprocess: Option<bool>,
+) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
+    let fixers_dir = if let Some(fixers_dir) = fixers_dir {
+        fixers_dir.to_path_buf()
+    } else {
+        let system_path = find_fixers_dir();
+        if let Some(system_path) = system_path {
+            system_path
+        } else {
+            return Err(FixerDiscoverError::NoFixersDir);
+        }
+    };
+    let mut fixers = Vec::new();
+    // Scan fixers_dir for .desc files
+    for entry in std::fs::read_dir(fixers_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() && path.extension().map(|ext| ext == "desc").unwrap_or(false) {
+            let fixer_iter = read_all_desc_file(&path, force_subprocess.unwrap_or(false))?;
+            fixers.extend(fixer_iter);
+        }
+    }
+    Ok(fixers.into_iter())
+}
+
+/// Return a list of available lintian fixers (enabled ones only).
 ///
 /// # Arguments
 ///

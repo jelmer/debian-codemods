@@ -22,6 +22,12 @@ fn main() {
         script: String,
         #[serde(rename = "lintian-tags")]
         lintian_tags: Option<Vec<String>>,
+        #[serde(default = "default_enabled")]
+        enabled: bool,
+    }
+
+    fn default_enabled() -> bool {
+        true
     }
 
     #[derive(serde::Deserialize)]
