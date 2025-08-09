@@ -379,6 +379,7 @@ pub struct FixerPreferences {
     pub opinionated: Option<bool>,
     pub diligence: Option<i32>,
     pub upgrade_release: Option<String>,
+    pub extra_env: Option<std::collections::HashMap<String, String>>,
 }
 
 /// A fixer script

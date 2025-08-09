@@ -502,6 +502,7 @@ fn main() -> Result<(), i32> {
             diligence: Some(args.fixers.diligent),
             trust_package: Some(args.packages.trust),
             upgrade_release: Some(upgrade_release),
+            extra_env: None,
         };
 
         let mut overall_result = match lintian_brush::run_lintian_fixers(

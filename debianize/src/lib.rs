@@ -1330,6 +1330,7 @@ impl From<DebianizePreferences> for lintian_brush::FixerPreferences {
             opinionated: Some(true),
             allow_reformatting: Some(true),
             upgrade_release: None,
+            extra_env: None,
         }
     }
 }
@@ -1878,6 +1879,7 @@ fn run_debianize_fixers(
         opinionated: Some(true),
         diligence: Some(preferences.diligence as i32),
         upgrade_release: None,
+        extra_env: None,
     };
 
     // Run the fixers
