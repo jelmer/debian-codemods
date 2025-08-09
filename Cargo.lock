@@ -2501,6 +2501,7 @@ dependencies = [
  "fs_extra",
  "humantime",
  "indicatif",
+ "inventory",
  "lazy-regex",
  "lazy_static",
  "log",

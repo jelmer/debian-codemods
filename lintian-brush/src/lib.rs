@@ -1,7 +1,6 @@
-use debversion::Version;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::BufReader;
 use std::process::Command;
 use std::str::FromStr;
 
@@ -15,9 +14,20 @@ use breezyshim::RevisionId;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
 use debian_analyzer::{
     add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, min_certainty,
-    ApplyError, Certainty, ChangelogError,
+    ApplyError, ChangelogError,
 };
 use debian_changelog::ChangeLog;
+
+pub mod builtin_fixers;
+#[macro_use]
+pub mod macros;
+pub mod fixers;
+
+// Re-export commonly used types for convenience
+pub use debian_analyzer::Certainty;
+pub use debversion::Version;
+// Re-export inventory for macros
+pub use inventory;
 
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum PackageType {
@@ -129,17 +139,30 @@ impl TryFrom<&str> for LintianIssue {
         let package_type;
         let package;
         let after = if let Some((before, after)) = value.split_once(':') {
-            if let Some((package_type_str, package_str)) = before.trim().split_once(' ') {
-                package_type = Some(match package_type_str {
-                    "source" => PackageType::Source,
-                    "binary" => PackageType::Binary,
-                    _ => {
-                        return Err(LintianIssueParseError::InvalidPackageType(
-                            package_type_str.to_string(),
-                        ))
-                    }
-                });
-                package = Some(package_str.to_string());
+            if let Some((first, second)) = before.trim().split_once(' ') {
+                // Check if the format is "package source:" or "source package:"
+                if second == "source" {
+                    // Format: "package source:"
+                    package_type = Some(PackageType::Source);
+                    package = Some(first.to_string());
+                } else if second == "binary" {
+                    // Format: "package binary:"
+                    package_type = Some(PackageType::Binary);
+                    package = Some(first.to_string());
+                } else if first == "source" {
+                    // Format: "source package:"
+                    package_type = Some(PackageType::Source);
+                    package = Some(second.to_string());
+                } else if first == "binary" {
+                    // Format: "binary package:"
+                    package_type = Some(PackageType::Binary);
+                    package = Some(second.to_string());
+                } else {
+                    return Err(LintianIssueParseError::InvalidPackageType(format!(
+                        "{} {}",
+                        first, second
+                    )));
+                }
             } else {
                 package_type = None;
                 package = Some(before.to_string());
@@ -204,6 +227,109 @@ impl FixerResult {
             .iter()
             .filter_map(|issue| issue.tag.as_deref())
             .collect()
+    }
+
+    /// Create a builder for constructing a FixerResult
+    pub fn builder(description: impl Into<String>) -> FixerResultBuilder {
+        FixerResultBuilder::new(description)
+    }
+}
+
+/// Builder for constructing FixerResult instances
+#[derive(Debug, Default)]
+pub struct FixerResultBuilder {
+    description: String,
+    certainty: Option<Certainty>,
+    patch_name: Option<String>,
+    revision_id: Option<RevisionId>,
+    fixed_lintian_issues: Vec<LintianIssue>,
+    fixed_lintian_tags: Vec<String>,
+    overridden_lintian_issues: Vec<LintianIssue>,
+}
+
+impl FixerResultBuilder {
+    /// Create a new builder with the required description
+    pub fn new(description: impl Into<String>) -> Self {
+        Self {
+            description: description.into(),
+            ..Default::default()
+        }
+    }
+
+    /// Set the certainty level
+    pub fn certainty(mut self, certainty: Certainty) -> Self {
+        self.certainty = Some(certainty);
+        self
+    }
+
+    /// Set the patch name
+    pub fn patch_name(mut self, patch_name: impl Into<String>) -> Self {
+        self.patch_name = Some(patch_name.into());
+        self
+    }
+
+    /// Set the revision ID
+    pub fn revision_id(mut self, revision_id: RevisionId) -> Self {
+        self.revision_id = Some(revision_id);
+        self
+    }
+
+    /// Add a fixed lintian issue
+    pub fn fixed_issue(mut self, issue: LintianIssue) -> Self {
+        self.fixed_lintian_issues.push(issue);
+        self
+    }
+
+    /// Add multiple fixed lintian issues
+    pub fn fixed_issues(mut self, issues: impl IntoIterator<Item = LintianIssue>) -> Self {
+        self.fixed_lintian_issues.extend(issues);
+        self
+    }
+
+    /// Add a fixed lintian tag (will be converted to LintianIssue)
+    pub fn fixed_tag(mut self, tag: impl Into<String>) -> Self {
+        self.fixed_lintian_tags.push(tag.into());
+        self
+    }
+
+    /// Add multiple fixed lintian tags
+    pub fn fixed_tags(mut self, tags: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.fixed_lintian_tags
+            .extend(tags.into_iter().map(|t| t.into()));
+        self
+    }
+
+    /// Add an overridden lintian issue
+    pub fn overridden_issue(mut self, issue: LintianIssue) -> Self {
+        self.overridden_lintian_issues.push(issue);
+        self
+    }
+
+    /// Add multiple overridden lintian issues
+    pub fn overridden_issues(mut self, issues: impl IntoIterator<Item = LintianIssue>) -> Self {
+        self.overridden_lintian_issues.extend(issues);
+        self
+    }
+
+    /// Build the FixerResult
+    pub fn build(self) -> FixerResult {
+        let mut fixed_lintian_issues = self.fixed_lintian_issues;
+
+        // Convert tags to issues
+        fixed_lintian_issues.extend(
+            self.fixed_lintian_tags
+                .into_iter()
+                .map(LintianIssue::just_tag),
+        );
+
+        FixerResult {
+            description: self.description,
+            certainty: self.certainty,
+            patch_name: self.patch_name,
+            revision_id: self.revision_id,
+            fixed_lintian_issues,
+            overridden_lintian_issues: self.overridden_lintian_issues,
+        }
     }
 }
 
@@ -366,6 +492,34 @@ pub fn determine_env(
         "DILIGENCE".to_owned(),
         preferences.diligence.unwrap_or(0).to_string(),
     );
+
+    // Add Python path for subprocess fixers
+    let py_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("py");
+
+    if let Ok(existing_pythonpath) = std::env::var("PYTHONPATH") {
+        // Prepend our py directory to existing PYTHONPATH
+        env.insert(
+            "PYTHONPATH".to_owned(),
+            format!("{}:{}", py_path.to_string_lossy(), existing_pythonpath),
+        );
+    } else {
+        // Set PYTHONPATH to just our py directory
+        env.insert(
+            "PYTHONPATH".to_owned(),
+            py_path.to_string_lossy().to_string(),
+        );
+    }
+
+    // Add any extra environment variables from preferences (used in tests)
+    if let Some(extra_env) = &preferences.extra_env {
+        for (key, value) in extra_env {
+            env.insert(key.clone(), value.clone());
+        }
+    }
+
     env
 }
 
@@ -902,7 +1056,6 @@ impl Fixer for ScriptFixer {
         timeout: Option<chrono::Duration>,
     ) -> Result<FixerResult, FixerError> {
         let env = determine_env(package, current_version, preferences);
-        use wait_timeout::ChildExt;
 
         let mut cmd = Command::new(self.path.as_os_str());
         cmd.stdout(std::process::Stdio::piped());
@@ -913,56 +1066,76 @@ impl Fixer for ScriptFixer {
             cmd.env(key, value);
         }
 
-        let mut child = cmd.spawn().map_err(|e| match e.kind() {
-            std::io::ErrorKind::NotFound => FixerError::ScriptNotFound(self.path.clone()),
-            _ => FixerError::Other(e.to_string()),
-        })?;
+        // For timeout case, we need to handle it differently
+        let output = if let Some(timeout) = timeout {
+            use std::io::Read;
+            use wait_timeout::ChildExt;
 
-        let status = if let Some(timeout) = timeout {
+            let mut child = cmd.spawn().map_err(|e| match e.kind() {
+                std::io::ErrorKind::NotFound => FixerError::ScriptNotFound(self.path.clone()),
+                _ => FixerError::Other(e.to_string()),
+            })?;
+
             let std_timeout = timeout
                 .to_std()
                 .map_err(|e| FixerError::Other(e.to_string()))?;
-            let output = child
-                .wait_timeout(std_timeout)
-                .map_err(|e| FixerError::Other(e.to_string()))?;
 
-            if output.is_none() {
-                child.kill().map_err(|e| FixerError::Other(e.to_string()))?;
-                return Err(FixerError::Timeout { timeout });
+            let status = match child
+                .wait_timeout(std_timeout)
+                .map_err(|e| FixerError::Other(e.to_string()))?
+            {
+                Some(status) => status,
+                None => {
+                    child.kill().map_err(|e| FixerError::Other(e.to_string()))?;
+                    return Err(FixerError::Timeout { timeout });
+                }
+            };
+
+            // Read stdout and stderr after process completes
+            let mut stdout = Vec::new();
+            let mut stderr = Vec::new();
+            if let Some(mut stdout_reader) = child.stdout.take() {
+                stdout_reader
+                    .read_to_end(&mut stdout)
+                    .map_err(|e| FixerError::Other(format!("Failed to read stdout: {}", e)))?;
             }
-            output.unwrap()
+            if let Some(mut stderr_reader) = child.stderr.take() {
+                stderr_reader
+                    .read_to_end(&mut stderr)
+                    .map_err(|e| FixerError::Other(format!("Failed to read stderr: {}", e)))?;
+            }
+
+            std::process::Output {
+                status,
+                stdout,
+                stderr,
+            }
         } else {
-            child.wait().map_err(|e| FixerError::Other(e.to_string()))?
+            cmd.output().map_err(|e| match e.kind() {
+                std::io::ErrorKind::NotFound => FixerError::ScriptNotFound(self.path.clone()),
+                _ => FixerError::Other(e.to_string()),
+            })?
         };
 
-        if !status.success() {
-            let mut stderr = String::new();
-            let mut stderr_buf = std::io::BufReader::new(child.stderr.as_mut().unwrap());
-            stderr_buf
-                .read_to_string(&mut stderr)
-                .map_err(|e| FixerError::Other(format!("Failed to read stderr: {}", e)))?;
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
-            if status.code() == Some(2) {
+        if !output.status.success() {
+            if output.status.code() == Some(2) {
                 return Err(FixerError::NoChanges);
             }
 
-            if status.code().is_none() {
+            if output.status.code().is_none() {
                 return Err(FixerError::Other("Script terminated by signal".to_string()));
             }
 
             return Err(FixerError::ScriptFailed {
                 path: self.path.to_owned(),
-                exit_code: status.code().unwrap(),
+                exit_code: output.status.code().unwrap(),
                 stderr,
             });
         }
 
-        let mut stdout_buf = std::io::BufReader::new(child.stdout.as_mut().unwrap());
-
-        let mut stdout = String::new();
-        stdout_buf
-            .read_to_string(&mut stdout)
-            .map_err(FixerError::Io)?;
         parse_script_fixer_output(&stdout).map_err(FixerError::OutputParseError)
     }
 }
@@ -1172,6 +1345,8 @@ pub fn all_lintian_fixers(
         }
     };
     let mut fixers = Vec::new();
+    // Add builtin fixers first
+    fixers.extend(builtin_fixers::get_builtin_fixers());
     // Scan fixers_dir for .desc files
     for entry in std::fs::read_dir(fixers_dir)? {
         let entry = entry?;
@@ -1205,6 +1380,7 @@ pub fn available_lintian_fixers(
         }
     };
     let mut fixers = Vec::new();
+
     // Scan fixers_dir for .desc files
     for entry in std::fs::read_dir(fixers_dir)? {
         let entry = entry?;

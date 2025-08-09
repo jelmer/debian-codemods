@@ -11,11 +11,10 @@ fn main() {
     let mut dest = fs::File::create(dest_path).unwrap();
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    let fixers_dir = Path::new(&manifest_dir).join("fixers");
     let test_dir = Path::new(&manifest_dir).join("tests");
 
-    // Load the fixers/index.desc file as yaml
-    let f = fs::File::open(fixers_dir.join("index.desc")).unwrap();
+    // Read test directories to discover test names
+    let test_dirs = fs::read_dir(test_dir).unwrap();
 
     #[derive(serde::Deserialize)]
     struct Fixer {
@@ -30,30 +29,21 @@ fn main() {
         true
     }
 
-    #[derive(serde::Deserialize)]
-    struct Fixers {
-        fixers: Vec<Fixer>,
-    }
+    for test_dir_entry in test_dirs {
+        let test_dir_entry = test_dir_entry.unwrap();
+        if !test_dir_entry.file_type().unwrap().is_dir() {
+            continue;
+        }
 
-    let fixers_file: Fixers = serde_yaml::from_reader(f).unwrap();
-
-    for fixer in fixers_file.fixers {
-        let script = fixer.script.clone();
-
-        let script_path = fixers_dir.join(&script).to_str().unwrap().to_string();
-
-        let fixer_name = fixer.script.trim_end_matches(".py").trim_end_matches(".rs");
+        let fixer_name = test_dir_entry.file_name().into_string().unwrap();
 
         // Discover the tests for this fixer
-        let tests = match fs::read_dir(test_dir.join(fixer_name)) {
-            Ok(tests) => tests,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
-            Err(e) => panic!("Failed to read test directory: {}", e),
-        };
+        let tests = fs::read_dir(test_dir_entry.path()).unwrap();
 
         dest.write_all("#[allow(non_snake_case)]\n".as_bytes())
             .unwrap();
-        dest.write_all(format!("mod {} {{\n", fixer_name.replace('-', "_")).as_bytes())
+        let module_name = fixer_name.replace(['-', '.'], "_");
+        dest.write_all(format!("mod {} {{\n", module_name).as_bytes())
             .unwrap();
 
         for test in tests {
@@ -68,12 +58,10 @@ fn main() {
 
             let fn_name = quote::format_ident!("test_{}", test_name.replace(['-', '.'], "_"));
 
-            let tags = fixer.lintian_tags.clone().unwrap_or_default();
-
             let test = quote! {
                 #[test]
                 fn #fn_name() {
-                    crate::fixer_tests::run_fixer_testcase(#fixer_name, std::path::Path::new(#script_path), #test_name, std::path::Path::new(#test_path), &[#(#tags),*]);
+                    crate::fixer_tests::run_fixer_testcase(#fixer_name, #test_name, std::path::Path::new(#test_path));
                 }
             };
 
@@ -84,7 +72,7 @@ fn main() {
         dest.write_all("}\n".as_bytes()).unwrap();
     }
 
-    // rebuild if build.rs or fixers/index.desc changes
+    // rebuild if build.rs or tests directory changes
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=fixers/index.desc");
+    println!("cargo:rerun-if-changed=tests");
 }

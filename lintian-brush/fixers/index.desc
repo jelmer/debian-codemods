@@ -121,10 +121,6 @@ fixers:
     lintian-tags:
       - build-depends-on-obsolete-package
 
-  - script: control-file-with-CRLF-EOLs.sh
-    lintian-tags:
-      - carriage-return-line-feed
-
   - script: debhelper-but-no-misc-depends.py
     lintian-tags:
       - debhelper-but-no-misc-depends

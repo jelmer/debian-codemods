@@ -2,6 +2,7 @@
 
 import re
 import socket
+import sys
 from functools import partial
 
 from debmutate.changelog import ChangelogEditor
@@ -88,6 +89,7 @@ def fix_close_typo(package, m):
 with ChangelogEditor() as updater:
     for block in updater.changelog:
         for i, change in enumerate(block._changes):
+            original = change
             change = re.sub(
                 r"(?<!partially )(?P<closes>closes) " r"#(?P<bug>[0-9]+)",
                 partial(fix_close_colon, block.package),
