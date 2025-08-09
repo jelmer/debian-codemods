@@ -110,9 +110,6 @@ fixers:
     lintian-tags:
       - ancient-python-version-field
 
-  - script: build-depends-on-build-essential.py
-    lintian-tags:
-      - build-depends-on-build-essential
 
   - script: build-depends-on-obsolete-package.py
     lintian-tags:
