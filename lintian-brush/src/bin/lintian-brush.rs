@@ -375,7 +375,7 @@ fn main() -> Result<(), i32> {
         } else {
             args.fixers.compat_release.clone()
         };
-        let mut upgrade_release: Option<String> =
+        let upgrade_release: Option<String> =
             if let Some(upgrade_release) = args.fixers.upgrade_release.as_ref() {
                 Some(upgrade_release.clone())
             } else if let Some(compat_release) = compat_release.as_ref() {

@@ -1,4 +1,4 @@
-use lintian_brush::{declare_fixer, Certainty, FixerError, FixerResult};
+use lintian_brush::{declare_fixer, Certainty, FixerResult};
 
 // Example of a simple builtin fixer
 declare_fixer! {

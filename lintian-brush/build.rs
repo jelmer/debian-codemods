@@ -16,18 +16,6 @@ fn main() {
     // Read test directories to discover test names
     let test_dirs = fs::read_dir(test_dir).unwrap();
 
-    #[derive(serde::Deserialize)]
-    struct Fixer {
-        script: String,
-        #[serde(rename = "lintian-tags")]
-        lintian_tags: Option<Vec<String>>,
-        #[serde(default = "default_enabled")]
-        enabled: bool,
-    }
-
-    fn default_enabled() -> bool {
-        true
-    }
 
     for test_dir_entry in test_dirs {
         let test_dir_entry = test_dir_entry.unwrap();
