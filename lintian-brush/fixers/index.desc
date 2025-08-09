@@ -56,9 +56,6 @@ fixers:
     lintian-tags:
       - desktop-entry-file-has-crs
 
-  - script: executable-desktop-file.sh
-    lintian-tags:
-      - executable-desktop-file
 
   - script: initial-upload-closes-no-bugs.py
     lintian-tags:
