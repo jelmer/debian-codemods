@@ -1,2 +1,2 @@
-Remove unnecessary DM-Upload-Allowed field in debian/control.
-Fixed-Lintian-Tags: dm-upload-allowed-is-obsolete
+Remove unnecessary 'Testsuite: autopkgtest' header.
+Fixed-Lintian-Tags: unnecessary-testsuite-autopkgtest-field
