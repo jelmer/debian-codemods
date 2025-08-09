@@ -95,6 +95,35 @@ pub fn get_builtin_fixers() -> Vec<Box<dyn Fixer>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
+
+    // Mock builtin fixer for testing
+    struct MockBuiltinFixer {
+        name: &'static str,
+        tags: &'static [&'static str],
+    }
+
+    impl BuiltinFixer for MockBuiltinFixer {
+        fn name(&self) -> &'static str {
+            self.name
+        }
+
+        fn lintian_tags(&self) -> &'static [&'static str] {
+            self.tags
+        }
+
+        fn apply(
+            &self,
+            _basedir: &Path,
+            _package: &str,
+            _current_version: &Version,
+            _preferences: &FixerPreferences,
+        ) -> Result<FixerResult, FixerError> {
+            Ok(FixerResult::builder("Mock fix applied")
+                .fixed_tags(self.tags.iter().map(|s| s.to_string()))
+                .build())
+        }
+    }
 
     #[test]
     fn test_get_builtin_fixers() {
@@ -107,5 +136,89 @@ mod tests {
             .iter()
             .find(|f| f.name() == "control-file-with-CRLF-EOLs");
         assert!(crlf_fixer.is_some(), "CRLF fixer not found");
+    }
+
+    #[test]
+    fn test_builtin_fixer_wrapper_new() {
+        let mock_fixer = MockBuiltinFixer {
+            name: "test-fixer",
+            tags: &["test-tag1", "test-tag2"],
+        };
+
+        let wrapper = BuiltinFixerWrapper::new(Box::new(mock_fixer));
+
+        assert_eq!(wrapper.name, "test-fixer");
+        assert_eq!(wrapper.lintian_tags, vec!["test-tag1", "test-tag2"]);
+    }
+
+    #[test]
+    fn test_builtin_fixer_wrapper_fixer_trait() {
+        let mock_fixer = MockBuiltinFixer {
+            name: "test-fixer",
+            tags: &["test-tag"],
+        };
+
+        let wrapper = BuiltinFixerWrapper::new(Box::new(mock_fixer));
+        let fixer: &dyn Fixer = &wrapper;
+
+        assert_eq!(fixer.name(), "test-fixer");
+        assert_eq!(fixer.lintian_tags(), vec!["test-tag"]);
+    }
+
+    #[test]
+    fn test_builtin_fixer_wrapper_run() {
+        let mock_fixer = MockBuiltinFixer {
+            name: "test-fixer",
+            tags: &["test-tag"],
+        };
+
+        let wrapper = BuiltinFixerWrapper::new(Box::new(mock_fixer));
+        let temp_dir = tempfile::tempdir().unwrap();
+        let preferences = FixerPreferences::default();
+        let version: Version = "1.0".parse().unwrap();
+
+        let result = wrapper.run(
+            temp_dir.path(),
+            "test-package",
+            &version,
+            &preferences,
+            None,
+        );
+
+        assert!(result.is_ok());
+        let fixer_result = result.unwrap();
+        assert_eq!(fixer_result.description, "Mock fix applied");
+        assert_eq!(fixer_result.fixed_lintian_tags(), vec!["test-tag"]);
+    }
+
+    #[test]
+    fn test_builtin_fixer_wrapper_as_any() {
+        let mock_fixer = MockBuiltinFixer {
+            name: "test-fixer",
+            tags: &[],
+        };
+
+        let wrapper = BuiltinFixerWrapper::new(Box::new(mock_fixer));
+        let fixer: &dyn Fixer = &wrapper;
+
+        // Test that as_any() works
+        let any = fixer.as_any();
+        assert!(any.downcast_ref::<BuiltinFixerWrapper>().is_some());
+    }
+
+    #[test]
+    fn test_builtin_fixer_wrapper_debug() {
+        let mock_fixer = MockBuiltinFixer {
+            name: "test-fixer",
+            tags: &["tag1", "tag2"],
+        };
+
+        let wrapper = BuiltinFixerWrapper::new(Box::new(mock_fixer));
+        let debug_str = format!("{:?}", wrapper);
+
+        assert!(debug_str.contains("BuiltinFixerWrapper"));
+        assert!(debug_str.contains("test-fixer"));
+        assert!(debug_str.contains("tag1"));
+        assert!(debug_str.contains("tag2"));
     }
 }

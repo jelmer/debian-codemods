@@ -16,7 +16,6 @@ fn main() {
     // Read test directories to discover test names
     let test_dirs = fs::read_dir(test_dir).unwrap();
 
-
     for test_dir_entry in test_dirs {
         let test_dir_entry = test_dir_entry.unwrap();
         if !test_dir_entry.file_type().unwrap().is_dir() {

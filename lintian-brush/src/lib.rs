@@ -3621,3 +3621,158 @@ mod script_fixer_tests {
         assert_eq!(result.patch_name, Some("fix.patch".to_string()));
     }
 }
+
+#[cfg(test)]
+mod fixer_result_builder_tests {
+    use super::*;
+
+    #[test]
+    fn test_fixer_result_builder_basic() {
+        let result = FixerResult::builder("Test fix").build();
+
+        assert_eq!(result.description, "Test fix");
+        assert_eq!(result.certainty, None);
+        assert_eq!(result.patch_name, None);
+        assert_eq!(result.revision_id, None);
+        assert_eq!(result.fixed_lintian_issues.len(), 0);
+        assert_eq!(result.overridden_lintian_issues.len(), 0);
+    }
+
+    #[test]
+    fn test_fixer_result_builder_with_certainty() {
+        let result = FixerResult::builder("Test fix")
+            .certainty(Certainty::Confident)
+            .build();
+
+        assert_eq!(result.description, "Test fix");
+        assert_eq!(result.certainty, Some(Certainty::Confident));
+    }
+
+    #[test]
+    fn test_fixer_result_builder_with_patch_name() {
+        let result = FixerResult::builder("Test fix")
+            .patch_name("test.patch")
+            .build();
+
+        assert_eq!(result.description, "Test fix");
+        assert_eq!(result.patch_name, Some("test.patch".to_string()));
+    }
+
+    #[test]
+    fn test_fixer_result_builder_with_fixed_tags() {
+        let result = FixerResult::builder("Test fix")
+            .fixed_tag("tag1")
+            .fixed_tag("tag2")
+            .build();
+
+        assert_eq!(result.description, "Test fix");
+        assert_eq!(result.fixed_lintian_tags(), vec!["tag1", "tag2"]);
+    }
+
+    #[test]
+    fn test_fixer_result_builder_with_fixed_tags_batch() {
+        let result = FixerResult::builder("Test fix")
+            .fixed_tags(["tag1", "tag2", "tag3"])
+            .build();
+
+        assert_eq!(result.description, "Test fix");
+        assert_eq!(result.fixed_lintian_tags(), vec!["tag1", "tag2", "tag3"]);
+    }
+
+    #[test]
+    fn test_fixer_result_builder_with_fixed_issues() {
+        let issue1 = LintianIssue::just_tag("tag1".to_string());
+        let issue2 = LintianIssue::just_tag("tag2".to_string());
+
+        let result = FixerResult::builder("Test fix")
+            .fixed_issue(issue1)
+            .fixed_issue(issue2)
+            .build();
+
+        assert_eq!(result.description, "Test fix");
+        assert_eq!(result.fixed_lintian_tags(), vec!["tag1", "tag2"]);
+    }
+
+    #[test]
+    fn test_fixer_result_builder_with_fixed_issues_batch() {
+        let issues = vec![
+            LintianIssue::just_tag("tag1".to_string()),
+            LintianIssue::just_tag("tag2".to_string()),
+        ];
+
+        let result = FixerResult::builder("Test fix")
+            .fixed_issues(issues)
+            .build();
+
+        assert_eq!(result.description, "Test fix");
+        assert_eq!(result.fixed_lintian_tags(), vec!["tag1", "tag2"]);
+    }
+
+    #[test]
+    fn test_fixer_result_builder_with_overridden_issues() {
+        let issue = LintianIssue::just_tag("overridden-tag".to_string());
+
+        let result = FixerResult::builder("Test fix")
+            .overridden_issue(issue)
+            .build();
+
+        assert_eq!(result.description, "Test fix");
+        assert_eq!(result.overridden_lintian_issues.len(), 1);
+        assert_eq!(
+            result.overridden_lintian_issues[0].tag,
+            Some("overridden-tag".to_string())
+        );
+    }
+
+    #[test]
+    fn test_fixer_result_builder_with_overridden_issues_batch() {
+        let issues = vec![
+            LintianIssue::just_tag("tag1".to_string()),
+            LintianIssue::just_tag("tag2".to_string()),
+        ];
+
+        let result = FixerResult::builder("Test fix")
+            .overridden_issues(issues)
+            .build();
+
+        assert_eq!(result.description, "Test fix");
+        assert_eq!(result.overridden_lintian_issues.len(), 2);
+    }
+
+    #[test]
+    fn test_fixer_result_builder_chain_all() {
+        let revision_id = breezyshim::RevisionId::null(); // Use null for testing
+
+        let result = FixerResult::builder("Test fix")
+            .certainty(Certainty::Certain)
+            .patch_name("comprehensive.patch")
+            .revision_id(revision_id.clone())
+            .fixed_tag("fixed-tag")
+            .overridden_issue(LintianIssue::just_tag("overridden-tag".to_string()))
+            .build();
+
+        assert_eq!(result.description, "Test fix");
+        assert_eq!(result.certainty, Some(Certainty::Certain));
+        assert_eq!(result.patch_name, Some("comprehensive.patch".to_string()));
+        assert_eq!(result.revision_id, Some(revision_id));
+        assert_eq!(result.fixed_lintian_tags(), vec!["fixed-tag"]);
+        assert_eq!(result.overridden_lintian_issues.len(), 1);
+    }
+
+    #[test]
+    fn test_fixer_result_builder_mixed_tags_and_issues() {
+        let issue = LintianIssue::just_tag("issue-tag".to_string());
+
+        let result = FixerResult::builder("Test fix")
+            .fixed_tag("tag1")
+            .fixed_issue(issue)
+            .fixed_tag("tag2")
+            .build();
+
+        let tags = result.fixed_lintian_tags();
+        assert_eq!(tags.len(), 3);
+        assert!(tags.contains(&"tag1"));
+        assert!(tags.contains(&"tag2"));
+        assert!(tags.contains(&"issue-tag"));
+    }
+}

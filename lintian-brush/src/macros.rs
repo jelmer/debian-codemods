@@ -1,11 +1,11 @@
 /// Macro to declare a builtin fixer
-/// 
+///
 /// This macro generates the necessary registration code for a builtin fixer.
-/// 
+///
 /// # Example
 /// ```
 /// use lintian_brush::{declare_fixer, FixerError, FixerResult, FixerPreferences, Version, Certainty};
-/// 
+///
 /// declare_fixer! {
 ///     name: "my-fixer",
 ///     tags: ["my-lintian-tag"],
