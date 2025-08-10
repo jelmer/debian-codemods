@@ -19,6 +19,7 @@
 //! This crate provides a Rust API that mimics the yaml-edit crate interface
 //! but internally uses PyO3 to call the Python implementation in lintian-brush.
 
+use pyo3::ffi::c_str;
 use pyo3::prelude::*;
 use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList, PyListMethods, PyModule};
 use std::collections::HashMap;
@@ -360,6 +361,62 @@ impl YamlDocument {
         Python::attach(|py| {
             let updater = self.updater.bind(py);
             updater.call_method0("force_rewrite")?;
+            Ok(())
+        })
+    }
+
+    /// Update multiple fields with custom ordering
+    ///
+    /// This uses the Python `update_ordered_dict` function to insert new fields
+    /// in the correct position according to the provided field order.
+    ///
+    /// # Arguments
+    /// * `changes` - Vec of (key, value) pairs to update
+    /// * `field_order` - Slice of field names in desired order
+    pub fn update_with_order(
+        &self,
+        changes: Vec<(&str, Value)>,
+        field_order: &[&str],
+    ) -> Result<()> {
+        Python::attach(|py| {
+            let yaml_module = PyModule::import(py, "lintian_brush.yaml")?;
+            let update_fn = yaml_module.getattr("update_ordered_dict")?;
+
+            let updater = self.updater.bind(py);
+            let code = updater.getattr("code")?;
+
+            // Convert changes to Python list of tuples
+            let py_changes = PyList::empty(py);
+            for (key, value) in changes {
+                let key_py = key.into_pyobject(py).unwrap();
+                let val_py = value.to_py(py)?;
+                let py_tuple = (key_py.as_any(), val_py.bind(py));
+                py_changes.append(py_tuple)?;
+            }
+
+            // Create a Python dict mapping fields to their order
+            let order_map = PyDict::new(py);
+            for (idx, field) in field_order.iter().enumerate() {
+                order_map.set_item(*field, idx)?;
+            }
+
+            // Create a Python lambda using order_map
+            // We'll use types.FunctionType or just eval a lambda expression
+            let builtins = PyModule::import(py, "builtins")?;
+            let eval_fn = builtins.getattr("eval")?;
+
+            // Create a simple namespace with order_map
+            let namespace = PyDict::new(py);
+            namespace.set_item("order_map", order_map)?;
+
+            let lambda_code = c_str!("lambda item: (order_map.get(item[0], 9999), item[0])");
+            let sort_key_fn = eval_fn.call1((lambda_code, &namespace, &namespace))?;
+
+            // Call update_ordered_dict with the key function
+            let kwargs = PyDict::new(py);
+            kwargs.set_item("key", sort_key_fn)?;
+            update_fn.call((code, py_changes), Some(&kwargs))?;
+
             Ok(())
         })
     }

@@ -23,14 +23,6 @@ fixers:
       - upstream-metadata-yaml-invalid
       - upstream-metadata-not-yaml-mapping
 
-  - script: upstream-metadata-file.py
-    lintian-tags:
-      - upstream-metadata-file-is-missing
-      - upstream-metadata-missing-bug-tracking
-      - upstream-metadata-missing-repository
-    # See https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1076245
-    force-subprocess: true
-
   # Lookups in vcswatch are by original URL, so fix branches before
   # making any other changes to the Vcs field.
   - script: vcs-field-invalid-branch.py

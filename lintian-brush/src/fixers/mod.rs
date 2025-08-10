@@ -138,6 +138,7 @@ mod unused_build_dependency_on_cdbs;
 mod unused_license_paragraph_in_dep5_copyright;
 mod unused_override;
 mod unversioned_copyright_format_uri;
+mod upstream_metadata_file;
 mod upstream_metadata_has_obsolete_field;
 mod upstream_metadata_in_native_source;
 mod useless_autoreconf_build_depends;

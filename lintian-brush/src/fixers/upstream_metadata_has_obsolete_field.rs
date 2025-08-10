@@ -1,10 +1,12 @@
-use crate::upstream_metadata::ADDON_ONLY_FIELDS;
 use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
 use debian_copyright::lossless::Copyright;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
+
+/// Fields that are only used by addons/tools and shouldn't be in debian/upstream/metadata
+const ADDON_ONLY_FIELDS: &[&str] = &["Archive"];
 
 /// Extract upstream fields from a copyright file
 ///

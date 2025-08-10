@@ -122,10 +122,13 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
     }
 
     // Parse env file to configure preferences and check for version override
+    // Match Python defaults from py/lintian_brush/fixer.py
     let mut preferences = FixerPreferences {
         compat_release: Some("sid".to_string()),
-        minimum_certainty: Some(Certainty::Possible),
-        net_access: Some(false), // Disable network access for tests
+        minimum_certainty: None, // Python default is None when MINIMUM_CERTAINTY is not set
+        net_access: Some(false), // NET_ACCESS defaults to "disallow"
+        trust_package: Some(false), // TRUST_PACKAGE defaults to false unless explicitly "true"
+        opinionated: Some(false), // OPINIONATED defaults to "no"
         ..Default::default()
     };
     let mut current_version_override = None;
@@ -157,6 +160,26 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
                         }
                         "OPINIONATED" => {
                             preferences.opinionated = Some(value == "yes");
+                        }
+                        "NET_ACCESS" => {
+                            preferences.net_access = Some(match value {
+                                "allow" => true,
+                                "disallow" => false,
+                                _ => panic!(
+                                    "Unknown NET_ACCESS value: {} (must be 'allow' or 'disallow')",
+                                    value
+                                ),
+                            });
+                        }
+                        "TRUST_PACKAGE" => {
+                            preferences.trust_package = Some(match value {
+                                "true" => true,
+                                "false" => false,
+                                _ => panic!(
+                                    "Unknown TRUST_PACKAGE value: {} (must be 'true' or 'false')",
+                                    value
+                                ),
+                            });
                         }
                         "CURRENT_VERSION" => {
                             current_version_override = Some(value.parse().unwrap());
