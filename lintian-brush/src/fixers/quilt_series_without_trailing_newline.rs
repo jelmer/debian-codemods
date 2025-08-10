@@ -1,6 +1,5 @@
 use crate::{declare_fixer, FixerError, FixerResult, Certainty};
 use std::fs;
-use std::path::Path;
 
 declare_fixer! {
     name: "quilt-series-without-trailing-newline",
