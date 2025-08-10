@@ -49,9 +49,6 @@ fixers:
     lintian-tags:
       - tab-in-license-text
 
-  - script: desktop-entry-file-has-crs.sh
-    lintian-tags:
-      - desktop-entry-file-has-crs
 
 
   - script: initial-upload-closes-no-bugs.py
