@@ -165,7 +165,6 @@ fixers:
     lintian-tags:
       - dh-clean-k-is-deprecated
 
-  - script: empty-debian-source-options.py
 
   - script: empty-debian-patches-series.py
 
