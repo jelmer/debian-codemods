@@ -316,9 +316,6 @@ fixers:
 
   - script: public-upstream-key-binary.py
 
-  - script: quilt-series-without-trailing-newline.sh
-    lintian-tags:
-      - quilt-series-without-trailing-newline
 
   - script: renamed-tag.py
     lintian-tags:
