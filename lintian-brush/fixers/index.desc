@@ -166,7 +166,6 @@ fixers:
       - dh-clean-k-is-deprecated
 
 
-  - script: empty-debian-patches-series.py
 
   - script: homepage-in-binary-package.py
     lintian-tags:
