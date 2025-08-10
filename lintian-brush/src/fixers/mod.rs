@@ -3,6 +3,7 @@ pub mod crlf_line_endings;
 pub mod debian_pycompat_is_obsolete;
 pub mod executable_desktop_file;
 pub mod out_of_date_copyright_format_uri;
+pub mod package_uses_deprecated_source_override_location;
 pub mod quilt_series_without_trailing_newline;
 pub mod xc_package_type_in_debian_control;
 pub mod xs_testsuite_field_in_debian_control;

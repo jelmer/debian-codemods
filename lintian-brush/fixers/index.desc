@@ -267,9 +267,6 @@ fixers:
     lintian-tags:
       - no-versioned-debhelper-prerequisite
 
-  - script: package-uses-deprecated-source-override-location.sh
-    lintian-tags:
-      - old-source-override-location
 
   - script: package-uses-deprecated-debhelper-compat-version.py
     lintian-tags:
