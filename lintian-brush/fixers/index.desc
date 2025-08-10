@@ -28,7 +28,6 @@ fixers:
     lintian-tags:
       - debian-control-has-unusual-field-spacing
 
-  - script: rules-not-executable.py
 
   - script: no-copyright-file.py
     lintian-tags:
