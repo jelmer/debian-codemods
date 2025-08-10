@@ -3,6 +3,7 @@ pub mod copyright_has_crs;
 pub mod crlf_line_endings;
 pub mod debian_changelog_file_contains_obsolete_user_emacs_settings;
 pub mod debian_pycompat_is_obsolete;
+pub mod debian_upstream_obsolete_path;
 pub mod desktop_entry_file_has_crs;
 pub mod executable_desktop_file;
 pub mod out_of_date_copyright_format_uri;

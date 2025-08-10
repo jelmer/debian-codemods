@@ -146,9 +146,6 @@ fixers:
       - debian-tests-control-autodep8-is-obsolete
       - debian-tests-control-and-control-autodep8
 
-  - script: debian-upstream-obsolete-path.sh
-    lintian-tags:
-      - debian-upstream-obsolete-path
 
   - script: debian-watch-file-old-format.py
     lintian-tags:
