@@ -402,9 +402,6 @@ fixers:
       - faulty-debian-qa-group-phrase
 
 
-  - script: xs-testsuite-field-in-debian-control.sh
-    lintian-tags:
-      - adopted-extended-field
 
   - script: xs-vcs-field-in-debian-control.py
     lintian-tags:
