@@ -388,9 +388,6 @@ fixers:
     lintian-tags:
       - adopted-extended-field
 
-  - script: old-fsf-address-in-copyright-file.sh
-    lintian-tags:
-      - old-fsf-address-in-copyright-file
 
   - script: field-name-typo-in-dep5-copyright.py
     lintian-tags:

@@ -6,6 +6,7 @@ pub mod debian_pycompat_is_obsolete;
 pub mod debian_upstream_obsolete_path;
 pub mod desktop_entry_file_has_crs;
 pub mod executable_desktop_file;
+pub mod old_fsf_address_in_copyright_file;
 pub mod out_of_date_copyright_format_uri;
 pub mod package_uses_deprecated_source_override_location;
 pub mod quilt_series_without_trailing_newline;
