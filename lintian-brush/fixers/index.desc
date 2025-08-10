@@ -275,9 +275,6 @@ fixers:
       - possible-missing-colon-in-closes
       - misspelled-closes-bug
 
-  - script: priority-extra-is-replaced-by-priority-optional.py
-    lintian-tags:
-      - priority-extra-is-replaced-by-priority-optional
 
   - script: public-upstream-key-not-minimal.py
     lintian-tags:

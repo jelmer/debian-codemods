@@ -13,6 +13,7 @@ pub mod executable_desktop_file;
 pub mod old_fsf_address_in_copyright_file;
 pub mod out_of_date_copyright_format_uri;
 pub mod package_uses_deprecated_source_override_location;
+pub mod priority_extra_is_replaced_by_priority_optional;
 pub mod public_upstream_keys_in_multiple_locations;
 pub mod quilt_series_without_trailing_newline;
 pub mod rules_not_executable;
