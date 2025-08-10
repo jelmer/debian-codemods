@@ -2510,6 +2510,7 @@ dependencies = [
  "maplit",
  "pyo3",
  "quote",
+ "regex",
  "serde",
  "serde_json",
  "serde_yaml",

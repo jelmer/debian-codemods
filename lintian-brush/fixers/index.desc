@@ -83,9 +83,6 @@ fixers:
 
   - script: field-name-typo-in-tests-control.py
 
-  - script: out-of-date-copyright-format-uri.sh
-    lintian-tags:
-      - out-of-date-copyright-format-uri
 
   - script: obsolete-field-in-dep5-copyright.py
     lintian-tags:
