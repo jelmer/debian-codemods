@@ -482,9 +482,6 @@ fixers:
     lintian-tags:
       - font-package-not-multi-arch-foreign
 
-  - script: debian-rules-not-executable.py
-    lintian-tags:
-      - debian-rules-not-executable
 
   - script: no-priority-field.py
     lintian-tags:
