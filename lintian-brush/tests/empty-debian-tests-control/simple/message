@@ -1,2 +1,3 @@
 Remove empty debian/tests/control.
 Fixed-Lintian-Tags: empty-debian-tests-control
+Certainty: certain
