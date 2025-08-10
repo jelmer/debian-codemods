@@ -117,9 +117,6 @@ fixers:
     lintian-tags:
       - debian-changelog-line-too-long
 
-  - script: debian-changelog-file-contains-obsolete-user-emacs-settings.sh
-    lintian-tags:
-      - debian-changelog-file-contains-obsolete-user-emacs-settings
 
   - script: changelog-has-duplicate-line.py
 
