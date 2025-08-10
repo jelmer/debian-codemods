@@ -44,9 +44,6 @@ fixers:
     lintian-tags:
       - unversioned-copyright-format-uri
 
-  - script: copyright-has-crs.sh
-    lintian-tags:
-      - copyright-has-crs
 
   - script: copyright-continued-lines-with-space.py
     lintian-tags:
