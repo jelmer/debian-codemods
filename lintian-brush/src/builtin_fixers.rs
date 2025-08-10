@@ -76,8 +76,31 @@ impl Fixer for BuiltinFixerWrapper {
         preferences: &FixerPreferences,
         _timeout: Option<chrono::Duration>,
     ) -> Result<FixerResult, FixerError> {
-        self.fixer
-            .apply(basedir, package, current_version, preferences)
+        // Set extra environment variables from preferences for native fixers
+        let mut env_backup = Vec::new();
+        if let Some(extra_env) = &preferences.extra_env {
+            for (key, value) in extra_env {
+                // Backup existing value
+                env_backup.push((key.clone(), std::env::var(key).ok()));
+                // Set new value
+                std::env::set_var(key, value);
+            }
+        }
+        
+        // Run the fixer
+        let result = self.fixer
+            .apply(basedir, package, current_version, preferences);
+        
+        // Restore environment variables
+        for (key, old_value) in env_backup {
+            if let Some(value) = old_value {
+                std::env::set_var(&key, value);
+            } else {
+                std::env::remove_var(&key);
+            }
+        }
+        
+        result
     }
 }
 

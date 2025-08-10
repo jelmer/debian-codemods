@@ -285,9 +285,6 @@ fixers:
     lintian-tags:
       - public-upstream-key-not-minimal
 
-  - script: public-upstream-keys-in-multiple-locations.sh
-    lintian-tags:
-      - public-upstream-keys-in-multiple-locations
 
   - script: public-upstream-key-binary.py
 
