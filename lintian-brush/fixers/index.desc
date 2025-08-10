@@ -138,9 +138,6 @@ fixers:
     lintian-tags:
       - debian-control-has-obsolete-dbg-package
 
-  - script: debian-pycompat-is-obsolete.sh
-    lintian-tags:
-      - debian-pycompat-is-obsolete
 
   - script: debian-pyversions-is-obsolete.py
     lintian-tags:
