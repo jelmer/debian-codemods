@@ -78,17 +78,6 @@ impl<'a> ProcessorContext<'a> {
     }
 
     fn get_project_wide_deps(&self) -> (Relations, Relations) {
-        // Check if we're running in a test environment without network access
-        // TODO: Remove this workaround when ognibuild is fixed to use try_from_session
-        // in default_tie_breakers (see ognibuild issue)
-        let test_env = std::env::var("CARGO_TARGET_DIR").is_ok() || cfg!(test);
-        let no_network = std::env::var("OGNIBUILD_NO_NETWORK").is_ok();
-
-        if test_env || no_network {
-            log::debug!("Skipping get_project_wide_deps in test/no-network environment");
-            return (Relations::new(), Relations::new());
-        }
-
         // Use the ognibuild dependency resolution with the provided session
         let (build_deps, test_deps) =
             get_project_wide_deps(self.session, self.buildsystem.as_ref());
@@ -594,7 +583,24 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
     // Only set semver_suffix if this is not the latest version
     use semver::Version as VersionInfo;
 
-    let desired_version = VersionInfo::parse(&context.upstream_version).unwrap();
+    // Extract the base version from Debian-style versions (e.g., "0+git20250809.1.4f78468" -> "0")
+    let base_version = crate::names::debian_to_upstream_version(&context.upstream_version);
+    
+    // For snapshot versions, try to extract the actual version from Cargo.toml
+    let version_to_use = if base_version == "0" || base_version.contains("git") {
+        // Try to get version from Cargo.toml metadata
+        if let Some(version) = context.metadata.version() {
+            version
+        } else {
+            // Fall back to a default version for snapshots
+            "0.0.0"
+        }
+    } else {
+        base_version
+    };
+
+    let desired_version = VersionInfo::parse(version_to_use)
+        .map_err(|e| Error::Other(format!("Invalid semver version '{}': {}", version_to_use, e)))?;
 
     let rt = tokio::runtime::Runtime::new().unwrap();
 

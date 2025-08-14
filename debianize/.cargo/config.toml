@@ -1,0 +1,4 @@
+[env]
+# Set default test timeout to 15 minutes for debianize tests
+# This is needed because Go and Node.js tests do extensive apt-file searches
+RUST_TEST_TIME_OUT = "900"

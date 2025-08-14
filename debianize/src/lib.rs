@@ -1488,7 +1488,11 @@ pub fn debianize(
     // Check if debian directory already exists
     let debian_path = subpath.join("debian");
     if wt.has_filename(&debian_path) {
-        return Err(Error::DebianDirectoryExists(debian_path));
+        if !preferences.force_new_directory {
+            return Err(Error::DebianDirectoryExists(debian_path));
+        }
+        // Remove existing debian directory if force_new_directory is true
+        wt.remove(&[&debian_path])?;
     }
 
     // Set up reset on failure
@@ -1801,7 +1805,7 @@ pub fn debianize(
     })
 }
 
-#[derive(Default, serde::Serialize)]
+#[derive(Default, Debug, serde::Serialize)]
 pub struct DebianizeResult {
     pub vcs_url: Option<url::Url>,
     pub wnpp_bugs: Vec<(i64, BugKind)>,
