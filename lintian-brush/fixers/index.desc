@@ -345,9 +345,6 @@ fixers:
 
 
 
-  - script: xs-vcs-field-in-debian-control.py
-    lintian-tags:
-      - adopted-extended-field
 
 
   - script: field-name-typo-in-dep5-copyright.py
