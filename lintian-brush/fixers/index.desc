@@ -117,9 +117,6 @@ fixers:
       - debian-control-has-obsolete-dbg-package
 
 
-  - script: debian-pyversions-is-obsolete.py
-    lintian-tags:
-      - debian-pyversions-is-obsolete
 
 
   - script: debian-source-options-has-custom-compression-settings.py
