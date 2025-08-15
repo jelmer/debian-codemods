@@ -76,8 +76,31 @@ impl Fixer for BuiltinFixerWrapper {
         preferences: &FixerPreferences,
         _timeout: Option<chrono::Duration>,
     ) -> Result<FixerResult, FixerError> {
-        self.fixer
-            .apply(basedir, package, current_version, preferences)
+        // Set extra environment variables from preferences for native fixers
+        let mut env_backup = Vec::new();
+        if let Some(extra_env) = &preferences.extra_env {
+            for (key, value) in extra_env {
+                // Backup existing value
+                env_backup.push((key.clone(), std::env::var(key).ok()));
+                // Set new value
+                std::env::set_var(key, value);
+            }
+        }
+        
+        // Run the fixer
+        let result = self.fixer
+            .apply(basedir, package, current_version, preferences);
+        
+        // Restore environment variables
+        for (key, old_value) in env_backup {
+            if let Some(value) = old_value {
+                std::env::set_var(&key, value);
+            } else {
+                std::env::remove_var(&key);
+            }
+        }
+        
+        result
     }
 }
 
@@ -128,14 +151,20 @@ mod tests {
     #[test]
     fn test_get_builtin_fixers() {
         let fixers = get_builtin_fixers();
-        // Check that we have at least one fixer (the CRLF fixer)
-        assert!(!fixers.is_empty(), "No builtin fixers found");
+        // Check that we have at least two fixers now
+        assert!(fixers.len() >= 2, "Expected at least 2 builtin fixers, found {}", fixers.len());
 
         // Check that the CRLF fixer is registered
         let crlf_fixer = fixers
             .iter()
             .find(|f| f.name() == "control-file-with-CRLF-EOLs");
         assert!(crlf_fixer.is_some(), "CRLF fixer not found");
+
+        // Check that the executable desktop file fixer is registered
+        let desktop_fixer = fixers
+            .iter()
+            .find(|f| f.name() == "executable-desktop-file");
+        assert!(desktop_fixer.is_some(), "executable-desktop-file fixer not found");
     }
 
     #[test]

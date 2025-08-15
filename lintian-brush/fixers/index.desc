@@ -28,7 +28,6 @@ fixers:
     lintian-tags:
       - debian-control-has-unusual-field-spacing
 
-  - script: rules-not-executable.py
 
   - script: no-copyright-file.py
     lintian-tags:
@@ -44,21 +43,12 @@ fixers:
     lintian-tags:
       - unversioned-copyright-format-uri
 
-  - script: copyright-has-crs.sh
-    lintian-tags:
-      - copyright-has-crs
 
   - script: copyright-continued-lines-with-space.py
     lintian-tags:
       - tab-in-license-text
 
-  - script: desktop-entry-file-has-crs.sh
-    lintian-tags:
-      - desktop-entry-file-has-crs
 
-  - script: executable-desktop-file.sh
-    lintian-tags:
-      - executable-desktop-file
 
   - script: initial-upload-closes-no-bugs.py
     lintian-tags:
@@ -80,15 +70,9 @@ fixers:
       # So we can steal the description from ITP/RFP
       - initial-upload-closes-no-bugs
 
-  - script: empty-debian-tests-control.py
-    lintian-tags:
-      - empty-debian-tests-control
 
   - script: field-name-typo-in-tests-control.py
 
-  - script: out-of-date-copyright-format-uri.sh
-    lintian-tags:
-      - out-of-date-copyright-format-uri
 
   - script: obsolete-field-in-dep5-copyright.py
     lintian-tags:
@@ -113,9 +97,6 @@ fixers:
     lintian-tags:
       - ancient-python-version-field
 
-  - script: build-depends-on-build-essential.py
-    lintian-tags:
-      - build-depends-on-build-essential
 
   - script: build-depends-on-obsolete-package.py
     lintian-tags:
@@ -133,9 +114,6 @@ fixers:
     lintian-tags:
       - debian-changelog-line-too-long
 
-  - script: debian-changelog-file-contains-obsolete-user-emacs-settings.sh
-    lintian-tags:
-      - debian-changelog-file-contains-obsolete-user-emacs-settings
 
   - script: changelog-has-duplicate-line.py
 
@@ -147,9 +125,6 @@ fixers:
     lintian-tags:
       - debian-control-has-obsolete-dbg-package
 
-  - script: debian-pycompat-is-obsolete.sh
-    lintian-tags:
-      - debian-pycompat-is-obsolete
 
   - script: debian-pyversions-is-obsolete.py
     lintian-tags:
@@ -168,9 +143,6 @@ fixers:
       - debian-tests-control-autodep8-is-obsolete
       - debian-tests-control-and-control-autodep8
 
-  - script: debian-upstream-obsolete-path.sh
-    lintian-tags:
-      - debian-upstream-obsolete-path
 
   - script: debian-watch-file-old-format.py
     lintian-tags:
@@ -193,9 +165,7 @@ fixers:
     lintian-tags:
       - dh-clean-k-is-deprecated
 
-  - script: empty-debian-source-options.py
 
-  - script: empty-debian-patches-series.py
 
   - script: homepage-in-binary-package.py
     lintian-tags:
@@ -279,9 +249,6 @@ fixers:
     lintian-tags:
       - no-versioned-debhelper-prerequisite
 
-  - script: package-uses-deprecated-source-override-location.sh
-    lintian-tags:
-      - old-source-override-location
 
   - script: package-uses-deprecated-debhelper-compat-version.py
     lintian-tags:
@@ -308,23 +275,14 @@ fixers:
       - possible-missing-colon-in-closes
       - misspelled-closes-bug
 
-  - script: priority-extra-is-replaced-by-priority-optional.py
-    lintian-tags:
-      - priority-extra-is-replaced-by-priority-optional
 
   - script: public-upstream-key-not-minimal.py
     lintian-tags:
       - public-upstream-key-not-minimal
 
-  - script: public-upstream-keys-in-multiple-locations.sh
-    lintian-tags:
-      - public-upstream-keys-in-multiple-locations
 
   - script: public-upstream-key-binary.py
 
-  - script: quilt-series-without-trailing-newline.sh
-    lintian-tags:
-      - quilt-series-without-trailing-newline
 
   - script: renamed-tag.py
     lintian-tags:
@@ -413,21 +371,12 @@ fixers:
     lintian-tags:
       - faulty-debian-qa-group-phrase
 
-  - script: xc-package-type-in-debian-control.sh
-    lintian-tags:
-      - adopted-extended-field
 
-  - script: xs-testsuite-field-in-debian-control.sh
-    lintian-tags:
-      - adopted-extended-field
 
   - script: xs-vcs-field-in-debian-control.py
     lintian-tags:
       - adopted-extended-field
 
-  - script: old-fsf-address-in-copyright-file.sh
-    lintian-tags:
-      - old-fsf-address-in-copyright-file
 
   - script: field-name-typo-in-dep5-copyright.py
     lintian-tags:
@@ -528,9 +477,6 @@ fixers:
     lintian-tags:
       - font-package-not-multi-arch-foreign
 
-  - script: debian-rules-not-executable.py
-    lintian-tags:
-      - debian-rules-not-executable
 
   - script: no-priority-field.py
     lintian-tags:

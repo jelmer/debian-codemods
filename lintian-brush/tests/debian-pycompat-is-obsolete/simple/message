@@ -1,2 +1,3 @@
 Remove obsolete debian/pycompat file.
 Fixed-Lintian-Tags: debian-pycompat-is-obsolete
+Certainty: certain
