@@ -173,10 +173,6 @@ fixers:
 
   - script: ancient-maintscript-entry.py
 
-  - script: dm-upload-allowed.py
-    lintian-tags:
-      - malformed-dm-upload-allowed
-      - dm-upload-allowed-is-obsolete
 
   - script: maintainer-also-in-uploaders.py
     lintian-tags:
