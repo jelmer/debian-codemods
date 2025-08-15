@@ -20,6 +20,7 @@ pub mod obsolete_url_in_packaging;
 pub mod old_fsf_address_in_copyright_file;
 pub mod orphaned_package_should_not_have_uploaders;
 pub mod out_of_date_copyright_format_uri;
+pub mod package_contains_linda_override;
 pub mod package_uses_deprecated_source_override_location;
 pub mod priority_extra_is_replaced_by_priority_optional;
 pub mod public_upstream_key_binary;
