@@ -39,11 +39,6 @@ fixers:
       - insecure-copyright-format-uri
       - wiki-copyright-format-uri
 
-  - script: unversioned-copyright-format-uri.py
-    lintian-tags:
-      - unversioned-copyright-format-uri
-
-
   - script: copyright-continued-lines-with-space.py
     lintian-tags:
       - tab-in-license-text
