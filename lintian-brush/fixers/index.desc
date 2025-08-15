@@ -117,10 +117,6 @@ fixers:
 
   - script: changelog-has-duplicate-line.py
 
-  - script: debian-control-has-empty-field.py
-    lintian-tags:
-      - debian-control-has-empty-field
-
   - script: debian-control-has-obsolete-dbg-package.py
     lintian-tags:
       - debian-control-has-obsolete-dbg-package
