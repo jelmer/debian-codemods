@@ -235,9 +235,6 @@ fixers:
       - pypi-homepage
       - rubygem-homepage
 
-  - script: orphaned-package-should-not-have-uploaders.py
-    lintian-tags:
-      - uploaders-in-orphan
 
   - script: declares-possibly-conflicting-debhelper-compat-versions.py
     lintian-tags:
