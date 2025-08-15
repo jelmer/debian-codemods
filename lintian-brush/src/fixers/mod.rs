@@ -7,6 +7,7 @@ pub mod debian_pycompat_is_obsolete;
 pub mod debian_rules_not_executable;
 pub mod debian_upstream_obsolete_path;
 pub mod desktop_entry_file_has_crs;
+pub mod dh_clean_k_is_deprecated;
 pub mod empty_debian_patches_series;
 pub mod empty_debian_source_options;
 pub mod empty_debian_tests_control;

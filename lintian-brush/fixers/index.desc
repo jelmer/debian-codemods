@@ -152,9 +152,6 @@ fixers:
     lintian-tags:
       - dep5-file-paragraph-references-header-paragraph
 
-  - script: dh-clean-k-is-deprecated.py
-    lintian-tags:
-      - dh-clean-k-is-deprecated
 
 
 

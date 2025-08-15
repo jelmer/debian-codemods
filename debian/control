@@ -118,7 +118,9 @@ Build-Depends: bash-completion,
                librust-debian-control-0.2+default-dev,
                librust-toml-edit-0.22+default-dev,
                librust-pyo3-log+default-dev (<< 0.14-~~),
-               librust-upstream-ontologist-0.3+default-dev
+               librust-upstream-ontologist-0.3+default-dev,
+               librust-makefile-lossless+default-dev (>= 0.3),
+               librust-makefile-lossless-0.3+default-dev (<< 0.4)
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
