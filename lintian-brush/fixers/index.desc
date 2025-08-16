@@ -416,9 +416,6 @@ fixers:
     lintian-tags:
       - package-contains-linda-override
 
-  - script: excessive-priority-for-library-package.py
-    lintian-tags:
-      - excessive-priority-for-library-package
 
   - script: debian-rules-sets-dpkg-architecture-variable.py
     lintian-tags:
