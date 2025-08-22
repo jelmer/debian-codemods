@@ -13,6 +13,7 @@ pub mod empty_debian_source_options;
 pub mod empty_debian_tests_control;
 pub mod executable_desktop_file;
 pub mod font_package_not_multi_arch_foreign;
+pub mod maintainer_also_in_uploaders;
 pub mod maintainer_script_empty;
 pub mod missing_vcs_browser_field;
 pub mod no_maintainer_field;
