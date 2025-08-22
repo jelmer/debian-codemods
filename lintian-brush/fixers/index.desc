@@ -339,9 +339,6 @@ fixers:
     lintian-tags:
       - vcs-field-uses-not-recommended-uri-format
 
-  - script: wrong-debian-qa-group-name.py
-    lintian-tags:
-      - faulty-debian-qa-group-phrase
 
 
 
