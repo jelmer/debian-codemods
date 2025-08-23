@@ -474,9 +474,6 @@ fixers:
     lintian-tags:
       - recommended-field
 
-  - script: no-maintainer-field.py
-    lintian-tags:
-      - required-field
 
   - script: wrong-section-according-to-package-name.py
     lintian-tags:
@@ -535,14 +532,10 @@ fixers:
     lintian-tags:
       - team/pkg-perl/vcs/no-team-url
       - team/pkg-perl/vcs/no-git
-    after:
-      - no-maintainer-field.py
 
   - script: pkg-perl-testsuite.py
     lintian-tags:
       - team/pkg-perl/testsuite/no-testsuite-header
-    after:
-      - no-maintainer-field.py
 
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
