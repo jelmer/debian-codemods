@@ -12,6 +12,7 @@ pub mod empty_debian_patches_series;
 pub mod empty_debian_source_options;
 pub mod empty_debian_tests_control;
 pub mod executable_desktop_file;
+pub mod field_name_typo_in_control;
 pub mod font_package_not_multi_arch_foreign;
 pub mod maintainer_script_empty;
 pub mod missing_vcs_browser_field;

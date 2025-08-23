@@ -536,9 +536,6 @@ fixers:
     lintian-tags:
       - debian-rules-parses-dpkg-parsechangelog
 
-  - script: field-name-typo-in-control.py
-    lintian-tags:
-      - cute-field
 
   - script: pkg-js-tools-test-is-missing.py
     lintian-tags:
