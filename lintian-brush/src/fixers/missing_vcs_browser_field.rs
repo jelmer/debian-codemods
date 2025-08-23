@@ -29,7 +29,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
             );
 
             if let Some(browser_url) = browser_url {
-                source_para.insert("Vcs-Browser", &browser_url.to_string());
+                source_para.insert("Vcs-Browser", browser_url.as_ref());
                 made_changes = true;
             }
         }

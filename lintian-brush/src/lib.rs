@@ -22,6 +22,7 @@ pub mod builtin_fixers;
 #[macro_use]
 pub mod macros;
 pub mod fixers;
+pub mod lintian_overrides;
 
 // Re-export commonly used types for convenience
 pub use debian_analyzer::Certainty;
@@ -633,7 +634,6 @@ fn run_inline_python_fixer(
     import_exception!(debmutate.reformatting, FormattingUnpreservable);
     import_exception!(debian.changelog, ChangelogCreateError);
 
-    Python::initialize();
     Python::attach(|py| {
         let sys = py.import("sys")?;
         let os = py.import("os")?;

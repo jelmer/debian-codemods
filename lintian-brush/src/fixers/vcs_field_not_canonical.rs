@@ -1,5 +1,5 @@
 use crate::{declare_fixer, FixerError, FixerResult};
-use debian_analyzer::abstract_control::{AbstractControlEditor, AbstractSource};
+use debian_analyzer::abstract_control::AbstractControlEditor;
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::debcargo::DebcargoEditor;
 use std::collections::BTreeSet;
