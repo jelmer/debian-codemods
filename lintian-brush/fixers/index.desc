@@ -481,10 +481,6 @@ fixers:
     lintian-tags:
       - newer-debconf-templates
 
-  - script: public-upstream-key-in-native-package.py
-    lintian-tags:
-      - public-upstream-key-in-native-package
-
   # Disabled for now, since debmutate's support for watch files is still
   # experimental.
   - script: pubkey.py
