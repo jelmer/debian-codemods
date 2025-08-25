@@ -212,9 +212,6 @@ fixers:
       - missing-build-dependency-for-dh_-command
       - missing-build-dependency-for-dh-addon
 
-  - script: missing-vcs-browser-field.py
-    lintian-tags:
-      - missing-vcs-browser-field
 
   - script: obsolete-url-in-packaging.py
     lintian-tags:
