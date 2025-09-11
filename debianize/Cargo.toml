@@ -16,13 +16,13 @@ clap = { version = "4", features = ["derive", "env"] }
 debian-analyzer = { workspace = true, features = ["udd", "svp"] }
 debian-changelog = "0.2.1"
 distro-info = "0.4.0"
-env_logger = "0.10"
+env_logger = "0.11"
 log = "0.4"
 pyo3 = ">=0.25,<0.26"
 xdg = "2.5.2"
 debversion = ">=0.4.0"
 url = "2"
-ognibuild = { git = "https://github.com/jelmer/ognibuild", features = ["upstream", "debian"] }
+ognibuild = { version = "0.1.4", features = ["upstream", "debian"] }
 hyper = { version = "1.5", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["tokio", "server", "server-auto"], default-features = false }
 http-body-util = "0.1"
@@ -36,7 +36,7 @@ lintian-brush = { path = "../lintian-brush", version = ">=0.155.0", default-feat
 debian-control = ">=0.1.0"
 lazy_static = "1"
 semver = "1"
-toml_edit = "0.23"
+toml_edit = "0.22"
 serde = "1"
 sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls"] }
 svp-client = ">=0.1.0"
