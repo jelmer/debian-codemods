@@ -4,6 +4,8 @@ include:
 
 variables:
   SALSA_CI_DISABLE_BLHC: 1
+  # Package is so large best to skip extra builds in Salsa CI to save resources
+  SALSA_CI_DISABLE_BUILD_PACKAGE_I386: 1
   SALSA_CI_DISABLE_REPROTEST: 1
   # Build for experimental distribution
   # RELEASE: 'experimental'
