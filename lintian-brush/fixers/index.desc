@@ -400,10 +400,6 @@ fixers:
     lintian-tags:
       - vcs-field-mismatch
 
-  - script: vcs-field-not-canonical.py
-    lintian-tags:
-      - vcs-field-not-canonical
-
   - script: vcs-broken-uri.py
 
   - script: debian-watch-file-uses-deprecated-githubredir.py
