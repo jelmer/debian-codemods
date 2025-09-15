@@ -585,7 +585,7 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
 
     // Extract the base version from Debian-style versions (e.g., "0+git20250809.1.4f78468" -> "0")
     let base_version = crate::names::debian_to_upstream_version(&context.upstream_version);
-    
+
     // For snapshot versions, try to extract the actual version from Cargo.toml
     let version_to_use = if base_version == "0" || base_version.contains("git") {
         // Try to get version from Cargo.toml metadata
@@ -599,8 +599,12 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
         base_version
     };
 
-    let desired_version = VersionInfo::parse(version_to_use)
-        .map_err(|e| Error::Other(format!("Invalid semver version '{}': {}", version_to_use, e)))?;
+    let desired_version = VersionInfo::parse(version_to_use).map_err(|e| {
+        Error::Other(format!(
+            "Invalid semver version '{}': {}",
+            version_to_use, e
+        ))
+    })?;
 
     let rt = tokio::runtime::Runtime::new().unwrap();
 

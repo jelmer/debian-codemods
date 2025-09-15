@@ -2,7 +2,9 @@ use breezyshim::tree::Tree;
 use breezyshim::workingtree::WorkingTree;
 use debianize::DebianizePreferences;
 use tempfile::TempDir;
-use upstream_ontologist::{Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata};
+use upstream_ontologist::{
+    Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata,
+};
 
 #[test]
 fn test_nodejs_project_debianization() {
@@ -161,7 +163,7 @@ describe('GET /', () => {
         &wt,
         &subpath,
         Some(&wt.branch()), // use local branch as upstream
-        Some(&subpath), // upstream subpath
+        Some(&subpath),     // upstream subpath
         &preferences,
         None, // no upstream version override
         &metadata,
@@ -180,17 +182,17 @@ describe('GET /', () => {
             // Check control file contents
             let control_content = wt.get_file_text(&subpath.join("debian/control")).unwrap();
             let control_str = String::from_utf8_lossy(&control_content);
-            
+
             // Should follow Node.js naming conventions
             assert!(control_str.contains("Source: node-test-nodejs-package"));
             assert!(control_str.contains("Package: node-test-nodejs-package"));
-            
+
             // Should contain Node.js-specific dependencies
             assert!(control_str.contains("dh-sequence-nodejs"));
-            
+
             // Should be architecture all for most Node.js packages
             assert!(control_str.contains("Architecture: all"));
-            
+
             // Should have Node.js testsuite
             assert!(control_str.contains("Testsuite: autopkgtest-pkg-nodejs"));
 
@@ -325,7 +327,7 @@ module.exports = { generateId };
     // Check that scoped package name is handled correctly
     let control_content = wt.get_file_text(&subpath.join("debian/control")).unwrap();
     let control_str = String::from_utf8_lossy(&control_content);
-    
+
     // Scoped packages should have @ stripped and / converted to -
     assert!(control_str.contains("Source: node-myorg-test-package"));
     assert!(control_str.contains("Package: node-myorg-test-package"));
@@ -488,7 +490,7 @@ export function greet(name: string): string {
 
     // Verify debian files
     assert!(wt.has_filename(&subpath.join("debian/control")));
-    
+
     let control_content = wt.get_file_text(&subpath.join("debian/control")).unwrap();
     let control_str = String::from_utf8_lossy(&control_content);
     assert!(control_str.contains("node-typescript-test-package"));

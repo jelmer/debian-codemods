@@ -3,7 +3,9 @@ use breezyshim::workingtree::WorkingTree;
 use debianize::{DebianizePreferences, SessionPreferences};
 use std::path::PathBuf;
 use tempfile::TempDir;
-use upstream_ontologist::{Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata};
+use upstream_ontologist::{
+    Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata,
+};
 
 #[test]
 fn test_plain_session_preference() {
@@ -31,7 +33,8 @@ setup(
     std::fs::write(
         project_dir.join("testsessionpkg/__init__.py"),
         "# Plain session test package\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     // Initialize git repository
     let output = std::process::Command::new("git")
@@ -97,7 +100,7 @@ setup(
     );
 
     assert!(result.is_ok(), "Plain session should work: {:?}", result);
-    
+
     let debianize_result = result.unwrap();
     println!("Plain session test successful: {:?}", debianize_result);
 
@@ -107,7 +110,7 @@ setup(
     assert!(wt.has_filename(&subpath.join("debian/rules")));
 }
 
-#[test] 
+#[test]
 fn test_schroot_session_preference() {
     let temp_dir = TempDir::new().unwrap();
     let project_dir = temp_dir.path().join("test-schroot-session");
@@ -201,7 +204,10 @@ setup(
             // Schroot might not be available in test environment
             let error_msg = format!("{:?}", e);
             if error_msg.contains("schroot") || error_msg.contains("chroot") {
-                println!("Schroot not available in test environment (expected): {:?}", e);
+                println!(
+                    "Schroot not available in test environment (expected): {:?}",
+                    e
+                );
             } else {
                 panic!("Unexpected error with schroot session: {:?}", e);
             }
@@ -303,11 +309,15 @@ setup(
         Err(e) => {
             // Unshare might not be available or might require special privileges
             let error_msg = format!("{:?}", e);
-            if error_msg.contains("unshare") || 
-               error_msg.contains("mmdebstrap") || 
-               error_msg.contains("mount") ||
-               error_msg.contains("Permission denied") {
-                println!("Unshare not available in test environment (expected): {:?}", e);
+            if error_msg.contains("unshare")
+                || error_msg.contains("mmdebstrap")
+                || error_msg.contains("mount")
+                || error_msg.contains("Permission denied")
+            {
+                println!(
+                    "Unshare not available in test environment (expected): {:?}",
+                    e
+                );
             } else {
                 panic!("Unexpected error with unshare session: {:?}", e);
             }
@@ -338,18 +348,24 @@ fn test_session_preferences_acquire() {
             println!("Schroot session created successfully");
         }
         Err(e) => {
-            println!("Schroot session failed (expected in test environment): {:?}", e);
+            println!(
+                "Schroot session failed (expected in test environment): {:?}",
+                e
+            );
             // This is expected if schroot is not available
         }
     }
 
-    // Test Unshare session  
+    // Test Unshare session
     match unshare_prefs.acquire() {
         Ok(_session) => {
             println!("Unshare session created successfully");
         }
         Err(e) => {
-            println!("Unshare session failed (expected in test environment): {:?}", e);
+            println!(
+                "Unshare session failed (expected in test environment): {:?}",
+                e
+            );
             // This is expected if unshare/mmdebstrap is not available or lacks permissions
         }
     }
@@ -359,7 +375,7 @@ fn test_session_preferences_acquire() {
 fn test_default_isolated_session() {
     // Test the default_isolated() method
     let isolated_prefs = SessionPreferences::default_isolated();
-    
+
     match isolated_prefs {
         SessionPreferences::Unshare(_) => {
             println!("default_isolated() correctly returns UnshareSession");
@@ -375,12 +391,15 @@ fn test_default_isolated_session() {
             println!("Default isolated session created successfully");
         }
         Err(e) => {
-            println!("Default isolated session failed (expected in test environment): {:?}", e);
+            println!(
+                "Default isolated session failed (expected in test environment): {:?}",
+                e
+            );
         }
     }
 }
 
-#[test] 
+#[test]
 fn test_session_creation_methods() {
     // Test create_session() method
     let plain_prefs = SessionPreferences::Plain;
@@ -397,7 +416,7 @@ fn test_session_creation_methods() {
 
     let unshare_prefs = SessionPreferences::Unshare(PathBuf::new());
     let result = unshare_prefs.create_session();
-    // May fail if unshare not available, which is fine  
+    // May fail if unshare not available, which is fine
     match result {
         Ok(_) => println!("Unshare create_session() succeeded"),
         Err(e) => println!("Unshare create_session() failed (expected): {:?}", e),
@@ -412,7 +431,7 @@ fn test_session_preferences_display() {
     let unshare = SessionPreferences::Unshare(PathBuf::from("/tmp/test.tar"));
 
     println!("Plain: {:?}", plain);
-    println!("Schroot: {:?}", schroot);  
+    println!("Schroot: {:?}", schroot);
     println!("Unshare: {:?}", unshare);
 
     // Basic assertions about the debug format

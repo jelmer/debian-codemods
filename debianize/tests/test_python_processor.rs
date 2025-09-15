@@ -2,7 +2,9 @@ use breezyshim::tree::Tree;
 use breezyshim::workingtree::WorkingTree;
 use debianize::DebianizePreferences;
 use tempfile::TempDir;
-use upstream_ontologist::{Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata};
+use upstream_ontologist::{
+    Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata,
+};
 
 #[test]
 fn test_python_project_debianization() {
@@ -129,7 +131,7 @@ def hello_world():
         &wt,
         &subpath,
         Some(&wt.branch()), // use local branch as upstream
-        Some(&subpath), // upstream subpath
+        Some(&subpath),     // upstream subpath
         &preferences,
         None, // no upstream version override
         &metadata,
@@ -148,19 +150,21 @@ def hello_world():
             // Check control file contents
             let control_content = wt.get_file_text(&subpath.join("debian/control")).unwrap();
             let control_str = String::from_utf8_lossy(&control_content);
-            
+
             // Debug: print control file contents
             println!("Control file contents:\n{}", control_str);
-            
+
             // Should contain Python-specific dependencies
             assert!(control_str.contains("python3-all"));
             assert!(control_str.contains("python3-setuptools"));
             assert!(control_str.contains("dh-sequence-python3"));
-            
+
             // Check source package name follows Python naming convention
             // Note: The actual package name might be different from what we expect
-            assert!(control_str.contains("Source: ") && control_str.contains("test-python-package"));
-            
+            assert!(
+                control_str.contains("Source: ") && control_str.contains("test-python-package")
+            );
+
             // Check binary package
             assert!(control_str.contains("Package: python3-test-python-package"));
             assert!(control_str.contains("Architecture: all"));
@@ -226,8 +230,9 @@ setup(
     std::fs::write(
         project_dir.join("src/modern_package/__init__.py"),
         "__version__ = '2.1.0'\n",
-    ).unwrap();
-    
+    )
+    .unwrap();
+
     std::fs::write(
         project_dir.join("src/modern_package/cli.py"),
         r#"
@@ -241,12 +246,14 @@ def main():
 if __name__ == "__main__":
     main()
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     std::fs::write(
         project_dir.join("README.md"),
         "# Modern Python Package\n\nA modern Python package example.\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     // Initialize git repository
     let output = std::process::Command::new("git")
@@ -314,12 +321,15 @@ if __name__ == "__main__":
         &metadata,
     );
 
-    assert!(result.is_ok(), "Debianization should succeed for modern setup.py project");
-    
+    assert!(
+        result.is_ok(),
+        "Debianization should succeed for modern setup.py project"
+    );
+
     // Verify debian files were created
     assert!(wt.has_filename(&subpath.join("debian")));
     assert!(wt.has_filename(&subpath.join("debian/control")));
-    
+
     // Check that it detected Python 3 support
     let control_content = wt.get_file_text(&subpath.join("debian/control")).unwrap();
     let control_str = String::from_utf8_lossy(&control_content);

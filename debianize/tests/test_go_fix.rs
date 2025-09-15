@@ -2,7 +2,9 @@ use breezyshim::tree::Tree;
 use breezyshim::workingtree::WorkingTree;
 use debianize::DebianizePreferences;
 use tempfile::TempDir;
-use upstream_ontologist::{Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata};
+use upstream_ontologist::{
+    Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata,
+};
 
 #[test]
 fn test_go_project_debianization_fixed() {
@@ -100,7 +102,9 @@ func main() {
             origin: Some(Origin::Other("test".to_string())),
         });
         metadata.insert(UpstreamDatumWithMetadata {
-            datum: UpstreamDatum::Repository("https://github.com/testuser/test-go-package".to_string()),
+            datum: UpstreamDatum::Repository(
+                "https://github.com/testuser/test-go-package".to_string(),
+            ),
             certainty: Some(Certainty::Confident),
             origin: Some(Origin::Other("test".to_string())),
         });
@@ -130,10 +134,10 @@ func main() {
     match result {
         Ok(debianize_result) => {
             println!("Go debianization successful: {:?}", debianize_result);
-            
+
             // Re-open to verify results (in a separate scope)
             let (wt, subpath) = breezyshim::workingtree::open_containing(&project_dir).unwrap();
-            
+
             // Verify debian directory was created
             assert!(wt.has_filename(&subpath.join("debian")));
             assert!(wt.has_filename(&subpath.join("debian/control")));

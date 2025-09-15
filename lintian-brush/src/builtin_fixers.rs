@@ -86,11 +86,12 @@ impl Fixer for BuiltinFixerWrapper {
                 std::env::set_var(key, value);
             }
         }
-        
+
         // Run the fixer
-        let result = self.fixer
+        let result = self
+            .fixer
             .apply(basedir, package, current_version, preferences);
-        
+
         // Restore environment variables
         for (key, old_value) in env_backup {
             if let Some(value) = old_value {
@@ -99,7 +100,7 @@ impl Fixer for BuiltinFixerWrapper {
                 std::env::remove_var(&key);
             }
         }
-        
+
         result
     }
 }
@@ -152,7 +153,11 @@ mod tests {
     fn test_get_builtin_fixers() {
         let fixers = get_builtin_fixers();
         // Check that we have at least two fixers now
-        assert!(fixers.len() >= 2, "Expected at least 2 builtin fixers, found {}", fixers.len());
+        assert!(
+            fixers.len() >= 2,
+            "Expected at least 2 builtin fixers, found {}",
+            fixers.len()
+        );
 
         // Check that the CRLF fixer is registered
         let crlf_fixer = fixers
@@ -164,7 +169,10 @@ mod tests {
         let desktop_fixer = fixers
             .iter()
             .find(|f| f.name() == "executable-desktop-file");
-        assert!(desktop_fixer.is_some(), "executable-desktop-file fixer not found");
+        assert!(
+            desktop_fixer.is_some(),
+            "executable-desktop-file fixer not found"
+        );
     }
 
     #[test]

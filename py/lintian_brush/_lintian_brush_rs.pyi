@@ -15,9 +15,7 @@ DEBHELPER_VERSIONS: dict[str, Any]
 DPKG_VERSIONS: dict[str, Any]
 
 # Based on usage in salsa.py
-def guess_repository_url(
-    package_name: str, vcs_type: str
-) -> str | None: ...
+def guess_repository_url(package_name: str, vcs_type: str) -> str | None: ...
 
 # Based on usage in vcs.py
 def determine_gitlab_browser_url(url: str) -> str | None: ...

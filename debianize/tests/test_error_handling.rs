@@ -2,7 +2,9 @@ use breezyshim::tree::Tree;
 use breezyshim::workingtree::WorkingTree;
 use debianize::{DebianizePreferences, Error};
 use tempfile::TempDir;
-use upstream_ontologist::{Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata};
+use upstream_ontologist::{
+    Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata,
+};
 
 #[test]
 fn test_debian_directory_already_exists() {
@@ -16,7 +18,7 @@ fn test_debian_directory_already_exists() {
         "# Test Project\n\nA test project with existing debian directory.\n",
     )
     .unwrap();
-    
+
     std::fs::write(
         project_dir.join("Makefile"),
         "all:\n\t@echo 'Building test project'\n\ninstall:\n\t@echo 'Installing test project'\n\nclean:\n\t@echo 'Cleaning test project'\n",
@@ -137,7 +139,11 @@ Description: An existing package
     );
 
     // With force, it should succeed and overwrite
-    assert!(result.is_ok(), "Should succeed with force_new_directory=true: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Should succeed with force_new_directory=true: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -203,7 +209,9 @@ setup(
 
     let mut metadata = UpstreamMetadata::new();
     metadata.insert(UpstreamDatumWithMetadata {
-        datum: UpstreamDatum::Name("INVALID_PACKAGE_NAME_WITH_UPPERCASE_AND_UNDERSCORES".to_string()),
+        datum: UpstreamDatum::Name(
+            "INVALID_PACKAGE_NAME_WITH_UPPERCASE_AND_UNDERSCORES".to_string(),
+        ),
         certainty: Some(Certainty::Confident),
         origin: Some(Origin::Other("test".to_string())),
     });
@@ -252,10 +260,7 @@ fn test_missing_upstream_info() {
     std::fs::create_dir(&project_dir).unwrap();
 
     // Create a minimal project with no identifiable information
-    std::fs::write(
-        project_dir.join("empty_file.txt"),
-        "",
-    ).unwrap();
+    std::fs::write(project_dir.join("empty_file.txt"), "").unwrap();
 
     // Initialize git repository
     let output = std::process::Command::new("git")
@@ -394,7 +399,8 @@ setup(
     std::fs::write(
         project_dir.join("uncommitted_file.py"),
         "# This file is not committed\nprint('uncommitted')\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     // Open the working tree
     let (wt, subpath) = breezyshim::workingtree::open_containing(&project_dir).unwrap();
@@ -498,12 +504,12 @@ setup(
     let permissions = std::fs::metadata(&project_dir).unwrap().permissions();
     let mut readonly_permissions = permissions.clone();
     readonly_permissions.set_readonly(true);
-    
+
     // This test is tricky to implement reliably across different filesystems
     // So we'll just verify the Error::IoError variant exists and can be created
     let io_error = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Test I/O error");
     let debianize_error = Error::IoError(io_error);
-    
+
     match debianize_error {
         Error::IoError(_) => {
             println!("IoError variant works correctly");
@@ -707,9 +713,10 @@ serde = "1.0"
     match result {
         Err(e) => {
             let error_msg = format!("{:?}", e);
-            if error_msg.contains("Unable to load crate info") || 
-               error_msg.contains("crates.io") ||
-               error_msg.contains("network") {
+            if error_msg.contains("Unable to load crate info")
+                || error_msg.contains("crates.io")
+                || error_msg.contains("network")
+            {
                 println!("Correctly failed due to network restrictions: {:?}", e);
             } else {
                 println!("Failed with different error (may be acceptable): {:?}", e);

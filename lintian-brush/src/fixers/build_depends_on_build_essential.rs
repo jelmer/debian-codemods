@@ -1,7 +1,7 @@
-use crate::{declare_fixer, FixerError, FixerResult, Certainty};
+use crate::{declare_fixer, Certainty, FixerError, FixerResult};
+use deb822_lossless::Paragraph;
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_control::lossless::relations::Relations;
-use deb822_lossless::Paragraph;
 
 declare_fixer! {
     name: "build-depends-on-build-essential",
@@ -18,7 +18,7 @@ declare_fixer! {
         if let Some(mut source) = editor.source() {
             // Handle Build-Depends
             changed |= filter_build_essential_from_field(source.as_mut_deb822(), "Build-Depends");
-            // Handle Build-Depends-Indep 
+            // Handle Build-Depends-Indep
             changed |= filter_build_essential_from_field(source.as_mut_deb822(), "Build-Depends-Indep");
         }
 
@@ -55,20 +55,20 @@ fn filter_build_essential_from_field(base: &mut Paragraph, field: &str) -> bool 
     // Remove build-essential relations from each entry
     for mut entry in relations.entries() {
         let mut to_remove = Vec::new();
-        
+
         for (i, relation) in entry.relations().enumerate() {
             if relation.name() == "build-essential" {
                 to_remove.push(i);
                 changed = true;
             }
         }
-        
+
         // Remove relations in reverse order to avoid index shifts
         for i in to_remove.into_iter().rev() {
             entry.remove_relation(i);
         }
     }
-    
+
     // Remove empty entries
     let mut empty_entries = Vec::new();
     for (i, entry) in relations.entries().enumerate() {
@@ -76,7 +76,7 @@ fn filter_build_essential_from_field(base: &mut Paragraph, field: &str) -> bool 
             empty_entries.push(i);
         }
     }
-    
+
     for i in empty_entries.into_iter().rev() {
         relations.remove_entry(i);
     }
@@ -104,7 +104,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
-        
+
         let control_content = r#"Source: test-package
 Build-Depends: build-essential, debhelper-compat (= 13)
 
@@ -112,19 +112,19 @@ Package: test-package
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 "#;
-        
+
         let control_path = debian_dir.join("control");
         fs::write(&control_path, control_content).unwrap();
-        
+
         // Test filter_build_essential_from_field function
         let mut editor = TemplatedControlEditor::open(&control_path).unwrap();
         let mut source = editor.source().unwrap();
-        
+
         let changed = filter_build_essential_from_field(source.as_mut_deb822(), "Build-Depends");
         assert!(changed);
-        
+
         editor.commit().unwrap();
-        
+
         // Verify the change was made
         let updated_content = fs::read_to_string(&control_path).unwrap();
         assert!(!updated_content.contains("build-essential"));

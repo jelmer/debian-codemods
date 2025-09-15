@@ -2,7 +2,9 @@ use breezyshim::tree::Tree;
 use breezyshim::workingtree::WorkingTree;
 use debianize::DebianizePreferences;
 use tempfile::TempDir;
-use upstream_ontologist::{Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata};
+use upstream_ontologist::{
+    Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata,
+};
 
 #[test]
 fn test_go_project_debianization() {
@@ -219,7 +221,9 @@ func TestStatusHandler(t *testing.T) {
             origin: Some(Origin::Other("test".to_string())),
         });
         metadata.insert(UpstreamDatumWithMetadata {
-            datum: UpstreamDatum::Repository("https://github.com/testuser/test-go-package".to_string()),
+            datum: UpstreamDatum::Repository(
+                "https://github.com/testuser/test-go-package".to_string(),
+            ),
             certainty: Some(Certainty::Confident),
             origin: Some(Origin::Other("test".to_string())),
         });
@@ -239,7 +243,7 @@ func TestStatusHandler(t *testing.T) {
             &wt,
             &subpath,
             Some(&wt.branch()), // use local branch as upstream
-            Some(&subpath), // upstream subpath
+            Some(&subpath),     // upstream subpath
             &preferences,
             None, // no upstream version override
             &metadata,
@@ -262,26 +266,26 @@ func TestStatusHandler(t *testing.T) {
             // Check control file contents
             let control_content = wt.get_file_text(&subpath.join("debian/control")).unwrap();
             let control_str = String::from_utf8_lossy(&control_content);
-            
+
             // Should follow Go naming conventions (golang- prefix)
             assert!(control_str.contains("Source: golang-github-testuser-test-go-package"));
             assert!(control_str.contains("Package: golang-github-testuser-test-go-package-dev"));
-            
+
             // Should contain Go-specific metadata
             assert!(control_str.contains("XS-Go-Import-Path: github.com/testuser/test-go-package"));
-            
+
             // Should be architecture all for Go dev packages
             assert!(control_str.contains("Architecture: all"));
-            
+
             // Should have Multi-Arch: foreign
             assert!(control_str.contains("Multi-Arch: foreign"));
-            
+
             // Should contain golang addon
             assert!(control_str.contains("dh-sequence-golang"));
-            
+
             // Should have Go testsuite
             assert!(control_str.contains("Testsuite: autopkgtest-pkg-go"));
-            
+
             // Should be in devel section
             assert!(control_str.contains("Section: devel"));
 
@@ -289,7 +293,7 @@ func TestStatusHandler(t *testing.T) {
             let rules_content = wt.get_file_text(&subpath.join("debian/rules")).unwrap();
             let rules_str = String::from_utf8_lossy(&rules_content);
             assert!(rules_str.contains("dh $@ --buildsystem=golang --builddirectory=_build"));
-            
+
             // Should exclude examples if they exist
             if project_dir.join("examples").exists() {
                 assert!(rules_str.contains("export DH_GOLANG_EXCLUDES=examples/"));
@@ -486,14 +490,17 @@ func TestDistance(t *testing.T) {
         &metadata,
     );
 
-    assert!(result.is_ok(), "Go library-only project debianization should succeed");
+    assert!(
+        result.is_ok(),
+        "Go library-only project debianization should succeed"
+    );
 
     // Verify debian files
     assert!(wt.has_filename(&subpath.join("debian/control")));
-    
+
     let control_content = wt.get_file_text(&subpath.join("debian/control")).unwrap();
     let control_str = String::from_utf8_lossy(&control_content);
-    
+
     // Should create -dev package for library
     assert!(control_str.contains("-dev"));
     assert!(control_str.contains("golang-github-example-go-utils-lib"));
@@ -621,7 +628,10 @@ func main() {
         &metadata,
     );
 
-    assert!(result.is_ok(), "Go project with examples should debianize successfully");
+    assert!(
+        result.is_ok(),
+        "Go project with examples should debianize successfully"
+    );
 
     // Check rules file excludes examples
     let rules_content = wt.get_file_text(&subpath.join("debian/rules")).unwrap();

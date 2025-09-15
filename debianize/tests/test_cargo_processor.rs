@@ -2,7 +2,9 @@ use breezyshim::tree::Tree;
 use breezyshim::workingtree::WorkingTree;
 use debianize::DebianizePreferences;
 use tempfile::TempDir;
-use upstream_ontologist::{Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata};
+use upstream_ontologist::{
+    Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata,
+};
 
 #[test]
 fn test_rust_cargo_project_debianization() {
@@ -194,7 +196,7 @@ async fn main() {
         &wt,
         &subpath,
         Some(&wt.branch()), // use local branch as upstream
-        Some(&subpath), // upstream subpath
+        Some(&subpath),     // upstream subpath
         &preferences,
         None, // no upstream version override
         &metadata,
@@ -202,21 +204,24 @@ async fn main() {
 
     match result {
         Ok(debianize_result) => {
-            println!("Rust cargo debianization successful: {:?}", debianize_result);
+            println!(
+                "Rust cargo debianization successful: {:?}",
+                debianize_result
+            );
 
             // Verify debian directory was created
             assert!(wt.has_filename(&subpath.join("debian")));
-            
+
             // For Rust/cargo projects, debcargo.toml should be created instead of traditional debian/control
             assert!(wt.has_filename(&subpath.join("debcargo.toml")));
 
             // Check debcargo.toml contents
             let debcargo_content = wt.get_file_text(&subpath.join("debcargo.toml")).unwrap();
             let debcargo_str = String::from_utf8_lossy(&debcargo_content);
-            
+
             // Should contain package information
             assert!(debcargo_str.contains("overlay = \".\""));
-            
+
             // Check Cargo.toml was updated with package info
             let cargo_content = wt.get_file_text(&subpath.join("Cargo.toml")).unwrap();
             let cargo_str = String::from_utf8_lossy(&cargo_content);
@@ -225,11 +230,16 @@ async fn main() {
         Err(e) => {
             // Cargo processor might fail if crates.io is not accessible in test environment
             // This is expected in offline test environments
-            println!("Rust cargo debianization failed (expected in test environment): {:?}", e);
+            println!(
+                "Rust cargo debianization failed (expected in test environment): {:?}",
+                e
+            );
             // Instead of panicking, we'll check if the failure is due to network access
             let error_msg = format!("{:?}", e);
             if error_msg.contains("Unable to load crate info") || error_msg.contains("crates.io") {
-                println!("Test passed: Cargo processor correctly failed due to network restrictions");
+                println!(
+                    "Test passed: Cargo processor correctly failed due to network restrictions"
+                );
             } else {
                 panic!("Unexpected error during Rust debianization: {:?}", e);
             }
@@ -381,7 +391,10 @@ pub fn use_crate_a() -> CrateA {
             println!("Workspace project debianization succeeded");
         }
         Err(e) => {
-            println!("Workspace project debianization failed (may be expected): {:?}", e);
+            println!(
+                "Workspace project debianization failed (may be expected): {:?}",
+                e
+            );
             // Workspace handling might not be fully implemented, which is okay
         }
     }
@@ -526,9 +539,11 @@ fn main() {
             println!("Binary-only Rust project debianization failed (expected in test environment): {:?}", e);
             let error_msg = format!("{:?}", e);
             // Cargo projects need network access to get crate info from crates.io
-            assert!(error_msg.contains("Unable to load crate info") || 
-                    error_msg.contains("crates.io") ||
-                    error_msg.contains("network"));
+            assert!(
+                error_msg.contains("Unable to load crate info")
+                    || error_msg.contains("crates.io")
+                    || error_msg.contains("network")
+            );
         }
     }
 }

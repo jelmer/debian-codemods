@@ -3,7 +3,9 @@ use breezyshim::tree::Tree;
 use breezyshim::workingtree::WorkingTree;
 use debianize::DebianizePreferences;
 use tempfile::TempDir;
-use upstream_ontologist::{Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata};
+use upstream_ontologist::{
+    Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata,
+};
 
 #[test]
 fn test_git_repository_integration() {
@@ -34,7 +36,8 @@ setup(
     std::fs::write(
         project_dir.join("gitpkg/__init__.py"),
         "__version__ = '1.5.0'\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     // Initialize git repository with proper history
     let output = std::process::Command::new("git")
@@ -96,7 +99,8 @@ setup(
     """A new feature function."""
     return "New feature implemented!"
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     let output = std::process::Command::new("git")
         .args(["add", "gitpkg/feature.py"])
@@ -130,7 +134,9 @@ setup(
         origin: Some(Origin::Other("test".to_string())),
     });
     metadata.insert(UpstreamDatumWithMetadata {
-        datum: UpstreamDatum::Repository("https://github.com/testuser/git-integration-test".to_string()),
+        datum: UpstreamDatum::Repository(
+            "https://github.com/testuser/git-integration-test".to_string(),
+        ),
         certainty: Some(Certainty::Confident),
         origin: Some(Origin::Other("test".to_string())),
     });
@@ -173,7 +179,7 @@ setup(
             // Check control file for VCS fields
             let control_content = wt.get_file_text(&subpath.join("debian/control")).unwrap();
             let control_str = String::from_utf8_lossy(&control_content);
-            
+
             // May contain VCS fields if VCS integration worked
             if control_str.contains("Vcs-") {
                 println!("VCS fields found in control file");
@@ -192,10 +198,10 @@ fn test_upstream_branch_integration() {
     let temp_dir = TempDir::new().unwrap();
     let upstream_dir = temp_dir.path().join("upstream-repo");
     let downstream_dir = temp_dir.path().join("downstream-repo");
-    
+
     // Create upstream repository
     std::fs::create_dir(&upstream_dir).unwrap();
-    
+
     std::fs::write(
         upstream_dir.join("setup.py"),
         r#"
@@ -215,7 +221,8 @@ setup(
     std::fs::write(
         upstream_dir.join("upstream_pkg/__init__.py"),
         "__version__ = '2.0.0'\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     // Initialize upstream git repository
     let output = std::process::Command::new("git")
@@ -262,7 +269,11 @@ setup(
 
     // Create downstream repository (clone of upstream)
     let output = std::process::Command::new("git")
-        .args(["clone", upstream_dir.to_str().unwrap(), downstream_dir.to_str().unwrap()])
+        .args([
+            "clone",
+            upstream_dir.to_str().unwrap(),
+            downstream_dir.to_str().unwrap(),
+        ])
         .output()
         .unwrap();
     assert!(output.status.success());
@@ -301,11 +312,14 @@ setup(
 
     // Test with upstream branch if available, fall back to working tree branch
     let wt_branch = wt.branch();
-    let upstream_branch_param = upstream_branch.as_ref().and_then(|b| {
-        b.as_any()
-            .downcast_ref::<breezyshim::branch::GenericBranch>()
-            .map(|gb| gb as &dyn breezyshim::branch::PyBranch)
-    }).or(Some(&wt_branch));
+    let upstream_branch_param = upstream_branch
+        .as_ref()
+        .and_then(|b| {
+            b.as_any()
+                .downcast_ref::<breezyshim::branch::GenericBranch>()
+                .map(|gb| gb as &dyn breezyshim::branch::PyBranch)
+        })
+        .or(Some(&wt_branch));
 
     let result = debianize::debianize(
         &wt,
@@ -319,16 +333,22 @@ setup(
 
     match result {
         Ok(debianize_result) => {
-            println!("Upstream branch integration successful: {:?}", debianize_result);
+            println!(
+                "Upstream branch integration successful: {:?}",
+                debianize_result
+            );
             assert!(wt.has_filename(&subpath.join("debian")));
-            
+
             // If upstream branch was used, might have upstream branch name set
             if let Some(upstream_branch_name) = &debianize_result.upstream_branch_name {
                 println!("Upstream branch name: {}", upstream_branch_name);
             }
         }
         Err(e) => {
-            println!("Upstream branch integration failed (may be expected): {:?}", e);
+            println!(
+                "Upstream branch integration failed (may be expected): {:?}",
+                e
+            );
             // This might fail in test environment, which is acceptable
         }
     }
@@ -436,7 +456,10 @@ setup(
 
             // Check current branch
             let current_branch = wt.branch();
-            println!("Current branch after debianization: {:?}", current_branch.name());
+            println!(
+                "Current branch after debianization: {:?}",
+                current_branch.name()
+            );
         }
         Err(e) => {
             panic!("Debian branch test failed: {:?}", e);
@@ -444,18 +467,21 @@ setup(
     }
 }
 
-#[test] 
+#[test]
 fn test_branch_url_extraction() {
     // Test the branch URL extraction functionality
     use debianize::fixer::extract_branch_from_url;
-    
+
     // Test fragment style
     let url = url::Url::parse("https://github.com/user/repo#branch=develop").unwrap();
     assert_eq!(extract_branch_from_url(&url), Some("develop".to_string()));
 
     // Test query parameter style
     let url = url::Url::parse("https://github.com/user/repo?branch=feature-123").unwrap();
-    assert_eq!(extract_branch_from_url(&url), Some("feature-123".to_string()));
+    assert_eq!(
+        extract_branch_from_url(&url),
+        Some("feature-123".to_string())
+    );
 
     // Test GitHub tree URL style
     let url = url::Url::parse("https://github.com/user/repo/tree/main").unwrap();
@@ -463,7 +489,10 @@ fn test_branch_url_extraction() {
 
     // Test GitLab tree URL with path
     let url = url::Url::parse("https://gitlab.com/user/repo/tree/release-1.0/src").unwrap();
-    assert_eq!(extract_branch_from_url(&url), Some("release-1.0".to_string()));
+    assert_eq!(
+        extract_branch_from_url(&url),
+        Some("release-1.0".to_string())
+    );
 
     // Test URL without branch
     let url = url::Url::parse("https://github.com/user/repo").unwrap();
@@ -522,7 +551,12 @@ setup(
 
     // Add a remote
     let output = std::process::Command::new("git")
-        .args(["remote", "add", "origin", "https://github.com/example/vcs-url-test.git"])
+        .args([
+            "remote",
+            "add",
+            "origin",
+            "https://github.com/example/vcs-url-test.git",
+        ])
         .current_dir(&project_dir)
         .output()
         .unwrap();
@@ -577,7 +611,7 @@ setup(
     match result {
         Ok(debianize_result) => {
             println!("VCS URL handling successful: {:?}", debianize_result);
-            
+
             // Check if VCS URL was detected/set
             if let Some(vcs_url) = &debianize_result.vcs_url {
                 println!("VCS URL: {}", vcs_url);
@@ -586,9 +620,9 @@ setup(
             // Check debian/control for VCS fields
             let control_content = wt.get_file_text(&subpath.join("debian/control")).unwrap();
             let control_str = String::from_utf8_lossy(&control_content);
-            
+
             println!("Control file content:\n{}", control_str);
-            
+
             // Look for any VCS-related fields
             if control_str.contains("Vcs-Git") || control_str.contains("Vcs-Browser") {
                 println!("Found VCS fields in control file");

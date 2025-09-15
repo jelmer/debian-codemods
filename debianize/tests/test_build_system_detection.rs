@@ -2,7 +2,9 @@ use breezyshim::tree::Tree;
 use breezyshim::workingtree::WorkingTree;
 use debianize::DebianizePreferences;
 use tempfile::TempDir;
-use upstream_ontologist::{Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata};
+use upstream_ontologist::{
+    Certainty, Origin, UpstreamDatum, UpstreamDatumWithMetadata, UpstreamMetadata,
+};
 
 #[test]
 fn test_autotools_project_detection() {
@@ -121,7 +123,10 @@ int main() {
         &metadata,
     );
 
-    assert!(result.is_ok(), "Autotools project should debianize successfully");
+    assert!(
+        result.is_ok(),
+        "Autotools project should debianize successfully"
+    );
 
     // Verify debian files
     assert!(wt.has_filename(&subpath.join("debian/control")));
@@ -129,7 +134,7 @@ int main() {
 
     let rules_content = wt.get_file_text(&subpath.join("debian/rules")).unwrap();
     let rules_str = String::from_utf8_lossy(&rules_content);
-    
+
     // Should use makefile buildsystem for autotools
     assert!(rules_str.contains("dh $@ --buildsystem=makefile") || rules_str.contains("dh $@"));
 }
@@ -304,7 +309,10 @@ void printVersion() {
         &metadata,
     );
 
-    assert!(result.is_ok(), "CMake project should debianize successfully");
+    assert!(
+        result.is_ok(),
+        "CMake project should debianize successfully"
+    );
 
     // Check that CMake was detected
     let control_content = wt.get_file_text(&subpath.join("debian/control")).unwrap();
@@ -510,7 +518,10 @@ int calculate_sum(int a, int b) {
             assert!(wt.has_filename(&subpath.join("debian/control")));
         }
         Err(e) => {
-            println!("Meson project debianization failed (may use default processor): {:?}", e);
+            println!(
+                "Meson project debianization failed (may use default processor): {:?}",
+                e
+            );
             // This might be expected if Meson isn't explicitly supported
         }
     }
@@ -706,7 +717,10 @@ Test Author
         &metadata,
     );
 
-    assert!(result.is_ok(), "Generic Makefile project should debianize successfully");
+    assert!(
+        result.is_ok(),
+        "Generic Makefile project should debianize successfully"
+    );
 
     // Verify debian files
     assert!(wt.has_filename(&subpath.join("debian/control")));

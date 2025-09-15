@@ -39,7 +39,9 @@ if m or m_wiki:
         else:  # m_wiki
             # For wiki URI, we fix both insecure-copyright-format-uri and wiki-copyright-format-uri
             issue1 = LintianIssue(
-                "source", "insecure-copyright-format-uri", m_wiki.group(2).decode()
+                "source",
+                "insecure-copyright-format-uri",
+                m_wiki.group(2).decode(),
             )
             issue2 = LintianIssue(
                 "source", "wiki-copyright-format-uri", m_wiki.group(2).decode()
