@@ -20,6 +20,11 @@ stages:
   - test
   - publish
 
+# Build takes about 60-70 minute without caching on Salsa CI runners
+build:
+  extends: .build-package
+  timeout: 2h
+
 cargo-fmt:
   stage: lint
   image: rust:latest
