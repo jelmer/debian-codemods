@@ -53,7 +53,7 @@ fn filter_build_essential_from_field(base: &mut Paragraph, field: &str) -> bool 
     let mut changed = false;
 
     // Remove build-essential relations from each entry
-    for mut entry in relations.entries() {
+    for entry in relations.entries() {
         let mut to_remove = Vec::new();
 
         for (i, relation) in entry.relations().enumerate() {

@@ -96,8 +96,10 @@ pub enum LintianIssueParseError {
 }
 
 #[cfg(feature = "python")]
-impl pyo3::FromPyObject<'_> for LintianIssue {
-    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for LintianIssue {
+    type Error = pyo3::PyErr;
+
+    fn extract(ob: pyo3::Borrowed<'a, 'py, pyo3::PyAny>) -> pyo3::PyResult<Self> {
         use pyo3::prelude::*;
         let package = ob.getattr("package")?.extract::<Option<String>>()?;
         let package_type = ob
@@ -618,8 +620,6 @@ fn run_inline_python_fixer(
     env: HashMap<String, String>,
     _timeout: Option<chrono::Duration>,
 ) -> Result<FixerResult, FixerError> {
-    pyo3::prepare_freethreaded_python();
-
     use pyo3::import_exception;
     use pyo3::prelude::*;
     use pyo3::types::PyDict;
@@ -627,7 +627,8 @@ fn run_inline_python_fixer(
     import_exception!(debmutate.reformatting, FormattingUnpreservable);
     import_exception!(debian.changelog, ChangelogCreateError);
 
-    Python::with_gil(|py| {
+    Python::initialize();
+    Python::attach(|py| {
         let sys = py.import("sys")?;
         let os = py.import("os")?;
         let io = py.import("io")?;
@@ -1596,24 +1597,25 @@ pub fn data_file_path(
     }
 
     #[cfg(feature = "python")]
-    pyo3::prepare_freethreaded_python();
-    #[cfg(feature = "python")]
-    if let Some(path) = pyo3::Python::with_gil(|py| {
-        use pyo3::prelude::*;
-        let pkg_resources = py.import("pkg_resources").unwrap();
-        if let Ok(path) = pkg_resources.call_method1(
-            "resource_filename",
-            ("lintian_brush", format!("lintian-brush/{}", name)),
-        ) {
-            if let Ok(path) = path.extract::<std::path::PathBuf>() {
-                if check(path.as_path()) {
-                    return Some(path);
+    {
+        pyo3::Python::initialize();
+        if let Some(path) = pyo3::Python::attach(|py| {
+            use pyo3::prelude::*;
+            let pkg_resources = py.import("pkg_resources").unwrap();
+            if let Ok(path) = pkg_resources.call_method1(
+                "resource_filename",
+                ("lintian_brush", format!("lintian-brush/{}", name)),
+            ) {
+                if let Ok(path) = path.extract::<std::path::PathBuf>() {
+                    if check(path.as_path()) {
+                        return Some(path);
+                    }
                 }
             }
+            None
+        }) {
+            return Some(path);
         }
-        None
-    }) {
-        return Some(path);
     }
 
     let base_paths = &["/usr/share/lintian-brush", "/usr/local/share/lintian-brush"];
