@@ -12,7 +12,7 @@ declare_fixer! {
             return Err(FixerError::NoChanges);
         }
 
-        let mut editor = TemplatedControlEditor::open(&control_path)?;
+        let editor = TemplatedControlEditor::open(&control_path)?;
         let mut changed = false;
 
         if let Some(mut source) = editor.source() {
@@ -117,7 +117,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends}
         fs::write(&control_path, control_content).unwrap();
 
         // Test filter_build_essential_from_field function
-        let mut editor = TemplatedControlEditor::open(&control_path).unwrap();
+        let editor = TemplatedControlEditor::open(&control_path).unwrap();
         let mut source = editor.source().unwrap();
 
         let changed = filter_build_essential_from_field(source.as_mut_deb822(), "Build-Depends");

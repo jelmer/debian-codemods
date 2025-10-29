@@ -51,7 +51,7 @@ fn test_all_test_dirs_have_matching_fixers() {
 fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
     #[cfg(feature = "python")]
     {
-        pyo3::Python::with_gil(|py| {
+        pyo3::Python::attach(|py| {
             use pyo3::prelude::*;
             let sys = py.import("sys").unwrap();
             let path = sys.getattr("path").unwrap();

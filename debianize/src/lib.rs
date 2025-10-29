@@ -213,7 +213,7 @@ pub fn use_packaging_branch(wt: &GenericWorkingTree, branch_name: &str) -> Resul
     wt.controldir()
         .set_branch_reference(target_branch.as_ref(), Some(""))?;
     // TODO(jelmer): breezy bug?
-    pyo3::Python::with_gil(|py| -> pyo3::PyResult<()> {
+    pyo3::Python::attach(|py| -> pyo3::PyResult<()> {
         use pyo3::IntoPyObject;
         let wt_py = wt.to_object(py);
         let branch_py = target_branch.into_pyobject(py)?;
@@ -2431,6 +2431,7 @@ fn basic_import_upstream_version(
 }
 
 /// Unsplit VCS URL into type and URL string
+#[cfg(test)]
 fn unsplit_vcs_url(_vcs_type: &str, url: &url::Url) -> String {
     // Format the VCS URL as it should appear in debian/control
     // This is just the URL for most VCS types

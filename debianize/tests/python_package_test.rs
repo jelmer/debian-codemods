@@ -250,9 +250,9 @@ fn test_debianize_simple_python_package() {
     // Check exact content - note python3-requests won't be included in test env without network
     let expected_control = r#"Source: python-hello-world
 Maintainer: Test Packager <packager@example.com>
-Rules-Requires-Root: no
-Standards-Version: 4.7.2.1
 Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools
+Standards-Version: 4.7.2.1
+Rules-Requires-Root: no
 Testsuite: autopkgtest-pkg-python
 
 Package: python3-hello-world
@@ -476,9 +476,9 @@ setup(
     // in test environment because we skip dependency resolution without network access
     let expected_control = r#"Source: python-hello-world
 Maintainer: Test Packager <packager@example.com>
-Rules-Requires-Root: no
-Standards-Version: 4.7.2.1
 Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools
+Standards-Version: 4.7.2.1
+Rules-Requires-Root: no
 Testsuite: autopkgtest-pkg-python
 
 Package: python3-hello-world

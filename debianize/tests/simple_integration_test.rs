@@ -212,11 +212,11 @@ build-backend = "setuptools.build_meta"
     // Check exact content
     let expected_control = r#"Source: python-hello-world
 Maintainer: Test Packager <packager@example.com>
-Rules-Requires-Root: no
-Standards-Version: 4.7.2.1
 Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools
-Testsuite: autopkgtest-pkg-python
+Standards-Version: 4.7.2.1
 Vcs-Bzr: <TEMPDIR>/
+Rules-Requires-Root: no
+Testsuite: autopkgtest-pkg-python
 
 Package: python3-hello-world
 Architecture: all
@@ -351,9 +351,9 @@ setup(
     // Note: In test environment without network, python3-requests won't be detected
     let expected_control = r#"Source: python-test-pkg
 Maintainer: John Doe <john@example.com>
-Rules-Requires-Root: no
-Standards-Version: 4.7.2.1
 Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools
+Standards-Version: 4.7.2.1
+Rules-Requires-Root: no
 Testsuite: autopkgtest-pkg-python
 
 Package: python3-test-pkg

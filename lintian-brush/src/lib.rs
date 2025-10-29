@@ -743,7 +743,7 @@ fn run_inline_python_fixer(
 #[cfg(feature = "python")]
 mod run_inline_python_fixer_tests {
     fn setup() {
-        pyo3::Python::with_gil(|py| {
+        pyo3::Python::attach(|py| {
             use pyo3::prelude::*;
             let sys = py.import("sys").unwrap();
             let path = sys.getattr("path").unwrap();

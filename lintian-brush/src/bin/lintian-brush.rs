@@ -480,7 +480,7 @@ fn main() -> Result<(), i32> {
         #[cfg(feature = "python")]
         {
             // Ensure we can find the lintian_brush.fixer python module
-            let e = pyo3::Python::with_gil(|py| py.import("lintian_brush.fixer").err());
+            let e = pyo3::Python::attach(|py| py.import("lintian_brush.fixer").err());
 
             if let Some(e) = e {
                 drop(write_lock);
@@ -508,7 +508,7 @@ fn main() -> Result<(), i32> {
         let mut overall_result = match lintian_brush::run_lintian_fixers(
             &wt,
             fixers.as_slice(),
-            update_changelog.as_ref().map(|b| (|| *b)),
+            update_changelog.as_ref().map(|b| || *b),
             args.output.verbose,
             None,
             &preferences,
@@ -685,7 +685,7 @@ fn versions_dict() -> HashMap<String, String> {
     let breezy_version = breezyshim::version::version();
     ret.insert("breezy".to_string(), breezy_version.to_string());
 
-    pyo3::Python::with_gil(|py| {
+    pyo3::Python::attach(|py| {
         let debmutate = py.import("debmutate").unwrap();
         ret.insert(
             "debmutate".to_string(),

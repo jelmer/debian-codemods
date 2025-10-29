@@ -25,7 +25,7 @@ struct ProcessorContext<'a> {
     metadata: &'a UpstreamMetadata,
     compat_release: String,
     buildsystem: Box<dyn BuildSystem>,
-    buildsystem_subpath: PathBuf,
+    _buildsystem_subpath: PathBuf,
     maintainer: Option<String>,
     _kickstart_from_dist: Option<Box<dyn FnOnce(&dyn PyWorkingTree, &Path) -> Result<(), Error>>>,
 }
@@ -694,7 +694,7 @@ pub fn process(
         metadata,
         compat_release,
         buildsystem,
-        buildsystem_subpath,
+        _buildsystem_subpath: buildsystem_subpath,
         maintainer,
         _kickstart_from_dist,
     };
