@@ -125,7 +125,8 @@ int main() {
 
     assert!(
         result.is_ok(),
-        "Autotools project should debianize successfully"
+        "Autotools project should debianize successfully {:?}",
+        result
     );
 
     // Verify debian files
@@ -311,7 +312,8 @@ void printVersion() {
 
     assert!(
         result.is_ok(),
-        "CMake project should debianize successfully"
+        "CMake project should debianize successfully: {:?}",
+        result
     );
 
     // Check that CMake was detected
@@ -719,7 +721,8 @@ Test Author
 
     assert!(
         result.is_ok(),
-        "Generic Makefile project should debianize successfully"
+        "Generic Makefile project should debianize successfully: {:?}",
+        result
     );
 
     // Verify debian files

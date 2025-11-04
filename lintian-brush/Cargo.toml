@@ -23,7 +23,7 @@ env_logger = { workspace = true, optional = true }
 lazy-regex = { workspace = true }
 debversion = { workspace = true }
 breezyshim = { workspace = true }
-indicatif = "0.17"
+indicatif = "0.18"
 tempfile = { workspace = true }
 url = { version = "2", features = ["serde"] }
 lazy_static = { workspace = true }

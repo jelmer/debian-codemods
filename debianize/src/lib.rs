@@ -39,7 +39,7 @@ pub mod simple_apt_repo;
 pub mod vcs;
 
 pub fn default_debianize_cache_dir() -> std::io::Result<std::path::PathBuf> {
-    xdg::BaseDirectories::with_prefix("debianize")?.create_cache_directory("")
+    xdg::BaseDirectories::with_prefix("debianize").create_cache_directory("")
 }
 
 /// Default implementation for creating distribution tarballs
@@ -134,7 +134,7 @@ fn create_simple_tarball(
 
     // Use tar to create the tarball, excluding VCS directories
     let tar_output = Command::new("tar")
-        .args(&[
+        .args([
             "-czf",
             tarball_path.to_str().unwrap(),
             "--exclude=.git",
@@ -170,7 +170,7 @@ pub fn write_changelog_template(
     wnpp_bugs: Vec<(i64, BugKind)>,
 ) -> Result<(), std::io::Error> {
     let author = author.unwrap_or_else(|| debian_changelog::get_maintainer().unwrap());
-    let closes = if wnpp_bugs.len() > 0 {
+    let closes = if !wnpp_bugs.is_empty() {
         format!(
             " Closes: {}",
             wnpp_bugs
@@ -284,7 +284,7 @@ pub fn import_upstream_version_from_dist(
             .map(|x| x.as_path())
             .collect::<Vec<_>>()
             .as_slice(),
-        &source_name,
+        source_name,
         upstream_version,
         None,
         upstream_source.upstream_branch().as_ref(),
@@ -450,14 +450,14 @@ pub fn create_kickstart_from_dist<'a>(
             .as_ref()
             .map(|paths| paths.iter().map(|p| p.as_path()).collect());
         let files_excluded_slice: Option<&[&std::path::Path]> =
-            files_excluded_refs.as_ref().map(|v| v.as_slice());
+            files_excluded_refs.as_deref();
 
         // Import upstream with pristine-tar support
         let (upstream_dist_revid, _upstream_branch_name, _tag_names) =
             import_upstream_with_pristine_tar(
                 wt,
                 subpath,
-                &upstream_source,
+                upstream_source,
                 &source_name,
                 &upstream_version,
                 files_excluded_slice,
@@ -472,7 +472,7 @@ pub fn create_kickstart_from_dist<'a>(
                 Some(&upstream_dist_revid),
                 Some(false), // local
             )
-            .map_err(|e| Error::BrzError(e))?;
+            .map_err(Error::BrzError)?;
 
             log::info!(
                 "Updated working tree to upstream revision {}",
@@ -485,13 +485,13 @@ pub fn create_kickstart_from_dist<'a>(
         let source_path = debian_path.join("source");
 
         if !wt.has_filename(&source_path) {
-            wt.mkdir(&source_path).map_err(|e| Error::BrzError(e))?;
-            wt.add(&[&source_path]).map_err(|e| Error::BrzError(e))?;
+            wt.mkdir(&source_path).map_err(Error::BrzError)?;
+            wt.add(&[&source_path]).map_err(Error::BrzError)?;
         }
 
         let format_file = source_path.join("format");
         wt.put_file_bytes_non_atomic(&format_file, b"3.0 (quilt)\n")
-            .map_err(|e| Error::BrzError(e))?;
+            .map_err(Error::BrzError)?;
 
         log::info!("Created debian/source/format file");
 
@@ -1218,13 +1218,7 @@ impl SessionPreferences {
                             }
 
                             // Bootstrap and save to cache
-                            ognibuild::session::unshare::UnshareSession::bootstrap()
-                                .and_then(|session| {
-                                    // Try to save the tarball for future use
-                                    // Note: UnshareSession doesn't expose the tarball path directly,
-                                    // so we'd need to modify ognibuild to support this properly
-                                    Ok(session)
-                                })
+                            ognibuild::session::unshare::UnshareSession::bootstrap().map(|session| session)
                                 .map(Box::new)
                                 .map(|b| b as Box<dyn ognibuild::session::Session>)
                                 .map_err(|e| {
@@ -2076,7 +2070,7 @@ fn get_maintainer() -> (String, String) {
 
     // Fall back to git config
     let name = Command::new("git")
-        .args(&["config", "user.name"])
+        .args(["config", "user.name"])
         .output()
         .ok()
         .and_then(|o| String::from_utf8(o.stdout).ok())
@@ -2084,7 +2078,7 @@ fn get_maintainer() -> (String, String) {
         .unwrap_or_else(|| "Debian Maintainer".to_string());
 
     let email = Command::new("git")
-        .args(&["config", "user.email"])
+        .args(["config", "user.email"])
         .output()
         .ok()
         .and_then(|o| String::from_utf8(o.stdout).ok())
@@ -2242,7 +2236,7 @@ async fn find_wnpp_bugs_for_package_async(
     }
 
     // Convert &str to &str for the API
-    let name_refs: Vec<&str> = names.iter().map(|s| *s).collect();
+    let name_refs: Vec<&str> = names.iter().copied().collect();
 
     // Use the existing analyzer functionality
     match debian_analyzer::wnpp::find_wnpp_bugs_harder(&name_refs).await {

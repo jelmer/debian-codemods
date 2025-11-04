@@ -615,7 +615,7 @@ fn main() -> Result<(), i32> {
         > {
             let apt = ognibuild::debian::apt::AptManager::from_session(session.as_ref());
             let context = ognibuild::debian::context::DebianPackagingContext::new(
-                Clone::clone(&wt),
+                Clone::clone(wt),
                 subpath,
                 committer.clone(),
                 false,
@@ -774,7 +774,7 @@ fn versions_dict() -> HashMap<String, String> {
         "lintian-brush".to_string(),
         env!("CARGO_PKG_VERSION").to_string(),
     );
-    pyo3::Python::with_gil(|py| {
+    pyo3::Python::attach(|py| {
         let breezy = py.import("breezy").unwrap();
         ret.insert(
             "breezy".to_string(),

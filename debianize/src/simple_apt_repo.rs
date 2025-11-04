@@ -46,8 +46,7 @@ impl SimpleTrustedAptRepo {
 
     pub fn start(&mut self) -> io::Result<()> {
         if self.thread.is_some() {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
+            return Err(io::Error::other(
                 "server already active",
             ));
         }
@@ -292,8 +291,7 @@ impl SimpleTrustedAptRepo {
                 "dpkg-scanpackages failed: {}",
                 String::from_utf8_lossy(&output.stderr)
             );
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
+            return Err(io::Error::other(
                 "Failed to run dpkg-scanpackages",
             ));
         }

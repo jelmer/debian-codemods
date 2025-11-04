@@ -1981,7 +1981,7 @@ pub fn run_lintian_fixers(
     pb.set_draw_target(indicatif::ProgressDrawTarget::hidden());
     let mut dirty_tracker = if use_dirty_tracker.unwrap_or(true) {
         Some(DirtyTreeTracker::new_in_subpath(
-            Clone::clone(&local_tree),
+            Clone::clone(local_tree),
             subpath,
         ))
     } else {

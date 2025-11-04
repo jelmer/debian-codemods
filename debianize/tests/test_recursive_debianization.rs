@@ -236,9 +236,10 @@ fn test_recursive_debianization_with_discovery() {
 
     // Register custom upstream provider with ognibuild
     let finder_clone = Arc::clone(&upstream_finder);
-    register_upstream_provider(move |dep: &dyn Dependency| -> Option<UpstreamMetadata> {
+    register_upstream_provider(move |_dep: &dyn Dependency| -> Option<UpstreamMetadata> {
         // Get the dependency name - dependencies don't have a generic name() method
         // We need to check the specific type
+        // TODO: Actually extract the dependency name from the dep parameter
         let dep_name = "unknown".to_string();
 
         // Normalize the name (remove python3- prefix if present)
@@ -325,42 +326,14 @@ fn test_recursive_debianization_with_discovery() {
     for dep_name in &missing_deps {
         println!("\n=== Verifying dependency was packaged: {} ===", dep_name);
 
-        // Check that the dependency repository was created by the fixer
-        let vcs_path = temp_dir.path().join("vcs").join(dep_name);
-
-        // Note: In a real test with the fixer working, this would be created
+        // Note: In a real test with the fixer working, vcs_path would be created
         // For now, just track the deps
         packaged_deps.push(dep_name.to_string());
     }
 
     println!("\n=== Now packaging main package with all dependencies available ===");
 
-    // Set up preferences for the main package
-    let main_preferences = DebianizePreferences {
-        use_inotify: Some(false),
-        diligence: 0,
-        trust: true,
-        check: false,
-        net_access: false,
-        force_subprocess: false,
-        force_new_directory: false,
-        compat_release: Some("bookworm".to_string()),
-        minimum_certainty: debian_analyzer::Certainty::Confident,
-        consult_external_directory: false,
-        verbose: true,
-        session: SessionPreferences::Plain,
-        create_dist: None,
-        committer: Some("Test Packager <test@example.com>".to_string()),
-        upstream_version_kind: breezyshim::debian::VersionKind::Auto,
-        debian_revision: "1".to_string(),
-        team: None,
-        author: Some("Test Maintainer <maintainer@example.com>".to_string()),
-        compat_level: None,
-        check_wnpp: false,
-        run_fixers: false,
-    };
-
-    // Set up preferences for debianization (only need one set)
+    // Set up preferences for debianization
     let main_preferences = DebianizePreferences {
         use_inotify: Some(false),
         diligence: 0,
@@ -610,8 +583,6 @@ fn test_transitive_dependency_resolution() {
     breezyshim::init();
 
     // Test that A -> B -> C dependency chain is resolved correctly
-    let temp_dir = TempDir::new().unwrap();
-
     // Track the dependency resolution order
     let mut resolution_order = Vec::new();
 

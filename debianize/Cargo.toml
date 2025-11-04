@@ -19,7 +19,7 @@ distro-info = "0.4.0"
 env_logger = "0.11"
 log = "0.4"
 pyo3 = { workspace = true }
-xdg = "2.5.2"
+xdg = "3.0.0"
 debversion = ">=0.4.0"
 url = "2"
 ognibuild = { version = "0.2", features = ["upstream", "debian"] }

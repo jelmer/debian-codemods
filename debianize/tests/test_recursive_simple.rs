@@ -104,7 +104,7 @@ fn test_debianize_fixer_can_identify_missing_packages() {
     struct TestProblem;
 
     impl buildlog_consultant::Problem for TestProblem {
-        fn kind(&self) -> std::borrow::Cow<str> {
+        fn kind(&self) -> std::borrow::Cow<'_, str> {
             "test-problem".into()
         }
 

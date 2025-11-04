@@ -54,7 +54,7 @@ impl<'a> ProcessorContext<'a> {
         Ok(())
     }
 
-    fn create_control_file(&self) -> Result<TreeEditor<Control>, Error> {
+    fn create_control_file(&self) -> Result<TreeEditor<'_, Control>, Error> {
         Ok(TreeEditor::<Control>::new(
             self.wt,
             &self.debian_path.join("control"),
@@ -93,7 +93,7 @@ impl<'a> ProcessorContext<'a> {
         for dep in test_deps {
             let rs: Relations = dep.into();
             for rel in rs.entries() {
-                ensure_relation(&mut test_ret, rel.into());
+                ensure_relation(&mut test_ret, rel);
             }
         }
         (build_ret, test_ret)
@@ -589,12 +589,7 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
     // For snapshot versions, try to extract the actual version from Cargo.toml
     let version_to_use = if base_version == "0" || base_version.contains("git") {
         // Try to get version from Cargo.toml metadata
-        if let Some(version) = context.metadata.version() {
-            version
-        } else {
-            // Fall back to a default version for snapshots
-            "0.0.0"
-        }
+        context.metadata.version().unwrap_or("0.0.0")
     } else {
         base_version
     };
