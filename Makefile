@@ -47,7 +47,7 @@ update-spdx:
 update-renamed-tags:
 	$(MAKE) -C lintian-brush update-renamed-tags
 
-update: update-spdx update-readme update-renamed-tags 
+update: update-spdx update-readme update-renamed-tags update-deps
 
 next:
 	$(MAKE) -C lintian-brush next
@@ -62,3 +62,7 @@ docker:
 	buildah build -t ghcr.io/jelmer/debianize:latest Dockerfile.debianize .
 	buildah push ghcr.io/jelmer/debianize:latest
 
+update-deps:
+	brz diff debian/control || { echo "Pending changes to debian/control"; exit 1; }
+	update-rust-deps --drop-unreferenced --exclude-local-crates
+	brz diff debian/control || brz commit -m "Update Rust dependencies" debian/control
