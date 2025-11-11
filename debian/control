@@ -63,7 +63,6 @@ Build-Depends: bash-completion,
                librust-debversion-0.5+serde-dev,
                librust-debversion-0.5+sqlx-dev,
                librust-distro-info-0.4+default-dev,
-               librust-env-logger+default-dev (>= 0.11-~~),
                librust-env-logger-0.11+default-dev,
                librust-flate2-1+default-dev,
                librust-http-body-util-0.1+default-dev,
@@ -104,7 +103,6 @@ Build-Depends: bash-completion,
                librust-tokio-1+net-dev,
                librust-tokio-1+rt-dev,
                librust-tokio-1+signal-dev,
-               librust-upstream-ontologist+default-dev (>= 0.1.0-~~),
                librust-url-2+default-dev,
                librust-url-2+serde-dev,
                librust-wait-timeout-0.2+default-dev,
@@ -115,7 +113,9 @@ Build-Depends: bash-completion,
                librust-indicatif+default-dev (>= 0.17-~~),
                librust-lazy-regex-3+default-dev,
                librust-debian-control-0.2+default-dev,
-               librust-toml-edit-0.22+default-dev
+               librust-toml-edit-0.22+default-dev,
+               librust-pyo3-log+default-dev (<< 0.14-~~),
+               librust-upstream-ontologist-0.3+default-dev
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
