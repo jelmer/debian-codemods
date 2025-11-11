@@ -22,3 +22,6 @@ override_dh_auto_build:
 
 override_dh_auto_test:
 	make testsuite
+
+update-deps:
+	update-rust-deps --drop-unreferenced --exclude-local-crate
