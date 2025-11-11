@@ -19,7 +19,7 @@ distro-info = "0.4.0"
 env_logger = "0.11"
 log = "0.4"
 pyo3 = { workspace = true }
-xdg = "3.0.0"
+xdg = "2"
 debversion = ">=0.4.0"
 url = "2"
 ognibuild = { version = "0.2", features = ["upstream", "debian"] }
@@ -31,7 +31,7 @@ tokio = { version = "1", features = ["full", "rt", "signal", "net", "macros"] }
 tempfile = "3"
 upstream-ontologist = ">=0.1.0"
 buildlog-consultant = ">=0.1.0"
-lazy-regex = ">=2"
+lazy-regex.workspace = true
 lintian-brush = { path = "../lintian-brush", version = ">=0.155.0", default-features = false, features = ["python"] }
 debian-control = ">=0.1.0"
 lazy_static = "1"

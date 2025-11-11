@@ -39,7 +39,7 @@ pub mod simple_apt_repo;
 pub mod vcs;
 
 pub fn default_debianize_cache_dir() -> std::io::Result<std::path::PathBuf> {
-    xdg::BaseDirectories::with_prefix("debianize").create_cache_directory("")
+    xdg::BaseDirectories::with_prefix("debianize")?.create_cache_directory("")
 }
 
 /// Default implementation for creating distribution tarballs
@@ -449,8 +449,7 @@ pub fn create_kickstart_from_dist<'a>(
         let files_excluded_refs: Option<Vec<&std::path::Path>> = files_excluded
             .as_ref()
             .map(|paths| paths.iter().map(|p| p.as_path()).collect());
-        let files_excluded_slice: Option<&[&std::path::Path]> =
-            files_excluded_refs.as_deref();
+        let files_excluded_slice: Option<&[&std::path::Path]> = files_excluded_refs.as_deref();
 
         // Import upstream with pristine-tar support
         let (upstream_dist_revid, _upstream_branch_name, _tag_names) =
@@ -1170,64 +1169,22 @@ impl SessionPreferences {
                 #[cfg(target_os = "linux")]
                 {
                     if path.as_os_str().is_empty() {
-                        // Use cached tarball if available
-                        let cache_dir = std::env::var("XDG_CACHE_HOME")
-                            .map(PathBuf::from)
-                            .unwrap_or_else(|_| {
-                                std::env::var("HOME")
-                                    .map(|h| PathBuf::from(h).join(".cache"))
-                                    .unwrap_or_else(|_| PathBuf::from("/tmp"))
-                            });
-                        let cached_tarball = cache_dir.join("ognibuild").join("unshare-sid.tar");
-
-                        // Check if cached tarball exists and is recent (less than 7 days old)
-                        let use_cache = if cached_tarball.exists() {
-                            std::fs::metadata(&cached_tarball)
-                                .and_then(|m| m.modified())
-                                .map(|modified| {
-                                    let age = std::time::SystemTime::now()
-                                        .duration_since(modified)
-                                        .unwrap_or(std::time::Duration::MAX);
-                                    age.as_secs() < 7 * 24 * 3600 // 7 days
-                                })
-                                .unwrap_or(false)
-                        } else {
-                            false
-                        };
-
-                        if use_cache {
-                            log::info!("Using cached unshare tarball: {:?}", cached_tarball);
-                            ognibuild::session::unshare::UnshareSession::from_tarball(
-                                &cached_tarball,
-                            )
-                            .map(Box::new)
-                            .map(|b| b as Box<dyn ognibuild::session::Session>)
-                            .map_err(|e| {
-                                Error::Other(format!(
-                                    "Failed to create unshare session from cache: {}",
-                                    e
-                                ))
-                            })
-                        } else {
-                            log::info!(
-                                "Bootstrapping new unshare session (this may take a while)..."
-                            );
-                            // Ensure cache directory exists
-                            if let Some(parent) = cached_tarball.parent() {
-                                std::fs::create_dir_all(parent).ok();
-                            }
-
-                            // Bootstrap and save to cache
-                            ognibuild::session::unshare::UnshareSession::bootstrap().map(|session| session)
-                                .map(Box::new)
-                                .map(|b| b as Box<dyn ognibuild::session::Session>)
-                                .map_err(|e| {
-                                    Error::Other(format!(
-                                        "Failed to bootstrap unshare session: {}",
-                                        e
-                                    ))
-                                })
-                        }
+                        // Use ognibuild's cached Debian session API
+                        // This will use ~/.cache/ognibuild/images/debian-sid-{arch}.tar.gz
+                        log::info!("Creating unshare session from cached Debian sid image");
+                        ognibuild::session::unshare::UnshareSession::cached_debian_session(
+                            "sid",
+                            false, // Don't download if not cached
+                        )
+                        .map(Box::new)
+                        .map(|b| b as Box<dyn ognibuild::session::Session>)
+                        .map_err(|e| {
+                            Error::Other(format!(
+                                "Failed to create unshare session from cached image: {}. \
+                                 Ensure the image is cached at ~/.cache/ognibuild/images/debian-sid-*.tar.gz",
+                                e
+                            ))
+                        })
                     } else {
                         // Use specific tarball path
                         ognibuild::session::unshare::UnshareSession::from_tarball(path)

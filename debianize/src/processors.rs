@@ -639,29 +639,31 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
         }
     }
     let mut control = debian_analyzer::debcargo::DebcargoEditor::new();
-    control.cargo = Some(toml_edit::DocumentMut::new());
-    control.cargo.as_mut().unwrap()["package"]["name"] = toml_edit::value(cratename);
+    control.cargo = Some(debian_analyzer::debcargo::toml_edit::DocumentMut::new());
+    control.cargo.as_mut().unwrap()["package"]["name"] =
+        debian_analyzer::debcargo::toml_edit::value(cratename);
     if let Some(crate_version) = crate_version {
         control.cargo.as_mut().unwrap()["package"]["version"] =
-            toml_edit::value(crate_version.to_string());
+            debian_analyzer::debcargo::toml_edit::value(crate_version.to_string());
     }
     if let Some(features) = features {
         let features_section = control.cargo.as_mut().unwrap()["features"]
             .as_table_mut()
             .unwrap();
         for (feature, reqs) in features.iter() {
-            features_section[feature] = toml_edit::value(toml_edit::Array::new());
+            features_section[feature] = debian_analyzer::debcargo::toml_edit::value(
+                debian_analyzer::debcargo::toml_edit::Array::new(),
+            );
 
             for req in reqs.iter() {
-                features_section[feature]
-                    .as_array_mut()
-                    .unwrap()
-                    .push(toml_edit::Value::from(req.to_string()));
+                features_section[feature].as_array_mut().unwrap().push(
+                    debian_analyzer::debcargo::toml_edit::Value::from(req.to_string()),
+                );
             }
         }
     }
-    control.debcargo["semver_suffix"] = toml_edit::value(semver_suffix);
-    control.debcargo["overlay"] = toml_edit::value(".");
+    control.debcargo["semver_suffix"] = debian_analyzer::debcargo::toml_edit::value(semver_suffix);
+    control.debcargo["overlay"] = debian_analyzer::debcargo::toml_edit::value(".");
     control.commit()?;
     Ok(())
 }

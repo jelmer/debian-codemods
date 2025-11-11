@@ -70,7 +70,7 @@ def hello():
 
     // Workaround for ognibuild bug: create minimal pyproject.toml
     let pyproject_content = r#"[build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 "#;
     std::fs::write(repo_path.join("pyproject.toml"), pyproject_content).unwrap();

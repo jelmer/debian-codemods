@@ -16,7 +16,7 @@ env_logger = { workspace = true, optional = true }
 lazy-regex.workspace = true
 lazy_static.workspace = true
 log.workspace = true
-regex = "1.10.6"
+regex.workspace = true
 svp-client.workspace = true
 
 [features]
