@@ -13,8 +13,10 @@
         "Bootloader-exception",
         "CGAL-linking-exception",
         "Classpath-exception-2.0",
+        "Classpath-exception-2.0-short",
         "CLISP-exception-2.0",
         "cryptsetup-OpenSSL-exception",
+        "Digia-Qt-LGPL-exception-1.1",
         "DigiRule-FOSS-exception",
         "eCos-exception-2.0",
         "erlang-otp-linking-exception",
@@ -42,6 +44,7 @@
         "i2p-gpl-java-exception",
         "Independent-modules-exception",
         "KiCad-libraries-exception",
+        "kvirc-openssl-exception",
         "LGPL-3.0-linking-exception",
         "libpri-OpenH323-exception",
         "Libtool-exception",
@@ -188,6 +191,9 @@
         "Adobe-Utopia": {
             "name": "Adobe Utopia Font License"
         },
+        "Advanced-Cryptics-Dictionary": {
+            "name": "Advanced Cryptics Dictionary License"
+        },
         "Afmparse": {
             "name": "Afmparse License"
         },
@@ -221,6 +227,12 @@
         "Artistic-2.0": {
             "name": "Artistic License 2.0"
         },
+        "Artistic-dist": {
+            "name": "Artistic License 1.0 (dist)"
+        },
+        "Aspell-RU": {
+            "name": "Aspell Russian License"
+        },
         "BSD-1-Clause": {
             "name": "BSD 1-Clause License"
         },
@@ -244,6 +256,9 @@
         },
         "BSD-2-Clause-first-lines": {
             "name": "BSD 2-Clause - first lines requirement"
+        },
+        "BSD-2-Clause-pkgconf-disclaimer": {
+            "name": "BSD 2-Clause pkgconf disclaimer variant"
         },
         "BSD-3-Clause": {
             "name": "BSD 3-Clause \"New\" or \"Revised\" License"
@@ -281,6 +296,9 @@
         "BSD-3-Clause-Sun": {
             "name": "BSD 3-Clause Sun Microsystems"
         },
+        "BSD-3-Clause-Tso": {
+            "name": "BSD 3-Clause Tso variant"
+        },
         "BSD-3-Clause-acpica": {
             "name": "BSD 3-Clause acpica variant"
         },
@@ -310,6 +328,9 @@
         },
         "BSD-Inferno-Nettverk": {
             "name": "BSD-Inferno-Nettverk"
+        },
+        "BSD-Mark-Modifications": {
+            "name": "BSD Mark Modifications License"
         },
         "BSD-Protection": {
             "name": "BSD Protection License"
@@ -734,6 +755,15 @@
         "EPL-2.0": {
             "name": "Eclipse Public License 2.0"
         },
+        "ESA-PL-permissive-2.4": {
+            "name": "European Space Agency Public License \u2013 v2.4 \u2013 Permissive (Type 3)"
+        },
+        "ESA-PL-strong-copyleft-2.4": {
+            "name": "European Space Agency Public License (ESA-PL) - V2.4 - Strong Copyleft (Type 1)"
+        },
+        "ESA-PL-weak-copyleft-2.4": {
+            "name": "European Space Agency Public License \u2013 v2.4 \u2013 Weak Copyleft (Type 2)"
+        },
         "EUDatagrid": {
             "name": "EU DataGrid Software License"
         },
@@ -775,6 +805,9 @@
         },
         "FSFULLR": {
             "name": "FSF Unlimited License (with License Retention)"
+        },
+        "FSFULLRSD": {
+            "name": "FSF Unlimited License (with License Retention and Short Disclaimer)"
         },
         "FSFULLRWD": {
             "name": "FSF Unlimited License (With License Retention and Warranty Disclaimer)"
@@ -956,6 +989,9 @@
         "Gutmann": {
             "name": "Gutmann License"
         },
+        "HDF5": {
+            "name": "HDF5 License"
+        },
         "HIDAPI": {
             "name": "HIDAPI License"
         },
@@ -994,6 +1030,9 @@
         },
         "HPND-Pbmplus": {
             "name": "Historical Permission Notice and Disclaimer - Pbmplus variant"
+        },
+        "HPND-SMC": {
+            "name": "Historical Permission Notice and Disclaimer - SMC variant"
         },
         "HPND-UC": {
             "name": "Historical Permission Notice and Disclaimer - University of California variant"
@@ -1379,6 +1418,9 @@
         "NIST-PD": {
             "name": "NIST Public Domain Notice"
         },
+        "NIST-PD-TNT": {
+            "name": "NIST    Public Domain Notice TNT variant"
+        },
         "NIST-PD-fallback": {
             "name": "NIST Public Domain Notice with license fallback"
         },
@@ -1408,6 +1450,9 @@
         },
         "NRL": {
             "name": "NRL License"
+        },
+        "NTIA-PD": {
+            "name": "NTIA Public Domain Notice"
         },
         "NTP": {
             "name": "NTP License"
@@ -1577,6 +1622,9 @@
         "OSL-3.0": {
             "name": "Open Software License 3.0"
         },
+        "OSSP": {
+            "name": "OSSP License"
+        },
         "OpenPBS-2.3": {
             "name": "OpenPBS v2.3 Software License"
         },
@@ -1691,6 +1739,9 @@
         "SGI-OpenGL": {
             "name": "SGI OpenGL License"
         },
+        "SGMLUG-PM": {
+            "name": "SGMLUG Parser Materials License"
+        },
         "SGP4": {
             "name": "SGP4 Permission Notice"
         },
@@ -1721,6 +1772,9 @@
         "SNIA": {
             "name": "SNIA Public License 1.1"
         },
+        "SOFA": {
+            "name": "SOFA Software License"
+        },
         "SPL-1.0": {
             "name": "Sun Public License v1.0"
         },
@@ -1735,6 +1789,9 @@
         },
         "SSPL-1.0": {
             "name": "Server Side Public License, v 1"
+        },
+        "SUL-1.0": {
+            "name": "Sustainable Use License v1.0"
         },
         "SWL": {
             "name": "Scheme Widget Library (SWL) Software License Agreement"
@@ -1874,6 +1931,12 @@
         "Unlicense": {
             "name": "The Unlicense"
         },
+        "Unlicense-libtelnet": {
+            "name": "Unlicense - libtelnet variant"
+        },
+        "Unlicense-libwhirlpool": {
+            "name": "Unlicense - libwhirlpool variant"
+        },
         "VOSTROM": {
             "name": "VOSTROM Public License for Open Source"
         },
@@ -1892,6 +1955,9 @@
         "W3C-20150513": {
             "name": "W3C Software Notice and Document License (2015-05-13)"
         },
+        "WTFNMFPL": {
+            "name": "Do What The F*ck You Want To But It's Not My Fault Public License"
+        },
         "WTFPL": {
             "name": "Do What The F*ck You Want To Public License"
         },
@@ -1900,6 +1966,9 @@
         },
         "Widget-Workshop": {
             "name": "Widget Workshop License"
+        },
+        "WordNet": {
+            "name": "WordNet License"
         },
         "Wsuipa": {
             "name": "Wsuipa License"
@@ -2036,8 +2105,17 @@
         "hdparm": {
             "name": "hdparm License"
         },
+        "hyphen-bulgarian": {
+            "name": "hyphen-bulgarian License"
+        },
         "iMatix": {
             "name": "iMatix Standard Function Library Agreement"
+        },
+        "jove": {
+            "name": "Jove License"
+        },
+        "libpng-1.6.35": {
+            "name": "PNG Reference Library License v1 (for libpng 0.5 through 1.6.35)"
         },
         "libpng-2.0": {
             "name": "PNG Reference Library version 2"
@@ -2074,6 +2152,9 @@
         },
         "mplus": {
             "name": "mplus Font License"
+        },
+        "ngrep": {
+            "name": "ngrep License"
         },
         "pkgconf": {
             "name": "pkgconf License"
