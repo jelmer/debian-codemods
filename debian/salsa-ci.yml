@@ -4,6 +4,7 @@ include:
 
 variables:
   SALSA_CI_DISABLE_BLHC: 1
+  RELEASE: 'experimental'
 
 stages:
   - provisioning
