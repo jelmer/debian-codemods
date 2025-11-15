@@ -28,6 +28,7 @@ from ruamel.yaml import YAML
 class MultiYamlUpdater:
     def __init__(self, path: str, remove_empty: bool = False):
         self.yaml = YAML()
+        self.yaml.width = 4096
         self.path = path
         self.remove_empty = remove_empty
         self._preamble: List[str] = []
@@ -99,6 +100,7 @@ class YamlUpdater:
         allow_duplicate_keys: bool = False,
     ):
         self.yaml = YAML()
+        self.yaml.width = 4096
         self.yaml.allow_duplicate_keys = allow_duplicate_keys
         self.path = path
         self._dirpath = os.path.dirname(path)

@@ -1,5 +1,5 @@
 Source: blah
-Build-Depends: python3-dulwich, debhelper-compat (= 12)
+Build-Depends: debhelper-compat (= 12), python3-dulwich
 
 Package: blah
 Description: blah
