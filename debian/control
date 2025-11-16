@@ -123,6 +123,24 @@ Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
 Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush
 Homepage: https://salsa.debian.org/jelmer/lintian-brush
 
+Package: debian-codemods
+Section: devel
+Priority: optional
+Architecture: any
+Depends: ${misc:Depends},
+		 ${shlibs:Depends}
+Description: collection of codemods for Debian packaging
+ This package contains a collection of codemods that can be used to
+ automatically update Debian source packages to follow best practices
+ and new policies.
+ .
+ The following codemods are included:
+ .
+  * apply-multiarch-hints: applies multiarch hints to debian/control
+  * deb-scrub-obsolete: removes obsolete dependencies and maintscript snippets
+  * deb-vcs-publish: adds VCS metadata to debian/control
+  * fix-watch-file: updates the debian/watch file to use the latest format
+
 Package: lintian-brush
 Architecture: any
 Depends: devscripts,

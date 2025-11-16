@@ -7,6 +7,8 @@ debian-codemods (0.163) UNRELEASED; urgency=medium
   * Don't crash when a fixer is killed by a signal.
   * Rename source package to debian-codemods to reflect the existence
     of codemods other than lintian-brush.
+  * Split out a debian-codemods binary package that contains
+    non-lintian-brush codemods.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 03 Jun 2025 22:37:02 +0100
 

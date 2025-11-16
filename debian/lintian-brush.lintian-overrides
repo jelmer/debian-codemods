@@ -1,7 +1,5 @@
 lintian-brush: binary-package-depends-on-toolchain-package Recommends: debhelper (>= 13.5)
-lintian-brush: no-manual-page [usr/bin/deb-transition-apply]
 # Rust binaries statically link libyaml, which is expected behavior
-lintian-brush: embedded-library libyaml [usr/bin/apply-multiarch-hints]
 lintian-brush: embedded-library libyaml [usr/bin/debianize]
-lintian-brush: embedded-library libyaml [usr/bin/dump-multiarch-hints]
+# Rust binaries statically link libyaml, which is expected behavior
 lintian-brush: embedded-library libyaml [usr/bin/lintian-brush]
