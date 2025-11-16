@@ -1,3 +1,3 @@
-lintian-brush: no-manual-page [usr/bin/deb-transition-apply]
-lintian-brush: embedded-library libyaml [usr/bin/apply-multiarch-hints]
-lintian-brush: embedded-library libyaml [usr/bin/dump-multiarch-hints]
+debian-codemods: no-manual-page [usr/bin/deb-transition-apply]
+debian-codemods: embedded-library libyaml [usr/bin/apply-multiarch-hints]
+debian-codemods: embedded-library libyaml [usr/bin/dump-multiarch-hints]
