@@ -8,7 +8,7 @@ Copyright:
  2018-2019 Jelmer Vernooĳ <jelmer@debian.org>
 License: GPL-2+
 
-Files: lintian_brush/systemd.py
+Files: py/lintian_brush/systemd.py
 Copyright: 2001, 2002, 2003 Python Software Foundation
            2004-2008 Paramjit Oberoi <param.cs.wisc.edu>
            2007 Tim Lauridsen <tla@rasmil.dk>
@@ -47,7 +47,7 @@ License: GPL-2+
  .
  You should have received a copy of the GNU General Public License
  along with this program; if not, write to the Free Software
- Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  .
  On Debian systems, the full text of the GNU General Public License is available
  in /usr/share/common-licenses/GPL-2.

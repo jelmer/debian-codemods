@@ -1,1 +1,1 @@
-lintian-brush source: autotools-pkg-config-macro-not-cross-compilation-safe * [lintian-brush/tests/autotools-pkg-config-macro-not-cross-compilation-safe/complex/in/configure.ac:11]
+debian-codemods source: autotools-pkg-config-macro-not-cross-compilation-safe * [lintian-brush/tests/autotools-pkg-config-macro-not-cross-compilation-safe/complex/in/configure.ac:11]
