@@ -4,7 +4,8 @@ include:
 
 variables:
   SALSA_CI_DISABLE_BLHC: 1
-  RELEASE: 'experimental'
+  # Build for experimental distribution
+  # RELEASE: 'experimental'
 
 stages:
   - provisioning
