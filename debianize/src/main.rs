@@ -585,17 +585,25 @@ fn main() -> Result<(), i32> {
         #[cfg(not(target_os = "linux"))]
         let session = std::rc::Rc::new(ognibuild::session::plain::PlainSession::new());
 
-        let mut tempdir = None;
+        let mut _tempdir = None;
 
         let output_directory = if args.discard_output {
-            tempdir = Some(tempfile::tempdir().unwrap());
-            tempdir.as_ref().unwrap().path().to_path_buf()
+            _tempdir = Some(tempfile::tempdir().unwrap());
+            _tempdir.as_ref().unwrap().path().to_path_buf()
         } else if let Some(output_directory) = args.output_directory {
             output_directory
         } else {
-            let output_directory = debianize::default_debianize_cache_dir().unwrap();
-            log::info!("Building dependencies in {}", output_directory.display());
-            output_directory
+            match debianize::default_debianize_cache_dir() {
+                Ok(dir) => {
+                    log::info!("Building dependencies in {}", dir.display());
+                    dir
+                }
+                Err(e) => {
+                    log::warn!("Failed to access XDG cache directory: {}. Using temporary directory instead.", e);
+                    _tempdir = Some(tempfile::tempdir().unwrap());
+                    _tempdir.as_ref().unwrap().path().to_path_buf()
+                }
+            }
         };
 
         let committer = preferences
