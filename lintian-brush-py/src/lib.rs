@@ -32,7 +32,7 @@ fn canonicalize_vcs_browser_url(url: &str) -> String {
 #[pyfunction]
 #[pyo3(signature = (tree, subpath=None))]
 fn tree_patches_directory(
-    tree: PyObject,
+    tree: Py<PyAny>,
     subpath: Option<std::path::PathBuf>,
 ) -> std::path::PathBuf {
     let tree = breezyshim::tree::RevisionTree(tree);
@@ -41,7 +41,7 @@ fn tree_patches_directory(
 
 #[pyfunction]
 fn find_patches_directory(
-    tree: PyObject,
+    tree: Py<PyAny>,
     subpath: std::path::PathBuf,
 ) -> Option<std::path::PathBuf> {
     let tree = breezyshim::tree::RevisionTree(tree);
@@ -51,7 +51,7 @@ fn find_patches_directory(
 #[pyfunction]
 #[pyo3(signature = (tree, patches_directory=None))]
 fn tree_has_non_patches_changes(
-    tree: PyObject,
+    tree: Py<PyAny>,
     patches_directory: Option<std::path::PathBuf>,
 ) -> PyResult<bool> {
     let tree = breezyshim::workingtree::GenericWorkingTree(tree);
