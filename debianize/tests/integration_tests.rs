@@ -1,15 +1,19 @@
 /// Integration tests for debianization
 mod common;
 
+use breezyshim::testing::TestEnv;
 use breezyshim::workingtree::WorkingTree;
 use common::*;
 use debianize::debianize;
+use serial_test::serial;
 use std::path::Path;
 use tempfile::TempDir;
 use upstream_ontologist::UpstreamMetadata;
 
 #[test]
+#[serial]
 fn test_debianize_simple_python_package() {
+    let test_env = TestEnv::new();
     let temp_dir = TempDir::new().unwrap();
     let (repo_path, wt) = create_test_python_repo(&temp_dir, "hello-world");
 
@@ -60,10 +64,14 @@ Depends: ${python3:Depends}
     let format_path = repo_path.join("debian/source/format");
     let format_content = std::fs::read_to_string(&format_path).unwrap();
     assert_eq!(format_content, "3.0 (quilt)\n");
+
+    std::mem::drop(test_env);
 }
 
 #[test]
+#[serial]
 fn test_debianize_with_custom_maintainer() {
+    let test_env = TestEnv::new();
     let temp_dir = TempDir::new().unwrap();
     let (repo_path, wt) = create_test_python_repo(&temp_dir, "test-pkg");
 
@@ -89,4 +97,5 @@ fn test_debianize_with_custom_maintainer() {
     // Verify custom maintainer in control file
     let control_content = read_cleaned_control(&repo_path);
     assert!(control_content.contains("Maintainer: John Doe <john@example.com>"));
+    std::mem::drop(test_env);
 }
