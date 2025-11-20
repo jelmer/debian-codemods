@@ -13,7 +13,15 @@ use upstream_ontologist::UpstreamMetadata;
 #[test]
 #[serial]
 fn test_debianize_simple_python_package() {
+    let image_cached = match DebianImageCached::new() {
+        Ok(cached) => cached,
+        Err(e) => {
+            eprintln!("Failed to cache Debian image: {:?}", e);
+            return;
+        }
+    };
     let test_env = TestEnv::new();
+
     let temp_dir = TempDir::new().unwrap();
     let (repo_path, wt) = create_test_python_repo(&temp_dir, "hello-world");
 
@@ -65,12 +73,20 @@ Depends: ${python3:Depends}
     let format_content = std::fs::read_to_string(&format_path).unwrap();
     assert_eq!(format_content, "3.0 (quilt)\n");
 
+    std::mem::drop(image_cached);
     std::mem::drop(test_env);
 }
 
 #[test]
 #[serial]
 fn test_debianize_with_custom_maintainer() {
+    let image_cached = match DebianImageCached::new() {
+        Ok(cached) => cached,
+        Err(e) => {
+            eprintln!("Failed to cache Debian image: {:?}", e);
+            return;
+        }
+    };
     let test_env = TestEnv::new();
     let temp_dir = TempDir::new().unwrap();
     let (repo_path, wt) = create_test_python_repo(&temp_dir, "test-pkg");
@@ -98,4 +114,5 @@ fn test_debianize_with_custom_maintainer() {
     let control_content = read_cleaned_control(&repo_path);
     assert!(control_content.contains("Maintainer: John Doe <john@example.com>"));
     std::mem::drop(test_env);
+    std::mem::drop(image_cached);
 }

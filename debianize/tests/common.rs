@@ -174,3 +174,44 @@ pub fn create_test_python_repo(
     let wt = init_working_tree(&repo_path);
     (repo_path, wt)
 }
+
+pub(crate) struct DebianImageCached {
+    old_env: Option<String>,
+}
+
+impl DebianImageCached {
+    pub(crate) fn new() -> Result<Self, ognibuild::session::Error> {
+        if let Ok(tarball_path) = std::env::var("OGNIBUILD_DEBIAN_TEST_TARBALL") {
+            Ok(DebianImageCached {
+                old_env: Some(tarball_path),
+            })
+        } else if let Ok(tarball_path) =
+            ognibuild::session::unshare::cached_debian_tarball_path("sid")
+        {
+            if tarball_path.exists() {
+                let old_env = std::env::var("OGNIBUILD_DEBIAN_TEST_TARBALL").ok();
+                std::env::set_var("OGNIBUILD_DEBIAN_TEST_TARBALL", &tarball_path);
+                Ok(DebianImageCached { old_env })
+            } else {
+                eprintln!("Cached Debian tarball does not exist at {:?}", tarball_path);
+                Err(ognibuild::session::Error::ImageError(
+                    ognibuild::session::ImageError::NoCachedImage,
+                ))
+            }
+        } else {
+            Err(ognibuild::session::Error::ImageError(
+                ognibuild::session::ImageError::NoCachedImage,
+            ))
+        }
+    }
+}
+
+impl Drop for DebianImageCached {
+    fn drop(&mut self) {
+        if let Some(old_env) = &self.old_env {
+            std::env::set_var("OGNIBUILD_DEBIAN_TEST_TARBALL", old_env);
+        } else {
+            std::env::remove_var("OGNIBUILD_DEBIAN_TEST_TARBALL");
+        }
+    }
+}

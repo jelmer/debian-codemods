@@ -2918,9 +2918,9 @@ dependencies = [
 
 [[package]]
 name = "ognibuild"
-version = "0.2.1"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b972c10750b104d9028f9e8a749f16f243b0c451069aebad281c5943ec2150c"
+checksum = "0c5fc53d75a7b15c6cf317f64bc24ef08c3923095e3d1d134b5a5517b92e9a50"
 dependencies = [
  "apt-sources",
  "axum",

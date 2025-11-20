@@ -10,7 +10,16 @@ use tempfile::TempDir;
 use upstream_ontologist::UpstreamMetadata;
 
 #[test]
+#[serial_test::serial]
 fn test_basic_debianization() {
+    let image_cached = match DebianImageCached::new() {
+        Ok(cached) => cached,
+        Err(e) => {
+            eprintln!("Failed to cache Debian image: {:?}", e);
+            return;
+        }
+    };
+    let testenv = breezyshim::testing::TestEnv::new();
     let temp_dir = TempDir::new().unwrap();
     let (repo_path, wt) = create_test_python_repo(&temp_dir, "main-package");
 
@@ -41,6 +50,7 @@ fn test_basic_debianization() {
     let control_content = read_cleaned_control(&repo_path);
     assert!(control_content.contains("Source: python-main-package"));
     assert!(control_content.contains("Package: python3-main-package"));
+    std::mem::drop(testenv);
 }
 
 #[test]

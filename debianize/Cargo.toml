@@ -22,7 +22,7 @@ pyo3 = { workspace = true }
 xdg = "2"
 debversion = ">=0.4.0"
 url = "2"
-ognibuild = { version = "0.2", features = ["upstream", "debian"] }
+ognibuild = { version = "0.2.4", features = ["upstream", "debian"] }
 hyper = { version = "1.5", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["tokio", "server", "server-auto"], default-features = false }
 http-body-util = "0.1"

@@ -1172,9 +1172,10 @@ impl SessionPreferences {
                         // Use ognibuild's cached Debian session API
                         // This will use ~/.cache/ognibuild/images/debian-sid-{arch}.tar.gz
                         log::info!("Creating unshare session from cached Debian sid image");
-                        ognibuild::session::unshare::UnshareSession::cached_debian_session(
+                        ognibuild::session::unshare::create_debian_session_for_testing(
                             "sid",
-                            false, // Don't download if not cached
+                            false // Whether to allow network access
+                                  // TODO: Make this configurable
                         )
                         .map(Box::new)
                         .map(|b| b as Box<dyn ognibuild::session::Session>)
