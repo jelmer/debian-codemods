@@ -3,6 +3,7 @@
 import sys
 
 from debian.changelog import get_maintainer
+
 from lintian_brush.fixer import (
     control,
     fixed_lintian_tag,

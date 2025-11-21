@@ -24,14 +24,13 @@ import subprocess
 from functools import cache
 from typing import Callable, Dict, List, Optional, Tuple
 
+from debian.changelog import Version
 from debmutate._rules import (
     dh_invoke_add_with,
     dh_invoke_drop_with,
     update_rules,
 )
 from debmutate.control import add_dependency, drop_dependency
-
-from debian.changelog import Version
 
 DEBHELPER_BUILD_STEPS = ["configure", "build", "test", "install", "clean"]
 

@@ -9,6 +9,7 @@ from debian.copyright import (
     License,
     LicenseParagraph,
 )
+
 from lintian_brush.fixer import (
     LintianIssue,
     meets_minimum_certainty,

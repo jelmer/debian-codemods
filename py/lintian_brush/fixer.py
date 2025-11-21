@@ -22,11 +22,10 @@ import sys
 from collections.abc import MutableMapping
 from typing import List, Optional, Tuple, Union
 
+from debian.changelog import Version
 from debmutate.control import ControlEditor
 from debmutate.deb822 import Deb822Paragraph
 from debmutate.vendor import get_vendor_name
-
-from debian.changelog import Version
 
 from . import (
     DEFAULT_MINIMUM_CERTAINTY,

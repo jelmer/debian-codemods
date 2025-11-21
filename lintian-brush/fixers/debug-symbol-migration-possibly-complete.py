@@ -5,9 +5,9 @@ import re
 import sys
 from contextlib import suppress
 
+from debian.deb822 import PkgRelation
 from debmutate._rules import RulesEditor, discard_pointless_override
 
-from debian.deb822 import PkgRelation
 from lintian_brush.fixer import (
     LintianIssue,
     compat_release,

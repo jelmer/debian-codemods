@@ -6,9 +6,9 @@ import textwrap
 from contextlib import suppress
 from typing import Dict
 
+from debian.copyright import License, NotMachineReadableError
 from debmutate.copyright import CopyrightEditor
 
-from debian.copyright import License, NotMachineReadableError
 from lintian_brush.fixer import (
     fixed_lintian_tag,
     report_result,

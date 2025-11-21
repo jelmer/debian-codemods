@@ -23,13 +23,12 @@ from contextlib import suppress
 from functools import partial
 from typing import Callable, Iterator, List, Optional, Tuple, Union
 
+from debian.changelog import Version
 from debmutate.lintian_overrides import (
     LintianOverride,
     LintianOverridesEditor,
     iter_overrides,
 )
-
-from debian.changelog import Version
 
 from . import open_binary
 

@@ -2,7 +2,6 @@
 
 import re
 import socket
-import sys
 from functools import partial
 
 from debmutate.changelog import ChangelogEditor

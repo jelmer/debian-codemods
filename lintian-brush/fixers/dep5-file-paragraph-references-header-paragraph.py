@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
-from debmutate.copyright import CopyrightEditor
-
 from debian.copyright import (
     LicenseParagraph,
     NotMachineReadableError,
 )
+from debmutate.copyright import CopyrightEditor
+
 from lintian_brush.fixer import fixed_lintian_tag, report_result
 
 

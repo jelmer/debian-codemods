@@ -8,26 +8,26 @@ variables:
   # RELEASE: 'experimental'
 
 stages:
+  - lint
   - provisioning
   - build
   - test
   - publish
-  - lint
 
 cargo-fmt:
   stage: lint
   image: rust:latest
   script:
+    - rustup component add rustfmt
     - cargo fmt --all -- --check
-  tags:
-    - rust
 
 ruff:
   stage: lint
   image: python:latest
   script:
     - pip install ruff
-    - ruff
+    - ruff check .
+    - ruff format --check .
   cache:
     paths:
       - ~/.cache/pip
