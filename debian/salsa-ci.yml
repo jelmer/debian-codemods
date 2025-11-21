@@ -27,7 +27,8 @@ ruff:
   image: python:latest
   script:
     - pip install ruff
-    - ruff
+    - ruff check .
+    - ruff format --check .
   cache:
     paths:
       - ~/.cache/pip
