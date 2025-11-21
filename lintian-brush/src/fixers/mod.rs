@@ -12,6 +12,7 @@ pub mod empty_debian_source_options;
 pub mod empty_debian_tests_control;
 pub mod executable_desktop_file;
 pub mod old_fsf_address_in_copyright_file;
+pub mod orphaned_package_should_not_have_uploaders;
 pub mod out_of_date_copyright_format_uri;
 pub mod package_uses_deprecated_source_override_location;
 pub mod priority_extra_is_replaced_by_priority_optional;
