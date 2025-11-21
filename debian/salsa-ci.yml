@@ -8,11 +8,11 @@ variables:
   # RELEASE: 'experimental'
 
 stages:
+  - lint
   - provisioning
   - build
   - test
   - publish
-  - lint
 
 cargo-fmt:
   stage: lint
