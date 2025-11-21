@@ -19,8 +19,6 @@ cargo-fmt:
   image: rust:latest
   script:
     - cargo fmt --all -- --check
-  tags:
-    - rust
 
 ruff:
   stage: lint
