@@ -190,9 +190,6 @@ fixers:
       - old-dpmt-vcs
       - old-papt-vcs
 
-  - script: python-teams-merged.py
-    lintian-tags:
-      - python-teams-merged
 
   - script: source-format.py
     lintian-tags:
