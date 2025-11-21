@@ -20,6 +20,7 @@
 from unittest import TestCase
 
 from debian.changelog import Version
+
 from lintian_brush.release_info import key_package_version
 
 

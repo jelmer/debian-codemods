@@ -3,9 +3,9 @@
 import re
 import sys
 
+from debian.changelog import Version
 from debmutate.changelog import ChangelogEditor, distribution_is_unreleased
 
-from debian.changelog import Version
 from lintian_brush.fixer import LintianIssue, report_result
 
 with ChangelogEditor() as editor:

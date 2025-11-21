@@ -23,10 +23,10 @@ import re
 from breezy.tests import (
     TestCase,
 )
-
 from debian.changelog import (
     Changelog,
 )
+
 from lintian_brush import (
     certainty_sufficient,
     certainty_to_confidence,

@@ -3,6 +3,7 @@
 import sys
 
 from debian.changelog import Version
+
 from lintian_brush.fixer import (
     LintianIssue,
     compat_release,
