@@ -527,10 +527,6 @@ fixers:
     lintian-tags:
       - silent-on-rules-requiring-root
 
-  - script: maintainer-script-empty.py
-    lintian-tags:
-      - maintainer-script-empty
-
   - script: pkg-perl-vcs.py
     lintian-tags:
       - team/pkg-perl/vcs/no-team-url

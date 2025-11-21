@@ -11,6 +11,7 @@ pub mod empty_debian_patches_series;
 pub mod empty_debian_source_options;
 pub mod empty_debian_tests_control;
 pub mod executable_desktop_file;
+pub mod maintainer_script_empty;
 pub mod old_fsf_address_in_copyright_file;
 pub mod orphaned_package_should_not_have_uploaders;
 pub mod out_of_date_copyright_format_uri;
