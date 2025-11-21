@@ -190,9 +190,6 @@ fixers:
       - old-dpmt-vcs
       - old-papt-vcs
 
-  - script: python-teams-merged.py
-    lintian-tags:
-      - python-teams-merged
 
   - script: source-format.py
     lintian-tags:
@@ -523,10 +520,6 @@ fixers:
   - script: rules-requires-root-missing.py
     lintian-tags:
       - silent-on-rules-requiring-root
-
-  - script: maintainer-script-empty.py
-    lintian-tags:
-      - maintainer-script-empty
 
   - script: pkg-perl-vcs.py
     lintian-tags:
