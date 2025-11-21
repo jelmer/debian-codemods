@@ -1,4 +1,4 @@
-debian-codemods (0.163) UNRELEASED; urgency=medium
+debian-codemods (0.163) experimental; urgency=medium
 
   * Add support for X-DH-Compat header. Closes: #1106883
   * Bump breezyshim to 0.5 and pyo03 to 0.25
