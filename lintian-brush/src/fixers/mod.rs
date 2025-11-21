@@ -17,5 +17,6 @@ pub mod priority_extra_is_replaced_by_priority_optional;
 pub mod public_upstream_keys_in_multiple_locations;
 pub mod quilt_series_without_trailing_newline;
 pub mod rules_not_executable;
+pub mod unversioned_copyright_format_uri;
 pub mod xc_package_type_in_debian_control;
 pub mod xs_testsuite_field_in_debian_control;

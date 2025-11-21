@@ -9,7 +9,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
+    let mut editor = TemplatedControlEditor::open(&control_path)?;
     let mut made_changes = false;
 
     // Check and replace XC-Package-Type in source paragraph
