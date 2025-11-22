@@ -487,10 +487,6 @@ fixers:
     lintian-tags:
       - debian-rules-uses-as-needed-linker-flag
 
-  - script: debian-rules-uses-special-shell-variable.py
-    lintian-tags:
-      - debian-rules-uses-special-shell-variable
-
   - script: debian-rules-parses-dpkg-parsechangelog.py
     lintian-tags:
       - debian-rules-parses-dpkg-parsechangelog

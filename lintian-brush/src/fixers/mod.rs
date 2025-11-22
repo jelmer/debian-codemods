@@ -7,6 +7,7 @@ pub mod debian_pycompat_is_obsolete;
 pub mod debian_pyversions_is_obsolete;
 pub mod debian_rules_not_executable;
 pub mod debian_rules_should_not_use_pwd;
+pub mod debian_rules_uses_special_shell_variable;
 pub mod debian_upstream_obsolete_path;
 pub mod desktop_entry_file_has_crs;
 pub mod dm_upload_allowed;
