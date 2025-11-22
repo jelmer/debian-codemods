@@ -37,6 +37,8 @@ humantime = "2.1.0"
 svp-client = { workspace = true }
 inventory = "0.3"
 regex = { workspace = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
+upstream-ontologist = { workspace = true }
 
 [dev-dependencies]
 fs_extra = "1.3.0"
