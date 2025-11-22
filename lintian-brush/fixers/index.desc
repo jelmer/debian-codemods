@@ -290,9 +290,6 @@ fixers:
     lintian-tags:
       - unnecessary-team-upload
 
-  - script: unnecessary-testsuite-autopkgtest-field.py
-    lintian-tags:
-      - unnecessary-testsuite-autopkgtest-field
 
   - script: upstream-metadata-invalid.py
     lintian-tags:
