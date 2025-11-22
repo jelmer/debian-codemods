@@ -175,9 +175,6 @@ fixers:
       - malformed-dm-upload-allowed
       - dm-upload-allowed-is-obsolete
 
-  - script: maintainer-also-in-uploaders.py
-    lintian-tags:
-      - maintainer-also-in-uploaders
 
   - script: vcs-field-for-maintainer.py
     lintian-tags:
