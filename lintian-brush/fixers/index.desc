@@ -445,9 +445,6 @@ fixers:
     lintian-tags:
       - debian-rules-contains-unnecessary-get-orig-source-target
 
-  - script: font-package-not-multi-arch-foreign.py
-    lintian-tags:
-      - font-package-not-multi-arch-foreign
 
 
   - script: no-priority-field.py
