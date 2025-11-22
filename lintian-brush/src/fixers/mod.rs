@@ -4,6 +4,7 @@ pub mod crlf_line_endings;
 pub mod debian_changelog_file_contains_obsolete_user_emacs_settings;
 pub mod debian_control_has_empty_field;
 pub mod debian_pycompat_is_obsolete;
+pub mod debian_pyversions_is_obsolete;
 pub mod debian_rules_not_executable;
 pub mod debian_rules_should_not_use_pwd;
 pub mod debian_upstream_obsolete_path;
