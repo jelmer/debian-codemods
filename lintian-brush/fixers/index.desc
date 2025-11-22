@@ -121,9 +121,6 @@ fixers:
     lintian-tags:
       - debian-pyversions-is-obsolete
 
-  - script: debian-rules-should-not-use-pwd.py
-    lintian-tags:
-      - debian-rules-calls-pwd
 
   - script: debian-source-options-has-custom-compression-settings.py
     lintian-tags:
