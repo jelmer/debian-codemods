@@ -400,9 +400,6 @@ fixers:
   - script: upstream-metadata-has-obsolete-field.py
 
 
-  - script: excessive-priority-for-library-package.py
-    lintian-tags:
-      - excessive-priority-for-library-package
 
   - script: debian-rules-sets-dpkg-architecture-variable.py
     lintian-tags:

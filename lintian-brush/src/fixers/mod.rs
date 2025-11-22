@@ -13,6 +13,7 @@ pub mod dm_upload_allowed;
 pub mod empty_debian_patches_series;
 pub mod empty_debian_source_options;
 pub mod empty_debian_tests_control;
+pub mod excessive_priority_for_library_package;
 pub mod executable_desktop_file;
 pub mod font_package_not_multi_arch_foreign;
 pub mod maintainer_also_in_uploaders;
