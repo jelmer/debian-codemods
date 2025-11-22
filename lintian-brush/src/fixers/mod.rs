@@ -15,6 +15,7 @@ pub mod executable_desktop_file;
 pub mod maintainer_script_empty;
 pub mod missing_vcs_browser_field;
 pub mod no_maintainer_field;
+pub mod obsolete_url_in_packaging;
 pub mod old_fsf_address_in_copyright_file;
 pub mod orphaned_package_should_not_have_uploaders;
 pub mod out_of_date_copyright_format_uri;

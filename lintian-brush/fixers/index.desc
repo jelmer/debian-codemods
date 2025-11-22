@@ -207,9 +207,6 @@ fixers:
       - missing-build-dependency-for-dh-addon
 
 
-  - script: obsolete-url-in-packaging.py
-    lintian-tags:
-      - obsolete-url-in-packaging
 
   - script: no-homepage-field.py
     lintian-tags:
