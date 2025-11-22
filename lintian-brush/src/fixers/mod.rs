@@ -18,6 +18,7 @@ pub mod executable_desktop_file;
 pub mod extended_description_contains_empty_paragraph;
 pub mod field_name_typo_in_control;
 pub mod font_package_not_multi_arch_foreign;
+pub mod homepage_in_binary_package;
 pub mod maintainer_also_in_uploaders;
 pub mod maintainer_script_empty;
 pub mod missing_vcs_browser_field;

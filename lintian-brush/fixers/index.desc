@@ -143,12 +143,6 @@ fixers:
     lintian-tags:
       - dh-clean-k-is-deprecated
 
-
-
-  - script: homepage-in-binary-package.py
-    lintian-tags:
-      - homepage-in-binary-package
-
   - script: homepage-field-uses-insecure-uri.py
     lintian-tags:
       - homepage-field-uses-insecure-uri
