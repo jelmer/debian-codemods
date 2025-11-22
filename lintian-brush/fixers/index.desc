@@ -502,10 +502,6 @@ fixers:
     lintian-tags:
       - unused-override
 
-  - script: upstream-metadata-in-native-source.py
-    lintian-tags:
-      - upstream-metadata-in-native-source
-
   - script: uses-deprecated-adttmp.py
     lintian-tags:
       - uses-deprecated-adttmp

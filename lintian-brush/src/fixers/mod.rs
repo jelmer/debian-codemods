@@ -24,5 +24,6 @@ pub mod python_teams_merged;
 pub mod quilt_series_without_trailing_newline;
 pub mod rules_not_executable;
 pub mod unversioned_copyright_format_uri;
+pub mod upstream_metadata_in_native_source;
 pub mod xc_package_type_in_debian_control;
 pub mod xs_testsuite_field_in_debian_control;
