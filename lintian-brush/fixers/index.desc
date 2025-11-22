@@ -102,9 +102,6 @@ fixers:
     lintian-tags:
       - debian-changelog-line-too-long
 
-
-  - script: changelog-has-duplicate-line.py
-
   - script: debian-control-has-obsolete-dbg-package.py
     lintian-tags:
       - debian-control-has-obsolete-dbg-package
