@@ -234,11 +234,6 @@ fixers:
       - possible-missing-colon-in-closes
       - misspelled-closes-bug
 
-
-  - script: public-upstream-key-not-minimal.py
-    lintian-tags:
-      - public-upstream-key-not-minimal
-
   - script: renamed-tag.py
     lintian-tags:
       - renamed-tag
