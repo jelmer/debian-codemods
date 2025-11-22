@@ -157,10 +157,6 @@ fixers:
     lintian-tags:
       - libmodule-build-perl-needs-to-be-in-build-depends
 
-  - script: maintainer-script-without-set-e.py
-    lintian-tags:
-      - maintainer-script-without-set-e
-
   - script: ancient-maintscript-entry.py
 
 

@@ -20,6 +20,7 @@ pub mod field_name_typo_in_control;
 pub mod font_package_not_multi_arch_foreign;
 pub mod maintainer_also_in_uploaders;
 pub mod maintainer_script_empty;
+pub mod maintainer_script_without_set_e;
 pub mod missing_vcs_browser_field;
 pub mod no_maintainer_field;
 pub mod obsolete_url_in_packaging;
