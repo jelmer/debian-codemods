@@ -262,10 +262,6 @@ fixers:
     lintian-tags:
       - public-upstream-key-not-minimal
 
-
-  - script: public-upstream-key-binary.py
-
-
   - script: renamed-tag.py
     lintian-tags:
       - renamed-tag
