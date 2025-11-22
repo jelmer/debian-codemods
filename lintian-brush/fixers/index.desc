@@ -57,13 +57,6 @@ fixers:
       # So we can steal the description from ITP/RFP
       - initial-upload-closes-no-bugs
 
-  - script: extended-description-contains-empty-paragraph.py
-    lintian-tags:
-      - extended-description-contains-empty-paragraph
-    after:
-      - package-has-no-description.py
-      # So we can steal the description from ITP/RFP
-      - initial-upload-closes-no-bugs
 
 
   - script: field-name-typo-in-tests-control.py
