@@ -57,13 +57,6 @@ fixers:
       # So we can steal the description from ITP/RFP
       - initial-upload-closes-no-bugs
 
-  - script: extended-description-contains-empty-paragraph.py
-    lintian-tags:
-      - extended-description-contains-empty-paragraph
-    after:
-      - package-has-no-description.py
-      # So we can steal the description from ITP/RFP
-      - initial-upload-closes-no-bugs
 
 
   - script: field-name-typo-in-tests-control.py
@@ -117,9 +110,6 @@ fixers:
       - debian-control-has-obsolete-dbg-package
 
 
-  - script: debian-pyversions-is-obsolete.py
-    lintian-tags:
-      - debian-pyversions-is-obsolete
 
 
   - script: debian-source-options-has-custom-compression-settings.py
@@ -173,14 +163,7 @@ fixers:
 
   - script: ancient-maintscript-entry.py
 
-  - script: dm-upload-allowed.py
-    lintian-tags:
-      - malformed-dm-upload-allowed
-      - dm-upload-allowed-is-obsolete
 
-  - script: maintainer-also-in-uploaders.py
-    lintian-tags:
-      - maintainer-also-in-uploaders
 
   - script: vcs-field-for-maintainer.py
     lintian-tags:
@@ -296,9 +279,6 @@ fixers:
     lintian-tags:
       - unnecessary-team-upload
 
-  - script: unnecessary-testsuite-autopkgtest-field.py
-    lintian-tags:
-      - unnecessary-testsuite-autopkgtest-field
 
   - script: upstream-metadata-invalid.py
     lintian-tags:
@@ -339,15 +319,9 @@ fixers:
     lintian-tags:
       - vcs-field-uses-not-recommended-uri-format
 
-  - script: wrong-debian-qa-group-name.py
-    lintian-tags:
-      - faulty-debian-qa-group-phrase
 
 
 
-  - script: xs-vcs-field-in-debian-control.py
-    lintian-tags:
-      - adopted-extended-field
 
 
   - script: field-name-typo-in-dep5-copyright.py
@@ -412,13 +386,7 @@ fixers:
 
   - script: upstream-metadata-has-obsolete-field.py
 
-  - script: package-contains-linda-override.py
-    lintian-tags:
-      - package-contains-linda-override
 
-  - script: excessive-priority-for-library-package.py
-    lintian-tags:
-      - excessive-priority-for-library-package
 
   - script: debian-rules-sets-dpkg-architecture-variable.py
     lintian-tags:
@@ -512,10 +480,6 @@ fixers:
     enabled: false
     lintian-tags:
       - newer-debconf-templates
-
-  - script: public-upstream-key-in-native-package.py
-    lintian-tags:
-      - public-upstream-key-in-native-package
 
   # Disabled for now, since debmutate's support for watch files is still
   # experimental.
