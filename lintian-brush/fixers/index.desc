@@ -412,9 +412,6 @@ fixers:
 
   - script: upstream-metadata-has-obsolete-field.py
 
-  - script: package-contains-linda-override.py
-    lintian-tags:
-      - package-contains-linda-override
 
   - script: excessive-priority-for-library-package.py
     lintian-tags:
