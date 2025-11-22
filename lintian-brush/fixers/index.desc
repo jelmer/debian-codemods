@@ -187,9 +187,6 @@ fixers:
       - old-dpmt-vcs
       - old-papt-vcs
 
-  - script: python-teams-merged.py
-    lintian-tags:
-      - python-teams-merged
 
   - script: source-format.py
     lintian-tags:
@@ -209,9 +206,6 @@ fixers:
       - missing-build-dependency-for-dh_-command
       - missing-build-dependency-for-dh-addon
 
-  - script: missing-vcs-browser-field.py
-    lintian-tags:
-      - missing-vcs-browser-field
 
   - script: obsolete-url-in-packaging.py
     lintian-tags:
@@ -397,10 +391,6 @@ fixers:
     lintian-tags:
       - vcs-field-mismatch
 
-  - script: vcs-field-not-canonical.py
-    lintian-tags:
-      - vcs-field-not-canonical
-
   - script: vcs-broken-uri.py
 
   - script: debian-watch-file-uses-deprecated-githubredir.py
@@ -471,9 +461,6 @@ fixers:
     lintian-tags:
       - recommended-field
 
-  - script: no-maintainer-field.py
-    lintian-tags:
-      - required-field
 
   - script: wrong-section-according-to-package-name.py
     lintian-tags:
@@ -508,10 +495,6 @@ fixers:
     lintian-tags:
       - unused-override
 
-  - script: upstream-metadata-in-native-source.py
-    lintian-tags:
-      - upstream-metadata-in-native-source
-
   - script: uses-deprecated-adttmp.py
     lintian-tags:
       - uses-deprecated-adttmp
@@ -524,22 +507,14 @@ fixers:
     lintian-tags:
       - silent-on-rules-requiring-root
 
-  - script: maintainer-script-empty.py
-    lintian-tags:
-      - maintainer-script-empty
-
   - script: pkg-perl-vcs.py
     lintian-tags:
       - team/pkg-perl/vcs/no-team-url
       - team/pkg-perl/vcs/no-git
-    after:
-      - no-maintainer-field.py
 
   - script: pkg-perl-testsuite.py
     lintian-tags:
       - team/pkg-perl/testsuite/no-testsuite-header
-    after:
-      - no-maintainer-field.py
 
   # Disabled for now because it updates even for any diff, not just when
   # messages change.

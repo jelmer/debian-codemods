@@ -38,6 +38,8 @@ svp-client = { workspace = true }
 inventory = "0.3"
 regex = { workspace = true }
 makefile-lossless = "0.2"
+tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
+upstream-ontologist = { workspace = true }
 
 [dev-dependencies]
 fs_extra = "1.3.0"
