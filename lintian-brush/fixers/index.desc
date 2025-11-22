@@ -121,9 +121,6 @@ fixers:
     lintian-tags:
       - debian-pyversions-is-obsolete
 
-  - script: debian-rules-should-not-use-pwd.py
-    lintian-tags:
-      - debian-rules-calls-pwd
 
   - script: debian-source-options-has-custom-compression-settings.py
     lintian-tags:
@@ -210,9 +207,6 @@ fixers:
       - missing-build-dependency-for-dh-addon
 
 
-  - script: obsolete-url-in-packaging.py
-    lintian-tags:
-      - obsolete-url-in-packaging
 
   - script: no-homepage-field.py
     lintian-tags:
@@ -390,10 +384,6 @@ fixers:
     lintian-tags:
       - vcs-field-mismatch
 
-  - script: vcs-field-not-canonical.py
-    lintian-tags:
-      - vcs-field-not-canonical
-
   - script: vcs-broken-uri.py
 
   - script: debian-watch-file-uses-deprecated-githubredir.py
@@ -451,9 +441,6 @@ fixers:
     lintian-tags:
       - debian-rules-contains-unnecessary-get-orig-source-target
 
-  - script: font-package-not-multi-arch-foreign.py
-    lintian-tags:
-      - font-package-not-multi-arch-foreign
 
 
   - script: no-priority-field.py
@@ -497,10 +484,6 @@ fixers:
   - script: unused-override.py
     lintian-tags:
       - unused-override
-
-  - script: upstream-metadata-in-native-source.py
-    lintian-tags:
-      - upstream-metadata-in-native-source
 
   - script: uses-deprecated-adttmp.py
     lintian-tags:
