@@ -38,3 +38,4 @@ pub mod upstream_metadata_in_native_source;
 pub mod vcs_field_not_canonical;
 pub mod xc_package_type_in_debian_control;
 pub mod xs_testsuite_field_in_debian_control;
+pub mod xs_vcs_field_in_debian_control;
