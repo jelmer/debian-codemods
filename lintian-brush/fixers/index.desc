@@ -448,10 +448,6 @@ fixers:
     lintian-tags:
       - unused-override
 
-  - script: uses-deprecated-adttmp.py
-    lintian-tags:
-      - uses-deprecated-adttmp
-
   - script: binary-control-field-duplicates-source.py
     lintian-tags:
       - installable-field-mirrors-source
