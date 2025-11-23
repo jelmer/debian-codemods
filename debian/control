@@ -104,7 +104,7 @@ Build-Depends: bash-completion,
                librust-tokio-1+full-dev (>= 1.39-~~),
                librust-tokio-1+macros-dev,
                librust-tokio-1+net-dev,
-               librust-tokio-1+rt-dev,
+               librust-tokio-1+rt-dev (>= 1.39-~~),
                librust-tokio-1+signal-dev,
                librust-url-2+default-dev,
                librust-url-2+serde-dev,
@@ -120,7 +120,8 @@ Build-Depends: bash-completion,
                librust-pyo3-log+default-dev (<< 0.14-~~),
                librust-upstream-ontologist-0.3+default-dev,
                librust-makefile-lossless+default-dev (>= 0.3),
-               librust-makefile-lossless-0.3+default-dev (<< 0.4)
+               librust-sequoia-openpgp-2+default-dev (>= 2-~~),
+               librust-tokio-1+rt-multi-thread-dev (>= 1.39-~~)
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
@@ -136,6 +137,7 @@ Depends: ${misc:Depends},
 		 python3-breezy (>= 3.3.1~),
 		 python3-debian
 Replaces: lintian-brush (<< 0.163)
+Recommends: lintian-brush
 Breaks: lintian-brush (<< 0.163)
 Description: collection of codemods for Debian packaging
  This package contains a collection of codemods that can be used to
