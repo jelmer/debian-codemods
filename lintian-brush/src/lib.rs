@@ -88,6 +88,12 @@ impl LintianIssue {
             info: None,
         }
     }
+
+    /// Check if this issue should be fixed (i.e., it's not overridden)
+    pub fn should_fix(&self, _base_path: &std::path::Path) -> bool {
+        // TODO: Check for lintian overrides in debian/source/lintian-overrides and debian/lintian-overrides
+        true
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]

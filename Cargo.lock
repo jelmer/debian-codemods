@@ -953,9 +953,9 @@ dependencies = [
 
 [[package]]
 name = "debian-watch"
-version = "0.2.8"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f692668701f5382bea79960cad4798f97689de3e22af638ee43552887c180f4f"
+checksum = "8bc1085c0ef47c2e9d392ab6427d739175c397dcea093f6d94add61448024496"
 dependencies = [
  "debversion",
  "m_lexer",
@@ -2647,6 +2647,7 @@ dependencies = [
  "debian-analyzer",
  "debian-changelog",
  "debian-control",
+ "debian-watch",
  "debversion",
  "distro-info",
  "env_logger",

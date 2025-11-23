@@ -120,6 +120,7 @@ Build-Depends: bash-completion,
                librust-pyo3-log+default-dev (<< 0.14-~~),
                librust-upstream-ontologist-0.3+default-dev,
                librust-sequoia-openpgp-2+default-dev (>= 2-~~),
+               librust-debian-watch-0.2+default-dev (>= 0.2.11-~~),
                librust-makefile-lossless-0.3+default-dev,
                librust-tokio-1+rt-multi-thread-dev (>= 1.39-~~)
 Standards-Version: 4.6.2
