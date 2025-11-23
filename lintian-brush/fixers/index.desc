@@ -266,10 +266,6 @@ fixers:
     lintian-tags:
       - systemd-service-file-refers-to-obsolete-target
 
-  - script: transitional-package-should-be-oldlibs-optional.py
-    lintian-tags:
-      - transitional-package-not-oldlibs-optional
-
   - script: unnecessary-team-upload.py
     lintian-tags:
       - unnecessary-team-upload
