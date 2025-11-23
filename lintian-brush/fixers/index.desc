@@ -310,10 +310,6 @@ fixers:
       - missing-built-using-field-for-golang-package
       - built-using-field-on-arch-all-package
 
-  - script: debian-rules-contains-unnecessary-get-orig-source-target.py
-    lintian-tags:
-      - debian-rules-contains-unnecessary-get-orig-source-target
-
   - script: no-section-field.py
     lintian-tags:
       - recommended-field
