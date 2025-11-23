@@ -112,10 +112,6 @@ fixers:
 
 
 
-  - script: debian-source-options-has-custom-compression-settings.py
-    lintian-tags:
-      - custom-compression-in-debian-source-options
-
   - script: debian-tests-control-autodep8-is-obsolete.py
     lintian-tags:
       - debian-tests-control-autodep8-is-obsolete
