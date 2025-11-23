@@ -465,10 +465,6 @@ fixers:
       - team/pkg-perl/vcs/no-team-url
       - team/pkg-perl/vcs/no-git
 
-  - script: pkg-perl-testsuite.py
-    lintian-tags:
-      - team/pkg-perl/testsuite/no-testsuite-header
-
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
   - script: newer-debconf-templates.py
