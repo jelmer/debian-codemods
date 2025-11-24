@@ -116,12 +116,6 @@ fixers:
     lintian-tags:
       - custom-compression-in-debian-source-options
 
-  - script: debian-tests-control-autodep8-is-obsolete.py
-    lintian-tags:
-      - debian-tests-control-autodep8-is-obsolete
-      - debian-tests-control-and-control-autodep8
-
-
   - script: debian-watch-file-old-format.py
     lintian-tags:
       - older-debian-watch-file-standard
@@ -142,12 +136,6 @@ fixers:
   - script: dh-clean-k-is-deprecated.py
     lintian-tags:
       - dh-clean-k-is-deprecated
-
-
-
-  - script: homepage-in-binary-package.py
-    lintian-tags:
-      - homepage-in-binary-package
 
   - script: homepage-field-uses-insecure-uri.py
     lintian-tags:
@@ -406,10 +394,6 @@ fixers:
 
 
 
-  - script: no-priority-field.py
-    lintian-tags:
-      - recommended-field
-
   - script: no-section-field.py
     lintian-tags:
       - recommended-field
@@ -448,10 +432,6 @@ fixers:
     lintian-tags:
       - unused-override
 
-  - script: uses-deprecated-adttmp.py
-    lintian-tags:
-      - uses-deprecated-adttmp
-
   - script: binary-control-field-duplicates-source.py
     lintian-tags:
       - installable-field-mirrors-source
@@ -464,10 +444,6 @@ fixers:
     lintian-tags:
       - team/pkg-perl/vcs/no-team-url
       - team/pkg-perl/vcs/no-git
-
-  - script: pkg-perl-testsuite.py
-    lintian-tags:
-      - team/pkg-perl/testsuite/no-testsuite-header
 
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
@@ -500,14 +476,6 @@ fixers:
     lintian-tags:
       - obsolete-vim-addon-manager
 
-  - script: new-package-uses-date-based-version-number.py
-    lintian-tags:
-      - new-package-uses-date-based-version-number
-
   - script: missing-prerequisite-for-pyproject-backend.py
     lintian-tags:
       - missing-prerequisite-for-pyproject-backend
-
-  - script: dep3-format-patch-author-or-from-is-better.py
-    lintian-tags:
-      - dep3-format-patch-author-or-from-is-better

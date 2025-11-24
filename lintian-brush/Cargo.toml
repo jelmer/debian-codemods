@@ -41,6 +41,8 @@ sequoia-openpgp = "2"
 makefile-lossless = "0.3"
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 upstream-ontologist = { workspace = true }
+dep3 = "0.2.0"
+patchkit = "0.2.2"
 
 [dev-dependencies]
 fs_extra = "1.3.0"
