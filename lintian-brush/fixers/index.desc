@@ -357,8 +357,6 @@ fixers:
 
   - script: upstream-metadata-has-obsolete-field.py
 
-
-
   - script: debian-rules-sets-dpkg-architecture-variable.py
     lintian-tags:
       - debian-rules-sets-dpkg-architecture-variable
@@ -368,20 +366,13 @@ fixers:
       - missing-built-using-field-for-golang-package
       - built-using-field-on-arch-all-package
 
-  - script: obsolete-runtime-tests-restriction.py
-    lintian-tags:
-      - obsolete-runtime-tests-restriction
-
   - script: debian-rules-contains-unnecessary-get-orig-source-target.py
     lintian-tags:
       - debian-rules-contains-unnecessary-get-orig-source-target
 
-
-
   - script: no-section-field.py
     lintian-tags:
       - recommended-field
-
 
   - script: wrong-section-according-to-package-name.py
     lintian-tags:
