@@ -116,12 +116,6 @@ fixers:
     lintian-tags:
       - custom-compression-in-debian-source-options
 
-  - script: debian-tests-control-autodep8-is-obsolete.py
-    lintian-tags:
-      - debian-tests-control-autodep8-is-obsolete
-      - debian-tests-control-and-control-autodep8
-
-
   - script: debian-watch-file-old-format.py
     lintian-tags:
       - older-debian-watch-file-standard
@@ -140,12 +134,6 @@ fixers:
       - dep5-file-paragraph-references-header-paragraph
 
 
-
-
-  - script: homepage-in-binary-package.py
-    lintian-tags:
-      - homepage-in-binary-package
-
   - script: homepage-field-uses-insecure-uri.py
     lintian-tags:
       - homepage-field-uses-insecure-uri
@@ -153,10 +141,6 @@ fixers:
   - script: libmodule-build-perl-needs-to-be-in-build-depends.py
     lintian-tags:
       - libmodule-build-perl-needs-to-be-in-build-depends
-
-  - script: maintainer-script-without-set-e.py
-    lintian-tags:
-      - maintainer-script-without-set-e
 
   - script: ancient-maintscript-entry.py
 
@@ -231,11 +215,6 @@ fixers:
       - possible-missing-colon-in-closes
       - misspelled-closes-bug
 
-
-  - script: public-upstream-key-not-minimal.py
-    lintian-tags:
-      - public-upstream-key-not-minimal
-
   - script: renamed-tag.py
     lintian-tags:
       - renamed-tag
@@ -267,10 +246,6 @@ fixers:
   - script: systemd-service-file-refers-to-obsolete-target.py
     lintian-tags:
       - systemd-service-file-refers-to-obsolete-target
-
-  - script: transitional-package-should-be-oldlibs-optional.py
-    lintian-tags:
-      - transitional-package-not-oldlibs-optional
 
   - script: unnecessary-team-upload.py
     lintian-tags:
@@ -408,10 +383,6 @@ fixers:
 
 
 
-  - script: no-priority-field.py
-    lintian-tags:
-      - recommended-field
-
   - script: no-section-field.py
     lintian-tags:
       - recommended-field
@@ -450,10 +421,6 @@ fixers:
     lintian-tags:
       - unused-override
 
-  - script: uses-deprecated-adttmp.py
-    lintian-tags:
-      - uses-deprecated-adttmp
-
   - script: binary-control-field-duplicates-source.py
     lintian-tags:
       - installable-field-mirrors-source
@@ -466,10 +433,6 @@ fixers:
     lintian-tags:
       - team/pkg-perl/vcs/no-team-url
       - team/pkg-perl/vcs/no-git
-
-  - script: pkg-perl-testsuite.py
-    lintian-tags:
-      - team/pkg-perl/testsuite/no-testsuite-header
 
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
@@ -506,14 +469,6 @@ fixers:
     lintian-tags:
       - obsolete-vim-addon-manager
 
-  - script: new-package-uses-date-based-version-number.py
-    lintian-tags:
-      - new-package-uses-date-based-version-number
-
   - script: missing-prerequisite-for-pyproject-backend.py
     lintian-tags:
       - missing-prerequisite-for-pyproject-backend
-
-  - script: dep3-format-patch-author-or-from-is-better.py
-    lintian-tags:
-      - dep3-format-patch-author-or-from-is-better

@@ -4,8 +4,14 @@ include:
 
 variables:
   SALSA_CI_DISABLE_BLHC: 1
+  SALSA_CI_DISABLE_REPROTEST: 1
   # Build for experimental distribution
   # RELEASE: 'experimental'
+  # Use project-relative paths for better caching in custom jobs
+  CARGO_HOME: ${CI_PROJECT_DIR}/.cargo
+  PIP_CACHE_DIR: ${CI_PROJECT_DIR}/.cache/pip
+  # Enable parallel builds - uses all available CPU cores
+  SALSA_CI_DPKG_BUILDPACKAGE_ARGS: "-j$(nproc)"
 
 stages:
   - lint
@@ -20,6 +26,14 @@ cargo-fmt:
   script:
     - rustup component add rustfmt
     - cargo fmt --all -- --check
+  cache:
+    key:
+      files:
+        - Cargo.lock
+    paths:
+      - .cargo/registry
+      - .cargo/git
+      - target/
 
 ruff:
   stage: lint
@@ -29,5 +43,6 @@ ruff:
     - ruff check .
     - ruff format --check .
   cache:
+    key: ruff-${CI_JOB_IMAGE}
     paths:
-      - ~/.cache/pip
+      - .cache/pip
