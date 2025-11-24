@@ -24,6 +24,7 @@ pub mod maintainer_also_in_uploaders;
 pub mod maintainer_script_empty;
 pub mod missing_vcs_browser_field;
 pub mod no_maintainer_field;
+pub mod no_priority_field;
 pub mod obsolete_url_in_packaging;
 pub mod old_fsf_address_in_copyright_file;
 pub mod orphaned_package_should_not_have_uploaders;

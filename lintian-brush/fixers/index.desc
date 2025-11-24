@@ -400,10 +400,6 @@ fixers:
 
 
 
-  - script: no-priority-field.py
-    lintian-tags:
-      - recommended-field
-
   - script: no-section-field.py
     lintian-tags:
       - recommended-field
