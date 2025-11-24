@@ -23,6 +23,7 @@ pub mod font_package_not_multi_arch_foreign;
 pub mod homepage_in_binary_package;
 pub mod maintainer_also_in_uploaders;
 pub mod maintainer_script_empty;
+pub mod maintainer_script_without_set_e;
 pub mod missing_vcs_browser_field;
 pub mod new_package_uses_date_based_version_number;
 pub mod no_maintainer_field;
