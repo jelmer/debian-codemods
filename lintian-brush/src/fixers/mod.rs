@@ -39,6 +39,7 @@ pub mod rules_not_executable;
 pub mod unnecessary_testsuite_autopkgtest_field;
 pub mod unversioned_copyright_format_uri;
 pub mod upstream_metadata_in_native_source;
+pub mod uses_deprecated_adttmp;
 pub mod vcs_field_not_canonical;
 pub mod wrong_debian_qa_group_name;
 pub mod xc_package_type_in_debian_control;
