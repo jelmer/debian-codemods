@@ -8,6 +8,7 @@ pub mod debian_pyversions_is_obsolete;
 pub mod debian_rules_not_executable;
 pub mod debian_rules_should_not_use_pwd;
 pub mod debian_upstream_obsolete_path;
+pub mod dep3_format_patch_author_or_from_is_better;
 pub mod desktop_entry_file_has_crs;
 pub mod dm_upload_allowed;
 pub mod empty_debian_patches_series;
