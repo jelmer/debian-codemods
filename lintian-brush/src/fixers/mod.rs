@@ -12,6 +12,7 @@ pub mod debhelper_compat_wrong_field;
 pub mod debhelper_tools_from_autotools_dev_are_deprecated;
 pub mod debian_changelog_file_contains_obsolete_user_emacs_settings;
 pub mod debian_changelog_has_wrong_day_of_week;
+pub mod debian_changelog_line_too_long;
 pub mod debian_control_has_empty_field;
 pub mod debian_control_has_obsolete_dbg_package;
 pub mod debian_pycompat_is_obsolete;

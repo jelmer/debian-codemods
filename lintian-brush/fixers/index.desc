@@ -77,13 +77,6 @@ fixers:
     lintian-tags:
       - ancient-python-version-field
 
-
-
-  - script: debian-changelog-line-too-long.py
-    lintian-tags:
-      - debian-changelog-line-too-long
-
-
   - script: changelog-has-duplicate-line.py
 
   - script: debian-watch-contains-dh_make-template.py
