@@ -42,6 +42,7 @@ pub mod public_upstream_keys_in_multiple_locations;
 pub mod python_teams_merged;
 pub mod quilt_series_without_trailing_newline;
 pub mod rules_not_executable;
+pub mod transitional_package_should_be_oldlibs_optional;
 pub mod unnecessary_testsuite_autopkgtest_field;
 pub mod unversioned_copyright_format_uri;
 pub mod upstream_metadata_in_native_source;
