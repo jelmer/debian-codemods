@@ -4,6 +4,7 @@ include:
 
 variables:
   SALSA_CI_DISABLE_BLHC: 1
+  SALSA_CI_DISABLE_REPROTEST: 1
   # Build for experimental distribution
   # RELEASE: 'experimental'
 
