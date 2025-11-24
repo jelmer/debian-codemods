@@ -192,9 +192,8 @@ fn read_field_list_with_vendor(path: &str) -> Option<Vec<(String, Option<String>
             }
 
             // Handle vendor-specific directives
-            if trimmed.starts_with("@if-vendor-is-not ") {
-                current_vendor_exclusion =
-                    Some(trimmed["@if-vendor-is-not ".len()..].trim().to_string());
+            if let Some(stripped) = trimmed.strip_prefix("@if-vendor-is-not ") {
+                current_vendor_exclusion = Some(stripped.trim().to_string());
                 continue;
             }
             if trimmed == "@endif" {

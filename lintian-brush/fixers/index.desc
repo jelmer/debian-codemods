@@ -480,10 +480,6 @@ fixers:
     lintian-tags:
       - obsolete-vim-addon-manager
 
-  - script: new-package-uses-date-based-version-number.py
-    lintian-tags:
-      - new-package-uses-date-based-version-number
-
   - script: missing-prerequisite-for-pyproject-backend.py
     lintian-tags:
       - missing-prerequisite-for-pyproject-backend
