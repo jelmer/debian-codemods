@@ -41,6 +41,7 @@ regex = { workspace = true }
 sequoia-openpgp = "2"
 makefile-lossless = "0.3.6"
 debian-watch = "0.2.13"
+shell-words = "1"
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 tokio-postgres = { version = "0.7", optional = true }
 upstream-ontologist = { workspace = true }
