@@ -90,10 +90,6 @@ fixers:
     lintian-tags:
       - build-depends-on-obsolete-package
 
-  - script: debhelper-but-no-misc-depends.py
-    lintian-tags:
-      - debhelper-but-no-misc-depends
-
   - script: debhelper-tools-from-autotools-dev-are-deprecated.py
     lintian-tags:
       - debhelper-tools-from-autotools-dev-are-deprecated

@@ -1,6 +1,7 @@
 pub mod build_depends_on_build_essential;
 pub mod copyright_has_crs;
 pub mod crlf_line_endings;
+pub mod debhelper_but_no_misc_depends;
 pub mod debian_changelog_file_contains_obsolete_user_emacs_settings;
 pub mod debian_control_has_empty_field;
 pub mod debian_pycompat_is_obsolete;
