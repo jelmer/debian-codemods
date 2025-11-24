@@ -384,10 +384,6 @@ fixers:
     lintian-tags:
       - obsolete-runtime-tests-restriction
 
-  - script: debian-changelog-has-wrong-day-of-week.py
-    lintian-tags:
-      - debian-changelog-has-wrong-day-of-week
-
   - script: debian-rules-contains-unnecessary-get-orig-source-target.py
     lintian-tags:
       - debian-rules-contains-unnecessary-get-orig-source-target
