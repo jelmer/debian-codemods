@@ -21,6 +21,7 @@ pub mod font_package_not_multi_arch_foreign;
 pub mod maintainer_also_in_uploaders;
 pub mod maintainer_script_empty;
 pub mod missing_vcs_browser_field;
+pub mod new_package_uses_date_based_version_number;
 pub mod no_maintainer_field;
 pub mod obsolete_url_in_packaging;
 pub mod old_fsf_address_in_copyright_file;
