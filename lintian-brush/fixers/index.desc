@@ -121,10 +121,6 @@ fixers:
       - older-debian-watch-file-standard
       - obsolete-debian-watch-file-standard
 
-  - script: debian-watch-uses-insecure-uri.py
-    lintian-tags:
-      - debian-watch-uses-insecure-uri
-
   - script: debian-watch-contains-dh_make-template.py
     lintian-tags:
       - debian-watch-contains-dh_make-template
