@@ -77,9 +77,11 @@ fixers:
       - copyright-file-contains-full-gfdl-license
       - copyright-file-contains-full-gpl-license
 
-  - script: build-depends-on-obsolete-package.py
+  - script: ancient-python-version-field.py
     lintian-tags:
-      - build-depends-on-obsolete-package
+      - ancient-python-version-field
+
+
 
   - script: debhelper-but-no-misc-depends.py
     lintian-tags:
