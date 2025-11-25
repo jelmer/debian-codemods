@@ -81,11 +81,6 @@ fixers:
       - copyright-file-contains-full-gfdl-license
       - copyright-file-contains-full-gpl-license
 
-  - script: ancient-python-version-field.py
-    lintian-tags:
-      - ancient-python-version-field
-
-
   - script: build-depends-on-obsolete-package.py
     lintian-tags:
       - build-depends-on-obsolete-package
