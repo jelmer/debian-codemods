@@ -9,7 +9,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let mut editor = TemplatedControlEditor::open(&control_path)?;
+    let editor = TemplatedControlEditor::open(&control_path)?;
     let mut changed_packages = Vec::new();
 
     // Get default priority from source paragraph
@@ -144,7 +144,7 @@ mod tests {
         let content = fs::read_to_string(&control_path).unwrap();
         // Both packages should have optional priority
         let lines: Vec<&str> = content.lines().collect();
-        assert!(lines.iter().any(|line| *line == "Priority: optional"));
+        assert!(lines.contains(&"Priority: optional"));
         // Count how many times "Priority: optional" appears
         let optional_count = lines
             .iter()

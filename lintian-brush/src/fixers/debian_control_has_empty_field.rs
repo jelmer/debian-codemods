@@ -9,7 +9,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let mut editor = TemplatedControlEditor::open(&control_path)?;
+    let editor = TemplatedControlEditor::open(&control_path)?;
     let mut removed_fields = Vec::new();
     let mut packages_affected = Vec::new();
     let mut made_changes = false;

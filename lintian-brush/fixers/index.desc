@@ -194,10 +194,6 @@ fixers:
       - possible-missing-colon-in-closes
       - misspelled-closes-bug
 
-  - script: renamed-tag.py
-    lintian-tags:
-      - renamed-tag
-
   - script: malformed-override.py
     lintian-tags:
       - malformed-override

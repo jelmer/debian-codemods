@@ -204,22 +204,20 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
             (None, 1) // Exit code 1 for no changes
         }
         Err(e) => {
-            match &e {
-                FixerError::ScriptFailed {
-                    path,
-                    exit_code,
-                    stderr,
-                } => {
-                    eprintln!(
-                        "Script failed: {} (exit code: {})",
-                        path.display(),
-                        exit_code
-                    );
-                    if !stderr.is_empty() {
-                        eprintln!("Stderr:\n{}", stderr);
-                    }
+            if let FixerError::ScriptFailed {
+                path,
+                exit_code,
+                stderr,
+            } = &e
+            {
+                eprintln!(
+                    "Script failed: {} (exit code: {})",
+                    path.display(),
+                    exit_code
+                );
+                if !stderr.is_empty() {
+                    eprintln!("Stderr:\n{}", stderr);
                 }
-                _ => {}
             }
             panic!("Fixer error: {:?}", e);
         }

@@ -61,7 +61,7 @@ mod tests {
 
         let result = convert_line_endings(&file_path);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
 
         // Check that line endings were converted
         let content = fs::read_to_string(&file_path).unwrap();
@@ -79,7 +79,7 @@ mod tests {
 
         let result = convert_line_endings(&file_path);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), false);
+        assert!(!result.unwrap());
 
         // Check that content is unchanged
         let content = fs::read_to_string(&file_path).unwrap();
@@ -119,7 +119,7 @@ mod tests {
         // We can't directly test the closure, but we can test the convert_line_endings function
         let result = convert_line_endings(&control_path);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
 
         let content = fs::read_to_string(&control_path).unwrap();
         assert!(!content.contains("\r\n"));
@@ -147,7 +147,7 @@ mod tests {
 
         let result = convert_line_endings(&file_path);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
 
         // Check that all CRLF sequences were converted
         let content = fs::read_to_string(&file_path).unwrap();
