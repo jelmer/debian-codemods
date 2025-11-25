@@ -16,7 +16,7 @@ fn is_empty(path: &Path) -> Result<ScriptStatus, std::io::Error> {
     let mut status = ScriptStatus::Empty;
 
     for (line_no, line_bytes) in content.split(|&b| b == b'\n').enumerate() {
-        let line = line_bytes.iter().copied().collect::<Vec<u8>>();
+        let line = line_bytes.to_vec();
         let trimmed_line: Vec<u8> = line
             .iter()
             .rev()

@@ -119,9 +119,14 @@ Build-Depends: bash-completion,
                librust-toml-edit-0.22+default-dev,
                librust-pyo3-log+default-dev (<< 0.14-~~),
                librust-upstream-ontologist-0.3+default-dev,
+               librust-makefile-lossless+default-dev (>= 0.3),
                librust-sequoia-openpgp-2+default-dev (>= 2-~~),
-               librust-makefile-lossless-0.3+default-dev,
-               librust-tokio-1+rt-multi-thread-dev (>= 1.39-~~)
+               librust-debian-watch-0.2+default-dev (>= 0.2.12-~~),
+               librust-makefile-lossless-0.3+default-dev (>= 0.3.1-~~),
+               librust-shell-words-1+default-dev,
+               librust-tokio-1+rt-multi-thread-dev (>= 1.39-~~),
+               librust-dep3-0.2+default-dev,
+               librust-patchkit-0.2+default-dev (>= 0.2.2-~~)
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git

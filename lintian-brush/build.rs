@@ -1,4 +1,5 @@
 use quote::quote;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::Write;
@@ -64,6 +65,9 @@ fn main() {
 
         dest.write_all("}\n".as_bytes()).unwrap();
     }
+
+    // Generate renamed tags map
+    generate_renamed_tags_map(&out_dir);
 
     // rebuild if build.rs or tests directory changes
     println!("cargo:rerun-if-changed=build.rs");
@@ -192,9 +196,8 @@ fn read_field_list_with_vendor(path: &str) -> Option<Vec<(String, Option<String>
             }
 
             // Handle vendor-specific directives
-            if trimmed.starts_with("@if-vendor-is-not ") {
-                current_vendor_exclusion =
-                    Some(trimmed["@if-vendor-is-not ".len()..].trim().to_string());
+            if let Some(stripped) = trimmed.strip_prefix("@if-vendor-is-not ") {
+                current_vendor_exclusion = Some(stripped.trim().to_string());
                 continue;
             }
             if trimmed == "@endif" {

@@ -22,6 +22,7 @@ pub mod builtin_fixers;
 #[macro_use]
 pub mod macros;
 pub mod fixers;
+pub mod lintian_overrides;
 
 // Re-export commonly used types for convenience
 pub use debian_analyzer::Certainty;
@@ -87,6 +88,12 @@ impl LintianIssue {
             tag: Some(tag),
             info: None,
         }
+    }
+
+    /// Check if this issue should be fixed (i.e., it's not overridden)
+    pub fn should_fix(&self, _base_path: &std::path::Path) -> bool {
+        // TODO: Check for lintian overrides in debian/source/lintian-overrides and debian/lintian-overrides
+        true
     }
 }
 
@@ -627,7 +634,6 @@ fn run_inline_python_fixer(
     import_exception!(debmutate.reformatting, FormattingUnpreservable);
     import_exception!(debian.changelog, ChangelogCreateError);
 
-    Python::initialize();
     Python::attach(|py| {
         let sys = py.import("sys")?;
         let os = py.import("os")?;
@@ -931,6 +937,12 @@ impl From<debian_changelog::Error> for FixerError {
             debian_changelog::Error::Io(e) => FixerError::Io(e),
             debian_changelog::Error::Parse(e) => FixerError::ChangelogCreate(e.to_string()),
         }
+    }
+}
+
+impl From<debian_changelog::ParseError> for FixerError {
+    fn from(e: debian_changelog::ParseError) -> Self {
+        FixerError::ChangelogCreate(e.to_string())
     }
 }
 

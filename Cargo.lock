@@ -833,18 +833,18 @@ dependencies = [
 
 [[package]]
 name = "deb822-fast"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9ea8fe9a58604b036be1759540ab0dbc8da57474a67715459653f06a467e38c"
+checksum = "8920777d23081265f95ece4b4e74a11de23103f6ab1dc6e1b4c1691900dc56d4"
 dependencies = [
  "deb822-derive",
 ]
 
 [[package]]
 name = "deb822-lossless"
-version = "0.4.1"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac539f2d76324c86b151fd4e0a0dc320cb71f16bcf0c9548f532f8784c04ab42"
+checksum = "b90fcf542994c540077c599c1cb457158ec2cf20c7ecccc09463c823a0df5f4a"
 dependencies = [
  "pyo3",
  "regex",
@@ -890,7 +890,7 @@ dependencies = [
  "lazy-regex",
  "lazy_static",
  "log",
- "makefile-lossless 0.3.0",
+ "makefile-lossless",
  "maplit",
  "merge3",
  "patchkit",
@@ -953,9 +953,9 @@ dependencies = [
 
 [[package]]
 name = "debian-watch"
-version = "0.2.8"
+version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f692668701f5382bea79960cad4798f97689de3e22af638ee43552887c180f4f"
+checksum = "5757fa3876bf2468b31b988fc7c5061651aff4b417bdd732ea9c9717ee8026cb"
 dependencies = [
  "debversion",
  "m_lexer",
@@ -2008,12 +2008,11 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "1.3.1"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4a85d31aea989eead29a3aaf9e1115a180df8282431156e533de47660892565"
+checksum = "e3ba2a386d7f85a81f119ad7498ebe444d2e22c2af0b86b069416ace48b3311a"
 dependencies = [
  "bytes",
- "fnv",
  "itoa",
 ]
 
@@ -2647,7 +2646,9 @@ dependencies = [
  "debian-analyzer",
  "debian-changelog",
  "debian-control",
+ "debian-watch",
  "debversion",
+ "dep3",
  "distro-info",
  "env_logger",
  "fs_extra",
@@ -2657,11 +2658,13 @@ dependencies = [
  "lazy-regex",
  "lazy_static",
  "log",
- "makefile-lossless 0.3.0",
+ "makefile-lossless",
  "maplit",
+ "patchkit",
  "pyo3",
  "quote",
  "regex",
+ "rowan",
  "sequoia-openpgp",
  "serde",
  "serde_json",
@@ -2774,19 +2777,9 @@ dependencies = [
 
 [[package]]
 name = "makefile-lossless"
-version = "0.2.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d336a1f57cdee530a7b9afe7fe297653f8f44d3eaa0e45b05dec8708dfda00ad"
-dependencies = [
- "log",
- "rowan",
-]
-
-[[package]]
-name = "makefile-lossless"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "248194fa48f8fda5cc804ab6bff9ed42bd415e079d05a5ff53c0b616ac86736a"
+checksum = "656c2545ec67d17d87d9fd0536af16451028439615d27d2da2e63ad1484bd9be"
 dependencies = [
  "log",
  "rowan",
@@ -3142,9 +3135,9 @@ dependencies = [
 
 [[package]]
 name = "ognibuild"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c5fc53d75a7b15c6cf317f64bc24ef08c3923095e3d1d134b5a5517b92e9a50"
+checksum = "92924750335d0de51ada64195fa0b35a58248bd6dee73ff4c719a3931e9c8ba6"
 dependencies = [
  "apt-sources",
  "axum",
@@ -3168,7 +3161,7 @@ dependencies = [
  "log",
  "lz4_flex",
  "lzma-rs",
- "makefile-lossless 0.2.1",
+ "makefile-lossless",
  "maplit",
  "nix",
  "pep508_rs",
@@ -5196,9 +5189,9 @@ dependencies = [
 
 [[package]]
 name = "tower-http"
-version = "0.6.6"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adc82fd73de2a9722ac5da747f12383d2bfdb93591ee6c58486e0097890f05f2"
+checksum = "9cf146f99d442e8e68e585f5d798ccd3cad9a7835b917e09728880a862706456"
 dependencies = [
  "bitflags 2.10.0",
  "bytes",
@@ -5392,7 +5385,7 @@ dependencies = [
  "lazy-regex",
  "lazy_static",
  "log",
- "makefile-lossless 0.3.0",
+ "makefile-lossless",
  "maplit",
  "opam-file-rs",
  "openssl",
@@ -6092,18 +6085,18 @@ dependencies = [
 
 [[package]]
 name = "zerocopy"
-version = "0.8.28"
+version = "0.8.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43fa6694ed34d6e57407afbccdeecfa268c470a7d2a5b0cf49ce9fcc345afb90"
+checksum = "4ea879c944afe8a2b25fef16bb4ba234f47c694565e97383b36f3a878219065c"
 dependencies = [
  "zerocopy-derive",
 ]
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.8.28"
+version = "0.8.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c640b22cd9817fae95be82f0d2f90b11f7605f6c319d16705c459b27ac2cbc26"
+checksum = "cf955aa904d6040f70dc8e9384444cb1030aed272ba3cb09bbc4ab9e7c1f34f5"
 dependencies = [
  "proc-macro2",
  "quote",
