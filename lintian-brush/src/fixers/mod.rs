@@ -34,6 +34,7 @@ pub mod missing_vcs_browser_field;
 pub mod new_package_uses_date_based_version_number;
 pub mod no_maintainer_field;
 pub mod no_priority_field;
+pub mod obsolete_runtime_tests_restriction;
 pub mod obsolete_url_in_packaging;
 pub mod old_fsf_address_in_copyright_file;
 pub mod orphaned_package_should_not_have_uploaders;
