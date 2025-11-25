@@ -34,10 +34,6 @@ fixers:
       - no-copyright-file
 
   # Copyright related fixers. Fix format URL before semantic fixes.
-  - script: copyright-format-uri.py
-    lintian-tags:
-      - insecure-copyright-format-uri
-      - wiki-copyright-format-uri
 
   - script: copyright-continued-lines-with-space.py
     lintian-tags:
