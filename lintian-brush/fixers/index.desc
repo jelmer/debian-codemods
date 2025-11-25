@@ -266,10 +266,6 @@ fixers:
     lintian-tags:
       - vcs-field-uses-insecure-uri
 
-  - script: vcs-field-uses-not-recommended-uri-format.py
-    lintian-tags:
-      - vcs-field-uses-not-recommended-uri-format
-
 
 
 
