@@ -116,10 +116,6 @@ fixers:
     lintian-tags:
       - custom-compression-in-debian-source-options
 
-  - script: debian-watch-uses-insecure-uri.py
-    lintian-tags:
-      - debian-watch-uses-insecure-uri
-
   - script: debian-watch-contains-dh_make-template.py
     lintian-tags:
       - debian-watch-contains-dh_make-template
@@ -132,12 +128,6 @@ fixers:
     lintian-tags:
       - dh-clean-k-is-deprecated
 
-
-
-  - script: homepage-in-binary-package.py
-    lintian-tags:
-      - homepage-in-binary-package
-
   - script: homepage-field-uses-insecure-uri.py
     lintian-tags:
       - homepage-field-uses-insecure-uri
@@ -145,10 +135,6 @@ fixers:
   - script: libmodule-build-perl-needs-to-be-in-build-depends.py
     lintian-tags:
       - libmodule-build-perl-needs-to-be-in-build-depends
-
-  - script: maintainer-script-without-set-e.py
-    lintian-tags:
-      - maintainer-script-without-set-e
 
   - script: ancient-maintscript-entry.py
 
@@ -254,10 +240,6 @@ fixers:
   - script: systemd-service-file-refers-to-obsolete-target.py
     lintian-tags:
       - systemd-service-file-refers-to-obsolete-target
-
-  - script: transitional-package-should-be-oldlibs-optional.py
-    lintian-tags:
-      - transitional-package-not-oldlibs-optional
 
   - script: unnecessary-team-upload.py
     lintian-tags:
@@ -395,10 +377,6 @@ fixers:
 
 
 
-  - script: no-priority-field.py
-    lintian-tags:
-      - recommended-field
-
   - script: no-section-field.py
     lintian-tags:
       - recommended-field
@@ -484,10 +462,6 @@ fixers:
   - script: obsolete-vim-addon-manager.py
     lintian-tags:
       - obsolete-vim-addon-manager
-
-  - script: new-package-uses-date-based-version-number.py
-    lintian-tags:
-      - new-package-uses-date-based-version-number
 
   - script: missing-prerequisite-for-pyproject-backend.py
     lintian-tags:
