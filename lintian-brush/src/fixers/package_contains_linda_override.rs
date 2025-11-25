@@ -20,12 +20,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let path = entry.path();
 
         if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-            if file_name.ends_with(".linda-overrides") {
+            if let Some(package_name) = file_name.strip_suffix(".linda-overrides") {
                 // Remove the file
                 fs::remove_file(&path)?;
 
                 // Extract the package name (filename without .linda-overrides suffix)
-                let package_name = &file_name[..file_name.len() - ".linda-overrides".len()];
                 let tag_info = format!("usr/share/linda/overrides/{}", package_name);
 
                 removed.push(file_name.to_string());

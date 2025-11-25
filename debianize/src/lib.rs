@@ -599,15 +599,15 @@ mod tests {
 
         assert_eq!(prefs.use_inotify, None);
         assert_eq!(prefs.diligence, 0);
-        assert_eq!(prefs.trust, false);
-        assert_eq!(prefs.check, false);
-        assert_eq!(prefs.net_access, true);
-        assert_eq!(prefs.force_subprocess, false);
-        assert_eq!(prefs.force_new_directory, false);
+        assert!(!prefs.trust);
+        assert!(!prefs.check);
+        assert!(prefs.net_access);
+        assert!(!prefs.force_subprocess);
+        assert!(!prefs.force_new_directory);
         assert_eq!(prefs.compat_release, None);
         assert_eq!(prefs.minimum_certainty, Certainty::Confident);
-        assert_eq!(prefs.consult_external_directory, true);
-        assert_eq!(prefs.verbose, false);
+        assert!(prefs.consult_external_directory);
+        assert!(!prefs.verbose);
         // Default session should be isolated (Unshare on Linux, Plain on other platforms)
         match prefs.session {
             #[cfg(target_os = "linux")]
@@ -901,9 +901,9 @@ description = "A test package"
 
         // The function requires a WorkingTree, so we can't test it directly
         // But we can verify the setup is correct
-        assert_eq!(prefs.trust, false);
-        assert_eq!(prefs.net_access, true);
-        assert_eq!(prefs.check, false);
+        assert!(!prefs.trust);
+        assert!(prefs.net_access);
+        assert!(!prefs.check);
     }
 
     #[test]
@@ -1048,7 +1048,7 @@ description = "A test package"
         let rfp_bug = BugKind::RFP;
 
         // Test that bug kinds can be used in vectors
-        let bugs = vec![(123456, itp_bug), (789012, rfp_bug)];
+        let bugs = [(123456, itp_bug), (789012, rfp_bug)];
         assert_eq!(bugs.len(), 2);
 
         // Test that bug kinds are distinct
@@ -1093,26 +1093,26 @@ description = "A test package"
     fn test_run_fixers_flag() {
         // Test that run_fixers flag works as expected
         let mut prefs = DebianizePreferences::default();
-        assert_eq!(prefs.run_fixers, true);
+        assert!(prefs.run_fixers);
 
         prefs.run_fixers = false;
-        assert_eq!(prefs.run_fixers, false);
+        assert!(!prefs.run_fixers);
 
         prefs.run_fixers = true;
-        assert_eq!(prefs.run_fixers, true);
+        assert!(prefs.run_fixers);
     }
 
     #[test]
     fn test_check_wnpp_flag() {
         // Test that check_wnpp flag works as expected
         let mut prefs = DebianizePreferences::default();
-        assert_eq!(prefs.check_wnpp, true);
+        assert!(prefs.check_wnpp);
 
         prefs.check_wnpp = false;
-        assert_eq!(prefs.check_wnpp, false);
+        assert!(!prefs.check_wnpp);
 
         prefs.check_wnpp = true;
-        assert_eq!(prefs.check_wnpp, true);
+        assert!(prefs.check_wnpp);
     }
 }
 

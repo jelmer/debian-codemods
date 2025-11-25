@@ -1,4 +1,5 @@
 use quote::quote;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::Write;
@@ -64,6 +65,9 @@ fn main() {
 
         dest.write_all("}\n".as_bytes()).unwrap();
     }
+
+    // Generate renamed tags map
+    generate_renamed_tags_map(&out_dir);
 
     // rebuild if build.rs or tests directory changes
     println!("cargo:rerun-if-changed=build.rs");

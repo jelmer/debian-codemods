@@ -12,7 +12,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // Read and parse the makefile
     let content = fs::read_to_string(&rules_path)?;
-    let mut makefile = Makefile::read_relaxed(content.as_bytes())
+    let makefile = Makefile::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let mut made_changes = false;
@@ -189,6 +189,10 @@ mod tests {
         .unwrap();
 
         let result = run(base_path).unwrap();
+        assert_eq!(
+            result.description,
+            "debian/rules: Avoid using $(PWD) variable."
+        );
 
         let content = fs::read_to_string(&rules_path).unwrap();
         assert!(content.contains("BUILDDIR=$(CURDIR)/build"));
