@@ -940,6 +940,12 @@ impl From<debian_changelog::Error> for FixerError {
     }
 }
 
+impl From<debian_changelog::ParseError> for FixerError {
+    fn from(e: debian_changelog::ParseError) -> Self {
+        FixerError::ChangelogCreate(e.to_string())
+    }
+}
+
 impl From<ChangelogError> for FixerError {
     fn from(e: ChangelogError) -> Self {
         match e {
