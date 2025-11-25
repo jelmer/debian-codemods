@@ -12,6 +12,7 @@ pub mod debian_rules_should_not_use_pwd;
 pub mod debian_rules_uses_special_shell_variable;
 pub mod debian_tests_control_autodep8_is_obsolete;
 pub mod debian_upstream_obsolete_path;
+pub mod debian_watch_file_old_format;
 pub mod debian_watch_uses_insecure_uri;
 pub mod dep3_format_patch_author_or_from_is_better;
 pub mod desktop_entry_file_has_crs;

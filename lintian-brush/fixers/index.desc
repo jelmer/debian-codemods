@@ -113,11 +113,6 @@ fixers:
     lintian-tags:
       - custom-compression-in-debian-source-options
 
-  - script: debian-watch-file-old-format.py
-    lintian-tags:
-      - older-debian-watch-file-standard
-      - obsolete-debian-watch-file-standard
-
   - script: debian-watch-contains-dh_make-template.py
     lintian-tags:
       - debian-watch-contains-dh_make-template
