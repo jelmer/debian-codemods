@@ -1,4 +1,5 @@
 pub mod build_depends_on_build_essential;
+pub mod changelog_has_duplicate_line;
 pub mod copyright_has_crs;
 pub mod crlf_line_endings;
 pub mod debian_changelog_file_contains_obsolete_user_emacs_settings;
@@ -14,6 +15,7 @@ pub mod debian_upstream_obsolete_path;
 pub mod debian_watch_uses_insecure_uri;
 pub mod dep3_format_patch_author_or_from_is_better;
 pub mod desktop_entry_file_has_crs;
+pub mod dh_clean_k_is_deprecated;
 pub mod dm_upload_allowed;
 pub mod empty_debian_patches_series;
 pub mod empty_debian_source_options;

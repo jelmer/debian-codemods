@@ -102,9 +102,6 @@ fixers:
     lintian-tags:
       - debian-changelog-line-too-long
 
-
-  - script: changelog-has-duplicate-line.py
-
   - script: debian-control-has-obsolete-dbg-package.py
     lintian-tags:
       - debian-control-has-obsolete-dbg-package
@@ -129,9 +126,6 @@ fixers:
     lintian-tags:
       - dep5-file-paragraph-references-header-paragraph
 
-  - script: dh-clean-k-is-deprecated.py
-    lintian-tags:
-      - dh-clean-k-is-deprecated
 
   - script: homepage-field-uses-insecure-uri.py
     lintian-tags:
