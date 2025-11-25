@@ -8,6 +8,7 @@ pub mod crlf_line_endings;
 pub mod debian_changelog_file_contains_obsolete_user_emacs_settings;
 pub mod debian_changelog_has_wrong_day_of_week;
 pub mod debian_control_has_empty_field;
+pub mod debian_control_has_obsolete_dbg_package;
 pub mod debian_pycompat_is_obsolete;
 pub mod debian_pyversions_is_obsolete;
 pub mod debian_rules_not_executable;
