@@ -379,10 +379,6 @@ fixers:
     lintian-tags:
       - unused-override
 
-  - script: binary-control-field-duplicates-source.py
-    lintian-tags:
-      - installable-field-mirrors-source
-
   - script: rules-requires-root-missing.py
     lintian-tags:
       - silent-on-rules-requiring-root
