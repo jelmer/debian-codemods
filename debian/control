@@ -51,7 +51,7 @@ Build-Depends: bash-completion,
                librust-clap-4+string-dev,
                librust-clap-4+suggestions-dev,
                librust-configparser-3+default-dev,
-               librust-deb822-lossless-0.4+default-dev,
+               librust-deb822-lossless-0.4+default-dev (>= 0.4.3-~~),
                librust-debian-analyzer-0.160+default-dev (>= 0.160.2-~~),
                librust-debian-analyzer-0.160+python-dev (>= 0.160.2-~~),
                librust-debian-analyzer-0.160+svp-dev (>= 0.160.2-~~),
@@ -127,6 +127,7 @@ Build-Depends: bash-completion,
                librust-tokio-1+rt-multi-thread-dev (>= 1.39-~~),
                librust-dep3-0.2+default-dev,
                librust-patchkit-0.2+default-dev (>= 0.2.2-~~),
+               librust-debian-changelog+default-dev (>= 0.2.7-~~),
                librust-rowan-0.16+default-dev
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
