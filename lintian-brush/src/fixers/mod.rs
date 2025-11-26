@@ -7,6 +7,7 @@ pub mod copyright_format_uri;
 pub mod copyright_has_crs;
 pub mod crlf_line_endings;
 pub mod debhelper_but_no_misc_depends;
+pub mod debhelper_tools_from_autotools_dev_are_deprecated;
 pub mod debian_changelog_file_contains_obsolete_user_emacs_settings;
 pub mod debian_changelog_has_wrong_day_of_week;
 pub mod debian_control_has_empty_field;
