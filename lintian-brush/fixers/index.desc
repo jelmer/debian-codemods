@@ -81,10 +81,6 @@ fixers:
     lintian-tags:
       - build-depends-on-obsolete-package
 
-  - script: debhelper-but-no-misc-depends.py
-    lintian-tags:
-      - debhelper-but-no-misc-depends
-
   - script: debhelper-tools-from-autotools-dev-are-deprecated.py
     lintian-tags:
       - debhelper-tools-from-autotools-dev-are-deprecated
@@ -95,13 +91,6 @@ fixers:
 
 
   - script: changelog-has-duplicate-line.py
-
-
-
-
-  - script: debian-source-options-has-custom-compression-settings.py
-    lintian-tags:
-      - custom-compression-in-debian-source-options
 
   - script: debian-watch-contains-dh_make-template.py
     lintian-tags:
