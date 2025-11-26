@@ -81,14 +81,7 @@ Description: Test package
 
         let preferences = FixerPreferences {
             net_access: Some(false), // Disable network for tests
-            compat_release: None,
-            minimum_certainty: None,
-            trust_package: None,
-            allow_reformatting: None,
-            opinionated: None,
-            diligence: None,
-            upgrade_release: None,
-            extra_env: None,
+            ..Default::default()
         };
 
         let result = run(base_path, &preferences);
@@ -123,14 +116,7 @@ Description: Test package
 
         let preferences = FixerPreferences {
             net_access: Some(false),
-            compat_release: None,
-            minimum_certainty: None,
-            trust_package: None,
-            allow_reformatting: None,
-            opinionated: None,
-            diligence: None,
-            upgrade_release: None,
-            extra_env: None,
+            ..Default::default()
         };
 
         let result = run(base_path, &preferences);
@@ -155,14 +141,7 @@ Description: Test package
 
         let preferences = FixerPreferences {
             net_access: Some(false),
-            compat_release: None,
-            minimum_certainty: None,
-            trust_package: None,
-            allow_reformatting: None,
-            opinionated: None,
-            diligence: None,
-            upgrade_release: None,
-            extra_env: None,
+            ..Default::default()
         };
 
         let result = run(base_path, &preferences);
@@ -188,14 +167,7 @@ Description: Test package
 
         let preferences = FixerPreferences {
             net_access: Some(false),
-            compat_release: None,
-            minimum_certainty: None,
-            trust_package: None,
-            allow_reformatting: None,
-            opinionated: None,
-            diligence: None,
-            upgrade_release: None,
-            extra_env: None,
+            ..Default::default()
         };
 
         let result = run(base_path, &preferences);
