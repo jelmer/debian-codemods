@@ -55,6 +55,7 @@ pub mod public_upstream_key_in_native_package;
 pub mod public_upstream_key_not_minimal;
 pub mod public_upstream_keys_in_multiple_locations;
 pub mod python_teams_merged;
+pub mod quilt_series_but_no_build_dep;
 pub mod quilt_series_without_trailing_newline;
 pub mod renamed_tag;
 pub mod rules_not_executable;
