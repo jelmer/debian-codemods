@@ -2759,6 +2759,7 @@ dependencies = [
  "sqlx",
  "strsim",
  "svp-client",
+ "systemd-unit-edit",
  "tempfile",
  "textwrap",
  "tokio",
@@ -5093,6 +5094,15 @@ checksum = "8e1d1b10ced5ca923a1fcb8d03e96b8d3268065d724548c0211415ff6ac6bac4"
 dependencies = [
  "core-foundation-sys",
  "libc",
+]
+
+[[package]]
+name = "systemd-unit-edit"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73d7fbf89b576ae84f5ed7c6b124a6caaf9862c14ffbdbf2a8f4a73a82a3425a"
+dependencies = [
+ "rowan",
 ]
 
 [[package]]
