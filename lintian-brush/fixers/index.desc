@@ -92,10 +92,6 @@ fixers:
     lintian-tags:
       - homepage-field-uses-insecure-uri
 
-  - script: libmodule-build-perl-needs-to-be-in-build-depends.py
-    lintian-tags:
-      - libmodule-build-perl-needs-to-be-in-build-depends
-
   - script: ancient-maintscript-entry.py
 
 
