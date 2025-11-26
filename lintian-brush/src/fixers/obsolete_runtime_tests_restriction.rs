@@ -1,15 +1,17 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerResult};
+use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult};
 use deb822_lossless::Deb822;
 use std::collections::HashSet;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Read the list of known obsolete restrictions from lintian data
-fn read_obsolete_restrictions() -> Result<HashSet<String>, FixerError> {
-    let lintian_data_path = std::env::var("LINTIAN_DATA_PATH")
-        .unwrap_or_else(|_| "/usr/share/lintian/data".to_string());
+fn read_obsolete_restrictions(
+    lintian_data_path: Option<&Path>,
+) -> Result<HashSet<String>, FixerError> {
+    let default_path = PathBuf::from("/usr/share/lintian/data");
+    let lintian_data_path = lintian_data_path.unwrap_or(&default_path);
 
-    let path = Path::new(&lintian_data_path)
+    let path = lintian_data_path
         .join("testsuite")
         .join("known-obsolete-restrictions");
 
@@ -31,14 +33,15 @@ fn read_obsolete_restrictions() -> Result<HashSet<String>, FixerError> {
     Ok(restrictions)
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
+pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
     let control_path = base_path.join("debian/tests/control");
 
     if !control_path.exists() {
         return Err(FixerError::NoChanges);
     }
 
-    let deprecated_restrictions = read_obsolete_restrictions()?;
+    let deprecated_restrictions =
+        read_obsolete_restrictions(preferences.lintian_data_path.as_deref())?;
     let mut removed_restrictions = Vec::new();
 
     // Parse the tests control file using lossless parser
@@ -123,8 +126,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "obsolete-runtime-tests-restriction",
     tags: ["obsolete-runtime-tests-restriction"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    apply: |basedir, _package, _version, preferences| {
+        run(basedir, preferences)
     }
 }
 
@@ -158,10 +161,12 @@ Restrictions: breaks-testbed
         let obsolete_file = lintian_data_dir.join("known-obsolete-restrictions");
         fs::write(&obsolete_file, "rw-build-tree\n").unwrap();
 
-        // Set the environment variable to point to our mock data
-        std::env::set_var("LINTIAN_DATA_PATH", temp_dir.path().join("lintian-data"));
+        let preferences = FixerPreferences {
+            lintian_data_path: Some(temp_dir.path().join("lintian-data")),
+            ..Default::default()
+        };
 
-        let result = run(temp_dir.path());
+        let result = run(temp_dir.path(), &preferences);
         assert!(result.is_ok(), "Error: {:?}", result);
 
         let result = result.unwrap();
@@ -193,9 +198,12 @@ Depends: @
         let obsolete_file = lintian_data_dir.join("known-obsolete-restrictions");
         fs::write(&obsolete_file, "rw-build-tree\n").unwrap();
 
-        std::env::set_var("LINTIAN_DATA_PATH", temp_dir.path().join("lintian-data"));
+        let preferences = FixerPreferences {
+            lintian_data_path: Some(temp_dir.path().join("lintian-data")),
+            ..Default::default()
+        };
 
-        let result = run(temp_dir.path());
+        let result = run(temp_dir.path(), &preferences);
         assert!(result.is_ok());
 
         // Verify Restrictions field was removed entirely
@@ -221,9 +229,12 @@ Restrictions: needs-recommends
         let obsolete_file = lintian_data_dir.join("known-obsolete-restrictions");
         fs::write(&obsolete_file, "needs-recommends\n").unwrap();
 
-        std::env::set_var("LINTIAN_DATA_PATH", temp_dir.path().join("lintian-data"));
+        let preferences = FixerPreferences {
+            lintian_data_path: Some(temp_dir.path().join("lintian-data")),
+            ..Default::default()
+        };
 
-        let result = run(temp_dir.path());
+        let result = run(temp_dir.path(), &preferences);
         assert!(result.is_ok());
 
         let result = result.unwrap();
@@ -248,9 +259,12 @@ Restrictions: needs-root
         let obsolete_file = lintian_data_dir.join("known-obsolete-restrictions");
         fs::write(&obsolete_file, "rw-build-tree\n").unwrap();
 
-        std::env::set_var("LINTIAN_DATA_PATH", temp_dir.path().join("lintian-data"));
+        let preferences = FixerPreferences {
+            lintian_data_path: Some(temp_dir.path().join("lintian-data")),
+            ..Default::default()
+        };
 
-        let result = run(temp_dir.path());
+        let result = run(temp_dir.path(), &preferences);
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 }

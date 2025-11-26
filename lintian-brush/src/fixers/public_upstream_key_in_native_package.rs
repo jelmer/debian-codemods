@@ -71,14 +71,7 @@ mod tests {
 
         let preferences = FixerPreferences {
             opinionated: Some(true),
-            compat_release: None,
-            minimum_certainty: None,
-            trust_package: None,
-            allow_reformatting: None,
-            net_access: None,
-            diligence: None,
-            upgrade_release: None,
-            extra_env: None,
+            ..Default::default()
         };
 
         let version = std::str::FromStr::from_str("1.0").unwrap();
@@ -111,14 +104,7 @@ mod tests {
 
         let preferences = FixerPreferences {
             opinionated: Some(false),
-            compat_release: None,
-            minimum_certainty: None,
-            trust_package: None,
-            allow_reformatting: None,
-            net_access: None,
-            diligence: None,
-            upgrade_release: None,
-            extra_env: None,
+            ..Default::default()
         };
 
         let version = std::str::FromStr::from_str("1.0").unwrap();
@@ -142,14 +128,7 @@ mod tests {
 
         let preferences = FixerPreferences {
             opinionated: Some(true),
-            compat_release: None,
-            minimum_certainty: None,
-            trust_package: None,
-            allow_reformatting: None,
-            net_access: None,
-            diligence: None,
-            upgrade_release: None,
-            extra_env: None,
+            ..Default::default()
         };
 
         let version = std::str::FromStr::from_str("1.0-1").unwrap();
@@ -167,14 +146,7 @@ mod tests {
 
         let preferences = FixerPreferences {
             opinionated: Some(true),
-            compat_release: None,
-            minimum_certainty: None,
-            trust_package: None,
-            allow_reformatting: None,
-            net_access: None,
-            diligence: None,
-            upgrade_release: None,
-            extra_env: None,
+            ..Default::default()
         };
 
         let version = std::str::FromStr::from_str("1.0").unwrap();
@@ -199,14 +171,7 @@ mod tests {
 
         let preferences = FixerPreferences {
             opinionated: Some(true),
-            compat_release: None,
-            minimum_certainty: None,
-            trust_package: None,
-            allow_reformatting: None,
-            net_access: None,
-            diligence: None,
-            upgrade_release: None,
-            extra_env: None,
+            ..Default::default()
         };
 
         let version = std::str::FromStr::from_str("1.0").unwrap();
