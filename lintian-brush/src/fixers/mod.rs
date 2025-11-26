@@ -16,6 +16,7 @@ pub mod debian_control_has_empty_field;
 pub mod debian_control_has_obsolete_dbg_package;
 pub mod debian_pycompat_is_obsolete;
 pub mod debian_pyversions_is_obsolete;
+pub mod debian_rules_contains_unnecessary_get_orig_source_target;
 pub mod debian_rules_not_executable;
 pub mod debian_rules_should_not_use_pwd;
 pub mod debian_rules_uses_special_shell_variable;
