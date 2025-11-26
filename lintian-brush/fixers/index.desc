@@ -77,17 +77,18 @@ fixers:
       - copyright-file-contains-full-gfdl-license
       - copyright-file-contains-full-gpl-license
 
-  - script: build-depends-on-obsolete-package.py
+  - script: ancient-python-version-field.py
     lintian-tags:
-      - build-depends-on-obsolete-package
+      - ancient-python-version-field
+
+
 
   - script: debian-changelog-line-too-long.py
     lintian-tags:
       - debian-changelog-line-too-long
 
-  - script: debian-control-has-obsolete-dbg-package.py
-    lintian-tags:
-      - debian-control-has-obsolete-dbg-package
+
+  - script: changelog-has-duplicate-line.py
 
   - script: debian-watch-contains-dh_make-template.py
     lintian-tags:
@@ -295,10 +296,6 @@ fixers:
   - script: debian-watch-file-uses-old-github-pattern.py
 
   - script: debian-watch-file-uses-github-releases.py
-
-  - script: quilt-series-but-no-build-dep.py
-    lintian-tags:
-      - quilt-series-but-no-build-dep
 
   - script: unused-build-dependency-on-cdbs.py
     lintian-tags:
