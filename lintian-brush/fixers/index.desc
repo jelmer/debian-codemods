@@ -111,11 +111,6 @@ fixers:
       - rubygem-homepage
 
 
-  - script: package-needs-versioned-debhelper-build-depends.py
-    lintian-tags:
-      - no-versioned-debhelper-prerequisite
-
-
   - script: package-uses-deprecated-debhelper-compat-version.py
     lintian-tags:
       - package-uses-deprecated-debhelper-compat-version
