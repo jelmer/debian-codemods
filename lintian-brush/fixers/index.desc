@@ -151,8 +151,6 @@ fixers:
     lintian-tags:
       - declares-possibly-conflicting-debhelper-compat-versions
 
-  - script: debhelper-compat-wrong-field.py
-
   - script: package-needs-versioned-debhelper-build-depends.py
     lintian-tags:
       - no-versioned-debhelper-prerequisite

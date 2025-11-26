@@ -56,7 +56,7 @@ Build-Depends: bash-completion,
                librust-debian-analyzer-0.160+python-dev (>= 0.160.2-~~),
                librust-debian-analyzer-0.160+svp-dev (>= 0.160.2-~~),
                librust-debian-analyzer-0.160+udd-dev (>= 0.160.2-~~),
-               librust-debian-changelog-0.2+default-dev (>= 0.2.1-~~),
+               librust-debian-changelog-0.2+default-dev (>= 0.2.7-~~),
                librust-debian-control+default-dev (>= 0.1.37-~~),
                librust-debversion+default-dev (>= 0.4.0-~~),
                librust-debversion-0.5+default-dev,
@@ -115,7 +115,7 @@ Build-Depends: bash-completion,
                librust-indicatif+default-dev (<< 0.19-~~),
                librust-indicatif+default-dev (>= 0.17-~~),
                librust-lazy-regex-3+default-dev,
-               librust-debian-control-0.2+default-dev (>= 0.2.2-~~),
+               librust-debian-control-0.2+default-dev (>= 0.2.3-~~),
                librust-toml-edit-0.22+default-dev,
                librust-pyo3-log+default-dev (<< 0.14-~~),
                librust-upstream-ontologist-0.3+default-dev,
@@ -126,7 +126,8 @@ Build-Depends: bash-completion,
                librust-shell-words-1+default-dev,
                librust-tokio-1+rt-multi-thread-dev (>= 1.39-~~),
                librust-dep3-0.2+default-dev,
-               librust-patchkit-0.2+default-dev (>= 0.2.2-~~)
+               librust-patchkit-0.2+default-dev (>= 0.2.2-~~),
+               librust-rowan-0.16+default-dev
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
