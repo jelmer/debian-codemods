@@ -1,0 +1,6 @@
+[Unit]
+Description=Test Service
+Alias=bar
+
+[Service]
+Type=oneshot
