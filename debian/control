@@ -142,7 +142,6 @@ Build-Depends: debhelper (>= 13.5),
                python3-setuptools-rust,
                python3-tomlkit,
                python3-upstream-ontologist (>= 0.2.2),
-               quilt,
                rustc
 Standards-Version: 4.7.2
 Rules-Requires-Root: no

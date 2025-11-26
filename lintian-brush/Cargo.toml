@@ -38,6 +38,7 @@ debian-copyright = { workspace = true }
 deb822-lossless = { workspace = true }
 distro-info = "0.4.0"
 debian-changelog = { workspace = true }
+desktop-edit = { path = "../desktop-edit", version = "0.1.0" }
 wait-timeout = "0.2.0"
 humantime = "2.1.0"
 svp-client = { workspace = true }
