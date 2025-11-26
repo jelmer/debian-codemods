@@ -83,10 +83,6 @@ fixers:
 
 
 
-  - script: debhelper-tools-from-autotools-dev-are-deprecated.py
-    lintian-tags:
-      - debhelper-tools-from-autotools-dev-are-deprecated
-
   - script: debian-changelog-line-too-long.py
     lintian-tags:
       - debian-changelog-line-too-long
