@@ -62,10 +62,6 @@ fixers:
     lintian-tags:
       - obsolete-field-in-dep5-copyright
 
-  - script: comma-separated-files-in-dep5-copyright.py
-    lintian-tags:
-      - comma-separated-files-in-dep5-copyright
-
   - script: common-license.py
     lintian-tags:
       - copyright-does-not-refer-to-common-license-file
