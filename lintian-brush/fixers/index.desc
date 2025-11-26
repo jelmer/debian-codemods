@@ -304,10 +304,6 @@ fixers:
 
   - script: debian-watch-file-uses-github-releases.py
 
-  - script: quilt-series-but-no-build-dep.py
-    lintian-tags:
-      - quilt-series-but-no-build-dep
-
   - script: unused-build-dependency-on-cdbs.py
     lintian-tags:
       - unused-build-dependency-on-cdbs
