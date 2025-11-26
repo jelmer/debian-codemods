@@ -286,10 +286,6 @@ fixers:
       - vcs-obsolete-in-debian-infrastructure
       - vcs-field-bitrotted
 
-  - script: vcs-field-mismatch.py
-    lintian-tags:
-      - vcs-field-mismatch
-
   - script: vcs-broken-uri.py
 
   - script: debian-watch-file-uses-deprecated-githubredir.py
