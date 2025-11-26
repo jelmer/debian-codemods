@@ -3,6 +3,7 @@ pub mod binary_control_field_duplicates_source;
 pub mod build_depends_on_build_essential;
 pub mod build_depends_on_obsolete_package;
 pub mod changelog_has_duplicate_line;
+pub mod comma_separated_files_in_dep5_copyright;
 pub mod copyright_format_uri;
 pub mod copyright_has_crs;
 pub mod crlf_line_endings;
