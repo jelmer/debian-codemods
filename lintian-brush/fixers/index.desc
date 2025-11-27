@@ -225,11 +225,6 @@ fixers:
     lintian-tags:
       - invalid-short-name-in-dep5-copyright
 
-  - script: copyright-refers-to-symlink-license.py
-    lintian-tags:
-      - copyright-refers-to-symlink-license
-      - copyright-refers-to-versionless-license-file
-
   - script: vcs-field-bitrotted.py
     lintian-tags:
       - vcs-obsolete-in-debian-infrastructure
