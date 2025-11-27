@@ -289,8 +289,6 @@ fixers:
 
   - script: debian-watch-file-uses-old-github-pattern.py
 
-  - script: debian-watch-file-uses-github-releases.py
-
   - script: unused-build-dependency-on-cdbs.py
     lintian-tags:
       - unused-build-dependency-on-cdbs

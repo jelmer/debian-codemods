@@ -22,6 +22,7 @@ pub mod debian_source_options_has_custom_compression_settings;
 pub mod debian_tests_control_autodep8_is_obsolete;
 pub mod debian_upstream_obsolete_path;
 pub mod debian_watch_file_old_format;
+pub mod debian_watch_file_uses_github_releases;
 pub mod debian_watch_uses_insecure_uri;
 pub mod dep3_format_patch_author_or_from_is_better;
 pub mod desktop_entry_file_has_crs;
