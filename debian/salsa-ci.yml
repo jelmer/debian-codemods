@@ -53,3 +53,80 @@ ruff:
     key: ruff-${CI_JOB_IMAGE}
     paths:
       - .cache/pip
+
+# Scheduled update jobs - these run on a schedule and create MRs with updates
+update-spdx:
+  stage: build
+  image: debian:unstable
+  script:
+    - apt-get update
+    - apt-get install -y git brz python3 python3-requests ca-certificates
+    - git config user.name "Salsa CI Bot"
+    - git config user.email "noreply@salsa.debian.org"
+    - make update-spdx || true
+    - |
+      if ! git diff --quiet spdx.json; then
+        BRANCH_NAME="auto-update-spdx-$(date +%Y%m%d-%H%M%S)"
+        git checkout -b "$BRANCH_NAME"
+        git add spdx.json
+        git commit -m "Update SPDX license data"
+        git push -o merge_request.create -o merge_request.title="Update SPDX license data" -o merge_request.description="Automated update of SPDX license data from scheduled CI job." https://oauth2:${CI_JOB_TOKEN}@salsa.debian.org/${CI_PROJECT_PATH}.git "HEAD:refs/heads/${BRANCH_NAME}"
+      else
+        echo "No changes to spdx.json"
+      fi
+  only:
+    - schedules
+  variables:
+    GIT_STRATEGY: clone
+
+update-readme:
+  stage: build
+  image: debian:unstable
+  script:
+    - apt-get update
+    - apt-get install -y git brz python3 python3-debian python3-breezy python3-pip ca-certificates build-essential cargo rustc
+    - git config user.name "Salsa CI Bot"
+    - git config user.email "noreply@salsa.debian.org"
+    - pip install --break-system-packages setuptools setuptools-rust
+    - pip install --break-system-packages -e .
+    - make build
+    - make update-readme || true
+    - |
+      if ! git diff --quiet README.md; then
+        BRANCH_NAME="auto-update-readme-$(date +%Y%m%d-%H%M%S)"
+        git checkout -b "$BRANCH_NAME"
+        git add README.md
+        git commit -m "Update list of fixers in README.md"
+        git push -o merge_request.create -o merge_request.title="Update list of fixers in README.md" -o merge_request.description="Automated update of the list of supported lintian fixers in README.md from scheduled CI job." https://oauth2:${CI_JOB_TOKEN}@salsa.debian.org/${CI_PROJECT_PATH}.git "HEAD:refs/heads/${BRANCH_NAME}"
+      else
+        echo "No changes to README.md"
+      fi
+  only:
+    - schedules
+  variables:
+    GIT_STRATEGY: clone
+  timeout: 2h
+
+update-renamed-tags:
+  stage: build
+  image: debian:unstable
+  script:
+    - apt-get update
+    - apt-get install -y git brz python3 python3-debian lintian ca-certificates
+    - git config user.name "Salsa CI Bot"
+    - git config user.email "noreply@salsa.debian.org"
+    - make update-renamed-tags || true
+    - |
+      if ! git diff --quiet lintian-brush/renamed-tags.json; then
+        BRANCH_NAME="auto-update-renamed-tags-$(date +%Y%m%d-%H%M%S)"
+        git checkout -b "$BRANCH_NAME"
+        git add lintian-brush/renamed-tags.json
+        git commit -m "Update renamed tags"
+        git push -o merge_request.create -o merge_request.title="Update renamed tags" -o merge_request.description="Automated update of renamed lintian tags from scheduled CI job." https://oauth2:${CI_JOB_TOKEN}@salsa.debian.org/${CI_PROJECT_PATH}.git "HEAD:refs/heads/${BRANCH_NAME}"
+      else
+        echo "No changes to renamed-tags.json"
+      fi
+  only:
+    - schedules
+  variables:
+    GIT_STRATEGY: clone

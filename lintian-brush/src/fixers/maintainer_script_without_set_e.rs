@@ -12,7 +12,7 @@ fn replace_set_e(path: &Path) -> Result<bool, std::io::Error> {
         Err(e) => return Err(e),
     };
 
-    let mut lines: Vec<&[u8]> = content.split_inclusive(|&b| b == b'\n').collect();
+    let lines: Vec<&[u8]> = content.split_inclusive(|&b| b == b'\n').collect();
     if lines.is_empty() {
         return Ok(false);
     }
