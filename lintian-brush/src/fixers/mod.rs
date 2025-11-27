@@ -43,6 +43,7 @@ pub mod field_name_typo_in_control;
 pub mod field_name_typo_in_dep5_copyright;
 pub mod file_contains_trailing_whitespace;
 pub mod font_package_not_multi_arch_foreign;
+pub mod global_files_wildcard_not_first_paragraph_in_dep5_copyright;
 pub mod homepage_in_binary_package;
 pub mod invalid_standards_version;
 pub mod maintainer_also_in_uploaders;
