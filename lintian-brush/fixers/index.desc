@@ -271,11 +271,6 @@ fixers:
     lintian-tags:
       - desktop-entry-contains-encoding-key
 
-  - script: out-of-date-standards-version.py
-    lintian-tags:
-      - out-of-date-standards-version
-      - ancient-standards-version
-
   - script: autotools-pkg-config-macro-not-cross-compilation-safe.py
     lintian-tags:
       - autotools-pkg-config-macro-not-cross-compilation-safe

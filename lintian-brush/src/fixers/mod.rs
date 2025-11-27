@@ -64,6 +64,7 @@ pub mod old_fsf_address_in_copyright_file;
 pub mod old_override_info_format;
 pub mod orphaned_package_should_not_have_uploaders;
 pub mod out_of_date_copyright_format_uri;
+pub mod out_of_date_standards_version;
 pub mod package_contains_linda_override;
 pub mod package_uses_deprecated_source_override_location;
 pub mod pkg_perl_testsuite;

@@ -2652,6 +2652,7 @@ dependencies = [
  "debian-analyzer",
  "debian-changelog",
  "debian-control",
+ "debian-copyright",
  "debian-watch",
  "debversion",
  "dep3",
