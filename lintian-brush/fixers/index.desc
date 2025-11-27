@@ -47,9 +47,6 @@ fixers:
 
 
 
-  - script: field-name-typo-in-tests-control.py
-
-
   - script: obsolete-field-in-dep5-copyright.py
     lintian-tags:
       - obsolete-field-in-dep5-copyright

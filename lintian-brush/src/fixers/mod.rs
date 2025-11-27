@@ -44,6 +44,7 @@ pub mod executable_desktop_file;
 pub mod extended_description_contains_empty_paragraph;
 pub mod field_name_typo_in_control;
 pub mod field_name_typo_in_dep5_copyright;
+pub mod field_name_typo_in_tests_control;
 pub mod file_contains_trailing_whitespace;
 pub mod font_package_not_multi_arch_foreign;
 pub mod homepage_in_binary_package;
