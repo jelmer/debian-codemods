@@ -41,6 +41,7 @@ sequoia-openpgp = "2"
 debian-watch = "0.2.12"
 makefile-lossless = "0.3.2"
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
+tokio-postgres = { version = "0.7", optional = true }
 upstream-ontologist = { workspace = true }
 dep3 = "0.2.0"
 patchkit = "0.2.2"
@@ -55,6 +56,7 @@ default = ["svp", "python", "cli"]
 svp = []
 python = ["dep:pyo3", "debian-analyzer/python"]
 cli = ["dep:clap", "dep:env_logger"]
+udd = ["dep:tokio-postgres"]
 
 [[bin]]
 name = "lintian-brush"

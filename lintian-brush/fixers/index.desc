@@ -328,10 +328,6 @@ fixers:
     lintian-tags:
       - autotools-pkg-config-macro-not-cross-compilation-safe
 
-  - script: unused-override.py
-    lintian-tags:
-      - unused-override
-
   - script: rules-requires-root-missing.py
     lintian-tags:
       - silent-on-rules-requiring-root
