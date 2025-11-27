@@ -276,10 +276,6 @@ fixers:
     lintian-tags:
       - debian-watch-file-uses-deprecated-githubredir
 
-  - script: unused-build-dependency-on-cdbs.py
-    lintian-tags:
-      - unused-build-dependency-on-cdbs
-
   - script: typo-in-debhelper-override-target.py
     lintian-tags:
       - typo-in-debhelper-override-target

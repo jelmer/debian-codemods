@@ -7,10 +7,9 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     // Check if we're not in opinionated mode and directory only contains "debian"
     if !preferences.opinionated.unwrap_or(false) {
         // Check if directory only contains "debian"
-        let entries: Result<Vec<_>, _> = fs::read_dir(base_path)
-            .map_err(|e| FixerError::from(e))?
-            .collect();
-        let entries = entries.map_err(|e| FixerError::from(e))?;
+        let entries: Result<Vec<_>, _> =
+            fs::read_dir(base_path).map_err(FixerError::from)?.collect();
+        let entries = entries.map_err(FixerError::from)?;
 
         if entries.len() == 1 && entries[0].file_name() == "debian" {
             // See https://salsa.debian.org/debian-ayatana-team/snapd-glib/-/merge_requests/6#note_358358
