@@ -842,9 +842,9 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9366ce5dee725c705d3fe693e145d040f5d93e30385a2e829730a374497f6c5"
+checksum = "e91d0fb4921095fd11543a3dfa60f0f6cc22a528b6bcfe3dba98d08251b8743a"
 dependencies = [
  "pyo3",
  "regex",
@@ -953,9 +953,9 @@ dependencies = [
 
 [[package]]
 name = "debian-watch"
-version = "0.2.12"
+version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5757fa3876bf2468b31b988fc7c5061651aff4b417bdd732ea9c9717ee8026cb"
+checksum = "26cbf10db814c310bb34c36b134b7c2c078ce651580c5faf70355e199b96f5d7"
 dependencies = [
  "debversion",
  "m_lexer",
@@ -2675,6 +2675,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "strsim",
  "svp-client",
  "tempfile",
  "tokio",
@@ -6056,9 +6057,9 @@ checksum = "d6bbff5f0aada427a1e5a6da5f1f98158182f26556f345ac9e04d36d0ebed650"
 
 [[package]]
 name = "winnow"
-version = "0.7.13"
+version = "0.7.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21a0236b59786fed61e2a80582dd500fe61f18b5dca67a4a067d0bc9039339cf"
+checksum = "5a5364e9d77fcdeeaa6062ced926ee3381faa2ee02d3eb83a5c27a8825540829"
 dependencies = [
  "memchr",
 ]
