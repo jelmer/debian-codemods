@@ -276,11 +276,6 @@ fixers:
     lintian-tags:
       - silent-on-rules-requiring-root
 
-  - script: pkg-perl-vcs.py
-    lintian-tags:
-      - team/pkg-perl/vcs/no-team-url
-      - team/pkg-perl/vcs/no-git
-
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
   - script: newer-debconf-templates.py
