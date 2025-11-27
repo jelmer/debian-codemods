@@ -20,10 +20,6 @@ fixers:
   # processed first, since they make it for other fixers to change the file
   # while preserving formatting.
 
-  - script: file-contains-trailing-whitespace.py
-    lintian-tags:
-      - trailing-whitespace
-
   - script: debian-control-has-unusual-field-spacing.py
     lintian-tags:
       - debian-control-has-unusual-field-spacing
