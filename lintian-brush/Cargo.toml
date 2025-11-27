@@ -38,6 +38,7 @@ svp-client = { workspace = true }
 inventory = "0.3"
 regex = { workspace = true }
 sequoia-openpgp = "2"
+strsim = "0.11"
 debian-watch = "0.2.12"
 makefile-lossless = "0.3.2"
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
