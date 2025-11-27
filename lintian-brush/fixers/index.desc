@@ -92,12 +92,6 @@ fixers:
 
 
 
-  - script: vcs-field-for-maintainer.py
-    lintian-tags:
-      - old-dpmt-vcs
-      - old-papt-vcs
-
-
   - script: source-format.py
     lintian-tags:
       - older-source-format
