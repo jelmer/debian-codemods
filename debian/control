@@ -128,7 +128,8 @@ Build-Depends: bash-completion,
                librust-dep3-0.2+default-dev,
                librust-patchkit-0.2+default-dev (>= 0.2.2-~~),
                librust-debian-changelog+default-dev (>= 0.2.7-~~),
-               librust-rowan-0.16+default-dev
+               librust-rowan-0.16+default-dev,
+               librust-strsim-0.11+default-dev
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git

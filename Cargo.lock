@@ -2669,6 +2669,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "strsim",
  "svp-client",
  "tempfile",
  "tokio",
