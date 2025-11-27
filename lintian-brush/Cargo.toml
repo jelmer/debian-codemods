@@ -29,6 +29,7 @@ url = { version = "2", features = ["serde"] }
 lazy_static = { workspace = true }
 debian-analyzer = { workspace = true, features = ["svp"] }
 debian-control = { workspace = true }
+debian-copyright = { workspace = true }
 deb822-lossless = { workspace = true }
 distro-info = "0.4.0"
 debian-changelog = { workspace = true }
