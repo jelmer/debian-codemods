@@ -1281,8 +1281,7 @@ impl From<DebianizePreferences> for lintian_brush::FixerPreferences {
             trust_package: Some(p.trust),
             opinionated: Some(true),
             allow_reformatting: Some(true),
-            upgrade_release: None,
-            extra_env: None,
+            ..Default::default()
         }
     }
 }
@@ -1834,8 +1833,7 @@ fn run_debianize_fixers(
         net_access: Some(preferences.net_access),
         opinionated: Some(true),
         diligence: Some(preferences.diligence as i32),
-        upgrade_release: None,
-        extra_env: None,
+        ..Default::default()
     };
 
     // Run the fixers

@@ -3,7 +3,8 @@ Section: admin
 Priority: optional
 Maintainer: Filesystems Group <filesystems-devel@lists.alioth.debian.org>
 Uploaders: Vincent Cheng <vcheng@debian.org>, Theodore Y. Ts'o <tytso@mit.edu>
-Build-Depends: debhelper (>= 9.20160114),
+Build-Depends:
+ debhelper (>= 9.20160114),
  dh-autoreconf,
  libblkid-dev,
  libselinux1-dev,
