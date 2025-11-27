@@ -48,6 +48,7 @@ pub mod file_contains_trailing_whitespace;
 pub mod font_package_not_multi_arch_foreign;
 pub mod homepage_in_binary_package;
 pub mod invalid_standards_version;
+pub mod libmodule_build_perl_needs_to_be_in_build_depends;
 pub mod maintainer_also_in_uploaders;
 pub mod maintainer_script_empty;
 pub mod maintainer_script_without_set_e;
