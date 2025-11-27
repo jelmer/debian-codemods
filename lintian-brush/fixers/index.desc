@@ -221,9 +221,6 @@ fixers:
     lintian-tags:
       - license-file-listed-in-debian-copyright
 
-  - script: unused-license-paragraph-in-dep5-copyright.py
-    lintian-tags:
-      - unused-license-paragraph-in-dep5-copyright
 
   - script: global-files-wildcard-not-first-paragraph-in-dep5-copyright.py
     lintian-tags:
