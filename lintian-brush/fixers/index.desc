@@ -247,10 +247,6 @@ fixers:
 
 
 
-  - script: field-name-typo-in-dep5-copyright.py
-    lintian-tags:
-      - field-name-typo-in-dep5-copyright
-
   - script: license-file-listed-in-debian-copyright.py
     lintian-tags:
       - license-file-listed-in-debian-copyright
