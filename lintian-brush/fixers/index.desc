@@ -174,10 +174,6 @@ fixers:
       - possible-missing-colon-in-closes
       - misspelled-closes-bug
 
-  - script: malformed-override.py
-    lintian-tags:
-      - malformed-override
-
   - script: space-in-std-shortname-in-dep5-copyright.py
     lintian-tags:
       - space-in-std-shortname-in-dep5-copyright
