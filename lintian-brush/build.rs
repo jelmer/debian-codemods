@@ -93,7 +93,11 @@ fn generate_renamed_tags_map(out_dir: &std::ffi::OsStr) {
     );
     code.push_str("    let mut map = std::collections::HashMap::new();\n");
 
-    for (old_tag, new_tag) in renames {
+    // Sort the keys to ensure deterministic ordering
+    let mut sorted_renames: Vec<_> = renames.into_iter().collect();
+    sorted_renames.sort_by(|a, b| a.0.cmp(&b.0));
+
+    for (old_tag, new_tag) in sorted_renames {
         // Escape any quotes in the strings
         let old_tag = old_tag.replace('\"', "\\\"");
         let new_tag = new_tag.replace('\"', "\\\"");
