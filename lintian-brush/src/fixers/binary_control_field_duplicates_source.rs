@@ -10,7 +10,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let mut editor = TemplatedControlEditor::open(&control_path)?;
+    let editor = TemplatedControlEditor::open(&control_path)?;
 
     // Get all source fields and their values
     let source_fields: HashMap<String, String> = if let Some(source) = editor.source() {
@@ -49,7 +49,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     paragraph.remove(&field);
                     removed
                         .entry(field.clone())
-                        .or_insert_with(HashSet::new)
+                        .or_default()
                         .insert(package_name.clone());
                 }
             }

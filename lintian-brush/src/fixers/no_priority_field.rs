@@ -10,7 +10,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let mut editor = TemplatedControlEditor::open(&control_path)?;
+    let editor = TemplatedControlEditor::open(&control_path)?;
 
     // If source already has Priority, exit without changes
     if let Some(source) = editor.source() {
@@ -75,7 +75,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             .map(|(pkg, prio)| format!("{} ({})", pkg, prio))
             .collect();
 
-        return Ok(FixerResult::builder(&format!(
+        return Ok(FixerResult::builder(format!(
             "Set priority for binary packages {:?}.",
             packages_str
         ))

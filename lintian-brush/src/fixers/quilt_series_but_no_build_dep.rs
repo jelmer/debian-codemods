@@ -33,7 +33,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // Update the control file
     let control_path = base_path.join("debian/control");
     let control_content = std::fs::read_to_string(&control_path)?;
-    let mut control = Control::from_str(&control_content)
+    let control = Control::from_str(&control_content)
         .map_err(|e| FixerError::Other(format!("Failed to parse debian/control: {:?}", e)))?;
 
     let mut source = control
