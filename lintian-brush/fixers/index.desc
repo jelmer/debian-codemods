@@ -88,18 +88,13 @@ fixers:
 
 
 
-  - script: source-format.py
-    lintian-tags:
-      - older-source-format
-      - missing-debian-source-format
-
   # Intentionally after source-format, so that we upgrade to 3.0 (quilt) first
   # and then drop the quilt extension.
   - script: dh-quilt-addon-but-quilt-source-format.py
     lintian-tags:
       - dh-quilt-addon-but-quilt-source-format
     after:
-      - source-format.py
+      - source-format
 
   - script: missing-build-dependency-for-dh_-command.py
     lintian-tags:
