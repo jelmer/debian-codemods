@@ -73,18 +73,7 @@ fixers:
     lintian-tags:
       - ancient-python-version-field
 
-
-
-  - script: debian-changelog-line-too-long.py
-    lintian-tags:
-      - debian-changelog-line-too-long
-
-
   - script: changelog-has-duplicate-line.py
-
-  - script: debian-watch-contains-dh_make-template.py
-    lintian-tags:
-      - debian-watch-contains-dh_make-template
 
   - script: dep5-file-paragraph-references-header-paragraph.py
     lintian-tags:
@@ -198,11 +187,6 @@ fixers:
     lintian-tags:
       - systemd-service-file-refers-to-obsolete-target
 
-  - script: unnecessary-team-upload.py
-    lintian-tags:
-      - unnecessary-team-upload
-
-
   - script: upstream-metadata-invalid.py
     lintian-tags:
       - upstream-metadata-yaml-invalid
@@ -243,10 +227,6 @@ fixers:
 
 
 
-  - script: field-name-typo-in-dep5-copyright.py
-    lintian-tags:
-      - field-name-typo-in-dep5-copyright
-
   - script: license-file-listed-in-debian-copyright.py
     lintian-tags:
       - license-file-listed-in-debian-copyright
@@ -278,10 +258,6 @@ fixers:
   - script: debian-watch-file-uses-deprecated-githubredir.py
     lintian-tags:
       - debian-watch-file-uses-deprecated-githubredir
-
-  - script: debian-watch-file-uses-old-github-pattern.py
-
-  - script: debian-watch-file-uses-github-releases.py
 
   - script: unused-build-dependency-on-cdbs.py
     lintian-tags:
