@@ -12,7 +12,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let mut editor = TemplatedControlEditor::open(&control_path)?;
+    let editor = TemplatedControlEditor::open(&control_path)?;
     let mut made_changes = false;
 
     if let Some(mut source) = editor.source() {
@@ -33,9 +33,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
         if made_changes {
             // Ensure minimum debhelper version
-            let build_depends_str = paragraph
-                .get("Build-Depends")
-                .unwrap_or_else(|| String::new());
+            let build_depends_str = paragraph.get("Build-Depends").unwrap_or_else(String::new);
             use debian_control::lossless::relations::Relations;
             let (mut build_depends, _errors) = Relations::parse_relaxed(&build_depends_str, true);
 

@@ -17,7 +17,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let mut editor = TemplatedControlEditor::open(&control_path)?;
+    let editor = TemplatedControlEditor::open(&control_path)?;
 
     let host_map: HashMap<&str, &str> = HOST_TO_VCS.iter().copied().collect();
 
@@ -42,7 +42,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 if let Ok(parsed_url) = Url::parse(&vcs_url) {
                     if let Some(host) = parsed_url.host_str() {
                         // Remove "user@" prefix if present
-                        let clean_host = host.split('@').last().unwrap_or(host);
+                        let clean_host = host.split('@').next_back().unwrap_or(host);
 
                         if let Some(&actual_vcs) = host_map.get(clean_host) {
                             if actual_vcs != vcs_type {
@@ -70,7 +70,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     editor.commit()?;
 
-    Ok(FixerResult::builder(&format!(
+    Ok(FixerResult::builder(format!(
         "Changed vcs type from {} to {} based on URL.",
         old_vcs, new_vcs
     ))
