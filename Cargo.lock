@@ -842,9 +842,9 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e91d0fb4921095fd11543a3dfa60f0f6cc22a528b6bcfe3dba98d08251b8743a"
+checksum = "b36d018a7c9d608cab492509ad67019bea0d8df4aeb40299d99b51c18b6f9f81"
 dependencies = [
  "pyo3",
  "regex",
@@ -870,9 +870,9 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.160.4"
+version = "0.160.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a24fe715e7311f595b55cecce9cc97ed790d90179d790f0454e67040b89328b9"
+checksum = "bf8d57e5f67b1bd66b9244a89c6518b6851726ba895d02a158d0ca3040c28714"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -925,9 +925,9 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d041d1679626a80f5bb099b0d28b9a842fa951d03330755f93ac639d6d152df"
+checksum = "e6c17148ce965fcac53d4b06fbeefc3a77dfdcae1feb2d3b181021c1be2830b7"
 dependencies = [
  "chrono",
  "deb822-fast",
@@ -941,9 +941,9 @@ dependencies = [
 
 [[package]]
 name = "debian-copyright"
-version = "0.1.29"
+version = "0.1.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98826529cf8a9eaf61ecc286f936922ca496553a289e3b2bcfa200dc6b1c866b"
+checksum = "cc146c21537af1e2d31405d430c9b05a34cb92e443b910881cabb710b5bdf6f0"
 dependencies = [
  "deb822-fast",
  "deb822-lossless",
@@ -2652,6 +2652,7 @@ dependencies = [
  "debian-analyzer",
  "debian-changelog",
  "debian-control",
+ "debian-copyright",
  "debian-watch",
  "debversion",
  "dep3",
@@ -2785,9 +2786,9 @@ dependencies = [
 
 [[package]]
 name = "makefile-lossless"
-version = "0.3.7"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "113feb1913c30773d80d966119e97149ae0cf0b9474986d2780f9695920b084f"
+checksum = "8412097b17a60f7c16358237f1f1f8f46c2e348074e918acbe10b0ca5cc59cf8"
 dependencies = [
  "log",
  "rowan",
@@ -5301,9 +5302,9 @@ checksum = "8df9b6e13f2d32c91b9bd719c00d1958837bc7dec474d94952798cc8e69eeec3"
 
 [[package]]
 name = "tracing"
-version = "0.1.41"
+version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "784e0ac535deb450455cbfa28a6f0df145ea1bb7ae51b821cf5e7927fdcfbdd0"
+checksum = "8eb41cbdb933e23b7929f47bb577710643157d7602ef3a2ebd3902b13ac5eda6"
 dependencies = [
  "log",
  "pin-project-lite",

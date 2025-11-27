@@ -12,10 +12,6 @@
 # First, update overrides for matching by other fixers
 
 fixers:
-  - script: old-override-info-format.py
-    lintian-tags:
-      - mismatched-override
-
   # file-contains-trailing-whitespace and obsolete-field-in-dep5-copyright are
   # processed first, since they make it for other fixers to change the file
   # while preserving formatting.
@@ -51,9 +47,6 @@ fixers:
 
 
 
-  - script: field-name-typo-in-tests-control.py
-
-
   - script: obsolete-field-in-dep5-copyright.py
     lintian-tags:
       - obsolete-field-in-dep5-copyright
@@ -83,10 +76,6 @@ fixers:
   - script: homepage-field-uses-insecure-uri.py
     lintian-tags:
       - homepage-field-uses-insecure-uri
-
-  - script: libmodule-build-perl-needs-to-be-in-build-depends.py
-    lintian-tags:
-      - libmodule-build-perl-needs-to-be-in-build-depends
 
   - script: ancient-maintscript-entry.py
 
@@ -118,10 +107,6 @@ fixers:
       - pypi-homepage
       - rubygem-homepage
 
-
-  - script: declares-possibly-conflicting-debhelper-compat-versions.py
-    lintian-tags:
-      - declares-possibly-conflicting-debhelper-compat-versions
 
   - script: package-needs-versioned-debhelper-build-depends.py
     lintian-tags:
@@ -233,21 +218,12 @@ fixers:
     lintian-tags:
       - invalid-short-name-in-dep5-copyright
 
-  - script: copyright-refers-to-symlink-license.py
-    lintian-tags:
-      - copyright-refers-to-symlink-license
-      - copyright-refers-to-versionless-license-file
-
   - script: vcs-field-bitrotted.py
     lintian-tags:
       - vcs-obsolete-in-debian-infrastructure
       - vcs-field-bitrotted
 
   - script: vcs-broken-uri.py
-
-  - script: debian-watch-file-uses-deprecated-githubredir.py
-    lintian-tags:
-      - debian-watch-file-uses-deprecated-githubredir
 
   - script: typo-in-debhelper-override-target.py
     lintian-tags:
@@ -287,11 +263,6 @@ fixers:
   - script: desktop-entry-contains-encoding-key.py
     lintian-tags:
       - desktop-entry-contains-encoding-key
-
-  - script: out-of-date-standards-version.py
-    lintian-tags:
-      - out-of-date-standards-version
-      - ancient-standards-version
 
   - script: autotools-pkg-config-macro-not-cross-compilation-safe.py
     lintian-tags:

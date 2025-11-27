@@ -29,6 +29,7 @@ url = { version = "2", features = ["serde"] }
 lazy_static = { workspace = true }
 debian-analyzer = { workspace = true, features = ["svp"] }
 debian-control = { workspace = true }
+debian-copyright = { workspace = true }
 deb822-lossless = { workspace = true }
 distro-info = "0.4.0"
 debian-changelog = { workspace = true }
@@ -38,7 +39,7 @@ svp-client = { workspace = true }
 inventory = "0.3"
 regex = { workspace = true }
 sequoia-openpgp = "2"
-makefile-lossless = "0.3.2"
+makefile-lossless = "0.3.6"
 debian-watch = "0.2.13"
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 tokio-postgres = { version = "0.7", optional = true }
