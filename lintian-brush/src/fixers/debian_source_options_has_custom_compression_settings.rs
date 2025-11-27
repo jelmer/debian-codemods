@@ -95,7 +95,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     sorted_dropped.sort();
 
     Ok(
-        FixerResult::builder(&format!("Drop {}.", sorted_dropped.join(", ")))
+        FixerResult::builder(format!("Drop {}.", sorted_dropped.join(", ")))
             .fixed_tags(vec!["custom-compression-in-debian-source-options"])
             .build(),
     )

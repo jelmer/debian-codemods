@@ -330,10 +330,6 @@ fixers:
     lintian-tags:
       - desktop-entry-contains-encoding-key
 
-  - script: invalid-standards-version.py
-    lintian-tags:
-      - invalid-standards-version
-
   - script: out-of-date-standards-version.py
     lintian-tags:
       - out-of-date-standards-version
