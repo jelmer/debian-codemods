@@ -24,6 +24,7 @@ pub mod debian_rules_uses_special_shell_variable;
 pub mod debian_source_options_has_custom_compression_settings;
 pub mod debian_tests_control_autodep8_is_obsolete;
 pub mod debian_upstream_obsolete_path;
+pub mod debian_watch_contains_dh_make_template;
 pub mod debian_watch_file_old_format;
 pub mod debian_watch_file_uses_github_releases;
 pub mod debian_watch_file_uses_old_github_pattern;

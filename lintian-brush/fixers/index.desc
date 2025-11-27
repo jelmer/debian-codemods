@@ -79,10 +79,6 @@ fixers:
 
   - script: changelog-has-duplicate-line.py
 
-  - script: debian-watch-contains-dh_make-template.py
-    lintian-tags:
-      - debian-watch-contains-dh_make-template
-
   - script: dep5-file-paragraph-references-header-paragraph.py
     lintian-tags:
       - dep5-file-paragraph-references-header-paragraph
