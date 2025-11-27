@@ -57,6 +57,7 @@ pub mod obsolete_field_in_dep5_copyright;
 pub mod obsolete_runtime_tests_restriction;
 pub mod obsolete_url_in_packaging;
 pub mod old_fsf_address_in_copyright_file;
+pub mod old_override_info_format;
 pub mod orphaned_package_should_not_have_uploaders;
 pub mod out_of_date_copyright_format_uri;
 pub mod package_contains_linda_override;
