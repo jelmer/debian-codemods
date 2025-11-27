@@ -28,7 +28,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         // Simple case: just rename
         fs::rename(&old_path, &new_path)?;
 
-        Ok(FixerResult::builder(&format!(
+        Ok(FixerResult::builder(format!(
             "Rename obsolete path {} to {}.",
             OLD_PATH, NEW_PATH
         ))
@@ -59,7 +59,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         fs::remove_file(&old_path)?;
 
         Ok(
-            FixerResult::builder(&format!("Merge {} into {}.", OLD_PATH, NEW_PATH))
+            FixerResult::builder(format!("Merge {} into {}.", OLD_PATH, NEW_PATH))
                 .fixed_issues(vec![merge_issue, issue])
                 .build(),
         )

@@ -20,10 +20,6 @@ fixers:
   # processed first, since they make it for other fixers to change the file
   # while preserving formatting.
 
-  - script: file-contains-trailing-whitespace.py
-    lintian-tags:
-      - trailing-whitespace
-
   - script: debian-control-has-unusual-field-spacing.py
     lintian-tags:
       - debian-control-has-unusual-field-spacing
@@ -74,18 +70,7 @@ fixers:
     lintian-tags:
       - ancient-python-version-field
 
-
-
-  - script: debian-changelog-line-too-long.py
-    lintian-tags:
-      - debian-changelog-line-too-long
-
-
   - script: changelog-has-duplicate-line.py
-
-  - script: debian-watch-contains-dh_make-template.py
-    lintian-tags:
-      - debian-watch-contains-dh_make-template
 
   - script: dep5-file-paragraph-references-header-paragraph.py
     lintian-tags:
@@ -102,12 +87,6 @@ fixers:
 
   - script: ancient-maintscript-entry.py
 
-
-
-  - script: vcs-field-for-maintainer.py
-    lintian-tags:
-      - old-dpmt-vcs
-      - old-papt-vcs
 
 
   - script: source-format.py
@@ -171,10 +150,6 @@ fixers:
       - possible-missing-colon-in-closes
       - misspelled-closes-bug
 
-  - script: malformed-override.py
-    lintian-tags:
-      - malformed-override
-
   - script: space-in-std-shortname-in-dep5-copyright.py
     lintian-tags:
       - space-in-std-shortname-in-dep5-copyright
@@ -198,11 +173,6 @@ fixers:
   - script: systemd-service-file-refers-to-obsolete-target.py
     lintian-tags:
       - systemd-service-file-refers-to-obsolete-target
-
-  - script: unnecessary-team-upload.py
-    lintian-tags:
-      - unnecessary-team-upload
-
 
   - script: upstream-metadata-invalid.py
     lintian-tags:
@@ -244,10 +214,6 @@ fixers:
 
 
 
-  - script: field-name-typo-in-dep5-copyright.py
-    lintian-tags:
-      - field-name-typo-in-dep5-copyright
-
   - script: license-file-listed-in-debian-copyright.py
     lintian-tags:
       - license-file-listed-in-debian-copyright
@@ -279,10 +245,6 @@ fixers:
   - script: debian-watch-file-uses-deprecated-githubredir.py
     lintian-tags:
       - debian-watch-file-uses-deprecated-githubredir
-
-  - script: debian-watch-file-uses-old-github-pattern.py
-
-  - script: debian-watch-file-uses-github-releases.py
 
   - script: unused-build-dependency-on-cdbs.py
     lintian-tags:
@@ -326,10 +288,6 @@ fixers:
   - script: desktop-entry-contains-encoding-key.py
     lintian-tags:
       - desktop-entry-contains-encoding-key
-
-  - script: invalid-standards-version.py
-    lintian-tags:
-      - invalid-standards-version
 
   - script: out-of-date-standards-version.py
     lintian-tags:

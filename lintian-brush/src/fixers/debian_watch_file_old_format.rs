@@ -48,7 +48,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // Write back the updated watch file
     fs::write(&watch_path, watch_file.to_string())?;
 
-    Ok(FixerResult::builder(&format!(
+    Ok(FixerResult::builder(format!(
         "Update watch file format version to {}.",
         WATCH_FILE_LATEST_VERSION
     ))

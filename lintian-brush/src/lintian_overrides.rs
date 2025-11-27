@@ -288,45 +288,26 @@ fn parse_line(builder: &mut GreenNodeBuilder, line: &str, _errors: &mut Vec<Stri
         return;
     }
 
-    // Parse the override line
-    let mut chars = trimmed_start.char_indices().peekable();
-    let mut current_start = 0;
+    // Parse the override line following the format:
+    // [[<package>][ <archlist>][ <type>]: ]<lintian-tag>[ <lintian-info>]
+    // We split on ": " (colon + space) to separate origin from issue
+    let (origin, issue) = if let Some(pos) = trimmed_start.find(": ") {
+        (&trimmed_start[..pos], &trimmed_start[pos + 2..])
+    } else {
+        ("", trimmed_start)
+    };
 
-    // First, check if we have a package spec (word followed by colon)
-    while let Some((i, ch)) = chars.next() {
-        if ch == ':' {
-            // Found package spec
-            builder.start_node(PACKAGE_SPEC.into());
-            builder.token(PACKAGE_NAME.into(), &trimmed_start[current_start..i]);
-            builder.token(COLON.into(), ":");
-            builder.finish_node();
-
-            current_start = i + 1;
-
-            // Skip any whitespace after colon
-            while let Some((j, ch)) = chars.peek() {
-                if ch.is_whitespace() {
-                    builder.token(
-                        WHITESPACE.into(),
-                        &trimmed_start[current_start..*j + ch.len_utf8()],
-                    );
-                    current_start = *j + ch.len_utf8();
-                    chars.next();
-                } else {
-                    break;
-                }
-            }
-            break;
-        } else if ch.is_whitespace() {
-            // No colon found before whitespace, so this must be the tag
-            break;
-        }
+    // Parse origin (package/archlist/type before ": ")
+    if !origin.is_empty() {
+        builder.start_node(PACKAGE_SPEC.into());
+        builder.token(PACKAGE_NAME.into(), origin);
+        builder.token(COLON.into(), ":");
+        builder.finish_node();
+        builder.token(WHITESPACE.into(), " ");
     }
 
-    // Now parse the rest as tag and info
-    let rest = &trimmed_start[current_start..];
-    let parts: Vec<&str> = rest.split_whitespace().collect();
-
+    // Parse issue (tag and info)
+    let parts: Vec<&str> = issue.split_whitespace().collect();
     if !parts.is_empty() {
         // First part is the tag
         builder.token(TAG.into(), parts[0]);
@@ -334,8 +315,8 @@ fn parse_line(builder: &mut GreenNodeBuilder, line: &str, _errors: &mut Vec<Stri
         // Rest is info
         if parts.len() > 1 {
             // Find where the tag ends in the original string
-            let tag_end = rest.find(parts[0]).unwrap() + parts[0].len();
-            let after_tag = &rest[tag_end..];
+            let tag_end = issue.find(parts[0]).unwrap() + parts[0].len();
+            let after_tag = &issue[tag_end..];
 
             // Add whitespace between tag and info
             let info_start = after_tag.len() - after_tag.trim_start().len();
@@ -432,6 +413,33 @@ pub fn copy_node(builder: &mut GreenNodeBuilder, node: &SyntaxNode) {
     builder.finish_node();
 }
 
+/// Filter override lines based on a predicate function
+/// Returns a new LintianOverrides with only the lines where the predicate returns true
+pub fn filter_overrides<F>(overrides: &LintianOverrides, mut predicate: F) -> LintianOverrides
+where
+    F: FnMut(&OverrideLine) -> bool,
+{
+    let mut builder = GreenNodeBuilder::new();
+    builder.start_node(ROOT.into());
+
+    let mut first = true;
+    for line in overrides.lines() {
+        if predicate(&line) {
+            copy_node(&mut builder, line.syntax());
+            if !first {
+                builder.token(NEWLINE.into(), "\n");
+            }
+            first = false;
+        }
+    }
+
+    builder.finish_node();
+    let green = builder.finish();
+    LintianOverrides {
+        syntax: SyntaxNode::new_root(green),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -517,5 +525,31 @@ mod tests {
         assert!(text.contains("# Test comment"));
         assert!(text.contains("mypackage: some-tag with info"));
         assert!(text.contains("another-tag"));
+    }
+
+    #[test]
+    fn test_parse_with_package_and_type() {
+        let text = "lintian-brush source: uploader-not-full-name\n";
+        let parsed = LintianOverrides::parse(text);
+        assert!(parsed.errors().is_empty());
+
+        let overrides = parsed.ok().unwrap();
+        let lines: Vec<_> = overrides.lines().collect();
+
+        assert_eq!(lines.len(), 1);
+        let line = &lines[0];
+
+        // Check if tag is parsed correctly (should be "uploader-not-full-name")
+        let tag = line.tag();
+        assert!(tag.is_some(), "Tag should be present");
+        assert_eq!(tag.unwrap().text(), "uploader-not-full-name");
+
+        // Check if package spec is present (should contain "lintian-brush source")
+        let pkg_spec = line.package_spec();
+        assert!(pkg_spec.is_some(), "Package spec should be present");
+        assert_eq!(
+            pkg_spec.unwrap().package_name().unwrap(),
+            "lintian-brush source"
+        );
     }
 }
