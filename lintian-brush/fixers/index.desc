@@ -25,10 +25,6 @@ fixers:
 
 
 
-  - script: initial-upload-closes-no-bugs.py
-    lintian-tags:
-      - initial-upload-closes-no-bugs
-
   - script: package-has-no-description.py
     lintian-tags:
       - required-field
