@@ -9,6 +9,7 @@ debian-codemods (0.163) experimental; urgency=medium
     of codemods other than lintian-brush.
   * Split out a debian-codemods binary package that contains
     non-lintian-brush codemods.
+  * Rebuild against Python 3.13/3.14. Closes: #1094320
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 03 Jun 2025 22:37:02 +0100
 

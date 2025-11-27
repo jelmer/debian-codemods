@@ -49,11 +49,6 @@ fixers:
 
   - script: field-name-typo-in-tests-control.py
 
-
-  - script: obsolete-field-in-dep5-copyright.py
-    lintian-tags:
-      - obsolete-field-in-dep5-copyright
-
   - script: common-license.py
     lintian-tags:
       - copyright-does-not-refer-to-common-license-file
@@ -64,12 +59,6 @@ fixers:
       - copyright-file-contains-full-apache-2-license
       - copyright-file-contains-full-gfdl-license
       - copyright-file-contains-full-gpl-license
-
-  - script: ancient-python-version-field.py
-    lintian-tags:
-      - ancient-python-version-field
-
-  - script: changelog-has-duplicate-line.py
 
   - script: dep5-file-paragraph-references-header-paragraph.py
     lintian-tags:
