@@ -48,7 +48,6 @@ dep3 = "0.2.0"
 patchkit = "0.2.2"
 rowan = "0.16"
 strsim = "0.11"
-debian-copyright.workspace = true
 
 [dev-dependencies]
 fs_extra = "1.3.0"
