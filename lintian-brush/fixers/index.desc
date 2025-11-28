@@ -81,18 +81,13 @@ fixers:
 
 
 
-  - script: source-format.py
-    lintian-tags:
-      - older-source-format
-      - missing-debian-source-format
-
   # Intentionally after source-format, so that we upgrade to 3.0 (quilt) first
   # and then drop the quilt extension.
   - script: dh-quilt-addon-but-quilt-source-format.py
     lintian-tags:
       - dh-quilt-addon-but-quilt-source-format
     after:
-      - source-format.py
+      - source-format
 
   - script: missing-build-dependency-for-dh_-command.py
     lintian-tags:
@@ -106,11 +101,6 @@ fixers:
       - no-homepage-field
       - pypi-homepage
       - rubygem-homepage
-
-
-  - script: package-needs-versioned-debhelper-build-depends.py
-    lintian-tags:
-      - no-versioned-debhelper-prerequisite
 
 
   - script: package-uses-deprecated-debhelper-compat-version.py
@@ -128,10 +118,6 @@ fixers:
     enabled: false
     lintian-tags:
       - skip-systemd-native-flag-missing-pre-depends
-
-  - script: patch-file-present-but-not-mentioned-in-series.py
-    lintian-tags:
-      - patch-file-present-but-not-mentioned-in-series
 
   - script: possible-missing-colon-in-closes.py
     lintian-tags:
@@ -206,9 +192,6 @@ fixers:
     lintian-tags:
       - license-file-listed-in-debian-copyright
 
-  - script: unused-license-paragraph-in-dep5-copyright.py
-    lintian-tags:
-      - unused-license-paragraph-in-dep5-copyright
 
   - script: global-files-wildcard-not-first-paragraph-in-dep5-copyright.py
     lintian-tags:
@@ -239,11 +222,6 @@ fixers:
     lintian-tags:
       - debian-rules-sets-dpkg-architecture-variable
 
-  - script: built-using-for-golang.py
-    lintian-tags:
-      - missing-built-using-field-for-golang-package
-      - built-using-field-on-arch-all-package
-
   - script: no-section-field.py
     lintian-tags:
       - recommended-field
@@ -272,11 +250,6 @@ fixers:
     lintian-tags:
       - silent-on-rules-requiring-root
 
-  - script: pkg-perl-vcs.py
-    lintian-tags:
-      - team/pkg-perl/vcs/no-team-url
-      - team/pkg-perl/vcs/no-git
-
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
   - script: newer-debconf-templates.py
@@ -290,10 +263,6 @@ fixers:
     lintian-tags:
       - debian-watch-file-pubkey-file-is-missing
       - debian-watch-does-not-check-openpgp-signature
-
-  - script: debian-rules-uses-as-needed-linker-flag.py
-    lintian-tags:
-      - debian-rules-uses-as-needed-linker-flag
 
   - script: debian-rules-parses-dpkg-parsechangelog.py
     lintian-tags:
