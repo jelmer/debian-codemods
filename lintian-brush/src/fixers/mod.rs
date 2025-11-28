@@ -22,6 +22,7 @@ pub mod debian_pyversions_is_obsolete;
 pub mod debian_rules_contains_unnecessary_get_orig_source_target;
 pub mod debian_rules_not_executable;
 pub mod debian_rules_should_not_use_pwd;
+pub mod debian_rules_uses_as_needed_linker_flag;
 pub mod debian_rules_uses_special_shell_variable;
 pub mod debian_source_options_has_custom_compression_settings;
 pub mod debian_tests_control_autodep8_is_obsolete;
