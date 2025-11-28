@@ -124,10 +124,6 @@ fixers:
     lintian-tags:
       - skip-systemd-native-flag-missing-pre-depends
 
-  - script: patch-file-present-but-not-mentioned-in-series.py
-    lintian-tags:
-      - patch-file-present-but-not-mentioned-in-series
-
   - script: possible-missing-colon-in-closes.py
     lintian-tags:
       - possible-missing-colon-in-closes
