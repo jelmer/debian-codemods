@@ -7,6 +7,7 @@ pub mod changelog_has_duplicate_line;
 pub mod comma_separated_files_in_dep5_copyright;
 pub mod copyright_format_uri;
 pub mod copyright_has_crs;
+pub mod copyright_missing_upstream_info;
 pub mod copyright_refers_to_symlink_license;
 pub mod crlf_line_endings;
 pub mod debhelper_but_no_misc_depends;
