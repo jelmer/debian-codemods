@@ -71,6 +71,7 @@ pub mod package_contains_linda_override;
 pub mod package_uses_deprecated_source_override_location;
 pub mod patch_file_present_but_not_mentioned_in_series;
 pub mod pkg_perl_testsuite;
+pub mod pkg_perl_vcs;
 pub mod priority_extra_is_replaced_by_priority_optional;
 pub mod public_upstream_key_binary;
 pub mod public_upstream_key_in_native_package;
