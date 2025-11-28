@@ -1381,12 +1381,13 @@ pub fn all_lintian_fixers(
 }
 
 /// Return a list of available lintian fixers (enabled ones only).
+/// Get available subprocess-based lintian fixers from a directory.
 ///
 /// # Arguments
 ///
 /// * `fixers_dir` - The directory to search for fixers.
 /// * `force_subprocess` - Force the use of a subprocess for all fixers.
-pub fn available_lintian_fixers(
+pub fn available_subprocess_lintian_fixers(
     fixers_dir: Option<&std::path::Path>,
     force_subprocess: Option<bool>,
 ) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
@@ -1411,6 +1412,30 @@ pub fn available_lintian_fixers(
             fixers.extend(fixer_iter);
         }
     }
+
+    Ok(fixers.into_iter())
+}
+
+/// Get all available lintian fixers (both builtin and subprocess-based).
+///
+/// # Arguments
+///
+/// * `fixers_dir` - The directory to search for fixers.
+/// * `force_subprocess` - Force the use of a subprocess for all fixers.
+pub fn available_lintian_fixers(
+    fixers_dir: Option<&std::path::Path>,
+    force_subprocess: Option<bool>,
+) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
+    let mut fixers = Vec::new();
+
+    // Add builtin fixers first
+    fixers.extend(builtin_fixers::get_builtin_fixers());
+
+    // Add subprocess-based fixers
+    fixers.extend(available_subprocess_lintian_fixers(
+        fixers_dir,
+        force_subprocess,
+    )?);
 
     Ok(fixers.into_iter())
 }
@@ -3441,7 +3466,7 @@ fixers:
         )
         .unwrap();
 
-        let fixers = available_lintian_fixers(Some(&fixers), Some(false))
+        let fixers = available_subprocess_lintian_fixers(Some(&fixers), Some(false))
             .unwrap()
             .collect::<Vec<_>>();
         assert_eq!(2, fixers.len());

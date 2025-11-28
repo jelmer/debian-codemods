@@ -45,12 +45,6 @@ fixers:
       # So we can steal the description from ITP/RFP
       - initial-upload-closes-no-bugs
 
-
-
-  - script: obsolete-field-in-dep5-copyright.py
-    lintian-tags:
-      - obsolete-field-in-dep5-copyright
-
   - script: common-license.py
     lintian-tags:
       - copyright-does-not-refer-to-common-license-file
@@ -61,12 +55,6 @@ fixers:
       - copyright-file-contains-full-apache-2-license
       - copyright-file-contains-full-gfdl-license
       - copyright-file-contains-full-gpl-license
-
-  - script: ancient-python-version-field.py
-    lintian-tags:
-      - ancient-python-version-field
-
-  - script: changelog-has-duplicate-line.py
 
   - script: dep5-file-paragraph-references-header-paragraph.py
     lintian-tags:
@@ -107,10 +95,6 @@ fixers:
     lintian-tags:
       - package-uses-deprecated-debhelper-compat-version
       - package-uses-old-debhelper-compat-version
-
-  - script: uses-debhelper-compat-file.py
-    lintian-tags:
-      - uses-debhelper-compat-file
 
   # TODO(jelmer): Temporarily disabled, since this triggers unnecessarily
   # (e.g. for nfdump). See https://bugs.debian.org/946398
@@ -203,10 +187,6 @@ fixers:
       - vcs-field-bitrotted
 
   - script: vcs-broken-uri.py
-
-  - script: unused-build-dependency-on-cdbs.py
-    lintian-tags:
-      - unused-build-dependency-on-cdbs
 
   - script: typo-in-debhelper-override-target.py
     lintian-tags:
