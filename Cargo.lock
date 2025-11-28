@@ -2740,6 +2740,7 @@ dependencies = [
  "distro-info",
  "env_logger",
  "fs_extra",
+ "futures",
  "humantime",
  "indicatif",
  "inventory",
