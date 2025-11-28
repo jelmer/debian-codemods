@@ -101,13 +101,6 @@ fixers:
 
 
 
-  - script: no-homepage-field.py
-    lintian-tags:
-      - no-homepage-field
-      - pypi-homepage
-      - rubygem-homepage
-
-
   - script: package-needs-versioned-debhelper-build-depends.py
     lintian-tags:
       - no-versioned-debhelper-prerequisite
