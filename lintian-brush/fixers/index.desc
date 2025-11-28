@@ -45,12 +45,6 @@ fixers:
       # So we can steal the description from ITP/RFP
       - initial-upload-closes-no-bugs
 
-
-
-  - script: obsolete-field-in-dep5-copyright.py
-    lintian-tags:
-      - obsolete-field-in-dep5-copyright
-
   - script: common-license.py
     lintian-tags:
       - copyright-does-not-refer-to-common-license-file
@@ -61,12 +55,6 @@ fixers:
       - copyright-file-contains-full-apache-2-license
       - copyright-file-contains-full-gfdl-license
       - copyright-file-contains-full-gpl-license
-
-  - script: ancient-python-version-field.py
-    lintian-tags:
-      - ancient-python-version-field
-
-  - script: changelog-has-duplicate-line.py
 
   - script: dep5-file-paragraph-references-header-paragraph.py
     lintian-tags:
@@ -81,39 +69,23 @@ fixers:
 
 
 
-  - script: source-format.py
-    lintian-tags:
-      - older-source-format
-      - missing-debian-source-format
-
   # Intentionally after source-format, so that we upgrade to 3.0 (quilt) first
   # and then drop the quilt extension.
   - script: dh-quilt-addon-but-quilt-source-format.py
     lintian-tags:
       - dh-quilt-addon-but-quilt-source-format
     after:
-      - source-format.py
+      - source-format
 
   - script: missing-build-dependency-for-dh_-command.py
     lintian-tags:
       - missing-build-dependency-for-dh_-command
       - missing-build-dependency-for-dh-addon
 
-
-
-  - script: package-needs-versioned-debhelper-build-depends.py
-    lintian-tags:
-      - no-versioned-debhelper-prerequisite
-
-
   - script: package-uses-deprecated-debhelper-compat-version.py
     lintian-tags:
       - package-uses-deprecated-debhelper-compat-version
       - package-uses-old-debhelper-compat-version
-
-  - script: uses-debhelper-compat-file.py
-    lintian-tags:
-      - uses-debhelper-compat-file
 
   # TODO(jelmer): Temporarily disabled, since this triggers unnecessarily
   # (e.g. for nfdump). See https://bugs.debian.org/946398
@@ -121,10 +93,6 @@ fixers:
     enabled: false
     lintian-tags:
       - skip-systemd-native-flag-missing-pre-depends
-
-  - script: patch-file-present-but-not-mentioned-in-series.py
-    lintian-tags:
-      - patch-file-present-but-not-mentioned-in-series
 
   - script: possible-missing-colon-in-closes.py
     lintian-tags:
@@ -215,10 +183,6 @@ fixers:
 
   - script: vcs-broken-uri.py
 
-  - script: unused-build-dependency-on-cdbs.py
-    lintian-tags:
-      - unused-build-dependency-on-cdbs
-
   - script: typo-in-debhelper-override-target.py
     lintian-tags:
       - typo-in-debhelper-override-target
@@ -232,11 +196,6 @@ fixers:
   - script: debian-rules-sets-dpkg-architecture-variable.py
     lintian-tags:
       - debian-rules-sets-dpkg-architecture-variable
-
-  - script: built-using-for-golang.py
-    lintian-tags:
-      - missing-built-using-field-for-golang-package
-      - built-using-field-on-arch-all-package
 
   - script: no-section-field.py
     lintian-tags:
@@ -266,11 +225,6 @@ fixers:
     lintian-tags:
       - silent-on-rules-requiring-root
 
-  - script: pkg-perl-vcs.py
-    lintian-tags:
-      - team/pkg-perl/vcs/no-team-url
-      - team/pkg-perl/vcs/no-git
-
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
   - script: newer-debconf-templates.py
@@ -284,10 +238,6 @@ fixers:
     lintian-tags:
       - debian-watch-file-pubkey-file-is-missing
       - debian-watch-does-not-check-openpgp-signature
-
-  - script: debian-rules-uses-as-needed-linker-flag.py
-    lintian-tags:
-      - debian-rules-uses-as-needed-linker-flag
 
   - script: debian-rules-parses-dpkg-parsechangelog.py
     lintian-tags:
