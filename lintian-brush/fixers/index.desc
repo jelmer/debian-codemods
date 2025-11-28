@@ -164,10 +164,6 @@ fixers:
     lintian-tags:
       - global-files-wildcard-not-first-paragraph-in-dep5-copyright
 
-  - script: invalid-short-name-in-dep5-copyright.py
-    lintian-tags:
-      - invalid-short-name-in-dep5-copyright
-
   - script: vcs-field-bitrotted.py
     lintian-tags:
       - vcs-obsolete-in-debian-infrastructure
