@@ -12,10 +12,6 @@
 # First, update overrides for matching by other fixers
 
 fixers:
-  - script: old-override-info-format.py
-    lintian-tags:
-      - mismatched-override
-
   # file-contains-trailing-whitespace and obsolete-field-in-dep5-copyright are
   # processed first, since they make it for other fixers to change the file
   # while preserving formatting.
@@ -51,9 +47,6 @@ fixers:
 
 
 
-  - script: field-name-typo-in-tests-control.py
-
-
   - script: obsolete-field-in-dep5-copyright.py
     lintian-tags:
       - obsolete-field-in-dep5-copyright
@@ -84,18 +77,9 @@ fixers:
     lintian-tags:
       - homepage-field-uses-insecure-uri
 
-  - script: libmodule-build-perl-needs-to-be-in-build-depends.py
-    lintian-tags:
-      - libmodule-build-perl-needs-to-be-in-build-depends
-
   - script: ancient-maintscript-entry.py
 
 
-
-  - script: source-format.py
-    lintian-tags:
-      - older-source-format
-      - missing-debian-source-format
 
   # Intentionally after source-format, so that we upgrade to 3.0 (quilt) first
   # and then drop the quilt extension.
@@ -103,7 +87,7 @@ fixers:
     lintian-tags:
       - dh-quilt-addon-but-quilt-source-format
     after:
-      - source-format.py
+      - source-format
 
   - script: missing-build-dependency-for-dh_-command.py
     lintian-tags:
@@ -119,15 +103,6 @@ fixers:
       - rubygem-homepage
 
 
-  - script: declares-possibly-conflicting-debhelper-compat-versions.py
-    lintian-tags:
-      - declares-possibly-conflicting-debhelper-compat-versions
-
-  - script: package-needs-versioned-debhelper-build-depends.py
-    lintian-tags:
-      - no-versioned-debhelper-prerequisite
-
-
   - script: package-uses-deprecated-debhelper-compat-version.py
     lintian-tags:
       - package-uses-deprecated-debhelper-compat-version
@@ -139,10 +114,6 @@ fixers:
     enabled: false
     lintian-tags:
       - skip-systemd-native-flag-missing-pre-depends
-
-  - script: patch-file-present-but-not-mentioned-in-series.py
-    lintian-tags:
-      - patch-file-present-but-not-mentioned-in-series
 
   - script: possible-missing-colon-in-closes.py
     lintian-tags:
@@ -217,9 +188,6 @@ fixers:
     lintian-tags:
       - license-file-listed-in-debian-copyright
 
-  - script: unused-license-paragraph-in-dep5-copyright.py
-    lintian-tags:
-      - unused-license-paragraph-in-dep5-copyright
 
   - script: global-files-wildcard-not-first-paragraph-in-dep5-copyright.py
     lintian-tags:
@@ -229,21 +197,12 @@ fixers:
     lintian-tags:
       - invalid-short-name-in-dep5-copyright
 
-  - script: copyright-refers-to-symlink-license.py
-    lintian-tags:
-      - copyright-refers-to-symlink-license
-      - copyright-refers-to-versionless-license-file
-
   - script: vcs-field-bitrotted.py
     lintian-tags:
       - vcs-obsolete-in-debian-infrastructure
       - vcs-field-bitrotted
 
   - script: vcs-broken-uri.py
-
-  - script: debian-watch-file-uses-deprecated-githubredir.py
-    lintian-tags:
-      - debian-watch-file-uses-deprecated-githubredir
 
   - script: unused-build-dependency-on-cdbs.py
     lintian-tags:
@@ -262,11 +221,6 @@ fixers:
   - script: debian-rules-sets-dpkg-architecture-variable.py
     lintian-tags:
       - debian-rules-sets-dpkg-architecture-variable
-
-  - script: built-using-for-golang.py
-    lintian-tags:
-      - missing-built-using-field-for-golang-package
-      - built-using-field-on-arch-all-package
 
   - script: no-section-field.py
     lintian-tags:
@@ -288,11 +242,6 @@ fixers:
     lintian-tags:
       - desktop-entry-contains-encoding-key
 
-  - script: out-of-date-standards-version.py
-    lintian-tags:
-      - out-of-date-standards-version
-      - ancient-standards-version
-
   - script: autotools-pkg-config-macro-not-cross-compilation-safe.py
     lintian-tags:
       - autotools-pkg-config-macro-not-cross-compilation-safe
@@ -300,11 +249,6 @@ fixers:
   - script: rules-requires-root-missing.py
     lintian-tags:
       - silent-on-rules-requiring-root
-
-  - script: pkg-perl-vcs.py
-    lintian-tags:
-      - team/pkg-perl/vcs/no-team-url
-      - team/pkg-perl/vcs/no-git
 
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
@@ -319,10 +263,6 @@ fixers:
     lintian-tags:
       - debian-watch-file-pubkey-file-is-missing
       - debian-watch-does-not-check-openpgp-signature
-
-  - script: debian-rules-uses-as-needed-linker-flag.py
-    lintian-tags:
-      - debian-rules-uses-as-needed-linker-flag
 
   - script: debian-rules-parses-dpkg-parsechangelog.py
     lintian-tags:

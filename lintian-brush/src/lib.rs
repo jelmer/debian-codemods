@@ -91,8 +91,15 @@ impl LintianIssue {
     }
 
     /// Check if this issue should be fixed (i.e., it's not overridden)
-    pub fn should_fix(&self, _base_path: &std::path::Path) -> bool {
-        // TODO: Check for lintian overrides in debian/source/lintian-overrides and debian/lintian-overrides
+    pub fn should_fix(&self, base_path: &std::path::Path) -> bool {
+        use crate::lintian_overrides;
+
+        for line in lintian_overrides::iter_overrides(base_path) {
+            if line.matches(self) {
+                return false;
+            }
+        }
+
         true
     }
 }
