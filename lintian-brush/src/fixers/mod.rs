@@ -17,6 +17,7 @@ pub mod debian_changelog_has_wrong_day_of_week;
 pub mod debian_changelog_line_too_long;
 pub mod debian_control_has_empty_field;
 pub mod debian_control_has_obsolete_dbg_package;
+pub mod debian_control_has_unusual_field_spacing;
 pub mod debian_pycompat_is_obsolete;
 pub mod debian_pyversions_is_obsolete;
 pub mod debian_rules_contains_unnecessary_get_orig_source_target;
