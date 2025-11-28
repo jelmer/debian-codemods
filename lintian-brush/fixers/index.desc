@@ -12,14 +12,6 @@
 # First, update overrides for matching by other fixers
 
 fixers:
-  # file-contains-trailing-whitespace and obsolete-field-in-dep5-copyright are
-  # processed first, since they make it for other fixers to change the file
-  # while preserving formatting.
-
-  - script: debian-control-has-unusual-field-spacing.py
-    lintian-tags:
-      - debian-control-has-unusual-field-spacing
-
 
   - script: no-copyright-file.py
     lintian-tags:
@@ -81,15 +73,6 @@ fixers:
     lintian-tags:
       - missing-build-dependency-for-dh_-command
       - missing-build-dependency-for-dh-addon
-
-
-
-  - script: no-homepage-field.py
-    lintian-tags:
-      - no-homepage-field
-      - pypi-homepage
-      - rubygem-homepage
-
 
   - script: package-uses-deprecated-debhelper-compat-version.py
     lintian-tags:
@@ -175,11 +158,6 @@ fixers:
   - script: license-file-listed-in-debian-copyright.py
     lintian-tags:
       - license-file-listed-in-debian-copyright
-
-
-  - script: invalid-short-name-in-dep5-copyright.py
-    lintian-tags:
-      - invalid-short-name-in-dep5-copyright
 
   - script: vcs-field-bitrotted.py
     lintian-tags:
