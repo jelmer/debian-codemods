@@ -2192,7 +2192,7 @@ async fn find_wnpp_bugs_for_package_async(
     }
 
     // Convert &str to &str for the API
-    let name_refs: Vec<&str> = names.iter().copied().collect();
+    let name_refs: Vec<&str> = names.to_vec();
 
     // Use the existing analyzer functionality
     match debian_analyzer::wnpp::find_wnpp_bugs_harder(&name_refs).await {
