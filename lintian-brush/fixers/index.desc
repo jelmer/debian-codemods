@@ -192,10 +192,6 @@ fixers:
 
   - script: vcs-broken-uri.py
 
-  - script: unused-build-dependency-on-cdbs.py
-    lintian-tags:
-      - unused-build-dependency-on-cdbs
-
   - script: typo-in-debhelper-override-target.py
     lintian-tags:
       - typo-in-debhelper-override-target

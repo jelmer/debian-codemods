@@ -88,6 +88,7 @@ pub mod source_format;
 pub mod transitional_package_should_be_oldlibs_optional;
 pub mod unnecessary_team_upload;
 pub mod unnecessary_testsuite_autopkgtest_field;
+pub mod unused_build_dependency_on_cdbs;
 pub mod unused_license_paragraph_in_dep5_copyright;
 pub mod unused_override;
 pub mod unversioned_copyright_format_uri;
