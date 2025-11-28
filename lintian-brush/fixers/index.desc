@@ -82,15 +82,6 @@ fixers:
       - missing-build-dependency-for-dh_-command
       - missing-build-dependency-for-dh-addon
 
-
-
-  - script: no-homepage-field.py
-    lintian-tags:
-      - no-homepage-field
-      - pypi-homepage
-      - rubygem-homepage
-
-
   - script: package-uses-deprecated-debhelper-compat-version.py
     lintian-tags:
       - package-uses-deprecated-debhelper-compat-version
