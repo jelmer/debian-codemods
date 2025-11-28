@@ -203,6 +203,13 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
             eprintln!("Fixer returned NoChanges for test {}", test_name);
             (None, 1) // Exit code 1 for no changes
         }
+        Err(FixerError::NoChangesAfterOverrides(_)) => {
+            eprintln!(
+                "Fixer returned NoChangesAfterOverrides for test {}",
+                test_name
+            );
+            (None, 1) // Exit code 1 for no changes
+        }
         Err(e) => {
             if let FixerError::ScriptFailed {
                 path,
