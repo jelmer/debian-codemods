@@ -36,6 +36,7 @@ pub mod debian_watch_file_uses_old_github_pattern;
 pub mod debian_watch_uses_insecure_uri;
 pub mod declares_possibly_conflicting_debhelper_compat_versions;
 pub mod dep3_format_patch_author_or_from_is_better;
+pub mod dep5_file_paragraph_references_header_paragraph;
 pub mod desktop_entry_file_has_crs;
 pub mod dh_clean_k_is_deprecated;
 pub mod dm_upload_allowed;

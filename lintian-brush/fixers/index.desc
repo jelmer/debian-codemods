@@ -48,11 +48,6 @@ fixers:
       - copyright-file-contains-full-gfdl-license
       - copyright-file-contains-full-gpl-license
 
-  - script: dep5-file-paragraph-references-header-paragraph.py
-    lintian-tags:
-      - dep5-file-paragraph-references-header-paragraph
-
-
   - script: homepage-field-uses-insecure-uri.py
     lintian-tags:
       - homepage-field-uses-insecure-uri
