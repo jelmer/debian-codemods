@@ -52,12 +52,8 @@ fixers:
     lintian-tags:
       - dep5-file-paragraph-references-header-paragraph
 
-
-  - script: homepage-field-uses-insecure-uri.py
-    lintian-tags:
-      - homepage-field-uses-insecure-uri
-
   - script: ancient-maintscript-entry.py
+
 
 
 

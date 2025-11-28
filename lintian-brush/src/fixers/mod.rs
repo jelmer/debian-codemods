@@ -50,6 +50,7 @@ pub mod field_name_typo_in_dep5_copyright;
 pub mod field_name_typo_in_tests_control;
 pub mod file_contains_trailing_whitespace;
 pub mod font_package_not_multi_arch_foreign;
+pub mod homepage_field_uses_insecure_uri;
 pub mod homepage_in_binary_package;
 pub mod invalid_short_name_in_dep5_copyright;
 pub mod invalid_standards_version;

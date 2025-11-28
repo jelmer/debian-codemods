@@ -281,12 +281,8 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     // Read debian/control to get package names
     let control_path = base_path.join("debian/control");
-    let control = Control::from_file(&control_path).map_err(|e| {
-        FixerError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            e.to_string(),
-        ))
-    })?;
+    let control = Control::from_file(&control_path)
+        .map_err(|e| FixerError::Io(std::io::Error::other(e.to_string())))?;
 
     let mut packages = Vec::new();
 
@@ -311,8 +307,8 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     }
 
     // Query UDD for unused overrides (this requires tokio runtime)
-    let runtime = tokio::runtime::Runtime::new()
-        .map_err(|e| FixerError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+    let runtime =
+        tokio::runtime::Runtime::new().map_err(|e| FixerError::Io(std::io::Error::other(e)))?;
 
     let unused_overrides = runtime
         .block_on(get_unused_overrides(&packages))

@@ -8,7 +8,7 @@ const URL_BASE: &str = "https://salsa.debian.org/perl-team/modules/packages";
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let control_path = base_path.join("debian/control");
-    let mut editor = TemplatedControlEditor::open(&control_path)?;
+    let editor = TemplatedControlEditor::open(&control_path)?;
 
     // Parse the maintainer field and extract the email address
     let maintainer = if let Some(source) = editor.source() {
@@ -63,10 +63,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // Determine what changes need to be made
     let need_to_fix_urls = old_vcs_git
         .as_ref()
-        .map_or(true, |v| !v.starts_with(URL_BASE))
+        .is_none_or(|v| !v.starts_with(URL_BASE))
         || old_vcs_browser
             .as_ref()
-            .map_or(true, |v| !v.starts_with(URL_BASE));
+            .is_none_or(|v| !v.starts_with(URL_BASE));
 
     let fields_to_remove: Vec<String> = {
         let paragraph = source.as_deb822();
@@ -132,7 +132,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     if fixed_urls {
         if old_vcs_git
             .as_ref()
-            .map_or(true, |v| !v.starts_with(URL_BASE))
+            .is_none_or(|v| !v.starts_with(URL_BASE))
         {
             source.set_vcs_url("Git", &vcs_git_url);
             made_changes = true;
@@ -140,7 +140,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
         if old_vcs_browser
             .as_ref()
-            .map_or(true, |v| !v.starts_with(URL_BASE))
+            .is_none_or(|v| !v.starts_with(URL_BASE))
         {
             source.set_vcs_url("Browser", &vcs_browser_url);
             made_changes = true;
