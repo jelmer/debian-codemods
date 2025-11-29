@@ -169,6 +169,7 @@ Description: collection of codemods for Debian packaging
 Package: lintian-brush
 Architecture: any
 Depends: devscripts,
+         decopy,
          python3-breezy (>= 3.3.1~),
          python3-debian,
          python3-debmutate (>= 0.67),

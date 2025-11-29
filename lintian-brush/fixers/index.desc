@@ -13,10 +13,6 @@
 
 fixers:
 
-  - script: no-copyright-file.py
-    lintian-tags:
-      - no-copyright-file
-
   # Copyright related fixers. Fix format URL before semantic fixes.
 
   - script: copyright-continued-lines-with-space.py
