@@ -209,13 +209,6 @@ fixers:
     lintian-tags:
       - newer-debconf-templates
 
-  # Disabled for now, since debmutate's support for watch files is still
-  # experimental.
-  - script: pubkey.py
-    lintian-tags:
-      - debian-watch-file-pubkey-file-is-missing
-      - debian-watch-does-not-check-openpgp-signature
-
   - script: debian-rules-parses-dpkg-parsechangelog.py
     lintian-tags:
       - debian-rules-parses-dpkg-parsechangelog
