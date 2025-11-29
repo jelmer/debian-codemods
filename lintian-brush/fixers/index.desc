@@ -120,8 +120,6 @@ fixers:
     lintian-tags:
   # - tracked in bug https://bugs.debian.org/969762
 
-  - script: copyright-missing-upstream-info.py
-
   - script: upstream-metadata-file.py
     lintian-tags:
       - upstream-metadata-file-is-missing
