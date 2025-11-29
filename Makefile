@@ -65,5 +65,4 @@ docker:
 update-deps:
 	brz diff debian/control || { echo "Pending changes to debian/control"; exit 1; }
 	update-rust-deps
-	wrap-and-sort -av
 	brz diff debian/control || brz commit -m "Update Rust dependencies" debian/control
