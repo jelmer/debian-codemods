@@ -912,6 +912,10 @@ pub enum FixerError {
     MemoryError,
     Io(std::io::Error),
     BrzError(Error),
+    Panic {
+        message: String,
+        backtrace: Option<std::backtrace::Backtrace>,
+    },
     Other(String),
 }
 
@@ -1032,6 +1036,13 @@ impl std::fmt::Display for FixerError {
                 humantime::format_duration(timeout.to_std().unwrap())
             ),
             FixerError::GeneratedFile(p) => write!(f, "Generated file: {}", p.display()),
+            FixerError::Panic { message, backtrace } => {
+                write!(f, "Panic: {}", message)?;
+                if let Some(bt) = backtrace {
+                    write!(f, "\nBacktrace:\n{}", bt)?;
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -2182,6 +2193,19 @@ pub fn run_lintian_fixers(
                 FixerError::Python(ref ep) => {
                     if verbose {
                         log::info!("Fixer {} failed: {}", fixer.name(), ep);
+                    }
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    continue;
+                }
+                FixerError::Panic {
+                    ref message,
+                    ref backtrace,
+                } => {
+                    if verbose {
+                        log::error!("Fixer {} panicked: {}", fixer.name(), message);
+                        if let Some(bt) = backtrace {
+                            log::error!("Backtrace:\n{}", bt);
+                        }
                     }
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     continue;
