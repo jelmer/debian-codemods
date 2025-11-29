@@ -39,7 +39,6 @@ humantime = "2.1.0"
 svp-client = { workspace = true }
 inventory = "0.3"
 regex = { workspace = true }
-reqwest = { workspace = true, features = ["blocking"] }
 sequoia-openpgp = "2"
 makefile-lossless = "0.3.6"
 shell-words = "1"
