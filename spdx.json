@@ -71,6 +71,7 @@
         "SANE-exception",
         "SHL-2.0",
         "SHL-2.1",
+        "Simple-Library-Usage-exception",
         "stunnel-exception",
         "SWI-exception",
         "Swift-exception",
@@ -127,6 +128,9 @@
         },
         "AGPL-3.0-or-later": {
             "name": "GNU Affero General Public License v3.0 or later"
+        },
+        "ALGLIB-Documentation": {
+            "name": "ALGLIB Documentation License"
         },
         "AMD-newlib": {
             "name": "AMD newlib License"
@@ -394,6 +398,9 @@
         },
         "Brian-Gladman-3-Clause": {
             "name": "Brian Gladman 3-Clause License"
+        },
+        "Buddy": {
+            "name": "Buddy License"
         },
         "C-UDA-1.0": {
             "name": "Computational Use of Data Agreement v1.0"
@@ -1112,6 +1119,9 @@
         "ISC-Veillard": {
             "name": "ISC Veillard variant"
         },
+        "ISO-permission": {
+            "name": "ISO permission notice"
+        },
         "ImageMagick": {
             "name": "ImageMagick License"
         },
@@ -1300,6 +1310,9 @@
         },
         "MIT-Modern-Variant": {
             "name": "MIT License Modern Variant"
+        },
+        "MIT-STK": {
+            "name": "MIT-STK License"
         },
         "MIT-Wu": {
             "name": "MIT Tom Wu Variant"
@@ -1886,6 +1899,9 @@
         "TU-Berlin-2.0": {
             "name": "Technische Universitaet Berlin License 2.0"
         },
+        "TekHVC": {
+            "name": "TekHVC License"
+        },
         "TermReadKey": {
             "name": "TermReadKey License"
         },
@@ -1978,6 +1994,9 @@
         },
         "X11-distribute-modifications-variant": {
             "name": "X11 License Distribution Modification Variant"
+        },
+        "X11-no-permit-persons": {
+            "name": "X11 no permit persons clause"
         },
         "X11-swapped": {
             "name": "X11 swapped final paragraphs"
