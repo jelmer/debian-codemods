@@ -11,7 +11,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let content = fs::read_to_string(&watch_path)?;
 
-    let mut watch_file: debian_watch::WatchFile = content
+    let watch_file: debian_watch::WatchFile = content
         .parse()
         .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
 

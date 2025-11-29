@@ -22,7 +22,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let content = fs::read_to_string(&tests_control_path)?;
-    let mut deb822 = Deb822::from_str(&content)
+    let deb822 = Deb822::from_str(&content)
         .map_err(|e| FixerError::Other(format!("Failed to parse debian/tests/control: {:?}", e)))?;
 
     let valid_fields: HashSet<&str> = VALID_FIELD_NAMES.iter().copied().collect();
@@ -84,12 +84,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         } else {
             "case".to_string()
         }
+    } else if typo_fixed.len() > 1 {
+        "typos".to_string()
     } else {
-        if typo_fixed.len() > 1 {
-            "typos".to_string()
-        } else {
-            "typo".to_string()
-        }
+        "typo".to_string()
     };
 
     let mut all_fixes = case_fixed;
@@ -102,7 +100,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .collect::<Vec<_>>()
         .join(", ");
 
-    Ok(FixerResult::builder(&format!(
+    Ok(FixerResult::builder(format!(
         "Fix field name {} in debian/tests/control ({}).",
         kind, fixed_str
     ))
