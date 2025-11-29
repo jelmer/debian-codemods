@@ -87,10 +87,11 @@ impl Fixer for BuiltinFixerWrapper {
             }
         }
 
-        // Run the fixer
-        let result = self
-            .fixer
-            .apply(basedir, package, current_version, preferences);
+        // Run the fixer with panic handling
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.fixer
+                .apply(basedir, package, current_version, preferences)
+        }));
 
         // Restore environment variables
         for (key, old_value) in env_backup {
@@ -101,7 +102,30 @@ impl Fixer for BuiltinFixerWrapper {
             }
         }
 
-        result
+        // Handle panic or return result
+        match result {
+            Ok(r) => r,
+            Err(panic_payload) => {
+                // Extract panic message
+                let message = if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                    s.to_string()
+                } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+                    s.clone()
+                } else {
+                    "Unknown panic payload".to_string()
+                };
+
+                // Capture backtrace
+                let backtrace = std::backtrace::Backtrace::capture();
+                let backtrace = if backtrace.status() == std::backtrace::BacktraceStatus::Captured {
+                    Some(backtrace)
+                } else {
+                    None
+                };
+
+                Err(FixerError::Panic { message, backtrace })
+            }
+        }
     }
 }
 
@@ -257,5 +281,67 @@ mod tests {
         assert!(debug_str.contains("test-fixer"));
         assert!(debug_str.contains("tag1"));
         assert!(debug_str.contains("tag2"));
+    }
+
+    // Mock builtin fixer that panics
+    struct PanicBuiltinFixer {
+        name: &'static str,
+        tags: &'static [&'static str],
+    }
+
+    impl BuiltinFixer for PanicBuiltinFixer {
+        fn name(&self) -> &'static str {
+            self.name
+        }
+
+        fn lintian_tags(&self) -> &'static [&'static str] {
+            self.tags
+        }
+
+        fn apply(
+            &self,
+            _basedir: &Path,
+            _package: &str,
+            _current_version: &Version,
+            _preferences: &FixerPreferences,
+        ) -> Result<FixerResult, FixerError> {
+            panic!("Test panic from fixer");
+        }
+    }
+
+    #[test]
+    fn test_builtin_fixer_wrapper_catches_panic() {
+        let panic_fixer = PanicBuiltinFixer {
+            name: "panic-test-fixer",
+            tags: &["test-tag"],
+        };
+
+        let wrapper = BuiltinFixerWrapper::new(Box::new(panic_fixer));
+        let temp_dir = tempfile::tempdir().unwrap();
+        let preferences = FixerPreferences::default();
+        let version: Version = "1.0".parse().unwrap();
+
+        let result = wrapper.run(
+            temp_dir.path(),
+            "test-package",
+            &version,
+            &preferences,
+            None,
+        );
+
+        // Verify that the panic was caught and converted to an error
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+
+        // Check that it's a Panic variant
+        match err {
+            FixerError::Panic {
+                message,
+                backtrace: _,
+            } => {
+                assert_eq!(message, "Test panic from fixer");
+            }
+            _ => panic!("Expected FixerError::Panic, got {:?}", err),
+        }
     }
 }

@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult};
 use makefile_lossless::Makefile;
 use std::fs;
 use std::path::Path;

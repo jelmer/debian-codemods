@@ -48,11 +48,8 @@ fixers:
       - copyright-file-contains-full-gfdl-license
       - copyright-file-contains-full-gpl-license
 
-  - script: homepage-field-uses-insecure-uri.py
-    lintian-tags:
-      - homepage-field-uses-insecure-uri
-
   - script: ancient-maintscript-entry.py
+
 
 
 
@@ -153,11 +150,6 @@ fixers:
   - script: license-file-listed-in-debian-copyright.py
     lintian-tags:
       - license-file-listed-in-debian-copyright
-
-
-  - script: global-files-wildcard-not-first-paragraph-in-dep5-copyright.py
-    lintian-tags:
-      - global-files-wildcard-not-first-paragraph-in-dep5-copyright
 
   - script: vcs-field-bitrotted.py
     lintian-tags:
