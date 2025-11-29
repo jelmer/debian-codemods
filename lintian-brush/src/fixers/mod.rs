@@ -104,6 +104,7 @@ pub mod quilt_series_without_trailing_newline;
 pub mod renamed_tag;
 pub mod rules_not_executable;
 pub mod source_format;
+pub mod space_in_std_shortname_in_dep5_copyright;
 pub mod transitional_package_should_be_oldlibs_optional;
 pub mod typo_in_debhelper_override_target;
 pub mod unnecessary_team_upload;
