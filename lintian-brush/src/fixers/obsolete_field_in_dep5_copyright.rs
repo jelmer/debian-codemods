@@ -78,7 +78,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .collect::<Vec<_>>()
         .join(", ");
 
-    Ok(FixerResult::builder(&format!(
+    Ok(FixerResult::builder(format!(
         "Update copyright file header to use current field names ({})",
         rename_str
     ))

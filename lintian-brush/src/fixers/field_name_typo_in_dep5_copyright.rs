@@ -69,7 +69,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let kind = build_kind_string(&case_fixed, &typo_fixed);
     let fixed_str = build_fixed_string(&case_fixed, &typo_fixed);
 
-    let mut result = FixerResult::builder(&format!(
+    let mut result = FixerResult::builder(format!(
         "Fix field name {} in debian/copyright ({}).",
         kind, fixed_str
     ));
@@ -130,7 +130,7 @@ fn try_fix_levenshtein(
 
             // If it's just a case difference, check if values differ
             let value = paragraph.get(field_name).ok_or(FixerError::NoChanges)?;
-            if value.to_string() != existing_value.to_string() {
+            if value != existing_value {
                 warn!(
                     "Found typo ({} ⇒ {}), but {} already exists",
                     field_name, valid_field, valid_field

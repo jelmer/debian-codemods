@@ -30,7 +30,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let mut editor = TemplatedControlEditor::open(&control_path)?;
+    let editor = TemplatedControlEditor::open(&control_path)?;
 
     let mut source = editor.source().ok_or(FixerError::NoChanges)?;
     let paragraph = source.as_mut_deb822();
@@ -87,7 +87,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let mut changed_fields_sorted: Vec<_> = changed_fields.into_iter().collect();
     changed_fields_sorted.sort();
 
-    Ok(FixerResult::builder(&format!(
+    Ok(FixerResult::builder(format!(
         "Update fields {} for maintainer {}.",
         changed_fields_sorted.join(", "),
         maintainer_name

@@ -100,7 +100,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .collect::<Vec<_>>()
         .join(", ");
 
-    Ok(FixerResult::builder(&format!(
+    Ok(FixerResult::builder(format!(
         "Fix invalid short license name in debian/copyright ({})",
         renames_str
     ))

@@ -2672,6 +2672,7 @@ dependencies = [
  "pyo3",
  "quote",
  "regex",
+ "reqwest",
  "rowan",
  "sequoia-openpgp",
  "serde",

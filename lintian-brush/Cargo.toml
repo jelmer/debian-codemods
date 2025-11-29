@@ -26,6 +26,7 @@ breezyshim = { workspace = true }
 indicatif = ">=0.17,<0.19"
 tempfile = { workspace = true }
 url = { version = "2", features = ["serde"] }
+reqwest = { workspace = true, features = ["blocking"] }
 lazy_static = { workspace = true }
 debian-analyzer = { workspace = true, features = ["svp"] }
 debian-control = { workspace = true }
