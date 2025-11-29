@@ -92,7 +92,6 @@ pub fn run(base_path: &Path, current_version: &Version) -> Result<FixerResult, F
     let makefile = Makefile::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
-    let mut made_changes = false;
     let mut dbg_migration_done = HashSet::new();
     let mut rules_uses_variables = false;
 
@@ -112,7 +111,6 @@ pub fn run(base_path: &Path, current_version: &Version) -> Result<FixerResult, F
                     if new_recipe.contains(&old_arg) {
                         new_recipe = new_recipe.replace(&old_arg, &new_arg);
                         dbg_migration_done.insert(dbg_pkg.clone());
-                        made_changes = true;
                     }
                 }
 

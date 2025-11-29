@@ -52,7 +52,6 @@ Build-Depends: debhelper (>= 13.5),
                librust-env-logger-0.11+default-dev,
                librust-flate2-1+default-dev,
                librust-futures-0.3+default-dev,
-               librust-futures-0.3+default-dev
                lintian (>= 2.105.0),
                librust-futures-0.3+default-dev
                po-debconf,

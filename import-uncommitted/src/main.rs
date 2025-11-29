@@ -759,12 +759,14 @@ pub fn main() {
                 local_tree
                     .edit_file(&subpath.join("debian/changelog"), false, false)
                     .unwrap();
-            changelog.auto_add_change(
-                &["Set Vcs-Git header."],
-                debian_changelog::get_maintainer().unwrap(),
-                None,
-                None,
-            );
+            changelog
+                .try_auto_add_change(
+                    &["Set Vcs-Git header."],
+                    debian_changelog::get_maintainer().unwrap(),
+                    None,
+                    None,
+                )
+                .unwrap();
             debian_analyzer::debcommit::debcommit(&local_tree, None, &subpath, None, None, None)
                 .unwrap();
             Some(breezyshim::debian::directory::vcs_git_url_to_bzr_url(

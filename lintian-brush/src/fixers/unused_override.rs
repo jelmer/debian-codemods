@@ -7,8 +7,9 @@ use std::path::{Path, PathBuf};
 const INTERMITTENT_LINTIAN_TAGS: &[&str] = &["rc-version-greater-than-expected-version"];
 
 #[derive(Debug)]
-struct UnusedOverride {
+pub struct UnusedOverride {
     package: String,
+    #[cfg_attr(not(feature = "udd"), allow(dead_code))]
     package_type: String,
     tag: String,
     info: String,

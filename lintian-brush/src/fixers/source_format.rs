@@ -7,7 +7,7 @@ pub fn run(
     base_path: &Path,
     _package_name: &str,
     current_version: &Version,
-    preferences: &FixerPreferences,
+    _preferences: &FixerPreferences,
 ) -> Result<FixerResult, FixerError> {
     // Check if this is a debcargo package - skip if so
     if is_debcargo_package(base_path)? {
