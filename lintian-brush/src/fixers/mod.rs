@@ -56,6 +56,7 @@ pub mod font_package_not_multi_arch_foreign;
 pub mod global_files_wildcard_not_first_paragraph_in_dep5_copyright;
 pub mod homepage_field_uses_insecure_uri;
 pub mod homepage_in_binary_package;
+pub mod initial_upload_closes_no_bugs;
 pub mod invalid_short_name_in_dep5_copyright;
 pub mod invalid_standards_version;
 pub mod libmodule_build_perl_needs_to_be_in_build_depends;
