@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Source: https://launchpad.net/blah/+download
 Upstream-Name: blah
+Source: https://launchpad.net/blah/+download
 
 Files: *
 Copyright: 2008-2017 Jelmer Vernooĳ
