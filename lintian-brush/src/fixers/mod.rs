@@ -40,6 +40,7 @@ pub mod dep3_format_patch_author_or_from_is_better;
 pub mod dep5_file_paragraph_references_header_paragraph;
 pub mod desktop_entry_file_has_crs;
 pub mod dh_clean_k_is_deprecated;
+pub mod dh_quilt_addon_but_quilt_source_format;
 pub mod dm_upload_allowed;
 pub mod empty_debian_patches_series;
 pub mod empty_debian_source_options;
