@@ -1,5 +1,6 @@
-debian-codemods (0.163) experimental; urgency=medium
+debian-codemods (0.163) UNRELEASED; urgency=medium
 
+  * Convert most fixers to Rust.
   * Add support for X-DH-Compat header. Closes: #1106883
   * Bump breezyshim to 0.7 and pyo03 to 0.27. Closes: #1114184
   * Bump python3-upstream-ontologist dependency to 0.2.2; older versions
