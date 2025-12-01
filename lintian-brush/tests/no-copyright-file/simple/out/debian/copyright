@@ -9,7 +9,7 @@ Files: debian/*
 Copyright: Unknown
 License: GPL-2+
 Comment: No explicit license found, using license(s) from:
- LICENSE
+          LICENSE
 
 License: GPL-2+
 Comment: Add the corresponding license text here

@@ -11,7 +11,7 @@ documentation = "https://docs.rs/lintian-brush"
 default-run = "lintian-brush"
 
 [dependencies]
-pyo3 = { workspace = true, features = ["serde", "chrono"], optional = true }
+pyo3 = { workspace = true, features = ["serde", "chrono"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -59,7 +59,7 @@ maplit = { workspace = true }
 [features]
 default = ["svp", "python", "cli"]
 svp = []
-python = ["dep:pyo3", "debian-analyzer/python"]
+python = ["debian-analyzer/python"]
 cli = ["dep:clap", "dep:env_logger"]
 udd = ["debian-analyzer/udd", "dep:sqlx"]
 
