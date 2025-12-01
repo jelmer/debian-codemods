@@ -150,10 +150,6 @@ fixers:
     lintian-tags:
       - recommended-field
 
-  - script: wrong-section-according-to-package-name.py
-    lintian-tags:
-      - wrong-section-according-to-package-name
-
   - script: debian-rules-missing-recommended-target.py
     lintian-tags:
       - debian-rules-missing-recommended-target
