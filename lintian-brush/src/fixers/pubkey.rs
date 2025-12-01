@@ -17,10 +17,81 @@ const COMMON_PGPSIGURL_MANGLES: &[&str] = &[
 ];
 
 #[derive(Debug)]
+enum VerificationStatus {
+    /// No keyring available, signature not verified (discovery mode)
+    Unverified,
+    /// Signature verified successfully with keyring
+    Verified,
+    /// Signature verification failed with keyring (wrong key or corrupted signature)
+    Failed,
+}
+
+#[derive(Debug)]
 struct SignatureInfo {
-    is_valid: bool,
+    verification_status: VerificationStatus,
     keys: HashSet<String>,
     mangle: Option<String>,
+}
+
+/// Verify a detached signature against data using a keyring
+fn verify_signature(
+    sig_data: &[u8],
+    data: &[u8],
+    keyring_data: &[u8],
+) -> Result<bool, Box<dyn std::error::Error>> {
+    use openpgp::parse::Parse;
+    use openpgp::policy::StandardPolicy;
+
+    let policy = StandardPolicy::new();
+
+    // Parse all certificates from the keyring
+    let cert_parser = openpgp::cert::CertParser::from_bytes(keyring_data)?;
+    let certs: Vec<_> = cert_parser.filter_map(|r| r.ok()).collect();
+
+    if certs.is_empty() {
+        return Err("No valid certificates in keyring".into());
+    }
+
+    // Parse the signature
+    let packets = openpgp::PacketPile::from_bytes(sig_data)?;
+
+    // Try to verify with each certificate
+    for cert in &certs {
+        for packet in packets.descendants() {
+            let sig = match packet {
+                openpgp::Packet::Signature(sig) => sig,
+                _ => continue,
+            };
+
+            // Check each key in the certificate
+            for key_amalg in cert.keys().with_policy(&policy, None) {
+                let key_handle = key_amalg.key();
+                let key_fingerprint = key_handle.fingerprint();
+
+                // Check if signature issuer matches this key
+                let is_issuer = sig.issuer_fingerprints().any(|fp| fp == &key_fingerprint);
+                if !is_issuer {
+                    continue;
+                }
+
+                // Try to verify the signature
+                match sig.clone().verify_message(key_handle, data) {
+                    Ok(_) => {
+                        log::debug!(
+                            "Signature verified successfully with key {}",
+                            key_fingerprint
+                        );
+                        return Ok(true);
+                    }
+                    Err(e) => {
+                        log::debug!("Signature verification failed: {}", e);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(false)
 }
 
 /// Probe for signature files and verify them
@@ -85,7 +156,7 @@ fn probe_signature(
 
         let sig_data = sig_response.bytes()?;
 
-        // Download the actual release file using the new download_blocking() method
+        // Download the actual release file for verification
         let release_data = match release.download_blocking() {
             Ok(data) => {
                 log::debug!("Downloaded release tarball ({} bytes)", data.len());
@@ -97,8 +168,7 @@ fn probe_signature(
             }
         };
 
-        // First, try to parse the signature and extract the issuer fingerprint
-        // This works even without having the public key
+        // Parse the signature and extract fingerprints
         use openpgp::parse::Parse;
 
         let packets = match openpgp::PacketPile::from_bytes(&sig_data) {
@@ -127,28 +197,47 @@ fn probe_signature(
             continue;
         }
 
-        // We found a signature with fingerprints!
-        // For now, we'll record this as a valid signature pattern
-        // (we're not actually verifying because we don't have the keys yet)
         let mut keys = HashSet::new();
-        for fp in fingerprints {
-            keys.insert(fp);
+        for fp in &fingerprints {
+            keys.insert(fp.clone());
         }
 
-        log::debug!("Found signature with {} key(s)", keys.len());
+        // Try to verify the signature if we have a keyring
+        let verification_status = if !keyring_data.is_empty() {
+            match verify_signature(&sig_data, &release_data, keyring_data) {
+                Ok(true) => {
+                    log::debug!("Signature verification succeeded");
+                    VerificationStatus::Verified
+                }
+                Ok(false) => {
+                    log::debug!("Signature verification failed - signature does not match keyring");
+                    VerificationStatus::Failed
+                }
+                Err(e) => {
+                    log::debug!("Error during signature verification: {}", e);
+                    // If we can't parse but found fingerprints, treat as unverified
+                    VerificationStatus::Unverified
+                }
+            }
+        } else {
+            // No keyring available, discovery mode
+            log::debug!("No keyring available, discovery mode");
+            VerificationStatus::Unverified
+        };
+
+        log::debug!(
+            "Found signature with {} key(s), status={:?}",
+            keys.len(),
+            verification_status
+        );
         return Ok(Some(SignatureInfo {
-            is_valid: true, // Optimistically assume it's valid
+            verification_status,
             keys,
             mangle: Some(mangle.to_string()),
         }));
     }
 
     Ok(None)
-}
-
-/// Check if all checked signatures are valid
-fn all_signatures_valid(sigs_valid: &[bool], num_to_check: usize) -> bool {
-    sigs_valid.iter().take(num_to_check).all(|&v| v)
 }
 
 /// Analyze used mangles to find common patterns
@@ -247,9 +336,31 @@ pub fn run(
     let mut description: Option<String> = None;
     let mut made_changes = false;
 
-    // Create a temporary keyring for verification
-    // In a full implementation, this would be a proper GPG keyring
-    let keyring_data = vec![]; // Empty keyring for now
+    // Load existing keyring if available
+    let keyring_data = if has_keys {
+        let mut data = vec![];
+        for path in &[
+            "debian/upstream/signing-key.asc",
+            "debian/upstream/signing-key.pgp",
+        ] {
+            let full_path = base_path.join(path);
+            if full_path.exists() {
+                match fs::read(&full_path) {
+                    Ok(loaded_data) => {
+                        log::debug!("Loaded existing keyring from {}", path);
+                        data = loaded_data;
+                        break;
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to read keyring from {}: {}", path, e);
+                    }
+                }
+            }
+        }
+        data
+    } else {
+        vec![]
+    };
 
     for mut entry in watch_file.entries() {
         let pgpsigurlmangle = entry.get_option("pgpsigurlmangle");
@@ -298,8 +409,9 @@ pub fn run(
             }
         };
 
-        let mut sigs_valid = Vec::new();
+        let mut verification_statuses = Vec::new();
         let mut used_mangles: Vec<Option<String>> = Vec::new();
+        let mut has_verification_failure = false;
 
         log::debug!(
             "Checking signatures for up to {} releases",
@@ -309,8 +421,18 @@ pub fn run(
             log::debug!("Probing signature for release {}", release.version);
             match probe_signature(release, pgpsigurlmangle.as_deref(), &keyring_data) {
                 Ok(Some(sig_info)) => {
-                    log::debug!("Found valid signature with mangle: {:?}", sig_info.mangle);
-                    sigs_valid.push(sig_info.is_valid);
+                    log::debug!(
+                        "Found signature with mangle: {:?}, status: {:?}",
+                        sig_info.mangle,
+                        sig_info.verification_status
+                    );
+
+                    // Check for verification failures
+                    if matches!(sig_info.verification_status, VerificationStatus::Failed) {
+                        has_verification_failure = true;
+                    }
+
+                    verification_statuses.push(sig_info.verification_status);
                     used_mangles.push(sig_info.mangle.clone());
                     needed_keys.extend(sig_info.keys);
                 }
@@ -325,9 +447,24 @@ pub fn run(
             }
         }
 
-        // Check if all checked signatures are valid
-        if !all_signatures_valid(&sigs_valid, NUM_KEYS_TO_CHECK) {
-            log::debug!("Not all signatures valid, skipping");
+        // If we have an existing keyring and signatures failed verification, skip this entry
+        if has_keys && has_verification_failure {
+            log::warn!(
+                "Signatures do not match existing keyring at debian/upstream/signing-key.*. \
+                 Not updating watch file or fetching different keys. \
+                 If upstream changed their signing key, manually update the keyring."
+            );
+            return Err(FixerError::NoChanges);
+        }
+
+        // For unverified signatures (discovery mode), we need enough successful probes
+        let successful_probes = verification_statuses.len();
+        if successful_probes < NUM_KEYS_TO_CHECK.min(releases.len()) {
+            log::debug!(
+                "Not enough signatures found ({} < {}), skipping",
+                successful_probes,
+                NUM_KEYS_TO_CHECK
+            );
             return Err(FixerError::NoChanges);
         }
 
@@ -514,34 +651,6 @@ mod tests {
     }
 
     #[test]
-    fn test_all_signatures_valid_empty() {
-        let sigs: Vec<bool> = vec![];
-        assert!(all_signatures_valid(&sigs, 5));
-    }
-
-    #[test]
-    fn test_all_signatures_valid_all_true() {
-        let sigs = vec![true, true, true, true, true];
-        assert!(all_signatures_valid(&sigs, 5));
-    }
-
-    #[test]
-    fn test_all_signatures_valid_some_false() {
-        let sigs = vec![true, false, true, true, true];
-        assert!(!all_signatures_valid(&sigs, 5));
-    }
-
-    #[test]
-    fn test_all_signatures_valid_check_limit() {
-        // First 3 are true, but 4th is false
-        let sigs = vec![true, true, true, false, true];
-        // If we only check first 3, should be valid
-        assert!(all_signatures_valid(&sigs, 3));
-        // If we check 4, should be invalid
-        assert!(!all_signatures_valid(&sigs, 4));
-    }
-
-    #[test]
     fn test_analyze_mangles_all_same() {
         let mangles = vec![
             Some("s/$/.asc/".to_string()),
@@ -627,5 +736,344 @@ mod tests {
         let (mode, desc) = determine_pgpmode(&mangles);
         assert_eq!(mode, "auto");
         assert_eq!(desc, "Opportunistically check upstream PGP signatures.");
+    }
+
+    #[test]
+    fn test_verify_signature_with_empty_keyring() {
+        let sig_data = b"fake signature data";
+        let data = b"fake release data";
+        let keyring_data = b"";
+
+        let result = verify_signature(sig_data, data, keyring_data);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No valid certificates"));
+    }
+
+    #[test]
+    fn test_verify_signature_with_invalid_keyring() {
+        let sig_data = b"fake signature data";
+        let data = b"fake release data";
+        let keyring_data = b"not a valid keyring";
+
+        let result = verify_signature(sig_data, data, keyring_data);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_export_cert_armored_with_test_key() {
+        use openpgp::cert::CertBuilder;
+
+        // Generate a test certificate
+        let (cert, _) = CertBuilder::new()
+            .add_userid("Test User <test@example.com>")
+            .add_signing_subkey()
+            .generate()
+            .expect("Failed to generate test certificate");
+
+        // Export it
+        let result = export_cert_armored(&cert);
+        assert!(result.is_ok());
+
+        let exported = result.unwrap();
+        let exported_str = String::from_utf8_lossy(&exported);
+
+        // Check that it's armored
+        assert!(exported_str.contains("-----BEGIN PGP PUBLIC KEY BLOCK-----"));
+        assert!(exported_str.contains("-----END PGP PUBLIC KEY BLOCK-----"));
+    }
+
+    #[test]
+    fn test_verify_signature_roundtrip() {
+        use openpgp::cert::CertBuilder;
+        use openpgp::policy::StandardPolicy;
+        use openpgp::serialize::stream::*;
+
+        let policy = StandardPolicy::new();
+
+        // Generate a test certificate with signing capability
+        let (cert, _) = CertBuilder::new()
+            .add_userid("Test User <test@example.com>")
+            .add_signing_subkey()
+            .generate()
+            .expect("Failed to generate test certificate");
+
+        // Get the signing keypair
+        let keypair = cert
+            .keys()
+            .with_policy(&policy, None)
+            .alive()
+            .revoked(false)
+            .for_signing()
+            .secret()
+            .next()
+            .expect("No signing key found")
+            .key()
+            .clone()
+            .into_keypair()
+            .expect("Failed to convert to keypair");
+
+        // Data to sign
+        let data = b"Hello, world!";
+
+        // Create a detached signature
+        let mut sig_data = Vec::new();
+        {
+            let message = Message::new(&mut sig_data);
+            let signer = Signer::new(message, keypair)
+                .expect("Failed to create signer")
+                .detached()
+                .build()
+                .expect("Failed to build signer");
+
+            let mut writer = signer;
+            std::io::copy(&mut std::io::Cursor::new(data), &mut writer)
+                .expect("Failed to write data");
+            writer.finalize().expect("Failed to finalize signature");
+        }
+
+        // Export the certificate as keyring
+        let keyring_data = export_cert_armored(&cert).expect("Failed to export cert");
+
+        // Verify the signature
+        let result = verify_signature(&sig_data, data, &keyring_data);
+        assert_eq!(result.unwrap(), true);
+    }
+
+    #[test]
+    fn test_verify_signature_wrong_data() {
+        use openpgp::cert::CertBuilder;
+        use openpgp::policy::StandardPolicy;
+        use openpgp::serialize::stream::*;
+
+        let policy = StandardPolicy::new();
+
+        // Generate a test certificate with signing capability
+        let (cert, _) = CertBuilder::new()
+            .add_userid("Test User <test@example.com>")
+            .add_signing_subkey()
+            .generate()
+            .expect("Failed to generate test certificate");
+
+        let keypair = cert
+            .keys()
+            .with_policy(&policy, None)
+            .alive()
+            .revoked(false)
+            .for_signing()
+            .secret()
+            .next()
+            .expect("No signing key found")
+            .key()
+            .clone()
+            .into_keypair()
+            .expect("Failed to convert to keypair");
+
+        let data = b"Hello, world!";
+
+        // Create a detached signature
+        let mut sig_data = Vec::new();
+        {
+            let message = Message::new(&mut sig_data);
+            let signer = Signer::new(message, keypair)
+                .expect("Failed to create signer")
+                .detached()
+                .build()
+                .expect("Failed to build signer");
+
+            let mut writer = signer;
+            std::io::copy(&mut std::io::Cursor::new(data), &mut writer)
+                .expect("Failed to write data");
+            writer.finalize().expect("Failed to finalize signature");
+        }
+
+        let keyring_data = export_cert_armored(&cert).expect("Failed to export cert");
+
+        // Try to verify with different data
+        let wrong_data = b"Different data!";
+        let result = verify_signature(&sig_data, wrong_data, &keyring_data);
+        assert_eq!(result.unwrap(), false);
+    }
+
+    #[test]
+    fn test_verification_status_unverified_when_no_keyring() {
+        use openpgp::cert::CertBuilder;
+        use openpgp::policy::StandardPolicy;
+        use openpgp::serialize::stream::*;
+
+        let policy = StandardPolicy::new();
+
+        // Generate a test certificate
+        let (cert, _) = CertBuilder::new()
+            .add_userid("Test User <test@example.com>")
+            .add_signing_subkey()
+            .generate()
+            .expect("Failed to generate test certificate");
+
+        let keypair = cert
+            .keys()
+            .with_policy(&policy, None)
+            .alive()
+            .revoked(false)
+            .for_signing()
+            .secret()
+            .next()
+            .expect("No signing key found")
+            .key()
+            .clone()
+            .into_keypair()
+            .expect("Failed to convert to keypair");
+
+        let data = b"Hello, world!";
+
+        // Create a detached signature
+        let mut sig_data = Vec::new();
+        {
+            let message = Message::new(&mut sig_data);
+            let signer = Signer::new(message, keypair)
+                .expect("Failed to create signer")
+                .detached()
+                .build()
+                .expect("Failed to build signer");
+
+            let mut writer = signer;
+            std::io::copy(&mut std::io::Cursor::new(data), &mut writer)
+                .expect("Failed to write data");
+            writer.finalize().expect("Failed to finalize signature");
+        }
+
+        // Create a mock Release (we'll use a simplified approach for testing)
+        // Since we can't easily mock Release, we test verify_signature directly
+
+        // Empty keyring should result in unverified status
+        let empty_keyring = b"";
+
+        // Since probe_signature needs a Release, let's just verify the verify_signature behavior
+        // When keyring is empty, probe_signature returns Unverified status
+        // This is tested indirectly through the verify_signature error
+        let result = verify_signature(&sig_data, data, empty_keyring);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No valid certificates"));
+    }
+
+    #[test]
+    fn test_verification_status_verified_with_correct_keyring() {
+        use openpgp::cert::CertBuilder;
+        use openpgp::policy::StandardPolicy;
+        use openpgp::serialize::stream::*;
+
+        let policy = StandardPolicy::new();
+
+        // Generate a test certificate
+        let (cert, _) = CertBuilder::new()
+            .add_userid("Test User <test@example.com>")
+            .add_signing_subkey()
+            .generate()
+            .expect("Failed to generate test certificate");
+
+        let keypair = cert
+            .keys()
+            .with_policy(&policy, None)
+            .alive()
+            .revoked(false)
+            .for_signing()
+            .secret()
+            .next()
+            .expect("No signing key found")
+            .key()
+            .clone()
+            .into_keypair()
+            .expect("Failed to convert to keypair");
+
+        let data = b"Hello, world!";
+
+        // Create a detached signature
+        let mut sig_data = Vec::new();
+        {
+            let message = Message::new(&mut sig_data);
+            let signer = Signer::new(message, keypair)
+                .expect("Failed to create signer")
+                .detached()
+                .build()
+                .expect("Failed to build signer");
+
+            let mut writer = signer;
+            std::io::copy(&mut std::io::Cursor::new(data), &mut writer)
+                .expect("Failed to write data");
+            writer.finalize().expect("Failed to finalize signature");
+        }
+
+        let keyring_data = export_cert_armored(&cert).expect("Failed to export cert");
+
+        // Verify with correct keyring should return true (Verified status)
+        let result = verify_signature(&sig_data, data, &keyring_data);
+        assert_eq!(result.unwrap(), true);
+    }
+
+    #[test]
+    fn test_verification_status_failed_with_wrong_keyring() {
+        use openpgp::cert::CertBuilder;
+        use openpgp::policy::StandardPolicy;
+        use openpgp::serialize::stream::*;
+
+        let policy = StandardPolicy::new();
+
+        // Generate two different certificates
+        let (cert1, _) = CertBuilder::new()
+            .add_userid("Test User 1 <test1@example.com>")
+            .add_signing_subkey()
+            .generate()
+            .expect("Failed to generate test certificate 1");
+
+        let (cert2, _) = CertBuilder::new()
+            .add_userid("Test User 2 <test2@example.com>")
+            .add_signing_subkey()
+            .generate()
+            .expect("Failed to generate test certificate 2");
+
+        // Sign with cert1
+        let keypair1 = cert1
+            .keys()
+            .with_policy(&policy, None)
+            .alive()
+            .revoked(false)
+            .for_signing()
+            .secret()
+            .next()
+            .expect("No signing key found")
+            .key()
+            .clone()
+            .into_keypair()
+            .expect("Failed to convert to keypair");
+
+        let data = b"Hello, world!";
+
+        // Create a detached signature with cert1
+        let mut sig_data = Vec::new();
+        {
+            let message = Message::new(&mut sig_data);
+            let signer = Signer::new(message, keypair1)
+                .expect("Failed to create signer")
+                .detached()
+                .build()
+                .expect("Failed to build signer");
+
+            let mut writer = signer;
+            std::io::copy(&mut std::io::Cursor::new(data), &mut writer)
+                .expect("Failed to write data");
+            writer.finalize().expect("Failed to finalize signature");
+        }
+
+        // Export cert2 as keyring (different key!)
+        let wrong_keyring = export_cert_armored(&cert2).expect("Failed to export cert");
+
+        // Verify with wrong keyring should return false (Failed status)
+        let result = verify_signature(&sig_data, data, &wrong_keyring);
+        assert_eq!(result.unwrap(), false);
     }
 }
