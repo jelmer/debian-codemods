@@ -2730,6 +2730,7 @@ dependencies = [
  "clap",
  "configparser",
  "deb822-lossless",
+ "debbugs",
  "debian-analyzer",
  "debian-changelog",
  "debian-control",
