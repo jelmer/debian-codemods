@@ -28,7 +28,7 @@ tempfile = { workspace = true }
 url = { version = "2", features = ["serde"] }
 reqwest = { workspace = true, features = ["blocking"] }
 lazy_static = { workspace = true }
-debian-analyzer = { workspace = true, features = ["svp"] }
+debian-analyzer = { workspace = true, features = ["svp", "udd"] }
 debian-control = { workspace = true }
 debian-copyright = { workspace = true }
 deb822-lossless = { workspace = true }
