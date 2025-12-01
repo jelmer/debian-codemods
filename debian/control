@@ -36,7 +36,6 @@ Build-Depends: debhelper (>= 13.5),
                librust-debian-changelog-0.2+default-dev (>= 0.2.10-~~),
                librust-debian-control+default-dev (>= 0.1.37-~~),
                librust-debian-control-0.2+default-dev (>= 0.2.5-~~),
-               librust-debian-copyright-0.1+default-dev (>= 0.1.31-~~),
                librust-debian-copyright-0.1+default-dev (>= 0.1.32-~~),
                librust-debian-watch-0.2+blocking-dev (>= 0.2.15-~~),
                librust-debian-watch-0.2+default-dev (>= 0.2.15-~~),
@@ -52,9 +51,6 @@ Build-Depends: debhelper (>= 13.5),
                librust-env-logger-0.11+default-dev,
                librust-flate2-1+default-dev,
                librust-futures-0.3+default-dev,
-               lintian (>= 2.105.0),
-               librust-futures-0.3+default-dev
-               po-debconf,
                librust-http-body-util-0.1+default-dev,
                librust-humantime-2+default-dev (>= 2.1.0-~~),
                librust-hyper-1+default-dev (>= 1.5-~~),
@@ -118,6 +114,8 @@ Build-Depends: debhelper (>= 13.5),
                librust-xdg-2+default-dev,
                librust-xz2-0.1+default-dev,
                libstd-rust-dev,
+               lintian (>= 2.105.0),
+               po-debconf,
                pybuild-plugin-pyproject,
                python3-all,
                python3-breezy (>= 3.3.1~),
@@ -139,15 +137,12 @@ Build-Depends: debhelper (>= 13.5),
                python3-upstream-ontologist (>= 0.2.2),
                quilt,
                rustc
-Standards-Version: 4.6.2
-Rules-Requires-Root: no
+Standards-Version: 4.7.2
 Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
 Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush
 Homepage: https://salsa.debian.org/jelmer/lintian-brush
 
 Package: debian-codemods
-Section: devel
-Priority: optional
 Architecture: any
 Depends: python3-breezy (>= 3.3.1~),
          python3-debian,

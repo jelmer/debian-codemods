@@ -1,1 +1,11 @@
 debian-codemods source: autotools-pkg-config-macro-not-cross-compilation-safe * [lintian-brush/tests/autotools-pkg-config-macro-not-cross-compilation-safe/complex/in/configure.ac:11]
+debian-codemods source: patch-system-but-no-source-readme
+debian-codemods source: quilt-build-dep-but-no-series-file
+# Test fixtures use deprecated distutils
+debian-codemods source: uses-deprecated-python-stdlib distutils * [lintian-brush/tests/debian-watch-file-is-missing/native/in/setup.py:*]
+debian-codemods source: uses-deprecated-python-stdlib distutils * [lintian-brush/tests/debian-watch-file-is-missing/pypi/in/setup.py:*]
+debian-codemods source: uses-deprecated-python-stdlib distutils * [lintian-brush/tests/debian-watch-file-is-missing/pypi/out/setup.py:*]
+# Used for parsing watch files from packages that use distutils
+debian-codemods source: uses-deprecated-python-stdlib distutils * [py/lintian_brush/watch.py:*]
+# Examples are test data, not meant to be installed
+debian-codemods source: package-does-not-install-examples [lintian-brush/examples/]
