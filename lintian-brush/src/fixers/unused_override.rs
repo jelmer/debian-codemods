@@ -6,8 +6,6 @@ use std::path::{Path, PathBuf};
 
 const INTERMITTENT_LINTIAN_TAGS: &[&str] = &["rc-version-greater-than-expected-version"];
 
-const DEFAULT_UDD_URL: &str = "postgresql://udd-mirror:udd-mirror@udd-mirror.debian.net/udd";
-
 #[derive(Debug)]
 struct UnusedOverride {
     package: String,
@@ -45,24 +43,14 @@ fn find_override_files(base_path: &Path) -> Vec<PathBuf> {
 async fn get_unused_overrides(
     packages: &[(String, String)],
 ) -> Result<Vec<UnusedOverride>, Box<dyn std::error::Error>> {
-    use tokio_postgres::NoTls;
+    use sqlx::Row;
 
-    let udd_url = std::env::var("UDD_URL").unwrap_or_else(|_| DEFAULT_UDD_URL.to_string());
-
-    let (client, connection) = tokio_postgres::connect(&udd_url, NoTls).await?;
-
-    // Spawn the connection in the background
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
+    let client = debian_analyzer::udd::connect_udd_mirror().await?;
 
     // Build the query
     let mut conditions = Vec::new();
-    let mut params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = Vec::new();
 
-    for (i, (name, pkg_type)) in packages.iter().enumerate() {
+    for (i, _) in packages.iter().enumerate() {
         let param_idx = i * 2 + 1;
         conditions.push(format!(
             "(package = ${} AND package_type = ${})",
@@ -78,14 +66,13 @@ async fn get_unused_overrides(
         conditions.join(" OR ")
     );
 
-    // Add parameters
-    let mut param_refs: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = Vec::new();
+    // Build the query with sqlx
+    let mut query_builder = sqlx::query(&query);
     for (name, pkg_type) in packages {
-        param_refs.push(name);
-        param_refs.push(pkg_type);
+        query_builder = query_builder.bind(name).bind(pkg_type);
     }
 
-    let rows = client.query(&query, &param_refs[..]).await?;
+    let rows = query_builder.fetch_all(&client).await?;
 
     let mut unused = Vec::new();
     for row in rows {

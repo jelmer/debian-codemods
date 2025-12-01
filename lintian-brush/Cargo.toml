@@ -44,7 +44,7 @@ makefile-lossless = "0.3.6"
 shell-words = "1"
 debian-watch = { version = "0.2.15", features = ["discover", "blocking", "pgp"] }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
-tokio-postgres = { version = "0.7", optional = true }
+sqlx = { workspace = true, features = ["postgres", "runtime-tokio"], optional = true }
 upstream-ontologist = { workspace = true }
 dep3 = "0.2.0"
 patchkit = "0.2.2"
@@ -61,7 +61,7 @@ default = ["svp", "python", "cli"]
 svp = []
 python = ["dep:pyo3", "debian-analyzer/python"]
 cli = ["dep:clap", "dep:env_logger"]
-udd = ["dep:tokio-postgres"]
+udd = ["debian-analyzer/udd", "dep:sqlx"]
 
 [[bin]]
 name = "lintian-brush"
