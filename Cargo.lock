@@ -2761,6 +2761,7 @@ dependencies = [
  "tempfile",
  "textwrap",
  "tokio",
+ "toml_edit 0.22.27",
  "upstream-ontologist",
  "url",
  "wait-timeout",
