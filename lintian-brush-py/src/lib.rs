@@ -30,6 +30,14 @@ fn canonicalize_vcs_browser_url(url: &str) -> String {
 }
 
 #[pyfunction]
+fn get_builtin_fixer_lintian_tags() -> Vec<String> {
+    lintian_brush::builtin_fixers::get_builtin_fixers()
+        .iter()
+        .flat_map(|fixer| fixer.lintian_tags())
+        .collect()
+}
+
+#[pyfunction]
 #[pyo3(signature = (tree, subpath=None))]
 fn tree_patches_directory(
     tree: Py<PyAny>,
@@ -85,5 +93,6 @@ fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
         "DEBHELPER_VERSIONS",
         debian_analyzer::release_info::debhelper_versions.clone(),
     )?;
+    m.add_wrapped(wrap_pyfunction!(get_builtin_fixer_lintian_tags))?;
     Ok(())
 }

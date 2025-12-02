@@ -1,5 +1,5 @@
 use crate::{declare_fixer, FixerError, FixerResult};
-use debian_changelog::textwrap::rewrap_changes;
+use debian_changelog::textwrap::try_rewrap_changes;
 use debian_changelog::ChangeLog;
 use std::fs;
 use std::path::Path;
@@ -48,7 +48,9 @@ pub fn run(base_path: &Path, thorough: bool) -> Result<FixerResult, FixerError> 
 
         // Rewrap the changes
         let change_strs: Vec<&str> = change_lines.iter().map(|s| s.as_str()).collect();
-        let wrapped: Vec<String> = rewrap_changes(change_strs.iter().copied())
+        let wrapped: Vec<String> = try_rewrap_changes(change_strs.iter().copied())
+            .map_err(|e| FixerError::Other(format!("Failed to rewrap changes: {}", e)))?
+            .into_iter()
             .map(|s| s.into_owned())
             .collect();
 

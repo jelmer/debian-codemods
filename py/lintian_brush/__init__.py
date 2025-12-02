@@ -186,4 +186,9 @@ def fixable_lintian_tags():
             if tags is not None:
                 supported_tags.update(tags)
 
+    # Add tags from Rust builtin fixers
+    from . import _lintian_brush_rs
+
+    supported_tags.update(_lintian_brush_rs.get_builtin_fixer_lintian_tags())
+
     return supported_tags

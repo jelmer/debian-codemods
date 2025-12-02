@@ -10,26 +10,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let content = fs::read(&rules_path)?;
-    let original_content = content.clone();
 
     // Replace $(dir $(_)) with $(dir $(firstword $(MAKEFILE_LIST)))
-    let new_content = content
-        .as_slice()
-        .windows(b"$(dir $(_))".len())
-        .enumerate()
-        .fold(Vec::new(), |mut acc, (i, window)| {
-            if i == 0 || acc.is_empty() {
-                // First window, or starting fresh
-                if window == b"$(dir $(_))" {
-                    // Skip this pattern, we'll replace it
-                } else if i == 0 {
-                    acc.push(content[0]);
-                }
-            }
-            acc
-        });
-
-    // Use a simpler approach with byte string replacement
     let pattern = b"$(dir $(_))";
     let replacement = b"$(dir $(firstword $(MAKEFILE_LIST)))";
     let content_str = content.as_slice();

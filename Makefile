@@ -64,5 +64,5 @@ docker:
 
 update-deps:
 	brz diff debian/control || { echo "Pending changes to debian/control"; exit 1; }
-	update-rust-deps --drop-unreferenced --exclude-local-crates
+	update-rust-deps
 	brz diff debian/control || brz commit -m "Update Rust dependencies" debian/control
