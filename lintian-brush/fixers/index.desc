@@ -132,10 +132,6 @@ fixers:
 
   - script: vcs-broken-uri.py
 
-  - script: typo-in-debhelper-override-target.py
-    lintian-tags:
-      - typo-in-debhelper-override-target
-
   - script: debian-rules-uses-unnecessary-dh-argument.py
     lintian-tags:
       - debian-rules-uses-unnecessary-dh-argument
