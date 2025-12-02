@@ -19,16 +19,6 @@ fixers:
     lintian-tags:
       - tab-in-license-text
 
-
-
-  - script: package-has-no-description.py
-    lintian-tags:
-      - required-field
-      - extended-description-is-empty
-    after:
-      # So we can steal the description from ITP/RFP
-      - initial-upload-closes-no-bugs
-
   - script: common-license.py
     lintian-tags:
       - copyright-does-not-refer-to-common-license-file

@@ -79,6 +79,7 @@ pub mod orphaned_package_should_not_have_uploaders;
 pub mod out_of_date_copyright_format_uri;
 pub mod out_of_date_standards_version;
 pub mod package_contains_linda_override;
+pub mod package_has_no_description;
 pub mod package_needs_versioned_debhelper_build_depends;
 pub mod package_uses_deprecated_source_override_location;
 pub mod patch_file_present_but_not_mentioned_in_series;

@@ -865,9 +865,9 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.4.6"
+version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b36d018a7c9d608cab492509ad67019bea0d8df4aeb40299d99b51c18b6f9f81"
+checksum = "e69d6fccb673b9b20f317713e086a53da03e2c821f0e638fe1aa0749bf391c5a"
 dependencies = [
  "pyo3",
  "regex",
@@ -893,9 +893,9 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.160.5"
+version = "0.160.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf8d57e5f67b1bd66b9244a89c6518b6851726ba895d02a158d0ca3040c28714"
+checksum = "32f26f4a9c6dd1d473107897805bda80534c175b60ca48a46354bea1047d30a8"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -948,9 +948,9 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.2.5"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6c17148ce965fcac53d4b06fbeefc3a77dfdcae1feb2d3b181021c1be2830b7"
+checksum = "ea6f4bb1b0aa5f2e563dedd6ca528fb469f58b8a6ad343c2fa35d73920acff38"
 dependencies = [
  "chrono",
  "deb822-fast",
@@ -2759,6 +2759,7 @@ dependencies = [
  "strsim",
  "svp-client",
  "tempfile",
+ "textwrap",
  "tokio",
  "upstream-ontologist",
  "url",
