@@ -23,6 +23,7 @@ pub mod builtin_fixers;
 pub mod macros;
 pub mod fixers;
 pub mod lintian_overrides;
+pub mod rules;
 
 // Re-export commonly used types for convenience
 pub use debian_analyzer::Certainty;
