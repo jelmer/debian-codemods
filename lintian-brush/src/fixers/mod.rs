@@ -1,4 +1,5 @@
 pub mod ancient_python_version_field;
+pub mod autotools_pkg_config_macro_not_cross_compilation_safe;
 pub mod binary_control_field_duplicates_source;
 pub mod build_depends_on_build_essential;
 pub mod build_depends_on_obsolete_package;
