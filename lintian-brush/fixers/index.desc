@@ -157,7 +157,3 @@ fixers:
   - script: obsolete-vim-addon-manager.py
     lintian-tags:
       - obsolete-vim-addon-manager
-
-  - script: missing-prerequisite-for-pyproject-backend.py
-    lintian-tags:
-      - missing-prerequisite-for-pyproject-backend
