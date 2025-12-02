@@ -163,11 +163,6 @@ fixers:
     lintian-tags:
       - debian-rules-parses-dpkg-parsechangelog
 
-
-  - script: pkg-js-tools-test-is-missing.py
-    lintian-tags:
-      - pkg-js-tools-test-is-missing
-
   - script: obsolete-vim-addon-manager.py
     lintian-tags:
       - obsolete-vim-addon-manager
