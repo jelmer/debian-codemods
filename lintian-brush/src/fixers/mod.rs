@@ -113,6 +113,7 @@ pub mod vcs_field_mismatch;
 pub mod vcs_field_not_canonical;
 pub mod vcs_field_uses_not_recommended_uri_format;
 pub mod wrong_debian_qa_group_name;
+pub mod wrong_section_according_to_package_name;
 pub mod xc_package_type_in_debian_control;
 pub mod xs_testsuite_field_in_debian_control;
 pub mod xs_vcs_field_in_debian_control;
