@@ -106,11 +106,6 @@ fixers:
     lintian-tags:
       - vcs-field-uses-insecure-uri
 
-
-
-
-
-
   - script: license-file-listed-in-debian-copyright.py
     lintian-tags:
       - license-file-listed-in-debian-copyright
@@ -131,10 +126,6 @@ fixers:
   - script: debian-rules-sets-dpkg-architecture-variable.py
     lintian-tags:
       - debian-rules-sets-dpkg-architecture-variable
-
-  - script: no-section-field.py
-    lintian-tags:
-      - recommended-field
 
   - script: debian-rules-missing-recommended-target.py
     lintian-tags:

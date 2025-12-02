@@ -71,6 +71,7 @@ pub mod no_copyright_file;
 pub mod no_homepage_field;
 pub mod no_maintainer_field;
 pub mod no_priority_field;
+pub mod no_section_field;
 pub mod obsolete_field_in_dep5_copyright;
 pub mod obsolete_runtime_tests_restriction;
 pub mod obsolete_url_in_packaging;
