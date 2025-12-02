@@ -59,11 +59,6 @@ fixers:
     lintian-tags:
       - skip-systemd-native-flag-missing-pre-depends
 
-  - script: possible-missing-colon-in-closes.py
-    lintian-tags:
-      - possible-missing-colon-in-closes
-      - misspelled-closes-bug
-
   - script: space-in-std-shortname-in-dep5-copyright.py
     lintian-tags:
       - space-in-std-shortname-in-dep5-copyright
