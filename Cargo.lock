@@ -893,9 +893,9 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.160.6"
+version = "0.160.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32f26f4a9c6dd1d473107897805bda80534c175b60ca48a46354bea1047d30a8"
+checksum = "d080d3784895db8fb69b543dbe17b60015bda7e0f767394dc309c4bbf26aa7da"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -919,6 +919,7 @@ dependencies = [
  "patchkit",
  "pyo3",
  "quote",
+ "regex",
  "reqwest",
  "semver",
  "serde",

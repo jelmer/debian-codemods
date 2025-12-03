@@ -77,6 +77,7 @@ pub mod no_section_field;
 pub mod obsolete_field_in_dep5_copyright;
 pub mod obsolete_runtime_tests_restriction;
 pub mod obsolete_url_in_packaging;
+pub mod obsolete_vim_addon_manager;
 pub mod old_fsf_address_in_copyright_file;
 pub mod old_override_info_format;
 pub mod orphaned_package_should_not_have_uploaders;

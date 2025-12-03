@@ -145,7 +145,3 @@ fixers:
     enabled: false
     lintian-tags:
       - newer-debconf-templates
-
-  - script: obsolete-vim-addon-manager.py
-    lintian-tags:
-      - obsolete-vim-addon-manager
