@@ -146,10 +146,6 @@ fixers:
     lintian-tags:
       - newer-debconf-templates
 
-  - script: debian-rules-parses-dpkg-parsechangelog.py
-    lintian-tags:
-      - debian-rules-parses-dpkg-parsechangelog
-
   - script: obsolete-vim-addon-manager.py
     lintian-tags:
       - obsolete-vim-addon-manager
