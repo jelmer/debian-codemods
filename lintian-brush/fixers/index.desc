@@ -145,7 +145,3 @@ fixers:
     enabled: false
     lintian-tags:
       - newer-debconf-templates
-
-  - script: debian-rules-parses-dpkg-parsechangelog.py
-    lintian-tags:
-      - debian-rules-parses-dpkg-parsechangelog
