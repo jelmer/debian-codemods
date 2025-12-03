@@ -37,6 +37,7 @@ pub mod debian_watch_file_uses_deprecated_githubredir;
 pub mod debian_watch_file_uses_github_releases;
 pub mod debian_watch_file_uses_old_github_pattern;
 pub mod debian_watch_uses_insecure_uri;
+pub mod debug_symbol_migration_possibly_complete;
 pub mod declares_possibly_conflicting_debhelper_compat_versions;
 pub mod dep3_format_patch_author_or_from_is_better;
 pub mod dep5_file_paragraph_references_header_paragraph;

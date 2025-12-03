@@ -127,10 +127,6 @@ fixers:
     lintian-tags:
       - debian-rules-missing-recommended-target
 
-  - script: debug-symbol-migration-possibly-complete.py
-    lintian-tags:
-      - debug-symbol-migration-possibly-complete
-
   - script: desktop-entry-contains-encoding-key.py
     lintian-tags:
       - desktop-entry-contains-encoding-key
