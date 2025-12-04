@@ -52,3 +52,20 @@ pub const COMMON_PGPSIGURL_MANGLES: &[&str] = &[
 
 // These will be implemented as needed when porting the debian-watch-file-is-missing
 // fixer or other watch-related fixers.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_watch_fix_value() {
+        assert_eq!(WATCH_FIX_VALUE, 60);
+    }
+
+    #[test]
+    fn test_common_pgpsigurl_mangles_contains_standard_extensions() {
+        // Verify the most common signature file extensions are included
+        assert!(COMMON_PGPSIGURL_MANGLES.contains(&"s/$/.asc/"));
+        assert!(COMMON_PGPSIGURL_MANGLES.contains(&"s/$/.sig/"));
+    }
+}

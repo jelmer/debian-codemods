@@ -1,3 +1,4 @@
+use crate::watch::COMMON_PGPSIGURL_MANGLES;
 use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_watch::{mangle, Release, WatchFile};
 use sequoia_openpgp as openpgp;
@@ -7,14 +8,6 @@ use std::path::Path;
 
 const NUM_KEYS_TO_CHECK: usize = 5;
 const RELEASES_TO_INSPECT: usize = 5;
-
-const COMMON_PGPSIGURL_MANGLES: &[&str] = &[
-    "s/$/.asc/",
-    "s/$/.pgp/",
-    "s/$/.gpg/",
-    "s/$/.sig/",
-    "s/$/.sign/",
-];
 
 #[derive(Debug)]
 enum VerificationStatus {
