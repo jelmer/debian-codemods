@@ -4,5 +4,6 @@
 #
 # This file can be remove once the main repository and all forks have updated
 # their CI configuration to point directly to new file 'debian/salsa-ci.yml'.
+---
 include:
   - local: 'debian/salsa-ci.yml'

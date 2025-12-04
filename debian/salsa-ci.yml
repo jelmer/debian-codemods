@@ -84,7 +84,7 @@ update-readme:
   image: debian:unstable
   script:
     - apt-get update
-    - apt-get install -y git brz python3 python3-debian python3-breezy python3-pip ca-certificates build-essential cargo rustc
+    - apt-get install -y git brz python3 python3-debian python3-breezy python3-pip ca-certificates build-essential cargo rustc libpq-dev
     - git config user.name "Salsa CI Bot"
     - git config user.email "noreply@salsa.debian.org"
     - pip install --break-system-packages setuptools setuptools-rust
