@@ -24,6 +24,7 @@ pub mod debian_control_has_unusual_field_spacing;
 pub mod debian_pycompat_is_obsolete;
 pub mod debian_pyversions_is_obsolete;
 pub mod debian_rules_contains_unnecessary_get_orig_source_target;
+pub mod debian_rules_missing_recommended_target;
 pub mod debian_rules_not_executable;
 pub mod debian_rules_parses_dpkg_parsechangelog;
 pub mod debian_rules_should_not_use_pwd;

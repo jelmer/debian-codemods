@@ -928,7 +928,7 @@ dependencies = [
  "sqlx",
  "svp-client",
  "tempfile",
- "toml_edit 0.23.7",
+ "toml_edit 0.23.8",
  "url",
 ]
 
@@ -1429,13 +1429,13 @@ checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 
 [[package]]
 name = "flate2"
-version = "1.1.5"
+version = "1.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfe33edd8e85a12a67454e37f8c75e730830d83e313556ab9ebf9ee7fbeb3bfb"
+checksum = "a2152dbcb980c05735e2a651d96011320a949eb31a0c8b38b72645ce97dec676"
 dependencies = [
  "crc32fast",
- "libz-rs-sys",
  "miniz_oxide",
+ "zlib-rs",
 ]
 
 [[package]]
@@ -2707,15 +2707,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libz-rs-sys"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b484ba8d4f775eeca644c452a56650e544bf7e617f1d170fe7298122ead5222"
-dependencies = [
- "zlib-rs",
-]
-
-[[package]]
 name = "lintian-brush"
 version = "0.158.19"
 dependencies = [
@@ -2867,9 +2858,9 @@ dependencies = [
 
 [[package]]
 name = "makefile-lossless"
-version = "0.3.15"
+version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d852e68741d2a0ceeb6c1f22a6dab8b9b798c2d192fbae7c65574f148580144"
+checksum = "cba235f1750a7a53dd4e641e5f8c9c212a9c2667f77ad880a051e79e7fd3eea9"
 dependencies = [
  "log",
  "rowan",
@@ -3284,7 +3275,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "toml 0.9.8",
- "toml_edit 0.23.7",
+ "toml_edit 0.23.8",
  "upstream-ontologist",
  "url",
  "whoami",
@@ -5370,9 +5361,9 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.23.7"
+version = "0.23.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6485ef6d0d9b5d0ec17244ff7eb05310113c3f316f2d14200d4de56b3cb98f8d"
+checksum = "5a9b7ac41d92f2d2803f233e297127bac397df7b337e0460a1cc39d6c006dee4"
 dependencies = [
  "indexmap",
  "toml_datetime 0.7.3",

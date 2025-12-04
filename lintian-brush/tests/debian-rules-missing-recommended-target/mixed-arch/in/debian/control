@@ -1,0 +1,17 @@
+Source: blah
+Section: net
+Priority: optional
+Maintainer: Joe Maintainer <joe@example.com>
+Standards-Version: 3.9.8
+
+Package: blah
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: A package description
+ This is description of an "any" package.
+
+Package: blah-doc
+Architecture: all
+Depends: ${misc:Depends}
+Description: Documentation for blah
+ This is the documentation package.
