@@ -219,7 +219,7 @@ mod tests {
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        let control_content = "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\nVcs-Git: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl.git\nVcs-Browser: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl\n\nPackage: libfoo-perl\nDescription: test\n";
+        let control_content = "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\nVcs-Browser: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl\nVcs-Git: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl.git\n\nPackage: libfoo-perl\nDescription: test\n";
         let control_path = debian_dir.join("control");
         fs::write(&control_path, control_content).unwrap();
 

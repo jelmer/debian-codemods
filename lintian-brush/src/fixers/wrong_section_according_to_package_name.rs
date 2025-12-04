@@ -71,9 +71,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     }
 
     // Load the name-to-section mappings
-    let regexes = match get_name_section_mappings(
-        preferences.lintian_data_path.as_ref().map(|p| p.as_path()),
-    ) {
+    let regexes = match get_name_section_mappings(preferences.lintian_data_path.as_deref()) {
         Ok(r) => r,
         Err(e) => {
             log::warn!("Failed to load name-section mappings: {}", e);
@@ -119,7 +117,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
                 expected_section.to_string(),
             ));
 
-            paragraph.set("Section", expected_section);
+            binary.set_section(Some(expected_section));
         }
     }
 

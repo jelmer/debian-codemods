@@ -1,5 +1,6 @@
 use crate::{declare_fixer, FixerError, FixerResult};
 use debian_analyzer::control::TemplatedControlEditor;
+use debian_control::MultiArch;
 use std::path::Path;
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
@@ -13,12 +14,13 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let mut updated_packages = Vec::new();
 
     for mut binary in editor.binaries() {
-        let paragraph = binary.as_mut_deb822();
-
         // Get package name
-        let package = match paragraph.get("Package") {
+        let package = match binary.name() {
             Some(p) => p.to_string(),
-            None => continue,
+            None => {
+                log::debug!("Skipping binary package without name");
+                continue;
+            }
         };
 
         // Check if it's a font package
@@ -27,18 +29,18 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
 
         // Check architecture
-        let arch = paragraph.get("Architecture").map(|a| a.to_string());
+        let arch = binary.architecture().map(|a| a.to_string());
         if !matches!(arch.as_deref(), Some("all") | None) {
             continue;
         }
 
         // Skip if Multi-Arch is already set
-        if paragraph.contains_key("Multi-Arch") {
+        if binary.multi_arch().is_some() {
             continue;
         }
 
         // Add Multi-Arch: foreign
-        paragraph.set("Multi-Arch", "foreign");
+        binary.set_multi_arch(Some(MultiArch::Foreign));
         updated_packages.push(package);
     }
 

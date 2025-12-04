@@ -40,10 +40,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
         if architecture == "all" {
             // Remove ${misc:Built-Using} for arch:all packages
-            let paragraph = binary.as_mut_deb822();
-            if let Some(built_using) = paragraph.get("Built-Using") {
+            if let Some(built_using) = binary.built_using() {
                 use debian_control::lossless::relations::Relations;
-                let (mut relations, _) = Relations::parse_relaxed(&built_using, true);
+                let (mut relations, _) = Relations::parse_relaxed(&built_using.to_string(), true);
 
                 let original_value = relations.to_string();
                 relations.drop_substvar("${misc:Built-Using}");
@@ -52,17 +51,20 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 // Check if the substvar was actually removed
                 if new_value != original_value {
                     if new_value.trim().is_empty() || relations.is_empty() {
-                        paragraph.remove("Built-Using");
+                        binary.set_built_using(None);
                     } else {
-                        paragraph.set("Built-Using", &new_value);
+                        let (new_relations, _) = Relations::parse_relaxed(&new_value, true);
+                        binary.set_built_using(Some(&new_relations));
                     }
                     removed.push(binary_name.clone());
                 }
             }
         } else {
             // Add ${misc:Built-Using} for non-all architectures
-            let paragraph = binary.as_mut_deb822();
-            let built_using = paragraph.get("Built-Using").unwrap_or_default();
+            let built_using = binary
+                .built_using()
+                .map(|b| b.to_string())
+                .unwrap_or_default();
             use debian_control::lossless::relations::Relations;
             let (mut relations, _) = Relations::parse_relaxed(&built_using, true);
 
@@ -75,7 +77,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
             if !has_misc_built_using {
                 relations.ensure_substvar("${misc:Built-Using}").unwrap();
-                paragraph.set("Built-Using", &relations.to_string());
+                binary.set_built_using(Some(&relations));
                 added.push(binary_name.clone());
             }
         }

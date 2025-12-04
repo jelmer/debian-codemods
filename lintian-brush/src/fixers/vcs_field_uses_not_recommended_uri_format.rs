@@ -1,4 +1,5 @@
 use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use debian_analyzer::abstract_control::AbstractSource;
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -20,7 +21,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let source = editor.source().ok_or(FixerError::NoChanges)?;
 
-    let vcs_git = match source.as_deb822().get("Vcs-Git") {
+    let vcs_git = match source.get_vcs_url("Git") {
         Some(value) => value,
         None => return Err(FixerError::NoChanges),
     };
@@ -66,7 +67,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // Update the Vcs-Git field
     if let Some(mut source) = editor.source() {
-        source.as_mut_deb822().set("Vcs-Git", &new_url);
+        source.set_vcs_url("Git", &new_url);
     }
 
     editor.commit()?;

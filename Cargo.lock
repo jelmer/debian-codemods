@@ -806,9 +806,9 @@ dependencies = [
 
 [[package]]
 name = "ctor"
-version = "0.6.2"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb230974aaf0aca4d71665bed0aca156cf43b764fcb9583b69c6c3e686f35e72"
+checksum = "424e0138278faeb2b401f174ad17e715c829512d74f3d1e81eb43365c2e0590e"
 dependencies = [
  "ctor-proc-macro",
  "dtor",
@@ -949,9 +949,9 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.2.9"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89dfa826c2be378270a7022564b8cddda969a16522fe60032d1f9363c1501ecb"
+checksum = "9ee6f0a8827a86b111c80e12322ebe1818f835fa1f936b9cc212b0861afdbfb2"
 dependencies = [
  "chrono",
  "deb822-fast",
@@ -977,9 +977,9 @@ dependencies = [
 
 [[package]]
 name = "debian-watch"
-version = "0.2.15"
+version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7af76aefd6ad01b821102369a5026948fe54c57fa79875a4c21f3a3ae767bb5"
+checksum = "99812d3d33fb0bd27a5a8159c114fb894b703192a60879279810a7515f278ce1"
 dependencies = [
  "anyhow",
  "debversion",
@@ -2867,9 +2867,9 @@ dependencies = [
 
 [[package]]
 name = "makefile-lossless"
-version = "0.3.11"
+version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "411191c3f49c61050e0f43a41b46fa282211ac3c9eb9f90db1b9e8b6c052793e"
+checksum = "9d852e68741d2a0ceeb6c1f22a6dab8b9b798c2d192fbae7c65574f148580144"
 dependencies = [
  "log",
  "rowan",
@@ -3035,9 +3035,9 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69d83b0086dc8ecf3ce9ae2874b2d1290252e2a30720bea58a5c6639b0092873"
+checksum = "a69bcab0ad47271a0234d9422b131806bf3968021e5dc9328caf2d4cd58557fc"
 dependencies = [
  "libc",
  "wasi",
@@ -5245,7 +5245,7 @@ checksum = "ff360e02eab121e0bc37a2d3b4d4dc622e6eda3a8e5253d5435ecf5bd4c68408"
 dependencies = [
  "bytes",
  "libc",
- "mio 1.1.0",
+ "mio 1.1.1",
  "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",

@@ -38,8 +38,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // Check if the source uses debhelper
     let uses_dh = if let Some(source) = editor.source() {
-        let build_depends = source.as_deb822().get("Build-Depends").unwrap_or_default();
-        uses_debhelper(&build_depends)
+        if let Some(build_depends) = source.build_depends() {
+            uses_debhelper(&build_depends.to_string())
+        } else {
+            false
+        }
     } else {
         false
     };
@@ -50,14 +53,20 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // Check each binary package
     for mut binary in editor.binaries() {
-        let paragraph = binary.as_mut_deb822();
-        let package_name = paragraph
-            .get("Package")
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "unknown".to_string());
+        let package_name = match binary.name() {
+            Some(name) => name.to_string(),
+            None => {
+                log::debug!("Skipping binary package without name");
+                continue;
+            }
+        };
 
-        let depends = paragraph.get("Depends").unwrap_or_default();
-        let pre_depends = paragraph.get("Pre-Depends").unwrap_or_default();
+        let depends = binary.depends().map(|d| d.to_string()).unwrap_or_default();
+        let pre_depends = binary
+            .as_deb822()
+            .get("Pre-Depends")
+            .map(|s| s.to_string())
+            .unwrap_or_default();
 
         // Skip if already has ${misc:Depends} in either Depends or Pre-Depends
         if has_misc_depends(&depends) || has_misc_depends(&pre_depends) {
@@ -73,7 +82,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         };
 
         relations.ensure_substvar("${misc:Depends}").unwrap();
-        paragraph.set("Depends", &relations.to_string());
+        binary.set_depends(Some(&relations));
         misc_depends_added.push(package_name);
     }
 
