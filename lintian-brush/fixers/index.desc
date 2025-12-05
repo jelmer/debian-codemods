@@ -97,9 +97,6 @@ fixers:
     lintian-tags:
       - vcs-field-uses-insecure-uri
 
-  - script: license-file-listed-in-debian-copyright.py
-    lintian-tags:
-      - license-file-listed-in-debian-copyright
 
   - script: vcs-field-bitrotted.py
     lintian-tags:

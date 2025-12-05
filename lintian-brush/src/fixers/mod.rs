@@ -62,6 +62,7 @@ pub mod initial_upload_closes_no_bugs;
 pub mod invalid_short_name_in_dep5_copyright;
 pub mod invalid_standards_version;
 pub mod libmodule_build_perl_needs_to_be_in_build_depends;
+pub mod license_file_listed_in_debian_copyright;
 pub mod maintainer_also_in_uploaders;
 pub mod maintainer_script_empty;
 pub mod maintainer_script_without_set_e;
