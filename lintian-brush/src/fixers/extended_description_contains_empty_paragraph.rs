@@ -14,10 +14,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // Process binary packages
     for mut binary in editor.binaries() {
-        let paragraph = binary.as_mut_deb822();
-
         // Check if Description field exists
-        if let Some(description) = paragraph.get("Description") {
+        if let Some(description) = binary.description() {
             // Split into lines but preserve the line endings
             let lines: Vec<&str> = description.split('\n').collect();
 
@@ -37,7 +35,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 // Join with newlines
                 let new_description = new_lines.join("\n");
 
-                paragraph.set("Description", &new_description);
+                binary.set_description(Some(&new_description));
                 made_changes = true;
             }
         }

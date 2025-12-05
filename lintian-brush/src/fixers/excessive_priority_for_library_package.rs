@@ -1,5 +1,6 @@
 use crate::{declare_fixer, FixerError, FixerResult};
 use debian_analyzer::control::TemplatedControlEditor;
+use debian_control::Priority;
 use std::path::Path;
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
@@ -14,32 +15,31 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // Get default priority from source paragraph
     let default_priority = if let Some(source) = editor.source() {
-        source.as_deb822().get("Priority")
+        source.priority().map(|p| p.to_string())
     } else {
         None
     };
 
     // Process binary packages
     for mut binary in editor.binaries() {
-        let paragraph = binary.as_mut_deb822();
-
         // Only process packages in libs section
-        if paragraph.get("Section").as_deref() != Some("libs") {
+        if binary.section().as_deref() != Some("libs") {
             continue;
         }
 
         // Get priority (from binary or fall back to source default)
-        let priority = paragraph
-            .get("Priority")
+        let priority = binary
+            .priority()
+            .map(|p| p.to_string())
             .or(default_priority.clone())
             .unwrap_or_default();
 
         // Check if priority is excessive for library packages
         if matches!(priority.as_str(), "required" | "important" | "standard") {
             // Set priority to optional
-            paragraph.set("Priority", "optional");
+            binary.set_priority(Some(Priority::Optional));
 
-            if let Some(package_name) = paragraph.get("Package") {
+            if let Some(package_name) = binary.name() {
                 changed_packages.push(package_name.to_string());
             }
         }

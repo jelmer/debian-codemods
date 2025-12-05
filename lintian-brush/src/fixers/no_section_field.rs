@@ -64,15 +64,13 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     // Check if source already has a Section field
     if let Some(source) = editor.source() {
-        if source.as_deb822().get("Section").is_some() {
+        if source.section().is_some() {
             return Err(FixerError::NoChanges);
         }
     }
 
     // Load the name-to-section mappings
-    let regexes = match get_name_section_mappings(
-        preferences.lintian_data_path.as_ref().map(|p| p.as_path()),
-    ) {
+    let regexes = match get_name_section_mappings(preferences.lintian_data_path.as_deref()) {
         Ok(r) => r,
         Err(e) => {
             log::warn!("Failed to load name-section mappings: {}", e);
@@ -85,10 +83,8 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     // First pass: set sections on binaries that don't have them
     for mut binary in editor.binaries() {
-        let paragraph = binary.as_mut_deb822();
-
-        if paragraph.get("Section").is_none() {
-            let package_name = match paragraph.get("Package") {
+        if binary.section().is_none() {
+            let package_name = match binary.name() {
                 Some(name) => name.to_string(),
                 None => continue,
             };
@@ -102,14 +98,14 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
                 };
 
                 if issue.should_fix(base_path) {
-                    paragraph.set("Section", section);
+                    binary.set_section(Some(section));
                     binary_sections_set.insert(package_name);
                 }
             }
         }
 
         // Collect all sections from binaries
-        if let Some(section) = paragraph.get("Section") {
+        if let Some(section) = binary.section() {
             binary_sections.insert(section.to_string());
         }
     }
@@ -130,14 +126,13 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         if issue.should_fix(base_path) {
             // Set section on source
             if let Some(mut source) = editor.source() {
-                source.as_mut_deb822().set("Section", &section);
+                source.set_section(Some(&section));
                 source_section_set = true;
             }
 
             // Remove section from all binaries
             for mut binary in editor.binaries() {
-                let paragraph = binary.as_mut_deb822();
-                paragraph.remove("Section");
+                binary.set_section(None);
             }
         }
     }
