@@ -6,6 +6,7 @@ pub mod build_depends_on_obsolete_package;
 pub mod built_using_for_golang;
 pub mod changelog_has_duplicate_line;
 pub mod comma_separated_files_in_dep5_copyright;
+pub mod copyright_continued_lines_with_space;
 pub mod copyright_format_uri;
 pub mod copyright_has_crs;
 pub mod copyright_missing_upstream_info;

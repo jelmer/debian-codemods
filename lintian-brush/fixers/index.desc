@@ -15,10 +15,6 @@ fixers:
 
   # Copyright related fixers. Fix format URL before semantic fixes.
 
-  - script: copyright-continued-lines-with-space.py
-    lintian-tags:
-      - tab-in-license-text
-
   - script: common-license.py
     lintian-tags:
       - copyright-does-not-refer-to-common-license-file
