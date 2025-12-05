@@ -32,11 +32,6 @@ fixers:
 
   - script: ancient-maintscript-entry.py
 
-  - script: missing-build-dependency-for-dh_-command.py
-    lintian-tags:
-      - missing-build-dependency-for-dh_-command
-      - missing-build-dependency-for-dh-addon
-
   - script: package-uses-deprecated-debhelper-compat-version.py
     lintian-tags:
       - package-uses-deprecated-debhelper-compat-version
