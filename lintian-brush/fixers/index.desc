@@ -135,10 +135,6 @@ fixers:
     lintian-tags:
       - desktop-entry-contains-encoding-key
 
-  - script: rules-requires-root-missing.py
-    lintian-tags:
-      - silent-on-rules-requiring-root
-
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
   - script: newer-debconf-templates.py

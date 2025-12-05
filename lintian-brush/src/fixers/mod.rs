@@ -103,6 +103,7 @@ pub mod quilt_series_but_no_build_dep;
 pub mod quilt_series_without_trailing_newline;
 pub mod renamed_tag;
 pub mod rules_not_executable;
+pub mod rules_requires_root_missing;
 pub mod source_format;
 pub mod transitional_package_should_be_oldlibs_optional;
 pub mod typo_in_debhelper_override_target;
