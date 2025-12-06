@@ -3,6 +3,8 @@ use debian_watch::{Entry, WatchFile};
 use debversion::Version;
 use std::path::Path;
 use std::process::Command;
+use std::time::Duration;
+use url::Url;
 
 struct WatchCandidate {
     entry: Entry,
@@ -11,18 +13,48 @@ struct WatchCandidate {
     preference: i32,
 }
 
+/// Default timeout for HTTP requests (3 seconds)
+const DEFAULT_URLLIB_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// User agent for HTTP requests
+fn user_agent() -> String {
+    format!("lintian-brush/{}", env!("CARGO_PKG_VERSION"))
+}
+
+/// Load JSON from a URL
+fn load_json(url: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    let client = reqwest::blocking::Client::builder()
+        .user_agent(user_agent())
+        .timeout(DEFAULT_URLLIB_TIMEOUT)
+        .build()?;
+
+    let response = client
+        .get(url)
+        .header("Accept", "application/json")
+        .send()?;
+
+    if response.status() == 404 {
+        return Err("Not found".into());
+    }
+
+    let json = response.json()?;
+    Ok(json)
+}
+
 /// Find watch file candidates for a package
 fn find_candidates(
     path: &Path,
-    _good_upstream_versions: &[String],
-    _net_access: bool,
+    good_upstream_versions: &[String],
+    net_access: bool,
 ) -> Result<Vec<WatchCandidate>, Box<dyn std::error::Error>> {
     let mut candidates = Vec::new();
 
     // Check for setup.py (PyPI packages)
     let setup_py = path.join("setup.py");
     if setup_py.exists() {
-        if let Ok(Some(candidate)) = candidates_from_setup_py(&setup_py) {
+        if let Ok(Some(candidate)) =
+            candidates_from_setup_py(&setup_py, good_upstream_versions, net_access)
+        {
             candidates.push(candidate);
         }
     }
@@ -30,8 +62,30 @@ fn find_candidates(
     // Check for debian/upstream/metadata
     let upstream_metadata = path.join("debian/upstream/metadata");
     if upstream_metadata.exists() {
-        if let Ok(mut cands) = candidates_from_upstream_metadata(&upstream_metadata) {
+        if let Ok(mut cands) = candidates_from_upstream_metadata(
+            &upstream_metadata,
+            good_upstream_versions,
+            net_access,
+        ) {
             candidates.append(&mut cands);
+        }
+    }
+
+    // Check for Cabal files (Haskell packages)
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for entry in entries.flatten() {
+            if let Some(filename) = entry.file_name().to_str() {
+                if filename.ends_with(".cabal") {
+                    // Extract package name from filename
+                    let package_name = filename.trim_end_matches(".cabal");
+                    if let Ok(mut cands) =
+                        candidates_from_hackage(package_name, good_upstream_versions, net_access)
+                    {
+                        candidates.append(&mut cands);
+                    }
+                    break;
+                }
+            }
         }
     }
 
@@ -60,8 +114,10 @@ fn certainty_to_confidence(certainty: Option<&Certainty>) -> i32 {
 /// Extract watch candidates from setup.py (PyPI packages)
 fn candidates_from_setup_py(
     path: &Path,
+    good_upstream_versions: &[String],
+    net_access: bool,
 ) -> Result<Option<WatchCandidate>, Box<dyn std::error::Error>> {
-    // Use Python to extract project name from setup.py
+    // Use Python to extract project name and version from setup.py
     let script = r#"
 import sys
 import os
@@ -74,8 +130,11 @@ from distutils.core import run_setup
 try:
     result = run_setup(sys.argv[1], stop_after='config')
     name = result.get_name()
+    version = result.get_version()
     if name:
         print(name)
+        if version:
+            print(version)
 except:
     pass
 "#;
@@ -91,10 +150,60 @@ except:
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let project = stdout.trim();
+    let lines: Vec<&str> = stdout.trim().lines().collect();
 
+    if lines.is_empty() {
+        return Ok(None);
+    }
+
+    let project = lines[0].trim();
     if project.is_empty() {
         return Ok(None);
+    }
+
+    let version = if lines.len() > 1 {
+        Some(lines[1].trim())
+    } else {
+        None
+    };
+
+    let mut certainty = Certainty::Likely;
+    let mut opts = Vec::new();
+
+    // If net access is allowed, verify the package exists on PyPI
+    if net_access {
+        let json_url = format!("https://pypi.python.org/pypi/{}/json", project);
+        if let Ok(pypi_data) = load_json(&json_url) {
+            // Check if the current version exists in releases
+            if let Some(version_str) = version {
+                if let Some(releases) = pypi_data["releases"].as_object() {
+                    if let Some(release_files) =
+                        releases.get(version_str).and_then(|v| v.as_array())
+                    {
+                        certainty = Certainty::Certain;
+
+                        // Check if any sdist has a signature
+                        let filename_regex = format!(
+                            r"{}-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))",
+                            regex::escape(project)
+                        );
+
+                        for file in release_files {
+                            if file["packagetype"].as_str() == Some("sdist") {
+                                if let Some(filename) = file["filename"].as_str() {
+                                    if regex::Regex::new(&filename_regex)?.is_match(filename) {
+                                        if file["has_sig"].as_bool() == Some(true) {
+                                            opts.push("pgpsigurlmangle=s/$/.asc/");
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Create watch entry for PyPI
@@ -104,22 +213,242 @@ except:
     );
     let url = format!("https://pypi.debian.net/{}/{}", project, filename_regex);
 
-    // Parse as a temporary watch file to extract the entry
-    let watch_content = format!("version=4\n{}\n", url);
-    let parsed: WatchFile = watch_content.parse()?;
-    let entry = parsed.entries().next().ok_or("No entry found")?;
+    let mut builder = Entry::builder(&url);
+    for opt in opts {
+        // Parse opt into key=value or just key
+        if let Some((key, value)) = opt.split_once('=') {
+            builder = builder.opt(key, value);
+        } else {
+            builder = builder.flag(opt);
+        }
+    }
+    let entry = builder.build();
 
     Ok(Some(WatchCandidate {
         entry,
         site: "pypi".to_string(),
-        certainty: Some(Certainty::Likely),
+        certainty: Some(certainty),
         preference: 1,
     }))
+}
+
+/// Generate watch entry for CRAN packages
+fn guess_cran_watch_entry(name: &str) -> Result<WatchCandidate, Box<dyn std::error::Error>> {
+    let url = format!(
+        "https://cran.r-project.org/src/contrib/{}_([-.\\d]*)\\.tar\\.gz",
+        name
+    );
+    let entry = Entry::builder(&url).build();
+
+    Ok(WatchCandidate {
+        entry,
+        site: "cran".to_string(),
+        certainty: Some(Certainty::Likely),
+        preference: 0,
+    })
+}
+
+/// Generate watch entry for GitHub repos
+fn guess_github_watch_entry(
+    parsed_url: &Url,
+    good_upstream_versions: &[String],
+    net_access: bool,
+) -> Result<Vec<WatchCandidate>, Box<dyn std::error::Error>> {
+    if !net_access {
+        return Ok(vec![]);
+    }
+
+    // Open the branch using breezyshim
+    let branch = breezyshim::branch::open(parsed_url)?;
+    let tags = branch.tags()?.get_tag_dict()?;
+
+    let possible_patterns = vec![r"v(\d\S+)", r"(\d\S+)", r".*/[vV]?(\d[^\s+]+)\.tar\.gz"];
+
+    let mut version_pattern = None;
+    let mut tag_names: Vec<String> = tags.keys().cloned().collect();
+    tag_names.sort();
+    tag_names.reverse();
+
+    for name in &tag_names {
+        for pattern in &possible_patterns {
+            let re = regex::Regex::new(pattern)?;
+            if let Some(m) = re.captures(name) {
+                if let Some(version) = m.get(1) {
+                    if good_upstream_versions.contains(&version.as_str().to_string()) {
+                        version_pattern = Some(pattern.to_string());
+                        break;
+                    }
+                }
+            }
+        }
+        if version_pattern.is_some() {
+            break;
+        }
+    }
+
+    let version_pattern = match version_pattern {
+        Some(p) => p,
+        None => return Ok(vec![]),
+    };
+
+    let path_parts: Vec<&str> = parsed_url.path().trim_matches('/').split('/').collect();
+    if path_parts.len() < 2 {
+        return Ok(vec![]);
+    }
+
+    let username = path_parts[0];
+    let mut project = path_parts[1].to_string();
+    if project.ends_with(".git") {
+        project = project[..project.len() - 4].to_string();
+    }
+
+    let download_url = format!("https://github.com/{}/{}/tags", username, project);
+    let matching_pattern = format!(r".*/{}\\.tar\\.gz", version_pattern);
+
+    // Create watch entry with filenamemangle
+    let filemangle = format!("s/{}/{}-$1\\.tar\\.gz/", matching_pattern, project);
+    let entry = Entry::builder(&download_url)
+        .matching_pattern(&matching_pattern)
+        .opt("filenamemangle", &filemangle)
+        .build();
+
+    Ok(vec![WatchCandidate {
+        entry,
+        site: "github".to_string(),
+        certainty: Some(Certainty::Certain),
+        preference: 0,
+    }])
+}
+
+/// Generate watch entry for Launchpad projects
+fn guess_launchpad_watch_entry(
+    parsed_url: &Url,
+    _good_upstream_versions: &[String],
+    net_access: bool,
+) -> Result<Vec<WatchCandidate>, Box<dyn std::error::Error>> {
+    if !net_access {
+        return Ok(vec![]);
+    }
+
+    let path_parts: Vec<&str> = parsed_url.path().trim_matches('/').split('/').collect();
+    if path_parts.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let project = path_parts[0];
+    let url = format!("https://api.launchpad.net/devel/{}/releases", project);
+
+    let mut entries = Vec::new();
+    let mut next_url = Some(url);
+
+    while let Some(current_url) = next_url {
+        let response = load_json(&current_url)?;
+        if let Some(arr) = response["entries"].as_array() {
+            entries.extend(arr.iter().cloned());
+        }
+        next_url = response["next_collection_link"]
+            .as_str()
+            .map(|s| s.to_string());
+    }
+
+    if entries.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let last_entry = &entries[entries.len() - 1];
+    let files_url = last_entry["files_collection_link"]
+        .as_str()
+        .ok_or("Missing files_collection_link")?;
+
+    let files = load_json(files_url)?;
+    let file_entries = files["entries"]
+        .as_array()
+        .ok_or("Missing entries in files")?;
+
+    if file_entries.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let file_link = file_entries[0]["file_link"]
+        .as_str()
+        .ok_or("Missing file_link")?;
+    let version = last_entry["version"].as_str().ok_or("Missing version")?;
+
+    let file_parts: Vec<&str> = file_link.split('/').collect();
+    if file_parts.len() < 2 {
+        return Ok(vec![]);
+    }
+    let filepattern = file_parts[file_parts.len() - 2].replace(version, "(.*)");
+
+    let download_url = format!("https://launchpad.net/{}/+download", project);
+    let matching_pattern = format!("https://launchpad.net/{}/.*/{}", project, filepattern);
+
+    let entry = Entry::builder(&download_url)
+        .matching_pattern(&matching_pattern)
+        .build();
+
+    Ok(vec![WatchCandidate {
+        entry,
+        site: "launchpad".to_string(),
+        certainty: Some(Certainty::Certain),
+        preference: 0,
+    }])
+}
+
+/// Extract watch candidates from Hackage
+fn candidates_from_hackage(
+    package: &str,
+    good_upstream_versions: &[String],
+    net_access: bool,
+) -> Result<Vec<WatchCandidate>, Box<dyn std::error::Error>> {
+    if !net_access {
+        return Ok(vec![]);
+    }
+
+    let url = format!("https://hackage.haskell.org/package/{}/preferred", package);
+    let versions = match load_json(&url) {
+        Ok(v) => v,
+        Err(_) => return Ok(vec![]),
+    };
+
+    let normal_versions = versions["normal-version"]
+        .as_array()
+        .ok_or("Missing normal-version")?;
+
+    let mut found = false;
+    for version in normal_versions {
+        if let Some(v) = version.as_str() {
+            if good_upstream_versions.contains(&v.to_string()) {
+                found = true;
+                break;
+            }
+        }
+    }
+
+    if !found {
+        return Ok(vec![]);
+    }
+
+    let download_url = format!("https://hackage.haskell.org/package/{}", package);
+    let matching_pattern = format!(r".*/{}-(.*)\.tar\.gz", regex::escape(package));
+
+    let entry = Entry::builder(&download_url)
+        .matching_pattern(&matching_pattern)
+        .build();
+
+    Ok(vec![WatchCandidate {
+        entry,
+        site: "hackage".to_string(),
+        certainty: Some(Certainty::Certain),
+        preference: 1,
+    }])
 }
 
 /// Extract watch candidates from debian/upstream/metadata
 fn candidates_from_upstream_metadata(
     path: &Path,
+    good_upstream_versions: &[String],
+    net_access: bool,
 ) -> Result<Vec<WatchCandidate>, Box<dyn std::error::Error>> {
     use serde_yaml::Value;
     use std::fs;
@@ -129,24 +458,40 @@ fn candidates_from_upstream_metadata(
 
     let mut candidates = Vec::new();
 
+    // Check for Repository or X-Download fields
+    for field in ["Repository", "X-Download"] {
+        if let Some(url_str) = yaml.get(field).and_then(|v| v.as_str()) {
+            let url_parts: Vec<&str> = url_str.split_whitespace().collect();
+            if url_parts.is_empty() {
+                continue;
+            }
+
+            if let Ok(parsed_url) = Url::parse(url_parts[0]) {
+                if parsed_url.host_str() == Some("github.com") {
+                    if let Ok(mut cands) =
+                        guess_github_watch_entry(&parsed_url, good_upstream_versions, net_access)
+                    {
+                        candidates.append(&mut cands);
+                    }
+                }
+                if parsed_url.host_str() == Some("launchpad.net") {
+                    if let Ok(mut cands) =
+                        guess_launchpad_watch_entry(&parsed_url, good_upstream_versions, net_access)
+                    {
+                        candidates.append(&mut cands);
+                    }
+                }
+            }
+        }
+    }
+
     // Check for CRAN packages
     if let Some(archive) = yaml.get("Archive").and_then(|v| v.as_str()) {
         if archive == "CRAN" {
             if let Some(name) = yaml.get("Name").and_then(|v| v.as_str()) {
-                let url = format!(
-                    "https://cran.r-project.org/src/contrib/{}_([-.\\d]*)\\.tar\\.gz",
-                    name
-                );
-                let watch_content = format!("version=4\n{}\n", url);
-                let parsed: WatchFile = watch_content.parse()?;
-                let entry = parsed.entries().next().ok_or("No entry found")?;
-
-                candidates.push(WatchCandidate {
-                    entry,
-                    site: "cran".to_string(),
-                    certainty: Some(Certainty::Likely),
-                    preference: 0,
-                });
+                if let Ok(cand) = guess_cran_watch_entry(name) {
+                    candidates.push(cand);
+                }
             }
         }
     }
