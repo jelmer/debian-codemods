@@ -73,18 +73,17 @@ fn find_candidates(
 
     // Check for Cabal files (Haskell packages)
     if let Ok(entries) = std::fs::read_dir(path) {
-        for entry in entries.flatten() {
-            if let Some(filename) = entry.file_name().to_str() {
-                if filename.ends_with(".cabal") {
-                    // Extract package name from filename
-                    let package_name = filename.trim_end_matches(".cabal");
-                    if let Ok(mut cands) =
-                        candidates_from_hackage(package_name, good_upstream_versions, net_access)
-                    {
-                        candidates.append(&mut cands);
-                    }
-                    break;
-                }
+        if let Some(cabal_file) = entries.flatten().find_map(|entry| {
+            let filename = entry.file_name();
+            filename
+                .to_str()
+                .filter(|s| s.ends_with(".cabal"))
+                .map(|s| s.trim_end_matches(".cabal").to_string())
+        }) {
+            if let Ok(mut cands) =
+                candidates_from_hackage(&cabal_file, good_upstream_versions, net_access)
+            {
+                candidates.append(&mut cands);
             }
         }
     }
@@ -172,34 +171,33 @@ except:
 
     // If net access is allowed, verify the package exists on PyPI
     if net_access {
-        let json_url = format!("https://pypi.python.org/pypi/{}/json", project);
-        if let Ok(pypi_data) = load_json(&json_url) {
-            // Check if the current version exists in releases
-            if let Some(version_str) = version {
-                if let Some(releases) = pypi_data["releases"].as_object() {
-                    if let Some(release_files) =
-                        releases.get(version_str).and_then(|v| v.as_array())
-                    {
-                        certainty = Certainty::Certain;
+        if let Some(version_str) = version {
+            let json_url = format!("https://pypi.python.org/pypi/{}/json", project);
+            if let Ok(pypi_data) = load_json(&json_url) {
+                let releases = pypi_data["releases"].as_object();
+                let release_files = releases
+                    .and_then(|r| r.get(version_str))
+                    .and_then(|v| v.as_array());
 
-                        // Check if any sdist has a signature
-                        let filename_regex = format!(
-                            r"{}-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))",
-                            regex::escape(project)
-                        );
+                if let Some(files) = release_files {
+                    certainty = Certainty::Certain;
 
-                        for file in release_files {
-                            if file["packagetype"].as_str() == Some("sdist") {
-                                if let Some(filename) = file["filename"].as_str() {
-                                    if regex::Regex::new(&filename_regex)?.is_match(filename) {
-                                        if file["has_sig"].as_bool() == Some(true) {
-                                            opts.push("pgpsigurlmangle=s/$/.asc/");
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    // Check if any sdist has a signature
+                    let filename_regex = regex::Regex::new(&format!(
+                        r"{}-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))",
+                        regex::escape(project)
+                    ))?;
+
+                    let has_signature = files.iter().any(|file| {
+                        file["packagetype"].as_str() == Some("sdist")
+                            && file["filename"]
+                                .as_str()
+                                .map_or(false, |f| filename_regex.is_match(f))
+                            && file["has_sig"].as_bool() == Some(true)
+                    });
+
+                    if has_signature {
+                        opts.push("pgpsigurlmangle=s/$/.asc/");
                     }
                 }
             }
