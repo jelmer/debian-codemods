@@ -107,6 +107,7 @@ mod out_of_date_standards_version;
 mod package_contains_linda_override;
 mod package_has_no_description;
 mod package_needs_versioned_debhelper_build_depends;
+mod package_uses_deprecated_debhelper_compat_version;
 mod package_uses_deprecated_dpatch_patch_system;
 mod package_uses_deprecated_source_override_location;
 mod patch_file_present_but_not_mentioned_in_series;

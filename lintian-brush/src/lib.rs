@@ -25,8 +25,10 @@ use debian_changelog::ChangeLog;
 
 /// Built-in fixers for common Lintian issues
 pub mod builtin_fixers;
-/// Macros for defining fixers
+/// Debian helper functions and types
+pub mod debhelper;
 #[macro_use]
+/// Macros for defining fixers
 pub mod macros;
 /// Fixer-related types and traits
 pub mod fixers;
