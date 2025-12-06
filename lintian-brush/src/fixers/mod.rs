@@ -56,6 +56,7 @@ pub mod extended_description_contains_empty_paragraph;
 pub mod field_name_typo_in_control;
 pub mod field_name_typo_in_dep5_copyright;
 pub mod field_name_typo_in_tests_control;
+pub mod field_name_typo_in_upstream_metadata;
 pub mod file_contains_trailing_whitespace;
 pub mod font_package_not_multi_arch_foreign;
 pub mod global_files_wildcard_not_first_paragraph_in_dep5_copyright;
