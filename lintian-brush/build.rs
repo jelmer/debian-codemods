@@ -68,11 +68,15 @@ fn main() {
     // Generate renamed tags map
     generate_renamed_tags_map(&out_dir);
 
+    // Generate SPDX license data
+    generate_spdx_data(&out_dir);
+
     // rebuild if build.rs or tests directory changes
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=tests");
     println!("cargo:rerun-if-changed=renamed-tags.json");
     println!("cargo:rerun-if-changed=/usr/share/lintian/data/obsolete-sites/obsolete-sites");
+    println!("cargo:rerun-if-changed=../spdx.json");
 }
 
 fn generate_renamed_tags_map(out_dir: &std::ffi::OsStr) {
@@ -241,4 +245,72 @@ fn generate_obsolete_sites(out_dir: &std::ffi::OsStr) {
     code.push_str("}\n");
 
     fs::write(&dest_path, code).unwrap();
+}
+
+fn generate_spdx_data(out_dir: &std::ffi::OsStr) {
+    let dest_path = Path::new(out_dir).join("spdx_licenses.rs");
+
+    // Read the spdx.json file from the parent directory
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let spdx_path = Path::new(&manifest_dir).join("..").join("spdx.json");
+
+    let json_content = fs::read_to_string(&spdx_path)
+        .expect("Failed to read spdx.json - make sure it exists in the parent directory");
+
+    #[derive(serde::Deserialize)]
+    struct SpdxLicense {
+        name: String,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct SpdxData {
+        licenses: std::collections::HashMap<String, SpdxLicense>,
+    }
+
+    let spdx_data: SpdxData =
+        serde_json::from_str(&json_content).expect("Failed to parse spdx.json");
+
+    // Collect and sort license IDs
+    let mut license_ids: Vec<&String> = spdx_data.licenses.keys().collect();
+    license_ids.sort();
+
+    // Generate the license ID array
+    let license_id_literals = license_ids.iter().map(|id| id.as_str());
+    let spdx_ids_code = quote! {
+        pub static SPDX_LICENSE_IDS: &[&str] = &[
+            #(#license_id_literals),*
+        ];
+    };
+
+    // Generate the license name to ID mapping
+    let mut name_to_id_pairs: Vec<(String, &str)> = spdx_data
+        .licenses
+        .iter()
+        .map(|(id, license)| (license.name.to_lowercase(), id.as_str()))
+        .collect();
+    name_to_id_pairs.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let names: Vec<&str> = name_to_id_pairs
+        .iter()
+        .map(|(name, _)| name.as_str())
+        .collect();
+    let ids: Vec<&str> = name_to_id_pairs.iter().map(|(_, id)| *id).collect();
+
+    let renames_code = quote! {
+        pub fn get_spdx_license_renames() -> std::collections::HashMap<&'static str, &'static str> {
+            let mut map = std::collections::HashMap::new();
+            #(
+                map.insert(#names, #ids);
+            )*
+            map
+        }
+    };
+
+    let full_code = quote! {
+        #spdx_ids_code
+
+        #renames_code
+    };
+
+    fs::write(&dest_path, full_code.to_string()).unwrap();
 }

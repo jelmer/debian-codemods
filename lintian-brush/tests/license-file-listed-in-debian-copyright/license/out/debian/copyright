@@ -6,8 +6,7 @@ Files: *
 Copyright: 2013 Somebody <somebody@example.com>
 License: GPL-2+
 
-Files: otherfile
-       anotherfile
+Files: otherfile anotherfile
 Copyright: 2013 Somebody else <somebodyelse@example.com>
 License: BSL-1
 

@@ -1,0 +1,7 @@
+#!/usr/bin/make -f
+
+build: blah
+	$(MAKE) install DESTDIR=debian/..
+
+clean:
+	dh_prep -k

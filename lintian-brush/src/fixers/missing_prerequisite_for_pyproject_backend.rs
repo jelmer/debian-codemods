@@ -81,7 +81,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
 
     editor.commit()?;
 
-    Ok(FixerResult::builder(&format!(
+    Ok(FixerResult::builder(format!(
         "Add missing build-dependency on {}.\n\nThis is necessary for build-backend {} in pyproject.toml",
         prerequisite, build_backend
     ))

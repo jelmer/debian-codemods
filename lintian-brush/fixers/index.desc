@@ -15,10 +15,6 @@ fixers:
 
   # Copyright related fixers. Fix format URL before semantic fixes.
 
-  - script: copyright-continued-lines-with-space.py
-    lintian-tags:
-      - tab-in-license-text
-
   - script: common-license.py
     lintian-tags:
       - copyright-does-not-refer-to-common-license-file
@@ -32,11 +28,6 @@ fixers:
 
   - script: ancient-maintscript-entry.py
 
-  - script: missing-build-dependency-for-dh_-command.py
-    lintian-tags:
-      - missing-build-dependency-for-dh_-command
-      - missing-build-dependency-for-dh-addon
-
   - script: package-uses-deprecated-debhelper-compat-version.py
     lintian-tags:
       - package-uses-deprecated-debhelper-compat-version
@@ -48,10 +39,6 @@ fixers:
     enabled: false
     lintian-tags:
       - skip-systemd-native-flag-missing-pre-depends
-
-  - script: space-in-std-shortname-in-dep5-copyright.py
-    lintian-tags:
-      - space-in-std-shortname-in-dep5-copyright
 
   - script: systemd-service-file-pidfile-refers-to-var-run.py
     lintian-tags:
@@ -102,9 +89,6 @@ fixers:
     lintian-tags:
       - vcs-field-uses-insecure-uri
 
-  - script: license-file-listed-in-debian-copyright.py
-    lintian-tags:
-      - license-file-listed-in-debian-copyright
 
   - script: vcs-field-bitrotted.py
     lintian-tags:
@@ -130,10 +114,6 @@ fixers:
   - script: desktop-entry-contains-encoding-key.py
     lintian-tags:
       - desktop-entry-contains-encoding-key
-
-  - script: rules-requires-root-missing.py
-    lintian-tags:
-      - silent-on-rules-requiring-root
 
   # Disabled for now because it updates even for any diff, not just when
   # messages change.

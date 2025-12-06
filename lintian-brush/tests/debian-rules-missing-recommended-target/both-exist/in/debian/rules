@@ -1,0 +1,13 @@
+#!/usr/bin/make -f
+
+build: blah
+	$(MAKE) install DESTDIR=debian/..
+
+build-arch: build
+	echo "Build for arch"
+
+build-indep: build
+	echo "Build for indep"
+
+clean:
+	dh_prep -k
