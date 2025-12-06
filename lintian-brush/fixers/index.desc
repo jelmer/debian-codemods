@@ -40,10 +40,6 @@ fixers:
     lintian-tags:
       - skip-systemd-native-flag-missing-pre-depends
 
-  - script: space-in-std-shortname-in-dep5-copyright.py
-    lintian-tags:
-      - space-in-std-shortname-in-dep5-copyright
-
   - script: systemd-service-file-pidfile-refers-to-var-run.py
     lintian-tags:
       - systemd-service-file-refers-to-var-run

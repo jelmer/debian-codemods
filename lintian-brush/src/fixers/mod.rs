@@ -108,6 +108,7 @@ pub mod renamed_tag;
 pub mod rules_not_executable;
 pub mod rules_requires_root_missing;
 pub mod source_format;
+pub mod space_in_std_shortname_in_dep5_copyright;
 pub mod transitional_package_should_be_oldlibs_optional;
 pub mod typo_in_debhelper_override_target;
 pub mod unnecessary_team_upload;
