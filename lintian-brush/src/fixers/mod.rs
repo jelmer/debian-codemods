@@ -1,3 +1,4 @@
+pub mod ancient_maintscript_entry;
 pub mod ancient_python_version_field;
 pub mod autotools_pkg_config_macro_not_cross_compilation_safe;
 pub mod binary_control_field_duplicates_source;
