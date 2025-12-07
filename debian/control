@@ -1,4 +1,4 @@
-Source: debian-codemods
+Source: lintian-brush
 Section: devel
 Priority: optional
 Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
@@ -143,31 +143,9 @@ Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
 Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush
 Homepage: https://salsa.debian.org/jelmer/lintian-brush
 
-Package: debian-codemods
-Architecture: any
-Depends: python3-breezy (>= 3.3.1~),
-         python3-debian,
-         ${misc:Depends},
-         ${shlibs:Depends}
-Replaces: lintian-brush (<< 0.163)
-Recommends: lintian-brush
-Breaks: lintian-brush (<< 0.163)
-Description: collection of codemods for Debian packaging
- This package contains a collection of codemods that can be used to
- automatically update Debian source packages to follow best practices
- and new policies.
- .
- The following codemods are included:
- .
-  * apply-multiarch-hints: applies multiarch hints to debian/control
-  * deb-scrub-obsolete: removes obsolete dependencies and maintscript snippets
-  * deb-vcs-publish: adds VCS metadata to debian/control
-  * fix-watch-file: updates the debian/watch file to use the latest format
-
 Package: lintian-brush
 Architecture: any
-Depends: decopy,
-         devscripts,
+Depends: devscripts,
          python3-breezy (>= 3.3.1~),
          python3-debian,
          python3-debmutate (>= 0.67),
@@ -203,3 +181,10 @@ Description: automatically fix lintian problems
  It comes with a wrapper script that invokes the scripts, updates
  the changelog (if desired) and commits each change to
  version control.
+ .
+ The following other codemods are included:
+ .
+  * apply-multiarch-hints: applies multiarch hints to debian/control
+  * deb-scrub-obsolete: removes obsolete dependencies and maintscript snippets
+  * deb-vcs-publish: adds VCS metadata to debian/control
+  * fix-watch-file: updates the debian/watch file to use the latest format

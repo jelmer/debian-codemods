@@ -1,4 +1,4 @@
-debian-codemods (0.163) UNRELEASED; urgency=medium
+lintian-brush (0.163) UNRELEASED; urgency=medium
 
   * Convert most fixers to Rust.
   * Add support for X-DH-Compat header. Closes: #1106883
@@ -6,10 +6,6 @@ debian-codemods (0.163) UNRELEASED; urgency=medium
   * Bump python3-upstream-ontologist dependency to 0.2.2; older versions
     trigger a infinite memory usage bug.
   * Don't crash when a fixer is killed by a signal.
-  * Rename source package to debian-codemods to reflect the existence
-    of codemods other than lintian-brush.
-  * Split out a debian-codemods binary package that contains
-    non-lintian-brush codemods.
   * Rebuild against Python 3.13/3.14. Closes: #1094320
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 03 Jun 2025 22:37:02 +0100
