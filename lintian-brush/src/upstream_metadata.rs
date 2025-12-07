@@ -25,3 +25,6 @@ pub const VALID_FIELD_NAMES: &[&str] = &[
     "Security-Contact",
     "Webservice",
 ];
+
+/// Fields that are only used by addons/tools
+pub const ADDON_ONLY_FIELDS: &[&str] = &["Archive"];
