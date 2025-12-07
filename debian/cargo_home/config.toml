@@ -3,17 +3,8 @@
 [source.mirror]
 directory = "/usr/share/cargo/registry/"
 
-[source.crates-io]
-replace-with = "mirror"
-
-# Separate source for crates.io to selectively patch specific crates
-# WORKAROUND: This allows specific crates to be fetched from crates.io
-# until they are available as Debian packages in unstable
-[source.vendored-crates-io]
-registry = "https://github.com/rust-lang/crates.io-index"
-
-# Override specific crates to come from crates.io instead of mirror
-# TODO: Remove these overrides once the crates are packaged in Debian unstable
-[patch.crates-io]
-systemd-unit-edit = { registry = "vendored-crates-io" }
-desktop-edit = { registry = "vendored-crates-io" }
+# WORKAROUND: Temporarily allow downloading from crates.io for packages not yet in Debian
+# Specifically needed for: systemd-unit-edit, desktop-edit
+# TODO: Re-enable this restriction once these crates are packaged in Debian unstable:
+# [source.crates-io]
+# replace-with = "mirror"
