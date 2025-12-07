@@ -112,15 +112,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             };
 
             let options = [
-                make_option(&[b' ', b'\t'], 1),
-                make_option(&[b' ', b'\t'], 2),
+                make_option(b" \t", 1),
+                make_option(b" \t", 2),
                 make_option(&[b' '; 8], 1),
             ];
 
             line = options
                 .into_iter()
                 .find(|opt| value_offset(opt) == prev_value_offset)
-                .unwrap_or_else(|| make_option(&[b' ', b'\t'], 1));
+                .unwrap_or_else(|| make_option(b" \t", 1));
 
             tabs_replaced = true;
         }
@@ -151,7 +151,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     if i == 0 {
                         content.to_vec()
                     } else {
-                        [&[b' '], content].concat()
+                        [b" ", content].concat()
                     }
                 })
                 .collect();

@@ -33,7 +33,7 @@ fn update_timestamp(path: &Path, timestamp: i64) -> Result<(), FixerError> {
 
         if line.starts_with("\"POT-Creation-Date: ") {
             // Format timestamp as "YYYY-MM-DD HH:MM+0000"
-            use chrono::{DateTime, Utc};
+            use chrono::DateTime;
             let dt = DateTime::from_timestamp(timestamp, 0).unwrap();
             lines.push(format!(
                 "\"POT-Creation-Date: {}\\n\"",

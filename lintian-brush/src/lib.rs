@@ -23,7 +23,6 @@ pub mod builtin_fixers;
 pub mod macros;
 pub mod fixers;
 pub mod lintian_overrides;
-pub mod rules;
 pub mod upstream_metadata;
 pub mod watch;
 
@@ -306,12 +305,14 @@ impl FixerResultBuilder {
     }
 
     /// Add a fixed lintian tag (will be converted to LintianIssue)
+    #[deprecated = "use fixed_issue instead"]
     pub fn fixed_tag(mut self, tag: impl Into<String>) -> Self {
         self.fixed_lintian_tags.push(tag.into());
         self
     }
 
     /// Add multiple fixed lintian tags
+    #[deprecated = "use fixed_issues instead"]
     pub fn fixed_tags(mut self, tags: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.fixed_lintian_tags
             .extend(tags.into_iter().map(|t| t.into()));
