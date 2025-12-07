@@ -124,6 +124,7 @@ pub mod unused_build_dependency_on_cdbs;
 pub mod unused_license_paragraph_in_dep5_copyright;
 pub mod unused_override;
 pub mod unversioned_copyright_format_uri;
+pub mod upstream_metadata_has_obsolete_field;
 pub mod upstream_metadata_in_native_source;
 pub mod useless_autoreconf_build_depends;
 pub mod uses_debhelper_compat_file;
