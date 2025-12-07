@@ -22,6 +22,7 @@ pub mod builtin_fixers;
 #[macro_use]
 pub mod macros;
 pub mod fixers;
+pub mod licenses;
 pub mod lintian_overrides;
 pub mod upstream_metadata;
 pub mod watch;
