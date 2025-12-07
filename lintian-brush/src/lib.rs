@@ -24,6 +24,7 @@ pub mod macros;
 pub mod fixers;
 pub mod lintian_overrides;
 pub mod rules;
+pub mod upstream_metadata;
 pub mod watch;
 
 // Re-export commonly used types for convenience
