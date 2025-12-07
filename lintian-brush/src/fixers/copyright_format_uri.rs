@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
 use regex::bytes::Regex;
 use std::fs;
 use std::path::Path;
@@ -37,10 +37,12 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     )
     .unwrap();
 
-    let is_wiki = if insecure_regex.is_match(first_line) {
-        false
-    } else if wiki_regex.is_match(first_line) {
-        true
+    let (is_wiki, old_uri) = if let Some(caps) = insecure_regex.captures(first_line) {
+        let uri = String::from_utf8_lossy(&caps[2]).to_string();
+        (false, uri)
+    } else if let Some(caps) = wiki_regex.captures(first_line) {
+        let uri = String::from_utf8_lossy(&caps[2]).to_string();
+        (true, uri)
     } else {
         return Err(FixerError::NoChanges);
     };
@@ -48,6 +50,33 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // Only replace if it's different from what we want
     if first_line == CORRECT_FORMAT {
         return Err(FixerError::NoChanges);
+    }
+
+    // Check for overrides
+    let mut issues_to_check = vec![LintianIssue {
+        package: None,
+        package_type: Some(PackageType::Source),
+        tag: Some("insecure-copyright-format-uri".to_string()),
+        info: Some(vec![old_uri.clone()]),
+    }];
+
+    if is_wiki {
+        issues_to_check.push(LintianIssue {
+            package: None,
+            package_type: Some(PackageType::Source),
+            tag: Some("wiki-copyright-format-uri".to_string()),
+            info: Some(vec![old_uri.clone()]),
+        });
+    }
+
+    let overridden: Vec<_> = issues_to_check
+        .iter()
+        .filter(|issue| !issue.should_fix(base_path))
+        .cloned()
+        .collect();
+
+    if !overridden.is_empty() && overridden.len() == issues_to_check.len() {
+        return Err(FixerError::NoChangesAfterOverrides(overridden));
     }
 
     // Build new content with replaced first line

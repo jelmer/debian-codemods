@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -93,36 +93,48 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let mut new_lines = Vec::new();
-    let mut tabs_replaced = false;
     let mut unicode_linebreaks_replaced = false;
     let mut prev_value_offset: Option<usize> = None;
+    let mut fixed_tab_issues = Vec::new();
+    let mut overridden_tab_issues = Vec::new();
+    let mut line_number = 0;
 
     for line in lines {
+        line_number += 1;
         let mut line = line.to_vec();
 
         // Handle tabs at the start of continuation lines
         if line.starts_with(b"\t") {
-            // Try different replacement options to maintain alignment
-            let make_option = |prefix: &[u8], skip: usize| {
-                let mut v = prefix.to_vec();
-                if line.len() > skip {
-                    v.extend_from_slice(&line[skip..]);
-                }
-                v
-            };
+            let issue = LintianIssue::source_with_info(
+                "tab-in-license-text",
+                vec![format!("debian/copyright:{}", line_number)],
+            );
 
-            let options = [
-                make_option(b" \t", 1),
-                make_option(b" \t", 2),
-                make_option(&[b' '; 8], 1),
-            ];
+            if issue.should_fix(base_path) {
+                // Try different replacement options to maintain alignment
+                let make_option = |prefix: &[u8], skip: usize| {
+                    let mut v = prefix.to_vec();
+                    if line.len() > skip {
+                        v.extend_from_slice(&line[skip..]);
+                    }
+                    v
+                };
 
-            line = options
-                .into_iter()
-                .find(|opt| value_offset(opt) == prev_value_offset)
-                .unwrap_or_else(|| make_option(b" \t", 1));
+                let options = [
+                    make_option(b" \t", 1),
+                    make_option(b" \t", 2),
+                    make_option(&[b' '; 8], 1),
+                ];
 
-            tabs_replaced = true;
+                line = options
+                    .into_iter()
+                    .find(|opt| value_offset(opt) == prev_value_offset)
+                    .unwrap_or_else(|| make_option(b" \t", 1));
+
+                fixed_tab_issues.push(issue);
+            } else {
+                overridden_tab_issues.push(issue);
+            }
         }
 
         // Handle unicode paragraph separator (replace with two line breaks)
@@ -163,7 +175,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         new_lines.push(line);
     }
 
-    if !tabs_replaced && !unicode_linebreaks_replaced {
+    if fixed_tab_issues.is_empty() && !unicode_linebreaks_replaced {
+        if !overridden_tab_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_tab_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -171,7 +186,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     fs::write(&copyright_path, output)?;
 
     let mut description = "debian/copyright: ".to_string();
-    if tabs_replaced {
+    if !fixed_tab_issues.is_empty() {
         description.push_str("use spaces rather than tabs to start continuation lines");
         if unicode_linebreaks_replaced {
             description.push_str(", ");
@@ -182,11 +197,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
     description.push('.');
 
-    let mut result = FixerResult::builder(description);
-    if tabs_replaced {
-        result = result.fixed_tag("tab-in-license-text");
-    }
-    Ok(result.build())
+    Ok(FixerResult::builder(description)
+        .fixed_issues(fixed_tab_issues)
+        .overridden_issues(overridden_tab_issues)
+        .build())
 }
 
 declare_fixer! {
@@ -223,6 +237,12 @@ License: GPL-3+\n\
         assert!(result
             .description
             .contains("use spaces rather than tabs to start continuation lines"));
+
+        // Verify LintianIssue was created correctly
+        assert_eq!(result.fixed_lintian_issues.len(), 1);
+        assert_eq!(result.fixed_lintian_issues[0].tag, Some("tab-in-license-text".to_string()));
+        assert_eq!(result.fixed_lintian_issues[0].info, Some(vec!["debian/copyright:3".to_string()]));
+        assert_eq!(result.overridden_lintian_issues.len(), 0);
 
         let content = fs::read(&copyright_path).unwrap();
         let expected = b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nLicense: GPL-3+\n \tThis is a continuation line\n";

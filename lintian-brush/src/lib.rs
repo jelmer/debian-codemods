@@ -116,6 +116,32 @@ impl LintianIssue {
         }
     }
 
+    /// Create a source package issue with a tag
+    pub fn source(tag: impl Into<String>) -> Self {
+        Self {
+            package: None,
+            package_type: Some(PackageType::Source),
+            tag: Some(tag.into()),
+            info: None,
+        }
+    }
+
+    /// Create a source package issue with a tag and info
+    pub fn source_with_info(tag: impl Into<String>, info: Vec<String>) -> Self {
+        Self {
+            package: None,
+            package_type: Some(PackageType::Source),
+            tag: Some(tag.into()),
+            info: Some(info),
+        }
+    }
+
+    /// Add info to this issue
+    pub fn with_info(mut self, info: Vec<String>) -> Self {
+        self.info = Some(info);
+        self
+    }
+
     /// Check if this issue should be fixed (i.e., it's not overridden)
     pub fn should_fix(&self, base_path: &std::path::Path) -> bool {
         use crate::lintian_overrides;
