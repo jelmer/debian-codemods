@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use regex::bytes::Regex;
 use std::fs;
 use std::path::Path;
@@ -52,31 +52,36 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    // Check for overrides
-    let mut issues_to_check = vec![LintianIssue {
-        package: None,
-        package_type: Some(PackageType::Source),
-        tag: Some("insecure-copyright-format-uri".to_string()),
-        info: Some(vec![old_uri.clone()]),
-    }];
+    // Create issues and check which should be fixed
+    let insecure_issue = LintianIssue::source_with_info(
+        "insecure-copyright-format-uri",
+        vec![old_uri.clone()],
+    );
 
-    if is_wiki {
-        issues_to_check.push(LintianIssue {
-            package: None,
-            package_type: Some(PackageType::Source),
-            tag: Some("wiki-copyright-format-uri".to_string()),
-            info: Some(vec![old_uri.clone()]),
-        });
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
+
+    if insecure_issue.should_fix(base_path) {
+        fixed_issues.push(insecure_issue);
+    } else {
+        overridden_issues.push(insecure_issue);
     }
 
-    let overridden: Vec<_> = issues_to_check
-        .iter()
-        .filter(|issue| !issue.should_fix(base_path))
-        .cloned()
-        .collect();
+    if is_wiki {
+        let wiki_issue = LintianIssue::source_with_info(
+            "wiki-copyright-format-uri",
+            vec![old_uri.clone()],
+        );
 
-    if !overridden.is_empty() && overridden.len() == issues_to_check.len() {
-        return Err(FixerError::NoChangesAfterOverrides(overridden));
+        if wiki_issue.should_fix(base_path) {
+            fixed_issues.push(wiki_issue);
+        } else {
+            overridden_issues.push(wiki_issue);
+        }
+    }
+
+    if fixed_issues.is_empty() {
+        return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
     }
 
     // Build new content with replaced first line
@@ -88,16 +93,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     fs::write(&copyright_path, &new_content)?;
 
-    let mut tags = vec!["insecure-copyright-format-uri"];
-    if is_wiki {
-        tags.push("wiki-copyright-format-uri");
-    }
-
-    Ok(
-        FixerResult::builder("Use secure copyright file specification URI.")
-            .fixed_tags(tags)
-            .build(),
-    )
+    Ok(FixerResult::builder("Use secure copyright file specification URI.")
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
+        .build())
 }
 
 declare_fixer! {
@@ -130,6 +129,11 @@ mod tests {
         let version: crate::Version = "1.0".parse().unwrap();
         let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
         assert!(result.is_ok());
+
+        let result = result.unwrap();
+        assert_eq!(result.fixed_lintian_issues.len(), 1);
+        assert_eq!(result.fixed_lintian_issues[0].tag, Some("insecure-copyright-format-uri".to_string()));
+        assert_eq!(result.fixed_lintian_issues[0].info, Some(vec!["http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/".to_string()]));
 
         let updated_content = fs::read(&copyright_path).unwrap();
         let updated_str = String::from_utf8_lossy(&updated_content);
