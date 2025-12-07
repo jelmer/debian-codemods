@@ -114,6 +114,7 @@ pub mod quilt_series_without_trailing_newline;
 pub mod renamed_tag;
 pub mod rules_not_executable;
 pub mod rules_requires_root_missing;
+pub mod skip_systemd_native_flag_missing_pre_depends;
 pub mod source_format;
 pub mod space_in_std_shortname_in_dep5_copyright;
 pub mod transitional_package_should_be_oldlibs_optional;
