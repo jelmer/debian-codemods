@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -13,10 +13,19 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let pyversions = content.trim();
 
     if pyversions.starts_with("2.") {
+        let issue = LintianIssue::source_with_info(
+            "debian-pyversions-is-obsolete",
+            vec!["debian/pyversions".to_string()],
+        );
+
+        if !issue.should_fix(base_path) {
+            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+        }
+
         fs::remove_file(&pyversions_path)?;
 
         Ok(FixerResult::builder("Remove obsolete debian/pyversions.")
-            .fixed_tags(vec!["debian-pyversions-is-obsolete"])
+            .fixed_issues(vec![issue])
             .build())
     } else {
         Err(FixerError::NoChanges)
