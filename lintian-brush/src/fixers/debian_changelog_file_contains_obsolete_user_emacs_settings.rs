@@ -24,7 +24,7 @@ pub fn run(base_path: &Path, package: &str) -> Result<FixerResult, FixerError> {
 
     let issue = LintianIssue::source_with_info(
         "debian-changelog-file-contains-obsolete-user-emacs-settings",
-        vec![format!("usr/share/doc/{}/changelog.Debian.gz:{}", package, line_number)],
+        vec![format!("[usr/share/doc/{}/changelog.Debian.gz:{}]", package, line_number)],
     );
 
     if !issue.should_fix(base_path) {
