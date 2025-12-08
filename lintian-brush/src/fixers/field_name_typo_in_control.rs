@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::collections::HashSet;
 use std::path::Path;
@@ -34,6 +34,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let editor = TemplatedControlEditor::open(&control_path)?;
     let mut case_fixed = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Get the vendor
     let vendor = get_vendor();
@@ -57,11 +59,22 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             for &valid_field in &valid_field_names {
                 if valid_field.to_lowercase() == field.to_lowercase() {
                     // Found a case mismatch
+                    let issue = LintianIssue::source_with_info(
+                        "cute-field",
+                        vec![format!("{} vs {}", field, valid_field)],
+                    );
+
+                    if !issue.should_fix(base_path) {
+                        overridden_issues.push(issue);
+                        break;
+                    }
+
                     if let Some(value) = paragraph.get(&field) {
                         let value = value.to_string();
                         paragraph.remove(&field);
                         paragraph.set(valid_field, &value);
                         case_fixed.push((field.clone(), valid_field.to_string()));
+                        fixed_issues.push(issue);
                         break;
                     }
                 }
@@ -71,6 +84,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // Check binary paragraphs
     for mut binary in editor.binaries() {
+        let Some(package_name) = binary.name() else {
+            continue;
+        };
         let paragraph = binary.as_mut_deb822();
         let keys: Vec<String> = paragraph.keys().map(|k| k.to_string()).collect();
 
@@ -83,11 +99,23 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             for &valid_field in &valid_field_names {
                 if valid_field.to_lowercase() == field.to_lowercase() {
                     // Found a case mismatch
+                    let issue = LintianIssue::binary_with_info(
+                        &package_name,
+                        "cute-field",
+                        vec![format!("{} vs {}", field, valid_field)],
+                    );
+
+                    if !issue.should_fix(base_path) {
+                        overridden_issues.push(issue);
+                        break;
+                    }
+
                     if let Some(value) = paragraph.get(&field) {
                         let value = value.to_string();
                         paragraph.remove(&field);
                         paragraph.set(valid_field, &value);
                         case_fixed.push((field.clone(), valid_field.to_string()));
+                        fixed_issues.push(issue);
                         break;
                     }
                 }
@@ -96,6 +124,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     if case_fixed.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -115,10 +146,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .collect::<Vec<_>>()
         .join(", ");
 
-    let message = format!("Fix field name {} in debian/control ({}).", kind, fixed_str);
+    let message = format!("Fix field name {} in debian/control ({})", kind, fixed_str);
 
     Ok(FixerResult::builder(message)
-        .fixed_tags(vec!["cute-field"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 
@@ -165,7 +197,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Fix field name case in debian/control (HomePage ⇒ Homepage)."
+            "Fix field name case in debian/control (HomePage ⇒ Homepage)"
         );
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
@@ -209,7 +241,7 @@ mod tests {
         assert!(result.is_ok());
 
         let result = result.unwrap();
-        assert_eq!(result.description, "Fix field name cases in debian/control (HomePage ⇒ Homepage, architecture ⇒ Architecture, maintainer ⇒ Maintainer).");
+        assert_eq!(result.description, "Fix field name cases in debian/control (HomePage ⇒ Homepage, architecture ⇒ Architecture, maintainer ⇒ Maintainer)");
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
         assert!(updated_content.contains("Homepage:"));
