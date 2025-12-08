@@ -50,7 +50,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     };
 
     if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChanges);
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
     let test_node_path = base_path.join("test/node.js");
@@ -80,9 +80,9 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     editor.commit()?;
 
-    Ok(FixerResult::builder("Add autopkgtest for node.")
+    Ok(FixerResult::builder("Add autopkgtest for node")
         .certainty(CERTAINTY)
-        .fixed_tag("pkg-js-tools-test-is-missing")
+        .fixed_issue(issue)
         .build())
 }
 
@@ -163,7 +163,7 @@ Description: Test package
 
         assert!(result.is_ok());
         let result = result.unwrap();
-        assert_eq!(result.description, "Add autopkgtest for node.");
+        assert_eq!(result.description, "Add autopkgtest for node");
         assert_eq!(result.certainty, Some(Certainty::Possible));
 
         // Check that the test file was created
@@ -206,7 +206,7 @@ Description: Test package
 
         assert!(result.is_ok());
         let result = result.unwrap();
-        assert_eq!(result.description, "Add autopkgtest for node.");
+        assert_eq!(result.description, "Add autopkgtest for node");
         assert_eq!(result.certainty, Some(Certainty::Possible));
 
         // Check that the test file was created
