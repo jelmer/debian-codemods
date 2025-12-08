@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::relations::ensure_minimum_version;
 use debversion::Version;
@@ -42,48 +42,83 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Process all rules and their commands
     for mut rule in makefile.rules() {
         let mut commands_to_update = Vec::new();
         let mut commands_to_remove = Vec::new();
 
-        for (i, recipe) in rule.recipes().enumerate() {
+        for (i, recipe_node) in rule.recipe_nodes().enumerate() {
+            let recipe = recipe_node.text();
             let trimmed = recipe.trim();
+            let line_no = recipe_node.line() + 1;
 
             // Replace dh_autotools-dev_updateconfig with dh_update_autotools_config
             if trimmed == "dh_autotools-dev_updateconfig" {
-                // Preserve original indentation
-                let original = recipe.to_string();
-                let indent: String = original.chars().take_while(|c| c.is_whitespace()).collect();
-                commands_to_update.push((i, format!("{}dh_update_autotools_config", indent)));
-                made_changes = true;
+                let issue = LintianIssue::source_with_info(
+                    "debhelper-tools-from-autotools-dev-are-deprecated",
+                    vec![format!("dh_autotools-dev_updateconfig [debian/rules:{}]", line_no)],
+                );
+
+                if issue.should_fix(base_path) {
+                    // Preserve original indentation
+                    let original = recipe.to_string();
+                    let indent: String = original.chars().take_while(|c| c.is_whitespace()).collect();
+                    commands_to_update.push((i, format!("{}dh_update_autotools_config", indent)));
+                    made_changes = true;
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
+                }
                 continue;
             }
 
             // Remove dh_autotools-dev_restoreconfig
             if trimmed == "dh_autotools-dev_restoreconfig" {
-                commands_to_remove.push(i);
-                made_changes = true;
+                let issue = LintianIssue::source_with_info(
+                    "debhelper-tools-from-autotools-dev-are-deprecated",
+                    vec![format!("dh_autotools-dev_restoreconfig [debian/rules:{}]", line_no)],
+                );
+
+                if issue.should_fix(base_path) {
+                    commands_to_remove.push(i);
+                    made_changes = true;
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
+                }
                 continue;
             }
 
             // Drop --with autotools-dev and --with autotools_dev from dh invocations
             let mut new_recipe = recipe.to_string();
+            let original_recipe = new_recipe.clone();
+
             let with_autotools_dev = drop_dh_with_argument(&new_recipe, "autotools-dev");
             if with_autotools_dev != new_recipe {
                 new_recipe = with_autotools_dev;
-                made_changes = true;
             }
 
             let with_autotools_underscore = drop_dh_with_argument(&new_recipe, "autotools_dev");
             if with_autotools_underscore != new_recipe {
                 new_recipe = with_autotools_underscore;
-                made_changes = true;
             }
 
-            if new_recipe != recipe {
-                commands_to_update.push((i, new_recipe));
+            if new_recipe != original_recipe {
+                let issue = LintianIssue::source_with_info(
+                    "debhelper-tools-from-autotools-dev-are-deprecated",
+                    vec![format!("dh ... --with autotools_dev [debian/rules:{}]", line_no)],
+                );
+
+                if issue.should_fix(base_path) {
+                    commands_to_update.push((i, new_recipe));
+                    made_changes = true;
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
+                }
             }
         }
 
@@ -101,6 +136,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     if !made_changes {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -134,7 +172,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     Ok(FixerResult::builder("Drop use of autotools-dev debhelper.")
-        .fixed_tag("debhelper-tools-from-autotools-dev-are-deprecated")
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 
