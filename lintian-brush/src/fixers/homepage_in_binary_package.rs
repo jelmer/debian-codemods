@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::collections::HashSet;
 use std::path::Path;
@@ -12,6 +12,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let editor = TemplatedControlEditor::open(&control_path)?;
     let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Get source homepage
     let source_homepage = if let Some(source) = editor.source() {
@@ -20,14 +22,39 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         None
     };
 
-    // Collect unique binary homepages
+    // Collect unique binary homepages and check for issues
     let mut binary_homepages = HashSet::new();
+    let mut binaries_with_homepage = Vec::new();
+
     for binary in editor.binaries() {
         if let Some(homepage) = binary.as_deb822().get("Homepage") {
+            let package_name = binary.name().unwrap_or_default();
+            binaries_with_homepage.push((package_name, homepage.clone()));
             if source_homepage.as_ref() != Some(&homepage) {
                 binary_homepages.insert(homepage);
             }
         }
+    }
+
+    // Create issues for each binary package with a Homepage field
+    for (package_name, _) in &binaries_with_homepage {
+        let issue = LintianIssue::source_with_info(
+            "homepage-in-binary-package",
+            vec![package_name.clone()],
+        );
+
+        if !issue.should_fix(base_path) {
+            overridden_issues.push(issue);
+        } else {
+            fixed_issues.push(issue);
+        }
+    }
+
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
+        return Err(FixerError::NoChanges);
     }
 
     // First pass: Remove binary Homepage fields that match source Homepage
@@ -70,8 +97,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     editor.commit()?;
 
     Ok(
-        FixerResult::builder("Set Homepage field in Source rather than Binary package.")
-            .fixed_tags(vec!["homepage-in-binary-package"])
+        FixerResult::builder("Set Homepage field in Source rather than Binary package")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .build(),
     )
 }
@@ -122,7 +150,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Set Homepage field in Source rather than Binary package."
+            "Set Homepage field in Source rather than Binary package"
         );
     }
 
