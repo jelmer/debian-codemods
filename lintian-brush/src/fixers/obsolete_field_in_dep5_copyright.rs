@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use deb822_lossless::Deb822;
 use std::fs;
 use std::path::Path;
@@ -41,10 +41,26 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let mut applied_renames = Vec::new();
     let mut changed = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for &(old_name, new_name, multi_line) in RENAMES {
-        if let Some(value) = header.get(old_name) {
+        if let Some(entry) = header.get_entry(old_name) {
+            let value = entry.value();
             if !value.trim().is_empty() {
+                // Get line number (1-indexed)
+                let line_num = entry.line();
+
+                let issue = LintianIssue::source_with_info(
+                    "obsolete-field-in-dep5-copyright",
+                    vec![format!("{} {} [debian/copyright:{}]", old_name, new_name, line_num)],
+                );
+
+                if !issue.should_fix(base_path) {
+                    overridden_issues.push(issue);
+                    continue;
+                }
+
                 if multi_line {
                     // For multi-line fields, append to existing value
                     if let Some(existing) = header.get(new_name) {
@@ -59,6 +75,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     header.rename(old_name, new_name);
                 }
                 applied_renames.push((old_name, new_name));
+                fixed_issues.push(issue);
                 changed = true;
             } else {
                 header.remove(old_name);
@@ -67,6 +84,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     if !changed {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -82,7 +102,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         "Update copyright file header to use current field names ({})",
         rename_str
     ))
-    .fixed_tags(vec!["obsolete-field-in-dep5-copyright"])
+    .fixed_issues(fixed_issues)
+    .overridden_issues(overridden_issues)
     .build())
 }
 
