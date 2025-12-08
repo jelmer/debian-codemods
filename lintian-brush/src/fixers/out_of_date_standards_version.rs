@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::lintian::StandardsVersion;
 use debian_control::lossless::Control;
 use std::collections::HashMap;
@@ -546,15 +546,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
     let info_str = info_parts.join(" ");
 
-    let issue = LintianIssue {
-        package: None,
-        package_type: Some(PackageType::Source),
-        tag: Some(tag.to_string()),
-        info: Some(vec![info_str]),
-    };
+    let issue = LintianIssue::source_with_info(tag, vec![info_str]);
 
     if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChanges);
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
     // Now try to upgrade through the path
@@ -604,11 +599,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     std::fs::write(&control_path, control.to_string())?;
 
     Ok(FixerResult::builder(format!(
-        "Update standards version to {}, no changes needed.",
+        "Update standards version to {}, no changes needed",
         current
     ))
     .certainty(crate::Certainty::Certain)
-    .fixed_tag(tag)
+    .fixed_issues(vec![issue])
     .build())
 }
 
