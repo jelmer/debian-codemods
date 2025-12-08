@@ -29,6 +29,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     let mut rule_index: Option<usize> = None;
     let mut certainty = crate::Certainty::Certain;
+    let mut fixed_issue: Option<LintianIssue> = None;
 
     // Find get-orig-source rules
     for (idx, rule) in makefile.rules().enumerate() {
@@ -51,19 +52,16 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
                 }
 
                 // Check if we should fix this issue
-                let issue = LintianIssue {
-                    package: None,
-                    package_type: Some(PackageType::Source),
-                    tag: Some(
-                        "debian-rules-contains-unnecessary-get-orig-source-target".to_string(),
-                    ),
-                    info: Some(vec![]),
-                };
+                let issue = LintianIssue::source_with_info(
+                    "debian-rules-contains-unnecessary-get-orig-source-target",
+                    vec!["[debian/rules]".to_string()],
+                );
 
                 if !issue.should_fix(base_path) {
                     return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
                 }
 
+                fixed_issue = Some(issue);
                 break;
             }
         }
@@ -76,6 +74,8 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         Some(idx) => idx,
         None => return Err(FixerError::NoChanges),
     };
+
+    let fixed_issue = fixed_issue.expect("issue should be set when rule found");
 
     // Remove the get-orig-source rule
     makefile
@@ -95,9 +95,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     Ok(
         FixerResult::builder("Remove unnecessary get-orig-source-target.")
             .certainty(certainty)
-            .fixed_tags(vec![
-                "debian-rules-contains-unnecessary-get-orig-source-target",
-            ])
+            .fixed_issues(vec![fixed_issue])
             .build(),
     )
 }
