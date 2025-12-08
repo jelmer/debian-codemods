@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::fs;
 use std::path::Path;
@@ -32,7 +32,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .source()
         .ok_or_else(|| FixerError::Other("No source paragraph in debian/control".to_string()))?;
 
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for field_name in ["Build-Depends", "Build-Depends-Indep"] {
         let paragraph = source.as_mut_deb822();
@@ -41,12 +42,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             let (mut relations, _errors) = Relations::parse_relaxed(&field_value, true);
 
             if relations.drop_dependency("cdbs") {
-                let issue = LintianIssue {
-                    package: None,
-                    package_type: Some(PackageType::Source),
-                    tag: Some("unused-build-dependency-on-cdbs".to_string()),
-                    info: None,
-                };
+                let issue = LintianIssue::source_with_info(
+                    "unused-build-dependency-on-cdbs",
+                    vec!["[debian/rules]".to_string()],
+                );
 
                 if issue.should_fix(base_path) {
                     if relations.is_empty() {
@@ -54,23 +53,27 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     } else {
                         paragraph.set(field_name, &relations.to_string());
                     }
-                    made_changes = true;
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
                 }
             }
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     editor.commit()?;
 
-    Ok(
-        FixerResult::builder("Drop unused build-dependency on cdbs.")
-            .fixed_tag("unused-build-dependency-on-cdbs")
-            .build(),
-    )
+    Ok(FixerResult::builder("Drop unused build-dependency on cdbs")
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
+        .build())
 }
 
 declare_fixer! {
