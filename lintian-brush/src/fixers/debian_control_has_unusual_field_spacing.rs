@@ -1,11 +1,11 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use deb822_lossless::Deb822;
 use debian_analyzer::editor::check_generated_file;
 use std::fs;
 use std::path::Path;
 use std::str::FromStr;
 
-fn normalize_control_file(path: &Path) -> Result<bool, FixerError> {
+fn normalize_control_file(path: &Path, base_path: &Path) -> Result<(bool, Vec<LintianIssue>, Vec<LintianIssue>), FixerError> {
     let content = fs::read_to_string(path)?;
 
     let deb822 = match Deb822::from_str(&content) {
@@ -15,20 +15,39 @@ fn normalize_control_file(path: &Path) -> Result<bool, FixerError> {
         }
     };
 
-    let original = deb822.to_string();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
+    let mut made_changes = false;
 
     for mut paragraph in deb822.paragraphs() {
-        paragraph.normalize_field_spacing();
+        // Check each entry before normalizing to create issues for fields with unusual spacing
+        for mut entry in paragraph.entries() {
+            if let Some(key) = entry.key() {
+                let line_number = entry.line() + 1;
+
+                // normalize_field_spacing returns true if it made changes
+                if entry.normalize_field_spacing() {
+                    let issue = LintianIssue::source_with_info(
+                        "debian-control-has-unusual-field-spacing",
+                        vec![format!("{} [debian/control:{}]", key, line_number)],
+                    );
+
+                    if issue.should_fix(base_path) {
+                        fixed_issues.push(issue);
+                        made_changes = true;
+                    } else {
+                        overridden_issues.push(issue);
+                    }
+                }
+            }
+        }
     }
 
-    let normalized = deb822.to_string();
-
-    if original == normalized {
-        return Ok(false);
+    if made_changes {
+        fs::write(path, deb822.to_string())?;
     }
 
-    fs::write(path, normalized)?;
-    Ok(true)
+    Ok((made_changes, fixed_issues, overridden_issues))
 }
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
@@ -38,16 +57,21 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    let mut all_fixed_issues = Vec::new();
+    let mut all_overridden_issues = Vec::new();
     let mut made_changes = false;
 
     match check_generated_file(&control_path) {
         Err(generated_file) => {
             // Control file is generated, process template file
             if let Some(template_path) = &generated_file.template_path {
-                if normalize_control_file(template_path)? {
+                let (changed, fixed, overridden) = normalize_control_file(template_path, base_path)?;
+                if changed {
                     made_changes = true;
+                    all_fixed_issues.extend(fixed);
+                    all_overridden_issues.extend(overridden);
                     // Also process the generated control file
-                    normalize_control_file(&control_path)?;
+                    normalize_control_file(&control_path, base_path)?;
                 }
             } else {
                 // No template path available, give up
@@ -56,19 +80,26 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
         Ok(()) => {
             // Control file is not generated, process it directly
-            if normalize_control_file(&control_path)? {
+            let (changed, fixed, overridden) = normalize_control_file(&control_path, base_path)?;
+            if changed {
                 made_changes = true;
+                all_fixed_issues.extend(fixed);
+                all_overridden_issues.extend(overridden);
             }
         }
     }
 
     if !made_changes {
+        if !all_overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(all_overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     Ok(
         FixerResult::builder("Strip unusual field spacing from debian/control.")
-            .fixed_tag("debian-control-has-unusual-field-spacing")
+            .fixed_issues(all_fixed_issues)
+            .overridden_issues(all_overridden_issues)
             .build(),
     )
 }
