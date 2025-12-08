@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use deb822_lossless::Deb822;
 use std::path::Path;
 use std::str::FromStr;
@@ -22,6 +22,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // Find Files paragraphs
     let mut first_files_index = None;
     let mut wildcard_index = None;
+    let mut wildcard_line = None;
     let mut files_count = 0;
 
     for (i, para) in paragraphs.iter() {
@@ -31,6 +32,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             }
             if files_value.trim() == "*" && files_count > 0 {
                 wildcard_index = Some(*i);
+                wildcard_line = Some(para.line() + 1);
                 break;
             }
             files_count += 1;
@@ -38,21 +40,30 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     // If we found a "Files: *" paragraph that's not the first Files paragraph, move it
-    if let (Some(wildcard_idx), Some(first_idx)) = (wildcard_index, first_files_index) {
+    if let (Some(wildcard_idx), Some(first_idx), Some(line_num)) = (wildcard_index, first_files_index, wildcard_line) {
+        let issue = LintianIssue::source_with_info(
+            "global-files-wildcard-not-first-paragraph-in-dep5-copyright",
+            vec![format!("[debian/copyright:{}]", line_num)],
+        );
+
+        if !issue.should_fix(base_path) {
+            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+        }
+
         // Move the wildcard paragraph to the first Files position
         deb822.move_paragraph(wildcard_idx, first_idx);
+
+        // Write the updated copyright file
+        std::fs::write(&copyright_path, deb822.to_string())?;
+
+        Ok(FixerResult::builder(
+            "Make \"Files: *\" paragraph the first in the copyright file",
+        )
+        .fixed_issues(vec![issue])
+        .build())
     } else {
         return Err(FixerError::NoChanges);
     }
-
-    // Write the updated copyright file
-    std::fs::write(&copyright_path, deb822.to_string())?;
-
-    Ok(FixerResult::builder(
-        "Make \"Files: *\" paragraph the first in the copyright file.".to_string(),
-    )
-    .fixed_tag("global-files-wildcard-not-first-paragraph-in-dep5-copyright")
-    .build())
 }
 
 declare_fixer! {
