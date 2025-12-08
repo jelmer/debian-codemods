@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -15,6 +15,20 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let pattern = b"$(dir $(_))";
     let replacement = b"$(dir $(firstword $(MAKEFILE_LIST)))";
     let content_str = content.as_slice();
+
+    // Check if pattern exists before making changes
+    if !content_str.windows(pattern.len()).any(|w| w == pattern) {
+        return Err(FixerError::NoChanges);
+    }
+
+    // Create issue and check if we should fix it
+    let issue = LintianIssue::source_with_info(
+        "debian-rules-uses-special-shell-variable",
+        vec!["[debian/rules]".to_string()],
+    );
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
 
     let mut new_content = Vec::new();
     let mut last_end = 0;
@@ -41,7 +55,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder("Avoid using $(_) to discover source package directory.")
-            .fixed_tags(vec!["debian-rules-uses-special-shell-variable"])
+            .fixed_issues(vec![issue])
             .build(),
     )
 }
