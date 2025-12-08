@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::editor::check_generated_file;
 use std::fs;
 use std::path::Path;
@@ -28,66 +28,118 @@ fn strip_whitespace(line: &[u8], strip_tabs: bool) -> Vec<u8> {
     result
 }
 
-/// Strip whitespace from a file
+struct FileStripResult {
+    fixed_issues: Vec<LintianIssue>,
+    overridden_issues: Vec<LintianIssue>,
+}
+
+/// Strip whitespace from a file, checking should_fix() for each line
 fn file_strip_whitespace(
-    path: &Path,
+    base_path: &Path,
+    file_path: &Path,
+    relative_path: &str,
     strip_tabs: bool,
     strip_trailing_empty_lines: bool,
     delete_new_empty_line: bool,
-) -> Result<bool, std::io::Error> {
-    let content = match fs::read(path) {
+) -> Result<FileStripResult, std::io::Error> {
+    let content = match fs::read(file_path) {
         Ok(content) => content,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(FileStripResult {
+                fixed_issues: Vec::new(),
+                overridden_issues: Vec::new(),
+            })
+        }
         Err(e) => return Err(e),
     };
 
-    let mut newlines = Vec::new();
-    let mut changed = false;
+    let mut lines_to_fix = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
-    for line in content.split_inclusive(|&b| b == b'\n') {
+    // First pass: find lines with trailing whitespace and check if they should be fixed
+    for (line_idx, line) in content.split_inclusive(|&b| b == b'\n').enumerate() {
         let newline = strip_whitespace(line, strip_tabs);
         if newline != line {
-            changed = true;
+            let line_num = line_idx + 1;
+            let issue = LintianIssue::source_with_info(
+                "trailing-whitespace",
+                vec![format!("[{}:{}]", relative_path, line_num)],
+            );
+
+            if issue.should_fix(base_path) {
+                lines_to_fix.push(line_idx);
+                fixed_issues.push(issue);
+            } else {
+                overridden_issues.push(issue);
+            }
+        }
+    }
+
+    if lines_to_fix.is_empty() {
+        return Ok(FileStripResult {
+            fixed_issues,
+            overridden_issues,
+        });
+    }
+
+    // Second pass: actually strip whitespace from lines that should be fixed
+    let mut newlines = Vec::new();
+    for (line_idx, line) in content.split_inclusive(|&b| b == b'\n').enumerate() {
+        if lines_to_fix.contains(&line_idx) {
+            let newline = strip_whitespace(line, strip_tabs);
             if newline == b"\n" && delete_new_empty_line {
                 continue;
             }
+            newlines.push(newline);
+        } else {
+            newlines.push(line.to_vec());
         }
-        newlines.push(newline);
     }
 
     // Strip trailing empty lines
     if strip_trailing_empty_lines {
         while !newlines.is_empty() && newlines.last().is_some_and(|l| l == b"\n") {
-            changed = true;
             newlines.pop();
         }
     }
 
-    if changed {
-        let output: Vec<u8> = newlines.into_iter().flatten().collect();
-        fs::write(path, output)?;
-        Ok(true)
-    } else {
-        Ok(false)
-    }
+    let output: Vec<u8> = newlines.into_iter().flatten().collect();
+    fs::write(file_path, output)?;
+
+    Ok(FileStripResult {
+        fixed_issues,
+        overridden_issues,
+    })
 }
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let mut any_changed = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Process debian/changelog
     let changelog_path = base_path.join("debian/changelog");
-    if changelog_path.exists() && file_strip_whitespace(&changelog_path, true, true, false)? {
-        any_changed = true;
+    if changelog_path.exists() {
+        let result = file_strip_whitespace(
+            base_path,
+            &changelog_path,
+            "debian/changelog",
+            true,
+            true,
+            false,
+        )?;
+        fixed_issues.extend(result.fixed_issues);
+        overridden_issues.extend(result.overridden_issues);
     }
 
     // Process debian/rules
     let rules_path = base_path.join("debian/rules");
     if rules_path.exists() {
         // For debian/rules, don't strip tabs
-        if file_strip_whitespace(&rules_path, false, true, false)? {
-            any_changed = true;
-        }
+        let result =
+            file_strip_whitespace(base_path, &rules_path, "debian/rules", false, true, false)?;
+        fixed_issues.extend(result.fixed_issues);
+        overridden_issues.extend(result.overridden_issues);
     }
 
     // Process debian/control
@@ -109,32 +161,58 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                             continue;
                         }
 
-                        if file_strip_whitespace(&entry.path(), true, true, true)? {
-                            any_changed = true;
-                        }
+                        let relative_path = format!("debian/{}", name);
+                        let result = file_strip_whitespace(
+                            base_path,
+                            &entry.path(),
+                            &relative_path,
+                            true,
+                            true,
+                            true,
+                        )?;
+                        fixed_issues.extend(result.fixed_issues);
+                        overridden_issues.extend(result.overridden_issues);
                     }
 
-                    // Also process the generated control file
-                    if any_changed {
-                        file_strip_whitespace(&control_path, true, true, true)?;
+                    // Also process the generated control file if we made changes to control.* files
+                    if !fixed_issues.is_empty() {
+                        file_strip_whitespace(
+                            base_path,
+                            &control_path,
+                            "debian/control",
+                            true,
+                            true,
+                            true,
+                        )?;
                     }
                 }
             }
             Ok(()) => {
                 // Control file is not generated, process it directly
-                if file_strip_whitespace(&control_path, true, true, true)? {
-                    any_changed = true;
-                }
+                let result = file_strip_whitespace(
+                    base_path,
+                    &control_path,
+                    "debian/control",
+                    true,
+                    true,
+                    true,
+                )?;
+                fixed_issues.extend(result.fixed_issues);
+                overridden_issues.extend(result.overridden_issues);
             }
         }
     }
 
-    if !any_changed {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     Ok(FixerResult::builder("Trim trailing whitespace.")
-        .fixed_tag("trailing-whitespace")
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 
