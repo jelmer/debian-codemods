@@ -552,7 +552,7 @@ pub fn run(
         result = result.certainty(certainty);
     }
 
-    result = result.fixed_tags(vec!["debian-watch-file-is-missing"]);
+    result = result.fixed_issues(vec![issue]);
 
     Ok(result.build())
 }
