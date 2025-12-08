@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::relations::ensure_some_version;
 use debian_control::lossless::Control;
 use std::path::Path;
@@ -53,13 +53,22 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    let issue = LintianIssue::source_with_info(
+        "quilt-series-but-no-build-dep",
+        vec!["[debian/patches/series]".to_string()],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     source.set_build_depends(&new_build_depends);
 
     // Write back to file
     std::fs::write(&control_path, control.to_string())?;
 
-    Ok(FixerResult::builder("Add missing dependency on quilt.")
-        .fixed_tag("quilt-series-but-no-build-dep")
+    Ok(FixerResult::builder("Add missing dependency on quilt")
+        .fixed_issues(vec![issue])
         .build())
 }
 
