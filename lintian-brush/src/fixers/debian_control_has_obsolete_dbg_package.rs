@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
 use debian_analyzer::control::TemplatedControlEditor;
 use debversion::Version;
 use makefile_lossless::Makefile;
@@ -26,9 +26,10 @@ pub fn run(base_path: &Path, current_version: &Version) -> Result<FixerResult, F
         return Err(FixerError::NoChanges);
     }
 
-    // Find and remove -dbg packages from debian/control
+    // Find -dbg packages in debian/control and check if they should be removed
     let mut editor = TemplatedControlEditor::open(&control_path)?;
-    let mut dbg_packages = HashSet::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
     let mut packages_to_remove = Vec::new();
 
     for binary in editor.binaries() {
@@ -40,15 +41,36 @@ pub fn run(base_path: &Path, current_version: &Version) -> Result<FixerResult, F
                 if package.starts_with("python") {
                     continue;
                 }
-                dbg_packages.insert(package.to_string());
-                packages_to_remove.push(package.to_string());
+
+                let line_number = paragraph.line() + 1; // Convert to 1-indexed
+                let issue = LintianIssue {
+                    package: Some(package.to_string()),
+                    package_type: Some(PackageType::Binary),
+                    tag: Some("debian-control-has-obsolete-dbg-package".to_string()),
+                    info: Some(vec![format!(
+                        "(in section for {}) Package [debian/control:{}]",
+                        package, line_number
+                    )]),
+                };
+
+                if issue.should_fix(base_path) {
+                    packages_to_remove.push(package.to_string());
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
+                }
             }
         }
     }
 
-    if dbg_packages.is_empty() {
+    if packages_to_remove.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
+
+    let dbg_packages: HashSet<String> = packages_to_remove.iter().cloned().collect();
 
     // Remove the binaries
     for package in &packages_to_remove {
@@ -169,7 +191,8 @@ pub fn run(base_path: &Path, current_version: &Version) -> Result<FixerResult, F
     };
 
     Ok(FixerResult::builder(&description)
-        .fixed_tag("debian-control-has-obsolete-dbg-package")
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 
