@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debversion::Version;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -31,12 +31,15 @@ pub fn run(
         }
     }
 
-    // Determine the new format
-    let (new_format, description) = if current_version.is_native() {
-        (
-            "3.0 (native)".to_string(),
-            "Upgrade to newer source format 3.0 (native).".to_string(),
-        )
+    // Check if we should upgrade from 1.0
+    let older_issue = LintianIssue::source_with_info("older-source-format", vec!["1.0".to_string()]);
+    let should_upgrade = older_issue.should_fix(base_path);
+
+    // Determine target format based on whether we should upgrade
+    let target_format = if !should_upgrade {
+        "1.0"
+    } else if current_version.is_native() {
+        "3.0 (native)"
     } else {
         // For non-native packages, check if there's a non-standard patches directory
         let patches_dir = find_patches_directory(base_path)?;
@@ -47,38 +50,59 @@ pub fn run(
                 return Err(FixerError::NoChanges);
             }
         }
-
-        // Default to 3.0 (quilt)
-        // TODO: In the future, we could use breezy to check for non-quilt changes
-        // and set single-debian-patch if needed
-        (
-            "3.0 (quilt)".to_string(),
-            "Upgrade to newer source format 3.0 (quilt).".to_string(),
-        )
+        "3.0 (quilt)"
     };
+
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
+
+    if orig_format.is_none() {
+        // File is missing - check missing-debian-source-format
+        let missing_issue = LintianIssue::source_with_info(
+            "missing-debian-source-format",
+            vec![target_format.to_string()],
+        );
+
+        if !missing_issue.should_fix(base_path) {
+            overridden_issues.push(missing_issue);
+            if !should_upgrade {
+                overridden_issues.push(older_issue);
+            }
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
+
+        fixed_issues.push(missing_issue);
+        if should_upgrade {
+            fixed_issues.push(older_issue);
+        } else {
+            overridden_issues.push(older_issue);
+        }
+    } else {
+        // File exists with "1.0"
+        if !should_upgrade {
+            return Err(FixerError::NoChangesAfterOverrides(vec![older_issue]));
+        }
+        fixed_issues.push(older_issue);
+    }
 
     // Create debian/source directory if it doesn't exist
     if !source_dir.exists() {
         fs::create_dir_all(&source_dir)?;
     }
 
-    // Write the new format
-    fs::write(&format_path, format!("{}\n", new_format))?;
+    // Write the format
+    fs::write(&format_path, format!("{}\n", target_format))?;
 
-    // Report the appropriate tags
-    let mut result = FixerResult::builder(description);
-    if orig_format.is_none() {
-        // If the file was missing, we've fixed both missing-debian-source-format
-        // and older-source-format (since missing implies old format 1.0)
-        result = result
-            .fixed_tag("missing-debian-source-format")
-            .fixed_tag("older-source-format");
+    let description = if target_format == "1.0" {
+        "Add missing debian/source/format"
     } else {
-        // If the file existed with "1.0", we only fixed older-source-format
-        result = result.fixed_tag("older-source-format");
-    }
+        &format!("Upgrade to newer source format {}", target_format)
+    };
 
-    Ok(result.build())
+    Ok(FixerResult::builder(description.to_string())
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
+        .build())
 }
 
 fn is_debcargo_package(base_path: &Path) -> Result<bool, FixerError> {
