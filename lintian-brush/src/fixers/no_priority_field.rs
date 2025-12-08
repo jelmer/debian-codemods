@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -21,6 +21,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let mut binary_priorities = HashSet::new();
     let mut updated = HashMap::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Collect binaries to process
     let binaries: Vec<_> = editor.binaries().collect();
@@ -32,11 +34,26 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         if let Some(priority) = paragraph.get("Priority") {
             binary_priorities.insert(priority.to_string());
         } else {
-            // Set priority to "optional" for binaries without it
-            paragraph.set("Priority", "optional");
-            binary_priorities.insert("optional".to_string());
-            updated.insert(package_name, "optional".to_string());
+            // Create issue for missing priority field
+            let issue = LintianIssue::source_with_info(
+                "recommended-field",
+                vec![format!("debian/control Priority")],
+            );
+            if issue.should_fix(base_path) {
+                // Set priority to "optional" for binaries without it
+                paragraph.set("Priority", "optional");
+                binary_priorities.insert("optional".to_string());
+                updated.insert(package_name, "optional".to_string());
+                fixed_issues.push(issue);
+            } else {
+                overridden_issues.push(issue);
+            }
         }
+    }
+
+    // If all issues were overridden, return NoChangesAfterOverrides
+    if fixed_issues.is_empty() && !overridden_issues.is_empty() {
+        return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
     }
 
     // If all binaries have the same priority, move it to source
@@ -61,9 +78,12 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         )
         .certainty(crate::Certainty::Confident);
 
-        // Only add fixed tags if we actually added Priority to some binaries
-        if !updated.is_empty() {
-            result_builder = result_builder.fixed_tags(vec!["recommended-field"]);
+        // Add fixed and overridden issues
+        if !fixed_issues.is_empty() {
+            result_builder = result_builder.fixed_issues(fixed_issues);
+        }
+        if !overridden_issues.is_empty() {
+            result_builder = result_builder.overridden_issues(overridden_issues);
         }
 
         return Ok(result_builder.build());
@@ -79,7 +99,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             "Set priority for binary packages {:?}.",
             packages_str
         ))
-        .fixed_tags(vec!["recommended-field"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build());
     }
 
