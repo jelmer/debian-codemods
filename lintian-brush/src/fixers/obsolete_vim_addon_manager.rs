@@ -13,7 +13,8 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     }
 
     let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
     let mut needs_vim_addon_sequence = false;
 
     // Check each binary package for vim-addon-manager dependency
@@ -33,6 +34,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         };
 
         if !issue.should_fix(base_path) {
+            overridden_issues.push(issue);
             continue;
         }
 
@@ -52,11 +54,14 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
 
         binary.set_depends(Some(&new_depends));
 
-        made_changes = true;
+        fixed_issues.push(issue);
         needs_vim_addon_sequence = true;
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -100,11 +105,10 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         }
     }
 
-    Ok(
-        FixerResult::builder("Migrate from vim-addon-manager to dh-vim-addon.")
-            .fixed_tag("obsolete-vim-addon-manager")
-            .build(),
-    )
+    Ok(FixerResult::builder("Migrate from vim-addon-manager to dh-vim-addon")
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
+        .build())
 }
 
 declare_fixer! {
@@ -194,7 +198,7 @@ Description: Blah blah
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Migrate from vim-addon-manager to dh-vim-addon."
+            "Migrate from vim-addon-manager to dh-vim-addon"
         );
 
         // Check that vim-addon-manager was removed from Depends
