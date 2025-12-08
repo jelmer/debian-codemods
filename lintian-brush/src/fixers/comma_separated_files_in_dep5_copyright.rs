@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use deb822_lossless::Deb822;
 use std::fs;
 use std::path::Path;
@@ -22,6 +22,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     };
 
     let mut changed = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for mut paragraph in deb822.paragraphs() {
         let Some(files) = paragraph.get("Files") else {
@@ -37,14 +39,34 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         }
 
-        let entries: Vec<String> = files.split(',').map(|s| s.trim().to_string()).collect();
+        // Get line number for Files field
+        let line_no = paragraph
+            .entries()
+            .find(|e| e.key().as_deref() == Some("Files"))
+            .map(|e| e.line() + 1)
+            .unwrap_or_else(|| paragraph.line() + 1);
 
-        let new_value = entries.join("\n");
-        paragraph.set("Files", &new_value);
-        changed = true;
+        let issue = LintianIssue::source_with_info(
+            "comma-separated-files-in-dep5-copyright",
+            vec![format!("Files [debian/copyright:{}]", line_no)],
+        );
+
+        if issue.should_fix(base_path) {
+            let entries: Vec<String> = files.split(',').map(|s| s.trim().to_string()).collect();
+
+            let new_value = entries.join("\n");
+            paragraph.set("Files", &new_value);
+            changed = true;
+            fixed_issues.push(issue);
+        } else {
+            overridden_issues.push(issue);
+        }
     }
 
     if !changed {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -53,7 +75,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     Ok(FixerResult::builder(
         "debian/copyright: Replace commas with whitespace to separate items in Files paragraph.",
     )
-    .fixed_tags(vec!["comma-separated-files-in-dep5-copyright"])
+    .fixed_issues(fixed_issues)
+    .overridden_issues(overridden_issues)
     .build())
 }
 
