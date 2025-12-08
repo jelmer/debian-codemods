@@ -40,7 +40,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         if matches!(priority.as_str(), "required" | "important" | "standard") {
             if let Some(package_name) = binary.name() {
                 let issue = LintianIssue::binary_with_info(
-                    package_name,
+                    &package_name,
                     "excessive-priority-for-library-package",
                     vec![priority.clone()],
                 );

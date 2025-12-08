@@ -136,6 +136,20 @@ impl LintianIssue {
         }
     }
 
+    /// Create a binary package issue with a tag and info
+    pub fn binary_with_info(
+        package: impl Into<String>,
+        tag: impl Into<String>,
+        info: Vec<String>,
+    ) -> Self {
+        Self {
+            package: Some(package.into()),
+            package_type: Some(PackageType::Binary),
+            tag: Some(tag.into()),
+            info: Some(info),
+        }
+    }
+
     /// Add info to this issue
     pub fn with_info(mut self, info: Vec<String>) -> Self {
         self.info = Some(info);

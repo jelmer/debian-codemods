@@ -106,59 +106,57 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
             let mut issues_to_fix_typo = Vec::new();
 
             // First pass: find issues and check if they should be fixed
-            for line in lines.iter() {
-                let line_text = line.to_string();
-                let line_num = line.lineno();
+            // Get the first line number for this bullet (1-indexed)
+            let line_num = bullet.line_numbers().first().expect("bullet should have line numbers") + 1;
 
-                // Check for missing colon
-                for caps in close_colon_re.captures_iter(&line_text) {
-                    let bugno: u32 = caps["bug"].parse().unwrap_or(0);
-                    let matched_text = caps[0].to_string();
-                    let (valid, bug_certainty) = check_bug(&package, bugno, net_access);
+            // Check for missing colon in the combined text
+            for caps in close_colon_re.captures_iter(&combined) {
+                let bugno: u32 = caps["bug"].parse().unwrap_or(0);
+                let matched_text = caps[0].to_string();
+                let (valid, bug_certainty) = check_bug(&package, bugno, net_access);
 
-                    if crate::certainty_sufficient(bug_certainty, preferences.minimum_certainty)
-                        && valid
-                    {
-                        let issue = LintianIssue::source_with_info(
-                            "possible-missing-colon-in-closes",
-                            vec![format!("{} [usr/share/doc/{}/changelog.Debian.gz:{}]", matched_text, package, line_num)],
-                        );
+                if crate::certainty_sufficient(bug_certainty, preferences.minimum_certainty)
+                    && valid
+                {
+                    let issue = LintianIssue::source_with_info(
+                        "possible-missing-colon-in-closes",
+                        vec![format!("{} [usr/share/doc/{}/changelog.Debian.gz:{}]", matched_text, package, line_num)],
+                    );
 
-                        if issue.should_fix(base_path) {
-                            issues_to_fix_colon.push((matched_text.clone(), bugno, bug_certainty));
-                            overall_certainty =
-                                crate::min_certainty(&[overall_certainty, bug_certainty])
+                    if issue.should_fix(base_path) {
+                        issues_to_fix_colon.push((matched_text.clone(), bugno, bug_certainty));
+                        overall_certainty =
+                            crate::min_certainty(&[overall_certainty, bug_certainty])
                                     .unwrap_or(overall_certainty);
-                            fixed_issues.push(issue);
-                        } else {
-                            overridden_issues.push(issue);
-                        }
+                        fixed_issues.push(issue);
+                    } else {
+                        overridden_issues.push(issue);
                     }
                 }
+            }
 
-                // Check for misspelling
-                for caps in close_typo_re.captures_iter(&line_text) {
-                    let bugno: u32 = caps["bug"].parse().unwrap_or(0);
-                    let matched_text = caps[0].to_string();
-                    let (valid, bug_certainty) = check_bug(&package, bugno, net_access);
+            // Check for misspelling in the combined text
+            for caps in close_typo_re.captures_iter(&combined) {
+                let bugno: u32 = caps["bug"].parse().unwrap_or(0);
+                let matched_text = caps[0].to_string();
+                let (valid, bug_certainty) = check_bug(&package, bugno, net_access);
 
-                    if crate::certainty_sufficient(bug_certainty, preferences.minimum_certainty)
-                        && valid
-                    {
-                        let issue = LintianIssue::source_with_info(
-                            "misspelled-closes-bug",
-                            vec![format!("{} [usr/share/doc/{}/changelog.Debian.gz:{}]", matched_text, package, line_num)],
-                        );
+                if crate::certainty_sufficient(bug_certainty, preferences.minimum_certainty)
+                    && valid
+                {
+                    let issue = LintianIssue::source_with_info(
+                        "misspelled-closes-bug",
+                        vec![format!("{} [usr/share/doc/{}/changelog.Debian.gz:{}]", matched_text, package, line_num)],
+                    );
 
-                        if issue.should_fix(base_path) {
-                            issues_to_fix_typo.push((matched_text.clone(), bugno, bug_certainty));
-                            overall_certainty =
-                                crate::min_certainty(&[overall_certainty, bug_certainty])
-                                    .unwrap_or(overall_certainty);
-                            fixed_issues.push(issue);
-                        } else {
-                            overridden_issues.push(issue);
-                        }
+                    if issue.should_fix(base_path) {
+                        issues_to_fix_typo.push((matched_text.clone(), bugno, bug_certainty));
+                        overall_certainty =
+                            crate::min_certainty(&[overall_certainty, bug_certainty])
+                                .unwrap_or(overall_certainty);
+                        fixed_issues.push(issue);
+                    } else {
+                        overridden_issues.push(issue);
                     }
                 }
             }

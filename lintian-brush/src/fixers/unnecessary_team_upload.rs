@@ -71,7 +71,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             for line in lines.iter() {
                 if line.trim() == TEAM_UPLOAD_LINE.trim() {
                     found_team_upload = true;
-                    team_upload_line_num = Some(line.lineno());
+                    // Get the first line number for this bullet (1-indexed)
+                    team_upload_line_num = Some(
+                        bullet.line_numbers().first().expect("bullet should have line numbers") + 1
+                    );
                     bullet.remove();
                     break;
                 }
