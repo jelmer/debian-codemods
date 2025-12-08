@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use makefile_lossless::Makefile;
 use regex::bytes::Regex;
 use std::fs;
@@ -37,24 +37,39 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     // Process the makefile to remove --with quilt from dh commands
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
     let mut made_changes = false;
 
     for mut rule in makefile.rules() {
         for (recipe_index, recipe) in rule.recipes().enumerate() {
             let new_recipe = dh_invoke_drop_with(recipe.as_bytes(), b"quilt");
             if new_recipe.as_slice() != recipe.as_bytes() {
-                // Recipe changed, replace it
-                if rule.replace_command(
-                    recipe_index,
-                    std::str::from_utf8(&new_recipe).unwrap_or(&recipe),
-                ) {
-                    made_changes = true;
+                let issue = LintianIssue::source_with_info(
+                    "dh-quilt-addon-but-quilt-source-format",
+                    vec!["[debian/rules]".to_string()],
+                );
+
+                if issue.should_fix(base_path) {
+                    // Recipe changed, replace it
+                    if rule.replace_command(
+                        recipe_index,
+                        std::str::from_utf8(&new_recipe).unwrap_or(&recipe),
+                    ) {
+                        made_changes = true;
+                        fixed_issues.push(issue);
+                    }
+                } else {
+                    overridden_issues.push(issue);
                 }
             }
         }
     }
 
     if !made_changes {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -64,7 +79,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     Ok(FixerResult::builder(
         "Don't specify --with=quilt, since package uses '3.0 (quilt)' source format.",
     )
-    .fixed_tags(vec!["dh-quilt-addon-but-quilt-source-format"])
+    .fixed_issues(fixed_issues)
+    .overridden_issues(overridden_issues)
     .build())
 }
 
