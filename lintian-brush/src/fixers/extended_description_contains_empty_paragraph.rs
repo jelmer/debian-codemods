@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -10,6 +10,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let editor = TemplatedControlEditor::open(&control_path)?;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
     let mut made_changes = false;
 
     // Process binary packages
@@ -23,25 +25,41 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             // (which represents an empty paragraph in debian control files)
             // Note: The leading space is stripped by the deb822 parser
             if lines.len() > 1 && lines[1] == "." {
-                // Reconstruct the description without the empty paragraph at the start
-                let mut new_lines = Vec::new();
-                new_lines.push(lines[0]); // Keep the short description
+                if let Some(package_name) = binary.name() {
+                    let issue = LintianIssue::binary_with_info(
+                        package_name,
+                        "extended-description-contains-empty-paragraph",
+                        vec![],
+                    );
 
-                // Skip the empty paragraph (line 1) and add the rest
-                for line in lines.iter().skip(2) {
-                    new_lines.push(line);
+                    if issue.should_fix(base_path) {
+                        // Reconstruct the description without the empty paragraph at the start
+                        let mut new_lines = Vec::new();
+                        new_lines.push(lines[0]); // Keep the short description
+
+                        // Skip the empty paragraph (line 1) and add the rest
+                        for line in lines.iter().skip(2) {
+                            new_lines.push(line);
+                        }
+
+                        // Join with newlines
+                        let new_description = new_lines.join("\n");
+
+                        binary.set_description(Some(&new_description));
+                        made_changes = true;
+                        fixed_issues.push(issue);
+                    } else {
+                        overridden_issues.push(issue);
+                    }
                 }
-
-                // Join with newlines
-                let new_description = new_lines.join("\n");
-
-                binary.set_description(Some(&new_description));
-                made_changes = true;
             }
         }
     }
 
     if !made_changes {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -49,7 +67,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder("Remove empty leading paragraph in Description.")
-            .fixed_tags(vec!["extended-description-contains-empty-paragraph"])
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .build(),
     )
 }
