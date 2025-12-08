@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_control::lossless::relations::Relations;
 use std::path::Path;
@@ -35,6 +35,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let editor = TemplatedControlEditor::open(&control_path)?;
     let mut misc_depends_added = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Check if the source uses debhelper
     let uses_dh = if let Some(source) = editor.source() {
@@ -73,20 +75,38 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         }
 
-        // Add ${misc:Depends} to Depends using Relations API
-        let mut relations: Relations = if depends.trim().is_empty() {
-            Relations::new()
-        } else {
-            let (relations, _errors) = Relations::parse_relaxed(&depends, true);
-            relations
+        // Get line number for package stanza (Depends field may not exist yet)
+        let line_no = binary.as_deb822().line() + 1;
+
+        let issue = LintianIssue {
+            package: Some(package_name.clone()),
+            package_type: Some(crate::PackageType::Binary),
+            tag: Some("debhelper-but-no-misc-depends".to_string()),
+            info: Some(vec![format!("(in section for {}) Depends [debian/control:{}]", package_name, line_no)]),
         };
 
-        relations.ensure_substvar("${misc:Depends}").unwrap();
-        binary.set_depends(Some(&relations));
-        misc_depends_added.push(package_name);
+        if issue.should_fix(base_path) {
+            // Add ${misc:Depends} to Depends using Relations API
+            let mut relations: Relations = if depends.trim().is_empty() {
+                Relations::new()
+            } else {
+                let (relations, _errors) = Relations::parse_relaxed(&depends, true);
+                relations
+            };
+
+            relations.ensure_substvar("${misc:Depends}").unwrap();
+            binary.set_depends(Some(&relations));
+            misc_depends_added.push(package_name);
+            fixed_issues.push(issue);
+        } else {
+            overridden_issues.push(issue);
+        }
     }
 
     if misc_depends_added.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -98,7 +118,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     );
 
     Ok(FixerResult::builder(&description)
-        .fixed_tag("debhelper-but-no-misc-depends")
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 
