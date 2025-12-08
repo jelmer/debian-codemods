@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -29,10 +29,13 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     };
 
     let mut removed: HashMap<String, HashSet<String>> = HashMap::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Process all binary packages
     let binaries: Vec<_> = editor.binaries().collect();
     for mut binary in binaries {
+        let line_no = binary.as_deb822().line() + 1;
         let paragraph = binary.as_mut_deb822();
         let package_name = paragraph.get("Package").unwrap_or_default().to_string();
 
@@ -46,17 +49,32 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             if let Some(source_value) = source_fields.get(&field) {
                 if source_value == &value {
                     // This field in the binary package duplicates the source
-                    paragraph.remove(&field);
-                    removed
-                        .entry(field.clone())
-                        .or_default()
-                        .insert(package_name.clone());
+                    let issue = LintianIssue {
+                        package: Some(package_name.clone()),
+                        package_type: Some(crate::PackageType::Binary),
+                        tag: Some("installable-field-mirrors-source".to_string()),
+                        info: Some(vec![format!("{} [debian/control:{}]", field, line_no)]),
+                    };
+
+                    if issue.should_fix(base_path) {
+                        paragraph.remove(&field);
+                        removed
+                            .entry(field.clone())
+                            .or_default()
+                            .insert(package_name.clone());
+                        fixed_issues.push(issue);
+                    } else {
+                        overridden_issues.push(issue);
+                    }
                 }
             }
         }
     }
 
     if removed.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -88,9 +106,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         message
     };
 
-    Ok(FixerResult::builder(&message)
-        .fixed_tags(vec!["installable-field-mirrors-source"])
-        .build())
+    let mut result = FixerResult::builder(&message).fixed_issues(fixed_issues);
+    if !overridden_issues.is_empty() {
+        result = result.overridden_issues(overridden_issues);
+    }
+    Ok(result.build())
 }
 
 declare_fixer! {

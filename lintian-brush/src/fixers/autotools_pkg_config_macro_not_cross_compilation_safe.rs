@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::relations::ensure_some_version;
 use debian_control::lossless::Control;
 use regex::bytes::Regex;
@@ -6,14 +6,15 @@ use std::fs;
 use std::path::Path;
 use std::str::FromStr;
 
-fn update_configure_ac(path: &Path) -> Result<(bool, String), std::io::Error> {
+fn update_configure_ac(path: &Path) -> Result<(bool, String, usize), std::io::Error> {
     if !path.exists() {
-        return Ok((false, String::new()));
+        return Ok((false, String::new(), 0));
     }
 
     let content = fs::read(path)?;
     let mut changed = false;
     let mut resolution = String::new();
+    let mut line_number = 0;
 
     // Regex to match AC_PATH_PROG with pkg-config
     // Pattern: \s*AC_PATH_PROG\s*\(\s*(\[)?(?P<variable>[A-Z_]+)(\])?\s*,\s*(\[)?pkg-config(\])?\s*(,\s*(\[)?(?P<default>.*)(\])?\s*)?\)
@@ -28,6 +29,11 @@ fn update_configure_ac(path: &Path) -> Result<(bool, String), std::io::Error> {
         let full_match = caps.get(0).unwrap();
         let variable = caps.name("variable").unwrap().as_bytes();
         let default = caps.name("default").map(|m| m.as_bytes());
+
+        // Calculate line number (count newlines before this match)
+        if line_number == 0 {
+            line_number = content[..full_match.start()].iter().filter(|&&b| b == b'\n').count() + 1;
+        }
 
         // Add content before this match
         new_content.extend_from_slice(&content[last_end..full_match.start()]);
@@ -64,31 +70,44 @@ fn update_configure_ac(path: &Path) -> Result<(bool, String), std::io::Error> {
         // Add remaining content
         new_content.extend_from_slice(&content[last_end..]);
         fs::write(path, new_content)?;
-        Ok((true, resolution))
+        Ok((true, resolution, line_number))
     } else {
-        Ok((false, String::new()))
+        Ok((false, String::new(), 0))
     }
 }
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let mut changed = false;
     let mut resolution = String::new();
+    let mut configure_file = String::new();
+    let mut line_number = 0;
 
     // Try both configure.ac and configure.in
     for name in &["configure.ac", "configure.in"] {
         let path = base_path.join(name);
         match update_configure_ac(&path) {
-            Ok((true, res)) => {
+            Ok((true, res, line)) => {
                 changed = true;
                 resolution = res;
+                configure_file = name.to_string();
+                line_number = line;
             }
-            Ok((false, _)) => {}
+            Ok((false, _, _)) => {}
             Err(e) => return Err(FixerError::from(e)),
         }
     }
 
     if !changed {
         return Err(FixerError::NoChanges);
+    }
+
+    // Create issue and check if we should fix it
+    let issue = LintianIssue::source_with_info(
+        "autotools-pkg-config-macro-not-cross-compilation-safe",
+        vec![format!("AC_PATH_PROG [{}:{}]", configure_file, line_number)],
+    );
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
     // Add pkg-config to Build-Depends if we used PKG_PROG_PKG_CONFIG
@@ -126,7 +145,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         Refer to https://bugs.debian.org/884798 for details.\n",
         resolution
     ))
-    .fixed_tag("autotools-pkg-config-macro-not-cross-compilation-safe")
+    .fixed_issues(vec![issue])
     .patch_name("ac-path-pkgconfig")
     .build())
 }
