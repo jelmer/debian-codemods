@@ -105,10 +105,12 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         }
     }
 
-    Ok(FixerResult::builder("Migrate from vim-addon-manager to dh-vim-addon")
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    Ok(
+        FixerResult::builder("Migrate from vim-addon-manager to dh-vim-addon")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
+            .build(),
+    )
 }
 
 declare_fixer! {

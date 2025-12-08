@@ -89,7 +89,8 @@ pub fn run(
             // No Homepage field exists
             if let Some((homepage_url, upstream_certainty)) = guess_homepage(base_path, preferences)
             {
-                let issue = LintianIssue::source_with_info("no-homepage-field", vec![String::new()]);
+                let issue =
+                    LintianIssue::source_with_info("no-homepage-field", vec![String::new()]);
 
                 if issue.should_fix(base_path) {
                     source_para.set("Homepage", &homepage_url);
@@ -117,7 +118,8 @@ pub fn run(
                     if let Some((homepage_url, upstream_certainty)) =
                         guess_homepage(base_path, preferences)
                     {
-                        let issue = LintianIssue::source_with_info(tag.unwrap(), vec![homepage.clone()]);
+                        let issue =
+                            LintianIssue::source_with_info(tag.unwrap(), vec![homepage.clone()]);
 
                         if issue.should_fix(base_path) {
                             source_para.set("Homepage", &homepage_url);

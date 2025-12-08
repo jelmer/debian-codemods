@@ -87,9 +87,11 @@ pub fn run(
         return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
-    Ok(FixerResult::builder("Drop unnecessary dependency on dh-autoreconf")
-        .fixed_issue(issue)
-        .build())
+    Ok(
+        FixerResult::builder("Drop unnecessary dependency on dh-autoreconf")
+            .fixed_issue(issue)
+            .build(),
+    )
 }
 
 declare_fixer! {

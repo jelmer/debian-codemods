@@ -32,7 +32,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         }
 
-        let filename = path.file_name()
+        let filename = path
+            .file_name()
             .and_then(|s| s.to_str())
             .ok_or_else(|| FixerError::Other("Invalid filename".to_string()))?;
 

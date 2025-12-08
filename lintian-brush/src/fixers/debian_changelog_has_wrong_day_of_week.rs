@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use chrono::Datelike;
 use debian_changelog::ChangeLog;
 use std::fs;

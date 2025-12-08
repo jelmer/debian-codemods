@@ -5,7 +5,10 @@ use std::fs;
 use std::path::Path;
 use std::str::FromStr;
 
-fn normalize_control_file(path: &Path, base_path: &Path) -> Result<(bool, Vec<LintianIssue>, Vec<LintianIssue>), FixerError> {
+fn normalize_control_file(
+    path: &Path,
+    base_path: &Path,
+) -> Result<(bool, Vec<LintianIssue>, Vec<LintianIssue>), FixerError> {
     let content = fs::read_to_string(path)?;
 
     let deb822 = match Deb822::from_str(&content) {
@@ -19,7 +22,7 @@ fn normalize_control_file(path: &Path, base_path: &Path) -> Result<(bool, Vec<Li
     let mut overridden_issues = Vec::new();
     let mut made_changes = false;
 
-    for mut paragraph in deb822.paragraphs() {
+    for paragraph in deb822.paragraphs() {
         // Check each entry before normalizing to create issues for fields with unusual spacing
         for mut entry in paragraph.entries() {
             if let Some(key) = entry.key() {
@@ -65,7 +68,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         Err(generated_file) => {
             // Control file is generated, process template file
             if let Some(template_path) = &generated_file.template_path {
-                let (changed, fixed, overridden) = normalize_control_file(template_path, base_path)?;
+                let (changed, fixed, overridden) =
+                    normalize_control_file(template_path, base_path)?;
                 if changed {
                     made_changes = true;
                     all_fixed_issues.extend(fixed);

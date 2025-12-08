@@ -59,13 +59,17 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             if trimmed == "dh_autotools-dev_updateconfig" {
                 let issue = LintianIssue::source_with_info(
                     "debhelper-tools-from-autotools-dev-are-deprecated",
-                    vec![format!("dh_autotools-dev_updateconfig [debian/rules:{}]", line_no)],
+                    vec![format!(
+                        "dh_autotools-dev_updateconfig [debian/rules:{}]",
+                        line_no
+                    )],
                 );
 
                 if issue.should_fix(base_path) {
                     // Preserve original indentation
                     let original = recipe.to_string();
-                    let indent: String = original.chars().take_while(|c| c.is_whitespace()).collect();
+                    let indent: String =
+                        original.chars().take_while(|c| c.is_whitespace()).collect();
                     commands_to_update.push((i, format!("{}dh_update_autotools_config", indent)));
                     made_changes = true;
                     fixed_issues.push(issue);
@@ -79,7 +83,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             if trimmed == "dh_autotools-dev_restoreconfig" {
                 let issue = LintianIssue::source_with_info(
                     "debhelper-tools-from-autotools-dev-are-deprecated",
-                    vec![format!("dh_autotools-dev_restoreconfig [debian/rules:{}]", line_no)],
+                    vec![format!(
+                        "dh_autotools-dev_restoreconfig [debian/rules:{}]",
+                        line_no
+                    )],
                 );
 
                 if issue.should_fix(base_path) {
@@ -109,7 +116,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             if new_recipe != original_recipe {
                 let issue = LintianIssue::source_with_info(
                     "debhelper-tools-from-autotools-dev-are-deprecated",
-                    vec![format!("dh ... --with autotools_dev [debian/rules:{}]", line_no)],
+                    vec![format!(
+                        "dh ... --with autotools_dev [debian/rules:{}]",
+                        line_no
+                    )],
                 );
 
                 if issue.should_fix(base_path) {

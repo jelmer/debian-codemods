@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -24,13 +24,22 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             if let Ok(url) = url::Url::parse(&homepage_str) {
                 if let Some(hostname) = url.host_str() {
                     if is_obsolete_site(hostname) {
+                        let issue = LintianIssue::source_with_info(
+                            "obsolete-url-in-packaging",
+                            vec![format!("{} [debian/control]", homepage_str.trim())],
+                        );
+
+                        if !issue.should_fix(base_path) {
+                            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+                        }
+
                         paragraph.remove("Homepage");
                         editor.commit()?;
 
                         return Ok(FixerResult::builder(
-                            "Drop fields with obsolete URLs.".to_string(),
+                            "Drop fields with obsolete URLs".to_string(),
                         )
-                        .fixed_tags(vec!["obsolete-url-in-packaging"])
+                        .fixed_issue(issue)
                         .build());
                     }
                 }
@@ -82,7 +91,7 @@ mod tests {
         assert!(result.is_ok());
 
         let result = result.unwrap();
-        assert_eq!(result.description, "Drop fields with obsolete URLs.");
+        assert_eq!(result.description, "Drop fields with obsolete URLs");
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
         assert_eq!(updated_content, "Source: blah\n");

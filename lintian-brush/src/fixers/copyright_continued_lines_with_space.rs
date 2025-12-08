@@ -81,7 +81,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // Strip whitespace, then trailing slashes (like Python's .rstrip().rstrip(b"/"))
     let mut trimmed = first_line;
-    while trimmed.last().map_or(false, |&b| is_whitespace(b)) {
+    while trimmed.last().is_some_and(|&b| is_whitespace(b)) {
         trimmed = &trimmed[..trimmed.len() - 1];
     }
     while trimmed.last() == Some(&b'/') {
@@ -240,8 +240,14 @@ License: GPL-3+\n\
 
         // Verify LintianIssue was created correctly
         assert_eq!(result.fixed_lintian_issues.len(), 1);
-        assert_eq!(result.fixed_lintian_issues[0].tag, Some("tab-in-license-text".to_string()));
-        assert_eq!(result.fixed_lintian_issues[0].info, Some(vec!["debian/copyright:3".to_string()]));
+        assert_eq!(
+            result.fixed_lintian_issues[0].tag,
+            Some("tab-in-license-text".to_string())
+        );
+        assert_eq!(
+            result.fixed_lintian_issues[0].info,
+            Some(vec!["debian/copyright:3".to_string()])
+        );
         assert_eq!(result.overridden_lintian_issues.len(), 0);
 
         let content = fs::read(&copyright_path).unwrap();

@@ -32,7 +32,8 @@ pub fn run(
     }
 
     // Check if we should upgrade from 1.0
-    let older_issue = LintianIssue::source_with_info("older-source-format", vec!["1.0".to_string()]);
+    let older_issue =
+        LintianIssue::source_with_info("older-source-format", vec!["1.0".to_string()]);
     let should_upgrade = older_issue.should_fix(base_path);
 
     // Determine target format based on whether we should upgrade

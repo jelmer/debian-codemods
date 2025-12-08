@@ -1,2 +1,2 @@
-Drop fields with obsolete URLs.
+Drop fields with obsolete URLs
 Fixed-Lintian-Tags: obsolete-url-in-packaging

@@ -26,9 +26,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 let (mut relations, _errors) = Relations::parse_relaxed(&field_value, true);
 
                 // Check if dh-systemd is present
-                let has_dh_systemd = relations.entries().any(|entry| {
-                    entry.relations().any(|rel| rel.name() == "dh-systemd")
-                });
+                let has_dh_systemd = relations
+                    .entries()
+                    .any(|entry| entry.relations().any(|rel| rel.name() == "dh-systemd"));
 
                 if has_dh_systemd {
                     let issue = LintianIssue::source_with_info(

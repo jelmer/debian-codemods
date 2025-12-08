@@ -107,7 +107,11 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
             // First pass: find issues and check if they should be fixed
             // Get the first line number for this bullet (1-indexed)
-            let line_num = bullet.line_numbers().first().expect("bullet should have line numbers") + 1;
+            let line_num = bullet
+                .line_numbers()
+                .first()
+                .expect("bullet should have line numbers")
+                + 1;
 
             // Check for missing colon in the combined text
             for caps in close_colon_re.captures_iter(&combined) {
@@ -120,14 +124,17 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
                 {
                     let issue = LintianIssue::source_with_info(
                         "possible-missing-colon-in-closes",
-                        vec![format!("{} [usr/share/doc/{}/changelog.Debian.gz:{}]", matched_text, package, line_num)],
+                        vec![format!(
+                            "{} [usr/share/doc/{}/changelog.Debian.gz:{}]",
+                            matched_text, package, line_num
+                        )],
                     );
 
                     if issue.should_fix(base_path) {
                         issues_to_fix_colon.push((matched_text.clone(), bugno, bug_certainty));
                         overall_certainty =
                             crate::min_certainty(&[overall_certainty, bug_certainty])
-                                    .unwrap_or(overall_certainty);
+                                .unwrap_or(overall_certainty);
                         fixed_issues.push(issue);
                     } else {
                         overridden_issues.push(issue);
@@ -146,7 +153,10 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
                 {
                     let issue = LintianIssue::source_with_info(
                         "misspelled-closes-bug",
-                        vec![format!("{} [usr/share/doc/{}/changelog.Debian.gz:{}]", matched_text, package, line_num)],
+                        vec![format!(
+                            "{} [usr/share/doc/{}/changelog.Debian.gz:{}]",
+                            matched_text, package, line_num
+                        )],
                     );
 
                     if issue.should_fix(base_path) {

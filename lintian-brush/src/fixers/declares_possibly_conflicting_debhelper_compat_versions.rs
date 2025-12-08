@@ -59,10 +59,8 @@ fn update_rules_file(
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     // First, extract DH_COMPAT value as integer and line number
-    let dh_compat_info: Option<(u32, usize)> = makefile
-        .find_variable("DH_COMPAT")
-        .next()
-        .and_then(|def| {
+    let dh_compat_info: Option<(u32, usize)> =
+        makefile.find_variable("DH_COMPAT").next().and_then(|def| {
             let value = def.raw_value()?.trim().parse::<u32>().ok()?;
             let line = def.line() + 1;
             Some((value, line))
@@ -79,7 +77,10 @@ fn update_rules_file(
         Some(compat_ver) if dh_compat_value != compat_ver => {
             let issue = LintianIssue::source_with_info(
                 "declares-possibly-conflicting-debhelper-compat-versions",
-                vec![format!("{} vs elsewhere {} [{}]", dh_compat_value, compat_ver, compat_source)],
+                vec![format!(
+                    "{} vs elsewhere {} [{}]",
+                    dh_compat_value, compat_ver, compat_source
+                )],
             );
 
             if !issue.should_fix(base_path) {

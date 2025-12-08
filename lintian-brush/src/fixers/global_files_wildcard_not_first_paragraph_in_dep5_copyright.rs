@@ -40,7 +40,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     // If we found a "Files: *" paragraph that's not the first Files paragraph, move it
-    if let (Some(wildcard_idx), Some(first_idx), Some(line_num)) = (wildcard_index, first_files_index, wildcard_line) {
+    if let (Some(wildcard_idx), Some(first_idx), Some(line_num)) =
+        (wildcard_index, first_files_index, wildcard_line)
+    {
         let issue = LintianIssue::source_with_info(
             "global-files-wildcard-not-first-paragraph-in-dep5-copyright",
             vec![format!("[debian/copyright:{}]", line_num)],
@@ -56,13 +58,13 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         // Write the updated copyright file
         std::fs::write(&copyright_path, deb822.to_string())?;
 
-        Ok(FixerResult::builder(
-            "Make \"Files: *\" paragraph the first in the copyright file",
+        Ok(
+            FixerResult::builder("Make \"Files: *\" paragraph the first in the copyright file")
+                .fixed_issues(vec![issue])
+                .build(),
         )
-        .fixed_issues(vec![issue])
-        .build())
     } else {
-        return Err(FixerError::NoChanges);
+        Err(FixerError::NoChanges)
     }
 }
 

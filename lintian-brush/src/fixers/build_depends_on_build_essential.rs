@@ -16,9 +16,21 @@ fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     if let Some(mut source) = editor.source() {
         // Handle Build-Depends
-        filter_build_essential_from_field(base_path, source.as_mut_deb822(), "Build-Depends", &mut fixed_issues, &mut overridden_issues);
+        filter_build_essential_from_field(
+            base_path,
+            source.as_mut_deb822(),
+            "Build-Depends",
+            &mut fixed_issues,
+            &mut overridden_issues,
+        );
         // Handle Build-Depends-Indep
-        filter_build_essential_from_field(base_path, source.as_mut_deb822(), "Build-Depends-Indep", &mut fixed_issues, &mut overridden_issues);
+        filter_build_essential_from_field(
+            base_path,
+            source.as_mut_deb822(),
+            "Build-Depends-Indep",
+            &mut fixed_issues,
+            &mut overridden_issues,
+        );
     }
 
     if fixed_issues.is_empty() {
@@ -29,11 +41,13 @@ fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     editor.commit()?;
-    Ok(FixerResult::builder("Drop unnecessary dependency on build-essential.")
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .certainty(Certainty::Certain)
-        .build())
+    Ok(
+        FixerResult::builder("Drop unnecessary dependency on build-essential.")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
+            .certainty(Certainty::Certain)
+            .build(),
+    )
 }
 
 declare_fixer! {
@@ -80,10 +94,8 @@ fn filter_build_essential_from_field(
     }
 
     // Create issue and check if we should fix it
-    let issue = LintianIssue::source_with_info(
-        "build-depends-on-build-essential",
-        vec![field.to_string()],
-    );
+    let issue =
+        LintianIssue::source_with_info("build-depends-on-build-essential", vec![field.to_string()]);
 
     if !issue.should_fix(base_path) {
         overridden_issues.push(issue);

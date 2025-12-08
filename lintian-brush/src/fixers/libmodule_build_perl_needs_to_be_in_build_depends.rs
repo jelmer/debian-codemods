@@ -37,10 +37,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let issue = LintianIssue::source_with_info(
-        "libmodule-build-perl-needs-to-be-in-build-depends",
-        vec![],
-    );
+    let issue =
+        LintianIssue::source_with_info("libmodule-build-perl-needs-to-be-in-build-depends", vec![]);
 
     if !issue.should_fix(base_path) {
         return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
@@ -62,11 +60,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     std::fs::write(&control_path, control.to_string())?;
 
     Ok(
-        FixerResult::builder(
-            "Move libmodule-build-perl from Build-Depends-Indep to Build-Depends",
-        )
-        .fixed_issue(issue)
-        .build(),
+        FixerResult::builder("Move libmodule-build-perl from Build-Depends-Indep to Build-Depends")
+            .fixed_issue(issue)
+            .build(),
     )
 }
 

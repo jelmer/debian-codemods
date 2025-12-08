@@ -53,7 +53,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 // Check if the substvar was actually removed
                 if new_value != original_value {
                     // Get line number for Built-Using field
-                    let line_no = binary.as_deb822()
+                    let line_no = binary
+                        .as_deb822()
                         .entries()
                         .find(|e| e.key().as_deref() == Some("Built-Using"))
                         .map(|e| e.line() + 1)
@@ -63,7 +64,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                         package: Some(binary_name.clone()),
                         package_type: Some(crate::PackageType::Binary),
                         tag: Some("built-using-field-on-arch-all-package".to_string()),
-                        info: Some(vec![format!("(in section for {}) [debian/control:{}]", binary_name, line_no)]),
+                        info: Some(vec![format!(
+                            "(in section for {}) [debian/control:{}]",
+                            binary_name, line_no
+                        )]),
                     };
 
                     if issue.should_fix(base_path) {
@@ -104,7 +108,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     package: Some(binary_name.clone()),
                     package_type: Some(crate::PackageType::Binary),
                     tag: Some("missing-built-using-field-for-golang-package".to_string()),
-                    info: Some(vec![format!("(in section for {}) [debian/control:{}]", binary_name, line_no)]),
+                    info: Some(vec![format!(
+                        "(in section for {}) [debian/control:{}]",
+                        binary_name, line_no
+                    )]),
                 };
 
                 if issue.should_fix(base_path) {

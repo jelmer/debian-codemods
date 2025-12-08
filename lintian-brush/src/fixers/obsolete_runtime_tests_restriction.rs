@@ -53,7 +53,10 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     let deb822 = parsed.tree();
 
     for mut paragraph in deb822.paragraphs() {
-        let restrictions_entry = match paragraph.entries().find(|e| e.key().as_deref() == Some("Restrictions")) {
+        let restrictions_entry = match paragraph
+            .entries()
+            .find(|e| e.key().as_deref() == Some("Restrictions"))
+        {
             Some(entry) => entry,
             None => continue,
         };
@@ -82,7 +85,10 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
                 let issue = LintianIssue::source_with_info(
                     "obsolete-runtime-tests-restriction",
-                    vec![format!("{} [debian/tests/control:{}]", restriction, line_num)],
+                    vec![format!(
+                        "{} [debian/tests/control:{}]",
+                        restriction, line_num
+                    )],
                 );
 
                 if issue.should_fix(base_path) {

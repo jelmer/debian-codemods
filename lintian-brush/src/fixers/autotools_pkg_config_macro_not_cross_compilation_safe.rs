@@ -32,7 +32,11 @@ fn update_configure_ac(path: &Path) -> Result<(bool, String, usize), std::io::Er
 
         // Calculate line number (count newlines before this match)
         if line_number == 0 {
-            line_number = content[..full_match.start()].iter().filter(|&&b| b == b'\n').count() + 1;
+            line_number = content[..full_match.start()]
+                .iter()
+                .filter(|&&b| b == b'\n')
+                .count()
+                + 1;
         }
 
         // Add content before this match

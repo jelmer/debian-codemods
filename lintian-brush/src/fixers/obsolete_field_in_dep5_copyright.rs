@@ -53,7 +53,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
                 let issue = LintianIssue::source_with_info(
                     "obsolete-field-in-dep5-copyright",
-                    vec![format!("{} {} [debian/copyright:{}]", old_name, new_name, line_num)],
+                    vec![format!(
+                        "{} {} [debian/copyright:{}]",
+                        old_name, new_name, line_num
+                    )],
                 );
 
                 if !issue.should_fix(base_path) {

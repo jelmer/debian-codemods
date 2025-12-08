@@ -89,7 +89,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let issue = LintianIssue::source_with_info(
         "dep5-file-paragraph-references-header-paragraph",
-        vec![format!("{} [debian/copyright:{}]", header_synopsis, line_no)],
+        vec![format!(
+            "{} [debian/copyright:{}]",
+            header_synopsis, line_no
+        )],
     );
 
     if !issue.should_fix(base_path) {

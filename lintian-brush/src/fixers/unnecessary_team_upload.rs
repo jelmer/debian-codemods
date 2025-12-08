@@ -73,7 +73,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     found_team_upload = true;
                     // Get the first line number for this bullet (1-indexed)
                     team_upload_line_num = Some(
-                        bullet.line_numbers().first().expect("bullet should have line numbers") + 1
+                        bullet
+                            .line_numbers()
+                            .first()
+                            .expect("bullet should have line numbers")
+                            + 1,
                     );
                     bullet.remove();
                     break;
@@ -105,9 +109,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // Write back the modified changelog
     fs::write(&changelog_path, changelog.to_string())?;
 
-    Ok(FixerResult::builder("Remove unnecessary Team Upload line in changelog")
-        .fixed_issues(vec![issue])
-        .build())
+    Ok(
+        FixerResult::builder("Remove unnecessary Team Upload line in changelog")
+            .fixed_issues(vec![issue])
+            .build(),
+    )
 }
 
 declare_fixer! {

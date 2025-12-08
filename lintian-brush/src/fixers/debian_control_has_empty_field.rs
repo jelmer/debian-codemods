@@ -33,7 +33,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         for (key, line_number) in keys_to_remove {
             let issue = LintianIssue::source_with_info(
                 "debian-control-has-empty-field",
-                vec![format!("(in source paragraph) {} [debian/control:{}]", key, line_number)],
+                vec![format!(
+                    "(in source paragraph) {} [debian/control:{}]",
+                    key, line_number
+                )],
             );
 
             if issue.should_fix(base_path) {
@@ -70,7 +73,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 package: Some(package_name.clone()),
                 package_type: Some(PackageType::Binary),
                 tag: Some("debian-control-has-empty-field".to_string()),
-                info: Some(vec![format!("(in section for {}) {} [debian/control:{}]", package_name, key, line_number)]),
+                info: Some(vec![format!(
+                    "(in section for {}) {} [debian/control:{}]",
+                    package_name, key, line_number
+                )]),
             };
 
             if issue.should_fix(base_path) {

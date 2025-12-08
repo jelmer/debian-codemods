@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_copyright::lossless::Copyright;
 use debian_copyright::License;
 use lazy_static::lazy_static;
@@ -117,7 +117,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let line_number = files_para.as_deb822().line() + 1;
         let issue = LintianIssue::source_with_info(
             "space-in-std-shortname-in-dep5-copyright",
-            vec![format!("{} [debian/copyright:{}]", name.to_lowercase(), line_number)],
+            vec![format!(
+                "{} [debian/copyright:{}]",
+                name.to_lowercase(),
+                line_number
+            )],
         );
 
         if issue.should_fix(base_path) {
@@ -145,7 +149,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let line_number = license_para.as_deb822().line() + 1;
         let issue = LintianIssue::source_with_info(
             "space-in-std-shortname-in-dep5-copyright",
-            vec![format!("{} [debian/copyright:{}]", name.to_lowercase(), line_number)],
+            vec![format!(
+                "{} [debian/copyright:{}]",
+                name.to_lowercase(),
+                line_number
+            )],
         );
 
         if issue.should_fix(base_path) {

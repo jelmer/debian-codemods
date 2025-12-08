@@ -41,11 +41,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         }
 
-        let issue = LintianIssue::binary_with_info(
-            &package,
-            "font-package-not-multi-arch-foreign",
-            vec![],
-        );
+        let issue =
+            LintianIssue::binary_with_info(&package, "font-package-not-multi-arch-foreign", vec![]);
 
         if !issue.should_fix(base_path) {
             overridden_issues.push(issue);

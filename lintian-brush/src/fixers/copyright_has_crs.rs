@@ -71,7 +71,10 @@ mod tests {
 
         // Verify LintianIssue was created correctly
         assert_eq!(result.fixed_lintian_issues.len(), 1);
-        assert_eq!(result.fixed_lintian_issues[0].tag, Some("copyright-has-crs".to_string()));
+        assert_eq!(
+            result.fixed_lintian_issues[0].tag,
+            Some("copyright-has-crs".to_string())
+        );
         assert_eq!(result.fixed_lintian_issues[0].info, None);
 
         // Check that CRs were removed
