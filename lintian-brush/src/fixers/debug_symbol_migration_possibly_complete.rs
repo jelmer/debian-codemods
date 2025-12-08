@@ -169,8 +169,11 @@ fn migration_done(rels: &Relations, preferences: &FixerPreferences) -> bool {
 
 fn eliminate_dbgsym_migration(
     line: &[u8],
+    line_no: usize,
     basedir: &Path,
     preferences: &FixerPreferences,
+    fixed_issues: &mut Vec<LintianIssue>,
+    overridden_issues: &mut Vec<LintianIssue>,
 ) -> Vec<u8> {
     if !line.starts_with(b"dh_strip") {
         return line.to_vec();
@@ -210,13 +213,17 @@ fn eliminate_dbgsym_migration(
                     package_type: Some(PackageType::Source),
                     tag: Some("debug-symbol-migration-possibly-complete".to_string()),
                     info: Some(vec![format!(
-                        "{} (line XX)",
-                        String::from_utf8_lossy(caps.get(0).unwrap().as_bytes()).trim()
+                        "{} [debian/rules:{}]",
+                        String::from_utf8_lossy(caps.get(0).unwrap().as_bytes()).trim(),
+                        line_no
                     )]),
                 };
 
                 if issue.should_fix(basedir) {
+                    fixed_issues.push(issue);
                     return b"".to_vec();
+                } else {
+                    overridden_issues.push(issue);
                 }
             }
             caps.get(0).unwrap().as_bytes().to_vec()
@@ -248,13 +255,24 @@ pub fn run(
 
     let mut made_changes = false;
     let mut rules_to_check: Vec<usize> = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for (rule_idx, mut rule) in makefile.rules().enumerate() {
         let mut commands_to_update = Vec::new();
         let mut commands_to_remove = Vec::new();
 
-        for (i, recipe) in rule.recipes().enumerate() {
-            let ret = eliminate_dbgsym_migration(recipe.as_bytes(), basedir, preferences);
+        for (i, recipe_node) in rule.recipe_nodes().enumerate() {
+            let recipe = recipe_node.text();
+            let line_no = recipe_node.line() + 1;
+            let ret = eliminate_dbgsym_migration(
+                recipe.as_bytes(),
+                line_no,
+                basedir,
+                preferences,
+                &mut fixed_issues,
+                &mut overridden_issues,
+            );
             if ret.is_empty() {
                 // Command should be removed
                 commands_to_remove.push(i);
@@ -291,6 +309,9 @@ pub fn run(
     }
 
     if !made_changes {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -298,7 +319,8 @@ pub fn run(
 
     Ok(
         FixerResult::builder("Drop transition for old debug package migration.")
-            .fixed_tag("debug-symbol-migration-possibly-complete")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .build(),
     )
 }
