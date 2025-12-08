@@ -30,6 +30,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let mut added = Vec::new();
     let mut removed = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for mut binary in editor.binaries() {
         let binary_name = binary.name().unwrap_or_default();
@@ -50,13 +52,32 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
                 // Check if the substvar was actually removed
                 if new_value != original_value {
-                    if new_value.trim().is_empty() || relations.is_empty() {
-                        binary.set_built_using(None);
+                    // Get line number for Built-Using field
+                    let line_no = binary.as_deb822()
+                        .entries()
+                        .find(|e| e.key().as_deref() == Some("Built-Using"))
+                        .map(|e| e.line() + 1)
+                        .unwrap_or_else(|| binary.as_deb822().line() + 1);
+
+                    let issue = LintianIssue {
+                        package: Some(binary_name.clone()),
+                        package_type: Some(crate::PackageType::Binary),
+                        tag: Some("built-using-field-on-arch-all-package".to_string()),
+                        info: Some(vec![format!("(in section for {}) [debian/control:{}]", binary_name, line_no)]),
+                    };
+
+                    if issue.should_fix(base_path) {
+                        if new_value.trim().is_empty() || relations.is_empty() {
+                            binary.set_built_using(None);
+                        } else {
+                            let (new_relations, _) = Relations::parse_relaxed(&new_value, true);
+                            binary.set_built_using(Some(&new_relations));
+                        }
+                        removed.push(binary_name.clone());
+                        fixed_issues.push(issue);
                     } else {
-                        let (new_relations, _) = Relations::parse_relaxed(&new_value, true);
-                        binary.set_built_using(Some(&new_relations));
+                        overridden_issues.push(issue);
                     }
-                    removed.push(binary_name.clone());
                 }
             }
         } else {
@@ -76,51 +97,58 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             });
 
             if !has_misc_built_using {
-                relations.ensure_substvar("${misc:Built-Using}").unwrap();
-                binary.set_built_using(Some(&relations));
-                added.push(binary_name.clone());
+                // For missing field, use package stanza line
+                let line_no = binary.as_deb822().line() + 1;
+
+                let issue = LintianIssue {
+                    package: Some(binary_name.clone()),
+                    package_type: Some(crate::PackageType::Binary),
+                    tag: Some("missing-built-using-field-for-golang-package".to_string()),
+                    info: Some(vec![format!("(in section for {}) [debian/control:{}]", binary_name, line_no)]),
+                };
+
+                if issue.should_fix(base_path) {
+                    relations.ensure_substvar("${misc:Built-Using}").unwrap();
+                    binary.set_built_using(Some(&relations));
+                    added.push(binary_name.clone());
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
+                }
             }
         }
     }
 
     if added.is_empty() && removed.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     editor.commit()?;
 
-    let (description, fixed_tags) = if !added.is_empty() && !removed.is_empty() {
-        (
-            format!(
-                "Added ${{misc:Built-Using}} to {} and removed it from {}.",
-                added.join(", "),
-                removed.join(", ")
-            ),
-            vec![
-                "missing-built-using-field-for-golang-package".to_string(),
-                "built-using-field-on-arch-all-package".to_string(),
-            ],
+    let description = if !added.is_empty() && !removed.is_empty() {
+        format!(
+            "Added ${{misc:Built-Using}} to {} and removed it from {}.",
+            added.join(", "),
+            removed.join(", ")
         )
     } else if !added.is_empty() {
-        (
-            format!(
-                "Add missing ${{misc:Built-Using}} to Built-Using on {}.",
-                added.join(", ")
-            ),
-            vec!["missing-built-using-field-for-golang-package".to_string()],
+        format!(
+            "Add missing ${{misc:Built-Using}} to Built-Using on {}.",
+            added.join(", ")
         )
     } else {
-        (
-            format!(
-                "Remove unnecessary ${{misc:Built-Using}} for {}",
-                removed.join(", ")
-            ),
-            vec!["built-using-field-on-arch-all-package".to_string()],
+        format!(
+            "Remove unnecessary ${{misc:Built-Using}} for {}",
+            removed.join(", ")
         )
     };
 
     Ok(FixerResult::builder(description)
-        .fixed_tags(fixed_tags)
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 
