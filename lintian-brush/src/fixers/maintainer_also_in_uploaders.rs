@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -49,10 +49,16 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    let issue = LintianIssue::source_with_info("maintainer-also-in-uploaders", vec![]);
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     editor.commit()?;
 
-    Ok(FixerResult::builder("Remove maintainer from uploaders.")
-        .fixed_tags(vec!["maintainer-also-in-uploaders"])
+    Ok(FixerResult::builder("Remove maintainer from uploaders")
+        .fixed_issue(issue)
         .build())
 }
 
@@ -85,7 +91,7 @@ mod tests {
         .unwrap();
 
         let result = run(base_path).unwrap();
-        assert_eq!(result.description, "Remove maintainer from uploaders.");
+        assert_eq!(result.description, "Remove maintainer from uploaders");
 
         let content = fs::read_to_string(&control_path).unwrap();
         let expected = "Source: test\nMaintainer: John Doe <john@example.com>\nUploaders: Jane Smith <jane@example.com>\n\nPackage: test\nDescription: Test\n Test package\n";
@@ -107,7 +113,7 @@ mod tests {
         .unwrap();
 
         let result = run(base_path).unwrap();
-        assert_eq!(result.description, "Remove maintainer from uploaders.");
+        assert_eq!(result.description, "Remove maintainer from uploaders");
 
         let content = fs::read_to_string(&control_path).unwrap();
         // Uploaders field should be completely removed
@@ -175,7 +181,7 @@ mod tests {
         .unwrap();
 
         let result = run(base_path).unwrap();
-        assert_eq!(result.description, "Remove maintainer from uploaders.");
+        assert_eq!(result.description, "Remove maintainer from uploaders");
 
         let content = fs::read_to_string(&control_path).unwrap();
         let expected = "Source: test\nMaintainer: Bob <bob@example.com>\nUploaders: Alice <alice@example.com>, Charlie <charlie@example.com>\n\nPackage: test\nDescription: Test\n Test package\n";
