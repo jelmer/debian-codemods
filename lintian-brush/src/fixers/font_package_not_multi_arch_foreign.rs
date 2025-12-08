@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_control::MultiArch;
 use std::path::Path;
@@ -12,6 +12,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let editor = TemplatedControlEditor::open(&control_path)?;
     let mut updated_packages = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for mut binary in editor.binaries() {
         // Get package name
@@ -39,12 +41,27 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         }
 
+        let issue = LintianIssue::binary_with_info(
+            &package,
+            "font-package-not-multi-arch-foreign",
+            vec![],
+        );
+
+        if !issue.should_fix(base_path) {
+            overridden_issues.push(issue);
+            continue;
+        }
+
         // Add Multi-Arch: foreign
         binary.set_multi_arch(Some(MultiArch::Foreign));
         updated_packages.push(package);
+        fixed_issues.push(issue);
     }
 
-    if updated_packages.is_empty() {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -54,12 +71,13 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let plural = if updated_packages.len() > 1 { "s" } else { "" };
     let packages_str = updated_packages.join(", ");
     let message = format!(
-        "Set Multi-Arch: foreign on package{} {}.",
+        "Set Multi-Arch: foreign on package{} {}",
         plural, packages_str
     );
 
     Ok(FixerResult::builder(message)
-        .fixed_tags(vec!["font-package-not-multi-arch-foreign"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 
@@ -113,7 +131,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Set Multi-Arch: foreign on package fonts-blah."
+            "Set Multi-Arch: foreign on package fonts-blah"
         );
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
@@ -148,7 +166,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Set Multi-Arch: foreign on package xfonts-test."
+            "Set Multi-Arch: foreign on package xfonts-test"
         );
     }
 
@@ -247,7 +265,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Set Multi-Arch: foreign on packages fonts-foo, fonts-bar."
+            "Set Multi-Arch: foreign on packages fonts-foo, fonts-bar"
         );
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
