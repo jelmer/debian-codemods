@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_control::lossless::Control;
 use makefile_lossless::Makefile;
 use std::fs;
@@ -51,26 +51,43 @@ fn get_debhelper_compat_level_from_control(control: &Control) -> Result<Option<u
 fn update_rules_file(
     rules_path: &Path,
     compat_version: Option<u32>,
-) -> Result<(bool, bool), FixerError> {
+    compat_source: &str,
+    base_path: &Path,
+) -> Result<(bool, Option<LintianIssue>), FixerError> {
     let content = fs::read_to_string(rules_path)?;
     let makefile = Makefile::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
-    // First, extract DH_COMPAT value as integer
-    let dh_compat_value: Option<u32> = makefile
+    // First, extract DH_COMPAT value as integer and line number
+    let dh_compat_info: Option<(u32, usize)> = makefile
         .find_variable("DH_COMPAT")
         .next()
-        .and_then(|def| def.raw_value())
-        .and_then(|val| val.trim().parse::<u32>().ok());
+        .and_then(|def| {
+            let value = def.raw_value()?.trim().parse::<u32>().ok()?;
+            let line = def.line() + 1;
+            Some((value, line))
+        });
 
-    if dh_compat_value.is_none() {
-        return Ok((false, false));
+    if dh_compat_info.is_none() {
+        return Ok((false, None));
     }
 
+    let (dh_compat_value, _line_no) = dh_compat_info.unwrap();
+
     // Compare to determine if there's a conflict
-    let has_conflict = match (dh_compat_value, compat_version) {
-        (Some(rules_ver), Some(compat_ver)) => rules_ver != compat_ver,
-        _ => false,
+    let issue = match compat_version {
+        Some(compat_ver) if dh_compat_value != compat_ver => {
+            let issue = LintianIssue::source_with_info(
+                "declares-possibly-conflicting-debhelper-compat-versions",
+                vec![format!("{} vs elsewhere {} [{}]", dh_compat_value, compat_ver, compat_source)],
+            );
+
+            if !issue.should_fix(base_path) {
+                return Ok((false, Some(issue)));
+            }
+            Some(issue)
+        }
+        _ => None,
     };
 
     // Remove all DH_COMPAT definitions
@@ -80,7 +97,7 @@ fn update_rules_file(
     }
 
     fs::write(rules_path, makefile.to_string())?;
-    Ok((true, has_conflict))
+    Ok((true, issue))
 }
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
@@ -98,39 +115,40 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let control_compat_version = get_debhelper_compat_level_from_control(&control)?;
 
-    // Determine which compat version to use
-    let compat_version = match (control_compat_version, file_compat_version) {
+    // Determine which compat version to use and source
+    let (compat_version, compat_source) = match (control_compat_version, file_compat_version) {
         (Some(control_ver), Some(_file_ver)) => {
             // Both exist - remove debian/compat and use control version
             fs::remove_file(&compat_path)?;
-            Some(control_ver)
+            (Some(control_ver), "debian/control")
         }
-        (Some(control_ver), None) => Some(control_ver),
-        (None, Some(file_ver)) => Some(file_ver),
+        (Some(control_ver), None) => (Some(control_ver), "debian/control"),
+        (None, Some(file_ver)) => (Some(file_ver), "debian/compat"),
         (None, None) => return Err(FixerError::NoChanges),
     };
 
     // Update debian/rules to remove conflicting DH_COMPAT
-    let (rules_changed, has_conflict) = if rules_path.exists() {
-        update_rules_file(&rules_path, compat_version)?
+    let (rules_changed, issue) = if rules_path.exists() {
+        update_rules_file(&rules_path, compat_version, compat_source, base_path)?
     } else {
-        (false, false)
+        (false, None)
     };
 
     // If nothing changed, return NoChanges
     if !rules_changed && !(control_compat_version.is_some() && file_compat_version.is_some()) {
+        if let Some(issue) = issue {
+            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+        }
         return Err(FixerError::NoChanges);
     }
 
-    // Build result with tags only if there was a conflict
+    // Build result with issues if there was a conflict
     let mut result = FixerResult::builder(
         "Avoid setting debhelper compat version in debian/rules and debian/compat.",
     );
 
-    if has_conflict {
-        result = result.fixed_tags(vec![
-            "declares-possibly-conflicting-debhelper-compat-versions",
-        ]);
+    if let Some(issue) = issue {
+        result = result.fixed_issues(vec![issue]);
     }
 
     Ok(result.build())
