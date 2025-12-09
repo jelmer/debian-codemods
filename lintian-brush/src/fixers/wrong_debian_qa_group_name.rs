@@ -1,5 +1,6 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
+use debian_changelog::parseaddr;
 use std::path::Path;
 
 const QA_MAINTAINER: &str = "Debian QA Group <packages@qa.debian.org>";
@@ -12,7 +13,6 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut made_changes = false;
 
     // Only process the source paragraph (Maintainer only appears there)
     if let Some(mut source) = editor.source() {
@@ -20,34 +20,35 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
         // Check if Maintainer field exists
         if let Some(maintainer) = paragraph.get("Maintainer") {
-            // Parse the maintainer field to extract email
-            // Simple parsing: look for email between < and >
-            if let Some(start) = maintainer.find('<') {
-                if let Some(end) = maintainer.find('>') {
-                    let email = &maintainer[start + 1..end];
+            // Parse the maintainer field
+            let (name_opt, email) = parseaddr(&maintainer);
 
-                    // Check if it's the QA email address
-                    if email == "packages@qa.debian.org" {
-                        // Check if the full maintainer string is not already correct
-                        if maintainer != QA_MAINTAINER {
-                            paragraph.set("Maintainer", QA_MAINTAINER);
-                            made_changes = true;
-                        }
+            // Check if it's the QA email address
+            if email == "packages@qa.debian.org" {
+                // Check if the full maintainer string is not already correct
+                if maintainer != QA_MAINTAINER {
+                    let name = name_opt.unwrap_or("Debian QA");
+                    let issue = LintianIssue::source_with_info(
+                        "faulty-debian-qa-group-phrase",
+                        vec![format!("Maintainer {} -> Debian QA Group", name)],
+                    );
+
+                    if !issue.should_fix(base_path) {
+                        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
                     }
+
+                    paragraph.set("Maintainer", QA_MAINTAINER);
+                    editor.commit()?;
+
+                    return Ok(FixerResult::builder("Fix Debian QA group name")
+                        .fixed_issue(issue)
+                        .build());
                 }
             }
         }
     }
 
-    if !made_changes {
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit()?;
-
-    Ok(FixerResult::builder("Fix Debian QA group name.")
-        .fixed_tags(vec!["faulty-debian-qa-group-phrase"])
-        .build())
+    Err(FixerError::NoChanges)
 }
 
 declare_fixer! {
@@ -75,7 +76,7 @@ mod tests {
         fs::write(&control_path, "Source: lintian-brush\nMaintainer: QA Folks <packages@qa.debian.org>\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n").unwrap();
 
         let result = run(base_path).unwrap();
-        assert_eq!(result.description, "Fix Debian QA group name.");
+        assert_eq!(result.description, "Fix Debian QA group name");
 
         let content = fs::read_to_string(&control_path).unwrap();
         assert!(content.contains("Maintainer: Debian QA Group <packages@qa.debian.org>"));
@@ -156,7 +157,7 @@ mod tests {
             fs::write(&control_path, format!("Source: test\nMaintainer: {}\n\nPackage: test\nDescription: Test\n Test package\n", wrong_name)).unwrap();
 
             let result = run(base_path).unwrap();
-            assert_eq!(result.description, "Fix Debian QA group name.");
+            assert_eq!(result.description, "Fix Debian QA group name");
 
             let content = fs::read_to_string(&control_path).unwrap();
             assert!(content.contains("Maintainer: Debian QA Group <packages@qa.debian.org>"));
