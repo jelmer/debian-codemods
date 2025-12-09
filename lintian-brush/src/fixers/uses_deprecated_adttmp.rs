@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use regex::bytes::Regex;
 use std::fs;
 use std::path::Path;
@@ -12,7 +12,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let pattern = Regex::new(r"\bADTTMP\b").unwrap();
     let replacement = b"AUTOPKGTEST_TMP";
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Iterate through files in debian/tests
     let entries = fs::read_dir(&tests_dir)?;
@@ -26,22 +27,60 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
 
         let content = fs::read(&path)?;
-        let new_content = pattern.replace_all(&content, replacement);
 
-        if new_content != content {
-            fs::write(&path, new_content.as_ref())?;
-            made_changes = true;
+        // Find line numbers where ADTTMP appears
+        let mut line_numbers = Vec::new();
+        for (line_num, line) in content.split(|&b| b == b'\n').enumerate() {
+            if pattern.is_match(line) {
+                line_numbers.push(line_num + 1);
+            }
+        }
+
+        if !line_numbers.is_empty() {
+            // Get relative path from base_path
+            let relative_path = path.strip_prefix(base_path)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .to_string();
+
+            // Create issues for each line
+            for line_num in line_numbers {
+                let issue = LintianIssue::source_with_info(
+                    "uses-deprecated-adttmp",
+                    vec![format!("[{}:{}]", relative_path, line_num)],
+                );
+
+                if !issue.should_fix(base_path) {
+                    overridden_issues.push(issue);
+                } else {
+                    fixed_issues.push(issue);
+                }
+            }
+
+            // Only replace if we have issues to fix
+            if fixed_issues.iter().any(|issue| {
+                issue.info.as_ref().map_or(false, |info| {
+                    info.iter().any(|i| i.contains(&relative_path))
+                })
+            }) {
+                let new_content = pattern.replace_all(&content, replacement);
+                fs::write(&path, new_content.as_ref())?;
+            }
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     Ok(
-        FixerResult::builder("Replace use of deprecated $ADTTMP with $AUTOPKGTEST_TMP.")
+        FixerResult::builder("Replace use of deprecated $ADTTMP with $AUTOPKGTEST_TMP")
             .certainty(crate::Certainty::Certain)
-            .fixed_tags(vec!["uses-deprecated-adttmp"])
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .build(),
     )
 }
