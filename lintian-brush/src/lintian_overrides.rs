@@ -257,11 +257,33 @@ impl OverrideLine {
             return false;
         }
 
-        // Check package type if specified in override
-        if let Some(pkg_type) = self.package_type() {
-            let issue_type = issue.package_type.as_ref().map(|t| t.to_string());
-            if Some(pkg_type.as_str()) != issue_type.as_deref() {
-                return false;
+        // Check package name and/or type if specified in override
+        if let Some(pkg_spec) = self.package_spec() {
+            if let Some(pkg_name) = pkg_spec.package_name() {
+                // Parse the package spec - could be "package-name", "binary", "source",
+                // "package-name binary", or "package-name source"
+                let parts: Vec<&str> = pkg_name.split_whitespace().collect();
+
+                // If it's just "binary" or "source", match on type only
+                if parts.len() == 1 && (parts[0] == "binary" || parts[0] == "source") {
+                    let issue_type = issue.package_type.as_ref().map(|t| t.to_string());
+                    if Some(parts[0]) != issue_type.as_deref() {
+                        return false;
+                    }
+                } else if parts.len() == 2 && (parts[1] == "binary" || parts[1] == "source") {
+                    // Format: "package-name binary" or "package-name source"
+                    let issue_pkg = issue.package.as_deref();
+                    let issue_type = issue.package_type.as_ref().map(|t| t.to_string());
+                    if Some(parts[0]) != issue_pkg || Some(parts[1]) != issue_type.as_deref() {
+                        return false;
+                    }
+                } else {
+                    // Just a package name without explicit type - match on package name only
+                    let issue_pkg = issue.package.as_deref();
+                    if Some(parts[0]) != issue_pkg {
+                        return false;
+                    }
+                }
             }
         }
 
