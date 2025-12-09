@@ -4,6 +4,7 @@ include:
 
 variables:
   SALSA_CI_EXTRA_REPOSITORY: "deb [trusted=yes] https://people.debian.org/~jelmer/debian-codemods-deps ./"
+  SALSA_CI_MMDEBSTRAP_EXTRA_ARGS: --include=ca-certificates
   SALSA_CI_DISABLE_BLHC: 1
   # Package is so large best to skip extra builds in Salsa CI to save resources
   SALSA_CI_DISABLE_BUILD_PACKAGE_I386: 1
