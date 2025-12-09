@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -10,35 +10,62 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut changed = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Check source paragraph
     if let Some(mut source) = editor.source() {
         let paragraph = source.as_mut_deb822();
         if paragraph.get("Priority").as_deref() == Some("extra") {
-            paragraph.set("Priority", "optional");
-            changed = true;
+            let issue = LintianIssue::source_with_info(
+                "priority-extra-is-replaced-by-priority-optional",
+                vec![],
+            );
+
+            if !issue.should_fix(base_path) {
+                overridden_issues.push(issue);
+            } else {
+                paragraph.set("Priority", "optional");
+                fixed_issues.push(issue);
+            }
         }
     }
 
     // Check binary paragraphs
     for mut binary in editor.binaries() {
+        let Some(package_name) = binary.name() else {
+            continue;
+        };
         let paragraph = binary.as_mut_deb822();
         if paragraph.get("Priority").as_deref() == Some("extra") {
-            paragraph.set("Priority", "optional");
-            changed = true;
+            let issue = LintianIssue::binary_with_info(
+                &package_name,
+                "priority-extra-is-replaced-by-priority-optional",
+                vec![],
+            );
+
+            if !issue.should_fix(base_path) {
+                overridden_issues.push(issue);
+            } else {
+                paragraph.set("Priority", "optional");
+                fixed_issues.push(issue);
+            }
         }
     }
 
-    if !changed {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     editor.commit()?;
 
     Ok(
-        FixerResult::builder("Change priority extra to priority optional.")
-            .fixed_tags(vec!["priority-extra-is-replaced-by-priority-optional"])
+        FixerResult::builder("Change priority extra to priority optional")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .certainty(crate::Certainty::Certain)
             .build(),
     )
@@ -81,7 +108,7 @@ Description: Test package
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Change priority extra to priority optional."
+            "Change priority extra to priority optional"
         );
         assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 
