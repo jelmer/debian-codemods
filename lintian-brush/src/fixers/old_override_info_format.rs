@@ -1,5 +1,5 @@
 use crate::lintian_overrides::{fix_override_info, map_overrides, LintianOverrides};
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -44,12 +44,12 @@ fn shorten_path(path: &Path, base_path: &Path) -> String {
     }
 }
 
-fn process_overrides_file(path: &Path) -> Result<(bool, Vec<usize>), FixerError> {
+fn process_overrides_file(path: &Path) -> Result<(bool, Vec<(usize, String)>), FixerError> {
     let content = fs::read_to_string(path)?;
     let parsed = LintianOverrides::parse(&content);
     let overrides = parsed.ok().map_err(|_| FixerError::NoChanges)?;
 
-    let mut changed_linenos = Vec::new();
+    let mut changed_lines = Vec::new();
 
     // Transform override lines
     let updated = map_overrides(&overrides, |line| {
@@ -87,19 +87,21 @@ fn process_overrides_file(path: &Path) -> Result<(bool, Vec<usize>), FixerError>
     let mut lineno = 1;
     for (orig_line, updated_line) in overrides.lines().zip(updated.lines()) {
         if orig_line.text() != updated_line.text() {
-            changed_linenos.push(lineno);
+            // Store the original line text (trimmed)
+            let orig_text = orig_line.text().trim().to_string();
+            changed_lines.push((lineno, orig_text));
         }
         lineno += 1;
     }
 
-    let changed = !changed_linenos.is_empty();
+    let changed = !changed_lines.is_empty();
 
     if changed {
         let new_content = updated.text();
         fs::write(path, new_content)?;
     }
 
-    Ok((changed, changed_linenos))
+    Ok((changed, changed_lines))
 }
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
@@ -110,19 +112,32 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let mut fixed_linenos: HashMap<PathBuf, Vec<usize>> = HashMap::new();
+    let mut fixed_issues = Vec::new();
 
     for path in override_files {
         let result = match process_overrides_file(&path) {
-            Ok((changed, linenos)) if changed => (changed, linenos),
+            Ok((changed, lines)) if changed => (changed, lines),
             Ok(_) => continue,
             Err(FixerError::NoChanges) => continue,
             Err(e) => return Err(e),
         };
 
-        fixed_linenos.insert(path, result.1);
+        // Create LintianIssue for each fixed line
+        let rel_path = path.strip_prefix(base_path).unwrap_or(&path);
+        let mut linenos = Vec::new();
+        for (lineno, override_text) in &result.1 {
+            let issue = LintianIssue::source_with_info(
+                "mismatched-override",
+                vec![format!("{} [{}:{}]", override_text, rel_path.display(), lineno)],
+            );
+            fixed_issues.push(issue);
+            linenos.push(*lineno);
+        }
+
+        fixed_linenos.insert(path, linenos);
     }
 
-    if fixed_linenos.is_empty() {
+    if fixed_issues.is_empty() {
         return Err(FixerError::NoChanges);
     }
 
@@ -131,7 +146,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let (path, linenos) = fixed_linenos.iter().next().unwrap();
         let path_str = shorten_path(path, base_path);
         format!(
-            "Update lintian override info format in {} on line {}.",
+            "Update lintian override info format in {} on line {}",
             path_str,
             linenos_to_ranges(linenos)
         )
@@ -166,7 +181,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     };
 
     Ok(FixerResult::builder(&description)
-        .fixed_tags(vec!["mismatched-override"])
+        .fixed_issues(fixed_issues)
         .build())
 }
 
@@ -246,7 +261,7 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Update lintian override info format in d/source/lintian-overrides on line 1."
+            "Update lintian override info format in d/source/lintian-overrides on line 1"
         );
 
         // Check the file was updated
@@ -275,7 +290,7 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Update lintian override info format in d/source/lintian-overrides on line 1-2."
+            "Update lintian override info format in d/source/lintian-overrides on line 1-2"
         );
 
         // Check the file was updated
