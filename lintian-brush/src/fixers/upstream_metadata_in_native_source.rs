@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debversion::Version;
 use std::fs;
 use std::path::Path;
@@ -27,6 +27,15 @@ pub fn run(
         return Err(FixerError::NoChanges);
     }
 
+    let issue = LintianIssue::source_with_info(
+        "upstream-metadata-in-native-source",
+        vec!["[debian/upstream/metadata]".to_string()],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     // Remove the metadata file
     fs::remove_file(&metadata_path)?;
 
@@ -38,10 +47,10 @@ pub fn run(
     }
 
     Ok(FixerResult::builder(
-        "Remove debian/upstream/metadata in native source package.".to_string(),
+        "Remove debian/upstream/metadata in native source package"
     )
     .certainty(crate::Certainty::Certain)
-    .fixed_tags(vec!["upstream-metadata-in-native-source"])
+    .fixed_issue(issue)
     .build())
 }
 
@@ -98,7 +107,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Remove debian/upstream/metadata in native source package."
+            "Remove debian/upstream/metadata in native source package"
         );
         assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 
