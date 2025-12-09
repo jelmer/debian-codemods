@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debversion::Version;
 use std::fs;
 use std::path::Path;
@@ -27,6 +27,15 @@ pub fn run(
         return Err(FixerError::NoChanges);
     }
 
+    let issue = LintianIssue::source_with_info(
+        "public-upstream-key-in-native-package",
+        vec!["[debian/upstream/signing-key.asc]".to_string()],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     // Remove the signing key file
     fs::remove_file(&signing_key_path)?;
 
@@ -38,9 +47,9 @@ pub fn run(
     }
 
     Ok(
-        FixerResult::builder("Remove upstream signing key in native source package.".to_string())
+        FixerResult::builder("Remove upstream signing key in native source package")
             .certainty(crate::Certainty::Certain)
-            .fixed_tags(vec!["public-upstream-key-in-native-package"])
+            .fixed_issue(issue)
             .build(),
     )
 }
@@ -81,7 +90,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Remove upstream signing key in native source package."
+            "Remove upstream signing key in native source package"
         );
         assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 
