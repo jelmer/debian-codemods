@@ -1,8 +1,30 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
 const SCRIPTS: &[&str] = &["preinst", "prerm", "postinst", "config", "postrm"];
+
+fn needs_fix(path: &Path) -> Result<bool, std::io::Error> {
+    // Try to read the file
+    let content = match fs::read(path) {
+        Ok(c) => c,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(e) => return Err(e),
+    };
+
+    let lines: Vec<&[u8]> = content.split_inclusive(|&b| b == b'\n').collect();
+    if lines.is_empty() {
+        return Ok(false);
+    }
+
+    // Check if file already has "set -e\n" anywhere
+    if lines.iter().any(|line| *line == b"set -e\n") {
+        return Ok(false);
+    }
+
+    // Check if first line is "#!/bin/sh -e\n"
+    Ok(lines[0] == b"#!/bin/sh -e\n")
+}
 
 fn replace_set_e(path: &Path) -> Result<bool, std::io::Error> {
     // Try to read the file
@@ -106,25 +128,53 @@ fn replace_set_e(path: &Path) -> Result<bool, std::io::Error> {
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let debian_dir = base_path.join("debian");
-    let mut changed = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for script_name in SCRIPTS {
         let script_path = debian_dir.join(script_name);
-        match replace_set_e(&script_path) {
-            Ok(true) => changed = true,
+
+        // Check if the script needs fixing
+        match needs_fix(&script_path) {
+            Ok(true) => {
+                let issue = LintianIssue::source_with_info(
+                    "maintainer-script-without-set-e",
+                    vec![format!("[{}]", script_name)],
+                );
+
+                if !issue.should_fix(base_path) {
+                    overridden_issues.push(issue);
+                    continue;
+                }
+
+                // Now actually fix it
+                match replace_set_e(&script_path) {
+                    Ok(true) => {
+                        fixed_issues.push(issue);
+                    }
+                    Ok(false) => {
+                        // Shouldn't happen since needs_fix returned true
+                    }
+                    Err(e) => return Err(FixerError::from(e)),
+                }
+            }
             Ok(false) => {}
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
             Err(e) => return Err(FixerError::from(e)),
         }
     }
 
-    if !changed {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     Ok(
-        FixerResult::builder("Use set -e rather than passing -e on the shebang-line.")
-            .fixed_tags(vec!["maintainer-script-without-set-e"])
+        FixerResult::builder("Use set -e rather than passing -e on the shebang-line")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .build(),
     )
 }
@@ -171,7 +221,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Use set -e rather than passing -e on the shebang-line."
+            "Use set -e rather than passing -e on the shebang-line"
         );
     }
 
