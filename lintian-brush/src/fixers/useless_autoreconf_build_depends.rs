@@ -1,6 +1,6 @@
-use crate::rules::dh_invoke_drop_with;
 use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
 use debian_analyzer::control::TemplatedControlEditor;
+use debian_analyzer::rules::dh_invoke_drop_with;
 use debian_control::lossless::relations::Relations;
 use debversion::Version;
 use makefile_lossless::Makefile;
@@ -34,11 +34,10 @@ pub fn run(
         let mut commands_to_update = Vec::new();
 
         for (i, recipe) in rule.recipes().enumerate() {
-            let new_line = dh_invoke_drop_with(recipe.as_bytes(), b"autoreconf");
-            let new_recipe = std::str::from_utf8(&new_line).unwrap();
+            let new_recipe = dh_invoke_drop_with(&recipe, "autoreconf");
 
             if new_recipe != recipe {
-                commands_to_update.push((i, new_recipe.to_string()));
+                commands_to_update.push((i, new_recipe));
                 made_changes = true;
             }
         }

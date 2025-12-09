@@ -33,13 +33,6 @@ fixers:
       - package-uses-deprecated-debhelper-compat-version
       - package-uses-old-debhelper-compat-version
 
-  # TODO(jelmer): Temporarily disabled, since this triggers unnecessarily
-  # (e.g. for nfdump). See https://bugs.debian.org/946398
-  - script: skip-systemd-native-flag-missing-pre-depends.py
-    enabled: false
-    lintian-tags:
-      - skip-systemd-native-flag-missing-pre-depends
-
   - script: systemd-service-file-pidfile-refers-to-var-run.py
     lintian-tags:
       - systemd-service-file-refers-to-var-run
@@ -55,10 +48,6 @@ fixers:
   - script: systemd-service-file-refers-to-obsolete-bindto.py
     lintian-tags:
       - systemd-service-file-refers-to-obsolete-bindto
-
-  - script: systemd-service-file-refers-to-obsolete-target.py
-    lintian-tags:
-      - systemd-service-file-refers-to-obsolete-target
 
   - script: upstream-metadata-invalid.py
     lintian-tags:

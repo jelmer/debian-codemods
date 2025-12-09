@@ -271,9 +271,9 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "base64ct"
-version = "1.8.0"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55248b47b0caf0546f7988906588779981c43bb1bc9d0c44087278f80cdb44ba"
+checksum = "0e050f626429857a27ddccb31e0aca21356bfa709c04041aefddac081a8f068a"
 
 [[package]]
 name = "bindgen"
@@ -491,9 +491,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.48"
+version = "1.2.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c481bdbf0ed3b892f6f806287d72acd515b352a4ec27a208489b8c1bc839633a"
+checksum = "90583009037521a116abf44494efecd645ba48b6622457080f080b85544e2215"
 dependencies = [
  "find-msvc-tools",
  "shlex",
@@ -845,9 +845,9 @@ dependencies = [
 
 [[package]]
 name = "deb822-derive"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86bf2d0fa4ce2457e94bd7efb15aeadc115297f04b660bd0da706729e0d91442"
+checksum = "e83ef29a094bcb2b7dd0f609ace7f5a34ef9a62e0731ebd350637640320a3b15"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -856,18 +856,18 @@ dependencies = [
 
 [[package]]
 name = "deb822-fast"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f410ccb5cbd9b81d56b290131bad4350ecf8b46416fb901e759dc1e6916a8198"
+checksum = "114c474fa4cd5d6d24bb5e68b36fa4ef70f5b830e3cc14a9b66a12e71a15aeb9"
 dependencies = [
  "deb822-derive",
 ]
 
 [[package]]
 name = "deb822-lossless"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdcadf12851ddb37dc938e724beeb50e83bfe1a1fda3c15b997dc1105ec49e3d"
+checksum = "6b964796c6b707ab490f1ce5752df6d3dd62d39ec40a1d029dbc8d210fd0fe51"
 dependencies = [
  "pyo3",
  "regex",
@@ -928,7 +928,7 @@ dependencies = [
  "sqlx",
  "svp-client",
  "tempfile",
- "toml_edit 0.23.8",
+ "toml_edit 0.23.9",
  "url",
 ]
 
@@ -949,9 +949,9 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.2.10"
+version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ee6f0a8827a86b111c80e12322ebe1818f835fa1f936b9cc212b0861afdbfb2"
+checksum = "71a355d46e669ed0b4308821f47906f3993de6ae204cc8a85aafb27e6ccd66f5"
 dependencies = [
  "chrono",
  "deb822-fast",
@@ -965,9 +965,9 @@ dependencies = [
 
 [[package]]
 name = "debian-copyright"
-version = "0.1.37"
+version = "0.1.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77134532f4e23c8f1f6dfeabda8b12a169a85bdb407302674110f3e1009b8713"
+checksum = "fc51b8576a7bc3052d138d7777f4843cfdfcdf9fd97bd4926ed054f5b9a59a30"
 dependencies = [
  "deb822-fast",
  "deb822-lossless",
@@ -1429,13 +1429,13 @@ checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 
 [[package]]
 name = "flate2"
-version = "1.1.7"
+version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2152dbcb980c05735e2a651d96011320a949eb31a0c8b38b72645ce97dec676"
+checksum = "bfe33edd8e85a12a67454e37f8c75e730830d83e313556ab9ebf9ee7fbeb3bfb"
 dependencies = [
  "crc32fast",
+ "libz-rs-sys",
  "miniz_oxide",
- "zlib-rs",
 ]
 
 [[package]]
@@ -2707,6 +2707,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "libz-rs-sys"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b484ba8d4f775eeca644c452a56650e544bf7e617f1d170fe7298122ead5222"
+dependencies = [
+ "zlib-rs",
+]
+
+[[package]]
 name = "lintian-brush"
 version = "0.158.19"
 dependencies = [
@@ -2750,6 +2759,7 @@ dependencies = [
  "sqlx",
  "strsim",
  "svp-client",
+ "systemd-unit-edit",
  "tempfile",
  "textwrap",
  "tokio",
@@ -2859,9 +2869,9 @@ dependencies = [
 
 [[package]]
 name = "makefile-lossless"
-version = "0.3.16"
+version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cba235f1750a7a53dd4e641e5f8c9c212a9c2667f77ad880a051e79e7fd3eea9"
+checksum = "82f87e24ca94033f79cb9d414d6e1cdbf836a5b53c0dc1f35b13c505023f36eb"
 dependencies = [
  "log",
  "rowan",
@@ -3276,7 +3286,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "toml 0.9.8",
- "toml_edit 0.23.8",
+ "toml_edit 0.23.9",
  "upstream-ontologist",
  "url",
  "whoami",
@@ -5087,6 +5097,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "systemd-unit-edit"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73d7fbf89b576ae84f5ed7c6b124a6caaf9862c14ffbdbf2a8f4a73a82a3425a"
+dependencies = [
+ "rowan",
+]
+
+[[package]]
 name = "tar"
 version = "0.4.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5362,9 +5381,9 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.23.8"
+version = "0.23.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a9b7ac41d92f2d2803f233e297127bac397df7b337e0460a1cc39d6c006dee4"
+checksum = "5d7cbc3b4b49633d57a0509303158ca50de80ae32c265093b24c414705807832"
 dependencies = [
  "indexmap",
  "toml_datetime 0.7.3",

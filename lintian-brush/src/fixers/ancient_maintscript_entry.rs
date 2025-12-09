@@ -1,6 +1,6 @@
 use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
 use chrono::{DateTime, NaiveDate, Utc};
-use debian_analyzer::maintscripts::{Entry, Maintscript};
+use debian_analyzer::maintscripts::Entry;
 use debian_changelog::ChangeLog;
 use debversion::Version;
 use distro_info::{DebianDistroInfo, DistroInfo};
