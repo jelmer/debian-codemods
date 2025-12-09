@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{declare_fixer, Certainty, FixerError, FixerResult, LintianIssue};
 use patchkit::quilt::{Series, SeriesEntry};
 use std::collections::HashSet;
 use std::fs;
@@ -128,6 +128,7 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
     Ok(FixerResult::builder(&description)
         .fixed_issues(fixed_issues)
         .overridden_issues(overridden_issues)
+        .certainty(Certainty::Certain)
         .build())
 }
 

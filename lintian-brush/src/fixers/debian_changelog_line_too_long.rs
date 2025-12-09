@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{declare_fixer, Certainty, FixerError, FixerResult, LintianIssue};
 use debian_changelog::textwrap::try_rewrap_changes;
 use debian_changelog::ChangeLog;
 use std::fs;
@@ -38,6 +38,7 @@ pub fn run(base_path: &Path, package: &str, thorough: bool) -> Result<FixerResul
 
     let mut fixed_issues = Vec::new();
     let mut overridden_issues = Vec::new();
+    let mut versions_to_fix = std::collections::HashSet::new();
 
     // Check each change for long lines and create issues inline
     for change in changes_to_check {
@@ -57,6 +58,9 @@ pub fn run(base_path: &Path, package: &str, thorough: bool) -> Result<FixerResul
 
                 if issue.should_fix(base_path) {
                     fixed_issues.push(issue);
+                    if let Some(version) = change.version() {
+                        versions_to_fix.insert(version.to_string());
+                    }
                 } else {
                     overridden_issues.push(issue);
                 }
@@ -82,6 +86,15 @@ pub fn run(base_path: &Path, package: &str, thorough: bool) -> Result<FixerResul
     let mut fixed_versions = Vec::new();
 
     for entry in entries_to_process {
+        // Only rewrap entries whose version has issues that should be fixed
+        if let Some(version) = entry.version() {
+            if !versions_to_fix.contains(&version.to_string()) {
+                continue;
+            }
+        } else {
+            continue; // Skip entries without version
+        }
+
         let change_lines: Vec<String> = entry.change_lines().collect();
 
         // Rewrap the changes
@@ -128,16 +141,17 @@ pub fn run(base_path: &Path, package: &str, thorough: bool) -> Result<FixerResul
 
     let description = if !fixed_versions.is_empty() {
         format!(
-            "Wrap long lines in changelog entries: {}.",
+            "Wrap long lines in changelog entries: {}",
             fixed_versions.join(", ")
         )
     } else {
-        "Wrap long lines in changelog entries.".to_string()
+        "Wrap long lines in changelog entries".to_string()
     };
 
     Ok(FixerResult::builder(&description)
         .fixed_issues(fixed_issues)
         .overridden_issues(overridden_issues)
+        .certainty(Certainty::Certain)
         .build())
 }
 
