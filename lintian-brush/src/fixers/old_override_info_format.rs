@@ -128,7 +128,12 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         for (lineno, override_text) in &result.1 {
             let issue = LintianIssue::source_with_info(
                 "mismatched-override",
-                vec![format!("{} [{}:{}]", override_text, rel_path.display(), lineno)],
+                vec![format!(
+                    "{} [{}:{}]",
+                    override_text,
+                    rel_path.display(),
+                    lineno
+                )],
             );
             fixed_issues.push(issue);
             linenos.push(*lineno);

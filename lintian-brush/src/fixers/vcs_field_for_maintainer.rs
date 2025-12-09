@@ -80,10 +80,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         // Extract VCS type from field name (e.g., "Vcs-Git" -> "Git")
         let vcs_type = field_name.strip_prefix("Vcs-").unwrap_or(&field_name);
 
-        let issue = LintianIssue::source_with_info(
-            tag,
-            vec![vcs_type.to_string()],
-        );
+        let issue = LintianIssue::source_with_info(tag, vec![vcs_type.to_string()]);
 
         if !issue.should_fix(base_path) {
             overridden_issues.push(issue);

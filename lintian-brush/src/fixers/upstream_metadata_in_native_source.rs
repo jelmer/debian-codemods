@@ -46,12 +46,12 @@ pub fn run(
         fs::remove_dir(&upstream_dir)?;
     }
 
-    Ok(FixerResult::builder(
-        "Remove debian/upstream/metadata in native source package"
+    Ok(
+        FixerResult::builder("Remove debian/upstream/metadata in native source package")
+            .certainty(crate::Certainty::Certain)
+            .fixed_issue(issue)
+            .build(),
     )
-    .certainty(crate::Certainty::Certain)
-    .fixed_issue(issue)
-    .build())
 }
 
 declare_fixer! {

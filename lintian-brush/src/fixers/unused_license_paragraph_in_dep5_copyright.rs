@@ -128,7 +128,10 @@ fn check_license_references(deb822: &Deb822, extra_defined: &HashSet<String>) ->
     Certainty::Certain
 }
 
-fn remove_unused_license_paragraphs(deb822: &mut Deb822, extra_defined: &HashSet<String>) -> Vec<(String, usize)> {
+fn remove_unused_license_paragraphs(
+    deb822: &mut Deb822,
+    extra_defined: &HashSet<String>,
+) -> Vec<(String, usize)> {
     let mut indices_to_remove = Vec::new();
     let mut removed_licenses = Vec::new();
 
@@ -215,7 +218,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     for (license_name, line_number) in &removed_licenses {
         let issue = LintianIssue::source_with_info(
             "unused-license-paragraph-in-dep5-copyright",
-            vec![format!("{} [debian/copyright:{}]", license_name, line_number)],
+            vec![format!(
+                "{} [debian/copyright:{}]",
+                license_name, line_number
+            )],
         );
         fixed_issues.push(issue);
     }

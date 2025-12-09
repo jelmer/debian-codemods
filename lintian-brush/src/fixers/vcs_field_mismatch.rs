@@ -51,7 +51,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
                                 let issue = LintianIssue::source_with_info(
                                     "vcs-field-mismatch",
-                                    vec![format!("Vcs-{} != Vcs-{} {}", vcs_type, actual_vcs, vcs_url_value)],
+                                    vec![format!(
+                                        "Vcs-{} != Vcs-{} {}",
+                                        vcs_type, actual_vcs, vcs_url_value
+                                    )],
                                 );
 
                                 if !issue.should_fix(base_path) {

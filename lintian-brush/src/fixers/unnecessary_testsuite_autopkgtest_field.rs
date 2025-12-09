@@ -34,7 +34,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 editor.commit()?;
 
                 return Ok(FixerResult::builder(
-                    "Remove unnecessary 'Testsuite: autopkgtest' header"
+                    "Remove unnecessary 'Testsuite: autopkgtest' header",
                 )
                 .fixed_issue(issue)
                 .build());

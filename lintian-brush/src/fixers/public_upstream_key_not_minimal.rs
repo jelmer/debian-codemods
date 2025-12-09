@@ -116,7 +116,11 @@ fn minimize_key_block(
     // Signatures were removed - get the primary key's keyid
     let keyid = certs[0].keyid().to_hex();
 
-    Ok(MinimizeResult::SignaturesRemoved(output, keyid, third_party_count))
+    Ok(MinimizeResult::SignaturesRemoved(
+        output,
+        keyid,
+        third_party_count,
+    ))
 }
 
 pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerError> {
@@ -176,7 +180,10 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
                     Ok(MinimizeResult::SignaturesRemoved(minimized, keyid, count)) => {
                         let issue = LintianIssue::source_with_info(
                             "public-upstream-key-not-minimal",
-                            vec![format!("has {} extra signature(s) for keyid {} [{}]", count, keyid, path_str)],
+                            vec![format!(
+                                "has {} extra signature(s) for keyid {} [{}]",
+                                count, keyid, path_str
+                            )],
                         );
 
                         if issue.should_fix(base_path) {
@@ -229,9 +236,11 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
                 .build(),
         )
     } else if format_upgraded {
-        Ok(FixerResult::builder("Upgrade upstream signing key to new packet format")
-            .certainty(crate::Certainty::Certain)
-            .build())
+        Ok(
+            FixerResult::builder("Upgrade upstream signing key to new packet format")
+                .certainty(crate::Certainty::Certain)
+                .build(),
+        )
     } else {
         if !overridden_issues.is_empty() {
             Err(FixerError::NoChangesAfterOverrides(overridden_issues))

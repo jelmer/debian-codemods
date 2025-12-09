@@ -51,12 +51,10 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
                 source.set_rules_requires_root(false);
                 editor.commit()?;
 
-                return Ok(
-                    FixerResult::builder("Set Rules-Requires-Root: no")
-                        .fixed_issue(issue)
-                        .certainty(crate::Certainty::Possible)
-                        .build(),
-                );
+                return Ok(FixerResult::builder("Set Rules-Requires-Root: no")
+                    .fixed_issue(issue)
+                    .certainty(crate::Certainty::Possible)
+                    .build());
             }
         }
     } else if current_require_root.as_deref() == Some("no") {
@@ -68,11 +66,9 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
                 source.as_mut_deb822().remove("Rules-Requires-Root");
                 editor.commit()?;
 
-                return Ok(
-                    FixerResult::builder("Removed Rules-Requires-Root")
-                        .certainty(crate::Certainty::Possible)
-                        .build(),
-                );
+                return Ok(FixerResult::builder("Removed Rules-Requires-Root")
+                    .certainty(crate::Certainty::Possible)
+                    .build());
             }
         }
     }

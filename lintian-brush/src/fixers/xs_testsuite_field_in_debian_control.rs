@@ -22,7 +22,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             let line_number = entry.line() + 1;
             let issue = LintianIssue::source_with_info(
                 "adopted-extended-field",
-                vec![format!("(in section for source) XS-Testsuite [debian/control:{}]", line_number)],
+                vec![format!(
+                    "(in section for source) XS-Testsuite [debian/control:{}]",
+                    line_number
+                )],
             );
 
             if !issue.should_fix(base_path) {

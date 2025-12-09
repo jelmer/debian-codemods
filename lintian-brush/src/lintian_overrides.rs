@@ -377,7 +377,20 @@ fn parse_line(builder: &mut GreenNodeBuilder, line: &str, _errors: &mut Vec<Stri
             // It should be 1-2 words (package name, optionally with "source" or "binary")
             let before_colon = &trimmed_start[..pos];
             let words_before: Vec<&str> = before_colon.split_whitespace().collect();
-            if words_before.len() <= 2 {
+
+            // Valid package specs:
+            // - Single word: "source:", "binary:", "package-name:"
+            // - Two words: "source package-name:", "binary package-name:"
+            let is_valid_package_spec = match words_before.len() {
+                1 => true, // Single word is always valid
+                2 => {
+                    // Two words: first must be "source" or "binary"
+                    words_before[0] == "source" || words_before[0] == "binary"
+                }
+                _ => false, // More than 2 words is never a valid package spec
+            };
+
+            if is_valid_package_spec {
                 // This looks like a valid package spec
                 has_package_spec = true;
                 colon_pos = pos;
@@ -897,5 +910,70 @@ mod tests {
         assert!(text.contains("# Test comment"));
         assert!(text.contains("mypackage: some-tag with info"));
         assert!(text.contains("another-tag"));
+    }
+
+    #[test]
+    fn test_parse_info_with_colon() {
+        // Test that info fields containing colons are parsed correctly
+        // This was a bug where "X-Python-Version: >= 2.5" would be misparsed
+        let text = "ancient-python-version-field X-Python-Version: >= 2.5\n";
+        let parsed = LintianOverrides::parse(text);
+        assert!(parsed.errors().is_empty());
+
+        let overrides = parsed.ok().unwrap();
+        let lines: Vec<_> = overrides.lines().collect();
+
+        assert_eq!(lines.len(), 1);
+        assert_eq!(
+            lines[0].tag().unwrap().text(),
+            "ancient-python-version-field"
+        );
+        assert_eq!(
+            lines[0].info(),
+            Some("X-Python-Version: >= 2.5".to_string())
+        );
+        assert_eq!(lines[0].package_spec(), None);
+    }
+
+    #[test]
+    fn test_parse_source_prefix_with_info_containing_colon() {
+        // Test parsing with explicit "source:" prefix and info containing colon
+        let text = "source: ancient-python-version-field X-Python-Version: >= 2.5\n";
+        let parsed = LintianOverrides::parse(text);
+        assert!(parsed.errors().is_empty());
+
+        let overrides = parsed.ok().unwrap();
+        let lines: Vec<_> = overrides.lines().collect();
+
+        assert_eq!(lines.len(), 1);
+        assert_eq!(
+            lines[0].tag().unwrap().text(),
+            "ancient-python-version-field"
+        );
+        assert_eq!(
+            lines[0].info(),
+            Some("X-Python-Version: >= 2.5".to_string())
+        );
+        assert_eq!(
+            lines[0].package_spec().unwrap().package_name().unwrap(),
+            "source"
+        );
+    }
+
+    #[test]
+    fn test_parse_two_word_non_package_spec() {
+        // Test that two words before a colon that don't match package spec pattern
+        // are not treated as a package spec
+        let text = "some-tag field-name: value\n";
+        let parsed = LintianOverrides::parse(text);
+        assert!(parsed.errors().is_empty());
+
+        let overrides = parsed.ok().unwrap();
+        let lines: Vec<_> = overrides.lines().collect();
+
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].tag().unwrap().text(), "some-tag");
+        assert_eq!(lines[0].info(), Some("field-name: value".to_string()));
+        assert_eq!(lines[0].package_spec(), None);
     }
 }

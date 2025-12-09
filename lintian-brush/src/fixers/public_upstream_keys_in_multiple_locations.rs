@@ -98,10 +98,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .map(|p| p.display().to_string())
         .collect();
 
-    let issue = LintianIssue::source_with_info(
-        "public-upstream-keys-in-multiple-locations",
-        file_list,
-    );
+    let issue =
+        LintianIssue::source_with_info("public-upstream-keys-in-multiple-locations", file_list);
 
     if !issue.should_fix(base_path) {
         return Err(FixerError::NoChangesAfterOverrides(vec![issue]));

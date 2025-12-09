@@ -20,7 +20,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             let line_number = entry.line() + 1;
             let issue = LintianIssue::source_with_info(
                 "adopted-extended-field",
-                vec![format!("(in section for source) XC-Package-Type [debian/control:{}]", line_number)],
+                vec![format!(
+                    "(in section for source) XC-Package-Type [debian/control:{}]",
+                    line_number
+                )],
             );
 
             if !issue.should_fix(base_path) {
@@ -43,7 +46,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             let issue = LintianIssue::binary_with_info(
                 &package_name,
                 "adopted-extended-field",
-                vec![format!("(in section for {}) XC-Package-Type [debian/control:{}]", package_name, line_number)],
+                vec![format!(
+                    "(in section for {}) XC-Package-Type [debian/control:{}]",
+                    package_name, line_number
+                )],
             );
 
             if !issue.should_fix(base_path) {

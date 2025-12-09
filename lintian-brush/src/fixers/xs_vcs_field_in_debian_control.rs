@@ -22,16 +22,19 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             .keys()
             .filter(|key| key.starts_with("XS-Vcs-"))
             .filter_map(|key| {
-                paragraph.get_entry(&key).map(|entry| {
-                    (key.to_string(), entry.line() + 1)
-                })
+                paragraph
+                    .get_entry(&key)
+                    .map(|entry| (key.to_string(), entry.line() + 1))
             })
             .collect();
 
         for (xs_field, line_number) in xs_vcs_fields {
             let issue = LintianIssue::source_with_info(
                 "adopted-extended-field",
-                vec![format!("(in section for source) {} [debian/control:{}]", xs_field, line_number)],
+                vec![format!(
+                    "(in section for source) {} [debian/control:{}]",
+                    xs_field, line_number
+                )],
             );
 
             if !issue.should_fix(base_path) {

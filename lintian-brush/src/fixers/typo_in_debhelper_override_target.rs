@@ -82,7 +82,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 if levenshtein(&target_str, known_target) == 1 {
                     let issue = LintianIssue::source_with_info(
                         "typo-in-debhelper-override-target",
-                        vec![format!("{} => {} [debian/rules:{}]", target_str, known_target, line_number)],
+                        vec![format!(
+                            "{} => {} [debian/rules:{}]",
+                            target_str, known_target, line_number
+                        )],
                     );
 
                     if !issue.should_fix(base_path) {

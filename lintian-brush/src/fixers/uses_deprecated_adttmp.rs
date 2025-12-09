@@ -38,7 +38,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
         if !line_numbers.is_empty() {
             // Get relative path from base_path
-            let relative_path = path.strip_prefix(base_path)
+            let relative_path = path
+                .strip_prefix(base_path)
                 .unwrap_or(&path)
                 .to_string_lossy()
                 .to_string();

@@ -51,7 +51,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let old_priority = if let Some(priority) = paragraph.get("Priority") {
             priority.to_string()
         } else {
-            default_priority.as_deref().unwrap_or("optional").to_string()
+            default_priority
+                .as_deref()
+                .unwrap_or("optional")
+                .to_string()
         };
 
         // Create info string showing old section/priority

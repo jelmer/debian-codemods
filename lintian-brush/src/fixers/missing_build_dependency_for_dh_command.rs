@@ -187,13 +187,21 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             if let Some(dep) = command_to_dep.get(executable) {
                 let issue = LintianIssue::source_with_info(
                     "missing-build-dependency-for-dh_-command",
-                    vec![format!("{} (does not satisfy {}) [debian/rules]", executable, dep)],
+                    vec![format!(
+                        "{} (does not satisfy {}) [debian/rules]",
+                        executable, dep
+                    )],
                 );
 
                 if !issue.should_fix(base_path) {
                     overridden_issues.push(issue);
                 } else {
-                    need.push((dep.clone(), "command".to_string(), executable.to_string(), issue));
+                    need.push((
+                        dep.clone(),
+                        "command".to_string(),
+                        executable.to_string(),
+                        issue,
+                    ));
                 }
             }
 
@@ -204,7 +212,10 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
                     if let Some(dep) = addon_to_dep.get(&addon) {
                         let issue = LintianIssue::source_with_info(
                             "missing-build-dependency-for-dh-addon",
-                            vec![format!("{} (does not satisfy {}) [debian/rules]", addon, dep)],
+                            vec![format!(
+                                "{} (does not satisfy {}) [debian/rules]",
+                                addon, dep
+                            )],
                         );
 
                         if !issue.should_fix(base_path) {
