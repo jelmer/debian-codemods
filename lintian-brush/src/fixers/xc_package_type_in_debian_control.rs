@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -10,33 +10,64 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Check and replace XC-Package-Type in source paragraph
     if let Some(mut source) = editor.source() {
         let paragraph = source.as_mut_deb822();
-        if paragraph.rename("XC-Package-Type", "Package-Type") {
-            made_changes = true;
+        if let Some(entry) = paragraph.get_entry("XC-Package-Type") {
+            let line_number = entry.line() + 1;
+            let issue = LintianIssue::source_with_info(
+                "adopted-extended-field",
+                vec![format!("(in section for source) XC-Package-Type [debian/control:{}]", line_number)],
+            );
+
+            if !issue.should_fix(base_path) {
+                overridden_issues.push(issue);
+            } else {
+                paragraph.rename("XC-Package-Type", "Package-Type");
+                fixed_issues.push(issue);
+            }
         }
     }
 
     // Check and replace XC-Package-Type in binary paragraphs
     for mut binary in editor.binaries() {
+        let Some(package_name) = binary.name() else {
+            continue;
+        };
         let paragraph = binary.as_mut_deb822();
-        if paragraph.rename("XC-Package-Type", "Package-Type") {
-            made_changes = true;
+        if let Some(entry) = paragraph.get_entry("XC-Package-Type") {
+            let line_number = entry.line() + 1;
+            let issue = LintianIssue::binary_with_info(
+                &package_name,
+                "adopted-extended-field",
+                vec![format!("(in section for {}) XC-Package-Type [debian/control:{}]", package_name, line_number)],
+            );
+
+            if !issue.should_fix(base_path) {
+                overridden_issues.push(issue);
+            } else {
+                paragraph.rename("XC-Package-Type", "Package-Type");
+                fixed_issues.push(issue);
+            }
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     editor.commit()?;
 
     Ok(
-        FixerResult::builder("Replace XC-Package-Type with Package-Type.")
-            .fixed_tags(vec!["adopted-extended-field"])
+        FixerResult::builder("Replace XC-Package-Type with Package-Type")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .certainty(crate::Certainty::Certain)
             .build(),
     )
@@ -69,7 +100,7 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Replace XC-Package-Type with Package-Type."
+            "Replace XC-Package-Type with Package-Type"
         );
         assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 
