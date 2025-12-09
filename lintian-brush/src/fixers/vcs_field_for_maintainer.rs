@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_changelog::parseaddr;
 use std::collections::HashSet;
@@ -58,6 +58,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .collect();
 
     let mut changed_fields = HashSet::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
+
     for field_name in field_names {
         let Some(value) = paragraph.get(&field_name) else {
             continue;
@@ -74,11 +77,27 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         }
 
-        paragraph.set(&field_name, &url);
-        changed_fields.insert(field_name);
+        // Extract VCS type from field name (e.g., "Vcs-Git" -> "Git")
+        let vcs_type = field_name.strip_prefix("Vcs-").unwrap_or(&field_name);
+
+        let issue = LintianIssue::source_with_info(
+            tag,
+            vec![vcs_type.to_string()],
+        );
+
+        if !issue.should_fix(base_path) {
+            overridden_issues.push(issue);
+        } else {
+            paragraph.set(&field_name, &url);
+            changed_fields.insert(field_name);
+            fixed_issues.push(issue);
+        }
     }
 
-    if changed_fields.is_empty() {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -88,11 +107,13 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     changed_fields_sorted.sort();
 
     Ok(FixerResult::builder(format!(
-        "Update fields {} for maintainer {}.",
+        "Update fields {} for maintainer {}",
         changed_fields_sorted.join(", "),
         maintainer_name
     ))
-    .fixed_tags(vec![tag])
+    .fixed_issues(fixed_issues)
+    .overridden_issues(overridden_issues)
+    .certainty(crate::Certainty::Certain)
     .build())
 }
 
@@ -126,8 +147,9 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Update fields Vcs-Git for maintainer Debian Python Modules Team."
+            "Update fields Vcs-Git for maintainer Debian Python Modules Team"
         );
+        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
         assert_eq!(result.fixed_lintian_issues.len(), 1);
         assert_eq!(
             result.fixed_lintian_issues[0].tag,
@@ -154,8 +176,9 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Update fields Vcs-Git for maintainer Debian Python Applications Team."
+            "Update fields Vcs-Git for maintainer Debian Python Applications Team"
         );
+        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
         assert_eq!(result.fixed_lintian_issues.len(), 1);
         assert_eq!(
             result.fixed_lintian_issues[0].tag,
