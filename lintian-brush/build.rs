@@ -22,8 +22,11 @@ fn main() {
     // Read test directories to discover test names
     let test_dirs = fs::read_dir(test_dir).unwrap();
 
-    for test_dir_entry in test_dirs {
-        let test_dir_entry = test_dir_entry.unwrap();
+    // Sort directory entries for deterministic ordering
+    let mut test_dir_entries: Vec<_> = test_dirs.collect::<Result<_, _>>().unwrap();
+    test_dir_entries.sort_by_key(|entry| entry.file_name());
+
+    for test_dir_entry in test_dir_entries {
         if !test_dir_entry.file_type().unwrap().is_dir() {
             continue;
         }
@@ -33,14 +36,17 @@ fn main() {
         // Discover the tests for this fixer
         let tests = fs::read_dir(test_dir_entry.path()).unwrap();
 
+        // Sort test entries for deterministic ordering
+        let mut test_entries: Vec<_> = tests.collect::<Result<_, _>>().unwrap();
+        test_entries.sort_by_key(|entry| entry.file_name());
+
         dest.write_all("#[allow(non_snake_case)]\n".as_bytes())
             .unwrap();
         let module_name = fixer_name.replace(['-', '.'], "_");
         dest.write_all(format!("mod {} {{\n", module_name).as_bytes())
             .unwrap();
 
-        for test in tests {
-            let test = test.unwrap();
+        for test in test_entries {
             if !test.file_type().unwrap().is_dir() {
                 continue;
             }

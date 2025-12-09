@@ -3,3 +3,8 @@
 # This is needed because debianize tests do extensive apt-file searches
 # for Go and Node.js dependencies which can take 8-17 minutes
 RUST_TEST_TIME_OUT = "900"
+
+[profile.release]
+# Use single codegen unit for reproducible builds
+# Parallel codegen is non-deterministic and causes different build IDs
+codegen-units = 1
