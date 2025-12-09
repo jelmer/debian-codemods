@@ -1,2 +1,3 @@
-Use canonical URL in Vcs-Git.
+Use canonical URL in Vcs-Git
 Fixed-Lintian-Tags: vcs-field-not-canonical
+Certainty: certain

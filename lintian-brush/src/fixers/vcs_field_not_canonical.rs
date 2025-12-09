@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::abstract_control::AbstractControlEditor;
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::debcargo::DebcargoEditor;
@@ -54,7 +54,8 @@ fn canonicalize_vcs_url(vcs_type: &str, url: &str) -> String {
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let mut editor = get_control_editor(base_path)?;
     let mut fields_changed = BTreeSet::new();
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     if let Some(mut source) = editor.source() {
         // TODO: We shouldn't hardcode this list of VCS types.
@@ -68,25 +69,40 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 let new_value = canonicalize_vcs_url(vcs_type, &url);
 
                 if new_value != url {
-                    source.set_vcs_url(vcs_type, &new_value);
-                    fields_changed.insert(format!("Vcs-{}", vcs_type));
-                    made_changes = true;
+                    let field_name = format!("Vcs-{}", vcs_type);
+                    let issue = LintianIssue::source_with_info(
+                        "vcs-field-not-canonical",
+                        vec![format!("{} {} {}", vcs_type, url, new_value)],
+                    );
+
+                    if !issue.should_fix(base_path) {
+                        overridden_issues.push(issue);
+                    } else {
+                        source.set_vcs_url(vcs_type, &new_value);
+                        fields_changed.insert(field_name);
+                        fixed_issues.push(issue);
+                    }
                 }
             }
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     editor.commit();
 
     let fields_list = fields_changed.into_iter().collect::<Vec<_>>().join(", ");
-    let description = format!("Use canonical URL in {}.", fields_list);
+    let description = format!("Use canonical URL in {}", fields_list);
 
     Ok(FixerResult::builder(description)
-        .fixed_tags(vec!["vcs-field-not-canonical"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
+        .certainty(crate::Certainty::Certain)
         .build())
 }
 
@@ -125,7 +141,8 @@ Description: Test package
         assert!(result.is_ok(), "Error: {:?}", result);
 
         let result = result.unwrap();
-        assert_eq!(result.description, "Use canonical URL in Vcs-Browser.");
+        assert_eq!(result.description, "Use canonical URL in Vcs-Browser");
+        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 
         // Check that the file was updated correctly
         let expected_content = r#"Source: test-package
@@ -210,8 +227,9 @@ Description: Test package
         // Fields are sorted in BTreeSet, so they appear in alphabetical order
         assert_eq!(
             result.description,
-            "Use canonical URL in Vcs-Browser, Vcs-Git."
+            "Use canonical URL in Vcs-Browser, Vcs-Git"
         );
+        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 
         // Check that both fields were updated correctly
         // Note: canonical_git_repo_url adds .git suffix but doesn't change git:// to https://
@@ -248,7 +266,8 @@ Description: Test package
         assert!(result.is_ok(), "Error: {:?}", result);
 
         let result = result.unwrap();
-        assert_eq!(result.description, "Use canonical URL in Vcs-Git.");
+        assert_eq!(result.description, "Use canonical URL in Vcs-Git");
+        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 
         // Check that .git was added
         let expected_content = r#"Source: test-package
