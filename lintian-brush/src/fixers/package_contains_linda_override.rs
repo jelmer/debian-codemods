@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -10,7 +10,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let mut removed = Vec::new();
-    let mut fixed_tags = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Read directory entries
     let entries = fs::read_dir(&debian_dir)?;
@@ -21,26 +22,39 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
         if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
             if let Some(package_name) = file_name.strip_suffix(".linda-overrides") {
+                // Create issue for this package
+                let tag_info = format!("usr/share/linda/overrides/{}", package_name);
+                let issue = LintianIssue::binary_with_info(
+                    package_name,
+                    "package-contains-linda-override",
+                    vec![tag_info],
+                );
+
+                if !issue.should_fix(base_path) {
+                    overridden_issues.push(issue);
+                    continue;
+                }
+
                 // Remove the file
                 fs::remove_file(&path)?;
-
-                // Extract the package name (filename without .linda-overrides suffix)
-                let tag_info = format!("usr/share/linda/overrides/{}", package_name);
-
                 removed.push(file_name.to_string());
-                fixed_tags.push(format!("package-contains-linda-override:{}", tag_info));
+                fixed_issues.push(issue);
             }
         }
     }
 
-    if removed.is_empty() {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     let description = format!("Remove obsolete linda overrides: {}", removed.join(", "));
 
     Ok(FixerResult::builder(&description)
-        .fixed_tags(vec!["package-contains-linda-override"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 
