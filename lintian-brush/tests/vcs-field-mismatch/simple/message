@@ -1,2 +1,3 @@
-Changed vcs type from Bzr to Git based on URL.
+Changed vcs type from Bzr to Git based on URL
 Fixed-Lintian-Tags: vcs-field-mismatch
+Certainty: certain
