@@ -1,2 +1,3 @@
-Use ?= for assignments to architecture variables.
+Use ?= for assignments to architecture variables
 Fixed-Lintian-Tags: debian-rules-sets-dpkg-architecture-variable
+Certainty: certain

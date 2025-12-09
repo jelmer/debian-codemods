@@ -1,1 +1,2 @@
-Discard extra empty YAML documents in debian/upstream/metadata.
+Discard extra empty YAML documents in debian/upstream/metadata
+Certainty: certain

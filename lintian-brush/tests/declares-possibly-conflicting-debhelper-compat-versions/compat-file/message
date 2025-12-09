@@ -1,1 +1,2 @@
-Avoid setting debhelper compat version in debian/rules and debian/compat.
+Avoid setting debhelper compat version in debian/rules and debian/compat
+Certainty: certain

@@ -1,2 +1,3 @@
-Remove obsolete debian/pyversions.
+Remove obsolete debian/pyversions
 Fixed-Lintian-Tags: debian-pyversions-is-obsolete
+Certainty: certain

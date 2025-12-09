@@ -1,2 +1,3 @@
-Add missing ${misc:Built-Using} to Built-Using on blah.
+Add missing ${misc:Built-Using} to Built-Using on blah
 Fixed-Lintian-Tags: missing-built-using-field-for-golang-package
+Certainty: certain

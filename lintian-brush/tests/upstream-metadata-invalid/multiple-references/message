@@ -1,2 +1,3 @@
-Remove duplicate values for fields Reference, Reference in debian/upstream/metadata.
+Remove duplicate values for fields Reference, Reference in debian/upstream/metadata
 Fixed-Lintian-Tags: upstream-metadata-yaml-invalid
+Certainty: certain

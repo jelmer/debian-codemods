@@ -1,2 +1,3 @@
-Drop transition for old debug package migration.
+Drop transition for old debug package migration
 Fixed-Lintian-Tags: debug-symbol-migration-possibly-complete
+Certainty: certain

@@ -1,1 +1,2 @@
-debian/copyright: replace unicode linebreaks with regular linebreaks.
+debian/copyright: replace unicode linebreaks with regular linebreaks
+Certainty: certain

@@ -1,2 +1,3 @@
-Drop custom source compression.
+Drop custom source compression
 Fixed-Lintian-Tags: custom-compression-in-debian-source-options
+Certainty: certain

@@ -1,1 +1,2 @@
-Remove obsolete field Name from debian/upstream/metadata (already present in machine-readable debian/copyright).
+Remove obsolete field Name from debian/upstream/metadata (already present in machine-readable debian/copyright)
+Certainty: certain

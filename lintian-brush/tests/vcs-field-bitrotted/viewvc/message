@@ -1,2 +1,3 @@
-Update Vcs-* headers to use salsa repository.
+Update Vcs-* headers to use salsa repository
 Fixed-Lintian-Tags: vcs-field-bitrotted, vcs-obsolete-in-debian-infrastructure
+Certainty: certain

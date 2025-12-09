@@ -1,1 +1,2 @@
-Fix field name typo in debian/tests/control (Test ⇒ Tests).
+Fix field name typo in debian/tests/control (Test ⇒ Tests)
+Certainty: certain
