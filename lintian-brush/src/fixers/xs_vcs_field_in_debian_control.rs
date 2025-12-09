@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -10,36 +10,54 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Only process the source paragraph (XS-Vcs-* fields only appear there)
     if let Some(mut source) = editor.source() {
         let paragraph = source.as_mut_deb822();
 
-        // Find all fields that start with "XS-Vcs-"
-        let xs_vcs_fields: Vec<String> = paragraph
+        // Find all fields that start with "XS-Vcs-" and collect their line numbers
+        let xs_vcs_fields: Vec<(String, usize)> = paragraph
             .keys()
             .filter(|key| key.starts_with("XS-Vcs-"))
-            .map(|key| key.to_string())
+            .filter_map(|key| {
+                paragraph.get_entry(&key).map(|entry| {
+                    (key.to_string(), entry.line() + 1)
+                })
+            })
             .collect();
 
-        for xs_field in xs_vcs_fields {
-            let new_field = xs_field.strip_prefix("XS-").unwrap();
-            if paragraph.rename(&xs_field, new_field) {
-                made_changes = true;
+        for (xs_field, line_number) in xs_vcs_fields {
+            let issue = LintianIssue::source_with_info(
+                "adopted-extended-field",
+                vec![format!("(in section for source) {} [debian/control:{}]", xs_field, line_number)],
+            );
+
+            if !issue.should_fix(base_path) {
+                overridden_issues.push(issue);
+            } else {
+                let new_field = xs_field.strip_prefix("XS-").unwrap();
+                paragraph.rename(&xs_field, new_field);
+                fixed_issues.push(issue);
             }
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     editor.commit()?;
 
     Ok(
-        FixerResult::builder("Remove unnecessary XS- prefix for Vcs- fields in debian/control.")
-            .fixed_tags(vec!["adopted-extended-field"])
+        FixerResult::builder("Remove unnecessary XS- prefix for Vcs- fields in debian/control")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
+            .certainty(crate::Certainty::Certain)
             .build(),
     )
 }
@@ -71,8 +89,9 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Remove unnecessary XS- prefix for Vcs- fields in debian/control."
+            "Remove unnecessary XS- prefix for Vcs- fields in debian/control"
         );
+        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 
         let content = fs::read_to_string(&control_path).unwrap();
         assert!(!content.contains("XS-Vcs-Git"));
@@ -92,8 +111,9 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Remove unnecessary XS- prefix for Vcs- fields in debian/control."
+            "Remove unnecessary XS- prefix for Vcs- fields in debian/control"
         );
+        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 
         let content = fs::read_to_string(&control_path).unwrap();
         assert!(!content.contains("XS-Vcs-Git"));
