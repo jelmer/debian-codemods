@@ -1,3 +1,2 @@
-Fix Debian QA group name
+Fix Debian QA group name.
 Fixed-Lintian-Tags: faulty-debian-qa-group-phrase
-Certainty: certain

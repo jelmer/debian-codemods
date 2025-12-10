@@ -47,7 +47,7 @@ pub fn run(
     }
 
     Ok(
-        FixerResult::builder("Remove debian/upstream/metadata in native source package")
+        FixerResult::builder("Remove debian/upstream/metadata in native source package.")
             .certainty(crate::Certainty::Certain)
             .fixed_issue(issue)
             .build(),
@@ -107,7 +107,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Remove debian/upstream/metadata in native source package"
+            "Remove debian/upstream/metadata in native source package."
         );
         assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 

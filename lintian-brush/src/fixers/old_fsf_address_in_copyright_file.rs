@@ -39,7 +39,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     fs::write(&copyright_path, new_content.as_ref())?;
 
-    Ok(FixerResult::builder("Update FSF postal address")
+    Ok(FixerResult::builder("Update FSF postal address.")
         .fixed_issue(issue)
         .certainty(crate::Certainty::Certain)
         .build())
@@ -71,7 +71,7 @@ mod tests {
         fs::write(&copyright_path, content).unwrap();
 
         let result = run(base_path).unwrap();
-        assert_eq!(result.description, "Update FSF postal address");
+        assert_eq!(result.description, "Update FSF postal address.");
         assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 
         let new_content = fs::read_to_string(&copyright_path).unwrap();

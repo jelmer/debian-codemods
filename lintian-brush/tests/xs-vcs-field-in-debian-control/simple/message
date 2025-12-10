@@ -1,3 +1,2 @@
-Remove unnecessary XS- prefix for Vcs- fields in debian/control
+Remove unnecessary XS- prefix for Vcs- fields in debian/control.
 Fixed-Lintian-Tags: adopted-extended-field
-Certainty: certain

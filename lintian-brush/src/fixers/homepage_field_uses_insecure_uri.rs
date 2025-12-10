@@ -154,7 +154,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     fs::write(&control_path, control.to_string())?;
 
-    Ok(FixerResult::builder("Use secure URI in Homepage field")
+    Ok(FixerResult::builder("Use secure URI in Homepage field.")
         .fixed_issue(issue)
         .build())
 }
@@ -212,7 +212,7 @@ mod tests {
         };
 
         let result = run(base_path, &preferences).unwrap();
-        assert_eq!(result.description, "Use secure URI in Homepage field");
+        assert_eq!(result.description, "Use secure URI in Homepage field.");
 
         let content = fs::read_to_string(debian_dir.join("control")).unwrap();
         assert!(content.contains("Homepage: https://github.com/jelmer/lintian-brush"));

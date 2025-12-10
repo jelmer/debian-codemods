@@ -67,7 +67,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // Write back to file
     std::fs::write(&control_path, control.to_string())?;
 
-    Ok(FixerResult::builder("Add missing dependency on quilt")
+    Ok(FixerResult::builder("Add missing dependency on quilt.")
         .fixed_issues(vec![issue])
         .build())
 }

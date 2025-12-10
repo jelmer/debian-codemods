@@ -59,7 +59,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         std::fs::write(&copyright_path, deb822.to_string())?;
 
         Ok(
-            FixerResult::builder("Make \"Files: *\" paragraph the first in the copyright file")
+            FixerResult::builder("Make \"Files: *\" paragraph the first in the copyright file.")
                 .fixed_issues(vec![issue])
                 .build(),
         )

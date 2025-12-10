@@ -599,7 +599,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     std::fs::write(&control_path, control.to_string())?;
 
     Ok(FixerResult::builder(format!(
-        "Update standards version to {}, no changes needed",
+        "Update standards version to {}, no changes needed.",
         current
     ))
     .certainty(crate::Certainty::Certain)

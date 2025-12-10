@@ -57,10 +57,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     editor.commit()?;
 
     Ok(
-        FixerResult::builder("Remove unnecessary XS- prefix for Vcs- fields in debian/control")
+        FixerResult::builder("Remove unnecessary XS- prefix for Vcs- fields in debian/control.")
             .fixed_issues(fixed_issues)
             .overridden_issues(overridden_issues)
-            .certainty(crate::Certainty::Certain)
             .build(),
     )
 }
@@ -92,9 +91,9 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Remove unnecessary XS- prefix for Vcs- fields in debian/control"
+            "Remove unnecessary XS- prefix for Vcs- fields in debian/control."
         );
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        assert_eq!(result.certainty, None);
 
         let content = fs::read_to_string(&control_path).unwrap();
         assert!(!content.contains("XS-Vcs-Git"));
@@ -114,9 +113,9 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Remove unnecessary XS- prefix for Vcs- fields in debian/control"
+            "Remove unnecessary XS- prefix for Vcs- fields in debian/control."
         );
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        assert_eq!(result.certainty, None);
 
         let content = fs::read_to_string(&control_path).unwrap();
         assert!(!content.contains("XS-Vcs-Git"));

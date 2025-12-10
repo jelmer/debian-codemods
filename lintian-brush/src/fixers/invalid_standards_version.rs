@@ -61,7 +61,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         source.set("Standards-Version", &new_version_str);
         std::fs::write(&control_path, control.to_string())?;
         return Ok(
-            FixerResult::builder("Add missing .0 suffix in Standards-Version")
+            FixerResult::builder("Add missing .0 suffix in Standards-Version.")
                 .fixed_issue(issue)
                 .build(),
         );
@@ -106,7 +106,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     std::fs::write(&control_path, control.to_string())?;
 
     Ok(FixerResult::builder(format!(
-        "Replace invalid standards version {} with valid {}",
+        "Replace invalid standards version {} with valid {}.",
         standards_version_str, new_version_str
     ))
     .fixed_issue(issue)

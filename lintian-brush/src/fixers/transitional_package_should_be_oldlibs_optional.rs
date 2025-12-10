@@ -111,12 +111,12 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let message = if packages.len() == 1 {
         format!(
-            "Move transitional package {} to oldlibs/optional per policy 4.0.1",
+            "Move transitional package {} to oldlibs/optional per policy 4.0.1.",
             packages[0]
         )
     } else {
         format!(
-            "Move transitional packages {} to oldlibs/optional per policy 4.0.1",
+            "Move transitional packages {} to oldlibs/optional per policy 4.0.1.",
             packages.join(", ")
         )
     };

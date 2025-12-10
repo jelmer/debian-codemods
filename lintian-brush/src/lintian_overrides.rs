@@ -402,12 +402,13 @@ fn parse_line(builder: &mut GreenNodeBuilder, line: &str, _errors: &mut Vec<Stri
 
             // Valid package specs:
             // - Single word: "source:", "binary:", "package-name:"
-            // - Two words: "source package-name:", "binary package-name:"
+            // - Two words: "source package-name:", "binary package-name:", "package-name source:", "package-name binary:"
             let is_valid_package_spec = match words_before.len() {
                 1 => true, // Single word is always valid
                 2 => {
-                    // Two words: first must be "source" or "binary"
-                    words_before[0] == "source" || words_before[0] == "binary"
+                    // Two words: either first or second must be "source" or "binary"
+                    words_before[0] == "source" || words_before[0] == "binary" ||
+                    words_before[1] == "source" || words_before[1] == "binary"
                 }
                 _ => false, // More than 2 words is never a valid package spec
             };

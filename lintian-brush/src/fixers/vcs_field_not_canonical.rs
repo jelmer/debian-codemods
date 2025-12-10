@@ -97,12 +97,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     editor.commit();
 
     let fields_list = fields_changed.into_iter().collect::<Vec<_>>().join(", ");
-    let description = format!("Use canonical URL in {}", fields_list);
+    let description = format!("Use canonical URL in {}.", fields_list);
 
     Ok(FixerResult::builder(description)
         .fixed_issues(fixed_issues)
         .overridden_issues(overridden_issues)
-        .certainty(crate::Certainty::Certain)
         .build())
 }
 
@@ -141,8 +140,8 @@ Description: Test package
         assert!(result.is_ok(), "Error: {:?}", result);
 
         let result = result.unwrap();
-        assert_eq!(result.description, "Use canonical URL in Vcs-Browser");
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        assert_eq!(result.description, "Use canonical URL in Vcs-Browser.");
+        assert_eq!(result.certainty, None);
 
         // Check that the file was updated correctly
         let expected_content = r#"Source: test-package
@@ -227,9 +226,9 @@ Description: Test package
         // Fields are sorted in BTreeSet, so they appear in alphabetical order
         assert_eq!(
             result.description,
-            "Use canonical URL in Vcs-Browser, Vcs-Git"
+            "Use canonical URL in Vcs-Browser, Vcs-Git."
         );
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        assert_eq!(result.certainty, None);
 
         // Check that both fields were updated correctly
         // Note: canonical_git_repo_url adds .git suffix but doesn't change git:// to https://
@@ -266,8 +265,8 @@ Description: Test package
         assert!(result.is_ok(), "Error: {:?}", result);
 
         let result = result.unwrap();
-        assert_eq!(result.description, "Use canonical URL in Vcs-Git");
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        assert_eq!(result.description, "Use canonical URL in Vcs-Git.");
+        assert_eq!(result.certainty, None);
 
         // Check that .git was added
         let expected_content = r#"Source: test-package

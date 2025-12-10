@@ -1,3 +1,2 @@
-Remove empty leading paragraph in Description
+Remove empty leading paragraph in Description.
 Fixed-Lintian-Tags: extended-description-contains-empty-paragraph
-Certainty: certain

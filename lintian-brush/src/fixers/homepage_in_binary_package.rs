@@ -97,7 +97,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     editor.commit()?;
 
     Ok(
-        FixerResult::builder("Set Homepage field in Source rather than Binary package")
+        FixerResult::builder("Set Homepage field in Source rather than Binary package.")
             .fixed_issues(fixed_issues)
             .overridden_issues(overridden_issues)
             .build(),
@@ -150,7 +150,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Set Homepage field in Source rather than Binary package"
+            "Set Homepage field in Source rather than Binary package."
         );
     }
 

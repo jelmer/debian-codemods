@@ -80,7 +80,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     editor.commit()?;
 
-    Ok(FixerResult::builder("Add autopkgtest for node")
+    Ok(FixerResult::builder("Add autopkgtest for node.")
         .certainty(CERTAINTY)
         .fixed_issue(issue)
         .build())
@@ -163,7 +163,7 @@ Description: Test package
 
         assert!(result.is_ok());
         let result = result.unwrap();
-        assert_eq!(result.description, "Add autopkgtest for node");
+        assert_eq!(result.description, "Add autopkgtest for node.");
         assert_eq!(result.certainty, Some(Certainty::Possible));
 
         // Check that the test file was created
@@ -206,7 +206,7 @@ Description: Test package
 
         assert!(result.is_ok());
         let result = result.unwrap();
-        assert_eq!(result.description, "Add autopkgtest for node");
+        assert_eq!(result.description, "Add autopkgtest for node.");
         assert_eq!(result.certainty, Some(Certainty::Possible));
 
         // Check that the test file was created

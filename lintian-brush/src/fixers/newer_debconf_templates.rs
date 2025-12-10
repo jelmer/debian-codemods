@@ -116,7 +116,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     }
 
     Ok(
-        FixerResult::builder("Run debconf-updatepo after template changes")
+        FixerResult::builder("Run debconf-updatepo after template changes.")
             .fixed_issue(issue)
             .build(),
     )

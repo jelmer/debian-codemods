@@ -1,3 +1,2 @@
-Use secure URI in Vcs control header Vcs-Git
+Use secure URI in Vcs control header Vcs-Git.
 Fixed-Lintian-Tags: vcs-field-uses-insecure-uri
-Certainty: certain

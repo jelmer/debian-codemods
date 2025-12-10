@@ -60,7 +60,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     Ok(
-        FixerResult::builder("Update renamed lintian tag names in lintian overrides")
+        FixerResult::builder("Update renamed lintian tag names in lintian overrides.")
             .fixed_issues(fixed_issues)
             .overridden_issues(overridden_issues)
             .build(),

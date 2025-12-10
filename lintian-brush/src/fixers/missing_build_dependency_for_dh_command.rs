@@ -289,13 +289,13 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     let description = if changed.len() == 1 {
         let (dep, kind, name) = &changed[0];
         format!(
-            "Add missing build dependency on {} for {} {}",
+            "Add missing build dependency on {} for {} {}.",
             dep, kind, name
         )
     } else {
         let mut desc = "Add missing build dependencies:".to_string();
         for (dep, kind, name) in &changed {
-            desc.push_str(&format!("\n* {} for {} {}", dep, kind, name));
+            desc.push_str(&format!("\n* {} for {} {}.", dep, kind, name));
         }
         desc
     };
@@ -370,7 +370,7 @@ Description: blah blah
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Add missing build dependency on dh-python | dh-sequence-python3 for command dh_python3"
+            "Add missing build dependency on dh-python | dh-sequence-python3 for command dh_python3."
         );
 
         // Check that dh-python was added to Build-Depends

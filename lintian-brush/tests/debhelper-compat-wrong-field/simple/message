@@ -1,2 +1,1 @@
-Move debhelper-compat from Build-Depends-Indep to Build-Depends
-Certainty: certain
+Move debhelper-compat from Build-Depends-Indep to Build-Depends.

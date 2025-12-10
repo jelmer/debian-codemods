@@ -51,7 +51,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
                 source.set_rules_requires_root(false);
                 editor.commit()?;
 
-                return Ok(FixerResult::builder("Set Rules-Requires-Root: no")
+                return Ok(FixerResult::builder("Set Rules-Requires-Root: no.")
                     .fixed_issue(issue)
                     .certainty(crate::Certainty::Possible)
                     .build());
@@ -143,7 +143,7 @@ mod tests {
         assert!(result.is_ok());
 
         let result = result.unwrap();
-        assert_eq!(result.description, "Set Rules-Requires-Root: no");
+        assert_eq!(result.description, "Set Rules-Requires-Root: no.");
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
         assert!(updated_content.contains("Rules-Requires-Root: no"));

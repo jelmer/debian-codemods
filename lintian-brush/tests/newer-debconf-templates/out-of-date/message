@@ -1,3 +1,2 @@
-Run debconf-updatepo after template changes
+Run debconf-updatepo after template changes.
 Fixed-Lintian-Tags: newer-debconf-templates
-Certainty: certain

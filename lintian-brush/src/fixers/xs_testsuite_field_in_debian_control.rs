@@ -54,7 +54,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     editor.commit()?;
 
     Ok(
-        FixerResult::builder("Remove unnecessary XS-Testsuite field in debian/control")
+        FixerResult::builder("Remove unnecessary XS-Testsuite field in debian/control.")
             .fixed_issues(fixed_issues)
             .overridden_issues(overridden_issues)
             .certainty(crate::Certainty::Certain)
@@ -89,7 +89,7 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Remove unnecessary XS-Testsuite field in debian/control"
+            "Remove unnecessary XS-Testsuite field in debian/control."
         );
         assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 

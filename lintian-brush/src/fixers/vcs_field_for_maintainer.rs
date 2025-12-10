@@ -104,13 +104,12 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     changed_fields_sorted.sort();
 
     Ok(FixerResult::builder(format!(
-        "Update fields {} for maintainer {}",
+        "Update fields {} for maintainer {}.",
         changed_fields_sorted.join(", "),
         maintainer_name
     ))
     .fixed_issues(fixed_issues)
     .overridden_issues(overridden_issues)
-    .certainty(crate::Certainty::Certain)
     .build())
 }
 
@@ -144,9 +143,9 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Update fields Vcs-Git for maintainer Debian Python Modules Team"
+            "Update fields Vcs-Git for maintainer Debian Python Modules Team."
         );
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        assert_eq!(result.certainty, None);
         assert_eq!(result.fixed_lintian_issues.len(), 1);
         assert_eq!(
             result.fixed_lintian_issues[0].tag,
@@ -173,9 +172,9 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Update fields Vcs-Git for maintainer Debian Python Applications Team"
+            "Update fields Vcs-Git for maintainer Debian Python Applications Team."
         );
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        assert_eq!(result.certainty, None);
         assert_eq!(result.fixed_lintian_issues.len(), 1);
         assert_eq!(
             result.fixed_lintian_issues[0].tag,

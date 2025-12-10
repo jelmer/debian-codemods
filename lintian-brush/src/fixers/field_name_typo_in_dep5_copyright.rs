@@ -85,7 +85,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let fixed_str = build_fixed_string(&case_fixed, &typo_fixed);
 
     Ok(FixerResult::builder(format!(
-        "Fix field name {} in debian/copyright ({})",
+        "Fix field name {} in debian/copyright ({}).",
         kind, fixed_str
     ))
     .fixed_issues(fixed_issues)
@@ -237,7 +237,7 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Fix field name typo in debian/copyright (File ⇒ Files)"
+            "Fix field name typo in debian/copyright (File ⇒ Files)."
         );
         assert_eq!(result.fixed_lintian_issues.len(), 1);
         assert_eq!(
@@ -266,7 +266,7 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Fix field name case in debian/copyright (Upstream-name ⇒ Upstream-Name)"
+            "Fix field name case in debian/copyright (Upstream-name ⇒ Upstream-Name)."
         );
         // Case fixes don't get lintian tags
         assert_eq!(result.fixed_lintian_issues.len(), 0);
@@ -292,7 +292,7 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Fix field name typo in debian/copyright (X-Comment ⇒ Comment)"
+            "Fix field name typo in debian/copyright (X-Comment ⇒ Comment)."
         );
         assert_eq!(result.fixed_lintian_issues.len(), 1);
 

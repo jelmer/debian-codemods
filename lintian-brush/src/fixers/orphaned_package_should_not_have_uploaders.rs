@@ -47,7 +47,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 editor.commit()?;
 
                 return Ok(
-                    FixerResult::builder("Remove uploaders from orphaned package")
+                    FixerResult::builder("Remove uploaders from orphaned package.")
                         .fixed_issue(issue)
                         .build(),
                 );

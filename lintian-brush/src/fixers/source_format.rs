@@ -95,9 +95,9 @@ pub fn run(
     fs::write(&format_path, format!("{}\n", target_format))?;
 
     let description = if target_format == "1.0" {
-        "Add missing debian/source/format"
+        "Add missing debian/source/format."
     } else {
-        &format!("Upgrade to newer source format {}", target_format)
+        &format!("Upgrade to newer source format {}.", target_format)
     };
 
     Ok(FixerResult::builder(description.to_string())

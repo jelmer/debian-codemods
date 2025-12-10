@@ -229,16 +229,14 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
     // Return appropriate result based on what changed
     if signatures_removed {
         Ok(
-            FixerResult::builder("Re-export upstream signing key without extra signatures")
+            FixerResult::builder("Re-export upstream signing key without extra signatures.")
                 .fixed_issues(fixed_issues)
                 .overridden_issues(overridden_issues)
-                .certainty(crate::Certainty::Certain)
                 .build(),
         )
     } else if format_upgraded {
         Ok(
-            FixerResult::builder("Upgrade upstream signing key to new packet format")
-                .certainty(crate::Certainty::Certain)
+            FixerResult::builder("Upgrade upstream signing key to new packet format.")
                 .build(),
         )
     } else {
@@ -380,7 +378,7 @@ mod tests {
 
         let result = result.unwrap();
         assert_eq!(
-            result.description, "Upgrade upstream signing key to new packet format",
+            result.description, "Upgrade upstream signing key to new packet format.",
             "Should report format upgrade, not tag fix"
         );
         assert!(

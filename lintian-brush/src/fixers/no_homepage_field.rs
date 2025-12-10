@@ -95,7 +95,7 @@ pub fn run(
                 if issue.should_fix(base_path) {
                     source_para.set("Homepage", &homepage_url);
                     made_changes = true;
-                    description = "Fill in Homepage field".to_string();
+                    description = "Fill in Homepage field.".to_string();
                     certainty = convert_certainty(upstream_certainty);
                     fixed_issues.push(issue);
                 } else {
@@ -124,7 +124,7 @@ pub fn run(
                         if issue.should_fix(base_path) {
                             source_para.set("Homepage", &homepage_url);
                             made_changes = true;
-                            description = format!("Avoid {} in Homepage field", hostname.unwrap());
+                            description = format!("Avoid {} in Homepage field.", hostname.unwrap());
                             certainty = convert_certainty(upstream_certainty);
                             fixed_issues.push(issue);
                         } else {

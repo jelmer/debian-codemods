@@ -55,7 +55,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     editor.commit()?;
 
                     return Ok(FixerResult::builder(
-                        "Update maintainer email for merge of DPMT and PAPT",
+                        "Update maintainer email for merge of DPMT and PAPT.",
                     )
                     .fixed_issue(issue)
                     .build());
@@ -110,7 +110,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Update maintainer email for merge of DPMT and PAPT"
+            "Update maintainer email for merge of DPMT and PAPT."
         );
 
         let updated_content = fs::read_to_string(&control_path).unwrap();

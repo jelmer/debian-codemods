@@ -60,7 +60,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     std::fs::write(&control_path, control.to_string())?;
 
     Ok(
-        FixerResult::builder("Move libmodule-build-perl from Build-Depends-Indep to Build-Depends")
+        FixerResult::builder("Move libmodule-build-perl from Build-Depends-Indep to Build-Depends.")
             .fixed_issue(issue)
             .build(),
     )
@@ -97,7 +97,7 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Move libmodule-build-perl from Build-Depends-Indep to Build-Depends"
+            "Move libmodule-build-perl from Build-Depends-Indep to Build-Depends."
         );
 
         let content = fs::read_to_string(&control_path).unwrap();

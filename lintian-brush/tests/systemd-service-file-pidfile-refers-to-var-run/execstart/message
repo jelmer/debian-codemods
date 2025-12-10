@@ -1,3 +1,2 @@
-Replace /var/run with /run for the Service PIDFile
+Replace /var/run with /run for the Service PIDFile.
 Fixed-Lintian-Tags: systemd-service-file-refers-to-var-run
-Certainty: certain

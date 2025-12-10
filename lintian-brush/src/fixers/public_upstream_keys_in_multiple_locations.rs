@@ -134,7 +134,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
     }
 
-    Ok(FixerResult::builder("Merge upstream signing key files")
+    Ok(FixerResult::builder("Merge upstream signing key files.")
         .fixed_issue(issue)
         .certainty(crate::Certainty::Certain)
         .build())

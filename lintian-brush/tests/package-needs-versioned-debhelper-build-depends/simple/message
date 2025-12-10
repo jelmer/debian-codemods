@@ -1,3 +1,2 @@
-Bump debhelper dependency to >= 12, since that's what is used in debian/compat
+Bump debhelper dependency to >= 12, since that's what is used in debian/compat.
 Fixed-Lintian-Tags: no-versioned-debhelper-prerequisite
-Certainty: certain

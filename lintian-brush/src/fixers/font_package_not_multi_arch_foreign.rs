@@ -68,7 +68,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let plural = if updated_packages.len() > 1 { "s" } else { "" };
     let packages_str = updated_packages.join(", ");
     let message = format!(
-        "Set Multi-Arch: foreign on package{} {}",
+        "Set Multi-Arch: foreign on package{} {}.",
         plural, packages_str
     );
 
@@ -128,7 +128,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Set Multi-Arch: foreign on package fonts-blah"
+            "Set Multi-Arch: foreign on package fonts-blah."
         );
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
@@ -163,7 +163,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Set Multi-Arch: foreign on package xfonts-test"
+            "Set Multi-Arch: foreign on package xfonts-test."
         );
     }
 
@@ -262,7 +262,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Set Multi-Arch: foreign on packages fonts-foo, fonts-bar"
+            "Set Multi-Arch: foreign on packages fonts-foo, fonts-bar."
         );
 
         let updated_content = fs::read_to_string(&control_path).unwrap();

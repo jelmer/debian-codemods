@@ -156,7 +156,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     editor.commit()?;
 
     Ok(
-        FixerResult::builder("Use standard Vcs fields for perl package")
+        FixerResult::builder("Use standard Vcs fields for perl package.")
             .certainty(crate::Certainty::Certain)
             .fixed_issues(fixed_issues)
             .overridden_issues(overridden_issues)

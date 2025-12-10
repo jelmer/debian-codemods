@@ -151,7 +151,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let (path, linenos) = fixed_linenos.iter().next().unwrap();
         let path_str = shorten_path(path, base_path);
         format!(
-            "Update lintian override info format in {} on line {}",
+            "Update lintian override info format in {} on line {}.",
             path_str,
             linenos_to_ranges(linenos)
         )
@@ -266,7 +266,7 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Update lintian override info format in d/source/lintian-overrides on line 1"
+            "Update lintian override info format in d/source/lintian-overrides on line 1."
         );
 
         // Check the file was updated
@@ -295,7 +295,7 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Update lintian override info format in d/source/lintian-overrides on line 1-2"
+            "Update lintian override info format in d/source/lintian-overrides on line 1-2."
         );
 
         // Check the file was updated

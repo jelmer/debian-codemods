@@ -76,9 +76,12 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 }
 
                 // Add back the newline separator (except after the last line if it didn't have one)
+                // Note: split creates an empty last element when content ends with \n
                 if line_idx < lines.len() - 1 {
                     new_content.push(b'\n');
-                } else if content.ends_with(b"\n") {
+                } else if content.ends_with(b"\n") && !line.is_empty() {
+                    // Only add final newline if the last line is not empty
+                    // (empty last line means content already ended with \n)
                     new_content.push(b'\n');
                 }
             }

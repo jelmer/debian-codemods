@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerResult, LintianIssue};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_changelog::textwrap::try_rewrap_changes;
 use debian_changelog::ChangeLog;
 use std::fs;
@@ -141,17 +141,16 @@ pub fn run(base_path: &Path, package: &str, thorough: bool) -> Result<FixerResul
 
     let description = if !fixed_versions.is_empty() {
         format!(
-            "Wrap long lines in changelog entries: {}",
+            "Wrap long lines in changelog entries: {}.",
             fixed_versions.join(", ")
         )
     } else {
-        "Wrap long lines in changelog entries".to_string()
+        "Wrap long lines in changelog entries.".to_string()
     };
 
     Ok(FixerResult::builder(&description)
         .fixed_issues(fixed_issues)
         .overridden_issues(overridden_issues)
-        .certainty(Certainty::Certain)
         .build())
 }
 

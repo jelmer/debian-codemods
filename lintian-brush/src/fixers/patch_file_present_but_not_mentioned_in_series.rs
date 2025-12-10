@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerResult, LintianIssue};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use patchkit::quilt::{Series, SeriesEntry};
 use std::collections::HashSet;
 use std::fs;
@@ -115,12 +115,12 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
 
     let description = if removed.len() == 1 {
         format!(
-            "Remove patch {} that is missing from debian/patches/series",
+            "Remove patch {} that is missing from debian/patches/series.",
             removed[0]
         )
     } else {
         format!(
-            "Remove patches {} that are missing from debian/patches/series",
+            "Remove patches {} that are missing from debian/patches/series.",
             removed.join(", ")
         )
     };
@@ -128,7 +128,6 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
     Ok(FixerResult::builder(&description)
         .fixed_issues(fixed_issues)
         .overridden_issues(overridden_issues)
-        .certainty(Certainty::Certain)
         .build())
 }
 

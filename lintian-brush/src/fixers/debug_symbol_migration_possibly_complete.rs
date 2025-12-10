@@ -258,11 +258,10 @@ pub fn run(
     let mut fixed_issues = Vec::new();
     let mut overridden_issues = Vec::new();
 
-    for (rule_idx, mut rule) in makefile.rules().enumerate() {
-        let mut commands_to_update = Vec::new();
-        let mut commands_to_remove = Vec::new();
+    for (rule_idx, rule) in makefile.rules().enumerate() {
+        let mut rule_modified = false;
 
-        for (i, recipe_node) in rule.recipe_nodes().enumerate() {
+        for mut recipe_node in rule.recipe_nodes() {
             let recipe = recipe_node.text();
             let line_no = recipe_node.line() + 1;
             let ret = eliminate_dbgsym_migration(
@@ -273,29 +272,16 @@ pub fn run(
                 &mut fixed_issues,
                 &mut overridden_issues,
             );
-            if ret.is_empty() {
-                // Command should be removed
-                commands_to_remove.push(i);
-            } else if ret != recipe.as_bytes() {
-                // Command should be updated
-                commands_to_update.push((i, String::from_utf8_lossy(&ret).into_owned()));
+            if !ret.is_empty() && ret != recipe.as_bytes() {
+                // Command should be updated - use replace_text() directly on Recipe
+                recipe_node.replace_text(&String::from_utf8_lossy(&ret));
+                made_changes = true;
+                rule_modified = true;
             }
         }
 
-        // Apply updates
-        for (i, new_recipe) in &commands_to_update {
-            rule.replace_command(*i, new_recipe);
-            made_changes = true;
-        }
-
-        // Remove commands in reverse order to maintain indices
-        for i in commands_to_remove.iter().rev() {
-            rule.remove_command(*i);
-            made_changes = true;
-        }
-
         // Track rules that need discard_pointless_override check
-        if !commands_to_update.is_empty() || !commands_to_remove.is_empty() {
+        if rule_modified {
             rules_to_check.push(rule_idx);
         }
     }

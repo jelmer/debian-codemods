@@ -43,7 +43,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     fs::remove_file(&old_path)?;
 
     Ok(
-        FixerResult::builder("Move source package lintian overrides to debian/source")
+        FixerResult::builder("Move source package lintian overrides to debian/source.")
             .fixed_issue(issue)
             .certainty(crate::Certainty::Certain)
             .build(),
@@ -77,7 +77,7 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Move source package lintian overrides to debian/source"
+            "Move source package lintian overrides to debian/source."
         );
         assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 

@@ -88,7 +88,7 @@ pub fn run(
     }
 
     Ok(
-        FixerResult::builder("Drop unnecessary dependency on dh-autoreconf")
+        FixerResult::builder("Drop unnecessary dependency on dh-autoreconf.")
             .fixed_issue(issue)
             .build(),
     )

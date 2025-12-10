@@ -172,7 +172,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     Ok(
-        FixerResult::builder("Use set -e rather than passing -e on the shebang-line")
+        FixerResult::builder("Use set -e rather than passing -e on the shebang-line.")
             .fixed_issues(fixed_issues)
             .overridden_issues(overridden_issues)
             .build(),
@@ -221,7 +221,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Use set -e rather than passing -e on the shebang-line"
+            "Use set -e rather than passing -e on the shebang-line."
         );
     }
 

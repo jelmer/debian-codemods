@@ -76,6 +76,25 @@ fn file_strip_whitespace(
         }
     }
 
+    // Check if we need to strip trailing empty lines
+    if strip_trailing_empty_lines {
+        let lines: Vec<&[u8]> = content.split_inclusive(|&b| b == b'\n').collect();
+        let trailing_empty_count = lines.iter().rev().take_while(|l| **l == b"\n").count();
+        if trailing_empty_count > 0 {
+            let issue = LintianIssue::source_with_info(
+                "trailing-whitespace",
+                vec![format!("[{}:EOF]", relative_path)],
+            );
+
+            if issue.should_fix(base_path) {
+                lines_to_fix.push(usize::MAX); // Special marker for trailing empty lines
+                fixed_issues.push(issue);
+            } else {
+                overridden_issues.push(issue);
+            }
+        }
+    }
+
     if lines_to_fix.is_empty() {
         return Ok(FileStripResult {
             fixed_issues,
@@ -97,8 +116,8 @@ fn file_strip_whitespace(
         }
     }
 
-    // Strip trailing empty lines
-    if strip_trailing_empty_lines {
+    // Strip trailing empty lines (only if we decided to fix them)
+    if strip_trailing_empty_lines && lines_to_fix.contains(&usize::MAX) {
         while !newlines.is_empty() && newlines.last().is_some_and(|l| l == b"\n") {
             newlines.pop();
         }

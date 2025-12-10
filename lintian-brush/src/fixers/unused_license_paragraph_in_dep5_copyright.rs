@@ -228,7 +228,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let license_list: Vec<_> = extra_defined.iter().cloned().collect();
     Ok(FixerResult::builder(format!(
-        "Remove unused license definitions for {}",
+        "Remove unused license definitions for {}.",
         license_list.join(", ")
     ))
     .certainty(certainty)

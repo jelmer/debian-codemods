@@ -1,3 +1,2 @@
-Update lintian override info format in d/source/lintian-overrides on line 2
+Update lintian override info format in d/source/lintian-overrides on line 2.
 Fixed-Lintian-Tags: mismatched-override
-Certainty: certain

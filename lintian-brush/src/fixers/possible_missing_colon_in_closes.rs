@@ -219,11 +219,11 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         .any(|i| i.tag.as_deref() == Some("misspelled-closes-bug"));
 
     let description = if has_colon_fixes && !has_typo_fixes {
-        "Add missing colon in closes line"
+        "Add missing colon in closes line."
     } else if has_typo_fixes && !has_colon_fixes {
-        "Fix misspelling of Close ⇒ Closes"
+        "Fix misspelling of Close ⇒ Closes."
     } else {
-        "Fix formatting of bug closes"
+        "Fix formatting of bug closes."
     };
 
     Ok(FixerResult::builder(description)

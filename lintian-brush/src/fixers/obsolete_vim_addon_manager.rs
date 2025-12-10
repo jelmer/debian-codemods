@@ -106,7 +106,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     }
 
     Ok(
-        FixerResult::builder("Migrate from vim-addon-manager to dh-vim-addon")
+        FixerResult::builder("Migrate from vim-addon-manager to dh-vim-addon.")
             .fixed_issues(fixed_issues)
             .overridden_issues(overridden_issues)
             .build(),
@@ -200,7 +200,7 @@ Description: Blah blah
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Migrate from vim-addon-manager to dh-vim-addon"
+            "Migrate from vim-addon-manager to dh-vim-addon."
         );
 
         // Check that vim-addon-manager was removed from Depends

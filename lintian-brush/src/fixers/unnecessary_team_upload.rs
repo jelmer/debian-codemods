@@ -110,7 +110,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     fs::write(&changelog_path, changelog.to_string())?;
 
     Ok(
-        FixerResult::builder("Remove unnecessary Team Upload line in changelog")
+        FixerResult::builder("Remove unnecessary Team Upload line in changelog.")
             .fixed_issues(vec![issue])
             .build(),
     )

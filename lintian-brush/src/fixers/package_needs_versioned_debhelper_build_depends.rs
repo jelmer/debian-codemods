@@ -56,7 +56,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     std::fs::write(&control_path, control.to_string())?;
 
     Ok(FixerResult::builder(format!(
-        "Bump debhelper dependency to >= {}, since that's what is used in debian/compat",
+        "Bump debhelper dependency to >= {}, since that's what is used in debian/compat.",
         minimum_version
     ))
     .fixed_issue(issue)

@@ -294,7 +294,7 @@ pub fn run(
         return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
-    Ok(FixerResult::builder("Create a debian/copyright file")
+    Ok(FixerResult::builder("Create a debian/copyright file.")
         .certainty(certainty)
         .fixed_issue(issue)
         .build())

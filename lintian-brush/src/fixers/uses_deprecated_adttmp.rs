@@ -78,7 +78,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     Ok(
-        FixerResult::builder("Replace use of deprecated $ADTTMP with $AUTOPKGTEST_TMP")
+        FixerResult::builder("Replace use of deprecated $ADTTMP with $AUTOPKGTEST_TMP.")
             .certainty(crate::Certainty::Certain)
             .fixed_issues(fixed_issues)
             .overridden_issues(overridden_issues)

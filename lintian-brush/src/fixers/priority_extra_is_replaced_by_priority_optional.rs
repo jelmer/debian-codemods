@@ -63,7 +63,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     editor.commit()?;
 
     Ok(
-        FixerResult::builder("Change priority extra to priority optional")
+        FixerResult::builder("Change priority extra to priority optional.")
             .fixed_issues(fixed_issues)
             .overridden_issues(overridden_issues)
             .certainty(crate::Certainty::Certain)
@@ -108,7 +108,7 @@ Description: Test package
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Change priority extra to priority optional"
+            "Change priority extra to priority optional."
         );
         assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 

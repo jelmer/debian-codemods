@@ -148,7 +148,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         .map(|(pkg, old, new)| format!("binary package {} ({} ⇒ {})", pkg, old, new))
         .collect();
 
-    let description = format!("Fix sections for {}", changes_desc.join(", "));
+    let description = format!("Fix sections for {}.", changes_desc.join(", "));
 
     Ok(FixerResult::builder(&description)
         .certainty(CERTAINTY)

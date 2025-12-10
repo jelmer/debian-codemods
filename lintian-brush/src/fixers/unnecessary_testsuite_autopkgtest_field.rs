@@ -34,7 +34,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 editor.commit()?;
 
                 return Ok(FixerResult::builder(
-                    "Remove unnecessary 'Testsuite: autopkgtest' header",
+                    "Remove unnecessary 'Testsuite: autopkgtest' header.",
                 )
                 .fixed_issue(issue)
                 .build());
@@ -88,7 +88,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Remove unnecessary 'Testsuite: autopkgtest' header"
+            "Remove unnecessary 'Testsuite: autopkgtest' header."
         );
 
         let updated_content = fs::read_to_string(&control_path).unwrap();

@@ -40,7 +40,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     paragraph.set("Maintainer", QA_MAINTAINER);
                     editor.commit()?;
 
-                    return Ok(FixerResult::builder("Fix Debian QA group name")
+                    return Ok(FixerResult::builder("Fix Debian QA group name.")
                         .fixed_issue(issue)
                         .build());
                 }
@@ -76,7 +76,7 @@ mod tests {
         fs::write(&control_path, "Source: lintian-brush\nMaintainer: QA Folks <packages@qa.debian.org>\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n").unwrap();
 
         let result = run(base_path).unwrap();
-        assert_eq!(result.description, "Fix Debian QA group name");
+        assert_eq!(result.description, "Fix Debian QA group name.");
 
         let content = fs::read_to_string(&control_path).unwrap();
         assert!(content.contains("Maintainer: Debian QA Group <packages@qa.debian.org>"));
@@ -157,7 +157,7 @@ mod tests {
             fs::write(&control_path, format!("Source: test\nMaintainer: {}\n\nPackage: test\nDescription: Test\n Test package\n", wrong_name)).unwrap();
 
             let result = run(base_path).unwrap();
-            assert_eq!(result.description, "Fix Debian QA group name");
+            assert_eq!(result.description, "Fix Debian QA group name.");
 
             let content = fs::read_to_string(&control_path).unwrap();
             assert!(content.contains("Maintainer: Debian QA Group <packages@qa.debian.org>"));

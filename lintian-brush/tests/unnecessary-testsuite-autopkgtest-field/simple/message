@@ -1,3 +1,2 @@
-Remove unnecessary 'Testsuite: autopkgtest' header
+Remove unnecessary 'Testsuite: autopkgtest' header.
 Fixed-Lintian-Tags: unnecessary-testsuite-autopkgtest-field
-Certainty: certain

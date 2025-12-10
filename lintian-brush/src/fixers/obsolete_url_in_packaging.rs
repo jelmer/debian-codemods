@@ -37,7 +37,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                         editor.commit()?;
 
                         return Ok(FixerResult::builder(
-                            "Drop fields with obsolete URLs".to_string(),
+                            "Drop fields with obsolete URLs.".to_string(),
                         )
                         .fixed_issue(issue)
                         .build());
@@ -91,7 +91,7 @@ mod tests {
         assert!(result.is_ok());
 
         let result = result.unwrap();
-        assert_eq!(result.description, "Drop fields with obsolete URLs");
+        assert_eq!(result.description, "Drop fields with obsolete URLs.");
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
         assert_eq!(updated_content, "Source: blah\n");

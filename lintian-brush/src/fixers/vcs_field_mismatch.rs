@@ -85,12 +85,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     editor.commit()?;
 
     Ok(FixerResult::builder(format!(
-        "Changed vcs type from {} to {} based on URL",
+        "Changed vcs type from {} to {} based on URL.",
         old_vcs, new_vcs
     ))
     .fixed_issues(fixed_issues)
     .overridden_issues(overridden_issues)
-    .certainty(crate::Certainty::Certain)
     .build())
 }
 
@@ -125,9 +124,9 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Changed vcs type from Bzr to Git based on URL"
+            "Changed vcs type from Bzr to Git based on URL."
         );
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        assert_eq!(result.certainty, None);
 
         let content = fs::read_to_string(&control_path).unwrap();
         assert!(!content.contains("Vcs-Bzr"));

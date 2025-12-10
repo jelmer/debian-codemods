@@ -126,7 +126,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     std::fs::remove_file(&compat_path)?;
 
     Ok(
-        FixerResult::builder("Set debhelper-compat version in Build-Depends")
+        FixerResult::builder("Set debhelper-compat version in Build-Depends.")
             .fixed_issue(issue)
             .build(),
     )

@@ -146,7 +146,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .collect::<Vec<_>>()
         .join(", ");
 
-    let message = format!("Fix field name {} in debian/control ({})", kind, fixed_str);
+    let message = format!("Fix field name {} in debian/control ({}).", kind, fixed_str);
 
     Ok(FixerResult::builder(message)
         .fixed_issues(fixed_issues)
@@ -197,7 +197,7 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(
             result.description,
-            "Fix field name case in debian/control (HomePage ⇒ Homepage)"
+            "Fix field name case in debian/control (HomePage ⇒ Homepage)."
         );
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
@@ -241,7 +241,7 @@ mod tests {
         assert!(result.is_ok());
 
         let result = result.unwrap();
-        assert_eq!(result.description, "Fix field name cases in debian/control (HomePage ⇒ Homepage, architecture ⇒ Architecture, maintainer ⇒ Maintainer)");
+        assert_eq!(result.description, "Fix field name cases in debian/control (HomePage ⇒ Homepage, architecture ⇒ Architecture, maintainer ⇒ Maintainer).");
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
         assert!(updated_content.contains("Homepage:"));

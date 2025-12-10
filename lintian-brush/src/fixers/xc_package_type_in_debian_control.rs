@@ -71,7 +71,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     editor.commit()?;
 
     Ok(
-        FixerResult::builder("Replace XC-Package-Type with Package-Type")
+        FixerResult::builder("Replace XC-Package-Type with Package-Type.")
             .fixed_issues(fixed_issues)
             .overridden_issues(overridden_issues)
             .certainty(crate::Certainty::Certain)
@@ -106,7 +106,7 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(
             result.description,
-            "Replace XC-Package-Type with Package-Type"
+            "Replace XC-Package-Type with Package-Type."
         );
         assert_eq!(result.certainty, Some(crate::Certainty::Certain));
 
