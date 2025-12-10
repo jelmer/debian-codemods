@@ -1,0 +1,5 @@
+Source: libfoo-perl
+Maintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>
+
+Package: libfoo-perl
+Description: dummy package
