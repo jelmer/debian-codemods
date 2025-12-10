@@ -1,7 +1,49 @@
 use rowan::{GreenNode, GreenNodeBuilder};
 use std::fmt;
 
-/// Syntax kinds for lintian override files
+/// Check if an info string matches a pattern with wildcards
+///
+/// Supports `*` wildcards in patterns like `[debian/copyright:*]` matching `[debian/copyright:31]`
+/// The asterisk matches arbitrary strings similar to shell wildcards.
+fn info_matches(pattern: &str, value: &str) -> bool {
+    if pattern == value {
+        return true;
+    }
+
+    // Check if pattern contains wildcards
+    if !pattern.contains('*') {
+        return false;
+    }
+
+    // Split pattern by wildcards
+    let parts: Vec<&str> = pattern.split('*').collect();
+
+    // Check prefix (before first *)
+    if !parts[0].is_empty() && !value.starts_with(parts[0]) {
+        return false;
+    }
+
+    // Check suffix (after last *)
+    if !parts[parts.len() - 1].is_empty() && !value.ends_with(parts[parts.len() - 1]) {
+        return false;
+    }
+
+    // Check middle parts appear in order
+    let mut pos = parts[0].len();
+    for part in &parts[1..parts.len() - 1] {
+        if part.is_empty() {
+            continue;
+        }
+        if let Some(found) = value[pos..].find(part) {
+            pos += found + part.len();
+        } else {
+            return false;
+        }
+    }
+
+    true
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
@@ -290,10 +332,10 @@ impl OverrideLine {
         // Check info if we have it
         if let Some(ref our_info) = issue.info {
             if let Some(override_info) = self.info() {
-                // Compare info - for now, exact match
+                // Compare info - support wildcard matching
                 let override_info = override_info.trim();
                 let our_info_str = our_info.join(" ");
-                if override_info != our_info_str {
+                if !info_matches(override_info, &our_info_str) {
                     return false;
                 }
             }
@@ -407,8 +449,10 @@ fn parse_line(builder: &mut GreenNodeBuilder, line: &str, _errors: &mut Vec<Stri
                 1 => true, // Single word is always valid
                 2 => {
                     // Two words: either first or second must be "source" or "binary"
-                    words_before[0] == "source" || words_before[0] == "binary" ||
-                    words_before[1] == "source" || words_before[1] == "binary"
+                    words_before[0] == "source"
+                        || words_before[0] == "binary"
+                        || words_before[1] == "source"
+                        || words_before[1] == "binary"
                 }
                 _ => false, // More than 2 words is never a valid package spec
             };
@@ -851,6 +895,60 @@ pub fn fix_override_info(tag: &str, info: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_info_matches_exact() {
+        assert!(info_matches("foo", "foo"));
+        assert!(!info_matches("foo", "bar"));
+    }
+
+    #[test]
+    fn test_info_matches_wildcard_simple() {
+        assert!(info_matches("*", "anything"));
+        assert!(info_matches("*", ""));
+        assert!(info_matches("**", "anything"));
+    }
+
+    #[test]
+    fn test_info_matches_wildcard_prefix() {
+        assert!(info_matches("*.js", "file.js"));
+        assert!(info_matches("*.js", "path/to/file.js"));
+        assert!(!info_matches("*.js", "file.css"));
+    }
+
+    #[test]
+    fn test_info_matches_wildcard_suffix() {
+        assert!(info_matches("debian/*", "debian/control"));
+        assert!(info_matches("debian/*", "debian/rules"));
+        assert!(!info_matches("debian/*", "other/file"));
+    }
+
+    #[test]
+    fn test_info_matches_wildcard_middle() {
+        assert!(info_matches(
+            "[debian/copyright:*]",
+            "[debian/copyright:31]"
+        ));
+        assert!(info_matches(
+            "[debian/copyright:*]",
+            "[debian/copyright:100]"
+        ));
+        assert!(!info_matches("[debian/copyright:*]", "[debian/rules:31]"));
+        assert!(!info_matches("[debian/copyright:*]", "debian/copyright:31"));
+    }
+
+    #[test]
+    fn test_info_matches_multiple_wildcards() {
+        assert!(info_matches("*.html.*.js", "foo.html.bar.js"));
+        assert!(info_matches("*.html.*.js", "foo.html.baz.qux.js"));
+        assert!(!info_matches("*.html.*.js", "foo.css.bar.js"));
+    }
+
+    #[test]
+    fn test_info_matches_wildcard_empty_parts() {
+        assert!(info_matches("foo**bar", "foobar"));
+        assert!(info_matches("foo**bar", "fooxyzbar"));
+    }
 
     #[test]
     fn test_parse_simple_override() {
