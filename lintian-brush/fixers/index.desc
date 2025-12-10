@@ -64,10 +64,6 @@ fixers:
     # See https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1076245
     force-subprocess: true
 
-  - script: debian-watch-file-is-missing.py
-    lintian-tags:
-      - debian-watch-file-is-missing
-
   # Lookups in vcswatch are by original URL, so fix branches before
   # making any other changes to the Vcs field.
   - script: vcs-field-invalid-branch.py
@@ -83,12 +79,6 @@ fixers:
       - vcs-field-bitrotted
 
   - script: vcs-broken-uri.py
-
-  - script: debian-rules-uses-unnecessary-dh-argument.py
-    lintian-tags:
-      - debian-rules-uses-unnecessary-dh-argument
-
-  - script: upstream-metadata-has-obsolete-field.py
 
   - script: debian-rules-sets-dpkg-architecture-variable.py
     lintian-tags:
