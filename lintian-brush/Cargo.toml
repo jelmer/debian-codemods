@@ -40,7 +40,7 @@ svp-client = { workspace = true }
 inventory = "0.3"
 regex = { workspace = true }
 sequoia-openpgp = "2"
-makefile-lossless = "0.3.14"
+makefile-lossless = "0.3.18"
 sha1 = "0.10"
 shell-words = "1"
 debian-watch = { version = "0.2.16", features = ["discover", "blocking", "pgp"] }
