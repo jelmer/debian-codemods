@@ -70,8 +70,16 @@ pub fn run(base_path: &Path, thorough: bool) -> Result<FixerResult, FixerError> 
         }
 
         made_changes = true;
-        if let Some(version) = entry.version() {
-            fixed_versions.push(version.to_string());
+        match entry.try_version() {
+            Some(Ok(version)) => {
+                fixed_versions.push(version.to_string());
+            }
+            None => {
+                log::debug!("No version found for changelog entry, skipping version recording.");
+            }
+            Some(Err(e)) => {
+                log::debug!("Failed to parse version for changelog entry: {}", e);
+            }
         }
     }
 
