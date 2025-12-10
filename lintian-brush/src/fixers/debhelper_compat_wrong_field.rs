@@ -65,7 +65,7 @@ declare_fixer! {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+
     use debian_control::lossless::Control;
     use std::str::FromStr;
 

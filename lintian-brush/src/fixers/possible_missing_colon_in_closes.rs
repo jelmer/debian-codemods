@@ -196,7 +196,7 @@ declare_fixer! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
+
     use std::fs;
     use tempfile::TempDir;
 

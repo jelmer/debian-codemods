@@ -2350,6 +2350,7 @@ name = "import-uncommitted"
 version = "0.163.0"
 dependencies = [
  "breezyshim",
+ "chrono",
  "clap",
  "debian-analyzer",
  "debian-changelog",

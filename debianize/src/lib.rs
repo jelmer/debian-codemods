@@ -2196,7 +2196,10 @@ async fn find_wnpp_bugs_for_package_async(
 
     // Use the existing analyzer functionality
     match debian_analyzer::wnpp::find_wnpp_bugs_harder(&name_refs).await {
-        Ok(bugs) => Ok(bugs),
+        Ok(bugs) => Ok(bugs
+            .into_iter()
+            .map(|(id, kind)| (id as i64, kind))
+            .collect()),
         Err(e) => {
             log::warn!("Failed to query WNPP bugs: {}", e);
             Ok(vec![])

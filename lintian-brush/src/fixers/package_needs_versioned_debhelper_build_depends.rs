@@ -79,7 +79,7 @@ Description: blah blah
 "#;
 
         let control = Control::from_str(input).unwrap();
-        let mut source = control.source().unwrap();
+        let source = control.source().unwrap();
         let mut build_depends = source.build_depends().unwrap();
 
         let version = Version::from_str("12~").unwrap();
@@ -101,7 +101,7 @@ Description: blah blah
 "#;
 
         let control = Control::from_str(input).unwrap();
-        let mut source = control.source().unwrap();
+        let source = control.source().unwrap();
         let mut build_depends = source.build_depends().unwrap();
         let original = build_depends.to_string();
 
