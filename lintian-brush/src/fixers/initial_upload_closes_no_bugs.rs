@@ -1,4 +1,5 @@
 use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use debian_analyzer::wnpp::{BugId, BugKind};
 use debian_changelog::ChangeLog;
 use std::fs;
 use std::path::Path;
@@ -118,9 +119,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     .build())
 }
 
-fn find_wnpp_bugs(
-    package_name: &str,
-) -> Result<Vec<(i64, debian_analyzer::wnpp::BugKind)>, FixerError> {
+fn find_wnpp_bugs(package_name: &str) -> Result<Vec<(BugId, BugKind)>, FixerError> {
     // Create a Tokio runtime to run the async function
     let rt = tokio::runtime::Runtime::new()
         .map_err(|e| FixerError::Other(format!("Failed to create async runtime: {}", e)))?;
@@ -128,9 +127,7 @@ fn find_wnpp_bugs(
     rt.block_on(find_wnpp_bugs_async(package_name))
 }
 
-async fn find_wnpp_bugs_async(
-    package_name: &str,
-) -> Result<Vec<(i64, debian_analyzer::wnpp::BugKind)>, FixerError> {
+async fn find_wnpp_bugs_async(package_name: &str) -> Result<Vec<(BugId, BugKind)>, FixerError> {
     let names = vec![package_name];
 
     // Try to find WNPP bugs
