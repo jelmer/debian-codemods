@@ -34,7 +34,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                         package: None,
                         package_type: Some(PackageType::Source),
                         tag: Some("custom-compression-in-debian-source-options".to_string()),
-                        info: Some(vec![format!("{} (line {})", line, lineno + 1)]),
+                        info: Some(format!("{} (line {})", line, lineno + 1)),
                     };
 
                     if !issue.should_fix(base_path) {
@@ -57,7 +57,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                         package: None,
                         package_type: Some(PackageType::Source),
                         tag: Some("custom-compression-in-debian-source-options".to_string()),
-                        info: Some(vec![format!("{} (line {})", line, lineno + 1)]),
+                        info: Some(format!("{} (line {})", line, lineno + 1)),
                     };
 
                     if !issue.should_fix(base_path) {

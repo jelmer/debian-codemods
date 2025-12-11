@@ -1,2 +1,3 @@
 Re-export upstream signing key without extra signatures.
-Fixed-Lintian-Tags: public-upstream-key-not-minimal
+Fixed-Lintian-Issues:
+ source: public-upstream-key-not-minimal has 1413 extra signature(s) for keyid 00806F2BD729A457 [debian/upstream/signing-key.asc]

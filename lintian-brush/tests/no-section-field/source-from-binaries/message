@@ -1,3 +1,4 @@
 Section field set in source stanza rather than binary packages.
 Certainty: certain
-Fixed-Lintian-Tags: recommended-field
+Fixed-Lintian-Issues:
+ source: recommended-field (in section for source) Section [debian/control:1]

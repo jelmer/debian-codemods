@@ -304,6 +304,21 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
                 panic!("Test {} failed - tags mismatch", test_name);
             }
 
+            // Compare full issue details including info field
+            if expected_result.fixed_lintian_issues != actual_result.fixed_lintian_issues {
+                eprintln!(
+                    "Expected issues: {:?}",
+                    expected_result.fixed_lintian_issues
+                );
+                eprintln!("Got issues: {:?}", actual_result.fixed_lintian_issues);
+                eprintln!("\nExpected message format:");
+                eprintln!("Fixed-Lintian-Issues:");
+                for issue in &actual_result.fixed_lintian_issues {
+                    eprintln!(" {}", issue);
+                }
+                panic!("Test {} failed - issue details mismatch", test_name);
+            }
+
             if expected_result.certainty != actual_result.certainty {
                 eprintln!("Expected certainty: {:?}", expected_result.certainty);
                 eprintln!("Got certainty: {:?}", actual_result.certainty);

@@ -60,9 +60,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
             // Only replace if we have issues to fix
             if fixed_issues.iter().any(|issue| {
-                issue.info.as_ref().map_or(false, |info| {
-                    info.iter().any(|i| i.contains(&relative_path))
-                })
+                issue
+                    .info
+                    .as_ref()
+                    .is_some_and(|info| info.contains(&relative_path))
             }) {
                 let new_content = pattern.replace_all(&content, replacement);
                 fs::write(&path, new_content.as_ref())?;

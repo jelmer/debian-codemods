@@ -1,3 +1,4 @@
 Set Rules-Requires-Root: no.
 Certainty: possible
-Fixed-Lintian-Tags: silent-on-rules-requiring-root
+Fixed-Lintian-Issues:
+ source: silent-on-rules-requiring-root [debian/control]

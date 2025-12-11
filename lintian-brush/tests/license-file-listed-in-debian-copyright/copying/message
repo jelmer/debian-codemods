@@ -1,3 +1,4 @@
 Remove listed license files (COPYING.lib) from copyright.
 Certainty: certain
-Fixed-Lintian-Tags: license-file-listed-in-debian-copyright
+Fixed-Lintian-Issues:
+ source: license-file-listed-in-debian-copyright COPYING.lib

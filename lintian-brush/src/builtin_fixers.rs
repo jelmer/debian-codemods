@@ -172,7 +172,11 @@ mod tests {
             _preferences: &FixerPreferences,
         ) -> Result<FixerResult, FixerError> {
             Ok(FixerResult::builder("Mock fix applied")
-                .fixed_tags(self.tags.iter().map(|s| s.to_string()))
+                .fixed_issues(
+                    self.tags
+                        .iter()
+                        .map(|s| LintianIssue::just_tag(s.to_string())),
+                )
                 .build())
         }
     }

@@ -60,9 +60,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     std::fs::write(&control_path, control.to_string())?;
 
     Ok(
-        FixerResult::builder("Move libmodule-build-perl from Build-Depends-Indep to Build-Depends.")
-            .fixed_issue(issue)
-            .build(),
+        FixerResult::builder(
+            "Move libmodule-build-perl from Build-Depends-Indep to Build-Depends.",
+        )
+        .fixed_issue(issue)
+        .build(),
     )
 }
 

@@ -246,7 +246,7 @@ License: GPL-3+\n\
         );
         assert_eq!(
             result.fixed_lintian_issues[0].info,
-            Some(vec!["debian/copyright:3".to_string()])
+            Some("debian/copyright:3".to_string())
         );
         assert_eq!(result.overridden_lintian_issues.len(), 0);
 

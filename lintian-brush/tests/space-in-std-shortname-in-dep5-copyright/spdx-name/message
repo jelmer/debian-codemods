@@ -1,2 +1,4 @@
 Replace spaces in short license names with dashes.
-Fixed-Lintian-Tags: space-in-std-shortname-in-dep5-copyright
+Fixed-Lintian-Issues:
+ source: space-in-std-shortname-in-dep5-copyright apache 2.0 [debian/copyright:5]
+ source: space-in-std-shortname-in-dep5-copyright apache 2.0 [debian/copyright:9]

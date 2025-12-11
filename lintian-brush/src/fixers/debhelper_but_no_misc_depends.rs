@@ -82,10 +82,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             package: Some(package_name.clone()),
             package_type: Some(crate::PackageType::Binary),
             tag: Some("debhelper-but-no-misc-depends".to_string()),
-            info: Some(vec![format!(
+            info: Some(format!(
                 "(in section for {}) Depends [debian/control:{}]",
                 package_name, line_no
-            )]),
+            )),
         };
 
         if issue.should_fix(base_path) {

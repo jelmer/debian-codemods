@@ -158,10 +158,7 @@ fn remove_unused_license_paragraphs(
             let line_number = paragraph.line() + 1;
             let issue = LintianIssue::source_with_info(
                 "unused-license-paragraph-in-dep5-copyright",
-                vec![format!(
-                    "{} [debian/copyright:{}]",
-                    name, line_number
-                )],
+                vec![format!("{} [debian/copyright:{}]", name, line_number)],
             );
 
             if issue.should_fix(base_path) {
@@ -240,7 +237,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     fs::write(&copyright_path, new_content)?;
 
-    let license_list: Vec<_> = removed_licenses.iter().map(|(name, _)| name.clone()).collect();
+    let license_list: Vec<_> = removed_licenses
+        .iter()
+        .map(|(name, _)| name.clone())
+        .collect();
     Ok(FixerResult::builder(format!(
         "Remove unused license definitions for {}.",
         license_list.join(", ")

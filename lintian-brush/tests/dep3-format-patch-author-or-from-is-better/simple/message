@@ -1,3 +1,4 @@
 Use Author instead of Origin in patch headers.
 Certainty: confident
-Fixed-Lintian-Tags: dep3-format-patch-author-or-from-is-better
+Fixed-Lintian-Issues:
+ source: dep3-format-patch-author-or-from-is-better [debian/patches/patch1]

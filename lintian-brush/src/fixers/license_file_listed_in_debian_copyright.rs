@@ -82,7 +82,7 @@ pub fn run(
             package: None,
             package_type: Some(crate::PackageType::Source),
             tag: Some("license-file-listed-in-debian-copyright".to_string()),
-            info: Some(vec![file.clone()]),
+            info: Some(file.clone()),
         });
     }
 

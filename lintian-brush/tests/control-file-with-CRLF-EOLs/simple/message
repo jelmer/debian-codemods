@@ -1,2 +1,3 @@
 Format control file with unix-style line endings.
-Fixed-Lintian-Tags: carriage-return-line-feed
+Fixed-Lintian-Issues:
+ source: carriage-return-line-feed debian/control

@@ -1,3 +1,4 @@
 Bump debhelper from deprecated 8 to 13.
 + debian/rules: Drop --fail-missing argument, now the default.
-Fixed-Lintian-Tags: package-uses-deprecated-debhelper-compat-version
+Fixed-Lintian-Issues:
+ source: package-uses-deprecated-debhelper-compat-version 8

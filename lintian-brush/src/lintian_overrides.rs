@@ -56,6 +56,8 @@ pub enum SyntaxKind {
     PACKAGE_NAME,
     /// Colon token
     COLON,
+    /// Package type token
+    PACKAGE_TYPE,
     /// Tag token
     TAG,
     /// Info token
@@ -334,8 +336,7 @@ impl OverrideLine {
             if let Some(override_info) = self.info() {
                 // Compare info - support wildcard matching
                 let override_info = override_info.trim();
-                let our_info_str = our_info.join(" ");
-                if !info_matches(override_info, &our_info_str) {
+                if !info_matches(override_info, our_info) {
                     return false;
                 }
             }
@@ -372,6 +373,15 @@ impl PackageSpec {
             .children_with_tokens()
             .filter_map(|it| it.into_token())
             .find(|it| it.kind() == PACKAGE_NAME)
+            .map(|t| t.text().to_string())
+    }
+
+    /// Get the package type (source or binary)
+    pub fn package_type(&self) -> Option<String> {
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == PACKAGE_TYPE)
             .map(|t| t.text().to_string())
     }
 }
@@ -466,12 +476,43 @@ fn parse_line(builder: &mut GreenNodeBuilder, line: &str, _errors: &mut Vec<Stri
     }
 
     if has_package_spec {
-        // Found package spec - everything before colon is the package spec
+        // Found package spec - parse it into package name and optionally package type
         builder.start_node(PACKAGE_SPEC.into());
-        builder.token(
-            PACKAGE_NAME.into(),
-            &trimmed_start[current_start..colon_pos],
-        );
+
+        let package_spec_text = &trimmed_start[current_start..colon_pos];
+        let spec_parts: Vec<&str> = package_spec_text.split_whitespace().collect();
+
+        // Parse the package spec components
+        // Valid formats:
+        // - "source:" or "binary:" (just type, no package name)
+        // - "package-name:" (just package name, no type)
+        // - "package-name source:" or "package-name binary:" (name then type)
+        // - "source package-name:" or "binary package-name:" (type then name)
+        match spec_parts.len() {
+            1 => {
+                // Single word - could be package name or type
+                builder.token(PACKAGE_NAME.into(), spec_parts[0]);
+            }
+            2 => {
+                // Two words - need to figure out which is name and which is type
+                if spec_parts[0] == "source" || spec_parts[0] == "binary" {
+                    // Format: "source package-name:" or "binary package-name:"
+                    builder.token(PACKAGE_TYPE.into(), spec_parts[0]);
+                    builder.token(WHITESPACE.into(), " ");
+                    builder.token(PACKAGE_NAME.into(), spec_parts[1]);
+                } else {
+                    // Format: "package-name source:" or "package-name binary:"
+                    builder.token(PACKAGE_NAME.into(), spec_parts[0]);
+                    builder.token(WHITESPACE.into(), " ");
+                    builder.token(PACKAGE_TYPE.into(), spec_parts[1]);
+                }
+            }
+            _ => {
+                // Shouldn't happen given our validation above, but handle it
+                builder.token(PACKAGE_NAME.into(), package_spec_text);
+            }
+        }
+
         builder.token(COLON.into(), ":");
         builder.finish_node();
 
@@ -675,20 +716,24 @@ where
 /// If the function returns None, the original line is kept unchanged
 pub fn map_overrides<F>(overrides: &LintianOverrides, mut transform: F) -> LintianOverrides
 where
-    F: FnMut(&OverrideLine) -> Option<(Option<String>, String, Option<String>)>,
+    F: FnMut(&OverrideLine) -> Option<(Option<String>, Option<String>, String, Option<String>)>,
 {
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(ROOT.into());
 
     for line in overrides.lines() {
         // Try to transform the line
-        if let Some((package, tag, info)) = transform(&line) {
+        if let Some((package, package_type, tag, info)) = transform(&line) {
             // Build a new override line with the transformed values
             builder.start_node(OVERRIDE_LINE.into());
 
             if let Some(pkg) = package {
                 builder.start_node(PACKAGE_SPEC.into());
                 builder.token(PACKAGE_NAME.into(), &pkg);
+                if let Some(ptype) = package_type {
+                    builder.token(WHITESPACE.into(), " ");
+                    builder.token(PACKAGE_TYPE.into(), &ptype);
+                }
                 builder.token(COLON.into(), ":");
                 builder.finish_node();
                 builder.token(WHITESPACE.into(), " ");

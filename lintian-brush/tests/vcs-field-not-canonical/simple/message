@@ -1,2 +1,3 @@
 Use canonical URL in Vcs-Browser.
-Fixed-Lintian-Tags: vcs-field-not-canonical
+Fixed-Lintian-Issues:
+ source: vcs-field-not-canonical Browser https://bzr.debian.org/loggerhead/pkg-bazaar/bzr https://anonscm.debian.org/loggerhead/pkg-bazaar/bzr

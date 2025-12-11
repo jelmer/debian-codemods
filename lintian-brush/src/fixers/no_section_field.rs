@@ -97,10 +97,10 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
                     package: Some(package_name.clone()),
                     package_type: Some(crate::PackageType::Binary),
                     tag: Some("recommended-field".to_string()),
-                    info: Some(vec![format!(
+                    info: Some(format!(
                         "(in section for {}) Section [debian/control:{}]",
                         package_name, line_no
-                    )]),
+                    )),
                 };
 
                 if issue.should_fix(base_path) {
@@ -131,10 +131,10 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
                 package: None,
                 package_type: Some(crate::PackageType::Source),
                 tag: Some("recommended-field".to_string()),
-                info: Some(vec![format!(
+                info: Some(format!(
                     "(in section for source) Section [debian/control:{}]",
                     source_line
-                )]),
+                )),
             };
 
             if issue.should_fix(base_path) {

@@ -32,21 +32,33 @@ declare_fixer! {
             return Err(FixerError::NoChanges);
         }
 
+        // Find the line number of the Format field
+        let line_no = content
+            .lines()
+            .enumerate()
+            .find(|(_, line)| format_regex.is_match(line))
+            .map(|(i, _)| i + 1)
+            .unwrap_or(1);
+
+        let issue = crate::LintianIssue::source_with_info(
+            "out-of-date-copyright-format-uri",
+            vec![format!("debian/copyright:{}", line_no)],
+        );
+
+        if !issue.should_fix(basedir) {
+            return Err(FixerError::NoChanges);
+        }
+
         // Replace the Format or Format-Specification line with the correct one
         let new_content = format_regex.replace(&content, CORRECT_FORMAT_URI);
 
         // Write the updated content back
         fs::write(&copyright_path, new_content.as_ref())?;
 
-        Ok(FixerResult::new(
-            "Use correct machine-readable copyright file URI.".to_string(),
-            Some(vec!["out-of-date-copyright-format-uri".to_string()]),
-            Some(Certainty::Certain),
-            None,
-            None,
-            vec![],
-            None,
-        ))
+        Ok(FixerResult::builder("Use correct machine-readable copyright file URI.")
+            .certainty(Certainty::Certain)
+            .fixed_issues(vec![issue])
+            .build())
     }
 }
 

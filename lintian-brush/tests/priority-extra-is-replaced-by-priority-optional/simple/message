@@ -1,3 +1,5 @@
 Change priority extra to priority optional.
-Fixed-Lintian-Tags: priority-extra-is-replaced-by-priority-optional
+Fixed-Lintian-Issues:
+ source: priority-extra-is-replaced-by-priority-optional
+ lintian-brush binary: priority-extra-is-replaced-by-priority-optional
 Certainty: certain

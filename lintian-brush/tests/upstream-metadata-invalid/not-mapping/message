@@ -1,2 +1,8 @@
 Use YAML mapping in debian/upstream/metadata.
-Fixed-Lintian-Tags: upstream-metadata-not-yaml-mapping
+Fixed-Lintian-Issues:
+ source: upstream-metadata-not-yaml-mapping
+ source: upstream-metadata-not-yaml-mapping
+ source: upstream-metadata-not-yaml-mapping
+ source: upstream-metadata-not-yaml-mapping
+ source: upstream-metadata-not-yaml-mapping
+ source: upstream-metadata-not-yaml-mapping

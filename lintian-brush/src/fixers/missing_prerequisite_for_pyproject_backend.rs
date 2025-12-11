@@ -62,10 +62,10 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         package: source.as_deb822().get("Source").map(|s| s.to_string()),
         package_type: Some(crate::PackageType::Source),
         tag: Some("missing-prerequisite-for-pyproject-backend".to_string()),
-        info: Some(vec![format!(
+        info: Some(format!(
             "{} (does not satisfy {})",
             build_backend, prerequisite
-        )]),
+        )),
     };
 
     if !issue.should_fix(base_path) {

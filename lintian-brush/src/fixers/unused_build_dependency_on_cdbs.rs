@@ -70,10 +70,12 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     editor.commit()?;
 
-    Ok(FixerResult::builder("Drop unused build-dependency on cdbs.")
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    Ok(
+        FixerResult::builder("Drop unused build-dependency on cdbs.")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
+            .build(),
+    )
 }
 
 declare_fixer! {

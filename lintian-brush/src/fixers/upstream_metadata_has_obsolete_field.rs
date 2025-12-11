@@ -65,8 +65,8 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     let mut removed_fields: Vec<String> = Vec::new();
 
     // Check if Name or Contact fields exist in the metadata
-    let has_name_or_contact = map.contains_key(&serde_yaml::Value::String("Name".to_string()))
-        || map.contains_key(&serde_yaml::Value::String("Contact".to_string()));
+    let has_name_or_contact = map.contains_key(serde_yaml::Value::String("Name".to_string()))
+        || map.contains_key(serde_yaml::Value::String("Contact".to_string()));
 
     // If the debian/copyright file is machine-readable, then we can drop the
     // Name/Contact information from the debian/upstream/metadata file.
@@ -77,7 +77,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
 
     // First pass: remove null and empty fields
     for field in ["Name", "Contact"] {
-        let Some(value) = map.get(&serde_yaml::Value::String(field.to_string())) else {
+        let Some(value) = map.get(serde_yaml::Value::String(field.to_string())) else {
             continue;
         };
 
@@ -85,14 +85,14 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             value.is_null() || value.as_str().map(|s| s.trim().is_empty()).unwrap_or(false);
 
         if is_empty_or_null {
-            map.remove(&serde_yaml::Value::String(field.to_string()));
+            map.remove(serde_yaml::Value::String(field.to_string()));
             removed_fields.push(field.to_string());
         }
     }
 
     // Second pass: check for obsolete fields
     for (field, copyright_value) in &obsolete_fields {
-        let Some(um_value) = map.get(&serde_yaml::Value::String(field.clone())) else {
+        let Some(um_value) = map.get(serde_yaml::Value::String(field.clone())) else {
             continue;
         };
 
@@ -114,7 +114,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             continue;
         }
 
-        map.remove(&serde_yaml::Value::String(field.clone()));
+        map.remove(serde_yaml::Value::String(field.clone()));
         if !removed_fields.contains(field) {
             removed_fields.push(field.clone());
         }

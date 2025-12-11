@@ -1,3 +1,4 @@
 Avoid pypi.org in Homepage field.
 Certainty: certain
-Fixed-Lintian-Tags: pypi-homepage
+Fixed-Lintian-Issues:
+ source: pypi-homepage https://pypi.org/project/aiohttp-socks/

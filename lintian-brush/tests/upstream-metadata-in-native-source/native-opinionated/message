@@ -1,3 +1,4 @@
 Remove debian/upstream/metadata in native source package.
 Certainty: certain
-Fixed-Lintian-Tags: upstream-metadata-in-native-source
+Fixed-Lintian-Issues:
+ source: upstream-metadata-in-native-source [debian/upstream/metadata]

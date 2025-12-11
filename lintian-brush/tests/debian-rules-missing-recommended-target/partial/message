@@ -1,2 +1,3 @@
 Add missing debian/rules target build-arch.
-Fixed-Lintian-Tags: debian-rules-missing-recommended-target
+Fixed-Lintian-Issues:
+ source: debian-rules-missing-recommended-target build-arch [debian/rules]

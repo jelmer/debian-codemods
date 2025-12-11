@@ -1,2 +1,4 @@
 Refer to specific version of license GPL-3+.
-Fixed-Lintian-Tags: copyright-refers-to-symlink-license, copyright-refers-to-versionless-license-file
+Fixed-Lintian-Issues:
+ source: copyright-refers-to-symlink-license usr/share/common-licenses/GPL
+ source: copyright-refers-to-versionless-license-file usr/share/common-licenses/GPL

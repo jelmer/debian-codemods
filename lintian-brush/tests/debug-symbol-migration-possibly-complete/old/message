@@ -1,2 +1,3 @@
 Drop transition for old debug package migration.
-Fixed-Lintian-Tags: debug-symbol-migration-possibly-complete
+Fixed-Lintian-Issues:
+ source: debug-symbol-migration-possibly-complete --dbgsym-migration='amule-dbg (<< 1:2.3.2-2~)' [debian/rules:7]

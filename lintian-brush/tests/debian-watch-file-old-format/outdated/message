@@ -1,2 +1,3 @@
 Update watch file format version to 4.
-Fixed-Lintian-Tags: older-debian-watch-file-standard
+Fixed-Lintian-Issues:
+ source: older-debian-watch-file-standard 3

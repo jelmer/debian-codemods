@@ -1,2 +1,3 @@
 Move transitional package lintian-brush to oldlibs/optional per policy 4.0.1.
-Fixed-Lintian-Tags: transitional-package-not-oldlibs-optional
+Fixed-Lintian-Issues:
+ lintian-brush binary: transitional-package-not-oldlibs-optional contrib/libs/standard

@@ -53,7 +53,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                         package: Some(package_name.clone()),
                         package_type: Some(crate::PackageType::Binary),
                         tag: Some("installable-field-mirrors-source".to_string()),
-                        info: Some(vec![format!("{} [debian/control:{}]", field, line_no)]),
+                        info: Some(format!("{} [debian/control:{}]", field, line_no)),
                     };
 
                     if issue.should_fix(base_path) {

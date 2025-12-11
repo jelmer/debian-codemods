@@ -1,3 +1,5 @@
 Use standard Vcs fields for perl package.
 Certainty: certain
-Fixed-Lintian-Tags: team/pkg-perl/vcs/no-git, team/pkg-perl/vcs/no-team-url
+Fixed-Lintian-Issues:
+ source: team/pkg-perl/vcs/no-team-url
+ source: team/pkg-perl/vcs/no-git Vcs-Bzr https://bzr.debian.org/perl-team/libblah-perl

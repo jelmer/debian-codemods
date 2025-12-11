@@ -77,10 +77,12 @@ fn process_overrides_file(path: &Path) -> Result<(bool, Vec<(usize, String)>), F
         }
 
         // Extract package spec (the entire package spec as stored)
-        let package = line.package_spec().and_then(|spec| spec.package_name());
+        let package_spec = line.package_spec();
+        let package = package_spec.as_ref().and_then(|spec| spec.package_name());
+        let package_type = package_spec.as_ref().and_then(|spec| spec.package_type());
 
         // Return transformed values
-        Some((package, tag.to_string(), Some(fixed_info)))
+        Some((package, package_type, tag.to_string(), Some(fixed_info)))
     });
 
     // Track which lines were changed by comparing original and updated

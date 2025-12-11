@@ -1,3 +1,4 @@
 Remove empty maintainer scripts: mon (prerm)
 Certainty: certain
-Fixed-Lintian-Tags: maintainer-script-empty
+Fixed-Lintian-Issues:
+ mon binary: maintainer-script-empty [prerm]

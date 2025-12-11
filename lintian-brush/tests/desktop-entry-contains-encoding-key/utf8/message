@@ -1,2 +1,3 @@
 Remove deprecated Encoding key from desktop file debian/foo.desktop.
-Fixed-Lintian-Tags: desktop-entry-contains-encoding-key
+Fixed-Lintian-Issues:
+ source: desktop-entry-contains-encoding-key XX:YY Encoding

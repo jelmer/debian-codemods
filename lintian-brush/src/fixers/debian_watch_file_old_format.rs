@@ -35,7 +35,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         package: None,
         package_type: Some(PackageType::Source),
         tag: Some(tag.to_string()),
-        info: Some(vec![version.to_string()]),
+        info: Some(version.to_string()),
     };
 
     if !issue.should_fix(base_path) {

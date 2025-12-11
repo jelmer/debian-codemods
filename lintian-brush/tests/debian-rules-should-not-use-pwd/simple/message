@@ -1,2 +1,3 @@
 debian/rules: Avoid using $(PWD) variable.
-Fixed-Lintian-Tags: debian-rules-calls-pwd
+Fixed-Lintian-Issues:
+ source: debian-rules-calls-pwd [debian/rules]

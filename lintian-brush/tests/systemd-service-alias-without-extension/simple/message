@@ -1,2 +1,3 @@
 Use proper extensions in Alias in systemd files.
-Fixed-Lintian-Tags: systemd-service-alias-without-extension
+Fixed-Lintian-Issues:
+ source: systemd-service-alias-without-extension debian/foo.service

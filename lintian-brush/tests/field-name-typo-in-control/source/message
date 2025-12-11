@@ -1,2 +1,3 @@
 Fix field name case in debian/control (HomePage ⇒ Homepage).
-Fixed-Lintian-Tags: cute-field
+Fixed-Lintian-Issues:
+ source: cute-field HomePage vs Homepage

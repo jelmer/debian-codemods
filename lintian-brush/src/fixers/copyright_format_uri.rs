@@ -136,9 +136,7 @@ mod tests {
         );
         assert_eq!(
             result.fixed_lintian_issues[0].info,
-            Some(vec![
-                "http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/".to_string()
-            ])
+            Some("http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/".to_string())
         );
 
         let updated_content = fs::read(&copyright_path).unwrap();

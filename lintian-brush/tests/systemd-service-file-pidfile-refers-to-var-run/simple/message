@@ -1,2 +1,3 @@
 Replace /var/run with /run for the Service PIDFile.
-Fixed-Lintian-Tags: systemd-service-file-refers-to-var-run
+Fixed-Lintian-Issues:
+ source: systemd-service-file-refers-to-var-run debian/apcupsd.service PIDFile /var/run/apcupsd.pid

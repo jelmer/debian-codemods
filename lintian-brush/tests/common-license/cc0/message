@@ -1,2 +1,3 @@
 Refer to common license file for CC0-1.0.
-Fixed-Lintian-Tags: copyright-does-not-refer-to-common-license-file
+Fixed-Lintian-Issues:
+ source: copyright-does-not-refer-to-common-license-file

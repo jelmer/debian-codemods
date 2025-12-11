@@ -1,2 +1,5 @@
 Drop use of autotools-dev debhelper.
-Fixed-Lintian-Tags: debhelper-tools-from-autotools-dev-are-deprecated
+Fixed-Lintian-Issues:
+ source: debhelper-tools-from-autotools-dev-are-deprecated dh_autotools-dev_updateconfig [debian/rules:4]
+ source: debhelper-tools-from-autotools-dev-are-deprecated dh ... --with autotools_dev [debian/rules:9]
+ source: debhelper-tools-from-autotools-dev-are-deprecated dh_autotools-dev_restoreconfig [debian/rules:13]

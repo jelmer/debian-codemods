@@ -47,10 +47,10 @@ pub fn run(base_path: &Path, current_version: &Version) -> Result<FixerResult, F
                     package: Some(package.to_string()),
                     package_type: Some(PackageType::Binary),
                     tag: Some("debian-control-has-obsolete-dbg-package".to_string()),
-                    info: Some(vec![format!(
+                    info: Some(format!(
                         "(in section for {}) Package [debian/control:{}]",
                         package, line_number
-                    )]),
+                    )),
                 };
 
                 if issue.should_fix(base_path) {

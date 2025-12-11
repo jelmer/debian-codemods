@@ -1,3 +1,4 @@
 Replace XC-Package-Type with Package-Type.
-Fixed-Lintian-Tags: adopted-extended-field
+Fixed-Lintian-Issues:
+ source: adopted-extended-field (in section for source) XC-Package-Type [debian/control:2]
 Certainty: certain

@@ -1,2 +1,3 @@
 Migrate from vim-addon-manager to dh-vim-addon.
-Fixed-Lintian-Tags: obsolete-vim-addon-manager
+Fixed-Lintian-Issues:
+ vim-blah binary: obsolete-vim-addon-manager

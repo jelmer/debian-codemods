@@ -1,2 +1,3 @@
 Make "Files: *" paragraph the first in the copyright file.
-Fixed-Lintian-Tags: global-files-wildcard-not-first-paragraph-in-dep5-copyright
+Fixed-Lintian-Issues:
+ source: global-files-wildcard-not-first-paragraph-in-dep5-copyright [debian/copyright:7]

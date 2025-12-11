@@ -1,3 +1,4 @@
 Remove unnecessary get-orig-source-target.
 Certainty: possible
-Fixed-Lintian-Tags: debian-rules-contains-unnecessary-get-orig-source-target
+Fixed-Lintian-Issues:
+ source: debian-rules-contains-unnecessary-get-orig-source-target [debian/rules]

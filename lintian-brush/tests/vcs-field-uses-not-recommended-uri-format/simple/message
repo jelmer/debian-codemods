@@ -1,2 +1,3 @@
 Use recommended URI format in Vcs header.
-Fixed-Lintian-Tags: vcs-field-uses-not-recommended-uri-format
+Fixed-Lintian-Issues:
+ source: vcs-field-uses-not-recommended-uri-format vcs-git git@github.com:jelmer/lintian-brush

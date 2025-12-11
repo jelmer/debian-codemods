@@ -49,7 +49,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             package: None,
             package_type: Some(PackageType::Source),
             tag: Some("invalid-standards-version".to_string()),
-            info: Some(vec![standards_version_str.clone()]),
+            info: Some(standards_version_str.clone()),
         };
 
         if !issue.should_fix(base_path) {
@@ -76,7 +76,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         package: None,
         package_type: Some(PackageType::Source),
         tag: Some("invalid-standards-version".to_string()),
-        info: Some(vec![standards_version_str.clone()]),
+        info: Some(standards_version_str.clone()),
     };
 
     if !issue.should_fix(base_path) {

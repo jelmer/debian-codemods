@@ -1,3 +1,4 @@
 Update standards version to 4.6.2, no changes needed.
 Certainty: certain
-Fixed-Lintian-Tags: ancient-standards-version
+Fixed-Lintian-Issues:
+ source: ancient-standards-version 4.4.1 (released 2019-09-29) (current is 4.7.2.1)

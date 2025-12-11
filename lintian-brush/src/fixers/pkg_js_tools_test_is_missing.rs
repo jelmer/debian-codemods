@@ -46,7 +46,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
             .map(|s| s.to_string()),
         package_type: Some(crate::PackageType::Source),
         tag: Some("pkg-js-tools-test-is-missing".to_string()),
-        info: Some(vec!["debian/tests/pkg-js/test".to_string()]),
+        info: Some("debian/tests/pkg-js/test".to_string()),
     };
 
     if !issue.should_fix(base_path) {

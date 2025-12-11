@@ -1,3 +1,4 @@
 Remove unnecessary XS-Testsuite field in debian/control.
-Fixed-Lintian-Tags: adopted-extended-field
+Fixed-Lintian-Issues:
+ source: adopted-extended-field (in section for source) XS-Testsuite [debian/control:2]
 Certainty: certain

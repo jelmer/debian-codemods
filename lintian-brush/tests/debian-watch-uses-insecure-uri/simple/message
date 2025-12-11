@@ -1,2 +1,3 @@
 Use secure URI in debian/watch.
-Fixed-Lintian-Tags: debian-watch-uses-insecure-uri
+Fixed-Lintian-Issues:
+ source: debian-watch-uses-insecure-uri http://ftp.gnu.org/gnu/acct/acct-(.*)\.tar\.gz [debian/watch:2]

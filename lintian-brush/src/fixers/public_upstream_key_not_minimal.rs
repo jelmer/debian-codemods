@@ -235,16 +235,11 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
                 .build(),
         )
     } else if format_upgraded {
-        Ok(
-            FixerResult::builder("Upgrade upstream signing key to new packet format.")
-                .build(),
-        )
+        Ok(FixerResult::builder("Upgrade upstream signing key to new packet format.").build())
+    } else if !overridden_issues.is_empty() {
+        Err(FixerError::NoChangesAfterOverrides(overridden_issues))
     } else {
-        if !overridden_issues.is_empty() {
-            Err(FixerError::NoChangesAfterOverrides(overridden_issues))
-        } else {
-            Err(FixerError::NoChanges)
-        }
+        Err(FixerError::NoChanges)
     }
 }
 

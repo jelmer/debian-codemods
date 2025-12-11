@@ -99,7 +99,7 @@ class LintianIssue:
         if self.target[1] is not None:
             ret.append(self.target[1] + " ")
         ret.append(self.target[0])
-        ret.append(": " + self.tag + (" " + self.info) if self.info else "")
+        ret.append(": " + self.tag + ((" " + self.info) if self.info else ""))
         return "".join(ret)
 
     def __repr__(self):
@@ -175,13 +175,10 @@ def report_result(
             print(f"+ {detail}")
     if certainty:
         print(f"Certainty: {certainty}")
-    fixed_lintian_tags = {issue.tag for issue in _fixed_lintian_issues}
-    if fixed_lintian_tags:
-        print(
-            "Fixed-Lintian-Tags: {}".format(
-                ", ".join(sorted(fixed_lintian_tags))
-            )
-        )
+    if _fixed_lintian_issues:
+        print("Fixed-Lintian-Issues:")
+        for issue in _fixed_lintian_issues:
+            print(" " + str(issue))
     if _overriden_issues:
         print("Overridden-Lintian-Issues:")
         for issue in _overriden_issues:

@@ -1,2 +1,3 @@
 Update fields Vcs-Git for maintainer Debian Python Applications Team.
-Fixed-Lintian-Tags: old-papt-vcs
+Fixed-Lintian-Issues:
+ source: old-papt-vcs Git

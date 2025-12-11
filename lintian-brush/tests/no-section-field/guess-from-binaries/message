@@ -1,3 +1,5 @@
 Section field set in source based on binary package names.
 Certainty: certain
-Fixed-Lintian-Tags: recommended-field
+Fixed-Lintian-Issues:
+ python-blah binary: recommended-field (in section for python-blah) Section [debian/control:3]
+ source: recommended-field (in section for source) Section [debian/control:1]

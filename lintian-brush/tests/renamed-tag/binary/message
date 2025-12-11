@@ -1,2 +1,4 @@
 Update renamed lintian tag names in lintian overrides.
-Fixed-Lintian-Tags: renamed-tag
+Fixed-Lintian-Issues:
+ source: renamed-tag manpage-has-errors-from-man => groff-message
+ source: renamed-tag binary-without-manpage => no-manual-page

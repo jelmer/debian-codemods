@@ -212,11 +212,11 @@ fn eliminate_dbgsym_migration(
                     package: None,
                     package_type: Some(PackageType::Source),
                     tag: Some("debug-symbol-migration-possibly-complete".to_string()),
-                    info: Some(vec![format!(
+                    info: Some(format!(
                         "{} [debian/rules:{}]",
                         String::from_utf8_lossy(caps.get(0).unwrap().as_bytes()).trim(),
                         line_no
-                    )]),
+                    )),
                 };
 
                 if issue.should_fix(basedir) {

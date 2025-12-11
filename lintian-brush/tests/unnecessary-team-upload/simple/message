@@ -1,2 +1,3 @@
 Remove unnecessary Team Upload line in changelog.
-Fixed-Lintian-Tags: unnecessary-team-upload
+Fixed-Lintian-Issues:
+ source: unnecessary-team-upload [debian/changelog:1]
