@@ -763,7 +763,7 @@ pub fn main() {
                 .try_auto_add_change(
                     &["Set Vcs-Git header."],
                     debian_changelog::get_maintainer().unwrap(),
-                    None,
+                    None::<String>,
                     None,
                 )
                 .unwrap();
