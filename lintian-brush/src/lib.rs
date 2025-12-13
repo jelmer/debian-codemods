@@ -1,3 +1,8 @@
+//! Lintian Brush - Automated Debian package fixes
+//!
+//! This crate provides tools for automatically fixing common Lintian issues in Debian packages.
+
+#![deny(missing_docs)]
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufReader;
@@ -18,13 +23,20 @@ use debian_analyzer::{
 };
 use debian_changelog::ChangeLog;
 
+/// Built-in fixers for common Lintian issues
 pub mod builtin_fixers;
+/// Macros for defining fixers
 #[macro_use]
 pub mod macros;
+/// Fixer-related types and traits
 pub mod fixers;
+/// License name mappings and common license directories
 pub mod licenses;
+/// Lintian overrides parsing and manipulation
 pub mod lintian_overrides;
+/// Upstream metadata handling
 pub mod upstream_metadata;
+/// Debian watch file handling
 pub mod watch;
 
 // Re-export commonly used types for convenience
@@ -33,10 +45,13 @@ pub use debversion::Version;
 // Re-export inventory for macros
 pub use inventory;
 
+/// Type of Debian package
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum PackageType {
+    /// Source package
     #[serde(rename = "source")]
     Source,
+    /// Binary package
     #[serde(rename = "binary")]
     Binary,
 }
@@ -62,15 +77,21 @@ impl std::fmt::Display for PackageType {
     }
 }
 
+/// Represents a Lintian issue
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct LintianIssue {
+    /// Package name
     pub package: Option<String>,
+    /// Package type
     pub package_type: Option<PackageType>,
+    /// Lintian tag
     pub tag: Option<String>,
+    /// Additional information
     pub info: Option<Vec<String>>,
 }
 
 impl LintianIssue {
+    /// Convert the issue to a JSON value
     pub fn json(&self) -> serde_json::Value {
         serde_json::json!({
             "package": self.package,
@@ -80,10 +101,12 @@ impl LintianIssue {
         })
     }
 
+    /// Create a LintianIssue from a JSON value
     pub fn from_json(value: serde_json::Value) -> serde_json::Result<Self> {
         serde_json::from_value(value)
     }
 
+    /// Create a LintianIssue with only a tag
     pub fn just_tag(tag: String) -> Self {
         Self {
             package: None,
@@ -107,8 +130,10 @@ impl LintianIssue {
     }
 }
 
+/// Error type for parsing Lintian issues
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum LintianIssueParseError {
+    /// Invalid package type encountered
     InvalidPackageType(String),
 }
 
@@ -205,17 +230,25 @@ impl TryFrom<&str> for LintianIssue {
     }
 }
 
+/// Result of running a fixer
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct FixerResult {
+    /// Description of the changes made
     pub description: String,
+    /// Certainty level of the fix
     pub certainty: Option<Certainty>,
+    /// Name of the patch if one was created
     pub patch_name: Option<String>,
+    /// Revision ID of the commit
     pub revision_id: Option<RevisionId>,
+    /// List of Lintian issues that were fixed
     pub fixed_lintian_issues: Vec<LintianIssue>,
+    /// List of Lintian issues that were overridden
     pub overridden_lintian_issues: Vec<LintianIssue>,
 }
 
 impl FixerResult {
+    /// Create a new FixerResult
     pub fn new(
         description: String,
         fixed_lintian_tags: Option<Vec<String>>,
@@ -241,6 +274,7 @@ impl FixerResult {
             overridden_lintian_issues: overridden_lintian_issues.unwrap_or_default(),
         }
     }
+    /// Get the list of fixed Lintian tags
     pub fn fixed_lintian_tags(&self) -> Vec<&str> {
         self.fixed_lintian_issues
             .iter()
@@ -257,12 +291,19 @@ impl FixerResult {
 /// Builder for constructing FixerResult instances
 #[derive(Debug, Default)]
 pub struct FixerResultBuilder {
+    /// Description of the changes made
     description: String,
+    /// Certainty level of the fix
     certainty: Option<Certainty>,
+    /// Name of the patch if one was created
     patch_name: Option<String>,
+    /// Revision ID of the commit
     revision_id: Option<RevisionId>,
+    /// List of Lintian issues that were fixed
     fixed_lintian_issues: Vec<LintianIssue>,
+    /// List of fixed Lintian tags (deprecated)
     fixed_lintian_tags: Vec<String>,
+    /// List of Lintian issues that were overridden
     overridden_lintian_issues: Vec<LintianIssue>,
 }
 
@@ -354,9 +395,12 @@ impl FixerResultBuilder {
     }
 }
 
+/// Error type for parsing fixer output
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum OutputParseError {
+    /// Unsupported certainty level encountered
     UnsupportedCertainty(String),
+    /// Error parsing a Lintian issue
     LintianIssueParseError(LintianIssueParseError),
 }
 
@@ -379,6 +423,7 @@ impl From<LintianIssueParseError> for OutputParseError {
     }
 }
 
+/// Parse the output of a script fixer
 pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseError> {
     let mut description: Vec<String> = Vec::new();
     let mut overridden_issues: Vec<LintianIssue> = Vec::new();
@@ -457,6 +502,7 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
     ))
 }
 
+/// Determine the environment variables for running a fixer
 pub fn determine_env(
     package: &str,
     current_version: &Version,
@@ -544,17 +590,28 @@ pub fn determine_env(
     env
 }
 
+/// Preferences for running fixers
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FixerPreferences {
+    /// Compatibility release (e.g. "stable" or "unstable")
     pub compat_release: Option<String>,
+    /// Minimum certainty level required
     pub minimum_certainty: Option<Certainty>,
+    /// Whether to run code from the package if necessary
     pub trust_package: Option<bool>,
+    /// Whether to allow reformatting of changed files
     pub allow_reformatting: Option<bool>,
+    /// Whether to allow network access
     pub net_access: Option<bool>,
+    /// Whether to be opinionated
     pub opinionated: Option<bool>,
+    /// Level of diligence
     pub diligence: Option<i32>,
+    /// Upgrade release target
     pub upgrade_release: Option<String>,
+    /// Extra environment variables (used in tests)
     pub extra_env: Option<std::collections::HashMap<String, String>>,
+    /// Path to Lintian data directory
     pub lintian_data_path: Option<std::path::PathBuf>,
 }
 
@@ -620,6 +677,7 @@ pub struct PythonScriptFixer {
 
 #[cfg(feature = "python")]
 impl PythonScriptFixer {
+    /// Create a new Python script fixer
     pub fn new(name: String, lintian_tags: Vec<String>, path: std::path::PathBuf) -> Self {
         Self {
             path,
@@ -889,38 +947,66 @@ impl ExternalFixer for PythonScriptFixer {
     }
 }
 
+/// Errors that can occur when running a fixer
 #[derive(Debug)]
 pub enum FixerError {
+    /// No changes were made by the fixer
     NoChanges,
+    /// No changes were made after applying overrides
     NoChangesAfterOverrides(Vec<LintianIssue>),
+    /// The certainty level is not high enough
     NotCertainEnough(Certainty, Option<Certainty>, Vec<LintianIssue>),
+    /// The path is not a Debian package
     NotDebianPackage(std::path::PathBuf),
+    /// The description is missing
     DescriptionMissing,
+    /// Invalid changelog file
     InvalidChangelog(std::path::PathBuf, String),
+    /// Fixer script was not found
     ScriptNotFound(std::path::PathBuf),
+    /// Error parsing fixer output
     OutputParseError(OutputParseError),
+    /// Error decoding fixer output
     OutputDecodeError(std::string::FromUtf8Error),
+    /// Failed to manipulate patch
     FailedPatchManipulation(String),
+    /// Error creating changelog
     ChangelogCreate(String),
+    /// Fixer timed out
     Timeout {
+        /// Timeout duration
         timeout: chrono::Duration,
     },
+    /// Fixer script failed
     ScriptFailed {
+        /// Path to the script
         path: std::path::PathBuf,
+        /// Exit code
         exit_code: i32,
+        /// Standard error output
         stderr: String,
     },
+    /// Formatting could not be preserved
     FormattingUnpreservable(std::path::PathBuf),
+    /// File is generated
     GeneratedFile(std::path::PathBuf),
+    /// Python error
     #[cfg(feature = "python")]
     Python(pyo3::PyErr),
+    /// Memory error
     MemoryError,
+    /// I/O error
     Io(std::io::Error),
+    /// Breezy error
     BrzError(Error),
+    /// Fixer panicked
     Panic {
+        /// Panic message
         message: String,
+        /// Backtrace if available
         backtrace: Option<std::backtrace::Backtrace>,
     },
+    /// Other error
     Other(String),
 }
 
@@ -1054,6 +1140,7 @@ impl std::fmt::Display for FixerError {
 
 impl std::error::Error for FixerError {}
 
+/// A fixer implemented as an external script
 #[derive(Debug)]
 pub struct ScriptFixer {
     path: std::path::PathBuf,
@@ -1062,6 +1149,7 @@ pub struct ScriptFixer {
 }
 
 impl ScriptFixer {
+    /// Create a new script fixer
     pub fn new(name: String, lintian_tags: Vec<String>, path: std::path::PathBuf) -> Self {
         Self {
             path,
@@ -1203,10 +1291,14 @@ struct FixerDescFile {
     fixers: Vec<FixerDescEntry>,
 }
 
+/// Errors that can occur when discovering fixers
 #[derive(Debug)]
 pub enum FixerDiscoverError {
+    /// I/O error
     Io(std::io::Error),
+    /// YAML parsing error
     Yaml(serde_yaml::Error),
+    /// No fixers directory found
     NoFixersDir,
 }
 
@@ -1234,6 +1326,7 @@ impl std::fmt::Display for FixerDiscoverError {
 
 impl std::error::Error for FixerDiscoverError {}
 
+/// Read all fixers from a description file
 pub fn read_all_desc_file<P: AsRef<std::path::Path>>(
     path: P,
     force_subprocess: bool,
@@ -1266,6 +1359,7 @@ pub fn read_all_desc_file<P: AsRef<std::path::Path>>(
     Ok(fixer_iter)
 }
 
+/// Read enabled fixers from a description file
 pub fn read_desc_file<P: AsRef<std::path::Path>>(
     path: P,
     force_subprocess: bool,
@@ -1456,6 +1550,7 @@ pub fn available_lintian_fixers(
     Ok(fixers.into_iter())
 }
 
+/// Error indicating an unknown fixer was requested
 #[derive(Debug, PartialEq, Eq)]
 pub struct UnknownFixer(pub String);
 
@@ -1610,9 +1705,13 @@ mod select_fixers_tests {
     }
 }
 
+/// Default value for addon-only fixes
 pub const DEFAULT_VALUE_LINTIAN_BRUSH_ADDON_ONLY: i32 = 10;
+/// Default value for lintian-brush fixes
 pub const DEFAULT_VALUE_LINTIAN_BRUSH: i32 = 50;
+/// Tag-specific values
 pub const LINTIAN_BRUSH_TAG_VALUES: [(&str, i32); 1] = [("trailing-whitespace", 0)];
+/// Default addon fixers
 pub const DEFAULT_ADDON_FIXERS: &[&str] = &[
     "debian-changelog-line-too-long",
     "trailing-whitespace",
@@ -1620,8 +1719,10 @@ pub const DEFAULT_ADDON_FIXERS: &[&str] = &[
     "package-uses-old-debhelper-compat-version",
     "public-upstream-key-not-minimal",
 ];
+/// Default value for lintian-brush tags
 pub const LINTIAN_BRUSH_TAG_DEFAULT_VALUE: i32 = 5;
 
+/// Calculate the value of a set of tags
 pub fn calculate_value(tags: &[&str]) -> i32 {
     if tags.is_empty() {
         return 0;
@@ -1647,6 +1748,7 @@ pub fn calculate_value(tags: &[&str]) -> i32 {
     value
 }
 
+/// Find the path to a data file
 pub fn data_file_path(
     name: &str,
     check: impl Fn(&std::path::Path) -> bool,
@@ -1691,6 +1793,7 @@ pub fn data_file_path(
     None
 }
 
+/// Find the directory containing fixer scripts
 pub fn find_fixers_dir() -> Option<std::path::PathBuf> {
     data_file_path("fixers", |path| path.is_dir())
 }
@@ -1929,15 +2032,24 @@ pub fn run_lintian_fixer(
     Ok((result, summary))
 }
 
+/// Overall errors that can occur when running fixers
 #[derive(Debug)]
 pub enum OverallError {
+    /// Not a Debian package
     NotDebianPackage(std::path::PathBuf),
+    /// Workspace is dirty
     WorkspaceDirty(std::path::PathBuf),
+    /// Error creating changelog
     ChangelogCreate(String),
+    /// Invalid changelog file
     InvalidChangelog(std::path::PathBuf, String),
+    /// Breezy error
     BrzError(Error),
+    /// I/O error
     IoError(std::io::Error),
+    /// Other error
     Other(String),
+    /// Python error
     #[cfg(feature = "python")]
     Python(pyo3::PyErr),
 }
@@ -2252,20 +2364,27 @@ pub fn run_lintian_fixers(
     Ok(ret)
 }
 
+/// Result of running multiple fixers
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 pub struct ManyResult {
+    /// Successfully applied fixers
     #[serde(rename = "applied")]
     pub success: Vec<(FixerResult, String)>,
+    /// Failed fixers
     #[serde(rename = "failed")]
     pub failed_fixers: std::collections::HashMap<String, String>,
+    /// Changelog behaviour
     pub changelog_behaviour: Option<ChangelogBehaviour>,
+    /// Overridden Lintian issues
     #[serde(skip)]
     pub overridden_lintian_issues: Vec<LintianIssue>,
+    /// Files with unpreservable formatting
     #[serde(skip)]
     pub formatting_unpreservable: std::collections::HashMap<String, std::path::PathBuf>,
 }
 
 impl ManyResult {
+    /// Count of fixed tags
     pub fn tags_count(&self) -> HashMap<&str, u32> {
         self.success
             .iter()
@@ -2277,6 +2396,7 @@ impl ManyResult {
             })
     }
 
+    /// Calculate the total value of all fixed tags
     pub fn value(&self) -> i32 {
         let tags = self
             .success
@@ -2298,6 +2418,7 @@ impl ManyResult {
         .unwrap_or(Certainty::Certain)
     }
 
+    /// Create a new empty ManyResult
     pub fn new() -> Self {
         Self {
             success: Vec::new(),
@@ -2390,6 +2511,7 @@ fn note_changelog_policy(policy: bool, msg: &str) {
     }
 }
 
+/// Determine whether to update the changelog
 pub fn determine_update_changelog(
     local_tree: &dyn WorkingTree,
     debian_path: &std::path::Path,
