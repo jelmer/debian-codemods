@@ -1,4 +1,0 @@
-/usr/bin/apply-multiarch-hints
-/usr/bin/deb-scrub-obsolete
-/usr/bin/deb-transition-apply
-/usr/bin/dump-multiarch-hints
