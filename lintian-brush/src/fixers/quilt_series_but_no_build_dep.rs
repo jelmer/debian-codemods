@@ -88,7 +88,7 @@ Description: blah blah
  Blah blah
 "#;
 
-        let mut control = Control::from_str(input).unwrap();
+        let control = Control::from_str(input).unwrap();
         let mut source = control.source().unwrap();
         let mut build_depends = source.build_depends().unwrap_or_default();
 
@@ -111,7 +111,7 @@ Description: blah blah
 "#;
 
         let control = Control::from_str(input).unwrap();
-        let mut source = control.source().unwrap();
+        let source = control.source().unwrap();
         let original_build_depends = source.build_depends().unwrap_or_default();
         let original_str = original_build_depends.to_string();
         let mut new_build_depends = original_build_depends;

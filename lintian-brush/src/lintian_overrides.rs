@@ -1,25 +1,34 @@
 use rowan::{GreenNode, GreenNodeBuilder};
 use std::fmt;
 
+/// Syntax kinds for lintian override files
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
 pub enum SyntaxKind {
-    // Tokens
+    /// Whitespace token
     WHITESPACE = 0,
+    /// Comment token
     COMMENT,
+    /// Package name token
     PACKAGE_NAME,
+    /// Colon token
     COLON,
+    /// Tag token
     TAG,
+    /// Info token
     INFO,
+    /// Newline token
     NEWLINE,
 
-    // Nodes
+    /// Root node
     ROOT,
+    /// Override line node
     OVERRIDE_LINE,
+    /// Package specification node
     PACKAGE_SPEC,
 
-    // Error
+    /// Error node
     ERROR,
 }
 
@@ -31,6 +40,7 @@ impl From<SyntaxKind> for rowan::SyntaxKind {
     }
 }
 
+/// Language type for the lintian override parser
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Lang {}
 
@@ -47,8 +57,11 @@ impl rowan::Language for Lang {
     }
 }
 
+/// Syntax node type for lintian overrides
 pub type SyntaxNode = rowan::SyntaxNode<Lang>;
+/// Syntax token type for lintian overrides
 pub type SyntaxToken = rowan::SyntaxToken<Lang>;
+/// Syntax element type for lintian overrides
 pub type SyntaxElement = rowan::NodeOrToken<SyntaxNode, SyntaxToken>;
 
 /// The result of parsing a lintian-overrides file
@@ -68,14 +81,17 @@ impl<T> Parse<T> {
         }
     }
 
+    /// Get the syntax tree
     pub fn syntax(&self) -> SyntaxNode {
         SyntaxNode::new_root(self.green.clone())
     }
 
+    /// Get the parse errors
     pub fn errors(&self) -> &[String] {
         &self.errors
     }
 
+    /// Convert to result, returning errors if any
     pub fn ok(self) -> Result<T, Vec<String>>
     where
         T: AstNode,
@@ -90,10 +106,12 @@ impl<T> Parse<T> {
 
 /// Trait for AST nodes
 pub trait AstNode: Clone {
+    /// Cast a syntax node to this AST node type
     fn cast(syntax: SyntaxNode) -> Option<Self>
     where
         Self: Sized;
 
+    /// Get the underlying syntax node
     fn syntax(&self) -> &SyntaxNode;
 }
 
@@ -426,12 +444,14 @@ pub struct LintianOverridesBuilder<'a> {
 }
 
 impl<'a> LintianOverridesBuilder<'a> {
+    /// Create a new builder
     pub fn new() -> Self {
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(ROOT.into());
         Self { builder }
     }
 
+    /// Add a comment line
     pub fn add_comment(&mut self, text: &str) -> &mut Self {
         self.builder.start_node(OVERRIDE_LINE.into());
         self.builder.token(COMMENT.into(), text);
@@ -440,6 +460,7 @@ impl<'a> LintianOverridesBuilder<'a> {
         self
     }
 
+    /// Add an override line
     pub fn add_override(
         &mut self,
         package: Option<&str>,
@@ -468,6 +489,7 @@ impl<'a> LintianOverridesBuilder<'a> {
         self
     }
 
+    /// Finish building and return the LintianOverrides
     pub fn finish(mut self) -> LintianOverrides {
         self.builder.finish_node();
         let green = self.builder.finish();
@@ -483,6 +505,7 @@ impl<'a> Default for LintianOverridesBuilder<'a> {
     }
 }
 
+/// Copy a syntax node into a green node builder
 pub fn copy_node(builder: &mut GreenNodeBuilder, node: &SyntaxNode) {
     builder.start_node(node.kind().into());
     for child in node.children_with_tokens() {

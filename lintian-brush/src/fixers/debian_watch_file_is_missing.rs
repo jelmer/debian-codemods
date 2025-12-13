@@ -113,7 +113,7 @@ fn certainty_to_confidence(certainty: Option<&Certainty>) -> i32 {
 /// Extract watch candidates from setup.py (PyPI packages)
 fn candidates_from_setup_py(
     path: &Path,
-    good_upstream_versions: &[String],
+    _good_upstream_versions: &[String],
     net_access: bool,
 ) -> Result<Option<WatchCandidate>, Box<dyn std::error::Error>> {
     // Use Python to extract project name and version from setup.py

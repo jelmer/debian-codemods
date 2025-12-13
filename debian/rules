@@ -1,6 +1,8 @@
 #!/usr/bin/make -f
 
 export CARGO_HOME=$(shell pwd)/debian/cargo_home
+# Set codegen-units to 1 for reproducible builds (parallel codegen is non-deterministic)
+export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 ZSH_COMPDIR = /usr/share/zsh/vendor-completions/
 
 %:

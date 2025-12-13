@@ -231,7 +231,6 @@ declare_fixer! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
 
     #[test]
     fn test_is_well_past() {
