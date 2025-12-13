@@ -1,4 +1,4 @@
 Refer to common license file for Apache-2.0.
 Fixed-Lintian-Issues:
- source: copyright-not-using-common-license-for-apache2
- source: copyright-does-not-refer-to-common-license-file
+ source: copyright-does-not-refer-to-common-license-file Apache-2.0
+ source: copyright-not-using-common-license-for-apache2 Apache-2.0

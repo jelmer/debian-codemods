@@ -120,7 +120,6 @@ pub fn run(base_path: &Path, package: &str, thorough: bool) -> Result<FixerResul
             entry.append_change_line(&line);
         }
 
-        made_changes = true;
         match entry.try_version() {
             Some(Ok(version)) => {
                 if !fixed_versions.contains(&version.to_string()) {

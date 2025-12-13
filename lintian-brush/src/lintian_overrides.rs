@@ -47,6 +47,7 @@ fn info_matches(pattern: &str, value: &str) -> bool {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
+/// Syntax kinds for lintian override files
 pub enum SyntaxKind {
     /// Whitespace token
     WHITESPACE = 0,

@@ -113,7 +113,6 @@ impl std::fmt::Display for LintianIssue {
         }
         Ok(())
     }
->>>>>>> ca38d678 (Fix tests)
 }
 
 impl LintianIssue {
