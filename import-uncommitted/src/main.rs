@@ -8,6 +8,7 @@ use breezyshim::tree::{MutableTree, PyTree, Tree};
 use breezyshim::workingtree::WorkingTree;
 use breezyshim::Branch;
 use breezyshim::RevisionId;
+use chrono;
 use clap::Parser;
 use debian_analyzer::editor::MutableTreeEdit;
 use debian_changelog::ChangeLog;
@@ -763,7 +764,7 @@ pub fn main() {
                 .try_auto_add_change(
                     &["Set Vcs-Git header."],
                     debian_changelog::get_maintainer().unwrap(),
-                    None,
+                    None::<String>,
                     None,
                 )
                 .unwrap();

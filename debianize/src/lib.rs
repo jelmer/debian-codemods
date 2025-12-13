@@ -18,7 +18,7 @@ use breezyshim::tree::{PyTree, Tree};
 use breezyshim::workingtree::{GenericWorkingTree, PyWorkingTree, WorkingTree};
 use breezyshim::RevisionId;
 use debian_analyzer::versions::debianize_upstream_version;
-use debian_analyzer::wnpp::BugKind;
+use debian_analyzer::wnpp::{BugId, BugKind};
 use debian_analyzer::Certainty;
 use debversion::Version;
 use ognibuild::dependencies::debian::valid_debian_package_name;
@@ -167,7 +167,7 @@ pub fn write_changelog_template(
     source_name: &str,
     version: &Version,
     author: Option<(String, String)>,
-    wnpp_bugs: Vec<(i64, BugKind)>,
+    wnpp_bugs: Vec<(BugId, BugKind)>,
 ) -> Result<(), std::io::Error> {
     let author = author.unwrap_or_else(|| debian_changelog::get_maintainer().unwrap());
     let closes = if !wnpp_bugs.is_empty() {
@@ -852,7 +852,7 @@ mod tests {
         // We can't easily test the actual functionality without network access
         // but we can test that the function signature is correct
         let result = find_wnpp_bugs_for_package("test-package", Some("upstream-name"));
-        // The function should return a Result<Vec<(i64, BugKind)>, Error>
+        // The function should return a Result<Vec<(BugId, BugKind)>, Error>
         // We'll just verify it's callable and returns the right type
         assert!(result.is_ok() || result.is_err()); // Either is fine for this test
 
@@ -1759,7 +1759,7 @@ pub fn debianize(
 #[derive(Default, Debug, serde::Serialize)]
 pub struct DebianizeResult {
     pub vcs_url: Option<url::Url>,
-    pub wnpp_bugs: Vec<(i64, BugKind)>,
+    pub wnpp_bugs: Vec<(BugId, BugKind)>,
     pub upstream_version: Option<String>,
     pub tag_names: HashMap<String, RevisionId>,
     pub upstream_branch_name: Option<String>,
@@ -2182,7 +2182,7 @@ fn determine_browser_url(vcs_type: &str, vcs_url: &url::Url) -> Option<String> {
 async fn find_wnpp_bugs_for_package_async(
     source_name: &str,
     upstream_name: Option<&str>,
-) -> Result<Vec<(i64, BugKind)>, Error> {
+) -> Result<Vec<(BugId, BugKind)>, Error> {
     // Prepare the list of names to search for
     let mut names = vec![source_name];
     if let Some(upstream) = upstream_name {
@@ -2196,7 +2196,7 @@ async fn find_wnpp_bugs_for_package_async(
 
     // Use the existing analyzer functionality
     match debian_analyzer::wnpp::find_wnpp_bugs_harder(&name_refs).await {
-        Ok(bugs) => Ok(bugs),
+        Ok(bugs) => Ok(bugs.into_iter().collect()),
         Err(e) => {
             log::warn!("Failed to query WNPP bugs: {}", e);
             Ok(vec![])
@@ -2208,7 +2208,7 @@ async fn find_wnpp_bugs_for_package_async(
 fn find_wnpp_bugs_for_package(
     source_name: &str,
     upstream_name: Option<&str>,
-) -> Result<Vec<(i64, BugKind)>, Error> {
+) -> Result<Vec<(BugId, BugKind)>, Error> {
     // Create a Tokio runtime to run the async function
     let rt = tokio::runtime::Runtime::new()
         .map_err(|e| Error::Other(format!("Failed to create async runtime: {}", e)))?;
@@ -2296,7 +2296,7 @@ fn write_initial_changelog(
     version: &str,
     maintainer_name: &str,
     maintainer_email: &str,
-    wnpp_bugs: &[(i64, BugKind)],
+    wnpp_bugs: &[(BugId, BugKind)],
 ) -> Result<(), Error> {
     let changelog_path = debian_path.join("changelog");
 

@@ -2,8 +2,11 @@ use super::*;
 
 /// Registration information for a builtin fixer
 pub struct BuiltinFixerRegistration {
+    /// Name of the fixer
     pub name: &'static str,
+    /// Lintian tags this fixer addresses
     pub lintian_tags: &'static [&'static str],
+    /// Function to create an instance of the fixer
     pub create: fn() -> Box<dyn BuiltinFixer>,
 }
 
@@ -35,6 +38,7 @@ pub struct BuiltinFixerWrapper {
 }
 
 impl BuiltinFixerWrapper {
+    /// Create a new BuiltinFixerWrapper
     pub fn new(fixer: Box<dyn BuiltinFixer>) -> Self {
         let name = fixer.name();
         let lintian_tags = fixer.lintian_tags().to_vec();

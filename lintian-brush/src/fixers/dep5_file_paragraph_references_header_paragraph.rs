@@ -136,7 +136,7 @@ mod tests {
         let content = fs::read_to_string(debian_dir.join("copyright")).unwrap();
         assert_eq!(
             content,
-            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\nLicense: Alicense\n Some terms\n\nFiles: *\nCopyright:\n 2008-2017 Somebody\nLicense: Alicense\n\nLicense: Alicense\n         Some terms\n"
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\nLicense: Alicense\n Some terms\n\nFiles: *\nCopyright:\n 2008-2017 Somebody\nLicense: Alicense\n\nLicense: Alicense\n Some terms\n"
         );
     }
 

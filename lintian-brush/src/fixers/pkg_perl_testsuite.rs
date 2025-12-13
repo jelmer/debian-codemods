@@ -13,6 +13,13 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    // Check if debian/tests/control exists - if so, the Testsuite header is redundant
+    // See https://bugs.debian.org/982871
+    let tests_control_path = base_path.join("debian/tests/control");
+    if tests_control_path.exists() {
+        return Err(FixerError::NoChanges);
+    }
+
     let editor = TemplatedControlEditor::open(&control_path)?;
 
     let source = editor.source().ok_or(FixerError::NoChanges)?;
