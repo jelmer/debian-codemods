@@ -194,7 +194,6 @@ Recommends: debhelper (>= 13.5),
             python3-tomlkit
 Suggests: brz-debian (>= 2.8.66),
           git-buildpackage,
-          gnome-pkg-tools,
           po-debconf,
           postgresql-common
 Description: automatically fix lintian problems
