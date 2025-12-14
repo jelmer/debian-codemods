@@ -5,7 +5,7 @@ use std::fmt;
 ///
 /// Supports `*` wildcards in patterns like `[debian/copyright:*]` matching `[debian/copyright:31]`
 /// The asterisk matches arbitrary strings similar to shell wildcards.
-fn info_matches(pattern: &str, value: &str) -> bool {
+pub fn info_matches(pattern: &str, value: &str) -> bool {
     if pattern == value {
         return true;
     }
