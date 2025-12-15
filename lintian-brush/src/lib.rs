@@ -2226,7 +2226,8 @@ pub fn run_lintian_fixers(
         None
     };
     for fixer in fixers {
-        pb.set_message(format!("Running fixer {}", fixer.name()));
+        let fixer_name = fixer.name();
+        pb.set_message(format!("Running fixer {}", fixer_name));
         // Get now from chrono
         let start = std::time::SystemTime::now();
         if let Some(dirty_tracker) = dirty_tracker.as_mut() {
@@ -2333,11 +2334,12 @@ pub fn run_lintian_fixers(
                     return Err(OverallError::IoError(e));
                 }
                 FixerError::NotCertainEnough(actual_certainty, minimum_certainty, _overrides) => {
+                    let duration = std::time::SystemTime::now().duration_since(start).unwrap();
+                    ret.fixer_durations.insert(fixer_name.to_string(), duration);
                     if verbose {
-                        let duration = std::time::SystemTime::now().duration_since(start).unwrap();
                         log::info!(
                     "Fixer {} made changes but not high enough certainty (was {}, needed {}). (took: {:2}s)",
-                    fixer.name(),
+                    fixer_name,
                     actual_certainty,
                     minimum_certainty.map_or("default".to_string(), |c| c.to_string()),
                     duration.as_secs_f32(),
@@ -2353,22 +2355,24 @@ pub fn run_lintian_fixers(
                     continue;
                 }
                 FixerError::NoChanges => {
+                    let duration = std::time::SystemTime::now().duration_since(start).unwrap();
+                    ret.fixer_durations.insert(fixer_name.to_string(), duration);
                     if verbose {
-                        let duration = std::time::SystemTime::now().duration_since(start).unwrap();
                         log::info!(
                             "Fixer {} made no changes. (took: {:2}s)",
-                            fixer.name(),
+                            fixer_name,
                             duration.as_secs_f32(),
                         );
                     }
                     continue;
                 }
                 FixerError::NoChangesAfterOverrides(os) => {
+                    let duration = std::time::SystemTime::now().duration_since(start).unwrap();
+                    ret.fixer_durations.insert(fixer_name.to_string(), duration);
                     if verbose {
-                        let duration = std::time::SystemTime::now().duration_since(start).unwrap();
                         log::info!(
                             "Fixer {} made no changes. (took: {:2}s)",
-                            fixer.name(),
+                            fixer_name,
                             duration.as_secs_f32(),
                         );
                     }
@@ -2415,15 +2419,20 @@ pub fn run_lintian_fixers(
                 }
             },
             Ok((result, summary)) => {
+                let duration = std::time::SystemTime::now().duration_since(start).unwrap();
+                ret.fixer_durations.insert(fixer_name.to_string(), duration);
                 if verbose {
-                    let duration = std::time::SystemTime::now().duration_since(start).unwrap();
                     log::info!(
                         "Fixer {} made changes. (took {:2}s)",
-                        fixer.name(),
+                        fixer_name,
                         duration.as_secs_f32(),
                     );
                 }
-                ret.success.push((result, summary));
+                ret.success.push(FixerSuccess {
+                    result,
+                    summary,
+                    fixer_name: fixer_name.to_string(),
+                });
                 basis_tree = local_tree.basis_tree().unwrap();
             }
         }
@@ -2433,12 +2442,24 @@ pub fn run_lintian_fixers(
     Ok(ret)
 }
 
+/// Information about a successfully applied fixer
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct FixerSuccess {
+    /// The result of the fixer
+    #[serde(flatten)]
+    pub result: FixerResult,
+    /// Summary of the changes
+    pub summary: String,
+    /// Name of the fixer (for looking up duration and other info)
+    pub fixer_name: String,
+}
+
 /// Result of running multiple fixers
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 pub struct ManyResult {
     /// Successfully applied fixers
     #[serde(rename = "applied")]
-    pub success: Vec<(FixerResult, String)>,
+    pub success: Vec<FixerSuccess>,
     /// Failed fixers
     #[serde(rename = "failed")]
     pub failed_fixers: std::collections::HashMap<String, String>,
@@ -2450,6 +2471,9 @@ pub struct ManyResult {
     /// Files with unpreservable formatting
     #[serde(skip)]
     pub formatting_unpreservable: std::collections::HashMap<String, std::path::PathBuf>,
+    /// Duration of all fixers that were run (by fixer name)
+    #[serde(skip)]
+    pub fixer_durations: std::collections::HashMap<String, std::time::Duration>,
 }
 
 impl ManyResult {
@@ -2457,8 +2481,8 @@ impl ManyResult {
     pub fn tags_count(&self) -> HashMap<&str, u32> {
         self.success
             .iter()
-            .fold(HashMap::new(), |mut acc, (r, _summary)| {
-                for tag in r.fixed_lintian_tags() {
+            .fold(HashMap::new(), |mut acc, fixer_success| {
+                for tag in fixer_success.result.fixed_lintian_tags() {
                     *acc.entry(tag).or_insert(0) += 1;
                 }
                 acc
@@ -2470,7 +2494,7 @@ impl ManyResult {
         let tags = self
             .success
             .iter()
-            .flat_map(|(r, _summary)| r.fixed_lintian_tags())
+            .flat_map(|fixer_success| fixer_success.result.fixed_lintian_tags())
             .collect::<Vec<_>>();
         calculate_value(tags.as_slice())
     }
@@ -2480,7 +2504,7 @@ impl ManyResult {
         min_certainty(
             self.success
                 .iter()
-                .filter_map(|(r, _summary)| r.certainty)
+                .filter_map(|fixer_success| fixer_success.result.certainty)
                 .collect::<Vec<_>>()
                 .as_slice(),
         )
@@ -2495,6 +2519,7 @@ impl ManyResult {
             changelog_behaviour: None,
             overridden_lintian_issues: Vec::new(),
             formatting_unpreservable: std::collections::HashMap::new(),
+            fixer_durations: std::collections::HashMap::new(),
         }
     }
 }
@@ -2867,25 +2892,24 @@ Arch: all
             let revid = tree.last_revision().unwrap();
             std::mem::drop(lock);
 
+            assert_eq!(result.success.len(), 1);
             assert_eq!(
-                result.success,
-                vec![(
-                    FixerResult::new(
-                        "Fixed some tag.\nExtended description.".to_string(),
-                        Some(Certainty::Certain),
-                        None,
-                        Some(revid),
-                        vec![LintianIssue {
-                            tag: Some("some-tag".to_string()),
-                            package: Some("blah".to_string()),
-                            info: None,
-                            package_type: Some(PackageType::Source),
-                        }],
-                        None,
-                    ),
-                    "Fixed some tag.".to_string()
-                )],
+                result.success[0].result,
+                FixerResult::new(
+                    "Fixed some tag.\nExtended description.".to_string(),
+                    Some(Certainty::Certain),
+                    None,
+                    Some(revid),
+                    vec![LintianIssue {
+                        tag: Some("some-tag".to_string()),
+                        package: Some("blah".to_string()),
+                        info: None,
+                        package_type: Some(PackageType::Source),
+                    }],
+                    None,
+                ),
             );
+            assert_eq!(result.success[0].summary, "Fixed some tag.");
             assert_eq!(maplit::hashmap! {}, result.failed_fixers);
             assert_eq!(2, tree.branch().revno());
             let lines = tree
@@ -3752,8 +3776,8 @@ fixers:
         #[test]
         fn test_no_certainty() {
             let mut result = ManyResult::default();
-            result.success.push((
-                FixerResult::new(
+            result.success.push(FixerSuccess {
+                result: FixerResult::new(
                     "Do bla".to_string(),
                     None,
                     None,
@@ -3761,16 +3785,17 @@ fixers:
                     vec![LintianIssue::just_tag("tag-a".to_string())],
                     None,
                 ),
-                "summary".to_string(),
-            ));
+                summary: "summary".to_string(),
+                fixer_name: "test-fixer".to_string(),
+            });
             assert_eq!(Certainty::Certain, result.minimum_success_certainty());
         }
 
         #[test]
         fn test_possible() {
             let mut result = ManyResult::default();
-            result.success.push((
-                FixerResult::new(
+            result.success.push(FixerSuccess {
+                result: FixerResult::new(
                     "Do bla".to_string(),
                     Some(Certainty::Possible),
                     None,
@@ -3778,10 +3803,11 @@ fixers:
                     vec![LintianIssue::just_tag("tag-a".to_string())],
                     None,
                 ),
-                "summary".to_string(),
-            ));
-            result.success.push((
-                FixerResult::new(
+                summary: "summary".to_string(),
+                fixer_name: "test-fixer-1".to_string(),
+            });
+            result.success.push(FixerSuccess {
+                result: FixerResult::new(
                     "Do bloeh".to_string(),
                     Some(Certainty::Certain),
                     None,
@@ -3789,8 +3815,9 @@ fixers:
                     vec![LintianIssue::just_tag("tag-b".to_string())],
                     None,
                 ),
-                "summary".to_string(),
-            ));
+                summary: "summary".to_string(),
+                fixer_name: "test-fixer-2".to_string(),
+            });
             assert_eq!(Certainty::Possible, result.minimum_success_certainty());
         }
     }
