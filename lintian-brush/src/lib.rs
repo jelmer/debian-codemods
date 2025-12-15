@@ -2230,6 +2230,10 @@ pub fn run_lintian_fixers(
             dirty_tracker.mark_clean();
         }
         pb.inc(1);
+
+        // Create a span for this fixer so log messages are attributed to it
+        let _span = tracing::info_span!("fixer", name = fixer.name()).entered();
+
         match run_lintian_fixer(
             local_tree,
             fixer.as_ref(),

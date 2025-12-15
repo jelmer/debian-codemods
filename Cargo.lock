@@ -2745,6 +2745,7 @@ dependencies = [
  "log",
  "makefile-lossless",
  "maplit",
+ "nu-ansi-term",
  "patchkit",
  "pyo3",
  "quote",

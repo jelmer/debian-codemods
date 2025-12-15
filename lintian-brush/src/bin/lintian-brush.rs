@@ -170,7 +170,10 @@ fn main() -> Result<(), i32> {
     let multi_progress = indicatif::MultiProgress::new();
 
     // Set up tracing subscriber with a custom writer that suspends progress bars
+    use tracing_subscriber::fmt::format::Writer;
+    use tracing_subscriber::fmt::FmtContext;
     use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::registry::LookupSpan;
     use tracing_subscriber::util::SubscriberInitExt;
 
     struct ProgressSuspendingWriter {
@@ -187,6 +190,89 @@ fn main() -> Result<(), i32> {
         }
     }
 
+    // Store span data for later retrieval
+    #[derive(Debug)]
+    struct FixerSpanData {
+        name: String,
+    }
+
+    // Custom format that shows fixer name in brackets
+    struct FixerFormat;
+
+    impl<S, N> tracing_subscriber::fmt::FormatEvent<S, N> for FixerFormat
+    where
+        S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> tracing_subscriber::fmt::FormatFields<'a> + 'static,
+    {
+        fn format_event(
+            &self,
+            ctx: &FmtContext<'_, S, N>,
+            mut writer: Writer<'_>,
+            event: &tracing::Event<'_>,
+        ) -> std::fmt::Result {
+            // Look for a fixer span in the current context (if any)
+            if let Some(span_ref) = ctx.event_scope() {
+                for span in span_ref {
+                    if span.name() == "fixer" {
+                        let extensions = span.extensions();
+                        if let Some(data) = extensions.get::<FixerSpanData>() {
+                            // Use dim style for subtle visual distinction
+                            use nu_ansi_term::Style;
+                            write!(writer, "{}: ", Style::new().dimmed().paint(&data.name))?;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Write the message
+            ctx.field_format().format_fields(writer.by_ref(), event)?;
+            writeln!(writer)
+        }
+    }
+
+    // Layer to capture span fields
+    use tracing::field::{Field, Visit};
+
+    struct FixerLayer;
+
+    impl<S> tracing_subscriber::Layer<S> for FixerLayer
+    where
+        S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+    {
+        fn on_new_span(
+            &self,
+            attrs: &tracing::span::Attributes<'_>,
+            id: &tracing::span::Id,
+            ctx: tracing_subscriber::layer::Context<'_, S>,
+        ) {
+            if attrs.metadata().name() == "fixer" {
+                let span = ctx.span(id).expect("Span not found");
+                let mut visitor = FixerVisitor { name: None };
+                attrs.record(&mut visitor);
+                if let Some(name) = visitor.name {
+                    span.extensions_mut().insert(FixerSpanData { name });
+                }
+            }
+        }
+    }
+
+    struct FixerVisitor {
+        name: Option<String>,
+    }
+
+    impl Visit for FixerVisitor {
+        fn record_str(&mut self, field: &Field, value: &str) {
+            if field.name() == "name" {
+                self.name = Some(value.to_string());
+            }
+        }
+
+        fn record_debug(&mut self, _field: &Field, _value: &dyn std::fmt::Debug) {
+            // No-op for other field types
+        }
+    }
+
     let filter_level = if args.output.debug {
         tracing::Level::DEBUG
     } else {
@@ -195,14 +281,13 @@ fn main() -> Result<(), i32> {
 
     let mp_for_writer = multi_progress.clone();
     tracing_subscriber::registry()
+        .with(FixerLayer)
         .with(
             tracing_subscriber::fmt::layer()
                 .with_writer(move || ProgressSuspendingWriter {
                     multi_progress: mp_for_writer.clone(),
                 })
-                .without_time()
-                .with_target(false)
-                .with_level(false),
+                .event_format(FixerFormat),
         )
         .with(tracing_subscriber::filter::LevelFilter::from_level(
             filter_level,
