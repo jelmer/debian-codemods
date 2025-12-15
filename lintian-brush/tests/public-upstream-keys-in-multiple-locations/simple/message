@@ -1,3 +1,4 @@
 Merge upstream signing key files.
-Fixed-Lintian-Tags: public-upstream-keys-in-multiple-locations
+Fixed-Lintian-Issues:
+ source: public-upstream-keys-in-multiple-locations debian/upstream-signing-key.pgp debian/upstream/signing-key.asc
 Certainty: certain

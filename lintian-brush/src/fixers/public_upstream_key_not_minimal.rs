@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -10,8 +10,8 @@ const KEY_BLOCK_END: &[u8] = b"-----END PGP PUBLIC KEY BLOCK-----";
 enum MinimizeResult {
     /// No changes needed - key is already minimal
     NoChanges,
-    /// Third-party signatures were removed
-    SignaturesRemoved(Vec<u8>),
+    /// Third-party signatures were removed (minimized key, keyid, count)
+    SignaturesRemoved(Vec<u8>, String, usize),
     /// Only format was upgraded (no signatures removed)
     FormatUpgraded(Vec<u8>),
 }
@@ -113,8 +113,14 @@ fn minimize_key_block(
         }
     }
 
-    // Signatures were removed
-    Ok(MinimizeResult::SignaturesRemoved(output))
+    // Signatures were removed - get the primary key's keyid
+    let keyid = certs[0].keyid().to_hex();
+
+    Ok(MinimizeResult::SignaturesRemoved(
+        output,
+        keyid,
+        third_party_count,
+    ))
 }
 
 pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerError> {
@@ -126,7 +132,8 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
 
     let mut signatures_removed = false;
     let mut format_upgraded = false;
-    let mut tags_fixed = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for path_str in &paths {
         let path = base_path.join(path_str);
@@ -170,10 +177,24 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
                         // Keep original key block
                         outlines.extend_from_slice(&key_block);
                     }
-                    Ok(MinimizeResult::SignaturesRemoved(minimized)) => {
-                        outlines.extend_from_slice(&minimized);
-                        signatures_removed = true;
-                        tags_fixed.push("public-upstream-key-not-minimal");
+                    Ok(MinimizeResult::SignaturesRemoved(minimized, keyid, count)) => {
+                        let issue = LintianIssue::source_with_info(
+                            "public-upstream-key-not-minimal",
+                            vec![format!(
+                                "has {} extra signature(s) for keyid {} [{}]",
+                                count, keyid, path_str
+                            )],
+                        );
+
+                        if issue.should_fix(base_path) {
+                            outlines.extend_from_slice(&minimized);
+                            signatures_removed = true;
+                            fixed_issues.push(issue);
+                        } else {
+                            // Keep original if overridden
+                            outlines.extend_from_slice(&key_block);
+                            overridden_issues.push(issue);
+                        }
                     }
                     Ok(MinimizeResult::FormatUpgraded(upgraded)) => {
                         outlines.extend_from_slice(&upgraded);
@@ -209,11 +230,14 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
     if signatures_removed {
         Ok(
             FixerResult::builder("Re-export upstream signing key without extra signatures.")
-                .fixed_tags(tags_fixed)
+                .fixed_issues(fixed_issues)
+                .overridden_issues(overridden_issues)
                 .build(),
         )
     } else if format_upgraded {
         Ok(FixerResult::builder("Upgrade upstream signing key to new packet format.").build())
+    } else if !overridden_issues.is_empty() {
+        Err(FixerError::NoChangesAfterOverrides(overridden_issues))
     } else {
         Err(FixerError::NoChanges)
     }

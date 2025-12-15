@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -9,7 +9,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let mut files_modified = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
+    let mut made_changes = false;
 
     // Find all .desktop files in the debian directory
     let entries = fs::read_dir(&debian_dir)?;
@@ -30,20 +32,75 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         }
 
-        // Remove all CR characters
-        let new_content: Vec<u8> = content.into_iter().filter(|&b| b != b'\r').collect();
+        let filename = path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| FixerError::Other("Invalid filename".to_string()))?;
 
-        // Write back the modified content
-        fs::write(&path, new_content)?;
-        files_modified = true;
+        // Build the installed path (assuming debian/<package>.desktop -> /usr/share/applications/<package>.desktop)
+        let installed_path = format!("usr/share/applications/{}", filename);
+
+        // Process line by line to track which lines have CRs
+        let lines: Vec<&[u8]> = content.split(|&b| b == b'\n').collect();
+        let mut lines_to_fix = Vec::new();
+
+        for (line_idx, line) in lines.iter().enumerate() {
+            if line.contains(&b'\r') {
+                let line_no = line_idx + 1;
+                let issue = LintianIssue::source_with_info(
+                    "desktop-entry-file-has-crs",
+                    vec![format!("[{}:{}]", installed_path, line_no)],
+                );
+
+                if issue.should_fix(base_path) {
+                    lines_to_fix.push(line_idx);
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
+                }
+            }
+        }
+
+        // Only modify the file if there are lines to fix
+        if !lines_to_fix.is_empty() {
+            // Build new content, removing CRs only from lines that should be fixed
+            let mut new_content = Vec::new();
+            for (line_idx, line) in lines.iter().enumerate() {
+                if lines_to_fix.contains(&line_idx) {
+                    // Remove CRs from this line
+                    let cleaned: Vec<u8> = line.iter().copied().filter(|&b| b != b'\r').collect();
+                    new_content.extend_from_slice(&cleaned);
+                } else {
+                    // Keep the line as-is (including any CRs if they exist and are overridden)
+                    new_content.extend_from_slice(line);
+                }
+
+                // Add back the newline separator (except after the last line if it didn't have one)
+                // Note: split creates an empty last element when content ends with \n
+                if line_idx < lines.len() - 1 {
+                    new_content.push(b'\n');
+                } else if content.ends_with(b"\n") && !line.is_empty() {
+                    // Only add final newline if the last line is not empty
+                    // (empty last line means content already ended with \n)
+                    new_content.push(b'\n');
+                }
+            }
+
+            fs::write(&path, new_content)?;
+            made_changes = true;
+        }
     }
 
-    if !files_modified {
+    if !made_changes {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     Ok(FixerResult::builder("Remove CRs from desktop files.")
-        .fixed_tags(vec!["desktop-entry-file-has-crs"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .certainty(crate::Certainty::Certain)
         .build())
 }

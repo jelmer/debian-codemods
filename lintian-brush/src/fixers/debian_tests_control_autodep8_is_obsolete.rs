@@ -17,7 +17,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         package: None,
         package_type: Some(PackageType::Source),
         tag: Some("debian-tests-control-autodep8-is-obsolete".to_string()),
-        info: Some(vec![OLD_PATH.to_string()]),
+        info: Some(OLD_PATH.to_string()),
     };
 
     if !issue.should_fix(base_path) {
@@ -40,7 +40,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             package: None,
             package_type: Some(PackageType::Source),
             tag: Some("debian-tests-control-and-control-autodep8".to_string()),
-            info: Some(vec![format!("{} {}", OLD_PATH, NEW_PATH)]),
+            info: Some(format!("{} {}", OLD_PATH, NEW_PATH)),
         };
 
         if !merge_issue.should_fix(base_path) {

@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -28,13 +28,22 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    let issue = LintianIssue::source_with_info(
+        "debian-rules-not-executable",
+        vec!["debian/rules".to_string()],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     // Make the file executable (755)
     let mut perms = metadata.permissions();
     perms.set_mode(0o755);
     fs::set_permissions(&rules_path, perms)?;
 
     Ok(FixerResult::builder("Make debian/rules executable.")
-        .fixed_tags(vec!["debian-rules-not-executable"])
+        .fixed_issues(vec![issue])
         .certainty(crate::Certainty::Certain)
         .build())
 }

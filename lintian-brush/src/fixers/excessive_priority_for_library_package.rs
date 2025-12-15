@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_control::Priority;
 use std::path::Path;
@@ -12,6 +12,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let editor = TemplatedControlEditor::open(&control_path)?;
     let mut changed_packages = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Get default priority from source paragraph
     let default_priority = if let Some(source) = editor.source() {
@@ -36,16 +38,29 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
         // Check if priority is excessive for library packages
         if matches!(priority.as_str(), "required" | "important" | "standard") {
-            // Set priority to optional
-            binary.set_priority(Some(Priority::Optional));
-
             if let Some(package_name) = binary.name() {
-                changed_packages.push(package_name.to_string());
+                let issue = LintianIssue::binary_with_info(
+                    &package_name,
+                    "excessive-priority-for-library-package",
+                    vec![priority.clone()],
+                );
+
+                if issue.should_fix(base_path) {
+                    // Set priority to optional
+                    binary.set_priority(Some(Priority::Optional));
+                    changed_packages.push(package_name.to_string());
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
+                }
             }
         }
     }
 
     if changed_packages.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -64,7 +79,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     };
 
     Ok(FixerResult::builder(&description)
-        .fixed_tags(vec!["excessive-priority-for-library-package"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 

@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -17,26 +17,41 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .parse()
         .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
 
-    let mut made_changes = false;
+    let mut found_template = None;
 
     for mut entry in watch_file.entries() {
         if let Some(filenamemangle) = entry.get_option("filenamemangle") {
             if filenamemangle == DH_MAKE_TEMPLATE {
+                found_template = Some(filenamemangle.to_string());
+
+                let issue = LintianIssue::source_with_info(
+                    "debian-watch-contains-dh_make-template",
+                    vec![format!("{} [debian/watch]", filenamemangle)],
+                );
+
+                if !issue.should_fix(base_path) {
+                    return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+                }
+
                 entry.del_opt("filenamemangle");
-                made_changes = true;
             }
         }
     }
 
-    if !made_changes {
+    let Some(template) = found_template else {
         return Err(FixerError::NoChanges);
-    }
+    };
 
     fs::write(&watch_path, watch_file.to_string())?;
 
+    let issue = LintianIssue::source_with_info(
+        "debian-watch-contains-dh_make-template",
+        vec![format!("{} [debian/watch]", template)],
+    );
+
     Ok(
         FixerResult::builder("Remove dh_make template from debian watch.")
-            .fixed_tags(vec!["debian-watch-contains-dh_make-template"])
+            .fixed_issues(vec![issue])
             .build(),
     )
 }

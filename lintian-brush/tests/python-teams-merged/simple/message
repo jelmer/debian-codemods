@@ -1,2 +1,3 @@
 Update maintainer email for merge of DPMT and PAPT.
-Fixed-Lintian-Tags: python-teams-merged
+Fixed-Lintian-Issues:
+ source: python-teams-merged python-modules-team@lists.alioth.debian.org

@@ -4,6 +4,34 @@ use std::path::{Path, PathBuf};
 
 include!(concat!(env!("OUT_DIR"), "/fixer_tests.rs"));
 
+/// Check if two lists of LintianIssues match, supporting wildcards (*) in expected info fields
+fn issues_match_with_wildcards(expected: &[LintianIssue], actual: &[LintianIssue]) -> bool {
+    if expected.len() != actual.len() {
+        return false;
+    }
+
+    for (exp, act) in expected.iter().zip(actual.iter()) {
+        // Check package, package_type, and tag match exactly
+        if exp.package != act.package || exp.package_type != act.package_type || exp.tag != act.tag
+        {
+            return false;
+        }
+
+        // Check info field with wildcard support
+        match (&exp.info, &act.info) {
+            (Some(exp_info), Some(act_info)) => {
+                if !crate::lintian_overrides::info_matches(exp_info, act_info) {
+                    return false;
+                }
+            }
+            (None, None) => {}
+            _ => return false,
+        }
+    }
+
+    true
+}
+
 #[test]
 fn test_all_test_dirs_have_matching_fixers() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -302,6 +330,24 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
                 eprintln!("Expected tags: {:?}", expected_tags);
                 eprintln!("Got tags: {:?}", actual_tags);
                 panic!("Test {} failed - tags mismatch", test_name);
+            }
+
+            // Compare full issue details including info field, supporting wildcards
+            if !issues_match_with_wildcards(
+                &expected_result.fixed_lintian_issues,
+                &actual_result.fixed_lintian_issues,
+            ) {
+                eprintln!(
+                    "Expected issues: {:?}",
+                    expected_result.fixed_lintian_issues
+                );
+                eprintln!("Got issues: {:?}", actual_result.fixed_lintian_issues);
+                eprintln!("\nExpected message format:");
+                eprintln!("Fixed-Lintian-Issues:");
+                for issue in &actual_result.fixed_lintian_issues {
+                    eprintln!(" {}", issue);
+                }
+                panic!("Test {} failed - issue details mismatch", test_name);
             }
 
             if expected_result.certainty != actual_result.certainty {

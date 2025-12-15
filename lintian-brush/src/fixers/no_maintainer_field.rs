@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_changelog::get_maintainer_from_env;
 use std::path::Path;
@@ -19,6 +19,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
     } else {
         return Err(FixerError::NoChanges);
+    }
+
+    // Create issue and check if we should fix it
+    let issue = LintianIssue::source_with_info(
+        "required-field",
+        vec!["debian/control Maintainer".to_string()],
+    );
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
     // Get maintainer from environment using debian_changelog
@@ -42,7 +51,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         "Set the maintainer field to: {} <{}>.",
         fullname, email
     ))
-    .fixed_tags(vec!["required-field"])
+    .fixed_issues(vec![issue])
     .certainty(crate::Certainty::Possible)
     .build())
 }

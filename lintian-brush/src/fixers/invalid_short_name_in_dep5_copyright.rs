@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_copyright::lossless::Copyright;
 use debian_copyright::License;
 use std::collections::HashMap;
@@ -46,13 +46,30 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let typos_map = build_typos_map();
     let mut renames: Vec<(String, String)> = Vec::new();
-    let mut changed = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Iterate through Files paragraphs and fix license names
     for mut files_para in copyright.iter_files() {
         if let Some(license) = files_para.license() {
             if let Some(name) = license.name() {
                 if let Some(new_name) = typos_map.get(name) {
+                    let line_number = files_para
+                        .as_deb822()
+                        .get_entry("License")
+                        .map(|e| e.line() + 1)
+                        .unwrap_or_else(|| files_para.as_deb822().line() + 1);
+
+                    let issue = LintianIssue::source_with_info(
+                        "invalid-short-name-in-dep5-copyright",
+                        vec![format!("{} [debian/copyright:{}]", name, line_number)],
+                    );
+
+                    if !issue.should_fix(base_path) {
+                        overridden_issues.push(issue);
+                        continue;
+                    }
+
                     if !renames.iter().any(|(old, _)| old == name) {
                         renames.push((name.to_string(), new_name.clone()));
                     }
@@ -63,7 +80,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                         License::Name(new_name.clone())
                     };
                     files_para.set_license(&new_license);
-                    changed = true;
+                    fixed_issues.push(issue);
                 }
             }
         }
@@ -73,6 +90,22 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     for mut license_para in copyright.iter_licenses() {
         if let Some(name) = license_para.name() {
             if let Some(new_name) = typos_map.get(&name) {
+                let line_number = license_para
+                    .as_deb822()
+                    .get_entry("License")
+                    .map(|e| e.line() + 1)
+                    .unwrap_or_else(|| license_para.as_deb822().line() + 1);
+
+                let issue = LintianIssue::source_with_info(
+                    "invalid-short-name-in-dep5-copyright",
+                    vec![format!("{} [debian/copyright:{}]", name, line_number)],
+                );
+
+                if !issue.should_fix(base_path) {
+                    overridden_issues.push(issue);
+                    continue;
+                }
+
                 if !renames.iter().any(|(old, _)| old == &name) {
                     renames.push((name.clone(), new_name.clone()));
                 }
@@ -83,12 +116,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     License::Name(new_name.clone())
                 };
                 license_para.set_license(&new_license);
-                changed = true;
+                fixed_issues.push(issue);
             }
         }
     }
 
-    if !changed {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -104,7 +140,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         "Fix invalid short license name in debian/copyright ({})",
         renames_str
     ))
-    .fixed_tags(vec!["invalid-short-name-in-dep5-copyright"])
+    .fixed_issues(fixed_issues)
+    .overridden_issues(overridden_issues)
     .build())
 }
 

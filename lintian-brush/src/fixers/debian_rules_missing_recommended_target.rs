@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::rules::check_cdbs;
 use debian_control::Control;
 use makefile_lossless::Makefile;
@@ -56,10 +56,20 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let archs = get_archs(base_path)?;
     let mut added = Vec::new();
+    let mut fixed_issues = Vec::new();
 
     // Add build-indep if missing
     if !has_build_indep {
+        let issue = LintianIssue::source_with_info(
+            "debian-rules-missing-recommended-target",
+            vec!["build-indep [debian/rules]".to_string()],
+        );
+        if !issue.should_fix(base_path) {
+            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+        }
+
         added.push("build-indep");
+        fixed_issues.push(issue);
         let mut rule = makefile.add_rule("build-indep");
 
         // If architecture is "all", make it depend on "build"
@@ -71,7 +81,16 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // Add build-arch if missing
     if !has_build_arch {
+        let issue = LintianIssue::source_with_info(
+            "debian-rules-missing-recommended-target",
+            vec!["build-arch [debian/rules]".to_string()],
+        );
+        if !issue.should_fix(base_path) {
+            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+        }
+
         added.push("build-arch");
+        fixed_issues.push(issue);
         let mut rule = makefile.add_rule("build-arch");
 
         // If there are non-all architectures, make it depend on "build"
@@ -102,7 +121,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     };
 
     Ok(FixerResult::builder(description)
-        .fixed_tag("debian-rules-missing-recommended-target")
+        .fixed_issues(fixed_issues)
         .build())
 }
 

@@ -1,3 +1,4 @@
 Use standard Vcs fields for perl package.
 Certainty: certain
-Fixed-Lintian-Tags: team/pkg-perl/vcs/no-team-url
+Fixed-Lintian-Issues:
+ source: team/pkg-perl/vcs/no-team-url

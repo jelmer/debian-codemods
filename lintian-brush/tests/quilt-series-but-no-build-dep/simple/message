@@ -1,2 +1,3 @@
 Add missing dependency on quilt.
-Fixed-Lintian-Tags: quilt-series-but-no-build-dep
+Fixed-Lintian-Issues:
+ source: quilt-series-but-no-build-dep [debian/patches/series]

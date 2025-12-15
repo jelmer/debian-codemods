@@ -1,3 +1,4 @@
 Add description for binary packages: python3-dulwich
 Certainty: possible
-Fixed-Lintian-Tags: extended-description-is-empty
+Fixed-Lintian-Issues:
+ python3-dulwich binary: extended-description-is-empty

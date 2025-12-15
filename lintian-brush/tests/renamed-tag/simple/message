@@ -1,2 +1,3 @@
 Update renamed lintian tag names in lintian overrides.
-Fixed-Lintian-Tags: renamed-tag
+Fixed-Lintian-Issues:
+ source: renamed-tag debian-watch-may-check-gpg-signature => debian-watch-does-not-check-openpgp-signature

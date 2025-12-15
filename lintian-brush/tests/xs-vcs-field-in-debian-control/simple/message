@@ -1,2 +1,3 @@
 Remove unnecessary XS- prefix for Vcs- fields in debian/control.
-Fixed-Lintian-Tags: adopted-extended-field
+Fixed-Lintian-Issues:
+ source: adopted-extended-field (in section for source) XS-Vcs-Git [debian/control:2]

@@ -1,3 +1,5 @@
 Section field set for binary packages node-foo, python-blah based on name.
 Certainty: certain
-Fixed-Lintian-Tags: recommended-field
+Fixed-Lintian-Issues:
+ python-blah binary: recommended-field (in section for python-blah) Section [debian/control:3]
+ node-foo binary: recommended-field (in section for node-foo) Section [debian/control:6]

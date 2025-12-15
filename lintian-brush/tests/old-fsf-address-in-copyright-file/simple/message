@@ -1,3 +1,4 @@
 Update FSF postal address.
-Fixed-Lintian-Tags: old-fsf-address-in-copyright-file
+Fixed-Lintian-Issues:
+ source: old-fsf-address-in-copyright-file
 Certainty: certain

@@ -1,2 +1,3 @@
 Update Vcs-* headers to use salsa repository.
-Fixed-Lintian-Tags: vcs-obsolete-in-debian-infrastructure
+Fixed-Lintian-Issues:
+ source: vcs-obsolete-in-debian-infrastructure vcs-git git://git.debian.org/jelmer/lintian-brush

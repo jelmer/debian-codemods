@@ -1,2 +1,3 @@
 Set priority for library package libbzip2 to optional.
-Fixed-Lintian-Tags: excessive-priority-for-library-package
+Fixed-Lintian-Issues:
+ libbzip2 binary: excessive-priority-for-library-package required

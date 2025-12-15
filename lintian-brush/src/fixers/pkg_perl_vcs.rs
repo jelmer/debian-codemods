@@ -58,6 +58,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let mut made_changes = false;
     let mut removed_non_git_vcs = false;
     let mut fixed_urls = false;
+    let mut fixed_issues = Vec::new();
     let mut overridden_issues = Vec::new();
 
     // Determine what changes need to be made
@@ -68,13 +69,17 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             .as_ref()
             .is_none_or(|v| !v.starts_with(URL_BASE));
 
-    let fields_to_remove: Vec<String> = {
+    let fields_to_remove: Vec<(String, String)> = {
         let paragraph = source.as_deb822();
         paragraph
             .keys()
             .filter(|field| {
                 let lower = field.to_lowercase();
                 lower.starts_with("vcs-") && lower != "vcs-git" && lower != "vcs-browser"
+            })
+            .map(|field| {
+                let value = paragraph.get(&field).unwrap_or_default();
+                (field.to_string(), value)
             })
             .collect()
     };
@@ -83,30 +88,27 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // Check for overrides
     if need_to_fix_urls {
-        let issue = LintianIssue {
-            package: None,
-            package_type: Some(crate::PackageType::Source),
-            tag: Some("team/pkg-perl/vcs/no-team-url".to_string()),
-            info: None,
-        };
+        let issue = LintianIssue::source("team/pkg-perl/vcs/no-team-url");
         if !issue.should_fix(base_path) {
             overridden_issues.push(issue);
         } else {
             fixed_urls = true;
+            fixed_issues.push(issue);
         }
     }
 
     if need_to_remove_non_git_vcs {
-        let issue = LintianIssue {
-            package: None,
-            package_type: Some(crate::PackageType::Source),
-            tag: Some("team/pkg-perl/vcs/no-git".to_string()),
-            info: None,
-        };
-        if !issue.should_fix(base_path) {
-            overridden_issues.push(issue);
-        } else {
-            removed_non_git_vcs = true;
+        for (field, value) in &fields_to_remove {
+            let issue = LintianIssue::source_with_info(
+                "team/pkg-perl/vcs/no-git",
+                vec![format!("{} {}", field, value)],
+            );
+            if !issue.should_fix(base_path) {
+                overridden_issues.push(issue);
+            } else {
+                removed_non_git_vcs = true;
+                fixed_issues.push(issue);
+            }
         }
     }
 
@@ -122,7 +124,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // Remove all VCS fields except Git and Browser (if not overridden)
     if removed_non_git_vcs {
         let paragraph = source.as_mut_deb822();
-        for field in &fields_to_remove {
+        for (field, _) in &fields_to_remove {
             paragraph.remove(field);
         }
         made_changes = true;
@@ -153,18 +155,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     editor.commit()?;
 
-    let mut fixed_tags = Vec::new();
-    if fixed_urls {
-        fixed_tags.push("team/pkg-perl/vcs/no-team-url");
-    }
-    if removed_non_git_vcs {
-        fixed_tags.push("team/pkg-perl/vcs/no-git");
-    }
-
     Ok(
         FixerResult::builder("Use standard Vcs fields for perl package.")
             .certainty(crate::Certainty::Certain)
-            .fixed_tags(fixed_tags)
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .build(),
     )
 }

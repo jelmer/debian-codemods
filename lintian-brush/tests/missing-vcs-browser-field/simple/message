@@ -1,2 +1,3 @@
 debian/control: Add Vcs-Browser field
-Fixed-Lintian-Tags: missing-vcs-browser-field
+Fixed-Lintian-Issues:
+ source: missing-vcs-browser-field Vcs-Git git://github.com/jelmer/lintian-brush

@@ -79,6 +79,7 @@ impl std::fmt::Display for PackageType {
 
 /// Represents a Lintian issue
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+/// A Lintian issue
 pub struct LintianIssue {
     /// Package name
     pub package: Option<String>,
@@ -87,7 +88,31 @@ pub struct LintianIssue {
     /// Lintian tag
     pub tag: Option<String>,
     /// Additional information
-    pub info: Option<Vec<String>>,
+    pub info: Option<String>,
+}
+
+impl std::fmt::Display for LintianIssue {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        // Format: "package source: tag info" or "source: tag info"
+        if let Some(ref pkg) = self.package {
+            write!(f, "{} ", pkg)?;
+        }
+        if let Some(ref pt) = self.package_type {
+            write!(f, "{}", pt)?;
+        } else {
+            write!(f, "source")?;
+        }
+        write!(f, ":")?;
+        if let Some(ref tag) = self.tag {
+            write!(f, " {}", tag)?;
+        }
+        if let Some(ref info) = self.info {
+            if !info.is_empty() {
+                write!(f, " {}", info)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl LintianIssue {
@@ -114,6 +139,61 @@ impl LintianIssue {
             tag: Some(tag),
             info: None,
         }
+    }
+
+    /// Create a source package issue with a tag
+    pub fn source(tag: impl Into<String>) -> Self {
+        Self {
+            package: None,
+            package_type: Some(PackageType::Source),
+            tag: Some(tag.into()),
+            info: None,
+        }
+    }
+
+    /// Create a source package issue with a tag and info
+    pub fn source_with_info(tag: impl Into<String>, info: Vec<String>) -> Self {
+        let joined = info.join(" ");
+        Self {
+            package: None,
+            package_type: Some(PackageType::Source),
+            tag: Some(tag.into()),
+            info: if joined.is_empty() {
+                None
+            } else {
+                Some(joined)
+            },
+        }
+    }
+
+    /// Create a binary package issue with a tag and info
+    pub fn binary_with_info(
+        package: impl Into<String>,
+        tag: impl Into<String>,
+        info: Vec<String>,
+    ) -> Self {
+        let joined = info.join(" ");
+        Self {
+            package: Some(package.into()),
+            package_type: Some(PackageType::Binary),
+            tag: Some(tag.into()),
+            info: if joined.is_empty() {
+                None
+            } else {
+                Some(joined)
+            },
+        }
+    }
+
+    /// Add info to this issue
+    pub fn with_info(mut self, info: Vec<String>) -> Self {
+        let joined = info.join(" ");
+        self.info = if joined.is_empty() {
+            None
+        } else {
+            Some(joined)
+        };
+        self
     }
 
     /// Check if this issue should be fixed (i.e., it's not overridden)
@@ -153,7 +233,10 @@ impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for LintianIssue {
             })
             .transpose()?;
         let tag = ob.getattr("tag")?.extract::<Option<String>>()?;
-        let info = ob.getattr("info")?.extract::<Option<Vec<String>>>()?;
+        let info = ob
+            .getattr("info")?
+            .extract::<Option<Vec<String>>>()?
+            .map(|v| v.join(" "));
         Ok(Self {
             package,
             package_type,
@@ -208,8 +291,18 @@ impl TryFrom<&str> for LintianIssue {
                     )));
                 }
             } else {
-                package_type = None;
-                package = Some(before.to_string());
+                // No space before colon - check if it's "source:" or "binary:"
+                if before == "source" {
+                    package_type = Some(PackageType::Source);
+                    package = None;
+                } else if before == "binary" {
+                    package_type = Some(PackageType::Binary);
+                    package = None;
+                } else {
+                    // It's a package name
+                    package_type = None;
+                    package = Some(before.to_string());
+                }
             }
             after
         } else {
@@ -217,10 +310,17 @@ impl TryFrom<&str> for LintianIssue {
             package = None;
             value
         };
-        let mut parts = after.trim().split(' ');
-        let tag = parts.next().map(|s| s.to_string());
-        let info: Vec<_> = parts.map(|s| s.to_string()).collect();
-        let info = if info.is_empty() { None } else { Some(info) };
+        let after = after.trim();
+        let (tag, info) = if let Some((tag_str, info_str)) = after.split_once(' ') {
+            let info = if info_str.is_empty() {
+                None
+            } else {
+                Some(info_str.to_string())
+            };
+            (Some(tag_str.to_string()), info)
+        } else {
+            (Some(after.to_string()), None)
+        };
         Ok(Self {
             package,
             package_type,
@@ -251,20 +351,12 @@ impl FixerResult {
     /// Create a new FixerResult
     pub fn new(
         description: String,
-        fixed_lintian_tags: Option<Vec<String>>,
         certainty: Option<Certainty>,
         patch_name: Option<String>,
         revision_id: Option<RevisionId>,
-        mut fixed_lintian_issues: Vec<LintianIssue>,
+        fixed_lintian_issues: Vec<LintianIssue>,
         overridden_lintian_issues: Option<Vec<LintianIssue>>,
     ) -> Self {
-        if let Some(fixed_lintian_tags) = fixed_lintian_tags.as_ref() {
-            fixed_lintian_issues.extend(
-                fixed_lintian_tags
-                    .iter()
-                    .map(|tag| LintianIssue::just_tag(tag.to_string())),
-            );
-        }
         Self {
             description,
             certainty,
@@ -301,8 +393,6 @@ pub struct FixerResultBuilder {
     revision_id: Option<RevisionId>,
     /// List of Lintian issues that were fixed
     fixed_lintian_issues: Vec<LintianIssue>,
-    /// List of fixed Lintian tags (deprecated)
-    fixed_lintian_tags: Vec<String>,
     /// List of Lintian issues that were overridden
     overridden_lintian_issues: Vec<LintianIssue>,
 }
@@ -346,21 +436,6 @@ impl FixerResultBuilder {
         self
     }
 
-    /// Add a fixed lintian tag (will be converted to LintianIssue)
-    #[deprecated = "use fixed_issue instead"]
-    pub fn fixed_tag(mut self, tag: impl Into<String>) -> Self {
-        self.fixed_lintian_tags.push(tag.into());
-        self
-    }
-
-    /// Add multiple fixed lintian tags
-    #[deprecated = "use fixed_issues instead"]
-    pub fn fixed_tags(mut self, tags: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.fixed_lintian_tags
-            .extend(tags.into_iter().map(|t| t.into()));
-        self
-    }
-
     /// Add an overridden lintian issue
     pub fn overridden_issue(mut self, issue: LintianIssue) -> Self {
         self.overridden_lintian_issues.push(issue);
@@ -375,21 +450,12 @@ impl FixerResultBuilder {
 
     /// Build the FixerResult
     pub fn build(self) -> FixerResult {
-        let mut fixed_lintian_issues = self.fixed_lintian_issues;
-
-        // Convert tags to issues
-        fixed_lintian_issues.extend(
-            self.fixed_lintian_tags
-                .into_iter()
-                .map(LintianIssue::just_tag),
-        );
-
         FixerResult {
             description: self.description,
             certainty: self.certainty,
             patch_name: self.patch_name,
             revision_id: self.revision_id,
-            fixed_lintian_issues,
+            fixed_lintian_issues: self.fixed_lintian_issues,
             overridden_lintian_issues: self.overridden_lintian_issues,
         }
     }
@@ -428,7 +494,6 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
     let mut description: Vec<String> = Vec::new();
     let mut overridden_issues: Vec<LintianIssue> = Vec::new();
     let mut fixed_lintian_issues: Vec<LintianIssue> = Vec::new();
-    let mut fixed_lintian_tags: Vec<String> = Vec::new();
     let mut certainty: Option<String> = None;
     let mut patch_name: Option<String> = None;
 
@@ -438,9 +503,6 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
     while i < lines.len() {
         if let Some((key, value)) = lines[i].split_once(':') {
             match key.trim() {
-                "Fixed-Lintian-Tags" => {
-                    fixed_lintian_tags.extend(value.split(',').map(|tag| tag.trim().to_owned()));
-                }
                 "Fixed-Lintian-Issues" => {
                     i += 1;
                     while i < lines.len() && lines[i].starts_with(' ') {
@@ -479,12 +541,6 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
         .transpose()
         .map_err(OutputParseError::UnsupportedCertainty)?;
 
-    let fixed_lintian_tags = if fixed_lintian_tags.is_empty() {
-        None
-    } else {
-        Some(fixed_lintian_tags)
-    };
-
     let overridden_issues = if overridden_issues.is_empty() {
         None
     } else {
@@ -493,7 +549,6 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
 
     Ok(FixerResult::new(
         description.join("\n"),
-        fixed_lintian_tags,
         certainty,
         patch_name,
         None,
@@ -2800,7 +2855,6 @@ Arch: all
                 vec![(
                     FixerResult::new(
                         "Fixed some tag.\nExtended description.".to_string(),
-                        None,
                         Some(Certainty::Certain),
                         None,
                         Some(revid),
@@ -3640,11 +3694,10 @@ fixers:
             result.success.push((
                 FixerResult::new(
                     "Do bla".to_string(),
-                    Some(vec!["tag-a".to_string()]),
                     None,
                     None,
                     None,
-                    vec![],
+                    vec![LintianIssue::just_tag("tag-a".to_string())],
                     None,
                 ),
                 "summary".to_string(),
@@ -3658,11 +3711,10 @@ fixers:
             result.success.push((
                 FixerResult::new(
                     "Do bla".to_string(),
-                    Some(vec!["tag-a".to_string()]),
                     Some(Certainty::Possible),
                     None,
                     None,
-                    vec![],
+                    vec![LintianIssue::just_tag("tag-a".to_string())],
                     None,
                 ),
                 "summary".to_string(),
@@ -3670,11 +3722,10 @@ fixers:
             result.success.push((
                 FixerResult::new(
                     "Do bloeh".to_string(),
-                    Some(vec!["tag-b".to_string()]),
                     Some(Certainty::Certain),
                     None,
                     None,
-                    vec![],
+                    vec![LintianIssue::just_tag("tag-b".to_string())],
                     None,
                 ),
                 "summary".to_string(),
@@ -3771,7 +3822,7 @@ mod script_fixer_tests {
         // Write a script that succeeds and outputs valid fixer result
         std::fs::write(
             &script_path,
-            "#!/bin/bash\necho 'Fixed: test issue'\necho 'Fixed-Lintian-Tags: test-tag'\nexit 0\n",
+            "#!/bin/bash\necho 'Fixed: test issue'\necho 'Fixed-Lintian-Issues:'\necho ' source: test-tag'\nexit 0\n",
         )
         .unwrap();
         std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
@@ -3803,7 +3854,7 @@ mod script_fixer_tests {
     #[test]
     fn test_parse_script_fixer_output() {
         // Test basic parsing
-        let output = "Fixed: test issue\nFixed-Lintian-Tags: tag1, tag2\n";
+        let output = "Fixed: test issue\nFixed-Lintian-Issues:\n source: tag1\n source: tag2\n";
         let result = parse_script_fixer_output(output).unwrap();
         assert_eq!(result.description, "Fixed: test issue");
         assert_eq!(result.fixed_lintian_tags(), vec!["tag1", "tag2"]);
@@ -3859,8 +3910,8 @@ mod fixer_result_builder_tests {
     #[test]
     fn test_fixer_result_builder_with_fixed_tags() {
         let result = FixerResult::builder("Test fix")
-            .fixed_tag("tag1")
-            .fixed_tag("tag2")
+            .fixed_issue(LintianIssue::just_tag("tag1".to_string()))
+            .fixed_issue(LintianIssue::just_tag("tag2".to_string()))
             .build();
 
         assert_eq!(result.description, "Test fix");
@@ -3870,7 +3921,11 @@ mod fixer_result_builder_tests {
     #[test]
     fn test_fixer_result_builder_with_fixed_tags_batch() {
         let result = FixerResult::builder("Test fix")
-            .fixed_tags(["tag1", "tag2", "tag3"])
+            .fixed_issues([
+                LintianIssue::just_tag("tag1".to_string()),
+                LintianIssue::just_tag("tag2".to_string()),
+                LintianIssue::just_tag("tag3".to_string()),
+            ])
             .build();
 
         assert_eq!(result.description, "Test fix");
@@ -3945,7 +4000,7 @@ mod fixer_result_builder_tests {
             .certainty(Certainty::Certain)
             .patch_name("comprehensive.patch")
             .revision_id(revision_id.clone())
-            .fixed_tag("fixed-tag")
+            .fixed_issue(LintianIssue::just_tag("fixed-tag".to_string()))
             .overridden_issue(LintianIssue::just_tag("overridden-tag".to_string()))
             .build();
 
@@ -3962,9 +4017,9 @@ mod fixer_result_builder_tests {
         let issue = LintianIssue::just_tag("issue-tag".to_string());
 
         let result = FixerResult::builder("Test fix")
-            .fixed_tag("tag1")
+            .fixed_issue(LintianIssue::just_tag("tag1".to_string()))
             .fixed_issue(issue)
-            .fixed_tag("tag2")
+            .fixed_issue(LintianIssue::just_tag("tag2".to_string()))
             .build();
 
         let tags = result.fixed_lintian_tags();

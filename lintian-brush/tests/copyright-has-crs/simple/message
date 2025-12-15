@@ -1,3 +1,4 @@
 Remove CRs from copyright file.
-Fixed-Lintian-Tags: copyright-has-crs
+Fixed-Lintian-Issues:
+ source: copyright-has-crs
 Certainty: certain

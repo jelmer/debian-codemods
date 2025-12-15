@@ -1,2 +1,4 @@
 Add missing debian/rules targets build-indep, build-arch.
-Fixed-Lintian-Tags: debian-rules-missing-recommended-target
+Fixed-Lintian-Issues:
+ source: debian-rules-missing-recommended-target build-indep [debian/rules]
+ source: debian-rules-missing-recommended-target build-arch [debian/rules]

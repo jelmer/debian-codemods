@@ -1,2 +1,4 @@
 Upgrade to newer source format 3.0 (native).
-Fixed-Lintian-Tags: missing-debian-source-format, older-source-format
+Fixed-Lintian-Issues:
+ source: missing-debian-source-format 3.0 (native)
+ source: older-source-format 1.0

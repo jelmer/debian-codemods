@@ -15,6 +15,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let mut dropped: HashSet<String> = HashSet::new();
     let mut newlines: Vec<String> = Vec::new();
+    let mut fixed_issues = Vec::new();
 
     for (lineno, line) in oldlines.iter().enumerate() {
         // Keep comment lines initially
@@ -33,7 +34,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                         package: None,
                         package_type: Some(PackageType::Source),
                         tag: Some("custom-compression-in-debian-source-options".to_string()),
-                        info: Some(vec![format!("{} (line {})", line, lineno + 1)]),
+                        info: Some(format!("{} (line {})", line, lineno + 1)),
                     };
 
                     if !issue.should_fix(base_path) {
@@ -48,6 +49,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     }
 
                     dropped.insert("custom source compression".to_string());
+                    fixed_issues.push(issue);
                     continue;
                 }
                 "compression-level" => {
@@ -55,7 +57,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                         package: None,
                         package_type: Some(PackageType::Source),
                         tag: Some("custom-compression-in-debian-source-options".to_string()),
-                        info: Some(vec![format!("{} (line {})", line, lineno + 1)]),
+                        info: Some(format!("{} (line {})", line, lineno + 1)),
                     };
 
                     if !issue.should_fix(base_path) {
@@ -70,6 +72,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     }
 
                     dropped.insert("custom source compression level".to_string());
+                    fixed_issues.push(issue);
                     continue;
                 }
                 _ => {}
@@ -96,7 +99,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder(format!("Drop {}.", sorted_dropped.join(", ")))
-            .fixed_tags(vec!["custom-compression-in-debian-source-options"])
+            .fixed_issues(fixed_issues)
             .build(),
     )
 }

@@ -1,3 +1,4 @@
 Fix misspelling of Close ⇒ Closes.
 Certainty: likely
-Fixed-Lintian-Tags: misspelled-closes-bug
+Fixed-Lintian-Issues:
+ source: misspelled-closes-bug cLose: #123123 [usr/share/doc/blah/changelog.Debian.gz:1]

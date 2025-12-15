@@ -1,2 +1,4 @@
 Upgrade to newer source format 3.0 (quilt).
-Fixed-Lintian-Tags: missing-debian-source-format, older-source-format
+Fixed-Lintian-Issues:
+ source: missing-debian-source-format 3.0 (quilt)
+ source: older-source-format 1.0

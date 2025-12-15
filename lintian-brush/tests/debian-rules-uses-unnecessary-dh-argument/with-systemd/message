@@ -1,2 +1,3 @@
 Drop unnecessary dh arguments: --with=systemd
-Fixed-Lintian-Tags: debian-rules-uses-unnecessary-dh-argument
+Fixed-Lintian-Issues:
+ source: debian-rules-uses-unnecessary-dh-argument 12 >= 10 dh ... --with=systemd [debian/rules:4]

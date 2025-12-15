@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use makefile_lossless::Makefile;
 use std::fs;
 use std::path::Path;
@@ -14,24 +14,42 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let makefile: Makefile = Makefile::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
     let mut made_changes = false;
 
     // Iterate through rules and modify them directly
     let mut rules: Vec<_> = makefile.rules().collect();
     for rule in &mut rules {
         // Check if this rule has "dh_clean -k" command
-        for (recipe_index, recipe) in rule.recipes().enumerate() {
+        for (recipe_index, recipe_node) in rule.recipe_nodes().enumerate() {
+            let recipe = recipe_node.text();
             if recipe.trim() == "dh_clean -k" {
-                // Use replace_command to modify the rule in place
-                if rule.replace_command(recipe_index, "dh_prep") {
-                    made_changes = true;
-                    break; // Only replace first occurrence per rule
+                let issue = LintianIssue::source_with_info(
+                    "dh-clean-k-is-deprecated",
+                    vec!["[debian/rules]".to_string()],
+                );
+
+                if issue.should_fix(base_path) {
+                    // Preserve original indentation
+                    let indent: String = recipe.chars().take_while(|c| c.is_whitespace()).collect();
+                    // Use replace_command to modify the rule in place
+                    if rule.replace_command(recipe_index, &format!("{}dh_prep", indent)) {
+                        made_changes = true;
+                        fixed_issues.push(issue);
+                        break; // Only replace first occurrence per rule
+                    }
+                } else {
+                    overridden_issues.push(issue);
                 }
             }
         }
     }
 
     if !made_changes {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -40,7 +58,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder(r#"debian/rules: Use dh_prep rather than "dh_clean -k"."#)
-            .fixed_tags(vec!["dh-clean-k-is-deprecated"])
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .build(),
     )
 }

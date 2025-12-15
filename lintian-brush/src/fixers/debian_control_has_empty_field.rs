@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -12,27 +12,40 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let editor = TemplatedControlEditor::open(&control_path)?;
     let mut removed_fields = Vec::new();
     let mut packages_affected = Vec::new();
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Check source paragraph for empty fields
     if let Some(mut source) = editor.source() {
         let paragraph = source.as_mut_deb822();
-        let keys_to_remove: Vec<String> = paragraph
-            .keys()
-            .filter(|key| {
-                if let Some(value) = paragraph.get(key) {
-                    value.trim().is_empty()
-                } else {
-                    false
-                }
-            })
-            .map(|key| key.to_string())
-            .collect();
 
-        for key in keys_to_remove {
-            paragraph.remove(&key);
-            removed_fields.push(key);
-            made_changes = true;
+        let mut keys_to_remove = Vec::new();
+        for entry in paragraph.entries() {
+            let value = entry.value();
+            if value.trim().is_empty() {
+                if let Some(key) = entry.key() {
+                    let line_number = entry.line() + 1;
+                    keys_to_remove.push((key.to_string(), line_number));
+                }
+            }
+        }
+
+        for (key, line_number) in keys_to_remove {
+            let issue = LintianIssue::source_with_info(
+                "debian-control-has-empty-field",
+                vec![format!(
+                    "(in source paragraph) {} [debian/control:{}]",
+                    key, line_number
+                )],
+            );
+
+            if issue.should_fix(base_path) {
+                paragraph.remove(&key);
+                removed_fields.push(key);
+                fixed_issues.push(issue);
+            } else {
+                overridden_issues.push(issue);
+            }
         }
     }
 
@@ -44,30 +57,43 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             .map(|s| s.to_string())
             .unwrap_or_else(|| "unknown".to_string());
 
-        let keys_to_remove: Vec<String> = paragraph
-            .keys()
-            .filter(|key| {
-                if let Some(value) = paragraph.get(key) {
-                    value.trim().is_empty()
-                } else {
-                    false
+        let mut keys_to_remove = Vec::new();
+        for entry in paragraph.entries() {
+            let value = entry.value();
+            if value.trim().is_empty() {
+                if let Some(key) = entry.key() {
+                    let line_number = entry.line() + 1;
+                    keys_to_remove.push((key.to_string(), line_number));
                 }
-            })
-            .map(|key| key.to_string())
-            .collect();
-
-        if !keys_to_remove.is_empty() {
-            packages_affected.push(package_name);
+            }
         }
 
-        for key in keys_to_remove {
-            paragraph.remove(&key);
-            removed_fields.push(key);
-            made_changes = true;
+        for (key, line_number) in keys_to_remove {
+            let issue = LintianIssue {
+                package: Some(package_name.clone()),
+                package_type: Some(PackageType::Binary),
+                tag: Some("debian-control-has-empty-field".to_string()),
+                info: Some(format!(
+                    "(in section for {}) {} [debian/control:{}]",
+                    package_name, key, line_number
+                )),
+            };
+
+            if issue.should_fix(base_path) {
+                paragraph.remove(&key);
+                removed_fields.push(key);
+                packages_affected.push(package_name.clone());
+                fixed_issues.push(issue);
+            } else {
+                overridden_issues.push(issue);
+            }
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -95,7 +121,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     );
 
     Ok(FixerResult::builder(&description)
-        .fixed_tags(vec!["debian-control-has-empty-field"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 

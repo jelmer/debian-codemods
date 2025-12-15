@@ -1,4 +1,4 @@
-use crate::{FixerError, FixerPreferences, FixerResult};
+use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
 use lazy_static::lazy_static;
 use makefile_lossless::Makefile;
 use regex::Regex;
@@ -68,6 +68,8 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     // Find variables that match pkg-info.mk variables and use known commands
     let mut vars_to_remove = Vec::new();
     let mut needs_include = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for var_def in makefile.variable_definitions() {
         if let Some(name) = var_def.name() {
@@ -76,8 +78,17 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
                 if pkg_info_vars.contains(&name) {
                     // Check if the value matches a known command
                     if check_if_known_command(&value).is_some() {
-                        vars_to_remove.push(name.clone());
-                        needs_include = true;
+                        let issue = LintianIssue::source_with_info(
+                            "debian-rules-parses-dpkg-parsechangelog",
+                            vec![format!("{} [debian/rules]", name)],
+                        );
+                        if issue.should_fix(base_path) {
+                            vars_to_remove.push(name.clone());
+                            fixed_issues.push(issue);
+                            needs_include = true;
+                        } else {
+                            overridden_issues.push(issue);
+                        }
                     }
                 }
             }
@@ -85,6 +96,9 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     }
 
     if !needs_include && vars_to_remove.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -142,7 +156,8 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     fs::write(&rules_path, new_content)?;
 
     Ok(FixerResult::builder("Avoid invoking dpkg-parsechangelog.")
-        .fixed_tags(vec!["debian-rules-parses-dpkg-parsechangelog".to_string()])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 

@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use sequoia_openpgp::armor::{Kind, Writer};
 use sequoia_openpgp::cert::Cert;
 use sequoia_openpgp::parse::Parse;
@@ -91,6 +91,20 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    // Create info showing all the files being merged
+    let file_list: Vec<String> = existing_paths
+        .iter()
+        .filter_map(|p| p.strip_prefix(base_path).ok())
+        .map(|p| p.display().to_string())
+        .collect();
+
+    let issue =
+        LintianIssue::source_with_info("public-upstream-keys-in-multiple-locations", file_list);
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     // Read all key files
     let mut key_data = Vec::new();
     for path in &existing_paths {
@@ -121,7 +135,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     Ok(FixerResult::builder("Merge upstream signing key files.")
-        .fixed_tags(vec!["public-upstream-keys-in-multiple-locations"])
+        .fixed_issue(issue)
         .certainty(crate::Certainty::Certain)
         .build())
 }

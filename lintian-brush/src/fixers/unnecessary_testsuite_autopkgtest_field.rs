@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -16,13 +16,27 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
         if let Some(testsuite) = paragraph.get("Testsuite") {
             if testsuite == "autopkgtest" {
+                let line_number = paragraph
+                    .get_entry("Testsuite")
+                    .map(|e| e.line() + 1)
+                    .unwrap_or(1);
+
+                let issue = LintianIssue::source_with_info(
+                    "unnecessary-testsuite-autopkgtest-field",
+                    vec![format!("[debian/control:{}]", line_number)],
+                );
+
+                if !issue.should_fix(base_path) {
+                    return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+                }
+
                 paragraph.remove("Testsuite");
                 editor.commit()?;
 
                 return Ok(FixerResult::builder(
-                    "Remove unnecessary 'Testsuite: autopkgtest' header.".to_string(),
+                    "Remove unnecessary 'Testsuite: autopkgtest' header.",
                 )
-                .fixed_tags(vec!["unnecessary-testsuite-autopkgtest-field"])
+                .fixed_issue(issue)
                 .build());
             }
         }

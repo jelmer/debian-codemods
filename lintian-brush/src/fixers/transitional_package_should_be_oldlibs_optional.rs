@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -11,6 +11,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let editor = TemplatedControlEditor::open(&control_path)?;
     let mut packages = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     let default_priority = editor
         .source()
@@ -45,6 +47,34 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 .and_then(|s| s.as_deb822().get("Section").map(|s| s.to_string()))
         };
 
+        // Get old priority - from binary or source
+        let old_priority = if let Some(priority) = paragraph.get("Priority") {
+            priority.to_string()
+        } else {
+            default_priority
+                .as_deref()
+                .unwrap_or("optional")
+                .to_string()
+        };
+
+        // Create info string showing old section/priority
+        let info = format!(
+            "{}/{}",
+            old_section.as_deref().unwrap_or("misc"),
+            old_priority
+        );
+
+        let issue = LintianIssue::binary_with_info(
+            &package_name,
+            "transitional-package-not-oldlibs-optional",
+            vec![info],
+        );
+
+        if !issue.should_fix(base_path) {
+            overridden_issues.push(issue);
+            continue;
+        }
+
         // Determine new section
         let new_section = if let Some(old_section) = old_section.as_ref() {
             if let Some((area, _section)) = old_section.split_once('/') {
@@ -67,9 +97,13 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
 
         packages.push(package_name);
+        fixed_issues.push(issue);
     }
 
-    if packages.is_empty() {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -88,7 +122,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     };
 
     Ok(FixerResult::builder(&message)
-        .fixed_tags(vec!["transitional-package-not-oldlibs-optional"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 

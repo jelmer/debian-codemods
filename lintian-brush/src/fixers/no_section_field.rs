@@ -80,6 +80,8 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     let mut binary_sections_set = HashSet::new();
     let mut binary_sections = HashSet::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // First pass: set sections on binaries that don't have them
     for mut binary in editor.binaries() {
@@ -90,16 +92,23 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
             };
 
             if let Some(section) = find_expected_section(&regexes, &package_name) {
+                let line_no = binary.as_deb822().line() + 1; // Convert to 1-indexed
                 let issue = LintianIssue {
                     package: Some(package_name.clone()),
                     package_type: Some(crate::PackageType::Binary),
                     tag: Some("recommended-field".to_string()),
-                    info: Some(vec!["Section".to_string()]),
+                    info: Some(format!(
+                        "(in section for {}) Section [debian/control:{}]",
+                        package_name, line_no
+                    )),
                 };
 
                 if issue.should_fix(base_path) {
                     binary.set_section(Some(section));
                     binary_sections_set.insert(package_name);
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
                 }
             }
         }
@@ -116,28 +125,42 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     if binary_sections.len() == 1 {
         let section = binary_sections.iter().next().unwrap().clone();
 
-        let issue = LintianIssue {
-            package: None,
-            package_type: Some(crate::PackageType::Source),
-            tag: Some("recommended-field".to_string()),
-            info: Some(vec!["Section".to_string()]),
-        };
+        if let Some(mut source) = editor.source() {
+            let source_line = source.as_deb822().line() + 1;
+            let issue = LintianIssue {
+                package: None,
+                package_type: Some(crate::PackageType::Source),
+                tag: Some("recommended-field".to_string()),
+                info: Some(format!(
+                    "(in section for source) Section [debian/control:{}]",
+                    source_line
+                )),
+            };
 
-        if issue.should_fix(base_path) {
-            // Set section on source
-            if let Some(mut source) = editor.source() {
+            if issue.should_fix(base_path) {
+                // Set section on source
                 source.set_section(Some(&section));
                 source_section_set = true;
-            }
+                fixed_issues.push(issue);
 
-            // Remove section from all binaries
-            for mut binary in editor.binaries() {
-                binary.set_section(None);
+                // Remove section from binaries that have the same section
+                for mut binary in editor.binaries() {
+                    if let Some(bin_section) = binary.section() {
+                        if bin_section == section {
+                            binary.set_section(None);
+                        }
+                    }
+                }
+            } else {
+                overridden_issues.push(issue);
             }
         }
     }
 
     if !source_section_set && binary_sections_set.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -159,7 +182,8 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     Ok(FixerResult::builder(&description)
         .certainty(Certainty::Certain)
-        .fixed_tag("recommended-field")
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 

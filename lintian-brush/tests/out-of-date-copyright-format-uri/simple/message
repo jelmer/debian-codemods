@@ -1,3 +1,4 @@
 Use correct machine-readable copyright file URI.
-Fixed-Lintian-Tags: out-of-date-copyright-format-uri
+Fixed-Lintian-Issues:
+ source: out-of-date-copyright-format-uri debian/copyright:1
 Certainty: certain

@@ -1,2 +1,3 @@
 Remove obsolete linda overrides: libhugs-cabal-bundled.linda-overrides
-Fixed-Lintian-Tags: package-contains-linda-override
+Fixed-Lintian-Issues:
+ libhugs-cabal-bundled binary: package-contains-linda-override usr/share/linda/overrides/libhugs-cabal-bundled

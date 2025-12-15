@@ -1,2 +1,3 @@
 Avoid invoking dpkg-parsechangelog.
-Fixed-Lintian-Tags: debian-rules-parses-dpkg-parsechangelog
+Fixed-Lintian-Issues:
+ source: debian-rules-parses-dpkg-parsechangelog DEB_VERSION [debian/rules]

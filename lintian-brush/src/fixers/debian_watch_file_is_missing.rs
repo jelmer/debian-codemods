@@ -192,7 +192,7 @@ except:
                         file["packagetype"].as_str() == Some("sdist")
                             && file["filename"]
                                 .as_str()
-                                .map_or(false, |f| filename_regex.is_match(f))
+                                .is_some_and(|f| filename_regex.is_match(f))
                             && file["has_sig"].as_bool() == Some(true)
                     });
 
@@ -552,7 +552,7 @@ pub fn run(
         result = result.certainty(certainty);
     }
 
-    result = result.fixed_tags(vec!["debian-watch-file-is-missing"]);
+    result = result.fixed_issues(vec![issue]);
 
     Ok(result.build())
 }

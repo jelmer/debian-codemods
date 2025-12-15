@@ -1,2 +1,3 @@
 Use secure URI in Vcs control header Vcs-Git.
-Fixed-Lintian-Tags: vcs-field-uses-insecure-uri
+Fixed-Lintian-Issues:
+ source: vcs-field-uses-insecure-uri Vcs-Git git://github.com/jelmer/lintian-brush

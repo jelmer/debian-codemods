@@ -1,2 +1,3 @@
 debian/rules: Use dh_prep rather than "dh_clean -k".
-Fixed-Lintian-Tags: dh-clean-k-is-deprecated
+Fixed-Lintian-Issues:
+ source: dh-clean-k-is-deprecated [debian/rules]

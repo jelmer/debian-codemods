@@ -1,4 +1,4 @@
-use crate::{FixerError, FixerResult};
+use crate::{FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::debhelper::{highest_stable_compat_level, read_debhelper_compat_file};
 use debian_analyzer::relations::is_relation_implied;
@@ -39,6 +39,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // debhelper-compat is only supported for stable compat levels
     if debhelper_compat_version > highest_stable_compat_level() {
         return Err(FixerError::NoChanges);
+    }
+
+    let issue = LintianIssue::source_with_info(
+        "uses-debhelper-compat-file",
+        vec!["[debian/compat]".to_string()],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
     // Parse and edit the control file
@@ -118,7 +127,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder("Set debhelper-compat version in Build-Depends.")
-            .fixed_tags(vec!["uses-debhelper-compat-file"])
+            .fixed_issue(issue)
             .build(),
     )
 }

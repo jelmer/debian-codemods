@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -10,6 +10,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let editor = TemplatedControlEditor::open(&control_path)?;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
     let mut made_changes = false;
 
     // Only process the source paragraph (DM-Upload-Allowed only appears there)
@@ -17,13 +19,26 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let paragraph = source.as_mut_deb822();
 
         // Check if DM-Upload-Allowed field exists and remove it
-        if paragraph.contains_key("DM-Upload-Allowed") {
-            paragraph.remove("DM-Upload-Allowed");
-            made_changes = true;
+        if let Some(value) = paragraph.get("DM-Upload-Allowed") {
+            let issue = LintianIssue::source_with_info(
+                "malformed-dm-upload-allowed",
+                vec![value.to_string()],
+            );
+
+            if issue.should_fix(base_path) {
+                paragraph.remove("DM-Upload-Allowed");
+                made_changes = true;
+                fixed_issues.push(issue);
+            } else {
+                overridden_issues.push(issue);
+            }
         }
     }
 
     if !made_changes {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -32,7 +47,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     Ok(FixerResult::builder(
         "Remove malformed and unnecessary DM-Upload-Allowed field in debian/control.",
     )
-    .fixed_tags(vec!["malformed-dm-upload-allowed"])
+    .fixed_issues(fixed_issues)
+    .overridden_issues(overridden_issues)
     .build())
 }
 

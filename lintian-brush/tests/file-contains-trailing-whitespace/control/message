@@ -1,2 +1,4 @@
 Trim trailing whitespace.
-Fixed-Lintian-Tags: trailing-whitespace
+Fixed-Lintian-Issues:
+ source: trailing-whitespace [debian/control:1]
+ source: trailing-whitespace [debian/control:5]

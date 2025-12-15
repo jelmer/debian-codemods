@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_copyright::lossless::Copyright;
 use debian_copyright::License;
 use std::collections::HashSet;
@@ -22,6 +22,14 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         None => return Err(FixerError::NoChanges),
     };
     let header_deb822 = header.as_deb822();
+
+    // Get line number for License field in header
+    let line_no = header_deb822
+        .entries()
+        .find(|e| e.key().as_deref() == Some("License"))
+        .map(|e| e.line() + 1)
+        .unwrap_or_else(|| header_deb822.line() + 1);
+
     let header_license_str = match header_deb822.get("License") {
         Some(s) => s,
         None => return Err(FixerError::NoChanges),
@@ -79,6 +87,18 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    let issue = LintianIssue::source_with_info(
+        "dep5-file-paragraph-references-header-paragraph",
+        vec![format!(
+            "{} [debian/copyright:{}]",
+            header_synopsis, line_no
+        )],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     // Need to add a License paragraph for the header license
     // Parse the header license into a License object
     let header_license = if header_license_lines.len() > 1 {
@@ -96,7 +116,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         "Add missing license paragraph for {}",
         header_synopsis
     ))
-    .fixed_tags(vec!["dep5-file-paragraph-references-header-paragraph"])
+    .fixed_issues(vec![issue])
     .build())
 }
 

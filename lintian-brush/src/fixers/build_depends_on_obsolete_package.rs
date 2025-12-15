@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debversion::Version;
 use std::path::Path;
@@ -13,7 +13,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     if let Some(mut source) = editor.source() {
         let paragraph = source.as_mut_deb822();
@@ -24,14 +25,29 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 use debian_control::lossless::relations::Relations;
                 let (mut relations, _errors) = Relations::parse_relaxed(&field_value, true);
 
-                if relations.drop_dependency("dh-systemd") {
-                    paragraph.set(field_name, &relations.to_string());
-                    made_changes = true;
+                // Check if dh-systemd is present
+                let has_dh_systemd = relations
+                    .entries()
+                    .any(|entry| entry.relations().any(|rel| rel.name() == "dh-systemd"));
+
+                if has_dh_systemd {
+                    let issue = LintianIssue::source_with_info(
+                        "build-depends-on-obsolete-package",
+                        vec![format!("{}: dh-systemd", field_name)],
+                    );
+
+                    if issue.should_fix(base_path) {
+                        relations.drop_dependency("dh-systemd");
+                        paragraph.set(field_name, &relations.to_string());
+                        fixed_issues.push(issue);
+                    } else {
+                        overridden_issues.push(issue);
+                    }
                 }
             }
         }
 
-        if made_changes {
+        if !fixed_issues.is_empty() {
             // Ensure minimum debhelper version
             let build_depends_str = paragraph.get("Build-Depends").unwrap_or_else(String::new);
             use debian_control::lossless::relations::Relations;
@@ -44,7 +60,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -52,7 +71,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder("Depend on newer debhelper (>= 9.20160709) rather than dh-systemd.")
-            .fixed_tag("build-depends-on-obsolete-package")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .build(),
     )
 }

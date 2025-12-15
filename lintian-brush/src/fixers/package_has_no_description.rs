@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -131,7 +131,8 @@ pub fn run(
 
     let editor = TemplatedControlEditor::open(&control_path)?;
     let mut updated = Vec::new();
-    let mut fixed_tags = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Count binaries first
     let binary_count = editor.binaries().count();
@@ -142,16 +143,28 @@ pub fn run(
 
         let existing_description = binary.description().unwrap_or_default();
 
-        let (summary, tag) = if existing_description.is_empty() {
-            (None, "required-field")
+        let (summary, tag, info) = if existing_description.is_empty() {
+            (
+                None,
+                "required-field",
+                vec![format!("(in section for {}) Description", package_name)],
+            )
         } else if existing_description.trim().lines().count() == 1 {
             (
                 Some(existing_description.lines().next().unwrap_or("")),
                 "extended-description-is-empty",
+                vec![],
             )
         } else {
             continue;
         };
+
+        let issue = LintianIssue::binary_with_info(&package_name, tag, info);
+
+        if !issue.should_fix(base_path) {
+            overridden_issues.push(issue);
+            continue;
+        }
 
         if let Some(description) =
             guess_description(base_path, &package_name, binary_count, summary, preferences)
@@ -159,12 +172,15 @@ pub fn run(
             if description != existing_description {
                 binary.set_description(Some(&description));
                 updated.push(package_name.clone());
-                fixed_tags.push((tag, package_name));
+                fixed_issues.push(issue);
             }
         }
     }
 
-    if updated.is_empty() {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -176,13 +192,11 @@ pub fn run(
         updated.join(", ")
     );
 
-    let mut result = FixerResult::builder(description).certainty(crate::Certainty::Possible);
-
-    for (tag, _package) in fixed_tags {
-        result = result.fixed_tag(tag);
-    }
-
-    Ok(result.build())
+    Ok(FixerResult::builder(description)
+        .certainty(crate::Certainty::Possible)
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
+        .build())
 }
 
 declare_fixer! {

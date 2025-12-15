@@ -1,3 +1,4 @@
 Set the maintainer field to: Joe <joe@example.com>.
 Certainty: possible
-Fixed-Lintian-Tags: required-field
+Fixed-Lintian-Issues:
+ source: required-field debian/control Maintainer

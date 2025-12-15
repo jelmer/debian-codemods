@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use lazy_regex::Regex;
 use std::fs;
@@ -88,7 +88,9 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         None
     };
 
-    let mut fixed = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
+    let mut changes = Vec::new();
 
     // Process binary packages
     for mut binary in editor.binaries() {
@@ -111,38 +113,48 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
             .unwrap_or_default();
 
         if expected_section != current_section {
-            fixed.push((
-                format!("binary package {}", package_name),
-                current_section.to_string(),
-                expected_section.to_string(),
-            ));
+            let issue = LintianIssue::binary_with_info(
+                &package_name,
+                "wrong-section-according-to-package-name",
+                vec![format!("{} => {}", current_section, expected_section)],
+            );
 
-            binary.set_section(Some(expected_section));
+            if issue.should_fix(base_path) {
+                changes.push((
+                    package_name.clone(),
+                    current_section.to_string(),
+                    expected_section.to_string(),
+                ));
+                fixed_issues.push(issue);
+                binary.set_section(Some(expected_section));
+            } else {
+                overridden_issues.push(issue);
+            }
         }
     }
 
-    if fixed.is_empty() {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     editor.commit()?;
 
     // Build description
-    let changes_desc: Vec<String> = fixed
+    let changes_desc: Vec<String> = changes
         .iter()
-        .map(|(pkg, old, new)| format!("{} ({} ⇒ {})", pkg, old, new))
+        .map(|(pkg, old, new)| format!("binary package {} ({} ⇒ {})", pkg, old, new))
         .collect();
 
     let description = format!("Fix sections for {}.", changes_desc.join(", "));
 
-    let mut result = FixerResult::builder(&description).certainty(CERTAINTY);
-
-    // Add fixed tags for each package
-    for _ in &fixed {
-        result = result.fixed_tag("wrong-section-according-to-package-name");
-    }
-
-    Ok(result.build())
+    Ok(FixerResult::builder(&description)
+        .certainty(CERTAINTY)
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
+        .build())
 }
 
 declare_fixer! {

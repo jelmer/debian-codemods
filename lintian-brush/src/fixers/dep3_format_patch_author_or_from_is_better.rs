@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerResult};
+use crate::{declare_fixer, Certainty, FixerError, FixerResult, LintianIssue};
 use dep3::lossless::PatchHeader;
 use patchkit::quilt::{Series, SeriesEntry};
 use std::fs;
@@ -24,7 +24,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for entry in &series.entries {
         if let SeriesEntry::Patch { name, .. } = entry {
@@ -60,30 +61,42 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             if let Some((_category, origin)) = header.origin() {
                 let origin_str = origin.to_string();
                 if origin_str.contains('@') {
-                    // Set it as Author instead
-                    header.set_author(&origin_str);
+                    let issue = LintianIssue::source_with_info(
+                        "dep3-format-patch-author-or-from-is-better",
+                        vec![format!("[debian/patches/{}]", name)],
+                    );
 
-                    // Remove the Origin field
-                    header.as_deb822_mut().remove("Origin");
+                    if issue.should_fix(base_path) {
+                        // Set it as Author instead
+                        header.set_author(&origin_str);
 
-                    made_changes = true;
+                        // Remove the Origin field
+                        header.as_deb822_mut().remove("Origin");
 
-                    // Reconstruct the patch file
-                    let new_content = format!("{}{}", header, body);
+                        // Reconstruct the patch file
+                        let new_content = format!("{}{}", header, body);
 
-                    fs::write(&patch_path, new_content)?;
+                        fs::write(&patch_path, new_content)?;
+                        fixed_issues.push(issue);
+                    } else {
+                        overridden_issues.push(issue);
+                    }
                 }
             }
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     Ok(
         FixerResult::builder("Use Author instead of Origin in patch headers.")
-            .fixed_tag("dep3-format-patch-author-or-from-is-better")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .certainty(Certainty::Confident)
             .build(),
     )

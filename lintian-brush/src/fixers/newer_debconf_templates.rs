@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use sha1::{Digest, Sha1};
 use std::collections::HashMap;
 use std::fs;
@@ -81,6 +81,19 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         return Err(FixerError::NoChanges);
     }
 
+    let templates_pot = po_dir.join("templates.pot");
+    let info = if templates_pot.exists() {
+        vec!["[debian/po/templates.pot]".to_string()]
+    } else {
+        vec![]
+    };
+
+    let issue = LintianIssue::source_with_info("newer-debconf-templates", info);
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     // Check if we should update timestamps
     if let Ok(timestamp_str) = std::env::var("DEBCONF_GETTEXTIZE_TIMESTAMP") {
         let timestamp: i64 = timestamp_str
@@ -103,8 +116,8 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     }
 
     Ok(
-        FixerResult::builder("Run debconf-updatepo after template changes.".to_string())
-            .fixed_tag("newer-debconf-templates")
+        FixerResult::builder("Run debconf-updatepo after template changes.")
+            .fixed_issue(issue)
             .build(),
     )
 }
@@ -120,7 +133,6 @@ declare_fixer! {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use tempfile::TempDir;
 
     #[test]

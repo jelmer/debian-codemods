@@ -1,10 +1,53 @@
 use rowan::{GreenNode, GreenNodeBuilder};
 use std::fmt;
 
-/// Syntax kinds for lintian override files
+/// Check if an info string matches a pattern with wildcards
+///
+/// Supports `*` wildcards in patterns like `[debian/copyright:*]` matching `[debian/copyright:31]`
+/// The asterisk matches arbitrary strings similar to shell wildcards.
+pub fn info_matches(pattern: &str, value: &str) -> bool {
+    if pattern == value {
+        return true;
+    }
+
+    // Check if pattern contains wildcards
+    if !pattern.contains('*') {
+        return false;
+    }
+
+    // Split pattern by wildcards
+    let parts: Vec<&str> = pattern.split('*').collect();
+
+    // Check prefix (before first *)
+    if !parts[0].is_empty() && !value.starts_with(parts[0]) {
+        return false;
+    }
+
+    // Check suffix (after last *)
+    if !parts[parts.len() - 1].is_empty() && !value.ends_with(parts[parts.len() - 1]) {
+        return false;
+    }
+
+    // Check middle parts appear in order
+    let mut pos = parts[0].len();
+    for part in &parts[1..parts.len() - 1] {
+        if part.is_empty() {
+            continue;
+        }
+        if let Some(found) = value[pos..].find(part) {
+            pos += found + part.len();
+        } else {
+            return false;
+        }
+    }
+
+    true
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
+/// Syntax kinds for lintian override files
 pub enum SyntaxKind {
     /// Whitespace token
     WHITESPACE = 0,
@@ -14,6 +57,8 @@ pub enum SyntaxKind {
     PACKAGE_NAME,
     /// Colon token
     COLON,
+    /// Package type token
+    PACKAGE_TYPE,
     /// Tag token
     TAG,
     /// Info token
@@ -257,21 +302,42 @@ impl OverrideLine {
             return false;
         }
 
-        // Check package type if specified in override
-        if let Some(pkg_type) = self.package_type() {
-            let issue_type = issue.package_type.as_ref().map(|t| t.to_string());
-            if Some(pkg_type.as_str()) != issue_type.as_deref() {
-                return false;
+        // Check package name and/or type if specified in override
+        if let Some(pkg_spec) = self.package_spec() {
+            if let Some(pkg_name) = pkg_spec.package_name() {
+                // Parse the package spec - could be "package-name", "binary", "source",
+                // "package-name binary", or "package-name source"
+                let parts: Vec<&str> = pkg_name.split_whitespace().collect();
+
+                // If it's just "binary" or "source", match on type only
+                if parts.len() == 1 && (parts[0] == "binary" || parts[0] == "source") {
+                    let issue_type = issue.package_type.as_ref().map(|t| t.to_string());
+                    if Some(parts[0]) != issue_type.as_deref() {
+                        return false;
+                    }
+                } else if parts.len() == 2 && (parts[1] == "binary" || parts[1] == "source") {
+                    // Format: "package-name binary" or "package-name source"
+                    let issue_pkg = issue.package.as_deref();
+                    let issue_type = issue.package_type.as_ref().map(|t| t.to_string());
+                    if Some(parts[0]) != issue_pkg || Some(parts[1]) != issue_type.as_deref() {
+                        return false;
+                    }
+                } else {
+                    // Just a package name without explicit type - match on package name only
+                    let issue_pkg = issue.package.as_deref();
+                    if Some(parts[0]) != issue_pkg {
+                        return false;
+                    }
+                }
             }
         }
 
         // Check info if we have it
         if let Some(ref our_info) = issue.info {
             if let Some(override_info) = self.info() {
-                // Compare info - for now, exact match
+                // Compare info - support wildcard matching
                 let override_info = override_info.trim();
-                let our_info_str = our_info.join(" ");
-                if override_info != our_info_str {
+                if !info_matches(override_info, our_info) {
                     return false;
                 }
             }
@@ -308,6 +374,15 @@ impl PackageSpec {
             .children_with_tokens()
             .filter_map(|it| it.into_token())
             .find(|it| it.kind() == PACKAGE_NAME)
+            .map(|t| t.text().to_string())
+    }
+
+    /// Get the package type (source or binary)
+    pub fn package_type(&self) -> Option<String> {
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == PACKAGE_TYPE)
             .map(|t| t.text().to_string())
     }
 }
@@ -377,7 +452,23 @@ fn parse_line(builder: &mut GreenNodeBuilder, line: &str, _errors: &mut Vec<Stri
             // It should be 1-2 words (package name, optionally with "source" or "binary")
             let before_colon = &trimmed_start[..pos];
             let words_before: Vec<&str> = before_colon.split_whitespace().collect();
-            if words_before.len() <= 2 {
+
+            // Valid package specs:
+            // - Single word: "source:", "binary:", "package-name:"
+            // - Two words: "source package-name:", "binary package-name:", "package-name source:", "package-name binary:"
+            let is_valid_package_spec = match words_before.len() {
+                1 => true, // Single word is always valid
+                2 => {
+                    // Two words: either first or second must be "source" or "binary"
+                    words_before[0] == "source"
+                        || words_before[0] == "binary"
+                        || words_before[1] == "source"
+                        || words_before[1] == "binary"
+                }
+                _ => false, // More than 2 words is never a valid package spec
+            };
+
+            if is_valid_package_spec {
                 // This looks like a valid package spec
                 has_package_spec = true;
                 colon_pos = pos;
@@ -386,12 +477,43 @@ fn parse_line(builder: &mut GreenNodeBuilder, line: &str, _errors: &mut Vec<Stri
     }
 
     if has_package_spec {
-        // Found package spec - everything before colon is the package spec
+        // Found package spec - parse it into package name and optionally package type
         builder.start_node(PACKAGE_SPEC.into());
-        builder.token(
-            PACKAGE_NAME.into(),
-            &trimmed_start[current_start..colon_pos],
-        );
+
+        let package_spec_text = &trimmed_start[current_start..colon_pos];
+        let spec_parts: Vec<&str> = package_spec_text.split_whitespace().collect();
+
+        // Parse the package spec components
+        // Valid formats:
+        // - "source:" or "binary:" (just type, no package name)
+        // - "package-name:" (just package name, no type)
+        // - "package-name source:" or "package-name binary:" (name then type)
+        // - "source package-name:" or "binary package-name:" (type then name)
+        match spec_parts.len() {
+            1 => {
+                // Single word - could be package name or type
+                builder.token(PACKAGE_NAME.into(), spec_parts[0]);
+            }
+            2 => {
+                // Two words - need to figure out which is name and which is type
+                if spec_parts[0] == "source" || spec_parts[0] == "binary" {
+                    // Format: "source package-name:" or "binary package-name:"
+                    builder.token(PACKAGE_TYPE.into(), spec_parts[0]);
+                    builder.token(WHITESPACE.into(), " ");
+                    builder.token(PACKAGE_NAME.into(), spec_parts[1]);
+                } else {
+                    // Format: "package-name source:" or "package-name binary:"
+                    builder.token(PACKAGE_NAME.into(), spec_parts[0]);
+                    builder.token(WHITESPACE.into(), " ");
+                    builder.token(PACKAGE_TYPE.into(), spec_parts[1]);
+                }
+            }
+            _ => {
+                // Shouldn't happen given our validation above, but handle it
+                builder.token(PACKAGE_NAME.into(), package_spec_text);
+            }
+        }
+
         builder.token(COLON.into(), ":");
         builder.finish_node();
 
@@ -595,20 +717,24 @@ where
 /// If the function returns None, the original line is kept unchanged
 pub fn map_overrides<F>(overrides: &LintianOverrides, mut transform: F) -> LintianOverrides
 where
-    F: FnMut(&OverrideLine) -> Option<(Option<String>, String, Option<String>)>,
+    F: FnMut(&OverrideLine) -> Option<(Option<String>, Option<String>, String, Option<String>)>,
 {
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(ROOT.into());
 
     for line in overrides.lines() {
         // Try to transform the line
-        if let Some((package, tag, info)) = transform(&line) {
+        if let Some((package, package_type, tag, info)) = transform(&line) {
             // Build a new override line with the transformed values
             builder.start_node(OVERRIDE_LINE.into());
 
             if let Some(pkg) = package {
                 builder.start_node(PACKAGE_SPEC.into());
                 builder.token(PACKAGE_NAME.into(), &pkg);
+                if let Some(ptype) = package_type {
+                    builder.token(WHITESPACE.into(), " ");
+                    builder.token(PACKAGE_TYPE.into(), &ptype);
+                }
                 builder.token(COLON.into(), ":");
                 builder.finish_node();
                 builder.token(WHITESPACE.into(), " ");
@@ -817,6 +943,60 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_info_matches_exact() {
+        assert!(info_matches("foo", "foo"));
+        assert!(!info_matches("foo", "bar"));
+    }
+
+    #[test]
+    fn test_info_matches_wildcard_simple() {
+        assert!(info_matches("*", "anything"));
+        assert!(info_matches("*", ""));
+        assert!(info_matches("**", "anything"));
+    }
+
+    #[test]
+    fn test_info_matches_wildcard_prefix() {
+        assert!(info_matches("*.js", "file.js"));
+        assert!(info_matches("*.js", "path/to/file.js"));
+        assert!(!info_matches("*.js", "file.css"));
+    }
+
+    #[test]
+    fn test_info_matches_wildcard_suffix() {
+        assert!(info_matches("debian/*", "debian/control"));
+        assert!(info_matches("debian/*", "debian/rules"));
+        assert!(!info_matches("debian/*", "other/file"));
+    }
+
+    #[test]
+    fn test_info_matches_wildcard_middle() {
+        assert!(info_matches(
+            "[debian/copyright:*]",
+            "[debian/copyright:31]"
+        ));
+        assert!(info_matches(
+            "[debian/copyright:*]",
+            "[debian/copyright:100]"
+        ));
+        assert!(!info_matches("[debian/copyright:*]", "[debian/rules:31]"));
+        assert!(!info_matches("[debian/copyright:*]", "debian/copyright:31"));
+    }
+
+    #[test]
+    fn test_info_matches_multiple_wildcards() {
+        assert!(info_matches("*.html.*.js", "foo.html.bar.js"));
+        assert!(info_matches("*.html.*.js", "foo.html.baz.qux.js"));
+        assert!(!info_matches("*.html.*.js", "foo.css.bar.js"));
+    }
+
+    #[test]
+    fn test_info_matches_wildcard_empty_parts() {
+        assert!(info_matches("foo**bar", "foobar"));
+        assert!(info_matches("foo**bar", "fooxyzbar"));
+    }
+
+    #[test]
     fn test_parse_simple_override() {
         let text = "some-tag\n";
         let parsed = LintianOverrides::parse(text);
@@ -897,5 +1077,70 @@ mod tests {
         assert!(text.contains("# Test comment"));
         assert!(text.contains("mypackage: some-tag with info"));
         assert!(text.contains("another-tag"));
+    }
+
+    #[test]
+    fn test_parse_info_with_colon() {
+        // Test that info fields containing colons are parsed correctly
+        // This was a bug where "X-Python-Version: >= 2.5" would be misparsed
+        let text = "ancient-python-version-field X-Python-Version: >= 2.5\n";
+        let parsed = LintianOverrides::parse(text);
+        assert!(parsed.errors().is_empty());
+
+        let overrides = parsed.ok().unwrap();
+        let lines: Vec<_> = overrides.lines().collect();
+
+        assert_eq!(lines.len(), 1);
+        assert_eq!(
+            lines[0].tag().unwrap().text(),
+            "ancient-python-version-field"
+        );
+        assert_eq!(
+            lines[0].info(),
+            Some("X-Python-Version: >= 2.5".to_string())
+        );
+        assert_eq!(lines[0].package_spec(), None);
+    }
+
+    #[test]
+    fn test_parse_source_prefix_with_info_containing_colon() {
+        // Test parsing with explicit "source:" prefix and info containing colon
+        let text = "source: ancient-python-version-field X-Python-Version: >= 2.5\n";
+        let parsed = LintianOverrides::parse(text);
+        assert!(parsed.errors().is_empty());
+
+        let overrides = parsed.ok().unwrap();
+        let lines: Vec<_> = overrides.lines().collect();
+
+        assert_eq!(lines.len(), 1);
+        assert_eq!(
+            lines[0].tag().unwrap().text(),
+            "ancient-python-version-field"
+        );
+        assert_eq!(
+            lines[0].info(),
+            Some("X-Python-Version: >= 2.5".to_string())
+        );
+        assert_eq!(
+            lines[0].package_spec().unwrap().package_name().unwrap(),
+            "source"
+        );
+    }
+
+    #[test]
+    fn test_parse_two_word_non_package_spec() {
+        // Test that two words before a colon that don't match package spec pattern
+        // are not treated as a package spec
+        let text = "some-tag field-name: value\n";
+        let parsed = LintianOverrides::parse(text);
+        assert!(parsed.errors().is_empty());
+
+        let overrides = parsed.ok().unwrap();
+        let lines: Vec<_> = overrides.lines().collect();
+
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].tag().unwrap().text(), "some-tag");
+        assert_eq!(lines[0].info(), Some("field-name: value".to_string()));
+        assert_eq!(lines[0].package_spec(), None);
     }
 }

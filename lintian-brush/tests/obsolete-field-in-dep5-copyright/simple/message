@@ -1,2 +1,4 @@
 Update copyright file header to use current field names (Name ⇒ Upstream-Name, Contact ⇒ Upstream-Contact)
-Fixed-Lintian-Tags: obsolete-field-in-dep5-copyright
+Fixed-Lintian-Issues:
+ source: obsolete-field-in-dep5-copyright Name Upstream-Name [debian/copyright:2]
+ source: obsolete-field-in-dep5-copyright Contact Upstream-Contact [debian/copyright:1]

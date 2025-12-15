@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -27,7 +27,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Modify entries to use https:// for known hosts
     for mut entry in watch_file.entries() {
@@ -45,24 +46,26 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             }
 
             if new_url != url {
-                let issue = LintianIssue {
-                    package: None,
-                    package_type: Some(PackageType::Source),
-                    tag: Some("debian-watch-uses-insecure-uri".to_string()),
-                    info: Some(vec![url.clone()]),
-                };
+                let line_number = entry.line() + 1;
+                let issue = LintianIssue::source_with_info(
+                    "debian-watch-uses-insecure-uri",
+                    vec![format!("{} [debian/watch:{}]", url, line_number)],
+                );
 
-                if !issue.should_fix(base_path) {
-                    continue;
+                if issue.should_fix(base_path) {
+                    entry.set_url(&new_url);
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
                 }
-
-                entry.set_url(&new_url);
-                made_changes = true;
             }
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -70,7 +73,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     fs::write(&watch_path, watch_file.to_string())?;
 
     Ok(FixerResult::builder("Use secure URI in debian/watch.")
-        .fixed_tags(vec!["debian-watch-uses-insecure-uri"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 

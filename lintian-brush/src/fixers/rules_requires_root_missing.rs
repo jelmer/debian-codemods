@@ -37,15 +37,13 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         if let Some(ref dpkg_version) = oldest_dpkg_version {
             if dpkg_version < &dpkg_1_22_13 {
                 // Only add the field if dpkg < 1.22.13
-                let issue = LintianIssue {
-                    package: source.as_deb822().get("Source").map(|s| s.to_string()),
-                    package_type: Some(crate::PackageType::Source),
-                    tag: Some("silent-on-rules-requiring-root".to_string()),
-                    info: None,
-                };
+                let issue = LintianIssue::source_with_info(
+                    "silent-on-rules-requiring-root",
+                    vec!["[debian/control]".to_string()],
+                );
 
                 if !issue.should_fix(base_path) {
-                    return Err(FixerError::NoChanges);
+                    return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
                 }
 
                 // TODO: add some heuristics to set require_root = "yes" in common
@@ -53,12 +51,10 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
                 source.set_rules_requires_root(false);
                 editor.commit()?;
 
-                return Ok(
-                    FixerResult::builder("Set Rules-Requires-Root: no.".to_string())
-                        .fixed_tags(vec!["silent-on-rules-requiring-root"])
-                        .certainty(crate::Certainty::Possible)
-                        .build(),
-                );
+                return Ok(FixerResult::builder("Set Rules-Requires-Root: no.")
+                    .fixed_issue(issue)
+                    .certainty(crate::Certainty::Possible)
+                    .build());
             }
         }
     } else if current_require_root.as_deref() == Some("no") {
@@ -70,11 +66,9 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
                 source.as_mut_deb822().remove("Rules-Requires-Root");
                 editor.commit()?;
 
-                return Ok(
-                    FixerResult::builder("Removed Rules-Requires-Root.".to_string())
-                        .certainty(crate::Certainty::Possible)
-                        .build(),
-                );
+                return Ok(FixerResult::builder("Removed Rules-Requires-Root")
+                    .certainty(crate::Certainty::Possible)
+                    .build());
             }
         }
     }
@@ -200,7 +194,7 @@ mod tests {
         assert!(result.is_ok());
 
         let result = result.unwrap();
-        assert_eq!(result.description, "Removed Rules-Requires-Root.");
+        assert_eq!(result.description, "Removed Rules-Requires-Root");
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
         assert!(!updated_content.contains("Rules-Requires-Root"));

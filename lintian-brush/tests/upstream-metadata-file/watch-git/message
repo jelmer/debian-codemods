@@ -1,3 +1,4 @@
 Set upstream metadata fields: Repository.
 Certainty: confident
-Fixed-Lintian-Tags: upstream-metadata-file-is-missing
+Fixed-Lintian-Issues:
+ source: upstream-metadata-file-is-missing

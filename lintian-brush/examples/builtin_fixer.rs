@@ -1,4 +1,4 @@
-use lintian_brush::{declare_fixer, Certainty, FixerResult};
+use lintian_brush::{declare_fixer, Certainty, FixerResult, LintianIssue};
 
 // Example of a simple builtin fixer
 declare_fixer! {
@@ -8,7 +8,7 @@ declare_fixer! {
         // This is just an example - it doesn't actually do anything
         Ok(FixerResult::builder("Fixed example issue")
             .certainty(Certainty::Certain)
-            .fixed_tag("example-tag")
+            .fixed_issue(LintianIssue::source("example-tag"))
             .build())
     }
 }

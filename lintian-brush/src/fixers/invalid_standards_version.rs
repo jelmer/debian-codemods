@@ -49,11 +49,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             package: None,
             package_type: Some(PackageType::Source),
             tag: Some("invalid-standards-version".to_string()),
-            info: Some(vec![standards_version_str.clone()]),
+            info: Some(standards_version_str.clone()),
         };
 
         if !issue.should_fix(base_path) {
-            return Err(FixerError::NoChanges);
+            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
         }
 
         // The parsed version is valid, just need to update the string representation
@@ -62,7 +62,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         std::fs::write(&control_path, control.to_string())?;
         return Ok(
             FixerResult::builder("Add missing .0 suffix in Standards-Version.")
-                .fixed_tag("invalid-standards-version")
+                .fixed_issue(issue)
                 .build(),
         );
     }
@@ -76,11 +76,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         package: None,
         package_type: Some(PackageType::Source),
         tag: Some("invalid-standards-version".to_string()),
-        info: Some(vec![standards_version_str.clone()]),
+        info: Some(standards_version_str.clone()),
     };
 
     if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChanges);
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
     // If the version is newer than our latest known version, we can't fix it
@@ -109,7 +109,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         "Replace invalid standards version {} with valid {}.",
         standards_version_str, new_version_str
     ))
-    .fixed_tag("invalid-standards-version")
+    .fixed_issue(issue)
     .build())
 }
 

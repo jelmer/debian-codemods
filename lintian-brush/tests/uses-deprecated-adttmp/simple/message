@@ -1,3 +1,4 @@
 Replace use of deprecated $ADTTMP with $AUTOPKGTEST_TMP.
 Certainty: certain
-Fixed-Lintian-Tags: uses-deprecated-adttmp
+Fixed-Lintian-Issues:
+ source: uses-deprecated-adttmp [debian/tests/athing:3]

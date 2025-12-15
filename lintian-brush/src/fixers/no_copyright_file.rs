@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use std::path::Path;
 
 mod decopy {
@@ -288,9 +288,15 @@ pub fn run(
     // Write to file
     std::fs::write(&copyright_path, copyright.to_string())?;
 
+    let issue = LintianIssue::source_with_info("no-copyright-file", vec![]);
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     Ok(FixerResult::builder("Create a debian/copyright file.")
         .certainty(certainty)
-        .fixed_tag("no-copyright-file")
+        .fixed_issue(issue)
         .build())
 }
 

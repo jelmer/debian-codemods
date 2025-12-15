@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use chrono::Datelike;
 use debian_changelog::ChangeLog;
 use std::fs;
@@ -17,7 +17,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {}", e)))?;
 
     let mut fixed_versions = Vec::new();
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for mut entry in changelog.iter() {
         // Get the timestamp string
@@ -56,33 +57,34 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
         // Check if the day-of-week changed
         if new_day_of_week != orig_day_of_week {
-            let issue = LintianIssue {
-                package: None,
-                package_type: Some(PackageType::Source),
-                tag: Some("debian-changelog-has-wrong-day-of-week".to_string()),
-                info: Some(vec![format!(
+            let issue = LintianIssue::source_with_info(
+                "debian-changelog-has-wrong-day-of-week",
+                vec![format!(
                     "{:04}-{:02}-{:02} is a {}",
                     parsed_date.year(),
                     parsed_date.month(),
                     parsed_date.day(),
                     parsed_date.format("%A")
-                )]),
-            };
+                )],
+            );
 
-            if !issue.should_fix(base_path) {
-                continue;
+            if issue.should_fix(base_path) {
+                // Update the date - set_datetime takes a DateTime object
+                entry.set_datetime(parsed_date);
+                if let Some(version) = entry.version() {
+                    fixed_versions.push(version.to_string());
+                }
+                fixed_issues.push(issue);
+            } else {
+                overridden_issues.push(issue);
             }
-
-            // Update the date - set_datetime takes a DateTime object
-            entry.set_datetime(parsed_date);
-            if let Some(version) = entry.version() {
-                fixed_versions.push(version.to_string());
-            }
-            made_changes = true;
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -102,7 +104,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     };
 
     Ok(FixerResult::builder(&message)
-        .fixed_tag("debian-changelog-has-wrong-day-of-week")
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 

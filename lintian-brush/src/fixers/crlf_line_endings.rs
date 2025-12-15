@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -13,11 +13,28 @@ declare_fixer! {
             return Err(FixerError::NoChanges);
         }
 
+        // Check if file actually has CRLF first
+        let content = fs::read_to_string(&control_path)
+            .map_err(|e| FixerError::Other(format!("Failed to read file {}: {}", control_path.display(), e)))?;
+
+        if !content.contains("\r\n") {
+            return Err(FixerError::NoChanges);
+        }
+
+        let issue = LintianIssue::source_with_info(
+            "carriage-return-line-feed",
+            vec!["debian/control".to_string()],
+        );
+
+        if !issue.should_fix(basedir) {
+            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+        }
+
         let changed = convert_line_endings(&control_path)?;
 
         if changed {
             Ok(FixerResult::builder("Format control file with unix-style line endings.")
-                .fixed_tag("carriage-return-line-feed")
+                .fixed_issues(vec![issue])
                 .build())
         } else {
             Err(FixerError::NoChanges)

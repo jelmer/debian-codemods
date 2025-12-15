@@ -1,2 +1,3 @@
 Drop fields with obsolete URLs.
-Fixed-Lintian-Tags: obsolete-url-in-packaging
+Fixed-Lintian-Issues:
+ source: obsolete-url-in-packaging http://foo.tigris.org/ [debian/control]

@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use patchkit::quilt::{Series, SeriesEntry};
 use std::collections::HashSet;
 use std::fs;
@@ -52,7 +52,8 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
 
     // Find patches not in series
     let mut removed = Vec::new();
-    let mut overridden = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for entry in fs::read_dir(&patches_dir)? {
         let entry = entry?;
@@ -86,25 +87,27 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
         }
 
         // Create issue for this patch
-        let issue = LintianIssue {
-            package: None,
-            package_type: Some(PackageType::Source),
-            tag: Some("patch-file-present-but-not-mentioned-in-series".to_string()),
-            info: Some(vec![name.to_string()]),
-        };
+        let issue = LintianIssue::source_with_info(
+            "patch-file-present-but-not-mentioned-in-series",
+            vec![format!("[debian/patches/{}]", name)],
+        );
 
         // Check if we should fix this issue (not overridden)
         if !issue.should_fix(base_path) {
-            overridden.push(issue);
+            overridden_issues.push(issue);
             continue;
         }
 
         // Remove the patch file
         fs::remove_file(&path)?;
         removed.push(name.to_string());
+        fixed_issues.push(issue);
     }
 
-    if removed.is_empty() && overridden.is_empty() {
+    if removed.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -115,8 +118,6 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
             "Remove patch {} that is missing from debian/patches/series.",
             removed[0]
         )
-    } else if removed.is_empty() {
-        "Remove patch  that are missing from debian/patches/series.".to_string()
     } else {
         format!(
             "Remove patches {} that are missing from debian/patches/series.",
@@ -124,18 +125,10 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
         )
     };
 
-    let mut builder = FixerResult::builder(&description);
-
-    // Only mark the tag as fixed if we actually removed patches
-    if !removed.is_empty() {
-        builder = builder.fixed_tag("patch-file-present-but-not-mentioned-in-series");
-    }
-
-    for issue in overridden {
-        builder = builder.overridden_issue(issue);
-    }
-
-    Ok(builder.build())
+    Ok(FixerResult::builder(&description)
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
+        .build())
 }
 
 declare_fixer! {

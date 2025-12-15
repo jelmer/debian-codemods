@@ -1,0 +1,1 @@
+vcs-field-mismatch Vcs-Bzr != Vcs-Git https://salsa.debian.org/jelmer/dulwich.git

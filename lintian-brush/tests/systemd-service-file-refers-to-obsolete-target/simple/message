@@ -1,2 +1,3 @@
 Remove references to obsolete targets in systemd unit files: debian/waagent.waagent-provision.service (syslog.target).
-Fixed-Lintian-Tags: systemd-service-file-refers-to-obsolete-target
+Fixed-Lintian-Issues:
+ source: systemd-service-file-refers-to-obsolete-target debian/waagent.waagent-provision.service syslog.target

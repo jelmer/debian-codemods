@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use deb822_lossless::{Deb822, Paragraph};
 use log::warn;
 use std::collections::HashSet;
@@ -64,21 +64,32 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    // Create LintianIssue for each typo fix (not case fixes)
+    let mut fixed_issues = Vec::new();
+    for (old_name, _new_name) in &typo_fixed {
+        let issue = LintianIssue::source_with_info(
+            "field-name-typo-in-dep5-copyright",
+            vec![old_name.clone()],
+        );
+
+        if !issue.should_fix(base_path) {
+            // If any issue is overridden, skip all changes
+            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+        }
+        fixed_issues.push(issue);
+    }
+
     fs::write(&copyright_path, deb822.to_string())?;
 
     let kind = build_kind_string(&case_fixed, &typo_fixed);
     let fixed_str = build_fixed_string(&case_fixed, &typo_fixed);
 
-    let mut result = FixerResult::builder(format!(
+    Ok(FixerResult::builder(format!(
         "Fix field name {} in debian/copyright ({}).",
         kind, fixed_str
-    ));
-
-    if !typo_fixed.is_empty() {
-        result = result.fixed_tags(vec!["field-name-typo-in-dep5-copyright"]);
-    }
-
-    Ok(result.build())
+    ))
+    .fixed_issues(fixed_issues)
+    .build())
 }
 
 fn try_fix_x_prefix(

@@ -1,5 +1,5 @@
 use crate::lintian_overrides::{copy_node, AstNode, LintianOverrides, OverrideLine, SyntaxKind};
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use rowan::{GreenNodeBuilder, SyntaxNode};
 use std::collections::HashMap;
 use std::path::Path;
@@ -18,7 +18,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let mut updated = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for override_file in override_files {
         let content = std::fs::read_to_string(&override_file).map_err(|e| {
@@ -33,8 +34,14 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
         let overrides = parsed.ok().unwrap();
 
-        if let Some(updated_overrides) = update_renamed_tags(&overrides, &renames) {
-            let new_content = updated_overrides.text();
+        let (updated_overrides, file_fixed, file_overridden) =
+            update_renamed_tags(&overrides, &renames, base_path);
+
+        fixed_issues.extend(file_fixed);
+        overridden_issues.extend(file_overridden);
+
+        if let Some(new_overrides) = updated_overrides {
+            let new_content = new_overrides.text();
             std::fs::write(&override_file, new_content).map_err(|e| {
                 FixerError::Other(format!(
                     "Failed to write {}: {}",
@@ -42,17 +49,20 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     e
                 ))
             })?;
-            updated = true;
         }
     }
 
-    if !updated {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     Ok(
         FixerResult::builder("Update renamed lintian tag names in lintian overrides.")
-            .fixed_tags(vec!["renamed-tag"])
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .build(),
     )
 }
@@ -84,12 +94,20 @@ fn find_override_files(base_path: &Path) -> Vec<std::path::PathBuf> {
 }
 
 /// Update renamed tags in a LintianOverrides tree
+// TODO: Move AST manipulation logic to lintian_overrides.rs as a generic helper function
 fn update_renamed_tags(
     overrides: &LintianOverrides,
     renames: &HashMap<&str, &str>,
-) -> Option<LintianOverrides> {
+    base_path: &Path,
+) -> (
+    Option<LintianOverrides>,
+    Vec<LintianIssue>,
+    Vec<LintianIssue>,
+) {
     let mut builder = GreenNodeBuilder::new();
     let mut changed = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     builder.start_node(SyntaxKind::ROOT.into());
 
@@ -102,28 +120,40 @@ fn update_renamed_tags(
                 if let Some(tag_token) = line.tag() {
                     let tag_text = tag_token.text();
                     if let Some(new_tag) = renames.get(tag_text) {
-                        // Rebuild this line with the new tag
-                        builder.start_node(SyntaxKind::OVERRIDE_LINE.into());
+                        let issue = LintianIssue::source_with_info(
+                            "renamed-tag",
+                            vec![format!("{} => {}", tag_text, new_tag)],
+                        );
 
-                        for element in line.syntax().children_with_tokens() {
-                            match element {
-                                rowan::NodeOrToken::Token(token)
-                                    if token.kind() == SyntaxKind::TAG =>
-                                {
-                                    builder.token(SyntaxKind::TAG.into(), new_tag);
-                                    changed = true;
-                                }
-                                rowan::NodeOrToken::Token(token) => {
-                                    builder.token(token.kind().into(), token.text());
-                                }
-                                rowan::NodeOrToken::Node(child_node) => {
-                                    // Recursively copy nodes (e.g., PACKAGE_SPEC)
-                                    copy_node(&mut builder, &child_node);
+                        if !issue.should_fix(base_path) {
+                            overridden_issues.push(issue);
+                            // Copy the line as-is since it's overridden
+                            copy_node(&mut builder, &node);
+                        } else {
+                            // Rebuild this line with the new tag
+                            builder.start_node(SyntaxKind::OVERRIDE_LINE.into());
+
+                            for element in line.syntax().children_with_tokens() {
+                                match element {
+                                    rowan::NodeOrToken::Token(token)
+                                        if token.kind() == SyntaxKind::TAG =>
+                                    {
+                                        builder.token(SyntaxKind::TAG.into(), new_tag);
+                                        changed = true;
+                                    }
+                                    rowan::NodeOrToken::Token(token) => {
+                                        builder.token(token.kind().into(), token.text());
+                                    }
+                                    rowan::NodeOrToken::Node(child_node) => {
+                                        // Recursively copy nodes (e.g., PACKAGE_SPEC)
+                                        copy_node(&mut builder, &child_node);
+                                    }
                                 }
                             }
-                        }
 
-                        builder.finish_node();
+                            builder.finish_node();
+                            fixed_issues.push(issue);
+                        }
                     } else {
                         // Copy the line as-is
                         copy_node(&mut builder, &node);
@@ -144,13 +174,15 @@ fn update_renamed_tags(
 
     builder.finish_node();
 
-    if changed {
+    let updated_overrides = if changed {
         let green = builder.finish();
         let syntax = SyntaxNode::<crate::lintian_overrides::Lang>::new_root(green);
         LintianOverrides::cast(syntax)
     } else {
         None
-    }
+    };
+
+    (updated_overrides, fixed_issues, overridden_issues)
 }
 
 declare_fixer! {
@@ -259,6 +291,9 @@ mod tests {
 
     #[test]
     fn test_update_renamed_tags_function() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+
         let text = "old-tag some info\n";
         let parsed = LintianOverrides::parse(text);
         let overrides = parsed.ok().unwrap();
@@ -266,11 +301,16 @@ mod tests {
         let mut renames = HashMap::new();
         renames.insert("old-tag", "new-tag");
 
-        let updated = update_renamed_tags(&overrides, &renames).unwrap();
-        let result = updated.text();
+        let (updated, fixed, overridden) = update_renamed_tags(&overrides, &renames, base_path);
+
+        assert!(updated.is_some());
+        let result = updated.unwrap().text();
 
         assert!(result.contains("new-tag"));
         assert!(!result.contains("old-tag"));
         assert!(result.contains("some info"));
+
+        assert_eq!(fixed.len(), 1);
+        assert_eq!(overridden.len(), 0);
     }
 }

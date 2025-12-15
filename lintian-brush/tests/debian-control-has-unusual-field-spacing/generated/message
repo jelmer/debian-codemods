@@ -1,2 +1,3 @@
 Strip unusual field spacing from debian/control.
-Fixed-Lintian-Tags: debian-control-has-unusual-field-spacing
+Fixed-Lintian-Issues:
+ source: debian-control-has-unusual-field-spacing Recommends [debian/control:11]

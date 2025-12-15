@@ -1,3 +1,4 @@
 Drop unnecessary dependency on build-essential.
-Fixed-Lintian-Tags: build-depends-on-build-essential
+Fixed-Lintian-Issues:
+ source: build-depends-on-build-essential Build-Depends
 Certainty: certain

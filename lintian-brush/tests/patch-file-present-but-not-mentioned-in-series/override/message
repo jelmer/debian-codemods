@@ -1,3 +1,6 @@
-Remove patch  that are missing from debian/patches/series.
+Remove patches five, four that are missing from debian/patches/series.
+Fixed-Lintian-Issues:
+ source: patch-file-present-but-not-mentioned-in-series [debian/patches/five]
+ source: patch-file-present-but-not-mentioned-in-series [debian/patches/four]
 Overridden-Lintian-Issues:
- source: patch-file-present-but-not-mentioned-in-series three
+ source: patch-file-present-but-not-mentioned-in-series [debian/patches/three]

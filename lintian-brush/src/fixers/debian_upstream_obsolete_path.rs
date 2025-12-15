@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -10,14 +10,24 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
 
     // Step 1: If debian/upstream exists (as a file), move it to debian/upstream-metadata.yaml
     let upstream_file = debian_dir.join("upstream");
 
     if upstream_file.exists() && upstream_file.is_file() {
+        let issue = LintianIssue::source_with_info(
+            "debian-upstream-obsolete-path",
+            vec!["[debian/upstream]".to_string()],
+        );
+        if !issue.should_fix(base_path) {
+            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+        }
+
         let upstream_metadata_yaml_path = debian_dir.join("upstream-metadata.yaml");
         fs::rename(&upstream_file, &upstream_metadata_yaml_path)?;
         made_changes = true;
+        fixed_issues.push(issue);
     }
 
     // Step 2: Move metadata files to debian/upstream/ directory
@@ -35,13 +45,31 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
         // Move upstream-metadata if it exists
         if upstream_metadata.exists() {
+            let issue = LintianIssue::source_with_info(
+                "debian-upstream-obsolete-path",
+                vec!["[debian/upstream-metadata]".to_string()],
+            );
+            if !issue.should_fix(base_path) {
+                return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+            }
+
             fs::rename(&upstream_metadata, &target_metadata)?;
             made_changes = true;
+            fixed_issues.push(issue);
         }
         // Move upstream-metadata.yaml if it exists (this will overwrite if both exist)
         else if upstream_metadata_yaml.exists() {
+            let issue = LintianIssue::source_with_info(
+                "debian-upstream-obsolete-path",
+                vec!["[debian/upstream-metadata.yaml]".to_string()],
+            );
+            if !issue.should_fix(base_path) {
+                return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+            }
+
             fs::rename(&upstream_metadata_yaml, &target_metadata)?;
             made_changes = true;
+            fixed_issues.push(issue);
         }
     }
 
@@ -51,7 +79,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder("Move upstream metadata to debian/upstream/metadata.")
-            .fixed_tags(vec!["debian-upstream-obsolete-path"])
+            .fixed_issues(fixed_issues)
             .certainty(crate::Certainty::Certain)
             .build(),
     )

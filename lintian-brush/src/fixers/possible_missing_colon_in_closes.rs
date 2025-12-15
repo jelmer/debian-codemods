@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_changelog::ChangeLog;
 use lazy_regex::{regex, Regex};
 use std::fs;
@@ -71,9 +71,8 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     let net_access = preferences.net_access.unwrap_or(false);
     let mut overall_certainty = Certainty::Certain;
-    let mut fixed_missing_colon = false;
-    let mut fixed_misspelling = false;
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Regex patterns
     // Match "closes #123"
@@ -103,61 +102,108 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
             let original = combined.clone();
             let mut modified = combined.clone();
+            let mut issues_to_fix_colon = Vec::new();
+            let mut issues_to_fix_typo = Vec::new();
 
-            // Fix missing colon: "closes #123" -> "closes: #123"
-            modified = close_colon_re
-                .replace_all(&modified, |caps: &regex::Captures| {
-                    let bugno: u32 = caps["bug"].parse().unwrap_or(0);
-                    let closes = &caps["closes"];
+            // First pass: find issues and check if they should be fixed
+            // Get the first line number for this bullet (1-indexed)
+            let line_num = bullet
+                .line_numbers()
+                .first()
+                .expect("bullet should have line numbers")
+                + 1;
 
-                    let (valid, bug_certainty) = check_bug(&package, bugno, net_access);
+            // Check for missing colon in the combined text
+            for caps in close_colon_re.captures_iter(&combined) {
+                let bugno: u32 = caps["bug"].parse().unwrap_or(0);
+                let matched_text = caps[0].to_string();
+                let (valid, bug_certainty) = check_bug(&package, bugno, net_access);
 
-                    if crate::certainty_sufficient(bug_certainty, preferences.minimum_certainty)
-                        && valid
-                    {
+                if crate::certainty_sufficient(bug_certainty, preferences.minimum_certainty)
+                    && valid
+                {
+                    let issue = LintianIssue::source_with_info(
+                        "possible-missing-colon-in-closes",
+                        vec![format!(
+                            "{} [usr/share/doc/{}/changelog.Debian.gz:{}]",
+                            matched_text, package, line_num
+                        )],
+                    );
+
+                    if issue.should_fix(base_path) {
+                        issues_to_fix_colon.push((matched_text.clone(), bugno, bug_certainty));
                         overall_certainty =
                             crate::min_certainty(&[overall_certainty, bug_certainty])
                                 .unwrap_or(overall_certainty);
-                        fixed_missing_colon = true;
+                        fixed_issues.push(issue);
+                    } else {
+                        overridden_issues.push(issue);
+                    }
+                }
+            }
+
+            // Check for misspelling in the combined text
+            for caps in close_typo_re.captures_iter(&combined) {
+                let bugno: u32 = caps["bug"].parse().unwrap_or(0);
+                let matched_text = caps[0].to_string();
+                let (valid, bug_certainty) = check_bug(&package, bugno, net_access);
+
+                if crate::certainty_sufficient(bug_certainty, preferences.minimum_certainty)
+                    && valid
+                {
+                    let issue = LintianIssue::source_with_info(
+                        "misspelled-closes-bug",
+                        vec![format!(
+                            "{} [usr/share/doc/{}/changelog.Debian.gz:{}]",
+                            matched_text, package, line_num
+                        )],
+                    );
+
+                    if issue.should_fix(base_path) {
+                        issues_to_fix_typo.push((matched_text.clone(), bugno, bug_certainty));
+                        overall_certainty =
+                            crate::min_certainty(&[overall_certainty, bug_certainty])
+                                .unwrap_or(overall_certainty);
+                        fixed_issues.push(issue);
+                    } else {
+                        overridden_issues.push(issue);
+                    }
+                }
+            }
+
+            // Second pass: apply fixes only for issues that should be fixed
+            if !issues_to_fix_colon.is_empty() {
+                modified = close_colon_re
+                    .replace_all(&modified, |caps: &regex::Captures| {
+                        let closes = &caps["closes"];
+                        let bugno: u32 = caps["bug"].parse().unwrap_or(0);
                         format!("{}: #{}", closes, bugno)
-                    } else {
-                        caps[0].to_string()
-                    }
-                })
-                .to_string();
+                    })
+                    .to_string();
+            }
 
-            // Fix misspelling: "close: #123" -> "closes: #123"
-            modified = close_typo_re
-                .replace_all(&modified, |caps: &regex::Captures| {
-                    let bugno: u32 = caps["bug"].parse().unwrap_or(0);
-                    let close = &caps["close"];
-
-                    let (valid, bug_certainty) = check_bug(&package, bugno, net_access);
-
-                    if crate::certainty_sufficient(bug_certainty, preferences.minimum_certainty)
-                        && valid
-                    {
-                        overall_certainty =
-                            crate::min_certainty(&[overall_certainty, bug_certainty])
-                                .unwrap_or(overall_certainty);
-                        fixed_misspelling = true;
+            if !issues_to_fix_typo.is_empty() {
+                modified = close_typo_re
+                    .replace_all(&modified, |caps: &regex::Captures| {
+                        let close = &caps["close"];
+                        let bugno: u32 = caps["bug"].parse().unwrap_or(0);
                         format!("{}s: #{}", close, bugno)
-                    } else {
-                        caps[0].to_string()
-                    }
-                })
-                .to_string();
+                    })
+                    .to_string();
+            }
 
             if modified != original {
                 // Replace the bullet text - split back into lines
                 let new_lines: Vec<&str> = modified.split('\n').collect();
                 bullet.replace_with(new_lines);
-                made_changes = true;
             }
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -165,24 +211,26 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     fs::write(&changelog_path, changelog.to_string())?;
 
     // Build result message based on what was fixed
-    let description = if fixed_missing_colon && !fixed_misspelling {
+    let has_colon_fixes = fixed_issues
+        .iter()
+        .any(|i| i.tag.as_deref() == Some("possible-missing-colon-in-closes"));
+    let has_typo_fixes = fixed_issues
+        .iter()
+        .any(|i| i.tag.as_deref() == Some("misspelled-closes-bug"));
+
+    let description = if has_colon_fixes && !has_typo_fixes {
         "Add missing colon in closes line."
-    } else if fixed_misspelling && !fixed_missing_colon {
+    } else if has_typo_fixes && !has_colon_fixes {
         "Fix misspelling of Close ⇒ Closes."
     } else {
         "Fix formatting of bug closes."
     };
 
-    let mut result = FixerResult::builder(description).certainty(overall_certainty);
-
-    if fixed_missing_colon {
-        result = result.fixed_tag("possible-missing-colon-in-closes");
-    }
-    if fixed_misspelling {
-        result = result.fixed_tag("misspelled-closes-bug");
-    }
-
-    Ok(result.build())
+    Ok(FixerResult::builder(description)
+        .certainty(overall_certainty)
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
+        .build())
 }
 
 declare_fixer! {

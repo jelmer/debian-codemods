@@ -1,2 +1,3 @@
 Drop unnecessary dependency on dh-autoreconf.
-Fixed-Lintian-Tags: useless-autoreconf-build-depends
+Fixed-Lintian-Issues:
+ source: useless-autoreconf-build-depends (does not need to satisfy dh-autoreconf:any)

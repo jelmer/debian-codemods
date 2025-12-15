@@ -1,5 +1,5 @@
 use crate::lintian_overrides::{filter_overrides, LintianOverrides};
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -40,14 +40,20 @@ fn find_override_files(base_path: &Path) -> Vec<PathBuf> {
     paths
 }
 
-fn process_overrides_file(path: &Path) -> Result<(bool, Vec<String>), FixerError> {
+fn process_overrides_file(
+    path: &Path,
+    base_path: &Path,
+) -> Result<(bool, Vec<String>, Vec<LintianIssue>, Vec<LintianIssue>), FixerError> {
     let content = fs::read_to_string(path)?;
     let parsed = LintianOverrides::parse(&content);
     let overrides = parsed.ok().map_err(|_| FixerError::NoChanges)?;
 
-    // First pass: collect removed tags
     let mut removed_tags = Vec::new();
-    for line in overrides.lines() {
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
+
+    // First pass: check which lines need fixing and track issues
+    for (lineno, line) in overrides.lines().enumerate() {
         if line.is_comment() || line.is_empty() {
             continue;
         }
@@ -57,43 +63,74 @@ fn process_overrides_file(path: &Path) -> Result<(bool, Vec<String>), FixerError
             if REMOVED_TAGS.contains(&tag) {
                 let tag_string = tag.to_string();
                 if !removed_tags.contains(&tag_string) {
-                    removed_tags.push(tag_string);
+                    removed_tags.push(tag_string.clone());
+                }
+
+                // Get package name if specified in the override
+                let package_name = line.package_spec().and_then(|spec| spec.package_name());
+
+                // Create issue - if package is specified, it's a binary package override
+                let issue = if let Some(pkg) = package_name {
+                    LintianIssue::binary_with_info(
+                        &pkg,
+                        "malformed-override",
+                        vec![format!("Unknown tag {} in line {}", tag, lineno + 1)],
+                    )
+                } else {
+                    LintianIssue::source_with_info(
+                        "malformed-override",
+                        vec![format!("Unknown tag {} in line {}", tag, lineno + 1)],
+                    )
+                };
+
+                if !issue.should_fix(base_path) {
+                    overridden_issues.push(issue);
+                } else {
+                    fixed_issues.push(issue);
                 }
             }
         }
     }
 
-    if removed_tags.is_empty() {
-        return Ok((false, removed_tags));
+    if fixed_issues.is_empty() && overridden_issues.is_empty() {
+        return Ok((false, removed_tags, fixed_issues, overridden_issues));
     }
 
-    // Second pass: filter out the lines
-    let filtered = filter_overrides(&overrides, |line| {
-        // Always keep comments and empty lines
-        if line.is_comment() || line.is_empty() {
-            return true;
-        }
-
-        // Check if the tag should be removed
-        if let Some(tag_token) = line.tag() {
-            let tag = tag_token.text();
-            if REMOVED_TAGS.contains(&tag) {
-                return false; // Filter out this line
+    // Only make changes if we have issues to fix
+    if !fixed_issues.is_empty() {
+        // Second pass: filter out the lines
+        let filtered = filter_overrides(&overrides, |line| {
+            // Always keep comments and empty lines
+            if line.is_comment() || line.is_empty() {
+                return true;
             }
+
+            // Check if the tag should be removed
+            if let Some(tag_token) = line.tag() {
+                let tag = tag_token.text();
+                if REMOVED_TAGS.contains(&tag) {
+                    return false; // Filter out this line
+                }
+            }
+
+            true // Keep this line
+        });
+
+        let new_content = filtered.text();
+        if new_content.trim().is_empty() {
+            // If the file is now empty, delete it
+            fs::remove_file(path)?;
+        } else {
+            fs::write(path, new_content)?;
         }
-
-        true // Keep this line
-    });
-
-    let new_content = filtered.text();
-    if new_content.trim().is_empty() {
-        // If the file is now empty, delete it
-        fs::remove_file(path)?;
-    } else {
-        fs::write(path, new_content)?;
     }
 
-    Ok((true, removed_tags))
+    Ok((
+        !fixed_issues.is_empty(),
+        removed_tags,
+        fixed_issues,
+        overridden_issues,
+    ))
 }
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
@@ -104,19 +141,19 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let mut all_removed_tags = Vec::new();
-    let mut any_changed = false;
+    let mut all_fixed_issues = Vec::new();
+    let mut all_overridden_issues = Vec::new();
 
     for path in override_files {
-        match process_overrides_file(&path) {
-            Ok((changed, removed_tags)) => {
-                if changed {
-                    any_changed = true;
-                    for tag in removed_tags {
-                        if !all_removed_tags.contains(&tag) {
-                            all_removed_tags.push(tag);
-                        }
+        match process_overrides_file(&path, base_path) {
+            Ok((_, removed_tags, fixed_issues, overridden_issues)) => {
+                for tag in removed_tags {
+                    if !all_removed_tags.contains(&tag) {
+                        all_removed_tags.push(tag);
                     }
                 }
+                all_fixed_issues.extend(fixed_issues);
+                all_overridden_issues.extend(overridden_issues);
             }
             Err(e) => {
                 // If it's a not-found or permission error, just skip this file
@@ -129,7 +166,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
     }
 
-    if !any_changed {
+    if all_fixed_issues.is_empty() {
+        if !all_overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(all_overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -143,7 +183,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     };
 
     Ok(FixerResult::builder(&description)
-        .fixed_tags(vec!["malformed-override"])
+        .fixed_issues(all_fixed_issues)
+        .overridden_issues(all_overridden_issues)
         .build())
 }
 

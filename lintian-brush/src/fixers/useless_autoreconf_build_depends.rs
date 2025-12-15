@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::rules::dh_invoke_drop_with;
 use debian_control::lossless::relations::Relations;
@@ -78,9 +78,18 @@ pub fn run(
         .commit()
         .map_err(|e| FixerError::Other(format!("Failed to commit: {}", e)))?;
 
+    let issue = LintianIssue::source_with_info(
+        "useless-autoreconf-build-depends",
+        vec!["(does not need to satisfy dh-autoreconf:any)".to_string()],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     Ok(
         FixerResult::builder("Drop unnecessary dependency on dh-autoreconf.")
-            .fixed_tag("useless-autoreconf-build-depends")
+            .fixed_issue(issue)
             .build(),
     )
 }

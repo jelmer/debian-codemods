@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use makefile_lossless::Makefile;
 use std::collections::HashSet;
 use std::fs;
@@ -62,11 +62,14 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let mut renamed = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Check all rules for typos
     for mut rule in makefile.rules() {
         // Collect targets first to avoid borrow checker issues
         let targets: Vec<String> = rule.targets().map(|t| t.trim().to_string()).collect();
+        let line_number = rule.line() + 1; // Get line number (0-indexed, so add 1)
 
         for target_str in targets {
             // Skip if already a known target
@@ -77,15 +80,31 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             // Find matching target with Levenshtein distance of 1
             for known_target in &known_targets {
                 if levenshtein(&target_str, known_target) == 1 {
-                    renamed.push((target_str.to_string(), known_target.clone()));
-                    rule.rename_target(&target_str, known_target).ok();
+                    let issue = LintianIssue::source_with_info(
+                        "typo-in-debhelper-override-target",
+                        vec![format!(
+                            "{} => {} [debian/rules:{}]",
+                            target_str, known_target, line_number
+                        )],
+                    );
+
+                    if !issue.should_fix(base_path) {
+                        overridden_issues.push(issue);
+                    } else {
+                        renamed.push((target_str.to_string(), known_target.clone()));
+                        rule.rename_target(&target_str, known_target).ok();
+                        fixed_issues.push(issue);
+                    }
                     break;
                 }
             }
         }
     }
 
-    if renamed.is_empty() {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -102,7 +121,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     );
 
     Ok(FixerResult::builder(&description)
-        .fixed_tags(vec!["typo-in-debhelper-override-target"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 

@@ -164,7 +164,8 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     let makefile = Makefile::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
-    let mut need: Vec<(String, String, String)> = Vec::new(); // (dep, kind, name)
+    let mut need: Vec<(String, String, String, LintianIssue)> = Vec::new(); // (dep, kind, name, issue)
+    let mut overridden_issues = Vec::new();
 
     for rule in makefile.rules() {
         for recipe in rule.recipes() {
@@ -184,15 +185,23 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
 
             // Check if this command needs a dependency
             if let Some(dep) = command_to_dep.get(executable) {
-                let issue = LintianIssue {
-                    package: Some("source".to_string()),
-                    package_type: Some(crate::PackageType::Source),
-                    tag: Some("missing-build-dependency-for-dh_-command".to_string()),
-                    info: Some(vec![format!("{} => {}", executable, dep)]),
-                };
+                let issue = LintianIssue::source_with_info(
+                    "missing-build-dependency-for-dh_-command",
+                    vec![format!(
+                        "{} (does not satisfy {}) [debian/rules]",
+                        executable, dep
+                    )],
+                );
 
-                if issue.should_fix(base_path) {
-                    need.push((dep.clone(), "command".to_string(), executable.to_string()));
+                if !issue.should_fix(base_path) {
+                    overridden_issues.push(issue);
+                } else {
+                    need.push((
+                        dep.clone(),
+                        "command".to_string(),
+                        executable.to_string(),
+                        issue,
+                    ));
                 }
             }
 
@@ -201,15 +210,18 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
                 let addons = dh_invoke_get_with(trimmed);
                 for addon in addons {
                     if let Some(dep) = addon_to_dep.get(&addon) {
-                        let issue = LintianIssue {
-                            package: Some("source".to_string()),
-                            package_type: Some(crate::PackageType::Source),
-                            tag: Some("missing-build-dependency-for-dh-addon".to_string()),
-                            info: Some(vec![format!("{} => {}", addon, dep)]),
-                        };
+                        let issue = LintianIssue::source_with_info(
+                            "missing-build-dependency-for-dh-addon",
+                            vec![format!(
+                                "{} (does not satisfy {}) [debian/rules]",
+                                addon, dep
+                            )],
+                        );
 
-                        if issue.should_fix(base_path) {
-                            need.push((dep.clone(), "addon".to_string(), addon));
+                        if !issue.should_fix(base_path) {
+                            overridden_issues.push(issue);
+                        } else {
+                            need.push((dep.clone(), "addon".to_string(), addon, issue));
                         }
                     }
                 }
@@ -218,6 +230,9 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     }
 
     if need.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -230,8 +245,9 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     let mut source = editor.source().ok_or(FixerError::NoChanges)?;
 
     let mut changed: Vec<(String, String, String)> = Vec::new();
+    let mut fixed_issues = Vec::new();
 
-    for (dep, kind, name) in need {
+    for (dep, kind, name, issue) in need {
         let mut is_implied = false;
 
         // Check if relation is implied by debhelper
@@ -257,10 +273,14 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             ensure_some_version(&mut new_build_depends, &dep);
             source.set_build_depends(&new_build_depends);
             changed.push((dep, kind, name));
+            fixed_issues.push(issue);
         }
     }
 
-    if changed.is_empty() {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -275,23 +295,15 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     } else {
         let mut desc = "Add missing build dependencies:".to_string();
         for (dep, kind, name) in &changed {
-            desc.push_str(&format!("\n* {} for {} {}", dep, kind, name));
+            desc.push_str(&format!("\n* {} for {} {}.", dep, kind, name));
         }
         desc
     };
 
-    let mut tags = Vec::new();
-    for (_, kind, _) in &changed {
-        if kind == "command" {
-            tags.push("missing-build-dependency-for-dh_-command".to_string());
-        } else if kind == "addon" {
-            tags.push("missing-build-dependency-for-dh-addon".to_string());
-        }
-    }
-    tags.sort();
-    tags.dedup();
-
-    Ok(FixerResult::builder(&description).fixed_tags(tags).build())
+    Ok(FixerResult::builder(&description)
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
+        .build())
 }
 
 declare_fixer! {

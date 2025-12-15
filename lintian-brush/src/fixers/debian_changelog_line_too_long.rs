@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_changelog::textwrap::try_rewrap_changes;
 use debian_changelog::ChangeLog;
 use std::fs;
@@ -6,11 +6,7 @@ use std::path::Path;
 
 const WIDTH: usize = 80;
 
-fn any_long_lines(lines: &[String]) -> bool {
-    lines.iter().any(|line| line.len() > WIDTH)
-}
-
-pub fn run(base_path: &Path, thorough: bool) -> Result<FixerResult, FixerError> {
+pub fn run(base_path: &Path, package: &str, thorough: bool) -> Result<FixerResult, FixerError> {
     let changelog_path = base_path.join("debian/changelog");
 
     if !changelog_path.exists() {
@@ -22,29 +18,84 @@ pub fn run(base_path: &Path, thorough: bool) -> Result<FixerResult, FixerError> 
         .parse::<ChangeLog>()
         .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {}", e)))?;
 
-    // Collect entries to process
-    let all_entries: Vec<_> = changelog.iter().collect();
-    if all_entries.is_empty() {
+    // Get all changes with line numbers
+    let all_changes = debian_changelog::iter_changes_by_author(&changelog);
+
+    if all_changes.is_empty() {
         return Err(FixerError::NoChanges);
     }
 
-    // Only process the first entry unless in thorough mode
-    let entries: Vec<_> = if thorough {
+    // Only process the first entry's changes unless in thorough mode
+    let first_version = all_changes[0].version();
+    let changes_to_check: Vec<_> = if thorough {
+        all_changes.iter().collect()
+    } else {
+        all_changes
+            .iter()
+            .filter(|c| c.version() == first_version)
+            .collect()
+    };
+
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
+    let mut versions_to_fix = std::collections::HashSet::new();
+
+    // Check each change for long lines and create issues inline
+    for change in changes_to_check {
+        let lines = change.lines();
+        let line_numbers = change.line_numbers();
+
+        for (idx, line) in lines.iter().enumerate() {
+            if line.len() > WIDTH {
+                let line_no = line_numbers.get(idx).copied().unwrap_or(0) + 1; // Convert to 1-indexed
+                let issue = LintianIssue::source_with_info(
+                    "debian-changelog-line-too-long",
+                    vec![format!(
+                        "[usr/share/doc/{}/changelog.Debian.gz:{}]",
+                        package, line_no
+                    )],
+                );
+
+                if issue.should_fix(base_path) {
+                    fixed_issues.push(issue);
+                    if let Some(version) = change.version() {
+                        versions_to_fix.insert(version.to_string());
+                    }
+                } else {
+                    overridden_issues.push(issue);
+                }
+            }
+        }
+    }
+
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
+        return Err(FixerError::NoChanges);
+    }
+
+    // Now actually rewrap the entries
+    let all_entries: Vec<_> = changelog.iter().collect();
+    let entries_to_process: Vec<_> = if thorough {
         all_entries
     } else {
         all_entries.into_iter().take(1).collect()
     };
 
-    let mut made_changes = false;
     let mut fixed_versions = Vec::new();
 
-    for entry in entries {
-        let change_lines: Vec<String> = entry.change_lines().collect();
-
-        // Check if there are any long lines
-        if !any_long_lines(&change_lines) {
-            continue;
+    for entry in entries_to_process {
+        // Only rewrap entries whose version has issues that should be fixed
+        if let Some(version) = entry.version() {
+            if !versions_to_fix.contains(&version.to_string()) {
+                continue;
+            }
+        } else {
+            continue; // Skip entries without version
         }
+
+        let change_lines: Vec<String> = entry.change_lines().collect();
 
         // Rewrap the changes
         let change_strs: Vec<&str> = change_lines.iter().map(|s| s.as_str()).collect();
@@ -69,10 +120,11 @@ pub fn run(base_path: &Path, thorough: bool) -> Result<FixerResult, FixerError> 
             entry.append_change_line(&line);
         }
 
-        made_changes = true;
         match entry.try_version() {
             Some(Ok(version)) => {
-                fixed_versions.push(version.to_string());
+                if !fixed_versions.contains(&version.to_string()) {
+                    fixed_versions.push(version.to_string());
+                }
             }
             None => {
                 log::debug!("No version found for changelog entry, skipping version recording.");
@@ -81,10 +133,6 @@ pub fn run(base_path: &Path, thorough: bool) -> Result<FixerResult, FixerError> 
                 log::debug!("Failed to parse version for changelog entry: {}", e);
             }
         }
-    }
-
-    if !made_changes {
-        return Err(FixerError::NoChanges);
     }
 
     // Write back the modified changelog
@@ -100,21 +148,22 @@ pub fn run(base_path: &Path, thorough: bool) -> Result<FixerResult, FixerError> 
     };
 
     Ok(FixerResult::builder(&description)
-        .fixed_tag("debian-changelog-line-too-long")
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 
 declare_fixer! {
     name: "debian-changelog-line-too-long",
     tags: ["debian-changelog-line-too-long"],
-    apply: |basedir, _package, _version, preferences| {
+    apply: |basedir, package, _version, preferences| {
         let thorough = preferences
             .extra_env
             .as_ref()
             .and_then(|env| env.get("CHANGELOG_THOROUGH"))
             .map(|v| v == "1")
             .unwrap_or(false);
-        run(basedir, thorough)
+        run(basedir, package, thorough)
     }
 }
 
@@ -140,7 +189,7 @@ mod tests {
         let changelog_path = debian_dir.join("changelog");
         fs::write(&changelog_path, changelog_content).unwrap();
 
-        let result = run(temp_dir.path(), false);
+        let result = run(temp_dir.path(), "blah", false);
         assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
 
         let updated_content = fs::read_to_string(&changelog_path).unwrap();
@@ -165,7 +214,7 @@ mod tests {
         let changelog_path = debian_dir.join("changelog");
         fs::write(&changelog_path, changelog_content).unwrap();
 
-        let result = run(temp_dir.path(), false);
+        let result = run(temp_dir.path(), "blah", false);
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 
@@ -186,7 +235,7 @@ mod tests {
         let changelog_path = debian_dir.join("changelog");
         fs::write(&changelog_path, changelog_content).unwrap();
 
-        let result = run(temp_dir.path(), false);
+        let result = run(temp_dir.path(), "blah", false);
         assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
 
         let updated_content = fs::read_to_string(&changelog_path).unwrap();

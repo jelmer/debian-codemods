@@ -58,7 +58,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         package: None,
         package_type: Some(PackageType::Source),
         tag: Some("vcs-field-uses-not-recommended-uri-format".to_string()),
-        info: Some(vec![format!("vcs-git {}", old_url)]),
+        info: Some(format!("vcs-git {}", old_url)),
     };
 
     if !issue.should_fix(base_path) {

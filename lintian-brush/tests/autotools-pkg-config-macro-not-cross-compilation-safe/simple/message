@@ -7,5 +7,6 @@ This patch changes it to use PKG_PROG_PKG_CONFIG macro from pkg.m4.
 
 Refer to https://bugs.debian.org/884798 for details.
 
-Fixed-Lintian-Tags: autotools-pkg-config-macro-not-cross-compilation-safe
+Fixed-Lintian-Issues:
+ source: autotools-pkg-config-macro-not-cross-compilation-safe AC_PATH_PROG [configure.ac:10]
 Patch-Name: ac-path-pkgconfig

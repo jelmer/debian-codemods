@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use deb822_lossless::Deb822;
 use std::collections::HashSet;
 use std::fs;
@@ -43,18 +43,26 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     let deprecated_restrictions =
         read_obsolete_restrictions(preferences.lintian_data_path.as_deref())?;
     let mut removed_restrictions = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
+    let mut overall_certainty = Certainty::Certain;
 
     // Parse the tests control file using lossless parser
     let content = fs::read_to_string(&control_path)?;
     let parsed = Deb822::parse(&content);
     let deb822 = parsed.tree();
-    let mut made_changes = false;
 
     for mut paragraph in deb822.paragraphs() {
-        let restrictions_value = match paragraph.get("Restrictions") {
-            Some(val) => val,
+        let restrictions_entry = match paragraph
+            .entries()
+            .find(|e| e.key().as_deref() == Some("Restrictions"))
+        {
+            Some(entry) => entry,
             None => continue,
         };
+
+        let restrictions_value = restrictions_entry.value();
+        let line_num = restrictions_entry.line() + 1;
 
         let restrictions: Vec<&str> = restrictions_value
             .split(',')
@@ -69,7 +77,28 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         let mut to_delete = Vec::new();
         for restriction in &restrictions {
             if deprecated_restrictions.contains(*restriction) {
-                to_delete.push(restriction.to_string());
+                let certainty = if *restriction == "needs-recommends" {
+                    Certainty::Possible
+                } else {
+                    Certainty::Certain
+                };
+
+                let issue = LintianIssue::source_with_info(
+                    "obsolete-runtime-tests-restriction",
+                    vec![format!(
+                        "{} [debian/tests/control:{}]",
+                        restriction, line_num
+                    )],
+                );
+
+                if issue.should_fix(base_path) {
+                    to_delete.push(restriction.to_string());
+                    overall_certainty = crate::min_certainty(&[overall_certainty, certainty])
+                        .unwrap_or(overall_certainty);
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
+                }
             }
         }
 
@@ -88,23 +117,18 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
             } else {
                 paragraph.set("Restrictions", &new_restrictions.join(", "));
             }
-            made_changes = true;
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     // Write back the modified file
     fs::write(&control_path, deb822.to_string())?;
-
-    // Determine certainty based on whether needs-recommends was removed
-    let certainty = if removed_restrictions.contains(&"needs-recommends".to_string()) {
-        Certainty::Possible
-    } else {
-        Certainty::Certain
-    };
 
     let plural = if removed_restrictions.len() > 1 {
         "s"
@@ -118,8 +142,9 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     );
 
     Ok(FixerResult::builder(description)
-        .fixed_tag("obsolete-runtime-tests-restriction")
-        .certainty(certainty)
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
+        .certainty(overall_certainty)
         .build())
 }
 

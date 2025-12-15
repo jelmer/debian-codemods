@@ -1,2 +1,3 @@
 Use version prefix for date-based versionioning.
-Fixed-Lintian-Tags: new-package-uses-date-based-version-number
+Fixed-Lintian-Issues:
+ source: new-package-uses-date-based-version-number

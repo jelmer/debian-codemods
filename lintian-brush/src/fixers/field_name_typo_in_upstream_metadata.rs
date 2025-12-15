@@ -32,16 +32,15 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             }
 
             // Handle X- prefix
-            if field.starts_with("X-") {
-                let without_prefix = &field[2..];
+            if let Some(without_prefix) = field.strip_prefix("X-") {
                 if valid_fields.contains(without_prefix) {
-                    if map.contains_key(&serde_yaml::Value::String(without_prefix.to_string())) {
+                    if map.contains_key(serde_yaml::Value::String(without_prefix.to_string())) {
                         // Both exist, warn and skip
                         eprintln!("Warning: Both {} and {} exist.", field, without_prefix);
                         continue;
                     }
 
-                    if let Some(value) = map.remove(&serde_yaml::Value::String(field.clone())) {
+                    if let Some(value) = map.remove(serde_yaml::Value::String(field.clone())) {
                         map.insert(serde_yaml::Value::String(without_prefix.to_string()), value);
                         typo_fixed.push((field.clone(), without_prefix.to_string()));
                     }
@@ -52,7 +51,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             // Check for typos using Levenshtein distance
             for &option in VALID_FIELD_NAMES {
                 if levenshtein(&field, option) == 1 {
-                    if let Some(value) = map.remove(&serde_yaml::Value::String(field.clone())) {
+                    if let Some(value) = map.remove(serde_yaml::Value::String(field.clone())) {
                         map.insert(serde_yaml::Value::String(option.to_string()), value);
 
                         if option.to_lowercase() == field.to_lowercase() {

@@ -328,6 +328,8 @@ pub fn run(
     let mut needed_keys: HashSet<String> = HashSet::new();
     let mut description: Option<String> = None;
     let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Load existing keyring if available
     let keyring_data = if has_keys {
@@ -470,12 +472,10 @@ pub fn run(
         );
 
         if pgpsigurlmangle.is_none() && !active_common_mangles.is_empty() {
-            let issue = LintianIssue {
-                package: None,
-                package_type: Some(crate::PackageType::Source),
-                tag: Some("debian-watch-does-not-check-openpgp-signature".to_string()),
-                info: None,
-            };
+            let issue = LintianIssue::source_with_info(
+                "debian-watch-does-not-check-openpgp-signature",
+                vec!["[debian/watch]".to_string()],
+            );
 
             if issue.should_fix(base_path) {
                 // If only a single mangle is used for all releases that have signatures, set that
@@ -502,6 +502,9 @@ pub fn run(
                 description = Some(desc);
 
                 made_changes = true;
+                fixed_issues.push(issue);
+            } else {
+                overridden_issues.push(issue);
             }
         }
     }
@@ -509,12 +512,10 @@ pub fn run(
     if !has_keys && !needed_keys.is_empty() {
         log::debug!("Need to fetch {} keys", needed_keys.len());
 
-        let issue = LintianIssue {
-            package: None,
-            package_type: Some(crate::PackageType::Source),
-            tag: Some("debian-watch-file-pubkey-file-is-missing".to_string()),
-            info: None,
-        };
+        let issue = LintianIssue::source_with_info(
+            "debian-watch-file-pubkey-file-is-missing",
+            vec!["[debian/watch]".to_string()],
+        );
 
         if issue.should_fix(base_path) {
             let upstream_dir = base_path.join("debian/upstream");
@@ -598,26 +599,30 @@ pub fn run(
                     needed_keys.iter().cloned().collect::<Vec<_>>().join(", ")
                 ));
             }
+
+            fixed_issues.push(issue);
+        } else {
+            overridden_issues.push(issue);
         }
     }
 
     if !made_changes {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     // Write the updated watch file
     fs::write(&watch_path, watch_file.to_string())?;
 
-    let mut result_builder = FixerResult::builder(
-        description.unwrap_or_else(|| "Update PGP signature checking.".to_string()),
-    );
-
-    result_builder = result_builder.fixed_tags(vec![
-        "debian-watch-does-not-check-openpgp-signature",
-        "debian-watch-file-pubkey-file-is-missing",
-    ]);
-
-    Ok(result_builder.build())
+    Ok(FixerResult::builder(
+        description.unwrap_or_else(|| "Update PGP signature checking".to_string()),
+    )
+    .fixed_issues(fixed_issues)
+    .overridden_issues(overridden_issues)
+    .certainty(crate::Certainty::Certain)
+    .build())
 }
 
 declare_fixer! {
