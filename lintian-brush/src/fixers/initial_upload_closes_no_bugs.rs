@@ -1,6 +1,6 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_analyzer::wnpp::{BugId, BugKind};
-use debian_changelog::ChangeLog;
+use debian_changelog::{iter_changes_by_author, ChangeLog};
 use std::fs;
 use std::path::Path;
 
@@ -48,6 +48,11 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         return Err(FixerError::NoChanges);
     };
 
+    let issue = LintianIssue::source("initial-upload-closes-no-bugs");
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     // Find WNPP bugs for this package
     let wnpp_bugs = match find_wnpp_bugs(&package_name) {
         Ok(bugs) => bugs,
@@ -58,34 +63,48 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         return Err(FixerError::NoChanges);
     }
 
-    // TODO: Work with the raw content - find and replace the "Initial release" line
-    // This is a workaround because debian-changelog doesn't currently provide a way
-    // to modify individual lines within bullets. Ideally we would use something like:
-    // change.update_line(|line| line.contains("Initial release"), |line| modified_line)
-    let mut modified_content = content.clone();
     let version_changed = last_entry.version();
+
+    // Use iter_changes_by_author to get mutable change objects
+    let changes = iter_changes_by_author(&changelog);
     let mut found = false;
 
-    for line in content.lines() {
-        if line.contains("Initial release") {
-            // Ensure the line ends with a period
-            let trimmed = line.trim_end();
-            let mut new_line = if trimmed.ends_with('.') {
-                trimmed.to_string()
-            } else {
-                format!("{}.", trimmed)
-            };
+    for change in changes {
+        // Only process the last entry
+        if change.version() != version_changed {
+            continue;
+        }
 
-            // Add the Closes: #... part
-            let bug_numbers: Vec<String> = wnpp_bugs
-                .iter()
-                .map(|(bug_no, _)| bug_no.to_string())
-                .collect();
-            new_line.push_str(&format!(" Closes: #{}", bug_numbers.join(", #")));
+        let bullets = change.split_into_bullets();
 
-            // Replace in the content
-            modified_content = modified_content.replacen(line, &new_line, 1);
-            found = true;
+        for bullet in bullets {
+            let lines = bullet.lines();
+            let combined = lines.join("\n");
+
+            if combined.contains("Initial release") {
+                // Process this line
+                let trimmed = combined.trim_end();
+                let mut new_line = if trimmed.ends_with('.') {
+                    trimmed.to_string()
+                } else {
+                    format!("{}.", trimmed)
+                };
+
+                // Add the Closes: #... part
+                let bug_numbers: Vec<String> = wnpp_bugs
+                    .iter()
+                    .map(|(bug_no, _)| bug_no.to_string())
+                    .collect();
+                new_line.push_str(&format!(" Closes: #{}", bug_numbers.join(", #")));
+
+                // Replace the bullet
+                bullet.replace_with(vec![new_line.as_str()]);
+                found = true;
+                break;
+            }
+        }
+
+        if found {
             break;
         }
     }
@@ -95,7 +114,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     }
 
     // Write the updated changelog
-    fs::write(&changelog_path, modified_content)?;
+    fs::write(&changelog_path, changelog.to_string())?;
 
     // Build result message
     let bug_kinds: std::collections::HashSet<String> = wnpp_bugs

@@ -1093,6 +1093,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "desktop-edit"
+version = "0.1.1"
+dependencies = [
+ "rowan",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"

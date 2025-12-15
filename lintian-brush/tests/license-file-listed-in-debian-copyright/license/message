@@ -1,4 +1,4 @@
 Remove listed license files (pathto/LICENSE) from copyright.
 Certainty: certain
 Fixed-Lintian-Issues:
- source: license-file-listed-in-debian-copyright pathto/LICENSE
+ source: license-file-listed-in-debian-copyright pathto/LICENSE [debian/copyright]

@@ -30,6 +30,7 @@ pub fn run(
     let re_license = Regex::new(r"(^|/)(COPYING[^/]*|LICENSE)$").unwrap();
 
     let mut deleted = Vec::new();
+    let mut overridden_issues = Vec::new();
     let mut patterns_to_remove = Vec::new();
 
     // Iterate through all files paragraphs
@@ -39,7 +40,19 @@ pub fn run(
 
         for file_pattern in &files {
             if re_license.is_match(file_pattern) {
-                deleted.push(file_pattern.clone());
+                let issue = crate::LintianIssue {
+                    package: None,
+                    package_type: Some(crate::PackageType::Source),
+                    tag: Some("license-file-listed-in-debian-copyright".to_string()),
+                    info: Some(format!("{} [debian/copyright]", file_pattern)),
+                };
+
+                if issue.should_fix(basedir) {
+                    deleted.push(file_pattern.clone());
+                } else {
+                    overridden_issues.push(issue);
+                    kept_files.push(file_pattern.as_str());
+                }
             } else {
                 kept_files.push(file_pattern.as_str());
             }
@@ -63,6 +76,9 @@ pub fn run(
     }
 
     if deleted.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -82,7 +98,7 @@ pub fn run(
             package: None,
             package_type: Some(crate::PackageType::Source),
             tag: Some("license-file-listed-in-debian-copyright".to_string()),
-            info: Some(file.clone()),
+            info: Some(format!("{} [debian/copyright]", file)),
         });
     }
 
