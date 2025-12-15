@@ -13,6 +13,7 @@ debian-codemods (0.163) UNRELEASED; urgency=medium
   * Rebuild against Python 3.13/3.14. Closes: #1094320
   * pkg-perl-testsuite: Don't add Testsuite header when debian/tests/control
     already exists. Closes: #982871
+  * Skip debhelper-but-no-misc-depends for debhelper compat >= 14. Closes: #1072700
   * Add asterisk prefix to changelog entries. Closes: #1110106
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 03 Jun 2025 22:37:02 +0100

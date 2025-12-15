@@ -1,0 +1,14 @@
+Source: test-package
+Section: admin
+Priority: optional
+Maintainer: Test Maintainer <test@debian.org>
+Build-Depends:
+ debhelper-compat (= 14)
+Standards-Version: 4.6.0
+
+Package: test-package
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: Test package
+ This package is used to test that debhelper-but-no-misc-depends
+ fixer does not run for compat level 14 and above.

@@ -1,5 +1,6 @@
 use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
+use debian_analyzer::debhelper::get_debhelper_compat_level;
 use debian_control::lossless::relations::Relations;
 use std::path::Path;
 
@@ -31,6 +32,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     if !control_path.exists() {
         return Err(FixerError::NoChanges);
+    }
+
+    // Check debhelper compat level - skip fix for compat >= 14
+    // See: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1072700
+    let compat_level = get_debhelper_compat_level(base_path)?;
+    if let Some(level) = compat_level {
+        if level >= 14 {
+            return Err(FixerError::NoChanges);
+        }
     }
 
     let editor = TemplatedControlEditor::open(&control_path)?;
@@ -255,5 +265,83 @@ Description: Test package
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
         assert!(updated_content.contains("Depends: ${misc:Depends}"));
+    }
+
+    #[test]
+    fn test_skip_for_compat_14() {
+        let temp_dir = TempDir::new().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        let control_content = r#"Source: test-package
+Build-Depends: debhelper-compat (= 14)
+
+Package: test-package
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: Test package
+"#;
+
+        let control_path = debian_dir.join("control");
+        fs::write(&control_path, control_content).unwrap();
+
+        let result = run(temp_dir.path());
+        assert!(matches!(result, Err(FixerError::NoChanges)));
+
+        // Verify the control file was not modified
+        let updated_content = fs::read_to_string(&control_path).unwrap();
+        assert!(!updated_content.contains("${misc:Depends}"));
+    }
+
+    #[test]
+    fn test_skip_for_compat_15() {
+        let temp_dir = TempDir::new().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        let control_content = r#"Source: test-package
+Build-Depends: debhelper-compat (= 15)
+
+Package: test-package
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: Test package
+"#;
+
+        let control_path = debian_dir.join("control");
+        fs::write(&control_path, control_content).unwrap();
+
+        let result = run(temp_dir.path());
+        assert!(matches!(result, Err(FixerError::NoChanges)));
+
+        // Verify the control file was not modified
+        let updated_content = fs::read_to_string(&control_path).unwrap();
+        assert!(!updated_content.contains("${misc:Depends}"));
+    }
+
+    #[test]
+    fn test_still_works_for_compat_13() {
+        let temp_dir = TempDir::new().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        let control_content = r#"Source: test-package
+Build-Depends: debhelper-compat (= 13)
+
+Package: test-package
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: Test package
+"#;
+
+        let control_path = debian_dir.join("control");
+        fs::write(&control_path, control_content).unwrap();
+
+        let result = run(temp_dir.path());
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
+
+        let updated_content = fs::read_to_string(&control_path).unwrap();
+        assert!(updated_content.contains("${misc:Depends}"));
+        assert!(updated_content.contains("${shlibs:Depends}"));
     }
 }
