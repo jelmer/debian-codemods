@@ -11,7 +11,6 @@ use distro_info::DistroInfo;
 use debian_analyzer::{get_committer, Certainty};
 use lintian_brush::{ManyResult, OverallError};
 use std::collections::HashMap;
-use std::io::Write as _;
 use std::path::PathBuf;
 
 #[derive(clap::Args, Clone, Debug)]
@@ -167,17 +166,51 @@ struct Args {
 fn main() -> Result<(), i32> {
     let args = Args::parse();
 
-    env_logger::builder()
-        .format(|buf, record| writeln!(buf, "{}", record.args()))
-        .filter(
-            None,
-            if args.output.debug {
-                log::LevelFilter::Debug
-            } else {
-                log::LevelFilter::Info
-            },
+    // Create MultiProgress for coordinating progress bars with logging
+    let multi_progress = indicatif::MultiProgress::new();
+
+    // Set up tracing subscriber with a custom writer that suspends progress bars
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+
+    struct ProgressSuspendingWriter {
+        multi_progress: indicatif::MultiProgress,
+    }
+
+    impl std::io::Write for ProgressSuspendingWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.multi_progress.suspend(|| std::io::stderr().write(buf))
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            self.multi_progress.suspend(|| std::io::stderr().flush())
+        }
+    }
+
+    let filter_level = if args.output.debug {
+        tracing::Level::DEBUG
+    } else {
+        tracing::Level::INFO
+    };
+
+    let mp_for_writer = multi_progress.clone();
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_writer(move || ProgressSuspendingWriter {
+                    multi_progress: mp_for_writer.clone(),
+                })
+                .without_time()
+                .with_target(false)
+                .with_level(false),
         )
+        .with(tracing_subscriber::filter::LevelFilter::from_level(
+            filter_level,
+        ))
         .init();
+
+    // Set up log forwarding to tracing for compatibility with log:: macros
+    tracing_log::LogTracer::init().ok();
 
     breezyshim::init();
 
@@ -520,6 +553,7 @@ fn main() -> Result<(), i32> {
             Some(std::path::Path::new(subpath.as_str())),
             Some("lintian-brush"),
             timeout,
+            Some(&multi_progress),
         ) {
             Err(OverallError::NotDebianPackage(p)) => {
                 drop(write_lock);

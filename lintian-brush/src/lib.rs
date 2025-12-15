@@ -9,7 +9,7 @@ use std::io::BufReader;
 use std::process::Command;
 use std::str::FromStr;
 
-use indicatif::ProgressBar;
+use indicatif::{MultiProgress, ProgressBar};
 
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
@@ -2184,6 +2184,7 @@ pub fn run_lintian_fixers(
     subpath: Option<&std::path::Path>,
     changes_by: Option<&str>,
     timeout: Option<chrono::Duration>,
+    multi_progress: Option<&MultiProgress>,
 ) -> Result<ManyResult, OverallError> {
     let subpath = subpath.unwrap_or_else(|| std::path::Path::new(""));
     let mut basis_tree = local_tree.basis_tree().unwrap();
@@ -2206,7 +2207,11 @@ pub fn run_lintian_fixers(
     };
 
     let mut ret = ManyResult::new();
-    let pb = ProgressBar::new(fixers.len() as u64);
+    let pb = if let Some(mp) = multi_progress {
+        mp.add(ProgressBar::new(fixers.len() as u64))
+    } else {
+        ProgressBar::new(fixers.len() as u64)
+    };
     #[cfg(test)]
     pb.set_draw_target(indicatif::ProgressDrawTarget::hidden());
     let mut dirty_tracker = if use_dirty_tracker.unwrap_or(true) {
@@ -2780,6 +2785,7 @@ Arch: all
                 None,
                 None,
                 None,
+                None,
             )
             .unwrap();
             std::mem::drop(lock);
@@ -2825,6 +2831,7 @@ Arch: all
                     None,
                     None,
                     None,
+                    None,
                 ),
                 Err(OverallError::NotDebianPackage(_))
             ));
@@ -2843,6 +2850,7 @@ Arch: all
                 false,
                 Some(COMMITTER),
                 &FixerPreferences::default(),
+                None,
                 None,
                 None,
                 None,

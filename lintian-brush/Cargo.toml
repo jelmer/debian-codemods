@@ -24,6 +24,9 @@ lazy-regex = { workspace = true }
 debversion = { workspace = true }
 breezyshim = { workspace = true }
 indicatif = ">=0.17,<0.19"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+tracing-log = "0.2"
 tempfile = { workspace = true }
 url = { version = "2", features = ["serde"] }
 reqwest = { workspace = true, features = ["blocking"] }
