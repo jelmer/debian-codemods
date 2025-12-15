@@ -39,10 +39,6 @@ fixers:
     lintian-tags:
       - systemd-service-file-shutdown-problems
 
-  - script: systemd-service-alias-without-extension.py
-    lintian-tags:
-      - systemd-service-alias-without-extension
-
   - script: systemd-service-file-refers-to-obsolete-bindto.py
     lintian-tags:
       - systemd-service-file-refers-to-obsolete-bindto
