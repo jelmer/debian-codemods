@@ -9,7 +9,7 @@ use std::io::BufReader;
 use std::process::Command;
 use std::str::FromStr;
 
-use indicatif::ProgressBar;
+use indicatif::{MultiProgress, ProgressBar};
 
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
@@ -1171,7 +1171,9 @@ impl std::fmt::Display for FixerError {
                 actual, minimum
             ),
             FixerError::Io(e) => write!(f, "IO error: {}", e),
-            FixerError::FailedPatchManipulation(s) => write!(f, "Failed to manipulate patc: {}", s),
+            FixerError::FailedPatchManipulation(s) => {
+                write!(f, "Failed to manipulate patch: {}", s)
+            }
             FixerError::BrzError(e) => write!(f, "Breezy error: {}", e),
             FixerError::InvalidChangelog(p, s) => {
                 write!(f, "Invalid changelog {}: {}", p.display(), s)
@@ -2185,6 +2187,7 @@ pub fn run_lintian_fixers(
     subpath: Option<&std::path::Path>,
     changes_by: Option<&str>,
     timeout: Option<chrono::Duration>,
+    multi_progress: Option<&MultiProgress>,
 ) -> Result<ManyResult, OverallError> {
     let subpath = subpath.unwrap_or_else(|| std::path::Path::new(""));
     let mut basis_tree = local_tree.basis_tree().unwrap();
@@ -2207,7 +2210,11 @@ pub fn run_lintian_fixers(
     };
 
     let mut ret = ManyResult::new();
-    let pb = ProgressBar::new(fixers.len() as u64);
+    let pb = if let Some(mp) = multi_progress {
+        mp.add(ProgressBar::new(fixers.len() as u64))
+    } else {
+        ProgressBar::new(fixers.len() as u64)
+    };
     #[cfg(test)]
     pb.set_draw_target(indicatif::ProgressDrawTarget::hidden());
     let mut dirty_tracker = if use_dirty_tracker.unwrap_or(true) {
@@ -2226,6 +2233,10 @@ pub fn run_lintian_fixers(
             dirty_tracker.mark_clean();
         }
         pb.inc(1);
+
+        // Create a span for this fixer so log messages are attributed to it
+        let _span = tracing::info_span!("fixer", name = fixer.name()).entered();
+
         match run_lintian_fixer(
             local_tree,
             fixer.as_ref(),
@@ -2781,6 +2792,7 @@ Arch: all
                 None,
                 None,
                 None,
+                None,
             )
             .unwrap();
             std::mem::drop(lock);
@@ -2826,6 +2838,7 @@ Arch: all
                     None,
                     None,
                     None,
+                    None,
                 ),
                 Err(OverallError::NotDebianPackage(_))
             ));
@@ -2844,6 +2857,7 @@ Arch: all
                 false,
                 Some(COMMITTER),
                 &FixerPreferences::default(),
+                None,
                 None,
                 None,
                 None,

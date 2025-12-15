@@ -1848,6 +1848,7 @@ fn run_debianize_fixers(
         Some(subpath),
         None, // changes_by
         None, // timeout
+        None, // multi_progress
     ) {
         Ok(result) => {
             // Check the actual methods available on ManyResult
