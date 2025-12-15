@@ -2042,8 +2042,11 @@ pub fn run_lintian_fixer(
     };
 
     if update_changelog {
-        let mut entry = vec![summary.as_str()];
-        entry.extend(details);
+        let summary_with_prefix = format!("* {}", summary);
+        let details_with_prefix: Vec<String> = details.iter().map(|d| format!("* {}", d)).collect();
+
+        let mut entry = vec![summary_with_prefix.as_str()];
+        entry.extend(details_with_prefix.iter().map(|s| s.as_str()));
 
         add_changelog_entry(local_tree, changelog_path.as_path(), entry.as_slice())?;
         if let Some(specific_files) = specific_files.as_mut() {
@@ -2875,6 +2878,50 @@ Arch: all
                 .get_file_lines(std::path::Path::new("debian/control"))
                 .unwrap();
             assert_eq!(lines.last().unwrap(), &b"a new line\n".to_vec());
+            std::mem::drop(td);
+        }
+
+        #[test]
+        fn test_changelog_entry_has_asterisk_prefix() {
+            let (td, tree) = setup(None);
+            let lock = tree.lock_write().unwrap();
+            let _result = run_lintian_fixers(
+                &tree,
+                &[Box::new(DummyFixer::new("dummy", &["some-tag"]))],
+                Some(|| true), // Update changelog
+                false,
+                Some(COMMITTER),
+                &FixerPreferences::default(),
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+            std::mem::drop(lock);
+
+            // Read the changelog and verify that entries start with "* "
+            let changelog_content =
+                std::fs::read_to_string(td.path().join("debian/changelog")).unwrap();
+            let changelog: ChangeLog = changelog_content.parse().unwrap();
+            let first_entry = changelog.iter().next().unwrap();
+            let change_lines: Vec<String> = first_entry.change_lines().collect();
+
+            // Filter out author section headers (lines starting with "[") and empty lines
+            let bullet_lines: Vec<String> = change_lines
+                .iter()
+                .filter(|line| line.starts_with("* "))
+                .cloned()
+                .collect();
+
+            // Should have exactly 3 lines: our 2 new entries + the original one
+            assert_eq!(bullet_lines.len(), 3);
+
+            // Verify the exact entries - original is first, then our new entries
+            assert_eq!(bullet_lines[0], "* Initial release. (Closes: #911016)");
+            assert_eq!(bullet_lines[1], "* Fixed some tag.");
+            assert_eq!(bullet_lines[2], "* Extended description.");
+
             std::mem::drop(td);
         }
 
