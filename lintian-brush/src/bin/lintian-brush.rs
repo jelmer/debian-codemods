@@ -149,6 +149,10 @@ struct OutputArgs {
     /// Do not document changes in the changelog (useful when using e.g. "gbp dch") [default: auto-detect]
     #[arg(long, default_value_t = false, conflicts_with = "update_changelog")]
     no_update_changelog: bool,
+
+    /// Display statistics on fixer performance
+    #[arg(long, default_value_t = false)]
+    stats: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -645,6 +649,54 @@ fn main() -> Result<(), i32> {
                 "Some fixer scripts were unable to preserve formatting: {:?}. Run with --allow-reformatting to reformat {:?}.",
                 overall_result.formatting_unpreservable.keys().collect::<Vec<_>>(),
                 overall_result.formatting_unpreservable.values().collect::<Vec<_>>()
+            );
+        }
+        if args.output.stats {
+            log::info!("Fixer performance statistics:");
+
+            // Collect all fixers with their durations from the HashMap
+            let mut fixer_stats: Vec<_> = overall_result
+                .fixer_durations
+                .iter()
+                .map(|(name, duration)| (name.as_str(), *duration))
+                .collect();
+
+            // Sort by duration (slowest first)
+            fixer_stats.sort_by(|a, b| b.1.cmp(&a.1));
+
+            // Display statistics
+            let total_duration: std::time::Duration = overall_result.fixer_durations.values().sum();
+
+            println!("\n{:<50} {:>12} {:>10}", "Fixer", "Duration (s)", "Result");
+            println!("{}", "-".repeat(75));
+
+            // Create a set of successful fixer names for quick lookup
+            let successful_fixers: std::collections::HashSet<&str> = overall_result
+                .success
+                .iter()
+                .map(|fs| fs.fixer_name.as_str())
+                .collect();
+
+            for (name, duration) in &fixer_stats {
+                let result = if successful_fixers.contains(name) {
+                    "success"
+                } else {
+                    "no change"
+                };
+                println!(
+                    "{:<50} {:>12.2} {:>10}",
+                    name,
+                    duration.as_secs_f32(),
+                    result
+                );
+            }
+
+            println!("{}", "-".repeat(75));
+            println!("{:<50} {:>12.2}", "TOTAL", total_duration.as_secs_f32());
+            println!(
+                "\n{} fixer(s) ran, {} made changes",
+                overall_result.fixer_durations.len(),
+                overall_result.success.len()
             );
         }
         if args.output.diff {
