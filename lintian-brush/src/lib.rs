@@ -1171,7 +1171,9 @@ impl std::fmt::Display for FixerError {
                 actual, minimum
             ),
             FixerError::Io(e) => write!(f, "IO error: {}", e),
-            FixerError::FailedPatchManipulation(s) => write!(f, "Failed to manipulate patc: {}", s),
+            FixerError::FailedPatchManipulation(s) => {
+                write!(f, "Failed to manipulate patch: {}", s)
+            }
             FixerError::BrzError(e) => write!(f, "Breezy error: {}", e),
             FixerError::InvalidChangelog(p, s) => {
                 write!(f, "Invalid changelog {}: {}", p.display(), s)
