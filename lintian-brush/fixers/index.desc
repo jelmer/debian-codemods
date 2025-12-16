@@ -18,10 +18,6 @@ fixers:
       - package-uses-deprecated-debhelper-compat-version
       - package-uses-old-debhelper-compat-version
 
-  - script: systemd-service-file-pidfile-refers-to-var-run.py
-    lintian-tags:
-      - systemd-service-file-refers-to-var-run
-
   - script: systemd-service-file-refers-to-obsolete-target.py
     lintian-tags:
       - systemd-service-file-refers-to-obsolete-target
