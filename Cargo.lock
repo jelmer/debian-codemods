@@ -1100,6 +1100,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "desktop-edit"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8cbd24ecd7f640176cfd5f18e990dc53413870e98ed2c638ef4f98c131628d7"
+dependencies = [
+ "rowan",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2740,6 +2749,7 @@ dependencies = [
  "debian-watch",
  "debversion",
  "dep3",
+ "desktop-edit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "distro-info",
  "env_logger",
  "fs_extra",
