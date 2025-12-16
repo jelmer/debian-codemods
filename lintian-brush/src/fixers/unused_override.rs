@@ -213,6 +213,7 @@ pub fn remove_unused_overrides_from_files(
     }
 
     let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
     let mut unique_tags = std::collections::HashSet::new();
 
     for path in override_files {
@@ -225,12 +226,16 @@ pub fn remove_unused_overrides_from_files(
                             vec![format!("{} {}", override_text, file_location)],
                         );
 
-                        // Extract tag from override_text for description
-                        if let Some(tag) = override_text.split_whitespace().next() {
-                            unique_tags.insert(tag.to_string());
-                        }
+                        if issue.should_fix(base_path) {
+                            // Extract tag from override_text for description
+                            if let Some(tag) = override_text.split_whitespace().next() {
+                                unique_tags.insert(tag.to_string());
+                            }
 
-                        fixed_issues.push(issue);
+                            fixed_issues.push(issue);
+                        } else {
+                            overridden_issues.push(issue);
+                        }
                     }
                 }
             }
@@ -246,6 +251,9 @@ pub fn remove_unused_overrides_from_files(
     }
 
     if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 

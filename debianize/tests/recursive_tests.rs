@@ -12,7 +12,7 @@ use upstream_ontologist::UpstreamMetadata;
 #[test]
 #[serial_test::serial]
 fn test_basic_debianization() {
-    let image_cached = match DebianImageCached::new() {
+    let _image_cached = match DebianImageCached::new() {
         Ok(cached) => cached,
         Err(e) => {
             eprintln!("Failed to cache Debian image: {:?}", e);
