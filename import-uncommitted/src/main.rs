@@ -8,7 +8,6 @@ use breezyshim::tree::{MutableTree, PyTree, Tree};
 use breezyshim::workingtree::WorkingTree;
 use breezyshim::Branch;
 use breezyshim::RevisionId;
-use chrono;
 use clap::Parser;
 use debian_analyzer::editor::MutableTreeEdit;
 use debian_changelog::ChangeLog;

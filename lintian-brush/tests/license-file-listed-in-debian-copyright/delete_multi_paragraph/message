@@ -1,6 +1,6 @@
 Remove listed license files (COPYING.GPL-3.0+, COPYING.LGPL-2.1+, ui/COPYING.LGPL-2.1+) from copyright.
 Certainty: certain
 Fixed-Lintian-Issues:
- source: license-file-listed-in-debian-copyright COPYING.GPL-3.0+
- source: license-file-listed-in-debian-copyright COPYING.LGPL-2.1+
- source: license-file-listed-in-debian-copyright ui/COPYING.LGPL-2.1+
+ source: license-file-listed-in-debian-copyright COPYING.GPL-3.0+ [debian/copyright]
+ source: license-file-listed-in-debian-copyright COPYING.LGPL-2.1+ [debian/copyright]
+ source: license-file-listed-in-debian-copyright ui/COPYING.LGPL-2.1+ [debian/copyright]

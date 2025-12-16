@@ -35,14 +35,6 @@ fixers:
     lintian-tags:
       - systemd-service-file-refers-to-var-run
 
-  - script: systemd-service-file-shutdown-problems.py
-    lintian-tags:
-      - systemd-service-file-shutdown-problems
-
-  - script: systemd-service-alias-without-extension.py
-    lintian-tags:
-      - systemd-service-alias-without-extension
-
   - script: systemd-service-file-refers-to-obsolete-bindto.py
     lintian-tags:
       - systemd-service-file-refers-to-obsolete-bindto
@@ -83,10 +75,6 @@ fixers:
   - script: debian-rules-sets-dpkg-architecture-variable.py
     lintian-tags:
       - debian-rules-sets-dpkg-architecture-variable
-
-  - script: desktop-entry-contains-encoding-key.py
-    lintian-tags:
-      - desktop-entry-contains-encoding-key
 
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
