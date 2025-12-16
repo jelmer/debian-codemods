@@ -1,0 +1,1 @@
+systemd-service-file-refers-to-var-run debian/apcupsd.service PIDFile /var/run/apcupsd.pid
