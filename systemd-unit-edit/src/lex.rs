@@ -141,13 +141,14 @@ fn lex_impl(input: &str) -> impl Iterator<Item = (SyntaxKind, &str)> + '_ {
                 Some((SyntaxKind::RIGHT_BRACKET, "]"))
             }
 
-            // Whitespace at start of line - could be blank line
+            // Whitespace at start of line - could be blank line or continuation line
             _ if is_whitespace(c) && at_line_start => {
                 let end = remaining
                     .find(|c| !is_whitespace(c))
                     .unwrap_or(remaining.len());
                 let (token, rest) = remaining.split_at(end);
                 remaining = rest;
+                at_line_start = false; // After leading whitespace, we're not at line start anymore
                 Some((SyntaxKind::WHITESPACE, token))
             }
 

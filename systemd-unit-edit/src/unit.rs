@@ -281,8 +281,20 @@ pub(crate) fn parse(text: &str) -> ParseResult {
                 match kind {
                     SyntaxKind::LEFT_BRACKET => break, // Start of next section
                     SyntaxKind::KEY | SyntaxKind::COMMENT => self.parse_entry(),
-                    SyntaxKind::NEWLINE | SyntaxKind::WHITESPACE => {
+                    SyntaxKind::NEWLINE => {
                         self.skip_blank_lines();
+                    }
+                    SyntaxKind::WHITESPACE => {
+                        // Try to skip blank lines, but if whitespace is not part of a blank line,
+                        // consume it as an error to avoid infinite loop
+                        let pos_before = self.pos;
+                        self.skip_blank_lines();
+                        if self.pos == pos_before {
+                            // skip_blank_lines didn't consume anything, so this whitespace
+                            // is not part of a blank line (e.g., leading whitespace on a line)
+                            self.errors.push("unexpected whitespace at start of line (should be indented continuation or blank line)".to_string());
+                            self.bump();
+                        }
                     }
                     _ => {
                         self.errors
@@ -2817,5 +2829,105 @@ After=network.target
         // Second entry starts at line 4 (after the multi-line value)
         assert_eq!(entries[1].line(), 4);
         assert_eq!(entries[1].column(), 0);
+    }
+
+    #[test]
+    fn test_leading_whitespace_error() {
+        // Test that leading whitespace on a key is reported as an error
+        let input = r#"[Unit]
+Description=Test Service
+ ConditionVirtualization=microsoft
+"#;
+        let result = SystemdUnit::from_str(input);
+
+        // The parser should not hang and should report an error
+        assert!(
+            result.is_err(),
+            "Expected parse error for leading whitespace"
+        );
+
+        match result {
+            Err(Error::ParseError(err)) => {
+                assert!(
+                    err.0
+                        .iter()
+                        .any(|e| e.contains("unexpected whitespace at start of line")),
+                    "Expected error about leading whitespace, got: {:?}",
+                    err.0
+                );
+            }
+            _ => panic!("Expected ParseError, got: {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_leading_whitespace_does_not_hang() {
+        // Test that leading whitespace doesn't cause an infinite loop
+        let input = r#"[Unit]
+Description=Test Service
+ After=network.target
+Wants=foo.service
+"#;
+        // This should complete without hanging and return an error
+        let result = SystemdUnit::from_str(input);
+        assert!(
+            result.is_err(),
+            "Expected parse error for leading whitespace"
+        );
+    }
+
+    #[test]
+    fn test_leading_whitespace_multiple_lines() {
+        // Test that multiple lines with leading whitespace are all reported as errors
+        let input = r#"[Unit]
+Description=Test Service
+ After=network.target
+ Wants=foo.service
+ Requires=bar.service
+"#;
+        let result = SystemdUnit::from_str(input);
+        assert!(
+            result.is_err(),
+            "Expected parse error for leading whitespace"
+        );
+
+        match result {
+            Err(Error::ParseError(err)) => {
+                // Should have errors for each line with leading whitespace
+                assert!(
+                    err.0.len() >= 3,
+                    "Expected at least 3 errors for 3 lines with leading whitespace, got {}",
+                    err.0.len()
+                );
+            }
+            _ => panic!("Expected ParseError"),
+        }
+    }
+
+    #[test]
+    fn test_valid_continuation_line() {
+        // Test that valid continuation lines (after backslash) work correctly
+        let input = r#"[Service]
+ExecStart=/bin/echo \
+  hello world
+"#;
+        let unit = SystemdUnit::from_str(input).unwrap();
+
+        // Continuation lines should work fine
+        let section = unit.sections().next().unwrap();
+        let entry = section.entries().next().unwrap();
+        assert_eq!(entry.key(), Some("ExecStart".to_string()));
+    }
+
+    #[test]
+    fn test_blank_lines_with_whitespace() {
+        // Test that blank lines containing only whitespace don't cause issues
+        let input = "[Unit]\nDescription=Test\n  \t  \nAfter=network.target\n";
+        let unit = SystemdUnit::from_str(input).unwrap();
+
+        // Should parse successfully
+        let section = unit.sections().next().unwrap();
+        assert_eq!(section.get("Description"), Some("Test".to_string()));
+        assert_eq!(section.get("After"), Some("network.target".to_string()));
     }
 }
