@@ -18,10 +18,6 @@ fixers:
       - package-uses-deprecated-debhelper-compat-version
       - package-uses-old-debhelper-compat-version
 
-  - script: systemd-service-file-refers-to-obsolete-bindto.py
-    lintian-tags:
-      - systemd-service-file-refers-to-obsolete-bindto
-
   - script: systemd-service-file-refers-to-obsolete-target.py
     lintian-tags:
       - systemd-service-file-refers-to-obsolete-target

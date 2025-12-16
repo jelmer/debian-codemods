@@ -1,0 +1,6 @@
+[Unit]
+Description=Test Service
+BindTo=bar.service
+
+[Service]
+Type=oneshot
