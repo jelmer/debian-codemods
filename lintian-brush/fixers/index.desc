@@ -35,10 +35,6 @@ fixers:
     lintian-tags:
       - systemd-service-file-refers-to-var-run
 
-  - script: systemd-service-file-shutdown-problems.py
-    lintian-tags:
-      - systemd-service-file-shutdown-problems
-
   - script: systemd-service-file-refers-to-obsolete-bindto.py
     lintian-tags:
       - systemd-service-file-refers-to-obsolete-bindto
