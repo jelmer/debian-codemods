@@ -13,19 +13,6 @@
 
 fixers:
 
-  # Copyright related fixers. Fix format URL before semantic fixes.
-
-  - script: common-license.py
-    lintian-tags:
-      - copyright-does-not-refer-to-common-license-file
-      - copyright-not-using-common-license-for-apache2
-      - copyright-not-using-common-license-for-gpl
-      - copyright-not-using-common-license-for-gfdl
-      - copyright-not-using-common-license-for-lgpl
-      - copyright-file-contains-full-apache-2-license
-      - copyright-file-contains-full-gfdl-license
-      - copyright-file-contains-full-gpl-license
-
   - script: package-uses-deprecated-debhelper-compat-version.py
     lintian-tags:
       - package-uses-deprecated-debhelper-compat-version
@@ -34,10 +21,6 @@ fixers:
   - script: systemd-service-file-pidfile-refers-to-var-run.py
     lintian-tags:
       - systemd-service-file-refers-to-var-run
-
-  - script: systemd-service-file-shutdown-problems.py
-    lintian-tags:
-      - systemd-service-file-shutdown-problems
 
   - script: systemd-service-file-refers-to-obsolete-target.py
     lintian-tags:
@@ -75,10 +58,6 @@ fixers:
   - script: debian-rules-sets-dpkg-architecture-variable.py
     lintian-tags:
       - debian-rules-sets-dpkg-architecture-variable
-
-  - script: desktop-entry-contains-encoding-key.py
-    lintian-tags:
-      - desktop-entry-contains-encoding-key
 
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
