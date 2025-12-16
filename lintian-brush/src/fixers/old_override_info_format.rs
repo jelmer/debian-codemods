@@ -115,6 +115,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let mut fixed_linenos: HashMap<PathBuf, Vec<usize>> = HashMap::new();
     let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for path in override_files {
         let result = match process_overrides_file(&path) {
@@ -137,14 +138,24 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     lineno
                 )],
             );
-            fixed_issues.push(issue);
-            linenos.push(*lineno);
+
+            if issue.should_fix(base_path) {
+                fixed_issues.push(issue);
+                linenos.push(*lineno);
+            } else {
+                overridden_issues.push(issue);
+            }
         }
 
-        fixed_linenos.insert(path, linenos);
+        if !linenos.is_empty() {
+            fixed_linenos.insert(path, linenos);
+        }
     }
 
     if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=UPS power management daemon
+Documentation=man:apcupsd(8)
+
+[Service]
+ExecStart=/sbin/apcupsd
+Type=forking
+PIDFile=/var/run/apcupsd.pid
+
+[Install]
+WantedBy=multi-user.target
