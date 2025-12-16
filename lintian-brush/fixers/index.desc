@@ -18,10 +18,6 @@ fixers:
       - package-uses-deprecated-debhelper-compat-version
       - package-uses-old-debhelper-compat-version
 
-  - script: systemd-service-file-refers-to-obsolete-target.py
-    lintian-tags:
-      - systemd-service-file-refers-to-obsolete-target
-
   - script: upstream-metadata-invalid.py
     lintian-tags:
       - upstream-metadata-yaml-invalid
