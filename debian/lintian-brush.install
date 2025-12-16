@@ -1,6 +1,0 @@
-lintian-brush/fixers/ /usr/share/lintian-brush/
-usr/bin/debianize
-usr/bin/lintian-brush
-usr/lib/python*/dist-packages/lintian_brush
-usr/lib/python*/dist-packages/lintian_brush-0.*
-usr/share/lintian-brush
