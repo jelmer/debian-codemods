@@ -6391,6 +6391,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "yaml-edit"
+version = "0.1.0"
+dependencies = [
+ "pyo3",
+ "pyo3-build-config",
+ "tempfile",
+]
+
+[[package]]
 name = "yoke"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
