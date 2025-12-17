@@ -21,7 +21,117 @@
 
 use pyo3::prelude::*;
 use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList, PyListMethods, PyModule};
+use std::collections::HashMap;
 use std::path::Path;
+
+/// A YAML value that can be stored in the document
+#[derive(Debug, Clone, PartialEq)]
+pub enum Value {
+    /// A string value
+    String(String),
+    /// A null value
+    Null,
+    /// A boolean value
+    Bool(bool),
+    /// An integer value
+    Int(i64),
+    /// A float value
+    Float(f64),
+    /// A list of values
+    List(Vec<Value>),
+    /// A mapping of string keys to values
+    Map(HashMap<String, Value>),
+}
+
+impl Value {
+    /// Convert a Python object to a Value
+    fn from_py(obj: &Bound<PyAny>) -> Result<Self> {
+        if obj.is_none() {
+            return Ok(Value::Null);
+        }
+
+        // Try string first
+        if let Ok(s) = obj.extract::<String>() {
+            return Ok(Value::String(s));
+        }
+
+        // Try bool
+        if let Ok(b) = obj.extract::<bool>() {
+            return Ok(Value::Bool(b));
+        }
+
+        // Try int
+        if let Ok(i) = obj.extract::<i64>() {
+            return Ok(Value::Int(i));
+        }
+
+        // Try float
+        if let Ok(f) = obj.extract::<f64>() {
+            return Ok(Value::Float(f));
+        }
+
+        // Try list
+        if let Ok(list) = obj.cast::<PyList>() {
+            let items: Result<Vec<Value>> = list.iter().map(|item| Value::from_py(&item)).collect();
+            return Ok(Value::List(items?));
+        }
+
+        // Try dict
+        if let Ok(dict) = obj.cast::<PyDict>() {
+            let mut map = HashMap::new();
+            for (key, value) in dict.iter() {
+                let key_str = key.extract::<String>()?;
+                map.insert(key_str, Value::from_py(&value)?);
+            }
+            return Ok(Value::Map(map));
+        }
+
+        Err(Error::ValueError(format!(
+            "Unsupported Python type: {}",
+            obj.get_type()
+                .name()
+                .map(|s| s.to_string())
+                .unwrap_or_else(|_| "unknown".to_string())
+        )))
+    }
+
+    /// Convert a Value to a Python object
+    fn to_py(&self, py: Python) -> PyResult<Py<PyAny>> {
+        match self {
+            Value::Null => Ok(py.None()),
+            Value::String(s) => {
+                let obj = s.into_pyobject(py)?;
+                Ok(obj.as_any().clone().unbind())
+            }
+            Value::Bool(b) => {
+                let obj = b.into_pyobject(py)?;
+                Ok(obj.as_any().clone().unbind())
+            }
+            Value::Int(i) => {
+                let obj = i.into_pyobject(py)?;
+                Ok(obj.as_any().clone().unbind())
+            }
+            Value::Float(f) => {
+                let obj = f.into_pyobject(py)?;
+                Ok(obj.as_any().clone().unbind())
+            }
+            Value::List(items) => {
+                let list = PyList::empty(py);
+                for item in items {
+                    list.append(item.to_py(py)?)?;
+                }
+                Ok(list.into_any().unbind())
+            }
+            Value::Map(map) => {
+                let dict = PyDict::new(py);
+                for (key, value) in map {
+                    dict.set_item(key, value.to_py(py)?)?;
+                }
+                Ok(dict.into_any().unbind())
+            }
+        }
+    }
+}
 
 /// Error type for YAML operations
 #[derive(Debug)]
@@ -164,35 +274,15 @@ pub struct YamlDocument {
 }
 
 impl YamlDocument {
-    /// Get the code property (the YAML content as a Python dict)
-    pub fn code(&self) -> Result<Py<PyAny>> {
+    /// Get a value from the YAML document by key
+    pub fn get(&self, key: &str) -> Result<Option<Value>> {
         Python::attach(|py| {
             let updater = self.updater.bind(py);
             let code = updater.getattr("code")?;
-            Ok(code.unbind())
-        })
-    }
-
-    /// Set the code property
-    pub fn set_code(&self, value: Py<PyAny>) -> Result<()> {
-        Python::attach(|py| {
-            let updater = self.updater.bind(py);
-            updater.setattr("code", value)?;
-            Ok(())
-        })
-    }
-
-    /// Get a value from the YAML document by key
-    pub fn get(&self, key: &str) -> Result<Option<Py<PyAny>>> {
-        Python::attach(|py| {
-            let code = self.code()?;
-            let dict = code
-                .bind(py)
-                .cast::<PyDict>()
-                .expect("YAML code should be a dict");
+            let dict = code.cast::<PyDict>().expect("YAML code should be a dict");
 
             if let Some(value) = dict.get_item(key)? {
-                Ok(Some(value.unbind()))
+                Ok(Some(Value::from_py(&value)?))
             } else {
                 Ok(None)
             }
@@ -200,18 +290,18 @@ impl YamlDocument {
     }
 
     /// Set a value in the YAML document
-    pub fn set(&self, key: &str, value: Py<PyAny>) -> Result<()> {
+    pub fn set(&self, key: &str, value: Value) -> Result<()> {
         Python::attach(|py| {
-            // Access the updater's code attribute directly and use __setitem__
             let updater = self.updater.bind(py);
             let code = updater.getattr("code")?;
-            code.call_method1("__setitem__", (key, value.bind(py)))?;
+            let py_value = value.to_py(py)?;
+            code.call_method1("__setitem__", (key, py_value.bind(py)))?;
             Ok(())
         })
     }
 
     /// Remove a key from the YAML document
-    pub fn remove(&self, key: &str) -> Result<Option<Py<PyAny>>> {
+    pub fn remove(&self, key: &str) -> Result<Option<Value>> {
         Python::attach(|py| {
             let updater = self.updater.bind(py);
             let code = updater.getattr("code")?;
@@ -219,9 +309,10 @@ impl YamlDocument {
             // Check if key exists
             match code.call_method1("__contains__", (key,)) {
                 Ok(contains) if contains.extract::<bool>()? => {
-                    let value = code.call_method1("__getitem__", (key,))?.unbind();
+                    let value = code.call_method1("__getitem__", (key,))?;
+                    let rust_value = Value::from_py(&value)?;
                     code.call_method1("__delitem__", (key,))?;
-                    Ok(Some(value))
+                    Ok(Some(rust_value))
                 }
                 _ => Ok(None),
             }
@@ -231,12 +322,36 @@ impl YamlDocument {
     /// Check if a key exists in the YAML document
     pub fn contains_key(&self, key: &str) -> Result<bool> {
         Python::attach(|py| {
-            let code = self.code()?;
-            let dict = code
-                .bind(py)
-                .cast::<PyDict>()
-                .expect("YAML code should be a dict");
+            let updater = self.updater.bind(py);
+            let code = updater.getattr("code")?;
+            let dict = code.cast::<PyDict>().expect("YAML code should be a dict");
             Ok(dict.contains(key)?)
+        })
+    }
+
+    /// Get all keys from the YAML document
+    pub fn keys(&self) -> Result<Vec<String>> {
+        Python::attach(|py| {
+            let updater = self.updater.bind(py);
+            let code = updater.getattr("code")?;
+            let dict = code.cast::<PyDict>().expect("YAML code should be a dict");
+
+            let keys = dict
+                .keys()
+                .into_iter()
+                .filter_map(|k| k.extract::<String>().ok())
+                .collect();
+            Ok(keys)
+        })
+    }
+
+    /// Clear all entries from the YAML document
+    pub fn clear(&self) -> Result<()> {
+        Python::attach(|py| {
+            let updater = self.updater.bind(py);
+            let empty_dict = PyDict::new(py);
+            updater.setattr("code", empty_dict)?;
+            Ok(())
         })
     }
 
@@ -247,11 +362,6 @@ impl YamlDocument {
             updater.call_method0("force_rewrite")?;
             Ok(())
         })
-    }
-
-    /// Get the underlying Python object for direct manipulation
-    pub fn as_py_object(&self) -> &Py<PyAny> {
-        &self.updater
     }
 }
 
@@ -327,30 +437,12 @@ pub struct MultiYamlDocument {
 }
 
 impl MultiYamlDocument {
-    /// Get the code property (the YAML content as a Python list)
-    pub fn code(&self) -> Result<Py<PyAny>> {
-        Python::attach(|py| {
-            let updater = self.updater.bind(py);
-            let code = updater.getattr("code")?;
-            Ok(code.unbind())
-        })
-    }
-
-    /// Set the code property
-    pub fn set_code(&self, value: Py<PyAny>) -> Result<()> {
-        Python::attach(|py| {
-            let updater = self.updater.bind(py);
-            updater.setattr("code", value)?;
-            Ok(())
-        })
-    }
-
     /// Get the number of documents
     pub fn len(&self) -> Result<usize> {
         Python::attach(|py| {
-            let code = self.code()?;
+            let updater = self.updater.bind(py);
+            let code = updater.getattr("code")?;
             let list = code
-                .bind(py)
                 .cast::<PyList>()
                 .expect("Multi-YAML code should be a list");
             Ok(list.len())
@@ -363,16 +455,17 @@ impl MultiYamlDocument {
     }
 
     /// Get a document by index
-    pub fn get(&self, index: usize) -> Result<Option<Py<PyAny>>> {
+    pub fn get(&self, index: usize) -> Result<Option<Value>> {
         Python::attach(|py| {
-            let code = self.code()?;
+            let updater = self.updater.bind(py);
+            let code = updater.getattr("code")?;
             let list = code
-                .bind(py)
                 .cast::<PyList>()
                 .expect("Multi-YAML code should be a list");
 
             if index < list.len() {
-                Ok(Some(list.get_item(index)?.unbind()))
+                let item = list.get_item(index)?;
+                Ok(Some(Value::from_py(&item)?))
             } else {
                 Ok(None)
             }
@@ -380,16 +473,17 @@ impl MultiYamlDocument {
     }
 
     /// Set a document at the given index
-    pub fn set(&self, index: usize, value: Py<PyAny>) -> Result<()> {
+    pub fn set(&self, index: usize, value: Value) -> Result<()> {
         Python::attach(|py| {
-            let code = self.code()?;
+            let updater = self.updater.bind(py);
+            let code = updater.getattr("code")?;
             let list = code
-                .bind(py)
                 .cast::<PyList>()
                 .expect("Multi-YAML code should be a list");
 
             if index < list.len() {
-                list.set_item(index, value)?;
+                let py_value = value.to_py(py)?;
+                list.set_item(index, py_value)?;
                 Ok(())
             } else {
                 Err(Error::ValueError(format!("Index {} out of bounds", index)))
@@ -398,41 +492,37 @@ impl MultiYamlDocument {
     }
 
     /// Append a document to the list
-    pub fn append(&self, value: Py<PyAny>) -> Result<()> {
+    pub fn append(&self, value: Value) -> Result<()> {
         Python::attach(|py| {
-            let code = self.code()?;
+            let updater = self.updater.bind(py);
+            let code = updater.getattr("code")?;
             let list = code
-                .bind(py)
                 .cast::<PyList>()
                 .expect("Multi-YAML code should be a list");
-            list.append(value)?;
+            let py_value = value.to_py(py)?;
+            list.append(py_value)?;
             Ok(())
         })
     }
 
     /// Remove a document at the given index
-    pub fn remove(&self, index: usize) -> Result<Py<PyAny>> {
+    pub fn remove(&self, index: usize) -> Result<Value> {
         Python::attach(|py| {
-            let code = self.code()?;
+            let updater = self.updater.bind(py);
+            let code = updater.getattr("code")?;
             let list = code
-                .bind(py)
                 .cast::<PyList>()
                 .expect("Multi-YAML code should be a list");
 
             if index < list.len() {
-                let value = list.get_item(index)?;
-                let result = value.unbind();
+                let item = list.get_item(index)?;
+                let result = Value::from_py(&item)?;
                 list.del_item(index)?;
                 Ok(result)
             } else {
                 Err(Error::ValueError(format!("Index {} out of bounds", index)))
             }
         })
-    }
-
-    /// Get the underlying Python object for direct manipulation
-    pub fn as_py_object(&self) -> &Py<PyAny> {
-        &self.updater
     }
 }
 
@@ -456,7 +546,7 @@ mod tests {
             let doc = updater.open().unwrap();
 
             let value = doc.get("key1").unwrap();
-            assert!(value.is_some());
+            assert_eq!(value, Some(Value::String("value1".to_string())));
 
             assert!(doc.contains_key("key1").unwrap());
             assert!(!doc.contains_key("key3").unwrap());
@@ -467,13 +557,8 @@ mod tests {
             let mut updater = YamlUpdater::new(&yaml_path).unwrap();
             let doc = updater.open().unwrap();
 
-            Python::attach(|py| {
-                doc.set(
-                    "key3",
-                    "value3".into_pyobject(py).unwrap().into_any().unbind(),
-                )
+            doc.set("key3", Value::String("value3".to_string()))
                 .unwrap();
-            });
 
             updater.close().unwrap();
         }
@@ -530,13 +615,8 @@ mod tests {
 
             doc.force_rewrite().unwrap();
 
-            Python::attach(|py| {
-                doc.set(
-                    "key2",
-                    "value2".into_pyobject(py).unwrap().into_any().unbind(),
-                )
+            doc.set("key2", Value::String("value2".to_string()))
                 .unwrap();
-            });
 
             updater.close().unwrap();
         }
@@ -560,11 +640,8 @@ mod tests {
             // Remove all keys
             doc.remove("key1").unwrap();
 
-            // Set empty dict
-            Python::attach(|py| {
-                let empty_dict = pyo3::types::PyDict::new(py);
-                doc.set_code(empty_dict.into()).unwrap();
-            });
+            // Clear the document
+            doc.clear().unwrap();
 
             updater.close().unwrap();
         }
@@ -585,13 +662,8 @@ mod tests {
             let mut updater = YamlUpdater::new(&yaml_path).unwrap();
             let doc = updater.open().unwrap();
 
-            Python::attach(|py| {
-                doc.set(
-                    "newkey",
-                    "newvalue".into_pyobject(py).unwrap().into_any().unbind(),
-                )
+            doc.set("newkey", Value::String("newvalue".to_string()))
                 .unwrap();
-            });
 
             updater.close().unwrap();
         }
@@ -603,7 +675,7 @@ mod tests {
     }
 
     #[test]
-    fn test_yaml_updater_code_property() {
+    fn test_yaml_updater_clear() {
         let temp_dir = TempDir::new().unwrap();
         let yaml_path = temp_dir.path().join("test.yaml");
 
@@ -613,13 +685,10 @@ mod tests {
             let mut updater = YamlUpdater::new(&yaml_path).unwrap();
             let doc = updater.open().unwrap();
 
-            // Get code and modify it directly
-            Python::attach(|py| {
-                let _code = doc.code().unwrap();
-                let new_dict = pyo3::types::PyDict::new(py);
-                new_dict.set_item("replaced", "yes").unwrap();
-                doc.set_code(new_dict.into()).unwrap();
-            });
+            // Clear all keys and set new ones
+            doc.clear().unwrap();
+            doc.set("replaced", Value::String("yes".to_string()))
+                .unwrap();
 
             updater.close().unwrap();
         }
@@ -667,11 +736,9 @@ mod tests {
             let mut updater = MultiYamlUpdater::new(&yaml_path).unwrap();
             let doc = updater.open().unwrap();
 
-            Python::attach(|py| {
-                let new_dict = pyo3::types::PyDict::new(py);
-                new_dict.set_item("doc", 999).unwrap();
-                doc.set(0, new_dict.into()).unwrap();
-            });
+            let mut map = HashMap::new();
+            map.insert("doc".to_string(), Value::Int(999));
+            doc.set(0, Value::Map(map)).unwrap();
 
             updater.close().unwrap();
         }
@@ -693,11 +760,9 @@ mod tests {
 
             assert_eq!(doc.len().unwrap(), 2);
 
-            Python::attach(|py| {
-                let new_dict = pyo3::types::PyDict::new(py);
-                new_dict.set_item("doc", 3).unwrap();
-                doc.append(new_dict.into()).unwrap();
-            });
+            let mut map = HashMap::new();
+            map.insert("doc".to_string(), Value::Int(3));
+            doc.append(Value::Map(map)).unwrap();
 
             assert_eq!(doc.len().unwrap(), 3);
 
@@ -722,15 +787,11 @@ mod tests {
             assert_eq!(doc.len().unwrap(), 3);
 
             let removed = doc.remove(1).unwrap();
-            Python::attach(|py| {
-                let dict = removed
-                    .bind(py)
-                    .cast::<pyo3::types::PyDict>()
-                    .expect("should be dict");
-                let val = dict.get_item("doc").unwrap().unwrap();
-                let num: i32 = val.extract().unwrap();
-                assert_eq!(num, 2);
-            });
+            if let Value::Map(map) = removed {
+                assert_eq!(map.get("doc"), Some(&Value::Int(2)));
+            } else {
+                panic!("Expected Map");
+            }
 
             assert_eq!(doc.len().unwrap(), 2);
 
@@ -793,11 +854,9 @@ mod tests {
             let mut updater = MultiYamlUpdater::new(&yaml_path).unwrap();
             let doc = updater.open().unwrap();
 
-            let result = Python::attach(|py| {
-                let new_dict = pyo3::types::PyDict::new(py);
-                new_dict.set_item("doc", 999).unwrap();
-                doc.set(999, new_dict.into())
-            });
+            let mut map = HashMap::new();
+            map.insert("doc".to_string(), Value::Int(999));
+            let result = doc.set(999, Value::Map(map));
 
             assert!(result.is_err());
             match result {
