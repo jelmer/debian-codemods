@@ -968,6 +968,7 @@
 - tag: odd-historical-debian-changelog-version
 - tag: odd-permissions-on-shared-library
 - tag: old-python-version-field
+  status: implemented
 - tag: old-style-config-script
 - tag: old-style-config-script-multiarch-path
 - tag: old-style-config-script-multiarch-path-arch-all
@@ -1516,7 +1517,7 @@
 - tag: web-application-works-only-with-apache
 - tag: whitespace-after-continuation-character
 - tag: wiki-copyright-format-uri
-  comment: should be integrated into copyright-format-uri
+  status: implemented
 - tag: wildcard-matches-nothing-in-dep5-copyright
 - tag: windows-devel-file-in-package
 - tag: windows-thumbnail-database-in-package
@@ -1772,6 +1773,7 @@
 
 # 2.5.100
 - tag: skip-systemd-native-flag-missing-pre-depends
+  status: implemented
 - tag: obsolete-runtime-tests-restriction
   status: implemented
 - tag: package-contains-python-dot-directory
@@ -1822,3 +1824,10 @@
   difficulty: easy
 - tag: trailing-comma-in-maintainer-field
   difficulty: easy
+- tag: built-using-field-on-arch-all-package
+- tag: dh-install-instead-of-dh-installmodules
+- tag: directory-in-modprobe.d
+- tag: file-in-etc-modprobe.d
+- tag: package-installs-appimage
+- tag: redundant-rules-requires-root-no-field
+- tag: uses-gbp-conf

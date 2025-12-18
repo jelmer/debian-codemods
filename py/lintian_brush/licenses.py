@@ -17,18 +17,9 @@
 
 """Utility functions for dealing with licenses."""
 
-import json
-
-from . import open_binary
-
 COMMON_LICENSES_DIR = "/usr/share/common-licenses"
 
 FULL_LICENSE_NAME = {
     "Apache-2.0": "Apache License, Version 2.0",
     "CC0-1.0": "CC0 1.0 Universal license",
 }
-
-
-def load_spdx_data():
-    with open_binary("spdx.json") as f:
-        return json.load(f)

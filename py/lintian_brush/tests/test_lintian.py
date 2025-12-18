@@ -21,7 +21,7 @@ from io import StringIO
 
 from breezy.tests import TestCase
 
-from lintian_brush.lintian import read_list_file
+from lintian_brush.lintian import _read_list_file
 
 
 class ReadListFileTests(TestCase):
@@ -38,7 +38,7 @@ item3
 """
         )
         self.assertEqual(
-            ["item1", "item2", "item3"], list(read_list_file(f, "debian"))
+            ["item1", "item2", "item3"], list(_read_list_file(f, "debian"))
         )
 
     def test_vendor(self):
@@ -53,4 +53,6 @@ item3
 item3
 """
         )
-        self.assertEqual(["item1", "item3"], list(read_list_file(f, "debian")))
+        self.assertEqual(
+            ["item1", "item3"], list(_read_list_file(f, "debian"))
+        )

@@ -24,9 +24,7 @@ core_names = [
     "release_info",
     "run",
     "salsa",
-    "systemd",
     "vcs",
-    "xdg",
     "yaml",
 ]
 
