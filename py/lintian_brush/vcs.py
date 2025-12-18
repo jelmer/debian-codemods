@@ -19,63 +19,23 @@
 
 __all__ = [
     "fixup_broken_git_url",
-    "sanitize_url",
     "determine_browser_url",
 ]
 
 
-from typing import Callable, List, Optional, Union
+from typing import Optional
 
 from debmutate.vcs import split_vcs_url, unsplit_vcs_url
 from upstream_ontologist.vcs import (
-    canonical_git_repo_url,
-    convert_cvs_list_to_str,
-    drop_vcs_in_scheme,
-    find_public_repo_url,
     find_secure_repo_url,
     fixup_broken_git_details,
-    fixup_rcp_style_git_repo_url,
 )
 
 from . import _lintian_brush_rs
 
-
-def find_public_vcs_url(url: str) -> Optional[str]:
-    (repo_url, branch, subpath) = split_vcs_url(url)
-    revised_url = find_public_repo_url(repo_url)
-    if revised_url is not None:
-        return unsplit_vcs_url(revised_url, branch, subpath)
-    return None
-
-
-def fixup_rcp_style_git_url(url: str) -> str:
-    (repo_url, branch, subpath) = split_vcs_url(url)
-    repo_url = fixup_rcp_style_git_repo_url(repo_url)
-    return unsplit_vcs_url(repo_url, branch, subpath)
-
-
 determine_gitlab_browser_url = _lintian_brush_rs.determine_gitlab_browser_url
 determine_browser_url = _lintian_brush_rs.determine_browser_url
 canonicalize_vcs_browser_url = _lintian_brush_rs.canonicalize_vcs_browser_url
-
-
-def canonical_vcs_git_url(url: str) -> str:
-    (repo_url, branch, subpath) = split_vcs_url(url)
-    repo_url = canonical_git_repo_url(repo_url)
-    return unsplit_vcs_url(repo_url, branch, subpath)
-
-
-canonicalize_vcs_fns = {
-    "Browser": canonicalize_vcs_browser_url,
-    "Git": canonical_vcs_git_url,
-}
-
-
-def canonicalize_vcs_url(vcs_type: str, url: str) -> str:
-    try:
-        return canonicalize_vcs_fns[vcs_type](url)
-    except KeyError:
-        return url
 
 
 def find_secure_vcs_url(url: str, net_access: bool = True) -> Optional[str]:
@@ -102,25 +62,3 @@ def fixup_broken_git_url(url: str) -> str:
     if newrepo_url != repo_url or newbranch != branch or newsubpath != subpath:
         return unsplit_vcs_url(newrepo_url, newbranch, newsubpath)
     return url
-
-
-SANITIZERS: List[Callable[[str], str]] = [
-    drop_vcs_in_scheme,
-    fixup_broken_git_url,
-    fixup_rcp_style_git_url,
-    lambda url: find_public_vcs_url(url) or url,
-    canonical_vcs_git_url,
-    lambda url: find_secure_vcs_url(url, net_access=False) or url,
-]
-
-
-def sanitize_url(url: Union[str, List[str]]) -> str:
-    """Sanitize a version control URL."""
-    if isinstance(url, list):
-        url_str = convert_cvs_list_to_str(url)
-    else:
-        url_str = url
-    url_str = url_str.strip()
-    for sanitizer in SANITIZERS:
-        url_str = sanitizer(url_str)
-    return url_str

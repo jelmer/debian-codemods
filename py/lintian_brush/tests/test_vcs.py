@@ -20,12 +20,8 @@
 from unittest import TestCase
 
 from lintian_brush.vcs import (
-    canonicalize_vcs_url,
     determine_browser_url,
-    find_public_vcs_url,
     fixup_broken_git_url,
-    fixup_rcp_style_git_url,
-    sanitize_url,
 )
 
 
@@ -129,48 +125,6 @@ class FixUpGitUrlTests(TestCase):
         )
 
 
-class SanitizeUrlTests(TestCase):
-    def test_simple(self):
-        self.assertEqual(
-            "https://github.com/jelmer/blah.git",
-            sanitize_url("http://github.com/jelmer/blah"),
-        )
-
-    def test_git_http(self):
-        self.assertEqual(
-            "https://github.com/jelmer/blah.git",
-            sanitize_url("git+http://github.com/jelmer/blah"),
-        )
-        self.assertEqual(
-            "https://github.com/jelmer/blah.git",
-            sanitize_url("git+https://github.com/jelmer/blah"),
-        )
-
-    def test_rcp_style(self):
-        self.assertEqual(
-            "https://github.com/jelmer/blah.git",
-            sanitize_url("github.com:jelmer/blah"),
-        )
-
-    def test_insecure_savannah(self):
-        self.assertEqual(
-            "https://git.savannah.gnu.org/cgit/gforth.git",
-            sanitize_url("http://git.savannah.gnu.org/cgit/gforth.git"),
-        )
-
-    def test_cvs(self):
-        self.assertEqual(
-            "cvs+ssh://_anoncvs@anoncvs.mirbsd.org/cvs#jupp",
-            sanitize_url([":extssh:_anoncvs@anoncvs.mirbsd.org:/cvs", "jupp"]),
-        )
-        self.assertEqual(
-            "cvs+pserver://_anoncvs@anoncvs.mirbsd.org/cvs#jupp",
-            sanitize_url(
-                [":pserver:_anoncvs@anoncvs.mirbsd.org:/cvs", "jupp"]
-            ),
-        )
-
-
 class DetermineBrowserUrlTests(TestCase):
     def test_salsa(self):
         self.assertEqual(
@@ -241,73 +195,5 @@ class DetermineBrowserUrlTests(TestCase):
             "https://sourceforge.net/p/shorewall/debian/ci/foo/tree/sp",
             determine_browser_url(
                 "git", "git://git.code.sf.net/p/shorewall/debian -b foo [sp]"
-            ),
-        )
-
-
-class CanonicalizeVcsUrlTests(TestCase):
-    def test_github(self):
-        self.assertEqual(
-            "https://github.com/jelmer/example.git",
-            canonicalize_vcs_url("Git", "https://github.com/jelmer/example"),
-        )
-
-    def test_salsa(self):
-        self.assertEqual(
-            "https://salsa.debian.org/jelmer/example.git",
-            canonicalize_vcs_url(
-                "Git", "https://salsa.debian.org/jelmer/example"
-            ),
-        )
-        self.assertEqual(
-            "https://salsa.debian.org/jelmer/example.git",
-            canonicalize_vcs_url(
-                "Git", "https://salsa.debian.org/jelmer/example.git"
-            ),
-        )
-
-
-class FindPublicVcsUrlTests(TestCase):
-    def test_github(self):
-        self.assertEqual(
-            "https://github.com/jelmer/example",
-            find_public_vcs_url("ssh://git@github.com/jelmer/example"),
-        )
-        self.assertEqual(
-            "https://github.com/jelmer/example",
-            find_public_vcs_url("https://github.com/jelmer/example"),
-        )
-
-    def test_salsa(self):
-        self.assertEqual(
-            "https://salsa.debian.org/jelmer/example",
-            find_public_vcs_url("ssh://salsa.debian.org/jelmer/example"),
-        )
-        self.assertEqual(
-            "https://salsa.debian.org/jelmer/example",
-            find_public_vcs_url("https://salsa.debian.org/jelmer/example"),
-        )
-
-
-class FixupRcpStyleUrlTests(TestCase):
-    def test_fixup(self):
-        self.assertEqual(
-            "ssh://github.com/jelmer/example",
-            fixup_rcp_style_git_url("github.com:jelmer/example"),
-        )
-        self.assertEqual(
-            "ssh://git@github.com/jelmer/example",
-            fixup_rcp_style_git_url("git@github.com:jelmer/example"),
-        )
-
-    def test_leave(self):
-        self.assertEqual(
-            "https://salsa.debian.org/jelmer/example",
-            fixup_rcp_style_git_url("https://salsa.debian.org/jelmer/example"),
-        )
-        self.assertEqual(
-            "ssh://git@salsa.debian.org/jelmer/example",
-            fixup_rcp_style_git_url(
-                "ssh://git@salsa.debian.org/jelmer/example"
             ),
         )

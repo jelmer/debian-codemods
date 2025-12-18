@@ -16,11 +16,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import shlex
-import subprocess
-import tempfile
-
-gpg = shlex.split(os.environ.get("GPG", "gpg"))
 
 KEY_BLOCK_START = b"-----BEGIN PGP PUBLIC KEY BLOCK-----"
 KEY_BLOCK_END = b"-----END PGP PUBLIC KEY BLOCK-----"
@@ -32,37 +27,6 @@ class GpgMissing(Exception):
 
 class GpgFailed(Exception):
     """gpg command failed."""
-
-
-def gpg_import_export(import_options, export_options, stdin):
-    argv = gpg + [
-        "--armor",
-        "--quiet",
-        "--no-default-keyring",
-        "--export-options",
-        ",".join(export_options),
-        "--import-options",
-        ",".join(["import-export"] + import_options),
-        "--output",
-        "-",
-        "--import",
-        "-",
-    ]
-    with tempfile.TemporaryDirectory() as td:
-        try:
-            p = subprocess.Popen(
-                argv,
-                stdout=subprocess.PIPE,
-                stdin=subprocess.PIPE,
-                env={"GNUPGHOME": td},
-            )
-        except FileNotFoundError as exc:
-            # No gpg, no dice.
-            raise GpgMissing() from exc
-        (stdout, stderr) = p.communicate(stdin, timeout=5)
-        if p.returncode != 0:
-            raise GpgFailed(stderr)
-        return stdout
 
 
 def fetch_keys(keys, home_dir):
