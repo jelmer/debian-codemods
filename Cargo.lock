@@ -2740,7 +2740,7 @@ dependencies = [
  "debian-watch",
  "debversion",
  "dep3",
- "desktop-edit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "desktop-edit",
  "distro-info",
  "env_logger",
  "fs_extra",
