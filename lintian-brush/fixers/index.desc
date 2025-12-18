@@ -47,10 +47,6 @@ fixers:
 
   - script: vcs-broken-uri.py
 
-  - script: debian-rules-sets-dpkg-architecture-variable.py
-    lintian-tags:
-      - debian-rules-sets-dpkg-architecture-variable
-
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
   - script: newer-debconf-templates.py
