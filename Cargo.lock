@@ -2780,6 +2780,7 @@ dependencies = [
  "upstream-ontologist",
  "url",
  "wait-timeout",
+ "yaml-edit",
 ]
 
 [[package]]
@@ -6398,6 +6399,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "388c44dc09d76f1536602ead6d325eb532f5c122f17782bd57fb47baeeb767e2"
 dependencies = [
  "lzma-sys",
+]
+
+[[package]]
+name = "yaml-edit"
+version = "0.1.0"
+dependencies = [
+ "pyo3",
+ "pyo3-build-config",
+ "tempfile",
 ]
 
 [[package]]
