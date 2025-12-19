@@ -1,3 +1,3 @@
 Rely on pre-initialized dpkg-architecture variables.
 Fixed-Lintian-Issues:
- source: debian-rules-sets-dpkg-architecture-variable DEB_HOST_ARCH (line -1)
+ source: debian-rules-sets-dpkg-architecture-variable DEB_HOST_ARCH [debian/rules:13]
