@@ -1,0 +1,4 @@
+Remove 2 redundant dependencies from weaker fields.
+Fixed-Lintian-Issues:
+ test-package binary: redundant-installation-prerequisite foo in Recommends
+ test-package binary: redundant-installation-prerequisite libbar1 in Suggests

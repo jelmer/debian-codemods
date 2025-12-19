@@ -113,6 +113,7 @@ mod public_upstream_keys_in_multiple_locations;
 mod python_teams_merged;
 mod quilt_series_but_no_build_dep;
 mod quilt_series_without_trailing_newline;
+mod redundant_installation_prerequisite;
 mod renamed_tag;
 mod rules_not_executable;
 mod rules_requires_root_missing;

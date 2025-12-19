@@ -1,0 +1,13 @@
+Source: test-package
+Section: misc
+Priority: optional
+Maintainer: Test User <test@example.com>
+Standards-Version: 4.6.0
+
+Package: test-package
+Architecture: all
+Depends: foo, libbar1
+Recommends: some-other-package
+Suggests: yet-another-package
+Description: Test package
+ This is a test package.
