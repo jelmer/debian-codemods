@@ -1824,6 +1824,7 @@
   difficulty: easy
 - tag: trailing-comma-in-maintainer-field
   difficulty: easy
+  status: implemented
 - tag: built-using-field-on-arch-all-package
 - tag: dh-install-instead-of-dh-installmodules
 - tag: directory-in-modprobe.d

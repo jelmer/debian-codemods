@@ -22,7 +22,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let path = entry.path();
 
         // Skip if not a .service file
-        if !path.extension().map_or(false, |ext| ext == "service") {
+        if !path.extension().is_some_and(|ext| ext == "service") {
             continue;
         }
 
@@ -53,7 +53,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let should_add = default_deps.as_deref() == Some("no")
             && conflicts
                 .as_ref()
-                .map_or(false, |c| list_contains(c, "shutdown.target"))
+                .is_some_and(|c| list_contains(c, "shutdown.target"))
             && !before_values
                 .iter()
                 .any(|b| list_contains(b, "shutdown.target"));

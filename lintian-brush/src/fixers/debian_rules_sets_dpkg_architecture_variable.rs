@@ -167,7 +167,7 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
     let mut replaced_first = false;
 
     // First pass: insert include before first different variable if it exists
-    if let (Some(include), Some(ref target_name)) =
+    if let (Some(include), Some(target_name)) =
         (include_item.as_ref(), first_different_var_name.as_ref())
     {
         let items: Vec<_> = makefile.items().collect();
