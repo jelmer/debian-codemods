@@ -701,6 +701,7 @@ where
 
             if predicate(&line) {
                 copy_node(&mut builder, &line_node);
+                builder.token(NEWLINE.into(), "\n");
             }
         }
     }
@@ -1142,5 +1143,53 @@ mod tests {
         assert_eq!(lines[0].tag().unwrap().text(), "some-tag");
         assert_eq!(lines[0].info(), Some("field-name: value".to_string()));
         assert_eq!(lines[0].package_spec(), None);
+    }
+
+    #[test]
+    fn test_filter_overrides_preserves_newlines() {
+        let text = "# Comment\ntag1\ntag2\ntag3\n";
+        let parsed = LintianOverrides::parse(text);
+        let overrides = parsed.ok().unwrap();
+
+        // Filter out tag2
+        let filtered = filter_overrides(&overrides, |line| {
+            if let Some(tag) = line.tag() {
+                tag.text() != "tag2"
+            } else {
+                true // Keep comments and empty lines
+            }
+        });
+
+        let result = filtered.to_string();
+        let expected = "# Comment\ntag1\ntag3\n";
+
+        assert_eq!(
+            result, expected,
+            "Newlines should be preserved after filtering"
+        );
+    }
+
+    #[test]
+    fn test_filter_overrides_with_info() {
+        let text = "pkg source: tag1\npkg source: tag2 info\npkg source: tag3\n";
+        let parsed = LintianOverrides::parse(text);
+        let overrides = parsed.ok().unwrap();
+
+        // Filter out tag2
+        let filtered = filter_overrides(&overrides, |line| {
+            if let Some(tag) = line.tag() {
+                tag.text() != "tag2"
+            } else {
+                true
+            }
+        });
+
+        let result = filtered.to_string();
+        let expected = "pkg source: tag1\npkg source: tag3\n";
+
+        assert_eq!(
+            result, expected,
+            "Newlines should be preserved with package specs and info"
+        );
     }
 }

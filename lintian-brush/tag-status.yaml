@@ -1687,6 +1687,7 @@
 - tag: empty-rust-library-declares-provides
 - tag: duplicate-override-context
   difficulty: easy
+  status: implemented
 - tag: backgrounded-test-command
 - tag: crossing-screens
 - tag: duplicate-p3dist-override
