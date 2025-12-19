@@ -1,0 +1,7 @@
+Source: gitlab-package
+Homepage: https://gitlab.com/team/project
+
+Package: gitlab-package
+Architecture: all
+Description: GitLab test package
+ Testing gitlab URL fix.
