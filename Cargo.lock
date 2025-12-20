@@ -2749,6 +2749,7 @@ dependencies = [
  "fs_extra",
  "futures",
  "humantime",
+ "indexmap",
  "indicatif",
  "inventory",
  "lazy-regex",
@@ -6408,6 +6409,7 @@ dependencies = [
 name = "yaml-edit"
 version = "0.1.0"
 dependencies = [
+ "indexmap",
  "pyo3",
  "pyo3-build-config",
  "tempfile",

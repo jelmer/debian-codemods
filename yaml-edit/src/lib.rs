@@ -19,11 +19,158 @@
 //! This crate provides a Rust API that mimics the yaml-edit crate interface
 //! but internally uses PyO3 to call the Python implementation in lintian-brush.
 
+use indexmap::IndexMap;
 use pyo3::ffi::c_str;
 use pyo3::prelude::*;
 use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods, PyList, PyListMethods, PyModule};
-use std::collections::HashMap;
+use std::ffi::CString;
 use std::path::Path;
+
+/// Document parsed with duplicate keys preserved
+///
+/// When YAML files contain duplicate keys, this structure preserves all values
+/// for each key, allowing the caller to decide how to merge them.
+#[derive(Debug, Clone)]
+pub struct DuplicateKeyDocument {
+    /// Map from field names to all their values (in order of appearance)
+    pub fields: IndexMap<String, Vec<Value>>,
+    /// Fields that appeared only once (for efficiency)
+    pub unique_fields: IndexMap<String, Value>,
+    /// Order of keys as they appeared in the original file
+    pub key_order: Vec<String>,
+}
+
+/// Merge duplicate keys in a YAML file directly at the node level
+///
+/// This function works directly with YAML nodes (before type conversion) to merge
+/// duplicate keys, preserving the original formatting and string representations.
+/// For fields in `sequence_fields`, duplicate values are merged into a list.
+/// For other fields, only the first value is kept.
+///
+/// Returns the list of field names that had duplicates, or None if no duplicates were found.
+pub fn merge_duplicate_keys_in_place<P: AsRef<Path>>(
+    path: P,
+    sequence_fields: &[&str],
+) -> Result<Option<Vec<String>>> {
+    ensure_python_initialized()?;
+
+    Python::attach(|py| {
+        let path_str = path.as_ref().to_str().unwrap();
+
+        // Import necessary modules (Python path is already set up by ensure_python_initialized)
+        let import_code = CString::new(
+            r#"
+from ruamel.yaml.nodes import MappingNode, SequenceNode
+from lintian_brush.yaml import YamlUpdater
+"#,
+        )
+        .unwrap();
+        py.run(import_code.as_c_str(), None, None)?;
+
+        let locals = PyDict::new(py);
+        locals.set_item("path", path_str)?;
+        let seq_fields_list = PyList::new(py, sequence_fields)?;
+        locals.set_item("sequence_fields", seq_fields_list)?;
+
+        // Python code that implements the node-level duplicate key merging
+        let merge_code = CString::new(
+            r#"
+def merge_duplicates(path, sequence_fields):
+    removed_keys = []
+
+    # Hook flatten_mapping to merge duplicates at node level
+    def create_flatten_mapping_hook(editor):
+        original_flatten = editor.yaml.constructor.flatten_mapping
+
+        def flatten_mapping(node):
+            if not isinstance(node, MappingNode):
+                return original_flatten(node)
+
+            by_key = {}
+            for i, (k, v) in enumerate(node.value):
+                key = k.value
+                if key not in by_key:
+                    by_key[key] = []
+                by_key[key].append((i, v))
+
+            to_remove = []
+            for k, vs in by_key.items():
+                if len(vs) == 1:
+                    continue
+
+                # Add key once for each duplicate (not including the first occurrence)
+                for _ in range(len(vs) - 1):
+                    removed_keys.append(k)
+
+                if k in sequence_fields:
+                    # Merge into a sequence
+                    first_idx = vs[0][0]
+                    first_val = vs[0][1]
+
+                    # Create or extend sequence
+                    if not isinstance(first_val, SequenceNode):
+                        node.value[first_idx] = (
+                            node.value[first_idx][0],
+                            SequenceNode(
+                                tag='tag:yaml.org,2002:seq',
+                                value=[first_val],
+                                start_mark=first_val.start_mark,
+                                end_mark=first_val.end_mark,
+                            )
+                        )
+
+                    primary = node.value[first_idx][1]
+
+                    for i, v in vs[1:]:
+                        if isinstance(v, SequenceNode):
+                            primary.value.extend(v.value)
+                        else:
+                            primary.value.append(v)
+                        to_remove.append((i, k))
+                else:
+                    # Keep only the first value
+                    for i, _v in vs[1:]:
+                        to_remove.append((i, k))
+
+            if to_remove:
+                editor.force_rewrite()
+                for i, _k in sorted(to_remove, reverse=True):
+                    del node.value[i]
+
+            return original_flatten(node)
+
+        return flatten_mapping
+
+    editor = YamlUpdater(path, allow_duplicate_keys=True)
+    editor.yaml.constructor.flatten_mapping = create_flatten_mapping_hook(editor)
+
+    with editor as doc:
+        # Just opening and closing with the hook in place will merge duplicates
+        pass
+
+    return removed_keys if removed_keys else None
+
+result = merge_duplicates(path, sequence_fields)
+"#,
+        )
+        .unwrap();
+
+        py.run(merge_code.as_c_str(), None, Some(&locals))?;
+
+        let result = locals.get_item("result")?;
+
+        if let Some(result) = result {
+            if result.is_none() {
+                Ok(None)
+            } else {
+                let keys: Vec<String> = result.extract()?;
+                Ok(Some(keys))
+            }
+        } else {
+            Ok(None)
+        }
+    })
+}
 
 /// A YAML value that can be stored in the document
 #[derive(Debug, Clone, PartialEq)]
@@ -41,7 +188,7 @@ pub enum Value {
     /// A list of values
     List(Vec<Value>),
     /// A mapping of string keys to values
-    Map(HashMap<String, Value>),
+    Map(IndexMap<String, Value>),
 }
 
 impl Value {
@@ -79,7 +226,7 @@ impl Value {
 
         // Try dict
         if let Ok(dict) = obj.cast::<PyDict>() {
-            let mut map = HashMap::new();
+            let mut map = IndexMap::new();
             for (key, value) in dict.iter() {
                 let key_str = key.extract::<String>()?;
                 map.insert(key_str, Value::from_py(&value)?);
@@ -97,7 +244,7 @@ impl Value {
     }
 
     /// Convert a Value to a Python object
-    fn to_py(&self, py: Python) -> PyResult<Py<PyAny>> {
+    pub(crate) fn to_py(&self, py: Python) -> PyResult<Py<PyAny>> {
         match self {
             Value::Null => Ok(py.None()),
             Value::String(s) => {
@@ -181,12 +328,24 @@ fn ensure_python_initialized() -> PyResult<()> {
             .cast::<PyList>()
             .expect("sys.path should be a list");
 
-        // Get the path to the py directory relative to this crate
-        let py_path = std::env::current_dir()
-            .unwrap_or_else(|_| std::path::PathBuf::from("."))
-            .join("py");
+        // Find the py directory - look in current dir, then parent dirs up to workspace root
+        let mut current = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
 
-        if py_path.exists() {
+        let py_path = loop {
+            let candidate = current.join("py");
+            if candidate.exists() {
+                break Some(candidate);
+            }
+
+            // Try parent directory
+            if let Some(parent) = current.parent() {
+                current = parent.to_path_buf();
+            } else {
+                break None;
+            }
+        };
+
+        if let Some(py_path) = py_path {
             path.insert(0, py_path.to_str().unwrap())?;
         }
 
@@ -212,6 +371,161 @@ impl YamlUpdater {
             remove_empty: true,
             allow_duplicate_keys: false,
             py_updater: None,
+        })
+    }
+
+    /// Write a Value directly to a YAML file, overwriting it completely
+    ///
+    /// If explicit_start is true, writes a `---` document start marker.
+    pub fn write_file_with_options<P: AsRef<Path>>(
+        path: P,
+        value: Value,
+        explicit_start: bool,
+    ) -> Result<()> {
+        ensure_python_initialized()?;
+
+        Python::attach(|py| {
+            // Import YAML module
+            let yaml_module = PyModule::import(py, "ruamel.yaml")?;
+            let yaml_class = yaml_module.getattr("YAML")?;
+            let yaml = yaml_class.call0()?;
+
+            // Set explicit document start marker if requested
+            yaml.setattr("explicit_start", explicit_start)?;
+
+            // Convert value to Python
+            let py_value = value.to_py(py)?;
+
+            // Open file for writing
+            let builtins = py.import("builtins")?;
+            let file = builtins
+                .getattr("open")?
+                .call1((path.as_ref().to_str().unwrap(), "w"))?;
+
+            // Write YAML
+            yaml.call_method1("dump", (py_value, &file))?;
+
+            // Close file
+            file.call_method0("close")?;
+
+            Ok(())
+        })
+    }
+
+    /// Parse YAML file preserving duplicate keys
+    ///
+    /// This is a static method that parses a YAML file and preserves all values
+    /// for duplicate keys, allowing the caller to decide how to merge them.
+    pub fn parse_with_duplicates<P: AsRef<Path>>(path: P) -> Result<DuplicateKeyDocument> {
+        ensure_python_initialized()?;
+
+        Python::attach(|py| {
+            // Load the YAML file with duplicate keys allowed
+            let yaml_module = PyModule::import(py, "ruamel.yaml")?;
+            let yaml_class = yaml_module.getattr("YAML")?;
+            let yaml = yaml_class.call0()?;
+            yaml.setattr("allow_duplicate_keys", true)?;
+            // Preserve quotes and string formatting
+            yaml.setattr("preserve_quotes", true)?;
+
+            // Open and parse the file
+            let path_str = path.as_ref().to_str().unwrap();
+            let file = py.import("builtins")?.getattr("open")?.call1((path_str,))?;
+
+            // Parse with a custom flatten_mapping that collects duplicates
+            let constructor = yaml.getattr("constructor")?;
+
+            // Create a dict to collect duplicate key information
+            let duplicates_dict = PyDict::new(py);
+
+            // Python code to hook flatten_mapping
+            let hook_code = CString::new(
+                r#"
+def create_collector(duplicates_dict):
+    def collect_flatten_mapping(original_flatten):
+        def flatten_mapping(node):
+            # Collect duplicate information before flattening
+            if hasattr(node, 'value'):
+                by_key = {}
+                for k, v in node.value:
+                    key = k.value
+                    if key not in by_key:
+                        by_key[key] = []
+                    by_key[key].append(v)
+
+                # Store keys with duplicates
+                for key, values in by_key.items():
+                    if len(values) > 1:
+                        if key not in duplicates_dict:
+                            duplicates_dict[key] = []
+                        duplicates_dict[key] = values
+
+            # Call original
+            return original_flatten(node)
+        return flatten_mapping
+    return collect_flatten_mapping
+"#,
+            )
+            .unwrap();
+            let locals = PyDict::new(py);
+            locals.set_item("duplicates_dict", &duplicates_dict)?;
+            py.run(hook_code.as_c_str(), None, Some(&locals))?;
+
+            let create_collector = locals.get_item("create_collector")?.unwrap();
+            let collector = create_collector.call1((&duplicates_dict,))?;
+
+            let original_flatten = constructor.getattr("flatten_mapping")?;
+            let new_flatten = collector.call1((original_flatten,))?;
+            constructor.setattr("flatten_mapping", new_flatten)?;
+
+            // Now load the file
+            let data = yaml.call_method1("load", (&file,))?;
+            file.call_method0("close")?;
+
+            // Convert the loaded data to our structure
+            let mut fields = IndexMap::new();
+            let mut unique_fields = IndexMap::new();
+
+            // Process duplicates
+            for (key, values) in duplicates_dict.iter() {
+                let key_str = key.extract::<String>()?;
+                let values_list = values
+                    .cast::<PyList>()
+                    .expect("Duplicate values should be a list");
+
+                let mut rust_values = Vec::new();
+                for v in values_list.iter() {
+                    // Construct the Python object from the node
+                    let obj = yaml
+                        .getattr("constructor")?
+                        .call_method1("construct_object", (v, true))?;
+                    rust_values.push(Value::from_py(&obj)?);
+                }
+
+                if rust_values.len() > 1 {
+                    fields.insert(key_str, rust_values);
+                }
+            }
+
+            // Track the order of all keys as they appear in the file
+            let mut key_order = Vec::new();
+
+            // Process the main data for unique fields
+            if let Ok(dict) = data.cast::<PyDict>() {
+                for (key, value) in dict.iter() {
+                    let key_str = key.extract::<String>()?;
+                    key_order.push(key_str.clone());
+                    if !fields.contains_key(&key_str) {
+                        unique_fields.insert(key_str, Value::from_py(&value)?);
+                    }
+                }
+            }
+
+            Ok(DuplicateKeyDocument {
+                fields,
+                unique_fields,
+                key_order,
+            })
         })
     }
 
@@ -419,6 +733,40 @@ impl YamlDocument {
 
             Ok(())
         })
+    }
+
+    /// Check if the loaded code is a list (not a dict)
+    pub fn is_list(&self) -> Result<bool> {
+        Python::attach(|py| {
+            let updater = self.updater.bind(py);
+            let code = updater.getattr("code")?;
+            Ok(code.cast::<PyList>().is_ok())
+        })
+    }
+
+    /// Get the entire document as a Value
+    pub fn get_all(&self) -> Result<Value> {
+        Python::attach(|py| {
+            let updater = self.updater.bind(py);
+            let code = updater.getattr("code")?;
+            Value::from_py(&code)
+        })
+    }
+
+    /// Set the entire document from a Value
+    pub fn set_all(&self, value: Value) -> Result<()> {
+        Python::attach(|py| {
+            let updater = self.updater.bind(py);
+            let py_value = value.to_py(py)?;
+            updater.setattr("code", py_value)?;
+            Ok(())
+        })
+    }
+
+    /// Get access to the underlying Python updater for advanced operations
+    /// This is an escape hatch for operations that need direct Python access
+    pub(crate) fn py_updater(&self) -> &Py<PyAny> {
+        &self.updater
     }
 }
 
@@ -793,7 +1141,7 @@ mod tests {
             let mut updater = MultiYamlUpdater::new(&yaml_path).unwrap();
             let doc = updater.open().unwrap();
 
-            let mut map = HashMap::new();
+            let mut map = IndexMap::new();
             map.insert("doc".to_string(), Value::Int(999));
             doc.set(0, Value::Map(map)).unwrap();
 
@@ -817,7 +1165,7 @@ mod tests {
 
             assert_eq!(doc.len().unwrap(), 2);
 
-            let mut map = HashMap::new();
+            let mut map = IndexMap::new();
             map.insert("doc".to_string(), Value::Int(3));
             doc.append(Value::Map(map)).unwrap();
 
@@ -911,7 +1259,7 @@ mod tests {
             let mut updater = MultiYamlUpdater::new(&yaml_path).unwrap();
             let doc = updater.open().unwrap();
 
-            let mut map = HashMap::new();
+            let mut map = IndexMap::new();
             map.insert("doc".to_string(), Value::Int(999));
             let result = doc.set(999, Value::Map(map));
 
@@ -946,5 +1294,124 @@ mod tests {
                 _ => panic!("Expected ValueError"),
             }
         }
+    }
+
+    #[test]
+    fn test_merge_duplicate_keys_no_duplicates() {
+        let temp_dir = TempDir::new().unwrap();
+        let yaml_path = temp_dir.path().join("test.yaml");
+
+        let input = "---\nName: Test\nVersion: 1.0\nAuthor: Someone\n";
+        fs::write(&yaml_path, input).unwrap();
+
+        // Should return None when there are no duplicates
+        let result = merge_duplicate_keys_in_place(&yaml_path, &["Reference", "Screenshots"])
+            .expect("merge should succeed");
+        assert_eq!(result, None);
+
+        // File should be unchanged
+        let output = fs::read_to_string(&yaml_path).unwrap();
+        assert_eq!(output, input);
+    }
+
+    #[test]
+    fn test_merge_duplicate_keys_with_duplicates_non_sequence() {
+        let temp_dir = TempDir::new().unwrap();
+        let yaml_path = temp_dir.path().join("test.yaml");
+
+        fs::write(&yaml_path, "---\nName: First\nVersion: 1.0\nName: Second\n").unwrap();
+
+        // Should merge duplicates, keeping only the first
+        let keys = merge_duplicate_keys_in_place(&yaml_path, &["Reference", "Screenshots"])
+            .expect("merge should succeed");
+        assert_eq!(keys, Some(vec!["Name".to_string()]));
+
+        // File should have only the first Name
+        let content = fs::read_to_string(&yaml_path).unwrap();
+        let expected = "---\nName: First\nVersion: 1.0\n";
+        assert_eq!(content, expected);
+    }
+
+    #[test]
+    fn test_merge_duplicate_keys_sequence_field() {
+        let temp_dir = TempDir::new().unwrap();
+        let yaml_path = temp_dir.path().join("test.yaml");
+
+        fs::write(
+            &yaml_path,
+            "---\nName: Test Package\nReference:\n  Author: First Author\n  Title: First Title\nReference:\n  Author: Second Author\n  Title: Second Title\n",
+        )
+        .unwrap();
+
+        // Should merge References into a list
+        let keys = merge_duplicate_keys_in_place(&yaml_path, &["Reference", "Screenshots"])
+            .expect("merge should succeed");
+        assert_eq!(keys, Some(vec!["Reference".to_string()]));
+
+        // Verify the complete file contents with both references merged into a list
+        let actual = fs::read_to_string(&yaml_path).unwrap();
+        let expected = "---\nName: Test Package\nReference:\n- Author: First Author\n  Title: First Title\n- Author: Second Author\n  Title: Second Title\n";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_merge_duplicate_keys_preserves_string_formatting() {
+        let temp_dir = TempDir::new().unwrap();
+        let yaml_path = temp_dir.path().join("test.yaml");
+
+        fs::write(
+            &yaml_path,
+            "---\nName: Test\nReference:\n  Title: First\n  Volume: 01\nReference:\n  Title: Second\n  Volume: 02\n",
+        )
+        .unwrap();
+
+        // Should merge and preserve "01" and "02" as strings (not convert to integers)
+        merge_duplicate_keys_in_place(&yaml_path, &["Reference", "Screenshots"])
+            .expect("merge should succeed");
+
+        // Verify complete file contents with string formatting preserved
+        let actual = fs::read_to_string(&yaml_path).unwrap();
+        let expected = "---\nName: Test\nReference:\n- Title: First\n  Volume: 01\n- Title: Second\n  Volume: 02\n";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_merge_duplicate_keys_multiple_duplicates() {
+        let temp_dir = TempDir::new().unwrap();
+        let yaml_path = temp_dir.path().join("test.yaml");
+
+        fs::write(
+            &yaml_path,
+            "---\nName: Test\nReference:\n  Title: First\nReference:\n  Title: Second\nReference:\n  Title: Third\n",
+        )
+        .unwrap();
+
+        // Should return 2 entries (for the 2 duplicates removed, keeping the first)
+        let keys = merge_duplicate_keys_in_place(&yaml_path, &["Reference", "Screenshots"])
+            .expect("merge should succeed");
+        assert_eq!(
+            keys,
+            Some(vec!["Reference".to_string(), "Reference".to_string()])
+        );
+
+        // Verify complete file contents with all three references merged into a list
+        let actual = fs::read_to_string(&yaml_path).unwrap();
+        let expected =
+            "---\nName: Test\nReference:\n- Title: First\n- Title: Second\n- Title: Third\n";
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_merge_duplicate_keys_nonexistent_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let yaml_path = temp_dir.path().join("nonexistent.yaml");
+
+        // YamlUpdater doesn't create file if it doesn't exist and there are no changes
+        let result = merge_duplicate_keys_in_place(&yaml_path, &["Reference", "Screenshots"])
+            .expect("merge should succeed");
+        assert_eq!(result, None);
+
+        // File should still not exist (no changes were made)
+        assert!(!yaml_path.exists());
     }
 }

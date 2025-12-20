@@ -8,6 +8,7 @@ license = "GPL-2.0-or-later"
 
 [dependencies]
 pyo3 = { workspace = true, features = ["auto-initialize"] }
+indexmap = { workspace = true }
 
 [dev-dependencies]
 tempfile.workspace = true
