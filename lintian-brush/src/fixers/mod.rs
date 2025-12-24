@@ -144,6 +144,7 @@ mod uses_deprecated_adttmp;
 mod vcs_field_for_maintainer;
 mod vcs_field_mismatch;
 mod vcs_field_not_canonical;
+mod vcs_field_uses_insecure_uri;
 mod vcs_field_uses_not_recommended_uri_format;
 mod wrong_debian_qa_group_name;
 mod wrong_section_according_to_package_name;

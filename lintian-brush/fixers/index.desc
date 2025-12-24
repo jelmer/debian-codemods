@@ -35,11 +35,6 @@ fixers:
   # making any other changes to the Vcs field.
   - script: vcs-field-invalid-branch.py
 
-  - script: vcs-field-uses-insecure-uri.py
-    lintian-tags:
-      - vcs-field-uses-insecure-uri
-
-
   - script: vcs-field-bitrotted.py
     lintian-tags:
       - vcs-obsolete-in-debian-infrastructure

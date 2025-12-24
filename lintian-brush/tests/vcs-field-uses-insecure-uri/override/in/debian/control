@@ -1,0 +1,7 @@
+Source: test-package
+Vcs-Git: http://github.com/jelmer/test-package
+Vcs-Browser: http://github.com/jelmer/test-browser
+
+Package: test-package
+Description: Test package
+ Testing lintian override
