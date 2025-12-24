@@ -1,0 +1,5 @@
+Remove duplicate lintian overrides.
+Certainty: certain
+Fixed-Lintian-Issues:
+ pkg source: duplicate-override-context tag1 (lines 1 2) [debian/source/lintian-overrides]
+ pkg source: duplicate-override-context tag2 info (lines 3 4 5) [debian/source/lintian-overrides]
