@@ -19,7 +19,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let path = entry.path();
 
         // Skip if not a .service file
-        if !path.extension().map_or(false, |ext| ext == "service") {
+        if !path.extension().is_some_and(|ext| ext == "service") {
             continue;
         }
 

@@ -127,6 +127,7 @@ mod systemd_service_file_pidfile_refers_to_var_run;
 mod systemd_service_file_refers_to_obsolete_bindto;
 mod systemd_service_file_refers_to_obsolete_target;
 mod systemd_service_file_shutdown_problems;
+mod trailing_comma_in_maintainer_field;
 mod transitional_package_should_be_oldlibs_optional;
 mod typo_in_debhelper_override_target;
 mod unnecessary_team_upload;
