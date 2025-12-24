@@ -1787,10 +1787,13 @@
 - tag: dbus-policy-in-etc
 - tag: homepage-github-url-ends-with-dot-git
   difficulty: easy
+  status: implemented
 - tag: homepage-gitlab-url-ends-with-dot-git
   difficulty: easy
+  status: implemented
 - tag: homepage-salsa-url-ends-with-dot-git
   difficulty: easy
+  status: implemented
 - tag: uses-pdm-cli
 - tag: uses-python-distutils
 - tag: uses-deprecated-python-stdlib

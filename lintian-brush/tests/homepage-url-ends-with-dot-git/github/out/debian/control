@@ -1,0 +1,7 @@
+Source: test-package
+Homepage: https://github.com/user/repo
+
+Package: test-package
+Architecture: all
+Description: Test package
+ This is a test package.

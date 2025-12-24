@@ -1,0 +1,4 @@
+Remove .git suffix from Homepage URL.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: homepage-github-url-ends-with-dot-git [https://github.com/user/repo.git#readme]

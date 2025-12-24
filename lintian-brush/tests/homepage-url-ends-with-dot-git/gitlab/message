@@ -1,0 +1,4 @@
+Remove .git suffix from Homepage URL.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: homepage-gitlab-url-ends-with-dot-git [https://gitlab.com/team/project.git]

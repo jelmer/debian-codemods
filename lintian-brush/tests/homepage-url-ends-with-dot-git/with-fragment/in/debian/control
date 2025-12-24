@@ -1,0 +1,7 @@
+Source: fragment-package
+Homepage: https://github.com/user/repo.git#readme
+
+Package: fragment-package
+Architecture: all
+Description: Test with fragment
+ Testing URL with fragment preservation.
