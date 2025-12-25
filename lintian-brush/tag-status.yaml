@@ -1744,6 +1744,7 @@
 - tag: no-source-section
 - tag: prefer-uscan-symlink
 - tag: redundant-installation-prerequisite
+  status: implemented
 - tag: relative-library-search-path
 - tag: rules-do-not-require-root
 - tag: rules-require-root-explicitly
@@ -1756,6 +1757,7 @@
 - tag: alien-tag
 - tag: chown-with-dot
   difficulty: easy
+  status: implemented
 - tag: conflicting-test-fields
 - tag: declare-python-versions-for-test
 - tag: drop-python-version-declaration
