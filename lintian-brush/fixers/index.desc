@@ -31,10 +31,6 @@ fixers:
     # See https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1076245
     force-subprocess: true
 
-  # Lookups in vcswatch are by original URL, so fix branches before
-  # making any other changes to the Vcs field.
-  - script: vcs-field-invalid-branch.py
-
   - script: vcs-field-bitrotted.py
     lintian-tags:
       - vcs-obsolete-in-debian-infrastructure
