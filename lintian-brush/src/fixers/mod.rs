@@ -144,6 +144,7 @@ mod upstream_metadata_in_native_source;
 mod useless_autoreconf_build_depends;
 mod uses_debhelper_compat_file;
 mod uses_deprecated_adttmp;
+mod vcs_field_bitrotted;
 mod vcs_field_for_maintainer;
 mod vcs_field_invalid_branch;
 mod vcs_field_mismatch;
