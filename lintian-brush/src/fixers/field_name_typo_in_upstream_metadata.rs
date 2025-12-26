@@ -1,4 +1,4 @@
-use crate::upstream_metadata::VALID_FIELD_NAMES;
+use crate::upstream_metadata::DEP12_FIELD_ORDER;
 use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
 use std::collections::HashSet;
 use std::path::Path;
@@ -11,7 +11,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         return Err(FixerError::NoChanges);
     }
 
-    let valid_fields: HashSet<&str> = VALID_FIELD_NAMES.iter().copied().collect();
+    let valid_fields: HashSet<&str> = DEP12_FIELD_ORDER.iter().copied().collect();
     let mut typo_fixed = Vec::new();
     let mut case_fixed = Vec::new();
 
@@ -59,7 +59,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         }
 
         // Check for typos using Levenshtein distance
-        for &option in VALID_FIELD_NAMES {
+        for &option in DEP12_FIELD_ORDER {
             if levenshtein(&field, option) == 1 {
                 let value = doc
                     .remove(&field)

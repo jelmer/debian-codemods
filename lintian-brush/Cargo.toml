@@ -22,6 +22,7 @@ clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", 
 env_logger = { workspace = true, optional = true }
 lazy-regex = { workspace = true }
 debversion = { workspace = true }
+debian-copyright = { workspace = true }
 breezyshim = { workspace = true }
 indicatif = ">=0.17,<0.19"
 tracing = "0.1"
@@ -34,7 +35,6 @@ reqwest = { workspace = true, features = ["blocking"] }
 lazy_static = { workspace = true }
 debian-analyzer = { workspace = true, features = ["svp", "udd"] }
 debian-control = { workspace = true }
-debian-copyright = { workspace = true }
 deb822-lossless = { workspace = true }
 distro-info = "0.4.0"
 debian-changelog = { workspace = true }
