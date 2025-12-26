@@ -145,6 +145,7 @@ mod useless_autoreconf_build_depends;
 mod uses_debhelper_compat_file;
 mod uses_deprecated_adttmp;
 mod vcs_field_for_maintainer;
+mod vcs_field_invalid_branch;
 mod vcs_field_mismatch;
 mod vcs_field_not_canonical;
 mod vcs_field_uses_insecure_uri;

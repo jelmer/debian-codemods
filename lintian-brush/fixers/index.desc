@@ -23,10 +23,6 @@ fixers:
       - upstream-metadata-yaml-invalid
       - upstream-metadata-not-yaml-mapping
 
-  # Lookups in vcswatch are by original URL, so fix branches before
-  # making any other changes to the Vcs field.
-  - script: vcs-field-invalid-branch.py
-
   - script: vcs-field-bitrotted.py
     lintian-tags:
       - vcs-obsolete-in-debian-infrastructure
