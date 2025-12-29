@@ -23,11 +23,6 @@ fixers:
       - upstream-metadata-yaml-invalid
       - upstream-metadata-not-yaml-mapping
 
-  - script: vcs-field-bitrotted.py
-    lintian-tags:
-      - vcs-obsolete-in-debian-infrastructure
-      - vcs-field-bitrotted
-
   - script: vcs-broken-uri.py
 
   # Disabled for now because it updates even for any diff, not just when
