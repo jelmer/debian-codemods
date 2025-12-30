@@ -15,40 +15,11 @@ fn determine_browser_url(
 }
 
 #[pyfunction]
-fn determine_gitlab_browser_url(url: &str) -> String {
-    debian_analyzer::vcs::determine_gitlab_browser_url(url).to_string()
-}
-
-#[pyfunction]
-fn canonicalize_vcs_browser_url(url: &str) -> String {
-    debian_analyzer::vcs::canonicalize_vcs_browser_url(url).to_string()
-}
-
-#[pyfunction]
 fn get_builtin_fixer_lintian_tags() -> Vec<String> {
     lintian_brush::builtin_fixers::get_builtin_fixers()
         .iter()
         .flat_map(|fixer| fixer.lintian_tags())
         .collect()
-}
-
-#[pyfunction]
-#[pyo3(signature = (tree, subpath=None))]
-fn tree_patches_directory(
-    tree: Py<PyAny>,
-    subpath: Option<std::path::PathBuf>,
-) -> std::path::PathBuf {
-    let tree = breezyshim::tree::RevisionTree(tree);
-    debian_analyzer::patches::tree_patches_directory(&tree, subpath.unwrap_or_default().as_path())
-}
-
-#[pyfunction]
-fn find_patches_directory(
-    tree: Py<PyAny>,
-    subpath: std::path::PathBuf,
-) -> Option<std::path::PathBuf> {
-    let tree = breezyshim::tree::RevisionTree(tree);
-    debian_analyzer::patches::find_patches_directory(&tree, subpath.as_path())
 }
 
 #[pymodule]
@@ -61,10 +32,6 @@ fn _lintian_brush_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     let v = PyTuple::new(py, &version_parts)?;
     m.add("__version__", &v)?;
     m.add_wrapped(wrap_pyfunction!(determine_browser_url))?;
-    m.add_wrapped(wrap_pyfunction!(determine_gitlab_browser_url))?;
-    m.add_wrapped(wrap_pyfunction!(canonicalize_vcs_browser_url))?;
-    m.add_wrapped(wrap_pyfunction!(tree_patches_directory))?;
-    m.add_wrapped(wrap_pyfunction!(find_patches_directory))?;
     m.add(
         "DPKG_VERSIONS",
         debian_analyzer::release_info::dpkg_versions.clone(),
