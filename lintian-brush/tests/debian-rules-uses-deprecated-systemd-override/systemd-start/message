@@ -1,0 +1,3 @@
+Replace deprecated override_dh_systemd_start with override_dh_installsystemd
+Fixed-Lintian-Issues:
+ source: debian-rules-uses-deprecated-systemd-override override_dh_systemd_start
