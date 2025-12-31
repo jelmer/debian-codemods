@@ -22,7 +22,6 @@ core_names = [
     "lintian_overrides",
     "release_info",
     "run",
-    "salsa",
     "vcs",
     "yaml",
 ]

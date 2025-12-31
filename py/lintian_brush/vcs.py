@@ -33,9 +33,7 @@ from upstream_ontologist.vcs import (
 
 from . import _lintian_brush_rs
 
-determine_gitlab_browser_url = _lintian_brush_rs.determine_gitlab_browser_url
 determine_browser_url = _lintian_brush_rs.determine_browser_url
-canonicalize_vcs_browser_url = _lintian_brush_rs.canonicalize_vcs_browser_url
 
 
 def find_secure_vcs_url(url: str, net_access: bool = True) -> Optional[str]:
