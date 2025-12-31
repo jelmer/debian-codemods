@@ -259,6 +259,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "udd")]
     fn test_no_initial_release_line() {
         let temp_dir = TempDir::new().unwrap();
         let base_path = temp_dir.path();
