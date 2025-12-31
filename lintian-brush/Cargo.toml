@@ -78,6 +78,10 @@ udd = ["debian-analyzer/udd", "dep:sqlx"]
 name = "lintian-brush"
 required-features = ["cli"]
 
+[[bin]]
+name = "find-old-info-format-tags"
+required-features = ["udd"]
+
 [build-dependencies]
 quote = "1.0.37"
 serde.workspace = true

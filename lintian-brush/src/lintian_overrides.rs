@@ -763,6 +763,16 @@ where
     }
 }
 
+/// Check if a tag has a defined info fixer
+/// Returns true if fix_override_info has a transformation defined for this tag
+pub fn has_info_fixer(tag: &str) -> bool {
+    // Test if fix_override_info would transform the info
+    // If the result is different from input (with a dummy info string), we have a fixer
+    let test_info = "test (line 1)";
+    let result = fix_override_info(tag, test_info);
+    result != test_info
+}
+
 /// Fix override info format by applying tag-specific transformations
 /// Converts old format like "file (line 123)" to new format like "[file:123]"
 pub fn fix_override_info(tag: &str, info: &str) -> String {
