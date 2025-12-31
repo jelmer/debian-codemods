@@ -18,7 +18,6 @@
 """Utility functions for dealing with lintian overrides files."""
 
 import os
-import re
 from contextlib import suppress
 from functools import partial
 from typing import Callable, Iterator, List, Optional, Tuple, Union

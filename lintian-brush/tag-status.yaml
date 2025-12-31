@@ -1216,6 +1216,7 @@
 - tag: readme-source-is-dh_make-template
 - tag: redundant-bugs-field
 - tag: redundant-origin-field
+- tag: redundant-priority-optional-field
 - tag: relative-conffile
 - tag: relative-symlink
 - tag: remove-of-unknown-diversion
