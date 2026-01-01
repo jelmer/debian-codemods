@@ -1,0 +1,3 @@
+Move libmodule-build-tiny-perl from Build-Depends-Indep to Build-Depends.
+Fixed-Lintian-Issues:
+ source: libmodule-build-tiny-perl-needs-to-be-in-build-depends
