@@ -19,7 +19,6 @@ import unittest
 
 core_names = [
     "debhelper",
-    "lintian_overrides",
     "release_info",
     "run",
     "vcs",

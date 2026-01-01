@@ -1,4 +1,4 @@
 Update standards version to 4.6.2, no changes needed.
 Certainty: certain
 Fixed-Lintian-Issues:
- source: ancient-standards-version 4.6.1 (released 2022-05-11) (current is 4.7.2.1)
+ source: ancient-standards-version 4.6.1 (released 2022-05-11) (current is 4.7.3.0)
