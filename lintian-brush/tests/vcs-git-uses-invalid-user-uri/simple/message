@@ -1,0 +1,3 @@
+Use valid URI for personal Debian Git repository.
+Fixed-Lintian-Issues:
+ source: vcs-git-uses-invalid-user-uri git://git.debian.org/~jelmer/test-package.git

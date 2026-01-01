@@ -152,6 +152,7 @@ mod vcs_field_mismatch;
 mod vcs_field_not_canonical;
 mod vcs_field_uses_insecure_uri;
 mod vcs_field_uses_not_recommended_uri_format;
+mod vcs_git_uses_invalid_user_uri;
 mod wrong_debian_qa_group_name;
 mod wrong_section_according_to_package_name;
 mod xc_package_type_in_debian_control;

@@ -1,0 +1,6 @@
+Source: test-package
+Vcs-Git: https://anonscm.debian.org/git/users/jelmer/test-package.git
+
+Package: test-package
+Description: Test package
+ Test description

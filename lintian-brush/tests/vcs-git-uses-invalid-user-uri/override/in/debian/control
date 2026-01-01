@@ -1,0 +1,6 @@
+Source: test-package
+Vcs-Git: git://git.debian.org/~user/test-package.git
+
+Package: test-package
+Description: Test package
+ Test description
