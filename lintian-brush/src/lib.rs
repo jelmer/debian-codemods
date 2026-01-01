@@ -36,6 +36,7 @@ pub mod licenses;
 pub mod lintian_overrides;
 /// Upstream metadata handling
 pub mod upstream_metadata;
+pub mod vcs;
 /// Debian watch file handling
 pub mod watch;
 

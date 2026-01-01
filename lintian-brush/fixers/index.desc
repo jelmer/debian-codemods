@@ -23,7 +23,6 @@ fixers:
       - upstream-metadata-yaml-invalid
       - upstream-metadata-not-yaml-mapping
 
-  - script: vcs-broken-uri.py
 
   # Disabled for now because it updates even for any diff, not just when
   # messages change.
