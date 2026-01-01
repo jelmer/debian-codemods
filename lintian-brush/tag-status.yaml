@@ -638,6 +638,7 @@
   difficulty: medium
 - tag: libmodule-build-tiny-perl-needs-to-be-in-build-depends
   difficulty: easy
+  status: implemented
 - tag: library-in-root-and-usr
 - tag: library-not-linked-against-libc
 - tag: library-package-name-for-application

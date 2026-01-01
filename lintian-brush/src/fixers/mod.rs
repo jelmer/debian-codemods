@@ -76,6 +76,7 @@ mod initial_upload_closes_no_bugs;
 mod invalid_short_name_in_dep5_copyright;
 mod invalid_standards_version;
 mod libmodule_build_perl_needs_to_be_in_build_depends;
+mod libmodule_build_tiny_perl_needs_to_be_in_build_depends;
 mod license_file_listed_in_debian_copyright;
 mod maintainer_also_in_uploaders;
 mod maintainer_script_empty;

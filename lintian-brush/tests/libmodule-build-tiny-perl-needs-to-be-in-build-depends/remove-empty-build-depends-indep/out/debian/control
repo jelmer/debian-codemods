@@ -1,0 +1,12 @@
+Source: libtest-example-perl
+Section: perl
+Priority: optional
+Maintainer: Joe Maintainer <joe@example.com>
+Build-Depends: debhelper (>= 9), libmodule-build-tiny-perl
+Standards-Version: 3.9.6
+
+Package: libtest-example-perl
+Architecture: all
+Depends: ${misc:Depends}
+Description: Example perl library
+ An example perl library.
