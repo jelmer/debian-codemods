@@ -84,6 +84,7 @@ mod maintainer_script_without_set_e;
 mod malformed_override;
 mod missing_build_dependency_for_dh_command;
 mod missing_prerequisite_for_pyproject_backend;
+mod missing_static_built_using_for_golang;
 mod missing_vcs_browser_field;
 mod new_package_uses_date_based_version_number;
 mod newer_debconf_templates;

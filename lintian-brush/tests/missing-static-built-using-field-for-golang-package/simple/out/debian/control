@@ -1,0 +1,8 @@
+Source: golang-test
+Build-Depends: dh-golang
+
+Package: golang-test
+Architecture: any
+Description: Test package for Go
+ Test description
+Static-Built-Using: ${misc:Static-Built-Using}

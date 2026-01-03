@@ -248,6 +248,7 @@
     upgrade to 3.0 (quilt) source format
 - tag: debian-rules-uses-deprecated-systemd-override
   difficulty: easy
+  status: implemented
 - tag: debian-rules-uses-installed-python-versions
 - tag: debian-rules-uses-special-shell-variable
   status: implemented
@@ -1506,6 +1507,7 @@
   comment: easy to do, but may be hard to figure out which VCS is canonical
 - tag: vcs-git-uses-invalid-user-uri
   difficulty: easy
+  status: implemented
 - tag: vcs-uri
   status: classification
 - tag: version-refers-to-distribution
@@ -1830,6 +1832,7 @@
 - tag: locale-uses-language-group-code
 - tag: missing-static-built-using-field-for-golang-package
   difficulty: easy
+  status: implemented
 - tag: trailing-comma-in-maintainer-field
   difficulty: easy
   status: implemented
