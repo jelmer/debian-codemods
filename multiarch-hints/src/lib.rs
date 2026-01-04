@@ -508,17 +508,34 @@ impl From<ChangelogError> for OverallError {
     }
 }
 
+/// Configuration options for applying multiarch hints
+#[derive(Debug, Clone)]
+pub struct ApplyMultiarchHintsConfig {
+    pub minimum_certainty: Option<Certainty>,
+    pub committer: Option<String>,
+    pub update_changelog: bool,
+    pub allow_reformatting: Option<bool>,
+}
+
+impl Default for ApplyMultiarchHintsConfig {
+    fn default() -> Self {
+        Self {
+            minimum_certainty: None,
+            committer: None,
+            update_changelog: true,
+            allow_reformatting: None,
+        }
+    }
+}
+
 pub fn apply_multiarch_hints(
     local_tree: &GenericWorkingTree,
     subpath: &std::path::Path,
     hints: &HashMap<&str, Vec<&Hint>>,
-    minimum_certainty: Option<Certainty>,
-    committer: Option<String>,
     dirty_tracker: Option<&mut DirtyTreeTracker>,
-    update_changelog: bool,
-    _allow_reformatting: Option<bool>,
+    config: &ApplyMultiarchHintsConfig,
 ) -> Result<OverallResult, OverallError> {
-    let minimum_certainty = minimum_certainty.unwrap_or(Certainty::Certain);
+    let minimum_certainty = config.minimum_certainty.unwrap_or(Certainty::Certain);
     let basis_tree = local_tree.basis_tree().unwrap();
     let (changes, _tree_changes, mut specific_files) = match apply_or_revert(
         local_tree,
@@ -583,7 +600,7 @@ pub fn apply_multiarch_hints(
 
     let changelog_path = subpath.join("debian/changelog");
 
-    if update_changelog {
+    if config.update_changelog {
         add_changelog_entry(
             local_tree,
             changelog_path.as_path(),
@@ -601,7 +618,7 @@ pub fn apply_multiarch_hints(
     overall_description.push("\n".to_string());
     overall_description.push("Changes-By: apply-multiarch-hints\n".to_string());
 
-    let committer = committer.unwrap_or_else(|| get_committer(local_tree));
+    let committer = config.committer.clone().unwrap_or_else(|| get_committer(local_tree));
 
     let specific_files_ref = specific_files
         .as_ref()

@@ -17,6 +17,15 @@ pub mod dummy_transitional;
 pub mod package_checker;
 use package_checker::{PackageChecker, UddPackageChecker};
 
+/// Represents a field change: (field_name, actions, description)
+pub type FieldChange = (String, Vec<Action>, String);
+
+/// Represents changes to a control paragraph: (paragraph_name, field_changes)
+pub type ParagraphChanges = (Option<String>, Vec<FieldChange>);
+
+/// A collection of control paragraph changes
+pub type ControlChanges = Vec<ParagraphChanges>;
+
 pub const DEFAULT_VALUE_MULTIARCH_HINT: usize = 30;
 
 pub fn note_changelog_policy(policy: bool, msg: &str) {
@@ -283,7 +292,7 @@ fn drop_old_relations(
     compat_release: &str,
     upgrade_release: &str,
     keep_minimum_depends_versions: bool,
-) -> Vec<(Option<String>, Vec<(String, Vec<Action>, String)>)> {
+) -> ControlChanges {
     let mut actions = vec![];
     let mut source_actions = vec![];
 
@@ -408,7 +417,7 @@ impl<'a> serde::Deserialize<'a> for MaintscriptAction {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ScrubObsoleteResult {
     specific_files: Vec<PathBuf>,
-    control_actions: Vec<(Option<String>, Vec<(String, Vec<Action>, String)>)>,
+    control_actions: ControlChanges,
     maintscript_removed: Vec<(PathBuf, Vec<MaintscriptAction>, String)>,
 }
 
