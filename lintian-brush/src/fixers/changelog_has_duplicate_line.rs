@@ -65,7 +65,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let new_content = changelog.to_string();
     fs::write(&changelog_path, new_content)?;
 
-    Ok(FixerResult::builder("Remove duplicate line from changelog.".to_string()).build())
+    Ok(FixerResult::builder("Remove duplicate line from changelog.").build())
 }
 
 declare_fixer! {
