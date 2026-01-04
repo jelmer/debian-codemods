@@ -1,0 +1,4 @@
+Add missing debian/patches/00list file for dpatch.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: dpatch-build-dep-but-no-patch-list

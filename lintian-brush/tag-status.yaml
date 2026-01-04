@@ -403,6 +403,7 @@
 - tag: doubly-armored-upstream-signature
 - tag: dpatch-build-dep-but-no-patch-list
   difficulty: easy
+  status: implemented
 - tag: dpatch-index-references-non-existent-patch
 - tag: dpatch-missing-description
   difficulty: hard
