@@ -410,7 +410,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect::<Vec<_>>();
 
-    for change in result.changes.iter() {
+    for change in &result.changes {
         log::info!("{}: {}", change.binary, change.description);
     }
 
