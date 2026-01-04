@@ -44,6 +44,7 @@ humantime = "2.1.0"
 svp-client = { workspace = true }
 inventory = "0.3"
 regex = { workspace = true }
+indexmap = { workspace = true }
 sequoia-openpgp = "2"
 makefile-lossless = "0.3.25"
 sha1 = "0.10"

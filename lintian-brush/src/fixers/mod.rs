@@ -144,6 +144,7 @@ mod unversioned_copyright_format_uri;
 mod upstream_metadata_file;
 mod upstream_metadata_has_obsolete_field;
 mod upstream_metadata_in_native_source;
+mod upstream_metadata_invalid;
 mod useless_autoreconf_build_depends;
 mod uses_debhelper_compat_file;
 mod uses_deprecated_adttmp;
