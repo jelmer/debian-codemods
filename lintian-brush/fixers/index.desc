@@ -17,16 +17,3 @@ fixers:
     lintian-tags:
       - package-uses-deprecated-debhelper-compat-version
       - package-uses-old-debhelper-compat-version
-
-  - script: upstream-metadata-invalid.py
-    lintian-tags:
-      - upstream-metadata-yaml-invalid
-      - upstream-metadata-not-yaml-mapping
-
-
-  # Disabled for now because it updates even for any diff, not just when
-  # messages change.
-  - script: newer-debconf-templates.py
-    enabled: false
-    lintian-tags:
-      - newer-debconf-templates
