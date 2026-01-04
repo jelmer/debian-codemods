@@ -800,7 +800,7 @@ Type=Application
         let desktop = Desktop::from_str(input).unwrap();
         assert_eq!(desktop.groups().count(), 1);
 
-        let group = desktop.groups().nth(0).unwrap();
+        let group = desktop.groups().next().unwrap();
         assert_eq!(group.name(), Some("Desktop Entry".to_string()));
         assert_eq!(group.get("Name"), Some("Example".to_string()));
         assert_eq!(group.get("Type"), Some("Application".to_string()));
@@ -817,7 +817,7 @@ Type=Application
         let desktop = Desktop::from_str(input).unwrap();
         assert_eq!(desktop.groups().count(), 1);
 
-        let group = desktop.groups().nth(0).unwrap();
+        let group = desktop.groups().next().unwrap();
         assert_eq!(group.get("Name"), Some("Example".to_string()));
     }
 
@@ -833,7 +833,7 @@ Exec=example --play
         let desktop = Desktop::from_str(input).unwrap();
         assert_eq!(desktop.groups().count(), 2);
 
-        let group1 = desktop.groups().nth(0).unwrap();
+        let group1 = desktop.groups().next().unwrap();
         assert_eq!(group1.name(), Some("Desktop Entry".to_string()));
 
         let group2 = desktop.groups().nth(1).unwrap();
@@ -846,7 +846,7 @@ Exec=example --play
         let input = "[Desktop Entry]\nName = Example Application\n";
         let desktop = Desktop::from_str(input).unwrap();
 
-        let group = desktop.groups().nth(0).unwrap();
+        let group = desktop.groups().next().unwrap();
         assert_eq!(group.get("Name"), Some("Example Application".to_string()));
     }
 
@@ -855,8 +855,8 @@ Exec=example --play
         let input = "[Desktop Entry]\nName[de]=Beispiel\n";
         let desktop = Desktop::from_str(input).unwrap();
 
-        let group = desktop.groups().nth(0).unwrap();
-        let entry = group.entries().nth(0).unwrap();
+        let group = desktop.groups().next().unwrap();
+        let entry = group.entries().next().unwrap();
         assert_eq!(entry.key(), Some("Name".to_string()));
         assert_eq!(entry.locale(), Some("de".to_string()));
         assert_eq!(entry.value(), Some("Beispiel".to_string()));
@@ -886,7 +886,7 @@ Name[fr]=Application exemple
 Type=Application
 "#;
         let desktop = Desktop::from_str(input).unwrap();
-        let group = desktop.groups().nth(0).unwrap();
+        let group = desktop.groups().next().unwrap();
 
         // Test get() returns non-localized value
         assert_eq!(group.get("Name"), Some("Example Application".to_string()));
@@ -925,13 +925,13 @@ Type=Application
 "#;
         let desktop = Desktop::from_str(input).unwrap();
         {
-            let mut group = desktop.groups().nth(0).unwrap();
+            let mut group = desktop.groups().next().unwrap();
             // Update localized value
             group.set_locale("Name", "de", "Neue Beispiel");
         }
 
         // Re-fetch the group to check the mutation persisted
-        let group = desktop.groups().nth(0).unwrap();
+        let group = desktop.groups().next().unwrap();
         assert_eq!(
             group.get_locale("Name", "de"),
             Some("Neue Beispiel".to_string())
@@ -950,7 +950,7 @@ Name[fr]=Exemple
 Type=Application
 "#;
         let desktop = Desktop::from_str(input).unwrap();
-        let mut group = desktop.groups().nth(0).unwrap();
+        let mut group = desktop.groups().next().unwrap();
 
         // Remove one localized entry
         group.remove_locale("Name", "de");
@@ -973,7 +973,7 @@ Name[fr]=Exemple
 Type=Application
 "#;
         let desktop = Desktop::from_str(input).unwrap();
-        let mut group = desktop.groups().nth(0).unwrap();
+        let mut group = desktop.groups().next().unwrap();
 
         // Remove all Name entries
         group.remove_all("Name");
@@ -993,7 +993,7 @@ Name[de]=Beispiel
 Type=Application
 "#;
         let desktop = Desktop::from_str(input).unwrap();
-        let group = desktop.groups().nth(0).unwrap();
+        let group = desktop.groups().next().unwrap();
 
         // get() should not return localized entries
         assert_eq!(group.get("Name"), None);
@@ -1007,12 +1007,12 @@ Name=Example
 "#;
         let desktop = Desktop::from_str(input).unwrap();
         {
-            let mut group = desktop.groups().nth(0).unwrap();
+            let mut group = desktop.groups().next().unwrap();
             // Add a new entry
             group.set("Type", "Application");
         }
 
-        let group = desktop.groups().nth(0).unwrap();
+        let group = desktop.groups().next().unwrap();
         assert_eq!(group.get("Name"), Some("Example".to_string()));
         assert_eq!(group.get("Type"), Some("Application".to_string()));
     }
@@ -1024,13 +1024,13 @@ Name=Example
 "#;
         let desktop = Desktop::from_str(input).unwrap();
         {
-            let mut group = desktop.groups().nth(0).unwrap();
+            let mut group = desktop.groups().next().unwrap();
             // Add new localized entries
             group.set_locale("Name", "de", "Beispiel");
             group.set_locale("Name", "fr", "Exemple");
         }
 
-        let group = desktop.groups().nth(0).unwrap();
+        let group = desktop.groups().next().unwrap();
         assert_eq!(group.get("Name"), Some("Example".to_string()));
         assert_eq!(group.get_locale("Name", "de"), Some("Beispiel".to_string()));
         assert_eq!(group.get_locale("Name", "fr"), Some("Exemple".to_string()));

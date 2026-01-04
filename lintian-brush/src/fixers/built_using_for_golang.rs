@@ -38,7 +38,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let architecture = binary
             .architecture()
             .or_else(|| default_architecture.clone())
-            .unwrap_or_else(|| "any".to_string());
+            .unwrap_or_else(|| "any".into());
 
         if architecture == "all" {
             // Remove ${misc:Built-Using} for arch:all packages
@@ -115,7 +115,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 };
 
                 if issue.should_fix(base_path) {
-                    relations.ensure_substvar("${misc:Built-Using}").unwrap();
+                    relations
+                        .ensure_substvar("${misc:Built-Using}")
+                        .map_err(FixerError::Other)?;
                     binary.set_built_using(Some(&relations));
                     added.push(binary_name.clone());
                     fixed_issues.push(issue);

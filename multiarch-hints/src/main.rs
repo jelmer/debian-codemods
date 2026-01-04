@@ -311,15 +311,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
 
+    let config = multiarch_hints::ApplyMultiarchHintsConfig {
+        minimum_certainty,
+        committer: None,
+        update_changelog,
+        allow_reformatting,
+    };
+
     let result = match apply_multiarch_hints(
         &wt,
         subpath.as_path(),
         &hints,
-        minimum_certainty,
-        None,
         dirty_tracker.as_mut(),
-        update_changelog,
-        allow_reformatting,
+        &config,
     ) {
         Err(OverallError::NoChanges) => {
             drop(write_lock);
@@ -406,7 +410,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect::<Vec<_>>();
 
-    for change in result.changes.iter() {
+    for change in &result.changes {
         log::info!("{}: {}", change.binary, change.description);
     }
 

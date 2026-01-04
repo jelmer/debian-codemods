@@ -762,12 +762,6 @@ impl YamlDocument {
             Ok(())
         })
     }
-
-    /// Get access to the underlying Python updater for advanced operations
-    /// This is an escape hatch for operations that need direct Python access
-    pub(crate) fn py_updater(&self) -> &Py<PyAny> {
-        &self.updater
-    }
 }
 
 /// A multi-document YAML editor

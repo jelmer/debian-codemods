@@ -988,8 +988,10 @@ description = "A test package"
         assert_eq!(prefs.upstream_version_kind, VersionKind::Auto);
 
         // Test that other version kinds can be set
-        let mut prefs = DebianizePreferences::default();
-        prefs.upstream_version_kind = VersionKind::Release;
+        let prefs = DebianizePreferences {
+            upstream_version_kind: VersionKind::Release,
+            ..Default::default()
+        };
         assert_eq!(prefs.upstream_version_kind, VersionKind::Release);
     }
 
