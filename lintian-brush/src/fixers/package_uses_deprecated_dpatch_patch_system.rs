@@ -69,56 +69,54 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     if let Some(mut source) = editor.source() {
         let source_para = source.as_mut_deb822();
 
-    // Check and update Build-Depends
-    if let Some(bd) = source_para.get("Build-Depends") {
-        let bd_str = bd.to_string();
-        if let Some(new_value) = remove_dpatch_from_field(&bd_str) {
-            has_dpatch = true;
-            if new_value.is_empty() {
-                source_para.remove("Build-Depends");
-            } else {
-                source_para.set("Build-Depends", &new_value);
+        // Check and update Build-Depends
+        if let Some(bd) = source_para.get("Build-Depends") {
+            let bd_str = bd.to_string();
+            if let Some(new_value) = remove_dpatch_from_field(&bd_str) {
+                has_dpatch = true;
+                if new_value.is_empty() {
+                    source_para.remove("Build-Depends");
+                } else {
+                    source_para.set("Build-Depends", &new_value);
+                }
+                changes_made.push("Remove dpatch from Build-Depends");
             }
-            changes_made.push("Remove dpatch from Build-Depends");
         }
-    }
 
-    // Check and update Build-Depends-Indep
-    if let Some(bdi) = source_para.get("Build-Depends-Indep") {
-        let bdi_str = bdi.to_string();
-        if let Some(new_value) = remove_dpatch_from_field(&bdi_str) {
-            has_dpatch = true;
-            if new_value.is_empty() {
-                source_para.remove("Build-Depends-Indep");
-            } else {
-                source_para.set("Build-Depends-Indep", &new_value);
+        // Check and update Build-Depends-Indep
+        if let Some(bdi) = source_para.get("Build-Depends-Indep") {
+            let bdi_str = bdi.to_string();
+            if let Some(new_value) = remove_dpatch_from_field(&bdi_str) {
+                has_dpatch = true;
+                if new_value.is_empty() {
+                    source_para.remove("Build-Depends-Indep");
+                } else {
+                    source_para.set("Build-Depends-Indep", &new_value);
+                }
+                changes_made.push("Remove dpatch from Build-Depends-Indep");
             }
-            changes_made.push("Remove dpatch from Build-Depends-Indep");
         }
-    }
 
-    // Check and update Build-Depends-Arch
-    if let Some(bda) = source_para.get("Build-Depends-Arch") {
-        let bda_str = bda.to_string();
-        if let Some(new_value) = remove_dpatch_from_field(&bda_str) {
-            has_dpatch = true;
-            if new_value.is_empty() {
-                source_para.remove("Build-Depends-Arch");
-            } else {
-                source_para.set("Build-Depends-Arch", &new_value);
+        // Check and update Build-Depends-Arch
+        if let Some(bda) = source_para.get("Build-Depends-Arch") {
+            let bda_str = bda.to_string();
+            if let Some(new_value) = remove_dpatch_from_field(&bda_str) {
+                has_dpatch = true;
+                if new_value.is_empty() {
+                    source_para.remove("Build-Depends-Arch");
+                } else {
+                    source_para.set("Build-Depends-Arch", &new_value);
+                }
+                changes_made.push("Remove dpatch from Build-Depends-Arch");
             }
-            changes_made.push("Remove dpatch from Build-Depends-Arch");
         }
-    }
 
         if !has_dpatch {
             return Err(FixerError::NoChanges);
         }
 
-        let issue = LintianIssue::source_with_info(
-            "package-uses-deprecated-dpatch-patch-system",
-            vec![],
-        );
+        let issue =
+            LintianIssue::source_with_info("package-uses-deprecated-dpatch-patch-system", vec![]);
 
         if !issue.should_fix(base_path) {
             return Err(FixerError::NoChangesAfterOverrides(vec![issue]));

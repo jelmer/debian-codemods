@@ -1507,6 +1507,7 @@
   comment: easy to do, but may be hard to figure out which VCS is canonical
 - tag: vcs-git-uses-invalid-user-uri
   difficulty: easy
+  status: implemented
 - tag: vcs-uri
   status: classification
 - tag: version-refers-to-distribution
