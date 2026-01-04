@@ -331,14 +331,16 @@ fn update_maintscripts(
     allow_reformatting: bool,
 ) -> Result<Vec<(PathBuf, Vec<MaintscriptAction>)>, ScrubObsoleteError> {
     let mut ret = vec![];
-    for entry in std::fs::read_dir(wt.abspath(debian_path).unwrap()).unwrap() {
-        let entry = entry.unwrap();
-        if !(entry.file_name() == "maintscript"
-            || entry
-                .file_name()
-                .to_str()
-                .unwrap()
-                .ends_with(".maintscript"))
+    let debian_abs_path = wt.abspath(debian_path)?;
+    let dir_entries = std::fs::read_dir(debian_abs_path)?;
+
+    for entry in dir_entries {
+        let entry = entry?;
+        let file_name_str = entry.file_name();
+        if !(file_name_str == "maintscript"
+            || file_name_str.to_str()
+                .map(|s| s.ends_with(".maintscript"))
+                .unwrap_or(false))
         {
             continue;
         }
@@ -539,6 +541,7 @@ pub enum ScrubObsoleteError {
     EditorError(EditorError),
     BrzError(BrzError),
     SqlxError(sqlx::Error),
+    IoError(std::io::Error),
 }
 
 impl std::fmt::Display for ScrubObsoleteError {
@@ -550,6 +553,7 @@ impl std::fmt::Display for ScrubObsoleteError {
             ScrubObsoleteError::EditorError(e) => write!(f, "Editor error: {}", e),
             ScrubObsoleteError::BrzError(e) => write!(f, "Breezy error: {}", e),
             ScrubObsoleteError::SqlxError(e) => write!(f, "SQLx error: {}", e),
+            ScrubObsoleteError::IoError(e) => write!(f, "I/O error: {}", e),
         }
     }
 }
@@ -571,6 +575,12 @@ impl From<BrzError> for ScrubObsoleteError {
 impl From<sqlx::Error> for ScrubObsoleteError {
     fn from(e: sqlx::Error) -> Self {
         ScrubObsoleteError::SqlxError(e)
+    }
+}
+
+impl From<std::io::Error> for ScrubObsoleteError {
+    fn from(e: std::io::Error) -> Self {
+        ScrubObsoleteError::IoError(e)
     }
 }
 

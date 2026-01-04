@@ -227,6 +227,9 @@ fn main() -> Result<(), i32> {
         Err(scrub_obsolete::ScrubObsoleteError::EditorError(EditorError::IoError(e))) => {
             svp.report_fatal("io-error", &format!("Error: {}", e), None, None);
         }
+        Err(scrub_obsolete::ScrubObsoleteError::IoError(e)) => {
+            svp.report_fatal("io-error", &format!("I/O error: {}", e), None, None);
+        }
     };
 
     std::mem::drop(lock_write);
