@@ -85,15 +85,15 @@ async fn drop_obsolete_depends(
     let mut to_remove = vec![];
     let mut to_replace = vec![];
     for (i, mut pkgrel) in entry.relations().enumerate() {
-        if let Some(replacement) = checker.replacement(&pkgrel.name()).await.unwrap() {
+        if let Some(replacement) = checker.replacement(&pkgrel.name()).await? {
             let parsed_replacement: Relations = replacement.parse().unwrap();
             if parsed_replacement.entries().count() > 1 {
                 log::warn!("Unable to replace multi-package {:?}", replacement);
             } else {
-                // If the replacement is already included in the entry, we can drop the old
-                // package.
                 let newrel: Entry = replacement.parse().unwrap();
                 if debian_analyzer::relations::is_relation_implied(&newrel, entry) {
+                    // If the replacement is already included in the entry, we can drop the old
+                    // package.
                     to_remove.push(i);
                     actions.push(Action::DropTransition(pkgrel));
                 } else {
