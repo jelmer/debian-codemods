@@ -55,9 +55,11 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     // fixed_issue is guaranteed to be Some if made_changes is true
     let issue = fixed_issue.expect("fixed_issue should be Some when made_changes is true");
 
-    Ok(FixerResult::builder("debian/control: Add Vcs-Browser field")
-        .fixed_issue(issue)
-        .build())
+    Ok(
+        FixerResult::builder("debian/control: Add Vcs-Browser field")
+            .fixed_issue(issue)
+            .build(),
+    )
 }
 
 declare_fixer! {

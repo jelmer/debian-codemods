@@ -338,7 +338,8 @@ fn update_maintscripts(
         let entry = entry?;
         let file_name_str = entry.file_name();
         if !(file_name_str == "maintscript"
-            || file_name_str.to_str()
+            || file_name_str
+                .to_str()
                 .map(|s| s.ends_with(".maintscript"))
                 .unwrap_or(false))
         {
