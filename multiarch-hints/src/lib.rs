@@ -207,7 +207,8 @@ pub fn cache_download_multiarch_hints(
         Path::new(&home).join(".cache")
     } else {
         log::warn!("Unable to find cache directory, not caching");
-        return download_multiarch_hints(url, None).map(|x| x.unwrap());
+        return download_multiarch_hints(url, None)?
+            .ok_or_else(|| "Expected download data but got None".into());
     };
     let cache_dir = cache_home.join("lintian-brush");
     fs::create_dir_all(&cache_dir)?;
@@ -547,12 +548,8 @@ pub fn apply_multiarch_hints(
 
             let control_path = path.join("debian/control");
 
-            let editor = match TemplatedControlEditor::open(control_path.as_path()) {
-                Ok(editor) => editor,
-                Err(e) => {
-                    return Err(OverallError::Other(e.to_string()));
-                }
-            };
+            let editor = TemplatedControlEditor::open(control_path.as_path())
+                .map_err(|e| OverallError::Other(e.to_string()))?;
 
             for mut binary in editor.binaries() {
                 let package = binary.name().unwrap();
