@@ -1088,6 +1088,7 @@
 - tag: package-uses-debhelper-but-lacks-build-depends
 - tag: package-uses-deprecated-dpatch-patch-system
   difficulty: easy
+  status: implemented
 - tag: package-uses-dh-exec-but-lacks-build-depends
 - tag: package-uses-dh-runit-but-lacks-breaks-substvar
 - tag: package-uses-experimental-debhelper-compat-version
