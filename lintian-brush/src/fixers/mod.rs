@@ -55,6 +55,7 @@ mod desktop_entry_file_has_crs;
 mod dh_clean_k_is_deprecated;
 mod dh_quilt_addon_but_quilt_source_format;
 mod dm_upload_allowed;
+mod dpatch_build_dep_but_no_patch_list;
 mod duplicate_override_context;
 mod empty_debian_patches_series;
 mod empty_debian_source_options;

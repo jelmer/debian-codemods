@@ -1,0 +1,8 @@
+Source: test-package
+Maintainer: Test User <test@example.com>
+Build-Depends: debhelper (>= 11), dpatch
+
+Package: test-package
+Architecture: any
+Description: Test package
+ A test package for dpatch fixer override test.
