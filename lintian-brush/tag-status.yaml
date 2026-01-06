@@ -276,6 +276,7 @@
 - tag: debian-watch-mangles-upstream-version-improperly
 - tag: debian-watch-not-mangling-version
   difficulty: easy
+  status: implemented
 - tag: debian-watch-upstream-component
 - tag: debug-file-with-no-debug-symbols
 - tag: debug-package-for-multi-arch-same-pkg-not-coinstallable
