@@ -4,5 +4,6 @@ Build-Depends: golang-go
 
 Package: blah
 Built-Using: ${misc:Built-Using}
+Static-Built-Using: ${misc:Static-Built-Using}
 Description: blah
  blah

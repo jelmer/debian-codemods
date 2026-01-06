@@ -1,3 +1,3 @@
-Remove unnecessary ${misc:Built-Using} for blah
+Remove unnecessary ${misc:Built-Using} for blah.
 Fixed-Lintian-Issues:
  blah binary: built-using-field-on-arch-all-package (in section for blah) [debian/control:7]
