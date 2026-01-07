@@ -1,0 +1,4 @@
+Reorder Files paragraphs in debian/copyright by directory depth.
+Fixed-Lintian-Issues:
+ source: global-files-wildcard-not-first-paragraph-in-dep5-copyright [debian/copyright:7]
+ source: globbing-patterns-out-of-order src/foo/* * [debian/copyright:7]

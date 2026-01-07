@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+Files: src/foo/*
+License: MIT
+Copyright: 2020, Author
+
+Files: *
+License: GPL-2
+Copyright: 2020, Generic
+
+Files: src/*
+License: Apache-2.0
+Copyright: 2020, Another
+
+License: GPL-2
+ On Debian systems, see /usr/share/common-licenses/GPL-2.
+
+License: MIT
+ MIT license text here.
+
+License: Apache-2.0
+ On Debian systems, see /usr/share/common-licenses/Apache-2.0.
