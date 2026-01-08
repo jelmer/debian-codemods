@@ -767,7 +767,6 @@ fn run_inline_python_fixer(
         let sys = py.import("sys")?;
         let os = py.import("os")?;
         let io = py.import("io")?;
-        let fixer_module = py.import("lintian_brush.fixer")?;
 
         let old_env = os.getattr("environ")?.unbind();
         let old_stderr = sys.getattr("stderr")?;
@@ -782,7 +781,14 @@ fn run_inline_python_fixer(
 
         let old_cwd = os.call_method0("getcwd").ok();
 
+        // Change to basedir BEFORE importing lintian_brush.fixer, since that module
+        // instantiates ControlEditor() at import time which reads debian/control
         os.call_method1("chdir", (basedir,))?;
+
+        let fixer_module = py.import("lintian_brush.fixer")?;
+
+        // Reload the control editor for the new directory
+        fixer_module.call_method0("reload")?;
 
         let global_vars = PyDict::new(py);
         global_vars.set_item("__file__", path)?;
@@ -898,6 +904,15 @@ mod run_inline_python_fixer_tests {
     fn test_no_changes() {
         setup();
         let td = tempfile::tempdir().unwrap();
+
+        // Create debian/control (required by fixer.py)
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/control"),
+            "Source: test\n\nPackage: test\nArchitecture: all\n",
+        )
+        .unwrap();
+
         let path = td.path().join("no_changes.py");
         let result = super::run_inline_python_fixer(
             &path,
@@ -918,6 +933,15 @@ mod run_inline_python_fixer_tests {
     fn test_failed() {
         setup();
         let td = tempfile::tempdir().unwrap();
+
+        // Create debian/control (required by fixer.py)
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/control"),
+            "Source: test\n\nPackage: test\nArchitecture: all\n",
+        )
+        .unwrap();
+
         let path = td.path().join("no_changes.py");
         let result = super::run_inline_python_fixer(
             &path,
