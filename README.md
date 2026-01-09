@@ -1,7 +1,7 @@
 lintian-brush
 =============
 
-This package contains a set of scripts to automatically fix some common issues in
+This package contains a set of Rust fixers to automatically fix some common issues in
 Debian packages.
 
 Running lintian-brush
@@ -200,58 +200,23 @@ Writing new fixers
 For a more extensive write-up, see the
 [guide on writing fixers](doc/fixer-writing-guide.rst).
 
+Fixers are now written in Rust as part of the builtin fixers module in ``lintian-brush/src/fixers/``.
+
 Ideally, fixers target a particular set of lintian tags. This is not strictly
 required, but makes it possible to easily find all packages that a particular
 fixer can be used on.
 
-Each fixer is a simple script that lives under ``fixers``. Scripts should
-be registered in the ``index.desc`` file in the same directory.
-
-A fixer is run in the root directory of a package, where it can make changes
-it deems necessary. If a fixer can not provide any improvements, it can simply
-leave the working tree untouched - lintian-brush will not create any commits for it
-or update the changelog. If exits with a non-zero return code, whatever changes
-it has made will be discarded and the fixer will be reported as having failed.
-
-The following additional environment variables are set:
-
- * ``DEB_SOURCE``: The name of the source package that is being edited.
- * ``CURRENT_VERSION``: Package version that is being edited.
- * ``COMPAT_RELEASE``: Debian release to be compatible with. Usually ``sid``
-   when --modern was specified and the name of the current stable release otherwise.
- * ``NET_ACCESS``: Whether the fixer is allowed to make network connections
-   (e.g. sending HTTP requests). Used by --disable-net-access and the testsuite.
-   Set to either ``allow`` or ``disallow``.
- * ``OPINIONATED``: Set to ``yes`` or ``no``. If ``no``, fixers are not expected
-   to make changes in which there is no obvious single correct fix.
-
-For fixer written in python, the ``lintian_brush.fixer`` module can be used for
-convenient access to these variables.
-
-A fixer should write a short description of the changes it has made to standard
-out; this will be used for the commit message.
-
-It can include optional metadata in its output::
-
- * ``Fixed-Lintian-Tags:`` followed by a comma-separated list of lintian tags
-   that it claims to have fixed. This will make lintian-brush include
-   links to documentation about the fixed lintian tags. In the future,
-   it may also support building the package to verify the lintian tag
-   is actually resolved.
-
- * ``Certainty:`` followed by ``certain``, ``confident``, ``likely`` or
-   ``possible``, indicating how certain the fixer is that the fix was the right
-   one.
-
-The default minimum certainty level is "certain"; any incorrect change made
-with certainty "certain" is considered *at least* a normal-severity bug.
-
 The easiest way to test fixers is to create a skeleton *in* and *out* source
-tree under ``tests/FIXER-NAME/TEST-NAME``. The ``in`` directory should contain
+tree under ``lintian-brush/tests/FIXER-NAME/TEST-NAME``. The ``in`` directory should contain
 the tree to run the fixer on, and ``out`` contains the directory after it has
 run. It's fine to create directories with only one or two control files, if the
-fixer only needs those. To run the tests for a single fixer, you can use "make
-check-fixer-$NAME".
+fixer only needs those. To run the tests for a single fixer, you can use:
+
+```shell
+cargo test fixer_name
+```
+
+(with any dashes in the fixer name replaced by underscores).
 
 GitHub Action
 -------------

@@ -77,26 +77,6 @@ fn test_all_test_dirs_have_matching_fixers() {
 }
 
 fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
-    // Initialize tracing for debugging
-    let _ = tracing_subscriber::fmt::try_init();
-
-    #[cfg(feature = "python")]
-    {
-        pyo3::Python::attach(|py| {
-            use pyo3::prelude::*;
-            let sys = py.import("sys").unwrap();
-            let path = sys.getattr("path").unwrap();
-            let mut path: Vec<String> = path.extract().unwrap();
-            let extra_path =
-                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR").to_string() + "/../py")
-                    .canonicalize()
-                    .unwrap();
-            if !path.contains(&extra_path.to_string_lossy().to_string()) {
-                path.insert(0, extra_path.to_string_lossy().to_string());
-                sys.setattr("path", path).unwrap();
-            }
-        });
-    }
     let td = tempfile::tempdir().unwrap();
 
     let indir = path.join("in");

@@ -167,28 +167,6 @@ def certainty_to_confidence(certainty: Optional[str]) -> Optional[int]:
 
 
 def fixable_lintian_tags():
-    from ruamel.yaml import YAML
-
-    yaml = YAML()
-    path = os.path.join(
-        os.path.dirname(__file__), "../../lintian-brush/fixers/index.desc"
-    )
-    with open(path) as f:
-        fixers = yaml.load(f)["fixers"]
-
-    supported_tags = set()
-    for fixer in fixers:
-        try:
-            tags = fixer["lintian-tags"]
-        except KeyError:
-            pass
-        else:
-            if tags is not None:
-                supported_tags.update(tags)
-
-    # Add tags from Rust builtin fixers
     from . import _lintian_brush_rs
 
-    supported_tags.update(_lintian_brush_rs.get_builtin_fixer_lintian_tags())
-
-    return supported_tags
+    return set(_lintian_brush_rs.get_builtin_fixer_lintian_tags())

@@ -14,12 +14,18 @@ this is the common case.
 Coding Style
 ------------
 
-lintian-brush uses PEP8 for any Python code.
+lintian-brush fixers are written in Rust.
 
-Code style can be checked by running ``ruff``:
+Code style can be checked by running ``cargo clippy``:
 
 ```shell
-ruff check .
+cargo clippy
+```
+
+Code can be formatted with ``cargo fmt``:
+
+```shell
+cargo fmt
 ```
 
 Tests

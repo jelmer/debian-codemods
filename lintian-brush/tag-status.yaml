@@ -249,7 +249,6 @@
 - tag: debian-rules-uses-deprecated-systemd-override
   status: implemented
   difficulty: easy
-  status: implemented
 - tag: debian-rules-uses-installed-python-versions
 - tag: debian-rules-uses-special-shell-variable
   status: implemented
@@ -1512,7 +1511,6 @@
 - tag: vcs-git-uses-invalid-user-uri
   status: implemented
   difficulty: easy
-  status: implemented
 - tag: vcs-uri
   status: classification
 - tag: version-refers-to-distribution
@@ -1645,6 +1643,7 @@
 - tag: team/pkg-perl/xs-abi/legacy-vendorarch-directory
 - tag: duplicate-globbing-patterns
 - tag: globbing-patterns-out-of-order
+  status: implemented
   difficulty: easy
 - tag: patch-not-forwarded-upstream
   difficulty: hard
