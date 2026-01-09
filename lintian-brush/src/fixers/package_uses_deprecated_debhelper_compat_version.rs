@@ -301,8 +301,8 @@ fn update_rules_for_compat_12(
 
                 // Check if we need to add --buildsystem=pybuild
                 if !new_recipe.contains("buildsystem") {
-                    if let Ok(Some(buildsystem)) = detect_debhelper_buildsystem(base_path, None) {
-                        if buildsystem == "python_distutils" {
+                    match detect_debhelper_buildsystem(base_path, None) {
+                        Ok(Some(buildsystem)) if buildsystem == "python_distutils" => {
                             new_recipe =
                                 new_recipe.trim_end().to_string() + " --buildsystem=pybuild";
                             transforms.add(
@@ -310,6 +310,10 @@ fn update_rules_for_compat_12(
                             );
                             pybuild_upgraded = true;
                         }
+                        Err(e) => {
+                            log::warn!("Failed to detect buildsystem: {}", e);
+                        }
+                        _ => {}
                     }
                 } else if new_recipe.contains("buildsystem=pybuild")
                     || new_recipe.contains("buildsystem pybuild")

@@ -5,6 +5,56 @@ use std::path::Path;
 /// Build steps that debhelper handles
 pub const DEBHELPER_BUILD_STEPS: &[&str] = &["configure", "build", "test", "install", "clean"];
 
+/// Error type for buildsystem detection
+#[derive(Debug)]
+pub enum BuildsystemDetectionError {
+    /// dh_assistant command not found or failed to execute
+    DhAssistantNotAvailable(std::io::Error),
+    /// dh_assistant returned non-zero exit status
+    DhAssistantFailed {
+        /// Exit status of the command
+        status: std::process::ExitStatus,
+        /// Standard error output
+        stderr: String,
+    },
+    /// dh_assistant output could not be parsed as JSON
+    InvalidJson {
+        /// The JSON parsing error
+        error: serde_json::Error,
+        /// The output that failed to parse
+        output: String,
+    },
+    /// Other I/O error
+    IoError(std::io::Error),
+}
+
+impl std::fmt::Display for BuildsystemDetectionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DhAssistantNotAvailable(e) => write!(f, "dh_assistant not available: {}", e),
+            Self::DhAssistantFailed { status, stderr } => {
+                write!(f, "dh_assistant failed with status {}: {}", status, stderr)
+            }
+            Self::InvalidJson { error, output } => {
+                write!(
+                    f,
+                    "Failed to parse dh_assistant output as JSON: {}\nOutput: {}",
+                    error, output
+                )
+            }
+            Self::IoError(e) => write!(f, "I/O error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for BuildsystemDetectionError {}
+
+impl From<std::io::Error> for BuildsystemDetectionError {
+    fn from(e: std::io::Error) -> Self {
+        Self::IoError(e)
+    }
+}
+
 /// Detect the build system for debhelper.
 ///
 /// # Arguments
@@ -16,26 +66,54 @@ pub const DEBHELPER_BUILD_STEPS: &[&str] = &["configure", "build", "test", "inst
 pub fn detect_debhelper_buildsystem(
     base_path: &Path,
     _step: Option<&str>,
-) -> Result<Option<String>, std::io::Error> {
+) -> Result<Option<String>, BuildsystemDetectionError> {
     // Check for autoconf
     if base_path.join("configure.ac").exists() || base_path.join("configure.in").exists() {
         return Ok(Some("autoconf".to_string()));
     }
 
     // Use dh_assistant to detect the build system
-    let output = std::process::Command::new("dh_assistant")
+    let output = match std::process::Command::new("dh_assistant")
         .arg("which-build-system")
         .env("DH_NO_ACT", "1") // Prevent dh_assistant from writing .debhelper files
         .current_dir(base_path)
-        .output()?;
+        .output()
+    {
+        Ok(output) => output,
+        Err(e) => {
+            log::debug!("Failed to execute dh_assistant: {}", e);
+            return Err(BuildsystemDetectionError::DhAssistantNotAvailable(e));
+        }
+    };
 
     if !output.status.success() {
-        return Ok(None);
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        log::debug!(
+            "dh_assistant which-build-system failed with status {}: {}",
+            output.status,
+            stderr
+        );
+        return Err(BuildsystemDetectionError::DhAssistantFailed {
+            status: output.status,
+            stderr,
+        });
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let parsed: serde_json::Value = serde_json::from_str(&stdout)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+    let parsed: serde_json::Value = match serde_json::from_str(&stdout) {
+        Ok(parsed) => parsed,
+        Err(e) => {
+            log::debug!(
+                "Failed to parse dh_assistant output as JSON: {}\nOutput: {}",
+                e,
+                stdout
+            );
+            return Err(BuildsystemDetectionError::InvalidJson {
+                error: e,
+                output: stdout.to_string(),
+            });
+        }
+    };
 
     Ok(parsed
         .get("build-system")

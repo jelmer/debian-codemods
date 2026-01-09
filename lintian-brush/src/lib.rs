@@ -763,6 +763,12 @@ fn run_inline_python_fixer(
     import_exception!(debmutate.reformatting, FormattingUnpreservable);
     import_exception!(debian.changelog, ChangelogCreateError);
 
+    // Mutex to serialize Python fixer operations across threads
+    // This prevents race conditions with module reloading and directory changes
+    // when tests run in parallel
+    static PYTHON_FIXER_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _lock = PYTHON_FIXER_LOCK.lock().unwrap();
+
     Python::attach(|py| {
         let sys = py.import("sys")?;
         let os = py.import("os")?;
@@ -783,12 +789,26 @@ fn run_inline_python_fixer(
 
         // Change to basedir BEFORE importing lintian_brush.fixer, since that module
         // instantiates ControlEditor() at import time which reads debian/control
-        os.call_method1("chdir", (basedir,))?;
+        os.call_method1("chdir", (basedir,)).map_err(|e| {
+            log::error!("Failed to chdir to {:?}: {}", basedir, e);
+            e
+        })?;
 
-        let fixer_module = py.import("lintian_brush.fixer")?;
+        let fixer_module = py.import("lintian_brush.fixer").map_err(|e| {
+            let cwd = os.call_method0("getcwd").ok();
+            log::error!(
+                "Failed to import lintian_brush.fixer from cwd {:?}: {}",
+                cwd,
+                e
+            );
+            e
+        })?;
 
         // Reload the control editor for the new directory
-        fixer_module.call_method0("reload")?;
+        fixer_module.call_method0("reload").map_err(|e| {
+            log::error!("Failed to reload fixer module: {}", e);
+            e
+        })?;
 
         let global_vars = PyDict::new(py);
         global_vars.set_item("__file__", path)?;
