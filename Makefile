@@ -1,5 +1,7 @@
 VERSION=$(shell dpkg-parsechangelog | grep Version: | cut -d " " -f 2)
 
+export RUST_LOG
+
 default: check
 
 .PHONY: build
