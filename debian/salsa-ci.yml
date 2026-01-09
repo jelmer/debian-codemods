@@ -14,6 +14,8 @@ variables:
   PIP_CACHE_DIR: ${CI_PROJECT_DIR}/.cache/pip
   # Enable parallel builds - uses all available CPU cores
   SALSA_CI_DPKG_BUILDPACKAGE_ARGS: "-j$(nproc)"
+  # Enable debug logging for tests
+  RUST_LOG: debug
 
 stages:
   - lint
