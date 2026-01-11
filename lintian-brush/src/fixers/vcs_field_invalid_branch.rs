@@ -156,7 +156,11 @@ pub async fn run(
                         let default_branch = match get_default_branch(repo_url, branch) {
                             Ok(db) => db,
                             Err(e) => {
-                                log::warn!("Failed to get default branch from {}: {}", repo_url, e);
+                                tracing::warn!(
+                                    "Failed to get default branch from {}: {}",
+                                    repo_url,
+                                    e
+                                );
                                 None
                             }
                         };
@@ -204,7 +208,7 @@ pub async fn run(
                 }
                 Err(FixerError::Other(msg)) if msg.starts_with("vcswatch URL unusable") => {
                     // Log the warning but don't fail
-                    log::warn!("{}", msg);
+                    tracing::warn!("{}", msg);
                 }
                 Err(e) => return Err(e),
             }
@@ -343,11 +347,11 @@ Description: Test package
             }
             Ok(None) => {
                 // This might happen if dulwich isn't available
-                log::warn!("get_default_branch returned None");
+                tracing::warn!("get_default_branch returned None");
             }
             Err(e) => {
                 // This is expected if dulwich isn't available or can't access the repo
-                log::info!(
+                tracing::info!(
                     "get_default_branch failed (expected if dulwich unavailable): {}",
                     e
                 );

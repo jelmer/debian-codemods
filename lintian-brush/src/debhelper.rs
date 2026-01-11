@@ -90,14 +90,14 @@ pub fn detect_debhelper_buildsystem(
     let output = match cmd.output() {
         Ok(output) => output,
         Err(e) => {
-            log::debug!("Failed to execute dh_assistant: {}", e);
+            tracing::debug!("Failed to execute dh_assistant: {}", e);
             return Err(BuildsystemDetectionError::DhAssistantNotAvailable(e));
         }
     };
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-        log::debug!(
+        tracing::debug!(
             "dh_assistant which-build-system failed with status {}: {}",
             output.status,
             stderr
@@ -112,7 +112,7 @@ pub fn detect_debhelper_buildsystem(
     let parsed: serde_json::Value = match serde_json::from_str(&stdout) {
         Ok(parsed) => parsed,
         Err(e) => {
-            log::debug!(
+            tracing::debug!(
                 "Failed to parse dh_assistant output as JSON: {}\nOutput: {}",
                 e,
                 stdout

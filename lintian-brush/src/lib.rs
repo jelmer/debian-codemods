@@ -1274,7 +1274,7 @@ pub fn run_lintian_fixer(
     };
 
     let make_changes = |basedir: &std::path::Path| -> Result<_, FixerError> {
-        log::debug!("Running fixer {:?}", fixer);
+        tracing::debug!("Running fixer {:?}", fixer);
         let result = fixer.run(
             basedir,
             package.as_str(),
@@ -1601,14 +1601,14 @@ pub fn run_lintian_fixers(
                 FixerError::OutputParseError(ref _e) => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     if verbose {
-                        log::info!("Fixer {} failed to parse output.", fixer.name());
+                        tracing::info!("Fixer {} failed to parse output.", fixer.name());
                     }
                     continue;
                 }
                 FixerError::DescriptionMissing => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     if verbose {
-                        log::info!(
+                        tracing::info!(
                             "Fixer {} failed because description is missing.",
                             fixer.name()
                         );
@@ -1618,7 +1618,7 @@ pub fn run_lintian_fixers(
                 FixerError::OutputDecodeError(ref _e) => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     if verbose {
-                        log::info!("Fixer {} failed to decode output.", fixer.name());
+                        tracing::info!("Fixer {} failed to decode output.", fixer.name());
                     }
                     continue;
                 }
@@ -1626,7 +1626,7 @@ pub fn run_lintian_fixers(
                     ret.formatting_unpreservable
                         .insert(fixer.name(), path.clone());
                     if verbose {
-                        log::info!(
+                        tracing::info!(
                             "Fixer {} was unable to preserve formatting of {}.",
                             fixer.name(),
                             path.display()
@@ -1638,7 +1638,7 @@ pub fn run_lintian_fixers(
                     ret.failed_fixers
                         .insert(fixer.name(), format!("Generated file: {}", p.display()));
                     if verbose {
-                        log::info!(
+                        tracing::info!(
                             "Fixer {} encountered generated file {}",
                             fixer.name(),
                             p.display()
@@ -1648,14 +1648,14 @@ pub fn run_lintian_fixers(
                 FixerError::ScriptNotFound(ref p) => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     if verbose {
-                        log::info!("Fixer {} ({}) not found.", fixer.name(), p.display());
+                        tracing::info!("Fixer {} ({}) not found.", fixer.name(), p.display());
                     }
                     continue;
                 }
                 FixerError::ScriptFailed { .. } => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     if verbose {
-                        log::info!("Fixer {} failed to run.", fixer.name());
+                        tracing::info!("Fixer {} failed to run.", fixer.name());
                         eprintln!("{}", e);
                     }
                     continue;
@@ -1670,7 +1670,7 @@ pub fn run_lintian_fixers(
                     let duration = std::time::SystemTime::now().duration_since(start).unwrap();
                     ret.fixer_durations.insert(fixer_name.to_string(), duration);
                     if verbose {
-                        log::info!(
+                        tracing::info!(
                     "Fixer {} made changes but not high enough certainty (was {}, needed {}). (took: {:2}s)",
                     fixer_name,
                     actual_certainty,
@@ -1682,7 +1682,7 @@ pub fn run_lintian_fixers(
                 }
                 FixerError::FailedPatchManipulation(ref reason) => {
                     if verbose {
-                        log::info!("Unable to manipulate upstream patches: {}", reason);
+                        tracing::info!("Unable to manipulate upstream patches: {}", reason);
                     }
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     continue;
@@ -1691,7 +1691,7 @@ pub fn run_lintian_fixers(
                     let duration = std::time::SystemTime::now().duration_since(start).unwrap();
                     ret.fixer_durations.insert(fixer_name.to_string(), duration);
                     if verbose {
-                        log::info!(
+                        tracing::info!(
                             "Fixer {} made no changes. (took: {:2}s)",
                             fixer_name,
                             duration.as_secs_f32(),
@@ -1703,7 +1703,7 @@ pub fn run_lintian_fixers(
                     let duration = std::time::SystemTime::now().duration_since(start).unwrap();
                     ret.fixer_durations.insert(fixer_name.to_string(), duration);
                     if verbose {
-                        log::info!(
+                        tracing::info!(
                             "Fixer {} made no changes. (took: {:2}s)",
                             fixer_name,
                             duration.as_secs_f32(),
@@ -1717,9 +1717,9 @@ pub fn run_lintian_fixers(
                     ref backtrace,
                 } => {
                     if verbose {
-                        log::error!("Fixer {} panicked: {}", fixer.name(), message);
+                        tracing::error!("Fixer {} panicked: {}", fixer.name(), message);
                         if let Some(bt) = backtrace {
-                            log::error!("Backtrace:\n{}", bt);
+                            tracing::error!("Backtrace:\n{}", bt);
                         }
                     }
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
@@ -1727,7 +1727,7 @@ pub fn run_lintian_fixers(
                 }
                 FixerError::Other(ref em) => {
                     if verbose {
-                        log::info!("Fixer {} failed: {}", fixer.name(), em);
+                        tracing::info!("Fixer {} failed: {}", fixer.name(), em);
                     }
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     continue;
@@ -1737,7 +1737,7 @@ pub fn run_lintian_fixers(
                 }
                 FixerError::Timeout { timeout } => {
                     if verbose {
-                        log::info!("Fixer {} timed out after {}.", fixer.name(), timeout);
+                        tracing::info!("Fixer {} timed out after {}.", fixer.name(), timeout);
                     }
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     continue;
@@ -1747,7 +1747,7 @@ pub fn run_lintian_fixers(
                 let duration = std::time::SystemTime::now().duration_since(start).unwrap();
                 ret.fixer_durations.insert(fixer_name.to_string(), duration);
                 if verbose {
-                    log::info!(
+                    tracing::info!(
                         "Fixer {} made changes. (took {:2}s)",
                         fixer_name,
                         duration.as_secs_f32(),
@@ -1894,7 +1894,7 @@ fn upstream_changes_to_patch<T: breezyshim::tree::PyTree>(
         ));
     }
 
-    log::debug!("Moving upstream changes to patch {}", patch_name);
+    tracing::debug!("Moving upstream changes to patch {}", patch_name);
     let (specific_files, patch_name) = match move_upstream_changes_to_patch(
         local_tree,
         basis_tree,
@@ -1924,7 +1924,7 @@ fn note_changelog_policy(policy: bool, msg: &str) {
             } else {
                 "Specify --update-changelog to override."
             };
-            log::info!("{} {}", msg, extra);
+            tracing::info!("{} {}", msg, extra);
         }
         *policy_noted = true;
     }

@@ -68,7 +68,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let package_name = match binary.name() {
             Some(name) => name.to_string(),
             None => {
-                log::debug!("Skipping binary package without name");
+                tracing::debug!("Skipping binary package without name");
                 continue;
             }
         };

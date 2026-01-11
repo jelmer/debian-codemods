@@ -47,7 +47,7 @@ pub fn run(
         if let Some(ref dir) = patches_dir {
             if dir != &PathBuf::from("debian/patches") {
                 // Non-standard patches directory - don't make changes
-                log::warn!("Tree has non-standard patches directory {:?}.", dir);
+                tracing::warn!("Tree has non-standard patches directory {:?}.", dir);
                 return Err(FixerError::NoChanges);
             }
         }

@@ -70,14 +70,14 @@ fn verify_signature(
                 // Try to verify the signature
                 match sig.clone().verify_message(key_handle, data) {
                     Ok(_) => {
-                        log::debug!(
+                        tracing::debug!(
                             "Signature verified successfully with key {}",
                             key_fingerprint
                         );
                         return Ok(true);
                     }
                     Err(e) => {
-                        log::debug!("Signature verification failed: {}", e);
+                        tracing::debug!("Signature verification failed: {}", e);
                     }
                 }
             }
@@ -106,7 +106,7 @@ fn probe_signature(
             match mangle::apply_mangle(mangle, &release.url) {
                 Ok(url) => url,
                 Err(e) => {
-                    log::debug!(
+                    tracing::debug!(
                         "Failed to apply mangle '{}' to '{}': {}",
                         mangle,
                         release.url,
@@ -117,7 +117,7 @@ fn probe_signature(
             }
         };
 
-        log::debug!(
+        tracing::debug!(
             "Trying signature URL: {} (from release URL: {})",
             sig_url,
             release.url
@@ -130,11 +130,11 @@ fn probe_signature(
 
         let sig_response = match client.get(&sig_url).send() {
             Ok(resp) if resp.status().is_success() => {
-                log::debug!("Successfully downloaded signature from {}", sig_url);
+                tracing::debug!("Successfully downloaded signature from {}", sig_url);
                 resp
             }
             Ok(resp) => {
-                log::debug!(
+                tracing::debug!(
                     "Signature URL {} returned status {}",
                     sig_url,
                     resp.status()
@@ -142,7 +142,7 @@ fn probe_signature(
                 continue;
             }
             Err(e) => {
-                log::debug!("Failed to fetch signature from {}: {}", sig_url, e);
+                tracing::debug!("Failed to fetch signature from {}: {}", sig_url, e);
                 continue;
             }
         };
@@ -152,11 +152,11 @@ fn probe_signature(
         // Download the actual release file for verification
         let release_data = match release.download_blocking() {
             Ok(data) => {
-                log::debug!("Downloaded release tarball ({} bytes)", data.len());
+                tracing::debug!("Downloaded release tarball ({} bytes)", data.len());
                 data
             }
             Err(e) => {
-                log::debug!("Failed to download release: {}", e);
+                tracing::debug!("Failed to download release: {}", e);
                 continue;
             }
         };
@@ -167,7 +167,7 @@ fn probe_signature(
         let packets = match openpgp::PacketPile::from_bytes(&sig_data) {
             Ok(packets) => packets,
             Err(e) => {
-                log::debug!("Failed to parse signature packets: {}", e);
+                tracing::debug!("Failed to parse signature packets: {}", e);
                 continue;
             }
         };
@@ -179,14 +179,14 @@ fn probe_signature(
                 // Try to get the issuer fingerprint
                 if let Some(fp) = sig.issuer_fingerprints().next() {
                     let fp_hex = fp.to_hex();
-                    log::debug!("Found issuer fingerprint in signature: {}", fp_hex);
+                    tracing::debug!("Found issuer fingerprint in signature: {}", fp_hex);
                     fingerprints.push(fp_hex);
                 }
             }
         }
 
         if fingerprints.is_empty() {
-            log::debug!("No fingerprints found in signature");
+            tracing::debug!("No fingerprints found in signature");
             continue;
         }
 
@@ -199,26 +199,28 @@ fn probe_signature(
         let verification_status = if !keyring_data.is_empty() {
             match verify_signature(&sig_data, &release_data, keyring_data) {
                 Ok(true) => {
-                    log::debug!("Signature verification succeeded");
+                    tracing::debug!("Signature verification succeeded");
                     VerificationStatus::Verified
                 }
                 Ok(false) => {
-                    log::debug!("Signature verification failed - signature does not match keyring");
+                    tracing::debug!(
+                        "Signature verification failed - signature does not match keyring"
+                    );
                     VerificationStatus::Failed
                 }
                 Err(e) => {
-                    log::debug!("Error during signature verification: {}", e);
+                    tracing::debug!("Error during signature verification: {}", e);
                     // If we can't parse but found fingerprints, treat as unverified
                     VerificationStatus::Unverified
                 }
             }
         } else {
             // No keyring available, discovery mode
-            log::debug!("No keyring available, discovery mode");
+            tracing::debug!("No keyring available, discovery mode");
             VerificationStatus::Unverified
         };
 
-        log::debug!(
+        tracing::debug!(
             "Found signature with {} key(s), status={:?}",
             keys.len(),
             verification_status
@@ -292,18 +294,18 @@ pub fn run(
     _version: &debversion::Version,
     preferences: &FixerPreferences,
 ) -> Result<FixerResult, FixerError> {
-    log::debug!("Running pubkey fixer for package {}", package);
+    tracing::debug!("Running pubkey fixer for package {}", package);
 
     let watch_path = base_path.join("debian/watch");
 
     if !watch_path.exists() {
-        log::debug!("No debian/watch file found");
+        tracing::debug!("No debian/watch file found");
         return Err(FixerError::NoChanges);
     }
 
     // Check if network access is allowed
     if !preferences.net_access.unwrap_or(false) {
-        log::debug!("Network access not enabled, skipping");
+        tracing::debug!("Network access not enabled, skipping");
         return Err(FixerError::NoChanges);
     }
 
@@ -314,7 +316,7 @@ pub fn run(
         "debian/upstream/signing-key.pgp",
     ] {
         if base_path.join(path).exists() {
-            log::debug!("Found existing signing key at {}", path);
+            tracing::debug!("Found existing signing key at {}", path);
             has_keys = true;
             break;
         }
@@ -342,12 +344,12 @@ pub fn run(
             if full_path.exists() {
                 match fs::read(&full_path) {
                     Ok(loaded_data) => {
-                        log::debug!("Loaded existing keyring from {}", path);
+                        tracing::debug!("Loaded existing keyring from {}", path);
                         data = loaded_data;
                         break;
                     }
                     Err(e) => {
-                        log::warn!("Failed to read keyring from {}: {}", path, e);
+                        tracing::warn!("Failed to read keyring from {}: {}", path, e);
                     }
                 }
             }
@@ -362,7 +364,7 @@ pub fn run(
 
         // Skip entries that already have pgpsigurlmangle and keys
         if pgpsigurlmangle.is_some() && has_keys {
-            log::debug!("Entry already has pgpsigurlmangle and keys, skipping");
+            tracing::debug!("Entry already has pgpsigurlmangle and keys, skipping");
             continue;
         }
 
@@ -372,28 +374,28 @@ pub fn run(
 
         // Skip if pgpmode is already set and diligence is 0
         if entry.get_option("pgpmode").is_some() && preferences.diligence.unwrap_or(0) == 0 {
-            log::debug!("pgpmode already set and diligence=0, skipping");
+            tracing::debug!("pgpmode already set and diligence=0, skipping");
             continue;
         }
 
         // Skip certain pgpmodes that we can't handle
         if matches!(pgpmode.as_str(), "gittag" | "previous" | "next" | "self") {
-            log::debug!("Unsupported pgpmode: {}, skipping", pgpmode);
+            tracing::debug!("Unsupported pgpmode: {}, skipping", pgpmode);
             return Err(FixerError::NoChanges);
         }
 
         // Discover releases
-        log::debug!("Discovering releases for package {}", package);
+        tracing::debug!("Discovering releases for package {}", package);
         let releases = match entry.discover_blocking(|| package.to_string()) {
             Ok(mut rels) => {
                 rels.sort_by(|a, b| b.cmp(a)); // Sort in reverse order (newest first)
-                log::debug!("Found {} releases", rels.len());
+                tracing::debug!("Found {} releases", rels.len());
                 rels
             }
             Err(e) => {
                 if let Some(http_err) = e.downcast_ref::<reqwest::Error>() {
                     if http_err.is_status() {
-                        log::warn!("HTTP error accessing discovery URL: {}", http_err);
+                        tracing::warn!("HTTP error accessing discovery URL: {}", http_err);
                         return Err(FixerError::NoChanges);
                     }
                 }
@@ -408,15 +410,15 @@ pub fn run(
         let mut used_mangles: Vec<Option<String>> = Vec::new();
         let mut has_verification_failure = false;
 
-        log::debug!(
+        tracing::debug!(
             "Checking signatures for up to {} releases",
             RELEASES_TO_INSPECT
         );
         for release in releases.iter().take(RELEASES_TO_INSPECT) {
-            log::debug!("Probing signature for release {}", release.version);
+            tracing::debug!("Probing signature for release {}", release.version);
             match probe_signature(release, pgpsigurlmangle.as_deref(), &keyring_data) {
                 Ok(Some(sig_info)) => {
-                    log::debug!(
+                    tracing::debug!(
                         "Found signature with mangle: {:?}, status: {:?}",
                         sig_info.mangle,
                         sig_info.verification_status
@@ -432,11 +434,11 @@ pub fn run(
                     needed_keys.extend(sig_info.keys);
                 }
                 Ok(None) => {
-                    log::debug!("No signature found for release {}", release.version);
+                    tracing::debug!("No signature found for release {}", release.version);
                     used_mangles.push(None);
                 }
                 Err(e) => {
-                    log::warn!("Error probing signature: {}", e);
+                    tracing::warn!("Error probing signature: {}", e);
                     used_mangles.push(None);
                 }
             }
@@ -444,7 +446,7 @@ pub fn run(
 
         // If we have an existing keyring and signatures failed verification, skip this entry
         if has_keys && has_verification_failure {
-            log::warn!(
+            tracing::warn!(
                 "Signatures do not match existing keyring at debian/upstream/signing-key.*. \
                  Not updating watch file or fetching different keys. \
                  If upstream changed their signing key, manually update the keyring."
@@ -455,7 +457,7 @@ pub fn run(
         // For unverified signatures (discovery mode), we need enough successful probes
         let successful_probes = verification_statuses.len();
         if successful_probes < NUM_KEYS_TO_CHECK.min(releases.len()) {
-            log::debug!(
+            tracing::debug!(
                 "Not enough signatures found ({} < {}), skipping",
                 successful_probes,
                 NUM_KEYS_TO_CHECK
@@ -465,7 +467,7 @@ pub fn run(
 
         let (found_common_mangles, active_common_mangles) = analyze_mangles(&used_mangles);
 
-        log::debug!(
+        tracing::debug!(
             "Found {} common mangles, {} active",
             found_common_mangles.len(),
             active_common_mangles.len()
@@ -481,13 +483,13 @@ pub fn run(
                 // If only a single mangle is used for all releases that have signatures, set that
                 if active_common_mangles.len() == 1 {
                     let new_mangle = active_common_mangles.iter().next().unwrap();
-                    log::debug!("Setting pgpsigurlmangle to: {}", new_mangle);
+                    tracing::debug!("Setting pgpsigurlmangle to: {}", new_mangle);
                     entry.set_opt("pgpsigurlmangle", new_mangle);
                 }
 
                 // Determine pgpmode and description
                 let (pgpmode, mut desc) = determine_pgpmode(&found_common_mangles);
-                log::debug!("Setting pgpmode to: {}", pgpmode);
+                tracing::debug!("Setting pgpmode to: {}", pgpmode);
                 entry.set_opt("pgpmode", pgpmode);
 
                 // Include fingerprints in description if we found any
@@ -510,7 +512,7 @@ pub fn run(
     }
 
     if !has_keys && !needed_keys.is_empty() {
-        log::debug!("Need to fetch {} keys", needed_keys.len());
+        tracing::debug!("Need to fetch {} keys", needed_keys.len());
 
         let issue = LintianIssue::source_with_info(
             "debian-watch-file-pubkey-file-is-missing",
@@ -520,7 +522,7 @@ pub fn run(
         if issue.should_fix(base_path) {
             let upstream_dir = base_path.join("debian/upstream");
             if !upstream_dir.exists() {
-                log::debug!("Creating debian/upstream directory");
+                tracing::debug!("Creating debian/upstream directory");
                 fs::create_dir(&upstream_dir)?;
             }
 
@@ -532,12 +534,12 @@ pub fn run(
 
             // Only fetch from keyservers if net_access is enabled
             if !preferences.net_access.unwrap_or(false) {
-                log::warn!("Cannot fetch keys without network access");
+                tracing::warn!("Cannot fetch keys without network access");
                 return Err(FixerError::NoChanges);
             }
 
             for fingerprint in &keys_vec {
-                log::debug!("Fetching key with fingerprint: {}", fingerprint);
+                tracing::debug!("Fetching key with fingerprint: {}", fingerprint);
                 // Fetch the certificate from keys.openpgp.org
                 let keyserver = std::env::var("KEYSERVER")
                     .unwrap_or_else(|_| "https://keys.openpgp.org".to_string());
@@ -553,7 +555,7 @@ pub fn run(
                 let response = match client.get(&url).send() {
                     Ok(resp) if resp.status().is_success() => resp,
                     Ok(resp) => {
-                        log::warn!(
+                        tracing::warn!(
                             "Keyserver returned status {} for key {}",
                             resp.status(),
                             fingerprint
@@ -561,7 +563,7 @@ pub fn run(
                         return Err(FixerError::NoChanges);
                     }
                     Err(e) => {
-                        log::warn!("Failed to fetch key {}: {}", fingerprint, e);
+                        tracing::warn!("Failed to fetch key {}: {}", fingerprint, e);
                         return Err(FixerError::NoChanges);
                     }
                 };
@@ -585,7 +587,7 @@ pub fn run(
             }
 
             if keyfile_content.is_empty() {
-                log::warn!("No keys could be fetched");
+                tracing::warn!("No keys could be fetched");
                 return Err(FixerError::NoChanges);
             }
 

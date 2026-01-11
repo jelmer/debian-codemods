@@ -312,7 +312,7 @@ fn main() -> Result<(), i32> {
     ) {
         Ok(fixers) => fixers,
         Err(e) => {
-            log::error!("Error loading fixers: {}", e);
+            tracing::error!("Error loading fixers: {}", e);
             std::process::exit(1);
         }
     };
@@ -351,11 +351,11 @@ fn main() -> Result<(), i32> {
             ) {
                 Ok((branch, subpath)) => (branch, subpath),
                 Err(Error::NotBranchError(_msg, _)) => {
-                    log::error!("No version control directory found (e.g. a .git directory).");
+                    tracing::error!("No version control directory found (e.g. a .git directory).");
                     std::process::exit(1);
                 }
                 Err(Error::DependencyNotPresent(name, _reason)) => {
-                    log::error!(
+                    tracing::error!(
                         "Unable to open branch at {}: missing package {}",
                         args.output.directory.display(),
                         name
@@ -363,7 +363,7 @@ fn main() -> Result<(), i32> {
                     std::process::exit(1);
                 }
                 Err(err) => {
-                    log::error!(
+                    tracing::error!(
                         "Unable to open branch at {}: {}",
                         args.output.directory.display(),
                         err
@@ -375,7 +375,7 @@ fn main() -> Result<(), i32> {
             let td = match tempfile::tempdir() {
                 Ok(td) => td,
                 Err(e) => {
-                    log::error!("Unable to create temporary directory: {}", e);
+                    tracing::error!("Unable to create temporary directory: {}", e);
                     std::process::exit(1);
                 }
             };
@@ -391,7 +391,7 @@ fn main() -> Result<(), i32> {
             ) {
                 Ok(to_dir) => to_dir,
                 Err(e) => {
-                    log::error!("Unable to create temporary branch: {}", e);
+                    tracing::error!("Unable to create temporary branch: {}", e);
                     std::process::exit(1);
                 }
             };
@@ -401,11 +401,11 @@ fn main() -> Result<(), i32> {
             match workingtree::open_containing(&args.output.directory) {
                 Ok((wt, subpath)) => (wt, subpath.display().to_string()),
                 Err(Error::NotBranchError(_msg, _)) => {
-                    log::error!("No version control directory found (e.g. a .git directory).");
+                    tracing::error!("No version control directory found (e.g. a .git directory).");
                     std::process::exit(1);
                 }
                 Err(Error::DependencyNotPresent(name, _reason)) => {
-                    log::error!(
+                    tracing::error!(
                         "Unable to open tree at {}: missing package {}",
                         args.output.directory.display(),
                         name
@@ -413,7 +413,7 @@ fn main() -> Result<(), i32> {
                     std::process::exit(1);
                 }
                 Err(e) => {
-                    log::error!(
+                    tracing::error!(
                         "Unable to open tree at {}: {}",
                         args.output.directory.display(),
                         e
@@ -447,7 +447,7 @@ fn main() -> Result<(), i32> {
                 match lintian_brush::select_fixers(fixers, include.as_deref(), exclude.as_deref()) {
                     Ok(fixers) => fixers,
                     Err(lintian_brush::UnknownFixer(f)) => {
-                        log::error!("Unknown fixer specified: {}", f);
+                        tracing::error!("Unknown fixer specified: {}", f);
                         std::process::exit(1);
                     }
                 }
@@ -490,7 +490,7 @@ fn main() -> Result<(), i32> {
         ) {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
             Err(e) => {
-                log::error!("Unable to read config: {}", e);
+                tracing::error!("Unable to read config: {}", e);
                 std::process::exit(1);
             }
             Ok(cfg) => {
@@ -542,18 +542,18 @@ fn main() -> Result<(), i32> {
         );
 
         if args.output.verbose {
-            log::info!("Using parameters:");
-            log::info!(" compatibility release: {}", compat_release);
-            log::info!(" minimum certainty: {}", minimum_certainty);
+            tracing::info!("Using parameters:");
+            tracing::info!(" compatibility release: {}", compat_release);
+            tracing::info!(" minimum certainty: {}", minimum_certainty);
             if let Some(allow_reformatting) = allow_reformatting {
-                log::info!(" allow reformatting: {}", allow_reformatting);
+                tracing::info!(" allow reformatting: {}", allow_reformatting);
             } else {
-                log::info!(" allow reformatting: auto");
+                tracing::info!(" allow reformatting: auto");
             }
             if let Some(update_changelog) = update_changelog {
-                log::info!(" update changelog: {}", update_changelog);
+                tracing::info!(" update changelog: {}", update_changelog);
             } else {
-                log::info!(" update changelog: auto");
+                tracing::info!(" update changelog: auto");
             }
         }
 
@@ -624,7 +624,7 @@ fn main() -> Result<(), i32> {
             }
             Err(OverallError::WorkspaceDirty(p)) => {
                 drop(write_lock);
-                log::error!(
+                tracing::error!(
                     "{}: Please commit pending changes and remove unknown files first.",
                     p.display()
                 );
@@ -688,18 +688,18 @@ fn main() -> Result<(), i32> {
         std::mem::drop(write_lock);
         if let Some(tempdir) = tempdir {
             if let Err(e) = tempdir.close() {
-                log::warn!("Error removing temporary directory: {}", e);
+                tracing::warn!("Error removing temporary directory: {}", e);
             }
         }
 
         if !overall_result.overridden_lintian_issues.is_empty() {
             if overall_result.overridden_lintian_issues.len() == 1 {
-                log::info!(
+                tracing::info!(
                     "{} change skipped because of lintian overrides.",
                     overall_result.overridden_lintian_issues.len()
                 );
             } else {
-                log::info!(
+                tracing::info!(
                     "{} changes skipped because of lintian overrides.",
                     overall_result.overridden_lintian_issues.len()
                 );
@@ -708,39 +708,39 @@ fn main() -> Result<(), i32> {
         if !overall_result.success.is_empty() {
             let all_tags = overall_result.tags_count();
             if !all_tags.is_empty() {
-                log::info!(
+                tracing::info!(
                     "Lintian tags fixed: {:?}",
                     all_tags.keys().collect::<Vec<_>>()
                 );
             } else {
-                log::info!("Some changes were made, but there are no affected lintian tags.");
+                tracing::info!("Some changes were made, but there are no affected lintian tags.");
             }
             let min_certainty = overall_result.minimum_success_certainty();
             if min_certainty != Certainty::Certain {
-                log::info!(
+                tracing::info!(
                     "Some changes were made with lower certainty ({}); please double check the changes.",
                     min_certainty
                 );
             }
         } else {
-            log::info!("No changes made.");
+            tracing::info!("No changes made.");
         }
         if !overall_result.failed_fixers.is_empty() && !args.output.verbose {
-            log::info!("Some fixer scripts failed to run:");
+            tracing::info!("Some fixer scripts failed to run:");
             for (name, reason) in overall_result.failed_fixers.iter() {
-                log::info!("  {}: {}", name, reason);
+                tracing::info!("  {}: {}", name, reason);
             }
-            log::info!("Run with --verbose for details.");
+            tracing::info!("Run with --verbose for details.");
         }
         if !overall_result.formatting_unpreservable.is_empty() && !args.output.verbose {
-            log::info!(
+            tracing::info!(
                 "Some fixer scripts were unable to preserve formatting: {:?}. Run with --allow-reformatting to reformat {:?}.",
                 overall_result.formatting_unpreservable.keys().collect::<Vec<_>>(),
                 overall_result.formatting_unpreservable.values().collect::<Vec<_>>()
             );
         }
         if args.output.stats {
-            log::info!("Fixer performance statistics:");
+            tracing::info!("Fixer performance statistics:");
 
             // Collect all fixers with their durations from the HashMap
             let mut fixer_stats: Vec<_> = overall_result
