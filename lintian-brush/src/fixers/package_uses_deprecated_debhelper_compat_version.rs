@@ -303,7 +303,7 @@ fn update_rules_for_compat_12(
                 if !new_recipe.contains("buildsystem") {
                     match detect_debhelper_buildsystem(base_path, None) {
                         Ok(Some(buildsystem)) if buildsystem == "python_distutils" => {
-                            log::debug!(
+                            tracing::debug!(
                                 "Detected python_distutils buildsystem, upgrading to pybuild"
                             );
                             new_recipe =
@@ -314,16 +314,16 @@ fn update_rules_for_compat_12(
                             pybuild_upgraded = true;
                         }
                         Ok(Some(buildsystem)) => {
-                            log::debug!(
+                            tracing::debug!(
                                 "Detected buildsystem: {}, not upgrading to pybuild",
                                 buildsystem
                             );
                         }
                         Ok(None) => {
-                            log::debug!("No buildsystem detected");
+                            tracing::debug!("No buildsystem detected");
                         }
                         Err(e) => {
-                            log::warn!("Failed to detect buildsystem: {}", e);
+                            tracing::warn!("Failed to detect buildsystem: {}", e);
                         }
                     }
                 } else if new_recipe.contains("buildsystem=pybuild")

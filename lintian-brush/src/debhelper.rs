@@ -73,12 +73,21 @@ pub fn detect_debhelper_buildsystem(
     }
 
     // Use dh_assistant to detect the build system
-    let output = match std::process::Command::new("dh_assistant")
-        .arg("which-build-system")
-        .env("DH_NO_ACT", "1") // Prevent dh_assistant from writing .debhelper files
-        .current_dir(base_path)
-        .output()
-    {
+    // Clear any DH_* environment variables that might affect detection
+    let mut cmd = std::process::Command::new("dh_assistant");
+    cmd.arg("which-build-system");
+
+    // Remove all DH_* environment variables to avoid inheriting build-time settings
+    for (key, _) in std::env::vars() {
+        if key.starts_with("DH_") {
+            cmd.env_remove(&key);
+        }
+    }
+
+    cmd.env("DH_NO_ACT", "1"); // Prevent dh_assistant from writing .debhelper files
+    cmd.current_dir(base_path);
+
+    let output = match cmd.output() {
         Ok(output) => output,
         Err(e) => {
             log::debug!("Failed to execute dh_assistant: {}", e);
