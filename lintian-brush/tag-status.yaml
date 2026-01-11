@@ -247,6 +247,7 @@
     if included file is /usr/share/cdbs/1/rules/simple-patchsys.mk, then
     upgrade to 3.0 (quilt) source format
 - tag: debian-rules-uses-deprecated-systemd-override
+  status: implemented
   difficulty: easy
   status: implemented
 - tag: debian-rules-uses-installed-python-versions
@@ -1509,6 +1510,7 @@
   difficulty: medium
   comment: easy to do, but may be hard to figure out which VCS is canonical
 - tag: vcs-git-uses-invalid-user-uri
+  status: implemented
   difficulty: easy
   status: implemented
 - tag: vcs-uri

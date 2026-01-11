@@ -3,6 +3,10 @@
 export CARGO_HOME=$(shell pwd)/debian/cargo_home
 # Set codegen-units to 1 for reproducible builds (parallel codegen is non-deterministic)
 export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+# Enable debug logging if 'debug' is in DEB_BUILD_OPTIONS
+ifneq (,$(findstring debug,$(DEB_BUILD_OPTIONS)))
+export RUST_LOG=debug
+endif
 ZSH_COMPDIR = /usr/share/zsh/vendor-completions/
 
 %:

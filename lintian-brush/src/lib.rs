@@ -25,8 +25,10 @@ use debian_changelog::ChangeLog;
 
 /// Built-in fixers for common Lintian issues
 pub mod builtin_fixers;
-/// Macros for defining fixers
+/// Debian helper functions and types
+pub mod debhelper;
 #[macro_use]
+/// Macros for defining fixers
 pub mod macros;
 /// Fixer-related types and traits
 pub mod fixers;
@@ -761,11 +763,16 @@ fn run_inline_python_fixer(
     import_exception!(debmutate.reformatting, FormattingUnpreservable);
     import_exception!(debian.changelog, ChangelogCreateError);
 
+    // Mutex to serialize Python fixer operations across threads
+    // This prevents race conditions with module reloading and directory changes
+    // when tests run in parallel
+    static PYTHON_FIXER_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _lock = PYTHON_FIXER_LOCK.lock().unwrap();
+
     Python::attach(|py| {
         let sys = py.import("sys")?;
         let os = py.import("os")?;
         let io = py.import("io")?;
-        let fixer_module = py.import("lintian_brush.fixer")?;
 
         let old_env = os.getattr("environ")?.unbind();
         let old_stderr = sys.getattr("stderr")?;
@@ -780,7 +787,28 @@ fn run_inline_python_fixer(
 
         let old_cwd = os.call_method0("getcwd").ok();
 
-        os.call_method1("chdir", (basedir,))?;
+        // Change to basedir BEFORE importing lintian_brush.fixer, since that module
+        // instantiates ControlEditor() at import time which reads debian/control
+        os.call_method1("chdir", (basedir,)).map_err(|e| {
+            log::error!("Failed to chdir to {:?}: {}", basedir, e);
+            e
+        })?;
+
+        let fixer_module = py.import("lintian_brush.fixer").map_err(|e| {
+            let cwd = os.call_method0("getcwd").ok();
+            log::error!(
+                "Failed to import lintian_brush.fixer from cwd {:?}: {}",
+                cwd,
+                e
+            );
+            e
+        })?;
+
+        // Reload the control editor for the new directory
+        fixer_module.call_method0("reload").map_err(|e| {
+            log::error!("Failed to reload fixer module: {}", e);
+            e
+        })?;
 
         let global_vars = PyDict::new(py);
         global_vars.set_item("__file__", path)?;
@@ -896,6 +924,15 @@ mod run_inline_python_fixer_tests {
     fn test_no_changes() {
         setup();
         let td = tempfile::tempdir().unwrap();
+
+        // Create debian/control (required by fixer.py)
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/control"),
+            "Source: test\n\nPackage: test\nArchitecture: all\n",
+        )
+        .unwrap();
+
         let path = td.path().join("no_changes.py");
         let result = super::run_inline_python_fixer(
             &path,
@@ -916,6 +953,15 @@ mod run_inline_python_fixer_tests {
     fn test_failed() {
         setup();
         let td = tempfile::tempdir().unwrap();
+
+        // Create debian/control (required by fixer.py)
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        std::fs::write(
+            td.path().join("debian/control"),
+            "Source: test\n\nPackage: test\nArchitecture: all\n",
+        )
+        .unwrap();
+
         let path = td.path().join("no_changes.py");
         let result = super::run_inline_python_fixer(
             &path,

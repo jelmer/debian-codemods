@@ -77,6 +77,9 @@ fn test_all_test_dirs_have_matching_fixers() {
 }
 
 fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
+    // Initialize tracing for debugging
+    let _ = tracing_subscriber::fmt::try_init();
+
     #[cfg(feature = "python")]
     {
         pyo3::Python::attach(|py| {

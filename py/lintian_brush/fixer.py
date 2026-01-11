@@ -242,12 +242,27 @@ def is_debcargo_package():
     return os.path.exists("debian/debcargo.toml")
 
 
-if is_debcargo_package():
-    from debmutate.debcargo import DebcargoControlShimEditor
+def _create_control_editor():
+    """Create a control editor for the current directory."""
+    if is_debcargo_package():
+        from debmutate.debcargo import DebcargoControlShimEditor
 
-    control = DebcargoControlShimEditor.from_debian_dir("debian")
-else:
-    control = ControlEditor()
+        return DebcargoControlShimEditor.from_debian_dir("debian")
+    else:
+        return ControlEditor()
+
+
+control = _create_control_editor()
+
+
+def reload() -> None:
+    """Reload the control editor.
+
+    This should be called when changing to a different debian package directory
+    to ensure the control editor is re-initialized for the new location.
+    """
+    global control
+    control = _create_control_editor()
 
 
 def vendor() -> str:
