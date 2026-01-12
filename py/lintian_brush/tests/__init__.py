@@ -18,10 +18,7 @@
 import unittest
 
 core_names = [
-    "debhelper",
-    "release_info",
     "run",
-    "vcs",
     "yaml",
 ]
 
