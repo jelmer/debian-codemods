@@ -322,38 +322,7 @@ fn main() -> Result<(), i32> {
     if args.output.list_fixers {
         fixers.sort_by_key(|a| a.name());
         for fixer in fixers {
-            if args.output.verbose {
-                // Check if it's a ScriptFixer or PythonScriptFixer (both implement ExternalFixer)
-                if let Some(script_fixer) =
-                    fixer.as_any().downcast_ref::<lintian_brush::ScriptFixer>()
-                {
-                    println!(
-                        "{} ({})",
-                        fixer.name(),
-                        lintian_brush::ExternalFixer::path(script_fixer).display()
-                    );
-                } else if cfg!(feature = "python") {
-                    #[cfg(feature = "python")]
-                    if let Some(python_fixer) = fixer
-                        .as_any()
-                        .downcast_ref::<lintian_brush::PythonScriptFixer>()
-                    {
-                        println!(
-                            "{} ({})",
-                            fixer.name(),
-                            lintian_brush::ExternalFixer::path(python_fixer).display()
-                        );
-                    } else {
-                        println!("{}", fixer.name());
-                    }
-                    #[cfg(not(feature = "python"))]
-                    println!("{}", fixer.name());
-                } else {
-                    println!("{}", fixer.name());
-                }
-            } else {
-                println!("{}", fixer.name());
-            }
+            println!("{}", fixer.name());
         }
     } else if args.output.list_tags {
         let tags = fixers
