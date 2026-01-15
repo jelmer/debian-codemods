@@ -19,7 +19,6 @@ import unittest
 
 core_names = [
     "run",
-    "yaml",
 ]
 
 
