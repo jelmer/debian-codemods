@@ -154,7 +154,7 @@ async fn find_wnpp_bugs_async(package_name: &str) -> Result<Vec<(BugId, BugKind)
         Ok(bugs) => Ok(bugs),
         Err(e) => {
             // If we can't fetch bugs, just return an empty list
-            log::warn!("Failed to query WNPP bugs: {}", e);
+            tracing::warn!("Failed to query WNPP bugs: {}", e);
             Ok(vec![])
         }
     }

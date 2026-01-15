@@ -33,7 +33,7 @@ fn get_name_section_mappings(
                     regexes.push((regex, section.to_string()));
                 }
                 Err(e) => {
-                    log::warn!("Invalid regex '{}': {}", regex_str, e);
+                    tracing::warn!("Invalid regex '{}': {}", regex_str, e);
                     continue;
                 }
             }
@@ -73,7 +73,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     let regexes = match get_name_section_mappings(preferences.lintian_data_path.as_deref()) {
         Ok(r) => r,
         Err(e) => {
-            log::warn!("Failed to load name-section mappings: {}", e);
+            tracing::warn!("Failed to load name-section mappings: {}", e);
             return Err(FixerError::NoChanges);
         }
     };

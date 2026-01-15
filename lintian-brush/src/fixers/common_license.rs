@@ -202,7 +202,7 @@ fn canonical_license_id(license_id: &str) -> String {
 
         format!("{}-{}{}", family, version, plus)
     } else {
-        log::warn!("Unable to get canonical name for {:?}", license_id);
+        tracing::warn!("Unable to get canonical name for {:?}", license_id);
         license_id.to_string()
     }
 }
@@ -356,7 +356,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
                 renames.insert(synopsis.clone(), new_name.to_string());
             } else {
                 // Found full license text but no matching blurb and not in SPDX_RENAMES
-                log::warn!(
+                tracing::warn!(
                     "Found full license text for {}, but unknown synopsis {} ({})",
                     license_matched,
                     synopsis,
@@ -367,7 +367,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             // No full license text match - check if synopsis looks like a common license
             let common_license_path = Path::new(COMMON_LICENSES_DIR).join(&synopsis);
             if common_license_path.exists() {
-                log::warn!(
+                tracing::warn!(
                     "A common license shortname ({}) is used, but license text not recognized.",
                     synopsis
                 );

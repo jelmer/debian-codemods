@@ -127,10 +127,12 @@ pub fn run(base_path: &Path, package: &str, thorough: bool) -> Result<FixerResul
                 }
             }
             None => {
-                log::debug!("No version found for changelog entry, skipping version recording.");
+                tracing::debug!(
+                    "No version found for changelog entry, skipping version recording."
+                );
             }
             Some(Err(e)) => {
-                log::debug!("Failed to parse version for changelog entry: {}", e);
+                tracing::debug!("Failed to parse version for changelog entry: {}", e);
             }
         }
     }

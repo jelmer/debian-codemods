@@ -1,10 +1,10 @@
 use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use deb822_lossless::{Deb822, Paragraph};
-use log::warn;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::str::FromStr;
+use tracing::warn;
 
 const VALID_FIELD_NAMES: &[&str] = &[
     "Files",

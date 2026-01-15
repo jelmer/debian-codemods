@@ -33,7 +33,7 @@ fn valid_bug(package: &str, bug: u32, net_access: bool) -> Option<bool> {
                 Some(false)
             }
             Err(e) => {
-                log::warn!("Failed to query bug {}: {}", bug, e);
+                tracing::warn!("Failed to query bug {}: {}", bug, e);
                 None
             }
         }
