@@ -568,22 +568,6 @@ fn main() -> Result<(), i32> {
             );
         }
 
-        #[cfg(feature = "python")]
-        {
-            // Ensure we can find the lintian_brush.fixer python module
-            let e = pyo3::Python::attach(|py| py.import("lintian_brush.fixer").err());
-
-            if let Some(e) = e {
-                drop(write_lock);
-                svp.report_fatal(
-                    "python-import-error",
-                    format!("Error importing lintian_brush.fixer: {}", e).as_str(),
-                    Some("Ensure that the lintian-brush Python package is in Python's sys.path."),
-                    Some(false),
-                );
-            }
-        }
-
         let preferences = lintian_brush::FixerPreferences {
             compat_release: Some(compat_release),
             minimum_certainty: Some(minimum_certainty),
