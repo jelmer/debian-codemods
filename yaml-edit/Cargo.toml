@@ -3,15 +3,12 @@ name = "yaml-edit"
 version = "0.1.0"
 edition = "2021"
 authors = ["Jelmer Vernooij <jelmer@debian.org>"]
-description = "PyO3 wrapper around lintian-brush yaml.py for YAML editing"
+description = "Lossless YAML editor that preserves formatting"
 license = "GPL-2.0-or-later"
 
 [dependencies]
-pyo3 = { workspace = true, features = ["auto-initialize"] }
 indexmap = { workspace = true }
+rowan = "0.16"
 
 [dev-dependencies]
 tempfile.workspace = true
-
-[build-dependencies]
-pyo3-build-config = ">=0.27,<0.28"
