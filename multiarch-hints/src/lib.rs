@@ -537,9 +537,7 @@ pub fn apply_multiarch_hints(
     config: &ApplyMultiarchHintsConfig,
 ) -> Result<OverallResult, OverallError> {
     let minimum_certainty = config.minimum_certainty.unwrap_or(Certainty::Certain);
-    let basis_tree = local_tree
-        .basis_tree()
-        .map_err(OverallError::BrzError)?;
+    let basis_tree = local_tree.basis_tree().map_err(OverallError::BrzError)?;
     let (changes, _tree_changes, mut specific_files) = match apply_or_revert(
         local_tree,
         subpath,

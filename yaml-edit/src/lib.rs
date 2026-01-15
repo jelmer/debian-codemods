@@ -30,6 +30,7 @@ use std::path::Path;
 // ============================================================================
 
 /// Syntax kinds for YAML tokens and nodes
+#[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u16)]
 pub enum SyntaxKind {
@@ -43,6 +44,14 @@ pub enum SyntaxKind {
     DASH,      // - for list items
     DOC_START, // ---
     DOC_END,   // ...
+
+    // JSON-specific tokens
+    LBRACE,   // {
+    RBRACE,   // }
+    LBRACKET, // [
+    RBRACKET, // ]
+    COMMA,    // ,
+    STRING,   // "quoted string"
 
     // Nodes
     ROOT,
@@ -125,6 +134,32 @@ fn lex(input: &str) -> Vec<(SyntaxKind, &str)> {
                 (SyntaxKind::WHITESPACE, &input[start..end])
             }
             ':' => (SyntaxKind::COLON, &input[start..start + 1]),
+            '{' => (SyntaxKind::LBRACE, &input[start..start + 1]),
+            '}' => (SyntaxKind::RBRACE, &input[start..start + 1]),
+            '[' => (SyntaxKind::LBRACKET, &input[start..start + 1]),
+            ']' => (SyntaxKind::RBRACKET, &input[start..start + 1]),
+            ',' => (SyntaxKind::COMMA, &input[start..start + 1]),
+            '"' => {
+                // Quoted string - consume until closing quote
+                let mut end = start + 1;
+                let mut escaped = false;
+                while let Some(&(pos, c)) = chars.peek() {
+                    chars.next();
+                    end = pos + c.len_utf8();
+                    if escaped {
+                        escaped = false;
+                        continue;
+                    }
+                    if c == '\\' {
+                        escaped = true;
+                        continue;
+                    }
+                    if c == '"' {
+                        break;
+                    }
+                }
+                (SyntaxKind::STRING, &input[start..end])
+            }
             '-' => {
                 // Check if this is --- (doc start) or just -
                 if let Some(&(_, '-')) = chars.peek() {
@@ -253,10 +288,21 @@ impl<'a> Parser<'a> {
             self.skip_whitespace();
         }
 
-        // Check if this is a sequence (starts with DASH) or mapping
+        // Check if this is JSON format, YAML sequence, or YAML mapping
         match self.current() {
+            Some((SyntaxKind::LBRACE, _)) => self.parse_json_object(),
+            Some((SyntaxKind::LBRACKET, _)) => self.parse_json_array(),
             Some((SyntaxKind::DASH, _)) => self.parse_sequence(),
             _ => self.parse_mapping(),
+        }
+
+        // Consume any trailing whitespace/newlines to preserve them in the CST
+        while let Some((kind, _)) = self.current() {
+            if matches!(kind, SyntaxKind::WHITESPACE | SyntaxKind::NEWLINE) {
+                self.bump();
+            } else {
+                break;
+            }
         }
 
         self.builder.finish_node();
@@ -455,7 +501,7 @@ impl<'a> Parser<'a> {
             .start_node(YamlLanguage::kind_to_raw(SyntaxKind::MAPPING));
 
         // Parse indented entries
-        while let Some((kind, text)) = self.current() {
+        while let Some((kind, _text)) = self.current() {
             match kind {
                 SyntaxKind::WHITESPACE => {
                     // Check if this is indentation at the start of a line
@@ -485,6 +531,151 @@ impl<'a> Parser<'a> {
 
         self.builder.finish_node();
     }
+
+    fn parse_json_object(&mut self) {
+        self.builder
+            .start_node(YamlLanguage::kind_to_raw(SyntaxKind::MAPPING));
+
+        // Consume opening brace
+        self.bump(); // {
+        self.skip_whitespace();
+
+        // Parse key-value pairs
+        while !matches!(self.current(), Some((SyntaxKind::RBRACE, _)) | None) {
+            // Skip whitespace/newlines
+            while matches!(
+                self.current(),
+                Some((SyntaxKind::WHITESPACE | SyntaxKind::NEWLINE, _))
+            ) {
+                self.bump();
+            }
+
+            // Check for closing brace
+            if matches!(self.current(), Some((SyntaxKind::RBRACE, _)) | None) {
+                break;
+            }
+
+            // Parse entry
+            self.builder
+                .start_node(YamlLanguage::kind_to_raw(SyntaxKind::ENTRY));
+
+            // Parse key (should be a quoted string)
+            if let Some((SyntaxKind::STRING, _)) = self.current() {
+                self.builder
+                    .start_node(YamlLanguage::kind_to_raw(SyntaxKind::KEY_ITEM));
+                // Keep the STRING token as-is (with quotes) for lossless editing
+                self.bump();
+                self.builder.finish_node(); // KEY_ITEM
+            }
+
+            self.skip_whitespace();
+
+            // Expect colon
+            if matches!(self.current(), Some((SyntaxKind::COLON, _))) {
+                self.bump();
+            }
+
+            self.skip_whitespace();
+
+            // Parse value
+            self.builder
+                .start_node(YamlLanguage::kind_to_raw(SyntaxKind::VALUE_ITEM));
+            self.parse_json_value();
+            self.builder.finish_node(); // VALUE_ITEM
+
+            self.builder.finish_node(); // ENTRY
+
+            self.skip_whitespace();
+
+            // Consume comma if present
+            if matches!(self.current(), Some((SyntaxKind::COMMA, _))) {
+                self.bump();
+            }
+
+            self.skip_whitespace();
+        }
+
+        // Consume closing brace
+        if matches!(self.current(), Some((SyntaxKind::RBRACE, _))) {
+            self.bump();
+        }
+
+        self.builder.finish_node(); // MAPPING
+    }
+
+    fn parse_json_array(&mut self) {
+        self.builder
+            .start_node(YamlLanguage::kind_to_raw(SyntaxKind::SEQUENCE));
+
+        // Consume opening bracket
+        self.bump(); // [
+        self.skip_whitespace();
+
+        // Parse array items
+        while !matches!(self.current(), Some((SyntaxKind::RBRACKET, _)) | None) {
+            // Skip whitespace/newlines
+            while matches!(
+                self.current(),
+                Some((SyntaxKind::WHITESPACE | SyntaxKind::NEWLINE, _))
+            ) {
+                self.bump();
+            }
+
+            // Check for closing bracket
+            if matches!(self.current(), Some((SyntaxKind::RBRACKET, _)) | None) {
+                break;
+            }
+
+            // Parse item
+            self.builder
+                .start_node(YamlLanguage::kind_to_raw(SyntaxKind::SEQUENCE_ITEM));
+
+            self.parse_json_value();
+
+            self.builder.finish_node(); // SEQUENCE_ITEM
+
+            self.skip_whitespace();
+
+            // Consume comma if present
+            if matches!(self.current(), Some((SyntaxKind::COMMA, _))) {
+                self.bump();
+            }
+
+            self.skip_whitespace();
+        }
+
+        // Consume closing bracket
+        if matches!(self.current(), Some((SyntaxKind::RBRACKET, _))) {
+            self.bump();
+        }
+
+        self.builder.finish_node(); // SEQUENCE
+    }
+
+    fn parse_json_value(&mut self) {
+        match self.current() {
+            Some((SyntaxKind::STRING, _)) => {
+                // Keep the STRING token as-is (with quotes) for lossless editing
+                self.bump();
+            }
+            Some((SyntaxKind::LBRACE, _)) => {
+                // Nested object
+                self.parse_json_object();
+            }
+            Some((SyntaxKind::LBRACKET, _)) => {
+                // Nested array
+                self.parse_json_array();
+            }
+            Some((SyntaxKind::VALUE, _)) => {
+                // Unquoted value (number, boolean, null)
+                self.bump();
+            }
+            _ => {
+                // Unexpected, skip
+                self.pos += 1;
+            }
+        }
+    }
 }
 
 fn parse_yaml(input: &str) -> SyntaxNode {
@@ -494,22 +685,135 @@ fn parse_yaml(input: &str) -> SyntaxNode {
     SyntaxNode::new_root_mut(green)
 }
 
-// Find an ENTRY node in the CST by key name
-fn find_entry_by_key(node: &SyntaxNode, target_key: &str) -> Option<SyntaxNode> {
-    for child in node.descendants() {
-        if child.kind() == SyntaxKind::ENTRY {
-            // Extract the key from this entry
-            for token in child.children_with_tokens() {
-                if let rowan::NodeOrToken::Token(t) = token {
-                    if t.kind() == SyntaxKind::KEY
-                        && t.text().trim() == target_key {
-                            return Some(child);
-                        }
-                }
-            }
+// Check if a string value needs to be quoted in YAML block context
+// (i.e., when used as a value in a key: value pair)
+fn needs_quoting(s: &str) -> bool {
+    if s.is_empty() {
+        return true;
+    }
+
+    // Check for leading/trailing whitespace
+    if s.trim() != s {
+        return true;
+    }
+
+    // Check if it could be interpreted as a number, boolean, or null
+    if matches!(
+        s,
+        "true" | "false" | "yes" | "no" | "on" | "off" | "null" | "~"
+    ) {
+        return true;
+    }
+    if s.parse::<i64>().is_ok() || s.parse::<f64>().is_ok() {
+        return true;
+    }
+
+    // Check if it starts with YAML indicators or special characters
+    if let Some(first) = s.chars().next() {
+        if matches!(
+            first,
+            '-' | '?'
+                | ':'
+                | '|'
+                | '>'
+                | '\''
+                | '"'
+                | '%'
+                | '@'
+                | '&'
+                | '!'
+                | '*'
+                | '['
+                | ']'
+                | '{'
+                | '}'
+                | '#'
+        ) {
+            return true;
         }
     }
-    None
+
+    // Check for colon followed by space (key-value separator)
+    if s.contains(": ") {
+        return true;
+    }
+
+    // Check for space followed by hash (comment marker)
+    if s.contains(" #") {
+        return true;
+    }
+
+    // Check for newlines
+    if s.contains('\n') || s.contains('\r') {
+        return true;
+    }
+
+    false
+}
+
+// Escape a string for JSON format (add quotes and escape special characters)
+fn escape_json_string(s: &str) -> String {
+    let mut result = String::from("\"");
+    for ch in s.chars() {
+        match ch {
+            '"' => result.push_str("\\\""),
+            '\\' => result.push_str("\\\\"),
+            '\u{0008}' => result.push_str("\\b"),
+            '\u{000C}' => result.push_str("\\f"),
+            '\n' => result.push_str("\\n"),
+            '\r' => result.push_str("\\r"),
+            '\t' => result.push_str("\\t"),
+            _ if ch.is_control() => {
+                // Escape other control characters as \uXXXX
+                result.push_str(&format!("\\u{:04x}", ch as u32));
+            }
+            _ => result.push(ch),
+        }
+    }
+    result.push('"');
+    result
+}
+
+// Unescape a JSON string (strip quotes and handle escape sequences)
+fn unescape_json_string(s: &str) -> String {
+    let s = s.trim_matches('"');
+    let mut result = String::new();
+    let mut chars = s.chars();
+
+    while let Some(ch) = chars.next() {
+        if ch == '\\' {
+            if let Some(next) = chars.next() {
+                match next {
+                    '"' => result.push('"'),
+                    '\\' => result.push('\\'),
+                    '/' => result.push('/'),
+                    'b' => result.push('\u{0008}'),
+                    'f' => result.push('\u{000C}'),
+                    'n' => result.push('\n'),
+                    'r' => result.push('\r'),
+                    't' => result.push('\t'),
+                    'u' => {
+                        // Unicode escape: \uXXXX
+                        let hex: String = chars.by_ref().take(4).collect();
+                        if let Ok(code) = u32::from_str_radix(&hex, 16) {
+                            if let Some(unicode_char) = char::from_u32(code) {
+                                result.push(unicode_char);
+                            }
+                        }
+                    }
+                    _ => {
+                        // Unknown escape, keep as-is
+                        result.push('\\');
+                        result.push(next);
+                    }
+                }
+            }
+        } else {
+            result.push(ch);
+        }
+    }
+
+    result
 }
 
 // Build a new green node for an ENTRY with the given key and value
@@ -530,7 +834,7 @@ fn build_entry_green(key: &str, value: &Value) -> GreenNode {
 
     // VALUE_ITEM node with properly structured value
     builder.start_node(YamlLanguage::kind_to_raw(SyntaxKind::VALUE_ITEM));
-    build_value_nodes(&mut builder, value);
+    build_value_nodes(&mut builder, value, false);
     builder.finish_node();
 
     // NEWLINE token
@@ -541,20 +845,29 @@ fn build_entry_green(key: &str, value: &Value) -> GreenNode {
 }
 
 // Build just a VALUE_ITEM node (for replacing values)
-fn build_value_green(value: &Value) -> GreenNode {
+// Build a VALUE_ITEM node with optional quoting
+fn build_value_green_with_format(value: &Value, preserve_quotes: bool) -> GreenNode {
     let mut builder = GreenNodeBuilder::new();
     builder.start_node(YamlLanguage::kind_to_raw(SyntaxKind::VALUE_ITEM));
-    build_value_nodes(&mut builder, value);
+    build_value_nodes(&mut builder, value, preserve_quotes);
     builder.finish_node();
     builder.finish()
 }
 
 // Recursively build CST nodes for a value
 // This builds what goes INSIDE a VALUE_ITEM node
-fn build_value_nodes(builder: &mut GreenNodeBuilder, value: &Value) {
+fn build_value_nodes(builder: &mut GreenNodeBuilder, value: &Value, preserve_quotes: bool) {
     match value {
         Value::String(s) => {
-            builder.token(YamlLanguage::kind_to_raw(SyntaxKind::VALUE), s);
+            // Quote if: original was quoted OR new value requires quoting
+            if preserve_quotes || needs_quoting(s) {
+                // Use STRING token with quotes
+                let escaped = escape_json_string(s);
+                builder.token(YamlLanguage::kind_to_raw(SyntaxKind::STRING), &escaped);
+            } else {
+                // Use VALUE token without quotes
+                builder.token(YamlLanguage::kind_to_raw(SyntaxKind::VALUE), s);
+            }
         }
         Value::Int(i) => {
             builder.token(YamlLanguage::kind_to_raw(SyntaxKind::VALUE), &i.to_string());
@@ -584,7 +897,7 @@ fn build_value_nodes(builder: &mut GreenNodeBuilder, value: &Value) {
 
                 // VALUE_ITEM with recursive value
                 builder.start_node(YamlLanguage::kind_to_raw(SyntaxKind::VALUE_ITEM));
-                build_value_nodes(builder, val);
+                build_value_nodes(builder, val, preserve_quotes);
                 builder.finish_node(); // VALUE_ITEM
 
                 builder.token(YamlLanguage::kind_to_raw(SyntaxKind::NEWLINE), "\n");
@@ -601,28 +914,12 @@ fn build_value_nodes(builder: &mut GreenNodeBuilder, value: &Value) {
                 builder.token(YamlLanguage::kind_to_raw(SyntaxKind::WHITESPACE), " ");
 
                 // Recursively build the item value
-                build_value_nodes(builder, item);
+                build_value_nodes(builder, item, preserve_quotes);
 
                 builder.token(YamlLanguage::kind_to_raw(SyntaxKind::NEWLINE), "\n");
                 builder.finish_node(); // SEQUENCE_ITEM
             }
             builder.finish_node(); // SEQUENCE
-        }
-    }
-}
-
-// Format a value as inline text (for simple values only - deprecated, use build_value_nodes instead)
-fn format_value_inline(value: &Value) -> String {
-    match value {
-        Value::String(s) => s.clone(),
-        Value::Int(i) => i.to_string(),
-        Value::Float(f) => f.to_string(),
-        Value::Bool(b) => b.to_string(),
-        Value::Null => "null".to_string(),
-        _ => {
-            // For complex values, we'll need to handle them differently
-            // For now, just indicate they need special handling
-            unimplemented!("Complex values need special CST handling")
         }
     }
 }
@@ -782,6 +1079,10 @@ fn extract_sequence(node: &SyntaxNode) -> Value {
                                     // Stop at newline
                                     break;
                                 }
+                                SyntaxKind::STRING => {
+                                    // Unescape JSON strings
+                                    value_text.push_str(&unescape_json_string(t.text()));
+                                }
                                 _ => {
                                     // Collect everything else as value text
                                     value_text.push_str(t.text());
@@ -825,11 +1126,18 @@ fn extract_entry_pair(entry_node: &SyntaxNode) -> (String, Value) {
     for child in entry_node.children() {
         match child.kind() {
             SyntaxKind::KEY_ITEM => {
-                // Extract key text from KEY token inside KEY_ITEM
+                // Extract key text from KEY or STRING token inside KEY_ITEM
                 for token in child.children_with_tokens() {
                     if let rowan::NodeOrToken::Token(t) = token {
-                        if t.kind() == SyntaxKind::KEY {
-                            key = t.text().trim().to_string();
+                        match t.kind() {
+                            SyntaxKind::KEY => {
+                                key = t.text().trim().to_string();
+                            }
+                            SyntaxKind::STRING => {
+                                // Unescape JSON string (strip quotes and handle escapes)
+                                key = unescape_json_string(t.text());
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -857,7 +1165,12 @@ fn extract_entry_pair(entry_node: &SyntaxNode) -> (String, Value) {
                     let mut value_text = String::new();
                     for token in child.children_with_tokens() {
                         if let rowan::NodeOrToken::Token(t) = token {
-                            value_text.push_str(t.text());
+                            // Unescape JSON STRING tokens
+                            if t.kind() == SyntaxKind::STRING {
+                                value_text.push_str(&unescape_json_string(t.text()));
+                            } else {
+                                value_text.push_str(t.text());
+                            }
                         }
                     }
                     value = if value_text.trim().is_empty() {
@@ -1146,7 +1459,7 @@ impl YamlUpdater {
 
     /// Enter the context manager and load the YAML file
     pub fn open(&mut self) -> Result<YamlDocument> {
-        let (orig_value, preamble, orig_content, earlier_docs_csts, cst) = if self.path.exists() {
+        let (orig_value, preamble, earlier_docs_csts, cst) = if self.path.exists() {
             let content = std::fs::read_to_string(&self.path)?;
             let lines: Vec<&str> = content.lines().collect();
 
@@ -1185,7 +1498,7 @@ impl YamlUpdater {
                 // Single document (or no explicit markers)
                 let tree = parse_yaml(&content_rest);
                 let value = extract_value_from_cst(&tree);
-                (value, preamble, Some(content), vec![], tree)
+                (value, preamble, vec![], tree)
             } else {
                 // Multi-document file: split and parse each
                 let mut doc_texts = Vec::new();
@@ -1212,7 +1525,7 @@ impl YamlUpdater {
                 let last_tree = parse_yaml(last_text);
                 let last_value = extract_value_from_cst(&last_tree);
 
-                (last_value, preamble, Some(content), earlier_csts, last_tree)
+                (last_value, preamble, earlier_csts, last_tree)
             }
         } else {
             // For new files - create an empty MAPPING structure with document marker
@@ -1228,13 +1541,7 @@ impl YamlUpdater {
             builder.finish_node(); // ROOT
             let empty_green = builder.finish();
             let empty_tree = SyntaxNode::new_root_mut(empty_green);
-            (
-                Value::Map(IndexMap::new()),
-                Vec::new(),
-                None,
-                vec![],
-                empty_tree,
-            )
+            (Value::Map(IndexMap::new()), Vec::new(), vec![], empty_tree)
         };
 
         let code = orig_value.clone();
@@ -1246,7 +1553,6 @@ impl YamlUpdater {
             preamble,
             remove_empty: self.remove_empty,
             force_rewrite_flag: RefCell::new(false),
-            orig_content,
             earlier_docs_csts,
             cst: RefCell::new(cst),
         })
@@ -1267,9 +1573,8 @@ pub struct YamlDocument {
     preamble: Vec<String>,
     remove_empty: bool,
     force_rewrite_flag: RefCell<bool>,
-    orig_content: Option<String>, // Cache of original file content for lossless editing
     earlier_docs_csts: Vec<SyntaxNode>, // CSTs for earlier documents in multi-doc files (immutable)
-    cst: RefCell<SyntaxNode>,     // The CST for the last/only document (mutable)
+    cst: RefCell<SyntaxNode>,           // The CST for the last/only document (mutable)
 }
 
 impl YamlDocument {
@@ -1314,15 +1619,32 @@ impl YamlDocument {
         });
 
         if let Some(entry) = existing_entry {
-            // Modify existing entry - replace the entire ENTRY node (like deb822-lossless does)
-            let entry_idx = entry.index();
+            // Modify existing entry - replace only the VALUE_ITEM to preserve formatting
+            // Find the VALUE_ITEM node within this entry
+            if let Some(value_item) = entry
+                .children()
+                .find(|c| c.kind() == SyntaxKind::VALUE_ITEM)
+            {
+                let value_idx = value_item.index();
 
-            // Build a new ENTRY with the new value
-            let new_entry_green = build_entry_green(key, &value);
-            let new_entry_node = SyntaxNode::new_root_mut(new_entry_green);
+                // Preserve quoting style: check if the old value used quoted strings
+                let had_quotes = value_item.descendants_with_tokens().any(|node_or_token| {
+                    matches!(node_or_token, rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::STRING)
+                });
 
-            // Replace the entire entry node
-            mapping.splice_children(entry_idx..entry_idx + 1, vec![new_entry_node.into()]);
+                // Build a new VALUE_ITEM with the new value, preserving quoting if it was there
+                let new_value_green = build_value_green_with_format(&value, had_quotes);
+                let new_value_node = SyntaxNode::new_root_mut(new_value_green);
+
+                // Replace only the VALUE_ITEM node (preserves key formatting, commas, etc.)
+                entry.splice_children(value_idx..value_idx + 1, vec![new_value_node.into()]);
+            } else {
+                // Fallback: replace entire entry if no VALUE_ITEM found
+                let entry_idx = entry.index();
+                let new_entry_green = build_entry_green(key, &value);
+                let new_entry_node = SyntaxNode::new_root_mut(new_entry_green);
+                mapping.splice_children(entry_idx..entry_idx + 1, vec![new_entry_node.into()]);
+            }
         } else {
             // Add new entry at the end
             let new_entry_green = build_entry_green(key, &value);
@@ -1573,7 +1895,7 @@ impl YamlDocument {
                     builder.token(YamlLanguage::kind_to_raw(SyntaxKind::WHITESPACE), " ");
                     // VALUE_ITEM node with properly structured value
                     builder.start_node(YamlLanguage::kind_to_raw(SyntaxKind::VALUE_ITEM));
-                    build_value_nodes(&mut builder, val);
+                    build_value_nodes(&mut builder, val, false);
                     builder.finish_node(); // VALUE_ITEM
                     builder.token(YamlLanguage::kind_to_raw(SyntaxKind::NEWLINE), "\n");
                     builder.finish_node(); // ENTRY
@@ -1651,46 +1973,6 @@ impl YamlDocument {
 
         Ok(())
     }
-}
-
-fn is_simple_value(value: &Value) -> bool {
-    matches!(
-        value,
-        Value::String(_) | Value::Int(_) | Value::Bool(_) | Value::Null
-    )
-}
-
-fn write_yaml_kv(file: &mut std::fs::File, key: &str, value: &Value) -> Result<()> {
-    match value {
-        Value::String(s) => {
-            write!(file, "{}: ", key)?;
-            writeln!(file, "{}", s)?;
-        }
-        Value::Int(i) => {
-            write!(file, "{}: ", key)?;
-            writeln!(file, "{}", i)?;
-        }
-        Value::Float(f) => {
-            write!(file, "{}: ", key)?;
-            writeln!(file, "{}", f)?;
-        }
-        Value::Bool(b) => {
-            write!(file, "{}: ", key)?;
-            writeln!(file, "{}", b)?;
-        }
-        Value::Null => {
-            write!(file, "{}: ", key)?;
-            writeln!(file, "null")?;
-        }
-        Value::List(_) | Value::Map(_) => {
-            // Complex values - write key without trailing space, then newline
-            write!(file, "{}:", key)?;
-            writeln!(file)?;
-            // Indent nested structures by 2 spaces from parent
-            write_value(file, value, 2)?;
-        }
-    }
-    Ok(())
 }
 
 /// A multi-document YAML editor
@@ -1929,7 +2211,7 @@ impl MultiYamlDocument {
         builder.token(YamlLanguage::kind_to_raw(SyntaxKind::NEWLINE), "\n");
 
         // Build the document content (handles all value types)
-        build_value_nodes(&mut builder, &value);
+        build_value_nodes(&mut builder, &value, false);
 
         builder.finish_node(); // DOCUMENT
         builder.finish_node(); // ROOT
@@ -1995,41 +2277,6 @@ impl MultiYamlDocument {
 
         Ok(())
     }
-}
-
-// Helper to parse multi-document YAML
-fn parse_multi_yaml(content: &str) -> Vec<Value> {
-    let mut docs = Vec::new();
-    let parts: Vec<&str> = content.split("\n---\n").collect();
-
-    for part in parts {
-        let trimmed = part.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        // Remove leading --- if present
-        let yaml_text = trimmed.strip_prefix("---").unwrap_or(trimmed);
-
-        let tree = parse_yaml(yaml_text);
-
-        let mut map = IndexMap::new();
-        let mut key_order = Vec::new();
-        extract_entries(&tree, &mut map, &mut key_order);
-
-        // Flatten to single values (take first if duplicates)
-        let final_map: IndexMap<String, Value> = key_order
-            .into_iter()
-            .filter_map(|k| {
-                map.get(&k)
-                    .and_then(|values: &Vec<Value>| values.first().map(|v| (k.clone(), v.clone())))
-            })
-            .collect();
-
-        docs.push(Value::Map(final_map));
-    }
-
-    docs
 }
 
 #[cfg(test)]
@@ -3044,5 +3291,67 @@ mod tests {
                 Some(Value::String("git@github.com:user/repo.git".to_string()))
             );
         }
+    }
+
+    #[test]
+    fn test_parse_json_format() {
+        let temp_dir = TempDir::new().unwrap();
+        let json_path = temp_dir.path().join("test.json");
+
+        let json_content = r#"{
+  "Name": "yep",
+  "Repository": [
+    "url1",
+    "url2"
+  ]
+}"#;
+        fs::write(&json_path, json_content).unwrap();
+
+        let mut updater = YamlUpdater::new(&json_path).unwrap();
+        let doc = updater.open().unwrap();
+
+        // Check if we can read Name
+        let name = doc.get("Name").unwrap();
+        assert_eq!(name, Some(Value::String("yep".to_string())));
+
+        // Check if we can read Repository as a list
+        let repo = doc.get("Repository").unwrap();
+        assert_eq!(
+            repo,
+            Some(Value::List(vec![
+                Value::String("url1".to_string()),
+                Value::String("url2".to_string())
+            ]))
+        );
+    }
+
+    #[test]
+    fn test_modify_json_format() {
+        let temp_dir = TempDir::new().unwrap();
+        let json_path = temp_dir.path().join("test.json");
+
+        let json_content = r#"{
+  "Name": "yep",
+  "Repo": "old"
+}
+"#;
+        fs::write(&json_path, json_content).unwrap();
+
+        {
+            let mut updater = YamlUpdater::new(&json_path).unwrap();
+            let doc = updater.open().unwrap();
+
+            // Modify Repo value
+            doc.set("Repo", Value::String("new".to_string())).unwrap();
+        }
+
+        // Read back and verify exact content
+        let content = fs::read_to_string(&json_path).unwrap();
+        let expected = r#"{
+  "Name": "yep",
+  "Repo": "new"
+}
+"#;
+        assert_eq!(content, expected);
     }
 }
