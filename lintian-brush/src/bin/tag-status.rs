@@ -17,6 +17,7 @@
 //! Validate and check tag-status.yaml against lintian tags and implemented fixers
 
 use clap::Parser;
+use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::path::PathBuf;
@@ -44,6 +45,10 @@ struct Args {
     #[cfg(feature = "udd")]
     #[arg(long, default_value = "hard")]
     exclude: String,
+
+    /// Update README.md with the list of supported tags
+    #[arg(long)]
+    update_readme: bool,
 }
 
 fn get_all_lintian_tags() -> Result<HashSet<String>, Box<dyn Error>> {
@@ -184,6 +189,32 @@ async fn report_next_tags(
     Ok(())
 }
 
+fn update_readme(supported_tags: &HashSet<String>) -> Result<(), Box<dyn Error>> {
+    let readme_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .ok_or("Failed to get parent directory")?
+        .join("README.md");
+
+    let contents = std::fs::read_to_string(&readme_path)?;
+
+    let mut sorted_tags: Vec<_> = supported_tags.iter().collect();
+    sorted_tags.sort();
+
+    let replacement_text: String = sorted_tags
+        .iter()
+        .map(|tag| format!("* {}\n", tag))
+        .collect();
+
+    let re = Regex::new(r"(subset of the issues:\n\n).*(\n\.\. _writing-fixers:\n)")?;
+    let updated_contents = re.replace(&contents, |caps: &regex::Captures| {
+        format!("{}{}{}", &caps[1], replacement_text, &caps[2])
+    });
+
+    std::fs::write(&readme_path, updated_contents.as_ref())?;
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
@@ -237,6 +268,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if args.next {
         let exclude_difficulties: Vec<&str> = args.exclude.split(',').collect();
         report_next_tags(&exclude_difficulties, &per_tag_status, &supported_tags).await?;
+    }
+
+    if args.update_readme {
+        update_readme(&supported_tags)?;
+        println!("README.md updated successfully");
     }
 
     Ok(())
