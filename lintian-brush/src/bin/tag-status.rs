@@ -34,6 +34,16 @@ struct Args {
     /// Check for missing tags and exit with error if any found
     #[arg(long)]
     check: bool,
+
+    /// Report lintian tags that might be good candidates to implement fixers for (requires UDD access)
+    #[cfg(feature = "udd")]
+    #[arg(long)]
+    next: bool,
+
+    /// Comma-separated list of difficulties to exclude (default: hard)
+    #[cfg(feature = "udd")]
+    #[arg(long, default_value = "hard")]
+    exclude: String,
 }
 
 fn get_all_lintian_tags() -> Result<HashSet<String>, Box<dyn Error>> {
@@ -93,6 +103,22 @@ fn get_entry_status(entry: &serde_yaml::Value) -> Option<String> {
     status.as_str().map(|s| s.to_string())
 }
 
+#[cfg(feature = "udd")]
+fn get_entry_difficulty(entry: &serde_yaml::Value) -> String {
+    let Some(mapping) = entry.as_mapping() else {
+        return "unknown".to_string();
+    };
+
+    let Some(difficulty) = mapping.get(&serde_yaml::Value::String("difficulty".to_string())) else {
+        return "unknown".to_string();
+    };
+
+    difficulty
+        .as_str()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
 fn validate_implemented_tags(
     supported_tags: &HashSet<String>,
     per_tag_status: &HashMap<String, serde_yaml::Value>,
@@ -118,7 +144,48 @@ fn validate_implemented_tags(
     Ok(())
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+#[cfg(feature = "udd")]
+async fn report_next_tags(
+    exclude_difficulties: &[&str],
+    per_tag_status: &HashMap<String, serde_yaml::Value>,
+    supported_tags: &HashSet<String>,
+) -> Result<(), Box<dyn Error>> {
+    use sqlx::Row;
+
+    let pool = debian_analyzer::udd::connect_udd_mirror().await?;
+
+    let query = "SELECT tag, COUNT(DISTINCT package) AS package_count, \
+                 COUNT(*) AS tag_count FROM lintian \
+                 WHERE tag_type NOT IN ('classification') GROUP BY 1 ORDER BY 2 DESC";
+
+    let rows = sqlx::query(query).fetch_all(&pool).await?;
+
+    for row in rows {
+        let tag: String = row.get("tag");
+        let package_count: i64 = row.get("package_count");
+        let tag_count: i64 = row.get("tag_count");
+
+        if supported_tags.contains(&tag) {
+            continue;
+        }
+
+        let difficulty = per_tag_status
+            .get(&tag)
+            .map(|entry| get_entry_difficulty(entry))
+            .unwrap_or_else(|| "unknown".to_string());
+
+        if exclude_difficulties.contains(&difficulty.as_str()) {
+            continue;
+        }
+
+        println!("{} {} {}/{}", tag, difficulty, package_count, tag_count);
+    }
+
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -165,6 +232,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         std::process::exit(retcode);
+    }
+    #[cfg(feature = "udd")]
+    if args.next {
+        let exclude_difficulties: Vec<&str> = args.exclude.split(',').collect();
+        report_next_tags(&exclude_difficulties, &per_tag_status, &supported_tags).await?;
     }
 
     Ok(())
