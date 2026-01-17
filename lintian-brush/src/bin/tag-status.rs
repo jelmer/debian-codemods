@@ -18,12 +18,22 @@
 
 use clap::Parser;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::path::PathBuf;
 use std::process::Command;
 
-const KNOWN_KEYS: &[&str] = &["tag", "status", "difficulty", "comment"];
+#[derive(Debug, Deserialize, Serialize)]
+struct TagEntry {
+    tag: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    difficulty: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    comment: Option<String>,
+}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Validate and check tag-status.yaml", long_about = None)]
@@ -76,64 +86,16 @@ fn get_supported_tags() -> HashSet<String> {
         .collect()
 }
 
-fn validate_yaml_entry(entry: &serde_yaml::Value) -> Result<(), Box<dyn Error>> {
-    let Some(mapping) = entry.as_mapping() else {
-        return Ok(());
-    };
-
-    let keys: HashSet<String> = mapping
-        .keys()
-        .filter_map(|k| k.as_str().map(|s| s.to_string()))
-        .collect();
-
-    let known_keys: HashSet<String> = KNOWN_KEYS.iter().map(|s| s.to_string()).collect();
-    let extra_keys: Vec<_> = keys.difference(&known_keys).collect();
-
-    if !extra_keys.is_empty() {
-        return Err(format!("Unknown keys: {:?}", extra_keys).into());
-    }
-
-    Ok(())
-}
-
-fn extract_tag_from_entry(entry: &serde_yaml::Value) -> Option<String> {
-    let mapping = entry.as_mapping()?;
-    let tag_value = mapping.get(&serde_yaml::Value::String("tag".to_string()))?;
-    tag_value.as_str().map(|s| s.to_string())
-}
-
-fn get_entry_status(entry: &serde_yaml::Value) -> Option<String> {
-    let mapping = entry.as_mapping()?;
-    let status = mapping.get(&serde_yaml::Value::String("status".to_string()))?;
-    status.as_str().map(|s| s.to_string())
-}
-
-#[cfg(feature = "udd")]
-fn get_entry_difficulty(entry: &serde_yaml::Value) -> String {
-    let Some(mapping) = entry.as_mapping() else {
-        return "unknown".to_string();
-    };
-
-    let Some(difficulty) = mapping.get(&serde_yaml::Value::String("difficulty".to_string())) else {
-        return "unknown".to_string();
-    };
-
-    difficulty
-        .as_str()
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| "unknown".to_string())
-}
-
 fn validate_implemented_tags(
     supported_tags: &HashSet<String>,
-    per_tag_status: &HashMap<String, serde_yaml::Value>,
+    per_tag_status: &HashMap<String, TagEntry>,
 ) -> Result<(), Box<dyn Error>> {
     for tag in supported_tags {
         let Some(existing) = per_tag_status.get(tag) else {
             continue;
         };
 
-        let Some(status_str) = get_entry_status(existing) else {
+        let Some(status_str) = &existing.status else {
             continue;
         };
 
@@ -152,7 +114,7 @@ fn validate_implemented_tags(
 #[cfg(feature = "udd")]
 async fn report_next_tags(
     exclude_difficulties: &[&str],
-    per_tag_status: &HashMap<String, serde_yaml::Value>,
+    per_tag_status: &HashMap<String, TagEntry>,
     supported_tags: &HashSet<String>,
 ) -> Result<(), Box<dyn Error>> {
     use sqlx::Row;
@@ -176,10 +138,11 @@ async fn report_next_tags(
 
         let difficulty = per_tag_status
             .get(&tag)
-            .map(|entry| get_entry_difficulty(entry))
-            .unwrap_or_else(|| "unknown".to_string());
+            .and_then(|entry| entry.difficulty.as_ref())
+            .map(|s| s.as_str())
+            .unwrap_or("unknown");
 
-        if exclude_difficulties.contains(&difficulty.as_str()) {
+        if exclude_difficulties.contains(&difficulty) {
             continue;
         }
 
@@ -223,16 +186,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let path = PathBuf::from(manifest_dir).join("tag-status.yaml");
 
     let content = std::fs::read_to_string(&path)?;
-    let tag_status: Vec<serde_yaml::Value> = serde_yaml::from_str(&content)?;
+    let tag_status: Vec<TagEntry> = serde_yaml::from_str(&content)?;
 
-    let mut per_tag_status: HashMap<String, serde_yaml::Value> = HashMap::new();
-    for entry in &tag_status {
-        validate_yaml_entry(entry)?;
-
-        if let Some(tag) = extract_tag_from_entry(entry) {
-            per_tag_status.insert(tag, entry.clone());
-        }
-    }
+    let per_tag_status: HashMap<String, TagEntry> = tag_status
+        .into_iter()
+        .map(|entry| (entry.tag.clone(), entry))
+        .collect();
 
     let supported_tags = get_supported_tags();
     validate_implemented_tags(&supported_tags, &per_tag_status)?;
