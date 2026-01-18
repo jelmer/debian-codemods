@@ -10,3 +10,4 @@ py/lintian_brush/_lintian_brush_rs.*.so
 py/lintian_brush/_debianize_rs.*.so
 .cargo-checksum.json
 Cargo.lock.saved
+Cargo.lock.upstream

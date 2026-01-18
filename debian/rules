@@ -16,6 +16,9 @@ CARGO_BASE_ARGS= --release --target $(DEB_HOST_RUST_TYPE)
 %:
 	dh $@ --with bash_completion
 
+execute_before_dh_auto_configure:
+	if test -f Cargo.lock; then mv Cargo.lock Cargo.lock.upstream; fi
+
 override_dh_auto_build:
 	cargo build $(CARGO_BASE_ARGS)
 
@@ -28,6 +31,7 @@ execute_after_dh_auto_install:
 	    debian/lintian-brush/$(ZSH_COMPDIR)/_lintian-brush
 
 override_dh_auto_clean:
+	if test -f Cargo.lock.upstream; then mv Cargo.lock.upstream Cargo.lock; fi
 	cargo clean || true
 
 update-deps:
