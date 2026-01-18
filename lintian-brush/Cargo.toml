@@ -81,6 +81,10 @@ required-features = ["cli"]
 name = "find-old-info-format-tags"
 required-features = ["udd"]
 
+[[bin]]
+name = "tag-status"
+required-features = ["cli"]
+
 [build-dependencies]
 quote = "1.0.37"
 serde.workspace = true
