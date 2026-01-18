@@ -1,3 +1,11 @@
 cargo_home/.global-cache
 cargo_home/.package-cache
 cargo_home/.package-cache-mutate
+.debhelper/
+cargo-checksum.json
+cargo_registry/
+debhelper-build-stamp
+files
+*.substvars
+lintian-brush/
+lintian-brush-dbgsym/
