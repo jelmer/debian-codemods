@@ -1,4 +1,4 @@
-lintian-brush (0.163) UNRELEASED; urgency=medium
+lintian-brush (0.163) unstable; urgency=medium
 
   * Convert most fixers to Rust.
   * Add support for X-DH-Compat header. Closes: #1106883
