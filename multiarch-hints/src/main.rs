@@ -364,15 +364,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None,
             );
         }
-        Err(OverallError::Python(e)) => {
-            drop(write_lock);
-            svp.report_fatal(
-                "internal-error",
-                format!("Python error: {}", e).as_str(),
-                None,
-                None,
-            );
-        }
         Err(OverallError::GeneratedFile(p)) => {
             drop(write_lock);
             svp.report_fatal(

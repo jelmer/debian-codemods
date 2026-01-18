@@ -441,7 +441,6 @@ pub enum OverallError {
     BrzError(Error),
     NotDebianPackage(std::path::PathBuf),
     Other(String),
-    Python(pyo3::PyErr),
     NoWhoami,
     NoChanges,
     GeneratedFile(std::path::PathBuf),
@@ -479,7 +478,6 @@ impl std::fmt::Display for OverallError {
                 write!(f, "Formatting unpreservable: {}", p.display())
             }
             OverallError::BrzError(e) => write!(f, "{}", e),
-            OverallError::Python(e) => write!(f, "{}", e),
             OverallError::NoWhoami => write!(f, "No committer configured."),
             OverallError::NoChanges => write!(f, "No changes to apply."),
             OverallError::Other(e) => write!(f, "{}", e),
@@ -494,7 +492,7 @@ impl From<Error> for OverallError {
         match e {
             Error::PointlessCommit => OverallError::NoChanges,
             Error::NoWhoami => OverallError::NoWhoami,
-            Error::Other(e) => OverallError::Python(e),
+            Error::Other(e) => OverallError::Other(e.to_string()),
             e => OverallError::BrzError(e),
         }
     }
