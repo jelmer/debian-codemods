@@ -12,6 +12,12 @@ lintian-brush (0.163) UNRELEASED; urgency=medium
   * Skip debhelper-but-no-misc-depends for debhelper compat >= 14. Closes: #1072700
   * Add asterisk prefix to changelog entries. Closes: #1110106
   * double-check overrides. Closes: #961643
+  * upstream-metadata-file: Support FAQ and Other-References fields.
+    Closes: #1101050, #1110416
+  * Fix public-upstream-key-not-minimal fixer by rewriting in Rust.
+    Closes: #968150
+  * Fix deb-scrub-obsolete runtime panic by enabling sqlx runtime feature.
+    Closes: #1125793
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 03 Jun 2025 22:37:02 +0100
 
