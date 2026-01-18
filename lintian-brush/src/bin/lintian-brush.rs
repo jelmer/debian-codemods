@@ -800,7 +800,6 @@ fn main() -> Result<(), i32> {
 }
 
 fn versions_dict() -> HashMap<String, String> {
-    use pyo3::prelude::*;
     let mut ret = HashMap::new();
     ret.insert(
         "lintian-brush".to_string(),
@@ -808,23 +807,5 @@ fn versions_dict() -> HashMap<String, String> {
     );
     let breezy_version = breezyshim::version::version();
     ret.insert("breezy".to_string(), breezy_version.to_string());
-
-    pyo3::Python::attach(|py| {
-        let debmutate = py.import("debmutate").unwrap();
-        ret.insert(
-            "debmutate".to_string(),
-            debmutate
-                .getattr("version_string")
-                .unwrap()
-                .extract()
-                .unwrap(),
-        );
-
-        let debian = py.import("debian").unwrap();
-        ret.insert(
-            "debian".to_string(),
-            debian.getattr("__version__").unwrap().extract().unwrap(),
-        );
-    });
     ret
 }

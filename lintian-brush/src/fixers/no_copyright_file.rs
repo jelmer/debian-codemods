@@ -252,9 +252,7 @@ pub fn run(
     let (file_groups, license_names) = match decopy::scan_tree(base_path) {
         Ok(result) => result,
         Err(decopy::Error::NotAvailable) => {
-            return Err(FixerError::Other(
-                "decopy Python module not available".to_string(),
-            ))
+            return Err(FixerError::MissingDependency("decopy".to_string()))
         }
         Err(decopy::Error::Python(err)) => {
             return Err(FixerError::Other(format!("Error running decopy: {}", err)))

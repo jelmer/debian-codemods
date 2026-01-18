@@ -766,6 +766,8 @@ pub enum FixerError {
         /// Backtrace if available
         backtrace: Option<std::backtrace::Backtrace>,
     },
+    /// Missing optional dependency
+    MissingDependency(String),
     /// Other error
     Other(String),
 }
@@ -884,6 +886,7 @@ impl std::fmt::Display for FixerError {
                 }
                 Ok(())
             }
+            FixerError::MissingDependency(dep) => write!(f, "Missing optional dependency: {}", dep),
         }
     }
 }
@@ -1721,6 +1724,13 @@ pub fn run_lintian_fixers(
                         if let Some(bt) = backtrace {
                             tracing::error!("Backtrace:\n{}", bt);
                         }
+                    }
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    continue;
+                }
+                FixerError::MissingDependency(ref dep) => {
+                    if verbose {
+                        tracing::info!("Fixer {} skipped: missing optional dependency '{}'", fixer.name(), dep);
                     }
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     continue;
