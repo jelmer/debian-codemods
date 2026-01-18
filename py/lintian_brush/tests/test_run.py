@@ -27,12 +27,7 @@ from debian.changelog import (
     Changelog,
 )
 
-from lintian_brush import (
-    certainty_sufficient,
-    certainty_to_confidence,
-    min_certainty,
-    version_string,
-)
+from lintian_brush import version_string
 
 
 class LintianBrushVersion(TestCase):
@@ -49,39 +44,3 @@ class LintianBrushVersion(TestCase):
         assert m is not None
         package_version = m.group(0)
         self.assertEqual(package_version, version_string)
-
-
-class CertaintySufficientTests(TestCase):
-    def test_sufficient(self):
-        self.assertTrue(certainty_sufficient("certain", "certain"))
-        self.assertTrue(certainty_sufficient("certain", "possible"))
-        self.assertTrue(certainty_sufficient("certain", None))
-        self.assertTrue(certainty_sufficient("possible", None))
-        # TODO(jelmer): Should we really always allow unknown certainties
-        # through?
-        self.assertTrue(certainty_sufficient(None, "certain"))  # type: ignore
-
-    def test_insufficient(self):
-        self.assertFalse(certainty_sufficient("possible", "certain"))
-
-
-class CertaintyVsConfidenceTests(TestCase):
-    def test_certainty_to_confidence(self):
-        self.assertEqual(0, certainty_to_confidence("certain"))
-        self.assertEqual(1, certainty_to_confidence("confident"))
-        self.assertEqual(2, certainty_to_confidence("likely"))
-        self.assertEqual(3, certainty_to_confidence("possible"))
-        self.assertIs(None, certainty_to_confidence("unknown"))
-        self.assertRaises(ValueError, certainty_to_confidence, "blah")
-
-
-class MinimumCertaintyTests(TestCase):
-    def test_minimum(self):
-        self.assertEqual("certain", min_certainty([]))
-        self.assertEqual("certain", min_certainty(["certain"]))
-        self.assertEqual("possible", min_certainty(["possible"]))
-        self.assertEqual("possible", min_certainty(["possible", "certain"]))
-        self.assertEqual("likely", min_certainty(["likely", "certain"]))
-        self.assertEqual(
-            "possible", min_certainty(["likely", "certain", "possible"])
-        )
