@@ -9,8 +9,6 @@ variables:
   SALSA_CI_DISABLE_REPROTEST: 1
   # Build for experimental distribution
   # RELEASE: 'experimental'
-  # Use project-relative paths for better caching in custom jobs
-  CARGO_HOME: ${CI_PROJECT_DIR}/.cargo
   # Enable parallel builds - uses all available CPU cores
   SALSA_CI_DPKG_BUILDPACKAGE_ARGS: "-j$(nproc)"
   # Enable debug logging for tests via DEB_BUILD_OPTIONS
