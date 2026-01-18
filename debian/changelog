@@ -1,4 +1,4 @@
-lintian-brush (0.164) UNRELEASED; urgency=medium
+lintian-brush (0.164) unstable; urgency=medium
 
   * Drop unnecessary python dependencies. Closes: #1125923
 
