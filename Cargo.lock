@@ -138,15 +138,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "arc-swap"
-version = "1.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51d03449bb8ca2cc2ef70869af31463d1ae5ccc8fa3e334b307203fbf815207e"
-dependencies = [
- "rustversion",
-]
-
-[[package]]
 name = "argon2"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2786,15 +2777,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lintian-brush-py"
-version = "0.163.0"
-dependencies = [
- "lintian-brush",
- "pyo3",
- "pyo3-log",
-]
-
-[[package]]
 name = "linux-raw-sys"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3082,7 +3064,6 @@ dependencies = [
  "lazy-regex",
  "lazy_static",
  "log",
- "pyo3",
  "reqwest",
  "serde",
  "serde_json",
@@ -3860,17 +3841,6 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57429f455b9811f2a8af73d8bae91e028fbf6f62ad4011073c2248bb028a2288"
 dependencies = [
- "pyo3",
-]
-
-[[package]]
-name = "pyo3-log"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f8bae9ad5ba08b0b0ed2bb9c2bdbaeccc69cafca96d78cf0fbcea0d45d122bb"
-dependencies = [
- "arc-swap",
- "log",
  "pyo3",
 ]
 

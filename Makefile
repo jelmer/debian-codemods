@@ -6,28 +6,18 @@ default: check
 
 .PHONY: build
 
-build:
-	./setup.py build_ext -i
+check:: testsuite tag-status
 
-check:: testsuite tag-status ruff
-
-.PHONY: ruff testsuite unsupported
-
-ruff::
-	ruff check py/ lintian-brush/fixers/
-
-typing:: build
-	mypy py/ lintian-brush/fixers/
+.PHONY: testsuite unsupported
 
 tag-status::
 	$(MAKE) -C lintian-brush tag-status
 
-testsuite:: build
-	PYTHONPATH=$(shell pwd)/py python3 -m unittest lintian_brush.tests.test_suite
-	PYTHONPATH=$(shell pwd)/py cargo test 
+testsuite::
+	cargo test --workspace
 
 README.md::
-	PYTHONPATH=$(PWD)/py:$(PYTHONPATH) ./buildtools/update-readme.py
+	cargo run -p lintian-brush --bin tag-status -- --update-readme
 
 lintian-tags:
 	lintian-explain-tags --list-tags > lintian-tags
