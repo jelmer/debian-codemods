@@ -1,6 +1,8 @@
 #!/usr/bin/make -f
 
-export CARGO_HOME=$(shell pwd)/debian/cargo_home
+include /usr/share/rustc/architecture.mk
+
+export CARGO_HOME=$(CURDIR)/debian/cargo_home
 # Set codegen-units to 1 for reproducible builds (parallel codegen is non-deterministic)
 export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 # Enable debug logging if 'debug' is in DEB_BUILD_OPTIONS
@@ -9,25 +11,24 @@ export RUST_LOG=debug
 endif
 ZSH_COMPDIR = /usr/share/zsh/vendor-completions/
 
-%:
-	dh $@ --with python3,bash_completion --buildsystem=pybuild
+CARGO_BASE_ARGS= --release --target $(DEB_HOST_RUST_TYPE)
 
-override_dh_auto_install:
-	dh_auto_install
+%:
+	dh $@ --with bash_completion
+
+override_dh_auto_build:
+	cargo build $(CARGO_BASE_ARGS)
+
+override_dh_auto_test:
+	make testsuite
+
+execute_after_dh_auto_install:
 	mkdir -p debian/lintian-brush/$(ZSH_COMPDIR)
 	install -m644 debian/lintian-brush.zsh-completion \
 	    debian/lintian-brush/$(ZSH_COMPDIR)/_lintian-brush
 
 override_dh_auto_clean:
-	if test -f Cargo.lock.saved; then mv Cargo.lock.saved Cargo.lock; fi
-	dh_auto_clean
-
-override_dh_auto_build:
-	mv Cargo.lock Cargo.lock.saved
-	dh_auto_build
-
-override_dh_auto_test:
-	make testsuite
+	cargo clean || true
 
 update-deps:
 	update-rust-deps --drop-unreferenced --exclude-local-crate
