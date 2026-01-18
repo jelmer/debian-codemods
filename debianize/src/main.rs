@@ -5,7 +5,6 @@ use breezyshim::workingtree::{GenericWorkingTree, WorkingTree};
 use clap::Parser;
 use debversion::Version;
 use log::warn;
-use pyo3::prelude::*;
 use std::collections::HashMap;
 
 use std::io::Write as _;
@@ -782,48 +781,5 @@ fn versions_dict() -> HashMap<String, String> {
         "lintian-brush".to_string(),
         env!("CARGO_PKG_VERSION").to_string(),
     );
-    pyo3::Python::attach(|py| {
-        let breezy = py.import("breezy").unwrap();
-        ret.insert(
-            "breezy".to_string(),
-            breezy.getattr("version_string").unwrap().extract().unwrap(),
-        );
-
-        let debmutate = py.import("debmutate").unwrap();
-        ret.insert(
-            "debmutate".to_string(),
-            debmutate
-                .getattr("version_string")
-                .unwrap()
-                .extract()
-                .unwrap(),
-        );
-
-        let debian = py.import("debian").unwrap();
-        ret.insert(
-            "debian".to_string(),
-            debian.getattr("__version__").unwrap().extract().unwrap(),
-        );
-
-        // Read key dependency versions from Cargo.lock if available
-        if let Ok(lockfile) = cargo_lock::Lockfile::load("Cargo.lock") {
-            // Add versions for important dependencies
-            let important_deps = [
-                "breezyshim",
-                "debian-analyzer",
-                "ognibuild",
-                "upstream-ontologist",
-            ];
-            for dep_name in &important_deps {
-                if let Some(package) = lockfile
-                    .packages
-                    .iter()
-                    .find(|p| p.name.as_str() == *dep_name)
-                {
-                    ret.insert(dep_name.to_string(), package.version.to_string());
-                }
-            }
-        }
-    });
     ret
 }
