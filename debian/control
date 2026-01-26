@@ -127,6 +127,7 @@ Build-Depends: debhelper (>= 13.5),
                lintian (>= 2.105.0),
                po-debconf,
                python3-breezy (>= 3.3.1~),
+               python3-setuptools,
                rustc
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
