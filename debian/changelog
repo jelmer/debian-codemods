@@ -1,4 +1,4 @@
-lintian-brush (0.165) UNRELEASED; urgency=medium
+lintian-brush (0.165) unstable; urgency=medium
 
   * Add python3-setuptools to Build-Depends and fix setup.py parsing for
     Python 3.12+, where distutils was removed.
