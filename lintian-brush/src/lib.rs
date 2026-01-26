@@ -1730,7 +1730,11 @@ pub fn run_lintian_fixers(
                 }
                 FixerError::MissingDependency(ref dep) => {
                     if verbose {
-                        tracing::info!("Fixer {} skipped: missing optional dependency '{}'", fixer.name(), dep);
+                        tracing::info!(
+                            "Fixer {} skipped: missing optional dependency '{}'",
+                            fixer.name(),
+                            dep
+                        );
                     }
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     continue;

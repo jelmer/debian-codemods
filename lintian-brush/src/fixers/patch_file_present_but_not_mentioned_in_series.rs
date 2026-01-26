@@ -112,6 +112,7 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
     }
 
     removed.sort();
+    fixed_issues.sort_by(|a, b| a.info.cmp(&b.info));
 
     let description = if removed.len() == 1 {
         format!(

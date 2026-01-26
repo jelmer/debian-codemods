@@ -4,6 +4,7 @@ lintian-brush (0.165) UNRELEASED; urgency=medium
     Python 3.12+, where distutils was removed.
   * debian/copyright: Drop pattern for nonexistent
     py/lintian_brush/systemd.py.
+  * Fix ordering issue.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jan 2026 00:00:00 +0000
 
