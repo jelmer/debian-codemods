@@ -2,6 +2,8 @@ lintian-brush (0.165) UNRELEASED; urgency=medium
 
   * Add python3-setuptools to Build-Depends and fix setup.py parsing for
     Python 3.12+, where distutils was removed.
+  * debian/copyright: Drop pattern for nonexistent
+    py/lintian_brush/systemd.py.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jan 2026 00:00:00 +0000
 

@@ -8,13 +8,6 @@ Copyright:
  2018-2019 Jelmer Vernooĳ <jelmer@debian.org>
 License: GPL-2+
 
-Files: py/lintian_brush/systemd.py
-Copyright: 2001, 2002, 2003 Python Software Foundation
-           2004-2008 Paramjit Oberoi <param.cs.wisc.edu>
-           2007 Tim Lauridsen <tla@rasmil.dk>
-           2019 Jelmer Vernooij <jelmer@jelmer.uk>
-License: MIT
-
 License: MIT
  Permission is hereby granted, free of charge, to any person obtaining a
  copy of this software and associated documentation files (the "Software"),
