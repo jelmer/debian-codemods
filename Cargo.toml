@@ -2,7 +2,6 @@
 # With resolve set to "2", dependent projects can't find debian-analyzer anymore.
 resolver = "1"
 members = ["lintian-brush", "multiarch-hints", "scrub-obsolete", "transition-apply", "import-uncommitted", "debianize", "systemd-unit-edit", "desktop-edit", "yaml-edit"]
-exclude = ["breezyshim-fixed"]
 
 [workspace.package]
 version = "0.163.0"
