@@ -324,6 +324,7 @@ fn drop_old_relations(
     actions
 }
 
+#[allow(clippy::result_large_err)]
 fn update_maintscripts(
     wt: &GenericWorkingTree,
     debian_path: &Path,
@@ -586,6 +587,8 @@ impl From<std::io::Error> for ScrubObsoleteError {
 }
 
 /// Scrub obsolete entries.
+#[allow(clippy::too_many_arguments)]
+#[allow(clippy::result_large_err)]
 pub fn scrub_obsolete(
     wt: &GenericWorkingTree,
     subpath: &Path,

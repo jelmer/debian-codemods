@@ -1,4 +1,4 @@
-use breezyshim::branch::open_containing as open_containing_branch;
+use breezyshim::branch::open_containing_as_generic as open_containing_branch;
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::repository::Repository;

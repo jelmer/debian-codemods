@@ -527,6 +527,7 @@ impl Default for ApplyMultiarchHintsConfig {
     }
 }
 
+#[allow(clippy::result_large_err)]
 pub fn apply_multiarch_hints(
     local_tree: &GenericWorkingTree,
     subpath: &std::path::Path,

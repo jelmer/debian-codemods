@@ -8,7 +8,7 @@ exclude = ["breezyshim-fixed"]
 version = "0.163.0"
 
 [workspace.dependencies]
-breezyshim = { version = "0.7", features = ["dirty-tracker"] }
+breezyshim = { version = "0.7.8", features = ["dirty-tracker"] }
 pyo3 = ">=0.27,<0.28"
 debversion = "0.5"
 serde_yaml = ">=0.9"
