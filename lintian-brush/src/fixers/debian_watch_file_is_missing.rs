@@ -1,4 +1,5 @@
 use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use breezyshim::branch::Branch;
 use debian_watch::{Entry, WatchFile};
 use debversion::Version;
 use std::path::Path;
@@ -263,7 +264,7 @@ fn guess_github_watch_entry(
     }
 
     // Open the branch using breezyshim
-    let branch = breezyshim::branch::open(parsed_url)?;
+    let branch = breezyshim::branch::open_as_generic(parsed_url)?;
     let tags = branch.tags()?.get_tag_dict()?;
 
     let possible_patterns = vec![r"v(\d\S+)", r"(\d\S+)", r".*/[vV]?(\d[^\s+]+)\.tar\.gz"];
