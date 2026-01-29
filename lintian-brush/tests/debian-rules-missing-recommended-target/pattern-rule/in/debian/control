@@ -1,0 +1,12 @@
+Source: folks
+Section: libs
+Priority: optional
+Maintainer: Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>
+Standards-Version: 4.6.2
+
+Package: libfolks25
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: library to aggreg ate people into metacontacts
+ libfolks is a library that aggregates people from multiple sources
+ to create metacontacts.
