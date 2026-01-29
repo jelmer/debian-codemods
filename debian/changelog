@@ -2,8 +2,10 @@ lintian-brush (0.166) UNRELEASED; urgency=medium
 
   * Upgrade to makefile-lossless 0.3.27, fixing parsing of makefiles
     with nested conditionals. Closes: #1126511
+  * Stop shipping deb-import-uncommitted, which conflicts with brz-debian.
+    Closes: #1126510
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 28 Jan 2026 13:13:39 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 29 Jan 2026 00:00:00 +0000
 
 lintian-brush (0.165) unstable; urgency=medium
 

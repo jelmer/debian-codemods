@@ -1,5 +1,6 @@
 target/*/release/apply-multiarch-hints /usr/bin
-target/*/release/deb-import-uncommitted /usr/bin
+# deb-import-uncommitted conflicts with brz-debian (Closes: #1126510)
+#target/*/release/deb-import-uncommitted /usr/bin
 target/*/release/deb-scrub-obsolete /usr/bin
 target/*/release/debianize /usr/bin
 target/*/release/lintian-brush /usr/bin
