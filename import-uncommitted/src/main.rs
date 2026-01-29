@@ -890,6 +890,7 @@ mod tests {
     use super::*;
     use debian_changelog::ChangeLog;
     use debversion::Version;
+    use serial_test::serial;
 
     #[test]
     fn test_find_missing_versions_empty_changelog() {
@@ -1185,11 +1186,13 @@ package (1.0-1) unstable; urgency=medium
     fn create_test_tree() -> (
         tempfile::TempDir,
         breezyshim::workingtree::GenericWorkingTree,
+        breezyshim::testing::TestEnv,
     ) {
         use breezyshim::controldir::ControlDirFormat;
 
         breezyshim::init();
 
+        let test_env = breezyshim::testing::TestEnv::new();
         let td = tempfile::tempdir().unwrap();
         let format = ControlDirFormat::default();
         let transport = breezyshim::transport::get_transport(
@@ -1209,13 +1212,14 @@ package (1.0-1) unstable; urgency=medium
             .commit()
             .unwrap();
 
-        (td, wt)
+        (td, wt, test_env)
     }
 
     #[test]
+    #[serial]
     fn test_is_noop_upload_no_changes() {
         // Test case: No changes at all - should return true
-        let (_td, wt) = create_test_tree();
+        let (_td, wt, test_env) = create_test_tree();
 
         let lock = wt.lock_read().unwrap();
         let basis_tree = wt.basis_tree().unwrap();
@@ -1223,14 +1227,16 @@ package (1.0-1) unstable; urgency=medium
         let result = is_noop_upload(&wt, &basis_tree, Path::new(""));
         std::mem::drop(lock);
         assert!(result, "No changes should be considered noop");
+        std::mem::drop(test_env);
     }
 
     #[test]
+    #[serial]
     fn test_is_noop_upload_changelog_only() {
         use breezyshim::tree::MutableTree;
 
         // Test case: Only changelog changed (new entry added) - should return true
-        let (_td, wt) = create_test_tree();
+        let (_td, wt, test_env) = create_test_tree();
 
         // Create initial debian/changelog
         std::fs::create_dir_all(_td.path().join("debian")).unwrap();
@@ -1271,14 +1277,16 @@ package (1.0-1) unstable; urgency=medium
         let result = is_noop_upload(&wt, &basis_tree, Path::new(""));
         std::mem::drop(lock);
         assert!(result, "Changelog-only change should be noop");
+        std::mem::drop(test_env);
     }
 
     #[test]
+    #[serial]
     fn test_is_noop_upload_with_other_changes() {
         use breezyshim::tree::MutableTree;
 
         // Test case: Changelog + other file changes - should return false
-        let (_td, wt) = create_test_tree();
+        let (_td, wt, test_env) = create_test_tree();
 
         // Create initial files
         std::fs::create_dir_all(_td.path().join("debian")).unwrap();
@@ -1327,14 +1335,16 @@ package (1.0-1) unstable; urgency=medium
             !result,
             "Changes beyond changelog should not be considered noop"
         );
+        std::mem::drop(test_env);
     }
 
     #[test]
+    #[serial]
     fn test_is_noop_upload_no_changelog() {
         use breezyshim::tree::MutableTree;
 
         // Test case: Changes but no changelog - should return false
-        let (_td, wt) = create_test_tree();
+        let (_td, wt, test_env) = create_test_tree();
 
         wt.put_file_bytes_non_atomic(Path::new("README.md"), b"# Test\n")
             .unwrap();
@@ -1350,24 +1360,28 @@ package (1.0-1) unstable; urgency=medium
         let result = is_noop_upload(&wt, &basis_tree, Path::new(""));
         std::mem::drop(lock);
         assert!(!result, "Non-changelog changes should not be noop");
+        std::mem::drop(test_env);
     }
 
     #[test]
+    #[serial]
     fn test_contains_git_attributes_no_files() {
         // Test case: No .gitattributes files - should return false
-        let (_td, wt) = create_test_tree();
+        let (_td, wt, test_env) = create_test_tree();
 
         let _lock = wt.lock_read().unwrap();
         let result = contains_git_attributes(&wt, Path::new(""));
         assert!(!result, "Should return false when no .gitattributes exist");
+        std::mem::drop(test_env);
     }
 
     #[test]
+    #[serial]
     fn test_contains_git_attributes_with_file() {
         use breezyshim::tree::MutableTree;
 
         // Test case: .gitattributes exists - should return true
-        let (_td, wt) = create_test_tree();
+        let (_td, wt, test_env) = create_test_tree();
 
         wt.put_file_bytes_non_atomic(Path::new(".gitattributes"), b"* text=auto\n")
             .unwrap();
@@ -1380,14 +1394,16 @@ package (1.0-1) unstable; urgency=medium
         let _lock = wt.lock_read().unwrap();
         let result = contains_git_attributes(&wt, Path::new(""));
         assert!(result, "Should return true when .gitattributes exists");
+        std::mem::drop(test_env);
     }
 
     #[test]
+    #[serial]
     fn test_contains_git_attributes_in_subdir() {
         use breezyshim::tree::MutableTree;
 
         // Test case: .gitattributes in subdirectory - should return true
-        let (_td, wt) = create_test_tree();
+        let (_td, wt, test_env) = create_test_tree();
 
         wt.mkdir(Path::new("subdir")).unwrap();
         wt.put_file_bytes_non_atomic(Path::new("subdir/.gitattributes"), b"* text=auto\n")
@@ -1405,6 +1421,7 @@ package (1.0-1) unstable; urgency=medium
             result,
             "Should return true when .gitattributes exists in subdirectory"
         );
+        std::mem::drop(test_env);
     }
 
     // Error Display implementation tests
@@ -1512,6 +1529,7 @@ package (1.0-1) unstable; urgency=medium
     // Integration tests for the main workflow
 
     #[test]
+    #[serial]
     fn test_merge_into_logic_saves_correct_revision() {
         // This test verifies the bug fix where we were saving the wrong revision
         // before updating the tree. The merge_into variable should contain the
@@ -1519,7 +1537,7 @@ package (1.0-1) unstable; urgency=medium
         use breezyshim::branch::Branch;
         use breezyshim::tree::MutableTree;
 
-        let (_td, wt) = create_test_tree();
+        let (_td, wt, test_env) = create_test_tree();
 
         // Create a debian/changelog with version 1.0-1
         std::fs::create_dir_all(_td.path().join("debian")).unwrap();
@@ -1596,6 +1614,7 @@ testpkg (1.0-1) unstable; urgency=medium
         // This test verifies the fix for the bug where the code was saving
         // `tree.last_revision()` AFTER calling `tree.update()`, which would give
         // the wrong revision for merge_into.
+        std::mem::drop(test_env);
     }
 
     #[test]
@@ -1697,11 +1716,12 @@ testpkg (1.0-1) unstable; urgency=medium
     }
 
     #[test]
+    #[serial]
     fn test_is_noop_upload_with_debian_subdir() {
         // Test that is_noop_upload correctly handles files in debian/ subdirectory
         use breezyshim::tree::MutableTree;
 
-        let (_td, wt) = create_test_tree();
+        let (_td, wt, test_env) = create_test_tree();
 
         // Create debian/changelog
         std::fs::create_dir_all(_td.path().join("debian")).unwrap();
@@ -1744,6 +1764,7 @@ testpkg (1.0-1) unstable; urgency=medium
         std::mem::drop(lock);
 
         assert!(!result, "Changes to debian/control should not be noop");
+        std::mem::drop(test_env);
     }
 
     #[test]

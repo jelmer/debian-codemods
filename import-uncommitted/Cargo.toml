@@ -21,6 +21,7 @@ url.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
+serial_test.workspace = true
 
 [[bin]]
 name = "deb-import-uncommitted"
