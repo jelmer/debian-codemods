@@ -1,3 +1,10 @@
+lintian-brush (0.166) UNRELEASED; urgency=medium
+
+  * Upgrade to makefile-lossless 0.3.27, fixing parsing of makefiles
+    with nested conditionals. Closes: #1126511
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 28 Jan 2026 13:13:39 +0000
+
 lintian-brush (0.165) unstable; urgency=medium
 
   * Add python3-setuptools to Build-Depends and fix setup.py parsing for
