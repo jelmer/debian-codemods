@@ -98,9 +98,9 @@ fn generate_renamed_tags_map(out_dir: &std::ffi::OsStr) {
     // Generate Rust code for the hashmap
     let mut code = String::new();
     code.push_str(
-        "pub fn get_renamed_tags() -> std::collections::HashMap<&'static str, &'static str> {\n",
+        "pub fn get_renamed_tags() -> indexmap::IndexMap<&'static str, &'static str> {\n",
     );
-    code.push_str("    let mut map = std::collections::HashMap::new();\n");
+    code.push_str("    let mut map = indexmap::IndexMap::new();\n");
 
     // Sort the keys to ensure deterministic ordering
     let mut sorted_renames: Vec<_> = renames.into_iter().collect();
@@ -303,8 +303,8 @@ fn generate_spdx_data(out_dir: &std::ffi::OsStr) {
     let ids: Vec<&str> = name_to_id_pairs.iter().map(|(_, id)| *id).collect();
 
     let renames_code = quote! {
-        pub fn get_spdx_license_renames() -> std::collections::HashMap<&'static str, &'static str> {
-            let mut map = std::collections::HashMap::new();
+        pub fn get_spdx_license_renames() -> indexmap::IndexMap<&'static str, &'static str> {
+            let mut map = indexmap::IndexMap::new();
             #(
                 map.insert(#names, #ids);
             )*
