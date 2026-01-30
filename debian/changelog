@@ -1,4 +1,4 @@
-lintian-brush (0.166) UNRELEASED; urgency=medium
+lintian-brush (0.166) unstable; urgency=medium
 
   * Upgrade to makefile-lossless 0.3.27, fixing parsing of makefiles
     with nested conditionals. Closes: #1126511
