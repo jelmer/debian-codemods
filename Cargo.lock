@@ -2426,6 +2426,8 @@ dependencies = [
  "env_logger",
  "log",
  "serde",
+ "serde_json",
+ "serial_test",
  "sqlx",
  "svp-client",
  "tempfile",

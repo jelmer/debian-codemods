@@ -2,7 +2,6 @@
 # With resolve set to "2", dependent projects can't find debian-analyzer anymore.
 resolver = "1"
 members = ["lintian-brush", "multiarch-hints", "scrub-obsolete", "transition-apply", "import-uncommitted", "debianize", "systemd-unit-edit", "desktop-edit", "yaml-edit"]
-exclude = ["breezyshim-fixed"]
 
 [workspace.package]
 version = "0.163.0"
@@ -42,5 +41,6 @@ svp-client = "0.2.0"
 regex = "1"
 indexmap = "2.7"
 makefile-lossless = "0.3.27"
+serial_test = ">=2, <4"
 #debian-control = { path = "../deb822-lossless/debian-control" }
 #deb822-lossless = { path = "../deb822-lossless" }
