@@ -30,6 +30,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let mut added = Vec::new();
     let mut removed = Vec::new();
+    let mut added_static = Vec::new();
     let mut fixed_issues = Vec::new();
     let mut overridden_issues = Vec::new();
 
@@ -94,11 +95,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             let (mut relations, _) = Relations::parse_relaxed(&built_using, true);
 
             // Check if ${misc:Built-Using} is already present
-            let has_misc_built_using = relations.entries().any(|or_deps| {
-                or_deps
-                    .relations()
-                    .any(|dep| dep.name() == "${misc:Built-Using}")
-            });
+            let has_misc_built_using = relations.substvars().any(|s| s == "${misc:Built-Using}");
 
             if !has_misc_built_using {
                 // For missing field, use package stanza line
@@ -125,10 +122,72 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     overridden_issues.push(issue);
                 }
             }
+
+            // Also handle Static-Built-Using for non-all architectures
+            if let Some(static_built_using) = binary.static_built_using() {
+                use debian_control::lossless::relations::Relations;
+                let (mut relations, _) =
+                    Relations::parse_relaxed(&static_built_using.to_string(), true);
+
+                // Check if ${misc:Static-Built-Using} is already present
+                if !relations
+                    .substvars()
+                    .any(|s| s == "${misc:Static-Built-Using}")
+                {
+                    let line_no = binary.as_deb822().line() + 1;
+                    let issue = LintianIssue {
+                        package: Some(binary_name.clone()),
+                        package_type: Some(crate::PackageType::Binary),
+                        tag: Some(
+                            "missing-static-built-using-field-for-golang-package".to_string(),
+                        ),
+                        info: Some(format!(
+                            "(in section for {}) [debian/control:{}]",
+                            binary_name, line_no
+                        )),
+                    };
+
+                    if issue.should_fix(base_path) {
+                        relations
+                            .ensure_substvar("${misc:Static-Built-Using}")
+                            .unwrap();
+                        binary.set_static_built_using(Some(&relations));
+                        added_static.push(binary_name.clone());
+                        fixed_issues.push(issue);
+                    } else {
+                        overridden_issues.push(issue);
+                    }
+                }
+            } else {
+                // No Static-Built-Using field exists, create it
+                let line_no = binary.as_deb822().line() + 1;
+                let issue = LintianIssue {
+                    package: Some(binary_name.clone()),
+                    package_type: Some(crate::PackageType::Binary),
+                    tag: Some("missing-static-built-using-field-for-golang-package".to_string()),
+                    info: Some(format!(
+                        "(in section for {}) [debian/control:{}]",
+                        binary_name, line_no
+                    )),
+                };
+
+                if issue.should_fix(base_path) {
+                    use debian_control::lossless::relations::Relations;
+                    let (mut relations, _) = Relations::parse_relaxed("", true);
+                    relations
+                        .ensure_substvar("${misc:Static-Built-Using}")
+                        .unwrap();
+                    binary.set_static_built_using(Some(&relations));
+                    added_static.push(binary_name.clone());
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
+                }
+            }
         }
     }
 
-    if added.is_empty() && removed.is_empty() {
+    if added.is_empty() && removed.is_empty() && added_static.is_empty() {
         if !overridden_issues.is_empty() {
             return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
         }
@@ -137,23 +196,34 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     editor.commit()?;
 
-    let description = if !added.is_empty() && !removed.is_empty() {
-        format!(
-            "Added ${{misc:Built-Using}} to {} and removed it from {}.",
+    let mut desc_parts = Vec::new();
+
+    if !added.is_empty() && !removed.is_empty() {
+        desc_parts.push(format!(
+            "Added ${{misc:Built-Using}} to {} and removed it from {}",
             added.join(", "),
             removed.join(", ")
-        )
+        ));
     } else if !added.is_empty() {
-        format!(
-            "Add missing ${{misc:Built-Using}} to Built-Using on {}.",
+        desc_parts.push(format!(
+            "Add missing ${{misc:Built-Using}} to Built-Using on {}",
             added.join(", ")
-        )
-    } else {
-        format!(
+        ));
+    } else if !removed.is_empty() {
+        desc_parts.push(format!(
             "Remove unnecessary ${{misc:Built-Using}} for {}",
             removed.join(", ")
-        )
-    };
+        ));
+    }
+
+    if !added_static.is_empty() {
+        desc_parts.push(format!(
+            "Add missing ${{misc:Static-Built-Using}} to Static-Built-Using on {}",
+            added_static.join(", ")
+        ));
+    }
+
+    let description = desc_parts.join(". ") + ".";
 
     Ok(FixerResult::builder(description)
         .fixed_issues(fixed_issues)
@@ -163,7 +233,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
 declare_fixer! {
     name: "built-using-for-golang",
-    tags: ["built-using-for-golang"],
+    tags: ["built-using-for-golang", "missing-static-built-using-field-for-golang-package"],
     apply: |basedir, _package, _version, _preferences| {
         run(basedir)
     }
@@ -206,6 +276,7 @@ Build-Depends: golang-go
 
 Package: blah
 Built-Using: ${misc:Built-Using}
+Static-Built-Using: ${misc:Static-Built-Using}
 Description: blah
  blah
 "#;
@@ -335,9 +406,65 @@ Build-Depends: golang-any
 
 Package: blah
 Built-Using: ${misc:Built-Using}
+Static-Built-Using: ${misc:Static-Built-Using}
 Description: blah
  blah
 "#;
         assert_eq!(updated_content, expected);
+    }
+
+    #[test]
+    fn test_add_static_built_using_for_golang_package() {
+        let temp_dir = TempDir::new().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        let control_content = r#"Source: blah
+Architecture: any
+Build-Depends: golang-go
+
+Package: blah
+Built-Using: ${misc:Built-Using}
+Description: blah
+ blah
+"#;
+
+        let control_path = debian_dir.join("control");
+        fs::write(&control_path, control_content).unwrap();
+
+        let fixer = FixerImpl;
+        let version: crate::Version = "1.0".parse().unwrap();
+        let result = fixer.apply(temp_dir.path(), "blah", &version, &Default::default());
+        assert!(result.is_ok());
+
+        let updated_content = fs::read_to_string(&control_path).unwrap();
+        assert!(updated_content.contains("Static-Built-Using: ${misc:Static-Built-Using}"));
+        assert!(updated_content.contains("Built-Using: ${misc:Built-Using}"));
+    }
+
+    #[test]
+    fn test_no_changes_when_static_built_using_exists() {
+        let temp_dir = TempDir::new().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        let control_content = r#"Source: blah
+Build-Depends: golang-go
+
+Package: blah
+Architecture: any
+Built-Using: ${misc:Built-Using}
+Static-Built-Using: ${misc:Static-Built-Using}
+Description: blah
+ blah
+"#;
+
+        let control_path = debian_dir.join("control");
+        fs::write(&control_path, control_content).unwrap();
+
+        let fixer = FixerImpl;
+        let version: crate::Version = "1.0".parse().unwrap();
+        let result = fixer.apply(temp_dir.path(), "blah", &version, &Default::default());
+        assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 }
