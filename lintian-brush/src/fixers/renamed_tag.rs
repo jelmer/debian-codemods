@@ -1,7 +1,6 @@
 use crate::lintian_overrides::{copy_node, AstNode, LintianOverrides, OverrideLine, SyntaxKind};
 use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use rowan::{GreenNodeBuilder, SyntaxNode};
-use std::collections::HashMap;
 use std::path::Path;
 
 // Include the generated renamed tags map
@@ -97,7 +96,7 @@ fn find_override_files(base_path: &Path) -> Vec<std::path::PathBuf> {
 // TODO: Move AST manipulation logic to lintian_overrides.rs as a generic helper function
 fn update_renamed_tags(
     overrides: &LintianOverrides,
-    renames: &HashMap<&str, &str>,
+    renames: &indexmap::IndexMap<&str, &str>,
     base_path: &Path,
 ) -> (
     Option<LintianOverrides>,
@@ -298,7 +297,7 @@ mod tests {
         let parsed = LintianOverrides::parse(text);
         let overrides = parsed.ok().unwrap();
 
-        let mut renames = HashMap::new();
+        let mut renames = indexmap::IndexMap::new();
         renames.insert("old-tag", "new-tag");
 
         let (updated, fixed, overridden) = update_renamed_tags(&overrides, &renames, base_path);

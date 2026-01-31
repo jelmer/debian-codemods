@@ -10,12 +10,12 @@ use std::path::Path;
 include!(concat!(env!("OUT_DIR"), "/spdx_licenses.rs"));
 
 lazy_static! {
-    static ref RENAMES_MAP: HashMap<String, String> = {
+    static ref RENAMES_MAP: indexmap::IndexMap<String, String> = {
         // Start with SPDX license name to ID mapping
         let mut map = get_spdx_license_renames()
             .into_iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect::<HashMap<_, _>>();
+            .collect::<indexmap::IndexMap<_, _>>();
 
         // Add the hardcoded renames from the Python version (RENAMES dict)
         map.insert(
