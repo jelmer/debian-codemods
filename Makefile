@@ -16,9 +16,6 @@ tag-status::
 testsuite::
 	cargo test --workspace
 
-README.md::
-	cargo run -p lintian-brush --bin tag-status -- --update-readme
-
 lintian-tags:
 	lintian-explain-tags --list-tags > lintian-tags
 
@@ -27,11 +24,6 @@ lintian-tags:
 unsupported: lintian-tags lintian-brush-tags
 	awk 'NR==FNR{a[$$0]=1;next}!a[$$0]' lintian-brush-tags lintian-tags
 
-update-readme:
-	brz diff README.md
-	$(MAKE) README.md
-	brz diff README.md || brz commit -m "Update list of fixers in README.md" README.md
-
 update-spdx:
 	python3 download-license-data.py > spdx.json
 	brz diff spdx.json || brz commit -m "Update SPDX license data" spdx.json
@@ -39,7 +31,10 @@ update-spdx:
 update-renamed-tags:
 	$(MAKE) -C lintian-brush update-renamed-tags
 
-update: update-spdx update-readme update-renamed-tags update-deps
+update: update-spdx update-lintian-brush-readme update-renamed-tags update-deps
+
+update-lintian-brush-readme:
+	$(MAKE) -C lintian-brush README.md
 
 next:
 	$(MAKE) -C lintian-brush next
