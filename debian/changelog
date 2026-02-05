@@ -1,4 +1,4 @@
-debian-codemods (1.70) UNRELEASED; urgency=medium
+debian-codemods (0.170) experimental; urgency=medium
 
   * Rename source package to ``debian-codemods`` to reflect that it
     contains more than just lintian-brush.
