@@ -98,9 +98,9 @@ fn generate_renamed_tags_map(out_dir: &std::ffi::OsStr) {
     // Generate Rust code for the hashmap
     let mut code = String::new();
     code.push_str(
-        "pub fn get_renamed_tags() -> std::collections::HashMap<&'static str, &'static str> {\n",
+        "pub fn get_renamed_tags() -> indexmap::IndexMap<&'static str, &'static str> {\n",
     );
-    code.push_str("    let mut map = std::collections::HashMap::new();\n");
+    code.push_str("    let mut map = indexmap::IndexMap::new();\n");
 
     // Sort the keys to ensure deterministic ordering
     let mut sorted_renames: Vec<_> = renames.into_iter().collect();
@@ -276,6 +276,30 @@ fn generate_spdx_data(out_dir: &std::ffi::OsStr) {
     let spdx_data: SpdxData =
         serde_json::from_str(&json_content).expect("Failed to parse spdx.json");
 
+    // Deprecated SPDX license IDs that should be deprioritized when deduplicating
+    let deprecated_ids: std::collections::HashSet<&str> = [
+        "AGPL-1.0",
+        "AGPL-3.0",
+        "GFDL-1.1",
+        "GFDL-1.2",
+        "GFDL-1.3",
+        "GPL-1.0",
+        "GPL-1.0+",
+        "GPL-2.0",
+        "GPL-2.0+",
+        "GPL-3.0",
+        "GPL-3.0+",
+        "LGPL-2.0",
+        "LGPL-2.0+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "LGPL-3.0",
+        "LGPL-3.0+",
+    ]
+    .iter()
+    .copied()
+    .collect();
+
     // Collect and sort license IDs
     let mut license_ids: Vec<&String> = spdx_data.licenses.keys().collect();
     license_ids.sort();
@@ -294,7 +318,21 @@ fn generate_spdx_data(out_dir: &std::ffi::OsStr) {
         .iter()
         .map(|(id, license)| (license.name.to_lowercase(), id.as_str()))
         .collect();
-    name_to_id_pairs.sort_by(|a, b| a.0.cmp(&b.0));
+
+    // Sort by name, then prioritize non-deprecated IDs, then by ID for determinism
+    name_to_id_pairs.sort_by(|a, b| {
+        a.0.cmp(&b.0)
+            .then_with(|| {
+                // Non-deprecated (false) should come before deprecated (true)
+                deprecated_ids
+                    .contains(a.1)
+                    .cmp(&deprecated_ids.contains(b.1))
+            })
+            .then_with(|| a.1.cmp(&b.1))
+    });
+
+    // Deduplicate by name, keeping the first (non-deprecated when available)
+    name_to_id_pairs.dedup_by(|a, b| a.0 == b.0);
 
     let names: Vec<&str> = name_to_id_pairs
         .iter()
@@ -303,8 +341,8 @@ fn generate_spdx_data(out_dir: &std::ffi::OsStr) {
     let ids: Vec<&str> = name_to_id_pairs.iter().map(|(_, id)| *id).collect();
 
     let renames_code = quote! {
-        pub fn get_spdx_license_renames() -> std::collections::HashMap<&'static str, &'static str> {
-            let mut map = std::collections::HashMap::new();
+        pub fn get_spdx_license_renames() -> indexmap::IndexMap<&'static str, &'static str> {
+            let mut map = indexmap::IndexMap::new();
             #(
                 map.insert(#names, #ids);
             )*

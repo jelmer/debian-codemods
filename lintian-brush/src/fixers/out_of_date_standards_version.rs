@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::lintian::StandardsVersion;
 use debian_control::lossless::Control;
 use std::collections::HashMap;
@@ -458,11 +458,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let current_version_str = match source.standards_version() {
         Some(sv) => {
-            log::debug!("Current standards version: {}", sv);
+            tracing::debug!("Current standards version: {}", sv);
             sv
         }
         None => {
-            log::debug!("No standards version found");
+            tracing::debug!("No standards version found");
             return Err(FixerError::NoChanges);
         }
     };
@@ -473,7 +473,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let (latest_version, current_date, _latest_date, tag) = if let Some(iter) =
         standards_versions_opt
     {
-        log::debug!("Got standards versions iterator");
+        tracing::debug!("Got standards versions iterator");
 
         // Collect all releases into a Vec for lookup
         let releases: Vec<(StandardsVersion, chrono::DateTime<chrono::Utc>)> = iter
@@ -483,11 +483,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         // Parse current version
         let current_version: StandardsVersion = match current_version_str.parse() {
             Ok(sv) => {
-                log::debug!("Parsed current version: {:?}", sv);
+                tracing::debug!("Parsed current version: {:?}", sv);
                 sv
             }
             Err(e) => {
-                log::debug!(
+                tracing::debug!(
                     "Failed to parse current version '{}': {:?}",
                     current_version_str,
                     e
@@ -527,7 +527,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
         (latest, current_date, latest_date, tag)
     } else {
-        log::debug!("No standards versions iterator available");
+        tracing::debug!("No standards versions iterator available");
         // Like Python, continue with None values
         let _current_version: StandardsVersion = match current_version_str.parse() {
             Ok(sv) => sv,
@@ -546,15 +546,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
     let info_str = info_parts.join(" ");
 
-    let issue = LintianIssue {
-        package: None,
-        package_type: Some(PackageType::Source),
-        tag: Some(tag.to_string()),
-        info: Some(vec![info_str]),
-    };
+    let issue = LintianIssue::source_with_info(tag, vec![info_str]);
 
     if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChanges);
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
     // Now try to upgrade through the path
@@ -568,7 +563,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     current = target.to_string();
                 }
                 UpgradeCheckResult::Failure { section, reason } => {
-                    log::info!(
+                    tracing::info!(
                         "Upgrade checklist validation from standards {} ⇒ {} failed: {}: {}",
                         current,
                         target,
@@ -578,7 +573,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     break;
                 }
                 UpgradeCheckResult::Unable { section, reason } => {
-                    log::info!(
+                    tracing::info!(
                         "Unable to validate checklist from standards {} ⇒ {}: {}: {}",
                         current,
                         target,
@@ -608,7 +603,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         current
     ))
     .certainty(crate::Certainty::Certain)
-    .fixed_tag(tag)
+    .fixed_issues(vec![issue])
     .build())
 }
 

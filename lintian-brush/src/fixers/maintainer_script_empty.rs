@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerResult};
+use crate::{declare_fixer, Certainty, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -95,6 +95,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let mut removed = Vec::new();
     let mut certainty = Certainty::Certain;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     let entries = fs::read_dir(&debian_dir)?;
 
@@ -105,17 +107,34 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         if let Some((package, script)) = parse_maintainer_script_name(&filename) {
             let script_path = entry.path();
 
-            match is_empty(&script_path)? {
-                ScriptStatus::Empty => {
+            let status = is_empty(&script_path)?;
+            match status {
+                ScriptStatus::Empty | ScriptStatus::SomeComments => {
+                    let issue = if package == "source" {
+                        LintianIssue::source_with_info(
+                            "maintainer-script-empty",
+                            vec![format!("[{}]", script)],
+                        )
+                    } else {
+                        LintianIssue::binary_with_info(
+                            &package,
+                            "maintainer-script-empty",
+                            vec![format!("[{}]", script)],
+                        )
+                    };
+
+                    if !issue.should_fix(base_path) {
+                        overridden_issues.push(issue);
+                        continue;
+                    }
+
                     fs::remove_file(&script_path)?;
                     removed.push((package, script));
-                }
-                ScriptStatus::SomeComments => {
-                    // Check minimum certainty - in the Python version, this checks meets_minimum_certainty("likely")
-                    // For simplicity, we'll always remove comments-only scripts but set certainty to likely
-                    fs::remove_file(&script_path)?;
-                    removed.push((package, script));
-                    certainty = Certainty::Likely;
+                    fixed_issues.push(issue);
+
+                    if status == ScriptStatus::SomeComments {
+                        certainty = Certainty::Likely;
+                    }
                 }
                 ScriptStatus::NotEmpty => {
                     // Keep the script as it has substantial content
@@ -125,6 +144,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     if removed.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -138,7 +160,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     );
 
     Ok(FixerResult::builder(&description)
-        .fixed_tags(vec!["maintainer-script-empty"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .certainty(certainty)
         .build())
 }

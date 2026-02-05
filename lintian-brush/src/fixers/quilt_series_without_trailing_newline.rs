@@ -24,20 +24,24 @@ declare_fixer! {
             return Err(FixerError::NoChanges);
         }
 
+        let issue = crate::LintianIssue::source_with_info(
+            "quilt-series-without-trailing-newline",
+            vec!["debian/patches/series".to_string()],
+        );
+
+        if !issue.should_fix(basedir) {
+            return Err(FixerError::NoChanges);
+        }
+
         // Add trailing newline
         let mut new_content = content;
         new_content.push(b'\n');
         fs::write(&series_path, new_content)?;
 
-        Ok(FixerResult::new(
-            "Add missing trailing newline in debian/patches/series.".to_string(),
-            Some(vec!["quilt-series-without-trailing-newline".to_string()]),
-            Some(Certainty::Certain),
-            None,
-            None,
-            vec![],
-            None,
-        ))
+        Ok(FixerResult::builder("Add missing trailing newline in debian/patches/series.")
+            .certainty(Certainty::Certain)
+            .fixed_issues(vec![issue])
+            .build())
     }
 }
 

@@ -11,7 +11,6 @@ use distro_info::DistroInfo;
 use debian_analyzer::{get_committer, Certainty};
 use lintian_brush::{ManyResult, OverallError};
 use std::collections::HashMap;
-use std::io::Write as _;
 use std::path::PathBuf;
 
 #[derive(clap::Args, Clone, Debug)]
@@ -149,6 +148,10 @@ struct OutputArgs {
     /// Do not document changes in the changelog (useful when using e.g. "gbp dch") [default: auto-detect]
     #[arg(long, default_value_t = false, conflicts_with = "update_changelog")]
     no_update_changelog: bool,
+
+    /// Display statistics on fixer performance
+    #[arg(long, default_value_t = false)]
+    stats: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -167,17 +170,136 @@ struct Args {
 fn main() -> Result<(), i32> {
     let args = Args::parse();
 
-    env_logger::builder()
-        .format(|buf, record| writeln!(buf, "{}", record.args()))
-        .filter(
-            None,
-            if args.output.debug {
-                log::LevelFilter::Debug
-            } else {
-                log::LevelFilter::Info
-            },
+    // Create MultiProgress for coordinating progress bars with logging
+    let multi_progress = indicatif::MultiProgress::new();
+
+    // Set up tracing subscriber with a custom writer that suspends progress bars
+    use tracing_subscriber::fmt::format::Writer;
+    use tracing_subscriber::fmt::FmtContext;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::registry::LookupSpan;
+    use tracing_subscriber::util::SubscriberInitExt;
+
+    struct ProgressSuspendingWriter {
+        multi_progress: indicatif::MultiProgress,
+    }
+
+    impl std::io::Write for ProgressSuspendingWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.multi_progress.suspend(|| std::io::stderr().write(buf))
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            self.multi_progress.suspend(|| std::io::stderr().flush())
+        }
+    }
+
+    // Store span data for later retrieval
+    #[derive(Debug)]
+    struct FixerSpanData {
+        name: String,
+    }
+
+    // Custom format that shows fixer name in brackets
+    struct FixerFormat;
+
+    impl<S, N> tracing_subscriber::fmt::FormatEvent<S, N> for FixerFormat
+    where
+        S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> tracing_subscriber::fmt::FormatFields<'a> + 'static,
+    {
+        fn format_event(
+            &self,
+            ctx: &FmtContext<'_, S, N>,
+            mut writer: Writer<'_>,
+            event: &tracing::Event<'_>,
+        ) -> std::fmt::Result {
+            // Look for a fixer span in the current context (if any)
+            if let Some(span_ref) = ctx.event_scope() {
+                for span in span_ref {
+                    if span.name() == "fixer" {
+                        let extensions = span.extensions();
+                        if let Some(data) = extensions.get::<FixerSpanData>() {
+                            // Use dim style for subtle visual distinction
+                            use nu_ansi_term::Style;
+                            write!(writer, "{}: ", Style::new().dimmed().paint(&data.name))?;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Write the message
+            ctx.field_format().format_fields(writer.by_ref(), event)?;
+            writeln!(writer)
+        }
+    }
+
+    // Layer to capture span fields
+    use tracing::field::{Field, Visit};
+
+    struct FixerLayer;
+
+    impl<S> tracing_subscriber::Layer<S> for FixerLayer
+    where
+        S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+    {
+        fn on_new_span(
+            &self,
+            attrs: &tracing::span::Attributes<'_>,
+            id: &tracing::span::Id,
+            ctx: tracing_subscriber::layer::Context<'_, S>,
+        ) {
+            if attrs.metadata().name() == "fixer" {
+                let span = ctx.span(id).expect("Span not found");
+                let mut visitor = FixerVisitor { name: None };
+                attrs.record(&mut visitor);
+                if let Some(name) = visitor.name {
+                    span.extensions_mut().insert(FixerSpanData { name });
+                }
+            }
+        }
+    }
+
+    struct FixerVisitor {
+        name: Option<String>,
+    }
+
+    impl Visit for FixerVisitor {
+        fn record_str(&mut self, field: &Field, value: &str) {
+            if field.name() == "name" {
+                self.name = Some(value.to_string());
+            }
+        }
+
+        fn record_debug(&mut self, _field: &Field, _value: &dyn std::fmt::Debug) {
+            // No-op for other field types
+        }
+    }
+
+    let filter_level = if args.output.debug {
+        tracing::Level::DEBUG
+    } else {
+        tracing::Level::INFO
+    };
+
+    let mp_for_writer = multi_progress.clone();
+    tracing_subscriber::registry()
+        .with(FixerLayer)
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_writer(move || ProgressSuspendingWriter {
+                    multi_progress: mp_for_writer.clone(),
+                })
+                .event_format(FixerFormat),
         )
+        .with(tracing_subscriber::filter::LevelFilter::from_level(
+            filter_level,
+        ))
         .init();
+
+    // Set up log forwarding to tracing for compatibility with log:: macros
+    tracing_log::LogTracer::init().ok();
 
     breezyshim::init();
 
@@ -190,7 +312,7 @@ fn main() -> Result<(), i32> {
     ) {
         Ok(fixers) => fixers,
         Err(e) => {
-            log::error!("Error loading fixers: {}", e);
+            tracing::error!("Error loading fixers: {}", e);
             std::process::exit(1);
         }
     };
@@ -200,38 +322,7 @@ fn main() -> Result<(), i32> {
     if args.output.list_fixers {
         fixers.sort_by_key(|a| a.name());
         for fixer in fixers {
-            if args.output.verbose {
-                // Check if it's a ScriptFixer or PythonScriptFixer (both implement ExternalFixer)
-                if let Some(script_fixer) =
-                    fixer.as_any().downcast_ref::<lintian_brush::ScriptFixer>()
-                {
-                    println!(
-                        "{} ({})",
-                        fixer.name(),
-                        lintian_brush::ExternalFixer::path(script_fixer).display()
-                    );
-                } else if cfg!(feature = "python") {
-                    #[cfg(feature = "python")]
-                    if let Some(python_fixer) = fixer
-                        .as_any()
-                        .downcast_ref::<lintian_brush::PythonScriptFixer>()
-                    {
-                        println!(
-                            "{} ({})",
-                            fixer.name(),
-                            lintian_brush::ExternalFixer::path(python_fixer).display()
-                        );
-                    } else {
-                        println!("{}", fixer.name());
-                    }
-                    #[cfg(not(feature = "python"))]
-                    println!("{}", fixer.name());
-                } else {
-                    println!("{}", fixer.name());
-                }
-            } else {
-                println!("{}", fixer.name());
-            }
+            println!("{}", fixer.name());
         }
     } else if args.output.list_tags {
         let tags = fixers
@@ -260,11 +351,11 @@ fn main() -> Result<(), i32> {
             ) {
                 Ok((branch, subpath)) => (branch, subpath),
                 Err(Error::NotBranchError(_msg, _)) => {
-                    log::error!("No version control directory found (e.g. a .git directory).");
+                    tracing::error!("No version control directory found (e.g. a .git directory).");
                     std::process::exit(1);
                 }
                 Err(Error::DependencyNotPresent(name, _reason)) => {
-                    log::error!(
+                    tracing::error!(
                         "Unable to open branch at {}: missing package {}",
                         args.output.directory.display(),
                         name
@@ -272,7 +363,7 @@ fn main() -> Result<(), i32> {
                     std::process::exit(1);
                 }
                 Err(err) => {
-                    log::error!(
+                    tracing::error!(
                         "Unable to open branch at {}: {}",
                         args.output.directory.display(),
                         err
@@ -284,7 +375,7 @@ fn main() -> Result<(), i32> {
             let td = match tempfile::tempdir() {
                 Ok(td) => td,
                 Err(e) => {
-                    log::error!("Unable to create temporary directory: {}", e);
+                    tracing::error!("Unable to create temporary directory: {}", e);
                     std::process::exit(1);
                 }
             };
@@ -300,7 +391,7 @@ fn main() -> Result<(), i32> {
             ) {
                 Ok(to_dir) => to_dir,
                 Err(e) => {
-                    log::error!("Unable to create temporary branch: {}", e);
+                    tracing::error!("Unable to create temporary branch: {}", e);
                     std::process::exit(1);
                 }
             };
@@ -310,11 +401,11 @@ fn main() -> Result<(), i32> {
             match workingtree::open_containing(&args.output.directory) {
                 Ok((wt, subpath)) => (wt, subpath.display().to_string()),
                 Err(Error::NotBranchError(_msg, _)) => {
-                    log::error!("No version control directory found (e.g. a .git directory).");
+                    tracing::error!("No version control directory found (e.g. a .git directory).");
                     std::process::exit(1);
                 }
                 Err(Error::DependencyNotPresent(name, _reason)) => {
-                    log::error!(
+                    tracing::error!(
                         "Unable to open tree at {}: missing package {}",
                         args.output.directory.display(),
                         name
@@ -322,7 +413,7 @@ fn main() -> Result<(), i32> {
                     std::process::exit(1);
                 }
                 Err(e) => {
-                    log::error!(
+                    tracing::error!(
                         "Unable to open tree at {}: {}",
                         args.output.directory.display(),
                         e
@@ -356,7 +447,7 @@ fn main() -> Result<(), i32> {
                 match lintian_brush::select_fixers(fixers, include.as_deref(), exclude.as_deref()) {
                     Ok(fixers) => fixers,
                     Err(lintian_brush::UnknownFixer(f)) => {
-                        log::error!("Unknown fixer specified: {}", f);
+                        tracing::error!("Unknown fixer specified: {}", f);
                         std::process::exit(1);
                     }
                 }
@@ -399,7 +490,7 @@ fn main() -> Result<(), i32> {
         ) {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
             Err(e) => {
-                log::error!("Unable to read config: {}", e);
+                tracing::error!("Unable to read config: {}", e);
                 std::process::exit(1);
             }
             Ok(cfg) => {
@@ -451,18 +542,18 @@ fn main() -> Result<(), i32> {
         );
 
         if args.output.verbose {
-            log::info!("Using parameters:");
-            log::info!(" compatibility release: {}", compat_release);
-            log::info!(" minimum certainty: {}", minimum_certainty);
+            tracing::info!("Using parameters:");
+            tracing::info!(" compatibility release: {}", compat_release);
+            tracing::info!(" minimum certainty: {}", minimum_certainty);
             if let Some(allow_reformatting) = allow_reformatting {
-                log::info!(" allow reformatting: {}", allow_reformatting);
+                tracing::info!(" allow reformatting: {}", allow_reformatting);
             } else {
-                log::info!(" allow reformatting: auto");
+                tracing::info!(" allow reformatting: auto");
             }
             if let Some(update_changelog) = update_changelog {
-                log::info!(" update changelog: {}", update_changelog);
+                tracing::info!(" update changelog: {}", update_changelog);
             } else {
-                log::info!(" update changelog: auto");
+                tracing::info!(" update changelog: auto");
             }
         }
 
@@ -475,22 +566,6 @@ fn main() -> Result<(), i32> {
                 None,
                 Some(false),
             );
-        }
-
-        #[cfg(feature = "python")]
-        {
-            // Ensure we can find the lintian_brush.fixer python module
-            let e = pyo3::Python::attach(|py| py.import("lintian_brush.fixer").err());
-
-            if let Some(e) = e {
-                drop(write_lock);
-                svp.report_fatal(
-                    "python-import-error",
-                    format!("Error importing lintian_brush.fixer: {}", e).as_str(),
-                    Some("Ensure that the lintian-brush Python package is in Python's sys.path."),
-                    Some(false),
-                );
-            }
         }
 
         let preferences = lintian_brush::FixerPreferences {
@@ -520,6 +595,7 @@ fn main() -> Result<(), i32> {
             Some(std::path::Path::new(subpath.as_str())),
             Some("lintian-brush"),
             timeout,
+            Some(&multi_progress),
         ) {
             Err(OverallError::NotDebianPackage(p)) => {
                 drop(write_lock);
@@ -532,7 +608,7 @@ fn main() -> Result<(), i32> {
             }
             Err(OverallError::WorkspaceDirty(p)) => {
                 drop(write_lock);
-                log::error!(
+                tracing::error!(
                     "{}: Please commit pending changes and remove unknown files first.",
                     p.display()
                 );
@@ -596,18 +672,18 @@ fn main() -> Result<(), i32> {
         std::mem::drop(write_lock);
         if let Some(tempdir) = tempdir {
             if let Err(e) = tempdir.close() {
-                log::warn!("Error removing temporary directory: {}", e);
+                tracing::warn!("Error removing temporary directory: {}", e);
             }
         }
 
         if !overall_result.overridden_lintian_issues.is_empty() {
             if overall_result.overridden_lintian_issues.len() == 1 {
-                log::info!(
+                tracing::info!(
                     "{} change skipped because of lintian overrides.",
                     overall_result.overridden_lintian_issues.len()
                 );
             } else {
-                log::info!(
+                tracing::info!(
                     "{} changes skipped because of lintian overrides.",
                     overall_result.overridden_lintian_issues.len()
                 );
@@ -616,35 +692,83 @@ fn main() -> Result<(), i32> {
         if !overall_result.success.is_empty() {
             let all_tags = overall_result.tags_count();
             if !all_tags.is_empty() {
-                log::info!(
+                tracing::info!(
                     "Lintian tags fixed: {:?}",
                     all_tags.keys().collect::<Vec<_>>()
                 );
             } else {
-                log::info!("Some changes were made, but there are no affected lintian tags.");
+                tracing::info!("Some changes were made, but there are no affected lintian tags.");
             }
             let min_certainty = overall_result.minimum_success_certainty();
             if min_certainty != Certainty::Certain {
-                log::info!(
+                tracing::info!(
                     "Some changes were made with lower certainty ({}); please double check the changes.",
                     min_certainty
                 );
             }
         } else {
-            log::info!("No changes made.");
+            tracing::info!("No changes made.");
         }
         if !overall_result.failed_fixers.is_empty() && !args.output.verbose {
-            log::info!("Some fixer scripts failed to run:");
+            tracing::info!("Some fixer scripts failed to run:");
             for (name, reason) in overall_result.failed_fixers.iter() {
-                log::info!("  {}: {}", name, reason);
+                tracing::info!("  {}: {}", name, reason);
             }
-            log::info!("Run with --verbose for details.");
+            tracing::info!("Run with --verbose for details.");
         }
         if !overall_result.formatting_unpreservable.is_empty() && !args.output.verbose {
-            log::info!(
+            tracing::info!(
                 "Some fixer scripts were unable to preserve formatting: {:?}. Run with --allow-reformatting to reformat {:?}.",
                 overall_result.formatting_unpreservable.keys().collect::<Vec<_>>(),
                 overall_result.formatting_unpreservable.values().collect::<Vec<_>>()
+            );
+        }
+        if args.output.stats {
+            tracing::info!("Fixer performance statistics:");
+
+            // Collect all fixers with their durations from the HashMap
+            let mut fixer_stats: Vec<_> = overall_result
+                .fixer_durations
+                .iter()
+                .map(|(name, duration)| (name.as_str(), *duration))
+                .collect();
+
+            // Sort by duration (slowest first)
+            fixer_stats.sort_by(|a, b| b.1.cmp(&a.1));
+
+            // Display statistics
+            let total_duration: std::time::Duration = overall_result.fixer_durations.values().sum();
+
+            println!("\n{:<50} {:>12} {:>10}", "Fixer", "Duration (s)", "Result");
+            println!("{}", "-".repeat(75));
+
+            // Create a set of successful fixer names for quick lookup
+            let successful_fixers: std::collections::HashSet<&str> = overall_result
+                .success
+                .iter()
+                .map(|fs| fs.fixer_name.as_str())
+                .collect();
+
+            for (name, duration) in &fixer_stats {
+                let result = if successful_fixers.contains(name) {
+                    "success"
+                } else {
+                    "no change"
+                };
+                println!(
+                    "{:<50} {:>12.2} {:>10}",
+                    name,
+                    duration.as_secs_f32(),
+                    result
+                );
+            }
+
+            println!("{}", "-".repeat(75));
+            println!("{:<50} {:>12.2}", "TOTAL", total_duration.as_secs_f32());
+            println!(
+                "\n{} fixer(s) ran, {} made changes",
+                overall_result.fixer_durations.len(),
+                overall_result.success.len()
             );
         }
         if args.output.diff {
@@ -676,7 +800,6 @@ fn main() -> Result<(), i32> {
 }
 
 fn versions_dict() -> HashMap<String, String> {
-    use pyo3::prelude::*;
     let mut ret = HashMap::new();
     ret.insert(
         "lintian-brush".to_string(),
@@ -684,23 +807,5 @@ fn versions_dict() -> HashMap<String, String> {
     );
     let breezy_version = breezyshim::version::version();
     ret.insert("breezy".to_string(), breezy_version.to_string());
-
-    pyo3::Python::attach(|py| {
-        let debmutate = py.import("debmutate").unwrap();
-        ret.insert(
-            "debmutate".to_string(),
-            debmutate
-                .getattr("version_string")
-                .unwrap()
-                .extract()
-                .unwrap(),
-        );
-
-        let debian = py.import("debian").unwrap();
-        ret.insert(
-            "debian".to_string(),
-            debian.getattr("__version__").unwrap().extract().unwrap(),
-        );
-    });
     ret
 }

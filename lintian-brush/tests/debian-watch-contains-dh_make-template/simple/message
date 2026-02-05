@@ -1,2 +1,3 @@
 Remove dh_make template from debian watch.
-Fixed-Lintian-Tags: debian-watch-contains-dh_make-template
+Fixed-Lintian-Issues:
+ source: debian-watch-contains-dh_make-template s/.+\/v?(\d\S+)\.tar\.gz/<project>-$1\.tar\.gz/ [debian/watch]

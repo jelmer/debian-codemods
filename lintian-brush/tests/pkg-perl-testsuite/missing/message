@@ -1,3 +1,4 @@
 Set Testsuite header for perl package.
 Certainty: certain
-Fixed-Lintian-Tags: team/pkg-perl/testsuite/no-testsuite-header
+Fixed-Lintian-Issues:
+ source: team/pkg-perl/testsuite/no-testsuite-header autopkgtest

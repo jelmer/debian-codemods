@@ -1,2 +1,3 @@
 Remove duplicate values for fields Repository in debian/upstream/metadata.
-Fixed-Lintian-Tags: upstream-metadata-yaml-invalid
+Fixed-Lintian-Issues:
+ source: upstream-metadata-yaml-invalid

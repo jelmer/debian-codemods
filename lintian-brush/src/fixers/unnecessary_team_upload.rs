@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_changelog::ChangeLog;
 use std::fs;
@@ -58,6 +58,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // Find and remove the "Team upload" bullet
     let mut found_team_upload = false;
+    let mut team_upload_line_num = None;
     for change in changes {
         // Only process changes from the first (most recent) entry
         if change.package() != last_entry.package() || change.version() != last_entry.version() {
@@ -67,12 +68,22 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let bullets = change.split_into_bullets();
         for bullet in bullets {
             let lines = bullet.lines();
-            if lines
-                .iter()
-                .any(|line| line.trim() == TEAM_UPLOAD_LINE.trim())
-            {
-                found_team_upload = true;
-                bullet.remove();
+            for line in lines.iter() {
+                if line.trim() == TEAM_UPLOAD_LINE.trim() {
+                    found_team_upload = true;
+                    // Get the first line number for this bullet (1-indexed)
+                    team_upload_line_num = Some(
+                        bullet
+                            .line_numbers()
+                            .first()
+                            .expect("bullet should have line numbers")
+                            + 1,
+                    );
+                    bullet.remove();
+                    break;
+                }
+            }
+            if found_team_upload {
                 break;
             }
         }
@@ -85,12 +96,22 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    let line_num = team_upload_line_num.unwrap_or(1);
+    let issue = LintianIssue::source_with_info(
+        "unnecessary-team-upload",
+        vec![format!("[debian/changelog:{}]", line_num)],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     // Write back the modified changelog
     fs::write(&changelog_path, changelog.to_string())?;
 
     Ok(
         FixerResult::builder("Remove unnecessary Team Upload line in changelog.")
-            .fixed_tag("unnecessary-team-upload")
+            .fixed_issues(vec![issue])
             .build(),
     )
 }

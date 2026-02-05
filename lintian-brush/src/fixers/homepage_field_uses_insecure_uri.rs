@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_control::lossless::Control;
 use std::fs;
 use std::path::Path;
@@ -139,12 +139,23 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         None => return Err(FixerError::NoChanges),
     };
 
-    source.as_mut_deb822().set("Homepage", &new_homepage);
+    let issue = LintianIssue::source_with_info(
+        "homepage-field-uses-insecure-uri",
+        vec![homepage.to_string()],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
+    let new_homepage_url = url::Url::parse(&new_homepage)
+        .map_err(|e| FixerError::Other(format!("Failed to parse URL: {}", e)))?;
+    source.set_homepage(&new_homepage_url);
 
     fs::write(&control_path, control.to_string())?;
 
     Ok(FixerResult::builder("Use secure URI in Homepage field.")
-        .fixed_tags(vec!["homepage-field-uses-insecure-uri"])
+        .fixed_issue(issue)
         .build())
 }
 

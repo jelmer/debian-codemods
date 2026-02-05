@@ -1,0 +1,1 @@
+systemd-service-file-refers-to-obsolete-target debian/waagent.waagent-provision.service syslog.target

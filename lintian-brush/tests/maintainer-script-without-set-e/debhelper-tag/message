@@ -1,2 +1,3 @@
 Use set -e rather than passing -e on the shebang-line.
-Fixed-Lintian-Tags: maintainer-script-without-set-e
+Fixed-Lintian-Issues:
+ source: maintainer-script-without-set-e [prerm]

@@ -1,2 +1,3 @@
 Use versioned copyright format URI.
-Fixed-Lintian-Tags: unversioned-copyright-format-uri
+Fixed-Lintian-Issues:
+ source: unversioned-copyright-format-uri debian/copyright:1

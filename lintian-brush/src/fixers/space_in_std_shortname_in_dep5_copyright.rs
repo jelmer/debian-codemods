@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_copyright::lossless::Copyright;
 use debian_copyright::License;
 use lazy_static::lazy_static;
@@ -10,12 +10,12 @@ use std::path::Path;
 include!(concat!(env!("OUT_DIR"), "/spdx_licenses.rs"));
 
 lazy_static! {
-    static ref RENAMES_MAP: HashMap<String, String> = {
+    static ref RENAMES_MAP: indexmap::IndexMap<String, String> = {
         // Start with SPDX license name to ID mapping
         let mut map = get_spdx_license_renames()
             .into_iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect::<HashMap<_, _>>();
+            .collect::<indexmap::IndexMap<_, _>>();
 
         // Add the hardcoded renames from the Python version (RENAMES dict)
         map.insert(
@@ -99,7 +99,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let content = fs::read_to_string(&copyright_path)?;
     let copyright: Copyright = content.parse().map_err(|_| FixerError::NoChanges)?;
 
-    let mut changed = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Fix Files paragraphs
     for mut files_para in copyright.iter_files() {
@@ -113,24 +114,27 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         };
 
-        let issue = LintianIssue {
-            package: None,
-            package_type: Some(PackageType::Source),
-            tag: Some("space-in-std-shortname-in-dep5-copyright".to_string()),
-            info: Some(vec![format!("{} (line XX)", name)]),
-        };
+        let line_number = files_para.as_deb822().line() + 1;
+        let issue = LintianIssue::source_with_info(
+            "space-in-std-shortname-in-dep5-copyright",
+            vec![format!(
+                "{} [debian/copyright:{}]",
+                name.to_lowercase(),
+                line_number
+            )],
+        );
 
-        if !issue.should_fix(base_path) {
-            continue;
-        }
-
-        let new_license = if let Some(text) = license.text() {
-            License::Named(new_synopsis.clone(), text.to_string())
+        if issue.should_fix(base_path) {
+            let new_license = if let Some(text) = license.text() {
+                License::Named(new_synopsis.clone(), text.to_string())
+            } else {
+                License::Name(new_synopsis.clone())
+            };
+            files_para.set_license(&new_license);
+            fixed_issues.push(issue);
         } else {
-            License::Name(new_synopsis.clone())
-        };
-        files_para.set_license(&new_license);
-        changed = true;
+            overridden_issues.push(issue);
+        }
     }
 
     // Fix License paragraphs
@@ -142,27 +146,33 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         };
 
-        let issue = LintianIssue {
-            package: None,
-            package_type: Some(PackageType::Source),
-            tag: Some("space-in-std-shortname-in-dep5-copyright".to_string()),
-            info: Some(vec![format!("{} (line XX)", name)]),
-        };
+        let line_number = license_para.as_deb822().line() + 1;
+        let issue = LintianIssue::source_with_info(
+            "space-in-std-shortname-in-dep5-copyright",
+            vec![format!(
+                "{} [debian/copyright:{}]",
+                name.to_lowercase(),
+                line_number
+            )],
+        );
 
-        if !issue.should_fix(base_path) {
-            continue;
-        }
-
-        let new_license = if let Some(text) = license_para.text() {
-            License::Named(new_synopsis.clone(), text)
+        if issue.should_fix(base_path) {
+            let new_license = if let Some(text) = license_para.text() {
+                License::Named(new_synopsis.clone(), text)
+            } else {
+                License::Name(new_synopsis.clone())
+            };
+            license_para.set_license(&new_license);
+            fixed_issues.push(issue);
         } else {
-            License::Name(new_synopsis.clone())
-        };
-        license_para.set_license(&new_license);
-        changed = true;
+            overridden_issues.push(issue);
+        }
     }
 
-    if !changed {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -170,7 +180,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder("Replace spaces in short license names with dashes.")
-            .fixed_tags(vec!["space-in-std-shortname-in-dep5-copyright"])
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .build(),
     )
 }

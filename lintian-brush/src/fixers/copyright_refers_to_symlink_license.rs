@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use deb822_lossless::Deb822;
 use regex::Regex;
 use std::collections::HashSet;
@@ -20,6 +20,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let mut modified = false;
     let mut updated_licenses = HashSet::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
     let pattern = Regex::new(r"/usr/share/common-licenses/([A-Za-z0-9-.]+)").unwrap();
 
     for mut para in deb822.paragraphs() {
@@ -45,8 +47,41 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
             // Check if this is a symlink path that should be replaced
             if let Some(replacement) = replace_symlink_path(synopsis, path_str, license_name) {
-                updated_licenses.insert(synopsis.to_string());
-                replacement
+                // Create issues for this symlink path
+                let path_without_slash = path_str.trim_start_matches('/');
+                let symlink_issue = LintianIssue::source_with_info(
+                    "copyright-refers-to-symlink-license",
+                    vec![path_without_slash.to_string()],
+                );
+                let versionless_issue = LintianIssue::source_with_info(
+                    "copyright-refers-to-versionless-license-file",
+                    vec![path_without_slash.to_string()],
+                );
+
+                let symlink_should_fix = symlink_issue.should_fix(base_path);
+                let versionless_should_fix = versionless_issue.should_fix(base_path);
+
+                // Track which issues are fixed vs overridden
+                if symlink_should_fix {
+                    fixed_issues.push(symlink_issue);
+                } else {
+                    overridden_issues.push(symlink_issue);
+                }
+
+                if versionless_should_fix {
+                    fixed_issues.push(versionless_issue);
+                } else {
+                    overridden_issues.push(versionless_issue);
+                }
+
+                // Make the replacement if at least one issue should be fixed
+                if symlink_should_fix || versionless_should_fix {
+                    updated_licenses.insert(synopsis.to_string());
+                    replacement
+                } else {
+                    // Both issues are overridden, don't replace
+                    path_str.to_string()
+                }
             } else {
                 path_str.to_string()
             }
@@ -59,6 +94,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     if !modified {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -70,8 +108,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         "Refer to specific version of license {}.",
         updated_list.join(", ")
     ))
-    .fixed_tag("copyright-refers-to-symlink-license")
-    .fixed_tag("copyright-refers-to-versionless-license-file")
+    .fixed_issues(fixed_issues)
+    .overridden_issues(overridden_issues)
     .build())
 }
 

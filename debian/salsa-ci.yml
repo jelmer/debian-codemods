@@ -3,19 +3,16 @@ include:
   - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/recipes/debian.yml
 
 variables:
-  SALSA_CI_EXTRA_REPOSITORY: "deb [trusted=yes] https://people.debian.org/~jelmer/debian-codemods-deps ./"
-  SALSA_CI_MMDEBSTRAP_EXTRA_ARGS: --include=ca-certificates
   SALSA_CI_DISABLE_BLHC: 1
   # Package is so large best to skip extra builds in Salsa CI to save resources
   SALSA_CI_DISABLE_BUILD_PACKAGE_I386: 1
   SALSA_CI_DISABLE_REPROTEST: 1
   # Build for experimental distribution
   # RELEASE: 'experimental'
-  # Use project-relative paths for better caching in custom jobs
-  CARGO_HOME: ${CI_PROJECT_DIR}/.cargo
-  PIP_CACHE_DIR: ${CI_PROJECT_DIR}/.cache/pip
   # Enable parallel builds - uses all available CPU cores
   SALSA_CI_DPKG_BUILDPACKAGE_ARGS: "-j$(nproc)"
+  # Enable debug logging for tests via DEB_BUILD_OPTIONS
+  DEB_BUILD_OPTIONS: "debug"
 
 stages:
   - lint
@@ -43,18 +40,6 @@ cargo-fmt:
       - .cargo/registry
       - .cargo/git
       - target/
-
-ruff:
-  stage: lint
-  image: python:latest
-  script:
-    - pip install ruff
-    - ruff check .
-    - ruff format --check .
-  cache:
-    key: ruff-${CI_JOB_IMAGE}
-    paths:
-      - .cache/pip
 
 # Scheduled update jobs - these run on a schedule and create MRs with updates
 update-spdx:
@@ -86,11 +71,9 @@ update-readme:
   image: debian:unstable
   script:
     - apt-get update
-    - apt-get install -y git brz python3 python3-debian python3-breezy python3-pip ca-certificates build-essential cargo rustc libpq-dev
+    - apt-get install -y git brz python3 python3-debian python3-breezy ca-certificates build-essential cargo rustc libpq-dev
     - git config user.name "Salsa CI Bot"
     - git config user.email "noreply@salsa.debian.org"
-    - pip install --break-system-packages setuptools setuptools-rust
-    - pip install --break-system-packages -e .
     - make build
     - make update-readme || true
     - |

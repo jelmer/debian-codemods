@@ -1,2 +1,3 @@
 Remove malformed and unnecessary DM-Upload-Allowed field in debian/control.
-Fixed-Lintian-Tags: malformed-dm-upload-allowed
+Fixed-Lintian-Issues:
+ source: malformed-dm-upload-allowed yes

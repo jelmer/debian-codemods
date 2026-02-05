@@ -1,5 +1,5 @@
 use crate::licenses::{COMMON_LICENSES_DIR, FULL_LICENSE_NAME};
-use crate::{FixerError, FixerPreferences, FixerResult};
+use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_copyright::lossless::Copyright;
 use debian_copyright::License;
 use lazy_static::lazy_static;
@@ -202,7 +202,7 @@ fn canonical_license_id(license_id: &str) -> String {
 
         format!("{}-{}{}", family, version, plus)
     } else {
-        log::warn!("Unable to get canonical name for {:?}", license_id);
+        tracing::warn!("Unable to get canonical name for {:?}", license_id);
         license_id.to_string()
     }
 }
@@ -219,7 +219,8 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
 
     let mut updated = HashSet::new();
     let mut renames: HashMap<String, String> = HashMap::new();
-    let mut fixed_tags = HashSet::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Process all license paragraphs and apply changes directly
     for mut para in copyright.iter_licenses() {
@@ -250,50 +251,104 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             }
 
             if let Some((_shortname, blurb)) = found_blurb {
-                // Set fixed tags based on license type
+                // Check which tags this would fix and if they should be fixed
+                let mut should_apply = false;
+
+                // Check full license tags
                 if license_matched == "Apache-2.0" {
-                    fixed_tags.insert("copyright-file-contains-full-apache-2-license".to_string());
+                    let issue = LintianIssue::source_with_info(
+                        "copyright-file-contains-full-apache-2-license",
+                        vec![license_matched.clone()],
+                    );
+                    if issue.should_fix(base_path) {
+                        fixed_issues.push(issue);
+                        should_apply = true;
+                    } else {
+                        overridden_issues.push(issue);
+                    }
                 }
                 if license_matched.starts_with("GFDL-") {
-                    fixed_tags.insert("copyright-file-contains-full-gfdl-license".to_string());
+                    let issue = LintianIssue::source_with_info(
+                        "copyright-file-contains-full-gfdl-license",
+                        vec![license_matched.clone()],
+                    );
+                    if issue.should_fix(base_path) {
+                        fixed_issues.push(issue);
+                        should_apply = true;
+                    } else {
+                        overridden_issues.push(issue);
+                    }
                 }
                 if license_matched.starts_with("GPL-") {
-                    fixed_tags.insert("copyright-file-contains-full-gpl-license".to_string());
+                    let issue = LintianIssue::source_with_info(
+                        "copyright-file-contains-full-gpl-license",
+                        vec![license_matched.clone()],
+                    );
+                    if issue.should_fix(base_path) {
+                        fixed_issues.push(issue);
+                        should_apply = true;
+                    } else {
+                        overridden_issues.push(issue);
+                    }
                 }
 
-                // Apply the change directly - set blurb with reference
-                let license_name = FULL_LICENSE_NAME
-                    .get(license_matched.as_str())
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| license_matched.clone());
-                let reference = debian_file_reference(&license_name, &license_matched);
-                let text_with_reference = format!("{}\n\n{}", blurb, reference);
-
-                // Use the matched license name (which might be canonical, like CC0-1.0)
-                para.set_license(&License::Named(
-                    license_matched.clone(),
-                    text_with_reference,
-                ));
-                updated.insert(license_matched.clone());
-                replaced_with_blurb = true;
-
-                // Track rename if the name changed
-                if synopsis != license_matched {
-                    renames.insert(synopsis.clone(), license_matched.clone());
+                // Check common license reference tags
+                let common_ref_issue = LintianIssue::source_with_info(
+                    "copyright-does-not-refer-to-common-license-file",
+                    vec![license_matched.clone()],
+                );
+                if common_ref_issue.should_fix(base_path) {
+                    fixed_issues.push(common_ref_issue);
+                    should_apply = true;
+                } else {
+                    overridden_issues.push(common_ref_issue);
                 }
 
-                // Set the tag for not using common license reference
-                fixed_tags.insert("copyright-does-not-refer-to-common-license-file".to_string());
-
-                // Set license-specific tags
-                if license_matched.starts_with("Apache-2") {
-                    fixed_tags.insert("copyright-not-using-common-license-for-apache2".to_string());
+                // Check license-specific common license tags
+                let specific_tag = if license_matched.starts_with("Apache-2") {
+                    Some("copyright-not-using-common-license-for-apache2")
                 } else if license_matched.starts_with("GPL-") {
-                    fixed_tags.insert("copyright-not-using-common-license-for-gpl".to_string());
+                    Some("copyright-not-using-common-license-for-gpl")
                 } else if license_matched.starts_with("LGPL-") {
-                    fixed_tags.insert("copyright-not-using-common-license-for-lgpl".to_string());
+                    Some("copyright-not-using-common-license-for-lgpl")
                 } else if license_matched.starts_with("GFDL-") {
-                    fixed_tags.insert("copyright-not-using-common-license-for-gfdl".to_string());
+                    Some("copyright-not-using-common-license-for-gfdl")
+                } else {
+                    None
+                };
+
+                if let Some(tag) = specific_tag {
+                    let issue = LintianIssue::source_with_info(tag, vec![license_matched.clone()]);
+                    if issue.should_fix(base_path) {
+                        fixed_issues.push(issue);
+                        should_apply = true;
+                    } else {
+                        overridden_issues.push(issue);
+                    }
+                }
+
+                // Only apply the change if at least one issue should be fixed
+                if should_apply {
+                    // Apply the change directly - set blurb with reference
+                    let license_name = FULL_LICENSE_NAME
+                        .get(license_matched.as_str())
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| license_matched.clone());
+                    let reference = debian_file_reference(&license_name, &license_matched);
+                    let text_with_reference = format!("{}\n\n{}", blurb, reference);
+
+                    // Use the matched license name (which might be canonical, like CC0-1.0)
+                    para.set_license(&License::Named(
+                        license_matched.clone(),
+                        text_with_reference,
+                    ));
+                    updated.insert(license_matched.clone());
+                    replaced_with_blurb = true;
+
+                    // Track rename if the name changed
+                    if synopsis != license_matched {
+                        renames.insert(synopsis.clone(), license_matched.clone());
+                    }
                 }
             } else if SPDX_RENAMES.contains_key(synopsis.as_str()) {
                 // If no blurb found but it's in SPDX_RENAMES, just record the rename
@@ -301,7 +356,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
                 renames.insert(synopsis.clone(), new_name.to_string());
             } else {
                 // Found full license text but no matching blurb and not in SPDX_RENAMES
-                log::warn!(
+                tracing::warn!(
                     "Found full license text for {}, but unknown synopsis {} ({})",
                     license_matched,
                     synopsis,
@@ -312,7 +367,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             // No full license text match - check if synopsis looks like a common license
             let common_license_path = Path::new(COMMON_LICENSES_DIR).join(&synopsis);
             if common_license_path.exists() {
-                log::warn!(
+                tracing::warn!(
                     "A common license shortname ({}) is used, but license text not recognized.",
                     synopsis
                 );
@@ -352,33 +407,62 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
                 }
             }
 
-            // Add reference
-            let license_name = FULL_LICENSE_NAME
-                .get(common_license.as_str())
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| common_license.clone());
-            let reference = debian_file_reference(&license_name, &common_license);
-            let new_text = format!("{}\n\n{}", current_text, reference);
+            // Check which tags this would fix and if they should be fixed
+            let mut should_apply = false;
 
-            // Apply the change directly
-            para.set_license(&License::Named(synopsis.clone(), new_text));
+            // Check common license reference tag
+            let common_ref_issue = LintianIssue::source_with_info(
+                "copyright-does-not-refer-to-common-license-file",
+                vec![common_license.clone()],
+            );
+            if common_ref_issue.should_fix(base_path) {
+                fixed_issues.push(common_ref_issue);
+                should_apply = true;
+            } else {
+                overridden_issues.push(common_ref_issue);
+            }
 
-            // Set fixed tags
-            if common_license.starts_with("Apache-2") {
-                fixed_tags.insert("copyright-not-using-common-license-for-apache2".to_string());
+            // Check license-specific tags
+            let specific_tag = if common_license.starts_with("Apache-2") {
+                Some("copyright-not-using-common-license-for-apache2")
             } else if common_license.starts_with("GPL-") {
-                fixed_tags.insert("copyright-not-using-common-license-for-gpl".to_string());
+                Some("copyright-not-using-common-license-for-gpl")
             } else if common_license.starts_with("LGPL-") {
-                fixed_tags.insert("copyright-not-using-common-license-for-lgpl".to_string());
+                Some("copyright-not-using-common-license-for-lgpl")
             } else if common_license.starts_with("GFDL-") {
-                fixed_tags.insert("copyright-not-using-common-license-for-gfdl".to_string());
-            }
-            fixed_tags.insert("copyright-does-not-refer-to-common-license-file".to_string());
+                Some("copyright-not-using-common-license-for-gfdl")
+            } else {
+                None
+            };
 
-            if synopsis != common_license {
-                renames.insert(synopsis.clone(), common_license.clone());
+            if let Some(tag) = specific_tag {
+                let issue = LintianIssue::source_with_info(tag, vec![common_license.clone()]);
+                if issue.should_fix(base_path) {
+                    fixed_issues.push(issue);
+                    should_apply = true;
+                } else {
+                    overridden_issues.push(issue);
+                }
             }
-            updated.insert(common_license);
+
+            // Only apply the change if at least one issue should be fixed
+            if should_apply {
+                // Add reference
+                let license_name = FULL_LICENSE_NAME
+                    .get(common_license.as_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| common_license.clone());
+                let reference = debian_file_reference(&license_name, &common_license);
+                let new_text = format!("{}\n\n{}", current_text, reference);
+
+                // Apply the change directly
+                para.set_license(&License::Named(synopsis.clone(), new_text));
+
+                if synopsis != common_license {
+                    renames.insert(synopsis.clone(), common_license.clone());
+                }
+                updated.insert(common_license);
+            }
         }
     }
 
@@ -414,6 +498,9 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     }
 
     if updated.is_empty() && renames.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -463,11 +550,9 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         "Update copyright file.".to_string()
     };
 
-    let mut fixed_tags_vec: Vec<_> = fixed_tags.into_iter().collect();
-    fixed_tags_vec.sort();
-
     Ok(FixerResult::builder(&description)
-        .fixed_tags(fixed_tags_vec)
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 

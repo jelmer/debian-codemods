@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::collections::HashMap;
 use std::path::Path;
@@ -21,7 +21,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let host_map: HashMap<&str, &str> = HOST_TO_VCS.iter().copied().collect();
 
-    let mut changed = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
     let mut old_vcs = String::new();
     let mut new_vcs = String::new();
 
@@ -46,16 +47,26 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
                         if let Some(&actual_vcs) = host_map.get(clean_host) {
                             if actual_vcs != vcs_type {
-                                // Store the value before removing
                                 let vcs_url_value = vcs_url.to_string();
 
-                                // Remove old field and add new one
-                                paragraph.remove(&field);
-                                paragraph.insert(&format!("Vcs-{}", actual_vcs), &vcs_url_value);
+                                let issue = LintianIssue::source_with_info(
+                                    "vcs-field-mismatch",
+                                    vec![format!(
+                                        "Vcs-{} != Vcs-{} {}",
+                                        vcs_type, actual_vcs, vcs_url_value
+                                    )],
+                                );
 
-                                old_vcs = vcs_type.to_string();
-                                new_vcs = actual_vcs.to_string();
-                                changed = true;
+                                if !issue.should_fix(base_path) {
+                                    overridden_issues.push(issue);
+                                } else {
+                                    // Rename the field
+                                    paragraph.rename(&field, &format!("Vcs-{}", actual_vcs));
+
+                                    old_vcs = vcs_type.to_string();
+                                    new_vcs = actual_vcs.to_string();
+                                    fixed_issues.push(issue);
+                                }
                             }
                         }
                     }
@@ -64,7 +75,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
     }
 
-    if !changed {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -74,7 +88,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         "Changed vcs type from {} to {} based on URL.",
         old_vcs, new_vcs
     ))
-    .fixed_tags(vec!["vcs-field-mismatch"])
+    .fixed_issues(fixed_issues)
+    .overridden_issues(overridden_issues)
     .build())
 }
 
@@ -111,6 +126,7 @@ mod tests {
             result.description,
             "Changed vcs type from Bzr to Git based on URL."
         );
+        assert_eq!(result.certainty, None);
 
         let content = fs::read_to_string(&control_path).unwrap();
         assert!(!content.contains("Vcs-Bzr"));

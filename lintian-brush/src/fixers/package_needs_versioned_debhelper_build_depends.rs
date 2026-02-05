@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::debhelper::read_debhelper_compat_file;
 use debian_control::lossless::Control;
 use debversion::Version;
@@ -41,6 +41,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    let issue = LintianIssue::source_with_info(
+        "no-versioned-debhelper-prerequisite",
+        vec![minimum_version.to_string()],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     source.set_build_depends(&build_depends);
 
     // Write back to file
@@ -50,7 +59,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         "Bump debhelper dependency to >= {}, since that's what is used in debian/compat.",
         minimum_version
     ))
-    .fixed_tag("no-versioned-debhelper-prerequisite")
+    .fixed_issue(issue)
     .build())
 }
 

@@ -1,3 +1,4 @@
 Create a debian/copyright file.
 Certainty: possible
-Fixed-Lintian-Tags: no-copyright-file
+Fixed-Lintian-Issues:
+ source: no-copyright-file

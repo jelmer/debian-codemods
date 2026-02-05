@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+Files: src/foo/bar/*
+License: GPL-2
+Copyright: 2020, Author
+
+Files: src/*
+License: Apache-2.0
+Copyright: 2020, Another
+
+License: GPL-2
+ On Debian systems, see /usr/share/common-licenses/GPL-2.
+
+License: Apache-2.0
+ On Debian systems, see /usr/share/common-licenses/Apache-2.0.

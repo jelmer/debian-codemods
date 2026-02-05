@@ -32,13 +32,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let editor = TemplatedControlEditor::open(&control_path)?;
     let mut added = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Check each binary package
     for mut binary in editor.binaries() {
         let package_name = match binary.name() {
             Some(name) => name.to_string(),
             None => {
-                log::debug!("Skipping binary package without name");
+                tracing::debug!("Skipping binary package without name");
                 continue;
             }
         };
@@ -67,17 +69,28 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         }
 
-        // Add ${misc:Pre-Depends} to Pre-Depends
-        let mut relations: Relations = if pre_depends.trim().is_empty() {
-            Relations::new()
-        } else {
-            let (relations, _errors) = Relations::parse_relaxed(&pre_depends, true);
-            relations
-        };
+        let issue = crate::LintianIssue::binary_with_info(
+            &package_name,
+            "skip-systemd-native-flag-missing-pre-depends",
+            vec![package_name.clone()],
+        );
 
-        relations.ensure_substvar("${misc:Pre-Depends}").unwrap();
-        binary.set_pre_depends(Some(&relations));
-        added.push(package_name);
+        if issue.should_fix(base_path) {
+            // Add ${misc:Pre-Depends} to Pre-Depends
+            let mut relations: Relations = if pre_depends.trim().is_empty() {
+                Relations::new()
+            } else {
+                let (relations, _errors) = Relations::parse_relaxed(&pre_depends, true);
+                relations
+            };
+
+            relations.ensure_substvar("${misc:Pre-Depends}").unwrap();
+            binary.set_pre_depends(Some(&relations));
+            added.push(package_name);
+            fixed_issues.push(issue);
+        } else {
+            overridden_issues.push(issue);
+        }
     }
 
     if added.is_empty() {
@@ -92,7 +105,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     );
 
     Ok(FixerResult::builder(&description)
-        .fixed_tag("skip-systemd-native-flag-missing-pre-depends")
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 

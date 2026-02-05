@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -49,10 +49,16 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    let issue = LintianIssue::source_with_info("maintainer-also-in-uploaders", vec![]);
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     editor.commit()?;
 
     Ok(FixerResult::builder("Remove maintainer from uploaders.")
-        .fixed_tags(vec!["maintainer-also-in-uploaders"])
+        .fixed_issue(issue)
         .build())
 }
 

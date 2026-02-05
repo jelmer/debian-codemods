@@ -1,3 +1,4 @@
 Avoid rubygems.org in Homepage field.
 Certainty: certain
-Fixed-Lintian-Tags: rubygem-homepage
+Fixed-Lintian-Issues:
+ source: rubygem-homepage https://rubygems.org/gems/fix-trinity-output/

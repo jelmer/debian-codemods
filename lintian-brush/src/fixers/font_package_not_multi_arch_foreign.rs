@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_control::MultiArch;
 use std::path::Path;
@@ -12,13 +12,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let editor = TemplatedControlEditor::open(&control_path)?;
     let mut updated_packages = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for mut binary in editor.binaries() {
         // Get package name
         let package = match binary.name() {
             Some(p) => p.to_string(),
             None => {
-                log::debug!("Skipping binary package without name");
+                tracing::debug!("Skipping binary package without name");
                 continue;
             }
         };
@@ -39,12 +41,24 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         }
 
+        let issue =
+            LintianIssue::binary_with_info(&package, "font-package-not-multi-arch-foreign", vec![]);
+
+        if !issue.should_fix(base_path) {
+            overridden_issues.push(issue);
+            continue;
+        }
+
         // Add Multi-Arch: foreign
         binary.set_multi_arch(Some(MultiArch::Foreign));
         updated_packages.push(package);
+        fixed_issues.push(issue);
     }
 
-    if updated_packages.is_empty() {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -59,7 +73,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     );
 
     Ok(FixerResult::builder(message)
-        .fixed_tags(vec!["font-package-not-multi-arch-foreign"])
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 

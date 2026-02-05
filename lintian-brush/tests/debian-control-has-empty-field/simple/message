@@ -1,2 +1,4 @@
 debian/control: Remove empty control fields Depends, Provides in package lintian-brush.
-Fixed-Lintian-Tags: debian-control-has-empty-field
+Fixed-Lintian-Issues:
+ source: debian-control-has-empty-field (in source paragraph) Depends [debian/control:2]
+ lintian-brush binary: debian-control-has-empty-field (in section for lintian-brush) Provides [debian/control:6]

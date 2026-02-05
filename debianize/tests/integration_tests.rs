@@ -52,7 +52,7 @@ fn test_debianize_simple_python_package() {
     let expected_control = r#"Source: python-hello-world
 Maintainer: Test Packager <packager@example.com>
 Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools
-Standards-Version: 4.7.2.1
+Standards-Version: 4.7.3.0
 Rules-Requires-Root: no
 Testsuite: autopkgtest-pkg-python
 

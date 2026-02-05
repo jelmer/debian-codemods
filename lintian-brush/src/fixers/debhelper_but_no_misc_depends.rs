@@ -1,5 +1,6 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
+use debian_analyzer::debhelper::get_debhelper_compat_level;
 use debian_control::lossless::relations::Relations;
 use std::path::Path;
 
@@ -33,8 +34,19 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    // Check debhelper compat level - skip fix for compat >= 14
+    // See: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1072700
+    let compat_level = get_debhelper_compat_level(base_path)?;
+    if let Some(level) = compat_level {
+        if level >= 14 {
+            return Err(FixerError::NoChanges);
+        }
+    }
+
     let editor = TemplatedControlEditor::open(&control_path)?;
     let mut misc_depends_added = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Check if the source uses debhelper
     let uses_dh = if let Some(source) = editor.source() {
@@ -56,7 +68,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let package_name = match binary.name() {
             Some(name) => name.to_string(),
             None => {
-                log::debug!("Skipping binary package without name");
+                tracing::debug!("Skipping binary package without name");
                 continue;
             }
         };
@@ -73,20 +85,41 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         }
 
-        // Add ${misc:Depends} to Depends using Relations API
-        let mut relations: Relations = if depends.trim().is_empty() {
-            Relations::new()
-        } else {
-            let (relations, _errors) = Relations::parse_relaxed(&depends, true);
-            relations
+        // Get line number for package stanza (Depends field may not exist yet)
+        let line_no = binary.as_deb822().line() + 1;
+
+        let issue = LintianIssue {
+            package: Some(package_name.clone()),
+            package_type: Some(crate::PackageType::Binary),
+            tag: Some("debhelper-but-no-misc-depends".to_string()),
+            info: Some(format!(
+                "(in section for {}) Depends [debian/control:{}]",
+                package_name, line_no
+            )),
         };
 
-        relations.ensure_substvar("${misc:Depends}").unwrap();
-        binary.set_depends(Some(&relations));
-        misc_depends_added.push(package_name);
+        if issue.should_fix(base_path) {
+            // Add ${misc:Depends} to Depends using Relations API
+            let mut relations: Relations = if depends.trim().is_empty() {
+                Relations::new()
+            } else {
+                let (relations, _errors) = Relations::parse_relaxed(&depends, true);
+                relations
+            };
+
+            relations.ensure_substvar("${misc:Depends}").unwrap();
+            binary.set_depends(Some(&relations));
+            misc_depends_added.push(package_name);
+            fixed_issues.push(issue);
+        } else {
+            overridden_issues.push(issue);
+        }
     }
 
     if misc_depends_added.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -98,7 +131,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     );
 
     Ok(FixerResult::builder(&description)
-        .fixed_tag("debhelper-but-no-misc-depends")
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
         .build())
 }
 
@@ -231,5 +265,83 @@ Description: Test package
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
         assert!(updated_content.contains("Depends: ${misc:Depends}"));
+    }
+
+    #[test]
+    fn test_skip_for_compat_14() {
+        let temp_dir = TempDir::new().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        let control_content = r#"Source: test-package
+Build-Depends: debhelper-compat (= 14)
+
+Package: test-package
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: Test package
+"#;
+
+        let control_path = debian_dir.join("control");
+        fs::write(&control_path, control_content).unwrap();
+
+        let result = run(temp_dir.path());
+        assert!(matches!(result, Err(FixerError::NoChanges)));
+
+        // Verify the control file was not modified
+        let updated_content = fs::read_to_string(&control_path).unwrap();
+        assert!(!updated_content.contains("${misc:Depends}"));
+    }
+
+    #[test]
+    fn test_skip_for_compat_15() {
+        let temp_dir = TempDir::new().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        let control_content = r#"Source: test-package
+Build-Depends: debhelper-compat (= 15)
+
+Package: test-package
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: Test package
+"#;
+
+        let control_path = debian_dir.join("control");
+        fs::write(&control_path, control_content).unwrap();
+
+        let result = run(temp_dir.path());
+        assert!(matches!(result, Err(FixerError::NoChanges)));
+
+        // Verify the control file was not modified
+        let updated_content = fs::read_to_string(&control_path).unwrap();
+        assert!(!updated_content.contains("${misc:Depends}"));
+    }
+
+    #[test]
+    fn test_still_works_for_compat_13() {
+        let temp_dir = TempDir::new().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        let control_content = r#"Source: test-package
+Build-Depends: debhelper-compat (= 13)
+
+Package: test-package
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: Test package
+"#;
+
+        let control_path = debian_dir.join("control");
+        fs::write(&control_path, control_content).unwrap();
+
+        let result = run(temp_dir.path());
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
+
+        let updated_content = fs::read_to_string(&control_path).unwrap();
+        assert!(updated_content.contains("${misc:Depends}"));
+        assert!(updated_content.contains("${shlibs:Depends}"));
     }
 }

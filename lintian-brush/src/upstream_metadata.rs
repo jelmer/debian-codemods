@@ -1,14 +1,17 @@
-/// Valid field names in debian/upstream/metadata files
+/// DEP-12 standard field order for upstream metadata
+/// This defines the canonical ordering of fields in debian/upstream/metadata files
 ///
 /// Based on the DEP-12 specification:
 /// https://dep-team.pages.debian.net/deps/dep12/
-pub const VALID_FIELD_NAMES: &[&str] = &[
+pub const DEP12_FIELD_ORDER: &[&str] = &[
+    "Name",
+    "Contact",
     "Archive",
     "ASCL-Id",
     "Bug-Database",
     "Bug-Submit",
-    "Cite-As",
     "Changelog",
+    "Cite-As",
     "CPE",
     "Documentation",
     "Donation",
@@ -25,6 +28,3 @@ pub const VALID_FIELD_NAMES: &[&str] = &[
     "Security-Contact",
     "Webservice",
 ];
-
-/// Fields that are only used by addons/tools
-pub const ADDON_ONLY_FIELDS: &[&str] = &["Archive"];

@@ -1,6 +1,6 @@
-lintian-brush/fixers/ /usr/share/lintian-brush/
-usr/bin/debianize
-usr/bin/lintian-brush
-usr/lib/python*/dist-packages/lintian_brush
-usr/lib/python*/dist-packages/lintian_brush-0.*
-usr/share/lintian-brush
+target/*/release/apply-multiarch-hints /usr/bin
+# deb-import-uncommitted conflicts with brz-debian (Closes: #1126510)
+#target/*/release/deb-import-uncommitted /usr/bin
+target/*/release/deb-scrub-obsolete /usr/bin
+target/*/release/debianize /usr/bin
+target/*/release/lintian-brush /usr/bin

@@ -1,3 +1,4 @@
 Add missing colon in closes line.
 Certainty: likely
-Fixed-Lintian-Tags: possible-missing-colon-in-closes
+Fixed-Lintian-Issues:
+ source: possible-missing-colon-in-closes cLoses #123123 [usr/share/doc/blah/changelog.Debian.gz:1]

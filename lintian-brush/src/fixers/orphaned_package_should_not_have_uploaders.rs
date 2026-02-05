@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -25,7 +25,6 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut made_changes = false;
 
     if let Some(mut source) = editor.source() {
         let paragraph = source.as_mut_deb822();
@@ -35,23 +34,28 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             let email = extract_email_address(&maintainer);
 
             if email == "packages@qa.debian.org" && paragraph.contains_key("Uploaders") {
+                let issue = LintianIssue::source_with_info(
+                    "uploaders-in-orphan",
+                    vec!["[debian/changelog:1]".to_string()],
+                );
+
+                if !issue.should_fix(base_path) {
+                    return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+                }
+
                 paragraph.remove("Uploaders");
-                made_changes = true;
+                editor.commit()?;
+
+                return Ok(
+                    FixerResult::builder("Remove uploaders from orphaned package.")
+                        .fixed_issue(issue)
+                        .build(),
+                );
             }
         }
     }
 
-    if !made_changes {
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit()?;
-
-    Ok(
-        FixerResult::builder("Remove uploaders from orphaned package.")
-            .fixed_tags(vec!["uploaders-in-orphan"])
-            .build(),
-    )
+    Err(FixerError::NoChanges)
 }
 
 declare_fixer! {

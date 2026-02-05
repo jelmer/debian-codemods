@@ -1,2 +1,3 @@
 Fix day-of-week for changelog entry 2.6.0-4.
-Fixed-Lintian-Tags: debian-changelog-has-wrong-day-of-week
+Fixed-Lintian-Issues:
+ source: debian-changelog-has-wrong-day-of-week 2018-04-22 is a Sunday

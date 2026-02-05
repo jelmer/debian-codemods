@@ -1,3 +1,4 @@
 Fill in Homepage field.
 Certainty: certain
-Fixed-Lintian-Tags: no-homepage-field
+Fixed-Lintian-Issues:
+ source: no-homepage-field

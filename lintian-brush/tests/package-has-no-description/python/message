@@ -1,3 +1,4 @@
 Add description for binary packages: python3-dulwich
 Certainty: possible
-Fixed-Lintian-Tags: required-field
+Fixed-Lintian-Issues:
+ python3-dulwich binary: required-field (in section for python3-dulwich) Description

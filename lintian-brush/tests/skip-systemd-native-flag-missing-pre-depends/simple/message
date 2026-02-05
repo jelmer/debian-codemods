@@ -1,2 +1,3 @@
 Add missing Pre-Depends: ${misc:Pre-Depends} in blah.
-Fixed-Lintian-Tags: skip-systemd-native-flag-missing-pre-depends
+Fixed-Lintian-Issues:
+ blah binary: skip-systemd-native-flag-missing-pre-depends blah

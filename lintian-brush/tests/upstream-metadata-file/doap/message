@@ -1,3 +1,5 @@
 Set upstream metadata fields: Bug-Database, Contact, Name, Repository, Repository-Browse.
 Certainty: certain
-Fixed-Lintian-Tags: upstream-metadata-file-is-missing, upstream-metadata-missing-repository
+Fixed-Lintian-Issues:
+ source: upstream-metadata-missing-repository [debian/upstream/metadata]
+ source: upstream-metadata-file-is-missing

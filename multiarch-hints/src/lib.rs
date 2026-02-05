@@ -207,7 +207,8 @@ pub fn cache_download_multiarch_hints(
         Path::new(&home).join(".cache")
     } else {
         log::warn!("Unable to find cache directory, not caching");
-        return download_multiarch_hints(url, None).map(|x| x.unwrap());
+        return download_multiarch_hints(url, None)?
+            .ok_or_else(|| "Expected download data but got None".into());
     };
     let cache_dir = cache_home.join("lintian-brush");
     fs::create_dir_all(&cache_dir)?;
@@ -440,7 +441,6 @@ pub enum OverallError {
     BrzError(Error),
     NotDebianPackage(std::path::PathBuf),
     Other(String),
-    Python(pyo3::PyErr),
     NoWhoami,
     NoChanges,
     GeneratedFile(std::path::PathBuf),
@@ -478,7 +478,6 @@ impl std::fmt::Display for OverallError {
                 write!(f, "Formatting unpreservable: {}", p.display())
             }
             OverallError::BrzError(e) => write!(f, "{}", e),
-            OverallError::Python(e) => write!(f, "{}", e),
             OverallError::NoWhoami => write!(f, "No committer configured."),
             OverallError::NoChanges => write!(f, "No changes to apply."),
             OverallError::Other(e) => write!(f, "{}", e),
@@ -493,7 +492,7 @@ impl From<Error> for OverallError {
         match e {
             Error::PointlessCommit => OverallError::NoChanges,
             Error::NoWhoami => OverallError::NoWhoami,
-            Error::Other(e) => OverallError::Python(e),
+            Error::Other(e) => OverallError::Other(e.to_string()),
             e => OverallError::BrzError(e),
         }
     }
@@ -508,18 +507,36 @@ impl From<ChangelogError> for OverallError {
     }
 }
 
+/// Configuration options for applying multiarch hints
+#[derive(Debug, Clone)]
+pub struct ApplyMultiarchHintsConfig {
+    pub minimum_certainty: Option<Certainty>,
+    pub committer: Option<String>,
+    pub update_changelog: bool,
+    pub allow_reformatting: Option<bool>,
+}
+
+impl Default for ApplyMultiarchHintsConfig {
+    fn default() -> Self {
+        Self {
+            minimum_certainty: None,
+            committer: None,
+            update_changelog: true,
+            allow_reformatting: None,
+        }
+    }
+}
+
+#[allow(clippy::result_large_err)]
 pub fn apply_multiarch_hints(
     local_tree: &GenericWorkingTree,
     subpath: &std::path::Path,
     hints: &HashMap<&str, Vec<&Hint>>,
-    minimum_certainty: Option<Certainty>,
-    committer: Option<String>,
     dirty_tracker: Option<&mut DirtyTreeTracker>,
-    update_changelog: bool,
-    _allow_reformatting: Option<bool>,
+    config: &ApplyMultiarchHintsConfig,
 ) -> Result<OverallResult, OverallError> {
-    let minimum_certainty = minimum_certainty.unwrap_or(Certainty::Certain);
-    let basis_tree = local_tree.basis_tree().unwrap();
+    let minimum_certainty = config.minimum_certainty.unwrap_or(Certainty::Certain);
+    let basis_tree = local_tree.basis_tree().map_err(OverallError::BrzError)?;
     let (changes, _tree_changes, mut specific_files) = match apply_or_revert(
         local_tree,
         subpath,
@@ -530,12 +547,8 @@ pub fn apply_multiarch_hints(
 
             let control_path = path.join("debian/control");
 
-            let editor = match TemplatedControlEditor::open(control_path.as_path()) {
-                Ok(editor) => editor,
-                Err(e) => {
-                    return Err(OverallError::Other(e.to_string()));
-                }
-            };
+            let editor = TemplatedControlEditor::open(control_path.as_path())
+                .map_err(|e| OverallError::Other(e.to_string()))?;
 
             for mut binary in editor.binaries() {
                 let package = binary.name().unwrap();
@@ -583,7 +596,7 @@ pub fn apply_multiarch_hints(
 
     let changelog_path = subpath.join("debian/changelog");
 
-    if update_changelog {
+    if config.update_changelog {
         add_changelog_entry(
             local_tree,
             changelog_path.as_path(),
@@ -601,7 +614,10 @@ pub fn apply_multiarch_hints(
     overall_description.push("\n".to_string());
     overall_description.push("Changes-By: apply-multiarch-hints\n".to_string());
 
-    let committer = committer.unwrap_or_else(|| get_committer(local_tree));
+    let committer = config
+        .committer
+        .clone()
+        .unwrap_or_else(|| get_committer(local_tree));
 
     let specific_files_ref = specific_files
         .as_ref()

@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use makefile_lossless::Makefile;
 use std::fs;
 use std::path::Path;
@@ -14,6 +14,21 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let content = fs::read_to_string(&rules_path)?;
     let makefile = Makefile::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
+
+    // Check if there are any $(PWD) references before making changes
+    let pwd_count = content.matches("$(PWD)").count();
+    if pwd_count == 0 {
+        return Err(FixerError::NoChanges);
+    }
+
+    // Create issue and check if we should fix it
+    let issue = LintianIssue::source_with_info(
+        "debian-rules-calls-pwd",
+        vec!["[debian/rules]".to_string()],
+    );
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
 
     let mut made_changes = false;
 
@@ -51,7 +66,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder("debian/rules: Avoid using $(PWD) variable.")
-            .fixed_tags(vec!["debian-rules-calls-pwd"])
+            .fixed_issues(vec![issue])
             .build(),
     )
 }

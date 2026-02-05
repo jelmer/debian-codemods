@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use makefile_lossless::Makefile;
 use std::fs;
 use std::path::Path;
@@ -15,6 +15,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let makefile = parsed.tree();
 
     let mut made_changes = false;
+    let mut found_issue = false;
 
     // Process all variable definitions
     for mut var_def in makefile.variable_definitions() {
@@ -66,6 +67,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             continue;
         }
 
+        found_issue = true;
         made_changes = true;
 
         if new_args.is_empty() {
@@ -78,6 +80,19 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
     }
 
+    if !found_issue {
+        return Err(FixerError::NoChanges);
+    }
+
+    // Create issue and check if we should fix it
+    let issue = LintianIssue::source_with_info(
+        "debian-rules-uses-as-needed-linker-flag",
+        vec!["[debian/rules]".to_string()],
+    );
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     if !made_changes {
         return Err(FixerError::NoChanges);
     }
@@ -86,7 +101,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder("Avoid explicitly specifying -Wl,--as-needed linker flag.")
-            .fixed_tag("debian-rules-uses-as-needed-linker-flag")
+            .fixed_issues(vec![issue])
             .build(),
     )
 }

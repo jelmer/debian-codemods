@@ -42,6 +42,15 @@ declare_fixer! {
                 return Err(FixerError::NoChanges);
             }
 
+            let issue = crate::LintianIssue::source_with_info(
+                "unversioned-copyright-format-uri",
+                vec!["debian/copyright:1".to_string()],
+            );
+
+            if !issue.should_fix(basedir) {
+                return Err(FixerError::NoChanges);
+            }
+
             // Build the new content
             let mut new_content = Vec::new();
             new_content.extend_from_slice(b"Format: ");
@@ -56,15 +65,9 @@ declare_fixer! {
             // Write the updated content back
             fs::write(&copyright_path, new_content)?;
 
-            Ok(FixerResult::new(
-                "Use versioned copyright format URI.".to_string(),
-                Some(vec!["unversioned-copyright-format-uri".to_string()]),
-                None,
-                None,
-                None,
-                vec![],
-                None,
-            ))
+            Ok(FixerResult::builder("Use versioned copyright format URI.")
+                .fixed_issues(vec![issue])
+                .build())
         } else {
             // No Format or Format-Specification field found on first line
             Err(FixerError::NoChanges)

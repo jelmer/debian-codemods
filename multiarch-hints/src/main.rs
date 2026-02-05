@@ -1,4 +1,4 @@
-use breezyshim::branch::open_containing as open_containing_branch;
+use breezyshim::branch::open_containing_as_generic as open_containing_branch;
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::repository::Repository;
@@ -13,7 +13,6 @@ use multiarch_hints::{
     apply_multiarch_hints, cache_download_multiarch_hints, multiarch_hints_by_binary,
     parse_multiarch_hints, OverallError,
 };
-use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::io::Write as _;
 use svp_client::Reporter;
@@ -311,15 +310,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
 
+    let config = multiarch_hints::ApplyMultiarchHintsConfig {
+        minimum_certainty,
+        committer: None,
+        update_changelog,
+        allow_reformatting,
+    };
+
     let result = match apply_multiarch_hints(
         &wt,
         subpath.as_path(),
         &hints,
-        minimum_certainty,
-        None,
         dirty_tracker.as_mut(),
-        update_changelog,
-        allow_reformatting,
+        &config,
     ) {
         Err(OverallError::NoChanges) => {
             drop(write_lock);
@@ -361,15 +364,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None,
             );
         }
-        Err(OverallError::Python(e)) => {
-            drop(write_lock);
-            svp.report_fatal(
-                "internal-error",
-                format!("Python error: {}", e).as_str(),
-                None,
-                None,
-            );
-        }
         Err(OverallError::GeneratedFile(p)) => {
             drop(write_lock);
             svp.report_fatal(
@@ -406,7 +400,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect::<Vec<_>>();
 
-    for change in result.changes.iter() {
+    for change in &result.changes {
         log::info!("{}: {}", change.binary, change.description);
     }
 
@@ -441,28 +435,5 @@ fn versions_dict() -> HashMap<String, String> {
         "lintian-brush".to_string(),
         env!("CARGO_PKG_VERSION").to_string(),
     );
-    pyo3::Python::attach(|py| {
-        let breezy = py.import("breezy").unwrap();
-        ret.insert(
-            "breezy".to_string(),
-            breezy.getattr("version_string").unwrap().extract().unwrap(),
-        );
-
-        let debmutate = py.import("debmutate").unwrap();
-        ret.insert(
-            "debmutate".to_string(),
-            debmutate
-                .getattr("version_string")
-                .unwrap()
-                .extract()
-                .unwrap(),
-        );
-
-        let debian = py.import("debian").unwrap();
-        ret.insert(
-            "debian".to_string(),
-            debian.getattr("__version__").unwrap().extract().unwrap(),
-        );
-    });
     ret
 }

@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+# Create directory and set ownership
+chown root.root /etc/myapp/config
+chown www-data.www-data /var/www/myapp
+chown backup-user.backup-group /var/backups/myapp
+
+#DEBHELPER#
+
+exit 0

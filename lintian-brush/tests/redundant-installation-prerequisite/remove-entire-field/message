@@ -1,0 +1,3 @@
+Remove redundant dependency from weaker field.
+Fixed-Lintian-Issues:
+ test-package binary: redundant-installation-prerequisite foo in Recommends

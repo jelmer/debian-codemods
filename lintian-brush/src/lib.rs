@@ -4,12 +4,9 @@
 
 #![deny(missing_docs)]
 use std::collections::{HashMap, HashSet};
-use std::fs::File;
-use std::io::BufReader;
-use std::process::Command;
 use std::str::FromStr;
 
-use indicatif::ProgressBar;
+use indicatif::{MultiProgress, ProgressBar};
 
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
@@ -25,8 +22,10 @@ use debian_changelog::ChangeLog;
 
 /// Built-in fixers for common Lintian issues
 pub mod builtin_fixers;
-/// Macros for defining fixers
+/// Debian helper functions and types
+pub mod debhelper;
 #[macro_use]
+/// Macros for defining fixers
 pub mod macros;
 /// Fixer-related types and traits
 pub mod fixers;
@@ -36,6 +35,7 @@ pub mod licenses;
 pub mod lintian_overrides;
 /// Upstream metadata handling
 pub mod upstream_metadata;
+pub mod vcs;
 /// Debian watch file handling
 pub mod watch;
 
@@ -79,6 +79,7 @@ impl std::fmt::Display for PackageType {
 
 /// Represents a Lintian issue
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+/// A Lintian issue
 pub struct LintianIssue {
     /// Package name
     pub package: Option<String>,
@@ -87,7 +88,31 @@ pub struct LintianIssue {
     /// Lintian tag
     pub tag: Option<String>,
     /// Additional information
-    pub info: Option<Vec<String>>,
+    pub info: Option<String>,
+}
+
+impl std::fmt::Display for LintianIssue {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        // Format: "package source: tag info" or "source: tag info"
+        if let Some(ref pkg) = self.package {
+            write!(f, "{} ", pkg)?;
+        }
+        if let Some(ref pt) = self.package_type {
+            write!(f, "{}", pt)?;
+        } else {
+            write!(f, "source")?;
+        }
+        write!(f, ":")?;
+        if let Some(ref tag) = self.tag {
+            write!(f, " {}", tag)?;
+        }
+        if let Some(ref info) = self.info {
+            if !info.is_empty() {
+                write!(f, " {}", info)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl LintianIssue {
@@ -114,6 +139,61 @@ impl LintianIssue {
             tag: Some(tag),
             info: None,
         }
+    }
+
+    /// Create a source package issue with a tag
+    pub fn source(tag: impl Into<String>) -> Self {
+        Self {
+            package: None,
+            package_type: Some(PackageType::Source),
+            tag: Some(tag.into()),
+            info: None,
+        }
+    }
+
+    /// Create a source package issue with a tag and info
+    pub fn source_with_info(tag: impl Into<String>, info: Vec<String>) -> Self {
+        let joined = info.join(" ");
+        Self {
+            package: None,
+            package_type: Some(PackageType::Source),
+            tag: Some(tag.into()),
+            info: if joined.is_empty() {
+                None
+            } else {
+                Some(joined)
+            },
+        }
+    }
+
+    /// Create a binary package issue with a tag and info
+    pub fn binary_with_info(
+        package: impl Into<String>,
+        tag: impl Into<String>,
+        info: Vec<String>,
+    ) -> Self {
+        let joined = info.join(" ");
+        Self {
+            package: Some(package.into()),
+            package_type: Some(PackageType::Binary),
+            tag: Some(tag.into()),
+            info: if joined.is_empty() {
+                None
+            } else {
+                Some(joined)
+            },
+        }
+    }
+
+    /// Add info to this issue
+    pub fn with_info(mut self, info: Vec<String>) -> Self {
+        let joined = info.join(" ");
+        self.info = if joined.is_empty() {
+            None
+        } else {
+            Some(joined)
+        };
+        self
     }
 
     /// Check if this issue should be fixed (i.e., it's not overridden)
@@ -153,7 +233,10 @@ impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for LintianIssue {
             })
             .transpose()?;
         let tag = ob.getattr("tag")?.extract::<Option<String>>()?;
-        let info = ob.getattr("info")?.extract::<Option<Vec<String>>>()?;
+        let info = ob
+            .getattr("info")?
+            .extract::<Option<Vec<String>>>()?
+            .map(|v| v.join(" "));
         Ok(Self {
             package,
             package_type,
@@ -208,8 +291,18 @@ impl TryFrom<&str> for LintianIssue {
                     )));
                 }
             } else {
-                package_type = None;
-                package = Some(before.to_string());
+                // No space before colon - check if it's "source:" or "binary:"
+                if before == "source" {
+                    package_type = Some(PackageType::Source);
+                    package = None;
+                } else if before == "binary" {
+                    package_type = Some(PackageType::Binary);
+                    package = None;
+                } else {
+                    // It's a package name
+                    package_type = None;
+                    package = Some(before.to_string());
+                }
             }
             after
         } else {
@@ -217,10 +310,17 @@ impl TryFrom<&str> for LintianIssue {
             package = None;
             value
         };
-        let mut parts = after.trim().split(' ');
-        let tag = parts.next().map(|s| s.to_string());
-        let info: Vec<_> = parts.map(|s| s.to_string()).collect();
-        let info = if info.is_empty() { None } else { Some(info) };
+        let after = after.trim();
+        let (tag, info) = if let Some((tag_str, info_str)) = after.split_once(' ') {
+            let info = if info_str.is_empty() {
+                None
+            } else {
+                Some(info_str.to_string())
+            };
+            (Some(tag_str.to_string()), info)
+        } else {
+            (Some(after.to_string()), None)
+        };
         Ok(Self {
             package,
             package_type,
@@ -251,20 +351,12 @@ impl FixerResult {
     /// Create a new FixerResult
     pub fn new(
         description: String,
-        fixed_lintian_tags: Option<Vec<String>>,
         certainty: Option<Certainty>,
         patch_name: Option<String>,
         revision_id: Option<RevisionId>,
-        mut fixed_lintian_issues: Vec<LintianIssue>,
+        fixed_lintian_issues: Vec<LintianIssue>,
         overridden_lintian_issues: Option<Vec<LintianIssue>>,
     ) -> Self {
-        if let Some(fixed_lintian_tags) = fixed_lintian_tags.as_ref() {
-            fixed_lintian_issues.extend(
-                fixed_lintian_tags
-                    .iter()
-                    .map(|tag| LintianIssue::just_tag(tag.to_string())),
-            );
-        }
         Self {
             description,
             certainty,
@@ -301,8 +393,6 @@ pub struct FixerResultBuilder {
     revision_id: Option<RevisionId>,
     /// List of Lintian issues that were fixed
     fixed_lintian_issues: Vec<LintianIssue>,
-    /// List of fixed Lintian tags (deprecated)
-    fixed_lintian_tags: Vec<String>,
     /// List of Lintian issues that were overridden
     overridden_lintian_issues: Vec<LintianIssue>,
 }
@@ -346,21 +436,6 @@ impl FixerResultBuilder {
         self
     }
 
-    /// Add a fixed lintian tag (will be converted to LintianIssue)
-    #[deprecated = "use fixed_issue instead"]
-    pub fn fixed_tag(mut self, tag: impl Into<String>) -> Self {
-        self.fixed_lintian_tags.push(tag.into());
-        self
-    }
-
-    /// Add multiple fixed lintian tags
-    #[deprecated = "use fixed_issues instead"]
-    pub fn fixed_tags(mut self, tags: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.fixed_lintian_tags
-            .extend(tags.into_iter().map(|t| t.into()));
-        self
-    }
-
     /// Add an overridden lintian issue
     pub fn overridden_issue(mut self, issue: LintianIssue) -> Self {
         self.overridden_lintian_issues.push(issue);
@@ -375,21 +450,12 @@ impl FixerResultBuilder {
 
     /// Build the FixerResult
     pub fn build(self) -> FixerResult {
-        let mut fixed_lintian_issues = self.fixed_lintian_issues;
-
-        // Convert tags to issues
-        fixed_lintian_issues.extend(
-            self.fixed_lintian_tags
-                .into_iter()
-                .map(LintianIssue::just_tag),
-        );
-
         FixerResult {
             description: self.description,
             certainty: self.certainty,
             patch_name: self.patch_name,
             revision_id: self.revision_id,
-            fixed_lintian_issues,
+            fixed_lintian_issues: self.fixed_lintian_issues,
             overridden_lintian_issues: self.overridden_lintian_issues,
         }
     }
@@ -428,7 +494,6 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
     let mut description: Vec<String> = Vec::new();
     let mut overridden_issues: Vec<LintianIssue> = Vec::new();
     let mut fixed_lintian_issues: Vec<LintianIssue> = Vec::new();
-    let mut fixed_lintian_tags: Vec<String> = Vec::new();
     let mut certainty: Option<String> = None;
     let mut patch_name: Option<String> = None;
 
@@ -438,9 +503,6 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
     while i < lines.len() {
         if let Some((key, value)) = lines[i].split_once(':') {
             match key.trim() {
-                "Fixed-Lintian-Tags" => {
-                    fixed_lintian_tags.extend(value.split(',').map(|tag| tag.trim().to_owned()));
-                }
                 "Fixed-Lintian-Issues" => {
                     i += 1;
                     while i < lines.len() && lines[i].starts_with(' ') {
@@ -479,12 +541,6 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
         .transpose()
         .map_err(OutputParseError::UnsupportedCertainty)?;
 
-    let fixed_lintian_tags = if fixed_lintian_tags.is_empty() {
-        None
-    } else {
-        Some(fixed_lintian_tags)
-    };
-
     let overridden_issues = if overridden_issues.is_empty() {
         None
     } else {
@@ -493,7 +549,6 @@ pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseE
 
     Ok(FixerResult::new(
         description.join("\n"),
-        fixed_lintian_tags,
         certainty,
         patch_name,
         None,
@@ -657,296 +712,6 @@ pub trait Fixer: std::fmt::Debug + Sync {
     ) -> Result<FixerResult, FixerError>;
 }
 
-/// Trait for external fixers that have a file path
-pub trait ExternalFixer: Fixer {
-    /// Path to the fixer script
-    fn path(&self) -> std::path::PathBuf;
-}
-
-/// A fixer that is implemented as a Python script.
-///
-/// This gets used just for Python scripts, and significantly speeds things up because it prevents
-/// starting a new Python interpreter for every fixer.
-#[cfg(feature = "python")]
-#[derive(Debug)]
-pub struct PythonScriptFixer {
-    path: std::path::PathBuf,
-    name: String,
-    lintian_tags: Vec<String>,
-}
-
-#[cfg(feature = "python")]
-impl PythonScriptFixer {
-    /// Create a new Python script fixer
-    pub fn new(name: String, lintian_tags: Vec<String>, path: std::path::PathBuf) -> Self {
-        Self {
-            path,
-            name,
-            lintian_tags,
-        }
-    }
-}
-
-#[cfg(feature = "python")]
-// PyO3 macros rely on a gil-refs feature that is not available in lintian-brush
-#[allow(unexpected_cfgs)]
-fn run_inline_python_fixer(
-    path: &std::path::Path,
-    name: &str,
-    code: &str,
-    basedir: &std::path::Path,
-    env: HashMap<String, String>,
-    _timeout: Option<chrono::Duration>,
-) -> Result<FixerResult, FixerError> {
-    use pyo3::import_exception;
-    use pyo3::prelude::*;
-    use pyo3::types::PyDict;
-
-    import_exception!(debmutate.reformatting, FormattingUnpreservable);
-    import_exception!(debian.changelog, ChangelogCreateError);
-
-    Python::attach(|py| {
-        let sys = py.import("sys")?;
-        let os = py.import("os")?;
-        let io = py.import("io")?;
-        let fixer_module = py.import("lintian_brush.fixer")?;
-
-        let old_env = os.getattr("environ")?.unbind();
-        let old_stderr = sys.getattr("stderr")?;
-        let old_stdout = sys.getattr("stdout")?;
-
-        let temp_stderr = io.call_method0("StringIO")?;
-        let temp_stdout = io.call_method0("StringIO")?;
-
-        sys.setattr("stderr", &temp_stderr)?;
-        sys.setattr("stdout", &temp_stdout)?;
-        os.setattr("environ", env)?;
-
-        let old_cwd = os.call_method0("getcwd").ok();
-
-        os.call_method1("chdir", (basedir,))?;
-
-        let global_vars = PyDict::new(py);
-        global_vars.set_item("__file__", path)?;
-        global_vars.set_item("__name__", "__main__")?;
-
-        use std::ffi::CString;
-        let path_cstr = CString::new(path.to_str().unwrap()).unwrap();
-        let name_cstr = CString::new(name).unwrap();
-        let code_cstr = CString::new(code).unwrap();
-        let script_result = PyModule::from_code(py, &code_cstr, &path_cstr, &name_cstr);
-
-        let stdout = temp_stdout
-            .call_method0("getvalue")
-            .unwrap()
-            .extract::<String>()
-            .unwrap();
-
-        let mut stderr = temp_stderr
-            .call_method0("getvalue")
-            .unwrap()
-            .extract::<String>()
-            .unwrap();
-
-        os.setattr("environ", old_env).unwrap();
-        sys.setattr("stderr", old_stderr).unwrap();
-        sys.setattr("stdout", old_stdout).unwrap();
-
-        if let Some(cwd) = old_cwd {
-            os.call_method1("chdir", (cwd,))?;
-        }
-
-        fixer_module.call_method0("reset")?;
-
-        let retcode;
-        let description;
-
-        match script_result {
-            Ok(_) => {
-                retcode = 0;
-                description = stdout;
-            }
-            Err(e) => {
-                if e.is_instance_of::<FormattingUnpreservable>(py) {
-                    return Err(FixerError::FormattingUnpreservable(
-                        e.into_value(py).bind(py).getattr("path")?.extract()?,
-                    ));
-                } else if e.is_instance_of::<ChangelogCreateError>(py) {
-                    return Err(FixerError::ChangelogCreate(
-                        e.into_value(py).bind(py).get_item(0)?.extract()?,
-                    ));
-                } else if e.is_instance_of::<pyo3::exceptions::PyMemoryError>(py) {
-                    return Err(FixerError::MemoryError);
-                } else if e.is_instance_of::<pyo3::exceptions::PySystemExit>(py) {
-                    retcode = e.into_value(py).bind(py).getattr("code")?.extract()?;
-                    description = stdout;
-                } else {
-                    let traceback = py.import("traceback")?;
-                    let traceback_io = io.call_method0("StringIO")?;
-                    let kwargs = pyo3::types::PyDict::new(py);
-                    kwargs.set_item("file", &traceback_io)?;
-                    traceback.call_method(
-                        "print_exception",
-                        (e.get_type(py), &e, e.traceback(py)),
-                        Some(&kwargs),
-                    )?;
-                    let traceback_str =
-                        traceback_io.call_method0("getvalue")?.extract::<String>()?;
-                    stderr = format!("{}\n{}", stderr, traceback_str);
-                    return Err(FixerError::ScriptFailed {
-                        path: path.to_path_buf(),
-                        exit_code: 1,
-                        stderr,
-                    });
-                }
-            }
-        }
-
-        if retcode == 2 {
-            Err(FixerError::NoChanges)
-        } else if retcode != 0 {
-            Err(FixerError::ScriptFailed {
-                path: path.to_path_buf(),
-                exit_code: retcode,
-                stderr,
-            })
-        } else {
-            Ok(parse_script_fixer_output(&description)?)
-        }
-    })
-}
-
-#[cfg(test)]
-#[cfg(feature = "python")]
-mod run_inline_python_fixer_tests {
-    fn setup() {
-        pyo3::Python::attach(|py| {
-            use pyo3::prelude::*;
-            let sys = py.import("sys").unwrap();
-            let path = sys.getattr("path").unwrap();
-            let mut path: Vec<String> = path.extract().unwrap();
-            let extra_path =
-                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR").to_string() + "/../py")
-                    .canonicalize()
-                    .unwrap();
-            if !path.contains(&extra_path.to_string_lossy().to_string()) {
-                path.insert(0, extra_path.to_string_lossy().to_string());
-                sys.setattr("path", path).unwrap();
-            }
-        });
-    }
-
-    #[test]
-    fn test_no_changes() {
-        setup();
-        let td = tempfile::tempdir().unwrap();
-        let path = td.path().join("no_changes.py");
-        let result = super::run_inline_python_fixer(
-            &path,
-            "no_changes",
-            "import sys; sys.exit(2)",
-            td.path(),
-            std::collections::HashMap::new(),
-            None,
-        );
-        assert!(
-            matches!(result, Err(super::FixerError::NoChanges),),
-            "Result: {:?}",
-            result
-        );
-    }
-
-    #[test]
-    fn test_failed() {
-        setup();
-        let td = tempfile::tempdir().unwrap();
-        let path = td.path().join("no_changes.py");
-        let result = super::run_inline_python_fixer(
-            &path,
-            "some_changes",
-            "import sys; sys.exit(1)",
-            td.path(),
-            std::collections::HashMap::new(),
-            None,
-        );
-        assert!(
-            matches!(
-                result,
-                Err(super::FixerError::ScriptFailed { exit_code: 1, .. })
-            ),
-            "Result: {:?}",
-            result
-        );
-        std::mem::drop(td);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_timeout() {
-        setup();
-        let td = tempfile::tempdir().unwrap();
-        let path = td.path().join("no_changes.py");
-        let result = super::run_inline_python_fixer(
-            &path,
-            "some_changes",
-            "import time; time.sleep(10)",
-            td.path(),
-            std::collections::HashMap::new(),
-            Some(chrono::Duration::seconds(0)),
-        );
-        assert!(
-            matches!(result, Err(super::FixerError::Timeout { .. })),
-            "Result: {:?}",
-            result
-        );
-    }
-}
-
-#[cfg(feature = "python")]
-impl Fixer for PythonScriptFixer {
-    fn name(&self) -> String {
-        self.name.clone()
-    }
-
-    fn lintian_tags(&self) -> Vec<String> {
-        self.lintian_tags.clone()
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn run(
-        &self,
-        basedir: &std::path::Path,
-        package: &str,
-        current_version: &Version,
-        preferences: &FixerPreferences,
-        timeout: Option<chrono::Duration>,
-    ) -> Result<FixerResult, FixerError> {
-        let env = determine_env(package, current_version, preferences);
-
-        let code = std::fs::read_to_string(&self.path)
-            .map_err(|e| FixerError::Other(format!("Failed to read script: {}", e)))?;
-
-        run_inline_python_fixer(
-            &self.path,
-            self.name.as_str(),
-            code.as_str(),
-            basedir,
-            env,
-            timeout,
-        )
-    }
-}
-
-#[cfg(feature = "python")]
-impl ExternalFixer for PythonScriptFixer {
-    fn path(&self) -> std::path::PathBuf {
-        self.path.clone()
-    }
-}
-
 /// Errors that can occur when running a fixer
 #[derive(Debug)]
 pub enum FixerError {
@@ -990,11 +755,6 @@ pub enum FixerError {
     FormattingUnpreservable(std::path::PathBuf),
     /// File is generated
     GeneratedFile(std::path::PathBuf),
-    /// Python error
-    #[cfg(feature = "python")]
-    Python(pyo3::PyErr),
-    /// Memory error
-    MemoryError,
     /// I/O error
     Io(std::io::Error),
     /// Breezy error
@@ -1006,6 +766,8 @@ pub enum FixerError {
         /// Backtrace if available
         backtrace: Option<std::backtrace::Backtrace>,
     },
+    /// Missing optional dependency
+    MissingDependency(String),
     /// Other error
     Other(String),
 }
@@ -1070,13 +832,6 @@ impl From<OutputParseError> for FixerError {
     }
 }
 
-#[cfg(feature = "python")]
-impl From<pyo3::PyErr> for FixerError {
-    fn from(e: pyo3::PyErr) -> Self {
-        FixerError::Python(e)
-    }
-}
-
 impl std::fmt::Display for FixerError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -1101,14 +856,9 @@ impl std::fmt::Display for FixerError {
                 stderr
             ),
             FixerError::Other(s) => write!(f, "{}", s),
-            #[cfg(feature = "python")]
-            FixerError::Python(e) => write!(f, "{}", e),
             FixerError::NotDebianPackage(p) => write!(f, "Not a Debian package: {}", p.display()),
             FixerError::DescriptionMissing => {
                 write!(f, "Description missing")
-            }
-            FixerError::MemoryError => {
-                write!(f, "Memory error")
             }
             FixerError::NotCertainEnough(actual, minimum, _) => write!(
                 f,
@@ -1116,7 +866,9 @@ impl std::fmt::Display for FixerError {
                 actual, minimum
             ),
             FixerError::Io(e) => write!(f, "IO error: {}", e),
-            FixerError::FailedPatchManipulation(s) => write!(f, "Failed to manipulate patc: {}", s),
+            FixerError::FailedPatchManipulation(s) => {
+                write!(f, "Failed to manipulate patch: {}", s)
+            }
             FixerError::BrzError(e) => write!(f, "Breezy error: {}", e),
             FixerError::InvalidChangelog(p, s) => {
                 write!(f, "Invalid changelog {}: {}", p.display(), s)
@@ -1134,162 +886,12 @@ impl std::fmt::Display for FixerError {
                 }
                 Ok(())
             }
+            FixerError::MissingDependency(dep) => write!(f, "Missing optional dependency: {}", dep),
         }
     }
 }
 
 impl std::error::Error for FixerError {}
-
-/// A fixer implemented as an external script
-#[derive(Debug)]
-pub struct ScriptFixer {
-    path: std::path::PathBuf,
-    name: String,
-    lintian_tags: Vec<String>,
-}
-
-impl ScriptFixer {
-    /// Create a new script fixer
-    pub fn new(name: String, lintian_tags: Vec<String>, path: std::path::PathBuf) -> Self {
-        Self {
-            path,
-            name,
-            lintian_tags,
-        }
-    }
-}
-
-impl Fixer for ScriptFixer {
-    fn name(&self) -> String {
-        self.name.clone()
-    }
-
-    fn lintian_tags(&self) -> Vec<String> {
-        self.lintian_tags.clone()
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn run(
-        &self,
-        basedir: &std::path::Path,
-        package: &str,
-        current_version: &Version,
-        preferences: &FixerPreferences,
-        timeout: Option<chrono::Duration>,
-    ) -> Result<FixerResult, FixerError> {
-        let env = determine_env(package, current_version, preferences);
-
-        let mut cmd = Command::new(self.path.as_os_str());
-        cmd.stdout(std::process::Stdio::piped());
-        cmd.stderr(std::process::Stdio::piped());
-        cmd.current_dir(basedir);
-
-        for (key, value) in env.iter() {
-            cmd.env(key, value);
-        }
-
-        // For timeout case, we need to handle it differently
-        let output = if let Some(timeout) = timeout {
-            use std::io::Read;
-            use wait_timeout::ChildExt;
-
-            let mut child = cmd.spawn().map_err(|e| match e.kind() {
-                std::io::ErrorKind::NotFound => FixerError::ScriptNotFound(self.path.clone()),
-                _ => FixerError::Other(e.to_string()),
-            })?;
-
-            let std_timeout = timeout
-                .to_std()
-                .map_err(|e| FixerError::Other(e.to_string()))?;
-
-            let status = match child
-                .wait_timeout(std_timeout)
-                .map_err(|e| FixerError::Other(e.to_string()))?
-            {
-                Some(status) => status,
-                None => {
-                    child.kill().map_err(|e| FixerError::Other(e.to_string()))?;
-                    return Err(FixerError::Timeout { timeout });
-                }
-            };
-
-            // Read stdout and stderr after process completes
-            let mut stdout = Vec::new();
-            let mut stderr = Vec::new();
-            if let Some(mut stdout_reader) = child.stdout.take() {
-                stdout_reader
-                    .read_to_end(&mut stdout)
-                    .map_err(|e| FixerError::Other(format!("Failed to read stdout: {}", e)))?;
-            }
-            if let Some(mut stderr_reader) = child.stderr.take() {
-                stderr_reader
-                    .read_to_end(&mut stderr)
-                    .map_err(|e| FixerError::Other(format!("Failed to read stderr: {}", e)))?;
-            }
-
-            std::process::Output {
-                status,
-                stdout,
-                stderr,
-            }
-        } else {
-            cmd.output().map_err(|e| match e.kind() {
-                std::io::ErrorKind::NotFound => FixerError::ScriptNotFound(self.path.clone()),
-                _ => FixerError::Other(e.to_string()),
-            })?
-        };
-
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-        if !output.status.success() {
-            if output.status.code() == Some(2) {
-                return Err(FixerError::NoChanges);
-            }
-
-            if output.status.code().is_none() {
-                return Err(FixerError::Other("Script terminated by signal".to_string()));
-            }
-
-            return Err(FixerError::ScriptFailed {
-                path: self.path.to_owned(),
-                exit_code: output.status.code().unwrap(),
-                stderr,
-            });
-        }
-
-        parse_script_fixer_output(&stdout).map_err(FixerError::OutputParseError)
-    }
-}
-
-impl ExternalFixer for ScriptFixer {
-    fn path(&self) -> std::path::PathBuf {
-        self.path.clone()
-    }
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct FixerDescEntry {
-    script: String,
-    #[serde(rename = "lintian-tags")]
-    lintian_tags: Option<Vec<String>>,
-    #[serde(rename = "force-subprocess")]
-    force_subprocess: Option<bool>,
-    #[serde(default = "default_enabled")]
-    enabled: bool,
-}
-
-fn default_enabled() -> bool {
-    true
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct FixerDescFile {
-    fixers: Vec<FixerDescEntry>,
-}
 
 /// Errors that can occur when discovering fixers
 #[derive(Debug)]
@@ -1326,228 +928,26 @@ impl std::fmt::Display for FixerDiscoverError {
 
 impl std::error::Error for FixerDiscoverError {}
 
-/// Read all fixers from a description file
-pub fn read_all_desc_file<P: AsRef<std::path::Path>>(
-    path: P,
-    force_subprocess: bool,
-) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
-    let file = File::open(path.as_ref())?;
-    let reader = BufReader::new(file);
-
-    let data: FixerDescFile = serde_yaml::from_reader(reader)?;
-
-    let dirname = path.as_ref().parent().unwrap().to_owned();
-    let fixer_iter = data.fixers.into_iter().map(move |item| {
-        // Include all fixers, even disabled ones
-        let script = item.script;
-        let lintian_tags = item.lintian_tags;
-        let force_subprocess = item.force_subprocess.unwrap_or(force_subprocess);
-        let name = std::path::Path::new(script.as_str())
-            .file_stem()
-            .and_then(|name| name.to_str())
-            .unwrap_or("");
-        let script_path = dirname.join(script.as_str());
-
-        load_fixer(
-            name.to_owned(),
-            lintian_tags.unwrap_or_default(),
-            script_path,
-            force_subprocess,
-        )
-    });
-
-    Ok(fixer_iter)
-}
-
-/// Read enabled fixers from a description file
-pub fn read_desc_file<P: AsRef<std::path::Path>>(
-    path: P,
-    force_subprocess: bool,
-) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
-    let file = File::open(path.as_ref())?;
-    let reader = BufReader::new(file);
-
-    let data: FixerDescFile = serde_yaml::from_reader(reader)?;
-
-    let dirname = path.as_ref().parent().unwrap().to_owned();
-    let fixer_iter = data.fixers.into_iter().filter_map(move |item| {
-        // Skip disabled fixers
-        if !item.enabled {
-            return None;
-        }
-        let script = item.script;
-        let lintian_tags = item.lintian_tags;
-        let force_subprocess = item.force_subprocess.unwrap_or(force_subprocess);
-        let name = std::path::Path::new(script.as_str())
-            .file_stem()
-            .and_then(|name| name.to_str())
-            .unwrap_or("");
-        let script_path = dirname.join(script.as_str());
-
-        Some(load_fixer(
-            name.to_owned(),
-            lintian_tags.unwrap_or_default(),
-            script_path,
-            force_subprocess,
-        ))
-    });
-
-    Ok(fixer_iter)
-}
-
-#[cfg(test)]
-mod read_desc_file_tests {
-    #[test]
-    fn test_empty() {
-        let td = tempfile::tempdir().unwrap();
-        let path = td.path().join("empty.desc");
-        std::fs::write(
-            &path,
-            r#"---
-fixers:
-"#,
-        )
-        .unwrap();
-        assert!(super::read_desc_file(&path, false)
-            .unwrap()
-            .next()
-            .is_none());
-    }
-
-    #[test]
-    fn test_single() {
-        let td = tempfile::tempdir().unwrap();
-        let path = td.path().join("single.desc");
-        std::fs::write(
-            &path,
-            r#"---
-fixers:
-- script: foo.sh
-  lintian-tags:
-  - bar
-  - baz
-"#,
-        )
-        .unwrap();
-        let script_path = td.path().join("foo.sh");
-        std::fs::write(script_path, "#!/bin/sh\n").unwrap();
-        let fixer = super::read_desc_file(&path, false).unwrap().next().unwrap();
-        assert_eq!(fixer.name(), "foo");
-        assert_eq!(fixer.lintian_tags(), vec!["bar", "baz"]);
-    }
-}
-
-fn load_fixer(
-    name: String,
-    tags: Vec<String>,
-    script_path: std::path::PathBuf,
-    #[cfg_attr(not(feature = "python"), allow(unused_variables))] force_subprocess: bool,
-) -> Box<dyn Fixer> {
-    #[cfg(feature = "python")]
-    if script_path
-        .extension()
-        .map(|ext| ext == "py")
-        .unwrap_or(false)
-        && !force_subprocess
-    {
-        return Box::new(PythonScriptFixer::new(name, tags, script_path));
-    }
-    Box::new(ScriptFixer::new(name, tags, script_path))
-}
-
-/// Return a list of all lintian fixers (including disabled ones).
+/// Return a list of all lintian fixers.
 ///
 /// # Arguments
 ///
 /// * `fixers_dir` - The directory to search for fixers.
 /// * `force_subprocess` - Force the use of a subprocess for all fixers.
 pub fn all_lintian_fixers(
-    fixers_dir: Option<&std::path::Path>,
-    force_subprocess: Option<bool>,
+    _fixers_dir: Option<&std::path::Path>,
+    _force_subprocess: Option<bool>,
 ) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
-    let fixers_dir = if let Some(fixers_dir) = fixers_dir {
-        fixers_dir.to_path_buf()
-    } else {
-        let system_path = find_fixers_dir();
-        if let Some(system_path) = system_path {
-            system_path
-        } else {
-            return Err(FixerDiscoverError::NoFixersDir);
-        }
-    };
-    let mut fixers = Vec::new();
-    // Add builtin fixers first
-    fixers.extend(builtin_fixers::get_builtin_fixers());
-    // Scan fixers_dir for .desc files
-    for entry in std::fs::read_dir(fixers_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_file() && path.extension().map(|ext| ext == "desc").unwrap_or(false) {
-            let fixer_iter = read_all_desc_file(&path, force_subprocess.unwrap_or(false))?;
-            fixers.extend(fixer_iter);
-        }
-    }
-    Ok(fixers.into_iter())
+    // Only return builtin Rust fixers (Python and shell script fixers have been removed)
+    Ok(builtin_fixers::get_builtin_fixers().into_iter())
 }
 
-/// Return a list of available lintian fixers (enabled ones only).
-/// Get available subprocess-based lintian fixers from a directory.
-///
-/// # Arguments
-///
-/// * `fixers_dir` - The directory to search for fixers.
-/// * `force_subprocess` - Force the use of a subprocess for all fixers.
-pub fn available_subprocess_lintian_fixers(
-    fixers_dir: Option<&std::path::Path>,
-    force_subprocess: Option<bool>,
-) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
-    let fixers_dir = if let Some(fixers_dir) = fixers_dir {
-        fixers_dir.to_path_buf()
-    } else {
-        let system_path = find_fixers_dir();
-        if let Some(system_path) = system_path {
-            system_path
-        } else {
-            return Err(FixerDiscoverError::NoFixersDir);
-        }
-    };
-    let mut fixers = Vec::new();
-
-    // Scan fixers_dir for .desc files
-    for entry in std::fs::read_dir(fixers_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_file() && path.extension().map(|ext| ext == "desc").unwrap_or(false) {
-            let fixer_iter = read_desc_file(&path, force_subprocess.unwrap_or(false))?;
-            fixers.extend(fixer_iter);
-        }
-    }
-
-    Ok(fixers.into_iter())
-}
-
-/// Get all available lintian fixers (both builtin and subprocess-based).
-///
-/// # Arguments
-///
-/// * `fixers_dir` - The directory to search for fixers.
-/// * `force_subprocess` - Force the use of a subprocess for all fixers.
+/// Get all available lintian fixers (builtin Rust fixers only).
 pub fn available_lintian_fixers(
     fixers_dir: Option<&std::path::Path>,
     force_subprocess: Option<bool>,
 ) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
-    let mut fixers = Vec::new();
-
-    // Add builtin fixers first
-    fixers.extend(builtin_fixers::get_builtin_fixers());
-
-    // Add subprocess-based fixers
-    fixers.extend(available_subprocess_lintian_fixers(
-        fixers_dir,
-        force_subprocess,
-    )?);
-
-    Ok(fixers.into_iter())
+    all_lintian_fixers(fixers_dir, force_subprocess)
 }
 
 /// Error indicating an unknown fixer was requested
@@ -1877,7 +1277,7 @@ pub fn run_lintian_fixer(
     };
 
     let make_changes = |basedir: &std::path::Path| -> Result<_, FixerError> {
-        log::debug!("Running fixer {:?}", fixer);
+        tracing::debug!("Running fixer {:?}", fixer);
         let result = fixer.run(
             basedir,
             package.as_str(),
@@ -1987,8 +1387,11 @@ pub fn run_lintian_fixer(
     };
 
     if update_changelog {
-        let mut entry = vec![summary.as_str()];
-        entry.extend(details);
+        let summary_with_prefix = format!("* {}", summary);
+        let details_with_prefix: Vec<String> = details.iter().map(|d| format!("* {}", d)).collect();
+
+        let mut entry = vec![summary_with_prefix.as_str()];
+        entry.extend(details_with_prefix.iter().map(|s| s.as_str()));
 
         add_changelog_entry(local_tree, changelog_path.as_path(), entry.as_slice())?;
         if let Some(specific_files) = specific_files.as_mut() {
@@ -2127,6 +1530,7 @@ pub fn run_lintian_fixers(
     subpath: Option<&std::path::Path>,
     changes_by: Option<&str>,
     timeout: Option<chrono::Duration>,
+    multi_progress: Option<&MultiProgress>,
 ) -> Result<ManyResult, OverallError> {
     let subpath = subpath.unwrap_or_else(|| std::path::Path::new(""));
     let mut basis_tree = local_tree.basis_tree().unwrap();
@@ -2149,7 +1553,11 @@ pub fn run_lintian_fixers(
     };
 
     let mut ret = ManyResult::new();
-    let pb = ProgressBar::new(fixers.len() as u64);
+    let pb = if let Some(mp) = multi_progress {
+        mp.add(ProgressBar::new(fixers.len() as u64))
+    } else {
+        ProgressBar::new(fixers.len() as u64)
+    };
     #[cfg(test)]
     pb.set_draw_target(indicatif::ProgressDrawTarget::hidden());
     let mut dirty_tracker = if use_dirty_tracker.unwrap_or(true) {
@@ -2161,13 +1569,18 @@ pub fn run_lintian_fixers(
         None
     };
     for fixer in fixers {
-        pb.set_message(format!("Running fixer {}", fixer.name()));
+        let fixer_name = fixer.name();
+        pb.set_message(format!("Running fixer {}", fixer_name));
         // Get now from chrono
         let start = std::time::SystemTime::now();
         if let Some(dirty_tracker) = dirty_tracker.as_mut() {
             dirty_tracker.mark_clean();
         }
         pb.inc(1);
+
+        // Create a span for this fixer so log messages are attributed to it
+        let _span = tracing::info_span!("fixer", name = fixer.name()).entered();
+
         match run_lintian_fixer(
             local_tree,
             fixer.as_ref(),
@@ -2191,14 +1604,14 @@ pub fn run_lintian_fixers(
                 FixerError::OutputParseError(ref _e) => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     if verbose {
-                        log::info!("Fixer {} failed to parse output.", fixer.name());
+                        tracing::info!("Fixer {} failed to parse output.", fixer.name());
                     }
                     continue;
                 }
                 FixerError::DescriptionMissing => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     if verbose {
-                        log::info!(
+                        tracing::info!(
                             "Fixer {} failed because description is missing.",
                             fixer.name()
                         );
@@ -2208,7 +1621,7 @@ pub fn run_lintian_fixers(
                 FixerError::OutputDecodeError(ref _e) => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     if verbose {
-                        log::info!("Fixer {} failed to decode output.", fixer.name());
+                        tracing::info!("Fixer {} failed to decode output.", fixer.name());
                     }
                     continue;
                 }
@@ -2216,7 +1629,7 @@ pub fn run_lintian_fixers(
                     ret.formatting_unpreservable
                         .insert(fixer.name(), path.clone());
                     if verbose {
-                        log::info!(
+                        tracing::info!(
                             "Fixer {} was unable to preserve formatting of {}.",
                             fixer.name(),
                             path.display()
@@ -2228,7 +1641,7 @@ pub fn run_lintian_fixers(
                     ret.failed_fixers
                         .insert(fixer.name(), format!("Generated file: {}", p.display()));
                     if verbose {
-                        log::info!(
+                        tracing::info!(
                             "Fixer {} encountered generated file {}",
                             fixer.name(),
                             p.display()
@@ -2238,22 +1651,15 @@ pub fn run_lintian_fixers(
                 FixerError::ScriptNotFound(ref p) => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     if verbose {
-                        log::info!("Fixer {} ({}) not found.", fixer.name(), p.display());
+                        tracing::info!("Fixer {} ({}) not found.", fixer.name(), p.display());
                     }
                     continue;
                 }
                 FixerError::ScriptFailed { .. } => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     if verbose {
-                        log::info!("Fixer {} failed to run.", fixer.name());
+                        tracing::info!("Fixer {} failed to run.", fixer.name());
                         eprintln!("{}", e);
-                    }
-                    continue;
-                }
-                FixerError::MemoryError => {
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
-                    if verbose {
-                        log::info!("Ran out of memory while running fixer {}.", fixer.name());
                     }
                     continue;
                 }
@@ -2264,11 +1670,12 @@ pub fn run_lintian_fixers(
                     return Err(OverallError::IoError(e));
                 }
                 FixerError::NotCertainEnough(actual_certainty, minimum_certainty, _overrides) => {
+                    let duration = std::time::SystemTime::now().duration_since(start).unwrap();
+                    ret.fixer_durations.insert(fixer_name.to_string(), duration);
                     if verbose {
-                        let duration = std::time::SystemTime::now().duration_since(start).unwrap();
-                        log::info!(
+                        tracing::info!(
                     "Fixer {} made changes but not high enough certainty (was {}, needed {}). (took: {:2}s)",
-                    fixer.name(),
+                    fixer_name,
                     actual_certainty,
                     minimum_certainty.map_or("default".to_string(), |c| c.to_string()),
                     duration.as_secs_f32(),
@@ -2278,40 +1685,34 @@ pub fn run_lintian_fixers(
                 }
                 FixerError::FailedPatchManipulation(ref reason) => {
                     if verbose {
-                        log::info!("Unable to manipulate upstream patches: {}", reason);
+                        tracing::info!("Unable to manipulate upstream patches: {}", reason);
                     }
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     continue;
                 }
                 FixerError::NoChanges => {
+                    let duration = std::time::SystemTime::now().duration_since(start).unwrap();
+                    ret.fixer_durations.insert(fixer_name.to_string(), duration);
                     if verbose {
-                        let duration = std::time::SystemTime::now().duration_since(start).unwrap();
-                        log::info!(
+                        tracing::info!(
                             "Fixer {} made no changes. (took: {:2}s)",
-                            fixer.name(),
+                            fixer_name,
                             duration.as_secs_f32(),
                         );
                     }
                     continue;
                 }
                 FixerError::NoChangesAfterOverrides(os) => {
+                    let duration = std::time::SystemTime::now().duration_since(start).unwrap();
+                    ret.fixer_durations.insert(fixer_name.to_string(), duration);
                     if verbose {
-                        let duration = std::time::SystemTime::now().duration_since(start).unwrap();
-                        log::info!(
+                        tracing::info!(
                             "Fixer {} made no changes. (took: {:2}s)",
-                            fixer.name(),
+                            fixer_name,
                             duration.as_secs_f32(),
                         );
                     }
                     ret.overridden_lintian_issues.extend(os);
-                    continue;
-                }
-                #[cfg(feature = "python")]
-                FixerError::Python(ref ep) => {
-                    if verbose {
-                        log::info!("Fixer {} failed: {}", fixer.name(), ep);
-                    }
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
                     continue;
                 }
                 FixerError::Panic {
@@ -2319,17 +1720,28 @@ pub fn run_lintian_fixers(
                     ref backtrace,
                 } => {
                     if verbose {
-                        log::error!("Fixer {} panicked: {}", fixer.name(), message);
+                        tracing::error!("Fixer {} panicked: {}", fixer.name(), message);
                         if let Some(bt) = backtrace {
-                            log::error!("Backtrace:\n{}", bt);
+                            tracing::error!("Backtrace:\n{}", bt);
                         }
+                    }
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    continue;
+                }
+                FixerError::MissingDependency(ref dep) => {
+                    if verbose {
+                        tracing::info!(
+                            "Fixer {} skipped: missing optional dependency '{}'",
+                            fixer.name(),
+                            dep
+                        );
                     }
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     continue;
                 }
                 FixerError::Other(ref em) => {
                     if verbose {
-                        log::info!("Fixer {} failed: {}", fixer.name(), em);
+                        tracing::info!("Fixer {} failed: {}", fixer.name(), em);
                     }
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     continue;
@@ -2339,22 +1751,27 @@ pub fn run_lintian_fixers(
                 }
                 FixerError::Timeout { timeout } => {
                     if verbose {
-                        log::info!("Fixer {} timed out after {}.", fixer.name(), timeout);
+                        tracing::info!("Fixer {} timed out after {}.", fixer.name(), timeout);
                     }
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
                     continue;
                 }
             },
             Ok((result, summary)) => {
+                let duration = std::time::SystemTime::now().duration_since(start).unwrap();
+                ret.fixer_durations.insert(fixer_name.to_string(), duration);
                 if verbose {
-                    let duration = std::time::SystemTime::now().duration_since(start).unwrap();
-                    log::info!(
+                    tracing::info!(
                         "Fixer {} made changes. (took {:2}s)",
-                        fixer.name(),
+                        fixer_name,
                         duration.as_secs_f32(),
                     );
                 }
-                ret.success.push((result, summary));
+                ret.success.push(FixerSuccess {
+                    result,
+                    summary,
+                    fixer_name: fixer_name.to_string(),
+                });
                 basis_tree = local_tree.basis_tree().unwrap();
             }
         }
@@ -2364,12 +1781,24 @@ pub fn run_lintian_fixers(
     Ok(ret)
 }
 
+/// Information about a successfully applied fixer
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct FixerSuccess {
+    /// The result of the fixer
+    #[serde(flatten)]
+    pub result: FixerResult,
+    /// Summary of the changes
+    pub summary: String,
+    /// Name of the fixer (for looking up duration and other info)
+    pub fixer_name: String,
+}
+
 /// Result of running multiple fixers
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 pub struct ManyResult {
     /// Successfully applied fixers
     #[serde(rename = "applied")]
-    pub success: Vec<(FixerResult, String)>,
+    pub success: Vec<FixerSuccess>,
     /// Failed fixers
     #[serde(rename = "failed")]
     pub failed_fixers: std::collections::HashMap<String, String>,
@@ -2381,6 +1810,9 @@ pub struct ManyResult {
     /// Files with unpreservable formatting
     #[serde(skip)]
     pub formatting_unpreservable: std::collections::HashMap<String, std::path::PathBuf>,
+    /// Duration of all fixers that were run (by fixer name)
+    #[serde(skip)]
+    pub fixer_durations: std::collections::HashMap<String, std::time::Duration>,
 }
 
 impl ManyResult {
@@ -2388,8 +1820,8 @@ impl ManyResult {
     pub fn tags_count(&self) -> HashMap<&str, u32> {
         self.success
             .iter()
-            .fold(HashMap::new(), |mut acc, (r, _summary)| {
-                for tag in r.fixed_lintian_tags() {
+            .fold(HashMap::new(), |mut acc, fixer_success| {
+                for tag in fixer_success.result.fixed_lintian_tags() {
                     *acc.entry(tag).or_insert(0) += 1;
                 }
                 acc
@@ -2401,7 +1833,7 @@ impl ManyResult {
         let tags = self
             .success
             .iter()
-            .flat_map(|(r, _summary)| r.fixed_lintian_tags())
+            .flat_map(|fixer_success| fixer_success.result.fixed_lintian_tags())
             .collect::<Vec<_>>();
         calculate_value(tags.as_slice())
     }
@@ -2411,7 +1843,7 @@ impl ManyResult {
         min_certainty(
             self.success
                 .iter()
-                .filter_map(|(r, _summary)| r.certainty)
+                .filter_map(|fixer_success| fixer_success.result.certainty)
                 .collect::<Vec<_>>()
                 .as_slice(),
         )
@@ -2426,6 +1858,7 @@ impl ManyResult {
             changelog_behaviour: None,
             overridden_lintian_issues: Vec::new(),
             formatting_unpreservable: std::collections::HashMap::new(),
+            fixer_durations: std::collections::HashMap::new(),
         }
     }
 }
@@ -2475,7 +1908,7 @@ fn upstream_changes_to_patch<T: breezyshim::tree::PyTree>(
         ));
     }
 
-    log::debug!("Moving upstream changes to patch {}", patch_name);
+    tracing::debug!("Moving upstream changes to patch {}", patch_name);
     let (specific_files, patch_name) = match move_upstream_changes_to_patch(
         local_tree,
         basis_tree,
@@ -2505,7 +1938,7 @@ fn note_changelog_policy(policy: bool, msg: &str) {
             } else {
                 "Specify --update-changelog to override."
             };
-            log::info!("{} {}", msg, extra);
+            tracing::info!("{} {}", msg, extra);
         }
         *policy_noted = true;
     }
@@ -2723,6 +2156,7 @@ Arch: all
                 None,
                 None,
                 None,
+                None,
             )
             .unwrap();
             std::mem::drop(lock);
@@ -2768,6 +2202,7 @@ Arch: all
                     None,
                     None,
                     None,
+                    None,
                 ),
                 Err(OverallError::NotDebianPackage(_))
             ));
@@ -2790,37 +2225,81 @@ Arch: all
                 None,
                 None,
                 None,
+                None,
             )
             .unwrap();
             let revid = tree.last_revision().unwrap();
             std::mem::drop(lock);
 
+            assert_eq!(result.success.len(), 1);
             assert_eq!(
-                result.success,
-                vec![(
-                    FixerResult::new(
-                        "Fixed some tag.\nExtended description.".to_string(),
-                        None,
-                        Some(Certainty::Certain),
-                        None,
-                        Some(revid),
-                        vec![LintianIssue {
-                            tag: Some("some-tag".to_string()),
-                            package: Some("blah".to_string()),
-                            info: None,
-                            package_type: Some(PackageType::Source),
-                        }],
-                        None,
-                    ),
-                    "Fixed some tag.".to_string()
-                )],
+                result.success[0].result,
+                FixerResult::new(
+                    "Fixed some tag.\nExtended description.".to_string(),
+                    Some(Certainty::Certain),
+                    None,
+                    Some(revid),
+                    vec![LintianIssue {
+                        tag: Some("some-tag".to_string()),
+                        package: Some("blah".to_string()),
+                        info: None,
+                        package_type: Some(PackageType::Source),
+                    }],
+                    None,
+                ),
             );
+            assert_eq!(result.success[0].summary, "Fixed some tag.");
             assert_eq!(maplit::hashmap! {}, result.failed_fixers);
             assert_eq!(2, tree.branch().revno());
             let lines = tree
                 .get_file_lines(std::path::Path::new("debian/control"))
                 .unwrap();
             assert_eq!(lines.last().unwrap(), &b"a new line\n".to_vec());
+            std::mem::drop(td);
+        }
+
+        #[test]
+        fn test_changelog_entry_has_asterisk_prefix() {
+            let (td, tree) = setup(None);
+            let lock = tree.lock_write().unwrap();
+            let _result = run_lintian_fixers(
+                &tree,
+                &[Box::new(DummyFixer::new("dummy", &["some-tag"]))],
+                Some(|| true), // Update changelog
+                false,
+                Some(COMMITTER),
+                &FixerPreferences::default(),
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+            std::mem::drop(lock);
+
+            // Read the changelog and verify that entries start with "* "
+            let changelog_content =
+                std::fs::read_to_string(td.path().join("debian/changelog")).unwrap();
+            let changelog: ChangeLog = changelog_content.parse().unwrap();
+            let first_entry = changelog.iter().next().unwrap();
+            let change_lines: Vec<String> = first_entry.change_lines().collect();
+
+            // Filter out author section headers (lines starting with "[") and empty lines
+            let bullet_lines: Vec<String> = change_lines
+                .iter()
+                .filter(|line| line.starts_with("* "))
+                .cloned()
+                .collect();
+
+            // Should have exactly 3 lines: our 2 new entries + the original one
+            assert_eq!(bullet_lines.len(), 3);
+
+            // Verify the exact entries - original is first, then our new entries
+            assert_eq!(bullet_lines[0], "* Initial release. (Closes: #911016)");
+            assert_eq!(bullet_lines[1], "* Fixed some tag.");
+            assert_eq!(bullet_lines[2], "* Extended description.");
+
             std::mem::drop(td);
         }
 
@@ -3586,45 +3065,6 @@ Arch: all
         }
     }
 
-    #[test]
-    fn test_find_shell_scripts() {
-        let td = tempfile::tempdir().unwrap();
-
-        let fixers = td.path().join("fixers");
-        std::fs::create_dir(&fixers).unwrap();
-
-        std::fs::create_dir(fixers.join("anotherdir")).unwrap();
-        std::fs::write(fixers.join("foo.sh"), "echo 'hello'").unwrap();
-        std::fs::write(fixers.join("bar.sh"), "echo 'hello'").unwrap();
-        std::fs::write(fixers.join("i-fix-aanother-tag.py"), "print('hello')").unwrap();
-        std::fs::write(fixers.join(".hidden"), "echo 'hello'").unwrap();
-        std::fs::write(fixers.join("backup-file.sh~"), "echo 'hello'").unwrap();
-        std::fs::write(fixers.join("no-extension"), "echo 'hello'").unwrap();
-        std::fs::write(
-            fixers.join("index.desc"),
-            r###"
-
-fixers:
-- script: foo.sh
-  lintian-tags:
-   - i-fix-a-tag
-
-- script: bar.sh
-  lintian-tags:
-   - i-fix-another-tag
-   - no-extension
-"###,
-        )
-        .unwrap();
-
-        let fixers = available_subprocess_lintian_fixers(Some(&fixers), Some(false))
-            .unwrap()
-            .collect::<Vec<_>>();
-        assert_eq!(2, fixers.len());
-        assert_eq!(fixers[0].name(), "foo");
-        assert_eq!(fixers[1].name(), "bar");
-    }
-
     mod many_result_tests {
         use super::*;
 
@@ -3637,48 +3077,48 @@ fixers:
         #[test]
         fn test_no_certainty() {
             let mut result = ManyResult::default();
-            result.success.push((
-                FixerResult::new(
+            result.success.push(FixerSuccess {
+                result: FixerResult::new(
                     "Do bla".to_string(),
-                    Some(vec!["tag-a".to_string()]),
                     None,
                     None,
                     None,
-                    vec![],
+                    vec![LintianIssue::just_tag("tag-a".to_string())],
                     None,
                 ),
-                "summary".to_string(),
-            ));
+                summary: "summary".to_string(),
+                fixer_name: "test-fixer".to_string(),
+            });
             assert_eq!(Certainty::Certain, result.minimum_success_certainty());
         }
 
         #[test]
         fn test_possible() {
             let mut result = ManyResult::default();
-            result.success.push((
-                FixerResult::new(
+            result.success.push(FixerSuccess {
+                result: FixerResult::new(
                     "Do bla".to_string(),
-                    Some(vec!["tag-a".to_string()]),
                     Some(Certainty::Possible),
                     None,
                     None,
-                    vec![],
+                    vec![LintianIssue::just_tag("tag-a".to_string())],
                     None,
                 ),
-                "summary".to_string(),
-            ));
-            result.success.push((
-                FixerResult::new(
+                summary: "summary".to_string(),
+                fixer_name: "test-fixer-1".to_string(),
+            });
+            result.success.push(FixerSuccess {
+                result: FixerResult::new(
                     "Do bloeh".to_string(),
-                    Some(vec!["tag-b".to_string()]),
                     Some(Certainty::Certain),
                     None,
                     None,
-                    vec![],
+                    vec![LintianIssue::just_tag("tag-b".to_string())],
                     None,
                 ),
-                "summary".to_string(),
-            ));
+                summary: "summary".to_string(),
+                fixer_name: "test-fixer-2".to_string(),
+            });
             assert_eq!(Certainty::Possible, result.minimum_success_certainty());
         }
     }
@@ -3686,139 +3126,6 @@ fixers:
 
 #[cfg(test)]
 mod fixer_tests;
-
-#[cfg(test)]
-mod script_fixer_tests {
-    use super::*;
-    use std::os::unix::fs::PermissionsExt;
-
-    #[test]
-    fn test_script_terminated_by_signal() {
-        // Create a test script that will be killed
-        let td = tempfile::tempdir().unwrap();
-        let script_path = td.path().join("test_script.sh");
-
-        // Write a script that will be killed immediately by calling kill on itself
-        std::fs::write(&script_path, "#!/bin/bash\nkill -TERM $$\n").unwrap();
-        std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
-
-        // Create a script fixer
-        let fixer = ScriptFixer::new(
-            "test_fixer".to_string(),
-            vec!["test-tag".to_string()],
-            script_path.clone(),
-        );
-
-        // Create a test working directory with debian/control
-        let work_dir = td.path().join("work");
-        std::fs::create_dir_all(&work_dir).unwrap();
-        std::fs::create_dir_all(work_dir.join("debian")).unwrap();
-        std::fs::write(work_dir.join("debian/control"), "Source: test\n").unwrap();
-
-        let version: Version = "1.0-1".parse().unwrap();
-        let preferences = FixerPreferences::default();
-        let result = fixer.run(&work_dir, "test", &version, &preferences, None);
-
-        // The result should be an error about script being terminated by signal
-        match result {
-            Err(FixerError::Other(msg)) => {
-                assert_eq!(msg, "Script terminated by signal");
-            }
-            other => panic!(
-                "Expected FixerError::Other with signal message, got: {:?}",
-                other
-            ),
-        }
-    }
-
-    #[test]
-    fn test_script_exit_code_2() {
-        // Test that exit code 2 returns NoChanges error
-        let td = tempfile::tempdir().unwrap();
-        let script_path = td.path().join("test_script.sh");
-
-        // Write a script that exits with code 2
-        std::fs::write(&script_path, "#!/bin/bash\nexit 2\n").unwrap();
-        std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
-
-        let fixer = ScriptFixer::new(
-            "test_fixer".to_string(),
-            vec!["test-tag".to_string()],
-            script_path.clone(),
-        );
-
-        let work_dir = td.path().join("work");
-        std::fs::create_dir_all(&work_dir).unwrap();
-        std::fs::create_dir_all(work_dir.join("debian")).unwrap();
-        std::fs::write(work_dir.join("debian/control"), "Source: test\n").unwrap();
-
-        let version: Version = "1.0-1".parse().unwrap();
-        let preferences = FixerPreferences::default();
-        let result = fixer.run(&work_dir, "test", &version, &preferences, None);
-
-        match result {
-            Err(FixerError::NoChanges) => {}
-            other => panic!("Expected FixerError::NoChanges, got: {:?}", other),
-        }
-    }
-
-    #[test]
-    fn test_script_success() {
-        // Test successful script execution
-        let td = tempfile::tempdir().unwrap();
-        let script_path = td.path().join("test_script.sh");
-
-        // Write a script that succeeds and outputs valid fixer result
-        std::fs::write(
-            &script_path,
-            "#!/bin/bash\necho 'Fixed: test issue'\necho 'Fixed-Lintian-Tags: test-tag'\nexit 0\n",
-        )
-        .unwrap();
-        std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
-
-        let fixer = ScriptFixer::new(
-            "test_fixer".to_string(),
-            vec!["test-tag".to_string()],
-            script_path.clone(),
-        );
-
-        let work_dir = td.path().join("work");
-        std::fs::create_dir_all(&work_dir).unwrap();
-        std::fs::create_dir_all(work_dir.join("debian")).unwrap();
-        std::fs::write(work_dir.join("debian/control"), "Source: test\n").unwrap();
-
-        let version: Version = "1.0-1".parse().unwrap();
-        let preferences = FixerPreferences::default();
-        let result = fixer.run(&work_dir, "test", &version, &preferences, None);
-
-        match result {
-            Ok(fixer_result) => {
-                assert_eq!(fixer_result.description, "Fixed: test issue");
-                assert_eq!(fixer_result.fixed_lintian_tags(), vec!["test-tag"]);
-            }
-            Err(e) => panic!("Expected success, got error: {:?}", e),
-        }
-    }
-
-    #[test]
-    fn test_parse_script_fixer_output() {
-        // Test basic parsing
-        let output = "Fixed: test issue\nFixed-Lintian-Tags: tag1, tag2\n";
-        let result = parse_script_fixer_output(output).unwrap();
-        assert_eq!(result.description, "Fixed: test issue");
-        assert_eq!(result.fixed_lintian_tags(), vec!["tag1", "tag2"]);
-
-        // Test with certainty
-        let output = "Fixed: test issue\nCertainty: possible\n";
-        let result = parse_script_fixer_output(output).unwrap();
-        assert_eq!(result.certainty, Some(Certainty::Possible));
-
-        // Test with patch header
-        let output = "Fixed: test issue\nPatch-Name: fix.patch\n";
-        let result = parse_script_fixer_output(output).unwrap();
-        assert_eq!(result.patch_name, Some("fix.patch".to_string()));
-    }
-}
 
 #[cfg(test)]
 mod fixer_result_builder_tests {
@@ -3859,8 +3166,8 @@ mod fixer_result_builder_tests {
     #[test]
     fn test_fixer_result_builder_with_fixed_tags() {
         let result = FixerResult::builder("Test fix")
-            .fixed_tag("tag1")
-            .fixed_tag("tag2")
+            .fixed_issue(LintianIssue::just_tag("tag1".to_string()))
+            .fixed_issue(LintianIssue::just_tag("tag2".to_string()))
             .build();
 
         assert_eq!(result.description, "Test fix");
@@ -3870,7 +3177,11 @@ mod fixer_result_builder_tests {
     #[test]
     fn test_fixer_result_builder_with_fixed_tags_batch() {
         let result = FixerResult::builder("Test fix")
-            .fixed_tags(["tag1", "tag2", "tag3"])
+            .fixed_issues([
+                LintianIssue::just_tag("tag1".to_string()),
+                LintianIssue::just_tag("tag2".to_string()),
+                LintianIssue::just_tag("tag3".to_string()),
+            ])
             .build();
 
         assert_eq!(result.description, "Test fix");
@@ -3945,7 +3256,7 @@ mod fixer_result_builder_tests {
             .certainty(Certainty::Certain)
             .patch_name("comprehensive.patch")
             .revision_id(revision_id.clone())
-            .fixed_tag("fixed-tag")
+            .fixed_issue(LintianIssue::just_tag("fixed-tag".to_string()))
             .overridden_issue(LintianIssue::just_tag("overridden-tag".to_string()))
             .build();
 
@@ -3962,9 +3273,9 @@ mod fixer_result_builder_tests {
         let issue = LintianIssue::just_tag("issue-tag".to_string());
 
         let result = FixerResult::builder("Test fix")
-            .fixed_tag("tag1")
+            .fixed_issue(LintianIssue::just_tag("tag1".to_string()))
             .fixed_issue(issue)
-            .fixed_tag("tag2")
+            .fixed_issue(LintianIssue::just_tag("tag2".to_string()))
             .build();
 
         let tags = result.fixed_lintian_tags();

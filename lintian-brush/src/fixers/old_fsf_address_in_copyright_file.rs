@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use regex::Regex;
 use std::fs;
 use std::path::Path;
@@ -8,6 +8,12 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     if !copyright_path.exists() {
         return Err(FixerError::NoChanges);
+    }
+
+    let issue = LintianIssue::source_with_info("old-fsf-address-in-copyright-file", vec![]);
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
     let content = fs::read_to_string(&copyright_path)?;
@@ -34,7 +40,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     fs::write(&copyright_path, new_content.as_ref())?;
 
     Ok(FixerResult::builder("Update FSF postal address.")
-        .fixed_tags(vec!["old-fsf-address-in-copyright-file"])
+        .fixed_issue(issue)
         .certainty(crate::Certainty::Certain)
         .build())
 }

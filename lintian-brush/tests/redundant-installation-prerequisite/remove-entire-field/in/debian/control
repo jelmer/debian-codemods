@@ -1,0 +1,12 @@
+Source: test-package
+Section: misc
+Priority: optional
+Maintainer: Test User <test@example.com>
+Standards-Version: 4.6.0
+
+Package: test-package
+Architecture: all
+Depends: foo
+Recommends: foo
+Description: Test package
+ This is a test package.

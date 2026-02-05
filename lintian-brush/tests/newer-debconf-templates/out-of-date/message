@@ -1,2 +1,3 @@
 Run debconf-updatepo after template changes.
-Fixed-Lintian-Tags: newer-debconf-templates
+Fixed-Lintian-Issues:
+ source: newer-debconf-templates [debian/po/templates.pot]

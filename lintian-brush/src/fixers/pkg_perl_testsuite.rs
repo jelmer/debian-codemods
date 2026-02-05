@@ -50,7 +50,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         package: None,
         package_type: Some(crate::PackageType::Source),
         tag: Some("team/pkg-perl/testsuite/no-testsuite-header".to_string()),
-        info: Some(vec!["autopkgtest".to_string()]),
+        info: Some("autopkgtest".to_string()),
     };
 
     if !issue.should_fix(base_path) {

@@ -16,34 +16,38 @@ serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 chrono = { workspace = true }
-log = { workspace = true }
 configparser.workspace = true
 clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
-env_logger = { workspace = true, optional = true }
 lazy-regex = { workspace = true }
 debversion = { workspace = true }
+debian-copyright = { workspace = true }
 breezyshim = { workspace = true }
 indicatif = ">=0.17,<0.19"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter", "ansi"] }
+tracing-log = "0.2"
+nu-ansi-term = "0.50"
 tempfile = { workspace = true }
 url = { version = "2", features = ["serde"] }
-reqwest = { workspace = true, features = ["blocking"] }
+reqwest = { workspace = true, features = ["blocking", "json"] }
 lazy_static = { workspace = true }
 debian-analyzer = { workspace = true, features = ["svp", "udd"] }
 debian-control = { workspace = true }
-debian-copyright = { workspace = true }
 deb822-lossless = { workspace = true }
 distro-info = "0.4.0"
 debian-changelog = { workspace = true }
+desktop-edit = { path = "../desktop-edit", version = "0.1.0" }
 wait-timeout = "0.2.0"
 humantime = "2.1.0"
 svp-client = { workspace = true }
 inventory = "0.3"
 regex = { workspace = true }
+indexmap = { workspace = true }
 sequoia-openpgp = "2"
-makefile-lossless = "0.3.19"
+makefile-lossless = { workspace = true }
 sha1 = "0.10"
 shell-words = "1"
-debian-watch = { version = "0.2.16", features = ["discover", "blocking", "pgp"] }
+debian-watch = { version = "0.2.17", features = ["discover", "blocking", "pgp"] }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 sqlx = { workspace = true, features = ["postgres", "runtime-tokio"], optional = true }
 upstream-ontologist = { workspace = true }
@@ -55,7 +59,8 @@ futures = "0.3"
 debbugs = { version = "0.1.8", features = ["blocking"] }
 textwrap = "0.16"
 toml_edit = { workspace = true }
-systemd-unit-edit = "0.1.2"
+systemd-unit-edit = { path = "../systemd-unit-edit", version = "0.1.3" }
+yaml-edit = { path = "../yaml-edit", version = "0.1.0" }
 
 [dev-dependencies]
 fs_extra = "1.3.0"
@@ -65,11 +70,19 @@ maplit = { workspace = true }
 default = ["svp", "python", "cli"]
 svp = []
 python = ["debian-analyzer/python"]
-cli = ["dep:clap", "dep:env_logger"]
+cli = ["dep:clap"]
 udd = ["debian-analyzer/udd", "dep:sqlx"]
 
 [[bin]]
 name = "lintian-brush"
+required-features = ["cli"]
+
+[[bin]]
+name = "find-old-info-format-tags"
+required-features = ["udd"]
+
+[[bin]]
+name = "tag-status"
 required-features = ["cli"]
 
 [build-dependencies]

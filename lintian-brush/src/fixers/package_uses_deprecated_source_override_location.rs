@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -7,6 +7,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     if !old_path.exists() {
         return Err(FixerError::NoChanges);
+    }
+
+    let issue = LintianIssue::source_with_info(
+        "old-source-override-location",
+        vec!["debian/source.lintian-overrides".to_string()],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
     let source_dir = base_path.join("debian/source");
@@ -35,7 +44,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder("Move source package lintian overrides to debian/source.")
-            .fixed_tags(vec!["old-source-override-location"])
+            .fixed_issue(issue)
             .certainty(crate::Certainty::Certain)
             .build(),
     )

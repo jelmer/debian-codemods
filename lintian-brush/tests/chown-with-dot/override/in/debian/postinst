@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+# This uses the old syntax intentionally for compatibility reasons
+chown root.root /etc/myapp/config
+chown www-data.www-data /var/www/myapp
+
+#DEBHELPER#
+
+exit 0

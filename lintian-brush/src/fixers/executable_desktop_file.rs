@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -14,7 +14,8 @@ declare_fixer! {
             return Err(FixerError::NoChanges);
         }
 
-        let mut fixed_files = Vec::new();
+        let mut fixed_issues = Vec::new();
+        let mut overridden_issues = Vec::new();
 
         // Find all .desktop files in debian/ directory
         let desktop_files = find_desktop_files(&debian_dir)?;
@@ -25,17 +26,44 @@ declare_fixer! {
 
         // Remove executable bit from each desktop file
         for desktop_file in desktop_files {
-            if remove_executable_bit(&desktop_file)? {
-                fixed_files.push(desktop_file);
+            let metadata = fs::metadata(&desktop_file)?;
+            let current_mode = metadata.permissions().mode();
+
+            // Check if file is executable
+            if (current_mode & 0o111) != 0 {
+                // Get filename for installed path
+                let filename = desktop_file.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown");
+
+                let installed_path = format!("usr/share/applications/{}", filename);
+                let perms_octal = format!("{:04o}", current_mode & 0o777);
+
+                let issue = LintianIssue::source_with_info(
+                    "executable-desktop-file",
+                    vec![format!("{} [{}]", perms_octal, installed_path)],
+                );
+
+                if issue.should_fix(basedir) {
+                    if remove_executable_bit(&desktop_file)? {
+                        fixed_issues.push(issue);
+                    }
+                } else {
+                    overridden_issues.push(issue);
+                }
             }
         }
 
-        if fixed_files.is_empty() {
+        if fixed_issues.is_empty() {
+            if !overridden_issues.is_empty() {
+                return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+            }
             return Err(FixerError::NoChanges);
         }
 
         Ok(FixerResult::builder("Remove executable bit from desktop files.")
-            .fixed_tag("executable-desktop-file")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .build())
     }
 }

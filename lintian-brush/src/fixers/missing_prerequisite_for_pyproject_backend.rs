@@ -62,14 +62,14 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         package: source.as_deb822().get("Source").map(|s| s.to_string()),
         package_type: Some(crate::PackageType::Source),
         tag: Some("missing-prerequisite-for-pyproject-backend".to_string()),
-        info: Some(vec![format!(
+        info: Some(format!(
             "{} (does not satisfy {})",
             build_backend, prerequisite
-        )]),
+        )),
     };
 
     if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChanges);
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
     // Add prerequisite to Build-Depends
@@ -85,7 +85,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         "Add missing build-dependency on {}.\n\nThis is necessary for build-backend {} in pyproject.toml",
         prerequisite, build_backend
     ))
-    .fixed_tag("missing-prerequisite-for-pyproject-backend")
+    .fixed_issue(issue)
     .build())
 }
 

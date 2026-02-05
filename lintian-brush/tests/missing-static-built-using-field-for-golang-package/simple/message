@@ -1,0 +1,3 @@
+Add missing ${misc:Static-Built-Using} to Static-Built-Using on golang-test.
+Fixed-Lintian-Issues:
+ golang-test binary: missing-static-built-using-field-for-golang-package (in section for golang-test) [debian/control:4]

@@ -988,8 +988,10 @@ description = "A test package"
         assert_eq!(prefs.upstream_version_kind, VersionKind::Auto);
 
         // Test that other version kinds can be set
-        let mut prefs = DebianizePreferences::default();
-        prefs.upstream_version_kind = VersionKind::Release;
+        let prefs = DebianizePreferences {
+            upstream_version_kind: VersionKind::Release,
+            ..Default::default()
+        };
         assert_eq!(prefs.upstream_version_kind, VersionKind::Release);
     }
 
@@ -1848,6 +1850,7 @@ fn run_debianize_fixers(
         Some(subpath),
         None, // changes_by
         None, // timeout
+        None, // multi_progress
     ) {
         Ok(result) => {
             // Check the actual methods available on ManyResult
@@ -2196,7 +2199,7 @@ async fn find_wnpp_bugs_for_package_async(
 
     // Use the existing analyzer functionality
     match debian_analyzer::wnpp::find_wnpp_bugs_harder(&name_refs).await {
-        Ok(bugs) => Ok(bugs.into_iter().collect()),
+        Ok(bugs) => Ok(bugs),
         Err(e) => {
             log::warn!("Failed to query WNPP bugs: {}", e);
             Ok(vec![])

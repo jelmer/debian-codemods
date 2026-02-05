@@ -1,0 +1,11 @@
+Source: test-package
+Build-Depends: debhelper-compat (= 11)
+Section: misc
+Priority: optional
+Maintainer: Test User <test@example.com>
+Standards-Version: 4.6.0
+
+Package: test-package
+Architecture: all
+Description: Test package for deprecated systemd override fixer
+ This is a test package.

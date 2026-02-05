@@ -1,2 +1,3 @@
 Add missing build dependency on dh-python | dh-sequence-python3 for command dh_python3.
-Fixed-Lintian-Tags: missing-build-dependency-for-dh_-command
+Fixed-Lintian-Issues:
+ source: missing-build-dependency-for-dh_-command dh_python3 (does not satisfy dh-python | dh-sequence-python3) [debian/rules]

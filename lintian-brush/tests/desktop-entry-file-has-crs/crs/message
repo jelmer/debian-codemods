@@ -1,3 +1,13 @@
 Remove CRs from desktop files.
-Fixed-Lintian-Tags: desktop-entry-file-has-crs
+Fixed-Lintian-Issues:
+ source: desktop-entry-file-has-crs [usr/share/applications/xscreensaver-daemon.desktop:1]
+ source: desktop-entry-file-has-crs [usr/share/applications/xscreensaver-daemon.desktop:2]
+ source: desktop-entry-file-has-crs [usr/share/applications/xscreensaver-daemon.desktop:3]
+ source: desktop-entry-file-has-crs [usr/share/applications/xscreensaver-daemon.desktop:4]
+ source: desktop-entry-file-has-crs [usr/share/applications/xscreensaver-daemon.desktop:5]
+ source: desktop-entry-file-has-crs [usr/share/applications/xscreensaver-daemon.desktop:6]
+ source: desktop-entry-file-has-crs [usr/share/applications/xscreensaver-daemon.desktop:7]
+ source: desktop-entry-file-has-crs [usr/share/applications/xscreensaver-daemon.desktop:8]
+ source: desktop-entry-file-has-crs [usr/share/applications/xscreensaver-daemon.desktop:9]
+ source: desktop-entry-file-has-crs [usr/share/applications/xscreensaver-daemon.desktop:10]
 Certainty: certain

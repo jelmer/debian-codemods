@@ -1,0 +1,3 @@
+Reorder Files paragraphs in debian/copyright by directory depth.
+Fixed-Lintian-Issues:
+ source: globbing-patterns-out-of-order src/foo/bar/* src/* [debian/copyright:7]

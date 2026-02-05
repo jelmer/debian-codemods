@@ -1,4 +1,29 @@
-debian-codemods (0.163) UNRELEASED; urgency=medium
+lintian-brush (0.166) unstable; urgency=medium
+
+  * Upgrade to makefile-lossless 0.3.27, fixing parsing of makefiles
+    with nested conditionals. Closes: #1126511
+  * Stop shipping deb-import-uncommitted, which conflicts with brz-debian.
+    Closes: #1126510
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 29 Jan 2026 00:00:00 +0000
+
+lintian-brush (0.165) unstable; urgency=medium
+
+  * Add python3-setuptools to Build-Depends and fix setup.py parsing for
+    Python 3.12+, where distutils was removed.
+  * debian/copyright: Drop pattern for nonexistent
+    py/lintian_brush/systemd.py.
+  * Fix ordering issue.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jan 2026 00:00:00 +0000
+
+lintian-brush (0.164) unstable; urgency=medium
+
+  * Drop unnecessary python dependencies. Closes: #1125923
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 18 Jan 2026 23:02:42 +0000
+
+lintian-brush (0.163) unstable; urgency=medium
 
   * Convert most fixers to Rust.
   * Add support for X-DH-Compat header. Closes: #1106883
@@ -6,13 +31,18 @@ debian-codemods (0.163) UNRELEASED; urgency=medium
   * Bump python3-upstream-ontologist dependency to 0.2.2; older versions
     trigger a infinite memory usage bug.
   * Don't crash when a fixer is killed by a signal.
-  * Rename source package to debian-codemods to reflect the existence
-    of codemods other than lintian-brush.
-  * Split out a debian-codemods binary package that contains
-    non-lintian-brush codemods.
   * Rebuild against Python 3.13/3.14. Closes: #1094320
   * pkg-perl-testsuite: Don't add Testsuite header when debian/tests/control
     already exists. Closes: #982871
+  * Skip debhelper-but-no-misc-depends for debhelper compat >= 14. Closes: #1072700
+  * Add asterisk prefix to changelog entries. Closes: #1110106
+  * double-check overrides. Closes: #961643
+  * upstream-metadata-file: Support FAQ and Other-References fields.
+    Closes: #1101050, #1110416
+  * Fix public-upstream-key-not-minimal fixer by rewriting in Rust.
+    Closes: #968150
+  * Fix deb-scrub-obsolete runtime panic by enabling sqlx runtime feature.
+    Closes: #1125793
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 03 Jun 2025 22:37:02 +0100
 

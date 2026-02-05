@@ -1,2 +1,3 @@
 Add missing build dependency on python3:any | python3-all:any | python3-dev:any | python3-all-dev:any | dh-sequence-python3 for addon python3.
-Fixed-Lintian-Tags: missing-build-dependency-for-dh-addon
+Fixed-Lintian-Issues:
+ source: missing-build-dependency-for-dh-addon python3 (does not satisfy python3:any | python3-all:any | python3-dev:any | python3-all-dev:any | dh-sequence-python3) [debian/rules]

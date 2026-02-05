@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 use url::Url;
@@ -79,7 +79,8 @@ pub fn run(
     let mut made_changes = false;
     let mut description = String::new();
     let mut certainty = crate::Certainty::Certain;
-    let mut fixed_tags = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     if let Some(mut source) = editor.source() {
         let source_para = source.as_mut_deb822();
@@ -88,11 +89,18 @@ pub fn run(
             // No Homepage field exists
             if let Some((homepage_url, upstream_certainty)) = guess_homepage(base_path, preferences)
             {
-                source_para.set("Homepage", &homepage_url);
-                made_changes = true;
-                description = "Fill in Homepage field.".to_string();
-                certainty = convert_certainty(upstream_certainty);
-                fixed_tags.push("no-homepage-field");
+                let issue =
+                    LintianIssue::source_with_info("no-homepage-field", vec![String::new()]);
+
+                if issue.should_fix(base_path) {
+                    source_para.set("Homepage", &homepage_url);
+                    made_changes = true;
+                    description = "Fill in Homepage field.".to_string();
+                    certainty = convert_certainty(upstream_certainty);
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
+                }
             }
         } else {
             // Homepage field exists, check if it's a pypi.org or rubygems.org URL
@@ -100,26 +108,28 @@ pub fn run(
 
             if let Ok(url) = Url::parse(&homepage) {
                 let hostname = url.host_str();
-                let should_replace = match hostname {
-                    Some("pypi.org") => {
-                        fixed_tags.push("pypi-homepage");
-                        true
-                    }
-                    Some("rubygems.org") => {
-                        fixed_tags.push("rubygem-homepage");
-                        true
-                    }
-                    _ => false,
+                let (tag, should_replace) = match hostname {
+                    Some("pypi.org") => (Some("pypi-homepage"), true),
+                    Some("rubygems.org") => (Some("rubygem-homepage"), true),
+                    _ => (None, false),
                 };
 
                 if should_replace {
                     if let Some((homepage_url, upstream_certainty)) =
                         guess_homepage(base_path, preferences)
                     {
-                        source_para.set("Homepage", &homepage_url);
-                        made_changes = true;
-                        description = format!("Avoid {} in Homepage field.", hostname.unwrap());
-                        certainty = convert_certainty(upstream_certainty);
+                        let issue =
+                            LintianIssue::source_with_info(tag.unwrap(), vec![homepage.clone()]);
+
+                        if issue.should_fix(base_path) {
+                            source_para.set("Homepage", &homepage_url);
+                            made_changes = true;
+                            description = format!("Avoid {} in Homepage field.", hostname.unwrap());
+                            certainty = convert_certainty(upstream_certainty);
+                            fixed_issues.push(issue);
+                        } else {
+                            overridden_issues.push(issue);
+                        }
                     }
                 }
             }
@@ -127,17 +137,19 @@ pub fn run(
     }
 
     if !made_changes {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     editor.commit()?;
 
-    let mut result = FixerResult::builder(description).certainty(certainty);
-    for tag in fixed_tags {
-        result = result.fixed_tag(tag);
-    }
-
-    Ok(result.build())
+    Ok(FixerResult::builder(description)
+        .certainty(certainty)
+        .fixed_issues(fixed_issues)
+        .overridden_issues(overridden_issues)
+        .build())
 }
 
 declare_fixer! {

@@ -1,0 +1,4 @@
+Remove trailing comma from Maintainer field.
+Certainty: certain
+Fixed-Lintian-Issues:
+ test-package source: trailing-comma-in-maintainer-field John Doe <john@example.com>,

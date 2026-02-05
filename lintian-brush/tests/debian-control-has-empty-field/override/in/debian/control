@@ -1,0 +1,7 @@
+Source: lintian-brush
+Depends:
+
+Package: lintian-brush
+Description: Testing
+ Test test
+Provides:

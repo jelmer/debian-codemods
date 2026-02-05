@@ -1,31 +1,20 @@
 VERSION=$(shell dpkg-parsechangelog | grep Version: | cut -d " " -f 2)
 
+export RUST_LOG
+
 default: check
 
 .PHONY: build
 
-build:
-	./setup.py build_ext -i
+check:: testsuite tag-status
 
-check:: testsuite tag-status ruff
-
-.PHONY: ruff testsuite unsupported
-
-ruff::
-	ruff check py/ lintian-brush/fixers/
-
-typing:: build
-	mypy py/ lintian-brush/fixers/
+.PHONY: testsuite unsupported
 
 tag-status::
 	$(MAKE) -C lintian-brush tag-status
 
-testsuite:: build
-	PYTHONPATH=$(shell pwd)/py python3 -m unittest lintian_brush.tests.test_suite
-	PYTHONPATH=$(shell pwd)/py cargo test 
-
-README.md::
-	PYTHONPATH=$(PWD)/py:$(PYTHONPATH) ./buildtools/update-readme.py
+testsuite::
+	cargo test --workspace
 
 lintian-tags:
 	lintian-explain-tags --list-tags > lintian-tags
@@ -35,11 +24,6 @@ lintian-tags:
 unsupported: lintian-tags lintian-brush-tags
 	awk 'NR==FNR{a[$$0]=1;next}!a[$$0]' lintian-brush-tags lintian-tags
 
-update-readme:
-	brz diff README.md
-	$(MAKE) README.md
-	brz diff README.md || brz commit -m "Update list of fixers in README.md" README.md
-
 update-spdx:
 	python3 download-license-data.py > spdx.json
 	brz diff spdx.json || brz commit -m "Update SPDX license data" spdx.json
@@ -47,7 +31,10 @@ update-spdx:
 update-renamed-tags:
 	$(MAKE) -C lintian-brush update-renamed-tags
 
-update: update-spdx update-readme update-renamed-tags update-deps
+update: update-spdx update-lintian-brush-readme update-renamed-tags update-deps
+
+update-lintian-brush-readme:
+	$(MAKE) -C lintian-brush README.md
 
 next:
 	$(MAKE) -C lintian-brush next

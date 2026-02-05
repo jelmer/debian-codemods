@@ -1,16 +1,24 @@
 .DEFAULT: check
 
 tag-status:
-	PYTHONPATH=$(shell pwd)/../py python3 tag-status.py --check
+	cargo test --bin tag-status
+
+README.md::
+	cargo run --bin tag-status -- --update-readme
+
+update-readme:
+	brz diff lintian-brush/README.md
+	$(MAKE) lintian-brush/README.md
+	brz diff lintian-brush/README.md || brz commit -m "Update list of fixers in README.md" lintian-brush/README.md
 
 update-renamed-tags:
 	python3 renamed-tags.py
 	brz diff renamed-tags.json || brz commit -m "Update renamed tags" renamed-tags.json
 
 next:
-	PYTHONPATH=$(shell pwd)/../py python3 next.py
+	cargo run --features udd --bin tag-status -- --next
 
 check:: testsuite
 
 testsuite::
-	PYTHONPATH=$(shell pwd)/../py cargo test 
+	cargo test

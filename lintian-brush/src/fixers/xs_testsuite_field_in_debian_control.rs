@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -10,28 +10,44 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Only process the source paragraph (XS-Testsuite only appears there)
     if let Some(mut source) = editor.source() {
         let paragraph = source.as_mut_deb822();
 
         // Check if XS-Testsuite field exists
-        if let Some(value) = paragraph.get("XS-Testsuite") {
-            if value.trim() == "autopkgtest" {
-                // Remove XS-Testsuite: autopkgtest entirely (it's the default now)
-                paragraph.remove("XS-Testsuite");
-                made_changes = true;
+        if let Some(entry) = paragraph.get_entry("XS-Testsuite") {
+            let line_number = entry.line() + 1;
+            let issue = LintianIssue::source_with_info(
+                "adopted-extended-field",
+                vec![format!(
+                    "(in section for source) XS-Testsuite [debian/control:{}]",
+                    line_number
+                )],
+            );
+
+            if !issue.should_fix(base_path) {
+                overridden_issues.push(issue);
             } else {
-                // Rename XS-Testsuite to Testsuite for other values
-                if paragraph.rename("XS-Testsuite", "Testsuite") {
-                    made_changes = true;
+                let value = paragraph.get("XS-Testsuite").unwrap_or_default();
+                if value.trim() == "autopkgtest" {
+                    // Remove XS-Testsuite: autopkgtest entirely (it's the default now)
+                    paragraph.remove("XS-Testsuite");
+                } else {
+                    // Rename XS-Testsuite to Testsuite for other values
+                    paragraph.rename("XS-Testsuite", "Testsuite");
                 }
+                fixed_issues.push(issue);
             }
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -39,7 +55,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder("Remove unnecessary XS-Testsuite field in debian/control.")
-            .fixed_tags(vec!["adopted-extended-field"])
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .certainty(crate::Certainty::Certain)
             .build(),
     )

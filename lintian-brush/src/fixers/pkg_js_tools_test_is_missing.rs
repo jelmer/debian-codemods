@@ -46,11 +46,11 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
             .map(|s| s.to_string()),
         package_type: Some(crate::PackageType::Source),
         tag: Some("pkg-js-tools-test-is-missing".to_string()),
-        info: Some(vec!["debian/tests/pkg-js/test".to_string()]),
+        info: Some("debian/tests/pkg-js/test".to_string()),
     };
 
     if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChanges);
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
     let test_node_path = base_path.join("test/node.js");
@@ -82,7 +82,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     Ok(FixerResult::builder("Add autopkgtest for node.")
         .certainty(CERTAINTY)
-        .fixed_tag("pkg-js-tools-test-is-missing")
+        .fixed_issue(issue)
         .build())
 }
 

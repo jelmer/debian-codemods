@@ -1,2 +1,3 @@
 Use ?= for assignments to architecture variables.
-Fixed-Lintian-Tags: debian-rules-sets-dpkg-architecture-variable
+Fixed-Lintian-Issues:
+ source: debian-rules-sets-dpkg-architecture-variable DEB_HOST_ARCH [debian/rules:12]

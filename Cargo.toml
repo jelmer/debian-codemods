@@ -1,17 +1,17 @@
 [workspace]
 # With resolve set to "2", dependent projects can't find debian-analyzer anymore.
 resolver = "1"
-members = ["lintian-brush", "multiarch-hints", "lintian-brush-py", "scrub-obsolete", "transition-apply", "import-uncommitted", "debianize"]
-exclude = ["breezyshim-fixed"]
+members = ["lintian-brush", "multiarch-hints", "scrub-obsolete", "transition-apply", "import-uncommitted", "debianize", "systemd-unit-edit", "desktop-edit", "yaml-edit"]
 
 [workspace.package]
 version = "0.163.0"
 
 [workspace.dependencies]
-breezyshim = { version = "0.7", features = ["dirty-tracker"] }
+breezyshim = { version = "0.7.8", features = ["dirty-tracker"] }
 pyo3 = ">=0.27,<0.28"
 debversion = "0.5"
 serde_yaml = ">=0.9"
+yaml-rust2 = "0.8"
 reqwest = ">=0.12"
 log = "0.4"
 lazy_static = "1"
@@ -26,8 +26,8 @@ configparser = "3"
 url = "2"
 debian-copyright = "0.1.38"
 debian-changelog = "0.2.13"
-debian-control = "0.2.9"
-deb822-lossless = "0.5.0"
+debian-control = "0.2.15"
+deb822-lossless = "0.5.5"
 pyo3-log = ">=0.12,<0.14"
 maplit = "1"
 buildlog-consultant = "0.0.43"
@@ -39,5 +39,8 @@ tokio = "1.39"
 debian-analyzer = { version = "0.160.11" }
 svp-client = "0.2.0"
 regex = "1"
+indexmap = "2.7"
+makefile-lossless = "0.3.27"
+serial_test = ">=2, <4"
 #debian-control = { path = "../deb822-lossless/debian-control" }
 #deb822-lossless = { path = "../deb822-lossless" }

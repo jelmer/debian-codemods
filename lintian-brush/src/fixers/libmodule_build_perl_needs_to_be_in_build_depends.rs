@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_control::lossless::Control;
 use std::path::Path;
 use std::str::FromStr;
@@ -37,6 +37,13 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    let issue =
+        LintianIssue::source_with_info("libmodule-build-perl-needs-to-be-in-build-depends", vec![]);
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     // Add libmodule-build-perl to Build-Depends
     let mut build_depends = source.build_depends().unwrap_or_default();
     build_depends.add_dependency(libmodule_build_entry, None);
@@ -56,7 +63,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         FixerResult::builder(
             "Move libmodule-build-perl from Build-Depends-Indep to Build-Depends.",
         )
-        .fixed_tags(vec!["libmodule-build-perl-needs-to-be-in-build-depends"])
+        .fixed_issue(issue)
         .build(),
     )
 }

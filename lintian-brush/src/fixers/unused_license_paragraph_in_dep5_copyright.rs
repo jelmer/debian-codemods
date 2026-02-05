@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerResult};
+use crate::{declare_fixer, Certainty, FixerError, FixerResult, LintianIssue};
 use deb822_lossless::Deb822;
 use std::collections::HashSet;
 use std::fs;
@@ -128,8 +128,15 @@ fn check_license_references(deb822: &Deb822, extra_defined: &HashSet<String>) ->
     Certainty::Certain
 }
 
-fn remove_unused_license_paragraphs(deb822: &mut Deb822, extra_defined: &HashSet<String>) {
+fn remove_unused_license_paragraphs(
+    deb822: &mut Deb822,
+    extra_defined: &HashSet<String>,
+    base_path: &Path,
+    fixed_issues: &mut Vec<LintianIssue>,
+    overridden_issues: &mut Vec<LintianIssue>,
+) -> Vec<(String, usize)> {
     let mut indices_to_remove = Vec::new();
+    let mut removed_licenses = Vec::new();
 
     for (idx, paragraph) in deb822.paragraphs().enumerate() {
         // Skip header (first paragraph)
@@ -148,7 +155,19 @@ fn remove_unused_license_paragraphs(deb822: &mut Deb822, extra_defined: &HashSet
             continue;
         };
         if extra_defined.contains(&name) {
-            indices_to_remove.push(idx);
+            let line_number = paragraph.line() + 1;
+            let issue = LintianIssue::source_with_info(
+                "unused-license-paragraph-in-dep5-copyright",
+                vec![format!("{} [debian/copyright:{}]", name, line_number)],
+            );
+
+            if issue.should_fix(base_path) {
+                indices_to_remove.push(idx);
+                removed_licenses.push((name.clone(), line_number));
+                fixed_issues.push(issue);
+            } else {
+                overridden_issues.push(issue);
+            }
         }
     }
 
@@ -156,6 +175,8 @@ fn remove_unused_license_paragraphs(deb822: &mut Deb822, extra_defined: &HashSet
     for idx in indices_to_remove.iter().rev() {
         deb822.remove_paragraph(*idx);
     }
+
+    removed_licenses
 }
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
@@ -196,24 +217,37 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         certainty = Certainty::Possible;
     }
 
-    remove_unused_license_paragraphs(&mut deb822, &extra_defined);
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
+    let removed_licenses = remove_unused_license_paragraphs(
+        &mut deb822,
+        &extra_defined,
+        base_path,
+        &mut fixed_issues,
+        &mut overridden_issues,
+    );
 
     let new_content = deb822.to_string();
     if new_content == content {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     fs::write(&copyright_path, new_content)?;
 
-    let license_list: Vec<_> = extra_defined.iter().cloned().collect();
+    let license_list: Vec<_> = removed_licenses
+        .iter()
+        .map(|(name, _)| name.clone())
+        .collect();
     Ok(FixerResult::builder(format!(
         "Remove unused license definitions for {}.",
         license_list.join(", ")
     ))
     .certainty(certainty)
-    .fixed_tags(vec![
-        "unused-license-paragraph-in-dep5-copyright".to_string()
-    ])
+    .fixed_issues(fixed_issues)
+    .overridden_issues(overridden_issues)
     .build())
 }
 

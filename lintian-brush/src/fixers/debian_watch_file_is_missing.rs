@@ -1,4 +1,5 @@
 use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use breezyshim::branch::Branch;
 use debian_watch::{Entry, WatchFile};
 use debversion::Version;
 use std::path::Path;
@@ -117,25 +118,31 @@ fn candidates_from_setup_py(
     net_access: bool,
 ) -> Result<Option<WatchCandidate>, Box<dyn std::error::Error>> {
     // Use Python to extract project name and version from setup.py
+    // We monkey-patch setup() to capture the arguments
     let script = r#"
 import sys
 import os
+import setuptools
+
+setup_args = {}
+
+def capture_setup(**kwargs):
+    setup_args.update(kwargs)
+
+# Patch setuptools.setup and the distutils compatibility layer
+setuptools.setup = capture_setup
+setuptools._distutils.core.setup = capture_setup
+
+# Execute the setup.py file
 sys.path.insert(0, os.path.dirname(sys.argv[1]))
-try:
-    from setuptools import setup
-except ImportError:
-    pass
-from distutils.core import run_setup
-try:
-    result = run_setup(sys.argv[1], stop_after='config')
-    name = result.get_name()
-    version = result.get_version()
-    if name:
-        print(name)
-        if version:
-            print(version)
-except:
-    pass
+with open(sys.argv[1], 'r') as f:
+    code = compile(f.read(), sys.argv[1], 'exec')
+    exec(code)
+
+if 'name' in setup_args:
+    print(setup_args['name'])
+    if 'version' in setup_args:
+        print(setup_args['version'])
 "#;
 
     let output = Command::new("python3")
@@ -192,7 +199,7 @@ except:
                         file["packagetype"].as_str() == Some("sdist")
                             && file["filename"]
                                 .as_str()
-                                .map_or(false, |f| filename_regex.is_match(f))
+                                .is_some_and(|f| filename_regex.is_match(f))
                             && file["has_sig"].as_bool() == Some(true)
                     });
 
@@ -257,7 +264,7 @@ fn guess_github_watch_entry(
     }
 
     // Open the branch using breezyshim
-    let branch = breezyshim::branch::open(parsed_url)?;
+    let branch = breezyshim::branch::open_as_generic(parsed_url)?;
     let tags = branch.tags()?.get_tag_dict()?;
 
     let possible_patterns = vec![r"v(\d\S+)", r"(\d\S+)", r".*/[vV]?(\d[^\s+]+)\.tar\.gz"];
@@ -552,7 +559,7 @@ pub fn run(
         result = result.certainty(certainty);
     }
 
-    result = result.fixed_tags(vec!["debian-watch-file-is-missing"]);
+    result = result.fixed_issues(vec![issue]);
 
     Ok(result.build())
 }

@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -11,15 +11,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
-    let mut made_changes = false;
-    let mut removed: Vec<(String, String)> = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     for entry in std::fs::read_dir(&debian_path)? {
         let entry = entry?;
         let path = entry.path();
 
         // Skip if not a .service file
-        if !path.extension().map_or(false, |ext| ext == "service") {
+        if path.extension().is_none_or(|ext| ext != "service") {
             continue;
         }
 
@@ -32,7 +32,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let content = std::fs::read_to_string(&path)?;
 
         // Parse using systemd-unit-edit
-        let mut unit = systemd_unit_edit::SystemdUnit::from_str(&content).map_err(|e| {
+        let unit = systemd_unit_edit::SystemdUnit::from_str(&content).map_err(|e| {
             FixerError::Other(format!("Failed to parse {}: {:?}", path.display(), e))
         })?;
 
@@ -43,6 +43,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         };
 
         let mut file_changed = false;
+        let mut removed_from_file: Vec<String> = Vec::new();
 
         for target in DEPRECATED_TARGETS {
             // Check if any After value contains this deprecated target
@@ -58,48 +59,50 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             }
 
             if found {
-                // Use remove_value to remove the target while preserving order
-                unit_section.remove_value("After", target);
-
-                file_changed = true;
-                // Get path relative to base_path
+                // Get path relative to base_path for the issue
                 let relative_path = path
                     .strip_prefix(base_path)
                     .unwrap_or(&path)
                     .to_string_lossy()
                     .to_string();
-                removed.push((relative_path, target.to_string()));
+
+                // Create LintianIssue for this target
+                let issue = LintianIssue::source_with_info(
+                    "systemd-service-file-refers-to-obsolete-target",
+                    vec![format!("{} {}", relative_path, target)],
+                );
+
+                if issue.should_fix(base_path) {
+                    // Use remove_value to remove the target while preserving order
+                    unit_section.remove_value("After", target);
+                    file_changed = true;
+                    removed_from_file.push(target.to_string());
+                    fixed_issues.push(issue);
+                } else {
+                    overridden_issues.push(issue);
+                }
             }
         }
 
         if file_changed {
             // Write the modified content back
             std::fs::write(&path, unit.text())?;
-            made_changes = true;
         }
     }
 
-    if made_changes {
-        removed.sort();
-        let description = if removed.is_empty() {
-            "Remove references to obsolete targets in systemd unit files.".to_string()
-        } else {
-            format!(
-                "Remove references to obsolete targets in systemd unit files: {}.",
-                removed
-                    .iter()
-                    .map(|(filename, target)| format!("{} ({})", filename, target))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )
-        };
-
-        Ok(FixerResult::builder(&description)
-            .fixed_tag("systemd-service-file-refers-to-obsolete-target")
-            .build())
-    } else {
-        Err(FixerError::NoChanges)
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
+        return Err(FixerError::NoChanges);
     }
+
+    Ok(
+        FixerResult::builder("Remove references to obsolete targets in systemd unit files.")
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
+            .build(),
+    )
 }
 
 declare_fixer! {
@@ -112,7 +115,6 @@ declare_fixer! {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::str::FromStr;
 
     #[test]

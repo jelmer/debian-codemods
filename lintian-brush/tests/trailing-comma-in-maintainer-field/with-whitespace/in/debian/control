@@ -1,0 +1,7 @@
+Source: another-package
+Maintainer: Jane Smith <jane@example.org> ,
+
+Package: another-package
+Architecture: any
+Description: Another test package
+ Testing with whitespace before comma.

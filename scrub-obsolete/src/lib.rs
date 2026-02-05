@@ -17,6 +17,15 @@ pub mod dummy_transitional;
 pub mod package_checker;
 use package_checker::{PackageChecker, UddPackageChecker};
 
+/// Represents a field change: (field_name, actions, description)
+pub type FieldChange = (String, Vec<Action>, String);
+
+/// Represents changes to a control paragraph: (paragraph_name, field_changes)
+pub type ParagraphChanges = (Option<String>, Vec<FieldChange>);
+
+/// A collection of control paragraph changes
+pub type ControlChanges = Vec<ParagraphChanges>;
+
 pub const DEFAULT_VALUE_MULTIARCH_HINT: usize = 30;
 
 pub fn note_changelog_policy(policy: bool, msg: &str) {
@@ -76,15 +85,15 @@ async fn drop_obsolete_depends(
     let mut to_remove = vec![];
     let mut to_replace = vec![];
     for (i, mut pkgrel) in entry.relations().enumerate() {
-        if let Some(replacement) = checker.replacement(&pkgrel.name()).await.unwrap() {
+        if let Some(replacement) = checker.replacement(&pkgrel.name()).await? {
             let parsed_replacement: Relations = replacement.parse().unwrap();
             if parsed_replacement.entries().count() > 1 {
                 log::warn!("Unable to replace multi-package {:?}", replacement);
             } else {
-                // If the replacement is already included in the entry, we can drop the old
-                // package.
                 let newrel: Entry = replacement.parse().unwrap();
                 if debian_analyzer::relations::is_relation_implied(&newrel, entry) {
+                    // If the replacement is already included in the entry, we can drop the old
+                    // package.
                     to_remove.push(i);
                     actions.push(Action::DropTransition(pkgrel));
                 } else {
@@ -283,7 +292,7 @@ fn drop_old_relations(
     compat_release: &str,
     upgrade_release: &str,
     keep_minimum_depends_versions: bool,
-) -> Vec<(Option<String>, Vec<(String, Vec<Action>, String)>)> {
+) -> ControlChanges {
     let mut actions = vec![];
     let mut source_actions = vec![];
 
@@ -315,6 +324,7 @@ fn drop_old_relations(
     actions
 }
 
+#[allow(clippy::result_large_err)]
 fn update_maintscripts(
     wt: &GenericWorkingTree,
     debian_path: &Path,
@@ -322,14 +332,17 @@ fn update_maintscripts(
     allow_reformatting: bool,
 ) -> Result<Vec<(PathBuf, Vec<MaintscriptAction>)>, ScrubObsoleteError> {
     let mut ret = vec![];
-    for entry in std::fs::read_dir(wt.abspath(debian_path).unwrap()).unwrap() {
-        let entry = entry.unwrap();
-        if !(entry.file_name() == "maintscript"
-            || entry
-                .file_name()
+    let debian_abs_path = wt.abspath(debian_path)?;
+    let dir_entries = std::fs::read_dir(debian_abs_path)?;
+
+    for entry in dir_entries {
+        let entry = entry?;
+        let file_name_str = entry.file_name();
+        if !(file_name_str == "maintscript"
+            || file_name_str
                 .to_str()
-                .unwrap()
-                .ends_with(".maintscript"))
+                .map(|s| s.ends_with(".maintscript"))
+                .unwrap_or(false))
         {
             continue;
         }
@@ -408,7 +421,7 @@ impl<'a> serde::Deserialize<'a> for MaintscriptAction {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ScrubObsoleteResult {
     specific_files: Vec<PathBuf>,
-    control_actions: Vec<(Option<String>, Vec<(String, Vec<Action>, String)>)>,
+    control_actions: ControlChanges,
     maintscript_removed: Vec<(PathBuf, Vec<MaintscriptAction>, String)>,
 }
 
@@ -530,6 +543,7 @@ pub enum ScrubObsoleteError {
     EditorError(EditorError),
     BrzError(BrzError),
     SqlxError(sqlx::Error),
+    IoError(std::io::Error),
 }
 
 impl std::fmt::Display for ScrubObsoleteError {
@@ -541,6 +555,7 @@ impl std::fmt::Display for ScrubObsoleteError {
             ScrubObsoleteError::EditorError(e) => write!(f, "Editor error: {}", e),
             ScrubObsoleteError::BrzError(e) => write!(f, "Breezy error: {}", e),
             ScrubObsoleteError::SqlxError(e) => write!(f, "SQLx error: {}", e),
+            ScrubObsoleteError::IoError(e) => write!(f, "I/O error: {}", e),
         }
     }
 }
@@ -565,7 +580,15 @@ impl From<sqlx::Error> for ScrubObsoleteError {
     }
 }
 
+impl From<std::io::Error> for ScrubObsoleteError {
+    fn from(e: std::io::Error) -> Self {
+        ScrubObsoleteError::IoError(e)
+    }
+}
+
 /// Scrub obsolete entries.
+#[allow(clippy::too_many_arguments)]
+#[allow(clippy::result_large_err)]
 pub fn scrub_obsolete(
     wt: &GenericWorkingTree,
     subpath: &Path,

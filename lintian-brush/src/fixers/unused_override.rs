@@ -1,5 +1,5 @@
 use crate::lintian_overrides::{filter_overrides, LintianOverrides};
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_control::Control;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -114,15 +114,17 @@ fn process_overrides_file(
     path: &Path,
     unused_overrides: &[UnusedOverride],
     ignore_tags: &[&str],
-) -> Result<(bool, Vec<String>), FixerError> {
+) -> Result<(bool, Vec<(String, String)>), FixerError> {
     let content = fs::read_to_string(path)?;
     let parsed = LintianOverrides::parse(&content);
     let overrides = parsed.ok().map_err(|_| FixerError::NoChanges)?;
 
-    let mut removed_tags = Vec::new();
+    let mut removed_overrides = Vec::new();
+    let mut line_number = 0;
 
     // Filter out unused overrides
     let filtered = filter_overrides(&overrides, |line| {
+        line_number += 1;
         // Always keep comments and empty lines
         if line.is_comment() || line.is_empty() {
             return true;
@@ -172,9 +174,9 @@ fn process_overrides_file(
 
                 if expected_info == actual_info {
                     // This override is unused, remove it
-                    if !removed_tags.contains(&tag.to_string()) {
-                        removed_tags.push(tag.to_string());
-                    }
+                    let override_text = actual_info.clone();
+                    let file_location = format!("[{}:{}]", path.display(), line_number);
+                    removed_overrides.push((override_text, file_location));
                     return false;
                 }
             }
@@ -183,7 +185,7 @@ fn process_overrides_file(
         true // Keep this line
     });
 
-    let changed = !removed_tags.is_empty();
+    let changed = !removed_overrides.is_empty();
 
     if changed {
         let new_content = filtered.text();
@@ -195,7 +197,7 @@ fn process_overrides_file(
         }
     }
 
-    Ok((changed, removed_tags))
+    Ok((changed, removed_overrides))
 }
 
 /// Remove unused overrides from override files given a list of unused overrides
@@ -210,17 +212,29 @@ pub fn remove_unused_overrides_from_files(
         return Err(FixerError::NoChanges);
     }
 
-    let mut all_removed_tags = Vec::new();
-    let mut any_changed = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
+    let mut unique_tags = std::collections::HashSet::new();
 
     for path in override_files {
         match process_overrides_file(&path, unused_overrides, INTERMITTENT_LINTIAN_TAGS) {
-            Ok((changed, removed_tags)) => {
+            Ok((changed, removed_overrides)) => {
                 if changed {
-                    any_changed = true;
-                    for tag in removed_tags {
-                        if !all_removed_tags.contains(&tag) {
-                            all_removed_tags.push(tag);
+                    for (override_text, file_location) in removed_overrides {
+                        let issue = LintianIssue::source_with_info(
+                            "unused-override",
+                            vec![format!("{} {}", override_text, file_location)],
+                        );
+
+                        if issue.should_fix(base_path) {
+                            // Extract tag from override_text for description
+                            if let Some(tag) = override_text.split_whitespace().next() {
+                                unique_tags.insert(tag.to_string());
+                            }
+
+                            fixed_issues.push(issue);
+                        } else {
+                            overridden_issues.push(issue);
                         }
                     }
                 }
@@ -236,20 +250,25 @@ pub fn remove_unused_overrides_from_files(
         }
     }
 
-    if !any_changed {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
     let mut description = format!(
-        "Remove {} unused lintian overrides.\n\n",
-        all_removed_tags.len()
+        "Remove {} unused lintian override(s)\n\n",
+        unique_tags.len()
     );
-    for tag in &all_removed_tags {
+    let mut sorted_tags: Vec<_> = unique_tags.into_iter().collect();
+    sorted_tags.sort();
+    for tag in &sorted_tags {
         description.push_str(&format!("* {}\n", tag));
     }
 
     Ok(FixerResult::builder(&description)
-        .fixed_tags(vec!["unused-override"])
+        .fixed_issues(fixed_issues)
         .certainty(crate::Certainty::Certain)
         .build())
 }
@@ -354,7 +373,7 @@ mod tests {
         let result = remove_unused_overrides_from_files(base_path, &unused_overrides).unwrap();
         assert!(result
             .description
-            .contains("Remove 1 unused lintian overrides"));
+            .contains("Remove 1 unused lintian override(s)"));
         assert!(result.description.contains("* some-tag"));
 
         // File should exist with only the valid tag

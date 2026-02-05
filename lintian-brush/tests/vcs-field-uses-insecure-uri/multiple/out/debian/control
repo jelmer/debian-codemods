@@ -1,0 +1,7 @@
+Source: test-package
+Vcs-Git: https://github.com/jelmer/test-package
+Vcs-Browser: https://github.com/jelmer/test-package
+
+Package: test-package
+Description: Test package
+ Testing multiple VCS fields

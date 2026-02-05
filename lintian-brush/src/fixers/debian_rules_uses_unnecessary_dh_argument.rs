@@ -79,35 +79,78 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let mut made_changes = false;
     let mut removed_args: Vec<String> = Vec::new();
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     // Iterate through rules and modify them
     let mut rules: Vec<_> = makefile.rules().collect();
     for rule in &mut rules {
-        for (recipe_index, recipe) in rule.recipes().enumerate() {
+        for (recipe_index, recipe_node) in rule.recipe_nodes().enumerate() {
+            let recipe = recipe_node.text();
+            let line_no = recipe_node.line() + 1;
             let mut modified_recipe = recipe.to_string();
             let mut recipe_changed = false;
 
             // Try to remove each unnecessary argument
             for arg in &unnecessary_args {
-                let new_recipe = dh_invoke_drop_argument(&modified_recipe, arg);
-                if new_recipe != modified_recipe {
-                    modified_recipe = new_recipe;
-                    recipe_changed = true;
-                    if !removed_args.contains(&arg.to_string()) {
-                        removed_args.push(arg.to_string());
+                if modified_recipe.contains(arg) {
+                    let info = if let Some(compat) = compat_version {
+                        format!("{} >= 10 dh ... {} [debian/rules:{}]", compat, arg, line_no)
+                    } else {
+                        format!("dh ... {} [debian/rules:{}]", arg, line_no)
+                    };
+                    let issue = crate::LintianIssue::source_with_info(
+                        "debian-rules-uses-unnecessary-dh-argument",
+                        vec![info],
+                    );
+
+                    if issue.should_fix(base_path) {
+                        let new_recipe = dh_invoke_drop_argument(&modified_recipe, arg);
+                        if new_recipe != modified_recipe {
+                            modified_recipe = new_recipe;
+                            recipe_changed = true;
+                            if !removed_args.contains(&arg.to_string()) {
+                                removed_args.push(arg.to_string());
+                            }
+                            fixed_issues.push(issue);
+                        }
+                    } else {
+                        overridden_issues.push(issue);
                     }
                 }
             }
 
             // Try to remove each unnecessary --with value
             for with_val in &unnecessary_with {
-                let new_recipe = dh_invoke_drop_with(&modified_recipe, with_val);
-                if new_recipe != modified_recipe {
-                    modified_recipe = new_recipe;
-                    recipe_changed = true;
-                    let with_arg = format!("--with={}", with_val);
-                    if !removed_args.contains(&with_arg) {
-                        removed_args.push(with_arg);
+                let with_arg = format!("--with={}", with_val);
+                if modified_recipe.contains(&with_arg)
+                    || modified_recipe.contains(&format!("--with {}", with_val))
+                {
+                    let info = if let Some(compat) = compat_version {
+                        format!(
+                            "{} >= 10 dh ... {} [debian/rules:{}]",
+                            compat, with_arg, line_no
+                        )
+                    } else {
+                        format!("dh ... {} [debian/rules:{}]", with_arg, line_no)
+                    };
+                    let issue = crate::LintianIssue::source_with_info(
+                        "debian-rules-uses-unnecessary-dh-argument",
+                        vec![info],
+                    );
+
+                    if issue.should_fix(base_path) {
+                        let new_recipe = dh_invoke_drop_with(&modified_recipe, with_val);
+                        if new_recipe != modified_recipe {
+                            modified_recipe = new_recipe;
+                            recipe_changed = true;
+                            if !removed_args.contains(&with_arg) {
+                                removed_args.push(with_arg.clone());
+                            }
+                            fixed_issues.push(issue);
+                        }
+                    } else {
+                        overridden_issues.push(issue);
                     }
                 }
             }
@@ -130,7 +173,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         "Drop unnecessary dh arguments: {}",
         removed_args.join(", ")
     ))
-    .fixed_tag("debian-rules-uses-unnecessary-dh-argument")
+    .fixed_issues(fixed_issues)
+    .overridden_issues(overridden_issues)
     .build())
 }
 

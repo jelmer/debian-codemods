@@ -135,7 +135,14 @@ impl Fixer for BuiltinFixerWrapper {
 
 /// Get all registered builtin fixers
 pub fn get_builtin_fixers() -> Vec<Box<dyn Fixer>> {
-    inventory::iter::<BuiltinFixerRegistration>
+    let mut registrations: Vec<_> = inventory::iter::<BuiltinFixerRegistration>
+        .into_iter()
+        .collect();
+
+    // Sort by name for deterministic ordering (reproducible builds)
+    registrations.sort_by_key(|reg| reg.name);
+
+    registrations
         .into_iter()
         .map(|reg| {
             let builtin_fixer = (reg.create)();
@@ -172,7 +179,11 @@ mod tests {
             _preferences: &FixerPreferences,
         ) -> Result<FixerResult, FixerError> {
             Ok(FixerResult::builder("Mock fix applied")
-                .fixed_tags(self.tags.iter().map(|s| s.to_string()))
+                .fixed_issues(
+                    self.tags
+                        .iter()
+                        .map(|s| LintianIssue::just_tag(s.to_string())),
+                )
                 .build())
         }
     }

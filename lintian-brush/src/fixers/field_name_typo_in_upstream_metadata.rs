@@ -1,7 +1,6 @@
-use crate::upstream_metadata::VALID_FIELD_NAMES;
+use crate::upstream_metadata::DEP12_FIELD_ORDER;
 use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
 use std::collections::HashSet;
-use std::fs;
 use std::path::Path;
 use strsim::levenshtein;
 
@@ -12,57 +11,70 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         return Err(FixerError::NoChanges);
     }
 
-    let contents = fs::read_to_string(&metadata_path)?;
-    let mut yaml: serde_yaml::Value = serde_yaml::from_str(&contents)
-        .map_err(|e| FixerError::Other(format!("Failed to parse YAML: {}", e)))?;
-
-    let valid_fields: HashSet<&str> = VALID_FIELD_NAMES.iter().copied().collect();
+    let valid_fields: HashSet<&str> = DEP12_FIELD_ORDER.iter().copied().collect();
     let mut typo_fixed = Vec::new();
     let mut case_fixed = Vec::new();
 
-    if let serde_yaml::Value::Mapping(ref mut map) = yaml {
-        let keys: Vec<String> = map
-            .keys()
-            .filter_map(|k| k.as_str().map(|s| s.to_string()))
-            .collect();
+    let mut updater = yaml_edit::YamlUpdater::new(&metadata_path)
+        .map_err(|e| FixerError::Other(format!("Failed to create YAML updater: {}", e)))?;
 
-        for field in keys {
-            if valid_fields.contains(field.as_str()) {
-                continue;
-            }
+    let doc = updater
+        .open()
+        .map_err(|e| FixerError::Other(format!("Failed to open YAML: {}", e)))?;
 
-            // Handle X- prefix
-            if field.starts_with("X-") {
-                let without_prefix = &field[2..];
-                if valid_fields.contains(without_prefix) {
-                    if map.contains_key(&serde_yaml::Value::String(without_prefix.to_string())) {
-                        // Both exist, warn and skip
-                        eprintln!("Warning: Both {} and {} exist.", field, without_prefix);
-                        continue;
-                    }
+    // Get all keys from the YAML
+    let keys: Vec<String> = doc
+        .keys()
+        .map_err(|e| FixerError::Other(format!("Failed to get keys: {}", e)))?;
 
-                    if let Some(value) = map.remove(&serde_yaml::Value::String(field.clone())) {
-                        map.insert(serde_yaml::Value::String(without_prefix.to_string()), value);
-                        typo_fixed.push((field.clone(), without_prefix.to_string()));
-                    }
+    for field in keys {
+        if valid_fields.contains(field.as_str()) {
+            continue;
+        }
+
+        // Handle X- prefix
+        if let Some(without_prefix) = field.strip_prefix("X-") {
+            if valid_fields.contains(without_prefix) {
+                let target_exists = doc
+                    .contains_key(without_prefix)
+                    .map_err(|e| FixerError::Other(format!("Failed to check key: {}", e)))?;
+
+                if target_exists {
+                    // Both exist, warn and skip
+                    eprintln!("Warning: Both {} and {} exist.", field, without_prefix);
                     continue;
                 }
+
+                let value = doc
+                    .remove(&field)
+                    .map_err(|e| FixerError::Other(format!("Failed to remove key: {}", e)))?
+                    .expect("Key should exist");
+
+                doc.set(without_prefix, value)
+                    .map_err(|e| FixerError::Other(format!("Failed to set key: {}", e)))?;
+
+                typo_fixed.push((field.clone(), without_prefix.to_string()));
+                continue;
             }
+        }
 
-            // Check for typos using Levenshtein distance
-            for &option in VALID_FIELD_NAMES {
-                if levenshtein(&field, option) == 1 {
-                    if let Some(value) = map.remove(&serde_yaml::Value::String(field.clone())) {
-                        map.insert(serde_yaml::Value::String(option.to_string()), value);
+        // Check for typos using Levenshtein distance
+        for &option in DEP12_FIELD_ORDER {
+            if levenshtein(&field, option) == 1 {
+                let value = doc
+                    .remove(&field)
+                    .map_err(|e| FixerError::Other(format!("Failed to remove key: {}", e)))?
+                    .expect("Key should exist");
 
-                        if option.to_lowercase() == field.to_lowercase() {
-                            case_fixed.push((field.clone(), option.to_string()));
-                        } else {
-                            typo_fixed.push((field.clone(), option.to_string()));
-                        }
-                    }
-                    break;
+                doc.set(option, value)
+                    .map_err(|e| FixerError::Other(format!("Failed to set key: {}", e)))?;
+
+                if option.to_lowercase() == field.to_lowercase() {
+                    case_fixed.push((field.clone(), option.to_string()));
+                } else {
+                    typo_fixed.push((field.clone(), option.to_string()));
                 }
+                break;
             }
         }
     }
@@ -71,10 +83,10 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         return Err(FixerError::NoChanges);
     }
 
-    // Write back the YAML
-    let output = serde_yaml::to_string(&yaml)
-        .map_err(|e| FixerError::Other(format!("Failed to serialize YAML: {}", e)))?;
-    fs::write(&metadata_path, output)?;
+    // Close updater to save changes
+    updater
+        .close()
+        .map_err(|e| FixerError::Other(format!("Failed to close YAML: {}", e)))?;
 
     // Build description message
     let mut kind = String::new();

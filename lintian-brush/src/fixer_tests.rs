@@ -4,6 +4,34 @@ use std::path::{Path, PathBuf};
 
 include!(concat!(env!("OUT_DIR"), "/fixer_tests.rs"));
 
+/// Check if two lists of LintianIssues match, supporting wildcards (*) in expected info fields
+fn issues_match_with_wildcards(expected: &[LintianIssue], actual: &[LintianIssue]) -> bool {
+    if expected.len() != actual.len() {
+        return false;
+    }
+
+    for (exp, act) in expected.iter().zip(actual.iter()) {
+        // Check package, package_type, and tag match exactly
+        if exp.package != act.package || exp.package_type != act.package_type || exp.tag != act.tag
+        {
+            return false;
+        }
+
+        // Check info field with wildcard support
+        match (&exp.info, &act.info) {
+            (Some(exp_info), Some(act_info)) => {
+                if !crate::lintian_overrides::info_matches(exp_info, act_info) {
+                    return false;
+                }
+            }
+            (None, None) => {}
+            _ => return false,
+        }
+    }
+
+    true
+}
+
 #[test]
 fn test_all_test_dirs_have_matching_fixers() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -49,23 +77,6 @@ fn test_all_test_dirs_have_matching_fixers() {
 }
 
 fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
-    #[cfg(feature = "python")]
-    {
-        pyo3::Python::attach(|py| {
-            use pyo3::prelude::*;
-            let sys = py.import("sys").unwrap();
-            let path = sys.getattr("path").unwrap();
-            let mut path: Vec<String> = path.extract().unwrap();
-            let extra_path =
-                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR").to_string() + "/../py")
-                    .canonicalize()
-                    .unwrap();
-            if !path.contains(&extra_path.to_string_lossy().to_string()) {
-                path.insert(0, extra_path.to_string_lossy().to_string());
-                sys.setattr("path", path).unwrap();
-            }
-        });
-    }
     let td = tempfile::tempdir().unwrap();
 
     let indir = path.join("in");
@@ -94,10 +105,13 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
     }
 
     // Parse env file to configure preferences and check for version override
+    // Match Python defaults from py/lintian_brush/fixer.py
     let mut preferences = FixerPreferences {
         compat_release: Some("sid".to_string()),
-        minimum_certainty: Some(Certainty::Possible),
-        net_access: Some(false), // Disable network access for tests
+        minimum_certainty: None, // Python default is None when MINIMUM_CERTAINTY is not set
+        net_access: Some(false), // NET_ACCESS defaults to "disallow"
+        trust_package: Some(false), // TRUST_PACKAGE defaults to false unless explicitly "true"
+        opinionated: Some(false), // OPINIONATED defaults to "no"
         ..Default::default()
     };
     let mut current_version_override = None;
@@ -129,6 +143,26 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
                         }
                         "OPINIONATED" => {
                             preferences.opinionated = Some(value == "yes");
+                        }
+                        "NET_ACCESS" => {
+                            preferences.net_access = Some(match value {
+                                "allow" => true,
+                                "disallow" => false,
+                                _ => panic!(
+                                    "Unknown NET_ACCESS value: {} (must be 'allow' or 'disallow')",
+                                    value
+                                ),
+                            });
+                        }
+                        "TRUST_PACKAGE" => {
+                            preferences.trust_package = Some(match value {
+                                "true" => true,
+                                "false" => false,
+                                _ => panic!(
+                                    "Unknown TRUST_PACKAGE value: {} (must be 'true' or 'false')",
+                                    value
+                                ),
+                            });
                         }
                         "CURRENT_VERSION" => {
                             current_version_override = Some(value.parse().unwrap());
@@ -302,6 +336,24 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
                 eprintln!("Expected tags: {:?}", expected_tags);
                 eprintln!("Got tags: {:?}", actual_tags);
                 panic!("Test {} failed - tags mismatch", test_name);
+            }
+
+            // Compare full issue details including info field, supporting wildcards
+            if !issues_match_with_wildcards(
+                &expected_result.fixed_lintian_issues,
+                &actual_result.fixed_lintian_issues,
+            ) {
+                eprintln!(
+                    "Expected issues: {:?}",
+                    expected_result.fixed_lintian_issues
+                );
+                eprintln!("Got issues: {:?}", actual_result.fixed_lintian_issues);
+                eprintln!("\nExpected message format:");
+                eprintln!("Fixed-Lintian-Issues:");
+                for issue in &actual_result.fixed_lintian_issues {
+                    eprintln!(" {}", issue);
+                }
+                panic!("Test {} failed - issue details mismatch", test_name);
             }
 
             if expected_result.certainty != actual_result.certainty {

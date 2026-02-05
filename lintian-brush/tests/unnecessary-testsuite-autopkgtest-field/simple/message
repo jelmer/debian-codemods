@@ -1,2 +1,3 @@
 Remove unnecessary 'Testsuite: autopkgtest' header.
-Fixed-Lintian-Tags: unnecessary-testsuite-autopkgtest-field
+Fixed-Lintian-Issues:
+ source: unnecessary-testsuite-autopkgtest-field [debian/control:2]

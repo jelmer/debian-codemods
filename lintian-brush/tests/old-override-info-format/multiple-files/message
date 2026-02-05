@@ -1,4 +1,7 @@
 Update lintian override info to new format:
 + debian/source/lintian-overrides: line 1-2
 + debian/lib3d0.lintian-overrides: line 2
-Fixed-Lintian-Tags: mismatched-override
+Fixed-Lintian-Issues:
+ source: mismatched-override python3-django-crispy-forms: package-contains-documentation-outside-usr-share-doc usr/lib/python3/dist-packages/crispy_forms/tests/results/bootstrap/* [debian/source/lintian-overrides:1]
+ source: mismatched-override python3-django-crispy-forms: package-contains-documentation-outside-usr-share-doc usr/lib/python3/dist-packages/crispy_forms/tests/bootstrap/* [debian/source/lintian-overrides:2]
+ source: mismatched-override libg3d0: hardening-no-fortify-functions usr/lib/*/libg3d.so.0.0.8 [debian/lib3d0.lintian-overrides:2]

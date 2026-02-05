@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -10,6 +10,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     let editor = TemplatedControlEditor::open(&control_path)?;
     let mut made_changes = false;
+    let mut fixed_issue = None;
 
     if let Some(mut source) = editor.source() {
         let source_para = source.as_mut_deb822();
@@ -29,8 +30,18 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
             );
 
             if let Some(browser_url) = browser_url {
+                let issue = LintianIssue::source_with_info(
+                    "missing-vcs-browser-field",
+                    vec![format!("Vcs-Git {}", vcs_git)],
+                );
+
+                if !issue.should_fix(base_path) {
+                    return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+                }
+
                 source_para.insert("Vcs-Browser", browser_url.as_ref());
                 made_changes = true;
+                fixed_issue = Some(issue);
             }
         }
     }
@@ -41,9 +52,12 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     editor.commit()?;
 
+    // fixed_issue is guaranteed to be Some if made_changes is true
+    let issue = fixed_issue.expect("fixed_issue should be Some when made_changes is true");
+
     Ok(
-        FixerResult::builder("debian/control: Add Vcs-Browser field".to_string())
-            .fixed_tags(vec!["missing-vcs-browser-field"])
+        FixerResult::builder("debian/control: Add Vcs-Browser field")
+            .fixed_issue(issue)
             .build(),
     )
 }

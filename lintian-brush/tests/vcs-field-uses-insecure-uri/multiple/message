@@ -1,0 +1,4 @@
+Use secure URI in Vcs control headers: Vcs-Browser, Vcs-Git.
+Fixed-Lintian-Issues:
+ source: vcs-field-uses-insecure-uri Vcs-Git http://github.com/jelmer/test-package
+ source: vcs-field-uses-insecure-uri Vcs-Browser http://github.com/jelmer/test-package

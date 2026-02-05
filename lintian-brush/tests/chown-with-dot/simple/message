@@ -1,0 +1,4 @@
+Replace deprecated chown user.group with chown user:group in source (postinst)
+Fixed-Lintian-Issues:
+ source: chown-with-dot [postinst]
+Certainty: certain

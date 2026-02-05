@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -17,6 +17,13 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    // Create issue and check if it should be fixed
+    let issue = LintianIssue::source("copyright-has-crs");
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     // Remove all CR characters
     let new_content: Vec<u8> = content.into_iter().filter(|&b| b != b'\r').collect();
 
@@ -24,7 +31,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     fs::write(&copyright_path, new_content)?;
 
     Ok(FixerResult::builder("Remove CRs from copyright file.")
-        .fixed_tags(vec!["copyright-has-crs"])
+        .fixed_issue(issue)
         .certainty(crate::Certainty::Certain)
         .build())
 }
@@ -61,6 +68,14 @@ mod tests {
         let result = run(base_path).unwrap();
         assert_eq!(result.description, "Remove CRs from copyright file.");
         assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+
+        // Verify LintianIssue was created correctly
+        assert_eq!(result.fixed_lintian_issues.len(), 1);
+        assert_eq!(
+            result.fixed_lintian_issues[0].tag,
+            Some("copyright-has-crs".to_string())
+        );
+        assert_eq!(result.fixed_lintian_issues[0].info, None);
 
         // Check that CRs were removed
         let content = fs::read(&copyright_path).unwrap();

@@ -1,3 +1,5 @@
 Move upstream metadata to debian/upstream/metadata.
-Fixed-Lintian-Tags: debian-upstream-obsolete-path
+Fixed-Lintian-Issues:
+ source: debian-upstream-obsolete-path [debian/upstream]
+ source: debian-upstream-obsolete-path [debian/upstream-metadata.yaml]
 Certainty: certain

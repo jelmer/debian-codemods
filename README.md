@@ -1,261 +1,29 @@
-lintian-brush
-=============
+# debian-codemods
 
-This package contains a set of scripts to automatically fix some common issues in
-Debian packages.
+This repository contains a collection of codemods (code modifications)
+specifically designed for Debian packaging and development. These codemods can
+help automate common tasks, improve code quality, and ensure compliance with
+Debian policies.
 
-Running lintian-brush
----------------------
+## Available Subprojects
 
-Simply run::
+* [lintian-brush](lintian-brush/README.md) - A tool to automatically fix common Lintian warnings and errors in Debian packages, as reported by [lintian](https://lintian.debian.org/)
+* [debianize](debianize/README.md) - Create a Debian package from scratch for an upstream source tree
+* [import-uncommitted](import-uncommitted/README.md) - A tool to import previously uncommitted changes into a Git repository, e.g. missing uploads
+* [multiarch-hints](multiarch-hints/README.md) - A codemod to apply [multiarch hints](https://wiki.debian.org/MultiArch/Hints) to Debian packages
+* [scrub-obsolete](scrub-obsolete/README.md) - Remove obsolete entries from Debian packaging files
+* [transition-apply](transition-apply/README.md) - Apply package transitions
 
-```shell
-lintian-brush
-```
+## Related projects
 
-in the top-level of your (version controlled) Debian package.
+* [Debian janitor](https://janitor.debian.net/) - An automated system that applies various codemods to Debian packages in an effort to improve the overall quality of the Debian archive, and then submits changes for review to the respective maintainers (directly pushing, or creating merge requests in e.g. Salsa)
+* [deb822-rs](https://github.com/jelmer/deb822-rs) - Rust crates for losslessly editing various Debian control files
+* [debian-analyzer](https://github.com/jelmer/debian-analyzer) - Crate to analyze and modify Debian source packages, built on top of `deb822-rs`. Provides higher level abstractions, e.g. seamless support for `debcargo` packages
 
-.. _supported-tags:
+## Contributing
 
-Supported tags
---------------
+Contributions are very welcome! The easiest way to get started is probably
+by following the [guide on writing more fixers for lintian-brush](lintian-brush/doc/fixer-writing-guide.rst).
 
-The current set of lintian tags for which a fixer is available that can fix a
-subset of the issues:
-
-* adopted-extended-field
-* ancient-python-version-field
-* ancient-standards-version
-* autotools-pkg-config-macro-not-cross-compilation-safe
-* build-depends-on-build-essential
-* build-depends-on-obsolete-package
-* built-using-for-golang
-* carriage-return-line-feed
-* comma-separated-files-in-dep5-copyright
-* copyright-does-not-refer-to-common-license-file
-* copyright-file-contains-full-apache-2-license
-* copyright-file-contains-full-gfdl-license
-* copyright-file-contains-full-gpl-license
-* copyright-has-crs
-* copyright-not-using-common-license-for-apache2
-* copyright-not-using-common-license-for-gfdl
-* copyright-not-using-common-license-for-gpl
-* copyright-not-using-common-license-for-lgpl
-* copyright-refers-to-symlink-license
-* copyright-refers-to-versionless-license-file
-* custom-compression-in-debian-source-options
-* cute-field
-* debhelper-but-no-misc-depends
-* debhelper-tools-from-autotools-dev-are-deprecated
-* debian-changelog-file-contains-obsolete-user-emacs-settings
-* debian-changelog-has-wrong-day-of-week
-* debian-changelog-line-too-long
-* debian-control-has-empty-field
-* debian-control-has-obsolete-dbg-package
-* debian-control-has-unusual-field-spacing
-* debian-pycompat-is-obsolete
-* debian-pyversions-is-obsolete
-* debian-rules-calls-pwd
-* debian-rules-contains-unnecessary-get-orig-source-target
-* debian-rules-missing-recommended-target
-* debian-rules-not-executable
-* debian-rules-parses-dpkg-parsechangelog
-* debian-rules-sets-dpkg-architecture-variable
-* debian-rules-uses-as-needed-linker-flag
-* debian-rules-uses-special-shell-variable
-* debian-rules-uses-unnecessary-dh-argument
-* debian-tests-control-and-control-autodep8
-* debian-tests-control-autodep8-is-obsolete
-* debian-upstream-obsolete-path
-* debian-watch-contains-dh_make-template
-* debian-watch-does-not-check-openpgp-signature
-* debian-watch-file-is-missing
-* debian-watch-file-pubkey-file-is-missing
-* debian-watch-file-uses-deprecated-githubredir
-* debian-watch-file-uses-github-releases
-* debian-watch-file-uses-old-github-pattern
-* debian-watch-uses-insecure-uri
-* debug-symbol-migration-possibly-complete
-* declares-possibly-conflicting-debhelper-compat-versions
-* dep3-format-patch-author-or-from-is-better
-* dep5-file-paragraph-references-header-paragraph
-* desktop-entry-contains-encoding-key
-* desktop-entry-file-has-crs
-* dh-clean-k-is-deprecated
-* dh-quilt-addon-but-quilt-source-format
-* dm-upload-allowed-is-obsolete
-* empty-debian-tests-control
-* excessive-priority-for-library-package
-* executable-desktop-file
-* extended-description-contains-empty-paragraph
-* extended-description-is-empty
-* faulty-debian-qa-group-phrase
-* field-name-typo-in-dep5-copyright
-* field-name-typo-in-tests-control
-* font-package-not-multi-arch-foreign
-* global-files-wildcard-not-first-paragraph-in-dep5-copyright
-* homepage-field-uses-insecure-uri
-* homepage-in-binary-package
-* initial-upload-closes-no-bugs
-* insecure-copyright-format-uri
-* installable-field-mirrors-source
-* invalid-short-name-in-dep5-copyright
-* invalid-standards-version
-* libmodule-build-perl-needs-to-be-in-build-depends
-* license-file-listed-in-debian-copyright
-* maintainer-also-in-uploaders
-* maintainer-script-empty
-* maintainer-script-without-set-e
-* malformed-dm-upload-allowed
-* malformed-override
-* mismatched-override
-* missing-build-dependency-for-dh-addon
-* missing-build-dependency-for-dh_-command
-* missing-debian-source-format
-* missing-prerequisite-for-pyproject-backend
-* missing-vcs-browser-field
-* misspelled-closes-bug
-* new-package-uses-date-based-version-number
-* newer-debconf-templates
-* no-copyright-file
-* no-homepage-field
-* no-versioned-debhelper-prerequisite
-* obsolete-debian-watch-file-standard
-* obsolete-field-in-dep5-copyright
-* obsolete-runtime-tests-restriction
-* obsolete-url-in-packaging
-* obsolete-vim-addon-manager
-* old-dpmt-vcs
-* old-fsf-address-in-copyright-file
-* old-papt-vcs
-* old-python-version-field
-* old-source-override-location
-* older-debian-watch-file-standard
-* older-source-format
-* out-of-date-copyright-format-uri
-* out-of-date-standards-version
-* package-contains-linda-override
-* package-uses-deprecated-debhelper-compat-version
-* package-uses-old-debhelper-compat-version
-* patch-file-present-but-not-mentioned-in-series
-* pkg-js-tools-test-is-missing
-* possible-missing-colon-in-closes
-* priority-extra-is-replaced-by-priority-optional
-* public-upstream-key-in-native-package
-* public-upstream-key-not-minimal
-* public-upstream-keys-in-multiple-locations
-* pypi-homepage
-* python-teams-merged
-* quilt-series-but-no-build-dep
-* quilt-series-without-trailing-newline
-* recommended-field
-* renamed-tag
-* required-field
-* rubygem-homepage
-* silent-on-rules-requiring-root
-* skip-systemd-native-flag-missing-pre-depends
-* space-in-std-shortname-in-dep5-copyright
-* systemd-service-alias-without-extension
-* systemd-service-file-refers-to-obsolete-bindto
-* systemd-service-file-refers-to-obsolete-target
-* systemd-service-file-refers-to-var-run
-* systemd-service-file-shutdown-problems
-* tab-in-license-text
-* team/pkg-perl/testsuite/no-testsuite-header
-* team/pkg-perl/vcs/no-git
-* team/pkg-perl/vcs/no-team-url
-* trailing-whitespace
-* transitional-package-not-oldlibs-optional
-* typo-in-debhelper-override-target
-* unnecessary-team-upload
-* unnecessary-testsuite-autopkgtest-field
-* unused-build-dependency-on-cdbs
-* unused-license-paragraph-in-dep5-copyright
-* unused-override
-* unversioned-copyright-format-uri
-* uploaders-in-orphan
-* upstream-metadata-file-is-missing
-* upstream-metadata-in-native-source
-* upstream-metadata-missing-bug-tracking
-* upstream-metadata-missing-repository
-* upstream-metadata-not-yaml-mapping
-* upstream-metadata-yaml-invalid
-* useless-autoreconf-build-depends
-* uses-debhelper-compat-file
-* uses-deprecated-adttmp
-* vcs-field-bitrotted
-* vcs-field-mismatch
-* vcs-field-not-canonical
-* vcs-field-uses-insecure-uri
-* vcs-field-uses-not-recommended-uri-format
-* vcs-obsolete-in-debian-infrastructure
-* wiki-copyright-format-uri
-* wrong-section-according-to-package-name
-
-.. _writing-fixers:
-
-Writing new fixers
-------------------
-
-For a more extensive write-up, see the
-[guide on writing fixers](doc/fixer-writing-guide.rst).
-
-Ideally, fixers target a particular set of lintian tags. This is not strictly
-required, but makes it possible to easily find all packages that a particular
-fixer can be used on.
-
-Each fixer is a simple script that lives under ``fixers``. Scripts should
-be registered in the ``index.desc`` file in the same directory.
-
-A fixer is run in the root directory of a package, where it can make changes
-it deems necessary. If a fixer can not provide any improvements, it can simply
-leave the working tree untouched - lintian-brush will not create any commits for it
-or update the changelog. If exits with a non-zero return code, whatever changes
-it has made will be discarded and the fixer will be reported as having failed.
-
-The following additional environment variables are set:
-
- * ``DEB_SOURCE``: The name of the source package that is being edited.
- * ``CURRENT_VERSION``: Package version that is being edited.
- * ``COMPAT_RELEASE``: Debian release to be compatible with. Usually ``sid``
-   when --modern was specified and the name of the current stable release otherwise.
- * ``NET_ACCESS``: Whether the fixer is allowed to make network connections
-   (e.g. sending HTTP requests). Used by --disable-net-access and the testsuite.
-   Set to either ``allow`` or ``disallow``.
- * ``OPINIONATED``: Set to ``yes`` or ``no``. If ``no``, fixers are not expected
-   to make changes in which there is no obvious single correct fix.
-
-For fixer written in python, the ``lintian_brush.fixer`` module can be used for
-convenient access to these variables.
-
-A fixer should write a short description of the changes it has made to standard
-out; this will be used for the commit message.
-
-It can include optional metadata in its output::
-
- * ``Fixed-Lintian-Tags:`` followed by a comma-separated list of lintian tags
-   that it claims to have fixed. This will make lintian-brush include
-   links to documentation about the fixed lintian tags. In the future,
-   it may also support building the package to verify the lintian tag
-   is actually resolved.
-
- * ``Certainty:`` followed by ``certain``, ``confident``, ``likely`` or
-   ``possible``, indicating how certain the fixer is that the fix was the right
-   one.
-
-The default minimum certainty level is "certain"; any incorrect change made
-with certainty "certain" is considered *at least* a normal-severity bug.
-
-The easiest way to test fixers is to create a skeleton *in* and *out* source
-tree under ``tests/FIXER-NAME/TEST-NAME``. The ``in`` directory should contain
-the tree to run the fixer on, and ``out`` contains the directory after it has
-run. It's fine to create directories with only one or two control files, if the
-fixer only needs those. To run the tests for a single fixer, you can use "make
-check-fixer-$NAME".
-
-GitHub Action
--------------
-
-If you're hosting a Git repository on GitHub, you can use the [lintian-brush
-GitHub action](https://github.com/gizmoguy/action-lintian-brush) to
-automatically run lintian-brush.
+See also [CONTRIBUTING.md](CONTRIBUTING.md) on general contribution guidelines, especially
+regarding code style and what belongs where.

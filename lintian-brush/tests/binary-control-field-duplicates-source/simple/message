@@ -1,2 +1,3 @@
 Remove field Priority on binary package blah that duplicates source.
-Fixed-Lintian-Tags: installable-field-mirrors-source
+Fixed-Lintian-Issues:
+ blah binary: installable-field-mirrors-source Priority [debian/control:5]

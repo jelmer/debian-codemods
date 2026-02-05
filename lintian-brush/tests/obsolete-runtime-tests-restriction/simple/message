@@ -1,3 +1,4 @@
 Drop deprecated restriction needs-recommends. See https://salsa.debian.org/ci-team/autopkgtest/tree/master/doc/README.package-tests.rst
 Certainty: possible
-Fixed-Lintian-Tags: obsolete-runtime-tests-restriction
+Fixed-Lintian-Issues:
+ source: obsolete-runtime-tests-restriction needs-recommends [debian/tests/control:6]

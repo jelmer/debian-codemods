@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 
@@ -39,6 +39,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 ];
 
                 if obsolete_emails.contains(&email) {
+                    let issue = LintianIssue::source_with_info(
+                        "python-teams-merged",
+                        vec![email.to_string()],
+                    );
+
+                    if !issue.should_fix(base_path) {
+                        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+                    }
+
                     paragraph.set(
                         "Maintainer",
                         "Debian Python Team <team+python@tracker.debian.org>",
@@ -46,9 +55,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     editor.commit()?;
 
                     return Ok(FixerResult::builder(
-                        "Update maintainer email for merge of DPMT and PAPT.".to_string(),
+                        "Update maintainer email for merge of DPMT and PAPT.",
                     )
-                    .fixed_tags(vec!["python-teams-merged"])
+                    .fixed_issue(issue)
                     .build());
                 }
             }

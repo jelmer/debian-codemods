@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -13,6 +13,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let content = fs::read_to_string(&tests_control_path)?;
     if !content.trim().is_empty() {
         return Err(FixerError::NoChanges);
+    }
+
+    let issue = LintianIssue::source_with_info(
+        "empty-debian-tests-control",
+        vec!["[debian/tests/control]".to_string()],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
     }
 
     // Remove the empty control file
@@ -35,7 +44,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     Ok(FixerResult::builder("Remove empty debian/tests/control.")
-        .fixed_tags(vec!["empty-debian-tests-control"])
+        .fixed_issues(vec![issue])
         .certainty(crate::Certainty::Certain)
         .build())
 }

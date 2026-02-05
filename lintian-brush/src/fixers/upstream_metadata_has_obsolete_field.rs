@@ -1,10 +1,12 @@
-use crate::upstream_metadata::ADDON_ONLY_FIELDS;
 use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
 use debian_copyright::lossless::Copyright;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
+
+/// Fields that are only used by addons/tools and shouldn't be in debian/upstream/metadata
+const ADDON_ONLY_FIELDS: &[&str] = &["Archive"];
 
 /// Extract upstream fields from a copyright file
 ///
@@ -51,22 +53,19 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         return Err(FixerError::NoChanges);
     }
 
-    let contents = fs::read_to_string(&metadata_path)?;
-    let mut yaml: serde_yaml::Value = serde_yaml::from_str(&contents)
-        .map_err(|e| FixerError::Other(format!("Failed to parse YAML: {}", e)))?;
-
-    let Some(map) = yaml.as_mapping_mut() else {
-        return Err(FixerError::Other(
-            "YAML document is not a mapping".to_string(),
-        ));
-    };
-
     let mut obsolete_fields: HashMap<String, String> = HashMap::new();
     let mut removed_fields: Vec<String> = Vec::new();
 
+    let mut updater = yaml_edit::YamlUpdater::new(&metadata_path)
+        .map_err(|e| FixerError::Other(format!("Failed to create YAML updater: {}", e)))?;
+
+    let doc = updater
+        .open()
+        .map_err(|e| FixerError::Other(format!("Failed to open YAML: {}", e)))?;
+
     // Check if Name or Contact fields exist in the metadata
-    let has_name_or_contact = map.contains_key(&serde_yaml::Value::String("Name".to_string()))
-        || map.contains_key(&serde_yaml::Value::String("Contact".to_string()));
+    let has_name_or_contact =
+        doc.contains_key("Name").unwrap_or(false) || doc.contains_key("Contact").unwrap_or(false);
 
     // If the debian/copyright file is machine-readable, then we can drop the
     // Name/Contact information from the debian/upstream/metadata file.
@@ -77,27 +76,39 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
 
     // First pass: remove null and empty fields
     for field in ["Name", "Contact"] {
-        let Some(value) = map.get(&serde_yaml::Value::String(field.to_string())) else {
-            continue;
-        };
+        let value_opt = doc
+            .get(field)
+            .map_err(|e| FixerError::Other(format!("Failed to get field {}: {}", field, e)))?;
 
-        let is_empty_or_null =
-            value.is_null() || value.as_str().map(|s| s.trim().is_empty()).unwrap_or(false);
+        if let Some(value) = value_opt {
+            let is_empty_or_null = match value {
+                yaml_edit::Value::Null => true,
+                yaml_edit::Value::String(s) => s.trim().is_empty(),
+                _ => false,
+            };
 
-        if is_empty_or_null {
-            map.remove(&serde_yaml::Value::String(field.to_string()));
-            removed_fields.push(field.to_string());
+            if is_empty_or_null {
+                doc.remove(field).map_err(|e| {
+                    FixerError::Other(format!("Failed to remove field {}: {}", field, e))
+                })?;
+                removed_fields.push(field.to_string());
+            }
         }
     }
 
     // Second pass: check for obsolete fields
     for (field, copyright_value) in &obsolete_fields {
-        let Some(um_value) = map.get(&serde_yaml::Value::String(field.clone())) else {
+        let um_value_opt = doc
+            .get(field)
+            .map_err(|e| FixerError::Other(format!("Failed to get field {}: {}", field, e)))?;
+
+        let Some(um_value) = um_value_opt else {
             continue;
         };
 
-        let Some(um_str) = um_value.as_str() else {
-            continue;
+        let um_str = match um_value {
+            yaml_edit::Value::String(s) => s,
+            _ => continue,
         };
 
         // Split both values by separator characters and compare as sets
@@ -105,7 +116,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             .iter()
             .map(|s| s.to_lowercase())
             .collect();
-        let um_entries: HashSet<String> = split_sep_chars(um_str)
+        let um_entries: HashSet<String> = split_sep_chars(&um_str)
             .iter()
             .map(|s| s.to_lowercase())
             .collect();
@@ -114,7 +125,8 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             continue;
         }
 
-        map.remove(&serde_yaml::Value::String(field.clone()));
+        doc.remove(field)
+            .map_err(|e| FixerError::Other(format!("Failed to remove field {}: {}", field, e)))?;
         if !removed_fields.contains(field) {
             removed_fields.push(field.clone());
         }
@@ -125,27 +137,26 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     }
 
     // If only addon-only fields remain, clear the file
-    let remaining_keys: HashSet<String> = map
+    let remaining_keys: HashSet<String> = doc
         .keys()
-        .filter_map(|k| k.as_str().map(|s| s.to_string()))
+        .map_err(|e| FixerError::Other(format!("Failed to get keys: {}", e)))?
+        .into_iter()
         .collect();
 
     let addon_only_set: HashSet<String> =
         ADDON_ONLY_FIELDS.iter().map(|&s| s.to_string()).collect();
 
     if remaining_keys.difference(&addon_only_set).count() == 0 {
-        map.clear();
-        // If the file is now empty, remove it and the upstream directory if empty
-        std::fs::remove_file(&metadata_path)?;
-        if let Some(parent) = metadata_path.parent() {
-            let _ = std::fs::remove_dir(parent); // Ignore error if dir not empty
-        }
-    } else {
-        // Write back the YAML
-        let output = serde_yaml::to_string(&yaml)
-            .map_err(|e| FixerError::Other(format!("Failed to serialize YAML: {}", e)))?;
-        fs::write(&metadata_path, output)?;
+        // Clear the file - the YamlUpdater will remove the file and directory
+        // automatically when closed since it has remove_empty=True by default
+        doc.clear()
+            .map_err(|e| FixerError::Other(format!("Failed to clear YAML: {}", e)))?;
     }
+
+    // Close updater to save changes (or remove file if empty)
+    updater
+        .close()
+        .map_err(|e| FixerError::Other(format!("Failed to close YAML: {}", e)))?;
 
     removed_fields.sort();
 
@@ -199,9 +210,7 @@ Contact: null
         assert!(result.is_ok());
 
         let updated = fs::read_to_string(upstream_dir.join("metadata")).unwrap();
-        let yaml: serde_yaml::Value = serde_yaml::from_str(&updated).unwrap();
-        assert!(yaml.get("Name").is_some());
-        assert!(yaml.get("Contact").is_none());
+        assert_eq!(updated, "Name: test-package\n");
     }
 
     #[test]
@@ -236,9 +245,6 @@ Repository: https://github.com/example/test
         assert!(result.is_ok());
 
         let updated = fs::read_to_string(upstream_dir.join("metadata")).unwrap();
-        let yaml: serde_yaml::Value = serde_yaml::from_str(&updated).unwrap();
-        assert!(yaml.get("Name").is_none());
-        assert!(yaml.get("Contact").is_none());
-        assert!(yaml.get("Repository").is_some());
+        assert_eq!(updated, "Repository: https://github.com/example/test\n");
     }
 }

@@ -1,2 +1,3 @@
 Set Multi-Arch: foreign on package fonts-blah.
-Fixed-Lintian-Tags: font-package-not-multi-arch-foreign
+Fixed-Lintian-Issues:
+ fonts-blah binary: font-package-not-multi-arch-foreign

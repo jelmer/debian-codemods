@@ -1,2 +1,3 @@
 Remove executable bit from desktop files.
-Fixed-Lintian-Tags: executable-desktop-file
+Fixed-Lintian-Issues:
+ source: executable-desktop-file 07* [usr/share/applications/xscreensaver.desktop]

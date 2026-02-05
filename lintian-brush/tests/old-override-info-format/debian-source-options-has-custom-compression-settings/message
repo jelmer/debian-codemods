@@ -1,2 +1,3 @@
 Update lintian override info format in d/source/lintian-overrides on line 1.
-Fixed-Lintian-Tags: mismatched-override
+Fixed-Lintian-Issues:
+ source: mismatched-override lintian-brush source: debian-source-options-has-custom-compression-settings compression = gzip (line *) [debian/source/lintian-overrides:1]

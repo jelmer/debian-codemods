@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::collections::HashMap;
 use std::fs;
@@ -48,7 +48,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let python_versions = load_python_versions()?;
 
     let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
+    let mut overridden_issues = Vec::new();
 
     if let Some(mut source) = editor.source() {
         let paragraph = source.as_mut_deb822();
@@ -63,8 +64,17 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                         // Check if it's old or ancient Python 2
                         if let Some(&old_python2) = python_versions.get("old-python2") {
                             if version <= old_python2 {
-                                paragraph.remove("X-Python-Version");
-                                made_changes = true;
+                                let issue = LintianIssue::source_with_info(
+                                    "ancient-python-version-field",
+                                    vec![format!("X-Python-Version: {}", x_python_version)],
+                                );
+
+                                if issue.should_fix(base_path) {
+                                    paragraph.remove("X-Python-Version");
+                                    fixed_issues.push(issue);
+                                } else {
+                                    overridden_issues.push(issue);
+                                }
                             }
                         }
                     }
@@ -82,8 +92,17 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                         // Check if it's old or ancient Python 3
                         if let Some(&old_python3) = python_versions.get("old-python3") {
                             if version <= old_python3 {
-                                paragraph.remove("X-Python3-Version");
-                                made_changes = true;
+                                let issue = LintianIssue::source_with_info(
+                                    "ancient-python-version-field",
+                                    vec![format!("X-Python3-Version: {}", x_python3_version)],
+                                );
+
+                                if issue.should_fix(base_path) {
+                                    paragraph.remove("X-Python3-Version");
+                                    fixed_issues.push(issue);
+                                } else {
+                                    overridden_issues.push(issue);
+                                }
                             }
                         }
                     }
@@ -92,7 +111,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
     }
 
-    if !made_changes {
+    if fixed_issues.is_empty() {
+        if !overridden_issues.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
         return Err(FixerError::NoChanges);
     }
 
@@ -100,7 +122,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     Ok(
         FixerResult::builder("Remove unnecessary X-Python{,3}-Version field in debian/control.")
-            .fixed_tags(vec!["ancient-python-version-field"])
+            .fixed_issues(fixed_issues)
+            .overridden_issues(overridden_issues)
             .build(),
     )
 }

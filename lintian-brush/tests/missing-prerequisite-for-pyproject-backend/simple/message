@@ -1,4 +1,5 @@
 Add missing build-dependency on python3-setuptools.
 
 This is necessary for build-backend setuptools.build_meta in pyproject.toml
-Fixed-Lintian-Tags: missing-prerequisite-for-pyproject-backend
+Fixed-Lintian-Issues:
+ foo source: missing-prerequisite-for-pyproject-backend setuptools.build_meta (does not satisfy python3-setuptools)

@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -9,11 +9,20 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         return Err(FixerError::NoChanges);
     }
 
+    let issue = LintianIssue::source_with_info(
+        "debian-pycompat-is-obsolete",
+        vec!["debian/pycompat".to_string()],
+    );
+
+    if !issue.should_fix(base_path) {
+        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    }
+
     fs::remove_file(&pycompat_path)?;
 
     Ok(
         FixerResult::builder("Remove obsolete debian/pycompat file.")
-            .fixed_tags(vec!["debian-pycompat-is-obsolete"])
+            .fixed_issues(vec![issue])
             .certainty(crate::Certainty::Certain)
             .build(),
     )

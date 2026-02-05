@@ -1,2 +1,4 @@
 Update Vcs-* headers to use salsa repository.
-Fixed-Lintian-Tags: vcs-field-bitrotted, vcs-obsolete-in-debian-infrastructure
+Fixed-Lintian-Issues:
+ source: vcs-obsolete-in-debian-infrastructure vcs-svn http://svn.debian.org/wsvn/pkg-voip/asterisk-prompt-fr-proformatique/?op=log
+ source: vcs-field-bitrotted http://svn.debian.org/wsvn/pkg-voip/asterisk-prompt-fr-proformatique/?op=log https://anonscm.debian.org/viewvc/pkg-voip/asterisk-prompt-fr-proformatique

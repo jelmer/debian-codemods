@@ -1,0 +1,7 @@
+Source: override-package
+Homepage: https://github.com/user/repo.git
+
+Package: override-package
+Architecture: all
+Description: Test with override
+ Testing lintian override behavior.

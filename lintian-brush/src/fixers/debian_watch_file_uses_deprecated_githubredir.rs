@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
@@ -16,6 +16,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
 
     let mut made_changes = false;
+    let mut fixed_issues = Vec::new();
 
     for mut entry in watch_file.entries() {
         let url = entry.url();
@@ -23,6 +24,17 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         // Check if URL uses githubredir.debian.net
         if !url.contains("githubredir.debian.net") {
             continue;
+        }
+
+        // Create issue with URL and line number
+        let line_no = entry.line() + 1; // Convert to 1-indexed
+        let matching = entry.matching_pattern().unwrap_or_default();
+        let issue = LintianIssue::source_with_info(
+            "debian-watch-file-uses-deprecated-githubredir",
+            vec![format!("{} {} [debian/watch:{}]", url, matching, line_no)],
+        );
+        if !issue.should_fix(base_path) {
+            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
         }
 
         // Parse the URL to extract org and repo
@@ -55,6 +67,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
 
         made_changes = true;
+        fixed_issues.push(issue);
     }
 
     if !made_changes {
@@ -66,7 +79,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     Ok(FixerResult::builder(
         "Remove use of githubredir - see https://lists.debian.org/debian-devel-announce/2014/10/msg00000.html for details."
     )
-    .fixed_tags(vec!["debian-watch-file-uses-deprecated-githubredir"])
+    .fixed_issues(fixed_issues)
     .certainty(crate::Certainty::Confident)
     .build())
 }
