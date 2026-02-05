@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: lintian-brush
+Upstream-Name: debian-codemods
 Upstream-Contact: Jelmer Vernooĳ <jelmer@debian.org>
-Source: https://salsa.debian.org/jelmer/lintian-brush
+Source: https://salsa.debian.org/jelmer/debian-codemods
 
 Files: *
 Copyright:
