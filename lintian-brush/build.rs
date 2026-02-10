@@ -328,7 +328,7 @@ fn generate_spdx_data(out_dir: &std::ffi::OsStr) {
                     .contains(a.1)
                     .cmp(&deprecated_ids.contains(b.1))
             })
-            .then_with(|| a.1.cmp(&b.1))
+            .then_with(|| a.1.cmp(b.1))
     });
 
     // Deduplicate by name, keeping the first (non-deprecated when available)

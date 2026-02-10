@@ -1,6 +1,5 @@
 use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use breezyshim::branch::Branch;
-use debian_watch::{Entry, WatchFile};
 use debversion::Version;
 use std::path::Path;
 use std::process::Command;
@@ -8,7 +7,9 @@ use std::time::Duration;
 use url::Url;
 
 struct WatchCandidate {
-    entry: Entry,
+    source: String,
+    matching_pattern: String,
+    options: Vec<debian_watch::WatchOption>,
     site: String,
     certainty: Option<Certainty>,
     preference: i32,
@@ -174,7 +175,7 @@ if 'name' in setup_args:
     };
 
     let mut certainty = Certainty::Likely;
-    let mut opts = Vec::new();
+    let mut options = Vec::new();
 
     // If net access is allowed, verify the package exists on PyPI
     if net_access {
@@ -204,7 +205,7 @@ if 'name' in setup_args:
                     });
 
                     if has_signature {
-                        opts.push("pgpsigurlmangle=s/$/.asc/");
+                        options.push(debian_watch::WatchOption::Pgpsigurlmangle("s/$/.asc/".to_string()));
                     }
                 }
             }
@@ -212,25 +213,16 @@ if 'name' in setup_args:
     }
 
     // Create watch entry for PyPI
-    let filename_regex = format!(
+    let source = format!("https://pypi.debian.net/{}/", project);
+    let matching_pattern = format!(
         r"{}-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))",
         regex::escape(project)
     );
-    let url = format!("https://pypi.debian.net/{}/{}", project, filename_regex);
-
-    let mut builder = Entry::builder(&url);
-    for opt in opts {
-        // Parse opt into key=value or just key
-        if let Some((key, value)) = opt.split_once('=') {
-            builder = builder.opt(key, value);
-        } else {
-            builder = builder.flag(opt);
-        }
-    }
-    let entry = builder.build();
 
     Ok(Some(WatchCandidate {
-        entry,
+        source,
+        matching_pattern,
+        options,
         site: "pypi".to_string(),
         certainty: Some(certainty),
         preference: 1,
@@ -239,14 +231,13 @@ if 'name' in setup_args:
 
 /// Generate watch entry for CRAN packages
 fn guess_cran_watch_entry(name: &str) -> Result<WatchCandidate, Box<dyn std::error::Error>> {
-    let url = format!(
-        "https://cran.r-project.org/src/contrib/{}_([-.\\d]*)\\.tar\\.gz",
-        name
-    );
-    let entry = Entry::builder(&url).build();
+    let source = "https://cran.r-project.org/src/contrib/".to_string();
+    let matching_pattern = format!("{}_([-.\\d]*)\\.tar\\.gz", name);
 
     Ok(WatchCandidate {
-        entry,
+        source,
+        matching_pattern,
+        options: vec![],
         site: "cran".to_string(),
         certainty: Some(Certainty::Likely),
         preference: 0,
@@ -307,18 +298,17 @@ fn guess_github_watch_entry(
         project = project[..project.len() - 4].to_string();
     }
 
-    let download_url = format!("https://github.com/{}/{}/tags", username, project);
+    let source = format!("https://github.com/{}/{}/tags", username, project);
     let matching_pattern = format!(r".*/{}\\.tar\\.gz", version_pattern);
 
     // Create watch entry with filenamemangle
     let filemangle = format!("s/{}/{}-$1\\.tar\\.gz/", matching_pattern, project);
-    let entry = Entry::builder(&download_url)
-        .matching_pattern(&matching_pattern)
-        .opt("filenamemangle", &filemangle)
-        .build();
+    let options = vec![debian_watch::WatchOption::Filenamemangle(filemangle)];
 
     Ok(vec![WatchCandidate {
-        entry,
+        source,
+        matching_pattern,
+        options,
         site: "github".to_string(),
         certainty: Some(Certainty::Certain),
         preference: 0,
@@ -385,15 +375,13 @@ fn guess_launchpad_watch_entry(
     }
     let filepattern = file_parts[file_parts.len() - 2].replace(version, "(.*)");
 
-    let download_url = format!("https://launchpad.net/{}/+download", project);
+    let source = format!("https://launchpad.net/{}/+download", project);
     let matching_pattern = format!("https://launchpad.net/{}/.*/{}", project, filepattern);
 
-    let entry = Entry::builder(&download_url)
-        .matching_pattern(&matching_pattern)
-        .build();
-
     Ok(vec![WatchCandidate {
-        entry,
+        source,
+        matching_pattern,
+        options: vec![],
         site: "launchpad".to_string(),
         certainty: Some(Certainty::Certain),
         preference: 0,
@@ -434,15 +422,13 @@ fn candidates_from_hackage(
         return Ok(vec![]);
     }
 
-    let download_url = format!("https://hackage.haskell.org/package/{}", package);
+    let source = format!("https://hackage.haskell.org/package/{}", package);
     let matching_pattern = format!(r".*/{}-(.*)\.tar\.gz", regex::escape(package));
 
-    let entry = Entry::builder(&download_url)
-        .matching_pattern(&matching_pattern)
-        .build();
-
     Ok(vec![WatchCandidate {
-        entry,
+        source,
+        matching_pattern,
+        options: vec![],
         site: "hackage".to_string(),
         certainty: Some(Certainty::Certain),
         preference: 1,
@@ -546,9 +532,15 @@ pub fn run(
     // Take the best candidate (first after sorting)
     let winner = candidates.into_iter().next().unwrap();
 
-    // Create a new watch file with the entry
-    let mut watch_file = WatchFile::new(Some(4));
-    watch_file.add_entry(winner.entry);
+    // Create a new v5 watch file with the entry
+    let mut watch_file = debian_watch::parse::ParsedWatchFile::new(5)
+        .map_err(|e| FixerError::Other(format!("Failed to create watch file: {}", e)))?;
+    let mut entry = watch_file.add_entry(&winner.source, &winner.matching_pattern);
+
+    // Apply any options to the entry
+    for option in winner.options {
+        entry.set_option(option);
+    }
 
     // Write the watch file
     std::fs::write(&watch_path, watch_file.to_string())?;

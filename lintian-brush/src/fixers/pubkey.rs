@@ -1,6 +1,6 @@
 use crate::watch::COMMON_PGPSIGURL_MANGLES;
 use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
-use debian_watch::{mangle, Release, WatchFile};
+use debian_watch::{mangle, Release};
 use sequoia_openpgp as openpgp;
 use std::collections::HashSet;
 use std::fs;
@@ -323,8 +323,7 @@ pub fn run(
     }
 
     let content = fs::read_to_string(&watch_path)?;
-    let watch_file: WatchFile = content
-        .parse()
+    let watch_file = debian_watch::parse::parse(&content)
         .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
 
     let mut needed_keys: HashSet<String> = HashSet::new();
@@ -393,11 +392,9 @@ pub fn run(
                 rels
             }
             Err(e) => {
-                if let Some(http_err) = e.downcast_ref::<reqwest::Error>() {
-                    if http_err.is_status() {
-                        tracing::warn!("HTTP error accessing discovery URL: {}", http_err);
-                        return Err(FixerError::NoChanges);
-                    }
+                if matches!(e, debian_watch::discover::DiscoveryError::HttpError(_)) {
+                    tracing::warn!("HTTP error accessing discovery URL: {}", e);
+                    return Err(FixerError::NoChanges);
                 }
                 return Err(FixerError::Other(format!(
                     "Failed to discover releases: {}",
