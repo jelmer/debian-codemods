@@ -109,7 +109,7 @@ pub fn run(
     // Initialize tracing for debugging
     let _ = tracing_subscriber::fmt::try_init();
 
-    info!(
+    debug!(
         "Upstream metadata fixer starting with trust_package={}, net_access={}",
         trust_package, net_access
     );
@@ -259,7 +259,7 @@ pub fn run(
         guessed_items_stream.collect().await
     });
 
-    info!(
+    debug!(
         "guess_upstream_metadata_items returned {} items",
         guessed_items.len()
     );
@@ -283,7 +283,7 @@ pub fn run(
         .filter(|item| !item.datum.known_bad_guess())
         .collect();
 
-    info!(
+    debug!(
         "After filtering bad guesses: {} items remain",
         filtered_items.len()
     );
@@ -485,7 +485,7 @@ pub fn run(
         certainties.push(upstream_ontologist::Certainty::Certain);
     }
 
-    info!(
+    debug!(
         "Changed fields: {:?}, repository_converted: {}",
         changed_fields, repository_converted
     );
