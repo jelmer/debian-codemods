@@ -256,12 +256,17 @@ fn analyze_mangles(used_mangles: &[Option<String>]) -> (HashSet<Option<String>>,
 /// Returns (pgpmode, description):
 /// - If all releases are signed (only one entry, which is Some): ("mangle", "Check upstream PGP signatures.")
 /// - Otherwise: ("auto", "Opportunistically check upstream PGP signatures.")
-fn determine_pgpmode(found_common_mangles: &HashSet<Option<String>>) -> (&'static str, String) {
+fn determine_pgpmode(
+    found_common_mangles: &HashSet<Option<String>>,
+) -> (debian_watch::PgpMode, String) {
     if found_common_mangles.len() == 1 {
-        ("mangle", "Check upstream PGP signatures.".to_string())
+        (
+            debian_watch::PgpMode::Mangle,
+            "Check upstream PGP signatures.".to_string(),
+        )
     } else {
         (
-            "auto",
+            debian_watch::PgpMode::Auto,
             "Opportunistically check upstream PGP signatures.".to_string(),
         )
     }
@@ -481,13 +486,15 @@ pub fn run(
                 if active_common_mangles.len() == 1 {
                     let new_mangle = active_common_mangles.iter().next().unwrap();
                     tracing::debug!("Setting pgpsigurlmangle to: {}", new_mangle);
-                    entry.set_opt("pgpsigurlmangle", new_mangle);
+                    entry.set_option(debian_watch::WatchOption::Pgpsigurlmangle(
+                        new_mangle.to_string(),
+                    ));
                 }
 
                 // Determine pgpmode and description
                 let (pgpmode, mut desc) = determine_pgpmode(&found_common_mangles);
-                tracing::debug!("Setting pgpmode to: {}", pgpmode);
-                entry.set_opt("pgpmode", pgpmode);
+                tracing::debug!("Setting pgpmode to: {:?}", pgpmode);
+                entry.set_option(debian_watch::WatchOption::Pgpmode(pgpmode));
 
                 // Include fingerprints in description if we found any
                 if !needed_keys.is_empty() {
@@ -709,7 +716,7 @@ mod tests {
         mangles.insert(Some("s/$/.asc/".to_string()));
 
         let (mode, desc) = determine_pgpmode(&mangles);
-        assert_eq!(mode, "mangle");
+        assert_eq!(mode, debian_watch::PgpMode::Mangle);
         assert_eq!(desc, "Check upstream PGP signatures.");
     }
 
@@ -720,7 +727,7 @@ mod tests {
         mangles.insert(None);
 
         let (mode, desc) = determine_pgpmode(&mangles);
-        assert_eq!(mode, "auto");
+        assert_eq!(mode, debian_watch::PgpMode::Auto);
         assert_eq!(desc, "Opportunistically check upstream PGP signatures.");
     }
 
@@ -731,7 +738,7 @@ mod tests {
         mangles.insert(Some("s/$/.sig/".to_string()));
 
         let (mode, desc) = determine_pgpmode(&mangles);
-        assert_eq!(mode, "auto");
+        assert_eq!(mode, debian_watch::PgpMode::Auto);
         assert_eq!(desc, "Opportunistically check upstream PGP signatures.");
     }
 
@@ -1009,7 +1016,7 @@ mod tests {
 
         // Verify with correct keyring should return true (Verified status)
         let result = verify_signature(&sig_data, data, &keyring_data);
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
     }
 
     #[test]
@@ -1071,6 +1078,6 @@ mod tests {
 
         // Verify with wrong keyring should return false (Failed status)
         let result = verify_signature(&sig_data, data, &wrong_keyring);
-        assert_eq!(result.unwrap(), false);
+        assert!(!result.unwrap());
     }
 }

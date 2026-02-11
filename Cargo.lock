@@ -1053,9 +1053,9 @@ dependencies = [
 
 [[package]]
 name = "debian-watch"
-version = "0.3.2"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b23e6a0702a282291ddb7b91f40fe7417aa84df1f711da454dbe7cdabae7a50a"
+checksum = "7eeb257371fcee490ca2a3d78e13b9a5d8627fc8322ae3ce32762a58f651f84d"
 dependencies = [
  "anyhow",
  "clap",
@@ -1372,9 +1372,9 @@ dependencies = [
 
 [[package]]
 name = "ena"
-version = "0.14.3"
+version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d248bdd43ce613d87415282f69b9bb99d947d290b10962dd6c56233312c2ad5"
+checksum = "eabffdaee24bd1bf95c5ef7cec31260444317e72ea56c4c91750e8b7ee58d5f1"
 dependencies = [
  "log",
 ]
@@ -2896,7 +2896,7 @@ dependencies = [
  "debian-changelog",
  "debian-control",
  "debian-copyright",
- "debian-watch 0.3.2",
+ "debian-watch 0.3.4",
  "debversion",
  "dep3",
  "desktop-edit",

@@ -175,10 +175,12 @@ pub fn create_test_python_repo(
     (repo_path, wt)
 }
 
+#[cfg(test)]
 pub(crate) struct DebianImageCached {
     old_env: Option<String>,
 }
 
+#[cfg(test)]
 impl DebianImageCached {
     pub(crate) fn new() -> Result<Self, ognibuild::session::Error> {
         if let Ok(tarball_path) = std::env::var("OGNIBUILD_DEBIAN_TEST_TARBALL") {
@@ -206,6 +208,7 @@ impl DebianImageCached {
     }
 }
 
+#[cfg(test)]
 impl Drop for DebianImageCached {
     fn drop(&mut self) {
         if let Some(old_env) = &self.old_env {

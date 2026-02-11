@@ -45,10 +45,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // Convert to version 5 - we need to extract the linebased file to convert it
     let v5_file = match watch_file {
-        debian_watch::parse::ParsedWatchFile::LineBased(ref wf) => {
-            debian_watch::convert_to_v5(wf)
-                .map_err(|e| FixerError::Other(format!("Failed to convert to v5: {}", e)))?
-        }
+        debian_watch::parse::ParsedWatchFile::LineBased(ref wf) => debian_watch::convert_to_v5(wf)
+            .map_err(|e| FixerError::Other(format!("Failed to convert to v5: {}", e)))?,
         debian_watch::parse::ParsedWatchFile::Deb822(_) => {
             // Already v5, shouldn't reach here due to version check above
             return Err(FixerError::NoChanges);

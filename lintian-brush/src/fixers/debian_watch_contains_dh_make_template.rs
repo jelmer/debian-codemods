@@ -13,8 +13,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let content = fs::read_to_string(&watch_path)?;
 
-    let watch_file: debian_watch::WatchFile = content
-        .parse()
+    let watch_file = debian_watch::parse::parse(&content)
         .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
 
     let mut found_template = None;
@@ -33,7 +32,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
                 }
 
-                entry.del_opt("filenamemangle");
+                entry.remove_option(debian_watch::WatchOption::Filenamemangle(String::new()));
             }
         }
     }

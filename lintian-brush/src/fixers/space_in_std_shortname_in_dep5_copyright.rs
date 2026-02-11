@@ -2,7 +2,7 @@ use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_copyright::lossless::Copyright;
 use debian_copyright::License;
 use lazy_static::lazy_static;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 

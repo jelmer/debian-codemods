@@ -205,7 +205,9 @@ if 'name' in setup_args:
                     });
 
                     if has_signature {
-                        options.push(debian_watch::WatchOption::Pgpsigurlmangle("s/$/.asc/".to_string()));
+                        options.push(debian_watch::WatchOption::Pgpsigurlmangle(
+                            "s/$/.asc/".to_string(),
+                        ));
                     }
                 }
             }
@@ -605,10 +607,7 @@ setup(name="xandikos", version="42.0")
         let candidates = find_candidates(dir.path(), &[], false).unwrap();
         assert_eq!(candidates.len(), 1);
         assert_eq!(candidates[0].site, "pypi");
-        assert!(candidates[0]
-            .entry
-            .url()
-            .contains("pypi.debian.net/xandikos"));
+        assert!(candidates[0].source.contains("pypi.debian.net/xandikos"));
     }
 
     #[test]
@@ -626,9 +625,8 @@ setup(name="xandikos", version="42.0")
         assert_eq!(candidates.len(), 1);
         assert_eq!(candidates[0].site, "cran");
         assert!(candidates[0]
-            .entry
-            .url()
-            .contains("cran.r-project.org/src/contrib/gower"));
+            .source
+            .contains("cran.r-project.org/src/contrib"));
     }
 
     #[test]

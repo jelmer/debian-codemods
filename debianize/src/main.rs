@@ -259,7 +259,7 @@ fn main() -> Result<(), i32> {
 
     // For now...
     let (upstream_branch, upstream_subpath) = if let Some(upstream) = args.upstream {
-        match breezyshim::branch::open_containing(&upstream.parse().unwrap()) {
+        match breezyshim::branch::open_containing_as_generic(&upstream.parse().unwrap()) {
             Ok((upstream_branch, upstream_subpath)) => {
                 metadata.insert(UpstreamDatumWithMetadata {
                     datum: UpstreamDatum::Repository(upstream),
@@ -268,7 +268,7 @@ fn main() -> Result<(), i32> {
                         "command-line".to_string(),
                     )),
                 });
-                (upstream_branch, PathBuf::from(upstream_subpath))
+                (Box::new(upstream_branch) as Box<dyn Branch>, PathBuf::from(upstream_subpath))
             }
             Err(e) => {
                 log::error!("{}: not a valid branch: {}", upstream, e);
@@ -290,14 +290,14 @@ fn main() -> Result<(), i32> {
         if let Some(url) = upstream_info.repository() {
             log::info!("Found relevant upstream branch at {}", url);
             let (upstream_branch, upstream_subpath) =
-                breezyshim::branch::open_containing(&url.parse().unwrap()).unwrap();
+                breezyshim::branch::open_containing_as_generic(&url.parse().unwrap()).unwrap();
 
             metadata.insert(UpstreamDatumWithMetadata {
                 datum: UpstreamDatum::Repository(url.to_owned()),
                 certainty: Some(Certainty::Confident),
                 origin: None,
             });
-            (upstream_branch, PathBuf::from(upstream_subpath))
+            (Box::new(upstream_branch) as Box<dyn Branch>, PathBuf::from(upstream_subpath))
         } else {
             log::error!(
                 "{}: Unable to find upstream info for {}",
