@@ -1,4 +1,4 @@
-use breezyshim::branch::{Branch, GenericBranch, PyBranch};
+use breezyshim::branch::PyBranch;
 use breezyshim::debian::directory::vcs_git_url_to_bzr_url;
 use breezyshim::tree::{PyTree, Tree};
 use breezyshim::workingtree::{GenericWorkingTree, WorkingTree};
@@ -268,10 +268,7 @@ fn main() -> Result<(), i32> {
                         "command-line".to_string(),
                     )),
                 });
-                (
-                    Box::new(upstream_branch) as Box<dyn Branch>,
-                    PathBuf::from(upstream_subpath),
-                )
+                (upstream_branch, PathBuf::from(upstream_subpath))
             }
             Err(e) => {
                 log::error!("{}: not a valid branch: {}", upstream, e);
@@ -300,10 +297,7 @@ fn main() -> Result<(), i32> {
                 certainty: Some(Certainty::Confident),
                 origin: None,
             });
-            (
-                Box::new(upstream_branch) as Box<dyn Branch>,
-                PathBuf::from(upstream_subpath),
-            )
+            (upstream_branch, PathBuf::from(upstream_subpath))
         } else {
             log::error!(
                 "{}: Unable to find upstream info for {}",
@@ -328,7 +322,7 @@ fn main() -> Result<(), i32> {
             "No upstream repository specified, using upstream source in {}",
             wt.abspath(&subpath).unwrap().display()
         );
-        (Box::new(wt.branch()) as Box<dyn Branch>, subpath.clone())
+        (wt.branch(), subpath.clone())
     };
 
     if let Some(debian_branch) = args.debian_branch {
@@ -400,10 +394,7 @@ fn main() -> Result<(), i32> {
     let debianize_result = match debianize::debianize(
         &wt,
         &subpath,
-        upstream_branch
-            .as_any()
-            .downcast_ref::<GenericBranch>()
-            .map(|gb| gb as &dyn PyBranch),
+        Some(&upstream_branch as &dyn PyBranch),
         Some(&upstream_subpath),
         &preferences,
         args.upstream_version.as_deref(),
