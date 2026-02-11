@@ -268,7 +268,10 @@ fn main() -> Result<(), i32> {
                         "command-line".to_string(),
                     )),
                 });
-                (Box::new(upstream_branch) as Box<dyn Branch>, PathBuf::from(upstream_subpath))
+                (
+                    Box::new(upstream_branch) as Box<dyn Branch>,
+                    PathBuf::from(upstream_subpath),
+                )
             }
             Err(e) => {
                 log::error!("{}: not a valid branch: {}", upstream, e);
@@ -297,7 +300,10 @@ fn main() -> Result<(), i32> {
                 certainty: Some(Certainty::Confident),
                 origin: None,
             });
-            (Box::new(upstream_branch) as Box<dyn Branch>, PathBuf::from(upstream_subpath))
+            (
+                Box::new(upstream_branch) as Box<dyn Branch>,
+                PathBuf::from(upstream_subpath),
+            )
         } else {
             log::error!(
                 "{}: Unable to find upstream info for {}",
