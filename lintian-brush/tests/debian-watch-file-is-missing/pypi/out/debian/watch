@@ -1,2 +1,4 @@
-version=4
-https://pypi.debian.net/xandikos/xandikos-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))
+Version: 5
+
+Source: https://pypi.debian.net/xandikos/
+Matching-Pattern: xandikos-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))

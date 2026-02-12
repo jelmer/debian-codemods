@@ -33,8 +33,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     let content = fs::read_to_string(&watch_path)?;
 
-    let watch_file: debian_watch::WatchFile = content
-        .parse()
+    let watch_file = debian_watch::parse::parse(&content)
         .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
 
     let mut fixed_issues = Vec::new();
@@ -62,7 +61,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
 
         // Add dversionmangle to remove dfsg/ds/debian/repack suffix
-        entry.set_opt("dversionmangle", "s/\\+(dfsg|ds|debian|repack)(\\d*)$//");
+        entry.set_option(debian_watch::WatchOption::Dversionmangle(
+            "s/\\+(dfsg|ds|debian|repack)(\\d*)$//".to_string(),
+        ));
         fixed_issues.push(issue);
     }
 

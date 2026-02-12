@@ -2894,7 +2894,7 @@ mod tests {
 
         // Use MultiYamlUpdater
         let mut updater = MultiYamlUpdater::new(&yaml_path).unwrap();
-        let doc = updater.open().unwrap();
+        updater.open().unwrap();
 
         // Should preserve both YAML directives and comment
         updater.close().unwrap();
@@ -3024,7 +3024,7 @@ mod tests {
 
         {
             let mut updater = YamlUpdater::new(&yaml_path).unwrap();
-            let doc = updater.open().unwrap();
+            updater.open().unwrap();
 
             // Just open and close without changes
             updater.close().unwrap();

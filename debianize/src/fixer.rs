@@ -155,7 +155,7 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
                 });
             }
 
-            let upstream_branch = match breezyshim::branch::open(&url) {
+            let upstream_branch = match breezyshim::branch::open_as_generic(&url) {
                 Ok(branch) => {
                     // If a specific branch was requested, try to switch to it
                     if let Some(branch_name) = &branch_name {
@@ -170,7 +170,7 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
                                         "Branch '{}' not found, using default branch",
                                         branch_name
                                     );
-                                    Some(branch)
+                                    Some(Box::new(branch) as Box<dyn Branch>)
                                 }
                             }
                             Err(e) => {
@@ -179,11 +179,11 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
                                     url,
                                     e
                                 );
-                                Some(branch)
+                                Some(Box::new(branch) as Box<dyn Branch>)
                             }
                         }
                     } else {
-                        Some(branch)
+                        Some(Box::new(branch) as Box<dyn Branch>)
                     }
                 }
                 Err(e @ BrzError::NotBranchError { .. }) => {
@@ -212,7 +212,7 @@ impl<'a> DebianBuildFixer for DebianizeFixer<'a> {
             let registry = ControlDirFormatRegistry::new();
             registry.make_controldir(DEFAULT_VCS_FORMAT).unwrap()
         };
-        let result = breezyshim::controldir::create_branch_convenience(
+        let result = breezyshim::controldir::create_branch_convenience_as_generic(
             &url::Url::from_directory_path(vcs_path).unwrap(),
             Some(true),
             &format,
