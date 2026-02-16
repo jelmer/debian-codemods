@@ -14,8 +14,9 @@ lintian-brush (0.168) UNRELEASED; urgency=medium
   * Add new debian-watch-use-templates fixer to convert v5 watch files
     from explicit Source/Matching-Pattern to template syntax where
     possible. Closes: #1128553
+  * Use archive-provided systemd-unit-edit and desktop-edit.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 19 Feb 2026 01:48:02 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 16 Feb 2026 11:11:29 +0000
 
 lintian-brush (0.167) unstable; urgency=medium
 

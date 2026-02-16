@@ -1,7 +1,7 @@
 [workspace]
 # With resolve set to "2", dependent projects can't find debian-analyzer anymore.
 resolver = "1"
-members = ["lintian-brush", "multiarch-hints", "scrub-obsolete", "transition-apply", "import-uncommitted", "debianize", "systemd-unit-edit", "desktop-edit", "yaml-edit"]
+members = ["lintian-brush", "multiarch-hints", "scrub-obsolete", "transition-apply", "import-uncommitted", "debianize", "yaml-edit"]
 
 [workspace.package]
 version = "0.163.0"
@@ -45,3 +45,5 @@ serial_test = ">=2, <4"
 debian-watch = "0.4.0"
 #debian-control = { path = "../deb822-lossless/debian-control" }
 #deb822-lossless = { path = "../deb822-lossless" }
+systemd-unit-edit = "0.1.1"
+desktop-edit = "0.1.0"
