@@ -1,5 +1,10 @@
 lintian-brush (0.168) UNRELEASED; urgency=medium
 
+  [ Alexander Kjäll ]
+  * Bump cargo-lock to 11.
+
+  [ Jelmer Vernooĳ ]
+  * Use archive-provided systemd-unit-edit and desktop-edit.
   * Improve man pages: update and complete options, clarify relationship
     between lintian-brush and companion tools. Closes: #1110964
   * Hide more debug output by default. Closes: #1128555
