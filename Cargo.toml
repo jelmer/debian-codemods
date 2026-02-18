@@ -8,7 +8,7 @@ version = "0.163.0"
 
 [workspace.dependencies]
 breezyshim = { version = "0.7.8", features = ["dirty-tracker"] }
-pyo3 = ">=0.27,<0.28"
+pyo3 = ">=0.27,<0.29"
 debversion = "0.5"
 serde_yaml = ">=0.9"
 yaml-rust2 = "0.8"
@@ -34,7 +34,7 @@ buildlog-consultant = "0.0.43"
 upstream-ontologist = "0.3.6"
 sqlx = "0.8"
 semver = "1"
-toml_edit = "0.22"
+toml_edit = ">=0.22,<0.29"
 tokio = "1.39"
 debian-analyzer = { version = "0.160.11" }
 svp-client = "0.2.0"
