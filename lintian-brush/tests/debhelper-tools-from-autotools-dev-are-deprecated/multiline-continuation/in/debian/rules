@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_autoreconf:
+	# Support for HDF5 1.14
+	set -x; [ -f binoculars-ng/src/Hkl/H5.hs.orig ] || \
+	  dpkg --compare-versions '$(HDF5_VERSION)' '<<' 1.12.0 || \
+	  sed -i.orig 's/H5L_info_t/H5L_info1_t/g;s/h5l_iterate/h5l_iterate1/g' binoculars-ng/src/Hkl/H5.hs
+	#dh_autoreconf ./autogen.sh
+	dh_autoreconf

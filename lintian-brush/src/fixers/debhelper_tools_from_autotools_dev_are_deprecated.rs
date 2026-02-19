@@ -1,3 +1,4 @@
+use crate::rules::drop_dh_with_argument;
 use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::relations::ensure_minimum_version;
@@ -5,28 +6,6 @@ use debversion::Version;
 use makefile_lossless::Makefile;
 use std::fs;
 use std::path::Path;
-
-fn drop_dh_with_argument(line: &str, addon: &str) -> String {
-    // Handle various formats of --with arguments
-    // e.g., "dh $@ --with autotools-dev", "dh --with=autotools-dev $@", etc.
-
-    let patterns = vec![format!("--with={}", addon), format!("--with {}", addon)];
-
-    let mut result = line.to_string();
-
-    for pattern in &patterns {
-        if result.contains(pattern) {
-            result = result.replace(pattern, "");
-        }
-    }
-
-    // Clean up extra spaces
-    while result.contains("  ") {
-        result = result.replace("  ", " ");
-    }
-
-    result.trim_end().to_string()
-}
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let rules_path = base_path.join("debian/rules");
