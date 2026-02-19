@@ -6,9 +6,12 @@ default: check
 
 .PHONY: build
 
-check:: testsuite tag-status
+check:: testsuite tag-status check-manpages
 
-.PHONY: testsuite unsupported
+.PHONY: testsuite unsupported check-manpages
+
+check-manpages:
+	for f in debian/*.1 debian/*.5; do man --warnings -l "$$f" > /dev/null || exit 1; done
 
 tag-status::
 	$(MAKE) -C lintian-brush tag-status

@@ -1,30 +1,54 @@
-.TH apply-multiarch-hints "1" "October 2018" "apply-multiarch-hints 0.1" "User Commands"
+.TH apply-multiarch-hints "1" "February 2026" "apply-multiarch-hints" "User Commands"
 .SH NAME
 apply-multiarch-hints \- apply multi-arch hints
 .SH SYNOPSIS
-apply\-multiarch\-hints [\-h] [\-\-no\-update\-changelog] [\-\-version] [\-\-diff\]
+apply\-multiarch\-hints [\fIOPTIONS\fR]
 .SH DESCRIPTION
 Apply multi-arch hints to a package.
-.IP
+.PP
+See https://wiki.debian.org/MultiArch/Hints for more information about multi-arch hints.
+.PP
+Note that because this uses the Debian-specific multi-arch hints, it is not meaningful to use on packages in other distributions.
+It is safe to run alongside lintian-brush and will only make changes when the central database contains applicable hints for binaries in the package.
 .SS "optional arguments:"
 .TP
 \fB\-h\fR, \fB\-\-help\fR
-show this help message and exit
-.TP
-\fB\-\-no\-update\-changelog\fR
-Whether to update the changelog.
+Show this help message and exit.
 .TP
 \fB\-\-version\fR
-show program's version number and exit
+Show program's version number and exit.
+.TP
+\fB\-d\fR, \fB\-\-directory\fR \fIDIR\fR
+Directory to run in. Defaults to the current directory.
+.TP
+\fB\-\-update\-changelog\fR
+Always update the changelog.
+.TP
+\fB\-\-no\-update\-changelog\fR
+Do not update the changelog (useful when using e.g. "gbp dch").
+.TP
+\fB\-\-allow\-reformatting\fR
+Allow reformatting of files that are being changed, so long as this does not
+affect the semantics.
 .TP
 \fB\-\-diff\fR
-After running all fixers, display the changes made as a single unified diff.
+After running, display the changes made as a single unified diff.
+.TP
+\fB\-\-dry\-run\fR
+Run but do not actually make changes to the repository.
 .TP
 \fB\-\-identity\fR
-Print the identity (name and e\-mailaddress) that apply-multiarch-hints will use when committing changes, and exit.
+Print the identity (name and e\-mailaddress) that apply-multiarch-hints will use
+when committing changes, and exit.
 .TP
 \fB\-\-verbose\fR
-Print list of fixers that was run and print tracebacks for failed fixers.
+Print list of hints that were applied.
+.TP
+\fB\-\-debug\fR
+Enable debug output.
+.TP
+\fB\-\-disable\-net\-access\fR
+Do not probe external services.
 .SH ENVIRONMENT
 .TP
 \fBDEB_UPDATE_CHANGELOG\fR

@@ -38,3 +38,10 @@ packages (and coordinated uploads) probably belong in a different tool.
 Fixing upstream issues is out of scope, even though lintian warns about some
 of those issues. Automatic fixing of these issues belongs in a
 distribution-agnostic tool.
+
+Some of the other codemods (apply-multiarch-hints, deb-scrub-obsolete)
+are out of scope for lintian-brush, because they can't be detected off-line,
+and because they are specific to the Debian archive.
+
+lintian-brush is meant to be generic and not specific to Debian, it should
+be possible to use it in other distributions as well.

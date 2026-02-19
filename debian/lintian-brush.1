@@ -1,80 +1,103 @@
-.TH LINTIAN-BRUSH "1" "October 2018" "lintian-brush 0.1" "User Commands"
+.TH LINTIAN-BRUSH "1" "February 2026" "lintian-brush" "User Commands"
 .SH NAME
 lintian-brush \- automatically fix lintian issues
 .SH SYNOPSIS
-lintian\-brush [\-h] [\-\-no\-update\-changelog] [\-\-version] [\-\-list-fixers] [\-\-list-tags\] [\-\-diff\] [TAGS [TAGS ...]]
+lintian\-brush [\fIOPTIONS\fR] [\fITAGS\fR ...]
 .SH DESCRIPTION
 lintian-brush automatically applies a set of fixes for common lintian issues,
 adds the relevant changelog entries and commits the changes to the local
 version control system.
 .PP
-The tool's philosophy is to fix any issues for which it knows a correct fix,
-and to back off if it does not.
-.IP
+The tool's philosophy is to only make changes it is confident are correct, and
+to back off if it is not sure. Maintainers should review the changes made, but
+can rely on lintian-brush not making breaking changes without warning. Changes
+with lower certainty can be enabled with \fB\-\-uncertain\fR.
+.PP
+lintian-brush is designed to be usable on Debian packages as well as packages
+for other distributions based on Debian tooling. Changes requiring an
+archive-wide view (such as removing obsolete dependencies) or a Debian-specific
+central database (such as multi-arch hints) are intentionally out of scope and
+handled by the companion tools \fBdeb-scrub-obsolete\fR(1) and
+\fBapply-multiarch-hints\fR(1) respectively.
+.PP
+Performance is a key aspect: lintian-brush is fast when there is nothing to do,
+and only accesses the network or performs expensive calculations when a fixer
+actually needs to make a change.
 .SS "positional arguments:"
 .TP
-TAGS
-Lintian tag for which to apply fixers.
+\fITAGS\fR
+Lintian tags for which to run fixers. If not specified, all fixers are run.
 .SS "optional arguments:"
 .TP
 \fB\-h\fR, \fB\-\-help\fR
-show this help message and exit
-.TP
-\fB\-\-no\-update\-changelog\fR
-Whether to update the changelog.
+Show this help message and exit.
 .TP
 \fB\-\-version\fR
-show program's version number and exit
+Show program's version number and exit.
+.TP
+\fB\-d\fR, \fB\-\-directory\fR \fIDIR\fR
+Directory to run in. Defaults to the current directory.
+.TP
+\fB\-\-update\-changelog\fR
+Always update the changelog.
+.TP
+\fB\-\-no\-update\-changelog\fR
+Do not update the changelog (useful when using e.g. "gbp dch").
 .TP
 \fB\-\-list\-fixers\fR
-List available fixers.
+List available fixers and exit.
 .TP
 \fB\-\-list\-tags\fR
-List lintian tags for which fixers are available.
+List lintian tags for which fixers are available and exit.
 .TP
-\fB\-\-fixers\-dir\fR DIRECTORY
+\fB\-\-fixers\-dir\fR \fIDIRECTORY\fR
 Override the fixers directory.
+.TP
+\fB\-\-exclude\fR \fIEXCLUDE\fR
+Exclude a fixer from being run. Can be specified multiple times.
 .TP
 \fB\-\-diff\fR
 After running all fixers, display the changes made as a single unified diff.
 .TP
 \fB\-\-modern\fR
-Use features that require packages that are not yet available in Debian stable.
+Use features/compatibility levels that are not yet available in Debian stable
+(makes backporting harder). Conflicts with \fB\-\-compat\-release\fR.
 .TP
 \fB\-\-identity\fR
-Print the identity (name and e\-mailaddress) that lintian-brush will use when committing changes, and exit.
+Print the identity (name and e\-mailaddress) that lintian-brush will use when
+committing changes, and exit.
 .TP
 \fB\-\-disable\-net\-access\fR
-Do not attempt to use the network to e.g. retrieve additional package metadata from hosting sites, or to check whether a homepage is also available over HTTPS.
+Do not attempt to use the network to e.g. retrieve additional package metadata
+from hosting sites, or to check whether a homepage is also available over HTTPS.
 .TP
 \fB\-\-dry\-run\fR
-Run fixers but do not actually make changes to the repository. Useful in particular in combination with \-\-diff.
+Run fixers but do not actually make changes to the repository. Useful in
+particular in combination with \fB\-\-diff\fR.
 .IP
-Note that this currently will create a temporary clone of the repository, which may be slow for large repositories.
+Note that this currently will create a temporary clone of the repository,
+which may be slow for large repositories.
 .TP
 \fB\-\-verbose\fR
-Be more verbose. For example, print list of fixers that was run and print tracebacks for failed fixers.
+Be more verbose. For example, print list of fixers that was run and print
+tracebacks for failed fixers.
 .TP
-\fB\-\-uncertain\fR, \fB--yolo\fR
-Make changes with lower certain than normal. This will potentially fix more
-issues, but is more likely to get things wrong. If changes with lower certainty were made,
-lintian-brush will let you know in its output.
+\fB\-\-debug\fR
+Enable debug output.
+.TP
+\fB\-\-uncertain\fR
+Make changes with lower certainty than normal. This will potentially fix more
+issues, but is more likely to get things wrong. If changes with lower certainty
+were made, lintian-brush will let you know in its output.
 .TP
 \fB\-\-allow\-reformatting\fR
 Allow reformatting of files that are being changed, so long as this does not
 affect the semantics. This could mean stripping whitespace, but in some cases
 could also mean stripping comments.
+.TP
+\fB\-\-stats\fR
+Display statistics on fixer performance after running.
 
-.SH WRITING AND DEBUGGING FIXERS
-Fixer scripts for lintian-brush can be found under \fI/usr/share/lintian-brush/fixers\fR.
-.PP
-Lintian-brush normally takes care of making sure that the working tree doesn't
-contain any pending changes, of reverting changes when a fixer fails and of committing the
-changes and updating debian/changelog if necessary.
-.PP
-However, for testing purposes, you can also run the scripts directly in a
-packaging repository. See /usr/share/doc/lintian-brush/README.md.gz (section
-"Writing new fixers") for details about the expected behaviour from fixer scripts.
 .SH ENVIRONMENT
 .TP
 \fBDEB_UPDATE_CHANGELOG\fR
@@ -88,6 +111,25 @@ Oldest Debian release to stay compatible with.
 \fBUDD_URL\fR
 postgresql connection string to use to connect to UDD. Defaults to the public
 UDD mirror; see https://udd-mirror.debian.net/ for details.
+.SH RELATED TOOLS
+The following tools are shipped alongside lintian-brush and address
+categories of changes that lintian-brush does not cover:
+.TP
+\fBapply-multiarch-hints\fR(1)
+Applies multi-arch hints from a Debian-specific central database to a
+package's debian/control. Because the hints database is Debian-specific
+and not derived from per-package lintian checks, this tool is kept
+separate. It is safe to run alongside lintian-brush and will only make
+changes when applicable hints exist for the package.
+.TP
+\fBdeb-scrub-obsolete\fR(1)
+Removes versioned dependencies, conflicts, and maintscript entries that
+are no longer necessary given a target compatibility release. This is
+separate from lintian-brush because it requires an archive-wide view of
+which packages are present in a given Debian release, rather than
+inspecting the package in isolation. It is safe to run alongside
+lintian-brush and will only make changes when it finds constraints that
+are genuinely obsolete.
 .SH EXAMPLES
 .IP "\fB$ lintian-brush\fR --list-tags"
 List all lintian tags for which fixers are available.
@@ -96,6 +138,7 @@ Run all fixers in the current Debian package.
 .SH "SEE ALSO"
 \&\fIlintian-brush.conf\fR\|(5)
 \&\fIapply-multiarch-hints\fR\|(1)
+\&\fIdeb-scrub-obsolete\fR\|(1)
 \&\fIlintian\fR\|(1)
 .SH AUTHORS
 Jelmer Vernooij <jelmer@debian.org>

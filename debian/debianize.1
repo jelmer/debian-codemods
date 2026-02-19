@@ -1,30 +1,111 @@
-.TH debianize "1" "September 2020" "lintian-brush 0.1" "User Commands"
+.TH debianize "1" "February 2026" "debianize" "User Commands"
 .SH NAME
 debianize \- generate a Debian directory for a package
 .SH SYNOPSIS
-debianize
+debianize [\fIOPTIONS\fR] [\fIUPSTREAM\fR]
 .SH DESCRIPTION
 This experimental command gathers information about a package and generates
 skeleton Debian control files for it. It will fill in the fields for which it
 can find a reasonable value, and leave the other fields unset.
 .PP
-Most of the heavy-lifting is done by the scripts that power lintian-brush\fB(1)\fR.
-.IP
+\fBWarning:\fR debianize is experimental and often generates packaging that is
+incomplete or does not build as-is.
+.SS "positional arguments:"
+.TP
+\fIUPSTREAM\fR
+URL of the upstream repository or source to package.
 .SS "optional arguments:"
 .TP
 \fB\-h\fR, \fB\-\-help\fR
-show this help message and exit
-.TP
-\fB\-\-no\-update\-changelog\fR
-Whether to update the changelog.
+Show this help message and exit.
 .TP
 \fB\-\-version\fR
-show program's version number and exit
+Show program's version number and exit.
+.TP
+\fB\-\-directory\fR \fIDIR\fR
+Directory to run in. Defaults to the current directory.
 .TP
 \fB\-\-verbose\fR
-Print list of fixers that was run and print tracebacks for failed fixers.
+Be more verbose.
+.TP
+\fB\-\-debug\fR
+Enable debug output.
+.TP
+\fB\-\-disable\-net\-access\fR
+Do not probe external services.
+.TP
+\fB\-\-trust\fR
+Whether to allow running code from the package.
+.TP
+\fB\-\-consult\-external\-directory\fR
+Pull in external (not maintained by upstream) directory data.
+.TP
+\fB\-\-check\fR
+Check guessed metadata against external sources.
+.TP
+\fB\-\-force\-new\-directory\fR
+Create a new debian/ directory even if one already exists.
+.TP
+\fB\-x\fR, \fB\-\-iterate\-fix\fR
+Invoke deb-fix-build afterwards to build package and add missing dependencies.
+.TP
+\fB\-i\fR, \fB\-\-install\fR
+Install package after building (implies \fB\-\-iterate\-fix\fR).
+.TP
+\fB\-\-session\fR \fITYPE\fR
+Session type for isolation: plain, schroot[:name], or unshare[:tarball].
+Defaults to "unshare".
+.TP
+\fB\-\-build\-command\fR \fICOMMAND\fR
+Build command to use when \fB\-\-iterate\-fix\fR is active.
+.TP
+\fB\-\-max\-build\-iterations\fR \fIN\fR
+Maximum number of build iterations when using \fB\-\-iterate\-fix\fR. Defaults to 50.
+.TP
+\fB\-\-dist\-command\fR \fICOMMAND\fR
+Command to create a source tarball. Also read from the \fBDIST\fR environment variable.
+.TP
+\fB\-\-debian\-revision\fR \fIREVISION\fR
+Debian revision for the new release. Defaults to "1".
+.TP
+\fB\-\-upstream\-version\fR \fIVERSION\fR
+Upstream version to package.
+.TP
+\fB\-\-dep\-server\-url\fR \fIURL\fR
+ognibuild dep server to use. Also read from the \fBOGNIBUILD_DEPS\fR environment variable.
+.TP
+\fB\-\-team\fR \fINAME\fR
+Maintainer team ("$NAME <$EMAIL>").
+.TP
+\fB\-\-discard\-output\fR
+Store output in a temporary directory (just for testing).
+.TP
+\fB\-\-output\-directory\fR \fIDIR\fR
+Directory to store build output in.
+.TP
+\fB\-r\fR, \fB\-\-recursive\fR
+Attempt to package dependencies if they are not yet packaged.
+.TP
+\fB\-\-debian\-branch\fR \fIBRANCH\fR
+Name of Debian branch to create. Defaults to "%(vendor)s/main".
+Use an empty string to stay at the current branch.
+.TP
+\fB\-\-debian\-binary\fR \fIBINARY\fR
+Package whatever source will create the named Debian binary package.
+.TP
+\fB\-\-upstream\-version\-kind\fR \fIKIND\fR
+What kind of release to package (e.g. "auto", "release", "snapshot").
+Defaults to "auto". Conflicts with \fB\-\-release\fR.
+.TP
+\fB\-\-release\fR
+Package latest upstream release rather than a snapshot.
+.TP
+\fB\-\-requirement\fR \fISPEC\fR
+Package requirement specification (e.g., ">=1.0.0").
+.TP
+\fB\-\-buildsystem\fR \fISYSTEM\fR
+Force specific build system (override detection).
 .SH "SEE ALSO"
-\&\fIlintian-brush.conf\fR\|(5)
 \&\fIlintian-brush\fR\|(1)
 .SH AUTHORS
 Jelmer Vernooij <jelmer@debian.org>

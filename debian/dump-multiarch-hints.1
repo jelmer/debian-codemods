@@ -1,7 +1,23 @@
-.TH dump-multiarch-hints "1" "September 2020" "dump-multiarch-hints 0.1" "User Commands"
+.TH dump-multiarch-hints "1" "February 2026" "dump-multiarch-hints" "User Commands"
 .SH NAME
 dump-multiarch-hints \- Download and print multiarch hints
 .SH SYNOPSIS
 dump\-multiarch\-hints
 .SH DESCRIPTION
-Download and then print multi-arch hints.
+Download the Debian multi-arch hints from the official source and print
+them in a human-readable format. This is primarily a debugging tool for
+inspecting the hints that would be applied by \fBapply-multiarch-hints\fR(1).
+.PP
+See https://wiki.debian.org/MultiArch/Hints for more information about
+multi-arch hints.
+.SS "optional arguments:"
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Show this help message and exit.
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Show program's version number and exit.
+.SH "SEE ALSO"
+\&\fIapply-multiarch-hints\fR\|(1)
+.SH AUTHORS
+Jelmer Vernooij <jelmer@debian.org>

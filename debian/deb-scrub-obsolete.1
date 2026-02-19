@@ -1,12 +1,12 @@
-.TH deb-scrub-obsolete "1" "September 2020" "deb-scrub-obsolete 0.1" "User Commands"
+.TH deb-scrub-obsolete "1" "February 2026" "deb-scrub-obsolete" "User Commands"
 .SH NAME
 deb-scrub-obsolete \- scrub a Debian package of no longer necessary configuration
 .SH SYNOPSIS
-deb\-scrub\-obsolete [\-h] [\-\-no\-update\-changelog] [\-\-version] [\-\-upgrade\-release=RELEASE]
+deb\-scrub\-obsolete [\fIOPTIONS\fR]
 .SH DESCRIPTION
 Scrub a Debian source package from unnecessary versioned depends, conflicts and maintscripts.
 .PP
-Specifically, it make the following categories of changes:
+Specifically, it makes the following categories of changes:
 .IP \[bu]
 obsolete maintscript entries for upgrades from versions older than that in $compat_release
 .IP \[bu]
@@ -19,41 +19,56 @@ replacing dependencies on "transitional dummy packages" with the real thing (if 
 conflicts with packages that are gone since before $compat_release
 .IP \[bu]
 version constraints in build-depends or depends that are met by the package in $compat_release
+.PP
+This tool is separate from lintian-brush since unlike lintian-brush, it needs to take an archive-wide view of the package.
+It is safe to run alongside lintian-brush and will only make changes when it finds constraints that are genuinely obsolete.
 .SS "optional arguments:"
 .TP
 \fB\-h\fR, \fB\-\-help\fR
-show this help message and exit
-.TP
-\fB\-\-no\-update\-changelog\fR
-Whether to update the changelog.
+Show this help message and exit.
 .TP
 \fB\-\-version\fR
-show program's version number and exit
+Show program's version number and exit.
 .TP
-\fB\-\-upgrade\-release=RELEASE\fR
+\fB\-d\fR, \fB\-\-directory\fR \fIDIR\fR
+Directory to run in. Defaults to the current directory.
+.TP
+\fB\-\-no\-update\-changelog\fR
+Do not update the changelog.
+.TP
+\fB\-\-update\-changelog\fR
+Always update the changelog.
+.TP
+\fB\-u\fR, \fB\-\-upgrade\-release\fR \fIRELEASE\fR
 Don't remove any constraints that are necessary for upgrading from RELEASE or
-newer releases. This can either be a codename ("bookworm"), or an alias ("unstable", "old-old-stable").
-For a full list options, see \fBdistro-info\fR(1).
+newer releases. This can either be a codename ("bookworm"), or an alias
+("unstable", "old-old-stable"). Defaults to "oldstable".
+For a full list of options, see \fBdistro-info\fR(1).
 .TP
-\fB\-\-compat\-release=RELEASE\fR
+\fB\-c\fR, \fB\-\-compat\-release\fR \fIRELEASE\fR
 Don't remove any constraints that are necessary for building on RELEASE or
-newer releases. This can either be a codename ("bookworm"), or an alias ("unstable", "old-old-stable").
-For a full list options, see \fBdistro-info\fR(1).
+newer releases. This can either be a codename ("bookworm"), or an alias
+("unstable", "old-old-stable").
+For a full list of options, see \fBdistro-info\fR(1).
 .TP
 \fB\-\-identity\fR
-Print the identity (name and e\-mailaddress) that apply-multiarch-hints will use when committing changes, and exit.
+Print the identity (name and e\-mailaddress) that deb-scrub-obsolete will use
+when committing changes, and exit.
 .TP
 \fB\-\-debug\fR
-Print debugging information
+Print debugging information.
 .TP
-\fB\-\-keep-minimum-depends-versions\fR
-Keep minimum version dependencies, even when unnecessary
+\fB\-\-keep\-minimum\-depends\-versions\fR
+Keep minimum version dependencies, even when unnecessary.
 .SH ENVIRONMENT
 .TP
 \fBDEB_UPDATE_CHANGELOG\fR
 Used to control whether the changelog should be updated, depending on whether
 it is set to "leave", "update" or "auto". The --update-changelog and --no-update-changelog arguments
 override this.
+.TP
+\fBCOMPAT_RELEASE\fR
+Oldest Debian release to stay compatible with. Overridden by \fB\-\-compat\-release\fR.
 .SH "SEE ALSO"
 \&\fIlintian-brush.conf\fR\|(5)
 \&\fIlintian-brush\fR\|(1)
