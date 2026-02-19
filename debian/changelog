@@ -1,3 +1,10 @@
+lintian-brush (0.168) UNRELEASED; urgency=medium
+
+  * Improve man pages: update and complete options, clarify relationship
+    between lintian-brush and companion tools. Closes: #1110964
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 19 Feb 2026 01:48:02 +0000
+
 lintian-brush (0.167) unstable; urgency=medium
 
   * Update watch file handling to use version 5 format. Closes: #1127489

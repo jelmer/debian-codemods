@@ -1,21 +1,31 @@
-.TH DETECT-CHANGELOG-BEHAVIOUR "1" "November 2023" "detect-changelog-behaviour 0.150.0" "User Commands"
+.TH DETECT-CHANGELOG-BEHAVIOUR "1" "February 2026" "detect-changelog-behaviour" "User Commands"
 .SH NAME
-detect-changelog-behaviour \- Detect changelog behaviour
+detect-changelog-behaviour \- Detect changelog update behaviour
 .SH SYNOPSIS
 .B detect-changelog-behaviour
-[\fI\,OPTIONS\/\fR] [\fI\,DIRECTORY\/\fR]
+[\fIOPTIONS\fR] [\fIDIRECTORY\fR]
 .SH DESCRIPTION
-.SS "Arguments:"
+detect-changelog-behaviour inspects a Debian package's version control
+configuration (e.g. gbp.conf) and heuristics to determine whether the
+changelog is managed automatically (e.g. by "gbp dch") or manually updated.
+It prints "true" if the changelog should be updated, or "false" if it is
+managed automatically, and exits with a non-zero status if it cannot determine
+the behaviour.
+.SS "positional arguments:"
 .TP
-[DIRECTORY]
-The directory to check [default: .]
-.SH OPTIONS
-.TP
-\fB\-\-verbose\fR
-Be verbose
+\fIDIRECTORY\fR
+The directory to check. Defaults to the current directory.
+.SS "optional arguments:"
 .TP
 \fB\-h\fR, \fB\-\-help\fR
-Print help
+Show this help message and exit.
 .TP
 \fB\-V\fR, \fB\-\-version\fR
-Print version
+Show program's version number and exit.
+.TP
+\fB\-\-verbose\fR
+Be verbose.
+.SH "SEE ALSO"
+\&\fIlintian-brush\fR\|(1)
+.SH AUTHORS
+Jelmer Vernooij <jelmer@debian.org>

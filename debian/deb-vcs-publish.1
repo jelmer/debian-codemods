@@ -1,31 +1,41 @@
-.TH DEB-VCS-PUBLISH "1" "November 2023" "deb-vcs-publish 0.150.0" "User Commands"
+.TH DEB-VCS-PUBLISH "1" "February 2026" "deb-vcs-publish" "User Commands"
 .SH NAME
 deb\-vcs\-publish \- Publish a Debian package to its VCS repository
 .SH SYNOPSIS
 .B deb-vcs-publish
-[\fI\,OPTIONS\/\fR] [\fI\,NO_CREATE\/\fR] [\fI\,FORCE\/\fR] [\fI\,PUSH\/\fR] [\fI\,URL\/\fR]
+[\fIOPTIONS\fR] [\fIURL\fR]
 .SH DESCRIPTION
-.SS "Arguments:"
+deb-vcs-publish updates the Vcs-Git/Vcs-Browser fields in debian/control
+based on the hosting location of the repository, creates the remote repository
+if it does not exist yet, and pushes the current branch to it.
+.SS "positional arguments:"
 .TP
-[NO_CREATE]
-Do not create the repository
-.IP
-[FORCE]
-[PUSH]       Push branch
-[URL]
-.SH OPTIONS
-.TP
-\fB\-\-debug\fR
-Enable debug output
-.TP
-\fB\-\-identity\fR
-Print user identity that would be used when committing
-.TP
-\fB\-d\fR, \fB\-\-directory\fR <DIR>
-directory to run in [default: .]
+\fIURL\fR
+URL of the VCS repository to publish to. If not specified, derived from
+the existing Vcs-* fields in debian/control.
+.SS "optional arguments:"
 .TP
 \fB\-h\fR, \fB\-\-help\fR
-Print help
+Show this help message and exit.
 .TP
 \fB\-V\fR, \fB\-\-version\fR
-Print version
+Show program's version number and exit.
+.TP
+\fB\-d\fR, \fB\-\-directory\fR \fIDIR\fR
+Directory to run in. Defaults to the current directory.
+.TP
+\fB\-\-no\-create\fR
+Do not create the remote repository if it does not exist.
+.TP
+\fB\-\-force\fR
+Overwrite existing Vcs-* fields in debian/control.
+.TP
+\fB\-\-debug\fR
+Enable debug output.
+.TP
+\fB\-\-identity\fR
+Print user identity that would be used when committing.
+.SH "SEE ALSO"
+\&\fIlintian-brush\fR\|(1)
+.SH AUTHORS
+Jelmer Vernooij <jelmer@debian.org>
