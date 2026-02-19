@@ -1,0 +1,8 @@
+Source: test-package
+Maintainer: Test <test@example.com>
+Build-Depends: debhelper-compat (= 13)
+
+Package: test-package
+Architecture: any
+Description: Test package
+ Test package description.

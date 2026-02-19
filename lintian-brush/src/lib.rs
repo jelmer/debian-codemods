@@ -33,6 +33,8 @@ pub mod fixers;
 pub mod licenses;
 /// Lintian overrides parsing and manipulation
 pub mod lintian_overrides;
+/// Utilities for manipulating debian/rules files
+pub mod rules;
 /// Upstream metadata handling
 pub mod upstream_metadata;
 pub mod vcs;
