@@ -59,7 +59,16 @@ when committing changes, and exit.
 Print debugging information.
 .TP
 \fB\-\-keep\-minimum\-depends\-versions\fR
-Keep minimum version dependencies, even when unnecessary.
+Keep minimum version constraints in dependencies, even when the constraint
+is satisfied by the package version in $compat_release and thus technically
+unnecessary.
+.IP
+Some teams deliberately maintain minimum version constraints to document
+upstream requirements, track which dependency versions are needed for
+backporting, or to express a semantic dependency on a specific feature
+introduced in a particular version. In such cases, using this option avoids
+accidentally removing constraints that carry intentional meaning beyond
+mere historical necessity.
 .SH ENVIRONMENT
 .TP
 \fBDEB_UPDATE_CHANGELOG\fR
