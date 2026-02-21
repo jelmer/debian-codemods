@@ -323,7 +323,7 @@ fn update_rules_for_compat_12(
                             tracing::debug!("No buildsystem detected");
                         }
                         Err(e) => {
-                            tracing::warn!("Failed to detect buildsystem: {}", e);
+                            tracing::debug!("Failed to detect buildsystem: {}", e);
                         }
                     }
                 } else if new_recipe.contains("buildsystem=pybuild")

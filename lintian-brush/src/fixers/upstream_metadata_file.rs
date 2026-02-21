@@ -491,7 +491,7 @@ pub fn run(
     );
 
     if changed_fields.is_empty() && !repository_converted {
-        warn!("No changes detected, returning NoChanges");
+        debug!("No changes detected, returning NoChanges");
         return Err(FixerError::NoChanges);
     }
 

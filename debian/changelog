@@ -2,6 +2,7 @@ lintian-brush (0.168) UNRELEASED; urgency=medium
 
   * Improve man pages: update and complete options, clarify relationship
     between lintian-brush and companion tools. Closes: #1110964
+  * Hide more debug output by default. Closes: #1128555
   * debhelper-tools-from-autotools-dev-are-deprecated fixer: fix removal
     of --with argument to avoid corrupting unrelated lines. Closes:
     #1128193
