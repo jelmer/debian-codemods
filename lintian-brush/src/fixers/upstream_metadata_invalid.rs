@@ -1,7 +1,7 @@
 use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
 use indexmap::IndexMap;
 use std::path::Path;
-use tracing::warn;
+use tracing::{debug, warn};
 use yaml_edit::Value;
 
 const SEQUENCE_FIELDS: &[&str] = &["Reference", "Screenshots"];
@@ -193,7 +193,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             }
             Ok(None) => {}
             Err(e) => {
-                warn!("Failed to fix duplicate keys: {}", e);
+                debug!("Failed to fix duplicate keys: {}", e);
             }
         }
     } else {
@@ -227,7 +227,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
                         }
                     }
                     Err(e) => {
-                        warn!("Failed to fix mapping structure: {}", e);
+                        debug!("Failed to fix mapping structure: {}", e);
                     }
                 }
             }
@@ -239,7 +239,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         }
         Ok(None) => {}
         Err(e) => {
-            warn!("Failed to check mapping structure: {}", e);
+            debug!("Failed to check mapping structure: {}", e);
         }
     }
 
@@ -248,7 +248,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         Ok(Some(desc)) => descriptions.push(desc),
         Ok(None) => {}
         Err(e) => {
-            warn!("Failed to fix empty documents: {}", e);
+            debug!("Failed to fix empty documents: {}", e);
         }
     }
 
