@@ -27,10 +27,12 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     };
 
     // If the last entry already has bugs closed, nothing to do
+    // Check case-insensitively to catch both "Closes:" and "closes:"
     let bugs_closed: Vec<String> = last_entry
         .change_lines()
         .filter_map(|line| {
-            if line.contains("Closes:") {
+            let line_lower = line.to_lowercase();
+            if line_lower.contains("closes:") || line_lower.contains("closes #") {
                 Some(line.to_string())
             } else {
                 None
@@ -192,6 +194,23 @@ mod tests {
 
         let changelog_path = debian_dir.join("changelog");
         let content = "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release. Closes: #123456\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n";
+        fs::write(&changelog_path, content).unwrap();
+
+        let preferences = FixerPreferences::default();
+        let result = run(base_path, &preferences);
+        assert!(matches!(result, Err(FixerError::NoChanges)));
+    }
+
+    #[test]
+    fn test_already_has_bugs_closed_lowercase() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        let changelog_path = debian_dir.join("changelog");
+        // Test with lowercase "closes:" in parentheses, as seen in bug #1128557
+        let content = "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release (closes: #123456).\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n";
         fs::write(&changelog_path, content).unwrap();
 
         let preferences = FixerPreferences::default();
