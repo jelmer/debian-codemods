@@ -398,7 +398,7 @@ pub fn run(
             }
             Err(e) => {
                 if matches!(e, debian_watch::discover::DiscoveryError::HttpError(_)) {
-                    tracing::warn!("HTTP error accessing discovery URL: {}", e);
+                    tracing::debug!("HTTP error accessing discovery URL: {}", e);
                     return Err(FixerError::NoChanges);
                 }
                 return Err(FixerError::Other(format!(
@@ -440,7 +440,7 @@ pub fn run(
                     used_mangles.push(None);
                 }
                 Err(e) => {
-                    tracing::warn!("Error probing signature: {}", e);
+                    tracing::debug!("Error probing signature: {}", e);
                     used_mangles.push(None);
                 }
             }
@@ -538,7 +538,7 @@ pub fn run(
 
             // Only fetch from keyservers if net_access is enabled
             if !preferences.net_access.unwrap_or(false) {
-                tracing::warn!("Cannot fetch keys without network access");
+                tracing::debug!("Cannot fetch keys without network access");
                 return Err(FixerError::NoChanges);
             }
 
@@ -559,7 +559,7 @@ pub fn run(
                 let response = match client.get(&url).send() {
                     Ok(resp) if resp.status().is_success() => resp,
                     Ok(resp) => {
-                        tracing::warn!(
+                        tracing::debug!(
                             "Keyserver returned status {} for key {}",
                             resp.status(),
                             fingerprint
@@ -567,7 +567,7 @@ pub fn run(
                         return Err(FixerError::NoChanges);
                     }
                     Err(e) => {
-                        tracing::warn!("Failed to fetch key {}: {}", fingerprint, e);
+                        tracing::debug!("Failed to fetch key {}: {}", fingerprint, e);
                         return Err(FixerError::NoChanges);
                     }
                 };
@@ -591,7 +591,7 @@ pub fn run(
             }
 
             if keyfile_content.is_empty() {
-                tracing::warn!("No keys could be fetched");
+                tracing::debug!("No keys could be fetched");
                 return Err(FixerError::NoChanges);
             }
 

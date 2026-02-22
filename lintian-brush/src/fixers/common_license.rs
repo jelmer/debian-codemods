@@ -356,7 +356,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
                 renames.insert(synopsis.clone(), new_name.to_string());
             } else {
                 // Found full license text but no matching blurb and not in SPDX_RENAMES
-                tracing::warn!(
+                tracing::debug!(
                     "Found full license text for {}, but unknown synopsis {} ({})",
                     license_matched,
                     synopsis,
@@ -367,7 +367,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             // No full license text match - check if synopsis looks like a common license
             let common_license_path = Path::new(COMMON_LICENSES_DIR).join(&synopsis);
             if common_license_path.exists() {
-                tracing::warn!(
+                tracing::debug!(
                     "A common license shortname ({}) is used, but license text not recognized.",
                     synopsis
                 );

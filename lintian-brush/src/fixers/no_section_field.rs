@@ -15,10 +15,10 @@ fn get_name_section_mappings(
         Path::new("/usr/share/lintian/data/fields/name_section_mappings").to_path_buf()
     };
 
-    let content = fs::read_to_string(mappings_path)?;
+    let content = fs::read_to_string(&mappings_path)?;
     let mut regexes = Vec::new();
 
-    for line in content.lines() {
+    for (lineno, line) in content.lines().enumerate() {
         let line = line.trim();
         if line.starts_with('#') || line.is_empty() {
             continue;
@@ -33,7 +33,13 @@ fn get_name_section_mappings(
                     regexes.push((regex, section.to_string()));
                 }
                 Err(e) => {
-                    tracing::warn!("Invalid regex '{}': {}", regex_str, e);
+                    tracing::warn!(
+                        "{}:{}: Invalid regex '{}': {}",
+                        mappings_path.display(),
+                        lineno + 1,
+                        regex_str,
+                        e
+                    );
                     continue;
                 }
             }

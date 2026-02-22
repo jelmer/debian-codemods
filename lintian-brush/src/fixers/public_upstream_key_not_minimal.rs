@@ -201,7 +201,7 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
                         format_upgraded = true;
                     }
                     Err(e) => {
-                        tracing::warn!("Unable to minimize key block in {}: {}", path_str, e);
+                        tracing::debug!("Unable to minimize key block in {}: {}", path_str, e);
                         outlines.extend_from_slice(&key_block);
                     }
                 }
