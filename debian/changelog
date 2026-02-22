@@ -11,6 +11,9 @@ lintian-brush (0.168) UNRELEASED; urgency=medium
     #1128554
   * initial-upload-closes-no-bugs fixer: fix duplicate bug references by
     checking case-insensitively. Closes: #1128557
+  * Add new debian-watch-use-templates fixer to convert v5 watch files
+    from explicit Source/Matching-Pattern to template syntax where
+    possible. Closes: #1128553
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 19 Feb 2026 01:48:02 +0000
 
