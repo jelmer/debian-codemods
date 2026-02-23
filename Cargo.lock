@@ -1185,6 +1185,8 @@ dependencies = [
 [[package]]
 name = "desktop-edit"
 version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8cbd24ecd7f640176cfd5f18e990dc53413870e98ed2c638ef4f98c131628d7"
 dependencies = [
  "rowan",
 ]
@@ -5409,7 +5411,9 @@ dependencies = [
 
 [[package]]
 name = "systemd-unit-edit"
-version = "0.1.3"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3645239b79b5f516e3f4799b9d915689f5477d2a7fbe222acd6ffe5a64b5916d"
 dependencies = [
  "rowan",
 ]
