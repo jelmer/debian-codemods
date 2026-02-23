@@ -143,6 +143,9 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 declare_fixer! {
     name: "vcs-field-uses-insecure-uri",
     tags: ["vcs-field-uses-insecure-uri"],
+    // Must convert http to https after canonicalization and before format improvements
+    after: ["vcs-field-not-canonical"],
+    before: ["vcs-field-uses-not-recommended-uri-format"],
     apply: |basedir, _package, _version, preferences| {
         run(basedir, preferences)
     }

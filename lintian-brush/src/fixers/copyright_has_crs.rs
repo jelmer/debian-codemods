@@ -39,6 +39,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "copyright-has-crs",
     tags: ["copyright-has-crs"],
+    // Must normalize line endings before whitespace cleanup to avoid corrupting content
+    before: ["file-contains-trailing-whitespace"],
     apply: |basedir, _package, _version, _preferences| {
         run(basedir)
     }

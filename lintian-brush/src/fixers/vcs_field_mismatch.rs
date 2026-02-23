@@ -96,6 +96,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "vcs-field-mismatch",
     tags: ["vcs-field-mismatch"],
+    // Must fix type mismatches after broken URIs and before canonicalization
+    after: ["vcs-broken-uri"],
+    before: ["vcs-field-not-canonical"],
     apply: |basedir, _package, _version, _preferences| {
         run(basedir)
     }

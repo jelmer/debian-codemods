@@ -5,6 +5,9 @@ use std::fs;
 declare_fixer! {
     name: "unversioned-copyright-format-uri",
     tags: ["unversioned-copyright-format-uri"],
+    // Must run after URI is converted to https and before updating to latest version
+    after: ["copyright-format-uri"],
+    before: ["out-of-date-copyright-format-uri"],
     apply: |basedir, _package, _version, _preferences| {
         let copyright_path = basedir.join("debian").join("copyright");
 

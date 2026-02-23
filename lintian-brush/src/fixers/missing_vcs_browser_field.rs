@@ -65,6 +65,8 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 declare_fixer! {
     name: "missing-vcs-browser-field",
     tags: ["missing-vcs-browser-field"],
+    // Must add browser field after all VCS URL improvements are complete
+    after: ["vcs-field-uses-not-recommended-uri-format"],
     apply: |basedir, _package, _version, preferences| {
         run(basedir, preferences)
     }
