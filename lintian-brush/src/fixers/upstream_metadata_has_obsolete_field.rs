@@ -1,7 +1,8 @@
 use crate::{FixerError, FixerPreferences, FixerResult};
 use debian_copyright::lossless::Copyright;
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
@@ -56,16 +57,17 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     let mut obsolete_fields: HashMap<String, String> = HashMap::new();
     let mut removed_fields: Vec<String> = Vec::new();
 
-    let mut updater = yaml_edit::YamlUpdater::new(&metadata_path)
-        .map_err(|e| FixerError::Other(format!("Failed to create YAML updater: {}", e)))?;
-
-    let doc = updater
-        .open()
+    let yaml_file = yaml_edit::YamlFile::from_path(&metadata_path)
         .map_err(|e| FixerError::Other(format!("Failed to open YAML: {}", e)))?;
 
+    let doc = yaml_file.document().ok_or(FixerError::NoChanges)?;
+
+    let Some(mapping) = doc.as_mapping() else {
+        return Err(FixerError::NoChanges);
+    };
+
     // Check if Name or Contact fields exist in the metadata
-    let has_name_or_contact =
-        doc.contains_key("Name").unwrap_or(false) || doc.contains_key("Contact").unwrap_or(false);
+    let has_name_or_contact = mapping.keys().any(|k| k == "Name" || k == "Contact");
 
     // If the debian/copyright file is machine-readable, then we can drop the
     // Name/Contact information from the debian/upstream/metadata file.
@@ -75,41 +77,56 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     }
 
     // First pass: remove null and empty fields
-    for field in ["Name", "Contact"] {
-        let value_opt = doc
-            .get(field)
-            .map_err(|e| FixerError::Other(format!("Failed to get field {}: {}", field, e)))?;
+    // Note: We need to check keys() because mapping.get() returns None for empty values
+    let keys_to_check: Vec<String> = mapping.keys()
+        .filter_map(|node| {
+            match node {
+                yaml_edit::YamlNode::Scalar(scalar) => {
+                    let key = scalar.as_string();
+                    if key == "Name" || key == "Contact" {
+                        Some(key)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }
+        })
+        .collect();
 
-        if let Some(value) = value_opt {
-            let is_empty_or_null = match value {
-                yaml_edit::Value::Null => true,
-                yaml_edit::Value::String(s) => s.trim().is_empty(),
-                _ => false,
+    for field in keys_to_check {
+        // Check if the field has a value
+        if let Some(value) = mapping.get(&field) {
+            // Has a non-null value, check if it's empty
+            let is_empty_or_null = if let Some(scalar) = value.as_scalar() {
+                let s = scalar.value();
+                s.trim().is_empty() || s == "null" || s == "~"
+            } else {
+                false
             };
 
             if is_empty_or_null {
-                doc.remove(field).map_err(|e| {
-                    FixerError::Other(format!("Failed to remove field {}: {}", field, e))
-                })?;
-                removed_fields.push(field.to_string());
+                mapping.remove(&field);
+                removed_fields.push(field);
             }
+        } else {
+            // mapping.get() returned None, which means it's an empty/null value
+            mapping.remove(&field);
+            removed_fields.push(field);
         }
     }
 
     // Second pass: check for obsolete fields
     for (field, copyright_value) in &obsolete_fields {
-        let um_value_opt = doc
-            .get(field)
-            .map_err(|e| FixerError::Other(format!("Failed to get field {}: {}", field, e)))?;
-
-        let Some(um_value) = um_value_opt else {
+        let Some(um_value) = mapping.get(field.as_str()) else {
             continue;
         };
 
-        let um_str = match um_value {
-            yaml_edit::Value::String(s) => s,
-            _ => continue,
+        let Some(scalar) = um_value.as_scalar() else {
+            continue;
         };
+
+        let um_str = scalar.value();
 
         // Split both values by separator characters and compare as sets
         let copyright_entries: HashSet<String> = split_sep_chars(copyright_value)
@@ -125,8 +142,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
             continue;
         }
 
-        doc.remove(field)
-            .map_err(|e| FixerError::Other(format!("Failed to remove field {}: {}", field, e)))?;
+        mapping.remove(field.as_str());
         if !removed_fields.contains(field) {
             removed_fields.push(field.clone());
         }
@@ -137,26 +153,35 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     }
 
     // If only addon-only fields remain, clear the file
-    let remaining_keys: HashSet<String> = doc
-        .keys()
-        .map_err(|e| FixerError::Other(format!("Failed to get keys: {}", e)))?
-        .into_iter()
+    let remaining_keys: HashSet<String> = mapping.keys()
+        .filter_map(|node| {
+            match node {
+                yaml_edit::YamlNode::Scalar(scalar) => Some(scalar.as_string()),
+                _ => None,
+            }
+        })
         .collect();
 
     let addon_only_set: HashSet<String> =
         ADDON_ONLY_FIELDS.iter().map(|&s| s.to_string()).collect();
 
-    if remaining_keys.difference(&addon_only_set).count() == 0 {
-        // Clear the file - the YamlUpdater will remove the file and directory
-        // automatically when closed since it has remove_empty=True by default
-        doc.clear()
-            .map_err(|e| FixerError::Other(format!("Failed to clear YAML: {}", e)))?;
-    }
+    let should_remove_file = remaining_keys.difference(&addon_only_set).count() == 0;
 
-    // Close updater to save changes (or remove file if empty)
-    updater
-        .close()
-        .map_err(|e| FixerError::Other(format!("Failed to close YAML: {}", e)))?;
+    if should_remove_file {
+        // Remove the file entirely
+        fs::remove_file(&metadata_path)
+            .map_err(|e| FixerError::Other(format!("Failed to remove file: {}", e)))?;
+
+        // Try to remove the directory if it's empty
+        if let Some(parent) = metadata_path.parent() {
+            let _ = fs::remove_dir(parent); // Ignore error if directory is not empty
+        }
+    } else {
+        // Save changes
+        let content = yaml_file.to_string();
+        fs::write(&metadata_path, content)
+            .map_err(|e| FixerError::Other(format!("Failed to write file: {}", e)))?;
+    }
 
     removed_fields.sort();
 
@@ -210,7 +235,7 @@ Contact: null
         assert!(result.is_ok());
 
         let updated = fs::read_to_string(upstream_dir.join("metadata")).unwrap();
-        assert_eq!(updated, "Name: test-package\n");
+        assert_eq!(updated, "Name: test-package");
     }
 
     #[test]

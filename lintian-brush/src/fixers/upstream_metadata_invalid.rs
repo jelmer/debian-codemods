@@ -1,11 +1,14 @@
-use crate::{FixerError, FixerPreferences, FixerResult};
-use indexmap::IndexMap;
+use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use std::collections::HashMap;
 use std::path::Path;
 use tracing::debug;
 use yaml_edit::Value;
 
 const SEQUENCE_FIELDS: &[&str] = &["Reference", "Screenshots"];
 
+/// Fix duplicate keys by merging them
+/// For sequence fields, merge values into a list
+/// For other fields, keep the first value
 fn fix_duplicate_keys(base_path: &Path) -> Result<Option<Vec<String>>, FixerError> {
     let metadata_path = base_path.join("debian/upstream/metadata");
 
@@ -13,11 +16,88 @@ fn fix_duplicate_keys(base_path: &Path) -> Result<Option<Vec<String>>, FixerErro
         return Ok(None);
     }
 
-    // Merge duplicates directly at the node level (preserves formatting like "01")
-    let removed_fields = yaml_edit::merge_duplicate_keys_in_place(&metadata_path, SEQUENCE_FIELDS)
-        .map_err(|e| FixerError::Other(format!("Failed to merge duplicate keys: {}", e)))?;
+    let doc = yaml_edit::Document::from_file(&metadata_path)
+        .map_err(|e| FixerError::Other(format!("Failed to open YAML: {}", e)))?;
 
-    Ok(removed_fields)
+    let Some(mapping) = doc.as_mapping() else {
+        return Ok(None);
+    };
+
+    // Collect all keys with their actual YamlNode values to detect duplicates
+    let mut key_values: HashMap<String, Vec<yaml_edit::YamlNode>> = HashMap::new();
+
+    for (key, value) in mapping.iter() {
+        if let yaml_edit::YamlNode::Scalar(key_scalar) = key {
+            let key_str = key_scalar.as_string();
+            key_values.entry(key_str).or_default().push(value);
+        }
+    }
+
+    // Find keys with duplicates
+    let duplicate_keys: Vec<String> = key_values
+        .iter()
+        .filter(|(_, values)| values.len() > 1)
+        .map(|(key, _)| key.clone())
+        .collect();
+
+    if duplicate_keys.is_empty() {
+        return Ok(None);
+    }
+
+    // Build a new mapping with merged values
+    let mut removed_fields = Vec::new();
+
+    for key in &duplicate_keys {
+        let values = &key_values[key];
+
+        // Determine if this is a sequence field
+        let is_sequence_field = SEQUENCE_FIELDS.contains(&key.as_str());
+
+        if is_sequence_field {
+            // For sequence fields, create a proper sequence using SequenceBuilder
+            // Remove ALL occurrences of the duplicate key
+            while mapping.remove(key.as_str()).is_some() {}
+
+            let mut seq_builder = yaml_edit::YamlBuilder::sequence();
+            for value in values {
+                seq_builder = seq_builder.item(value);
+            }
+            let yaml_builder = seq_builder.build();
+            let seq_file = yaml_builder.build();
+
+            // Extract the sequence from the built file
+            if let Some(seq_doc) = seq_file.documents().next() {
+                if let Some(seq) = seq_doc.as_sequence() {
+                    mapping.set(key.as_str(), seq);
+                }
+            }
+        } else {
+            // For non-sequence fields, keep the first value (already in place)
+            // Just remove all other duplicate entries (skip the first)
+            let entries_to_remove: Vec<_> = mapping
+                .entries()
+                .enumerate()
+                .filter(|(i, e)| *i > 0 && e.key_matches(key.as_str()))
+                .map(|(_, e)| e)
+                .collect();
+
+            for entry in entries_to_remove {
+                entry.remove();
+            }
+        }
+
+        // Add the field name once for each duplicate (values.len() - 1 times)
+        // E.g., if there are 3 "Reference" keys, add "Reference" 2 times
+        for _ in 0..(values.len() - 1) {
+            removed_fields.push(key.clone());
+        }
+    }
+
+    // Save the document
+    doc.to_file(&metadata_path)
+        .map_err(|e| FixerError::Other(format!("Failed to save YAML: {}", e)))?;
+
+    Ok(Some(removed_fields))
 }
 
 fn check_not_mapping(base_path: &Path) -> Result<Option<usize>, FixerError> {
@@ -27,81 +107,87 @@ fn check_not_mapping(base_path: &Path) -> Result<Option<usize>, FixerError> {
         return Ok(None);
     }
 
-    let mut updater = yaml_edit::YamlUpdater::new(&metadata_path)
-        .map_err(|e| FixerError::Other(format!("Failed to create updater: {}", e)))?;
+    let doc = yaml_edit::Document::from_file(&metadata_path)
+        .map_err(|e| FixerError::Other(format!("Failed to open YAML: {}", e)))?;
 
-    let doc = updater
-        .open()
-        .map_err(|e| FixerError::Other(format!("Failed to open: {}", e)))?;
+    // Check if the document is a sequence instead of a mapping
+    if let Some(sequence) = doc.as_sequence() {
+        let items: Vec<_> = sequence.values().collect();
 
-    let is_list = doc
-        .is_list()
-        .map_err(|e| FixerError::Other(format!("Failed to check if list: {}", e)))?;
+        // Check if it's a single-element list
+        if items.len() == 1 {
+            return Ok(Some(1));
+        }
 
-    if !is_list {
-        return Ok(None);
+        // Check if all items are single-key mappings
+        let all_single_key_mappings = items.iter().all(|item| {
+            if let yaml_edit::YamlNode::Mapping(mapping_node) = item {
+                mapping_node.entries().count() == 1
+            } else {
+                false
+            }
+        });
+
+        if all_single_key_mappings {
+            return Ok(Some(items.len()));
+        }
     }
 
-    let all_value = doc
-        .get_all()
-        .map_err(|e| FixerError::Other(format!("Failed to get all: {}", e)))?;
-
-    let count = match all_value {
-        Value::List(ref items) if items.len() == 1 => 1,
-        Value::List(ref items)
-            if items
-                .iter()
-                .all(|item| matches!(item, Value::Map(m) if m.len() == 1)) =>
-        {
-            items.len()
-        }
-        _ => 0,
-    };
-
-    Ok(if count > 0 { Some(count) } else { None })
+    Ok(None)
 }
 
 fn fix_not_mapping(base_path: &Path) -> Result<(), FixerError> {
     let metadata_path = base_path.join("debian/upstream/metadata");
 
-    let mut updater = yaml_edit::YamlUpdater::new(&metadata_path)
-        .map_err(|e| FixerError::Other(format!("Failed to create updater: {}", e)))?;
+    let doc = yaml_edit::Document::from_file(&metadata_path)
+        .map_err(|e| FixerError::Other(format!("Failed to open YAML: {}", e)))?;
 
-    let doc = updater
-        .open()
-        .map_err(|e| FixerError::Other(format!("Failed to open: {}", e)))?;
-
-    let all_value = doc
-        .get_all()
-        .map_err(|e| FixerError::Other(format!("Failed to get all: {}", e)))?;
-
-    match all_value {
-        Value::List(ref items) if items.len() == 1 => {
-            // Single element list - unwrap it
-            doc.set_all(items[0].clone())
-                .map_err(|e| FixerError::Other(format!("Failed to set all: {}", e)))?;
-        }
-        Value::List(ref items)
-            if items
-                .iter()
-                .all(|item| matches!(item, Value::Map(m) if m.len() == 1)) =>
-        {
-            // List of single-key dicts - merge them
-            let mut merged = IndexMap::new();
-            for item in items {
-                if let Value::Map(m) = item {
-                    merged.extend(m.clone());
-                }
-            }
-            doc.set_all(Value::Map(merged))
-                .map_err(|e| FixerError::Other(format!("Failed to set all: {}", e)))?;
-        }
-        _ => {}
+    let Some(sequence) = doc.as_sequence() else {
+        return Ok(());
     };
 
-    updater
-        .close()
-        .map_err(|e| FixerError::Other(format!("Failed to close: {}", e)))?;
+    let items: Vec<_> = sequence.values().collect();
+
+    if items.len() == 1 {
+        // Single element list - unwrap it by getting its text and re-parsing
+        let item_text = items[0].to_string().trim().to_string();
+        std::fs::write(&metadata_path, item_text)
+            .map_err(|e| FixerError::Other(format!("Failed to write file: {}", e)))?;
+    } else {
+        // List of single-key dicts - merge them into a single mapping
+        let all_single_key_mappings = items.iter().all(|item| {
+            if let yaml_edit::YamlNode::Mapping(mapping_node) = item {
+                mapping_node.entries().count() == 1
+            } else {
+                false
+            }
+        });
+
+        if all_single_key_mappings {
+            // Build a new mapping and document
+            let new_mapping = yaml_edit::Mapping::new();
+            let new_doc = yaml_edit::Document::from_mapping(new_mapping);
+
+            // Get the mapping from the document (they share the same underlying data)
+            let doc_mapping = new_doc.as_mapping().unwrap();
+
+            // Collect all key-value pairs from the items
+            for item in items {
+                if let yaml_edit::YamlNode::Mapping(mapping_node) = item {
+                    for (key, value) in mapping_node.iter() {
+                        if let yaml_edit::YamlNode::Scalar(key_scalar) = key {
+                            let key_str = key_scalar.as_string();
+                            doc_mapping.set(key_str, value);
+                        }
+                    }
+                }
+            }
+
+            let content = doc_mapping.to_string();
+            std::fs::write(&metadata_path, content)
+                .map_err(|e| FixerError::Other(format!("Failed to write file: {}", e)))?;
+        }
+    }
 
     Ok(())
 }
@@ -113,50 +199,118 @@ fn fix_empty_documents(base_path: &Path) -> Result<Option<String>, FixerError> {
         return Ok(None);
     }
 
-    let mut updater = yaml_edit::MultiYamlUpdater::new(&metadata_path)
-        .map_err(|e| FixerError::Other(format!("Failed to create multi updater: {}", e)))?;
+    let yaml = yaml_edit::YamlFile::from_path(&metadata_path)
+        .map_err(|e| FixerError::Other(format!("Failed to open YAML: {}", e)))?;
 
-    let doc = updater
-        .open()
-        .map_err(|e| FixerError::Other(format!("Failed to open: {}", e)))?;
+    let documents: Vec<yaml_edit::Document> = yaml.documents().collect();
+    let mut has_empty = false;
 
-    let len = doc
-        .len()
-        .map_err(|e| FixerError::Other(format!("Failed to get length: {}", e)))?;
-
-    let mut to_remove = Vec::new();
-    for i in 0..len {
-        let item = doc
-            .get(i)
-            .map_err(|e| FixerError::Other(format!("Failed to get item: {}", e)))?;
-
-        if let Some(value) = item {
-            let is_empty = match value {
-                Value::Null => true,
-                Value::Map(ref m) => m.is_empty(),
-                Value::List(ref l) => l.is_empty(),
-                Value::String(ref s) => s.is_empty(),
-                _ => false,
-            };
-            if is_empty {
-                to_remove.push(i);
+    for doc in &documents {
+        if let Some(mapping) = doc.as_mapping() {
+            if mapping.entries().count() == 0 {
+                has_empty = true;
+                break;
             }
+        } else if let Some(sequence) = doc.as_sequence() {
+            if sequence.values().count() == 0 {
+                has_empty = true;
+                break;
+            }
+        } else if let Some(scalar) = doc.as_scalar() {
+            let scalar_str = scalar.as_string();
+            // Treat empty scalars or directives as empty
+            if scalar_str.trim().is_empty() || scalar_str.trim().starts_with("%YAML") {
+                has_empty = true;
+                break;
+            }
+        } else {
+            // Document with no content (just directives)
+            has_empty = true;
+            break;
         }
     }
 
-    if to_remove.is_empty() {
+    if !has_empty {
         return Ok(None);
     }
 
-    // Remove in reverse order
-    for i in to_remove.iter().rev() {
-        doc.remove(*i)
-            .map_err(|e| FixerError::Other(format!("Failed to remove: {}", e)))?;
+    // Filter out empty documents and keep non-empty ones
+    let non_empty_docs: Vec<yaml_edit::Document> = documents
+        .into_iter()
+        .filter(|doc: &yaml_edit::Document| {
+            if let Some(mapping) = doc.as_mapping() {
+                mapping.entries().count() > 0
+            } else if let Some(sequence) = doc.as_sequence() {
+                sequence.values().count() > 0
+            } else if let Some(scalar) = doc.as_scalar() {
+                let s = scalar.as_string();
+                !s.trim().is_empty() && !s.trim().starts_with("%YAML")
+            } else {
+                // Document with no content (just directives) - filter it out
+                false
+            }
+        })
+        .collect();
+
+    if non_empty_docs.is_empty() {
+        // All documents were empty, remove the file
+        std::fs::remove_file(&metadata_path)
+            .map_err(|e| FixerError::Other(format!("Failed to remove file: {}", e)))?;
+        return Ok(Some(
+            "Remove empty debian/upstream/metadata file.".to_string(),
+        ));
     }
 
-    updater
-        .close()
-        .map_err(|e| FixerError::Other(format!("Failed to close: {}", e)))?;
+    // If we only have one document left, save it with any leading content preserved
+    if non_empty_docs.len() == 1 {
+        // Read the original file to extract leading content (comments, directives before first ---)
+        let original_content = std::fs::read_to_string(&metadata_path)
+            .map_err(|e| FixerError::Other(format!("Failed to read file: {}", e)))?;
+
+        let leading_content = if let Some(pos) = original_content.find("---") {
+            &original_content[..pos]
+        } else {
+            ""
+        };
+
+        // Save the document and prepend leading content if it exists
+        let doc_content = non_empty_docs[0].to_string();
+        let final_content = if !leading_content.trim().is_empty() {
+            format!("{}{}", leading_content, doc_content)
+        } else {
+            doc_content
+        };
+
+        std::fs::write(&metadata_path, final_content)
+            .map_err(|e| FixerError::Other(format!("Failed to write file: {}", e)))?;
+        return Ok(Some(
+            "Discard extra empty YAML documents in debian/upstream/metadata.".to_string(),
+        ));
+    }
+
+    // Multiple non-empty documents - just save the first one with leading content
+    for doc in non_empty_docs {
+        // Read the original file to extract leading content
+        let original_content = std::fs::read_to_string(&metadata_path)
+            .map_err(|e| FixerError::Other(format!("Failed to read file: {}", e)))?;
+
+        let leading_content = if let Some(pos) = original_content.find("---") {
+            &original_content[..pos]
+        } else {
+            ""
+        };
+
+        let doc_content = doc.to_string();
+        let final_content = if !leading_content.trim().is_empty() {
+            format!("{}{}", leading_content, doc_content)
+        } else {
+            doc_content
+        };
+
+        std::fs::write(&metadata_path, final_content)
+            .map_err(|e| FixerError::Other(format!("Failed to write file: {}", e)))?;
+        break;
+    }
 
     Ok(Some(
         "Discard extra empty YAML documents in debian/upstream/metadata.".to_string(),

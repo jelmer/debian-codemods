@@ -9,7 +9,6 @@ use upstream_ontologist::{
     check_upstream_metadata, extend_upstream_metadata, guess_upstream_metadata_items,
     update_from_guesses, UpstreamMetadata,
 };
-use yaml_edit::{Value, YamlUpdater};
 
 fn upstream_metadata_sort_key(field_name: &str) -> usize {
     // Return the index in DEP12_FIELD_ORDER, or a large value for unknown fields
@@ -46,36 +45,41 @@ pub fn run(
         return Err(FixerError::NoChanges);
     }
 
-    // Open YamlUpdater - it will create the file if it doesn't exist when we save
-    let mut updater = YamlUpdater::new(&metadata_path)
-        .map_err(|e| FixerError::Other(e.to_string()))?
-        .allow_duplicate_keys(false)
-        .remove_empty(true); // Remove file if it ends up empty
+    // Load or create the YAML document
+    let doc = if metadata_path.exists() {
+        yaml_edit::Document::from_file(&metadata_path)
+            .map_err(|e| FixerError::Other(e.to_string()))?
+    } else {
+        // Create a new document initialized as a mapping
+        let new_mapping = yaml_edit::Mapping::new();
+        yaml_edit::Document::from_mapping(new_mapping)
+    };
 
-    let doc = updater
-        .open()
-        .map_err(|e| FixerError::Other(e.to_string()))?;
+    // Get the mapping from the document
+    let mapping = doc.as_mapping().ok_or_else(|| {
+        FixerError::Other("Document is not a mapping".to_string())
+    })?;
 
     // Capture original keys for tag checking later
-    let original_keys: HashSet<String> = doc
-        .keys()
-        .map_err(|e| FixerError::Other(e.to_string()))?
-        .into_iter()
+    let original_keys: HashSet<String> = mapping.keys()
+        .filter_map(|node| {
+            match node {
+                yaml_edit::YamlNode::Scalar(scalar) => Some(scalar.as_string()),
+                _ => None,
+            }
+        })
         .collect();
 
     // Convert repository list to string if needed (for CVS repositories)
     let mut repository_converted = false;
-    if let Some(repo_value) = doc
-        .get("Repository")
-        .map_err(|e| FixerError::Other(e.to_string()))?
-    {
-        if let Value::List(urls) = repo_value {
+    if let Some(repo_value) = mapping.get("Repository") {
+        if let Some(sequence) = repo_value.as_sequence() {
             // Extract strings from the list
-            let url_strings: Vec<String> = urls
-                .iter()
-                .filter_map(|v| {
-                    if let Value::String(s) = v {
-                        Some(s.clone())
+            let url_strings: Vec<String> = sequence
+                .values()
+                .filter_map(|node| {
+                    if let yaml_edit::YamlNode::Scalar(scalar) = node {
+                        Some(scalar.as_string())
                     } else {
                         None
                     }
@@ -83,7 +87,7 @@ pub fn run(
                 .collect();
 
             // Convert to &str slice for the function
-            let url_refs: Vec<&str> = url_strings.iter().map(|s| s.as_str()).collect();
+            let url_refs: Vec<&str> = url_strings.iter().map(|s: &String| s.as_str()).collect();
 
             // Try to convert using upstream-ontologist
             if let Some(converted) = convert_cvs_list_to_str(&url_refs) {
@@ -91,8 +95,7 @@ pub fn run(
                     "Converting Repository from list to string: {:?} -> {}",
                     url_strings, converted
                 );
-                doc.set("Repository", Value::String(converted))
-                    .map_err(|e| FixerError::Other(e.to_string()))?;
+                mapping.set("Repository", converted);
                 repository_converted = true;
                 // Note: Don't add to changed_fields here yet, we'll add it later if it's different
             }
@@ -127,15 +130,20 @@ pub fn run(
 
     // Load existing YAML data into upstream metadata with "certain" certainty
     // This mirrors the Python from_dict implementation
-    let keys = doc.keys().map_err(|e| FixerError::Other(e.to_string()))?;
-    for key_str in &keys {
-        if let Some(value) = doc
-            .get(key_str)
-            .map_err(|e| FixerError::Other(e.to_string()))?
-        {
-            let value_str = match value {
-                Value::String(s) => Some(s),
+    let keys: Vec<String> = mapping.keys()
+        .filter_map(|node| {
+            match node {
+                yaml_edit::YamlNode::Scalar(scalar) => Some(scalar.as_string()),
                 _ => None,
+            }
+        })
+        .collect();
+    for key_str in &keys {
+        if let Some(value) = mapping.get(key_str.as_str()) {
+            let value_str = if let Some(scalar) = value.as_scalar() {
+                Some(scalar.value().to_string())
+            } else {
+                None
             };
             if let Some(value_str) = value_str {
                 // Create the appropriate UpstreamDatum variant based on field name
@@ -434,20 +442,20 @@ pub fn run(
         }
 
         // Check if the field doesn't exist OR if the value is different from what we have
-        let should_update = if !doc
-            .contains_key(field_name)
-            .map_err(|e| FixerError::Other(e.to_string()))?
-        {
+        let should_update = if !mapping.keys().any(|node| {
+            match node {
+                yaml_edit::YamlNode::Scalar(scalar) => scalar.as_string() == field_name,
+                _ => false,
+            }
+        }) {
             true
         } else if let Some(new_value) = value.map(|s| s.to_string()) {
             // Get existing value
-            if let Some(existing_value) = doc
-                .get(field_name)
-                .map_err(|e| FixerError::Other(e.to_string()))?
-            {
-                match existing_value {
-                    Value::String(s) => s != new_value,
-                    _ => true, // Different type, need to update
+            if let Some(existing_value) = mapping.get(field_name) {
+                if let Some(scalar) = existing_value.as_scalar() {
+                    scalar.value() != new_value
+                } else {
+                    true // Different type, need to update
                 }
             } else {
                 true
@@ -468,14 +476,11 @@ pub fn run(
         }
     }
 
-    // Apply updates using update_with_order for proper DEP-12 field ordering
+    // Apply updates using set_with_field_order for proper DEP-12 field ordering
     if !fields_to_update.is_empty() {
-        let changes: Vec<(&str, Value)> = fields_to_update
-            .iter()
-            .map(|(k, v)| (k.as_ref(), Value::String(v.clone())))
-            .collect();
-        doc.update_with_order(changes, DEP12_FIELD_ORDER)
-            .map_err(|e| FixerError::Other(e.to_string()))?;
+        for (k, v) in fields_to_update {
+            doc.set_with_field_order(k, v, DEP12_FIELD_ORDER);
+        }
     }
 
     // If repository was converted, add it to changed_fields
@@ -512,10 +517,8 @@ pub fn run(
         }
     }
 
-    // Save the document by closing the updater
-    drop(doc);
-    updater
-        .close()
+    // Save the document
+    doc.to_file(&metadata_path)
         .map_err(|e| FixerError::Other(e.to_string()))?;
 
     // Determine which lintian issues were fixed
