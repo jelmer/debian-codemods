@@ -100,6 +100,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "copyright-format-uri",
     tags: ["insecure-copyright-format-uri", "wiki-copyright-format-uri"],
+    // Must convert http to https before adding version (unversioned-copyright-format-uri)
+    before: ["unversioned-copyright-format-uri"],
     apply: |basedir, _package, _version, _preferences| {
         run(basedir)
     }

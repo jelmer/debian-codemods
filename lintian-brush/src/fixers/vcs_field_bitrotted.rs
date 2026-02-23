@@ -553,6 +553,8 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 declare_fixer! {
     name: "vcs-field-bitrotted",
     tags: ["vcs-obsolete-in-debian-infrastructure", "vcs-field-bitrotted"],
+    // Must fix infrastructure changes before checking for broken URIs
+    before: ["vcs-broken-uri"],
     apply: |basedir, _package, _version, preferences| {
         run(basedir, preferences)
     }

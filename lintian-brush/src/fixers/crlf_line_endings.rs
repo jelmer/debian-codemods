@@ -6,6 +6,8 @@ use std::path::Path;
 declare_fixer! {
     name: "control-file-with-CRLF-EOLs",
     tags: ["carriage-return-line-feed"],
+    // Must normalize line endings before whitespace cleanup to avoid corrupting content
+    before: ["file-contains-trailing-whitespace"],
     apply: |basedir, _package, _version, _preferences| {
         let control_path = basedir.join("debian/control");
 

@@ -108,6 +108,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "vcs-field-not-canonical",
     tags: ["vcs-field-not-canonical"],
+    // Must canonicalize URIs after fixing type mismatches and before securing them
+    after: ["vcs-field-mismatch"],
+    before: ["vcs-field-uses-insecure-uri"],
     apply: |basedir, _package, _version, _preferences| {
         run(basedir)
     }

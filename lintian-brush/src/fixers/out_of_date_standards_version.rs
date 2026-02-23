@@ -610,6 +610,12 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "out-of-date-standards-version",
     tags: ["out-of-date-standards-version", "ancient-standards-version"],
+    // Standards version should only be bumped after all other fixes are applied
+    after: [
+        "file-contains-trailing-whitespace",
+        "out-of-date-copyright-format-uri",
+        "missing-vcs-browser-field"
+    ],
     apply: |basedir, _package, _version, _preferences| {
         run(basedir)
     }

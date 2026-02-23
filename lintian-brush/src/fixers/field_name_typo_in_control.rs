@@ -157,6 +157,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "field-name-typo-in-control",
     tags: ["cute-field"],
+    // Must fix field name typos before validating field content
+    before: ["out-of-date-standards-version"],
     apply: |basedir, _package, _version, _preferences| {
         run(basedir)
     }

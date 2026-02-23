@@ -111,6 +111,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "debian-control-has-unusual-field-spacing",
     tags: ["debian-control-has-unusual-field-spacing"],
+    // Must normalize field spacing before whitespace cleanup to avoid conflicts
+    before: ["file-contains-trailing-whitespace"],
     apply: |basedir, _package, _version, _preferences| {
         run(basedir)
     }

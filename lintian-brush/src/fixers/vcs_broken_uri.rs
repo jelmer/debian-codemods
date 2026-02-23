@@ -31,6 +31,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "vcs-broken-uri",
     tags: [],
+    // Must fix broken URIs after infrastructure updates and before type mismatch checks
+    after: ["vcs-field-bitrotted"],
+    before: ["vcs-field-mismatch"],
     apply: |basedir, _package, _version, _preferences| {
         run(basedir)
     }

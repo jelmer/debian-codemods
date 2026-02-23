@@ -210,6 +210,8 @@ fn build_fixed_string(case_fixed: &[(String, String)], typo_fixed: &[(String, St
 declare_fixer! {
     name: "field-name-typo-in-dep5-copyright",
     tags: ["field-name-typo-in-dep5-copyright"],
+    // Must fix field name typos before copyright format updates
+    before: ["out-of-date-copyright-format-uri"],
     apply: |basedir, _package, _version, _preferences| {
         run(basedir)
     }

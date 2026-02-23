@@ -339,6 +339,79 @@ mod tests {
     }
 
     #[test]
+    fn test_builtin_fixers_dependency_consistency() {
+        // This test verifies that all builtin fixers have consistent dependencies:
+        // 1. No circular dependencies
+        // 2. All referenced fixers in after/before actually exist
+        // 3. All registered fixers are successfully sorted (none lost)
+        //
+        // The topological sort will panic if there are issues, which fails this test.
+
+        let all_registrations: Vec<_> = inventory::iter::<BuiltinFixerRegistration>
+            .into_iter()
+            .collect();
+
+        let original_count = all_registrations.len();
+
+        // This will panic if there are circular dependencies or missing references
+        let sorted = topologically_sort_fixers(all_registrations.clone());
+
+        // Verify no fixers were lost during sorting
+        assert_eq!(
+            sorted.len(),
+            original_count,
+            "Topological sort lost some fixers! Expected {}, got {}",
+            original_count,
+            sorted.len()
+        );
+
+        // Verify all fixers are unique in the output
+        let mut seen_names = std::collections::HashSet::new();
+        for reg in &sorted {
+            assert!(
+                seen_names.insert(reg.name),
+                "Duplicate fixer name in sorted output: {}",
+                reg.name
+            );
+        }
+
+        // Verify dependencies are satisfied in the sorted order
+        let name_to_index: std::collections::HashMap<_, _> = sorted
+            .iter()
+            .enumerate()
+            .map(|(idx, reg)| (reg.name, idx))
+            .collect();
+
+        for (idx, reg) in sorted.iter().enumerate() {
+            // Check that all 'after' dependencies come before this fixer
+            for dep in reg.after {
+                let dep_idx = name_to_index.get(dep).expect(&format!(
+                    "Fixer '{}' declares after: ['{}'], but '{}' not found in sorted output",
+                    reg.name, dep, dep
+                ));
+                assert!(
+                    dep_idx < &idx,
+                    "Dependency ordering violated: '{}' (index {}) should run after '{}' (index {}), but doesn't",
+                    reg.name, idx, dep, dep_idx
+                );
+            }
+
+            // Check that all 'before' dependencies come after this fixer
+            for dep in reg.before {
+                let dep_idx = name_to_index.get(dep).expect(&format!(
+                    "Fixer '{}' declares before: ['{}'], but '{}' not found in sorted output",
+                    reg.name, dep, dep
+                ));
+                assert!(
+                    dep_idx > &idx,
+                    "Dependency ordering violated: '{}' (index {}) should run before '{}' (index {}), but doesn't",
+                    reg.name, idx, dep, dep_idx
+                );
+            }
+        }
+    }
+
+    #[test]
     fn test_get_builtin_fixers() {
         let fixers = get_builtin_fixers();
         // Check that we have at least two fixers now

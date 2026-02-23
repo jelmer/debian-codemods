@@ -82,6 +82,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "vcs-field-uses-not-recommended-uri-format",
     tags: ["vcs-field-uses-not-recommended-uri-format"],
+    // Must improve URI format after securing them and before adding browser field
+    after: ["vcs-field-uses-insecure-uri"],
+    before: ["missing-vcs-browser-field"],
     apply: |basedir, _package, _version, _preferences| {
         run(basedir)
     }
