@@ -562,9 +562,9 @@ dependencies = [
 
 [[package]]
 name = "chrono"
-version = "0.4.43"
+version = "0.4.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fac4744fb15ae8337dc853fee7fb3f4e48c0fbaa23d0afe49c447b4fab126118"
+checksum = "c673075a2e0e5f4a1dde27ce9dee1ea4558c7ffe648f576438a20ca1d2acc4b0"
 dependencies = [
  "iana-time-zone",
  "js-sys",
@@ -1054,6 +1054,21 @@ dependencies = [
  "rowan",
  "scraper",
  "sequoia-openpgp",
+ "url",
+]
+
+[[package]]
+name = "debian-watch"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dfa2ef0588ff9174e9eda4f4e0016870df20d2b305a7eb6bde04d26a223d7663"
+dependencies = [
+ "clap",
+ "deb822-lossless",
+ "debversion",
+ "m_lexer",
+ "regex",
+ "rowan",
  "url",
 ]
 
@@ -2871,7 +2886,7 @@ dependencies = [
  "debian-changelog",
  "debian-control",
  "debian-copyright",
- "debian-watch",
+ "debian-watch 0.3.7",
  "debversion",
  "dep3",
  "desktop-edit",
@@ -3007,9 +3022,9 @@ dependencies = [
 
 [[package]]
 name = "makefile-lossless"
-version = "0.3.28"
+version = "0.3.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df9bc454e12855dd9861734e5211b3f7f9afdfcf5010578ea885ed604137862c"
+checksum = "4c741b7fb8c560314dac3b6e1cce721cd4ad68463bc0f036b7b6654267935aaa"
 dependencies = [
  "log",
  "rowan",
@@ -3895,9 +3910,9 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e8bbe1a966bd2f362681a44f6edce3c2310ac21e4d5067a6e7ec396297a6ea0"
+checksum = "83c41efbf8f90ac44de7f3a868f0867851d261b56291732d0cbf7cceaaeb55a6"
 dependencies = [
  "bitflags 2.11.0",
  "getopts",
@@ -5951,7 +5966,7 @@ dependencies = [
  "debian-changelog",
  "debian-control",
  "debian-copyright",
- "debian-watch",
+ "debian-watch 0.4.0",
  "debversion",
  "distro-info",
  "futures",

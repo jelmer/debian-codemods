@@ -1,11 +1,46 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use deb822_lossless::Deb822;
 use std::path::Path;
 use std::str::FromStr;
 
 /// Calculate the depth of a Files pattern by counting '/' characters
+#[deprecated(
+    since = "0.159.0",
+    note = "Use `debian_copyright::pattern_depth` instead"
+)]
 fn pattern_depth(pattern: &str) -> usize {
     pattern.matches('/').count()
+}
+
+/// Check if a pattern is a debian/* pattern (should be sorted last by convention)
+#[deprecated(
+    since = "0.159.0",
+    note = "Use `debian_copyright::is_debian_pattern` instead"
+)]
+fn is_debian_pattern(pattern: &str) -> bool {
+    let trimmed = pattern.trim();
+    trimmed.starts_with("debian/") || trimmed == "debian/*"
+}
+
+/// Calculate a sort key for a Files pattern.
+/// Returns (priority, depth) where:
+/// - priority 0: `*` (always first)
+/// - priority 1: normal patterns (sorted by depth)
+/// - priority 2: debian/* patterns (always last, then by depth)
+#[deprecated(
+    since = "0.159.0",
+    note = "Use `debian_copyright::pattern_sort_key` instead"
+)]
+fn pattern_sort_key(pattern: &str, depth: usize) -> (u8, usize) {
+    let trimmed = pattern.trim();
+
+    if trimmed == "*" {
+        (0, 0)
+    } else if is_debian_pattern(pattern) {
+        (2, depth)
+    } else {
+        (1, depth)
+    }
 }
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
@@ -111,20 +146,13 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             }
         }
 
-        // Find adjacent pairs that are strictly out of order (later has less depth than earlier)
+        // Find adjacent pairs that are out of order based on sort key
         for j in 0..current_files.len().saturating_sub(1) {
-            let should_swap = if current_files[j + 1].1.trim() == "*" {
-                // "*" should always come first
-                j > 0 || current_files[j].1.trim() != "*"
-            } else if current_files[j].1.trim() == "*" {
-                // "*" is already first among these two
-                false
-            } else {
-                // Only swap if strictly less depth
-                current_files[j + 1].2 < current_files[j].2
-            };
+            let key_j = pattern_sort_key(&current_files[j].1, current_files[j].2);
+            let key_j1 = pattern_sort_key(&current_files[j + 1].1, current_files[j + 1].2);
 
-            if should_swap {
+            // Only swap if j+1 should come before j (strictly less than)
+            if key_j1 < key_j {
                 // Swap these two paragraphs
                 deb822.move_paragraph(current_files[j + 1].0, current_files[j].0);
                 changed_order = true;
@@ -443,6 +471,71 @@ License: Apache-2.0
 Files: src/foo/*
 Copyright: 2020 Author
 License: MIT
+"#;
+
+        fs::write(debian_dir.join("copyright"), content).unwrap();
+
+        let result = run(temp_dir.path());
+        assert!(matches!(result, Err(FixerError::NoChanges)));
+    }
+
+    #[test]
+    fn test_debian_pattern_stays_last() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        // debian/* should stay at the end even though it has same depth as src/*
+        let content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+Files: src/foo/*
+Copyright: 2020 Author
+License: MIT
+
+Files: debian/*
+Copyright: 2020 Debian
+License: GPL-2
+
+Files: src/*
+Copyright: 2020 Another
+License: Apache-2.0
+"#;
+
+        fs::write(debian_dir.join("copyright"), content).unwrap();
+
+        let result = run(temp_dir.path());
+        assert!(result.is_ok());
+
+        let updated_content = fs::read_to_string(debian_dir.join("copyright")).unwrap();
+        let deb822 = Deb822::from_str(&updated_content).unwrap();
+        let paragraphs: Vec<_> = deb822.paragraphs().collect();
+
+        // Check order: src/* (depth 1), src/foo/* (depth 2), debian/* (depth 1 but last)
+        assert_eq!(paragraphs[1].get("Files").unwrap().trim(), "src/*");
+        assert_eq!(paragraphs[2].get("Files").unwrap().trim(), "src/foo/*");
+        assert_eq!(paragraphs[3].get("Files").unwrap().trim(), "debian/*");
+    }
+
+    #[test]
+    fn test_debian_pattern_already_last() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        // debian/* is already at the end - should not change
+        let content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+Files: *
+Copyright: 2020 Generic
+License: GPL-2
+
+Files: src/*
+Copyright: 2020 Another
+License: Apache-2.0
+
+Files: debian/*
+Copyright: 2020 Debian
+License: GPL-2
 "#;
 
         fs::write(debian_dir.join("copyright"), content).unwrap();

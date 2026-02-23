@@ -14,6 +14,9 @@ lintian-brush (0.168) UNRELEASED; urgency=medium
   * Add new debian-watch-use-templates fixer to convert v5 watch files
     from explicit Source/Matching-Pattern to template syntax where
     possible. Closes: #1128553
+  * global-files-wildcard-not-first-paragraph-in-dep5-copyright fixer:
+    keep debian/* patterns at end of copyright file by convention.
+    Closes: #1128608
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 19 Feb 2026 01:48:02 +0000
 
