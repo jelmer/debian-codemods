@@ -1,0 +1,5 @@
+Version: 5
+
+Source: https://cpan.metacpan.org/authors/id/
+Matching-Pattern: .*/Mail-AuthenticationResults@ANY_VERSION@@ARCHIVE_EXT@
+Searchmode: plain

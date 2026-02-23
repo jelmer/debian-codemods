@@ -46,6 +46,7 @@ mod debian_watch_file_uses_deprecated_githubredir;
 mod debian_watch_file_uses_github_releases;
 mod debian_watch_file_uses_old_github_pattern;
 mod debian_watch_not_mangling_version;
+mod debian_watch_use_templates;
 mod debian_watch_uses_insecure_uri;
 mod debug_symbol_migration_possibly_complete;
 mod declares_possibly_conflicting_debhelper_compat_versions;

@@ -1,0 +1,5 @@
+Version: 5
+
+Source: https://github.com/torvalds/linux/tags
+Matching-Pattern: .*/(?:refs/tags/)?v?@ANY_VERSION@@ARCHIVE_EXT@
+Searchmode: html
