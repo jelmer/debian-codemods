@@ -1058,6 +1058,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "debian-watch"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dfa2ef0588ff9174e9eda4f4e0016870df20d2b305a7eb6bde04d26a223d7663"
+dependencies = [
+ "clap",
+ "deb822-lossless",
+ "debversion",
+ "m_lexer",
+ "regex",
+ "rowan",
+ "url",
+]
+
+[[package]]
 name = "debianize"
 version = "0.163.0"
 dependencies = [
@@ -2873,7 +2888,7 @@ dependencies = [
  "debian-changelog",
  "debian-control",
  "debian-copyright",
- "debian-watch",
+ "debian-watch 0.3.7",
  "debversion",
  "dep3",
  "desktop-edit",
@@ -5955,7 +5970,7 @@ dependencies = [
  "debian-changelog",
  "debian-control",
  "debian-copyright",
- "debian-watch",
+ "debian-watch 0.4.0",
  "debversion",
  "distro-info",
  "futures",
