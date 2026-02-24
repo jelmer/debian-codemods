@@ -1,4 +1,4 @@
-lintian-brush (0.168) UNRELEASED; urgency=medium
+lintian-brush (0.168) unstable; urgency=medium
 
   [ Alexander Kjäll ]
   * Bump cargo-lock to 11.
