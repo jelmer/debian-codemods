@@ -1,4 +1,4 @@
-Source: lintian-brush
+Source: debian-codemods
 Section: devel
 Priority: optional
 Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
@@ -137,9 +137,34 @@ Build-Depends: debhelper (>= 13.5),
                rustc
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
-Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git
-Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush
-Homepage: https://salsa.debian.org/jelmer/lintian-brush
+Vcs-Git: https://salsa.debian.org/jelmer/debian-codemods.git
+Vcs-Browser: https://salsa.debian.org/jelmer/debian-codemods
+Homepage: https://salsa.debian.org/jelmer/debian-codemods
+
+Package: debian-codemods
+Architecture: any
+Depends: devscripts,
+         python3-breezy (>= 3.3.1~),
+         ${misc:Depends},
+         ${shlibs:Depends}
+Recommends: debhelper (>= 13.5),
+            decopy,
+            dos2unix,
+            gpg,
+            lintian (>= 2.105.0)
+Suggests: brz-debian (>= 2.8.66),
+          git-buildpackage,
+          po-debconf,
+          postgresql-common
+Replaces: lintian-brush
+Description: codemods for automatically fixing problems in Debian packages
+ This package contains a set of scripts that can automatically fix common
+ problems in Debian packages:
+ .
+ * apply-multiarch-hints: applies multiarch hints to debian/control
+ * deb-scrub-obsolete: removes obsolete dependencies and maintscript snippets
+ * deb-vcs-publish: adds VCS metadata to debian/control
+ * fix-watch-file: updates the debian/watch file to use the latest format
 
 Package: lintian-brush
 Architecture: any
@@ -155,7 +180,8 @@ Recommends: debhelper (>= 13.5),
 Suggests: brz-debian (>= 2.8.66),
           git-buildpackage,
           po-debconf,
-          postgresql-common
+          postgresql-common,
+          debian-codemods
 Description: automatically fix lintian problems
  This package contains a set of scripts that can automatically fix more than 160
  common lintian issues in Debian packages.
@@ -163,10 +189,3 @@ Description: automatically fix lintian problems
  It comes with a wrapper script that invokes the scripts, updates
  the changelog (if desired) and commits each change to
  version control.
- .
- The following other codemods are included:
- .
-  * apply-multiarch-hints: applies multiarch hints to debian/control
-  * deb-scrub-obsolete: removes obsolete dependencies and maintscript snippets
-  * deb-vcs-publish: adds VCS metadata to debian/control
-  * fix-watch-file: updates the debian/watch file to use the latest format

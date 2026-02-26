@@ -9,3 +9,5 @@ files
 *.substvars
 lintian-brush/
 lintian-brush-dbgsym/
+debian-codemods/
+debian-codemods-dbgsym/
