@@ -1,3 +1,12 @@
+debian-codemods (0.170) experimental; urgency=medium
+
+  * Rename source package to ``debian-codemods`` to reflect that it
+    contains more than just lintian-brush.
+  * Split out a debian-codemods binary package that contains the
+    non-lintian-brush binaries.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 05 Feb 2026 00:00:00 +0000
+
 lintian-brush (0.168) unstable; urgency=medium
 
   [ Alexander Kjäll ]

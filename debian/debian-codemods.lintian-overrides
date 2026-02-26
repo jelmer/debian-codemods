@@ -1,0 +1,3 @@
+debian-codemods: embedded-library libyaml [usr/bin/apply-multiarch-hints]
+debian-codemods: embedded-library libyaml [usr/bin/debianize]
+debian-codemods: embedded-library libyaml [usr/bin/dump-multiarch-hints]
