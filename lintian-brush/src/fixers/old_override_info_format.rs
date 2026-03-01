@@ -58,9 +58,7 @@ fn process_overrides_file(path: &Path) -> Result<(bool, Vec<(usize, String)>), F
             return None;
         }
 
-        let Some(tag_token) = line.tag() else {
-            return None;
-        };
+        let tag_token = line.tag()?;
 
         let tag = tag_token.text();
         let info = line.info().unwrap_or_default();

@@ -63,7 +63,6 @@ fn get_current_package_version(base_path: &Path) -> Result<Version, FixerError> 
     if let Some(entry) = entries.first() {
         entry
             .version()
-            .map(|v| v.clone())
             .ok_or_else(|| FixerError::Other("No version in changelog entry".to_string()))
     } else {
         Err(FixerError::Other("No entries in changelog".to_string()))
@@ -377,7 +376,7 @@ fn update_rules_for_compat_12(
                 && new_recipe.contains(" -- ")
             {
                 if let Some((before, after)) = new_recipe.split_once(" -- ") {
-                    let dh_cmd = before.trim_start().split_whitespace().next().unwrap_or("");
+                    let dh_cmd = before.split_whitespace().next().unwrap_or("");
                     if let Some(step) = dh_cmd.strip_prefix("dh_auto_") {
                         let step_upper = step.to_uppercase();
                         let args = after.trim();

@@ -42,8 +42,8 @@ lazy_static! {
         for license_id in SPDX_LICENSE_IDS {
             set.insert(license_id.to_lowercase());
             // Also add versions without trailing .0
-            if license_id.ends_with(".0") {
-                set.insert(license_id[..license_id.len() - 2].to_lowercase());
+            if let Some(without_suffix) = license_id.strip_suffix(".0") {
+                set.insert(without_suffix.to_lowercase());
             }
         }
 

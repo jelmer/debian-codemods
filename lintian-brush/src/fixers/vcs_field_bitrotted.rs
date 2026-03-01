@@ -20,7 +20,7 @@ fn is_on_obsolete_host(url: &str) -> bool {
     if let Ok(parsed_url) = Url::parse(url) {
         if let Some(host) = parsed_url.host_str() {
             // Strip user part if present (e.g., git@host -> host)
-            let host_without_user = host.split('@').last().unwrap_or(host);
+            let host_without_user = host.split('@').next_back().unwrap_or(host);
             return OBSOLETE_HOSTS.contains(&host_without_user);
         }
     }
@@ -404,11 +404,10 @@ async fn find_new_urls(
     };
 
     // Verify repository exists if network access is allowed
-    if net_access {
-        if verify_salsa_repository(&new_vcs_url).await.unwrap_or(false) == false {
+    if net_access
+        && !verify_salsa_repository(&new_vcs_url).await.unwrap_or(false) {
             return Err(NewRepositoryURLUnknown);
         }
-    }
 
     let vcs_browser = determine_salsa_browser_url(&new_vcs_url);
     Ok((new_vcs_type, new_vcs_url, vcs_browser))
@@ -467,10 +466,10 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 
     let (new_vcs_type, new_vcs_url, new_vcs_browser) = rt
         .block_on(find_new_urls(
-            &vcs_type,
+            vcs_type,
             &vcs_url,
             &package,
-            &maintainer_email,
+            maintainer_email,
             preferences,
         ))
         .map_err(|_| FixerError::NoChanges)?;

@@ -1,8 +1,7 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{FixerError, FixerPreferences, FixerResult};
 use std::collections::HashMap;
 use std::path::Path;
 use tracing::debug;
-use yaml_edit::Value;
 
 const SEQUENCE_FIELDS: &[&str] = &["Reference", "Screenshots"];
 
@@ -289,7 +288,7 @@ fn fix_empty_documents(base_path: &Path) -> Result<Option<String>, FixerError> {
     }
 
     // Multiple non-empty documents - just save the first one with leading content
-    for doc in non_empty_docs {
+    if let Some(doc) = non_empty_docs.first() {
         // Read the original file to extract leading content
         let original_content = std::fs::read_to_string(&metadata_path)
             .map_err(|e| FixerError::Other(format!("Failed to read file: {}", e)))?;
@@ -309,7 +308,6 @@ fn fix_empty_documents(base_path: &Path) -> Result<Option<String>, FixerError> {
 
         std::fs::write(&metadata_path, final_content)
             .map_err(|e| FixerError::Other(format!("Failed to write file: {}", e)))?;
-        break;
     }
 
     Ok(Some(

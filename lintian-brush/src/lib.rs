@@ -1502,12 +1502,12 @@ impl std::error::Error for OverallError {}
 ///  * `verbose`: Whether to be verbose
 ///  * `committer`: Optional committer (name and email)
 ///  * `compat_release`: Minimum release that the package should be usable on
-///       (e.g. 'sid' or 'stretch')
+///    (e.g. 'sid' or 'stretch')
 ///  * `minimum_certainty`: How certain the fixer should be about its changes.
 ///  * `trust_package`: Whether to run code from the package if necessary
 ///  * `allow_reformatting`: Whether to allow reformatting of changed files
 ///  * `use_inotify`: Use inotify to watch changes (significantly improves
-///       performance). Defaults to None (automatic)
+///    performance). Defaults to None (automatic)
 ///  * `subpath`: Subpath in the tree in which the package lives
 ///  * `net_access`: Whether to allow network access
 ///  * `opinionated`: Whether to be opinionated

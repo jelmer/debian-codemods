@@ -136,7 +136,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     };
 
     // If nothing changed, return NoChanges
-    if !rules_changed && !(control_compat_version.is_some() && file_compat_version.is_some()) {
+    if !(rules_changed || control_compat_version.is_some() && file_compat_version.is_some()) {
         if let Some(issue) = issue {
             return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
         }

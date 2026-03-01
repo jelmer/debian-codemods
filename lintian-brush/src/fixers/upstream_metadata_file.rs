@@ -140,11 +140,7 @@ pub fn run(
         .collect();
     for key_str in &keys {
         if let Some(value) = mapping.get(key_str.as_str()) {
-            let value_str = if let Some(scalar) = value.as_scalar() {
-                Some(scalar.value().to_string())
-            } else {
-                None
-            };
+            let value_str = value.as_scalar().map(|scalar| scalar.value().to_string());
             if let Some(value_str) = value_str {
                 // Create the appropriate UpstreamDatum variant based on field name
                 // Based on the Python bindings in upstream-ontologist-py
@@ -202,7 +198,7 @@ pub fn run(
                     "Debian-ITP" => value_str
                         .parse()
                         .ok()
-                        .map(|v| upstream_ontologist::UpstreamDatum::DebianITP(v)),
+                        .map(upstream_ontologist::UpstreamDatum::DebianITP),
                     "Screenshots" => Some(upstream_ontologist::UpstreamDatum::Screenshots(vec![
                         value_str,
                     ])),
@@ -332,7 +328,7 @@ pub fn run(
                 upstream
             }
         });
-        let _ = runtime.block_on(async {
+        runtime.block_on(async {
             check_upstream_metadata(&mut upstream_metadata, upstream_version.as_deref()).await
         });
     }
@@ -341,7 +337,7 @@ pub fn run(
 
     // Call fix_upstream_metadata to canonicalize URLs (adds .git suffix, etc.)
     // This matches what the Python script does
-    let _ = runtime.block_on(async {
+    runtime.block_on(async {
         upstream_ontologist::fix_upstream_metadata(&mut guessed_metadata).await;
     });
 
