@@ -404,10 +404,9 @@ async fn find_new_urls(
     };
 
     // Verify repository exists if network access is allowed
-    if net_access
-        && !verify_salsa_repository(&new_vcs_url).await.unwrap_or(false) {
-            return Err(NewRepositoryURLUnknown);
-        }
+    if net_access && !verify_salsa_repository(&new_vcs_url).await.unwrap_or(false) {
+        return Err(NewRepositoryURLUnknown);
+    }
 
     let vcs_browser = determine_salsa_browser_url(&new_vcs_url);
     Ok((new_vcs_type, new_vcs_url, vcs_browser))

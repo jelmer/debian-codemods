@@ -56,17 +56,16 @@ pub fn run(
     };
 
     // Get the mapping from the document
-    let mapping = doc.as_mapping().ok_or_else(|| {
-        FixerError::Other("Document is not a mapping".to_string())
-    })?;
+    let mapping = doc
+        .as_mapping()
+        .ok_or_else(|| FixerError::Other("Document is not a mapping".to_string()))?;
 
     // Capture original keys for tag checking later
-    let original_keys: HashSet<String> = mapping.keys()
-        .filter_map(|node| {
-            match node {
-                yaml_edit::YamlNode::Scalar(scalar) => Some(scalar.as_string()),
-                _ => None,
-            }
+    let original_keys: HashSet<String> = mapping
+        .keys()
+        .filter_map(|node| match node {
+            yaml_edit::YamlNode::Scalar(scalar) => Some(scalar.as_string()),
+            _ => None,
         })
         .collect();
 
@@ -130,12 +129,11 @@ pub fn run(
 
     // Load existing YAML data into upstream metadata with "certain" certainty
     // This mirrors the Python from_dict implementation
-    let keys: Vec<String> = mapping.keys()
-        .filter_map(|node| {
-            match node {
-                yaml_edit::YamlNode::Scalar(scalar) => Some(scalar.as_string()),
-                _ => None,
-            }
+    let keys: Vec<String> = mapping
+        .keys()
+        .filter_map(|node| match node {
+            yaml_edit::YamlNode::Scalar(scalar) => Some(scalar.as_string()),
+            _ => None,
         })
         .collect();
     for key_str in &keys {
@@ -438,11 +436,9 @@ pub fn run(
         }
 
         // Check if the field doesn't exist OR if the value is different from what we have
-        let should_update = if !mapping.keys().any(|node| {
-            match node {
-                yaml_edit::YamlNode::Scalar(scalar) => scalar.as_string() == field_name,
-                _ => false,
-            }
+        let should_update = if !mapping.keys().any(|node| match node {
+            yaml_edit::YamlNode::Scalar(scalar) => scalar.as_string() == field_name,
+            _ => false,
         }) {
             true
         } else if let Some(new_value) = value.map(|s| s.to_string()) {

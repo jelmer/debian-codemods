@@ -78,19 +78,18 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
 
     // First pass: remove null and empty fields
     // Note: We need to check keys() because mapping.get() returns None for empty values
-    let keys_to_check: Vec<String> = mapping.keys()
-        .filter_map(|node| {
-            match node {
-                yaml_edit::YamlNode::Scalar(scalar) => {
-                    let key = scalar.as_string();
-                    if key == "Name" || key == "Contact" {
-                        Some(key)
-                    } else {
-                        None
-                    }
+    let keys_to_check: Vec<String> = mapping
+        .keys()
+        .filter_map(|node| match node {
+            yaml_edit::YamlNode::Scalar(scalar) => {
+                let key = scalar.as_string();
+                if key == "Name" || key == "Contact" {
+                    Some(key)
+                } else {
+                    None
                 }
-                _ => None,
             }
+            _ => None,
         })
         .collect();
 
@@ -153,12 +152,11 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     }
 
     // If only addon-only fields remain, clear the file
-    let remaining_keys: HashSet<String> = mapping.keys()
-        .filter_map(|node| {
-            match node {
-                yaml_edit::YamlNode::Scalar(scalar) => Some(scalar.as_string()),
-                _ => None,
-            }
+    let remaining_keys: HashSet<String> = mapping
+        .keys()
+        .filter_map(|node| match node {
+            yaml_edit::YamlNode::Scalar(scalar) => Some(scalar.as_string()),
+            _ => None,
         })
         .collect();
 

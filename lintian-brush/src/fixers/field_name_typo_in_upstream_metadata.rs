@@ -23,12 +23,11 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     };
 
     // Get all keys from the YAML
-    let keys: Vec<String> = mapping.keys()
-        .filter_map(|node| {
-            match node {
-                yaml_edit::YamlNode::Scalar(scalar) => Some(scalar.as_string()),
-                _ => None,
-            }
+    let keys: Vec<String> = mapping
+        .keys()
+        .filter_map(|node| match node {
+            yaml_edit::YamlNode::Scalar(scalar) => Some(scalar.as_string()),
+            _ => None,
         })
         .collect();
 
