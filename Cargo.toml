@@ -11,7 +11,6 @@ breezyshim = { version = "0.7.8", features = ["dirty-tracker"] }
 pyo3 = ">=0.27,<0.29"
 debversion = "0.5"
 serde_yaml = ">=0.9"
-yaml-rust2 = "0.8"
 reqwest = ">=0.12"
 log = "0.4"
 lazy_static = "1"
@@ -47,3 +46,4 @@ debian-watch = "0.4.3"
 #deb822-lossless = { path = "../deb822-lossless" }
 systemd-unit-edit = "0.1.1"
 desktop-edit = "0.1.0"
+yaml-edit = "0.2"
