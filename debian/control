@@ -142,7 +142,6 @@ Vcs-Browser: https://salsa.debian.org/jelmer/debian-codemods
 Homepage: https://salsa.debian.org/jelmer/debian-codemods
 
 Package: debian-codemods
-A
 Architecture: any
 Depends: devscripts,
          python3-breezy (>= 3.3.1~),
