@@ -1,4 +1,4 @@
-debian-codemods (0.171) UNRELEASED; urgency=medium
+debian-codemods (0.171) unstable; urgency=medium
 
   * debian/copyright: Remove unused MIT license paragraph
   * upload to unstable with new package names.
