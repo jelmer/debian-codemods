@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use debian_analyzer::relations::ensure_some_version;
 use debian_control::lossless::Control;
 use regex::bytes::Regex;

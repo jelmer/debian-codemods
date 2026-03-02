@@ -1,9 +1,9 @@
 use crate::upstream_metadata::DEP12_FIELD_ORDER;
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use std::collections::HashSet;
 use std::path::Path;
 use std::str::FromStr;
-use tracing::{debug, info, warn};
+use tracing::debug;
 use upstream_ontologist::vcs::convert_cvs_list_to_str;
 use upstream_ontologist::{
     check_upstream_metadata, extend_upstream_metadata, guess_upstream_metadata_items,

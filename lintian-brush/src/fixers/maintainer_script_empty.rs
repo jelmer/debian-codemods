@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerResult, LintianIssue};
+use crate::{Certainty, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 

@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use lazy_static::lazy_static;
 use makefile_lossless::{Makefile, MakefileItem};
 use regex::Regex;

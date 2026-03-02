@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{FixerError, FixerResult};
 use debian_control::lossless::Control;
 use std::path::Path;
 use std::str::FromStr;

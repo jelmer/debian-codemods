@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
 use sha1::{Digest, Sha1};
 use std::collections::HashMap;
 use std::fs;

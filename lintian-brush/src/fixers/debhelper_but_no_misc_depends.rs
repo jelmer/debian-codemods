@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::debhelper::get_debhelper_compat_level;
 use debian_control::lossless::relations::Relations;

@@ -1019,9 +1019,9 @@ dependencies = [
 
 [[package]]
 name = "debian-copyright"
-version = "0.1.40"
+version = "0.1.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5eeb778309b1f76995b1cbcdc0fbc5f51927d6adb62b090e518467d9fb0a391"
+checksum = "a45515c32d25d18c9a1162e016a8048fc4e88ec7e2b9c3f65bd6dc9f344744ad"
 dependencies = [
  "deb822-fast",
  "deb822-lossless",

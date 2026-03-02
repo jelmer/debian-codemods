@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue, PackageType};
 use debian_control::lossless::relations::Relations;
 use regex::bytes::Regex;
 use std::path::Path;

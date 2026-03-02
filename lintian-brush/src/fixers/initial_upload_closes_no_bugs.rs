@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_analyzer::wnpp::{BugId, BugKind};
 use debian_changelog::{iter_changes_by_author, ChangeLog};
 use std::fs;

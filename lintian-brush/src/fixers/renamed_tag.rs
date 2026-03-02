@@ -1,5 +1,5 @@
 use crate::lintian_overrides::{copy_node, AstNode, LintianOverrides, OverrideLine, SyntaxKind};
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use rowan::{GreenNodeBuilder, SyntaxNode};
 use std::path::Path;
 

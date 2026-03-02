@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerResult};
+use crate::{Certainty, FixerError, FixerResult};
 use regex::Regex;
 use std::fs;
 

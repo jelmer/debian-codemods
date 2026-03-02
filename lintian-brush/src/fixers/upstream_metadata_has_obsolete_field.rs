@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{FixerError, FixerPreferences, FixerResult};
 use debian_copyright::lossless::Copyright;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};

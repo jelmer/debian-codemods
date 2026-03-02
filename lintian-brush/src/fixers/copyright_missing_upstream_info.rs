@@ -201,7 +201,6 @@ pub fn run(
         .build())
 }
 
-use crate::declare_fixer;
 
 declare_fixer! {
     name: "copyright-missing-upstream-info",

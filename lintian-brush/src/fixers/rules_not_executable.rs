@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{FixerError, FixerResult};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;

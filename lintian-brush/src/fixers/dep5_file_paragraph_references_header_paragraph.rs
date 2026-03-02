@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use debian_copyright::lossless::Copyright;
 use debian_copyright::License;
 use std::collections::HashSet;

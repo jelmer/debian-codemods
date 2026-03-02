@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use deb822_lossless::Deb822;
 use debian_analyzer::editor::check_generated_file;
 use std::fs;

@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use debian_changelog::textwrap::try_rewrap_changes;
 use debian_changelog::ChangeLog;
 use std::fs;

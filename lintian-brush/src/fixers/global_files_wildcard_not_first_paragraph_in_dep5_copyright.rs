@@ -1,47 +1,8 @@
 use crate::{FixerError, FixerResult, LintianIssue};
 use deb822_lossless::Deb822;
+use debian_copyright::{pattern_depth, pattern_sort_key};
 use std::path::Path;
 use std::str::FromStr;
-
-/// Calculate the depth of a Files pattern by counting '/' characters
-#[deprecated(
-    since = "0.159.0",
-    note = "Use `debian_copyright::pattern_depth` instead"
-)]
-fn pattern_depth(pattern: &str) -> usize {
-    pattern.matches('/').count()
-}
-
-/// Check if a pattern is a debian/* pattern (should be sorted last by convention)
-#[deprecated(
-    since = "0.159.0",
-    note = "Use `debian_copyright::is_debian_pattern` instead"
-)]
-fn is_debian_pattern(pattern: &str) -> bool {
-    let trimmed = pattern.trim();
-    trimmed.starts_with("debian/") || trimmed == "debian/*"
-}
-
-/// Calculate a sort key for a Files pattern.
-/// Returns (priority, depth) where:
-/// - priority 0: `*` (always first)
-/// - priority 1: normal patterns (sorted by depth)
-/// - priority 2: debian/* patterns (always last, then by depth)
-#[deprecated(
-    since = "0.159.0",
-    note = "Use `debian_copyright::pattern_sort_key` instead"
-)]
-fn pattern_sort_key(pattern: &str, depth: usize) -> (u8, usize) {
-    let trimmed = pattern.trim();
-
-    if trimmed == "*" {
-        (0, 0)
-    } else if is_debian_pattern(pattern) {
-        (2, depth)
-    } else {
-        (1, depth)
-    }
-}
 
 pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let copyright_path = base_path.join("debian/copyright");

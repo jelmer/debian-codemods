@@ -1,5 +1,5 @@
 use crate::lintian_overrides::{filter_overrides, LintianOverrides};
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};

@@ -1,5 +1,5 @@
 use crate::watch::COMMON_PGPSIGURL_MANGLES;
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_watch::{mangle, Release};
 use sequoia_openpgp as openpgp;
 use std::collections::HashSet;

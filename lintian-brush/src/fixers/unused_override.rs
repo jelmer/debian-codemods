@@ -1,5 +1,5 @@
 use crate::lintian_overrides::{filter_overrides, LintianOverrides};
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_control::Control;
 use std::fs;
 use std::path::{Path, PathBuf};

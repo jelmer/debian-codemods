@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{FixerError, FixerResult, LintianIssue, PackageType};
 use debian_analyzer::control::TemplatedControlEditor;
 use std::path::Path;
 

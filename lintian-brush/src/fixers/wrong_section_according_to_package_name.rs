@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use lazy_regex::Regex;
 use std::fs;

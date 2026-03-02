@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{FixerError, FixerResult};
 use debian_analyzer::debhelper::get_debhelper_compat_level;
 use debian_analyzer::rules::{dh_invoke_drop_argument, dh_invoke_drop_with};
 use makefile_lossless::Makefile;

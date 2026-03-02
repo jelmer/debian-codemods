@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_analyzer::abstract_control::AbstractSource;
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_changelog::parseaddr;

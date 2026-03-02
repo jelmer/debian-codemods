@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{FixerError, FixerPreferences, FixerResult};
 use chrono::{DateTime, NaiveDate, Utc};
 use debian_analyzer::maintscripts::Entry;
 use debian_changelog::ChangeLog;

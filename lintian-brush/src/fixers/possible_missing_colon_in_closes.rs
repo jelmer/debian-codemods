@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use debian_changelog::ChangeLog;
 use lazy_regex::{regex, Regex};
 use std::fs;

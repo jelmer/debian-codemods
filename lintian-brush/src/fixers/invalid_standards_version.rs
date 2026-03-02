@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{FixerError, FixerResult, LintianIssue, PackageType};
 use debian_analyzer::lintian::StandardsVersion;
 use debian_control::lossless::Control;
 use std::path::Path;

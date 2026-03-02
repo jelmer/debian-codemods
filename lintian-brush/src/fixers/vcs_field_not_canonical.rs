@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use debian_analyzer::abstract_control::AbstractControlEditor;
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::debcargo::DebcargoEditor;

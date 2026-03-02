@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use deb822_lossless::Deb822;
 use std::collections::HashSet;
 use std::fs;

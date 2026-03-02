@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use makefile_lossless::Makefile;
 use regex::bytes::Regex;
 use std::fs;

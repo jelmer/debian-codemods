@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult};
+use crate::{FixerError, FixerResult};
 use debian_changelog::iter_changes_by_author;
 use debian_changelog::ChangeLog;
 use std::collections::HashSet;

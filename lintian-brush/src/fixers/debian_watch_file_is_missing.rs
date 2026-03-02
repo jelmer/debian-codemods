@@ -1,4 +1,4 @@
-use crate::{declare_fixer, Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
 use breezyshim::branch::Branch;
 use debversion::Version;
 use std::path::Path;

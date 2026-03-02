@@ -1,7 +1,7 @@
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{FixerError, FixerPreferences, FixerResult};
 use indexmap::IndexMap;
 use std::path::Path;
-use tracing::{debug, warn};
+use tracing::debug;
 use yaml_edit::Value;
 
 const SEQUENCE_FIELDS: &[&str] = &["Reference", "Screenshots"];

@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use debian_analyzer::rules::check_cdbs;
 use debian_control::Control;
 use makefile_lossless::Makefile;

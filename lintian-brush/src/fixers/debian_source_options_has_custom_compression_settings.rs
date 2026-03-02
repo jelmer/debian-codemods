@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{FixerError, FixerResult, LintianIssue, PackageType};
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;

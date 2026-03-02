@@ -1,5 +1,5 @@
 use crate::rules::drop_dh_with_argument;
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::relations::ensure_minimum_version;
 use debversion::Version;

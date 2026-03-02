@@ -1,4 +1,4 @@
-use crate::{declare_fixer, FixerError, FixerResult, LintianIssue};
+use crate::{FixerError, FixerResult, LintianIssue};
 use debian_analyzer::debhelper::read_debhelper_compat_file;
 use debian_control::lossless::Control;
 use debversion::Version;

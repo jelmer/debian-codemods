@@ -1,5 +1,5 @@
 use crate::upstream_metadata::DEP12_FIELD_ORDER;
-use crate::{declare_fixer, FixerError, FixerPreferences, FixerResult};
+use crate::{FixerError, FixerPreferences, FixerResult};
 use std::collections::HashSet;
 use std::path::Path;
 use strsim::levenshtein;
