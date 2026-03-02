@@ -1,6 +1,7 @@
 debian-codemods (0.171) UNRELEASED; urgency=medium
 
   * debian/copyright: Remove unused MIT license paragraph
+  * upload to unstable with new package names.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 26 Feb 2026 20:27:14 +0000
 

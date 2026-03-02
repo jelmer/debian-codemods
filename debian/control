@@ -156,7 +156,8 @@ Suggests: brz-debian (>= 2.8.66),
           git-buildpackage,
           po-debconf,
           postgresql-common
-Replaces: lintian-brush
+Breaks: lintian-brush (<< 0.170~)
+Replaces: lintian-brush (<< 0.170~)
 Description: codemods for automatically fixing problems in Debian packages
  This package contains a set of scripts that can automatically fix common
  problems in Debian packages:
