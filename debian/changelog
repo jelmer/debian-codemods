@@ -2,6 +2,7 @@ debian-codemods (0.171) UNRELEASED; urgency=medium
 
   * debian/copyright: Remove unused MIT license paragraph
   * upload to unstable with new package names.
+  * Fix day-of-week for changelog entries 0.166, 0.165.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 26 Feb 2026 20:27:14 +0000
 
@@ -55,7 +56,7 @@ lintian-brush (0.166) unstable; urgency=medium
   * Stop shipping deb-import-uncommitted, which conflicts with brz-debian.
     Closes: #1126510
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 29 Jan 2026 00:00:00 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 29 Jan 2026 00:00:00 +0000
 
 lintian-brush (0.165) unstable; urgency=medium
 
@@ -65,7 +66,7 @@ lintian-brush (0.165) unstable; urgency=medium
     py/lintian_brush/systemd.py.
   * Fix ordering issue.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jan 2026 00:00:00 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 26 Jan 2026 00:00:00 +0000
 
 lintian-brush (0.164) unstable; urgency=medium
 
