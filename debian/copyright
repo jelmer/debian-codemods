@@ -4,7 +4,7 @@ Upstream-Contact: Jelmer Vernooĳ <jelmer@debian.org>
 Source: https://salsa.debian.org/jelmer/debian-codemods
 
 Files: *
-Copyright:
+Copyright: :
  2018-2019 Jelmer Vernooĳ <jelmer@debian.org>
 License: GPL-2+
 
