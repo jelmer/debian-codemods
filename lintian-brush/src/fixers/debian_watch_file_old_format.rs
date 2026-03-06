@@ -97,7 +97,7 @@ mod tests {
 
         let updated_content = fs::read_to_string(&watch_path).unwrap();
         // Should now be in version 5 deb822 format
-        let expected = "Version: 5\n\nSource: https://example.com/foo\nMatching-Pattern: foo-(.*).tar.gz\nPGP-Signature-URL-Mangle: s/$/.asc/\n";
+        let expected = "Version: 5\n\nSource: https://example.com/foo\nMatching-Pattern: foo-(.*).tar.gz\nPgpsigurlmangle: s/$/.asc/\n";
         assert_eq!(updated_content, expected);
     }
 
