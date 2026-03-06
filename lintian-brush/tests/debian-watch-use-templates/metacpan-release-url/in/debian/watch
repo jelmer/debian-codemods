@@ -1,0 +1,4 @@
+Version: 5
+
+Source: https://metacpan.org/release/Time-ParseDate
+Matching-Pattern: .*/Time-ParseDate-v?@ANY_VERSION@@ARCHIVE_EXT@$

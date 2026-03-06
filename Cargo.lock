@@ -919,9 +919,9 @@ dependencies = [
 
 [[package]]
 name = "deb822-lossless"
-version = "0.5.8"
+version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e25a82acbb59f93c4b2bb389e1fea66f5c81393ab7d1c6df3bfb58554fd93b00"
+checksum = "c96ba7e28d70756a955080b5a2064ecae00ee7a87c1421c1e3902ccff5d46100"
 dependencies = [
  "pyo3",
  "regex",
@@ -1031,9 +1031,7 @@ dependencies = [
 
 [[package]]
 name = "debian-watch"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfa2ef0588ff9174e9eda4f4e0016870df20d2b305a7eb6bde04d26a223d7663"
+version = "0.4.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -1041,10 +1039,25 @@ dependencies = [
  "debversion",
  "m_lexer",
  "regex",
- "reqwest 0.13.2",
+ "reqwest 0.12.28",
  "rowan",
  "scraper",
  "sequoia-openpgp",
+ "url",
+]
+
+[[package]]
+name = "debian-watch"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a48d33b3fe3c0a49176b753c26002014016e0bb7f5b9451f81afa9ffeed0a17"
+dependencies = [
+ "clap",
+ "deb822-lossless",
+ "debversion",
+ "m_lexer",
+ "regex",
+ "rowan",
  "url",
 ]
 
@@ -2853,7 +2866,7 @@ dependencies = [
  "debian-changelog",
  "debian-control",
  "debian-copyright",
- "debian-watch",
+ "debian-watch 0.4.2",
  "debversion",
  "dep3",
  "desktop-edit",
@@ -5941,7 +5954,7 @@ dependencies = [
  "debian-changelog",
  "debian-control",
  "debian-copyright",
- "debian-watch",
+ "debian-watch 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "debversion",
  "distro-info",
  "futures",
