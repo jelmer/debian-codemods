@@ -1,3 +1,12 @@
+debian-codemods (0.172) UNRELEASED; urgency=medium
+
+  * Bump version of debian-watch to one with proper field names for v5.
+    Closes: #1129735
+  * Bump debian-watch crate to 0.4.3; actually adds support for all
+    metacpan templates. Closes: #1128553
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 06 Mar 2026 09:09:14 +0000
+
 debian-codemods (0.171) unstable; urgency=medium
 
   * debian/copyright: Remove unused MIT license paragraph

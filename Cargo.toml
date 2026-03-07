@@ -42,7 +42,7 @@ regex = "1"
 indexmap = "2.7"
 makefile-lossless = "0.3.28"
 serial_test = ">=2, <4"
-debian-watch = "0.4.0"
+debian-watch = "0.4.3"
 #debian-control = { path = "../deb822-lossless/debian-control" }
 #deb822-lossless = { path = "../deb822-lossless" }
 systemd-unit-edit = "0.1.1"

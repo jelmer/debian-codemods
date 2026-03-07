@@ -2,4 +2,4 @@ Version: 5
 
 Source: https://pypi.debian.net/dulwich
 Matching-Pattern: dulwich-(.*).tar.gz
-PGP-Signature-URL-Mangle: s/$/.asc/
+Pgpsigurlmangle: s/$/.asc/
