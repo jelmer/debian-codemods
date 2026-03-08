@@ -1,4 +1,4 @@
-debian-codemods (0.172) UNRELEASED; urgency=medium
+debian-codemods (0.172) unstable; urgency=medium
 
   * Bump version of debian-watch to one with proper field names for v5.
     Closes: #1129735
