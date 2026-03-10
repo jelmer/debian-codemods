@@ -1,0 +1,23 @@
+Archive: SourceForge
+Reference:
+  Author: >
+    Samuel Assefa and Thomas M. Keane and Thomas D. Otto and Chris
+    Newbold and Matthew Berriman
+  Title: "ABACAS: algorithm-based automatic contiguation of assembled sequences"
+  Journal: Bioinformatics
+  Year: 2009
+  Volume: 25
+  Number: 15
+  Pages: 1968-1969
+  DOI: 10.1093/bioinformatics/btp347
+  PMID: 19497936
+  URL: http://bioinformatics.oxfordjournals.org/content/25/15/1968
+  eprint: "http://bioinformatics.oxfordjournals.org/content/\
+    25/15/1968.full.pdf+html"
+Registry:
+  - Name: bio.tools
+    Entry: NA
+  - Name: OMICtools
+    Entry: OMICS_06933
+  - Name: SciCrunch
+    Entry: NA
