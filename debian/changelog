@@ -1,4 +1,4 @@
-debian-codemods (0.173) UNRELEASED; urgency=medium
+debian-codemods (0.173) unstable; urgency=medium
 
   * Switch to yaml-edit crate for debian/upstream/metadata editing.
     Closes: #1128572
