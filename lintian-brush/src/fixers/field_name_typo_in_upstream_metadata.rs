@@ -47,12 +47,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
                     continue;
                 }
 
-                let value = mapping.get(field.as_str()).ok_or_else(|| {
-                    FixerError::Other(format!("Failed to get value for key: {}", field))
-                })?;
-
-                mapping.remove(field.as_str());
-                mapping.set(without_prefix, value);
+                mapping.rename_key(field.as_str(), without_prefix);
 
                 typo_fixed.push((field.clone(), without_prefix.to_string()));
                 continue;
@@ -62,12 +57,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         // Check for typos using Levenshtein distance
         for &option in DEP12_FIELD_ORDER {
             if levenshtein(&field, option) == 1 {
-                let value = mapping.get(field.as_str()).ok_or_else(|| {
-                    FixerError::Other(format!("Failed to get value for key: {}", field))
-                })?;
-
-                mapping.remove(field.as_str());
-                mapping.set(option, value);
+                mapping.rename_key(field.as_str(), option);
 
                 if option.to_lowercase() == field.to_lowercase() {
                     case_fixed.push((field.clone(), option.to_string()));
