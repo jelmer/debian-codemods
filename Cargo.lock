@@ -1051,9 +1051,9 @@ dependencies = [
 
 [[package]]
 name = "debian-watch"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0211d49f8c3ac31003632327c3962e1ccdf7b2fae7dcf9939d53826b5873e2dc"
+checksum = "71155bfc78e4ad948d99bad6a99be8ef022abca1919f1888065cc8a6a1b6d6f3"
 dependencies = [
  "anyhow",
  "clap",
@@ -5030,12 +5030,12 @@ checksum = "b7c388c1b5e93756d0c740965c41e8822f866621d41acbdf6336a6a168f8840c"
 
 [[package]]
 name = "socket2"
-version = "0.6.3"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
+checksum = "86f4aa3ad99f2088c990dfa82d367e19cb29268ed67c574d10d0a4bfe71f07e0"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -5980,9 +5980,9 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "upstream-ontologist"
-version = "0.3.12"
+version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99f29ed191334cbf84bf4d3994871d84d7a83baf973b08d0fe35595e415e546b"
+checksum = "88e702adfaf5f2d858fedf25673c038ea0fc5272b4f2bf4d4a55acc1f47e4998"
 dependencies = [
  "async-trait",
  "bit-set 0.8.0",
@@ -6725,9 +6725,9 @@ checksum = "d6bbff5f0aada427a1e5a6da5f1f98158182f26556f345ac9e04d36d0ebed650"
 
 [[package]]
 name = "winnow"
-version = "0.7.15"
+version = "0.7.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
+checksum = "5a5364e9d77fcdeeaa6062ced926ee3381faa2ee02d3eb83a5c27a8825540829"
 dependencies = [
  "memchr",
 ]
@@ -6900,11 +6900,12 @@ dependencies = [
 
 [[package]]
 name = "yaml-edit"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e54cf551905b4d2f3d0bb5ed2b5ebf095ce2757530037dccae0cef3887fa3c8"
 dependencies = [
- "indexmap",
+ "base64",
  "rowan",
- "tempfile",
 ]
 
 [[package]]

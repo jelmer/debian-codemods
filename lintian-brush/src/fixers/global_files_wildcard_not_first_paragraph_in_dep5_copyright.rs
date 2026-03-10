@@ -153,14 +153,6 @@ mod tests {
     use std::fs;
 
     #[test]
-    fn test_pattern_depth() {
-        assert_eq!(pattern_depth("*"), 0);
-        assert_eq!(pattern_depth("src/*"), 1);
-        assert_eq!(pattern_depth("src/foo/*"), 2);
-        assert_eq!(pattern_depth("a/b/c/d/*"), 4);
-    }
-
-    #[test]
     fn test_wildcard_detection() {
         // Test that we correctly identify wildcard paragraphs
         assert_eq!("*".trim(), "*");

@@ -1,5 +1,4 @@
 /// Utilities for manipulating debian/rules files.
-
 /// Remove a `--with <addon>` or `--with=<addon>` argument from a `dh` command line.
 ///
 /// Only the exact token(s) are removed; no other whitespace in the line is touched.
@@ -33,10 +32,10 @@ fn remove_whole_token(line: &str, pattern: &str) -> Option<String> {
             let before = &line[..pos];
             let after = &line[end..];
             // Consume one adjacent space so we don't leave a double space.
-            return Some(if before.ends_with(' ') {
-                format!("{}{}", &before[..before.len() - 1], after)
-            } else if after.starts_with(' ') {
-                format!("{}{}", before, &after[1..])
+            return Some(if let Some(stripped) = before.strip_suffix(' ') {
+                format!("{}{}", stripped, after)
+            } else if let Some(stripped) = after.strip_prefix(' ') {
+                format!("{}{}", before, stripped)
             } else {
                 format!("{}{}", before, after)
             });

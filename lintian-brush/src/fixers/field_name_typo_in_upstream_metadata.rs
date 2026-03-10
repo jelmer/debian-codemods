@@ -15,17 +15,21 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     let mut typo_fixed = Vec::new();
     let mut case_fixed = Vec::new();
 
-    let mut updater = yaml_edit::YamlUpdater::new(&metadata_path)
-        .map_err(|e| FixerError::Other(format!("Failed to create YAML updater: {}", e)))?;
-
-    let doc = updater
-        .open()
+    let doc = yaml_edit::Document::from_file(&metadata_path)
         .map_err(|e| FixerError::Other(format!("Failed to open YAML: {}", e)))?;
 
+    let Some(mapping) = doc.as_mapping() else {
+        return Err(FixerError::NoChanges);
+    };
+
     // Get all keys from the YAML
-    let keys: Vec<String> = doc
+    let keys: Vec<String> = mapping
         .keys()
-        .map_err(|e| FixerError::Other(format!("Failed to get keys: {}", e)))?;
+        .filter_map(|node| match node {
+            yaml_edit::YamlNode::Scalar(scalar) => Some(scalar.as_string()),
+            _ => None,
+        })
+        .collect();
 
     for field in keys {
         if valid_fields.contains(field.as_str()) {
@@ -35,9 +39,7 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         // Handle X- prefix
         if let Some(without_prefix) = field.strip_prefix("X-") {
             if valid_fields.contains(without_prefix) {
-                let target_exists = doc
-                    .contains_key(without_prefix)
-                    .map_err(|e| FixerError::Other(format!("Failed to check key: {}", e)))?;
+                let target_exists = mapping.keys().any(|k| k == without_prefix);
 
                 if target_exists {
                     // Both exist, warn and skip
@@ -45,13 +47,12 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
                     continue;
                 }
 
-                let value = doc
-                    .remove(&field)
-                    .map_err(|e| FixerError::Other(format!("Failed to remove key: {}", e)))?
-                    .expect("Key should exist");
+                let value = mapping.get(field.as_str()).ok_or_else(|| {
+                    FixerError::Other(format!("Failed to get value for key: {}", field))
+                })?;
 
-                doc.set(without_prefix, value)
-                    .map_err(|e| FixerError::Other(format!("Failed to set key: {}", e)))?;
+                mapping.remove(field.as_str());
+                mapping.set(without_prefix, value);
 
                 typo_fixed.push((field.clone(), without_prefix.to_string()));
                 continue;
@@ -61,13 +62,12 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         // Check for typos using Levenshtein distance
         for &option in DEP12_FIELD_ORDER {
             if levenshtein(&field, option) == 1 {
-                let value = doc
-                    .remove(&field)
-                    .map_err(|e| FixerError::Other(format!("Failed to remove key: {}", e)))?
-                    .expect("Key should exist");
+                let value = mapping.get(field.as_str()).ok_or_else(|| {
+                    FixerError::Other(format!("Failed to get value for key: {}", field))
+                })?;
 
-                doc.set(option, value)
-                    .map_err(|e| FixerError::Other(format!("Failed to set key: {}", e)))?;
+                mapping.remove(field.as_str());
+                mapping.set(option, value);
 
                 if option.to_lowercase() == field.to_lowercase() {
                     case_fixed.push((field.clone(), option.to_string()));
@@ -83,10 +83,9 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
         return Err(FixerError::NoChanges);
     }
 
-    // Close updater to save changes
-    updater
-        .close()
-        .map_err(|e| FixerError::Other(format!("Failed to close YAML: {}", e)))?;
+    // Save changes
+    doc.to_file(&metadata_path)
+        .map_err(|e| FixerError::Other(format!("Failed to save YAML: {}", e)))?;
 
     // Build description message
     let mut kind = String::new();

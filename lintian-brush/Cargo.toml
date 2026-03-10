@@ -60,7 +60,7 @@ debbugs = { version = "0.1.8", features = ["blocking"] }
 textwrap = "0.16"
 toml_edit = { workspace = true }
 systemd-unit-edit = { workspace = true }
-yaml-edit = { path = "../yaml-edit", version = "0.1.0" }
+yaml-edit = { workspace = true }
 
 [dev-dependencies]
 fs_extra = "1.3.0"

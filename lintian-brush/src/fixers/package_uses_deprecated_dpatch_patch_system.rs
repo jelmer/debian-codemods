@@ -143,7 +143,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             changes_made.push("Rename debian/patches/00list to series");
         }
 
-        Ok(FixerResult::builder(&format!(
+        Ok(FixerResult::builder(format!(
             "Migrate from dpatch to 3.0 (quilt) source format. {}",
             changes_made.join(". ")
         ))
