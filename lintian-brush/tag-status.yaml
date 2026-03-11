@@ -16,233 +16,783 @@
 #    - impossible
 ---
 - tag: FSSTND-dir-in-manual-page
+  status: build-stage
 - tag: FSSTND-dir-in-usr
+  status: build-stage
 - tag: FSSTND-dir-in-var
+  status: build-stage
 - tag: absolute-symbolic-link-target-in-source
+  status: build-stage
 - tag: absolute-symlink-in-top-level-folder
+  status: build-stage
 - tag: adduser-with-home-var-run
+  difficulty: medium
+  comment: |
+    Maintainer script calls adduser with --home /var/run/... instead of
+    /run/.... needs-shell-parser; straightforward string replacement once
+    the adduser invocation is found.
 - tag: alternates-not-allowed
+  difficulty: hard
+  comment: |
+    Would need to pick one alternative from a |-separated dependency
+    in a udeb, which requires human judgement about which is correct.
 - tag: alternatively-build-depends-on-python-sphinx-and-python3-sphinx
+  difficulty: easy
+  comment: |
+    Drop python-sphinx alternative from Build-Depends, keeping only
+    python3-sphinx. Uses TemplatedControlEditor and Relations API.
 - tag: ambiguous-paragraph-in-dep5-copyright
+  difficulty: hard
+  comment: |
+    Would need to split or restructure ambiguous paragraphs in
+    debian/copyright that mix Files and standalone License roles.
+    Requires understanding the maintainer's intent.
 - tag: ancient-libtool
+  status: build-stage
 - tag: apache2-configuration-files-need-conf-suffix
+  status: build-stage
 - tag: apache2-deprecated-auth-config
+  status: build-stage
 - tag: apache2-module-does-not-depend-on-apache2-api
+  difficulty: easy
+  comment: |
+    Add missing dependency on apache2-api virtual package.
+    Straightforward addition to Depends in debian/control.
 - tag: apache2-module-does-not-ship-load-file
+  status: build-stage
 - tag: apache2-reverse-dependency-calls-invoke-rc.d
+  difficulty: medium
+  comment: |
+    Replace invoke-rc.d calls with apache2ctl in maintainer scripts.
+    needs-shell-parser
 - tag: apache2-reverse-dependency-calls-wrapper-script
+  difficulty: medium
+  comment: |
+    Replace deprecated wrapper script calls (e.g. a2enmod) with direct
+    apache2ctl usage in maintainer scripts. needs-shell-parser
 - tag: apache2-reverse-dependency-ships-file-in-not-allowed-directory
+  status: build-stage
 - tag: apache2-reverse-dependency-uses-obsolete-directory
+  status: build-stage
 - tag: apache2-unparsable-dependency
+  difficulty: hard
+  comment: |
+    Would need to rewrite malformed apache dependency directives; requires
+    understanding what the maintainer intended.
 - tag: apache2-unsupported-dependency
+  difficulty: hard
+  comment: |
+    Would need to replace unsupported apache dependency types with
+    supported ones; requires understanding the intended semantics.
 - tag: apparently-corrupted-elf-binary
+  status: build-stage
 - tag: application-in-library-section
   difficulty: medium
   comment: |
     it's hard to determine whether the package should be moved out of the
     library section or whether the binary is a helper
 - tag: appstream-metadata-in-legacy-location
+  status: build-stage
 - tag: appstream-metadata-invalid
+  status: build-stage
 - tag: appstream-metadata-legacy-format
+  status: build-stage
 - tag: appstream-metadata-malformed-modalias-provide
+  status: build-stage
 - tag: appstream-metadata-missing-modalias-provide
+  status: build-stage
 - tag: arch-dep-package-has-big-usr-share
   difficulty: medium
+  comment: |
+    Would need to split the package by adding a new arch-indep binary
+    stanza to debian/control and moving files via .install files.
+    Tricky to automate the file splitting decision.
 - tag: arch-dependent-file-in-usr-share
+  status: build-stage
 - tag: arch-dependent-file-not-in-arch-specific-directory
+  status: build-stage
 - tag: arch-independent-package-contains-binary-or-object
+  difficulty: medium
+  comment: |
+    Would change Architecture field from "all" to "any" in debian/control,
+    but may instead need to split the package. Hard to know which is right
+    without understanding the package.
 - tag: arch-wildcard-in-binary-package
+  difficulty: easy
+  comment: |
+    Replace architecture wildcard (e.g. linux-any) in a binary stanza
+    with "any" using TemplatedControlEditor.
 - tag: aspell-package-not-arch-all
+  difficulty: easy
+  comment: |
+    Set Architecture field to "all" in the binary stanza of debian/control
+    for aspell dictionary packages.
 - tag: backports-changes-missing
+  status: build-stage
 - tag: backports-upload-has-incorrect-version-number
+  difficulty: hard
+  comment: |
+    Would need to rewrite the version number in debian/changelog to match
+    backports conventions. Risky without knowing the intended target.
 - tag: backup-file-in-package
+  status: build-stage
 - tag: bad-distribution-in-changes-file
+  status: build-stage
 - tag: bad-exception-format-in-dep5-copyright
+  difficulty: hard
+  comment: |
+    Would need to rewrite malformed license exception clauses in
+    debian/copyright; requires understanding the intended license.
 - tag: bad-homepage
+  difficulty: medium
+  comment: |
+    Could use upstream-ontologist to find the correct Homepage URL and
+    update the field in debian/control. Works for known hosting patterns.
 - tag: bad-intended-distribution
+  status: build-stage
 - tag: bad-jar-name
+  status: build-stage
 - tag: bad-link-to-undocumented-manpage
+  status: build-stage
 - tag: bad-menu-file-name
+  status: build-stage
 - tag: bad-menu-item
+  status: build-stage
 - tag: bad-owner-for-doc-file
+  status: build-stage
 - tag: bad-package-name
+  difficulty: impossible
+  comment: renaming a package requires an archive-level transition
 - tag: bad-perm-for-file-in-etc-sudoers.d
+  status: build-stage
 - tag: bad-permissions-for-ali-file
+  status: build-stage
 - tag: bad-permissions-for-etc-cron.d-script
+  status: build-stage
 - tag: bad-permissions-for-etc-emacs-script
+  status: build-stage
 - tag: bad-provided-package-name
+  difficulty: hard
+  comment: |
+    Would need to fix the Provides field in debian/control, but knowing
+    the correct package name requires human judgement.
 - tag: bad-relation
+  difficulty: hard
+  comment: |
+    Would need to parse and rewrite malformed dependency relations in
+    debian/control; the correct fix depends on what was intended.
 - tag: bad-section-in-changes-file
+  status: build-stage
 - tag: bad-so-link-within-manual-page
+  status: build-stage
 - tag: bad-test-in-menu-item
+  status: build-stage
 - tag: bad-urgency-in-changes-file
+  status: build-stage
 - tag: bad-version-in-relation
+  difficulty: hard
+  comment: |
+    Would need to fix malformed version strings in dependency relations
+    in debian/control; requires knowing the intended version.
 - tag: bad-version-number
+  difficulty: impossible
+  comment: changing the version number requires a new upload
 - tag: bash-completion-with-hashbang
+  status: build-stage
 - tag: bin-sbin-mismatch
+  status: build-stage
 - tag: binaries-have-file-conflict
+  status: build-stage
 - tag: binary-arch-rules-but-pkg-is-arch-indep
+  difficulty: medium
+  comment: |
+    Would need to remove the binary-arch target from debian/rules or
+    change the package to Architecture: any. Requires understanding
+    the build system to decide which.
 - tag: binary-compiled-with-profiling-enabled
+  status: build-stage
 - tag: binary-file-built-without-LFS-support
+  status: build-stage
 - tag: binary-from-other-architecture
+  status: build-stage
 - tag: binary-has-unneeded-section
+  status: build-stage
 - tag: binary-in-etc
+  status: build-stage
 - tag: binary-nmu-debian-revision-in-source
+  difficulty: hard
+  comment: |
+    Would need to fix the version number in debian/changelog.
+    Tricky because BinNMU revisions are an upload process concern.
 - tag: binary-package-depends-on-toolchain-package
+  difficulty: easy
+  comment: |
+    Remove toolchain package (e.g. gcc, binutils) from Depends in
+    debian/control. Same pattern as build-depends-on-build-essential.
 - tag: binary-with-bad-dynamic-table
+  status: build-stage
 - tag: binary-without-english-manpage
+  difficulty: hard
+  comment: |
+    Would need to generate or provide a manpage. Could use help2man
+    but that requires building the package.
 - tag: binary-without-manpage
+  difficulty: hard
+  comment: |
+    Would need to generate or provide a manpage. Could use help2man
+    but that requires building the package.
 - tag: boilerplate-copyright-format-uri
+  difficulty: easy
+  comment: |
+    Replace boilerplate Format URI in debian/copyright with the correct
+    https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+    URL. Simple string replacement.
 - tag: boolean-template-has-bogus-default
+  difficulty: medium
+  comment: |
+    Fix the Default field in a debconf template to be "true" or "false"
+    for boolean templates. Requires parsing debian/*.templates.
 - tag: brace-expansion-in-debhelper-config-file
+  difficulty: medium
+  comment: |
+    Expand brace expressions in debhelper config files (e.g. .install)
+    into explicit entries since debhelper doesn't support brace expansion.
 - tag: breaks-without-version
+  difficulty: hard
+  comment: |
+    Would need to add a version constraint to Breaks in debian/control.
+    Requires knowing which version introduced the incompatibility.
 - tag: broken-bz2
+  status: build-stage
 - tag: broken-gz
+  status: build-stage
 - tag: broken-lz
+  status: build-stage
 - tag: broken-lzma
+  status: build-stage
 - tag: broken-lzo
+  status: build-stage
 - tag: broken-xz
+  status: build-stage
 - tag: broken-zip
+  status: build-stage
 - tag: bugs-field-does-not-refer-to-debian-infrastructure
+  difficulty: easy
+  comment: |
+    Remove or fix the Bugs field in debian/control to point to the
+    Debian BTS. Usually just remove it since the default is correct.
 - tag: build-conflicts-with-build-dependency
+  difficulty: medium
+  comment: |
+    Remove the conflicting entry from either Build-Conflicts or
+    Build-Depends in debian/control. Requires understanding which
+    one is wrong.
 - tag: build-depends-arch-without-arch-dependent-binary
+  difficulty: medium
+  comment: |
+    Move Build-Depends-Arch to Build-Depends-Indep in debian/control,
+    or add an Architecture: any binary package. Hard to decide which.
 - tag: build-depends-indep-without-arch-indep
+  difficulty: medium
+  comment: |
+    Move Build-Depends-Indep to Build-Depends in debian/control, or
+    add an Architecture: all binary package. Hard to decide which.
 - tag: build-depends-on-1-revision
+  difficulty: easy
+  comment: |
+    Remove the -1 Debian revision from version constraints in
+    Build-Depends. Use Relations API to strip the revision part.
 - tag: build-depends-on-an-obsolete-java-package
+  difficulty: easy
+  comment: |
+    Replace obsolete Java build dependency (e.g. libtools-ant-java)
+    with its modern replacement in Build-Depends.
 - tag: build-depends-on-build-essential-package-without-using-version
+  difficulty: easy
+  comment: |
+    Remove unversioned build-essential member (e.g. gcc, make) from
+    Build-Depends using TemplatedControlEditor and Relations API.
 - tag: build-depends-on-essential-package-without-using-version
+  difficulty: easy
+  comment: |
+    Remove unversioned essential package from Build-Depends.
+    Same approach as build-depends-on-build-essential.
 - tag: build-depends-on-metapackage
+  difficulty: easy
+  comment: |
+    Remove metapackage from Build-Depends and replace with the actual
+    packages needed. May need a mapping of metapackage -> contents.
 - tag: build-depends-on-non-build-package
+  difficulty: easy
+  comment: |
+    Remove non-build package (e.g. a runtime-only package) from
+    Build-Depends in debian/control.
 - tag: build-depends-on-python-dev-with-no-arch-any
+  difficulty: easy
+  comment: |
+    Replace python-dev/python3-dev with python/python3 in Build-Depends
+    when there are no Architecture: any binary packages.
 - tag: build-depends-on-python-sphinx-only
+  difficulty: easy
+  comment: |
+    Replace python-sphinx with python3-sphinx in Build-Depends.
+    python-sphinx is the Python 2 version.
 - tag: build-depends-on-specific-java-doc-package
+  difficulty: easy
+  comment: |
+    Replace specific Java doc package dependency with the generic
+    default-jdk-doc in Build-Depends.
 - tag: build-depends-on-versioned-berkeley-db
+  difficulty: medium
+  comment: |
+    Replace versioned Berkeley DB dependency (e.g. libdb5.3-dev) with
+    the unversioned libdb-dev. May need to verify compatibility.
 - tag: build-info-in-binary-control-file-section
+  difficulty: medium
+  comment: |
+    Move Build-Depends/Build-Conflicts from binary stanza to source stanza,
+    merging with any existing build relations. Uses TemplatedControlEditor.
+    Moving is straightforward but merging relations correctly requires care.
 - tag: cannot-check-whether-usr-share-doc-symlink-points-to-foreign-package
+  status: build-stage
 - tag: capitalization-error-in-description
+  difficulty: easy
+  comment: |
+    Fix known capitalization errors (e.g. "linux" -> "Linux") in the
+    package description in debian/control. Lintian provides the expected
+    spelling; apply it with TemplatedControlEditor.
 - tag: capitalization-error-in-description-synopsis
+  difficulty: easy
+  comment: |
+    Same as capitalization-error-in-description but for the synopsis line.
 - tag: changed-by-address-is-on-localhost
+  status: build-stage
 - tag: changed-by-address-is-root-user
+  status: build-stage
 - tag: changed-by-address-malformed
+  status: build-stage
 - tag: changed-by-invalid-for-derivative
+  status: build-stage
 - tag: changed-by-name-missing
+  status: build-stage
 - tag: changelog-distribution-does-not-match-changes-file
+  status: build-stage
 - tag: changelog-empty-entry
+  difficulty: medium
+  comment: |
+    Remove empty changelog entries from debian/changelog.
+    Requires parsing with debian-changelog crate.
 - tag: changelog-file-missing-explicit-entry
+  difficulty: hard
+  comment: |
+    Would need to add a changelog entry for a specific version. Requires
+    knowing what changes were made.
 - tag: changelog-file-not-compressed
+  status: build-stage
 - tag: changelog-is-dh_make-template
+  difficulty: easy
+  comment: |
+    Detect and remove dh_make boilerplate from debian/changelog.
+    Replace with a proper initial changelog entry.
 - tag: changelog-is-symlink
+  status: build-stage
 - tag: changelog-news-debian-mismatch
+  difficulty: hard
+  comment: |
+    Would need to reconcile versions between debian/changelog and
+    debian/NEWS. Requires understanding which is correct.
 - tag: changelog-not-compressed-with-max-compression
+  status: build-stage
 - tag: changelog-references-temp-security-identifier
+  difficulty: medium
+  comment: |
+    Replace temporary security identifiers (e.g. TEMP-...) in
+    debian/changelog with their final CVE numbers. Would need to
+    look up the mapping.
 - tag: checksum-count-mismatch-in-changes-file
+  status: build-stage
 - tag: checksum-mismatch-in-changes-file
+  status: build-stage
 - tag: classpath-contains-relative-path
+  status: build-stage
 - tag: co-maintained-package-with-no-vcs-fields
   difficulty: hard
+  comment: |
+    Would need to discover the VCS repository URL (e.g. via
+    upstream-ontologist or salsa API) and add Vcs-Git/Vcs-Browser
+    fields to debian/control.
 - tag: codeless-jar
+  status: build-stage
 - tag: command-in-menu-file-and-desktop-file
+  status: build-stage
 - tag: command-in-sbin-has-manpage-in-incorrect-section
+  status: build-stage
 - tag: command-with-path-in-maintainer-script
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Strip absolute paths (e.g. /usr/bin/foo -> foo) from commands in
+    maintainer scripts. needs-shell-parser
 - tag: composer-package-without-pkg-php-tools-builddep
+  difficulty: easy
+  comment: |
+    Add pkg-php-tools to Build-Depends in debian/control.
+    Straightforward relation addition.
 - tag: compressed-documentation
+  status: build-stage
 - tag: compressed-duplicate
+  status: build-stage
 - tag: compressed-symlink-with-wrong-ext
+  status: build-stage
 - tag: concatenated-upstream-signatures
+  status: build-stage
 - tag: conffile-has-bad-file-type
+  status: build-stage
 - tag: conffile-is-not-in-package
+  status: build-stage
 - tag: config-does-not-load-confmodule
+  difficulty: medium
+  comment: |
+    Add ". /usr/share/debconf/confmodule" to the debian/config script.
+    needs-shell-parser
 - tag: config-file-reserved
+  status: build-stage
 - tag: configure-generated-file-in-source
+  difficulty: medium
+  comment: |
+    Delete generated configure files from the source tree and ensure
+    dh_autoreconf regenerates them at build time.
 - tag: conflicting-negation-in-source-relation
+  difficulty: medium
+  comment: |
+    Fix contradictory architecture restrictions (e.g. [!amd64 amd64])
+    in Build-Depends. Requires parsing the restriction list.
 - tag: conflicts-with-dependency
+  difficulty: hard
+  comment: |
+    Package both Conflicts and Depends on the same package.
+    Requires human judgement to decide which is correct.
 - tag: conflicts-with-version
   difficulty: hard
   comment: requires archive info
 - tag: control-file-contains-dh_make-vcs-comment
+  difficulty: easy
+  comment: |
+    Remove commented-out "# Vcs-Git:" / "# Vcs-Browser:" template lines
+    from debian/control. Requires raw text manipulation since deb822
+    parsers typically discard comments.
 - tag: control-file-has-bad-owner
+  status: build-stage
 - tag: control-file-has-bad-permissions
+  status: build-stage
 - tag: control-file-is-empty
+  status: build-stage
 - tag: control-file-is-not-a-file
+  status: build-stage
 - tag: control-interpreter-in-usr-local
+  status: build-stage
 - tag: control-interpreter-without-depends
+  difficulty: medium
+  comment: |
+    Add missing dependency for the interpreter used in a maintainer
+    script. Would need to map interpreter paths to package names.
 - tag: control-tarball-compression-format
+  status: build-stage
 - tag: copyright-contains-automatically-extracted-boilerplate
+  difficulty: medium
+  comment: |
+    Remove auto-extracted boilerplate text from debian/copyright.
+    Requires recognizing known boilerplate patterns.
 - tag: copyright-contains-dh_make-todo-boilerplate
+  difficulty: easy
+  comment: |
+    Remove dh_make TODO boilerplate comments from debian/copyright.
+    Pattern match on known dh_make template text and delete it.
 - tag: copyright-excludes-files-in-native-package
+  difficulty: easy
+  comment: |
+    Remove Files-Excluded field from debian/copyright in a native
+    package where it has no effect.
 - tag: copyright-file-compressed
+  status: build-stage
 - tag: copyright-file-is-symlink
+  status: build-stage
 - tag: copyright-file-lacks-pointer-to-perl-license
+  difficulty: easy
+  comment: |
+    Add reference to /usr/share/common-licenses/Artistic and
+    /usr/share/common-licenses/GPL-1 in debian/copyright for
+    Perl packages.
 - tag: copyright-has-url-from-dh_make-boilerplate
+  difficulty: easy
+  comment: |
+    Replace dh_make boilerplate URL in debian/copyright with the
+    actual upstream URL. Could use upstream-ontologist to find it.
 - tag: copyright-refers-to-compressed-license
+  difficulty: easy
+  comment: |
+    Fix license file references in debian/copyright to point to
+    uncompressed versions (e.g. GPL.gz -> GPL).
 - tag: copyright-refers-to-deprecated-bsd-license-file
+  difficulty: easy
+  comment: |
+    Update reference from deprecated BSD license file path to the
+    current one in /usr/share/common-licenses/.
 - tag: copyright-refers-to-incorrect-directory
+  difficulty: easy
+  comment: |
+    Fix license path in debian/copyright, e.g. replace
+    /usr/share/common-licenses/GPL with the correct versioned path.
 - tag: copyright-refers-to-nonexistent-license-file
+  difficulty: medium
+  comment: |
+    Fix reference to a non-existent license file in
+    /usr/share/common-licenses/. Requires knowing the correct license.
 - tag: copyright-refers-to-old-directory
+  difficulty: easy
+  comment: |
+    Update /usr/doc/ references to /usr/share/doc/ in debian/copyright.
+    Simple path replacement.
 - tag: copyright-with-old-dh-make-debian-copyright
+  difficulty: easy
+  comment: |
+    Replace old dh_make copyright boilerplate in debian/copyright
+    with the current format. Pattern-match known old templates.
 - tag: copyright-without-copyright-notice
+  difficulty: hard
+  comment: |
+    Would need to add copyright notices to debian/copyright. Requires
+    identifying the actual copyright holders and years.
 - tag: csh-considered-harmful
+  status: build-stage
 - tag: ctrl-script
+  status: classification
 - tag: custom-library-search-path
+  status: build-stage
 - tag: data-tarball-compression-format
+  status: build-stage
 - tag: dbg-package-missing-depends
+  difficulty: easy
+  comment: |
+    Add missing Depends on the corresponding non-debug package to
+    the -dbg package stanza in debian/control.
 - tag: dbus-policy-at-console
+  status: build-stage
 - tag: dbus-policy-excessively-broad
+  status: build-stage
 - tag: dbus-policy-without-send-destination
+  status: build-stage
 - tag: dbus-session-service-wrong-name
+  status: build-stage
 - tag: dbus-system-service-wrong-name
+  status: build-stage
 - tag: debconf-config-not-executable
+  difficulty: easy
+  comment: |
+    Set the executable bit on debian/config.
+    Could also be done by adding execute_before_dh_installdebconf.
 - tag: debconf-is-not-a-registry
+  status: build-stage
 - tag: debconf-translation-using-general-list
+  difficulty: medium
+  comment: |
+    Convert general list template type to specific list type in
+    debian/*.templates. Requires understanding the template structure.
 - tag: debhelper-autoscript-in-maintainer-scripts
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Remove manually inserted debhelper autoscript fragments from
+    maintainer scripts and let debhelper generate them. needs-shell-parser
 - tag: debhelper-compat-file-contains-multiple-levels
+  difficulty: easy
+  comment: |
+    Fix debian/compat to contain only a single debhelper compat level.
+    Remove extra lines.
 - tag: debhelper-compat-file-is-empty
+  difficulty: easy
+  comment: |
+    Write the appropriate compat level to debian/compat, or migrate
+    to debhelper-compat Build-Depends (preferred).
 - tag: debhelper-compat-file-is-missing
+  difficulty: easy
+  comment: |
+    Add debhelper-compat (= N) to Build-Depends in debian/control,
+    which is the modern way to set compat level.
 - tag: debhelper-compat-level
+  status: classification
 - tag: debhelper-compat-not-a-number
+  difficulty: hard
+  comment: |
+    debian/compat contains a non-numeric value. Requires human
+    judgement to determine the intended compat level.
 - tag: debhelper-compat-virtual-relation
+  difficulty: easy
+  comment: |
+    Migrate from debian/compat file to debhelper-compat (= N) virtual
+    package in Build-Depends. Already implemented by the
+    debhelper-compat fixer for higher compat levels.
 - tag: debhelper-compatibility-level-not-a-number
+  difficulty: hard
+  comment: |
+    DH_COMPAT is set to a non-numeric value in debian/rules.
+    Requires human judgement to determine the intended level.
 - tag: debian-build-system
   status: classification
 - tag: debian-changelog-file-contains-invalid-email-address
+  difficulty: hard
+  comment: |
+    Would need to fix malformed email in debian/changelog. Hard to
+    know the correct address without human input.
 - tag: debian-changelog-file-is-a-symlink
+  status: build-stage
 - tag: debian-changelog-file-missing-or-wrong-name
+  difficulty: easy
+  comment: |
+    Rename misnamed changelog file (e.g. debian/Changelog) to
+    debian/changelog.
 - tag: debian-changelog-file-uses-obsolete-national-encoding
+  difficulty: medium
+  comment: |
+    Convert debian/changelog from legacy encoding (e.g. ISO-8859-1)
+    to UTF-8 using iconv or similar.
 - tag: debian-changelog-line-too-short
+  difficulty: hard
+  comment: |
+    Would need to rewrite changelog entries to be longer. Requires
+    understanding the changes to add meaningful content.
 - tag: debian-control-file-is-a-symlink
+  status: build-stage
 - tag: debian-control-file-uses-obsolete-national-encoding
+  difficulty: medium
+  comment: |
+    Convert debian/control from legacy encoding to UTF-8.
+    Must preserve deb822 structure during conversion.
 - tag: debian-control-has-dbgsym-package
+  difficulty: easy
+  comment: |
+    Remove manually defined -dbgsym package stanza from debian/control
+    since dbgsym packages are now auto-generated by debhelper.
 - tag: debian-control-repeats-field-name-in-value
+  difficulty: easy
+  comment: |
+    Remove the field name prefix from the value, e.g.
+    "Section: libs" where the value starts with "Section:".
 - tag: debian-copyright-file-uses-obsolete-national-encoding
+  difficulty: medium
+  comment: |
+    Convert debian/copyright from legacy encoding to UTF-8.
 - tag: debian-copyright-is-symlink
+  status: build-stage
 - tag: debian-files-list-in-source
+  difficulty: easy
+  comment: |
+    Delete the debian/files file from the source tree. It should
+    only be generated during build.
 - tag: debian-news-entry-has-strange-distribution
+  difficulty: medium
+  comment: |
+    Fix the distribution field in debian/NEWS entries.
+    Requires parsing with debian-changelog crate.
 - tag: debian-news-entry-has-unknown-version
+  difficulty: hard
+  comment: |
+    Fix version in debian/NEWS that doesn't match any changelog entry.
+    Requires human judgement.
 - tag: debian-news-entry-uses-asterisk
+  difficulty: easy
+  comment: |
+    Replace asterisk bullet points in debian/NEWS with the standard
+    format. Simple text replacement.
 - tag: debian-news-file-not-compressed
+  status: build-stage
 - tag: debian-news-file-uses-obsolete-national-encoding
+  difficulty: medium
+  comment: Convert debian/NEWS from legacy encoding to UTF-8.
 - tag: debian-revision-is-zero
+  difficulty: hard
+  comment: |
+    Would need to change the Debian revision from -0 to -1 in
+    debian/changelog. Risky to auto-change version numbers.
 - tag: debian-revision-not-well-formed
+  difficulty: hard
+  comment: |
+    Would need to fix malformed Debian revision in debian/changelog.
+    Risky to auto-change version numbers.
 - tag: debian-rules-calls-debhelper-in-odd-order
+  difficulty: medium
+  comment: |
+    Reorder debhelper calls in debian/rules to the canonical order.
+    Requires parsing Makefile targets and understanding dependencies.
 - tag: debian-rules-ignores-make-clean-error
+  difficulty: easy
+  comment: |
+    Remove "- " prefix or "|| true" from make clean invocation in
+    debian/rules clean target.
 - tag: debian-rules-is-dh_make-template
+  difficulty: easy
+  comment: |
+    Replace dh_make template debian/rules with a minimal dh-based
+    rules file.
 - tag: debian-rules-is-symlink
+  status: build-stage
 - tag: debian-rules-missing-required-target
+  difficulty: medium
+  comment: |
+    Add missing required target (build, clean, install, etc.) to
+    debian/rules. Requires understanding the build system.
 - tag: debian-rules-not-a-makefile
+  difficulty: hard
+  comment: |
+    debian/rules is not a valid Makefile. Requires understanding what
+    the file was supposed to be.
 - tag: debian-rules-passes-version-info-to-dh_shlibdeps
+  difficulty: easy
+  comment: |
+    Remove --version-info flag from dh_shlibdeps call in debian/rules.
+    Simple text removal.
 - tag: debian-rules-sets-DEB_BUILD_OPTIONS
+  difficulty: easy
+  comment: |
+    Remove DEB_BUILD_OPTIONS assignment from debian/rules since it
+    should be set by the build environment, not the package.
 - tag: debian-rules-sets-DH_COMPAT
+  difficulty: easy
+  comment: |
+    Remove DH_COMPAT export from debian/rules and use debhelper-compat
+    Build-Depends instead.
 - tag: debian-rules-should-not-set-CFLAGS-from-noopt
+  difficulty: easy
+  comment: |
+    Remove manual CFLAGS/noopt handling from debian/rules. Modern
+    dpkg-buildflags handles this automatically.
 - tag: debian-rules-should-not-use-DH_EXTRA_ADDONS
+  difficulty: easy
+  comment: |
+    Replace DH_EXTRA_ADDONS with --with flag on the dh invocation
+    in debian/rules.
 - tag: debian-rules-should-not-use-custom-compression-settings
+  difficulty: easy
+  comment: |
+    Remove custom compression settings (e.g. dh_builddeb -- -Zxz)
+    from debian/rules. The default is already optimal.
 - tag: debian-rules-should-not-use-sanitize-all-buildflag
+  difficulty: easy
+  comment: |
+    Remove sanitize-all from DEB_BUILD_MAINT_OPTIONS in debian/rules.
 - tag: debian-rules-updates-control-automatically
+  difficulty: medium
+  comment: |
+    Remove automatic debian/control regeneration from debian/rules
+    (e.g. clean target calling debian/control target). This is
+    fragile and discouraged.
 - tag: debian-rules-uses-as-needed-linker-flag
   status: implemented
 - tag: debian-rules-uses-deb-build-opts
+  difficulty: easy
+  comment: |
+    Replace DEB_BUILD_OPTS with DEB_BUILD_OPTIONS in debian/rules.
+    Simple string substitution.
 - tag: debian-rules-uses-deprecated-makefile
+  difficulty: medium
   comment: |
     if included file is /usr/share/cdbs/1/rules/simple-patchsys.mk, then
     upgrade to 3.0 (quilt) source format
@@ -250,238 +800,800 @@
   status: implemented
   difficulty: easy
 - tag: debian-rules-uses-installed-python-versions
+  difficulty: medium
+  comment: |
+    Replace py3versions/pyversions calls in debian/rules with a
+    static list or use pybuild instead.
 - tag: debian-rules-uses-special-shell-variable
   status: implemented
 - tag: debian-rules-uses-supported-python-versions-without-python-all-build-depends
+  difficulty: easy
+  comment: |
+    Add python-all or python3-all to Build-Depends since debian/rules
+    uses py3versions -s or similar.
 - tag: debian-rules-uses-wrong-environment-variable
+  difficulty: easy
+  comment: |
+    Replace wrong environment variable name with the correct one in
+    debian/rules (e.g. DEB_HOST_MULTIARCH typos).
 - tag: debian-tests-control-uses-national-encoding
+  difficulty: medium
+  comment: |
+    Convert debian/tests/control from legacy encoding to UTF-8.
 - tag: debian-watch-contains-dh_make-template
   status: implemented
 - tag: debian-watch-could-verify-download
+  difficulty: medium
+  comment: |
+    Add pgpsigurlmangle or similar option to debian/watch to enable
+    download verification. Requires finding the upstream signing key.
 - tag: debian-watch-does-not-check-openpgp-signature
   status: implemented
 - tag: debian-watch-file-declares-multiple-versions
+  difficulty: medium
+  comment: |
+    Consolidate multiple version declarations in debian/watch.
+    Requires understanding which version line is correct.
 - tag: debian-watch-file-in-native-package
+  difficulty: easy
+  comment: |
+    Remove debian/watch from a native package where it serves no
+    purpose, or convert the package to non-native.
 - tag: debian-watch-file-missing-version
+  difficulty: easy
+  comment: |
+    Add version=N header to debian/watch file.
 - tag: debian-watch-file-pubkey-file-is-missing
   status: implemented
 - tag: debian-watch-file-specifies-old-upstream-version
+  difficulty: hard
+  comment: |
+    The dversionmangle or uversionmangle in debian/watch produces a
+    version older than the current upstream. Hard to fix automatically.
 - tag: debian-watch-file-specifies-wrong-upstream-version
+  difficulty: hard
+  comment: |
+    debian/watch matches a different version than the package version.
+    Fix depends on understanding the version mangling intent.
 - tag: debian-watch-file-standard
+  status: classification
 - tag: debian-watch-file-unknown-version
+  difficulty: hard
+  comment: |
+    debian/watch declares an unknown version. Would need to determine
+    the correct watch file format version.
 - tag: debian-watch-file-uses-deprecated-sf-redirector-method
+  difficulty: easy
+  comment: |
+    Update SourceForge URL pattern in debian/watch to use the modern
+    redirector format.
 - tag: debian-watch-lacks-sourceforge-redirector
+  difficulty: easy
+  comment: |
+    Add SourceForge redirector to debian/watch URL for proper
+    SourceForge file matching.
 - tag: debian-watch-line-invalid
+  difficulty: hard
+  comment: |
+    Fix malformed watch line in debian/watch. The correct fix depends
+    on what was intended.
 - tag: debian-watch-mangles-debian-version-improperly
+  difficulty: medium
+  comment: |
+    Fix dversionmangle regex in debian/watch. Requires understanding
+    the intended version transformation.
 - tag: debian-watch-mangles-upstream-version-improperly
+  difficulty: medium
+  comment: |
+    Fix uversionmangle regex in debian/watch. Requires understanding
+    the intended version transformation.
 - tag: debian-watch-not-mangling-version
   difficulty: easy
   status: implemented
 - tag: debian-watch-upstream-component
+  status: classification
 - tag: debug-file-with-no-debug-symbols
+  status: build-stage
 - tag: debug-package-for-multi-arch-same-pkg-not-coinstallable
+  difficulty: easy
+  comment: |
+    Add Multi-Arch: same to the -dbg package stanza in debian/control
+    to make it co-installable.
 - tag: debug-suffix-not-dbg
+  difficulty: medium
+  comment: |
+    Rename debug package from -debug to -dbg in debian/control.
+    Requires updating all references.
 - tag: debug-symbols-directly-in-usr-lib-debug
+  status: build-stage
 - tag: debug-symbols-not-detached
+  status: build-stage
 - tag: default-mta-dependency-does-not-specify-mail-transport-agent
+  difficulty: easy
+  comment: |
+    Add "| mail-transport-agent" alternative to the default-mta
+    dependency in debian/control.
 - tag: default-mta-dependency-not-listed-first
+  difficulty: easy
+  comment: |
+    Reorder Depends so that default-mta comes before
+    mail-transport-agent in the alternatives list.
 - tag: dep5-copyright-license-name-not-unique
+  difficulty: medium
+  comment: |
+    Merge or rename duplicate License paragraphs in debian/copyright.
+    Requires understanding whether the duplicates are identical.
 - tag: dependency-is-not-multi-archified
+  difficulty: medium
+  comment: |
+    Add :any qualifier to cross-architecture dependencies in
+    debian/control. Requires checking Multi-Arch status of the
+    dependency.
 - tag: dependency-on-python-version-marked-for-end-of-life
+  difficulty: easy
+  comment: |
+    Remove or replace dependency on end-of-life Python version
+    (e.g. python2) with python3 equivalent.
 - tag: depends-exclusively-on-makedev
+  difficulty: easy
+  comment: |
+    Replace makedev dependency with modern udev dependency in
+    debian/control.
 - tag: depends-on-essential-package-without-using-version
+  difficulty: easy
+  comment: |
+    Remove unversioned Essential package from Depends since it's
+    always available. Same pattern as build-depends-on-build-essential.
 - tag: depends-on-libdb1-compat
+  difficulty: easy
+  comment: |
+    Replace libdb1-compat dependency with modern libdb-dev in
+    debian/control.
 - tag: depends-on-metapackage
+  difficulty: medium
+  comment: |
+    Replace metapackage in Depends with the actual needed packages.
+    May need a mapping of metapackage -> contents.
 - tag: depends-on-misc-pre-depends
+  difficulty: easy
+  comment: |
+    Replace ${misc:Pre-Depends} with ${misc:Depends} in Depends
+    field, or move it to Pre-Depends where it belongs.
 - tag: depends-on-obsolete-package
+  difficulty: easy
+  comment: |
+    Replace obsolete package name in Depends with its modern
+    replacement. Requires a mapping of old -> new package names.
 - tag: depends-on-old-emacs
+  difficulty: easy
+  comment: |
+    Replace old versioned emacs dependency (e.g. emacs23) with
+    the unversioned "emacs" in debian/control.
 - tag: depends-on-packaging-dev
+  difficulty: easy
+  comment: |
+    Replace packaging-dev with the specific needed packages in
+    Build-Depends (e.g. dpkg-dev, debhelper).
 - tag: depends-on-python-minimal
+  difficulty: easy
+  comment: |
+    Replace python-minimal with python or python3 in Depends.
 - tag: depends-on-python2-and-python3
+  difficulty: medium
+  comment: |
+    Drop python2 dependency and keep only python3 in Depends.
+    Requires verifying no Python 2 code remains.
 - tag: depends-on-specific-java-doc-package
+  difficulty: easy
+  comment: |
+    Replace specific Java doc package dependency with the generic
+    default-jdk-doc.
 - tag: deprecated-configure-filename
   difficulty: mixed
   comment: easy to fix, not necessarily appropriate for including
 - tag: description-contains-dh-make-perl-template
+  difficulty: easy
+  comment: |
+    Remove dh-make-perl boilerplate from Description in debian/control.
+    Pattern-match known template text.
 - tag: description-contains-homepage
+  difficulty: easy
+  comment: |
+    Extract URL from Description and move it to the Homepage field
+    in debian/control.
 - tag: description-contains-invalid-control-statement
+  difficulty: easy
+  comment: |
+    Remove invalid control characters from Description in
+    debian/control.
 - tag: description-contains-tabs
+  difficulty: easy
+  comment: |
+    Replace tab characters with spaces in Description field of
+    debian/control.
 - tag: description-is-debmake-template
+  difficulty: easy
+  comment: |
+    Remove debmake template text from Description in debian/control.
+    But a real description still needs to be written by a human.
 - tag: description-is-dh_make-template
+  difficulty: easy
+  comment: |
+    Remove dh_make template text from Description. But a real
+    description still needs to be written by a human.
 - tag: description-is-pkg-name
+  difficulty: hard
+  comment: |
+    Description is just the package name repeated. Would need to
+    generate a meaningful description, which requires human input.
 - tag: description-mentions-planned-features
+  difficulty: hard
+  comment: |
+    Would need to remove mentions of planned/future features from
+    Description. Hard to identify which text to remove automatically.
 - tag: description-possibly-contains-homepage
+  difficulty: easy
+  comment: |
+    Extract URL from Description and move to Homepage field.
+    Same approach as description-contains-homepage.
 - tag: description-starts-with-leading-spaces
+  difficulty: easy
+  comment: |
+    Strip leading spaces from the Description field in debian/control.
 - tag: description-starts-with-package-name
+  difficulty: easy
+  comment: |
+    Remove the package name prefix from the start of the Description
+    synopsis in debian/control.
 - tag: description-synopsis-is-duplicated
+  difficulty: hard
+  comment: |
+    Two binary packages share the same synopsis. Would need to write
+    distinct descriptions, which requires human input.
 - tag: description-synopsis-is-empty
+  difficulty: hard
+  comment: |
+    Would need to write a synopsis from scratch. Requires human input.
 - tag: description-synopsis-starts-with-article
+  difficulty: easy
+  comment: |
+    Remove leading article ("A ", "An ", "The ") from the Description
+    synopsis in debian/control.
 - tag: description-too-short
+  difficulty: hard
+  comment: |
+    Would need to add more content to Description. Requires human input
+    to write meaningful text.
 - tag: desktop-command-not-in-package
+  status: build-stage
 - tag: desktop-contains-deprecated-key
+  difficulty: easy
+  comment: |
+    Remove deprecated keys from .desktop files using desktop-edit crate.
 - tag: desktop-entry-contains-deprecated-key
+  difficulty: easy
+  comment: |
+    Remove deprecated keys from .desktop files using desktop-edit crate.
 - tag: desktop-entry-contains-unknown-key
+  difficulty: medium
+  comment: |
+    Remove or fix unknown keys in .desktop files. May need to
+    determine if it's a typo of a known key.
 - tag: desktop-entry-invalid-category
+  difficulty: medium
+  comment: |
+    Replace invalid category with a valid one in .desktop files.
+    Requires a mapping of common mistakes.
 - tag: desktop-entry-lacks-icon-entry
+  difficulty: hard
+  comment: |
+    Would need to add an Icon entry to .desktop file. Requires
+    knowing which icon to use.
 - tag: desktop-entry-lacks-keywords-entry
+  difficulty: hard
+  comment: |
+    Would need to add Keywords entry to .desktop file. Requires
+    generating appropriate keywords.
 - tag: desktop-entry-lacks-main-category
+  difficulty: medium
+  comment: |
+    Add a main category to .desktop file. Could guess based on
+    existing sub-categories.
 - tag: desktop-entry-limited-to-environments
+  difficulty: hard
+  comment: |
+    Would need to remove OnlyShowIn restriction or add missing
+    desktop environments. Requires understanding intent.
 - tag: desktop-entry-missing-required-key
+  difficulty: hard
+  comment: |
+    Would need to add missing required keys (Name, Exec, Type) to
+    .desktop file. Requires knowing the correct values.
 - tag: desktop-entry-unknown-type
+  difficulty: hard
+  comment: |
+    Fix unknown Type= value in .desktop file. Requires knowing
+    the correct type.
 - tag: desktop-entry-uses-reserved-category
+  difficulty: easy
+  comment: |
+    Remove reserved category from .desktop file Categories field.
 - tag: desktop-file-in-wrong-dir
+  status: build-stage
 - tag: desktop-mime-but-no-exec-code
+  difficulty: medium
+  comment: |
+    Add %f/%u/%F/%U to Exec line in .desktop file to handle MIME
+    type associations, or remove MimeType entry.
 - tag: development-package-ships-elf-binary-in-path
+  status: build-stage
 - tag: dfsg-version-in-native-package
+  difficulty: hard
+  comment: |
+    Would need to remove +dfsg suffix from version in native package.
+    Risky to auto-change version numbers.
 - tag: dfsg-version-misspelled
+  difficulty: easy
+  comment: |
+    Fix misspelled dfsg suffix in debian/watch dversionmangle
+    (e.g. "dsfg" -> "dfsg").
 - tag: dfsg-version-with-period
+  difficulty: easy
+  comment: |
+    Replace ".dfsg" with "+dfsg" in debian/watch dversionmangle.
+    Period is non-standard as a separator.
 - tag: dh-exec-install-not-allowed-here
+  difficulty: medium
+  comment: |
+    Remove dh-exec usage from a debhelper config file that doesn't
+    support it, and find an alternative approach.
 - tag: dh-exec-private-helper
+  status: build-stage
 - tag: dh-exec-script-without-dh-exec-features
+  difficulty: easy
+  comment: |
+    Remove unnecessary dh-exec shebang from debhelper config file
+    that doesn't use any dh-exec features.
 - tag: dh-exec-subst-unknown-variable
+  difficulty: hard
+  comment: |
+    Fix unknown variable in dh-exec substitution. Requires knowing
+    the correct variable name.
 - tag: dh-exec-useless-usage
+  difficulty: easy
+  comment: |
+    Remove dh-exec shebang and expand dh-exec expressions inline
+    since the functionality is available natively in debhelper.
 - tag: dh-make-template-in-source
+  difficulty: easy
+  comment: |
+    Delete leftover dh_make template files (e.g. debian/*.ex,
+    debian/*.EX) from the source tree.
 - tag: dh_installmanpages-is-obsolete
+  difficulty: easy
+  comment: |
+    Replace dh_installmanpages with dh_installman in debian/rules.
 - tag: diff-contains-arch-control-dir
+  difficulty: easy
+  comment: Delete stray VCS control directories from debian/ tree.
 - tag: diff-contains-arch-inventory-file
+  difficulty: easy
+  comment: Delete stray VCS inventory files from debian/ tree.
 - tag: diff-contains-bts-control-dir
+  difficulty: easy
+  comment: Delete stray BTS control directory from debian/ tree.
 - tag: diff-contains-bzr-control-dir
+  difficulty: easy
+  comment: Delete stray .bzr directory from debian/ tree.
 - tag: diff-contains-cmake-cache-file
+  difficulty: easy
+  comment: Delete stray CMakeCache.txt from debian/ tree.
 - tag: diff-contains-cvs-conflict-copy
+  difficulty: easy
+  comment: Delete stray CVS conflict copies from debian/ tree.
 - tag: diff-contains-cvs-control-dir
+  difficulty: easy
+  comment: Delete stray CVS directories from debian/ tree.
 - tag: diff-contains-editor-backup-file
+  difficulty: easy
+  comment: Delete editor backup files (e.g. *~, *.swp) from debian/ tree.
 - tag: diff-contains-git-control-dir
+  difficulty: easy
+  comment: Delete stray .git directory from debian/ tree.
 - tag: diff-contains-hg-control-dir
+  difficulty: easy
+  comment: Delete stray .hg directory from debian/ tree.
 - tag: diff-contains-hg-tags-file
+  difficulty: easy
+  comment: Delete stray .hgtags file from debian/ tree.
 - tag: diff-contains-patch-failure-file
+  difficulty: easy
+  comment: Delete patch failure files (e.g. *.rej) from debian/ tree.
 - tag: diff-contains-quilt-control-dir
+  difficulty: easy
+  comment: Delete stray .pc directory from debian/ tree.
 - tag: diff-contains-substvars
+  difficulty: easy
+  comment: Delete debian/substvars from source tree; it's build-generated.
 - tag: diff-contains-svk-commit-file
+  difficulty: easy
+  comment: Delete stray svk commit message file from debian/ tree.
 - tag: diff-contains-svn-commit-file
+  difficulty: easy
+  comment: Delete stray svn commit message file from debian/ tree.
 - tag: diff-contains-svn-conflict-file
+  difficulty: easy
+  comment: Delete stray svn conflict files from debian/ tree.
 - tag: diff-contains-svn-control-dir
+  difficulty: easy
+  comment: Delete stray .svn directory from debian/ tree.
 - tag: dir-in-usr-local
+  status: build-stage
 - tag: dir-or-file-in-build-tree
+  status: build-stage
 - tag: dir-or-file-in-etc-opt
+  status: build-stage
 - tag: dir-or-file-in-home
+  status: build-stage
 - tag: dir-or-file-in-mnt
+  status: build-stage
 - tag: dir-or-file-in-opt
+  status: build-stage
 - tag: dir-or-file-in-run
+  status: build-stage
 - tag: dir-or-file-in-srv
+  status: build-stage
 - tag: dir-or-file-in-tmp
+  status: build-stage
 - tag: dir-or-file-in-var-lock
+  status: build-stage
 - tag: dir-or-file-in-var-run
+  status: build-stage
 - tag: dir-or-file-in-var-www
+  status: build-stage
 - tag: direct-changes-in-diff-but-no-patch-system
+  difficulty: medium
+  comment: |
+    Convert direct source modifications to a patch using quilt and
+    switch to 3.0 (quilt) source format.
 - tag: directory-in-etc-sv-directory-without-executable-run-script
+  status: build-stage
 - tag: distant-prerequisite-in-shlibs
+  status: build-stage
 - tag: distribution-and-changes-mismatch
+  status: build-stage
 - tag: distribution-and-experimental-mismatch
+  status: build-stage
 - tag: diversion-for-unknown-file
+  difficulty: medium
+  comment: |
+    Fix dpkg-divert call in maintainer script to reference the
+    correct file. needs-shell-parser
 - tag: django-package-does-not-depend-on-django
+  difficulty: easy
+  comment: |
+    Add python3-django to Depends in debian/control.
 - tag: doc-base-abstract-field-is-template
+  difficulty: easy
+  comment: |
+    Remove template placeholder text from the Abstract field in
+    debian/*.doc-base files.
 - tag: doc-base-abstract-field-separator-extra-whitespace
+  difficulty: easy
+  comment: |
+    Remove extra whitespace from paragraph separators in doc-base
+    Abstract field.
 - tag: doc-base-abstract-might-contain-extra-leading-whitespace
+  difficulty: easy
+  comment: |
+    Remove extra leading whitespace from doc-base Abstract field.
 - tag: doc-base-document-field-ends-in-whitespace
+  difficulty: easy
+  comment: Strip trailing whitespace from Document field in doc-base files.
 - tag: doc-base-document-field-not-in-first-line
+  difficulty: easy
+  comment: Move Document field to the first line of doc-base file.
 - tag: doc-base-file-lacks-required-field
+  difficulty: hard
+  comment: |
+    Would need to add missing required fields to doc-base file.
+    Requires knowing the correct values.
 - tag: doc-base-file-no-format
+  difficulty: hard
+  comment: |
+    Would need to add Format field to doc-base file. Requires
+    knowing the correct format.
 - tag: doc-base-file-no-format-section
+  difficulty: hard
+  comment: |
+    Would need to add a Format section to doc-base file. Requires
+    knowing the documentation format and paths.
 - tag: doc-base-file-no-index
+  difficulty: hard
+  comment: |
+    Would need to add Index field to doc-base file. Requires
+    knowing which file is the index.
 - tag: doc-base-file-references-missing-file
+  status: build-stage
 - tag: doc-base-file-references-wrong-path
+  difficulty: medium
+  comment: |
+    Fix file path references in doc-base file. May be able to
+    find the correct path by searching the installed file list.
 - tag: doc-base-file-separator-extra-whitespace
+  difficulty: easy
+  comment: Remove extra whitespace from paragraph separators in doc-base files.
 - tag: doc-base-file-syntax-error
+  difficulty: hard
+  comment: |
+    Fix syntax errors in doc-base files. The correct fix depends on
+    the specific error.
 - tag: doc-base-file-unknown-field
+  difficulty: easy
+  comment: Remove unknown fields from doc-base files.
 - tag: doc-base-file-unknown-format
+  difficulty: hard
+  comment: |
+    Fix unknown Format value in doc-base file. Requires knowing
+    the correct format.
 - tag: doc-base-file-uses-obsolete-national-encoding
+  difficulty: medium
+  comment: Convert doc-base file from legacy encoding to UTF-8.
 - tag: doc-base-index-references-multiple-files
+  difficulty: medium
+  comment: |
+    Fix Index field in doc-base file to reference a single file
+    instead of multiple. Requires knowing which is correct.
 - tag: doc-base-invalid-document-field
+  difficulty: hard
+  comment: |
+    Fix invalid Document field in doc-base file. Requires knowing
+    the correct document ID.
 - tag: doc-base-unknown-section
+  difficulty: medium
+  comment: |
+    Replace unknown Section value in doc-base file with a valid one.
+    Could use Levenshtein distance to suggest corrections.
 - tag: doc-base-uses-applications-section
+  difficulty: easy
+  comment: |
+    Replace deprecated "Apps/" or "Applications/" section prefix in
+    doc-base file with the current equivalent.
 - tag: doc-package-depends-on-main-package
+  difficulty: easy
+  comment: |
+    Remove or weaken the dependency from the -doc package on the main
+    package in debian/control. Usually change Depends to Suggests.
 - tag: documentation-package-not-architecture-independent
+  difficulty: easy
+  comment: |
+    Change Architecture from "any" to "all" for -doc packages in
+    debian/control.
 - tag: doubly-armored-upstream-signature
+  status: build-stage
 - tag: dpatch-build-dep-but-no-patch-list
   difficulty: easy
   status: implemented
 - tag: dpatch-index-references-non-existent-patch
+  difficulty: easy
+  comment: |
+    Remove reference to non-existent patch from dpatch sequence file.
 - tag: dpatch-missing-description
   difficulty: hard
   comment: |
     in some cases, we may be able to find the description elsewhere,
     e.g. the commit that it was derived from
 - tag: duplicate-changelog-files
+  status: build-stage
 - tag: duplicate-conffile
+  status: build-stage
 - tag: duplicate-entry-in-symbols-control-file
+  difficulty: easy
+  comment: Remove duplicate entries from debian/*.symbols file.
 - tag: duplicate-field-in-doc-base
+  difficulty: easy
+  comment: Remove duplicate fields from doc-base files.
 - tag: duplicate-files
+  status: build-stage
 - tag: duplicate-font-file
+  status: build-stage
 - tag: duplicate-format-in-doc-base
+  difficulty: easy
+  comment: Remove duplicate Format sections from doc-base files.
 - tag: duplicate-in-relation-field
+  difficulty: easy
+  comment: |
+    Remove duplicate entries from dependency relations in
+    debian/control using Relations API.
 - tag: duplicate-in-shlibs
+  status: build-stage
 - tag: duplicate-key-in-desktop
+  difficulty: easy
+  comment: |
+    Remove duplicate keys from .desktop files using desktop-edit crate.
 - tag: duplicate-long-description
+  difficulty: hard
+  comment: |
+    Multiple binary packages share the same long description.
+    Would need to write distinct descriptions for each.
 - tag: duplicate-long-description-in-template
+  difficulty: hard
+  comment: |
+    Duplicate descriptions in debconf templates. Would need to
+    write distinct descriptions.
 - tag: duplicate-packaging-file
+  difficulty: easy
+  comment: |
+    Remove duplicate packaging files (e.g. both debian/docs and
+    debian/package.docs when there's only one binary).
 - tag: duplicate-short-description
+  difficulty: hard
+  comment: |
+    Multiple binary packages share the same synopsis. Would need
+    to write distinct synopses for each.
 - tag: duplicate-tag-in-menu
+  status: build-stage
 - tag: duplicate-updaterc.d-calls-in-postinst
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Remove duplicate update-rc.d calls from postinst.
+    needs-shell-parser
 - tag: duplicate-updaterc.d-calls-in-postrm
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Remove duplicate update-rc.d calls from postrm.
+    needs-shell-parser
 - tag: duplicate-uploader
+  difficulty: easy
+  comment: |
+    Remove duplicate entries from Uploaders field in debian/control.
 - tag: elf-maintainer-script
+  status: build-stage
 - tag: emacsen-common-without-dh-elpa
+  difficulty: medium
+  comment: |
+    Add dh-elpa to Build-Depends and use dh --with elpa in
+    debian/rules instead of manual emacsen-common handling.
 - tag: embedded-feedparser-library
+  status: build-stage
 - tag: embedded-javascript-library
   difficulty: hard
+  comment: |
+    Would need to replace embedded JS library with a dependency on
+    the packaged version and symlink. Requires understanding how
+    the library is used.
 - tag: embedded-library
+  status: build-stage
 - tag: embedded-pear-module
+  status: build-stage
 - tag: embedded-php-library
+  status: build-stage
 - tag: embedded-script-includes-copyright-statement
+  status: build-stage
 - tag: empty-binary-package
+  difficulty: hard
+  comment: |
+    Package produces an empty binary. Would need to either add content
+    or remove the binary stanza. Requires understanding the intent.
 - tag: empty-debian-diff
+  difficulty: medium
+  comment: |
+    Empty Debian diff suggests converting to 3.0 (native) format.
 - tag: empty-field
+  difficulty: easy
+  comment: |
+    Remove empty fields from debian/control using
+    TemplatedControlEditor.
 - tag: empty-manual-page
+  status: build-stage
 - tag: empty-shared-library-symbols
+  status: build-stage
 - tag: empty-shlibs
+  status: build-stage
 - tag: empty-short-license-in-dep5-copyright
+  difficulty: medium
+  comment: |
+    Add missing license text to empty License paragraphs in
+    debian/copyright, or point to /usr/share/common-licenses/.
 - tag: empty-translated-choices
+  difficulty: hard
+  comment: |
+    Empty translated choices in debconf templates. Requires
+    providing actual translations.
 - tag: empty-udeb-package
+  difficulty: hard
+  comment: |
+    Empty udeb package. Would need to add content or remove the
+    binary stanza.
 - tag: empty-upstream-sources
+  status: build-stage
 - tag: epoch-change-without-comment
+  difficulty: easy
+  comment: |
+    Add a comment to debian/changelog explaining why the epoch
+    was changed. Though generating meaningful text is hard.
 - tag: epoch-changed-but-upstream-version-did-not-go-backwards
+  difficulty: hard
+  comment: |
+    Epoch was bumped unnecessarily. Cannot undo an epoch change
+    without archive-level intervention.
 - tag: essential-in-source-package
+  difficulty: easy
+  comment: |
+    Remove Essential field from source stanza in debian/control;
+    it only belongs in binary stanzas.
 - tag: essential-no-not-needed
+  difficulty: easy
+  comment: |
+    Remove "Essential: no" from debian/control since "no" is the
+    default and stating it explicitly is redundant.
 - tag: example-incorrect-path-for-interpreter
+  status: build-stage
 - tag: example-interpreter-in-usr-local
+  status: build-stage
 - tag: example-interpreter-not-absolute
+  status: build-stage
 - tag: example-script-uses-bin-env
+  status: build-stage
 - tag: example-script-uses-deprecated-nodejs-location
+  status: build-stage
 - tag: example-script-without-interpreter
+  status: build-stage
 - tag: example-shell-script-fails-syntax-check
+  status: build-stage
 - tag: example-unusual-interpreter
+  status: build-stage
 - tag: example-wrong-path-for-interpreter
+  status: build-stage
 - tag: excessive-debhelper-overrides
+  difficulty: hard
+  comment: |
+    Too many override_dh_* targets in debian/rules suggests the
+    build system choice may be wrong. Requires restructuring.
 - tag: exclusive-runtime-tests-field
+  difficulty: medium
+  comment: |
+    Fix exclusive (contradictory) fields in debian/tests/control.
+    Requires understanding which restrictions are intended.
 - tag: executable-debhelper-file-without-being-executable
+  difficulty: easy
+  comment: |
+    Set executable bit on debhelper config files that use
+    dh-exec shebangs.
 - tag: executable-in-usr-lib
+  status: build-stage
 - tag: executable-in-usr-share-doc
+  status: build-stage
 - tag: executable-in-usr-share-docbase
+  status: build-stage
 - tag: executable-is-not-world-readable
+  status: build-stage
 - tag: executable-jar-without-main-class
+  status: build-stage
 - tag: executable-manpage
+  status: build-stage
 - tag: executable-menu-file
+  status: build-stage
 - tag: executable-not-elf-or-script
+  status: build-stage
 - tag: executable-stack-in-shared-library
+  status: build-stage
 - tag: exit-in-shared-library
   difficulty: hard
+  comment: |
+    Would need to patch upstream source to remove exit() calls from
+    shared library code. Not source-package fixable.
 - tag: experimental-to-unstable-without-comment
   difficulty: hard
   comment: |
-    hard to determine whether the upload was intentional
+    Would need to add a comment to debian/changelog explaining why
+    the package moved from experimental to unstable. Hard to
+    determine whether the upload was intentional.
 - tag: explicit-default-in-package-type
+  difficulty: easy
+  comment: |
+    Remove "Package-Type: deb" from debian/control since "deb"
+    is the default.
 - tag: explicitly-armored-upstream-signature
   status: build-stage
 - tag: extended-description-contains-empty-paragraph
@@ -493,387 +1605,1186 @@
 - tag: extended-description-line-too-long
   difficulty: medium
 - tag: extra-license-file
+  status: build-stage
 - tag: extra-whitespace-around-name-in-changelog-trailer
+  difficulty: easy
+  comment: |
+    Strip extra whitespace around the name in debian/changelog
+    trailer line using debian-changelog crate.
 - tag: field-too-long
+  difficulty: medium
+  comment: |
+    Wrap long fields in debian/control. For Description this is
+    straightforward; for other fields it may change semantics.
 - tag: file-contains-fixme-placeholder
+  status: build-stage
 - tag: file-directly-in-usr-share
+  status: build-stage
 - tag: file-directly-in-usr-share-doc
+  status: build-stage
 - tag: file-in-discouraged-x11-font-directory
+  status: build-stage
 - tag: file-in-etc-not-marked-as-conffile
+  status: build-stage
 - tag: file-in-etc-rc.d-marked-as-conffile
+  status: build-stage
 - tag: file-in-root-and-usr
+  status: build-stage
 - tag: file-in-unknown-x11-font-directory
+  status: build-stage
 - tag: file-in-unusual-dir
+  status: build-stage
 - tag: file-in-usr-lib-sgml
+  status: build-stage
 - tag: file-in-usr-lib-site-python
+  status: build-stage
 - tag: file-in-usr-local
+  status: build-stage
 - tag: file-in-usr-marked-as-conffile
+  status: build-stage
 - tag: file-missing-in-md5sums
+  status: build-stage
 - tag: file-name-contains-wildcard-character
+  status: build-stage
 - tag: file-name-ends-in-whitespace
+  status: build-stage
 - tag: file-name-in-PATH-is-not-ASCII
+  status: build-stage
 - tag: file-references-package-build-path
+  status: build-stage
 - tag: file-size-mismatch-in-changes-file
+  status: build-stage
 - tag: file-without-copyright-information
+  difficulty: hard
+  comment: |
+    Would need to add copyright info for files not covered by
+    any Files paragraph in debian/copyright. Requires knowing
+    the actual copyright holders.
 - tag: files-excluded-without-copyright-format-1.0
+  difficulty: easy
+  comment: |
+    Add "Format: https://www.debian.org/doc/packaging-manuals/
+    copyright-format/1.0/" header to debian/copyright so that
+    Files-Excluded is recognized.
 - tag: font-in-non-font-package
+  status: build-stage
 - tag: font-outside-font-dir
+  status: build-stage
 - tag: forbidden-config-interpreter
+  status: build-stage
 - tag: forbidden-postrm-interpreter
+  status: build-stage
 - tag: format-3.0-but-debian-changes-patch
+  difficulty: medium
+  comment: |
+    Convert direct changes in 3.0 (quilt) format to a proper quilt
+    patch. Could use dpkg-source --commit to generate the patch.
 - tag: game-outside-section
+  difficulty: easy
+  comment: |
+    Change Section field to "games" for packages installing to
+    /usr/games in debian/control.
 - tag: gawk-script-but-no-gawk-dep
+  difficulty: easy
+  comment: Add gawk to Depends in debian/control.
 - tag: gfortran-module-does-not-declare-version
+  status: build-stage
 - tag: gir-in-arch-all-package
+  difficulty: easy
+  comment: |
+    Change Architecture from "all" to "any" for GIR package stanza
+    in debian/control since .gir files are arch-dependent.
 - tag: gir-missing-typelib-dependency
+  difficulty: easy
+  comment: |
+    Add missing gir1.2-* dependency to the -dev package stanza
+    in debian/control.
 - tag: gir-section-not-libdevel
+  difficulty: easy
+  comment: |
+    Change Section to "libdevel" for GIR package stanza in
+    debian/control.
 - tag: git-patches-not-exported
+  difficulty: medium
+  comment: |
+    Export git-based patches using gbp pq export or similar.
+    Requires understanding the git-buildpackage workflow.
 - tag: global-data-in-games-directory
+  status: build-stage
 - tag: gobject-introspection-package-missing-depends-on-gir-depends
+  difficulty: easy
+  comment: |
+    Add ${gir:Depends} to Depends in the GIR package stanza of
+    debian/control.
 - tag: gzip-file-is-not-multi-arch-same-safe
+  status: build-stage
 - tag: hardening-no-bindnow
   difficulty: hard
   comment: |
     requires judgement (tradeoff between start-up time and improved security)
 - tag: hardening-no-fortify-functions
+  difficulty: hard
+  comment: |
+    Would need to add hardening=+fortify to DEB_BUILD_MAINT_OPTIONS.
+    Requires verifying the package builds correctly with it.
 - tag: hardening-no-pie
+  difficulty: hard
+  comment: |
+    Would need to add hardening=+pie to DEB_BUILD_MAINT_OPTIONS.
+    Requires verifying the package builds correctly with it.
 - tag: hardening-no-relro
+  difficulty: hard
+  comment: |
+    Would need to add hardening=+relro to DEB_BUILD_MAINT_OPTIONS.
+    Requires verifying the package builds correctly with it.
 - tag: header-has-overly-generic-name
+  status: build-stage
 - tag: helper-templates-in-copyright
+  difficulty: easy
+  comment: |
+    Remove template/placeholder text from debian/copyright.
+    Pattern-match known helper template strings.
 - tag: homepage-for-bioconductor-package-not-canonical
+  difficulty: easy
+  comment: |
+    Replace Homepage URL with canonical Bioconductor URL in
+    debian/control.
 - tag: homepage-for-cpan-package-contains-version
+  difficulty: easy
+  comment: |
+    Remove version number from CPAN Homepage URL in debian/control
+    to make it version-agnostic.
 - tag: homepage-for-cran-package-not-canonical
+  difficulty: easy
+  comment: |
+    Replace Homepage URL with canonical CRAN URL in debian/control.
 - tag: homepage-refers-to-filesystem-listing
+  difficulty: medium
+  comment: |
+    Replace Homepage that points to a directory listing with the
+    actual project page. Could use upstream-ontologist to find it.
 - tag: homepage-refers-to-obsolete-debian-infrastructure
+  difficulty: medium
+  comment: |
+    Update Homepage pointing to obsolete Debian infrastructure
+    (e.g. alioth) with the current URL.
 - tag: html-changelog-without-text-version
+  status: build-stage
 - tag: hyphen-file
+  status: build-stage
 - tag: hyphen-in-upstream-part-of-debian-changelog-version
+  difficulty: hard
+  comment: |
+    Would need to replace hyphens in upstream version with a
+    different separator. Risky to auto-change version numbers.
 - tag: icon-size-and-directory-name-mismatch
+  status: build-stage
 - tag: illegal-multi-arch-value
+  difficulty: easy
+  comment: |
+    Fix invalid Multi-Arch value in debian/control to one of
+    "same", "foreign", "allowed", or remove it.
 - tag: illegal-runtime-test-name
+  difficulty: easy
+  comment: |
+    Rename test in debian/tests/control to use only allowed
+    characters.
 - tag: image-file-has-conflicting-name
+  status: build-stage
 - tag: image-file-has-unexpected-name
+  status: build-stage
 - tag: image-file-in-usr-lib
+  status: build-stage
 - tag: improbable-bug-number-in-closes
+  difficulty: medium
+  comment: |
+    Fix improbable bug number in debian/changelog Closes field.
+    May be a typo; hard to know the correct number.
 - tag: incompatible-java-bytecode-format
+  status: build-stage
 - tag: incomplete-creative-commons-license
+  difficulty: medium
+  comment: |
+    Add missing components (e.g. version, variant) to Creative
+    Commons license in debian/copyright.
 - tag: inconsistent-appstream-metadata-license
+  status: build-stage
 - tag: inconsistent-maintainer
+  difficulty: easy
+  comment: |
+    Fix Maintainer field in debian/control to match derivative
+    requirements (e.g. Ubuntu sets XSBC-Original-Maintainer).
 - tag: inconsistent-testsuite-field
+  difficulty: easy
+  comment: |
+    Update Testsuite field in debian/control to match what's
+    actually in debian/tests/control.
 - tag: incorrect-libdir-in-la-file
+  status: build-stage
 - tag: incorrect-locale-code
+  status: build-stage
 - tag: incorrect-naming-of-pkcs11-module
+  status: build-stage
 - tag: incorrect-packaging-filename
+  status: build-stage
 - tag: incorrect-path-for-interpreter
+  status: build-stage
 - tag: info-document-has-wrong-extension
+  status: build-stage
 - tag: info-document-missing-dir-entry
+  status: build-stage
 - tag: info-document-missing-dir-section
+  status: build-stage
 - tag: info-document-missing-image-file
+  status: build-stage
 - tag: info-document-not-compressed
+  status: build-stage
 - tag: info-document-not-compressed-with-gzip
+  status: build-stage
 - tag: info-document-not-compressed-with-max-compression
+  status: build-stage
 - tag: init-d-script-stops-in-s-runlevel
+  status: build-stage
 - tag: init-script-is-not-a-file
+  status: build-stage
 - tag: init.d-script-contains-skeleton-template-content
+  difficulty: easy
+  comment: |
+    Remove skeleton template content from init.d script in
+    debian/ directory.
 - tag: init.d-script-depends-on-all-virtual-facility
+  difficulty: medium
+  comment: |
+    Fix LSB header in init.d script to not depend on $all virtual
+    facility. Requires understanding actual dependencies.
 - tag: init.d-script-depends-on-unknown-virtual-facility
+  difficulty: medium
+  comment: |
+    Fix unknown virtual facility name in init.d script LSB header.
+    May be a typo of a known facility.
 - tag: init.d-script-does-not-implement-required-option
+  difficulty: hard
+  comment: |
+    Would need to add missing option handling (start/stop/restart)
+    to init.d script. Requires understanding the service.
 - tag: init.d-script-does-not-implement-status-option
+  difficulty: medium
+  comment: |
+    Add status option to init.d script, possibly using
+    status_of_proc from /lib/lsb/init-functions.
 - tag: init.d-script-does-not-provide-itself
+  difficulty: easy
+  comment: |
+    Add "Provides: scriptname" to the LSB header in init.d script.
 - tag: init.d-script-does-not-source-init-functions
+  difficulty: easy
+  comment: |
+    Add ". /lib/lsb/init-functions" to init.d script.
 - tag: init.d-script-has-bad-lsb-line
+  difficulty: medium
+  comment: |
+    Fix malformed LSB header lines in init.d script.
 - tag: init.d-script-has-bad-start-runlevel
+  difficulty: medium
+  comment: |
+    Fix start runlevel in init.d script LSB header to use
+    standard runlevels (2 3 4 5).
 - tag: init.d-script-has-bad-stop-runlevel
+  difficulty: medium
+  comment: |
+    Fix stop runlevel in init.d script LSB header to use
+    standard runlevels (0 1 6).
 - tag: init.d-script-has-conflicting-start-stop
+  difficulty: medium
+  comment: |
+    Fix conflicting start/stop runlevels in init.d script LSB
+    header so they don't overlap.
 - tag: init.d-script-has-duplicate-lsb-keyword
+  difficulty: easy
+  comment: Remove duplicate LSB keywords from init.d script header.
 - tag: init.d-script-has-duplicate-lsb-section
+  difficulty: easy
+  comment: Remove duplicate LSB section from init.d script header.
 - tag: init.d-script-has-unknown-lsb-keyword
+  difficulty: easy
+  comment: |
+    Remove unknown LSB keyword from init.d script header.
+    May be a typo of a known keyword.
 - tag: init.d-script-has-unterminated-lsb-section
+  difficulty: easy
+  comment: |
+    Add missing "### END INIT INFO" to init.d script LSB header.
 - tag: init.d-script-missing-dependency-on-local_fs
+  difficulty: easy
+  comment: |
+    Add $local_fs to Required-Start/Required-Stop in init.d
+    script LSB header.
 - tag: init.d-script-missing-lsb-keyword
+  difficulty: medium
+  comment: |
+    Add missing LSB keyword to init.d script header. Requires
+    understanding the service's dependencies.
 - tag: init.d-script-missing-lsb-section
+  difficulty: easy
+  comment: |
+    Add missing LSB init info section to init.d script.
 - tag: init.d-script-missing-lsb-short-description
+  difficulty: hard
+  comment: |
+    Add Short-Description to init.d script LSB header. Requires
+    understanding what the service does.
 - tag: init.d-script-missing-start
+  difficulty: hard
+  comment: |
+    Add missing start action to init.d script. Requires
+    understanding the service.
 - tag: init.d-script-not-included-in-package
+  status: build-stage
 - tag: init.d-script-not-marked-as-conffile
+  status: build-stage
 - tag: init.d-script-possible-missing-stop
+  difficulty: medium
+  comment: |
+    Add stop action to init.d script if it's missing.
+    Requires understanding the service.
 - tag: init.d-script-provides-virtual-facility
+  difficulty: medium
+  comment: |
+    Rename Provides in init.d script LSB header from the virtual
+    facility name to the script's own name.
 - tag: init.d-script-should-always-start-service
+  difficulty: medium
+  comment: |
+    Modify init.d script to start unconditionally instead of
+    checking a config file.
 - tag: init.d-script-sourcing-without-test
+  difficulty: easy
+  comment: |
+    Add existence test before sourcing files in init.d script,
+    e.g. [ -f /etc/default/foo ] && . /etc/default/foo
 - tag: init.d-script-starts-in-stop-runlevel
+  difficulty: medium
+  comment: |
+    Fix runlevel assignments in init.d script LSB header so start
+    and stop runlevels don't conflict.
 - tag: init.d-script-uses-usr-interpreter
+  difficulty: easy
+  comment: |
+    Change shebang in init.d script from /usr/bin/... to /bin/...
+    since /usr may not be mounted when init.d runs.
 - tag: initial-upload-closes-no-bugs
   status: implemented
 - tag: install-info-used-in-maintainer-script
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Remove manual install-info calls from maintainer scripts since
+    dpkg triggers handle this now. needs-shell-parser
 - tag: interpreter-in-usr-local
+  status: build-stage
 - tag: interpreter-not-absolute
+  status: build-stage
 - tag: intra-source-package-circular-dependency
+  difficulty: hard
+  comment: |
+    Break circular dependency between binary packages within the
+    same source. Requires restructuring dependencies.
 - tag: invalid-arch-string-in-source-relation
+  difficulty: medium
+  comment: |
+    Fix invalid architecture string in Build-Depends restriction.
+    May be a typo of a known architecture.
 - tag: invalid-date-in-debian-changelog
+  difficulty: medium
+  comment: |
+    Fix invalid date in debian/changelog using debian-changelog crate.
+    The correct date may be inferrable from context.
 - tag: invalid-escape-sequence-in-dep5-copyright
+  difficulty: easy
+  comment: |
+    Fix invalid escape sequences in debian/copyright file paths.
 - tag: invalid-field-for-derivative
+  difficulty: medium
+  comment: |
+    Fix or remove fields in debian/control that are invalid for
+    the target derivative (e.g. Ubuntu).
 - tag: invalid-po-file
+  difficulty: hard
+  comment: |
+    Fix invalid PO translation files. Requires understanding the
+    specific validation error.
 - tag: invalid-potfiles-in
+  difficulty: medium
+  comment: |
+    Fix invalid entries in POTFILES.in. May need to update file
+    paths that have moved.
 - tag: invalid-profile-name-in-build-profiles-field
+  difficulty: medium
+  comment: |
+    Fix invalid build profile name in Build-Profiles field in
+    debian/control. May be a typo.
 - tag: invalid-profile-name-in-source-relation
+  difficulty: medium
+  comment: |
+    Fix invalid build profile name in Build-Depends profile
+    restriction. May be a typo.
 - tag: invalid-restriction-formula-in-build-profiles-field
+  difficulty: medium
+  comment: |
+    Fix malformed restriction formula in Build-Profiles field.
 - tag: invalid-template-id-in-symbols-file
+  difficulty: medium
+  comment: Fix invalid template ID in debian/*.symbols file.
 - tag: invalid-value-in-built-using-field
+  difficulty: medium
+  comment: |
+    Fix invalid value in Built-Using field in debian/control.
 - tag: invalid-version-number-for-derivative
+  difficulty: hard
+  comment: |
+    Fix version number in debian/changelog to match derivative
+    conventions. Risky to auto-change versions.
 - tag: invalid-versioned-provides
+  difficulty: medium
+  comment: |
+    Fix malformed versioned Provides in debian/control.
 - tag: isdefault-flag-is-deprecated
+  difficulty: easy
+  comment: |
+    Remove deprecated isdefault flag from debconf templates and
+    use default instead.
 - tag: jar-contains-source
+  status: build-stage
 - tag: jar-not-in-usr-share
+  status: build-stage
 - tag: javalib-but-no-public-jars
+  status: build-stage
 - tag: killall-is-dangerous
+  difficulty: medium
+  comment: |
+    Replace killall with more targeted process killing in
+    maintainer scripts. needs-shell-parser
 - tag: lacks-ldconfig-trigger
+  status: build-stage
 - tag: lacks-unversioned-link-to-shared-library
+  status: build-stage
 - tag: lacks-versioned-link-to-shared-library
+  status: build-stage
 - tag: latest-changelog-entry-without-new-date
+  difficulty: easy
+  comment: |
+    Set the date in the latest debian/changelog entry to the
+    current date/time.
 - tag: latest-debian-changelog-entry-reuses-existing-version
+  difficulty: hard
+  comment: |
+    Would need to bump the version in debian/changelog. Risky
+    to auto-change version numbers.
 - tag: latest-debian-changelog-entry-without-new-date
+  difficulty: easy
+  comment: |
+    Set the date in the latest debian/changelog entry to the
+    current date/time.
 - tag: ldconfig-symlink-is-not-a-symlink
+  status: build-stage
 - tag: ldconfig-symlink-referencing-wrong-file
+  status: build-stage
 - tag: lengthy-symlink
+  status: build-stage
 - tag: lib-recommends-documentation
+  difficulty: easy
+  comment: |
+    Change Recommends on -doc package to Suggests for library
+    packages in debian/control.
 - tag: libapp-perl-package-name
   difficulty: medium
+  comment: |
+    Rename libapp-*-perl package to lib*-perl. Would need to update
+    package name in debian/control and all references.
 - tag: libmodule-build-tiny-perl-needs-to-be-in-build-depends
   difficulty: easy
   status: implemented
 - tag: library-in-root-and-usr
+  status: build-stage
 - tag: library-not-linked-against-libc
+  status: build-stage
 - tag: library-package-name-for-application
+  difficulty: hard
+  comment: |
+    Application packaged with library-style name (lib*). Would need
+    to rename the package, which requires an archive transition.
 - tag: license-problem-bad-php-license
+  difficulty: impossible
+  comment: upstream licensing issue; cannot be fixed in packaging
 - tag: license-problem-cc-by-nc-sa
+  difficulty: impossible
+  comment: upstream licensing issue; non-free license
 - tag: license-problem-convert-utf-code
+  difficulty: impossible
+  comment: upstream licensing issue
 - tag: license-problem-font-adobe-copyrighted-fragment
+  difficulty: impossible
+  comment: upstream licensing issue
 - tag: license-problem-font-adobe-copyrighted-fragment-no-credit
+  difficulty: impossible
+  comment: upstream licensing issue
 - tag: license-problem-gfdl-invariants
+  difficulty: impossible
+  comment: upstream licensing issue; GFDL with invariant sections
 - tag: license-problem-gfdl-invariants-empty
+  difficulty: impossible
+  comment: upstream licensing issue
 - tag: license-problem-gfdl-non-official-text
+  difficulty: impossible
+  comment: upstream licensing issue
 - tag: license-problem-json-evil
+  difficulty: impossible
+  comment: upstream licensing issue; JSON "no evil" clause
 - tag: license-problem-md5sum-non-distributable-file
+  difficulty: impossible
+  comment: upstream file has non-distributable license
 - tag: license-problem-md5sum-non-free-file
+  difficulty: impossible
+  comment: upstream file has non-free license
 - tag: license-problem-non-free-RFC
+  difficulty: impossible
+  comment: upstream licensing issue; non-free RFC text
 - tag: license-problem-non-free-RFC-BCP78
+  difficulty: impossible
+  comment: upstream licensing issue; non-free RFC text
 - tag: license-problem-non-free-img-lenna
+  difficulty: impossible
+  comment: upstream file has non-free license
 - tag: license-problem-nvidia-intellectual
+  difficulty: impossible
+  comment: upstream licensing issue
 - tag: license-problem-php-license
+  difficulty: impossible
+  comment: upstream licensing issue
 - tag: license-problem-undefined-license
+  difficulty: impossible
+  comment: upstream licensing issue; undefined license
 - tag: link-to-shared-library-in-wrong-package
+  status: build-stage
 - tag: link-to-undocumented-manpage
+  status: build-stage
 - tag: loads-obsolete-confmodule
+  difficulty: easy
+  comment: |
+    Replace obsolete confmodule path with the current one in
+    maintainer scripts. needs-shell-parser
 - tag: lzma-deb-archive
+  status: build-stage
 - tag: macos-ds-store-file-in-package
+  status: build-stage
 - tag: macos-resource-fork-file-in-package
+  status: build-stage
 - tag: magic-arch-in-arch-list
+  difficulty: easy
+  comment: |
+    Replace magic architecture values (e.g. "source") with proper
+    values in Architecture field of debian/control.
 - tag: mail-transport-agent-dependency-does-not-specify-default-mta
+  difficulty: easy
+  comment: |
+    Add "default-mta |" before mail-transport-agent in Depends
+    in debian/control.
 - tag: mailing-list-obsolete-in-debian-infrastructure
+  difficulty: medium
+  comment: |
+    Update obsolete mailing list references (e.g. alioth-hosted)
+    in debian/control or other packaging files.
 - tag: maintainer
   status: classification
 - tag: maintainer-address-causes-mail-loops-or-bounces
+  difficulty: hard
+  comment: |
+    Would need to fix the Maintainer email address. Requires
+    knowing the correct address.
 - tag: maintainer-address-is-on-localhost
+  difficulty: hard
+  comment: |
+    Would need to fix the Maintainer email address. Requires
+    knowing the correct address.
 - tag: maintainer-address-is-root-user
+  difficulty: hard
+  comment: |
+    Would need to fix the Maintainer email address. Requires
+    knowing the correct address.
 - tag: maintainer-address-malformed
+  difficulty: hard
+  comment: |
+    Would need to fix malformed Maintainer email. Requires
+    knowing the correct address.
 - tag: maintainer-name-missing
+  difficulty: hard
+  comment: |
+    Would need to add the maintainer's name. Requires knowing
+    who the maintainer is.
 - tag: maintainer-script-calls-chown-improperly
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Fix chown calls in maintainer scripts to use user:group syntax
+    instead of user.group. needs-shell-parser
 - tag: maintainer-script-calls-gconftool
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Replace gconftool calls with gsettings in maintainer scripts.
+    needs-shell-parser
 - tag: maintainer-script-calls-init-script-directly
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Replace direct /etc/init.d/foo calls with invoke-rc.d in
+    maintainer scripts. needs-shell-parser
 - tag: maintainer-script-calls-install-sgmlcatalog
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Replace install-sgmlcatalog calls with modern XML catalog
+    registration. needs-shell-parser
 - tag: maintainer-script-calls-service
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Replace direct service calls with invoke-rc.d or deb-systemd-invoke
+    in maintainer scripts. needs-shell-parser
 - tag: maintainer-script-calls-start-stop-daemon
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Replace start-stop-daemon calls with invoke-rc.d in maintainer
+    scripts. needs-shell-parser
 - tag: maintainer-script-calls-systemctl
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Replace direct systemctl calls with deb-systemd-invoke in
+    maintainer scripts. needs-shell-parser
 - tag: maintainer-script-changes-ld-so-conf
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Remove direct ld.so.conf modification from maintainer scripts;
+    use /etc/ld.so.conf.d/ instead. needs-shell-parser
 - tag: maintainer-script-changes-netbase
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Remove direct /etc/services or /etc/protocols modification from
+    maintainer scripts. needs-shell-parser
 - tag: maintainer-script-does-not-check-for-existence-of-installdocs
-  comment: needs-shell-parser
+  difficulty: easy
+  comment: |
+    Add "[ -x /usr/sbin/install-docs ]" guard around install-docs
+    calls in maintainer scripts. needs-shell-parser
 - tag: maintainer-script-does-not-check-for-existence-of-updatemenus
-  comment: needs-shell-parser
+  difficulty: easy
+  comment: |
+    Add "[ -x /usr/bin/update-menus ]" guard around update-menus
+    calls in maintainer scripts. needs-shell-parser
 - tag: maintainer-script-empty
   status: implemented
 - tag: maintainer-script-has-invalid-update-inetd-options
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Fix invalid update-inetd options in maintainer scripts.
+    needs-shell-parser
 - tag: maintainer-script-has-unexpanded-debhelper-token
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Unexpanded #DEBHELPER# token in maintainer script; need to
+    ensure debhelper is properly invoked. needs-shell-parser
 - tag: maintainer-script-hides-init-failure
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Remove "|| true" or "set -e" workarounds that hide init script
+    failures in maintainer scripts. needs-shell-parser
 - tag: maintainer-script-ignores-errors
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Add "set -e" to maintainer script or fix error-ignoring patterns.
+    needs-shell-parser
 - tag: maintainer-script-interpreter
-  comment: needs-shell-parser
+  status: classification
 - tag: maintainer-script-lacks-debhelper-token
-  comment: needs-shell-parser
+  difficulty: easy
+  comment: |
+    Add #DEBHELPER# token to maintainer script so debhelper can
+    insert its snippets. needs-shell-parser
 - tag: maintainer-script-lacks-home-in-adduser
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Add --home flag to adduser calls in maintainer scripts.
+    needs-shell-parser
 - tag: maintainer-script-modifies-inetd-conf
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Replace direct /etc/inetd.conf modification with update-inetd
+    calls. needs-shell-parser
 - tag: maintainer-script-needs-depends-on-adduser
   difficulty: easy
-  comment: needs-shell-parser
+  comment: |
+    Add adduser to Depends in debian/control since maintainer
+    script uses it. needs-shell-parser
 - tag: maintainer-script-needs-depends-on-gconf2
-  comment: needs-shell-parser
+  difficulty: easy
+  comment: |
+    Add gconf2 to Depends in debian/control since maintainer
+    script uses gconftool. needs-shell-parser
 - tag: maintainer-script-needs-depends-on-ucf
-  comment: needs-shell-parser
+  difficulty: easy
+  comment: |
+    Add ucf to Depends in debian/control since maintainer script
+    uses it. needs-shell-parser
 - tag: maintainer-script-needs-depends-on-update-inetd
-  comment: needs-shell-parser
+  difficulty: easy
+  comment: |
+    Add inet-superserver to Depends since maintainer script uses
+    update-inetd. needs-shell-parser
 - tag: maintainer-script-needs-depends-on-xfonts-utils
-  comment: needs-shell-parser
+  difficulty: easy
+  comment: |
+    Add xfonts-utils to Depends since maintainer script uses
+    font utilities. needs-shell-parser
 - tag: maintainer-script-needs-depends-on-xml-core
-  comment: needs-shell-parser
+  difficulty: easy
+  comment: |
+    Add xml-core to Depends since maintainer script uses
+    update-xmlcatalog. needs-shell-parser
 - tag: maintainer-script-removes-device-files
-  comment: needs-shell-parser
+  difficulty: hard
+  comment: |
+    Remove device file removal from maintainer scripts. Requires
+    understanding why they were being removed. needs-shell-parser
 - tag: maintainer-script-sets-alternative-improperly
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Fix update-alternatives calls in maintainer scripts.
+    needs-shell-parser
 - tag: maintainer-script-should-not-parse-etc-passwd-or-group
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Replace direct /etc/passwd or /etc/group parsing with getent
+    calls. needs-shell-parser
 - tag: maintainer-script-should-not-use-dpkg-maintscript-helper
   difficulty: medium
-  comment: needs-shell-parser
+  comment: |
+    Replace dpkg-maintscript-helper calls with dpkg maintscript
+    file format. needs-shell-parser
 - tag: maintainer-script-should-not-use-piuparts-variable
-  comment: needs-shell-parser
+  difficulty: easy
+  comment: |
+    Remove piuparts-specific environment variable checks from
+    maintainer scripts. needs-shell-parser
 - tag: maintainer-script-should-not-use-recursive-chown-or-chmod
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Replace recursive chown/chmod with more targeted permission
+    changes. needs-shell-parser
 - tag: maintainer-script-supports-ancient-package-version
-  comment: needs-shell-parser; partially addressed by deb-scrub-obsolete
+  difficulty: medium
+  comment: |
+    Remove obsolete version checks from maintainer scripts.
+    needs-shell-parser; partially addressed by deb-scrub-obsolete
 - tag: maintainer-script-switches-dir-to-symlink-unsafely
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Use dpkg-maintscript-helper for safe dir-to-symlink transitions.
+    needs-shell-parser
 - tag: maintainer-script-updates-fontconfig-cache-improperly
-  comment: needs-shell-parser
+  difficulty: medium
+  comment: |
+    Replace manual fc-cache calls with dh_installfonts trigger.
+    needs-shell-parser
 - tag: maintainer-shell-script-fails-syntax-check
+  difficulty: hard
+  comment: |
+    Fix shell syntax errors in maintainer scripts. The fix depends
+    on the specific error.
 - tag: maintainer-upload-has-incorrect-version-number
+  difficulty: hard
+  comment: |
+    Fix version number in debian/changelog. Risky to auto-change.
 - tag: maintscript-calls-ldconfig
+  difficulty: medium
+  comment: |
+    Remove manual ldconfig calls from maintainer scripts; dpkg
+    triggers handle this now. needs-shell-parser
 - tag: maintscript-includes-maint-script-parameters
+  difficulty: medium
+  comment: |
+    Fix maintscript file that includes unnecessary parameters.
 - tag: making-assumptions-about-interfaces-in-templates
+  difficulty: hard
+  comment: |
+    Rewrite debconf templates to not assume a specific interface
+    (e.g. dialog vs readline). Requires human judgement.
 - tag: malformed-changed-by-field
+  status: build-stage
 - tag: malformed-changes-file
+  status: build-stage
 - tag: malformed-deb-archive
+  status: build-stage
 - tag: malformed-debian-changelog-version
+  difficulty: hard
+  comment: |
+    Fix malformed version in debian/changelog. Risky to auto-change.
 - tag: malformed-maintainer-field
+  difficulty: hard
+  comment: |
+    Fix malformed Maintainer field in debian/control. Requires
+    knowing the correct format.
 - tag: malformed-md5sums-control-file
+  status: build-stage
 - tag: malformed-override
   status: implemented
 - tag: malformed-prompt-in-templates
+  difficulty: hard
+  comment: |
+    Fix malformed prompt in debconf templates. Requires understanding
+    the intended prompt text.
 - tag: malformed-python-version
+  difficulty: medium
+  comment: |
+    Fix malformed X-Python-Version or X-Python3-Version field in
+    debian/control.
 - tag: malformed-question-in-templates
+  difficulty: hard
+  comment: |
+    Fix malformed question in debconf templates. Requires understanding
+    the intended question.
 - tag: malformed-template-name
+  difficulty: medium
+  comment: |
+    Fix malformed template name in debian/*.templates to follow
+    package/component naming convention.
 - tag: malformed-title-in-templates
+  difficulty: hard
+  comment: |
+    Fix malformed title in debconf templates. Requires understanding
+    the intended title.
 - tag: malformed-uploaders-field
+  difficulty: medium
+  comment: |
+    Fix malformed Uploaders field in debian/control. Common issues
+    include missing commas or malformed email addresses.
 - tag: manpage-has-bad-whatis-entry
+  status: build-stage
 - tag: manpage-has-errors-from-man
+  status: build-stage
 - tag: manpage-has-errors-from-pod2man
+  status: build-stage
 - tag: manpage-has-overly-generic-name
+  status: build-stage
 - tag: manpage-has-useless-whatis-entry
+  status: build-stage
 - tag: manpage-has-wrong-extension
+  status: build-stage
 - tag: manpage-in-udeb
+  status: build-stage
 - tag: manpage-in-wrong-directory
+  status: build-stage
 - tag: manpage-is-dh_make-template
+  difficulty: easy
+  comment: |
+    Delete dh_make manpage template files from debian/ directory.
 - tag: manpage-locale-dir-country-specific
+  status: build-stage
 - tag: manpage-named-after-build-path
+  status: build-stage
 - tag: manpage-not-compressed
+  status: build-stage
 - tag: manpage-not-compressed-with-gzip
+  status: build-stage
 - tag: manpage-not-compressed-with-max-compression
+  status: build-stage
 - tag: manpage-section-mismatch
+  status: build-stage
 - tag: manpage-without-executable
+  status: build-stage
 - tag: maven-plugin-in-usr-share-java
+  status: build-stage
 - tag: mawk-script-but-no-mawk-dep
+  difficulty: easy
+  comment: Add mawk to Depends in debian/control.
 - tag: maybe-not-arch-all-binnmuable
+  difficulty: hard
+  comment: |
+    Architecture: all package may not be binNMU-able due to
+    tight dependency on arch:any package. Hard to fix automatically.
 - tag: md5sum-mismatch
+  status: build-stage
 - tag: md5sums-lists-nonexistent-file
+  status: build-stage
 - tag: mentions-deprecated-usr-lib-perl5-directory
+  status: build-stage
 - tag: menu-command-not-in-package
+  status: build-stage
 - tag: menu-file-in-usr-lib
+  status: build-stage
 - tag: menu-icon-cannot-be-parsed
+  status: build-stage
 - tag: menu-icon-missing
+  status: build-stage
 - tag: menu-icon-not-in-xpm-format
+  status: build-stage
 - tag: menu-icon-too-big
+  status: build-stage
 - tag: menu-icon-uses-relative-path
+  status: build-stage
 - tag: menu-item-contains-unknown-tag
+  status: build-stage
 - tag: menu-item-creates-new-root-section
+  status: build-stage
 - tag: menu-item-creates-new-section
+  status: build-stage
 - tag: menu-item-missing-required-tag
+  status: build-stage
 - tag: menu-item-needs-dwww
+  status: build-stage
 - tag: menu-item-needs-tag-has-unknown-value
+  status: build-stage
 - tag: menu-item-uses-apps-games-section
+  status: build-stage
 - tag: menu-item-uses-apps-section
+  status: build-stage
 - tag: menu-item-uses-icon-none
+  status: build-stage
 - tag: menu-item-uses-windowmanagers-section
+  status: build-stage
 - tag: menu-method-lacks-include
+  status: build-stage
 - tag: mismatch-translated-choices
+  difficulty: hard
+  comment: |
+    Fix mismatched translated choices in debconf templates.
+    Requires understanding the translations.
 - tag: mismatched-python-substvar
+  difficulty: easy
+  comment: |
+    Replace wrong Python substvar (e.g. ${python:Depends} vs
+    ${python3:Depends}) in debian/control.
 - tag: misnamed-po-file
+  difficulty: easy
+  comment: |
+    Rename misnamed .po file to match the correct locale code.
 - tag: misplaced-extra-member-in-deb
+  status: build-stage
 - tag: missing-build-dependency
+  difficulty: medium
+  comment: |
+    Add missing Build-Depends to debian/control. Requires
+    determining the correct package name to depend on.
 - tag: missing-build-depends-for-clean-target-in-debian-rules
+  difficulty: medium
+  comment: |
+    Add Build-Depends needed by the clean target in debian/rules.
+    Requires determining which package is needed.
 - tag: missing-call-to-dpkg-maintscript-helper
+  difficulty: medium
+  comment: |
+    Add dpkg-maintscript-helper calls to maintainer scripts for
+    conffile handling. needs-shell-parser
 - tag: missing-call-to-update-fonts
+  difficulty: medium
+  comment: |
+    Add update-fonts calls to maintainer scripts.
+    needs-shell-parser
 - tag: missing-debconf-dependency
+  difficulty: easy
+  comment: |
+    Add debconf (>= 0.5) | debconf-2.0 to Depends or Pre-Depends
+    in debian/control.
 - tag: missing-debconf-dependency-for-preinst
+  difficulty: easy
+  comment: |
+    Add debconf to Pre-Depends in debian/control since preinst
+    uses debconf.
 - tag: missing-dep-for-interpreter
+  difficulty: easy
+  comment: |
+    Add dependency on interpreter package (e.g. python3, perl) to
+    Depends in debian/control.
 - tag: missing-dep-on-jarwrapper
+  difficulty: easy
+  comment: Add jarwrapper to Depends in debian/control.
 - tag: missing-dependency-on-libc
+  status: build-stage
 - tag: missing-dependency-on-libstdc++
+  status: build-stage
 - tag: missing-dependency-on-numpy-abi
+  difficulty: easy
+  comment: |
+    Add ${python3:Depends} or python3-numpy to Depends in
+    debian/control.
 - tag: missing-dependency-on-perlapi
+  status: build-stage
 - tag: missing-dependency-on-phpapi
+  status: build-stage
 - tag: missing-depends-on-sensible-utils
+  difficulty: easy
+  comment: |
+    Add sensible-utils to Depends in debian/control since the
+    package uses sensible-browser or similar.
 - tag: missing-explanation-for-contrib-or-non-free-package
+  difficulty: hard
+  comment: |
+    Would need to add explanation for contrib/non-free to
+    debian/copyright. Requires human input.
 - tag: missing-explanation-for-repacked-upstream-tarball
+  difficulty: medium
+  comment: |
+    Add Comment field to debian/copyright explaining why the
+    upstream tarball was repacked.
 - tag: missing-field-in-dep5-copyright
+  difficulty: hard
+  comment: |
+    Add missing required field to debian/copyright. The correct
+    value depends on which field is missing.
 - tag: missing-file-from-potfiles-in
+  difficulty: medium
+  comment: |
+    Add missing source file to POTFILES.in. Requires checking
+    which files contain translatable strings.
 - tag: missing-intermediate-directory
+  status: build-stage
 - tag: missing-license-paragraph-in-dep5-copyright
+  difficulty: medium
+  comment: |
+    Add missing standalone License paragraph to debian/copyright
+    for a license referenced by a Files paragraph.
 - tag: missing-license-text-in-dep5-copyright
+  difficulty: medium
+  comment: |
+    Add missing license text to License paragraph in
+    debian/copyright, or point to /usr/share/common-licenses/.
 - tag: missing-manifest
+  status: build-stage
 - tag: missing-notice-file-for-apache-license
   difficulty: medium
   comment: |
    tricky is figuring out whether something else already installs this file
 - tag: missing-pkg-php-tools-addon
+  difficulty: easy
+  comment: |
+    Add --with phpcomposer or similar to dh invocation in
+    debian/rules.
 - tag: missing-pkg-php-tools-buildsystem
+  difficulty: easy
+  comment: |
+    Add --buildsystem=phppear to dh invocation in debian/rules.
 - tag: missing-potfiles-in
+  difficulty: medium
+  comment: |
+    Create POTFILES.in listing all source files with translatable
+    strings.
 - tag: missing-prerequisite-for-gfortran-module
+  status: build-stage
 - tag: missing-python-build-dependency
+  difficulty: easy
+  comment: |
+    Add missing Python build dependency (e.g. python3-setuptools)
+    to Build-Depends in debian/control.
 - tag: missing-runtime-test-file
+  difficulty: medium
+  comment: |
+    Create the missing test file referenced by debian/tests/control.
 - tag: missing-separator-between-items
+  difficulty: easy
+  comment: |
+    Add missing comma separator between items in relation fields
+    in debian/control.
 - tag: missing-systemd-service-for-init.d-rcS-script
+  difficulty: hard
+  comment: |
+    Would need to create a systemd service file equivalent to the
+    rcS init.d script. Requires understanding the service.
 - tag: missing-systemd-service-for-init.d-script
+  difficulty: hard
+  comment: |
+    Would need to create a systemd service file equivalent to the
+    init.d script. Requires understanding the service.
 - tag: missing-systemd-timer-for-cron-script
+  difficulty: hard
+  comment: |
+    Would need to create a systemd timer unit equivalent to the
+    cron script. Requires understanding the scheduled task.
 - tag: missing-templates-pot
+  difficulty: medium
+  comment: |
+    Generate templates.pot from debconf templates using
+    po2debconf or debconf-updatepo.
 - tag: missing-versioned-depends-on-init-system-helpers
   difficulty: easy
+  comment: |
+    Add versioned init-system-helpers to Pre-Depends in
+    debian/control.
 - tag: missing-xs-go-import-path-for-golang-package
+  difficulty: easy
+  comment: |
+    Add XS-Go-Import-Path field to source stanza of debian/control
+    based on the Go import path.
 - tag: mknod-in-maintainer-script
-  comment: needs-shell-parser
+  difficulty: hard
+  comment: |
+    Remove mknod calls from maintainer scripts; device nodes
+    should be created by udev. needs-shell-parser
 - tag: more-than-one-patch-system
+  difficulty: medium
+  comment: |
+    Remove extra patch system and consolidate to a single one
+    (preferably quilt via 3.0 (quilt) format).
 - tag: multi-arch-same-package-calls-pycompile
+  status: build-stage
 - tag: multi-arch-same-package-has-arch-specific-overrides
+  status: build-stage
 - tag: multiarch-foreign-cmake-file
+  status: build-stage
 - tag: multiarch-foreign-pkgconfig
+  status: build-stage
 - tag: multiarch-foreign-shared-library
+  status: build-stage
 - tag: multiarch-foreign-static-library
+  status: build-stage
 - tag: multiline-architecture-field
+  difficulty: easy
+  comment: |
+    Join multiline Architecture field into a single line in
+    debian/control.
 - tag: multiline-field
+  difficulty: easy
+  comment: |
+    Join multiline field that should be on a single line in
+    debian/control.
 - tag: multiple-distributions-in-changes-file
+  status: build-stage
 - tag: named-copyright-for-single-installable
+  difficulty: easy
+  comment: |
+    Rename debian/package.copyright to debian/copyright when
+    there's only one binary package.
 - tag: national-encoding-in-debconf-template
+  difficulty: medium
+  comment: |
+    Convert debconf templates from legacy encoding to UTF-8.
 - tag: national-encoding-in-text-file
+  status: build-stage
 - tag: native-source-file-without-utf8-name
+  status: build-stage
 - tag: needless-dependency-on-jre
+  difficulty: easy
+  comment: |
+    Remove unnecessary JRE dependency from Depends in debian/control
+    when the package doesn't need a runtime JRE.
 - tag: needless-suggest-recommend-libservlet-java
+  difficulty: easy
+  comment: |
+    Remove unnecessary libservlet-java from Suggests/Recommends
+    in debian/control.
 - tag: needlessly-depends-on-awk
+  difficulty: easy
+  comment: |
+    Remove awk from Depends in debian/control since awk is
+    Essential and always available.
 - tag: nested-examples-directory
+  status: build-stage
 - tag: new-essential-package
+  difficulty: impossible
+  comment: |
+    Adding a package to Essential requires project-wide consensus.
 - tag: new-package-should-not-package-python2-module
   difficulty: impossible
 - tag: new-package-uses-date-based-version-number
@@ -881,260 +2792,697 @@
 - tag: newer-debconf-templates
   status: implemented
 - tag: newer-standards-version
+  difficulty: easy
+  comment: |
+    Bump Standards-Version in debian/control to the latest
+    version. May need to check for required changes.
 - tag: nfs-temporary-file-in-package
+  status: build-stage
 - tag: nmu-in-changelog
+  status: classification
 - tag: no-architecture-field
+  difficulty: easy
+  comment: |
+    Add missing Architecture field to binary stanza in
+    debian/control.
 - tag: no-changelog
+  difficulty: hard
+  comment: |
+    Would need to create a debian/changelog. Requires knowing
+    the package version and history.
 - tag: no-complete-debconf-translation
+  difficulty: hard
+  comment: |
+    Would need to complete translations in PO files. Requires
+    human translators.
 - tag: no-copyright-file
   status: implemented
 - tag: no-ctrl-scripts
+  status: classification
 - tag: no-debconf-config
+  difficulty: medium
+  comment: |
+    Create debian/config script for debconf templates.
+    Requires understanding the configuration options.
 - tag: no-debconf-templates
+  difficulty: hard
+  comment: |
+    Would need to create debconf templates. Requires understanding
+    the configuration interface.
 - tag: no-debian-copyright-in-source
+  difficulty: hard
+  comment: |
+    Would need to create debian/copyright. Requires analyzing
+    upstream license information.
 - tag: no-dep5-copyright
   difficulty: hard
+  comment: |
+    Would need to convert free-form copyright to DEP-5 format.
+    Requires understanding the license structure.
 - tag: no-description-in-changes-file
   status: build-stage
 - tag: no-dh-sequencer
   difficulty: medium
-  comment: Will require rewriting debian/rules
+  comment: |
+    Rewrite debian/rules to use dh sequencer instead of
+    individual debhelper commands.
 - tag: no-human-maintainers
+  difficulty: hard
+  comment: |
+    Package has no human maintainers (only a team). Policy
+    question, not easily automated.
 - tag: no-md5sums-control-file
+  status: build-stage
 - tag: no-newline-at-end
+  difficulty: easy
+  comment: Add missing newline at end of file.
 - tag: no-nmu-in-changelog
+  difficulty: medium
+  comment: |
+    Add NMU indicator to debian/changelog for a non-maintainer
+    upload.
 - tag: no-op-testsuite
+  difficulty: hard
+  comment: |
+    Test suite does nothing. Would need to write actual tests.
 - tag: no-package-name
+  difficulty: hard
+  comment: |
+    Missing Source field in debian/control. Requires knowing the
+    package name.
 - tag: no-qa-in-changelog
+  difficulty: easy
+  comment: |
+    Add QA upload indicator to debian/changelog.
 - tag: no-shlibs
+  status: build-stage
 - tag: no-standards-version-field
+  difficulty: easy
+  comment: |
+    Add Standards-Version field to source stanza of debian/control.
 - tag: no-strong-digests-in-dsc
+  status: build-stage
 - tag: no-symbols-control-file
   difficulty: medium
-  comment: requires building; adds extra future work
+  comment: |
+    Generate symbols file from built library using dpkg-gensymbols.
+    Requires building the package first.
 - tag: no-template-description
+  difficulty: hard
+  comment: |
+    Add missing description to debconf template. Requires
+    understanding the configuration option.
 - tag: no-template-name
+  difficulty: hard
+  comment: |
+    Add missing name to debconf template. Requires understanding
+    the configuration namespace.
 - tag: no-template-type
+  difficulty: medium
+  comment: |
+    Add missing Type field to debconf template.
 - tag: no-urgency-in-changes-file
+  status: build-stage
 - tag: no-version-field
+  difficulty: hard
+  comment: |
+    Missing version in debian/control. Requires knowing the
+    correct version.
 - tag: node-package-install-in-nodejs-rootdir
+  status: build-stage
 - tag: nodejs-lock-file
+  difficulty: easy
+  comment: Delete package-lock.json or yarn.lock from source tree.
 - tag: nodejs-module
+  status: classification
 - tag: nodejs-module-installed-in-bad-directory
+  status: build-stage
 - tag: nodejs-module-installed-in-usr-lib
+  status: build-stage
 - tag: nodejs-module-not-declared
+  difficulty: medium
+  comment: |
+    Add Provides for the Node.js module in debian/control.
 - tag: non-conf-file-in-modprobe.d
+  status: build-stage
 - tag: non-consecutive-debian-revision
   difficulty: medium
   comment: |
     easy to detect and fix; might be hard to find false positives though
 - tag: non-debug-file-in-debug-package
+  status: build-stage
 - tag: non-empty-dependency_libs-in-la-file
+  status: build-stage
 - tag: non-etc-file-marked-as-conffile
+  status: build-stage
 - tag: non-free-flash
+  status: build-stage
 - tag: non-multi-arch-lib-dir
+  status: build-stage
 - tag: non-standard-apache2-configuration-name
+  status: build-stage
 - tag: non-standard-apache2-module-package-name
+  difficulty: hard
+  comment: |
+    Rename apache2 module package to follow naming convention.
+    Requires an archive transition.
 - tag: non-standard-dir-in-usr
+  status: build-stage
 - tag: non-standard-dir-in-var
+  status: build-stage
 - tag: non-standard-dir-perm
+  status: build-stage
 - tag: non-standard-executable-perm
+  status: build-stage
 - tag: non-standard-file-perm
+  status: build-stage
 - tag: non-standard-file-permissions-for-etc-init.d-script
+  status: build-stage
 - tag: non-standard-game-executable-perm
+  status: build-stage
 - tag: non-standard-setuid-executable-perm
+  status: build-stage
 - tag: non-standard-toplevel-dir
+  status: build-stage
 - tag: non-virtual-facility-in-initd-script
+  difficulty: easy
+  comment: |
+    Rename Provides in init.d script LSB header from a non-virtual
+    facility name to the script's own name.
 - tag: non-wm-in-windowmanager-menu-section
+  status: build-stage
 - tag: non-wm-module-in-wm-modules-menu-section
+  status: build-stage
 - tag: not-allowed-control-file
+  status: build-stage
 - tag: not-binnmuable-all-depends-any
+  difficulty: hard
+  comment: |
+    Would need to restructure dependencies to make package
+    binNMU-able. Requires understanding the dependency intent.
 - tag: not-binnmuable-any-depends-all
+  difficulty: hard
+  comment: |
+    Would need to restructure dependencies to make package
+    binNMU-able.
 - tag: not-binnmuable-any-depends-any
+  difficulty: hard
+  comment: |
+    Would need to use ${source:Version} instead of
+    ${binary:Version} in cross-package dependencies.
 - tag: not-using-po-debconf
+  difficulty: medium
+  comment: |
+    Convert debconf templates to use po-debconf format for
+    internationalization.
 - tag: obsolete-command-in-modprobe.d-file
+  status: build-stage
 - tag: obsolete-comments-style-in-php-ini
+  status: build-stage
 - tag: obsolete-crypt-alias
+  status: build-stage
 - tag: obsolete-des-encryption
+  status: build-stage
 - tag: obsolete-relation-form
+  difficulty: easy
+  comment: |
+    Replace obsolete dependency relation form (e.g. "foo (>> 1.0)")
+    with modern form ("foo (> 1.0)") in binary stanza.
 - tag: obsolete-relation-form-in-source
+  difficulty: easy
+  comment: |
+    Replace obsolete dependency relation form in source stanza
+    of debian/control.
 - tag: obsolete-url-in-packaging
   status: implemented
 - tag: ocaml-custom-executable
+  status: build-stage
 - tag: ocaml-dangling-cmi
+  status: build-stage
 - tag: ocaml-dangling-cmx
+  status: build-stage
 - tag: ocaml-dangling-cmxa
+  status: build-stage
 - tag: ocaml-dangling-cmxs
+  status: build-stage
 - tag: ocaml-dev-file-in-nondev-package
+  status: build-stage
 - tag: ocaml-dev-file-not-in-usr-lib-ocaml
+  status: build-stage
 - tag: ocaml-meta-without-suggesting-findlib
+  difficulty: easy
+  comment: |
+    Add Suggests: ocaml-findlib to the OCaml package stanza
+    in debian/control.
 - tag: ocaml-stray-cmo
+  status: build-stage
 - tag: odd-historical-debian-changelog-version
+  status: classification
 - tag: odd-permissions-on-shared-library
+  status: build-stage
 - tag: old-python-version-field
   status: implemented
 - tag: old-style-config-script
+  status: build-stage
 - tag: old-style-config-script-multiarch-path
+  status: build-stage
 - tag: old-style-config-script-multiarch-path-arch-all
+  status: build-stage
 - tag: omitted-systemd-service-for-init.d-script
+  difficulty: hard
+  comment: |
+    Would need to create a systemd service file for the init.d
+    script. Requires understanding the service.
 - tag: opentype-font-prohibits-installable-embedding
+  status: build-stage
 - tag: opentype-font-wrong-filename
+  status: build-stage
 - tag: ored-build-depends-on-obsolete-package
+  difficulty: easy
+  comment: |
+    Remove obsolete alternative from Build-Depends OR relation,
+    keeping the non-obsolete alternative.
 - tag: ored-depends-on-obsolete-package
+  difficulty: easy
+  comment: |
+    Remove obsolete alternative from Depends OR relation, keeping
+    the non-obsolete alternative.
 - tag: orig-tarball-missing-upstream-signature
   status: build-stage
 - tag: orphaned-diversion
+  difficulty: medium
+  comment: |
+    Remove orphaned dpkg-divert calls from maintainer scripts.
+    needs-shell-parser
 - tag: orphaned-package-maintained-in-private-space
+  difficulty: easy
+  comment: |
+    Move Vcs-* fields from private space to Debian infrastructure
+    in debian/control.
 - tag: orphaned-package-not-maintained-in-debian-infrastructure
+  difficulty: easy
+  comment: |
+    Move Vcs-* fields to Debian infrastructure (e.g. salsa.debian.org)
+    in debian/control.
 - tag: outdated-relation-in-shlibs
+  status: build-stage
 - tag: output-of-updaterc.d-not-redirected-to-dev-null
+  difficulty: easy
+  comment: |
+    Add "> /dev/null" redirection to update-rc.d calls in
+    maintainer scripts. needs-shell-parser
 - tag: override-file-in-wrong-location
+  status: build-stage
 - tag: override-file-in-wrong-package
+  status: build-stage
 - tag: override_dh_auto_test-does-not-check-DEB_BUILD_OPTIONS
+  difficulty: easy
+  comment: |
+    Add DEB_BUILD_OPTIONS nocheck guard to override_dh_auto_test
+    target in debian/rules.
 - tag: override_dh_clean-does-not-call-dh_clean
+  difficulty: easy
+  comment: |
+    Add dh_clean call to override_dh_clean target in debian/rules.
 - tag: override_dh_fixperms-does-not-call-dh_fixperms
+  difficulty: easy
+  comment: |
+    Add dh_fixperms call to override_dh_fixperms target in
+    debian/rules.
 - tag: package-builds-dbg-and-dbgsym-variants
+  difficulty: easy
+  comment: |
+    Remove manual -dbg package stanza from debian/control since
+    -dbgsym packages are auto-generated by debhelper.
 - tag: package-contains-ancient-file
+  status: build-stage
 - tag: package-contains-broken-symlink-wildcard
+  status: build-stage
 - tag: package-contains-bts-control-dir
+  status: build-stage
 - tag: package-contains-cmake-private-file
+  status: build-stage
 - tag: package-contains-compiled-font-file
+  status: build-stage
 - tag: package-contains-compiled-glib-schema
+  status: build-stage
 - tag: package-contains-devhelp-file-without-symlink
+  status: build-stage
 - tag: package-contains-documentation-outside-usr-share-doc
+  status: build-stage
 - tag: package-contains-empty-directory
   difficulty: medium
   comment: |
     easy to fix in some cases, but hard to detect
 - tag: package-contains-eslint-config-file
+  status: build-stage
 - tag: package-contains-file-in-etc-skel
+  status: build-stage
 - tag: package-contains-file-in-usr-share-hal
+  status: build-stage
 - tag: package-contains-hardlink
+  status: build-stage
 - tag: package-contains-icon-cache-in-generic-dir
+  status: build-stage
 - tag: package-contains-info-dir-file
+  status: build-stage
 - tag: package-contains-mime-cache-file
+  status: build-stage
 - tag: package-contains-mime-file-outside-package-dir
+  status: build-stage
 - tag: package-contains-mimeinfo.cache-file
+  status: build-stage
 - tag: package-contains-multiple-dpi-fonts
+  status: build-stage
 - tag: package-contains-no-arch-dependent-files
   difficulty: hard
+  comment: |
+    Architecture: any package contains no arch-dependent files.
+    Would need to change to "all" but that may break build logic.
 - tag: package-contains-npm-ignore-file
+  status: build-stage
 - tag: package-contains-python-coverage-file
+  status: build-stage
 - tag: package-contains-python-doctree-file
+  status: build-stage
 - tag: package-contains-python-dot-directory
+  status: build-stage
 - tag: package-contains-python-header-in-incorrect-directory
+  status: build-stage
 - tag: package-contains-python-hypothesis-example
+  status: build-stage
 - tag: package-contains-python-tests-in-global-namespace
+  status: build-stage
 - tag: package-contains-readme-for-other-platform-or-distro
+  status: build-stage
 - tag: package-contains-sass-cache-directory
+  status: build-stage
 - tag: package-contains-thumbnails-dir
+  status: build-stage
 - tag: package-contains-timestamped-gzip
+  status: build-stage
 - tag: package-contains-unsafe-symlink
+  status: build-stage
 - tag: package-contains-upstream-installation-documentation
+  status: build-stage
 - tag: package-contains-usr-unmerged-pathnames
+  status: build-stage
 - tag: package-contains-vcs-control-dir
+  status: build-stage
 - tag: package-contains-vcs-control-file
+  status: build-stage
 - tag: package-contains-xvpics-dir
+  status: build-stage
 - tag: package-depends-on-an-x-font-package
+  difficulty: easy
+  comment: |
+    Replace X font package dependency with xfonts-* in
+    debian/control.
 - tag: package-depends-on-hardcoded-libc
+  difficulty: easy
+  comment: |
+    Replace hardcoded libc6 dependency with ${shlibs:Depends}
+    in debian/control.
 - tag: package-depends-on-itself
+  difficulty: easy
+  comment: |
+    Remove self-referencing dependency from Depends in
+    debian/control. Same pattern as circular-installation-prerequisite.
 - tag: package-depends-on-multiple-libpng-versions
+  difficulty: medium
+  comment: |
+    Remove duplicate libpng version dependencies, keeping only
+    the current version.
 - tag: package-depends-on-multiple-libstdc-versions
+  difficulty: medium
+  comment: |
+    Remove duplicate libstdc++ version dependencies, keeping only
+    the current version.
 - tag: package-depends-on-multiple-tcl-versions
+  difficulty: medium
+  comment: |
+    Remove duplicate Tcl version dependencies, keeping only
+    the current version.
 - tag: package-depends-on-multiple-tclx-versions
+  difficulty: medium
+  comment: |
+    Remove duplicate TclX version dependencies, keeping only
+    the current version.
 - tag: package-depends-on-multiple-tk-versions
+  difficulty: medium
+  comment: |
+    Remove duplicate Tk version dependencies, keeping only
+    the current version.
 - tag: package-does-not-install-examples
+  difficulty: easy
+  comment: |
+    Add example files to debian/examples or the appropriate
+    package.examples file.
 - tag: package-does-not-use-debhelper-or-cdbs
+  difficulty: hard
+  comment: |
+    Convert hand-written debian/rules to use debhelper.
+    Requires understanding the build system.
 - tag: package-file-is-executable
+  difficulty: easy
+  comment: |
+    Remove executable bit from debian/control, debian/copyright
+    or similar packaging files.
 - tag: package-has-a-duplicate-build-relation
+  difficulty: easy
+  comment: |
+    Remove duplicate entries from Build-Depends using Relations API.
 - tag: package-has-long-file-name
+  status: build-stage
 - tag: package-has-unnecessary-activation-of-ldconfig-trigger
+  status: build-stage
 - tag: package-installs-apt-keyring
+  status: build-stage
 - tag: package-installs-apt-preferences
+  status: build-stage
 - tag: package-installs-apt-sources
+  status: build-stage
 - tag: package-installs-deprecated-upstart-configuration
+  status: build-stage
 - tag: package-installs-file-to-usr-x11r6
+  status: build-stage
 - tag: package-installs-ieee-data
+  status: build-stage
 - tag: package-installs-into-etc-gconf-schemas
+  status: build-stage
 - tag: package-installs-into-etc-rc.boot
+  status: build-stage
 - tag: package-installs-into-etc-rc.d
+  status: build-stage
 - tag: package-installs-into-obsolete-dir
+  status: build-stage
 - tag: package-installs-java-bytecode
+  status: build-stage
 - tag: package-installs-nonbinary-perl-in-usr-lib-perl5
+  status: build-stage
 - tag: package-installs-packlist
+  status: build-stage
 - tag: package-installs-perllocal-pod
+  status: build-stage
 - tag: package-installs-python-bytecode
+  status: build-stage
 - tag: package-installs-python-egg
+  status: build-stage
 - tag: package-installs-python-pycache-dir
+  status: build-stage
 - tag: package-is-co-maintained
+  status: classification
 - tag: package-is-maintained-by-individual
+  status: classification
 - tag: package-is-team-maintained
+  status: classification
 - tag: package-mixes-misc-and-dpi-fonts
+  status: build-stage
 - tag: package-modifies-ld.so-search-path
+  status: build-stage
 - tag: package-name-defined-in-config-h
+  status: build-stage
 - tag: package-name-doesnt-match-sonames
   difficulty: hard
   comment: |
    need a way to reliably rename a binary package
 - tag: package-not-lowercase
+  difficulty: hard
+  comment: |
+    Rename the source package to use lowercase. Requires updating debian/control
+    Source field plus potentially renaming the directory and updating references.
+    High risk of breakage.
 - tag: package-placeholder-in-symbols-file
+  status: build-stage
 - tag: package-relation-with-perl-modules
   difficulty: easy
   status: implemented
 - tag: package-relation-with-self
   difficulty: hard
 - tag: package-section-games-but-contains-no-game
+  status: build-stage
 - tag: package-section-games-but-has-usr-bin
+  status: build-stage
 - tag: package-superseded-by-perl
   difficulty: medium
 - tag: package-supports-alternative-init-but-no-init.d-script
+  status: build-stage
 - tag: package-uses-debhelper-but-lacks-build-depends
+  difficulty: easy
+  comment: |
+    Add debhelper-compat to Build-Depends in debian/control. Uses
+    TemplatedControlEditor and Relations API to add the missing dependency.
 - tag: package-uses-deprecated-dpatch-patch-system
   difficulty: easy
   status: implemented
 - tag: package-uses-dh-exec-but-lacks-build-depends
+  difficulty: easy
+  comment: |
+    Add dh-exec to Build-Depends in debian/control. Uses TemplatedControlEditor
+    and Relations API to add the missing dependency.
 - tag: package-uses-dh-runit-but-lacks-breaks-substvar
+  difficulty: easy
+  comment: |
+    Add ${runit:Breaks} substvar to Breaks field for packages using dh-runit.
+    Uses TemplatedControlEditor and Relations API.
 - tag: package-uses-experimental-debhelper-compat-version
+  difficulty: medium
+  comment: |
+    Downgrade debhelper compat level to latest non-experimental version in
+    debian/control or debian/compat. Easy to change the number but may require
+    adjusting debian/rules for compat behavior changes.
 - tag: package-uses-local-diversion
+  difficulty: hard
+  comment: needs-shell-parser
 - tag: package-uses-vendor-specific-patch-series
+  difficulty: medium
+  comment: |
+    Rename vendor-specific patch series file to standard debian/patches/series.
+    Need to check that no other vendor-specific series files exist.
 - tag: patch-modifying-debian-files
+  difficulty: hard
+  comment: |
+    Remove or split patches that modify files under debian/. The patch content
+    touching debian/ needs to be applied directly. Hard to automate reliably.
 - tag: patch-system
+  status: classification
 - tag: patch-system-but-direct-changes-in-diff
+  difficulty: hard
+  comment: |
+    Convert direct source changes into quilt patches. Requires extracting
+    the diff and creating proper quilt patches, then reverting the direct changes.
 - tag: patch-system-but-no-source-readme
+  difficulty: easy
+  comment: |
+    Create a debian/README.source file describing the patch system in use.
+    Template text depends on whether quilt, dpatch, etc. is used.
 - tag: patched-file-without-utf8-name
+  difficulty: hard
+  comment: |
+    Rename patch files to use valid UTF-8 filenames. Requires updating
+    the series file and the patch filename itself.
 - tag: pear-channel-without-pkg-php-tools-builddep
+  difficulty: easy
+  comment: |
+    Add pkg-php-tools to Build-Depends in debian/control. Uses
+    TemplatedControlEditor and Relations API.
 - tag: pear-package-but-missing-dependency
+  difficulty: easy
+  comment: |
+    Add missing php-pear dependency to the binary package Depends field.
+    Uses TemplatedControlEditor and Relations API.
 - tag: pear-package-not-using-substvar
+  difficulty: easy
+  comment: |
+    Replace hardcoded PEAR dependency with ${phppear:Debian-Depends} substvar
+    in debian/control. Uses TemplatedControlEditor.
 - tag: pear-package-without-pkg-php-tools-builddep
+  difficulty: easy
+  comment: |
+    Add pkg-php-tools to Build-Depends in debian/control. Uses
+    TemplatedControlEditor and Relations API.
 - tag: pecl-package-requires-build-dependency
+  difficulty: easy
+  comment: |
+    Add missing php-dev or phpN-dev build dependency for PECL packages.
+    Uses TemplatedControlEditor and Relations API.
 - tag: perl-module-in-core-directory
+  status: build-stage
 - tag: perl-module-name-not-mentioned-in-description
+  difficulty: hard
+  comment: |
+    Add the Perl module name to the package description. Requires knowing
+    the correct module name and generating appropriate description text.
 - tag: perl-module-uses-perl4-libs-without-dep
+  status: build-stage
 - tag: php-script-but-no-php-cli-dep
+  status: build-stage
 - tag: php-script-with-unusual-interpreter
+  status: build-stage
 - tag: pipe-symbol-used-as-license-disjunction
+  difficulty: easy
+  comment: |
+    Replace pipe "|" with "or" in debian/copyright license fields. The DEP-5
+    format uses "or" for license disjunctions, not "|". Parse and edit with
+    debian-copyright crate.
 - tag: pkg-config-bad-directive
+  status: build-stage
 - tag: pkg-config-multi-arch-wrong-dir
+  status: build-stage
 - tag: pkg-config-unavailable-for-cross-compilation
   difficulty: medium
   comment: hard to do without building
 - tag: pkg-js-autopkgtest-file-does-not-exist
+  difficulty: hard
+  comment: |
+    A referenced test file in pkg-js autopkgtest config doesn't exist.
+    Could remove the reference but may break testing.
 - tag: pkg-js-autopkgtest-test-is-empty
+  difficulty: medium
+  comment: |
+    The pkg-js autopkgtest test file exists but is empty. Could populate
+    with a basic test or remove the empty test file.
 - tag: pkg-js-autopkgtest-test-is-missing
+  difficulty: hard
+  comment: |
+    Create a missing autopkgtest test file for pkg-js. Requires knowing
+    what to test.
 - tag: pkg-js-tools-test-is-empty
+  difficulty: medium
+  comment: |
+    The pkg-js-tools test file is empty. Could populate with a basic
+    test skeleton or remove the empty test file.
 - tag: pkg-js-tools-test-is-missing
   status: implemented
 - tag: pkg-not-in-package-test
+  difficulty: medium
+  comment: |
+    Add the package to the autopkgtest Tests-Command or Depends field
+    so it gets tested. Requires parsing debian/tests/control.
 - tag: portable-executable-missing-security-features
+  status: build-stage
 - tag: possible-bashism-in-maintainer-script
   comment: needs-shell-parser
 - tag: possible-debconf-note-abuse
+  difficulty: hard
+  comment: |
+    A debconf note is being used where a different template type would be
+    more appropriate. Requires understanding the intent of the note.
 - tag: possible-documentation-but-no-doc-base-registration
   difficulty: medium
   comment: hard to determine whether documentation needs to be registered
 - tag: possible-gpl-code-linked-with-openssl
+  difficulty: impossible
+  comment: upstream licensing issue; GPL code linked with OpenSSL
 - tag: possible-new-upstream-release-without-new-version
+  difficulty: impossible
+  comment: requires importing new upstream release; outside scope of fixer
 - tag: possible-unindented-list-in-extended-description
+  difficulty: medium
+  comment: |
+    Indent list items in the extended description with an extra space.
+    Parse debian/control Description field, detect list items and add
+    proper indentation. Heuristic detection of lists is tricky.
 - tag: possibly-insecure-handling-of-tmp-files-in-maintainer-script
   comment: needs-shell-parser
 - tag: postinst-does-not-call-updatemenus
@@ -1146,6 +3494,7 @@
 - tag: postinst-has-useless-call-to-update-menus
   comment: needs-shell-parser
 - tag: postinst-uses-db-input
+  comment: needs-shell-parser
 - tag: postrm-calls-installdocs
   comment: needs-shell-parser
 - tag: postrm-contains-additional-updaterc.d-calls
@@ -1175,192 +3524,619 @@
 - tag: prerm-has-useless-call-to-install-docs
   comment: needs-shell-parser
 - tag: privacy-breach-donation
+  status: build-stage
 - tag: privacy-breach-facebook
+  status: build-stage
 - tag: privacy-breach-generic
+  status: build-stage
 - tag: privacy-breach-google-adsense
+  status: build-stage
 - tag: privacy-breach-google-cse
+  status: build-stage
 - tag: privacy-breach-google-plus
+  status: build-stage
 - tag: privacy-breach-logo
+  status: build-stage
 - tag: privacy-breach-piwik
+  status: build-stage
 - tag: privacy-breach-statistics-website
+  status: build-stage
 - tag: privacy-breach-twitter
+  status: build-stage
 - tag: privacy-breach-uses-embedded-file
+  status: build-stage
 - tag: privacy-breach-w3c-valid-html
+  status: build-stage
 - tag: program-not-linked-against-libc
+  status: build-stage
 - tag: public-upstream-key-in-native-package
   status: implemented
 - tag: public-upstream-key-unusable
+  difficulty: medium
+  comment: |
+    Fix or replace the unusable upstream signing key in debian/upstream/.
+    May need to re-export the key in a valid format.
 - tag: python-debug-in-wrong-location
+  status: build-stage
 - tag: python-depends-but-no-python-helper
+  difficulty: easy
+  comment: |
+    Add dh-python or python3-setuptools to Build-Depends. Uses
+    TemplatedControlEditor and Relations API.
 - tag: python-foo-but-no-python3-foo
   difficulty: hard
 - tag: python-module-has-overly-generic-name
+  status: build-stage
 - tag: python-module-in-wrong-location
+  status: build-stage
 - tag: python-package-depends-on-package-from-other-python-variant
+  difficulty: medium
+  comment: |
+    Replace python2 dependency with python3 equivalent or remove it.
+    Uses TemplatedControlEditor and Relations API.
 - tag: python-package-missing-depends-on-python
+  difficulty: easy
+  comment: |
+    Add ${python3:Depends} substvar to binary package Depends field.
+    Uses TemplatedControlEditor.
 - tag: python-script-but-no-python-dep
+  status: build-stage
 - tag: python-version-current-is-deprecated
+  difficulty: easy
+  comment: |
+    Remove the deprecated X-Python-Version or X-Python3-Version current
+    version specifier from debian/control. Uses TemplatedControlEditor.
 - tag: python3-depends-but-no-python3-helper
+  difficulty: easy
+  comment: |
+    Add dh-python to Build-Depends in debian/control. Uses
+    TemplatedControlEditor and Relations API.
 - tag: qa-upload-has-incorrect-version-number
+  difficulty: medium
+  comment: |
+    Fix the version number in debian/changelog for QA uploads. The version
+    should follow the NMU versioning convention. Parse and edit changelog.
 - tag: quilt-build-dep-but-no-series-file
+  difficulty: easy
+  comment: |
+    Create an empty debian/patches/series file, or remove the quilt
+    build dependency if no patches exist.
 - tag: quilt-patch-missing-description
   difficulty: hard
   comment: Requires human-created text
 - tag: quilt-patch-using-template-description
+  difficulty: hard
+  comment: |
+    Replace the template description in a quilt patch with a real description.
+    Requires human-created text.
 - tag: quilt-patch-with-non-standard-options
+  difficulty: medium
+  comment: |
+    Remove or fix non-standard options in debian/patches. May require
+    refreshing patches with standard options.
 - tag: quilt-series-references-non-existent-patch
+  difficulty: easy
+  comment: |
+    Remove the reference to the non-existent patch from debian/patches/series.
 - tag: quoted-placeholder-in-mailcap-entry
+  status: build-stage
 - tag: r-data-without-readme-source
+  difficulty: easy
+  comment: |
+    Create a debian/README.source explaining that the R data files are
+    included as-is from upstream.
 - tag: r-package-not-arch-all
+  difficulty: medium
+  comment: |
+    Change Architecture from any to all in debian/control for pure R
+    packages. Uses TemplatedControlEditor. May need to verify no compiled
+    code exists.
 - tag: raster-image-in-scalable-directory
+  status: build-stage
 - tag: rc-version-greater-than-expected-version
+  difficulty: hard
+  comment: |
+    Version number issue in debian/changelog; the RC version is higher
+    than the expected release version. Requires manual version decision.
 - tag: read-in-maintainer-script
   comment: needs-shell-parser
 - tag: readme-debian-contains-debmake-template
+  difficulty: easy
+  comment: |
+    Remove the debian/README.Debian file if it only contains the debmake
+    template text, or strip the template portions.
 - tag: readme-debian-contains-invalid-email-address
+  difficulty: hard
+  comment: |
+    Fix or remove invalid email address in debian/README.Debian. Requires
+    knowing the correct email address.
 - tag: readme-debian-mentions-usr-doc
+  difficulty: easy
+  comment: |
+    Replace /usr/doc references with /usr/share/doc in debian/README.Debian.
+    Simple text substitution.
 - tag: readme-source-is-dh_make-template
+  difficulty: easy
+  comment: |
+    Remove the debian/README.source file if it only contains the dh_make
+    template text.
 - tag: redundant-bugs-field
+  difficulty: easy
+  comment: |
+    Remove the redundant Bugs field from debian/control when it matches
+    the default BTS. Uses TemplatedControlEditor.
 - tag: redundant-origin-field
+  difficulty: easy
+  comment: |
+    Remove the redundant Origin field from debian/control when it is
+    "debian". Uses TemplatedControlEditor.
 - tag: redundant-priority-optional-field
+  difficulty: easy
+  comment: |
+    Remove redundant Priority: optional from binary stanzas in debian/control
+    when source stanza already specifies it. Uses TemplatedControlEditor.
 - tag: relative-conffile
+  status: build-stage
 - tag: relative-symlink
+  status: build-stage
 - tag: remove-of-unknown-diversion
+  comment: needs-shell-parser
 - tag: repackaged-source-not-advertised
   difficulty: impossible
 - tag: repeated-trigger-name
+  difficulty: easy
+  comment: |
+    Remove duplicate trigger names from debian/triggers file.
 - tag: ruby-script-but-no-ruby-dep
+  status: build-stage
 - tag: rules-does-not-require-root
+  status: classification
 - tag: rules-requires-root-explicitly
+  status: classification
 - tag: rules-silently-require-root
   status: implemented
 - tag: run-parts-cron-filename-contains-illegal-chars
+  status: build-stage
 - tag: runtime-test-file-is-not-a-regular-file
+  difficulty: hard
+  comment: |
+    A test file in debian/tests/ is not a regular file (e.g., symlink).
+    Requires understanding what the file should be.
 - tag: runtime-test-file-uses-installed-python-versions
+  difficulty: medium
+  comment: |
+    Replace py3versions -i with py3versions -s in debian/tests/ scripts,
+    or adjust to use the installed Python versions correctly.
 - tag: runtime-test-file-uses-supported-python-versions-without-python-all-build-depends
+  difficulty: easy
+  comment: |
+    Add python3-all to Build-Depends or Test-Depends when autopkgtest uses
+    py3versions -s. Uses TemplatedControlEditor and Relations API.
 - tag: script-in-etc-init.d-not-registered-via-update-rc.d
+  comment: needs-shell-parser
 - tag: script-in-usr-share-doc
+  status: build-stage
 - tag: script-not-executable
+  status: build-stage
 - tag: script-uses-bin-env
+  status: build-stage
 - tag: script-uses-deprecated-nodejs-location
+  status: build-stage
 - tag: script-uses-perl4-libs-without-dep
+  status: build-stage
 - tag: script-uses-unversioned-python-in-shebang
+  status: build-stage
 - tag: script-with-language-extension
+  status: build-stage
 - tag: script-without-interpreter
+  status: build-stage
 - tag: section-area-mismatch
+  difficulty: medium
+  comment: |
+    Fix the Section field in debian/control to match the archive area.
+    Uses TemplatedControlEditor.
 - tag: section-is-dh_make-template
+  difficulty: easy
+  comment: |
+    Replace the dh_make template Section value with the correct section
+    in debian/control. Uses TemplatedControlEditor.
 - tag: select-with-boolean-choices
+  difficulty: medium
+  comment: |
+    Change debconf template type from select to boolean when only two
+    yes/no choices exist. Edit debian/templates file.
 - tag: select-without-choices
+  difficulty: hard
+  comment: |
+    A debconf select template has no Choices field. Requires understanding
+    what the choices should be.
 - tag: service-file-is-not-a-file
+  status: build-stage
 - tag: setgid-binary
+  status: build-stage
 - tag: setuid-binary
+  status: build-stage
 - tag: setuid-gid-binary
+  status: build-stage
 - tag: shared-library-is-executable
+  status: build-stage
 - tag: shared-library-is-multi-arch-foreign
+  difficulty: easy
+  comment: |
+    Change Multi-Arch from foreign to same for shared library packages
+    in debian/control. Uses TemplatedControlEditor.
 - tag: shared-library-lacks-prerequisites
+  status: build-stage
 - tag: shared-library-lacks-stack-section
+  status: build-stage
 - tag: shared-library-lacks-version
+  status: build-stage
 - tag: shared-library-not-shipped
+  status: build-stage
 - tag: shared-library-symbols-not-tracked
+  status: build-stage
 - tag: sharedobject-in-library-directory-missing-soname
+  status: build-stage
 - tag: shell-script-fails-syntax-check
+  status: build-stage
 - tag: shipped-file-without-utf8-name
+  status: build-stage
 - tag: ships-undeclared-shared-library
+  status: build-stage
 - tag: should-specify-rules-requires-root
+  difficulty: easy
+  comment: |
+    Add Rules-Requires-Root: no to debian/control source stanza.
+    Same pattern as rules-requires-root-missing fixer.
 - tag: source-contains-arch-control-dir
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to debian/copyright to exclude arch VCS
+    control directories, then repack. Or add to debian/source/options
+    extend-diff-ignore.
 - tag: source-contains-arch-inventory-file
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to debian/copyright to exclude arch
+    inventory files, then repack.
 - tag: source-contains-autogenerated-gperf-data
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude autogenerated gperf data from
+    upstream tarball via repack.
 - tag: source-contains-autogenerated-visual-c++-file
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude Visual C++ generated files
+    from upstream tarball via repack.
 - tag: source-contains-browserified-javascript
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude browserified JavaScript from
+    upstream tarball via repack. May need to rebuild from source.
 - tag: source-contains-bts-control-dir
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude BTS control directories
+    from upstream tarball via repack.
 - tag: source-contains-bzr-control-dir
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude .bzr directories from
+    upstream tarball via repack.
 - tag: source-contains-cvs-conflict-copy
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude CVS conflict copies from
+    upstream tarball via repack.
 - tag: source-contains-cvs-control-dir
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude CVS directories from
+    upstream tarball via repack.
 - tag: source-contains-data-from-ieee-data-oui-db
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude IEEE OUI database copies
+    from upstream tarball via repack.
 - tag: source-contains-git-control-dir
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude .git directories from
+    upstream tarball via repack.
 - tag: source-contains-hg-control-dir
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude .hg directories from
+    upstream tarball via repack.
 - tag: source-contains-hg-tags-file
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude .hgtags files from
+    upstream tarball via repack.
 - tag: source-contains-prebuilt-binary
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude prebuilt binaries from
+    upstream tarball via repack.
 - tag: source-contains-prebuilt-doxygen-documentation
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude prebuilt Doxygen docs from
+    upstream tarball via repack.
 - tag: source-contains-prebuilt-flash-object
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude prebuilt Flash objects from
+    upstream tarball via repack.
 - tag: source-contains-prebuilt-flash-project
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude prebuilt Flash projects from
+    upstream tarball via repack.
 - tag: source-contains-prebuilt-java-object
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude prebuilt Java .class files from
+    upstream tarball via repack.
 - tag: source-contains-prebuilt-javascript-object
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude prebuilt/minified JavaScript
+    from upstream tarball via repack.
 - tag: source-contains-prebuilt-ms-help-file
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude MS Help files from upstream
+    tarball via repack.
 - tag: source-contains-prebuilt-pandoc-documentation
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude prebuilt Pandoc docs from
+    upstream tarball via repack.
 - tag: source-contains-prebuilt-python-object
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude .pyc/.pyo files from upstream
+    tarball via repack.
 - tag: source-contains-prebuilt-silverlight-object
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude Silverlight objects from
+    upstream tarball via repack.
 - tag: source-contains-prebuilt-sphinx-documentation
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude prebuilt Sphinx docs from
+    upstream tarball via repack.
 - tag: source-contains-prebuilt-wasm-binary
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude prebuilt WASM binaries from
+    upstream tarball via repack.
 - tag: source-contains-prebuilt-windows-binary
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude Windows .exe/.dll files from
+    upstream tarball via repack.
 - tag: source-contains-prebuilt-yapp-parser
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude prebuilt YAPP parsers from
+    upstream tarball via repack.
 - tag: source-contains-svk-commit-file
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude SVK commit files from
+    upstream tarball via repack.
 - tag: source-contains-svn-commit-file
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude SVN commit files from
+    upstream tarball via repack.
 - tag: source-contains-svn-conflict-file
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude SVN conflict files from
+    upstream tarball via repack.
 - tag: source-contains-svn-control-dir
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude .svn directories from
+    upstream tarball via repack.
 - tag: source-contains-unsafe-symlink
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude unsafe symlinks from upstream
+    tarball via repack. Or fix the symlink target.
 - tag: source-contains-waf-binary
+  difficulty: medium
+  comment: |
+    Add Files-Excluded pattern to exclude embedded waf binary from
+    upstream tarball via repack.
 - tag: source-field-malformed
+  difficulty: hard
+  comment: |
+    Fix malformed Source field in debian/control. Requires understanding
+    what the correct value should be.
 - tag: source-format
   status: classification
 - tag: source-includes-file-in-files-excluded
+  difficulty: impossible
+  comment: requires repacking upstream tarball at upload time
 - tag: source-is-missing
+  difficulty: impossible
+  comment: upstream issue; missing source for minified/compiled files
 - tag: source-nmu-has-incorrect-version-number
+  difficulty: medium
+  comment: |
+    Fix the NMU version number in debian/changelog to follow the correct
+    convention. Parse and edit changelog.
 - tag: source-only-upload-to-non-free-without-autobuild
+  difficulty: easy
+  comment: |
+    Add XS-Autobuild: yes to debian/control for non-free packages that
+    need autobuilding. Uses TemplatedControlEditor.
 - tag: source-package-component-has-long-file-name
+  difficulty: impossible
+  comment: requires renaming upstream tarball components
 - tag: source-package-encodes-python-version
+  difficulty: hard
+  comment: |
+    Rename source package to remove the encoded Python version. Requires
+    updating debian/control Source field and potentially many references.
 - tag: special-file
+  status: build-stage
 - tag: specific-address-in-shared-library
+  status: build-stage
 - tag: spelling-error-in-binary
   difficulty: hard
 - tag: spelling-error-in-changelog
+  difficulty: medium
+  comment: |
+    Fix spelling errors in debian/changelog using lintian's spelling data.
+    Parse changelog and apply corrections.
 - tag: spelling-error-in-copyright
+  difficulty: medium
+  comment: |
+    Fix spelling errors in debian/copyright using lintian's spelling data.
+    Parse with debian-copyright crate and apply corrections.
 - tag: spelling-error-in-description
+  difficulty: medium
+  comment: |
+    Fix spelling errors in package descriptions in debian/control using
+    lintian's spelling data. Uses TemplatedControlEditor.
 - tag: spelling-error-in-description-synopsis
+  difficulty: medium
+  comment: |
+    Fix spelling errors in the Description synopsis line in debian/control
+    using lintian's spelling data. Uses TemplatedControlEditor.
 - tag: spelling-error-in-doc-base-abstract-field
+  difficulty: medium
+  comment: |
+    Fix spelling errors in doc-base Abstract field using lintian's spelling data.
 - tag: spelling-error-in-doc-base-title-field
+  difficulty: medium
+  comment: |
+    Fix spelling errors in doc-base Title field using lintian's spelling data.
 - tag: spelling-error-in-manpage
+  status: build-stage
 - tag: spelling-error-in-news-debian
+  difficulty: medium
+  comment: |
+    Fix spelling errors in debian/NEWS using lintian's spelling data.
 - tag: spelling-error-in-patch-description
+  difficulty: medium
+  comment: |
+    Fix spelling errors in quilt patch descriptions using lintian's
+    spelling data.
 - tag: spelling-error-in-readme-debian
+  difficulty: medium
+  comment: |
+    Fix spelling errors in debian/README.Debian using lintian's spelling data.
 - tag: spelling-error-in-rules-requires-root
+  difficulty: easy
+  comment: |
+    Fix the misspelled Rules-Requires-Root value in debian/control.
+    Uses TemplatedControlEditor.
 - tag: sphinxdoc-but-no-sphinxdoc-depends
+  difficulty: easy
+  comment: |
+    Add ${sphinxdoc:Depends} substvar to binary package Depends field
+    in debian/control. Uses TemplatedControlEditor.
 - tag: spurious-fields-in-upstream-signature
+  difficulty: medium
+  comment: |
+    Strip spurious fields from the upstream GPG signature file in
+    debian/upstream/. Requires re-exporting the key.
 - tag: standards-version
   status: classification
 - tag: star-file
+  status: build-stage
 - tag: static-library-has-unneeded-section
+  status: build-stage
 - tag: statically-linked-binary
   difficulty: hard
 - tag: stray-directory-in-manpage-directory
+  status: build-stage
 - tag: stray-translated-debconf-templates
+  status: build-stage
 - tag: stripped-library
+  status: build-stage
 - tag: stronger-dependency-implies-weaker
   difficulty: easy
 - tag: su-to-root-with-usr-sbin
+  status: build-stage
 - tag: su-wrapper-not-su-to-root
+  status: build-stage
 - tag: su-wrapper-without--c
+  status: build-stage
 - tag: subdir-in-bin
+  status: build-stage
 - tag: subdir-in-usr-bin
+  status: build-stage
 - tag: substvar-source-version-is-deprecated
+  difficulty: easy
+  comment: |
+    Replace deprecated ${Source-Version} with ${binary:Version} or
+    ${source:Version} in debian/control. Uses TemplatedControlEditor.
 - tag: superfluous-clutter-in-homepage
+  difficulty: easy
+  comment: |
+    Remove superfluous text like "<insert the upstream URL, if relevant>"
+    from the Homepage field in debian/control. Uses TemplatedControlEditor.
 - tag: surplus-shared-library-symbols
+  status: build-stage
 - tag: svk-commit-file-in-package
+  status: build-stage
 - tag: svn-commit-file-in-package
+  status: build-stage
 - tag: symbols-declares-dependency-on-other-package
+  difficulty: hard
+  comment: |
+    Fix symbols file dependency declaration. Requires understanding the
+    correct dependency relationship for the shared library.
 - tag: symbols-file-contains-current-version-with-debian-revision
+  difficulty: medium
+  comment: |
+    Strip the Debian revision from version numbers in the symbols file.
+    Parse and edit debian/*.symbols.
 - tag: symbols-file-contains-debian-revision
+  difficulty: medium
+  comment: |
+    Strip the Debian revision from version numbers in the symbols file.
+    Parse and edit debian/*.symbols.
 - tag: symbols-file-missing-build-depends-package-field
+  difficulty: easy
+  comment: |
+    Add Build-Depends-Package field to debian/*.symbols file pointing
+    to the -dev package.
 - tag: symbols-for-undeclared-shared-library
+  status: build-stage
 - tag: symlink-contains-spurious-segments
+  status: build-stage
 - tag: symlink-ends-with-slash
+  status: build-stage
 - tag: symlink-has-double-slash
+  status: build-stage
 - tag: symlink-has-too-many-up-segments
+  status: build-stage
 - tag: symlink-is-self-recursive
+  status: build-stage
 - tag: symlink-target-in-build-tree
+  status: build-stage
 - tag: symlink-target-in-tmp
+  status: build-stage
 - tag: synopsis-is-a-sentence
+  difficulty: medium
+  comment: |
+    Remove the trailing period from the Description synopsis in debian/control.
+    Uses TemplatedControlEditor. May need more sophisticated sentence detection.
 - tag: synopsis-too-long
+  difficulty: hard
+  comment: |
+    Shorten the Description synopsis in debian/control. Requires understanding
+    the package to write a shorter description.
 - tag: syntax-error-in-debconf-template
   difficulty: hard
 - tag: syntax-error-in-debian-changelog
@@ -1372,17 +4148,30 @@
 - tag: syntax-error-in-symbols-file
   difficulty: hard
 - tag: systemd-service-file-missing-documentation-key
+  difficulty: medium
+  comment: |
+    Add Documentation= key to systemd service file. Requires knowing the
+    correct URL for the service documentation.
 - tag: systemd-service-file-missing-hardening-features
   difficulty: hard
   comment: needs verification
 - tag: systemd-service-file-missing-install-key
   difficulty: hard
+  comment: |
+    Add [Install] section with WantedBy= to systemd service file.
+    Requires understanding the correct target.
 - tag: systemd-service-file-outside-lib
+  status: build-stage
 - tag: systemd-service-file-refers-to-unusual-wantedby-target
+  difficulty: medium
+  comment: |
+    Fix the WantedBy= target in systemd service file to use a standard
+    target like multi-user.target. Edit the .service file.
 - tag: systemd-service-file-wraps-init-script
   difficulty: hard
   comment: needs interpreting init script
 - tag: systemd-tmpfiles.d-outside-usr-lib
+  status: build-stage
 - tag: tar-errors-from-control
   difficulty: hard
 - tag: tar-errors-from-data
@@ -1390,122 +4179,371 @@
 - tag: tar-errors-from-source
   difficulty: hard
 - tag: tclsh-script-but-no-tclsh-dep
+  status: build-stage
 - tag: team-upload-has-incorrect-version-number
+  difficulty: medium
+  comment: |
+    Fix the version number in debian/changelog for team uploads. Parse
+    and edit changelog.
 - tag: template-uses-unsplit-choices
+  difficulty: medium
+  comment: |
+    Convert unsplit Choices in debconf templates to use __Choices for
+    proper translation support. Edit debian/templates.
 - tag: temporary-debhelper-file
+  status: build-stage
 - tag: testsuite-autopkgtest-missing
+  difficulty: easy
+  comment: |
+    Add Testsuite: autopkgtest to debian/control source stanza.
+    Uses TemplatedControlEditor.
 - tag: testsuite-dependency-has-unparsable-elements
+  difficulty: hard
+  comment: |
+    Fix unparsable elements in test dependency declarations in
+    debian/tests/control.
 - tag: third-party-package-in-python-dir
+  status: build-stage
 - tag: timewarp-standards-version
+  difficulty: easy
+  comment: |
+    Update Standards-Version to a valid value in debian/control. Same
+    pattern as out-of-date-standards-version fixer.
 - tag: too-long-extended-description-in-templates
+  difficulty: hard
+  comment: |
+    Shorten extended description in debconf templates. Requires understanding
+    the template content to rewrite.
 - tag: too-long-short-description-in-templates
+  difficulty: hard
+  comment: |
+    Shorten the short description in debconf templates. Requires understanding
+    the template content to rewrite.
 - tag: too-many-architectures
+  difficulty: medium
+  comment: |
+    Simplify the Architecture field in debian/control, e.g. replace a long
+    list with "any" or "linux-any". Uses TemplatedControlEditor.
 - tag: trailing-slash-for-dpkg-maintscript-helper-symlink_to_dir
+  difficulty: easy
+  comment: |
+    Remove trailing slash from directory path in dpkg-maintscript-helper
+    symlink_to_dir call in maintainer scripts.
 - tag: translated-default-field
+  difficulty: medium
+  comment: |
+    Fix translated Default field in debconf templates. The Default value
+    should not be translated.
 - tag: triplet-dir-and-architecture-mismatch
+  status: build-stage
 - tag: truetype-font-prohibits-installable-embedding
+  status: build-stage
 - tag: truetype-font-wrong-filename
+  status: build-stage
 - tag: typelib-in-arch-all-package
+  difficulty: easy
+  comment: |
+    Change Architecture from all to any for typelib packages in debian/control.
+    Uses TemplatedControlEditor.
 - tag: typelib-missing-gir-depends
+  difficulty: easy
+  comment: |
+    Add ${gir:Depends} substvar to Depends field for typelib packages
+    in debian/control. Uses TemplatedControlEditor.
 - tag: typelib-not-in-multiarch-directory
+  status: build-stage
 - tag: typelib-package-name-does-not-match
+  difficulty: hard
+  comment: |
+    Rename the typelib package to match the GIR namespace convention.
+    Requires updating debian/control package name and all references.
 - tag: typelib-section-not-introspection
+  difficulty: easy
+  comment: |
+    Set Section to introspection for typelib packages in debian/control.
+    Uses TemplatedControlEditor.
 - tag: typo-in-debhelper-override-target
   difficulty: easy
   status: implemented
 - tag: udeb-contains-documentation-file
+  status: build-stage
 - tag: udeb-postinst-calls-ldconfig
+  comment: needs-shell-parser
 - tag: udeb-uses-unsupported-compression-for-data-tarball
+  status: build-stage
 - tag: udev-rule-in-etc
+  status: build-stage
 - tag: udev-rule-missing-subsystem
+  status: build-stage
 - tag: udev-rule-missing-uaccess
+  status: build-stage
 - tag: udev-rule-unreadable
+  status: build-stage
 - tag: udevadm-called-without-guard
+  comment: needs-shell-parser
 - tag: unconditional-use-of-dpkg-statoverride
+  comment: needs-shell-parser
 - tag: unknown-architecture
+  difficulty: medium
+  comment: |
+    Fix unknown architecture value in debian/control. Could use Levenshtein
+    distance to suggest the intended architecture.
 - tag: unknown-control-file
+  difficulty: hard
+  comment: |
+    Remove or rename unknown files in the debian/ directory. Requires
+    understanding what the file was intended to be.
 - tag: unknown-control-interpreter
+  status: build-stage
 - tag: unknown-copyright-format-uri
+  difficulty: easy
+  comment: |
+    Fix the Format URI in debian/copyright to use the correct DEP-5 URI.
+    Similar to existing out-of-date-copyright-format-uri fixer.
 - tag: unknown-debconf-priority
+  difficulty: easy
+  comment: |
+    Fix the priority value in debconf templates to use a valid priority
+    (low, medium, high, critical).
 - tag: unknown-encoding-in-po-file
+  difficulty: medium
+  comment: |
+    Fix the Content-Type charset in PO file headers to use a valid encoding.
 - tag: unknown-essential-value
+  difficulty: easy
+  comment: |
+    Fix the Essential field value in debian/control to "yes" or remove it.
+    Uses TemplatedControlEditor.
 - tag: unknown-field-in-control
+  difficulty: medium
+  comment: |
+    Remove or fix unknown fields in debian/control. Could use Levenshtein
+    distance to suggest the intended field name.
 - tag: unknown-field-in-dsc
+  difficulty: medium
+  comment: |
+    Fix unknown fields that appear in the .dsc via debian/control.
 - tag: unknown-field-in-templates
+  difficulty: medium
+  comment: |
+    Fix unknown field names in debconf templates file.
 - tag: unknown-file-in-debian-source
+  difficulty: medium
+  comment: |
+    Remove or rename unknown files in debian/source/. Requires understanding
+    what the file was intended to be.
 - tag: unknown-file-in-python-module-directory
+  status: build-stage
 - tag: unknown-java-class-version
+  status: build-stage
 - tag: unknown-locale-code
+  status: build-stage
 - tag: unknown-meta-field-in-symbols-file
+  difficulty: medium
+  comment: |
+    Fix or remove unknown meta fields in debian/*.symbols files.
 - tag: unknown-multi-arch-value
+  difficulty: easy
+  comment: |
+    Fix the Multi-Arch field value in debian/control to a valid value
+    (same, foreign, allowed, no). Uses TemplatedControlEditor.
 - tag: unknown-paragraph-in-dep5-copyright
+  difficulty: medium
+  comment: |
+    Fix or remove unknown paragraphs in debian/copyright DEP-5 format.
+    Parse with debian-copyright crate.
 - tag: unknown-priority
   comment: could possibly use levehnstein distance to find intended priority?
 - tag: unknown-runtime-tests-feature
+  difficulty: medium
+  comment: |
+    Fix or remove unknown Features in debian/tests/control.
 - tag: unknown-runtime-tests-field
+  difficulty: medium
+  comment: |
+    Fix or remove unknown fields in debian/tests/control.
 - tag: unknown-runtime-tests-restriction
+  difficulty: medium
+  comment: |
+    Fix or remove unknown Restrictions in debian/tests/control. Could use
+    Levenshtein distance to suggest the intended restriction.
 - tag: unknown-section
   comment: could possibly use levehnstein distance to find intended priority?
 - tag: unknown-template-type
+  difficulty: medium
+  comment: |
+    Fix the Type field in debconf templates to use a valid type
+    (string, boolean, select, multiselect, note, text, password).
 - tag: unknown-testsuite
+  difficulty: easy
+  comment: |
+    Fix the Testsuite field in debian/control to use a valid value
+    like "autopkgtest". Uses TemplatedControlEditor.
 - tag: unknown-trigger
+  difficulty: medium
+  comment: |
+    Fix or remove unknown trigger types in debian/triggers.
 - tag: unnecessary-source-date-epoch-assignment
+  difficulty: easy
+  comment: |
+    Remove unnecessary SOURCE_DATE_EPOCH assignment from debian/rules.
+    dpkg now sets this automatically.
 - tag: unparsable-menu-item
+  status: build-stage
 - tag: unquoted-string-in-menu-item
+  status: build-stage
 - tag: unreleased-changelog-distribution
+  difficulty: easy
+  comment: |
+    Change distribution from UNRELEASED to the target distribution in
+    debian/changelog. Parse and edit changelog.
 - tag: unreleased-changes
+  status: classification
 - tag: unstripped-binary-or-object
+  status: build-stage
 - tag: unstripped-static-library
+  status: build-stage
 - tag: unsupported-source-format
+  difficulty: easy
+  comment: |
+    Update debian/source/format to use a supported format like "3.0 (quilt)"
+    or "3.0 (native)".
 - tag: untranslatable-debconf-templates
+  difficulty: medium
+  comment: |
+    Mark translatable fields in debconf templates with underscore prefix
+    (e.g., _Description instead of Description).
 - tag: unused-debconf-template
+  difficulty: medium
+  comment: |
+    Remove unused template entries from debian/templates that are not
+    referenced by any maintainer script.
 - tag: unused-entry-in-debian-source-include-binaries
+  difficulty: easy
+  comment: |
+    Remove entries from debian/source/include-binaries that don't match
+    any actual files.
 - tag: unused-file-paragraph-in-dep5-copyright
   difficulty: medium
 - tag: unusual-control-interpreter
+  status: build-stage
 - tag: unusual-documentation-package-name
+  difficulty: hard
+  comment: |
+    Rename documentation package to follow naming convention. Requires
+    updating debian/control and all references.
 - tag: unusual-interpreter
+  status: build-stage
 - tag: upload-has-backports-version-number
+  difficulty: medium
+  comment: |
+    Fix the backports version number in debian/changelog. Parse and
+    edit changelog.
 - tag: uploader
   status: classification
 - tag: uploader-address-causes-mail-loops-or-bounces
+  difficulty: hard
+  comment: |
+    Fix the Uploaders address in debian/control. Requires knowing the
+    correct email address.
 - tag: uploader-address-is-on-localhost
+  difficulty: hard
+  comment: |
+    Fix the Uploaders address in debian/control. Requires knowing the
+    correct email address.
 - tag: uploader-address-is-root-user
+  difficulty: hard
+  comment: |
+    Fix the Uploaders address in debian/control. Requires knowing the
+    correct email address.
 - tag: uploader-address-malformed
+  difficulty: medium
+  comment: |
+    Fix malformed email address in Uploaders field of debian/control.
+    Some cases may be simple formatting fixes. Uses TemplatedControlEditor.
 - tag: uploader-name-missing
+  difficulty: hard
+  comment: |
+    Add the missing name to the Uploaders field in debian/control.
+    Requires knowing the uploader's name.
 - tag: upstart-job-in-etc-init.d-not-registered-via-update-rc.d
+  comment: needs-shell-parser
 - tag: upstream-file-without-utf8-name
+  difficulty: impossible
+  comment: upstream issue; non-UTF-8 filenames in upstream source
 - tag: upstream-metadata-exists
   status: classification
 - tag: upstream-metadata-field-present
   status: classification
 - tag: upstream-metadata-is-not-a-file
+  difficulty: medium
+  comment: |
+    Replace debian/upstream/metadata (which is a directory or symlink)
+    with a proper YAML file.
 - tag: upstream-metadata-not-yaml-mapping
   status: implemented
 - tag: upstream-metadata-yaml-invalid
   status: implemented
 - tag: use-of-compat-symlink
+  status: build-stage
 - tag: useless-autogenerated-doxygen-file
+  status: build-stage
 - tag: uses-deprecated-compression-for-data-tarball
+  status: build-stage
 - tag: uses-dpkg-database-directly
+  status: build-stage
 - tag: uses-implicit-await-trigger
+  difficulty: easy
+  comment: |
+    Add "await" keyword to trigger declarations in debian/triggers to
+    make the await behavior explicit.
 - tag: uses-no-compression-for-control-tarball
+  status: build-stage
 - tag: uses-no-compression-for-data-tarball
+  status: build-stage
 - tag: using-first-person-in-description
   difficulty: hard
+  comment: |
+    Rewrite description to avoid first person pronouns. Requires
+    understanding the description to rephrase.
 - tag: using-first-person-in-templates
   difficulty: hard
+  comment: |
+    Rewrite debconf template to avoid first person pronouns. Requires
+    understanding the template content to rephrase.
 - tag: using-imperative-form-in-templates
   difficulty: hard
+  comment: |
+    Rewrite debconf template to avoid imperative form. Requires
+    understanding the template content to rephrase.
 - tag: using-question-in-extended-description-in-templates
   difficulty: hard
+  comment: |
+    Rewrite debconf template extended description to avoid question form.
+    Requires understanding the template content to rephrase.
 - tag: usr-share-doc-symlink-points-outside-of-usr-share-doc
+  status: build-stage
 - tag: usr-share-doc-symlink-to-foreign-package
+  status: build-stage
 - tag: usr-share-doc-symlink-without-dependency
+  status: build-stage
 - tag: vcs
+  status: classification
 - tag: vcs-browser-links-to-empty-view
+  difficulty: hard
+  comment: |
+    Fix the Vcs-Browser URL to point to a non-empty view. Requires
+    knowing the correct URL.
 - tag: vcs-field-has-unexpected-spaces
+  difficulty: easy
+  comment: |
+    Remove unexpected spaces from Vcs-* fields in debian/control.
+    Uses TemplatedControlEditor.
 - tag: vcs-field-uses-unknown-uri-format
+  difficulty: medium
+  comment: |
+    Fix the Vcs-* URI format to use a recognized scheme. Uses
+    TemplatedControlEditor.
 - tag: vcs-fields-use-more-than-one-vcs
   difficulty: medium
   comment: easy to do, but may be hard to figure out which VCS is canonical
@@ -1515,134 +4553,358 @@
 - tag: vcs-uri
   status: classification
 - tag: version-refers-to-distribution
+  difficulty: hard
+  comment: |
+    Fix the version number in debian/changelog that refers to a distribution
+    name. Requires understanding the correct version.
 - tag: version-substvar-for-external-package
+  difficulty: easy
+  comment: |
+    Replace ${binary:Version} or ${source:Version} substvar with a
+    proper versioned dependency for external packages. Uses
+    TemplatedControlEditor and Relations API.
 - tag: very-long-line-length-in-source-file
+  difficulty: impossible
+  comment: upstream issue; long lines in source files
 - tag: vim-addon-within-vim-runtime-path
+  status: build-stage
 - tag: virtual-package-depends-without-real-package-depends
+  difficulty: medium
+  comment: |
+    Add a real package alternative to the virtual package dependency in
+    debian/control. Uses TemplatedControlEditor and Relations API.
+    Requires knowing which real package provides the virtual one.
 - tag: weak-dependency-on-misc-depends
+  difficulty: easy
+  comment: |
+    Strengthen dependency on ${misc:Depends} from Recommends/Suggests to
+    Depends in debian/control. Uses TemplatedControlEditor and Relations API.
 - tag: weak-library-dev-dependency
+  difficulty: easy
+  comment: |
+    Strengthen the -dev package dependency on the shared library package
+    from Recommends/Suggests to Depends. Uses TemplatedControlEditor and
+    Relations API.
 - tag: web-application-depends-on-apache2-data-package
+  difficulty: medium
+  comment: |
+    Remove incorrect dependency on apache2-data and depend on httpd
+    virtual package instead. Uses TemplatedControlEditor and Relations API.
 - tag: web-application-works-only-with-apache
+  difficulty: medium
+  comment: |
+    Add alternatives to the web server dependency so the package works
+    with other web servers. Uses TemplatedControlEditor and Relations API.
 - tag: whitespace-after-continuation-character
+  difficulty: easy
+  comment: |
+    Remove whitespace after line continuation backslash in debian/rules.
 - tag: wiki-copyright-format-uri
   status: implemented
 - tag: wildcard-matches-nothing-in-dep5-copyright
+  difficulty: medium
+  comment: |
+    Remove or fix Files paragraphs in debian/copyright where the wildcard
+    pattern matches no files. Parse with debian-copyright crate.
 - tag: windows-devel-file-in-package
+  status: build-stage
 - tag: windows-thumbnail-database-in-package
+  status: build-stage
 - tag: wish-script-but-no-wish-dep
+  status: build-stage
 - tag: wrong-bug-number-in-closes
+  difficulty: hard
+  comment: |
+    Fix incorrect bug number in debian/changelog Closes field. Requires
+    knowing the correct bug number.
 - tag: wrong-debian-qa-address-set-as-maintainer
+  difficulty: easy
+  comment: |
+    Fix the QA team Maintainer address in debian/control. Similar to
+    existing wrong-debian-qa-group-name fixer.
 - tag: wrong-file-owner-uid-or-gid
+  status: build-stage
 - tag: wrong-name-for-changelog-of-native-package
+  difficulty: easy
+  comment: |
+    Rename debian/changelog.Debian to debian/changelog for native packages,
+    or vice versa.
 - tag: wrong-name-for-debian-changelog-file
+  difficulty: easy
+  comment: |
+    Rename the misnamed changelog file to the correct debian/changelog name.
 - tag: wrong-name-for-debian-news-file
+  difficulty: easy
+  comment: |
+    Rename the misnamed NEWS file to debian/NEWS.
 - tag: wrong-name-for-upstream-changelog
+  status: build-stage
 - tag: wrong-path-for-interpreter
+  status: build-stage
 - tag: wrong-section-for-udeb
+  difficulty: easy
+  comment: |
+    Fix the Section field for udeb packages in debian/control.
+    Uses TemplatedControlEditor.
 - tag: zero-byte-executable-in-path
+  status: build-stage
 - tag: zero-byte-file-in-doc-directory
+  status: build-stage
 - tag: zip-parse-error
+  status: build-stage
 - tag: acute-accent-in-manual-page
+  status: build-stage
 - tag: ansi-escape
+  status: build-stage
 - tag: bad-whatis-entry
+  status: build-stage
 - tag: bogus-mail-host
+  difficulty: hard
+  comment: |
+    Fix bogus mail host in Maintainer/Uploaders fields. Requires knowing
+    the correct email address.
 - tag: bogus-mail-host-in-debian-changelog
+  difficulty: hard
+  comment: |
+    Fix bogus mail host in debian/changelog entries. Requires knowing
+    the correct email address.
 - tag: breakout-link
   difficulty: hard
 - tag: broken-link-to-undocumented
+  status: build-stage
 - tag: build-path-in-manual
+  status: build-stage
 - tag: capitalization-in-override-comment
+  difficulty: easy
+  comment: |
+    Fix capitalization in lintian override comment. Parse and edit
+    debian/source/lintian-overrides.
 - tag: carriage-return-line-feed
   status: implemented
 - tag: country-in-manual
+  status: build-stage
 - tag: custom-compression-in-debian-rules
+  difficulty: medium
+  comment: |
+    Remove custom compression settings from debian/rules and use
+    debian/source/options instead. Requires parsing debian/rules.
 - tag: custom-compression-in-debian-source-options
   status: implemented
 - tag: duplicate-contact
+  difficulty: easy
+  comment: |
+    Remove duplicate entries from Uploaders field in debian/control.
+    Uses TemplatedControlEditor.
 - tag: executable-manual-page
+  status: build-stage
 - tag: faulty-debian-qa-group-address
+  difficulty: easy
+  comment: |
+    Fix the QA group address in Maintainer field. Similar to existing
+    wrong-debian-qa-group-name fixer.
 - tag: faulty-debian-qa-group-phrase
   status: implemented
 - tag: groff-message
+  status: build-stage
 - tag: linked-with-obsolete-library
+  status: build-stage
 - tag: mail-address-loops-or-bounces
+  difficulty: hard
+  comment: |
+    Fix bouncing email address in Maintainer/Uploaders. Requires knowing
+    the correct email address.
 - tag: mail-contact
+  status: classification
 - tag: mailing-list-on-alioth
+  difficulty: easy
+  comment: |
+    Update the alioth mailing list address in Maintainer/Uploaders to the
+    new tracker.debian.org address. Uses TemplatedControlEditor.
 - tag: maintainer-desktop-entry
   difficulty: hard
   comment: involves forwarding upstream
 - tag: maintainer-manual-page
+  status: build-stage
 - tag: malformed-contact
+  difficulty: medium
+  comment: |
+    Fix malformed Maintainer/Uploaders address in debian/control.
+    Uses TemplatedControlEditor.
 - tag: manual-page-for-system-command
+  status: build-stage
 - tag: manual-page-from-template
+  status: build-stage
 - tag: manual-page-in-udeb
+  status: build-stage
 - tag: manual-page-with-generic-name
+  status: build-stage
 - tag: national-encoding
+  status: build-stage
 - tag: no-english-manual-page
+  status: build-stage
 - tag: no-manual-page
   difficulty: hard
   comment: |
     Generating a manual page is obviously hard. We could settle for generating
     something with help2man?
 - tag: no-phrase
+  difficulty: hard
+  comment: |
+    Add a proper phrase/name to the Maintainer/Uploaders field. Requires
+    knowing the person's name.
 - tag: octal-permissions
+  status: build-stage
 - tag: odd-mark-in-description
+  difficulty: medium
+  comment: |
+    Fix odd marks (e.g., smart quotes, non-ASCII punctuation) in package
+    description in debian/control. Uses TemplatedControlEditor.
 - tag: odd-place-for-manual-page
+  status: build-stage
 - tag: old-source-override-location
   status: implemented
 - tag: pod-conversion-message
+  status: build-stage
 - tag: poor-compression-in-manual-page
+  status: build-stage
 - tag: recommended-field
   status: implemented
 - tag: recursive-privilege-change
+  comment: needs-shell-parser
 - tag: repeated-path-segment
   difficulty: hard
 - tag: required-field
   status: implemented
 - tag: requires-r-api
+  status: build-stage
 - tag: root-in-contact
+  difficulty: hard
+  comment: |
+    Fix root user in Maintainer/Uploaders field. Requires knowing the
+    correct maintainer name and email.
 - tag: ships-r-site-library
+  status: build-stage
 - tag: spare-manual-page
   difficulty: medium
   comment: requires build
 - tag: spelling-in-override-comment
+  difficulty: medium
+  comment: |
+    Fix spelling errors in lintian override comments using lintian's
+    spelling data.
 - tag: stray-folder-in-manual
+  status: build-stage
 - tag: too-many-contacts
+  difficulty: hard
+  comment: |
+    Remove excess Uploaders from debian/control. Requires knowing which
+    uploaders to keep.
 - tag: trailing-whitespace
   status: implemented
 - tag: trimmed-field
+  difficulty: easy
+  comment: |
+    Remove leading/trailing whitespace from field values. Similar to
+    trimmed-deb822-field fixer.
 - tag: typo-in-manual-page
   difficulty: medium
   comment: |
     like the lintian tag, it's hard to fix this kind of thing with reasonable
     certainty
 - tag: uncompressed-manual-page
+  status: build-stage
 - tag: undocumented-manual-page
+  status: build-stage
 - tag: unknown-field
+  difficulty: medium
+  comment: |
+    Fix or remove unknown fields in debian packaging files. Could use
+    Levenshtein distance to suggest intended field name.
 - tag: unwanted-path-too-specific
+  difficulty: medium
+  comment: |
+    Fix overly specific path pattern in lintian overrides to use a more
+    general pattern.
 - tag: useless-whatis-entry
+  status: build-stage
 - tag: wayward-symbolic-link-target-in-source
+  difficulty: medium
+  comment: |
+    Fix symbolic link targets in source that point to unexpected locations.
 - tag: wrong-compression-in-manual-page
+  status: build-stage
 - tag: wrong-manual-section
+  status: build-stage
 - tag: wrong-name-for-manual-page
+  status: build-stage
 - tag: continuous-integration/salsa/include
+  status: classification
 - tag: continuous-integration/salsa/specification
+  status: classification
 - tag: missing-tests-control
+  difficulty: medium
+  comment: |
+    Create a debian/tests/control file for autopkgtest. Requires knowing
+    what tests to run.
 - tag: no-tests
+  difficulty: hard
+  comment: |
+    Add autopkgtest tests. Requires understanding the package to write
+    meaningful tests.
 - tag: send-patch
+  status: classification
 - tag: team/pkg-js/deprecated/nodejs-bad-buffer-usage
+  difficulty: impossible
+  comment: upstream issue; requires fixing Node.js Buffer usage
 - tag: team/pkg-js/testsuite/no-team-tests
+  difficulty: medium
+  comment: |
+    Add pkg-js team test configuration. Requires understanding the
+    package's test setup.
 - tag: team/pkg-js/testsuite/no-testsuite-header
+  difficulty: easy
+  comment: |
+    Add Testsuite: autopkgtest-pkg-js to debian/control source stanza.
+    Uses TemplatedControlEditor.
 - tag: team/pkg-js/vcs/no-git
+  difficulty: medium
+  comment: |
+    Set up Vcs-Git and Vcs-Browser fields pointing to the pkg-js team
+    repository. Uses TemplatedControlEditor.
 - tag: team/pkg-js/vcs/no-team-url
+  difficulty: easy
+  comment: |
+    Update Vcs-* fields to use the pkg-js team URL. Uses
+    TemplatedControlEditor.
 - tag: team/pkg-perl/cdbs/arch-any-package-needs-newer-cdbs
+  difficulty: easy
+  comment: |
+    Update cdbs build dependency version in debian/control. Uses
+    TemplatedControlEditor and Relations API.
 - tag: team/pkg-perl/cdbs/module-build-tiny-needs-newer-cdbs
+  difficulty: easy
+  comment: |
+    Update cdbs build dependency version for Module::Build::Tiny. Uses
+    TemplatedControlEditor and Relations API.
 - tag: team/pkg-perl/debhelper/module-build-tiny-needs-newer-debhelper
+  difficulty: easy
+  comment: |
+    Update debhelper build dependency version for Module::Build::Tiny. Uses
+    TemplatedControlEditor and Relations API.
 - tag: team/pkg-perl/testsuite/autopkgtest-needs-use-name
+  difficulty: medium
+  comment: |
+    Update autopkgtest configuration to use the correct test name.
+    Edit debian/tests/control.
 - tag: team/pkg-perl/testsuite/no-team-tests
   difficulty: easy
 - tag: team/pkg-perl/xs-abi/legacy-vendorarch-directory
+  status: build-stage
 - tag: duplicate-globbing-patterns
+  difficulty: easy
+  comment: |
+    Remove duplicate globbing patterns from debian/copyright or lintian
+    overrides.
 - tag: globbing-patterns-out-of-order
   status: implemented
   difficulty: easy
@@ -1653,35 +4915,131 @@
 - tag: trimmed-deb822-field
   difficulty: easy
 - tag: systemd-service-file-uses-deprecated-syslog-facility
+  difficulty: easy
+  comment: |
+    Remove or update deprecated StandardOutput=syslog / StandardError=syslog
+    from systemd service file. journald is now the default.
 - tag: systemd-service-file-uses-nobody-or-nogroup
+  difficulty: medium
+  comment: |
+    Replace nobody/nogroup with a dedicated system user/group in systemd
+    service file. Requires creating a proper system user.
 - tag: number-of-patches
+  status: classification
 - tag: unpack-message-for-deb-control
+  status: classification
 - tag: unpack-message-for-deb-data
+  status: classification
 - tag: unpack-message-for-orig
+  status: classification
 - tag: unpack-message-for-source
+  status: classification
 - tag: debian-adds-arch-control-dir
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    arch VCS control directories from the diff.
 - tag: debian-adds-arch-inventory-file
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    arch inventory files from the diff.
 - tag: debian-adds-bts-control-dir
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    BTS control directories from the diff.
 - tag: debian-adds-bzr-control-dir
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    .bzr directories from the diff.
 - tag: debian-adds-cvs-conflict-copy
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    CVS conflict copies from the diff.
 - tag: debian-adds-cvs-control-dir
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    CVS directories from the diff.
 - tag: debian-adds-editor-backup-file
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    editor backup files from the diff.
 - tag: debian-adds-git-control-dir
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    .git directories from the diff.
 - tag: debian-adds-hg-control-dir
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    .hg directories from the diff.
 - tag: debian-adds-hg-tags-file
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    .hgtags files from the diff.
 - tag: debian-adds-patch-failure-file
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    patch failure files from the diff.
 - tag: debian-adds-quilt-control-dir
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    .pc directories from the diff. Or switch to 3.0 (quilt) format.
 - tag: debian-adds-svk-commit-file
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    SVK commit files from the diff.
 - tag: debian-adds-svn-commit-file
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    SVN commit files from the diff.
 - tag: debian-adds-svn-conflict-file
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    SVN conflict files from the diff.
 - tag: debian-adds-svn-control-dir
+  difficulty: easy
+  comment: |
+    Add extend-diff-ignore pattern to debian/source/options to exclude
+    .svn directories from the diff.
 - tag: no-debian-changes
+  status: classification
 - tag: source-contains-cmake-cache-file
+  difficulty: easy
+  comment: |
+    Delete the CMakeCache.txt file from the source tree. It should not
+    be included in the source package.
 - tag: source-contains-debian-substvars
+  difficulty: easy
+  comment: |
+    Delete the debian/substvars file from the source tree. It is generated
+    during build and should not be committed.
 - tag: source-contains-editor-backup-file
+  difficulty: easy
+  comment: |
+    Delete editor backup files (e.g., *~, *.swp) from the source tree.
 - tag: source-contains-patch-failure-file
+  difficulty: easy
+  comment: |
+    Delete patch failure/reject files from the source tree.
 - tag: source-contains-quilt-control-dir
+  difficulty: easy
+  comment: |
+    Delete the .pc/ quilt control directory from the source tree.
 - tag: undeclared-elf-prerequisites
+  status: build-stage
 - tag: bogus-python-prerequisite
   difficulty: medium
   comment: |
@@ -1689,99 +5047,292 @@
     but knowing we're not breaking anything when doing that is much harder.
     Scan every file in the package for #!/usr/bin/python lines?
 - tag: python2-script-but-no-python2-dep
+  status: build-stage
 - tag: python3-script-but-no-python3-dep
+  status: build-stage
 - tag: missing-debian-watch-file-standard
+  difficulty: easy
+  comment: |
+    Add version= line to debian/watch specifying the watch file standard.
 - tag: multiple-debian-watch-file-standards
+  difficulty: easy
+  comment: |
+    Remove duplicate version= lines from debian/watch, keeping only one.
 - tag: unknown-debian-watch-file-standard
+  difficulty: easy
+  comment: |
+    Fix the version= line in debian/watch to use a known standard version.
 - tag: empty-rust-library-declares-provides
+  difficulty: easy
+  comment: |
+    Remove empty Provides field from Rust library package in debian/control.
+    Uses TemplatedControlEditor.
 - tag: duplicate-override-context
   difficulty: easy
   status: implemented
 - tag: backgrounded-test-command
+  difficulty: medium
+  comment: |
+    Fix backgrounded test commands in debian/tests/. Remove the & or
+    restructure the test to not run commands in the background.
 - tag: crossing-screens
+  status: build-stage
 - tag: duplicate-p3dist-override
+  difficulty: easy
+  comment: |
+    Remove duplicate entries from debian/python3-dist-overrides.
 - tag: elevated-privileges
+  status: build-stage
 - tag: file-included-already
+  status: build-stage
 - tag: illegal-variable
+  difficulty: medium
+  comment: |
+    Fix illegal variable usage in debian/rules or maintainer scripts.
 - tag: misplaced-systemd-tmpfiles
+  status: build-stage
 - tag: missing-conffile
+  status: build-stage
 - tag: nodejs-missing-version-override
+  difficulty: medium
+  comment: |
+    Add missing version override for Node.js module in
+    debian/nodejs/additional_components or similar.
 - tag: obsolete-vim-addon-manager
   status: implemented
 - tag: python-traceback-in-manpage
+  status: build-stage
 - tag: ruby-interpreter-is-deprecated
+  status: build-stage
 - tag: rules-require-build-prerequisite
+  difficulty: easy
+  comment: |
+    Add missing build prerequisite to Build-Depends based on what
+    debian/rules requires. Uses TemplatedControlEditor and Relations API.
 - tag: rust-boilerplate
+  difficulty: easy
+  comment: |
+    Remove or update Rust boilerplate in debian/control description.
+    Uses TemplatedControlEditor.
 - tag: source-ships-excluded-file
+  difficulty: medium
+  comment: |
+    A file listed in Files-Excluded is still in the source. Requires
+    repacking the upstream tarball.
 - tag: superficial-tests
+  difficulty: medium
+  comment: |
+    Improve superficial autopkgtests to be more thorough. Add Restrictions:
+    superficial to acknowledge, or improve the test.
 - tag: superfluous-file-pattern
+  difficulty: easy
+  comment: |
+    Remove superfluous file patterns from debian/copyright or lintian
+    overrides that match nothing or are redundant.
 - tag: systemd-service-in-odd-location
+  status: build-stage
 - tag: systemd-tmpfile-in-var-run
+  difficulty: easy
+  comment: |
+    Change /var/run to /run in systemd tmpfiles.d configuration.
 - tag: unexpected-conffile
+  status: build-stage
 - tag: unknown-conffile-instruction
+  difficulty: medium
+  comment: |
+    Fix unknown instruction in debian/conffiles or dpkg-maintscript-helper
+    calls.
 - tag: unmerged-usr
+  status: build-stage
 - tag: upstream-metadata-field-unknown
+  difficulty: easy
+  comment: |
+    Remove or fix unknown fields in debian/upstream/metadata.
+    Similar to existing upstream-metadata-has-obsolete-field fixer.
 - tag: wrong-team
+  difficulty: easy
+  comment: |
+    Fix the Maintainer field to use the correct team address in
+    debian/control. Uses TemplatedControlEditor.
 - tag: architecture-escape
+  status: build-stage
 - tag: control-interpreter-without-predepends
+  status: build-stage
 - tag: ldconfig-escape
+  status: build-stage
 - tag: odd-static-library-name
+  status: build-stage
 - tag: redundant-build-prerequisites
+  difficulty: easy
+  comment: |
+    Remove redundant build dependencies from debian/control where one
+    dependency implies another. Uses TemplatedControlEditor and Relations API.
 - tag: redundant-control-relation
+  difficulty: easy
+  comment: |
+    Remove redundant relations from debian/control where one relation
+    implies another. Uses TemplatedControlEditor and Relations API.
 - tag: runtime-test-file-uses-supported-python-versions-without-test-depends
+  difficulty: easy
+  comment: |
+    Add python3-all to test Depends in debian/tests/control when
+    py3versions -s is used.
 - tag: static-library-has-unneeded-sections
+  status: build-stage
 - tag: add-component-copyright
+  difficulty: hard
+  comment: |
+    Add missing copyright information for components in debian/copyright.
+    Requires knowing the correct license and copyright holders.
 - tag: adopted-extended-field
   status: implemented
 - tag: anticipated-repack-count
+  difficulty: medium
+  comment: |
+    Fix the repack count in the version number in debian/changelog or
+    debian/watch.
 - tag: archive-liberty-mismatch
+  difficulty: medium
+  comment: |
+    Fix the Section field to match the archive area (e.g., non-free/libs).
+    Uses TemplatedControlEditor.
 - tag: bash-term-in-posix-shell
+  comment: needs-shell-parser
 - tag: build-prerequisite-in-installable-section
+  difficulty: medium
+  comment: |
+    Move Build-Depends/Build-Conflicts from binary stanza to source stanza,
+    merging with any existing build relations. Uses TemplatedControlEditor.
+    Moving is straightforward but merging relations correctly requires care.
 - tag: circular-installation-prerequisite
+  difficulty: easy
+  comment: |
+    Remove self-referencing dependency from debian/control. A package
+    depending on itself is always wrong. Uses TemplatedControlEditor
+    and the Relations API, same pattern as build-depends-on-build-essential.
 - tag: composer-prerequisite
+  difficulty: medium
+  comment: |
+    Fix PHP Composer dependency in debian/control. Translate Composer
+    requirements to Debian package dependencies.
 - tag: control-file-contains-dh-make-vcs-comment
+  difficulty: easy
+  comment: |
+    Remove commented-out "# Vcs-Git:" / "# Vcs-Browser:" template lines
+    from debian/control. Requires raw text manipulation since deb822
+    parsers typically discard comments.
 - tag: dfsg-version-with-tilde
+  difficulty: medium
+  comment: |
+    Fix version number to use +dfsg instead of ~dfsg in debian/changelog
+    or debian/watch.
 - tag: dot-before-repack-count
+  difficulty: medium
+  comment: |
+    Fix version number to use + instead of . before repack count in
+    debian/changelog or debian/watch.
 - tag: elf-error
+  status: build-stage
 - tag: elf-warning
+  status: build-stage
 - tag: generated-file
+  status: build-stage
 - tag: installable-field-mirrors-source
   status: implemented
 - tag: invalid-systemd-documentation
+  difficulty: easy
+  comment: |
+    Fix the Documentation= URL in systemd service file to be a valid URI.
 - tag: kill-mode-none
+  difficulty: medium
+  comment: |
+    Replace KillMode=none in systemd service file with a safer kill mode.
+    Requires understanding the service behavior.
 - tag: no-code-sections
+  status: build-stage
 - tag: no-source-section
+  difficulty: easy
+  comment: |
+    Add Section field to source stanza in debian/control. Uses
+    TemplatedControlEditor.
 - tag: prefer-uscan-symlink
+  difficulty: easy
+  comment: |
+    Add dversionmangle or use symlink option in debian/watch to handle
+    version mangling.
 - tag: redundant-installation-prerequisite
   status: implemented
 - tag: relative-library-search-path
+  status: build-stage
 - tag: rules-do-not-require-root
+  status: classification
 - tag: rules-require-root-explicitly
+  status: classification
 - tag: static-link-time-optimization
+  status: build-stage
 - tag: unicode-trojan
+  difficulty: impossible
+  comment: upstream issue; unicode trojan source in upstream code
 - tag: update-debian-copyright
+  difficulty: hard
+  comment: |
+    Update debian/copyright to match current source files. Requires
+    scanning all files for copyright/license information.
 - tag: upstream-metadata
+  status: classification
 
 #  2.115.0
 - tag: alien-tag
+  difficulty: easy
+  comment: |
+    Remove lintian overrides for tags that don't exist in lintian.
+    Similar to existing unused-override fixer.
 - tag: chown-with-dot
   difficulty: easy
   status: implemented
 - tag: conflicting-test-fields
+  difficulty: medium
+  comment: |
+    Fix conflicting fields in debian/tests/control (e.g., both Tests and
+    Test-Command specified). Remove one of the conflicting fields.
 - tag: declare-python-versions-for-test
+  difficulty: easy
+  comment: |
+    Add python version declaration to debian/tests/control test entry.
 - tag: drop-python-version-declaration
+  difficulty: easy
+  comment: |
+    Remove deprecated X-Python-Version or X-Python3-Version from
+    debian/control. Uses TemplatedControlEditor.
 - tag: invalid-override-restriction
   difficulty: medium
+  comment: |
+    Fix invalid restriction in lintian override. Parse and edit the
+    lintian-overrides file.
 - tag: missing-prerequisite-for-pyproject-backend
   status: implemented
 - tag: old-devhelp-standard
   difficulty: medium
+  comment: |
+    Update devhelp documentation to use the current standard. Requires
+    editing the .devhelp2 file format.
 - tag: stray-devhelp-documentation
+  status: build-stage
 - tag: test-leaves-python-version-untested
+  difficulty: medium
+  comment: |
+    Update autopkgtest to test all supported Python versions, not just
+    a subset.
 - tag: uses-poetry-cli
   difficulty: medium
+  comment: |
+    Replace poetry CLI usage in debian/rules with pybuild or standard
+    Python build tools.
 - tag: openpgp-file-has-implementation-specific-extension
   difficulty: medium
+  comment: |
+    Rename upstream signing key file to use standard .asc/.gpg extension
+    instead of implementation-specific ones like .pgp.
 
 # 2.5.100
 - tag: skip-systemd-native-flag-missing-pre-depends
@@ -1789,13 +5340,19 @@
 - tag: obsolete-runtime-tests-restriction
   status: implemented
 - tag: package-contains-python-dot-directory
+  status: build-stage
 
 # pkg-perl-tools
 - tag: debian-changelog-contains-hint
   difficulty: impossible
 - tag: build-deps-can-be-annotated-nocheck
+  difficulty: easy
+  comment: |
+    Add <!nocheck> build profile annotation to test-only build dependencies
+    in debian/control. Uses TemplatedControlEditor and Relations API.
 
 - tag: dbus-policy-in-etc
+  status: build-stage
 - tag: homepage-github-url-ends-with-dot-git
   difficulty: easy
   status: implemented
@@ -1806,7 +5363,15 @@
   difficulty: easy
   status: implemented
 - tag: uses-pdm-cli
+  difficulty: medium
+  comment: |
+    Replace pdm CLI usage in debian/rules with pybuild or standard
+    Python build tools.
 - tag: uses-python-distutils
+  difficulty: medium
+  comment: |
+    Replace deprecated distutils usage with setuptools or another modern
+    build system in debian/rules.
 - tag: uses-deprecated-python-stdlib
   difficulty: hard
 - tag: package-installs-deprecated-python2-path
@@ -1822,19 +5387,58 @@
 - tag: invalid-dep3-format-patch-bug-field-default-value
   difficulty: medium
 - tag: invalid-dep3-format-patch-bug-not-contain-url
+  difficulty: medium
+  comment: |
+    Fix Bug field in DEP-3 patch header to contain a valid URL.
 - tag: invalid-dep3-format-patch-maybe-bug-debian
+  difficulty: medium
+  comment: |
+    Fix Bug-Debian field format in DEP-3 patch header to use the correct
+    Debian BTS URL format.
 - tag: invalid-dep3-format-patch-no-description-and-subject
+  difficulty: hard
+  comment: |
+    Add Description or Subject to DEP-3 patch header. Requires human-created
+    text.
 - tag: invalid-dep3-format-patch-no-origin
+  difficulty: medium
+  comment: |
+    Add Origin field to DEP-3 patch header.
 - tag: invalid-dep3-format-patch-origin-field-default-value
+  difficulty: medium
+  comment: |
+    Replace the default Origin field value in DEP-3 patch header with the
+    actual origin information.
 - tag: invalid-dep3-format-patch-wrong-bug-debian-url
+  difficulty: easy
+  comment: |
+    Fix the Bug-Debian URL in DEP-3 patch header to use the correct
+    https://bugs.debian.org/ format.
 - tag: invalid-dep3-format-patch-wrong-last-update
+  difficulty: easy
+  comment: |
+    Fix the Last-Update date format in DEP-3 patch header.
 - tag: aliased-location
+  status: build-stage
 - tag: build-depends-on-obsolete-bootstrap
   difficulty: medium
 - tag: debian-rules-calls-nproc
+  difficulty: medium
+  comment: |
+    Replace nproc calls in debian/rules with dpkg-buildpackage parallel
+    option support or dh --parallel.
 - tag: depends-on-obsolete-bootstrap
+  difficulty: medium
+  comment: |
+    Replace dependency on obsolete bootstrap package with the current
+    equivalent. Uses TemplatedControlEditor and Relations API.
 - tag: invalid-value-in-static-built-using-field
+  difficulty: medium
+  comment: |
+    Fix invalid value in Static-Built-Using field in debian/control.
+    Uses TemplatedControlEditor.
 - tag: locale-uses-language-group-code
+  status: build-stage
 - tag: missing-static-built-using-field-for-golang-package
   difficulty: easy
   status: implemented
@@ -1842,9 +5446,25 @@
   difficulty: easy
   status: implemented
 - tag: built-using-field-on-arch-all-package
+  difficulty: easy
+  comment: |
+    Remove Built-Using field from arch:all package in debian/control,
+    or change Architecture to any. Uses TemplatedControlEditor.
 - tag: dh-install-instead-of-dh-installmodules
+  difficulty: easy
+  comment: |
+    Use dh_installmodules instead of dh_install for kernel module files
+    in debian/rules.
 - tag: directory-in-modprobe.d
+  status: build-stage
 - tag: file-in-etc-modprobe.d
+  status: build-stage
 - tag: package-installs-appimage
+  status: build-stage
 - tag: redundant-rules-requires-root-no-field
+  difficulty: easy
+  comment: |
+    Remove redundant Rules-Requires-Root: no from debian/control when
+    it is already the default. Uses TemplatedControlEditor.
 - tag: uses-gbp-conf
+  status: classification
