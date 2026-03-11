@@ -118,6 +118,11 @@
 - tag: build-depends-on-specific-java-doc-package
 - tag: build-depends-on-versioned-berkeley-db
 - tag: build-info-in-binary-control-file-section
+  difficulty: medium
+  comment: |
+    Move Build-Depends/Build-Conflicts from binary stanza to source stanza,
+    merging with any existing build relations. Uses TemplatedControlEditor.
+    Moving is straightforward but merging relations correctly requires care.
 - tag: cannot-check-whether-usr-share-doc-symlink-points-to-foreign-package
 - tag: capitalization-error-in-description
 - tag: capitalization-error-in-description-synopsis
@@ -161,6 +166,11 @@
   difficulty: hard
   comment: requires archive info
 - tag: control-file-contains-dh_make-vcs-comment
+  difficulty: easy
+  comment: |
+    Remove commented-out "# Vcs-Git:" / "# Vcs-Browser:" template lines
+    from debian/control. Requires raw text manipulation since deb822
+    parsers typically discard comments.
 - tag: control-file-has-bad-owner
 - tag: control-file-has-bad-permissions
 - tag: control-file-is-empty
@@ -1736,9 +1746,24 @@
 - tag: archive-liberty-mismatch
 - tag: bash-term-in-posix-shell
 - tag: build-prerequisite-in-installable-section
+  difficulty: medium
+  comment: |
+    Move Build-Depends/Build-Conflicts from binary stanza to source stanza,
+    merging with any existing build relations. Uses TemplatedControlEditor.
+    Moving is straightforward but merging relations correctly requires care.
 - tag: circular-installation-prerequisite
+  difficulty: easy
+  comment: |
+    Remove self-referencing dependency from debian/control. A package
+    depending on itself is always wrong. Uses TemplatedControlEditor
+    and the Relations API, same pattern as build-depends-on-build-essential.
 - tag: composer-prerequisite
 - tag: control-file-contains-dh-make-vcs-comment
+  difficulty: easy
+  comment: |
+    Remove commented-out "# Vcs-Git:" / "# Vcs-Browser:" template lines
+    from debian/control. Requires raw text manipulation since deb822
+    parsers typically discard comments.
 - tag: dfsg-version-with-tilde
 - tag: dot-before-repack-count
 - tag: elf-error
