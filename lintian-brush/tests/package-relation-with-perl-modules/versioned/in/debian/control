@@ -1,0 +1,5 @@
+Source: test-pkg
+Build-Depends: perl-modules-5.28, debhelper-compat (= 13)
+
+Package: test-pkg
+Architecture: all

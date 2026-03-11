@@ -1,0 +1,5 @@
+Source: test-pkg
+
+Package: test-pkg
+Architecture: all
+Depends: perl

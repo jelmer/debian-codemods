@@ -1080,6 +1080,7 @@
 - tag: package-placeholder-in-symbols-file
 - tag: package-relation-with-perl-modules
   difficulty: easy
+  status: implemented
 - tag: package-relation-with-self
   difficulty: hard
 - tag: package-section-games-but-contains-no-game
