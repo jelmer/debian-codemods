@@ -1,0 +1,4 @@
+Replace perl-modules dependency with perl.
+Fixed-Lintian-Issues:
+ source: package-relation-with-perl-modules Build-Depends: perl-modules
+Certainty: certain

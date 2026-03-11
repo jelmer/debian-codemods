@@ -1,0 +1,5 @@
+Source: perl
+Build-Depends: perl-modules
+
+Package: perl-base
+Architecture: any
