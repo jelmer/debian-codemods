@@ -163,10 +163,10 @@ Description: codemods for automatically fixing problems in Debian packages
  This package contains a set of scripts that can automatically fix common
  problems in Debian packages:
  .
- * apply-multiarch-hints: applies multiarch hints to debian/control
- * deb-scrub-obsolete: removes obsolete dependencies and maintscript snippets
- * deb-vcs-publish: adds VCS metadata to debian/control
- * fix-watch-file: updates the debian/watch file to use the latest format
+  * apply-multiarch-hints: applies multiarch hints to debian/control
+  * deb-scrub-obsolete: removes obsolete dependencies and maintscript snippets
+  * deb-vcs-publish: adds VCS metadata to debian/control
+  * fix-watch-file: updates the debian/watch file to use the latest format
 
 Package: lintian-brush
 Architecture: any
