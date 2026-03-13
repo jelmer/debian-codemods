@@ -1,0 +1,10 @@
+Source: blah
+Section: python
+Maintainer: Basil Saeed <basil@email.org>
+Standards-Version: 0.1.0
+
+Package: blah-doc
+Section: doc
+Architecture: all
+Description:
+ example description.
