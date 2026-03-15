@@ -80,87 +80,90 @@ fn remove_circular_installation_prerequisite(
         return;
     }
 
-    let binary_name = binary.name().unwrap();
+    let Some(binary_name) = binary.name() else {
+        return
+    };
+
     match field {
         "Depends" => {
-            if binary.depends().unwrap().has_relation(&binary_name) {
-                if binary.depends().unwrap().len() == 1 {
+            let mut depends = binary.depends().unwrap();
+            if depends.has_relation(&binary_name) {
+                if depends.len() == 1 {
                     binary.set_depends(None);
                 } else {
-                    let mut relations = binary.depends().unwrap();
-                    relations.drop_dependency(&binary_name);
-                    binary.set_depends(Some(&relations));
+                    depends.drop_dependency(&binary_name);
+                    binary.set_depends(Some(&depends));
                 }
             }
         }
         "Pre-Depends" => {
-            if binary.pre_depends().unwrap().has_relation(&binary_name) {
-                if binary.pre_depends().unwrap().len() == 1 {
+            let mut pre_depends = binary.pre_depends().unwrap();
+            if pre_depends.has_relation(&binary_name) {
+                if pre_depends.len() == 1 {
                     binary.set_pre_depends(None);
                 } else {
-                    let mut relations = binary.pre_depends().unwrap();
-                    relations.drop_dependency(&binary_name);
-                    binary.set_pre_depends(Some(&relations));
+                    pre_depends.drop_dependency(&binary_name);
+                    binary.set_pre_depends(Some(&pre_depends));
                 }
             }
         }
         "Recommends" => {
-            if binary.recommends().unwrap().has_relation(&binary_name) {
-                if binary.recommends().unwrap().len() == 1 {
+            let mut recommends = binary.recommends().unwrap();
+            if recommends.has_relation(&binary_name) {
+                if recommends.len() == 1 {
                     binary.set_recommends(None);
                 } else {
-                    let mut relations = binary.recommends().unwrap();
-                    relations.drop_dependency(&binary_name);
-                    binary.set_recommends(Some(&relations));
+                    recommends.drop_dependency(&binary_name);
+                    binary.set_recommends(Some(&recommends));
                 }
             }
         }
         "Suggests" => {
-            if binary.suggests().unwrap().has_relation(&binary_name) {
-                if binary.suggests().unwrap().len() == 1 {
+            let mut suggests = binary.suggests().unwrap();
+            if suggests.has_relation(&binary_name) {
+                if suggests.len() == 1 {
                     binary.set_suggests(None);
                 } else {
-                    let mut relations = binary.suggests().unwrap();
-                    relations.drop_dependency(&binary_name);
-                    binary.set_suggests(Some(&relations));
+                    suggests.drop_dependency(&binary_name);
+                    binary.set_suggests(Some(&suggests));
                 }
             }
         }
         "Enhances" => {
-            if binary.enhances().unwrap().has_relation(&binary_name) {
-                if binary.enhances().unwrap().len() == 1 {
+            let mut enhances = binary.enhances().unwrap();
+            if enhances.has_relation(&binary_name) {
+                if enhances.len() == 1 {
                     binary.set_enhances(None);
                 } else {
-                    let mut relations = binary.enhances().unwrap();
-                    relations.drop_dependency(&binary_name);
-                    binary.set_enhances(Some(&relations));
+                    enhances.drop_dependency(&binary_name);
+                    binary.set_enhances(Some(&enhances));
                 }
             }
         }
         "Breaks" => {
-            if binary.breaks().unwrap().has_relation(&binary_name) {
-                if binary.breaks().unwrap().len() == 1 {
+            let mut breaks = binary.breaks().unwrap();
+            if breaks.has_relation(&binary_name) {
+                if breaks.len() == 1 {
                     binary.set_breaks(None);
                 } else {
-                    let mut relations = binary.breaks().unwrap();
-                    relations.drop_dependency(&binary_name);
-                    binary.set_breaks(Some(&relations));
+                    breaks.drop_dependency(&binary_name);
+                    binary.set_breaks(Some(&breaks));
                 }
             }
         }
         "Conflicts" => {
-            if binary.conflicts().unwrap().has_relation(&binary_name) {
-                if binary.conflicts().unwrap().len() == 1 {
+            let mut conflicts = binary.conflicts().unwrap();
+            if conflicts.has_relation(&binary_name) {
+                if conflicts.len() == 1 {
                     binary.set_conflicts(None);
                 } else {
-                    let mut relations = binary.conflicts().unwrap();
-                    relations.drop_dependency(&binary_name);
-                    binary.set_conflicts(Some(&relations));
+                    conflicts.drop_dependency(&binary_name);
+                    binary.set_conflicts(Some(&conflicts));
                 }
             }
         }
         _ => {
-            todo!()
+            unreachable!()
         }
     }
 
