@@ -81,7 +81,7 @@ fn remove_circular_installation_prerequisite(
     }
 
     let Some(binary_name) = binary.name() else {
-        return
+        return;
     };
 
     match field {
