@@ -1,0 +1,24 @@
+Source: blah
+Section: python
+Maintainer: Basil Saeed <basil@email.org>
+Standards-Version: 0.1.0
+
+Package: blah-doc
+Section: doc
+Architecture: all
+Depends:
+ blah-doc,
+Pre-Depends:
+ blah-doc,
+Recommends:
+ blah-doc,
+Suggests:
+ blah-doc,
+Enhances:
+ blah-doc,
+Breaks:
+ blah-doc,
+Conflicts:
+ blah-doc,
+Description:
+ example description.

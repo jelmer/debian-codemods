@@ -7,6 +7,7 @@ mod build_depends_on_obsolete_package;
 mod built_using_for_golang;
 mod changelog_has_duplicate_line;
 mod chown_with_dot;
+mod circular_installation_prerequisite;
 mod comma_separated_files_in_dep5_copyright;
 mod common_license;
 mod copyright_continued_lines_with_space;
