@@ -31,6 +31,7 @@ subset of the issues:
 * build-depends-on-obsolete-package
 * built-using-for-golang
 * carriage-return-line-feed
+* circular-installation-prerequisite
 * comma-separated-files-in-dep5-copyright
 * copyright-does-not-refer-to-common-license-file
 * copyright-file-contains-full-apache-2-license

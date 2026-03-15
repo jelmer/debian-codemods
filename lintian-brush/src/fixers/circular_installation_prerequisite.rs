@@ -190,7 +190,7 @@ Architecture: any
         fs::write(&control_path, control_content).unwrap();
 
         let result = run(temp_dir.path());
-        assert!(result.is_ok());
+        assert!(matches!(result, Err(FixerError::NoChanges)));
 
         // Verify the change was made
         let updated_content = fs::read_to_string(&control_path).unwrap();
