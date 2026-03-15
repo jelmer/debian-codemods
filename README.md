@@ -29,7 +29,7 @@ File format support:
 ## Contributing
 
 Contributions are very welcome! The easiest way to get started is probably
-by following the [guide on writing more fixers for lintian-brush](lintian-brush/doc/fixer-writing-guide.rst).
+by following the [guide on writing more fixers for lintian-brush](lintian-brush/fixer-writing-guide.rst).
 
 See also [CONTRIBUTING.md](CONTRIBUTING.md) on general contribution guidelines, especially
 regarding code style and what belongs where.
