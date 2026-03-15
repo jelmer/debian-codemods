@@ -1,3 +1,10 @@
-Remove circular dependency on self in packages.
+Remove circular dependency on self in package.
 Certainty: certain
-Fixed-Lintian-Tags: circular-installation-prerequisite
+Fixed-Lintian-Issues:
+ source: circular-installation-prerequisite Depends
+ source: circular-installation-prerequisite Pre-Depends
+ source: circular-installation-prerequisite Recommends
+ source: circular-installation-prerequisite Suggests
+ source: circular-installation-prerequisite Enhances
+ source: circular-installation-prerequisite Breaks
+ source: circular-installation-prerequisite Conflicts

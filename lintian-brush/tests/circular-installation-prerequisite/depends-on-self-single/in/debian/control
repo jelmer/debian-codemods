@@ -19,6 +19,6 @@ Enhances:
 Breaks:
  blah-doc,
 Conflicts:
- blah-docs,
+ blah-doc,
 Description:
  example description.
