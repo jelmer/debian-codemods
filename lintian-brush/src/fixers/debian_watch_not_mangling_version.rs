@@ -18,7 +18,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let changelog_content = fs::read_to_string(&changelog_path)?;
-    let changelog = debian_changelog::ChangeLog::read(&mut changelog_content.as_bytes())
+    let changelog = debian_changelog::ChangeLog::read_relaxed(&mut changelog_content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {}", e)))?;
 
     let first_entry = changelog.iter().next().ok_or(FixerError::NoChanges)?;

@@ -56,7 +56,7 @@ fn get_current_package_version(base_path: &Path) -> Result<Version, FixerError> 
     }
 
     let contents = fs::read_to_string(&changelog_path)?;
-    let changelog = debian_changelog::ChangeLog::read(&mut contents.as_bytes())
+    let changelog = debian_changelog::ChangeLog::read_relaxed(&mut contents.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {:?}", e)))?;
 
     let entries: Vec<_> = changelog.iter().collect();

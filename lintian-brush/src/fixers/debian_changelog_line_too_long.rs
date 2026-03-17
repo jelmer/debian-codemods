@@ -14,8 +14,7 @@ pub fn run(base_path: &Path, package: &str, thorough: bool) -> Result<FixerResul
     }
 
     let content = fs::read_to_string(&changelog_path)?;
-    let changelog = content
-        .parse::<ChangeLog>()
+    let changelog = ChangeLog::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {}", e)))?;
 
     // Get all changes with line numbers

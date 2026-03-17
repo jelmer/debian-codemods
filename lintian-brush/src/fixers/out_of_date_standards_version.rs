@@ -174,7 +174,7 @@ fn check_changelog_epoch_changes(base_path: &Path) -> bool {
         return false;
     };
 
-    let Ok(cl) = content.parse::<debian_changelog::ChangeLog>() else {
+    let Ok(cl) = debian_changelog::ChangeLog::read_relaxed(content.as_bytes()) else {
         return false;
     };
 
