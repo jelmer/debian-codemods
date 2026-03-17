@@ -51,7 +51,7 @@ fn has_debhelper_compat_in_control(control: &Control) -> bool {
         build_depends.entries().any(|entry| {
             entry
                 .relations()
-                .any(|rel| rel.name() == "debhelper-compat")
+                .any(|rel| rel.try_name().as_deref() == Some("debhelper-compat"))
         })
     } else {
         false

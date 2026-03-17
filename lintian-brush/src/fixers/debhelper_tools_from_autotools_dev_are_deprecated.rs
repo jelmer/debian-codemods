@@ -141,9 +141,11 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             let build_depends = source.build_depends().unwrap_or_default();
 
             // Check if debhelper-compat is present
-            let has_debhelper_compat = build_depends
-                .entries()
-                .any(|entry| entry.relations().any(|r| r.name() == "debhelper-compat"));
+            let has_debhelper_compat = build_depends.entries().any(|entry| {
+                entry
+                    .relations()
+                    .any(|r| r.try_name().as_deref() == Some("debhelper-compat"))
+            });
 
             // Only update debhelper version if debhelper-compat is not present
             if !has_debhelper_compat {

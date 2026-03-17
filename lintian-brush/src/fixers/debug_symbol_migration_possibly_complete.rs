@@ -158,7 +158,10 @@ fn migration_done(rels: &Relations, preferences: &FixerPreferences) -> bool {
             });
 
             // If package might still exist in previous release, migration not done
-            if package_exists(&rel.name(), &previous, version_info, preferences) != Some(false) {
+            let Some(name) = rel.try_name() else {
+                return false;
+            };
+            if package_exists(&name, &previous, version_info, preferences) != Some(false) {
                 return false;
             }
         }

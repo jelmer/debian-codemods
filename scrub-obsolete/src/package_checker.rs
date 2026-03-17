@@ -76,10 +76,11 @@ async fn package_build_essential(
     let mut build_essential = HashSet::new();
     for row in rows {
         let rels: Relations = row.parse().unwrap();
-        build_essential.extend(
-            rels.entries()
-                .flat_map(|e| e.relations().map(|r| r.name()).collect::<Vec<_>>()),
-        );
+        build_essential.extend(rels.entries().flat_map(|e| {
+            e.relations()
+                .filter_map(|r| r.try_name())
+                .collect::<Vec<_>>()
+        }));
     }
 
     Ok(build_essential.contains(package))
@@ -150,7 +151,10 @@ impl PackageChecker for UddPackageChecker {
                 provides
                     .unwrap_or_default()
                     .into_iter()
-                    .map(|rel| (rel.name().to_string(), rel.version().map(|x| x.1)))
+                    .filter_map(|rel| {
+                        rel.try_name()
+                            .map(|name| (name, rel.version().map(|x| x.1)))
+                    })
                     .collect()
             })
     }

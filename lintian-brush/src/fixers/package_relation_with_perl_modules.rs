@@ -42,7 +42,10 @@ fn find_perl_modules_issues(
 
     for entry in relations.entries() {
         for relation in entry.relations() {
-            if relation.name().starts_with("perl-modules") {
+            if relation
+                .try_name()
+                .is_some_and(|n| n.starts_with("perl-modules"))
+            {
                 let matched_text = entry.to_string().trim().to_string();
                 let issue = make_issue(
                     "package-relation-with-perl-modules",
@@ -72,11 +75,13 @@ fn apply_perl_modules_fix(paragraph: &mut Paragraph, field: &str) {
     let mut first_position: Option<usize> = None;
     for (idx, entry) in relations.entries().enumerate() {
         for rel in entry.relations() {
-            if rel.name().starts_with("perl-modules") {
-                if first_position.is_none() {
-                    first_position = Some(idx);
+            if let Some(name) = rel.try_name() {
+                if name.starts_with("perl-modules") {
+                    if first_position.is_none() {
+                        first_position = Some(idx);
+                    }
+                    perl_modules_names.push(name);
                 }
-                perl_modules_names.push(rel.name());
             }
         }
     }

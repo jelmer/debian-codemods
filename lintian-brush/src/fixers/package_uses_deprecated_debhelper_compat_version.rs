@@ -791,7 +791,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         let debhelper_compat_relations: Vec<_> = relations
             .entries()
             .flat_map(|entry| entry.relations().collect::<Vec<_>>())
-            .filter(|rel| rel.name() == "debhelper-compat")
+            .filter(|rel| rel.try_name().as_deref() == Some("debhelper-compat"))
             .collect();
 
         if debhelper_compat_relations.is_empty() {

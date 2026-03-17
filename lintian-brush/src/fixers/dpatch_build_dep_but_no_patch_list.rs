@@ -23,15 +23,19 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let build_depends_indep = source.build_depends_indep().unwrap_or_default();
     let build_depends_arch = source.build_depends_arch().unwrap_or_default();
 
-    let has_dpatch = build_depends
-        .entries()
-        .any(|entry| entry.relations().any(|rel| rel.name() == "dpatch"))
-        || build_depends_indep
-            .entries()
-            .any(|entry| entry.relations().any(|rel| rel.name() == "dpatch"))
-        || build_depends_arch
-            .entries()
-            .any(|entry| entry.relations().any(|rel| rel.name() == "dpatch"));
+    let has_dpatch = build_depends.entries().any(|entry| {
+        entry
+            .relations()
+            .any(|rel| rel.try_name().as_deref() == Some("dpatch"))
+    }) || build_depends_indep.entries().any(|entry| {
+        entry
+            .relations()
+            .any(|rel| rel.try_name().as_deref() == Some("dpatch"))
+    }) || build_depends_arch.entries().any(|entry| {
+        entry
+            .relations()
+            .any(|rel| rel.try_name().as_deref() == Some("dpatch"))
+    });
 
     if !has_dpatch {
         return Err(FixerError::NoChanges);

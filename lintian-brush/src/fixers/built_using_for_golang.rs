@@ -10,9 +10,10 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let is_go_package = if let Some(source) = editor.source() {
         if let Some(build_depends) = source.build_depends() {
             build_depends.entries().any(|or_deps| {
-                or_deps
-                    .relations()
-                    .any(|dep| dep.name() == "golang-go" || dep.name() == "golang-any")
+                or_deps.relations().any(|dep| {
+                    dep.try_name().as_deref() == Some("golang-go")
+                        || dep.try_name().as_deref() == Some("golang-any")
+                })
             })
         } else {
             false

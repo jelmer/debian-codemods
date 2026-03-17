@@ -85,7 +85,10 @@ async fn drop_obsolete_depends(
     let mut to_remove = vec![];
     let mut to_replace = vec![];
     for (i, mut pkgrel) in entry.relations().enumerate() {
-        if let Some(replacement) = checker.replacement(&pkgrel.name()).await? {
+        let Some(pkgrel_name) = pkgrel.try_name() else {
+            continue;
+        };
+        if let Some(replacement) = checker.replacement(&pkgrel_name).await? {
             let parsed_replacement: Relations = replacement.parse().unwrap();
             if parsed_replacement.entries().count() > 1 {
                 log::warn!("Unable to replace multi-package {:?}", replacement);
@@ -105,8 +108,8 @@ async fn drop_obsolete_depends(
                     ))
                 }
             }
-        } else if pkgrel.name() != "debhelper" {
-            let compat_version = checker.package_version(&pkgrel.name()).await?;
+        } else if pkgrel_name != "debhelper" {
+            let compat_version = checker.package_version(&pkgrel_name).await?;
             log::debug!(
                 "Relation: {}. Upgrade release {} has {:?} ",
                 pkgrel,
@@ -115,7 +118,7 @@ async fn drop_obsolete_depends(
             );
 
             // If the package is essential, we don't need to maintain a dependency on it.
-            if checker.is_essential(&pkgrel.name()).await?.unwrap_or(false) {
+            if checker.is_essential(&pkgrel_name).await?.unwrap_or(false) {
                 to_remove.push(i);
                 actions.push(Action::DropEssential(pkgrel));
             } else if let Some(pkgrel_version) = pkgrel.version() {
@@ -151,8 +154,11 @@ async fn drop_obsolete_conflicts(
     let mut to_remove = vec![];
     let mut actions = vec![];
     for (i, pkgrel) in entry.relations().enumerate() {
+        let Some(pkgrel_name) = pkgrel.try_name() else {
+            continue;
+        };
         if let Some((vc, version)) = pkgrel.version() {
-            let compat_version = checker.package_version(&pkgrel.name()).await?;
+            let compat_version = checker.package_version(&pkgrel_name).await?;
             if compat_version
                 .map(|cv| conflict_obsolete(&cv, vc, &version))
                 .unwrap_or(false)
@@ -782,7 +788,7 @@ mod tests {
             assert_eq!(
                 Vec::<Action>::new(),
                 filter_relations(&mut control, "Depends", |oldrel| {
-                    if oldrel.relations().next().unwrap().name() == "foo" {
+                    if oldrel.relations().next().unwrap().try_name().as_deref() == Some("foo") {
                         oldrel.remove();
                         vec![]
                     } else {
@@ -800,7 +806,7 @@ mod tests {
             assert_eq!(
                 Vec::<Action>::new(),
                 filter_relations(&mut control, "Depends", |oldrel| {
-                    if oldrel.relations().next().unwrap().name() == "foo" {
+                    if oldrel.relations().next().unwrap().try_name().as_deref() == Some("foo") {
                         oldrel.remove();
                         vec![]
                     } else {
@@ -818,7 +824,7 @@ mod tests {
             assert_eq!(
                 Vec::<Action>::new(),
                 filter_relations(&mut control, "Depends", |oldrel| {
-                    if oldrel.relations().next().unwrap().name() == "foo" {
+                    if oldrel.relations().next().unwrap().try_name().as_deref() == Some("foo") {
                         oldrel.remove();
                         vec![]
                     } else {

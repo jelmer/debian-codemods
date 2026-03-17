@@ -11,9 +11,9 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         if let Some(build_depends) = source.build_depends() {
             build_depends.entries().any(|or_deps| {
                 or_deps.relations().any(|dep| {
-                    dep.name() == "golang-go"
-                        || dep.name() == "golang-any"
-                        || dep.name() == "dh-golang"
+                    dep.try_name().as_deref() == Some("golang-go")
+                        || dep.try_name().as_deref() == Some("golang-any")
+                        || dep.try_name().as_deref() == Some("dh-golang")
                 })
             })
         } else {
@@ -62,7 +62,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             let has_misc_static_built_using = relations.entries().any(|or_deps| {
                 or_deps
                     .relations()
-                    .any(|dep| dep.name() == "${misc:Static-Built-Using}")
+                    .any(|dep| dep.try_name().as_deref() == Some("${misc:Static-Built-Using}"))
             });
 
             if !has_misc_static_built_using {

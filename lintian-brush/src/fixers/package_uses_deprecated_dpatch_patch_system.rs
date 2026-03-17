@@ -15,7 +15,7 @@ fn remove_dpatch_from_field(field_value: &str) -> Option<String> {
         let mut to_remove_relations = Vec::new();
 
         for (rel_idx, relation) in entry.relations().enumerate() {
-            if relation.name() == "dpatch" {
+            if relation.try_name().as_deref() == Some("dpatch") {
                 to_remove_relations.push(rel_idx);
             }
         }

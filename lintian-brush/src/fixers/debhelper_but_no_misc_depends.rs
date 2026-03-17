@@ -9,8 +9,8 @@ fn uses_debhelper(build_depends: &str) -> bool {
 
     for entry in relations.entries() {
         for relation in entry.relations() {
-            let name = relation.name();
-            if name == "debhelper" || name == "debhelper-compat" {
+            let name = relation.try_name();
+            if name.as_deref() == Some("debhelper") || name.as_deref() == Some("debhelper-compat") {
                 return true;
             }
         }
