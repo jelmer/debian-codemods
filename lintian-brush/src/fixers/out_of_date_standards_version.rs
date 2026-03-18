@@ -51,7 +51,7 @@ fn has_debhelper_compat_in_control(control: &Control) -> bool {
         build_depends.entries().any(|entry| {
             entry
                 .relations()
-                .any(|rel| rel.name() == "debhelper-compat")
+                .any(|rel| rel.try_name().as_deref() == Some("debhelper-compat"))
         })
     } else {
         false
@@ -174,7 +174,7 @@ fn check_changelog_epoch_changes(base_path: &Path) -> bool {
         return false;
     };
 
-    let Ok(cl) = content.parse::<debian_changelog::ChangeLog>() else {
+    let Ok(cl) = debian_changelog::ChangeLog::read_relaxed(content.as_bytes()) else {
         return false;
     };
 

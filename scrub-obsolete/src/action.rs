@@ -21,7 +21,10 @@ impl std::fmt::Display for Action {
             Action::DropMinimumVersion(r) => write!(f, "Drop versioned constraint on {}", r),
             Action::DropTransition(r) => write!(f, "Drop dependency on transitional package {}", r),
             Action::ReplaceTransition(r, replacement) => {
-                let package_names = replacement.iter().map(|p| p.name()).collect::<Vec<_>>();
+                let package_names = replacement
+                    .iter()
+                    .filter_map(|p| p.try_name())
+                    .collect::<Vec<_>>();
                 write!(
                     f,
                     "Replace dependency on transitional package {} with replacement {}",

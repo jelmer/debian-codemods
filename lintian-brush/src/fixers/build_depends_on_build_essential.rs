@@ -79,7 +79,7 @@ fn filter_build_essential_from_field(
     let mut has_build_essential = false;
     for entry in relations.entries() {
         for relation in entry.relations() {
-            if relation.name() == "build-essential" {
+            if relation.try_name().as_deref() == Some("build-essential") {
                 has_build_essential = true;
                 break;
             }
@@ -107,7 +107,7 @@ fn filter_build_essential_from_field(
         let mut to_remove = Vec::new();
 
         for (i, relation) in entry.relations().enumerate() {
-            if relation.name() == "build-essential" {
+            if relation.try_name().as_deref() == Some("build-essential") {
                 to_remove.push(i);
             }
         }

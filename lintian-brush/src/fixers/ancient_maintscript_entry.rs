@@ -62,7 +62,7 @@ fn parse_changelog_dates(base_path: &Path) -> Result<Vec<(Version, DateTime<Utc>
     }
 
     let contents = fs::read_to_string(&changelog_path)?;
-    let changelog = ChangeLog::read(&mut contents.as_bytes())
+    let changelog = ChangeLog::read_relaxed(&mut contents.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {:?}", e)))?;
 
     let mut dates = Vec::new();

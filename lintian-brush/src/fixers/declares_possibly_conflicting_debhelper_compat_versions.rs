@@ -31,7 +31,7 @@ fn get_debhelper_compat_level_from_control(control: &Control) -> Result<Option<u
     // Look for debhelper-compat (= N) in Build-Depends
     for entry in build_depends.entries() {
         for relation in entry.relations() {
-            if relation.name() == "debhelper-compat" {
+            if relation.try_name().as_deref() == Some("debhelper-compat") {
                 // Check for version constraint
                 if let Some((constraint, version)) = relation.version() {
                     // constraint is like "=" and version is the actual version

@@ -89,7 +89,7 @@ pub async fn find_reverse_dependencies(
             let parsed: Relations = value.parse().unwrap();
             for entry in parsed.entries() {
                 for rel in entry.relations() {
-                    if rel.name() == package {
+                    if rel.try_name().as_deref() == Some(package) {
                         by_source
                             .entry(source.clone())
                             .or_insert_with(HashSet::new)
@@ -134,7 +134,7 @@ pub async fn find_reverse_dependencies(
             let parsed: Relations = value.parse().unwrap();
             for option in parsed.entries() {
                 for rel in option.relations() {
-                    if rel.name() == package {
+                    if rel.try_name().as_deref() == Some(package) {
                         by_source.entry(source.clone()).or_insert_with(HashSet::new);
                     }
                 }

@@ -1251,7 +1251,7 @@ pub fn run_lintian_fixer(
         Err(e) => return Err(FixerError::Other(e.to_string())),
     };
 
-    let cl = ChangeLog::read(r)?;
+    let cl = ChangeLog::read_relaxed(r)?;
     let first_entry = if let Some(entry) = cl.iter().next() {
         entry
     } else {
@@ -1600,8 +1600,12 @@ pub fn run_lintian_fixers(
                 FixerError::NotDebianPackage(path) => {
                     return Err(OverallError::NotDebianPackage(path));
                 }
-                FixerError::ChangelogCreate(m) => {
-                    return Err(OverallError::ChangelogCreate(m));
+                FixerError::ChangelogCreate(ref _m) => {
+                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    if verbose {
+                        tracing::info!("Fixer {} failed to create changelog entry.", fixer.name());
+                    }
+                    continue;
                 }
                 FixerError::OutputParseError(ref _e) => {
                     ret.failed_fixers.insert(fixer.name(), e.to_string());
@@ -1954,7 +1958,7 @@ pub fn determine_update_changelog(
     let changelog_path = debian_path.join("changelog");
 
     let cl = match local_tree.get_file(changelog_path.as_path()) {
-        Ok(f) => ChangeLog::read(f).unwrap(),
+        Ok(f) => ChangeLog::read_relaxed(f).unwrap(),
 
         Err(Error::NoSuchFile(_)) => {
             // If there's no changelog, then there's nothing to update!

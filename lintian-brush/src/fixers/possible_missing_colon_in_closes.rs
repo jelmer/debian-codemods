@@ -67,7 +67,8 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     }
 
     let content = fs::read_to_string(&changelog_path)?;
-    let changelog: ChangeLog = content.parse()?;
+    let changelog: ChangeLog = ChangeLog::read_relaxed(content.as_bytes())
+        .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {}", e)))?;
 
     let net_access = preferences.net_access.unwrap_or(false);
     let mut overall_certainty = Certainty::Certain;

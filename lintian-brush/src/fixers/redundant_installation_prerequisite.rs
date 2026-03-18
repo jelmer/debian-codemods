@@ -38,7 +38,7 @@ fn remove_redundant_entries(
     for (idx, entry) in relations.entries().enumerate() {
         if is_implied_by_any(&entry, stronger_relations) {
             let package_names: Vec<String> =
-                entry.relations().map(|r| r.name().to_string()).collect();
+                entry.relations().filter_map(|r| r.try_name()).collect();
 
             let mut should_remove = true;
             for pkg in &package_names {

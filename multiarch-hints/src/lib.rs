@@ -339,7 +339,9 @@ fn apply_hint_dep_any(binary: &mut Binary, hint: &Hint) -> Option<String> {
         if let Some(depends) = binary.depends() {
             for entry in depends.entries() {
                 for mut r in entry.relations() {
-                    if r.name() == dep && r.archqual().as_deref() != Some("any") {
+                    if r.try_name().as_deref() == Some(dep)
+                        && r.archqual().as_deref() != Some("any")
+                    {
                         r.set_archqual("any");
                         changed = true;
                     }

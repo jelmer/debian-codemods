@@ -13,7 +13,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let content = fs::read_to_string(&changelog_path)?;
-    let changelog: ChangeLog = content.parse()?;
+    let changelog: ChangeLog = ChangeLog::read_relaxed(content.as_bytes())
+        .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {}", e)))?;
 
     // Get the first (topmost) entry
     let mut entries = changelog.iter();

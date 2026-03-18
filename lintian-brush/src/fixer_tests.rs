@@ -191,7 +191,7 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
     } else {
         match std::fs::File::open(&cl_path) {
             Ok(f) => {
-                match ChangeLog::read(f) {
+                match ChangeLog::read_relaxed(f) {
                     Ok(cl) => {
                         let first_entry = cl.iter().next().unwrap();
                         let version = first_entry.version().unwrap();
