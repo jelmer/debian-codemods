@@ -38,7 +38,6 @@ distro-info = "0.4.0"
 debian-changelog = { workspace = true }
 desktop-edit = { workspace = true }
 wait-timeout = "0.2.0"
-humantime = "2.1.0"
 svp-client = { workspace = true }
 inventory = "0.3"
 regex = { workspace = true }
