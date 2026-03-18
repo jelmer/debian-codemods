@@ -76,6 +76,77 @@ fn test_all_test_dirs_have_matching_fixers() {
     }
 }
 
+#[test]
+fn test_all_fixers_handle_missing_source_stanza() {
+    let fixers_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixers");
+    let fixers = all_lintian_fixers(Some(&fixers_dir), None).unwrap();
+
+    let mut failures = Vec::new();
+
+    for fixer in fixers {
+        let td = tempfile::tempdir().unwrap();
+        let testdir = td.path().join("testdir");
+        std::fs::create_dir_all(testdir.join("debian")).unwrap();
+
+        // Write a control file with only a binary stanza, no Source stanza
+        std::fs::write(
+            testdir.join("debian/control"),
+            "Package: test-binary\nArchitecture: any\nDescription: A test package\n",
+        )
+        .unwrap();
+
+        // Write a minimal changelog so version parsing works
+        std::fs::write(
+            testdir.join("debian/changelog"),
+            "test-package (1.0-1) unstable; urgency=low\n\n  * Initial release.\n\n -- Test <test@test.com>  Mon, 01 Jan 2024 00:00:00 +0000\n",
+        )
+        .unwrap();
+
+        let preferences = FixerPreferences {
+            compat_release: Some("sid".to_string()),
+            minimum_certainty: None,
+            net_access: Some(false),
+            trust_package: Some(false),
+            opinionated: Some(false),
+            ..Default::default()
+        };
+
+        let current_version: debversion::Version = "1.0-1".parse().unwrap();
+        let timeout = Some(chrono::Duration::seconds(30));
+
+        let result = fixer.run(
+            &testdir,
+            "test-package",
+            &current_version,
+            &preferences,
+            timeout,
+        );
+
+        match result {
+            Ok(_) => {} // Fixer made changes, that's fine
+            Err(FixerError::NoChanges) => {} // Expected for most fixers
+            Err(FixerError::NoChangesAfterOverrides(_)) => {}
+            Err(FixerError::NotDebianPackage(_)) => {}
+            Err(FixerError::NotCertainEnough(..)) => {}
+            Err(FixerError::FormattingUnpreservable(_)) => {}
+            Err(FixerError::GeneratedFile(_)) => {}
+            Err(FixerError::Other(_)) => {} // Non-fatal errors are acceptable
+            Err(FixerError::Io(_)) => {} // Missing other files is not what we're testing
+            Err(FixerError::ScriptNotFound(_)) => {} // Missing scripts is not what we're testing
+            Err(e) => {
+                failures.push(format!("Fixer '{}' crashed: {:?}", fixer.name(), e));
+            }
+        }
+    }
+
+    if !failures.is_empty() {
+        panic!(
+            "The following fixers crashed on a control file without a Source stanza:\n{}",
+            failures.join("\n")
+        );
+    }
+}
+
 fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
     let td = tempfile::tempdir().unwrap();
 
