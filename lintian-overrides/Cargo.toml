@@ -1,0 +1,15 @@
+[package]
+name = "lintian-overrides"
+version = "0.1.0"
+authors = ["Jelmer Vernooij <jelmer@jelmer.uk>"]
+edition = "2021"
+license = "GPL-2.0+"
+description = "Parser for Debian lintian override files"
+repository = "https://salsa.debian.org/jelmer/lintian-brush.git"
+homepage = "https://salsa.debian.org/jelmer/lintian-brush"
+documentation = "https://docs.rs/lintian-overrides"
+
+[dependencies]
+rowan = "0.16"
+lazy_static = { workspace = true }
+regex = { workspace = true }

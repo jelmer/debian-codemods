@@ -200,10 +200,10 @@ impl LintianIssue {
 
     /// Check if this issue should be fixed (i.e., it's not overridden)
     pub fn should_fix(&self, base_path: &std::path::Path) -> bool {
-        use crate::lintian_overrides;
+        use crate::lintian_overrides::{self, OverrideLineMatch};
 
         for line in lintian_overrides::iter_overrides(base_path) {
-            if line.matches(self) {
+            if line.matches_issue(self) {
                 return false;
             }
         }

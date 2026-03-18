@@ -2895,6 +2895,7 @@ dependencies = [
  "inventory",
  "lazy-regex",
  "lazy_static",
+ "lintian-overrides",
  "makefile-lossless",
  "maplit",
  "nu-ansi-term",
@@ -2925,6 +2926,15 @@ dependencies = [
  "url",
  "wait-timeout",
  "yaml-edit",
+]
+
+[[package]]
+name = "lintian-overrides"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "regex",
+ "rowan",
 ]
 
 [[package]]
