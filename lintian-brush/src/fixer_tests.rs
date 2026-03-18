@@ -123,7 +123,7 @@ fn test_all_fixers_handle_missing_source_stanza() {
         );
 
         match result {
-            Ok(_) => {} // Fixer made changes, that's fine
+            Ok(_) => {}                      // Fixer made changes, that's fine
             Err(FixerError::NoChanges) => {} // Expected for most fixers
             Err(FixerError::NoChangesAfterOverrides(_)) => {}
             Err(FixerError::NotDebianPackage(_)) => {}
@@ -131,7 +131,7 @@ fn test_all_fixers_handle_missing_source_stanza() {
             Err(FixerError::FormattingUnpreservable(_)) => {}
             Err(FixerError::GeneratedFile(_)) => {}
             Err(FixerError::Other(_)) => {} // Non-fatal errors are acceptable
-            Err(FixerError::Io(_)) => {} // Missing other files is not what we're testing
+            Err(FixerError::Io(_)) => {}    // Missing other files is not what we're testing
             Err(FixerError::ScriptNotFound(_)) => {} // Missing scripts is not what we're testing
             Err(e) => {
                 failures.push(format!("Fixer '{}' crashed: {:?}", fixer.name(), e));
