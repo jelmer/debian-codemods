@@ -733,17 +733,10 @@ pub enum FixerError {
     ScriptNotFound(std::path::PathBuf),
     /// Error parsing fixer output
     OutputParseError(OutputParseError),
-    /// Error decoding fixer output
-    OutputDecodeError(std::string::FromUtf8Error),
     /// Failed to manipulate patch
     FailedPatchManipulation(String),
     /// Error creating changelog
     ChangelogCreate(String),
-    /// Fixer timed out
-    Timeout {
-        /// Timeout duration
-        timeout: chrono::Duration,
-    },
     /// Fixer script failed
     ScriptFailed {
         /// Path to the script
@@ -840,7 +833,6 @@ impl std::fmt::Display for FixerError {
             FixerError::NoChanges => write!(f, "No changes"),
             FixerError::NoChangesAfterOverrides(_) => write!(f, "No changes after overrides"),
             FixerError::OutputParseError(e) => write!(f, "Output parse error: {}", e),
-            FixerError::OutputDecodeError(e) => write!(f, "Output decode error: {}", e),
             FixerError::ScriptNotFound(p) => write!(f, "Command not found: {}", p.display()),
             FixerError::ChangelogCreate(m) => write!(f, "Changelog create error: {}", m),
             FixerError::FormattingUnpreservable(p) => {
@@ -875,11 +867,6 @@ impl std::fmt::Display for FixerError {
             FixerError::InvalidChangelog(p, s) => {
                 write!(f, "Invalid changelog {}: {}", p.display(), s)
             }
-            FixerError::Timeout { timeout } => write!(
-                f,
-                "Timeout after {}",
-                humantime::format_duration(timeout.to_std().unwrap())
-            ),
             FixerError::GeneratedFile(p) => write!(f, "Generated file: {}", p.display()),
             FixerError::Panic { message, backtrace } => {
                 write!(f, "Panic: {}", message)?;
@@ -1624,13 +1611,6 @@ pub fn run_lintian_fixers(
                     }
                     continue;
                 }
-                FixerError::OutputDecodeError(ref _e) => {
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
-                    if verbose {
-                        tracing::info!("Fixer {} failed to decode output.", fixer.name());
-                    }
-                    continue;
-                }
                 FixerError::FormattingUnpreservable(path) => {
                     ret.formatting_unpreservable
                         .insert(fixer.name(), path.clone());
@@ -1754,13 +1734,6 @@ pub fn run_lintian_fixers(
                 }
                 FixerError::InvalidChangelog(path, reason) => {
                     return Err(OverallError::InvalidChangelog(path, reason));
-                }
-                FixerError::Timeout { timeout } => {
-                    if verbose {
-                        tracing::info!("Fixer {} timed out after {}.", fixer.name(), timeout);
-                    }
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
-                    continue;
                 }
             },
             Ok((result, summary)) => {
