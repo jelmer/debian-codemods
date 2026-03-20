@@ -1,3 +1,13 @@
+debian-codemods (0.174) UNRELEASED; urgency=medium
+
+  * Bump upstream-ontologist dependency to 0.3.13; be more lenient when
+    parsing upstream files.
+  * Add fixer for package-relation-with-perl-modules.
+  * debian/control: Fix possible-unindented-list-in-extended-
+    description.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 20 Mar 2026 13:36:23 +0000
+
 debian-codemods (0.173) unstable; urgency=medium
 
   * Switch to yaml-edit crate for debian/upstream/metadata editing.
