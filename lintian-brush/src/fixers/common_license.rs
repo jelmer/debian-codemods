@@ -214,8 +214,13 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
     }
 
     let content = fs::read_to_string(&copyright_path)?;
-    let (copyright, _errors) = Copyright::from_str_relaxed(&content)
-        .map_err(|e| FixerError::Other(format!("Failed to parse copyright: {:?}", e)))?;
+    let (copyright, _errors) = match Copyright::from_str_relaxed(&content) {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::debug!("debian/copyright is not machine-readable: {:?}", e);
+            return Err(FixerError::NoChanges);
+        }
+    };
 
     let mut updated = HashSet::new();
     let mut renames: HashMap<String, String> = HashMap::new();
@@ -582,6 +587,24 @@ mod tests {
     fn test_no_copyright() {
         let temp_dir = TempDir::new().unwrap();
         let base_path = temp_dir.path();
+
+        let preferences = FixerPreferences::default();
+        let result = run(base_path, &preferences);
+        assert!(matches!(result, Err(FixerError::NoChanges)));
+    }
+
+    #[test]
+    fn test_not_machine_readable() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        fs::write(
+            debian_dir.join("copyright"),
+            "This is not a machine-readable copyright file.\n",
+        )
+        .unwrap();
 
         let preferences = FixerPreferences::default();
         let result = run(base_path, &preferences);

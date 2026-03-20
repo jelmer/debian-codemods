@@ -925,7 +925,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "deb-transition-apply"
-version = "0.163.0"
+version = "0.174.0"
 dependencies = [
  "breezyshim",
  "clap",
@@ -2454,7 +2454,7 @@ dependencies = [
 
 [[package]]
 name = "import-uncommitted"
-version = "0.163.0"
+version = "0.174.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -3186,7 +3186,7 @@ dependencies = [
 
 [[package]]
 name = "multiarch-hints"
-version = "0.163.0"
+version = "0.174.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -4592,7 +4592,7 @@ dependencies = [
 
 [[package]]
 name = "scrub-obsolete"
-version = "0.163.0"
+version = "0.174.0"
 dependencies = [
  "async-trait",
  "breezyshim",
