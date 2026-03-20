@@ -1,9 +1,9 @@
 use crate::{FixerError, FixerResult, LintianIssue};
-use deb822_lossless::{Deb822, Paragraph};
+use deb822_lossless::Paragraph;
+use debian_copyright::lossless::Copyright;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
-use std::str::FromStr;
 use tracing::warn;
 
 const VALID_FIELD_NAMES: &[&str] = &[
@@ -28,8 +28,14 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let content = fs::read_to_string(&copyright_path)?;
-    let deb822 = Deb822::from_str(&content)
-        .map_err(|e| FixerError::Other(format!("Failed to parse debian/copyright: {:?}", e)))?;
+    let (copyright, _errors) = match Copyright::from_str_relaxed(&content) {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::debug!("debian/copyright is not machine-readable: {:?}", e);
+            return Err(FixerError::NoChanges);
+        }
+    };
+    let deb822 = copyright.as_deb822();
 
     let valid_fields: HashSet<&str> = VALID_FIELD_NAMES.iter().copied().collect();
     let mut case_fixed = Vec::new();
@@ -301,6 +307,23 @@ mod tests {
         let content = fs::read_to_string(debian_dir.join("copyright")).unwrap();
         assert!(content.contains("Comment: blah"));
         assert!(!content.contains("X-Comment: blah"));
+    }
+
+    #[test]
+    fn test_not_machine_readable() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        fs::write(
+            debian_dir.join("copyright"),
+            "This is not a machine-readable copyright file.\n",
+        )
+        .unwrap();
+
+        let result = run(base_path);
+        assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 
     #[test]
