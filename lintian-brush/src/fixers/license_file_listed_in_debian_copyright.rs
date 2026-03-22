@@ -22,9 +22,13 @@ pub fn run(
     }
 
     let content = std::fs::read_to_string(&copyright_path)?;
-    let mut copyright: Copyright = content
-        .parse()
-        .map_err(|e| FixerError::Other(format!("Failed to parse copyright file: {:?}", e)))?;
+    let mut copyright: Copyright = match content.parse() {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::debug!("debian/copyright is not machine-readable: {:?}", e);
+            return Err(FixerError::NoChanges);
+        }
+    };
 
     // Regex taken from /usr/share/lintian/checks/debian/copyright.pm
     let re_license = Regex::new(r"(^|/)(COPYING[^/]*|LICENSE)$").unwrap();
@@ -103,6 +107,31 @@ pub fn run(
     }
 
     Ok(result.build())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_not_machine_readable() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        fs::write(
+            debian_dir.join("copyright"),
+            "This is not a machine-readable copyright file.\n",
+        )
+        .unwrap();
+
+        let preferences = FixerPreferences::default();
+        let result = run(base_path, "test-package", &preferences);
+        assert!(matches!(result, Err(FixerError::NoChanges)));
+    }
 }
 
 declare_fixer! {

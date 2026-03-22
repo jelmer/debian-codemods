@@ -56,9 +56,13 @@ pub fn run(
     }
 
     let content = std::fs::read_to_string(&copyright_path)?;
-    let copyright: Copyright = content
-        .parse()
-        .map_err(|e| FixerError::Other(format!("Failed to parse debian/copyright: {:?}", e)))?;
+    let copyright: Copyright = match content.parse() {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::debug!("debian/copyright is not machine-readable: {:?}", e);
+            return Err(FixerError::NoChanges);
+        }
+    };
 
     let header = copyright
         .header()
@@ -271,6 +275,28 @@ License: GPL-3+
 
         let result = run(base_path, "test-package", &preferences);
         // Should not make changes when only low-certainty metadata available
+        assert!(matches!(result, Err(FixerError::NoChanges)));
+    }
+
+    #[test]
+    fn test_not_machine_readable() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        fs::write(
+            debian_dir.join("copyright"),
+            "This is not a machine-readable copyright file.\n",
+        )
+        .unwrap();
+
+        let preferences = FixerPreferences {
+            net_access: Some(false),
+            ..Default::default()
+        };
+
+        let result = run(base_path, "test-package", &preferences);
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 
