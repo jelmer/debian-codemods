@@ -21,7 +21,13 @@ pub fn run(
         ));
     }
 
-    let content = std::fs::read_to_string(&copyright_path)?;
+    let content = match std::fs::read_to_string(&copyright_path) {
+        Ok(content) => content,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Err(FixerError::NoChanges);
+        }
+        Err(e) => return Err(e.into()),
+    };
     let mut copyright: Copyright = match content.parse() {
         Ok(c) => c,
         Err(e) => {
@@ -114,6 +120,18 @@ mod tests {
     use super::*;
     use std::fs;
     use tempfile::TempDir;
+
+    #[test]
+    fn test_no_copyright_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        let preferences = FixerPreferences::default();
+        let result = run(base_path, "test-package", &preferences);
+        assert!(matches!(result, Err(FixerError::NoChanges)));
+    }
 
     #[test]
     fn test_not_machine_readable() {
