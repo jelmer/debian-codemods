@@ -18,7 +18,7 @@ regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
-sqlx.workspace = true
+sqlx = { workspace = true, features = ["postgres"] }
 tokio = { workspace = true, features = ["full"] }
 clap = { workspace = true, features = ["derive", "env"], optional = true }
 async-trait = "0.1"
