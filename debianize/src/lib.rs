@@ -1813,16 +1813,8 @@ fn run_debianize_fixers(
     log::info!("Running lintian fixers on debianized package");
 
     // Get available fixers
-    let fixers: Vec<Box<dyn lintian_brush::Fixer>> = match lintian_brush::available_lintian_fixers(
-        None, // Use default fixers directory
-        Some(preferences.force_subprocess),
-    ) {
-        Ok(fixers) => fixers.collect(),
-        Err(e) => {
-            log::warn!("Failed to load lintian fixers: {:?}", e);
-            return Ok(());
-        }
-    };
+    let fixers: Vec<Box<dyn lintian_brush::Fixer>> =
+        lintian_brush::available_lintian_fixers().collect();
 
     log::info!("Found {} lintian fixers", fixers.len());
 

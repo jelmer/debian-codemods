@@ -10,7 +10,7 @@ _lintian_brush ()
     cur=${COMP_WORDS[COMP_CWORD]}
 
     fixers=$(lintian-brush --list-fixers 2>&1)
-    globalOpts=(-h --no-update-changelog --update-changelog --version --list-fixers --list-tags --fixers-dir --verbose --directory --diff --dry-run --modern --identity --disable-net-access)
+    globalOpts=(-h --no-update-changelog --update-changelog --version --list-fixers --list-tags --verbose --directory --diff --dry-run --modern --identity --disable-net-access)
 
     # complete command name if we are not already past the command
     COMPREPLY=( $( compgen -W "$fixers ${globalOpts[*]}" -- $cur ) )

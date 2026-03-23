@@ -19,8 +19,8 @@ struct FixerArgs {
     /// Specific fixers to run
     fixers: Option<Vec<String>>,
 
-    /// Path to fixer scripts
-    #[arg(short, long)]
+    /// Path to fixer scripts (deprecated, no longer used)
+    #[arg(short, long, hide = true)]
     fixers_dir: Option<PathBuf>,
 
     /// Exclude fixers
@@ -306,16 +306,11 @@ fn main() -> Result<(), i32> {
     // TODO(jelmer): Allow changing this via arguments
     let timeout = Some(chrono::Duration::seconds(10));
 
-    let fixers_iter = match lintian_brush::available_lintian_fixers(
-        args.fixers.fixers_dir.as_deref(),
-        Some(args.fixers.force_subprocess),
-    ) {
-        Ok(fixers) => fixers,
-        Err(e) => {
-            tracing::error!("Error loading fixers: {}", e);
-            std::process::exit(1);
-        }
-    };
+    if args.fixers.fixers_dir.is_some() {
+        tracing::warn!("--fixers-dir is deprecated and has no effect; all fixers are now built-in");
+    }
+
+    let fixers_iter = lintian_brush::available_lintian_fixers();
 
     let mut fixers: Vec<_> = fixers_iter.collect();
 

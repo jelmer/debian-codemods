@@ -35,11 +35,10 @@ fn issues_match_with_wildcards(expected: &[LintianIssue], actual: &[LintianIssue
 #[test]
 fn test_all_test_dirs_have_matching_fixers() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let fixers_dir = Path::new(manifest_dir).join("fixers");
     let tests_dir = Path::new(manifest_dir).join("tests");
 
     // Get list of all fixer names from all_lintian_fixers() (including disabled ones)
-    let all_fixers = all_lintian_fixers(Some(&fixers_dir), None).expect("Failed to get all fixers");
+    let all_fixers = all_lintian_fixers();
 
     let fixer_names: std::collections::HashSet<String> =
         all_fixers.map(|f| f.name().to_string()).collect();
@@ -78,8 +77,7 @@ fn test_all_test_dirs_have_matching_fixers() {
 
 #[test]
 fn test_all_fixers_handle_missing_source_stanza() {
-    let fixers_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixers");
-    let fixers = all_lintian_fixers(Some(&fixers_dir), None).unwrap();
+    let fixers = all_lintian_fixers();
 
     let mut failures = Vec::new();
 
@@ -288,8 +286,7 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
 
     // Use the regular fixer infrastructure to find and run the fixer
     // Force subprocess mode for all fixers to avoid Python GIL race conditions in parallel tests
-    let fixers_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixers");
-    let fixers = all_lintian_fixers(Some(&fixers_dir), Some(true)).unwrap();
+    let fixers = all_lintian_fixers();
     let fixer = fixers
         .into_iter()
         .find(|f| f.name() == fixer_name)
