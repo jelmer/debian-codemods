@@ -64,3 +64,26 @@ use debianize::{debianize, DebianizePreferences};
 The main entry point is the `debianize()` function, which takes a working tree,
 preferences, upstream metadata, and an upstream branch, and returns a
 `DebianizeResult`.
+
+
+## Contributing to debianize
+
+To contribute to debianize you need to create a fork for the [upstream](https://salsa.debian.org/jelmer/debian-codemods.git) and create a new branch to carry out your development under the `/debianize` directory. 
+
+**Creating a dev environment**
+
+Since **debianize** is still in its early stages, you will need to make a testing environment to carry out our changes, so that it won't effect your actual distro. For that you might a need a container or a VM to test your changes. 
+
+To streamline your development process with debianize, you'll need some libraries and tools to help you out.
+
+- ognibuild
+    `cargo install ognibuild`
+- guess-upstream-metadata
+    `cargo install guess-upstream-metadata`
+- breezy
+    `apt install brz`
+- brz-debian (debian plugin for breezy)
+    `apt install brz-debian`
+
+>Note: For the apt based libraries, you might need to add unstable repositores to your `/etc/apt/sources.list.d` if you're not using any container or VM, so that you will get latest versions of the libraries.
+
