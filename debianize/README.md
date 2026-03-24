@@ -72,18 +72,16 @@ To contribute to debianize you need to create a fork for the [upstream](https://
 
 **Creating a dev environment**
 
-Since **debianize** is still in its early stages, you will need to make a testing environment to carry out our changes, so that it won't effect your actual distro. For that you might a need a container or a VM to test your changes. 
+Since **debianize** is still in its early stages, it is recommended to develop on an unstable system - whether on bare metal or in a VM/container.
 
 To streamline your development process with debianize, you'll need some libraries and tools to help you out.
 
-- ognibuild
+- additional dependencies assuming you're working on an unstable system<br>
+    `apt build-dep debian-codemods`
+- _ognibuild_ (helps in packaging)<br>
     `cargo install ognibuild`
-- guess-upstream-metadata
-    `cargo install guess-upstream-metadata`
-- breezy
-    `apt install brz`
-- brz-debian (debian plugin for breezy)
-    `apt install brz-debian`
+- _upstream-ontologist_ (helps in fetching the metadata for the package)<br>
+    `cargo install upstream-ontologist`
 
->Note: For the apt based libraries, you might need to add unstable repositores to your `/etc/apt/sources.list.d` if you're not using any container or VM, so that you will get latest versions of the libraries.
+>Note: Although not **recommended** if you're using a stable system, you might need to add unstable repositories to your `/etc/apt/sources.list.d` if you're not following the above setup, so that you will get latest versions of the dependencies.
 
