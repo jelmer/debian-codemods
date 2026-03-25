@@ -256,11 +256,105 @@ fn upgrade_to_installsystemd(
 }
 
 // Upgrade to debhelper 12
+fn uses_libexecdir(base_path: &Path) -> bool {
+    for name in &["configure.ac", "configure.in", "Makefile.am", "meson.build"] {
+        if let Ok(content) = fs::read_to_string(base_path.join(name)) {
+            if content.contains("libexecdir") {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn upgrade_to_debhelper_12(
     base_path: &Path,
     transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
     update_rules_for_compat_12(base_path, transforms)?;
+
+    // In compat 12, autoconf and meson no longer pass --libexecdir explicitly.
+    // Add an override so files still end up in /usr/libexec.
+    let buildsystem = match detect_debhelper_buildsystem(base_path, None) {
+        Ok(Some(bs)) if bs == "autoconf" || bs == "meson" => bs,
+        _ => return Ok(()),
+    };
+    if !uses_libexecdir(base_path) {
+        return Ok(());
+    }
+
+    let rules_path = base_path.join("debian/rules");
+    if !rules_path.exists() {
+        return Ok(());
+    }
+
+    let mut file = std::fs::File::open(&rules_path)
+        .map_err(|e| FixerError::Other(format!("Failed to open rules: {:?}", e)))?;
+    let mut mf = Makefile::from_reader(&mut file)
+        .map_err(|e| FixerError::Other(format!("Failed to read makefile: {:?}", e)))?;
+
+    let mut changed = false;
+    let has_override = mf
+        .rules()
+        .any(|rule| rule.targets().any(|t| t == "override_dh_auto_configure"));
+
+    if has_override {
+        for mut rule in mf.rules() {
+            if !rule.targets().any(|t| t == "override_dh_auto_configure") {
+                continue;
+            }
+            let recipes: Vec<String> = rule.recipes().collect();
+            for (idx, recipe) in recipes.iter().enumerate() {
+                if !recipe.trim_start().starts_with("dh_auto_configure") {
+                    continue;
+                }
+                // Arguments after -- are passed to the underlying configure.
+                // Apply the option to the part after --.
+                if let Some(sep_pos) = recipe.find(" -- ") {
+                    let (before, after) = recipe.split_at(sep_pos + 4);
+                    let new_after = crate::rules::dh_invoke_set_option_argument_soft(
+                        after,
+                        "--libexecdir",
+                        "/usr/libexec",
+                    );
+                    if new_after != after {
+                        let new_recipe = format!("{}{}", before, new_after);
+                        rule.replace_command(idx, &new_recipe);
+                        changed = true;
+                    }
+                } else {
+                    let new_recipe = format!("{} -- --libexecdir=/usr/libexec", recipe.trim_end());
+                    rule.replace_command(idx, &new_recipe);
+                    changed = true;
+                }
+            }
+        }
+    } else {
+        let new_rule = Rule::new(
+            &["override_dh_auto_configure"],
+            &[],
+            &["dh_auto_configure -- --libexecdir=/usr/libexec"],
+        );
+        let num_rules = mf.rules().count();
+        mf.insert_rule(num_rules, new_rule).map_err(|e| {
+            FixerError::Other(format!(
+                "Failed to insert override_dh_auto_configure rule: {:?}",
+                e,
+            ))
+        })?;
+        changed = true;
+    }
+
+    if !changed {
+        return Ok(());
+    }
+
+    fs::write(&rules_path, mf.to_string())?;
+    transforms.add(format!(
+        "debian/rules: Add --libexecdir=/usr/libexec for {} build system.",
+        buildsystem
+    ));
+
     Ok(())
 }
 
@@ -988,5 +1082,109 @@ mod tests {
 
         let result = run(base_path, &preferences);
         assert!(matches!(result, Err(FixerError::NoChanges)));
+    }
+
+    #[test]
+    fn test_uses_libexecdir() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+
+        assert!(!uses_libexecdir(base_path));
+
+        fs::write(base_path.join("configure.ac"), "AC_INIT\n").unwrap();
+        assert!(!uses_libexecdir(base_path));
+
+        fs::write(
+            base_path.join("Makefile.am"),
+            "myhelper_PROGRAMS = foo\nmyhelperdir = $(libexecdir)/bar\n",
+        )
+        .unwrap();
+        assert!(uses_libexecdir(base_path));
+    }
+
+    #[test]
+    fn test_upgrade_to_12_adds_libexecdir_override() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        // Autoconf package that uses libexecdir
+        fs::write(base_path.join("configure.ac"), "AC_INIT\n").unwrap();
+        fs::write(base_path.join("Makefile.am"), "libexecdir = @libexecdir@\n").unwrap();
+        fs::write(
+            debian_dir.join("rules"),
+            "#!/usr/bin/make -f\n\n%:\n\tdh $@\n",
+        )
+        .unwrap();
+
+        let mut transforms = Transformations::new();
+        upgrade_to_debhelper_12(base_path, &mut transforms).unwrap();
+
+        let rules = fs::read_to_string(debian_dir.join("rules")).unwrap();
+        assert!(rules.contains("override_dh_auto_configure"));
+        assert!(rules.contains("--libexecdir=/usr/libexec"));
+    }
+
+    #[test]
+    fn test_upgrade_to_12_existing_override_no_libexecdir() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        fs::write(base_path.join("configure.ac"), "AC_INIT\n").unwrap();
+        fs::write(base_path.join("Makefile.am"), "libexecdir = @libexecdir@\n").unwrap();
+        fs::write(
+            debian_dir.join("rules"),
+            "#!/usr/bin/make -f\n\noverride_dh_auto_configure:\n\tdh_auto_configure -- --prefix=/usr\n\n%:\n\tdh $@\n",
+        )
+        .unwrap();
+
+        let mut transforms = Transformations::new();
+        upgrade_to_debhelper_12(base_path, &mut transforms).unwrap();
+
+        let rules = fs::read_to_string(debian_dir.join("rules")).unwrap();
+        assert!(rules.contains("--libexecdir=/usr/libexec"));
+        assert!(rules.contains("--prefix=/usr"));
+    }
+
+    #[test]
+    fn test_upgrade_to_12_existing_override_with_libexecdir() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        fs::write(base_path.join("configure.ac"), "AC_INIT\n").unwrap();
+        fs::write(base_path.join("Makefile.am"), "libexecdir = @libexecdir@\n").unwrap();
+        let original = "#!/usr/bin/make -f\n\noverride_dh_auto_configure:\n\tdh_auto_configure -- --libexecdir=/custom/path\n\n%:\n\tdh $@\n";
+        fs::write(debian_dir.join("rules"), original).unwrap();
+
+        let mut transforms = Transformations::new();
+        upgrade_to_debhelper_12(base_path, &mut transforms).unwrap();
+
+        let rules = fs::read_to_string(debian_dir.join("rules")).unwrap();
+        assert!(rules.contains("--libexecdir=/custom/path"));
+        assert!(!rules.contains("--libexecdir=/usr/libexec"));
+    }
+
+    #[test]
+    fn test_upgrade_to_12_no_libexecdir_usage() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        // Autoconf package that doesn't use libexecdir
+        fs::write(base_path.join("configure.ac"), "AC_INIT\n").unwrap();
+        let original = "#!/usr/bin/make -f\n\n%:\n\tdh $@\n";
+        fs::write(debian_dir.join("rules"), original).unwrap();
+
+        let mut transforms = Transformations::new();
+        upgrade_to_debhelper_12(base_path, &mut transforms).unwrap();
+
+        let rules = fs::read_to_string(debian_dir.join("rules")).unwrap();
+        assert_eq!(rules, original);
     }
 }

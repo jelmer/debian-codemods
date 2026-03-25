@@ -7,6 +7,8 @@ debian-codemods (0.174) UNRELEASED; urgency=medium
     description.
   * Disable default features for sqlx to avoid pulling in sqlite
     dependency chain. Closes: #1131695
+  * When upgrading to debhelper compat 12, add --libexecdir=/usr/libexec
+    for autoconf and meson packages that use libexecdir. Closes: #963196
   * ancient-maintscript-entry: Include details about removed entries
     and their upload dates in commit messages. Closes: #985834
   * Add regression test for debian-rules-missing-recommended-target
