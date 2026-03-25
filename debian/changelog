@@ -7,6 +7,9 @@ debian-codemods (0.174) UNRELEASED; urgency=medium
     description.
   * Disable default features for sqlx to avoid pulling in sqlite
     dependency chain. Closes: #1131695
+  * Add regression test for debian-rules-missing-recommended-target
+    not modifying rules files with dh pattern rules and build
+    overrides. Closes: #1131043
   * Include upgrade checklist verification details in commit messages
     when bumping Standards-Version. Closes: #1023505
 
