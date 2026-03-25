@@ -1601,6 +1601,7 @@ pub fn run_lintian_fixers(
                     return Err(OverallError::BrzError(e));
                 }
                 FixerError::Io(e) => {
+                    tracing::error!("Fixer {} hit I/O error: {}", fixer_name, e);
                     return Err(OverallError::IoError(e));
                 }
                 FixerError::NotCertainEnough(actual_certainty, minimum_certainty, _overrides) => {
