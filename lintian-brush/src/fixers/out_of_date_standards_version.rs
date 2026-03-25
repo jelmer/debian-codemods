@@ -555,11 +555,13 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // Now try to upgrade through the path
     let mut current = current_version_str.clone();
     let path = upgrade_path();
+    let mut all_reasons: Vec<String> = Vec::new();
 
     while let Some(&target) = path.get(current.as_str()) {
         if let Some(check_fn) = get_check_fn(target) {
             match check_fn(base_path) {
-                UpgradeCheckResult::Success(_reasons) => {
+                UpgradeCheckResult::Success(reasons) => {
+                    all_reasons.extend(reasons);
                     current = target.to_string();
                 }
                 UpgradeCheckResult::Failure { section, reason } => {
@@ -598,13 +600,22 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     source.set("Standards-Version", &current);
     std::fs::write(&control_path, control.to_string())?;
 
-    Ok(FixerResult::builder(format!(
+    let mut description = format!(
         "Update standards version to {}, no changes needed.",
         current
-    ))
-    .certainty(crate::Certainty::Certain)
-    .fixed_issues(vec![issue])
-    .build())
+    );
+
+    if !all_reasons.is_empty() {
+        description.push_str("\n\nUpgrade checklist verified:");
+        for reason in &all_reasons {
+            description.push_str(&format!("\n * {}", reason));
+        }
+    }
+
+    Ok(FixerResult::builder(description)
+        .certainty(crate::Certainty::Certain)
+        .fixed_issues(vec![issue])
+        .build())
 }
 
 declare_fixer! {

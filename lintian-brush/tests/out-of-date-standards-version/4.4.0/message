@@ -1,4 +1,14 @@
 Update standards version to 4.6.2, no changes needed.
+
+Upgrade checklist verified:
+ * package uses debhelper
+ * package has no Vcs-<type> fields
+ * Files entries in debian/copyright don't refer to directories
+ * Package does not create users
+ * Package does not ship init files
+ * Package does not have any patches
+ * Package does not contain any references to lib64
+ * Package does not provide x-window-manager alternative
 Certainty: certain
 Fixed-Lintian-Issues:
  source: ancient-standards-version 4.3.0 (released 2018-12-23) (current is 4.7.3.0)

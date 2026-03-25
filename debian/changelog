@@ -9,6 +9,8 @@ debian-codemods (0.174) UNRELEASED; urgency=medium
     dependency chain. Closes: #1131695
   * When upgrading to debhelper compat 12, add --libexecdir=/usr/libexec
     for autoconf and meson packages that use libexecdir. Closes: #963196
+  * Include upgrade checklist verification details in commit messages
+    when bumping Standards-Version. Closes: #1023505
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 20 Mar 2026 13:36:23 +0000
 
