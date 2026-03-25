@@ -105,10 +105,16 @@ fn is_well_past(
     true
 }
 
+/// Information about a removed maintscript entry.
+struct RemovedEntry {
+    /// The maintscript entry that was removed
+    entry: Entry,
+}
+
 fn drop_obsolete_maintscript_entries<F>(
     maintscript_path: &Path,
     should_remove: F,
-) -> Result<usize, FixerError>
+) -> Result<Vec<RemovedEntry>, FixerError>
 where
     F: Fn(Option<&str>, &Version) -> bool,
 {
@@ -117,7 +123,7 @@ where
 
     let mut new_lines = Vec::new();
     let mut comments = Vec::new();
-    let mut removed_count = 0;
+    let mut removed = Vec::new();
 
     for line in lines {
         let trimmed = line.trim();
@@ -139,7 +145,7 @@ where
 
                 if remove {
                     comments.clear();
-                    removed_count += 1;
+                    removed.push(RemovedEntry { entry });
                 } else {
                     new_lines.extend(comments.drain(..).map(|s| s.to_string()));
                     new_lines.push(line.to_string());
@@ -156,8 +162,8 @@ where
     // Add trailing comments
     new_lines.extend(comments.into_iter().map(|s| s.to_string()));
 
-    if removed_count == 0 {
-        return Ok(0);
+    if removed.is_empty() {
+        return Ok(removed);
     }
 
     // Delete file if empty, otherwise write
@@ -171,7 +177,31 @@ where
         fs::write(maintscript_path, output)?;
     }
 
-    Ok(removed_count)
+    Ok(removed)
+}
+
+/// Find the upload date for a given version in the changelog dates.
+fn find_version_date(
+    version: &Version,
+    cl_dates: &[(Version, DateTime<Utc>)],
+) -> Option<DateTime<Utc>> {
+    cl_dates
+        .iter()
+        .find(|(v, _)| v == version)
+        .map(|(_, dt)| *dt)
+}
+
+/// Format a detail line for a removed maintscript entry, including the version
+/// it applied to and when that version was uploaded.
+fn format_removed_entry_detail(
+    entry: &RemovedEntry,
+    cl_dates: &[(Version, DateTime<Utc>)],
+) -> String {
+    let version = entry.entry.prior_version().unwrap();
+    let date_info = find_version_date(version, cl_dates)
+        .map(|dt| format!(", uploaded on {}", dt.format("%Y-%m-%d")))
+        .unwrap_or_default();
+    format!("\"{}\" (version {}{})", entry.entry, version, date_info)
 }
 
 pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
@@ -188,8 +218,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
     let cl_dates = parse_changelog_dates(base_path)?;
 
     // Process each maintscript file
-    let mut total_entries = 0;
-    let mut modified_files = 0;
+    let mut all_removed: Vec<RemovedEntry> = Vec::new();
 
     for name in maintscripts {
         let maintscript_path = base_path.join("debian").join(&name);
@@ -198,24 +227,25 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
             is_well_past(version, &cl_dates, &date_threshold)
         })?;
 
-        if removed > 0 {
-            total_entries += removed;
-            modified_files += 1;
-        }
+        all_removed.extend(removed);
     }
 
-    if total_entries == 0 {
+    if all_removed.is_empty() {
         return Err(FixerError::NoChanges);
     }
 
-    let description = if total_entries == 1 {
+    let summary = if all_removed.len() == 1 {
         "Remove an obsolete maintscript entry.".to_string()
     } else {
-        format!(
-            "Remove {} obsolete maintscript entries in {} files.",
-            total_entries, modified_files
-        )
+        format!("Remove {} obsolete maintscript entries.", all_removed.len())
     };
+
+    let details: Vec<String> = all_removed
+        .iter()
+        .map(|r| format_removed_entry_detail(r, &cl_dates))
+        .collect();
+
+    let description = format!("{}\n\n{}", summary, details.join("\n"));
 
     Ok(FixerResult::builder(description).build())
 }

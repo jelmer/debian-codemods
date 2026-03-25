@@ -9,6 +9,11 @@ debian-codemods (0.174) UNRELEASED; urgency=medium
     dependency chain. Closes: #1131695
   * When upgrading to debhelper compat 12, add --libexecdir=/usr/libexec
     for autoconf and meson packages that use libexecdir. Closes: #963196
+  * ancient-maintscript-entry: Include details about removed entries
+    and their upload dates in commit messages. Closes: #985834
+  * Add regression test for debian-rules-missing-recommended-target
+    not modifying rules files with dh pattern rules and build
+    overrides. Closes: #1131043
   * Include upgrade checklist verification details in commit messages
     when bumping Standards-Version. Closes: #1023505
 
