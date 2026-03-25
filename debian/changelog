@@ -16,6 +16,8 @@ debian-codemods (0.174) UNRELEASED; urgency=medium
     overrides. Closes: #1131043
   * Include upgrade checklist verification details in commit messages
     when bumping Standards-Version. Closes: #1023505
+  * out-of-date-standards-version: Add support for standards versions
+    4.7.0 through 4.7.3.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 20 Mar 2026 13:36:23 +0000
 

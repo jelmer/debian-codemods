@@ -1,0 +1,7 @@
+Update standards version to 4.7.0, no changes needed.
+
+Upgrade checklist verified:
+ * Package does not use dpkg-divert
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: ancient-standards-version 4.6.2 (released 2022-12-17) (current is 4.7.3.0)
