@@ -7,6 +7,8 @@ debian-codemods (0.174) UNRELEASED; urgency=medium
     description.
   * Disable default features for sqlx to avoid pulling in sqlite
     dependency chain. Closes: #1131695
+  * ancient-maintscript-entry: Include details about removed entries
+    and their upload dates in commit messages. Closes: #985834
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 20 Mar 2026 13:36:23 +0000
 

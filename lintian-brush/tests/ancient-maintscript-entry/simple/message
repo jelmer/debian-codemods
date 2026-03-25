@@ -1,1 +1,3 @@
 Remove an obsolete maintscript entry.
+
+"rm_conffile /etc/blah/blah 0.1-1" (version 0.1-1, uploaded on 2011-03-22)
