@@ -5,6 +5,8 @@ debian-codemods (0.174) UNRELEASED; urgency=medium
   * Add fixer for package-relation-with-perl-modules.
   * debian/control: Fix possible-unindented-list-in-extended-
     description.
+  * Disable default features for sqlx to avoid pulling in sqlite
+    dependency chain. Closes: #1131695
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 20 Mar 2026 13:36:23 +0000
 

@@ -2468,7 +2468,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
- "sqlx",
  "svp-client",
  "tempfile",
  "url",
