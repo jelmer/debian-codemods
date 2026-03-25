@@ -1,0 +1,14 @@
+Source: test-package
+Section: admin
+Priority: optional
+Maintainer: John Doe <john@example.com>
+Build-Depends:
+ debhelper (>= 12~),
+ pkg-config
+Standards-Version: 4.2.0
+
+Package: test-package
+Architecture: linux-any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Test package
+ A test package.

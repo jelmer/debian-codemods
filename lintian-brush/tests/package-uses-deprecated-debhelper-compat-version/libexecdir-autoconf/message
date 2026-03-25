@@ -1,0 +1,4 @@
+Bump debhelper from old 11 to 12.
++ debian/rules: Add --libexecdir=/usr/libexec for autoconf build system.
+Fixed-Lintian-Issues:
+ source: package-uses-old-debhelper-compat-version 11
