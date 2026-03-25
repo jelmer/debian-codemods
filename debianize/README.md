@@ -64,3 +64,22 @@ use debianize::{debianize, DebianizePreferences};
 The main entry point is the `debianize()` function, which takes a working tree,
 preferences, upstream metadata, and an upstream branch, and returns a
 `DebianizeResult`.
+
+
+## Contributing to debianize
+
+To contribute to debianize you need to create a fork for the [upstream](https://salsa.debian.org/jelmer/debian-codemods.git) and create a new branch, to carry out your development under the `/debianize` directory. 
+
+**Creating a dev environment**
+
+To add or test features for **debianize**, it is recommended to develop on an unstable system - whether on bare metal or in a VM/container. For carrying your development process with debianize, you'll need some libraries and tools to help you out.
+
+- additional dependencies assuming you're working on an unstable system<br>
+    `apt build-dep debian-codemods`
+- _ognibuild_ (helps in packaging)<br>
+    `cargo install ognibuild`
+- _upstream-ontologist_ (helps in creating the metadata for the package)<br>
+    `cargo install upstream-ontologist`
+
+>Note: Although not **recommended** if you're using a stable system, you might need to add unstable repositories to your `/etc/apt/sources.list.d` if you're not following the above setup, so that you will get latest versions of the dependencies.
+
