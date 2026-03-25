@@ -1,7 +1,8 @@
 Update standards version to 4.1.5, no changes needed.
 
 Upgrade checklist verified:
- * Package did not recently introduce epoch
+ 4.1.4 → 4.1.5:
+  * Package did not recently introduce epoch
 Certainty: certain
 Fixed-Lintian-Issues:
  source: ancient-standards-version 4.1.4 (released 2018-04-05) (current is 4.7.3.0)

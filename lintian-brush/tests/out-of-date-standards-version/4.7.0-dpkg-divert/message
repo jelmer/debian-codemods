@@ -1,7 +1,8 @@
 Update standards version to 4.6.2, no changes needed.
 
 Upgrade checklist verified:
- * Package does not provide x-window-manager alternative
+ 4.6.1 → 4.6.2:
+  * Package does not provide x-window-manager alternative
 Certainty: certain
 Fixed-Lintian-Issues:
  source: ancient-standards-version 4.6.1 (released 2022-05-11) (current is 4.7.3.0)

@@ -695,13 +695,15 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // Now try to upgrade through the path
     let mut current = current_version_str.clone();
     let path = upgrade_path();
-    let mut all_reasons: Vec<String> = Vec::new();
+    let mut upgrade_reasons: Vec<(String, String, Vec<String>)> = Vec::new();
 
     while let Some(&target) = path.get(current.as_str()) {
         if let Some(check_fn) = get_check_fn(target) {
             match check_fn(base_path) {
                 UpgradeCheckResult::Success(reasons) => {
-                    all_reasons.extend(reasons);
+                    if !reasons.is_empty() {
+                        upgrade_reasons.push((current.clone(), target.to_string(), reasons));
+                    }
                     current = target.to_string();
                 }
                 UpgradeCheckResult::Failure { section, reason } => {
@@ -745,10 +747,13 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         current
     );
 
-    if !all_reasons.is_empty() {
+    if !upgrade_reasons.is_empty() {
         description.push_str("\n\nUpgrade checklist verified:");
-        for reason in &all_reasons {
-            description.push_str(&format!("\n * {}", reason));
+        for (from, to, reasons) in &upgrade_reasons {
+            description.push_str(&format!("\n {} → {}:", from, to));
+            for reason in reasons {
+                description.push_str(&format!("\n  * {}", reason));
+            }
         }
     }
 
