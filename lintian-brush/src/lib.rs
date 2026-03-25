@@ -882,61 +882,14 @@ impl std::fmt::Display for FixerError {
 
 impl std::error::Error for FixerError {}
 
-/// Errors that can occur when discovering fixers
-#[derive(Debug)]
-pub enum FixerDiscoverError {
-    /// I/O error
-    Io(std::io::Error),
-    /// YAML parsing error
-    Yaml(serde_yaml::Error),
-    /// No fixers directory found
-    NoFixersDir,
-}
-
-impl From<std::io::Error> for FixerDiscoverError {
-    fn from(e: std::io::Error) -> Self {
-        Self::Io(e)
-    }
-}
-
-impl From<serde_yaml::Error> for FixerDiscoverError {
-    fn from(e: serde_yaml::Error) -> Self {
-        Self::Yaml(e)
-    }
-}
-
-impl std::fmt::Display for FixerDiscoverError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            FixerDiscoverError::Io(e) => write!(f, "IO error: {}", e),
-            FixerDiscoverError::Yaml(e) => write!(f, "YAML error: {}", e),
-            FixerDiscoverError::NoFixersDir => write!(f, "No fixers directory found"),
-        }
-    }
-}
-
-impl std::error::Error for FixerDiscoverError {}
-
 /// Return a list of all lintian fixers.
-///
-/// # Arguments
-///
-/// * `fixers_dir` - The directory to search for fixers.
-/// * `force_subprocess` - Force the use of a subprocess for all fixers.
-pub fn all_lintian_fixers(
-    _fixers_dir: Option<&std::path::Path>,
-    _force_subprocess: Option<bool>,
-) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
-    // Only return builtin Rust fixers (Python and shell script fixers have been removed)
-    Ok(builtin_fixers::get_builtin_fixers().into_iter())
+pub fn all_lintian_fixers() -> impl Iterator<Item = Box<dyn Fixer>> {
+    builtin_fixers::get_builtin_fixers().into_iter()
 }
 
 /// Get all available lintian fixers (builtin Rust fixers only).
-pub fn available_lintian_fixers(
-    fixers_dir: Option<&std::path::Path>,
-    force_subprocess: Option<bool>,
-) -> Result<impl Iterator<Item = Box<dyn Fixer>>, FixerDiscoverError> {
-    all_lintian_fixers(fixers_dir, force_subprocess)
+pub fn available_lintian_fixers() -> impl Iterator<Item = Box<dyn Fixer>> {
+    all_lintian_fixers()
 }
 
 /// Error indicating an unknown fixer was requested
@@ -1180,11 +1133,6 @@ pub fn data_file_path(
     }
 
     None
-}
-
-/// Find the directory containing fixer scripts
-pub fn find_fixers_dir() -> Option<std::path::PathBuf> {
-    data_file_path("fixers", |path| path.is_dir())
 }
 
 /// Run a lintian fixer on a tree.

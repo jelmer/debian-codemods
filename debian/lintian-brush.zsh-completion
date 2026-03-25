@@ -14,7 +14,6 @@ _lintian-brush() {
       '--version[show version number and exit]'
       '--list-fixers[list available fixers]'
       '--list-tags[list lintian tags for which fixers are available]'
-      '--fixers-dir=[set path to fixer scripts]:directory:_files -/'
       '--verbose[be verbose]'
       '--directory=[directory to run in]:directory:_files -/'
       '--diff[Print resulting diff afterwards]'
