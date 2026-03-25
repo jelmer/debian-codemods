@@ -21,6 +21,10 @@ fn upgrade_path() -> HashMap<&'static str, &'static str> {
     map.insert("4.5.1", "4.6.0");
     map.insert("4.6.0", "4.6.1");
     map.insert("4.6.1", "4.6.2");
+    map.insert("4.6.2", "4.7.0");
+    map.insert("4.7.0", "4.7.1");
+    map.insert("4.7.1", "4.7.2");
+    map.insert("4.7.2", "4.7.3");
     map
 }
 
@@ -425,6 +429,138 @@ fn check_4_6_2(base_path: &Path) -> UpgradeCheckResult {
     ])
 }
 
+fn check_for_dpkg_divert(debian_dir: &Path) -> Result<(), UpgradeCheckResult> {
+    let Ok(entries) = std::fs::read_dir(debian_dir) else {
+        return Ok(());
+    };
+
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+
+        if !name_str.ends_with(".postinst")
+            && !name_str.ends_with(".preinst")
+            && !name_str.ends_with(".postrm")
+            && !name_str.ends_with(".prerm")
+        {
+            continue;
+        }
+
+        if !entry.path().is_file() {
+            continue;
+        }
+
+        if poor_grep(&entry.path(), b"dpkg-divert") {
+            return Err(UpgradeCheckResult::Unable {
+                section: "3.9".to_string(),
+                reason: "unable to verify dpkg-divert usage follows new policy requirements"
+                    .to_string(),
+            });
+        }
+    }
+
+    Ok(())
+}
+
+fn check_4_7_0(base_path: &Path) -> UpgradeCheckResult {
+    // 3.9: maintainer scripts should prefer native mechanisms over dpkg-divert;
+    // must not divert systemd configuration files
+    let debian_dir = base_path.join("debian");
+    if !debian_dir.is_dir() {
+        return UpgradeCheckResult::Success(vec!["Package does not use dpkg-divert".to_string()]);
+    }
+
+    if let Err(result) = check_for_dpkg_divert(&debian_dir) {
+        return result;
+    }
+
+    UpgradeCheckResult::Success(vec!["Package does not use dpkg-divert".to_string()])
+}
+
+fn check_for_non_usr_paths(debian_dir: &Path) -> Result<(), UpgradeCheckResult> {
+    let Ok(entries) = std::fs::read_dir(debian_dir) else {
+        return Ok(());
+    };
+
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+
+        if !name_str.ends_with(".install") && !name_str.ends_with(".dirs") {
+            continue;
+        }
+
+        if !entry.path().is_file() {
+            continue;
+        }
+
+        // Check for installations to /bin, /lib, /sbin (without /usr prefix)
+        let Ok(content) = std::fs::read_to_string(entry.path()) else {
+            continue;
+        };
+
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            // Check destination (last path component in .install files)
+            let dest = if name_str.ends_with(".install") {
+                line.split_whitespace().last().unwrap_or(line)
+            } else {
+                line
+            };
+            if dest == "/bin"
+                || dest.starts_with("/bin/")
+                || dest == "/sbin"
+                || dest.starts_with("/sbin/")
+                || dest == "/lib"
+                || dest.starts_with("/lib/")
+                || dest.starts_with("/lib32")
+                || dest.starts_with("/lib64")
+            {
+                return Err(UpgradeCheckResult::Unable {
+                    section: "10.1".to_string(),
+                    reason: "package installs files to non-/usr paths".to_string(),
+                });
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn check_4_7_1(base_path: &Path) -> UpgradeCheckResult {
+    // 10.1: packages must not install files to /bin, /lib, /lib*, /sbin
+    let debian_dir = base_path.join("debian");
+    if !debian_dir.is_dir() {
+        return UpgradeCheckResult::Success(vec![
+            "Package does not install to non-/usr paths".to_string()
+        ]);
+    }
+
+    if let Err(result) = check_for_non_usr_paths(&debian_dir) {
+        return result;
+    }
+
+    UpgradeCheckResult::Success(vec![
+        "Package does not install to non-/usr paths".to_string()
+    ])
+}
+
+fn check_4_7_2(_base_path: &Path) -> UpgradeCheckResult {
+    // 10.1: Relaxation of previous restrictions for /usr/games.
+    // No new requirements to check.
+    UpgradeCheckResult::Success(vec![])
+}
+
+fn check_4_7_3(_base_path: &Path) -> UpgradeCheckResult {
+    // 5.6.6: Priority field no longer recommended; dpkg defaults to optional.
+    // 5.6.32 & 5.6.33: New documentation for Git-Tag-Tagger and Git-Tag-Info fields.
+    // No new requirements to check.
+    UpgradeCheckResult::Success(vec![])
+}
+
 fn get_check_fn(version: &str) -> Option<fn(&Path) -> UpgradeCheckResult> {
     match version {
         "4.1.1" => Some(check_4_1_1),
@@ -437,6 +573,10 @@ fn get_check_fn(version: &str) -> Option<fn(&Path) -> UpgradeCheckResult> {
         "4.6.0" => Some(check_4_6_0),
         "4.6.1" => Some(check_4_6_1),
         "4.6.2" => Some(check_4_6_2),
+        "4.7.0" => Some(check_4_7_0),
+        "4.7.1" => Some(check_4_7_1),
+        "4.7.2" => Some(check_4_7_2),
+        "4.7.3" => Some(check_4_7_3),
         _ => None,
     }
 }

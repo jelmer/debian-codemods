@@ -1,4 +1,4 @@
-Update standards version to 4.6.2, no changes needed.
+Update standards version to 4.7.3, no changes needed.
 
 Upgrade checklist verified:
  * Package does not create users
@@ -6,6 +6,8 @@ Upgrade checklist verified:
  * Package does not have any patches
  * Package does not contain any references to lib64
  * Package does not provide x-window-manager alternative
+ * Package does not use dpkg-divert
+ * Package does not install to non-/usr paths
 Certainty: certain
 Fixed-Lintian-Issues:
  source: ancient-standards-version 4.4.1 (released 2019-09-29) (current is 4.7.3.0)
