@@ -862,24 +862,6 @@ mod tests {
     }
 
     #[test]
-    fn test_generic_get_source_name() {
-        // Test with a basic metadata object
-        let metadata = UpstreamMetadata::new();
-        // Note: UpstreamMetadata doesn't have a set_name method,
-        // it's populated from external sources
-
-        // We can't easily create a WorkingTree for testing, so we'll test the logic
-        // by creating a temporary directory structure
-        let temp_dir = tempdir().unwrap();
-        let _temp_path = temp_dir.path();
-
-        // Test the expected behavior - it should extract the name from metadata
-        // Since we can't call the actual function without a WorkingTree,
-        // we'll test that the metadata structure is correct
-        assert_eq!(metadata.name(), None); // New metadata has no name initially
-    }
-
-    #[test]
     fn test_import_metadata_from_path() {
         // Test that the function signature is correct
         // We can't easily test the full functionality without a WorkingTree and network
@@ -1455,16 +1437,6 @@ pub fn debianize(
     let mut metadata = upstream_metadata.clone();
     import_metadata_from_path(wt, subpath, &mut metadata, preferences)?;
 
-    // Determine source name
-    let source_name = generic_get_source_name(wt, subpath, &metadata)
-        .ok_or_else(|| Error::SourceNameUnknown(metadata.name().map(|s| s.to_string())))?;
-
-    if !valid_debian_package_name(&source_name) {
-        return Err(Error::SourcePackageNameInvalid(source_name));
-    }
-
-    log::info!("Using source package name: {}", source_name);
-
     // Create upstream source
     if upstream_branch.is_none() {
         return Err(Error::Other("No upstream branch provided".to_string()));
@@ -1578,6 +1550,8 @@ pub fn debianize(
     let _orig_revid = upstream_branch_ref.last_revision();
 
     // Create a basic upstream import by copying content from the upstream branch
+    let source_name = generic_get_source_name(wt, subpath, &metadata)
+        .ok_or_else(|| Error::SourceNameUnknown(metadata.name().map(|s| s.to_string())))?;
     let _upstream_branch_name = basic_import_upstream_version(
         wt,
         subpath,
@@ -1661,6 +1635,22 @@ pub fn debianize(
         Some(maintainer.clone()),
         kickstart_from_dist,
     )?;
+
+    // TODO: Avoid re-parsing debian/control here; ideally the processor would
+    // return the source name it chose.
+    let control_path = wt.abspath(&debian_path.join("control"))?;
+    let control = debian_analyzer::control::TemplatedControlEditor::open(&control_path)
+        .map_err(|e| Error::Other(format!("Failed to open debian/control: {}", e)))?;
+    let source_name = control
+        .source()
+        .and_then(|s| s.name())
+        .unwrap_or(source_name);
+
+    if !valid_debian_package_name(&source_name) {
+        return Err(Error::SourcePackageNameInvalid(source_name));
+    }
+
+    log::info!("Using source package name: {}", source_name);
 
     // Create debian/source directory and format file
     let source_path = debian_path.join("source");
