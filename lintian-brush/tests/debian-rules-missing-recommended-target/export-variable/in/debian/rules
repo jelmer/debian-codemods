@@ -1,0 +1,13 @@
+#!/usr/bin/make -f
+
+DEB_CFLAGS_MAINT_APPEND = -Wno-error=incompatible-pointer-types
+export DEB_CFLAGS_MAINT_APPEND
+
+%:
+	dh $@ --buildsystem=pybuild
+
+override_dh_auto_build-arch:
+	dh_auto_build
+
+override_dh_auto_build-indep: override_dh_auto_build-arch
+	sphinx-build -N -bhtml doc/source build/html
