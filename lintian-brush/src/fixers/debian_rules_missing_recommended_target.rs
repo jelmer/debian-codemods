@@ -1,7 +1,7 @@
 use crate::{FixerError, FixerResult, LintianIssue};
 use debian_analyzer::rules::check_cdbs;
 use debian_control::Control;
-use makefile_lossless::Makefile;
+use makefile_lossless::{Makefile, Parse};
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
@@ -35,8 +35,20 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
 
     let content = fs::read_to_string(&rules_path)?;
-    let mut makefile: Makefile = Makefile::read_relaxed(content.as_bytes())
-        .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
+    let parsed = Parse::<Makefile>::parse_makefile(&content);
+    if !parsed.ok() {
+        tracing::warn!(
+            "debian/rules has parse errors, skipping: {}",
+            parsed
+                .errors()
+                .iter()
+                .map(|e| format!("line {}: {}", e.line, e.message))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        return Err(FixerError::NoChanges);
+    }
+    let mut makefile = parsed.tree();
 
     // Check if build-arch and build-indep targets already exist or are matched by wildcards
     let has_build_arch = makefile.find_rule_by_target_pattern("build-arch").is_some();

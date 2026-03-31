@@ -1,8 +1,10 @@
 debian-codemods (0.175) UNRELEASED; urgency=medium
 
   * Add support for standards-version 4.7.4.0.
+  * debian-rules-missing-recommended-target: Skip when debian/rules has
+    parse errors, to avoid incorrect modifications. Closes: #1131043
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 31 Mar 2026 15:20:17 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 26 Mar 2026 11:33:39 +0000
 
 debian-codemods (0.174) unstable; urgency=medium
 
