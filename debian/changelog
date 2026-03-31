@@ -1,3 +1,9 @@
+debian-codemods (0.175) UNRELEASED; urgency=medium
+
+  * Add support for standards-version 4.7.4.0.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 31 Mar 2026 15:20:17 +0100
+
 debian-codemods (0.174) unstable; urgency=medium
 
   * Bump upstream-ontologist dependency to 0.3.13; be more lenient when
