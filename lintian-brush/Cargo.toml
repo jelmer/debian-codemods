@@ -67,9 +67,8 @@ fs_extra = "1.3.0"
 maplit = { workspace = true }
 
 [features]
-default = ["svp", "python", "cli"]
+default = ["svp", "cli"]
 svp = []
-python = ["debian-analyzer/python"]
 cli = ["dep:clap"]
 udd = ["debian-analyzer/udd", "dep:sqlx"]
 

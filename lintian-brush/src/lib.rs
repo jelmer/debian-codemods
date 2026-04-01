@@ -219,35 +219,6 @@ pub enum LintianIssueParseError {
     InvalidPackageType(String),
 }
 
-#[cfg(feature = "python")]
-impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for LintianIssue {
-    type Error = pyo3::PyErr;
-
-    fn extract(ob: pyo3::Borrowed<'a, 'py, pyo3::PyAny>) -> pyo3::PyResult<Self> {
-        use pyo3::prelude::*;
-        let package = ob.getattr("package")?.extract::<Option<String>>()?;
-        let package_type = ob
-            .getattr("package_type")?
-            .extract::<Option<String>>()?
-            .map(|s| {
-                s.parse::<PackageType>()
-                    .map_err(|e| pyo3::exceptions::PyValueError::new_err((e,)))
-            })
-            .transpose()?;
-        let tag = ob.getattr("tag")?.extract::<Option<String>>()?;
-        let info = ob
-            .getattr("info")?
-            .extract::<Option<Vec<String>>>()?
-            .map(|v| v.join(" "));
-        Ok(Self {
-            package,
-            package_type,
-            tag,
-            info,
-        })
-    }
-}
-
 impl std::fmt::Display for LintianIssueParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -1101,28 +1072,6 @@ pub fn data_file_path(
         return Some(path);
     }
 
-    #[cfg(feature = "python")]
-    {
-        pyo3::Python::initialize();
-        if let Some(path) = pyo3::Python::attach(|py| {
-            use pyo3::prelude::*;
-            let pkg_resources = py.import("pkg_resources").unwrap();
-            if let Ok(path) = pkg_resources.call_method1(
-                "resource_filename",
-                ("lintian_brush", format!("lintian-brush/{}", name)),
-            ) {
-                if let Ok(path) = path.extract::<std::path::PathBuf>() {
-                    if check(path.as_path()) {
-                        return Some(path);
-                    }
-                }
-            }
-            None
-        }) {
-            return Some(path);
-        }
-    }
-
     let base_paths = &["/usr/share/lintian-brush", "/usr/local/share/lintian-brush"];
 
     for base_path in base_paths {
@@ -1389,16 +1338,6 @@ pub enum OverallError {
     IoError(std::io::Error),
     /// Other error
     Other(String),
-    /// Python error
-    #[cfg(feature = "python")]
-    Python(pyo3::PyErr),
-}
-
-#[cfg(feature = "python")]
-impl From<pyo3::PyErr> for OverallError {
-    fn from(e: pyo3::PyErr) -> Self {
-        OverallError::Python(e)
-    }
 }
 
 impl std::fmt::Display for OverallError {
@@ -1413,8 +1352,6 @@ impl std::fmt::Display for OverallError {
             OverallError::ChangelogCreate(m) => {
                 write!(f, "Failed to create changelog entry: {}", m)
             }
-            #[cfg(feature = "python")]
-            OverallError::Python(e) => write!(f, "{}", e),
             OverallError::Other(e) => write!(f, "{}", e),
             OverallError::BrzError(e) => write!(f, "{}", e),
             OverallError::IoError(e) => write!(f, "{}", e),
