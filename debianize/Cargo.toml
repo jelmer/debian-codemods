@@ -32,7 +32,7 @@ tempfile = "3"
 upstream-ontologist.workspace = true
 buildlog-consultant = ">=0.1.0"
 lazy-regex.workspace = true
-lintian-brush = { path = "../lintian-brush", version = ">=0.155.0", default-features = false, features = ["python"] }
+lintian-brush = { path = "../lintian-brush", version = ">=0.155.0", default-features = false }
 debian-control = { workspace = true }
 lazy_static = "1"
 semver = "1"

@@ -630,16 +630,6 @@ fn main() -> Result<(), i32> {
                     None,
                 );
             }
-            #[cfg(feature = "python")]
-            Err(OverallError::Python(e)) => {
-                drop(write_lock);
-                svp.report_fatal(
-                    "python-error",
-                    format!("Error running Python: {}", e).as_str(),
-                    None,
-                    None,
-                );
-            }
             Err(OverallError::BrzError(e)) => {
                 drop(write_lock);
                 svp.report_fatal(
