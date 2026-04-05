@@ -25,6 +25,8 @@ fn upgrade_path() -> HashMap<&'static str, &'static str> {
     map.insert("4.7.0", "4.7.1");
     map.insert("4.7.1", "4.7.2");
     map.insert("4.7.2", "4.7.3");
+    map.insert("4.7.3", "4.7.4");
+    map.insert("4.7.3", "4.7.4");
     map
 }
 
@@ -561,6 +563,38 @@ fn check_4_7_3(_base_path: &Path) -> UpgradeCheckResult {
     UpgradeCheckResult::Success(vec![])
 }
 
+fn check_4_7_4(base_path: &Path) -> UpgradeCheckResult {
+    // 8.4: *.so files in shared library development packages may be linker scripts
+    //      instead of symbolic links. (Relaxation, no check needed.)
+    // 12.5: The requirement to explain in the copyright file why the package is not
+    //       part of the Debian distribution also applies to packages in non-free-firmware.
+    let control_path = base_path.join("debian/control");
+    let Ok(content) = std::fs::read_to_string(&control_path) else {
+        return UpgradeCheckResult::Success(
+            vec!["Package is not in non-free-firmware".to_string()],
+        );
+    };
+    let Ok(control) = Control::from_str(&content) else {
+        return UpgradeCheckResult::Success(
+            vec!["Package is not in non-free-firmware".to_string()],
+        );
+    };
+    let section = control.source().and_then(|s| s.section());
+    if section.as_deref() == Some("non-free-firmware")
+        || section
+            .as_deref()
+            .is_some_and(|s| s.starts_with("non-free-firmware/"))
+    {
+        return UpgradeCheckResult::Unable {
+            section: "12.5".to_string(),
+            reason: "unable to verify copyright file explains why package is in non-free-firmware"
+                .to_string(),
+        };
+    }
+
+    UpgradeCheckResult::Success(vec!["Package is not in non-free-firmware".to_string()])
+}
+
 fn get_check_fn(version: &str) -> Option<fn(&Path) -> UpgradeCheckResult> {
     match version {
         "4.1.1" => Some(check_4_1_1),
@@ -577,6 +611,7 @@ fn get_check_fn(version: &str) -> Option<fn(&Path) -> UpgradeCheckResult> {
         "4.7.1" => Some(check_4_7_1),
         "4.7.2" => Some(check_4_7_2),
         "4.7.3" => Some(check_4_7_3),
+        "4.7.4" => Some(check_4_7_4),
         _ => None,
     }
 }
