@@ -11,4 +11,4 @@ Upgrade checklist verified:
   * Package is not in non-free-firmware
 Certainty: certain
 Fixed-Lintian-Issues:
- source: ancient-standards-version 4.6.1 (released 2022-05-11) (current is 4.7.3.0)
+ source: ancient-standards-version 4.6.1 (released 2022-05-11) (current is *)

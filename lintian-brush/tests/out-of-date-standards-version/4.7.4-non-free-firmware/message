@@ -1,4 +1,4 @@
 Update standards version to 4.7.3, no changes needed.
 Certainty: certain
 Fixed-Lintian-Issues:
- source: out-of-date-standards-version 4.7.2 (released 2025-02-27) (current is 4.7.3.0)
+ source: out-of-date-standards-version 4.7.2 (released 2025-02-27) (current is *)
