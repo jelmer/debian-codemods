@@ -19,4 +19,4 @@ Upgrade checklist verified:
   * Package is not in non-free-firmware
 Certainty: certain
 Fixed-Lintian-Issues:
- source: ancient-standards-version 4.4.1 (released 2019-09-29) (current is 4.7.3.0)
+ source: ancient-standards-version 4.4.1 (released 2019-09-29) (current is *)
