@@ -1073,9 +1073,9 @@ dependencies = [
 
 [[package]]
 name = "debian-watch"
-version = "0.4.7"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "603aa65539430f4fdd0bb84e0b33f0664a82025c1a6e15a5e9f61c4ed64d89ad"
+checksum = "bb7b5bf6da6899c347555253e79bacb6683cfc7213db6413567bb7493f6b7b08"
 dependencies = [
  "anyhow",
  "clap",

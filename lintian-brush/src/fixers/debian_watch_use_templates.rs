@@ -48,6 +48,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 debian_watch::templates::Template::PyPI { .. } => "PyPI",
                 debian_watch::templates::Template::Npmregistry { .. } => "Npmregistry",
                 debian_watch::templates::Template::Metacpan { .. } => "Metacpan",
+                debian_watch::templates::Template::Cran { .. } => "CRAN",
+                debian_watch::templates::Template::Bioconductor { .. } => "Bioconductor",
             };
             converted_templates.push(template_name);
         }
@@ -110,12 +112,10 @@ Searchmode: plain
         assert!(result.is_ok());
 
         let updated_content = fs::read_to_string(&watch_path).unwrap();
-        // Should now use Metacpan template
-        assert!(updated_content.contains("Template: Metacpan"));
-        assert!(updated_content.contains("Dist: Mail-AuthenticationResults"));
-        assert!(!updated_content.contains("Source: https://cpan.metacpan.org"));
-        assert!(!updated_content.contains("Matching-Pattern:"));
-        assert!(!updated_content.contains("Searchmode:"));
+        assert_eq!(
+            updated_content,
+            "Version: 5\n\nTemplate: Metacpan\nDist: Mail-AuthenticationResults\n"
+        );
     }
 
     #[test]
@@ -139,13 +139,10 @@ Searchmode: html
         assert!(result.is_ok());
 
         let updated_content = fs::read_to_string(&watch_path).unwrap();
-        // Should now use GitHub template
-        assert!(updated_content.contains("Template: GitHub"));
-        assert!(updated_content.contains("Owner: torvalds"));
-        assert!(updated_content.contains("Project: linux"));
-        assert!(!updated_content.contains("Source: https://github.com"));
-        assert!(!updated_content.contains("Matching-Pattern:"));
-        assert!(!updated_content.contains("Searchmode:"));
+        assert_eq!(
+            updated_content,
+            "Version: 5\n\nTemplate: GitHub\nOwner: torvalds\nProject: linux\n"
+        );
     }
 
     #[test]
@@ -169,12 +166,10 @@ Searchmode: plain
         assert!(result.is_ok());
 
         let updated_content = fs::read_to_string(&watch_path).unwrap();
-        // Should now use PyPI template
-        assert!(updated_content.contains("Template: PyPI"));
-        assert!(updated_content.contains("Dist: bitbox02"));
-        assert!(!updated_content.contains("Source: https://pypi.debian.net"));
-        assert!(!updated_content.contains("Matching-Pattern:"));
-        assert!(!updated_content.contains("Searchmode:"));
+        assert_eq!(
+            updated_content,
+            "Version: 5\n\nTemplate: PyPI\nDist: bitbox02\n"
+        );
     }
 
     #[test]
@@ -245,5 +240,58 @@ Matching-Pattern: .*/v?(\d+\.\d+)\.tar\.gz
         let version: crate::Version = "1.0".parse().unwrap();
         let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
         assert!(matches!(result, Err(FixerError::NoChanges)));
+    }
+
+    #[test]
+    fn test_convert_cran_inline_url_to_template() {
+        // This is the scenario from Debian bug #1133114: a v4 CRAN watch file
+        // was converted to v5, putting the entire URL+pattern into Source
+        let temp_dir = TempDir::new().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        let watch_content = r#"Version: 5
+
+Source: https://cloud.r-project.org/src/contrib/forecast_([-\d.]*)\\.tar\\.gz
+"#;
+        let watch_path = debian_dir.join("watch");
+        fs::write(&watch_path, watch_content).unwrap();
+
+        let fixer = FixerImpl;
+        let version: crate::Version = "1.0".parse().unwrap();
+        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
+        assert!(result.is_ok());
+
+        let updated_content = fs::read_to_string(&watch_path).unwrap();
+        assert_eq!(
+            updated_content,
+            "Version: 5\n\nTemplate: CRAN\nPackage: forecast\n"
+        );
+    }
+
+    #[test]
+    fn test_convert_cran_explicit_to_template() {
+        let temp_dir = TempDir::new().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        let watch_content = r#"Version: 5
+
+Source: https://cran.r-project.org/src/contrib/
+Matching-Pattern: gower_([-.\d]*)\.tar\.gz
+"#;
+        let watch_path = debian_dir.join("watch");
+        fs::write(&watch_path, watch_content).unwrap();
+
+        let fixer = FixerImpl;
+        let version: crate::Version = "1.0".parse().unwrap();
+        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
+        assert!(result.is_ok());
+
+        let updated_content = fs::read_to_string(&watch_path).unwrap();
+        assert_eq!(
+            updated_content,
+            "Version: 5\n\nTemplate: CRAN\nPackage: gower\n"
+        );
     }
 }

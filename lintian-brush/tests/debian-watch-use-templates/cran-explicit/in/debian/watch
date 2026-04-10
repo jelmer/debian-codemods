@@ -1,0 +1,4 @@
+Version: 5
+
+Source: https://cran.r-project.org/src/contrib/
+Matching-Pattern: gower_([-.\d]*)\.tar\.gz
