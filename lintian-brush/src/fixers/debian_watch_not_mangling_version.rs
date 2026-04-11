@@ -1,10 +1,15 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::{Certainty, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
 const REPACK_REGEX: &str = r"(dfsg|debian|ds|repack)";
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
+pub fn run(
+    base_path: &Path,
+    package: &str,
+    upstream_version: &str,
+    net_access: bool,
+) -> Result<FixerResult, FixerError> {
     let watch_path = base_path.join("debian/watch");
 
     if !watch_path.exists() {
@@ -77,8 +82,23 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     fs::write(&watch_path, watch_file.to_string())?;
 
+    let certainty = if net_access {
+        match crate::watch::verify_watch_entry_discovers_version(
+            &watch_path,
+            package,
+            upstream_version,
+        ) {
+            Some(true) => Certainty::Certain,
+            Some(false) => Certainty::Likely,
+            None => Certainty::Likely,
+        }
+    } else {
+        Certainty::Confident
+    };
+
     Ok(
         FixerResult::builder("Add dversionmangle for repack versioning in debian/watch.")
+            .certainty(certainty)
             .fixed_issues(fixed_issues)
             .build(),
     )
@@ -87,8 +107,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "debian-watch-not-mangling-version",
     tags: ["debian-watch-not-mangling-version", "debian-watch-file-should-mangle-version"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    apply: |basedir, package, version, preferences| {
+        run(basedir, package, &version.upstream_version.to_string(), preferences.net_access.unwrap_or(false))
     }
 }
 
@@ -113,7 +133,7 @@ mod tests {
         let changelog_path = debian_dir.join("changelog");
         fs::write(&changelog_path, changelog_content).unwrap();
 
-        let result = run(temp_dir.path()).unwrap();
+        let result = run(temp_dir.path(), "test", "1.0", false).unwrap();
         assert_eq!(
             result.description,
             "Add dversionmangle for repack versioning in debian/watch."
@@ -127,7 +147,7 @@ mod tests {
     #[test]
     fn test_no_watch_file() {
         let temp_dir = TempDir::new().unwrap();
-        let result = run(temp_dir.path());
+        let result = run(temp_dir.path(), "test", "1.0", false);
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 
@@ -146,7 +166,7 @@ mod tests {
         let changelog_path = debian_dir.join("changelog");
         fs::write(&changelog_path, changelog_content).unwrap();
 
-        let result = run(temp_dir.path());
+        let result = run(temp_dir.path(), "test", "1.0", false);
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 
@@ -164,7 +184,7 @@ mod tests {
         let changelog_path = debian_dir.join("changelog");
         fs::write(&changelog_path, changelog_content).unwrap();
 
-        let result = run(temp_dir.path());
+        let result = run(temp_dir.path(), "test", "1.0", false);
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 }

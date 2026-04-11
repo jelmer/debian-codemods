@@ -1,8 +1,13 @@
-use crate::{FixerError, FixerResult};
+use crate::{Certainty, FixerError, FixerResult};
 use std::fs;
 use std::path::Path;
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
+pub fn run(
+    base_path: &Path,
+    package: &str,
+    upstream_version: &str,
+    net_access: bool,
+) -> Result<FixerResult, FixerError> {
     let watch_path = base_path.join("debian/watch");
 
     if !watch_path.exists() {
@@ -72,14 +77,30 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         "Use templates in watch file instead of explicit Source/Matching-Pattern.".to_string()
     };
 
-    Ok(FixerResult::builder(description).build())
+    let certainty = if net_access {
+        match crate::watch::verify_watch_entry_discovers_version(
+            &watch_path,
+            package,
+            upstream_version,
+        ) {
+            Some(true) => Certainty::Certain,
+            Some(false) => Certainty::Likely,
+            None => Certainty::Likely,
+        }
+    } else {
+        Certainty::Confident
+    };
+
+    Ok(FixerResult::builder(description)
+        .certainty(certainty)
+        .build())
 }
 
 declare_fixer! {
     name: "debian-watch-use-templates",
     tags: [],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    apply: |basedir, package, version, preferences| {
+        run(basedir, package, &version.upstream_version.to_string(), preferences.net_access.unwrap_or(false))
     }
 }
 

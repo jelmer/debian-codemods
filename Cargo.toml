@@ -39,7 +39,7 @@ debian-analyzer = { version = "0.160.11" }
 svp-client = "0.2.0"
 regex = "1"
 indexmap = "2.7"
-makefile-lossless = "0.3.28"
+makefile-lossless = "0.3.32"
 serial_test = ">=2, <4"
 debian-watch = "0.4.8"
 #debian-control = { path = "../deb822-lossless/debian-control" }

@@ -1,10 +1,15 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::{Certainty, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
 const DH_MAKE_TEMPLATE: &str = r"s/.+\/v?(\d\S+)\.tar\.gz/<project>-$1\.tar\.gz/";
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
+pub fn run(
+    base_path: &Path,
+    package: &str,
+    upstream_version: &str,
+    net_access: bool,
+) -> Result<FixerResult, FixerError> {
     let watch_path = base_path.join("debian/watch");
 
     if !watch_path.exists() {
@@ -48,8 +53,23 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         vec![format!("{} [debian/watch]", template)],
     );
 
+    let certainty = if net_access {
+        match crate::watch::verify_watch_entry_discovers_version(
+            &watch_path,
+            package,
+            upstream_version,
+        ) {
+            Some(true) => Certainty::Certain,
+            Some(false) => Certainty::Likely,
+            None => Certainty::Likely,
+        }
+    } else {
+        Certainty::Confident
+    };
+
     Ok(
         FixerResult::builder("Remove dh_make template from debian watch.")
+            .certainty(certainty)
             .fixed_issues(vec![issue])
             .build(),
     )
@@ -58,8 +78,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "debian-watch-contains-dh_make-template",
     tags: ["debian-watch-contains-dh_make-template"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    apply: |basedir, package, version, preferences| {
+        run(basedir, package, &version.upstream_version.to_string(), preferences.net_access.unwrap_or(false))
     }
 }
 
@@ -79,7 +99,7 @@ mod tests {
         let watch_path = debian_dir.join("watch");
         fs::write(&watch_path, watch_content).unwrap();
 
-        let result = run(temp_dir.path()).unwrap();
+        let result = run(temp_dir.path(), "test", "1.0", false).unwrap();
         assert_eq!(
             result.description,
             "Remove dh_make template from debian watch."
@@ -94,7 +114,7 @@ mod tests {
     #[test]
     fn test_no_watch_file() {
         let temp_dir = TempDir::new().unwrap();
-        let result = run(temp_dir.path());
+        let result = run(temp_dir.path(), "test", "1.0", false);
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 
@@ -109,7 +129,7 @@ mod tests {
         let watch_path = debian_dir.join("watch");
         fs::write(&watch_path, watch_content).unwrap();
 
-        let result = run(temp_dir.path());
+        let result = run(temp_dir.path(), "test", "1.0", false);
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 }

@@ -50,8 +50,47 @@ pub const COMMON_PGPSIGURL_MANGLES: &[&str] = &[
 // - verify_watch_entry: Verify a watch entry can discover expected versions
 // - watch_entries_certainty: Calculate certainty for watch entries
 
-// These will be implemented as needed when porting the debian-watch-file-is-missing
-// fixer or other watch-related fixers.
+/// Verify that a watch file can discover the current upstream version.
+///
+/// After modifying a watch file, call this function to verify that the watch entry
+/// still works by running `discover_blocking()` and checking if the expected upstream
+/// version appears among the discovered releases.
+///
+/// # Arguments
+///
+/// * `watch_path` - Path to the debian/watch file
+/// * `package` - Source package name
+/// * `upstream_version` - The upstream version string to look for
+///
+/// # Returns
+///
+/// * `Some(true)` - The upstream version was found among discovered releases
+/// * `Some(false)` - Discovery succeeded but the upstream version was not found
+/// * `None` - Discovery failed (e.g. network error, parse error)
+pub fn verify_watch_entry_discovers_version(
+    watch_path: &std::path::Path,
+    package: &str,
+    upstream_version: &str,
+) -> Option<bool> {
+    let content = std::fs::read_to_string(watch_path).ok()?;
+    let watch_file = debian_watch::parse::parse(&content).ok()?;
+
+    for entry in watch_file.entries() {
+        let pkg = package.to_string();
+        match entry.discover_blocking(|| pkg) {
+            Ok(releases) => {
+                if releases.iter().any(|r| r.version == upstream_version) {
+                    return Some(true);
+                }
+            }
+            Err(e) => {
+                tracing::debug!("discover_blocking failed for watch entry: {}", e);
+            }
+        }
+    }
+
+    Some(false)
+}
 
 #[cfg(test)]
 mod tests {
