@@ -44,6 +44,7 @@ pub mod watch;
 // Re-export commonly used types for convenience
 pub use debian_analyzer::Certainty;
 pub use debversion::Version;
+pub use fixers::get_renamed_tags;
 // Re-export inventory for macros
 pub use inventory;
 

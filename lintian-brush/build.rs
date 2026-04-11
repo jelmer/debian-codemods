@@ -97,6 +97,7 @@ fn generate_renamed_tags_map(out_dir: &std::ffi::OsStr) {
 
     // Generate Rust code for the hashmap
     let mut code = String::new();
+    code.push_str("/// Get the mapping of old lintian tag names to their current names.\n");
     code.push_str(
         "pub fn get_renamed_tags() -> indexmap::IndexMap<&'static str, &'static str> {\n",
     );
