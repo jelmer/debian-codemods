@@ -1,11 +1,16 @@
-use crate::{FixerError, FixerResult, LintianIssue, PackageType};
+use crate::{Certainty, FixerError, FixerResult, LintianIssue, PackageType};
 use std::fs;
 use std::path::Path;
 
 const OBSOLETE_WATCH_FILE_FORMAT: u32 = 2;
 const WATCH_FILE_LATEST_VERSION: u32 = 5;
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
+pub fn run(
+    base_path: &Path,
+    package: &str,
+    upstream_version: &str,
+    net_access: bool,
+) -> Result<FixerResult, FixerError> {
     let watch_path = base_path.join("debian/watch");
 
     if !watch_path.exists() {
@@ -56,10 +61,25 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // Write back the updated watch file
     fs::write(&watch_path, v5_file.to_string())?;
 
+    let certainty = if net_access {
+        match crate::watch::verify_watch_entry_discovers_version(
+            &watch_path,
+            package,
+            upstream_version,
+        ) {
+            Some(true) => Certainty::Certain,
+            Some(false) => Certainty::Likely,
+            None => Certainty::Likely,
+        }
+    } else {
+        Certainty::Confident
+    };
+
     Ok(FixerResult::builder(format!(
         "Update watch file format version to {}.",
         WATCH_FILE_LATEST_VERSION
     ))
+    .certainty(certainty)
     .fixed_issue(issue)
     .build())
 }
@@ -67,8 +87,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "debian-watch-file-old-format",
     tags: ["older-debian-watch-file-standard", "obsolete-debian-watch-file-standard"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    apply: |basedir, package, version, preferences| {
+        run(basedir, package, &version.upstream_version.to_string(), preferences.net_access.unwrap_or(false))
     }
 }
 

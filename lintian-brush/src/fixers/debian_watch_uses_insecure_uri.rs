@@ -1,10 +1,15 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::{Certainty, FixerError, FixerResult, LintianIssue};
 use std::fs;
 use std::path::Path;
 
 const KNOWN_SECURE_HOSTS: &[&str] = &["code.launchpad.net", "launchpad.net", "ftp.gnu.org"];
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
+pub fn run(
+    base_path: &Path,
+    package: &str,
+    upstream_version: &str,
+    net_access: bool,
+) -> Result<FixerResult, FixerError> {
     let watch_path = base_path.join("debian/watch");
 
     if !watch_path.exists() {
@@ -71,7 +76,22 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     // Write back the modified watch file
     fs::write(&watch_path, watch_file.to_string())?;
 
+    let certainty = if net_access {
+        match crate::watch::verify_watch_entry_discovers_version(
+            &watch_path,
+            package,
+            upstream_version,
+        ) {
+            Some(true) => Certainty::Certain,
+            Some(false) => Certainty::Likely,
+            None => Certainty::Likely,
+        }
+    } else {
+        Certainty::Confident
+    };
+
     Ok(FixerResult::builder("Use secure URI in debian/watch.")
+        .certainty(certainty)
         .fixed_issues(fixed_issues)
         .overridden_issues(overridden_issues)
         .build())
@@ -80,8 +100,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 declare_fixer! {
     name: "debian-watch-uses-insecure-uri",
     tags: ["debian-watch-uses-insecure-uri"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    apply: |basedir, package, version, preferences| {
+        run(basedir, package, &version.upstream_version.to_string(), preferences.net_access.unwrap_or(false))
     }
 }
 

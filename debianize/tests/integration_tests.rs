@@ -4,6 +4,7 @@ mod common;
 use breezyshim::testing::TestEnv;
 use breezyshim::workingtree::WorkingTree;
 use common::*;
+use debian_analyzer::lintian::latest_standards_version;
 use debianize::debianize;
 use serial_test::serial;
 use std::path::Path;
@@ -49,17 +50,19 @@ fn test_debianize_simple_python_package() {
 
     // Check debian/control content
     let control_content = read_cleaned_control(&repo_path);
-    let expected_control = r#"Source: python-hello-world
-Maintainer: Test Packager <packager@example.com>
-Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools
-Standards-Version: 4.7.3.0
-Rules-Requires-Root: no
-Testsuite: autopkgtest-pkg-python
-
-Package: python3-hello-world
-Architecture: all
-Depends: ${python3:Depends}
-"#;
+    let expected_control = format!(
+        "Source: python-hello-world\n\
+         Maintainer: Test Packager <packager@example.com>\n\
+         Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools\n\
+         Standards-Version: {}\n\
+         Rules-Requires-Root: no\n\
+         Testsuite: autopkgtest-pkg-python\n\
+         \n\
+         Package: python3-hello-world\n\
+         Architecture: all\n\
+         Depends: ${{python3:Depends}}\n",
+        latest_standards_version()
+    );
     assert_eq!(control_content, expected_control);
 
     // Check debian/rules content

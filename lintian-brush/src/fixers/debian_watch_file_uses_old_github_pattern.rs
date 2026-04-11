@@ -1,8 +1,13 @@
-use crate::{FixerError, FixerResult};
+use crate::{Certainty, FixerError, FixerResult};
 use std::fs;
 use std::path::Path;
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
+pub fn run(
+    base_path: &Path,
+    package: &str,
+    upstream_version: &str,
+    net_access: bool,
+) -> Result<FixerResult, FixerError> {
     let watch_path = base_path.join("debian/watch");
 
     if !watch_path.exists() {
@@ -46,18 +51,32 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     fs::write(&watch_path, watch_file.to_string())?;
 
+    let certainty = if net_access {
+        match crate::watch::verify_watch_entry_discovers_version(
+            &watch_path,
+            package,
+            upstream_version,
+        ) {
+            Some(true) => Certainty::Certain,
+            Some(false) => Certainty::Likely,
+            None => Certainty::Likely,
+        }
+    } else {
+        Certainty::Confident
+    };
+
     Ok(FixerResult::builder(
         "Update pattern for GitHub archive URLs from /<org>/<repo>/tags page/<org>/<repo>/archive/<tag> → /<org>/<repo>/archive/refs/tags/<tag>."
     )
-    .certainty(crate::Certainty::Likely)
+    .certainty(certainty)
     .build())
 }
 
 declare_fixer! {
     name: "debian-watch-file-uses-old-github-pattern",
     tags: ["debian-watch-file-uses-old-github-pattern"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    apply: |basedir, package, version, preferences| {
+        run(basedir, package, &version.upstream_version.to_string(), preferences.net_access.unwrap_or(false))
     }
 }
 
@@ -78,7 +97,7 @@ mod tests {
         let watch_path = debian_dir.join("watch");
         fs::write(&watch_path, watch_content).unwrap();
 
-        let result = run(temp_dir.path()).unwrap();
+        let result = run(temp_dir.path(), "test", "1.0", false).unwrap();
         assert!(result.description.contains("archive"));
 
         let updated_content = fs::read_to_string(&watch_path).unwrap();
@@ -89,7 +108,7 @@ mod tests {
     #[test]
     fn test_no_watch_file() {
         let temp_dir = TempDir::new().unwrap();
-        let result = run(temp_dir.path());
+        let result = run(temp_dir.path(), "test", "1.0", false);
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 
@@ -103,7 +122,7 @@ mod tests {
         let watch_path = debian_dir.join("watch");
         fs::write(&watch_path, watch_content).unwrap();
 
-        let result = run(temp_dir.path());
+        let result = run(temp_dir.path(), "test", "1.0", false);
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 
@@ -118,7 +137,7 @@ mod tests {
         let watch_path = debian_dir.join("watch");
         fs::write(&watch_path, watch_content).unwrap();
 
-        let result = run(temp_dir.path());
+        let result = run(temp_dir.path(), "test", "1.0", false);
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 }
