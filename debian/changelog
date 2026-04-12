@@ -1,4 +1,4 @@
-debian-codemods (0.175) UNRELEASED; urgency=medium
+debian-codemods (0.175) unstable; urgency=medium
 
   * Add support for standards-version 4.7.4.0.
   * debian-rules-missing-recommended-target: Skip when debian/rules has
