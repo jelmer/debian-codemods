@@ -336,12 +336,14 @@ fn process_golang(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
     let mut control = context.create_control_file()?;
 
-    let repository_url = context
-        .metadata
-        .repository()
-        .unwrap()
-        .parse::<url::Url>()
-        .unwrap();
+    let repository_url = match context.metadata.repository() {
+        Some(url) => url.parse::<url::Url>().unwrap(),
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "Repository url for the project not found".to_string(),
+            ))
+        }
+    };
 
     let godebname = crate::names::go_base_name(
         &[repository_url.host_str().unwrap(), repository_url.path()].concat(),
