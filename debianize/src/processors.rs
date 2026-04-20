@@ -182,7 +182,14 @@ fn bootstrap_debhelper(
 fn process_setup_py(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
     let mut control = context.create_control_file()?;
-    let upstream_name = context.metadata.name().unwrap();
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name,
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine name from setup.py for the python3 project".to_string(),
+            ))
+        }
+    };
     let source_name = crate::names::python_source_package_name(upstream_name);
     let mut source = control.add_source(&source_name);
     if let Some(ref maintainer) = context.maintainer {
@@ -228,7 +235,14 @@ fn process_setup_py(context: &mut ProcessorContext) -> Result<(), Error> {
 fn process_maven(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
     let mut control = context.create_control_file()?;
-    let upstream_name = context.metadata.name().unwrap();
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name,
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the artifactId from pom.xml for the java project".to_string(),
+            ))
+        }
+    };
     let mut source = control.add_source(upstream_name);
     source.set_rules_requires_root(false);
     source.set_standards_version(&latest_standards_version().to_string());
@@ -251,14 +265,19 @@ fn process_maven(context: &mut ProcessorContext) -> Result<(), Error> {
 fn process_npm(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
     let mut control = context.create_control_file()?;
-    let upstream_name = context
-        .metadata
-        .name()
-        .unwrap()
-        .trim_end_matches("@")
-        .replace(['/', '_'], "-")
-        .replace("@", "")
-        .to_lowercase();
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name
+            .trim_end_matches("@")
+            .replace(['/', '_'], "-")
+            .replace("@", "")
+            .to_lowercase(),
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the name from package.json for the node project".to_string(),
+            ))
+        }
+    };
+
     let mut source = control.add_source(&format!("node-{}", upstream_name));
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
@@ -284,7 +303,14 @@ fn process_npm(context: &mut ProcessorContext) -> Result<(), Error> {
 fn process_dist_zilla(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
     let mut control = context.create_control_file()?;
-    let upstream_name = context.metadata.name().unwrap();
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name,
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the name in dist.ini for the perl project".to_string(),
+            ))
+        }
+    };
     let mut source = control.add_source(&crate::names::perl_package_name(upstream_name));
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
@@ -312,7 +338,14 @@ fn process_dist_zilla(context: &mut ProcessorContext) -> Result<(), Error> {
 fn process_perl_build_tiny(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
     let mut control = context.create_control_file()?;
-    let upstream_name = context.metadata.name().unwrap();
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name,
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the name in dist.ini for the perl project".to_string(),
+            ))
+        }
+    };
     let mut source = control.add_source(&crate::names::perl_package_name(upstream_name));
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
@@ -340,7 +373,7 @@ fn process_golang(context: &mut ProcessorContext) -> Result<(), Error> {
         Some(url) => url.parse::<url::Url>().unwrap(),
         None => {
             return Err(Error::MissingUpstreamInfo(
-                "Repository url for the project not found".to_string(),
+                "no upstream or origin url is associated with the go project".to_string(),
             ))
         }
     };
