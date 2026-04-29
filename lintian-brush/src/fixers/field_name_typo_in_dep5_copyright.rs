@@ -117,11 +117,9 @@ fn try_fix_x_prefix(
         return Ok(None);
     }
 
-    let value = paragraph.get(field_name).ok_or(FixerError::NoChanges)?;
-    let value_str = value.to_string();
-
-    paragraph.remove(field_name);
-    paragraph.insert(without_prefix, &value_str);
+    if !paragraph.rename(field_name, without_prefix) {
+        return Err(FixerError::NoChanges);
+    }
 
     Ok(Some((field_name.to_string(), without_prefix.to_string())))
 }
@@ -156,11 +154,9 @@ fn try_fix_levenshtein(
             }
         }
 
-        let value = paragraph.get(field_name).ok_or(FixerError::NoChanges)?;
-        let value_str = value.to_string();
-
-        paragraph.remove(field_name);
-        paragraph.insert(valid_field, &value_str);
+        if !paragraph.rename(field_name, valid_field) {
+            return Err(FixerError::NoChanges);
+        }
 
         return Ok(Some((field_name.to_string(), valid_field.to_string())));
     }
