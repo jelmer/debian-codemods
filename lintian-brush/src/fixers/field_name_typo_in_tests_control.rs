@@ -1,8 +1,8 @@
-use crate::{FixerError, FixerResult};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::FixerError;
 use deb822_lossless::Deb822;
 use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 const VALID_FIELD_NAMES: &[&str] = &[
@@ -14,223 +14,238 @@ const VALID_FIELD_NAMES: &[&str] = &[
     "Test-Command",
 ];
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let tests_control_path = base_path.join("debian/tests/control");
-
-    if !tests_control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let rel = PathBuf::from("debian/tests/control");
+    let abs = base_path.join(&rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
-
-    let content = fs::read_to_string(&tests_control_path)?;
+    let content = std::fs::read_to_string(&abs)?;
     let deb822 = Deb822::from_str(&content)
         .map_err(|e| FixerError::Other(format!("Failed to parse debian/tests/control: {:?}", e)))?;
 
     let valid_fields: HashSet<&str> = VALID_FIELD_NAMES.iter().copied().collect();
-    let mut case_fixed = Vec::new();
-    let mut typo_fixed = Vec::new();
+    let mut diagnostics = Vec::new();
 
-    for mut paragraph in deb822.paragraphs() {
+    for (index, paragraph) in deb822.paragraphs().enumerate() {
         let field_names: Vec<String> = paragraph.keys().collect();
-
         for field_name in field_names {
             if valid_fields.contains(field_name.as_str()) {
                 continue;
             }
+            let Some(target) = VALID_FIELD_NAMES
+                .iter()
+                .copied()
+                .find(|v| strsim::levenshtein(&field_name, v) == 1)
+            else {
+                continue;
+            };
+            let is_case = target.eq_ignore_ascii_case(&field_name);
 
-            // Find a valid field with Levenshtein distance of 1
-            for &valid_field in VALID_FIELD_NAMES {
-                if strsim::levenshtein(&field_name, valid_field) == 1 {
-                    let value = paragraph.get(&field_name).ok_or(FixerError::NoChanges)?;
-                    let value_str = value.to_string();
+            let message = format!(
+                "{}\t{} ⇒ {}",
+                if is_case { "case" } else { "typo" },
+                field_name,
+                target,
+            );
+            let actions = vec![Action::Deb822(Deb822Action::RenameField {
+                file: rel.clone(),
+                paragraph: ParagraphSelector::Index { index },
+                from: field_name,
+                to: target.to_string(),
+            })];
 
-                    paragraph.remove(&field_name);
-                    paragraph.insert(valid_field, &value_str);
-
-                    if valid_field.eq_ignore_ascii_case(&field_name) {
-                        case_fixed.push((field_name.clone(), valid_field.to_string()));
-                    } else {
-                        typo_fixed.push((field_name.clone(), valid_field.to_string()));
-                    }
-
-                    break;
-                }
-            }
+            // Untagged: this fixer's lintian tag isn't tracked per-issue
+            // by the original either (its FixerResult.fixed_lintian_issues
+            // was empty).
+            diagnostics.push(crate::diagnostic::Diagnostic::untagged(message, actions));
         }
     }
 
-    if case_fixed.is_empty() && typo_fixed.is_empty() {
-        return Err(FixerError::NoChanges);
+    Ok(diagnostics)
+}
+
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let mut case_pairs: Vec<(String, String)> = Vec::new();
+    let mut typo_pairs: Vec<(String, String)> = Vec::new();
+    for diag in fixed {
+        let Some((kind, rest)) = diag.message.split_once('\t') else {
+            continue;
+        };
+        let Some((old, new)) = rest.split_once(" ⇒ ") else {
+            continue;
+        };
+        let pair = (old.to_string(), new.to_string());
+        if kind == "case" {
+            case_pairs.push(pair);
+        } else {
+            typo_pairs.push(pair);
+        }
     }
 
-    fs::write(&tests_control_path, deb822.to_string())?;
-
-    let kind = if !case_fixed.is_empty() && !typo_fixed.is_empty() {
-        format!(
+    let kind_str = match (!case_pairs.is_empty(), !typo_pairs.is_empty()) {
+        (true, true) => format!(
             "{} and {}",
-            if case_fixed.len() > 1 {
+            if case_pairs.len() > 1 {
                 "cases"
             } else {
                 "case"
             },
-            if typo_fixed.len() > 1 {
+            if typo_pairs.len() > 1 {
                 "typos"
             } else {
                 "typo"
+            },
+        ),
+        (true, false) => {
+            if case_pairs.len() > 1 {
+                "cases".to_string()
+            } else {
+                "case".to_string()
             }
-        )
-    } else if !case_fixed.is_empty() {
-        if case_fixed.len() > 1 {
-            "cases".to_string()
-        } else {
-            "case".to_string()
         }
-    } else if typo_fixed.len() > 1 {
-        "typos".to_string()
-    } else {
-        "typo".to_string()
+        (false, true) => {
+            if typo_pairs.len() > 1 {
+                "typos".to_string()
+            } else {
+                "typo".to_string()
+            }
+        }
+        (false, false) => String::new(),
     };
 
-    let mut all_fixes = case_fixed;
-    all_fixes.extend(typo_fixed);
-    all_fixes.sort();
-
-    let fixed_str = all_fixes
+    let mut all = case_pairs;
+    all.extend(typo_pairs);
+    all.sort();
+    let fixed_str = all
         .iter()
         .map(|(old, new)| format!("{} ⇒ {}", old, new))
         .collect::<Vec<_>>()
         .join(", ");
 
-    Ok(FixerResult::builder(format!(
+    format!(
         "Fix field name {} in debian/tests/control ({}).",
-        kind, fixed_str
-    ))
-    .build())
+        kind_str, fixed_str
+    )
 }
 
 declare_fixer! {
     name: "field-name-typo-in-tests-control",
     tags: ["field-name-typo-in-tests-control"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_typo_fix() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let tests_dir = debian_dir.join("tests");
-        fs::create_dir_all(&tests_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let tests = tmp.path().join("debian/tests");
+        fs::create_dir_all(&tests).unwrap();
         fs::write(
-            tests_dir.join("control"),
+            tests.join("control"),
             "Tests: 4.08.1 ocaml-system\nDepends: @, ca-certificates\nRestrictions: isolation-container, allow-stderr\n\nTest: ocaml-system\nDepends: ocaml-nox\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Fix field name typo in debian/tests/control (Test ⇒ Tests)."
         );
 
-        let content = fs::read_to_string(tests_dir.join("control")).unwrap();
-        assert!(content.contains("Tests: ocaml-system"));
-        assert!(!content.contains("Test: ocaml-system"));
+        // Renamed in place; "Tests: ocaml-system" replaces "Test: ocaml-system".
+        assert_eq!(
+            fs::read_to_string(tests.join("control")).unwrap(),
+            "Tests: 4.08.1 ocaml-system\nDepends: @, ca-certificates\nRestrictions: isolation-container, allow-stderr\n\nTests: ocaml-system\nDepends: ocaml-nox\n",
+        );
     }
 
     #[test]
     fn test_case_fix() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let tests_dir = debian_dir.join("tests");
-        fs::create_dir_all(&tests_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let tests = tmp.path().join("debian/tests");
+        fs::create_dir_all(&tests).unwrap();
+        fs::write(tests.join("control"), "tests: some-test\nDepends: @\n").unwrap();
 
-        fs::write(tests_dir.join("control"), "tests: some-test\nDepends: @\n").unwrap();
-
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Fix field name case in debian/tests/control (tests ⇒ Tests)."
         );
 
-        let content = fs::read_to_string(tests_dir.join("control")).unwrap();
-        assert!(content.contains("Tests: some-test"));
-        assert!(!content.contains("tests: some-test"));
+        assert_eq!(
+            fs::read_to_string(tests.join("control")).unwrap(),
+            "Tests: some-test\nDepends: @\n",
+        );
     }
 
     #[test]
     fn test_multiple_fixes() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let tests_dir = debian_dir.join("tests");
-        fs::create_dir_all(&tests_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let tests = tmp.path().join("debian/tests");
+        fs::create_dir_all(&tests).unwrap();
         fs::write(
-            tests_dir.join("control"),
+            tests.join("control"),
             "tests: test1\nDepend: foo\n\nTest: test2\nrestrictions: needs-root\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
-        // Should fix: tests→Tests (case), Depend→Depends (typo), Test→Tests (typo), restrictions→Restrictions (case)
-        assert!(result.description.contains("debian/tests/control"));
+        let result = run_apply(tmp.path()).unwrap();
+        // Two case-only renames (tests→Tests, restrictions→Restrictions) and
+        // two typos (Depend→Depends, Test→Tests).
+        assert_eq!(
+            result.description,
+            "Fix field name cases and typos in debian/tests/control (Depend ⇒ Depends, Test ⇒ Tests, restrictions ⇒ Restrictions, tests ⇒ Tests).",
+        );
 
-        let content = fs::read_to_string(tests_dir.join("control")).unwrap();
-        assert!(content.contains("Tests: test1"));
-        assert!(content.contains("Depends: foo"));
-        assert!(content.contains("Tests: test2"));
-        assert!(content.contains("Restrictions: needs-root"));
+        assert_eq!(
+            fs::read_to_string(tests.join("control")).unwrap(),
+            "Tests: test1\nDepends: foo\n\nTests: test2\nRestrictions: needs-root\n",
+        );
     }
 
     #[test]
     fn test_no_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_changes_needed() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let tests_dir = debian_dir.join("tests");
-        fs::create_dir_all(&tests_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let tests = tmp.path().join("debian/tests");
+        fs::create_dir_all(&tests).unwrap();
+        let original = "Tests: some-test\nDepends: @\nRestrictions: needs-root\n";
+        fs::write(tests.join("control"), original).unwrap();
 
-        fs::write(
-            tests_dir.join("control"),
-            "Tests: some-test\nDepends: @\nRestrictions: needs-root\n",
-        )
-        .unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(tests.join("control")).unwrap(), original);
     }
 
     #[test]
     fn test_only_distance_one() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let tests_dir = debian_dir.join("tests");
-        fs::create_dir_all(&tests_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let tests = tmp.path().join("debian/tests");
+        fs::create_dir_all(&tests).unwrap();
+        fs::write(tests.join("control"), "Foo: some-test\nDepends: @\n").unwrap();
 
-        // "Foo" has distance > 1 from all valid fields, should not be fixed
-        fs::write(tests_dir.join("control"), "Foo: some-test\nDepends: @\n").unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
