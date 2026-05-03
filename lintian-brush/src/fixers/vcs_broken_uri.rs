@@ -1,31 +1,41 @@
-use crate::{FixerError, FixerResult};
-use debian_analyzer::abstract_control::AbstractSource;
-use debian_analyzer::control::TemplatedControlEditor;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::FixerError;
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-    let editor = TemplatedControlEditor::open(&control_path)?;
-
-    let mut made_changes = false;
-
-    if let Some(mut source) = editor.source() {
-        if let Some(vcs_git) = source.get_vcs_url("Git") {
-            let fixed = crate::vcs::fixup_broken_git_url(&vcs_git);
-            if fixed != vcs_git {
-                source.set_vcs_url("Git", &fixed);
-                made_changes = true;
-            }
-        }
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
+    if !control_path.exists() {
+        return Ok(Vec::new());
     }
 
-    if !made_changes {
-        return Err(FixerError::NoChanges);
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let Some(vcs_git) = source.as_deb822().get("Vcs-Git") else {
+        return Ok(Vec::new());
+    };
+
+    let fixed = crate::vcs::fixup_broken_git_url(&vcs_git);
+    if fixed == vcs_git {
+        return Ok(Vec::new());
     }
 
-    editor.commit()?;
-
-    Ok(FixerResult::builder("Fix broken Vcs URL.").build())
+    // This fixer isn't associated with a lintian tag, so emit an untagged
+    // diagnostic. Override and tag bookkeeping skip it, but the action
+    // still applies.
+    Ok(vec![Diagnostic::untagged(
+        "Fix broken Vcs URL.",
+        vec![Action::Deb822(Deb822Action::SetField {
+            file: control_rel,
+            paragraph: ParagraphSelector::Source,
+            field: "Vcs-Git".into(),
+            value: fixed,
+        })],
+    )])
 }
 
 declare_fixer! {
@@ -34,16 +44,23 @@ declare_fixer! {
     // Must fix broken URIs after infrastructure updates and before type mismatch checks
     after: ["vcs-field-bitrotted"],
     before: ["vcs-field-mismatch"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_fix_broken_git_url_extra_colon() {
@@ -59,16 +76,12 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(result.description, "Fix broken Vcs URL.");
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
         assert_eq!(
-            updated_content,
-            "Source: blah\nVcs-Git: https://github.com/jelmer/dulwich\n"
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: blah\nVcs-Git: https://github.com/jelmer/dulwich\n",
         );
     }
 
@@ -86,13 +99,11 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(result.is_ok());
+        run_apply(base_path).unwrap();
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
         assert_eq!(
-            updated_content,
-            "Source: test\nVcs-Git: https://github.com/jelmer/dulwich\n"
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test\nVcs-Git: https://github.com/jelmer/dulwich\n",
         );
     }
 
@@ -110,8 +121,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
     }
 
     #[test]
@@ -124,17 +134,13 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, "Source: blah\n").unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_control_file() {
         let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(result.is_err());
+        assert!(run_apply(temp_dir.path()).is_err());
     }
 
     #[test]
@@ -151,13 +157,11 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(result.is_ok());
+        run_apply(base_path).unwrap();
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
         assert_eq!(
-            updated_content,
-            "Source: test\nVcs-Git: https://salsa.debian.org/jelmer/dulwich\n"
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test\nVcs-Git: https://salsa.debian.org/jelmer/dulwich\n",
         );
     }
 
@@ -175,13 +179,11 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(result.is_ok());
+        run_apply(base_path).unwrap();
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
         assert_eq!(
-            updated_content,
-            "Source: test\nVcs-Git: https://github.com/RPi-Distro/pgzero.git\n"
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test\nVcs-Git: https://github.com/RPi-Distro/pgzero.git\n",
         );
     }
 
@@ -199,13 +201,11 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(result.is_ok());
+        run_apply(base_path).unwrap();
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
         assert_eq!(
-            updated_content,
-            "Source: test\nVcs-Git: https://gitlab.freedesktop.org/xorg/xserver\n"
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test\nVcs-Git: https://gitlab.freedesktop.org/xorg/xserver\n",
         );
     }
 }
