@@ -1,8 +1,9 @@
-use crate::{Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use debian_control::lossless::Control;
 use lazy_regex::Regex;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const CERTAINTY: Certainty = Certainty::Likely;
 
@@ -60,131 +61,134 @@ fn find_expected_section<'a>(regexes: &'a [(Regex, String)], name: &str) -> Opti
     None
 }
 
-pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
-    // Check minimum certainty
-    if !crate::certainty_sufficient(CERTAINTY, preferences.minimum_certainty) {
-        return Err(FixerError::NotCertainEnough(
-            CERTAINTY,
-            preferences.minimum_certainty,
-            vec![],
-        ));
-    }
-
-    let control_path = base_path.join("debian/control");
-
+pub fn detect(
+    base_path: &Path,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Load the name-to-section mappings
     let regexes = match get_name_section_mappings(preferences.lintian_data_path.as_deref()) {
         Ok(r) => r,
         Err(e) => {
             tracing::warn!("Failed to load name-section mappings: {}", e);
-            return Err(FixerError::NoChanges);
+            return Ok(Vec::new());
         }
     };
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let default_section = control
+        .source()
+        .as_ref()
+        .and_then(|s| s.as_deb822().get("Section"));
 
-    // Get default section from source paragraph
-    let default_section = if let Some(source) = editor.source() {
-        source.as_deb822().get("Section")
-    } else {
-        None
-    };
+    let mut diagnostics = Vec::new();
 
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-    let mut changes = Vec::new();
-
-    // Process binary packages
-    for mut binary in editor.binaries() {
-        let paragraph = binary.as_mut_deb822();
-
-        let package_name = match paragraph.get("Package") {
-            Some(name) => name.to_string(),
-            None => continue,
+    for binary in control.binaries() {
+        let Some(package_name) = binary.name() else {
+            continue;
         };
-
-        let expected_section = match find_expected_section(&regexes, &package_name) {
-            Some(s) => s,
-            None => continue,
+        let Some(expected_section) = find_expected_section(&regexes, &package_name) else {
+            continue;
         };
-
-        // Get current section (from binary or fall back to source default)
-        let current_section = paragraph
+        let current_section = binary
+            .as_deb822()
             .get("Section")
-            .or(default_section.clone())
+            .or_else(|| default_section.clone())
             .unwrap_or_default();
-
-        if expected_section != current_section {
-            let issue = LintianIssue::binary_with_info(
-                &package_name,
-                "wrong-section-according-to-package-name",
-                vec![format!("{} => {}", current_section, expected_section)],
-            );
-
-            if issue.should_fix(base_path) {
-                changes.push((
-                    package_name.clone(),
-                    current_section.to_string(),
-                    expected_section.to_string(),
-                ));
-                fixed_issues.push(issue);
-                binary.set_section(Some(expected_section));
-            } else {
-                overridden_issues.push(issue);
-            }
+        if current_section == expected_section {
+            continue;
         }
+
+        let issue = LintianIssue::binary_with_info(
+            &package_name,
+            "wrong-section-according-to-package-name",
+            vec![format!("{} => {}", current_section, expected_section)],
+        );
+
+        diagnostics.push(
+            Diagnostic::with_actions(
+                issue,
+                format!(
+                    "Fix section for binary package {} ({} ⇒ {}).",
+                    package_name, current_section, expected_section
+                ),
+                vec![Action::Deb822(Deb822Action::SetField {
+                    file: control_rel.clone(),
+                    paragraph: ParagraphSelector::Binary {
+                        package: package_name,
+                    },
+                    field: "Section".into(),
+                    value: expected_section.to_string(),
+                })],
+            )
+            .with_certainty(CERTAINTY),
+        );
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
+    Ok(diagnostics)
+}
 
-    editor.commit()?;
-
-    // Build description
-    let changes_desc: Vec<String> = changes
+/// Aggregate per-binary section changes into one
+/// "Fix sections for binary package A (X ⇒ Y), binary package B ..." line,
+/// matching the historical wording.
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    // Each diagnostic's per-issue message is
+    // "Fix section for binary package P (X ⇒ Y).". Reuse the substring
+    // between "binary package " and the trailing period to assemble the
+    // aggregate.
+    let parts: Vec<&str> = fixed
         .iter()
-        .map(|(pkg, old, new)| format!("binary package {} ({} ⇒ {})", pkg, old, new))
+        .filter_map(|d| {
+            d.message
+                .strip_prefix("Fix section for ")
+                .and_then(|s| s.strip_suffix('.'))
+        })
         .collect();
-
-    let description = format!("Fix sections for {}.", changes_desc.join(", "));
-
-    Ok(FixerResult::builder(&description)
-        .certainty(CERTAINTY)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    format!("Fix sections for {}.", parts.join(", "))
 }
 
 declare_fixer! {
     name: "wrong-section-according-to-package-name",
     tags: ["wrong-section-according-to-package-name"],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences)
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version;
     use tempfile::TempDir;
+
+    fn run_apply_with(
+        base: &Path,
+        prefs: &FixerPreferences,
+    ) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, prefs)
+    }
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        run_apply_with(base, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_no_control() {
         let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
@@ -194,28 +198,21 @@ mod tests {
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        let control_content = r#"Source: test-pkg
-Section: libs
-Maintainer: Test User <test@example.com>
-
-Package: python3-testpkg
-Architecture: all
-Description: Test package
- Test description
-"#;
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: test-pkg\nSection: libs\nMaintainer: Test User <test@example.com>\n\nPackage: python3-testpkg\nArchitecture: all\nDescription: Test package\n Test description\n",
+        )
+        .unwrap();
 
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-
-        assert!(result.is_ok());
-        let result = result.unwrap();
+        let result = run_apply(base_path).unwrap();
         assert!(result.description.contains("python"));
 
-        // Check that the section was updated
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Section: python"));
+        // Section is inserted after Architecture per BINARY_FIELD_ORDER.
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-pkg\nSection: libs\nMaintainer: Test User <test@example.com>\n\nPackage: python3-testpkg\nArchitecture: all\nSection: python\nDescription: Test package\n Test description\n",
+        );
     }
 
     #[test]
@@ -225,23 +222,12 @@ Description: Test package
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        let control_content = r#"Source: test-pkg
-Section: python
-Maintainer: Test User <test@example.com>
-
-Package: python3-testpkg
-Architecture: all
-Description: Test package
- Test description
-"#;
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        let original = "Source: test-pkg\nSection: python\nMaintainer: Test User <test@example.com>\n\nPackage: python3-testpkg\nArchitecture: all\nDescription: Test package\n Test description\n";
+        fs::write(&control_path, original).unwrap();
 
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-
-        // Should not change if section is already correct
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&control_path).unwrap(), original);
     }
 
     #[test]
@@ -251,26 +237,19 @@ Description: Test package
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        let control_content = r#"Source: test-pkg
-Section: libs
-Maintainer: Test User <test@example.com>
-
-Package: test-pkg-dbg
-Architecture: all
-Description: Debug symbols
- Debug symbols
-"#;
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: test-pkg\nSection: libs\nMaintainer: Test User <test@example.com>\n\nPackage: test-pkg-dbg\nArchitecture: all\nDescription: Debug symbols\n Debug symbols\n",
+        )
+        .unwrap();
 
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
+        run_apply(base_path).unwrap();
 
-        assert!(result.is_ok());
-
-        // Check that the section was updated to debug
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Section: debug"));
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-pkg\nSection: libs\nMaintainer: Test User <test@example.com>\n\nPackage: test-pkg-dbg\nArchitecture: all\nSection: debug\nDescription: Debug symbols\n Debug symbols\n",
+        );
     }
 
     #[test]
@@ -280,24 +259,18 @@ Description: Debug symbols
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        let control_content = r#"Source: test-pkg
-Maintainer: Test User <test@example.com>
-
-Package: python3-testpkg
-Architecture: all
-Description: Test package
- Test description
-"#;
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: test-pkg\nMaintainer: Test User <test@example.com>\n\nPackage: python3-testpkg\nArchitecture: all\nDescription: Test package\n Test description\n",
+        )
+        .unwrap();
 
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             minimum_certainty: Some(Certainty::Certain),
             ..Default::default()
         };
-        let result = run(base_path, &preferences);
-
-        // Should fail because CERTAINTY (Likely) < Certain
-        assert!(matches!(result, Err(FixerError::NotCertainEnough(_, _, _))));
+        let err = run_apply_with(base_path, &prefs).unwrap_err();
+        assert!(matches!(err, FixerError::NotCertainEnough(..)));
     }
 }
