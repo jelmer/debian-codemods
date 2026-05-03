@@ -13,30 +13,35 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     }
     let new_abs = base_path.join(&new_rel);
 
-    let old_content = fs::read_to_string(&old_abs)?;
-    let merged_content = if new_abs.exists() {
-        let mut existing = fs::read_to_string(&new_abs)?;
-        existing.push_str(&old_content);
-        existing
-    } else {
-        old_content
-    };
-
     let issue = LintianIssue::source_with_info(
         "old-source-override-location",
         vec!["debian/source.lintian-overrides".to_string()],
     );
 
-    Ok(vec![Diagnostic::with_actions(
-        issue,
-        "Move source package lintian overrides to debian/source.",
+    // If the target already exists, merge the old file's content into it
+    // and delete the old. Otherwise an atomic rename does the job.
+    let actions = if new_abs.exists() {
+        let old_content = fs::read_to_string(&old_abs)?;
+        let mut merged = fs::read_to_string(&new_abs)?;
+        merged.push_str(&old_content);
         vec![
             Action::Filesystem(FilesystemAction::Write {
                 file: new_rel,
-                content: merged_content.into_bytes(),
+                content: merged.into_bytes(),
             }),
             Action::Filesystem(FilesystemAction::Delete { file: old_rel }),
-        ],
+        ]
+    } else {
+        vec![Action::Filesystem(FilesystemAction::Rename {
+            file: old_rel,
+            to: new_rel,
+        })]
+    };
+
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Move source package lintian overrides to debian/source.",
+        actions,
     )
     .with_certainty(Certainty::Certain)])
 }

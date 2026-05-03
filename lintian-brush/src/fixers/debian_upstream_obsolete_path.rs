@@ -35,35 +35,42 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             continue;
         }
 
-        let content = std::fs::read(&abs)?;
         let issue = LintianIssue::source_with_info(
             "debian-upstream-obsolete-path",
             vec![format!("[{}]", label)],
         );
 
+        // Special case: the legacy `debian/upstream` (a single file)
+        // can't be `rename`d to `debian/upstream/metadata`, since the
+        // destination's parent directory is the source itself. Read the
+        // content, delete the file, then write to the new path.
+        let actions = if rel == &PathBuf::from("debian/upstream") {
+            let content = std::fs::read(&abs)?;
+            vec![
+                Action::Filesystem(FilesystemAction::Delete { file: rel.clone() }),
+                Action::Filesystem(FilesystemAction::Write {
+                    file: target_rel.clone(),
+                    content,
+                }),
+            ]
+        } else {
+            vec![Action::Filesystem(FilesystemAction::Rename {
+                file: rel.clone(),
+                to: target_rel.clone(),
+            })]
+        };
+
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
                 "Move upstream metadata to debian/upstream/metadata.",
-                vec![
-                    // Delete first: in the legacy "debian/upstream is a
-                    // file" case, the file must be gone before its name
-                    // can be reused as a directory for debian/upstream/
-                    // metadata. For the other cases (upstream-metadata,
-                    // upstream-metadata.yaml) the order doesn't matter.
-                    Action::Filesystem(FilesystemAction::Delete { file: rel.clone() }),
-                    Action::Filesystem(FilesystemAction::Write {
-                        file: target_rel.clone(),
-                        content,
-                    }),
-                ],
+                actions,
             )
             .with_certainty(Certainty::Certain),
         );
 
-        // Only handle one file per run — the original code stopped after
-        // the first match too, and the lintian-overrides semantics work
-        // best with one diagnostic per fix.
+        // Only handle one file per run — the lintian-overrides semantics
+        // work best with one diagnostic per fix.
         break;
     }
 
