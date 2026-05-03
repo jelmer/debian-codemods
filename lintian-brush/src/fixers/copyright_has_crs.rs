@@ -1,77 +1,72 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
-
-    if !copyright_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let abs = base_path.join(&copyright_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
 
-    // Read the file as bytes to preserve exact binary content
-    let content = fs::read(&copyright_path)?;
-
-    // Check if there are any CR characters
+    let content = std::fs::read(&abs)?;
     if !content.contains(&b'\r') {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Create issue and check if it should be fixed
-    let issue = LintianIssue::source("copyright-has-crs");
-
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    // Remove all CR characters
     let new_content: Vec<u8> = content.into_iter().filter(|&b| b != b'\r').collect();
 
-    // Write back the modified content
-    fs::write(&copyright_path, new_content)?;
-
-    Ok(FixerResult::builder("Remove CRs from copyright file.")
-        .fixed_issue(issue)
-        .certainty(crate::Certainty::Certain)
-        .build())
+    let issue = LintianIssue::source("copyright-has-crs");
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Remove CRs from copyright file.".to_string(),
+        vec![Action::Filesystem(FilesystemAction::Write {
+            file: copyright_rel,
+            content: new_content,
+        })],
+    )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
     name: "copyright-has-crs",
     tags: ["copyright-has-crs"],
-    // Must normalize line endings before whitespace cleanup to avoid corrupting content
+    // Must normalize line endings before whitespace cleanup to avoid
+    // corrupting content.
     before: ["file-contains-trailing-whitespace"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_remove_crs() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_path = debian_dir.join("copyright");
-        // Write content with CRLF line endings
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("copyright");
         fs::write(
-            &copyright_path,
+            &path,
             b"Format: example\r\nUpstream-Name: test\r\n\r\nFiles: *\r\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(result.description, "Remove CRs from copyright file.");
         assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Verify LintianIssue was created correctly
         assert_eq!(result.fixed_lintian_issues.len(), 1);
         assert_eq!(
             result.fixed_lintian_issues[0].tag,
@@ -79,47 +74,38 @@ mod tests {
         );
         assert_eq!(result.fixed_lintian_issues[0].info, None);
 
-        // Check that CRs were removed
-        let content = fs::read(&copyright_path).unwrap();
-        assert!(!content.contains(&b'\r'));
         assert_eq!(
-            content,
-            b"Format: example\nUpstream-Name: test\n\nFiles: *\n"
+            fs::read(&path).unwrap(),
+            b"Format: example\nUpstream-Name: test\n\nFiles: *\n",
         );
     }
 
     #[test]
     fn test_no_crs() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("copyright"),
+            b"Format: example\nUpstream-Name: test\n",
+        )
+        .unwrap();
 
-        let copyright_path = debian_dir.join("copyright");
-        // Write content with LF line endings only
-        fs::write(&copyright_path, b"Format: example\nUpstream-Name: test\n").unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_copyright_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_debian_dir() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
