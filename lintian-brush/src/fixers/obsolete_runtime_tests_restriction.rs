@@ -1,10 +1,10 @@
-use crate::{Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use deb822_lossless::Deb822;
 use std::collections::HashSet;
-use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Read the list of known obsolete restrictions from lintian data
+/// Read the list of obsolete restrictions from lintian's data file.
 fn read_obsolete_restrictions(
     lintian_data_path: Option<&Path>,
 ) -> Result<HashSet<String>, FixerError> {
@@ -14,282 +14,258 @@ fn read_obsolete_restrictions(
     let path = lintian_data_path
         .join("testsuite")
         .join("known-obsolete-restrictions");
-
     if !path.exists() {
         return Err(FixerError::Other("Lintian data file not found".to_string()));
     }
-
-    let content = fs::read_to_string(&path)?;
-    let mut restrictions = HashSet::new();
-
-    for line in content.lines() {
-        let line = line.trim();
-        if line.starts_with('#') || line.is_empty() {
-            continue;
-        }
-        restrictions.insert(line.to_string());
-    }
-
-    Ok(restrictions)
+    let content = std::fs::read_to_string(&path)?;
+    Ok(content
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(str::to_string)
+        .collect())
 }
 
-pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/tests/control");
-
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(
+    base_path: &Path,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/tests/control");
+    let abs = base_path.join(&control_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let deprecated_restrictions =
-        read_obsolete_restrictions(preferences.lintian_data_path.as_deref())?;
-    let mut removed_restrictions = Vec::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-    let mut overall_certainty = Certainty::Certain;
-
-    // Parse the tests control file using lossless parser
-    let content = fs::read_to_string(&control_path)?;
+    let deprecated = read_obsolete_restrictions(preferences.lintian_data_path.as_deref())?;
+    let content = std::fs::read_to_string(&abs)?;
     let parsed = Deb822::parse(&content);
     let deb822 = parsed.tree();
 
-    for mut paragraph in deb822.paragraphs() {
-        let restrictions_entry = match paragraph
+    let mut diagnostics = Vec::new();
+
+    for paragraph in deb822.paragraphs() {
+        let Some(restrictions_entry) = paragraph
             .entries()
             .find(|e| e.key().as_deref() == Some("Restrictions"))
-        {
-            Some(entry) => entry,
-            None => continue,
+        else {
+            continue;
         };
-
         let restrictions_value = restrictions_entry.value();
         let line_num = restrictions_entry.line() + 1;
 
-        let restrictions: Vec<&str> = restrictions_value
+        let restrictions: Vec<String> = restrictions_value
             .split(',')
-            .map(|s| s.trim())
+            .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .collect();
-
         if restrictions.is_empty() {
             continue;
         }
 
-        let mut to_delete = Vec::new();
-        for restriction in &restrictions {
-            if deprecated_restrictions.contains(*restriction) {
-                let certainty = if *restriction == "needs-recommends" {
-                    Certainty::Possible
-                } else {
-                    Certainty::Certain
-                };
-
-                let issue = LintianIssue::source_with_info(
-                    "obsolete-runtime-tests-restriction",
-                    vec![format!(
-                        "{} [debian/tests/control:{}]",
-                        restriction, line_num
-                    )],
-                );
-
-                if issue.should_fix(base_path) {
-                    to_delete.push(restriction.to_string());
-                    overall_certainty = crate::min_certainty(&[overall_certainty, certainty])
-                        .unwrap_or(overall_certainty);
-                    fixed_issues.push(issue);
-                } else {
-                    overridden_issues.push(issue);
-                }
-            }
+        let to_drop: Vec<String> = restrictions
+            .iter()
+            .filter(|r| deprecated.contains(*r))
+            .cloned()
+            .collect();
+        if to_drop.is_empty() {
+            continue;
         }
 
-        if !to_delete.is_empty() {
-            removed_restrictions.extend(to_delete.iter().cloned());
+        let kept: Vec<String> = restrictions
+            .iter()
+            .filter(|r| !deprecated.contains(*r))
+            .cloned()
+            .collect();
 
-            // Remove obsolete restrictions
-            let new_restrictions: Vec<String> = restrictions
-                .iter()
-                .filter(|r| !to_delete.contains(&r.to_string()))
-                .map(|s| s.to_string())
-                .collect();
+        // Identify the paragraph by its Tests field, which uniquely names
+        // the autopkgtest entry.
+        let Some(tests_value) = paragraph.get("Tests") else {
+            continue;
+        };
+        let selector = ParagraphSelector::ByKey {
+            field: "Tests".into(),
+            value: tests_value,
+        };
 
-            if new_restrictions.is_empty() {
-                paragraph.remove("Restrictions");
+        // The action set is shared across the per-restriction diagnostics
+        // for this paragraph: applying any one is enough; the rest are
+        // no-ops because the field already has the kept value (or is gone).
+        let action = if kept.is_empty() {
+            Action::Deb822(Deb822Action::RemoveField {
+                file: control_rel.clone(),
+                paragraph: selector.clone(),
+                field: "Restrictions".into(),
+            })
+        } else {
+            Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: selector.clone(),
+                field: "Restrictions".into(),
+                value: kept.join(", "),
+            })
+        };
+
+        for restriction in &to_drop {
+            // needs-recommends is borderline — different lintian
+            // versions disagree on it.
+            let certainty = if restriction == "needs-recommends" {
+                Certainty::Possible
             } else {
-                paragraph.set("Restrictions", &new_restrictions.join(", "));
-            }
+                Certainty::Certain
+            };
+            let issue = LintianIssue::source_with_info(
+                "obsolete-runtime-tests-restriction",
+                vec![format!(
+                    "{} [debian/tests/control:{}]",
+                    restriction, line_num
+                )],
+            );
+            diagnostics.push(
+                Diagnostic::with_actions(
+                    issue,
+                    format!("dropped\t{}", restriction),
+                    vec![action.clone()],
+                )
+                .with_certainty(certainty),
+            );
         }
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
+    Ok(diagnostics)
+}
 
-    // Write back the modified file
-    fs::write(&control_path, deb822.to_string())?;
-
-    let plural = if removed_restrictions.len() > 1 {
-        "s"
-    } else {
-        ""
-    };
-    let description = format!(
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let dropped: Vec<&str> = fixed
+        .iter()
+        .filter_map(|d| d.message.strip_prefix("dropped\t"))
+        .collect();
+    let plural = if dropped.len() > 1 { "s" } else { "" };
+    format!(
         "Drop deprecated restriction{} {}. See https://salsa.debian.org/ci-team/autopkgtest/tree/master/doc/README.package-tests.rst",
         plural,
-        removed_restrictions.join(", ")
-    );
-
-    Ok(FixerResult::builder(description)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .certainty(overall_certainty)
-        .build())
+        dropped.join(", "),
+    )
 }
 
 declare_fixer! {
     name: "obsolete-runtime-tests-restriction",
     tags: ["obsolete-runtime-tests-restriction"],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences)
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply_with(
+        base: &Path,
+        prefs: &FixerPreferences,
+    ) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, prefs)
+    }
+
+    fn write_obsolete_data(tmp: &TempDir, contents: &str) -> PathBuf {
+        let dir = tmp.path().join("lintian-data/testsuite");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("known-obsolete-restrictions"), contents).unwrap();
+        tmp.path().join("lintian-data")
+    }
+
     #[test]
     fn test_remove_obsolete_restriction() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let tests_dir = debian_dir.join("tests");
-        fs::create_dir_all(&tests_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let tests = tmp.path().join("debian/tests");
+        fs::create_dir_all(&tests).unwrap();
+        let path = tests.join("control");
+        fs::write(
+            &path,
+            "Tests: test1\nRestrictions: needs-root, rw-build-tree\nDepends: @\n\nTests: test2\nRestrictions: breaks-testbed\n",
+        )
+        .unwrap();
 
-        // Create a control file with an obsolete restriction
-        let control_content = r#"Tests: test1
-Restrictions: needs-root, rw-build-tree
-Depends: @
-
-Tests: test2
-Restrictions: breaks-testbed
-"#;
-        let control_path = tests_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        // Create a mock known-obsolete-restrictions file
-        let lintian_data_dir = temp_dir.path().join("lintian-data/testsuite");
-        fs::create_dir_all(&lintian_data_dir).unwrap();
-        let obsolete_file = lintian_data_dir.join("known-obsolete-restrictions");
-        fs::write(&obsolete_file, "rw-build-tree\n").unwrap();
-
-        let preferences = FixerPreferences {
-            lintian_data_path: Some(temp_dir.path().join("lintian-data")),
+        let prefs = FixerPreferences {
+            lintian_data_path: Some(write_obsolete_data(&tmp, "rw-build-tree\n")),
             ..Default::default()
         };
-
-        let result = run(temp_dir.path(), &preferences);
-        assert!(result.is_ok(), "Error: {:?}", result);
-
-        let result = result.unwrap();
+        let result = run_apply_with(tmp.path(), &prefs).unwrap();
         assert!(result.description.contains("rw-build-tree"));
         assert_eq!(result.certainty, Some(Certainty::Certain));
 
-        // Verify the file was updated
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Restrictions: needs-root"));
-        assert!(!updated_content.contains("rw-build-tree"));
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Tests: test1\nRestrictions: needs-root\nDepends: @\n\nTests: test2\nRestrictions: breaks-testbed\n",
+        );
     }
 
     #[test]
     fn test_remove_all_restrictions() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let tests_dir = debian_dir.join("tests");
-        fs::create_dir_all(&tests_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let tests = tmp.path().join("debian/tests");
+        fs::create_dir_all(&tests).unwrap();
+        let path = tests.join("control");
+        fs::write(
+            &path,
+            "Tests: test1\nRestrictions: rw-build-tree\nDepends: @\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Tests: test1
-Restrictions: rw-build-tree
-Depends: @
-"#;
-        let control_path = tests_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let lintian_data_dir = temp_dir.path().join("lintian-data/testsuite");
-        fs::create_dir_all(&lintian_data_dir).unwrap();
-        let obsolete_file = lintian_data_dir.join("known-obsolete-restrictions");
-        fs::write(&obsolete_file, "rw-build-tree\n").unwrap();
-
-        let preferences = FixerPreferences {
-            lintian_data_path: Some(temp_dir.path().join("lintian-data")),
+        let prefs = FixerPreferences {
+            lintian_data_path: Some(write_obsolete_data(&tmp, "rw-build-tree\n")),
             ..Default::default()
         };
+        run_apply_with(tmp.path(), &prefs).unwrap();
 
-        let result = run(temp_dir.path(), &preferences);
-        assert!(result.is_ok());
-
-        // Verify Restrictions field was removed entirely
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(!updated_content.contains("Restrictions:"));
+        // The Restrictions field is removed entirely; the rest of the
+        // paragraph is preserved.
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Tests: test1\nDepends: @\n",
+        );
     }
 
     #[test]
     fn test_needs_recommends_certainty() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let tests_dir = debian_dir.join("tests");
-        fs::create_dir_all(&tests_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let tests = tmp.path().join("debian/tests");
+        fs::create_dir_all(&tests).unwrap();
+        let path = tests.join("control");
+        fs::write(&path, "Tests: test1\nRestrictions: needs-recommends\n").unwrap();
 
-        let control_content = r#"Tests: test1
-Restrictions: needs-recommends
-"#;
-        let control_path = tests_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let lintian_data_dir = temp_dir.path().join("lintian-data/testsuite");
-        fs::create_dir_all(&lintian_data_dir).unwrap();
-        let obsolete_file = lintian_data_dir.join("known-obsolete-restrictions");
-        fs::write(&obsolete_file, "needs-recommends\n").unwrap();
-
-        let preferences = FixerPreferences {
-            lintian_data_path: Some(temp_dir.path().join("lintian-data")),
+        let prefs = FixerPreferences {
+            lintian_data_path: Some(write_obsolete_data(&tmp, "needs-recommends\n")),
             ..Default::default()
         };
-
-        let result = run(temp_dir.path(), &preferences);
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
+        let result = run_apply_with(tmp.path(), &prefs).unwrap();
         assert_eq!(result.certainty, Some(Certainty::Possible));
     }
 
     #[test]
     fn test_no_changes_when_no_obsolete() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let tests_dir = debian_dir.join("tests");
-        fs::create_dir_all(&tests_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let tests = tmp.path().join("debian/tests");
+        fs::create_dir_all(&tests).unwrap();
+        let path = tests.join("control");
+        let original = "Tests: test1\nRestrictions: needs-root\n";
+        fs::write(&path, original).unwrap();
 
-        let control_content = r#"Tests: test1
-Restrictions: needs-root
-"#;
-        let control_path = tests_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let lintian_data_dir = temp_dir.path().join("lintian-data/testsuite");
-        fs::create_dir_all(&lintian_data_dir).unwrap();
-        let obsolete_file = lintian_data_dir.join("known-obsolete-restrictions");
-        fs::write(&obsolete_file, "rw-build-tree\n").unwrap();
-
-        let preferences = FixerPreferences {
-            lintian_data_path: Some(temp_dir.path().join("lintian-data")),
+        let prefs = FixerPreferences {
+            lintian_data_path: Some(write_obsolete_data(&tmp, "rw-build-tree\n")),
             ..Default::default()
         };
-
-        let result = run(temp_dir.path(), &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply_with(tmp.path(), &prefs),
+            Err(FixerError::NoChanges)
+        ));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
     }
 }
