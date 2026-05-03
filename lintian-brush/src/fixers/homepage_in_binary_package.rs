@@ -1,114 +1,112 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use debian_control::lossless::Control;
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
+const MESSAGE: &str = "Set Homepage field in Source rather than Binary package.";
 
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut made_changes = false;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
 
-    // Get source homepage
-    let source_homepage = if let Some(source) = editor.source() {
-        source.as_deb822().get("Homepage")
+    let source_homepage = control
+        .source()
+        .as_ref()
+        .and_then(|s| s.as_deb822().get("Homepage"));
+
+    let binaries_with_homepage: Vec<(String, String)> = control
+        .binaries()
+        .filter_map(|b| {
+            let homepage = b.as_deb822().get("Homepage")?;
+            let name = b.name()?;
+            Some((name, homepage))
+        })
+        .collect();
+
+    let mut diagnostics = Vec::new();
+
+    if let Some(source_hp) = &source_homepage {
+        // Remove Homepage from binaries that match the source value.
+        for (name, hp) in &binaries_with_homepage {
+            if hp == source_hp {
+                let issue = LintianIssue::source_with_info(
+                    "homepage-in-binary-package",
+                    vec![name.clone()],
+                );
+                diagnostics.push(Diagnostic::with_actions(
+                    issue,
+                    MESSAGE,
+                    vec![Action::Deb822(Deb822Action::RemoveField {
+                        file: control_rel.clone(),
+                        paragraph: ParagraphSelector::Binary {
+                            package: name.clone(),
+                        },
+                        field: "Homepage".into(),
+                    })],
+                ));
+            }
+        }
     } else {
-        None
-    };
+        // No source Homepage: if all binary Homepages are identical, lift it
+        // to the source paragraph and remove it from each binary.
+        let unique: HashSet<&str> = binaries_with_homepage
+            .iter()
+            .map(|(_, hp)| hp.as_str())
+            .collect();
+        if unique.len() == 1 && !binaries_with_homepage.is_empty() {
+            let homepage = binaries_with_homepage[0].1.clone();
+            let mut actions = Vec::with_capacity(binaries_with_homepage.len() + 1);
+            actions.push(Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Source,
+                field: "Homepage".into(),
+                value: homepage,
+            }));
+            for (name, _) in &binaries_with_homepage {
+                actions.push(Action::Deb822(Deb822Action::RemoveField {
+                    file: control_rel.clone(),
+                    paragraph: ParagraphSelector::Binary {
+                        package: name.clone(),
+                    },
+                    field: "Homepage".into(),
+                }));
+            }
 
-    // Collect unique binary homepages and check for issues
-    let mut binary_homepages = HashSet::new();
-    let mut binaries_with_homepage = Vec::new();
-
-    for binary in editor.binaries() {
-        if let Some(homepage) = binary.as_deb822().get("Homepage") {
-            let package_name = binary.name().unwrap_or_default();
-            binaries_with_homepage.push((package_name, homepage.clone()));
-            if source_homepage.as_ref() != Some(&homepage) {
-                binary_homepages.insert(homepage);
+            // One diagnostic per affected binary, but they share a single
+            // ActionPlan: applying any one of them implies applying them
+            // all. The default driver picks the first plan of each
+            // diagnostic, so list the full coordinated plan on the first
+            // diagnostic only and dedupe the rest as informational.
+            //
+            // Simpler: emit one diagnostic per binary, each carrying the
+            // full coordinated set. The applier dedupes equivalent edits
+            // (Set then Set the same field value, Remove of an absent
+            // field) so the second pass is a no-op.
+            for (name, _) in &binaries_with_homepage {
+                let issue = LintianIssue::source_with_info(
+                    "homepage-in-binary-package",
+                    vec![name.clone()],
+                );
+                diagnostics.push(Diagnostic::with_actions(issue, MESSAGE, actions.clone()));
             }
         }
     }
 
-    // Create issues for each binary package with a Homepage field
-    for (package_name, _) in &binaries_with_homepage {
-        let issue = LintianIssue::source_with_info(
-            "homepage-in-binary-package",
-            vec![package_name.clone()],
-        );
-
-        if !issue.should_fix(base_path) {
-            overridden_issues.push(issue);
-        } else {
-            fixed_issues.push(issue);
-        }
-    }
-
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    // First pass: Remove binary Homepage fields that match source Homepage
-    if source_homepage.is_some() {
-        for mut binary in editor.binaries() {
-            let paragraph = binary.as_mut_deb822();
-            if let Some(binary_homepage) = paragraph.get("Homepage") {
-                if source_homepage.as_ref() == Some(&binary_homepage) {
-                    paragraph.remove("Homepage");
-                    made_changes = true;
-                }
-            }
-        }
-    }
-
-    // Second pass: If no source homepage but all binaries have the same homepage,
-    // move it to source
-    if source_homepage.is_none() && binary_homepages.len() == 1 {
-        let homepage = binary_homepages.iter().next().unwrap().clone();
-
-        // Set homepage in source
-        if let Some(mut source) = editor.source() {
-            source.as_mut_deb822().set("Homepage", &homepage);
-            made_changes = true;
-        }
-
-        // Remove homepage from all binaries
-        for mut binary in editor.binaries() {
-            let paragraph = binary.as_mut_deb822();
-            if paragraph.get("Homepage").is_some() {
-                paragraph.remove("Homepage");
-            }
-        }
-    }
-
-    if !made_changes {
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit()?;
-
-    Ok(
-        FixerResult::builder("Set Homepage field in Source rather than Binary package.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "homepage-in-binary-package",
     tags: ["homepage-in-binary-package"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -116,8 +114,14 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test-package", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_no_source_homepage_same_in_binaries() {
@@ -132,25 +136,13 @@ mod tests {
         )
         .unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(result.is_ok());
+        let result = run_apply(temp_dir.path()).unwrap();
+        assert_eq!(result.description, MESSAGE);
+        assert_eq!(result.fixed_lintian_issues.len(), 2);
 
-        let content = fs::read_to_string(&control_path).unwrap();
-        assert!(content.contains("Source: blah\nMaintainer: Joe <joe@example.com>\nHomepage: https://www.example.com/blah\n"));
-        assert!(!content.contains("Package: blah1\nHomepage"));
-        assert!(!content.contains("Package: blah2\nHomepage"));
-
-        let result = result.unwrap();
         assert_eq!(
-            result.description,
-            "Set Homepage field in Source rather than Binary package."
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: blah\nMaintainer: Joe <joe@example.com>\nHomepage: https://www.example.com/blah\n\nPackage: blah1\nDescription: blah\n\nPackage: blah2\nDescription: blah2\n",
         );
     }
 
@@ -167,19 +159,15 @@ mod tests {
         )
         .unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(result.is_ok());
+        let result = run_apply(temp_dir.path()).unwrap();
+        assert_eq!(result.fixed_lintian_issues.len(), 1);
 
-        let content = fs::read_to_string(&control_path).unwrap();
-        assert!(!content.contains("Package: blah1\nHomepage"));
-        assert!(content.contains("Package: blah2\nHomepage: https://www.example.com/blah2"));
+        // blah1's Homepage matches the source so it goes; blah2's differs
+        // and is left alone.
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: blah\nMaintainer: Joe <joe@example.com>\nHomepage: https://www.example.com/blah\n\nPackage: blah1\nDescription: blah\n\nPackage: blah2\nHomepage: https://www.example.com/blah2\nDescription: blah2\n",
+        );
     }
 
     #[test]
@@ -189,21 +177,14 @@ mod tests {
         fs::create_dir_all(&debian_dir).unwrap();
 
         let control_path = debian_dir.join("control");
-        fs::write(
-            &control_path,
-            "Source: blah\nMaintainer: Joe <joe@example.com>\n\nPackage: blah1\nHomepage: https://www.example.com/blah1\nDescription: blah\n\nPackage: blah2\nHomepage: https://www.example.com/blah2\nDescription: blah2\n",
-        )
-        .unwrap();
+        let original = "Source: blah\nMaintainer: Joe <joe@example.com>\n\nPackage: blah1\nHomepage: https://www.example.com/blah1\nDescription: blah\n\nPackage: blah2\nHomepage: https://www.example.com/blah2\nDescription: blah2\n";
+        fs::write(&control_path, original).unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
+        assert_eq!(fs::read_to_string(&control_path).unwrap(), original);
     }
 
     #[test]
@@ -213,20 +194,13 @@ mod tests {
         fs::create_dir_all(&debian_dir).unwrap();
 
         let control_path = debian_dir.join("control");
-        fs::write(
-            &control_path,
-            "Source: blah\nMaintainer: Joe <joe@example.com>\n\nPackage: blah1\nDescription: blah\n",
-        )
-        .unwrap();
+        let original =
+            "Source: blah\nMaintainer: Joe <joe@example.com>\n\nPackage: blah1\nDescription: blah\n";
+        fs::write(&control_path, original).unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 }

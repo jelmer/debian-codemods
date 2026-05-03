@@ -1,76 +1,81 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
 // Include the generated obsolete sites definitions
 include!(concat!(env!("OUT_DIR"), "/obsolete_sites.rs"));
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let Some(homepage) = source.as_deb822().get("Homepage") else {
+        return Ok(Vec::new());
+    };
 
-    if let Some(mut source) = editor.source() {
-        let paragraph = source.as_mut_deb822();
-
-        if let Some(homepage) = paragraph.get("Homepage") {
-            let homepage_str = homepage.to_string();
-
-            // Parse the URL to get the hostname
-            if let Ok(url) = url::Url::parse(&homepage_str) {
-                if let Some(hostname) = url.host_str() {
-                    if is_obsolete_site(hostname) {
-                        let issue = LintianIssue::source_with_info(
-                            "obsolete-url-in-packaging",
-                            vec![format!("{} [debian/control]", homepage_str.trim())],
-                        );
-
-                        if !issue.should_fix(base_path) {
-                            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-                        }
-
-                        paragraph.remove("Homepage");
-                        editor.commit()?;
-
-                        return Ok(FixerResult::builder(
-                            "Drop fields with obsolete URLs.".to_string(),
-                        )
-                        .fixed_issue(issue)
-                        .build());
-                    }
-                }
-            }
-        }
+    let url = match url::Url::parse(&homepage) {
+        Ok(u) => u,
+        Err(_) => return Ok(Vec::new()),
+    };
+    let Some(host) = url.host_str() else {
+        return Ok(Vec::new());
+    };
+    if !is_obsolete_site(host) {
+        return Ok(Vec::new());
     }
 
-    Err(FixerError::NoChanges)
+    let issue = LintianIssue::source_with_info(
+        "obsolete-url-in-packaging",
+        vec![format!("{} [debian/control]", homepage.trim())],
+    );
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Drop fields with obsolete URLs.",
+        vec![Action::Deb822(Deb822Action::RemoveField {
+            file: control_rel,
+            paragraph: ParagraphSelector::Source,
+            field: "Homepage".into(),
+        })],
+    )])
 }
 
 declare_fixer! {
     name: "obsolete-url-in-packaging",
     tags: ["obsolete-url-in-packaging"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_no_control_file() {
         let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
@@ -87,14 +92,10 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(result.description, "Drop fields with obsolete URLs.");
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert_eq!(updated_content, "Source: blah\n");
+        assert_eq!(fs::read_to_string(&control_path).unwrap(), "Source: blah\n");
     }
 
     #[test]
@@ -107,8 +108,7 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, "Source: blah\n").unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
     }
 
     #[test]
@@ -125,7 +125,6 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
     }
 }
