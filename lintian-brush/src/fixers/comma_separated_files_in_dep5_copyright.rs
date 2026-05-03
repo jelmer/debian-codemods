@@ -1,45 +1,35 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
 use deb822_lossless::Deb822;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
-
-    if !copyright_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let abs = base_path.join(&copyright_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
-
-    let content = fs::read_to_string(&copyright_path)?;
-
+    let content = std::fs::read_to_string(&abs)?;
     let deb822 = match Deb822::from_str(&content) {
         Ok(d) => d,
-        Err(_) => {
-            // Not a machine-readable copyright file
-            return Err(FixerError::NoChanges);
-        }
+        Err(_) => return Ok(Vec::new()),
     };
 
-    let mut changed = false;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let mut diagnostics = Vec::new();
 
-    for mut paragraph in deb822.paragraphs() {
+    for paragraph in deb822.paragraphs() {
         let Some(files) = paragraph.get("Files") else {
             continue;
         };
-
         if !files.contains(',') {
             continue;
         }
-
+        // Bash-style brace expansion uses commas inside `{...}`; leave it alone.
         if files.contains('{') {
-            // Bash-style expansion?
             continue;
         }
 
-        // Get line number for Files field
         let line_no = paragraph
             .entries()
             .find(|e| e.key().as_deref() == Some("Files"))
@@ -51,123 +41,106 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             vec![format!("Files [debian/copyright:{}]", line_no)],
         );
 
-        if issue.should_fix(base_path) {
-            let entries: Vec<String> = files.split(',').map(|s| s.trim().to_string()).collect();
+        // Splitting on commas and joining with newlines yields a
+        // multi-line deb822 value where each path lives on its own line.
+        let new_value = files
+            .split(',')
+            .map(|s| s.trim())
+            .collect::<Vec<_>>()
+            .join("\n");
 
-            let new_value = entries.join("\n");
-            paragraph.set("Files", &new_value);
-            changed = true;
-            fixed_issues.push(issue);
-        } else {
-            overridden_issues.push(issue);
-        }
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            "debian/copyright: Replace commas with whitespace to separate items in Files paragraph.",
+            vec![Action::Deb822(Deb822Action::SetField {
+                file: copyright_rel.clone(),
+                paragraph: ParagraphSelector::CopyrightFiles { glob: files },
+                field: "Files".into(),
+                value: new_value,
+            })],
+        ));
     }
 
-    if !changed {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    fs::write(&copyright_path, deb822.to_string())?;
-
-    Ok(FixerResult::builder(
-        "debian/copyright: Replace commas with whitespace to separate items in Files paragraph.",
-    )
-    .fixed_issues(fixed_issues)
-    .overridden_issues(overridden_issues)
-    .build())
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "comma-separated-files-in-dep5-copyright",
     tags: ["comma-separated-files-in-dep5-copyright"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_simple() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_path = debian_dir.join("copyright");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("copyright");
         fs::write(
-            &copyright_path,
+            &path,
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nName: apackage\nMaintainer: Joe Maintainer <joe@example.com>\n\nFiles: update-passwd.c, man/*\nCopyright: Joe Maintainer <joe@example.com>\nLicense: GPL-2\n\nFiles: *\nCopyright: Somebody Else <somebody@example.com>\nLicense: GPL-2\n\nLicense: GPL-2\n On Debian and Debian-based systems, a copy of the GNU General Public\n License version 2 is available in /usr/share/common-licenses/GPL-2.\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "debian/copyright: Replace commas with whitespace to separate items in Files paragraph."
         );
 
-        let content = fs::read_to_string(&copyright_path).unwrap();
         assert_eq!(
-            content,
+            fs::read_to_string(&path).unwrap(),
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nName: apackage\nMaintainer: Joe Maintainer <joe@example.com>\n\nFiles: update-passwd.c\n       man/*\nCopyright: Joe Maintainer <joe@example.com>\nLicense: GPL-2\n\nFiles: *\nCopyright: Somebody Else <somebody@example.com>\nLicense: GPL-2\n\nLicense: GPL-2\n On Debian and Debian-based systems, a copy of the GNU General Public\n License version 2 is available in /usr/share/common-licenses/GPL-2.\n"
         );
     }
 
     #[test]
     fn test_bash_expansion() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("copyright");
+        let original = "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n\nFiles: {foo,bar}/*\nCopyright: Someone\nLicense: GPL-2\n\nLicense: GPL-2\n Text here\n";
+        fs::write(&path, original).unwrap();
 
-        let copyright_path = debian_dir.join("copyright");
-        fs::write(
-            &copyright_path,
-            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n\nFiles: {foo,bar}/*\nCopyright: Someone\nLicense: GPL-2\n\nLicense: GPL-2\n Text here\n",
-        )
-        .unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        let content = fs::read_to_string(&copyright_path).unwrap();
-        assert!(content.contains("{foo,bar}/*"));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
     }
 
     #[test]
     fn test_not_machine_readable() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_path = debian_dir.join("copyright");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
         fs::write(
-            &copyright_path,
+            debian.join("copyright"),
             "This is not a machine-readable copyright file.\n",
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_copyright_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
