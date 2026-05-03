@@ -1289,10 +1289,16 @@ pub fn run_lintian_fixer(
     let mut description = format!("{}\n", result.description);
     description.push('\n');
     description.push_str(format!("Changes-By: {}\n", changes_by).as_str());
+    for issue in &result.fixed_lintian_issues {
+        description.push_str(format!("Fixes: lintian: {}\n", issue).as_str());
+    }
+    let mut seen_tags = std::collections::HashSet::new();
     for tag in result.fixed_lintian_tags() {
-        description.push_str(format!("Fixes: lintian: {}\n", tag).as_str());
-        description
-            .push_str(format!("See-also: https://lintian.debian.org/tags/{}.html\n", tag).as_str());
+        if seen_tags.insert(tag) {
+            description.push_str(
+                format!("See-also: https://lintian.debian.org/tags/{}.html\n", tag).as_str(),
+            );
+        }
     }
 
     let committer = committer.map_or_else(|| get_committer(local_tree), |c| c.to_string());
@@ -2414,7 +2420,7 @@ Arch: all
                 .unwrap();
             assert_eq!(
                 rev.message,
-                "Created new file.\n\nChanges-By: lintian-brush\nFixes: lintian: some-tag\nSee-also: https://lintian.debian.org/tags/some-tag.html\n"
+                "Created new file.\n\nChanges-By: lintian-brush\nFixes: lintian: blah source: some-tag\nSee-also: https://lintian.debian.org/tags/some-tag.html\n"
             );
             assert_eq!(2, tree.branch().revno());
             let basis_tree = tree.branch().basis_tree().unwrap();
