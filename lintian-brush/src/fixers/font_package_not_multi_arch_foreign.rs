@@ -1,104 +1,108 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use debian_control::MultiArch;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut updated_packages = Vec::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let mut diagnostics = Vec::new();
 
-    for mut binary in editor.binaries() {
-        // Get package name
-        let package = match binary.name() {
-            Some(p) => p.to_string(),
-            None => {
-                tracing::debug!("Skipping binary package without name");
-                continue;
-            }
+    for binary in control.binaries() {
+        let Some(package) = binary.name() else {
+            continue;
         };
-
-        // Check if it's a font package
         if !package.starts_with("fonts-") && !package.starts_with("xfonts-") {
             continue;
         }
-
-        // Check architecture
-        let arch = binary.architecture().map(|a| a.to_string());
+        let arch = binary.as_deb822().get("Architecture");
         if !matches!(arch.as_deref(), Some("all") | None) {
             continue;
         }
-
-        // Skip if Multi-Arch is already set
-        if binary.multi_arch().is_some() {
+        if binary.as_deb822().get("Multi-Arch").is_some() {
             continue;
         }
 
         let issue =
             LintianIssue::binary_with_info(&package, "font-package-not-multi-arch-foreign", vec![]);
-
-        if !issue.should_fix(base_path) {
-            overridden_issues.push(issue);
-            continue;
-        }
-
-        // Add Multi-Arch: foreign
-        binary.set_multi_arch(Some(MultiArch::Foreign));
-        updated_packages.push(package);
-        fixed_issues.push(issue);
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            format!("Set Multi-Arch: foreign on package {}.", package),
+            vec![Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Binary {
+                    package: package.clone(),
+                },
+                field: "Multi-Arch".into(),
+                value: "foreign".into(),
+            })],
+        ));
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
+    Ok(diagnostics)
+}
+
+fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
+    let mut packages: Vec<&str> = actions
+        .iter()
+        .filter_map(|a| match a {
+            Action::Deb822(Deb822Action::SetField {
+                paragraph: ParagraphSelector::Binary { package },
+                ..
+            }) => Some(package.as_str()),
+            _ => None,
+        })
+        .collect();
+    packages.sort();
+    packages.dedup();
+
+    if packages.len() == 1 {
+        format!("Set Multi-Arch: foreign on package {}.", packages[0])
+    } else {
+        format!(
+            "Set Multi-Arch: foreign on packages {}.",
+            packages.join(", ")
+        )
     }
-
-    editor.commit()?;
-
-    // Create the result message
-    let plural = if updated_packages.len() > 1 { "s" } else { "" };
-    let packages_str = updated_packages.join(", ");
-    let message = format!(
-        "Set Multi-Arch: foreign on package{} {}.",
-        plural, packages_str
-    );
-
-    Ok(FixerResult::builder(message)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
 }
 
 declare_fixer! {
     name: "font-package-not-multi-arch-foreign",
     tags: ["font-package-not-multi-arch-foreign"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_no_control_file() {
         let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
@@ -111,32 +115,22 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(
             &control_path,
-            "Source: fonts-blah\n\
-            Package: fonts-blah\n\
-            Architecture: all\n\
-            Description: Test font package\n\
-            \n\
-            Package: ttf-blah\n\
-            Architecture: all\n\
-            Description: Transition package\n",
+            "Source: fonts-blah\n\nPackage: fonts-blah\nArchitecture: all\nDescription: Test font package\n\nPackage: ttf-blah\nArchitecture: all\nDescription: Transition package\n",
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(
             result.description,
             "Set Multi-Arch: foreign on package fonts-blah."
         );
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Package: fonts-blah"));
-        assert!(updated_content.contains("Multi-Arch: foreign"));
-        // ttf-blah should not have Multi-Arch added
-        let ttf_section = updated_content.split("Package: ttf-blah").nth(1).unwrap();
-        assert!(!ttf_section.contains("Multi-Arch:"));
+        // Multi-Arch goes after Architecture per BINARY_FIELD_ORDER. ttf-blah
+        // is unaffected (it's not a fonts-/xfonts- package).
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: fonts-blah\n\nPackage: fonts-blah\nArchitecture: all\nMulti-Arch: foreign\nDescription: Test font package\n\nPackage: ttf-blah\nArchitecture: all\nDescription: Transition package\n",
+        );
     }
 
     #[test]
@@ -149,18 +143,11 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(
             &control_path,
-            "Source: xfonts-test\n\
-            \n\
-            Package: xfonts-test\n\
-            Architecture: all\n\
-            Description: X font package\n",
+            "Source: xfonts-test\n\nPackage: xfonts-test\nArchitecture: all\nDescription: X font package\n",
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(
             result.description,
             "Set Multi-Arch: foreign on package xfonts-test."
@@ -177,16 +164,11 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(
             &control_path,
-            "Source: regular-package\n\
-            \n\
-            Package: regular-package\n\
-            Architecture: all\n\
-            Description: Regular package\n",
+            "Source: regular-package\n\nPackage: regular-package\nArchitecture: all\nDescription: Regular package\n",
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
     }
 
     #[test]
@@ -197,19 +179,11 @@ mod tests {
         fs::create_dir(&debian_dir).unwrap();
 
         let control_path = debian_dir.join("control");
-        fs::write(
-            &control_path,
-            "Source: fonts-blah\n\
-            \n\
-            Package: fonts-blah\n\
-            Architecture: all\n\
-            Multi-Arch: foreign\n\
-            Description: Test font package\n",
-        )
-        .unwrap();
+        let original = "Source: fonts-blah\n\nPackage: fonts-blah\nArchitecture: all\nMulti-Arch: foreign\nDescription: Test font package\n";
+        fs::write(&control_path, original).unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&control_path).unwrap(), original);
     }
 
     #[test]
@@ -222,16 +196,11 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(
             &control_path,
-            "Source: fonts-blah\n\
-            \n\
-            Package: fonts-blah\n\
-            Architecture: amd64\n\
-            Description: Test font package\n",
+            "Source: fonts-blah\n\nPackage: fonts-blah\nArchitecture: amd64\nDescription: Test font package\n",
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
     }
 
     #[test]
@@ -244,40 +213,20 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(
             &control_path,
-            "Source: fonts-collection\n\
-            \n\
-            Package: fonts-foo\n\
-            Architecture: all\n\
-            Description: Foo font\n\
-            \n\
-            Package: fonts-bar\n\
-            Architecture: all\n\
-            Description: Bar font\n",
+            "Source: fonts-collection\n\nPackage: fonts-foo\nArchitecture: all\nDescription: Foo font\n\nPackage: fonts-bar\nArchitecture: all\nDescription: Bar font\n",
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
+        let result = run_apply(base_path).unwrap();
+        // Aggregate description. Note: alphabetical ordering -> bar, foo.
         assert_eq!(
             result.description,
-            "Set Multi-Arch: foreign on packages fonts-foo, fonts-bar."
+            "Set Multi-Arch: foreign on packages fonts-bar, fonts-foo."
         );
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Package: fonts-foo"));
-        assert!(updated_content.contains("Package: fonts-bar"));
-        // Check both have Multi-Arch: foreign
-        let foo_section = updated_content
-            .split("Package: fonts-foo")
-            .nth(1)
-            .unwrap()
-            .split("Package:")
-            .next()
-            .unwrap();
-        assert!(foo_section.contains("Multi-Arch: foreign"));
-        let bar_section = updated_content.split("Package: fonts-bar").nth(1).unwrap();
-        assert!(bar_section.contains("Multi-Arch: foreign"));
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: fonts-collection\n\nPackage: fonts-foo\nArchitecture: all\nMulti-Arch: foreign\nDescription: Foo font\n\nPackage: fonts-bar\nArchitecture: all\nMulti-Arch: foreign\nDescription: Bar font\n",
+        );
     }
 }
