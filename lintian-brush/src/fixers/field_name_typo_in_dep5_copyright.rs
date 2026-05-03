@@ -1,9 +1,8 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use deb822_lossless::Paragraph;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
 use debian_copyright::lossless::Copyright;
 use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tracing::warn;
 
 const VALID_FIELD_NAMES: &[&str] = &[
@@ -20,193 +19,212 @@ const VALID_FIELD_NAMES: &[&str] = &[
     "Name",
 ];
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
+/// One renamed field, tagged with how the rename was inferred.
+#[derive(Clone, Debug)]
+struct Rename {
+    old: String,
+    new: String,
+    /// True if the rename only differs in case.
+    is_case: bool,
+}
 
-    if !copyright_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let abs = base_path.join(&copyright_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(&copyright_path)?;
+    let content = std::fs::read_to_string(&abs)?;
     let (copyright, _errors) = match Copyright::from_str_relaxed(&content) {
         Ok(c) => c,
         Err(e) => {
             tracing::debug!("debian/copyright is not machine-readable: {:?}", e);
-            return Err(FixerError::NoChanges);
+            return Ok(Vec::new());
         }
     };
     let deb822 = copyright.as_deb822();
 
     let valid_fields: HashSet<&str> = VALID_FIELD_NAMES.iter().copied().collect();
-    let mut case_fixed = Vec::new();
-    let mut typo_fixed = Vec::new();
+    let mut diagnostics = Vec::new();
 
-    for mut paragraph in deb822.paragraphs() {
+    for (index, paragraph) in deb822.paragraphs().enumerate() {
         let field_names: Vec<String> = paragraph.keys().collect();
-
         for field_name in field_names {
             if valid_fields.contains(field_name.as_str()) {
                 continue;
             }
 
-            // Try to handle X- prefix fields
-            if let Some(fixed) = try_fix_x_prefix(&mut paragraph, &field_name, &valid_fields)? {
-                typo_fixed.push(fixed);
+            let Some(rename) = infer_rename(&paragraph, &field_name, &valid_fields) else {
                 continue;
-            }
+            };
 
-            // Try to fix with Levenshtein distance
-            if let Some(fixed) = try_fix_levenshtein(&mut paragraph, &field_name)? {
-                if fixed.1.eq_ignore_ascii_case(&fixed.0) {
-                    case_fixed.push(fixed);
-                } else {
-                    typo_fixed.push(fixed);
-                }
-            }
+            let mut actions = vec![Action::Deb822(Deb822Action::RenameField {
+                file: copyright_rel.clone(),
+                paragraph: ParagraphSelector::Index { index },
+                from: rename.old.clone(),
+                to: rename.new.clone(),
+            })];
+
+            // Case-only renames don't carry a lintian tag — they're
+            // cosmetic. Typos do.
+            let issue = if rename.is_case {
+                None
+            } else {
+                Some(LintianIssue::source_with_info(
+                    "field-name-typo-in-dep5-copyright",
+                    vec![rename.old.clone()],
+                ))
+            };
+
+            // Stash the kind in the message so the describer can split
+            // case from typo without re-deriving it.
+            let message = format!(
+                "{}\t{} ⇒ {}",
+                if rename.is_case { "case" } else { "typo" },
+                rename.old,
+                rename.new,
+            );
+
+            let diag = match issue {
+                Some(i) => Diagnostic::with_actions(i, message, actions.clone()),
+                None => crate::diagnostic::Diagnostic::untagged(message, actions.clone()),
+            };
+            diagnostics.push(diag);
+            // Mute unused-let warning; `actions` was cloned just so it
+            // outlives the conditional above.
+            let _ = &mut actions;
         }
     }
 
-    if case_fixed.is_empty() && typo_fixed.is_empty() {
-        return Err(FixerError::NoChanges);
-    }
-
-    // Create LintianIssue for each typo fix (not case fixes)
-    let mut fixed_issues = Vec::new();
-    for (old_name, _new_name) in &typo_fixed {
-        let issue = LintianIssue::source_with_info(
-            "field-name-typo-in-dep5-copyright",
-            vec![old_name.clone()],
-        );
-
-        if !issue.should_fix(base_path) {
-            // If any issue is overridden, skip all changes
-            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-        }
-        fixed_issues.push(issue);
-    }
-
-    fs::write(&copyright_path, deb822.to_string())?;
-
-    let kind = build_kind_string(&case_fixed, &typo_fixed);
-    let fixed_str = build_fixed_string(&case_fixed, &typo_fixed);
-
-    Ok(FixerResult::builder(format!(
-        "Fix field name {} in debian/copyright ({}).",
-        kind, fixed_str
-    ))
-    .fixed_issues(fixed_issues)
-    .build())
+    Ok(diagnostics)
 }
 
-fn try_fix_x_prefix(
-    paragraph: &mut Paragraph,
+fn infer_rename(
+    paragraph: &deb822_lossless::Paragraph,
     field_name: &str,
     valid_fields: &HashSet<&str>,
-) -> Result<Option<(String, String)>, FixerError> {
-    if !field_name.starts_with("X-") {
-        return Ok(None);
+) -> Option<Rename> {
+    // X- prefix: drop the prefix if the unprefixed name is valid.
+    if let Some(without_prefix) = field_name.strip_prefix("X-") {
+        if valid_fields.contains(without_prefix) {
+            if paragraph.get(without_prefix).is_some() {
+                warn!("Both {} and {} exist.", field_name, without_prefix);
+                return None;
+            }
+            return Some(Rename {
+                old: field_name.to_string(),
+                new: without_prefix.to_string(),
+                is_case: false,
+            });
+        }
     }
 
-    let without_prefix = &field_name[2..];
-    if !valid_fields.contains(without_prefix) {
-        return Ok(None);
-    }
-
-    if paragraph.get(without_prefix).is_some() {
-        warn!("Both {} and {} exist.", field_name, without_prefix);
-        return Ok(None);
-    }
-
-    if !paragraph.rename(field_name, without_prefix) {
-        return Err(FixerError::NoChanges);
-    }
-
-    Ok(Some((field_name.to_string(), without_prefix.to_string())))
-}
-
-fn try_fix_levenshtein(
-    paragraph: &mut Paragraph,
-    field_name: &str,
-) -> Result<Option<(String, String)>, FixerError> {
+    // Levenshtein distance == 1 from a valid field name.
     for &valid_field in VALID_FIELD_NAMES {
         if strsim::levenshtein(field_name, valid_field) != 1 {
             continue;
         }
 
-        // Check if target field already exists
-        if let Some(existing_value) = paragraph.get(valid_field) {
-            if !valid_field.eq_ignore_ascii_case(field_name) {
+        let is_case = valid_field.eq_ignore_ascii_case(field_name);
+        if let Some(existing) = paragraph.get(valid_field) {
+            // Target field already present: only safe to rename if it's a
+            // pure case change *and* the values are equal (the rename is a
+            // no-op then anyway). Otherwise bail.
+            if !is_case {
                 warn!(
                     "Found typo ({} ⇒ {}), but {} already exists",
                     field_name, valid_field, valid_field
                 );
-                return Ok(None);
+                return None;
             }
-
-            // If it's just a case difference, check if values differ
-            let value = paragraph.get(field_name).ok_or(FixerError::NoChanges)?;
-            if value != existing_value {
+            let value = paragraph.get(field_name)?;
+            if value != existing {
                 warn!(
                     "Found typo ({} ⇒ {}), but {} already exists",
                     field_name, valid_field, valid_field
                 );
-                return Ok(None);
+                return None;
             }
         }
 
-        if !paragraph.rename(field_name, valid_field) {
-            return Err(FixerError::NoChanges);
-        }
-
-        return Ok(Some((field_name.to_string(), valid_field.to_string())));
+        return Some(Rename {
+            old: field_name.to_string(),
+            new: valid_field.to_string(),
+            is_case,
+        });
     }
 
-    Ok(None)
+    None
 }
 
-fn build_kind_string(case_fixed: &[(String, String)], typo_fixed: &[(String, String)]) -> String {
-    match (!case_fixed.is_empty(), !typo_fixed.is_empty()) {
+/// Build the aggregate description from the diagnostics that fired.
+///
+/// The original wording: `Fix field name {kind} in debian/copyright (X ⇒ Y, ...).`
+/// where `{kind}` is "case", "cases", "typo", "typos", or "case and typo"
+/// (with appropriate plurals) depending on how many of each fired.
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let mut case_pairs: Vec<(String, String)> = Vec::new();
+    let mut typo_pairs: Vec<(String, String)> = Vec::new();
+    for diag in fixed {
+        let Some((kind, rest)) = diag.message.split_once('\t') else {
+            continue;
+        };
+        let Some((old, new)) = rest.split_once(" ⇒ ") else {
+            continue;
+        };
+        let pair = (old.to_string(), new.to_string());
+        if kind == "case" {
+            case_pairs.push(pair);
+        } else {
+            typo_pairs.push(pair);
+        }
+    }
+
+    let kind_str = match (!case_pairs.is_empty(), !typo_pairs.is_empty()) {
         (true, true) => format!(
             "{} and {}",
-            if case_fixed.len() > 1 {
+            if case_pairs.len() > 1 {
                 "cases"
             } else {
                 "case"
             },
-            if typo_fixed.len() > 1 {
+            if typo_pairs.len() > 1 {
                 "typos"
             } else {
                 "typo"
-            }
+            },
         ),
         (true, false) => {
-            if case_fixed.len() > 1 {
+            if case_pairs.len() > 1 {
                 "cases".to_string()
             } else {
                 "case".to_string()
             }
         }
         (false, true) => {
-            if typo_fixed.len() > 1 {
+            if typo_pairs.len() > 1 {
                 "typos".to_string()
             } else {
                 "typo".to_string()
             }
         }
         (false, false) => String::new(),
-    }
-}
+    };
 
-fn build_fixed_string(case_fixed: &[(String, String)], typo_fixed: &[(String, String)]) -> String {
-    let mut all_fixes = case_fixed.to_vec();
-    all_fixes.extend(typo_fixed.iter().cloned());
-    all_fixes.sort();
-
-    all_fixes
+    let mut all = case_pairs;
+    all.extend(typo_pairs);
+    all.sort();
+    let fixed_str = all
         .iter()
         .map(|(old, new)| format!("{} ⇒ {}", old, new))
         .collect::<Vec<_>>()
-        .join(", ")
+        .join(", ");
+
+    format!(
+        "Fix field name {} in debian/copyright ({}).",
+        kind_str, fixed_str
+    )
 }
 
 declare_fixer! {
@@ -214,137 +232,137 @@ declare_fixer! {
     tags: ["field-name-typo-in-dep5-copyright"],
     // Must fix field name typos before copyright format updates
     before: ["out-of-date-copyright-format-uri"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_simple_typo() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
         fs::write(
-            debian_dir.join("copyright"),
+            &path,
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\n\nFile: *\nCopyright:\n 2008-2017 Somebody\nLicense: GPL-2+\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Fix field name typo in debian/copyright (File ⇒ Files)."
         );
         assert_eq!(result.fixed_lintian_issues.len(), 1);
         assert_eq!(
-            result.fixed_lintian_issues[0].tag,
-            Some("field-name-typo-in-dep5-copyright".to_string())
+            result.fixed_lintian_issues[0].tag.as_deref(),
+            Some("field-name-typo-in-dep5-copyright")
         );
 
-        let content = fs::read_to_string(debian_dir.join("copyright")).unwrap();
-        assert!(content.contains("Files: *"));
-        assert!(!content.contains("File: *"));
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\n\nFiles: *\nCopyright:\n 2008-2017 Somebody\nLicense: GPL-2+\n",
+        );
     }
 
     #[test]
     fn test_case_fix() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
         fs::write(
-            debian_dir.join("copyright"),
+            &path,
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-name: lintrian\n\nFiles: *\nCopyright:\n 2008-2017 Somebody\nLicense: GPL-2+\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Fix field name case in debian/copyright (Upstream-name ⇒ Upstream-Name)."
         );
-        // Case fixes don't get lintian tags
+        // Case-only renames don't get a lintian tag.
         assert_eq!(result.fixed_lintian_issues.len(), 0);
 
-        let content = fs::read_to_string(debian_dir.join("copyright")).unwrap();
-        assert!(content.contains("Upstream-Name: lintrian"));
-        assert!(!content.contains("Upstream-name: lintrian"));
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\n\nFiles: *\nCopyright:\n 2008-2017 Somebody\nLicense: GPL-2+\n",
+        );
     }
 
     #[test]
     fn test_x_field() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
         fs::write(
-            debian_dir.join("copyright"),
+            &path,
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\n\nFiles: *\nCopyright:\n 2008-2017 Somebody\nLicense: GPL-2+\nX-Comment: blah\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Fix field name typo in debian/copyright (X-Comment ⇒ Comment)."
         );
         assert_eq!(result.fixed_lintian_issues.len(), 1);
 
-        let content = fs::read_to_string(debian_dir.join("copyright")).unwrap();
-        assert!(content.contains("Comment: blah"));
-        assert!(!content.contains("X-Comment: blah"));
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\n\nFiles: *\nCopyright:\n 2008-2017 Somebody\nLicense: GPL-2+\nComment: blah\n",
+        );
     }
 
     #[test]
     fn test_not_machine_readable() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
         fs::write(
-            debian_dir.join("copyright"),
+            debian.join("copyright"),
             "This is not a machine-readable copyright file.\n",
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_changes_needed() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
+        let original = "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\n\nFiles: *\nCopyright:\n 2008-2017 Somebody\nLicense: GPL-2+\n";
+        fs::write(&path, original).unwrap();
 
-        fs::write(
-            debian_dir.join("copyright"),
-            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\n\nFiles: *\nCopyright:\n 2008-2017 Somebody\nLicense: GPL-2+\n",
-        )
-        .unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
     }
 }

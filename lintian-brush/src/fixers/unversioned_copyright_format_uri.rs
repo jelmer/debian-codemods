@@ -1,80 +1,78 @@
-use crate::{FixerError, FixerResult};
-use regex::Regex;
-use std::fs;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
+
+const CORRECT_FORMAT_URI: &str =
+    "https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/";
+
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let abs = base_path.join(&copyright_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    if content.is_empty() {
+        return Ok(Vec::new());
+    }
+    let deb822 = match deb822_lossless::Deb822::from_str(&content) {
+        Ok(d) => d,
+        Err(_) => return Ok(Vec::new()),
+    };
+    let Some(header) = deb822.paragraphs().next() else {
+        return Ok(Vec::new());
+    };
+    let actions = if header.get("Format-Specification").is_some() {
+        // Legacy field name. Rename in place (preserving position) and
+        // set to the canonical value.
+        vec![
+            Action::Deb822(Deb822Action::RenameField {
+                file: copyright_rel.clone(),
+                paragraph: ParagraphSelector::CopyrightHeader,
+                from: "Format-Specification".into(),
+                to: "Format".into(),
+            }),
+            Action::Deb822(Deb822Action::SetField {
+                file: copyright_rel,
+                paragraph: ParagraphSelector::CopyrightHeader,
+                field: "Format".into(),
+                value: CORRECT_FORMAT_URI.into(),
+            }),
+        ]
+    } else if let Some(format) = header.get("Format") {
+        // Already correct, with or without a trailing slash.
+        if format == CORRECT_FORMAT_URI || format == CORRECT_FORMAT_URI.trim_end_matches('/') {
+            return Ok(Vec::new());
+        }
+        vec![Action::Deb822(Deb822Action::SetField {
+            file: copyright_rel,
+            paragraph: ParagraphSelector::CopyrightHeader,
+            field: "Format".into(),
+            value: CORRECT_FORMAT_URI.into(),
+        })]
+    } else {
+        return Ok(Vec::new());
+    };
+
+    let issue = LintianIssue::source_with_info(
+        "unversioned-copyright-format-uri",
+        vec!["debian/copyright:1".to_string()],
+    );
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Use versioned copyright format URI.",
+        actions,
+    )])
+}
 
 declare_fixer! {
     name: "unversioned-copyright-format-uri",
     tags: ["unversioned-copyright-format-uri"],
-    // Must run after URI is converted to https and before updating to latest version
     after: ["copyright-format-uri"],
     before: ["out-of-date-copyright-format-uri"],
-    apply: |basedir, _package, _version, _preferences| {
-        let copyright_path = basedir.join("debian").join("copyright");
-
-        if !copyright_path.exists() {
-            return Err(FixerError::NoChanges);
-        }
-
-        let content = fs::read(&copyright_path)?;
-
-        // Check if the file is empty
-        if content.is_empty() {
-            return Err(FixerError::NoChanges);
-        }
-
-        // Find the first line
-        let first_line_end = content.iter().position(|&b| b == b'\n').unwrap_or(content.len());
-        let first_line = &content[..first_line_end];
-
-        // Regular expression to match Format or Format-Specification lines
-        let format_regex = Regex::new(r"^(Format|Format-Specification):\s*(.*)$").unwrap();
-
-        // The expected format URI
-        const EXPECTED_URL: &[u8] = b"https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/";
-
-        // Convert first line to string for regex matching
-        let first_line_str = String::from_utf8_lossy(first_line);
-
-        if let Some(captures) = format_regex.captures(&first_line_str) {
-            let field_name = captures.get(1).unwrap().as_str();
-            let url = captures.get(2).unwrap().as_str().trim();
-
-            // Check if we need to make changes
-            if field_name == "Format" && url.trim_end_matches('/').as_bytes() == EXPECTED_URL.strip_suffix(b"/").unwrap_or(EXPECTED_URL) {
-                // Already correct
-                return Err(FixerError::NoChanges);
-            }
-
-            let issue = crate::LintianIssue::source_with_info(
-                "unversioned-copyright-format-uri",
-                vec!["debian/copyright:1".to_string()],
-            );
-
-            if !issue.should_fix(basedir) {
-                return Err(FixerError::NoChanges);
-            }
-
-            // Build the new content
-            let mut new_content = Vec::new();
-            new_content.extend_from_slice(b"Format: ");
-            new_content.extend_from_slice(EXPECTED_URL);
-            new_content.push(b'\n');
-
-            // Add the rest of the file (skipping the original first line)
-            if first_line_end < content.len() {
-                new_content.extend_from_slice(&content[first_line_end + 1..]);
-            }
-
-            // Write the updated content back
-            fs::write(&copyright_path, new_content)?;
-
-            Ok(FixerResult::builder("Use versioned copyright format URI.")
-                .fixed_issues(vec![issue])
-                .build())
-        } else {
-            // No Format or Format-Specification field found on first line
-            Err(FixerError::NoChanges)
-        }
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -82,177 +80,96 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
-    #[test]
-    fn test_updates_format_specification_field() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let copyright_content = b"Format-Specification: http://svn.debian.org/wsvn/dep/web/deps/dep5.mdwn?op=file&rev=59
-Upstream-Name: test-package
-
-Files: *
-Copyright: 2023 Test Author
-License: GPL-2+
-";
-
-        let copyright_path = debian_dir.join("copyright");
-        fs::write(&copyright_path, copyright_content).unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(result.is_ok());
-
-        // Verify the change
-        let updated_content = fs::read(&copyright_path).unwrap();
-        assert!(updated_content.starts_with(
-            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n"
-        ));
-        assert!(updated_content
-            .windows(b"Format-Specification:".len())
-            .all(|w| w != b"Format-Specification:"));
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test-package", &version, &FixerPreferences::default())
     }
 
     #[test]
     fn test_updates_unversioned_format_field() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
+        fs::write(
+            &path,
+            "Format: http://www.debian.org/doc/packaging-manuals/copyright-format/\nUpstream-Name: test-package\n\nFiles: *\nCopyright: 2023 Test Author\nLicense: GPL-2+\n",
+        )
+        .unwrap();
 
-        let copyright_content =
-            b"Format: http://www.debian.org/doc/packaging-manuals/copyright-format/
-Upstream-Name: test-package
+        run_apply(tmp.path()).unwrap();
 
-Files: *
-Copyright: 2023 Test Author
-License: GPL-2+
-";
-
-        let copyright_path = debian_dir.join("copyright");
-        fs::write(&copyright_path, copyright_content).unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: test-package\n\nFiles: *\nCopyright: 2023 Test Author\nLicense: GPL-2+\n",
         );
-        assert!(result.is_ok());
-
-        // Verify the change
-        let updated_content = fs::read(&copyright_path).unwrap();
-        assert!(updated_content.starts_with(
-            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n"
-        ));
     }
 
     #[test]
     fn test_no_change_when_format_correct() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
+        let original = "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: test-package\n\nFiles: *\nCopyright: 2023 Test Author\nLicense: GPL-2+\n";
+        fs::write(&path, original).unwrap();
 
-        let copyright_content =
-            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: test-package
-
-Files: *
-Copyright: 2023 Test Author
-License: GPL-2+
-";
-
-        let copyright_path = debian_dir.join("copyright");
-        fs::write(&copyright_path, copyright_content).unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
     }
 
     #[test]
     fn test_no_change_when_format_correct_without_trailing_slash() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
+        let original = "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0\nUpstream-Name: test-package\n\nFiles: *\nCopyright: 2023 Test Author\nLicense: GPL-2+\n";
+        fs::write(&path, original).unwrap();
 
-        let copyright_content =
-            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0
-Upstream-Name: test-package
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
+    }
 
-Files: *
-Copyright: 2023 Test Author
-License: GPL-2+
-";
+    #[test]
+    fn test_updates_legacy_format_specification() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
+        fs::write(
+            &path,
+            "Format-Specification: http://dep.debian.net/deps/dep5\nUpstream-Name: test-package\n\nFiles: *\nCopyright: 2023 Test Author\nLicense: GPL-2+\n",
+        )
+        .unwrap();
 
-        let copyright_path = debian_dir.join("copyright");
-        fs::write(&copyright_path, copyright_content).unwrap();
+        run_apply(tmp.path()).unwrap();
 
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
+        // Renamed in place + value set; first line is now the canonical
+        // Format URI.
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: test-package\n\nFiles: *\nCopyright: 2023 Test Author\nLicense: GPL-2+\n",
         );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_copyright_file() {
-        let temp_dir = TempDir::new().unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_empty_copyright_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(debian.join("copyright"), "").unwrap();
 
-        let copyright_path = debian_dir.join("copyright");
-        fs::write(&copyright_path, b"").unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
