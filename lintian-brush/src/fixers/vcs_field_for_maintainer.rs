@@ -1,8 +1,8 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
 use debian_changelog::parseaddr;
-use std::collections::HashSet;
-use std::path::Path;
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
 const REPLACEMENTS: &[(&str, &str, &[(&str, &str)])] = &[
     (
@@ -23,109 +23,134 @@ const REPLACEMENTS: &[(&str, &str, &[(&str, &str)])] = &[
     ),
 ];
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
+/// Marker prefix for the maintainer name embedded in the diagnostic's
+/// message. The describer pulls it back out so a per-rewrite message stays
+/// self-contained for LSP, while the aggregate description matches the
+/// historical "for maintainer NAME" wording.
+const MAINTAINER_PREFIX: &str = "for maintainer ";
 
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-
-    let mut source = editor.source().ok_or(FixerError::NoChanges)?;
-    let paragraph = source.as_mut_deb822();
-
-    let maintainer = paragraph
-        .get("Maintainer")
-        .ok_or(FixerError::NoChanges)?
-        .to_string();
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let paragraph = source.as_deb822();
+    let Some(maintainer) = paragraph.get("Maintainer") else {
+        return Ok(Vec::new());
+    };
 
     let (name, email) = parseaddr(&maintainer);
     let maintainer_name = name.unwrap_or("").to_string();
 
-    // Find matching email in REPLACEMENTS
-    let (tag, url_replacements) = REPLACEMENTS
+    let Some((tag, url_replacements)) = REPLACEMENTS
         .iter()
         .find(|(replacement_email, _, _)| email == *replacement_email)
         .map(|(_, tag, url_replacements)| (*tag, *url_replacements))
-        .ok_or(FixerError::NoChanges)?;
+    else {
+        return Ok(Vec::new());
+    };
 
-    // Update all Vcs-* fields
     let field_names: Vec<String> = paragraph
         .keys()
         .filter(|k| k.starts_with("Vcs-"))
         .map(|s| s.to_string())
         .collect();
 
-    let mut changed_fields = HashSet::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-
+    let mut diagnostics = Vec::new();
     for field_name in field_names {
         let Some(value) = paragraph.get(&field_name) else {
             continue;
         };
-
-        let mut url = value.to_string();
-        let original_url = url.clone();
-
-        for (old_pattern, new_pattern) in url_replacements {
-            url = url.replace(old_pattern, new_pattern);
+        let mut url = value.clone();
+        for (old, new) in url_replacements {
+            url = url.replace(old, new);
         }
-
-        if url == original_url {
+        if url == value {
             continue;
         }
 
-        // Extract VCS type from field name (e.g., "Vcs-Git" -> "Git")
         let vcs_type = field_name.strip_prefix("Vcs-").unwrap_or(&field_name);
-
         let issue = LintianIssue::source_with_info(tag, vec![vcs_type.to_string()]);
 
-        if !issue.should_fix(base_path) {
-            overridden_issues.push(issue);
-        } else {
-            paragraph.set(&field_name, &url);
-            changed_fields.insert(field_name);
-            fixed_issues.push(issue);
-        }
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            // Per-issue message; the describer assembles the aggregate
+            // form from the embedded maintainer name.
+            format!(
+                "Update {} {}{}.",
+                field_name, MAINTAINER_PREFIX, maintainer_name
+            ),
+            vec![Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Source,
+                field: field_name,
+                value: url,
+            })],
+        ));
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
+    Ok(diagnostics)
+}
 
-    editor.commit()?;
+/// Custom describer: aggregate every fired diagnostic's field name into a
+/// single "Update fields A, B for maintainer NAME." line.
+fn describe_aggregate(fixed: &[Diagnostic], actions: &[Action]) -> String {
+    // Pull field names out of the actions (one Deb822Action::SetField per
+    // diagnostic by construction).
+    let mut fields: Vec<&str> = actions
+        .iter()
+        .filter_map(|a| match a {
+            Action::Deb822(Deb822Action::SetField { field, .. }) => Some(field.as_str()),
+            _ => None,
+        })
+        .collect();
+    fields.sort();
+    fields.dedup();
 
-    let mut changed_fields_sorted: Vec<_> = changed_fields.into_iter().collect();
-    changed_fields_sorted.sort();
+    // Recover the maintainer name from the first message's tail.
+    let maintainer_name = fixed
+        .first()
+        .and_then(|d| d.message.rsplit_once(MAINTAINER_PREFIX))
+        .map(|(_, tail)| tail.trim_end_matches('.'))
+        .unwrap_or("");
 
-    Ok(FixerResult::builder(format!(
+    format!(
         "Update fields {} for maintainer {}.",
-        changed_fields_sorted.join(", "),
+        fields.join(", "),
         maintainer_name
-    ))
-    .fixed_issues(fixed_issues)
-    .overridden_issues(overridden_issues)
-    .build())
+    )
 }
 
 declare_fixer! {
     name: "vcs-field-for-maintainer",
     tags: ["old-dpmt-vcs", "old-papt-vcs"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_dpmt_vcs_update() {
@@ -140,7 +165,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(
             result.description,
             "Update fields Vcs-Git for maintainer Debian Python Modules Team."
@@ -148,12 +173,14 @@ mod tests {
         assert_eq!(result.certainty, None);
         assert_eq!(result.fixed_lintian_issues.len(), 1);
         assert_eq!(
-            result.fixed_lintian_issues[0].tag,
-            Some("old-dpmt-vcs".to_string())
+            result.fixed_lintian_issues[0].tag.as_deref(),
+            Some("old-dpmt-vcs")
         );
 
-        let control_content = fs::read_to_string(debian_dir.join("control")).unwrap();
-        assert!(control_content.contains("https://salsa.debian.org/python-team/packages/foo"));
+        assert_eq!(
+            fs::read_to_string(debian_dir.join("control")).unwrap(),
+            "Source: foo\nMaintainer: Debian Python Modules Team <python-modules-team@lists.alioth.debian.org>\nVcs-Git: https://salsa.debian.org/python-team/packages/foo\n",
+        );
     }
 
     #[test]
@@ -169,7 +196,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(
             result.description,
             "Update fields Vcs-Git for maintainer Debian Python Applications Team."
@@ -177,11 +204,35 @@ mod tests {
         assert_eq!(result.certainty, None);
         assert_eq!(result.fixed_lintian_issues.len(), 1);
         assert_eq!(
-            result.fixed_lintian_issues[0].tag,
-            Some("old-papt-vcs".to_string())
+            result.fixed_lintian_issues[0].tag.as_deref(),
+            Some("old-papt-vcs")
         );
 
-        let control_content = fs::read_to_string(debian_dir.join("control")).unwrap();
-        assert!(control_content.contains("https://salsa.debian.org/python-team/packages/foo"));
+        assert_eq!(
+            fs::read_to_string(debian_dir.join("control")).unwrap(),
+            "Source: foo\nMaintainer: Debian Python Applications Team <python-apps-team@lists.alioth.debian.org>\nVcs-Git: https://salsa.debian.org/python-team/packages/foo\n",
+        );
+    }
+
+    #[test]
+    fn test_multiple_vcs_fields_aggregated() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        fs::write(
+            debian_dir.join("control"),
+            "Source: foo\nMaintainer: Debian Python Modules Team <python-modules-team@lists.alioth.debian.org>\nVcs-Git: https://salsa.debian.org/python-team/modules/foo\nVcs-Browser: https://salsa.debian.org/python-team/modules/foo\n",
+        )
+        .unwrap();
+
+        let result = run_apply(base_path).unwrap();
+        // Aggregated description rather than the per-field default join.
+        assert_eq!(
+            result.description,
+            "Update fields Vcs-Browser, Vcs-Git for maintainer Debian Python Modules Team."
+        );
+        assert_eq!(result.fixed_lintian_issues.len(), 2);
     }
 }

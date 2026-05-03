@@ -1,102 +1,150 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use debian_control::Priority;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut changed_packages = Vec::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
 
-    // Get default priority from source paragraph
-    let default_priority = if let Some(source) = editor.source() {
-        source.priority().map(|p| p.to_string())
-    } else {
-        None
-    };
+    let default_priority = control
+        .source()
+        .as_ref()
+        .and_then(|s| s.as_deb822().get("Priority"));
 
-    // Process binary packages
-    for mut binary in editor.binaries() {
-        // Only process packages in libs section
-        if binary.section().as_deref() != Some("libs") {
+    let mut diagnostics = Vec::new();
+
+    for binary in control.binaries() {
+        let paragraph = binary.as_deb822();
+        if paragraph.get("Section").as_deref() != Some("libs") {
             continue;
         }
 
-        // Get priority (from binary or fall back to source default)
-        let priority = binary
-            .priority()
-            .map(|p| p.to_string())
-            .or(default_priority.clone())
+        let binary_priority = paragraph.get("Priority");
+        let effective_priority = binary_priority
+            .clone()
+            .or_else(|| default_priority.clone())
             .unwrap_or_default();
+        if !matches!(
+            effective_priority.as_str(),
+            "required" | "important" | "standard"
+        ) {
+            continue;
+        }
+        let Some(package_name) = binary.name() else {
+            continue;
+        };
 
-        // Check if priority is excessive for library packages
-        if matches!(priority.as_str(), "required" | "important" | "standard") {
-            if let Some(package_name) = binary.name() {
-                let issue = LintianIssue::binary_with_info(
-                    &package_name,
-                    "excessive-priority-for-library-package",
-                    vec![priority.clone()],
-                );
+        let issue = LintianIssue::binary_with_info(
+            &package_name,
+            "excessive-priority-for-library-package",
+            vec![effective_priority.clone()],
+        );
 
-                if issue.should_fix(base_path) {
-                    // Set priority to optional
-                    binary.set_priority(Some(Priority::Optional));
-                    changed_packages.push(package_name.to_string());
-                    fixed_issues.push(issue);
-                } else {
-                    overridden_issues.push(issue);
+        // If the binary has its own Priority and the source's effective
+        // priority would already be `optional` once the binary's override
+        // is gone, we can just drop the field instead of explicitly
+        // setting it. Otherwise we need an explicit `Priority: optional`
+        // to override whatever the source declares.
+        let action = if binary_priority.is_some() && default_priority.as_deref() == Some("optional")
+        {
+            Action::Deb822(Deb822Action::RemoveField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Binary {
+                    package: package_name.clone(),
+                },
+                field: "Priority".into(),
+            })
+        } else {
+            Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Binary {
+                    package: package_name.clone(),
+                },
+                field: "Priority".into(),
+                value: "optional".into(),
+            })
+        };
+
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            format!(
+                "Set priority for library package {} to optional.",
+                package_name
+            ),
+            vec![action],
+        ));
+    }
+
+    Ok(diagnostics)
+}
+
+/// Custom describer: aggregate all affected library package names into a
+/// single line so multi-package fixes get
+/// "Set priority for library packages X, Y to optional." instead of one
+/// line per package.
+fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
+    let mut packages: Vec<&str> = actions
+        .iter()
+        .filter_map(|a| match a {
+            Action::Deb822(
+                Deb822Action::SetField {
+                    paragraph: ParagraphSelector::Binary { package },
+                    ..
                 }
-            }
-        }
-    }
+                | Deb822Action::RemoveField {
+                    paragraph: ParagraphSelector::Binary { package },
+                    ..
+                },
+            ) => Some(package.as_str()),
+            _ => None,
+        })
+        .collect();
+    packages.sort();
+    packages.dedup();
 
-    if changed_packages.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit()?;
-
-    let description = if changed_packages.len() == 1 {
+    if packages.len() == 1 {
         format!(
             "Set priority for library package {} to optional.",
-            changed_packages[0]
+            packages[0]
         )
     } else {
         format!(
             "Set priority for library packages {} to optional.",
-            changed_packages.join(", ")
+            packages.join(", ")
         )
-    };
-
-    Ok(FixerResult::builder(&description)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    }
 }
 
 declare_fixer! {
     name: "excessive-priority-for-library-package",
     tags: ["excessive-priority-for-library-package"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_simple_library_package() {
@@ -108,15 +156,16 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, "Source: bzip2\nPriority: required\n\nPackage: libbzip2\nSection: libs\nPriority: required\nDescription: blah blah\n blah\n").unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(
             result.description,
             "Set priority for library package libbzip2 to optional."
         );
 
-        let content = fs::read_to_string(&control_path).unwrap();
-        assert!(content.contains("Priority: optional"));
-        assert!(!content.contains("Priority: required\nDescription"));
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: bzip2\nPriority: required\n\nPackage: libbzip2\nSection: libs\nPriority: optional\nDescription: blah blah\n blah\n",
+        );
     }
 
     #[test]
@@ -129,16 +178,18 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, "Source: bzip2\nPriority: required\n\nPackage: libbzip2\nSection: libs\nDescription: blah blah\n blah\n").unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(
             result.description,
             "Set priority for library package libbzip2 to optional."
         );
 
-        let content = fs::read_to_string(&control_path).unwrap();
-        assert!(content.contains("Priority: optional"));
-        // Should still have source priority
-        assert!(content.contains("Source: bzip2\nPriority: required\n"));
+        // Source priority is preserved; the binary gets Priority: optional
+        // inserted at the canonical position (after Section, before Description).
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: bzip2\nPriority: required\n\nPackage: libbzip2\nSection: libs\nPriority: optional\nDescription: blah blah\n blah\n",
+        );
     }
 
     #[test]
@@ -151,22 +202,17 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, "Source: test\nPriority: standard\n\nPackage: libtest1\nSection: libs\nPriority: important\nDescription: Test 1\n Test\n\nPackage: libtest2\nSection: libs\nDescription: Test 2\n Test\n").unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(
             result.description,
             "Set priority for library packages libtest1, libtest2 to optional."
         );
+        assert_eq!(result.fixed_lintian_issues.len(), 2);
 
-        let content = fs::read_to_string(&control_path).unwrap();
-        // Both packages should have optional priority
-        let lines: Vec<&str> = content.lines().collect();
-        assert!(lines.contains(&"Priority: optional"));
-        // Count how many times "Priority: optional" appears
-        let optional_count = lines
-            .iter()
-            .filter(|line| **line == "Priority: optional")
-            .count();
-        assert_eq!(optional_count, 2);
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test\nPriority: standard\n\nPackage: libtest1\nSection: libs\nPriority: optional\nDescription: Test 1\n Test\n\nPackage: libtest2\nSection: libs\nPriority: optional\nDescription: Test 2\n Test\n",
+        );
     }
 
     #[test]
@@ -177,10 +223,11 @@ mod tests {
         fs::create_dir(&debian_dir).unwrap();
 
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, "Source: test\n\nPackage: test-app\nSection: utils\nPriority: required\nDescription: Test app\n Test\n").unwrap();
+        let original = "Source: test\n\nPackage: test-app\nSection: utils\nPriority: required\nDescription: Test app\n Test\n";
+        fs::write(&control_path, original).unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&control_path).unwrap(), original);
     }
 
     #[test]
@@ -191,18 +238,44 @@ mod tests {
         fs::create_dir(&debian_dir).unwrap();
 
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, "Source: test\n\nPackage: libtest\nSection: libs\nPriority: optional\nDescription: Test\n Test\n").unwrap();
+        let original = "Source: test\n\nPackage: libtest\nSection: libs\nPriority: optional\nDescription: Test\n Test\n";
+        fs::write(&control_path, original).unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&control_path).unwrap(), original);
     }
 
     #[test]
     fn test_no_control_file() {
         let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
+    }
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+    #[test]
+    fn test_remove_when_source_default_is_optional() {
+        // Source declares Priority: optional. A binary explicitly setting
+        // Priority: required is excessive — and the right fix is to
+        // remove the binary's override, not to also write Priority: optional.
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir(&debian_dir).unwrap();
+
+        let control_path = debian_dir.join("control");
+        fs::write(&control_path, "Source: test\nPriority: optional\n\nPackage: libtest\nSection: libs\nPriority: required\nDescription: Test\n Test\n").unwrap();
+
+        let result = run_apply(base_path).unwrap();
+        assert_eq!(
+            result.description,
+            "Set priority for library package libtest to optional."
+        );
+
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test\nPriority: optional\n\nPackage: libtest\nSection: libs\nDescription: Test\n Test\n",
+        );
     }
 }

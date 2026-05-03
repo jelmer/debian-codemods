@@ -1,89 +1,95 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
+const MESSAGE: &str = "Change priority extra to priority optional.";
 
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let mut diagnostics = Vec::new();
 
-    // Check source paragraph
-    if let Some(mut source) = editor.source() {
-        let paragraph = source.as_mut_deb822();
-        if paragraph.get("Priority").as_deref() == Some("extra") {
+    if let Some(source) = control.source() {
+        if source.as_deb822().get("Priority").as_deref() == Some("extra") {
             let issue = LintianIssue::source_with_info(
                 "priority-extra-is-replaced-by-priority-optional",
                 vec![],
             );
-
-            if !issue.should_fix(base_path) {
-                overridden_issues.push(issue);
-            } else {
-                paragraph.set("Priority", "optional");
-                fixed_issues.push(issue);
-            }
+            diagnostics.push(
+                Diagnostic::with_actions(
+                    issue,
+                    MESSAGE,
+                    vec![Action::Deb822(Deb822Action::SetField {
+                        file: control_rel.clone(),
+                        paragraph: ParagraphSelector::Source,
+                        field: "Priority".into(),
+                        value: "optional".into(),
+                    })],
+                )
+                .with_certainty(Certainty::Certain),
+            );
         }
     }
 
-    // Check binary paragraphs
-    for mut binary in editor.binaries() {
+    for binary in control.binaries() {
         let Some(package_name) = binary.name() else {
             continue;
         };
-        let paragraph = binary.as_mut_deb822();
-        if paragraph.get("Priority").as_deref() == Some("extra") {
-            let issue = LintianIssue::binary_with_info(
-                &package_name,
-                "priority-extra-is-replaced-by-priority-optional",
-                vec![],
-            );
-
-            if !issue.should_fix(base_path) {
-                overridden_issues.push(issue);
-            } else {
-                paragraph.set("Priority", "optional");
-                fixed_issues.push(issue);
-            }
+        if binary.as_deb822().get("Priority").as_deref() != Some("extra") {
+            continue;
         }
+        let issue = LintianIssue::binary_with_info(
+            &package_name,
+            "priority-extra-is-replaced-by-priority-optional",
+            vec![],
+        );
+        diagnostics.push(
+            Diagnostic::with_actions(
+                issue,
+                MESSAGE,
+                vec![Action::Deb822(Deb822Action::SetField {
+                    file: control_rel.clone(),
+                    paragraph: ParagraphSelector::Binary {
+                        package: package_name,
+                    },
+                    field: "Priority".into(),
+                    value: "optional".into(),
+                })],
+            )
+            .with_certainty(Certainty::Certain),
+        );
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit()?;
-
-    Ok(
-        FixerResult::builder("Change priority extra to priority optional.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .certainty(crate::Certainty::Certain)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "priority-extra-is-replaced-by-priority-optional",
     tags: ["priority-extra-is-replaced-by-priority-optional"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_change_priority_extra_to_optional() {
@@ -92,30 +98,21 @@ mod tests {
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        let control_content = "\
-Source: test-package
-Priority: extra
-
-Package: test-package
-Priority: extra
-Description: Test package
- This is a test package.
-";
-
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: test-package\nPriority: extra\n\nPackage: test-package\nPriority: extra\nDescription: Test package\n This is a test package.\n",
+        )
+        .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base_path).unwrap();
+        assert_eq!(result.description, MESSAGE);
+        assert_eq!(result.certainty, Some(Certainty::Certain));
+
         assert_eq!(
-            result.description,
-            "Change priority extra to priority optional."
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-package\nPriority: optional\n\nPackage: test-package\nPriority: optional\nDescription: Test package\n This is a test package.\n",
         );
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Check that the file was updated
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Priority: optional"));
-        assert!(!updated_content.contains("Priority: extra"));
     }
 
     #[test]
@@ -125,25 +122,20 @@ Description: Test package
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        let control_content = "\
-Source: test-package
-Priority: extra
-
-Package: test-package
-Description: Test package
- This is a test package.
-";
-
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: test-package\nPriority: extra\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        )
+        .unwrap();
 
-        let result = run(base_path).unwrap();
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        let result = run_apply(base_path).unwrap();
+        assert_eq!(result.certainty, Some(Certainty::Certain));
 
-        // Check that only source priority was changed
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Priority: optional"));
-        assert!(!updated_content.contains("Priority: extra"));
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-package\nPriority: optional\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        );
     }
 
     #[test]
@@ -153,25 +145,20 @@ Description: Test package
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        let control_content = "\
-Source: test-package
-
-Package: test-package
-Priority: extra
-Description: Test package
- This is a test package.
-";
-
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: test-package\n\nPackage: test-package\nPriority: extra\nDescription: Test package\n This is a test package.\n",
+        )
+        .unwrap();
 
-        let result = run(base_path).unwrap();
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        let result = run_apply(base_path).unwrap();
+        assert_eq!(result.certainty, Some(Certainty::Certain));
 
-        // Check that only binary priority was changed
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Priority: optional"));
-        assert!(!updated_content.contains("Priority: extra"));
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-package\n\nPackage: test-package\nPriority: optional\nDescription: Test package\n This is a test package.\n",
+        );
     }
 
     #[test]
@@ -181,25 +168,12 @@ Description: Test package
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        let control_content = "\
-Source: test-package
-Priority: optional
-
-Package: test-package
-Priority: optional
-Description: Test package
- This is a test package.
-";
-
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        let original = "Source: test-package\nPriority: optional\n\nPackage: test-package\nPriority: optional\nDescription: Test package\n This is a test package.\n";
+        fs::write(&control_path, original).unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // Check that nothing was changed
-        let content = fs::read_to_string(&control_path).unwrap();
-        assert_eq!(content, control_content);
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&control_path).unwrap(), original);
     }
 
     #[test]
@@ -208,17 +182,15 @@ Description: Test package
         let base_path = temp_dir.path();
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_debian_dir() {
         let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 }
