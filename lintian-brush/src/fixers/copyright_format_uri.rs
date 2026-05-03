@@ -1,109 +1,75 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use regex::bytes::Regex;
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
-const CORRECT_FORMAT: &[u8] =
-    b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n";
+const CORRECT_FORMAT_URI: &str =
+    "https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/";
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
-
-    if !copyright_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let abs = base_path.join(&copyright_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = fs::read(&copyright_path)?;
-
-    if content.is_empty() {
-        return Err(FixerError::NoChanges);
-    }
-
-    // Find the end of first line
-    let first_line_end = content
-        .iter()
-        .position(|&b| b == b'\n')
-        .unwrap_or(content.len());
-    let first_line = &content[..first_line_end + 1.min(content.len() - first_line_end)];
-
-    // Check for insecure debian.org copyright format URI
-    let insecure_regex = Regex::new(
-        r"^(Format|Format-Specification): (http://www\.debian\.org/doc/packaging-manuals/copyright-format/1\.0.*)\n"
-    ).unwrap();
-
-    // Check for wiki copyright format URI
-    let wiki_regex = Regex::new(
-        r"^(Format|Format-Specification): (http://wiki\.debian\.org/Proposals/CopyrightFormat.*)\n",
-    )
-    .unwrap();
-
-    let (is_wiki, old_uri) = if let Some(caps) = insecure_regex.captures(first_line) {
-        let uri = String::from_utf8_lossy(&caps[2]).to_string();
-        (false, uri)
-    } else if let Some(caps) = wiki_regex.captures(first_line) {
-        let uri = String::from_utf8_lossy(&caps[2]).to_string();
-        (true, uri)
-    } else {
-        return Err(FixerError::NoChanges);
+    let content = std::fs::read_to_string(&abs)?;
+    let deb822 = match deb822_lossless::Deb822::from_str(&content) {
+        Ok(d) => d,
+        Err(_) => return Ok(Vec::new()),
+    };
+    let Some(header) = deb822.paragraphs().next() else {
+        return Ok(Vec::new());
+    };
+    let Some(format) = header.get("Format") else {
+        return Ok(Vec::new());
     };
 
-    // Only replace if it's different from what we want
-    if first_line == CORRECT_FORMAT {
-        return Err(FixerError::NoChanges);
+    let is_insecure =
+        format.starts_with("http://www.debian.org/doc/packaging-manuals/copyright-format/1.0");
+    let is_wiki = format.starts_with("http://wiki.debian.org/Proposals/CopyrightFormat");
+    if !is_insecure && !is_wiki {
+        return Ok(Vec::new());
+    }
+    if format == CORRECT_FORMAT_URI {
+        return Ok(Vec::new());
     }
 
-    // Create issues and check which should be fixed
-    let insecure_issue =
-        LintianIssue::source_with_info("insecure-copyright-format-uri", vec![old_uri.clone()]);
+    // Both diagnostics share the same fix; the second's actions are
+    // idempotent against the first.
+    let make_action = || {
+        Action::Deb822(Deb822Action::SetField {
+            file: copyright_rel.clone(),
+            paragraph: ParagraphSelector::CopyrightHeader,
+            field: "Format".into(),
+            value: CORRECT_FORMAT_URI.into(),
+        })
+    };
 
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-
-    if insecure_issue.should_fix(base_path) {
-        fixed_issues.push(insecure_issue);
-    } else {
-        overridden_issues.push(insecure_issue);
-    }
-
+    let mut diagnostics = Vec::new();
+    diagnostics.push(Diagnostic::with_actions(
+        LintianIssue::source_with_info("insecure-copyright-format-uri", vec![format.clone()]),
+        "Use secure copyright file specification URI.",
+        vec![make_action()],
+    ));
     if is_wiki {
-        let wiki_issue =
-            LintianIssue::source_with_info("wiki-copyright-format-uri", vec![old_uri.clone()]);
-
-        if wiki_issue.should_fix(base_path) {
-            fixed_issues.push(wiki_issue);
-        } else {
-            overridden_issues.push(wiki_issue);
-        }
+        diagnostics.push(Diagnostic::with_actions(
+            LintianIssue::source_with_info("wiki-copyright-format-uri", vec![format]),
+            "Use secure copyright file specification URI.",
+            vec![make_action()],
+        ));
     }
 
-    if fixed_issues.is_empty() {
-        return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-    }
-
-    // Build new content with replaced first line
-    let mut new_content = Vec::new();
-    new_content.extend_from_slice(CORRECT_FORMAT);
-    if first_line_end + 1 < content.len() {
-        new_content.extend_from_slice(&content[first_line_end + 1..]);
-    }
-
-    fs::write(&copyright_path, &new_content)?;
-
-    Ok(
-        FixerResult::builder("Use secure copyright file specification URI.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "copyright-format-uri",
     tags: ["insecure-copyright-format-uri", "wiki-copyright-format-uri"],
-    // Must convert http to https before adding version (unversioned-copyright-format-uri)
+    // Must convert http to https before adding version (unversioned-copyright-format-uri).
     before: ["unversioned-copyright-format-uri"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -111,91 +77,82 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_insecure_uri() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
+        fs::write(
+            &path,
+            "Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: test\n",
+        )
+        .unwrap();
 
-        let copyright_content =
-            b"Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: test\n";
-        let copyright_path = debian_dir.join("copyright");
-        fs::write(&copyright_path, copyright_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(result.fixed_lintian_issues.len(), 1);
         assert_eq!(
-            result.fixed_lintian_issues[0].tag,
-            Some("insecure-copyright-format-uri".to_string())
+            result.fixed_lintian_issues[0].tag.as_deref(),
+            Some("insecure-copyright-format-uri")
         );
         assert_eq!(
-            result.fixed_lintian_issues[0].info,
-            Some("http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/".to_string())
+            result.fixed_lintian_issues[0].info.as_deref(),
+            Some("http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/")
         );
 
-        let updated_content = fs::read(&copyright_path).unwrap();
-        let updated_str = String::from_utf8_lossy(&updated_content);
-        assert!(updated_str.starts_with("Format: https://www.debian.org"));
-        assert!(updated_str.contains("Upstream-Name: test"));
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: test\n",
+        );
     }
 
     #[test]
     fn test_wiki_uri() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
+        fs::write(
+            &path,
+            "Format: http://wiki.debian.org/Proposals/CopyrightFormat\nUpstream-Name: test\n",
+        )
+        .unwrap();
 
-        let copyright_content =
-            b"Format: http://wiki.debian.org/Proposals/CopyrightFormat\nUpstream-Name: test\n";
-        let copyright_path = debian_dir.join("copyright");
-        fs::write(&copyright_path, copyright_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
+        let result = run_apply(tmp.path()).unwrap();
+        // Two issues: the URI is both insecure and wiki-flavoured.
         assert_eq!(result.fixed_lintian_issues.len(), 2);
 
-        let updated_content = fs::read(&copyright_path).unwrap();
-        let updated_str = String::from_utf8_lossy(&updated_content);
-        assert!(updated_str.starts_with("Format: https://www.debian.org"));
-        assert!(updated_str.contains("Upstream-Name: test"));
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: test\n",
+        );
     }
 
     #[test]
     fn test_already_secure() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
+        let original = "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: test\n";
+        fs::write(&path, original).unwrap();
 
-        let copyright_content =
-            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: test\n";
-        let copyright_path = debian_dir.join("copyright");
-        fs::write(&copyright_path, copyright_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
     }
 
     #[test]
     fn test_no_copyright_file() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
