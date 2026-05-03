@@ -1,9 +1,9 @@
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
-use debian_analyzer::abstract_control::AbstractSource;
-use debian_analyzer::control::TemplatedControlEditor;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_changelog::parseaddr;
+use debian_control::lossless::Control;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use url::Url;
 
 const OBSOLETE_HOSTS: &[&str] = &[
@@ -15,11 +15,9 @@ const OBSOLETE_HOSTS: &[&str] = &[
     "hg.debian.org",
 ];
 
-/// Check if a URL is on an obsolete Debian infrastructure host
 fn is_on_obsolete_host(url: &str) -> bool {
-    if let Ok(parsed_url) = Url::parse(url) {
-        if let Some(host) = parsed_url.host_str() {
-            // Strip user part if present (e.g., git@host -> host)
+    if let Ok(parsed) = Url::parse(url) {
+        if let Some(host) = parsed.host_str() {
             let host_without_user = host.split('@').next_back().unwrap_or(host);
             return OBSOLETE_HOSTS.contains(&host_without_user);
         }
@@ -27,33 +25,26 @@ fn is_on_obsolete_host(url: &str) -> bool {
     false
 }
 
-/// Query vcswatch database for package VCS information
 #[cfg(feature = "udd")]
 async fn retrieve_vcswatch_urls(
     package: &str,
 ) -> Result<Option<(String, String, Option<String>)>, FixerError> {
     use sqlx::Row;
-
     let client = debian_analyzer::udd::connect_udd_mirror()
         .await
         .map_err(|e| FixerError::Other(format!("Failed to connect to UDD: {}", e)))?;
-
-    let query = "SELECT vcs, url, browser FROM vcswatch WHERE source = $1";
-
-    let row = sqlx::query(query)
+    let row = sqlx::query("SELECT vcs, url, browser FROM vcswatch WHERE source = $1")
         .bind(package)
         .fetch_optional(&client)
         .await
         .map_err(|e| FixerError::Other(format!("Failed to query vcswatch: {}", e)))?;
-
-    if let Some(row) = row {
-        let vcs_type: String = row.get(0);
-        let url: String = row.get(1);
-        let browser: Option<String> = row.get(2);
-        Ok(Some((vcs_type, url, browser)))
-    } else {
-        Ok(None)
-    }
+    Ok(row.map(|r| {
+        (
+            r.get::<String, _>(0),
+            r.get::<String, _>(1),
+            r.get::<Option<String>, _>(2),
+        )
+    }))
 }
 
 #[cfg(not(feature = "udd"))]
@@ -63,46 +54,35 @@ async fn retrieve_vcswatch_urls(
     Ok(None)
 }
 
-/// Determine browser URL from VCS URL
 fn determine_browser_url(vcs_type: &str, vcs_url: &str) -> Option<String> {
     debian_analyzer::vcs::determine_browser_url(vcs_type, vcs_url, None).map(|u| u.to_string())
 }
 
-/// Determine Salsa browser URL from Git URL
 fn determine_salsa_browser_url(url: &str) -> Option<String> {
-    if let Ok(parsed_url) = Url::parse(url) {
-        if let Some(host) = parsed_url.host_str() {
-            if host == "salsa.debian.org" {
-                // For salsa.debian.org, just strip .git extension from browser URL
-                let path = parsed_url.path().trim_end_matches(".git");
-                return Some(format!("https://salsa.debian.org{}", path));
-            }
-        }
+    let parsed = Url::parse(url).ok()?;
+    if parsed.host_str()? != "salsa.debian.org" {
+        return None;
     }
-    None
+    let path = parsed.path().trim_end_matches(".git");
+    Some(format!("https://salsa.debian.org{}", path))
 }
 
-/// Verify that a Salsa repository exists by checking the browser URL
 async fn verify_salsa_repository(url: &str) -> Result<bool, FixerError> {
     let browser_url = determine_salsa_browser_url(url)
         .ok_or_else(|| FixerError::Other("Not a salsa URL".to_string()))?;
-
     let client = reqwest::Client::builder()
         .user_agent("lintian-brush")
         .timeout(std::time::Duration::from_secs(30))
         .build()
         .map_err(|e| FixerError::Other(format!("Failed to create HTTP client: {}", e)))?;
-
     let response = client
         .get(&browser_url)
         .send()
         .await
         .map_err(|e| FixerError::Other(format!("Failed to fetch URL: {}", e)))?;
-
     Ok(response.status().is_success())
 }
 
-/// Mapping of old team names to new ones
 fn get_team_name_map() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
     map.insert("debian-xml-sgml", "xml-sgml-team");
@@ -175,7 +155,6 @@ fn get_team_name_map() -> HashMap<&'static str, &'static str> {
     map
 }
 
-/// Mapping of Git path renames from old infrastructure to Salsa
 fn get_git_path_renames() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
     map.insert("pkg-kde/applications", "qt-kde-team/kde");
@@ -189,13 +168,11 @@ fn get_git_path_renames() -> HashMap<&'static str, &'static str> {
     map
 }
 
-/// Guess the Salsa path from an alioth URL
 fn salsa_path_from_alioth_url(vcs_type: &str, alioth_url: &str) -> Option<String> {
     let team_name_map = get_team_name_map();
     let git_path_renames = get_git_path_renames();
 
     if vcs_type.to_lowercase() == "git" {
-        // Handle collab-maint repositories
         let pat = regex::Regex::new(
             r"(https?|git)://(anonscm|git)\.debian\.org/(cgit/|git/)?collab-maint/",
         )
@@ -203,16 +180,12 @@ fn salsa_path_from_alioth_url(vcs_type: &str, alioth_url: &str) -> Option<String
         if pat.is_match(alioth_url) {
             return Some(pat.replace(alioth_url, "debian/").to_string());
         }
-
-        // Handle users repositories
         let pat =
             regex::Regex::new(r"(https?|git)://(anonscm|git)\.debian\.org/(cgit/|git/)?users/")
                 .ok()?;
         if pat.is_match(alioth_url) {
             return Some(pat.replace(alioth_url, "").to_string());
         }
-
-        // General pattern matching for team repositories
         if let Some(caps) =
             regex::Regex::new(r"(https?|git)://(anonscm|git)\.debian\.org/(cgit/|git/)?(.+)")
                 .ok()?
@@ -220,8 +193,6 @@ fn salsa_path_from_alioth_url(vcs_type: &str, alioth_url: &str) -> Option<String
         {
             let path = caps.get(4)?.as_str();
             let parts: Vec<&str> = path.split('/').collect();
-
-            // Check git path renames
             for i in (1..=parts.len()).rev() {
                 let subpath = parts[..i].join("/");
                 if let Some(new_path) = git_path_renames.get(subpath.as_str()) {
@@ -233,20 +204,15 @@ fn salsa_path_from_alioth_url(vcs_type: &str, alioth_url: &str) -> Option<String
                     };
                 }
             }
-
-            // Handle special case for debian-in fonts
             if let Some(first_part) = parts.first() {
                 if *first_part == "debian-in" && alioth_url.contains("fonts-") {
                     return Some(format!("fonts-team/{}", parts[1..].join("/")));
                 }
-                // Check team name map
                 if let Some(new_name) = team_name_map.get(first_part) {
                     return Some(format!("{}/{}", new_name, parts[1..].join("/")));
                 }
             }
         }
-
-        // Handle alioth.debian.org/anonscm URLs
         if let Some(caps) =
             regex::Regex::new(r"https?://alioth\.debian\.org/anonscm/(git/|cgit/)?([^/]+)/")
                 .ok()?
@@ -258,80 +224,67 @@ fn salsa_path_from_alioth_url(vcs_type: &str, alioth_url: &str) -> Option<String
             }
         }
     } else if vcs_type.to_lowercase() == "svn" {
-        // Handle SVN pkg-perl repositories
         if alioth_url.starts_with("svn://svn.debian.org/pkg-perl/trunk") {
             return Some(alioth_url.replace(
                 "svn://svn.debian.org/pkg-perl/trunk",
                 "perl-team/modules/packages",
             ));
         }
-        // Handle SVN pkg-lua repositories
         if alioth_url.starts_with("svn://svn.debian.org/pkg-lua/packages") {
             return Some(alioth_url.replace("svn://svn.debian.org/pkg-lua/packages", "lua-team"));
         }
-
-        // Parse SVN URLs and apply team name transformations
-        if let Ok(parsed_url) = Url::parse(alioth_url) {
-            if parsed_url.scheme() == "svn"
-                && (parsed_url.host_str() == Some("svn.debian.org")
-                    || parsed_url.host_str() == Some("anonscm.debian.org"))
+        if let Ok(parsed) = Url::parse(alioth_url) {
+            if parsed.scheme() == "svn"
+                && (parsed.host_str() == Some("svn.debian.org")
+                    || parsed.host_str() == Some("anonscm.debian.org"))
             {
-                let mut parts: Vec<&str> = parsed_url
-                    .path()
-                    .trim_start_matches('/')
-                    .split('/')
-                    .collect();
+                let mut parts: Vec<&str> =
+                    parsed.path().trim_start_matches('/').split('/').collect();
                 if parts.first() == Some(&"svn") {
                     parts.remove(0);
                 }
-
-                // Handle various SVN repository patterns
                 if parts.len() == 3 && team_name_map.contains_key(parts[0]) && parts[2] == "trunk" {
-                    let team = team_name_map[parts[0]];
-                    return Some(format!("{}/{}", team, parts[1]));
+                    return Some(format!("{}/{}", team_name_map[parts[0]], parts[1]));
                 }
                 if parts.len() == 3 && team_name_map.contains_key(parts[0]) && parts[1] == "trunk" {
-                    let team = team_name_map[parts[0]];
-                    return Some(format!("{}/{}", team, parts[2]));
+                    return Some(format!("{}/{}", team_name_map[parts[0]], parts[2]));
                 }
                 if parts.len() == 4
                     && team_name_map.contains_key(parts[0])
                     && parts[1] == "packages"
                     && parts[3] == "trunk"
                 {
-                    let team = team_name_map[parts[0]];
-                    return Some(format!("{}/{}", team, parts[2]));
+                    return Some(format!("{}/{}", team_name_map[parts[0]], parts[2]));
                 }
                 if parts.len() == 4
                     && team_name_map.contains_key(parts[0])
                     && parts[1] == "trunk"
                     && parts[2] == "packages"
                 {
-                    let team = team_name_map[parts[0]];
-                    return Some(format!("{}/{}", team, parts[3]));
+                    return Some(format!("{}/{}", team_name_map[parts[0]], parts[3]));
                 }
                 if parts.len() > 3
                     && team_name_map.contains_key(parts[0])
                     && parts[parts.len() - 2] == "trunk"
                 {
-                    let team = team_name_map[parts[0]];
-                    return Some(format!("{}/{}", team, parts[parts.len() - 1]));
+                    return Some(format!(
+                        "{}/{}",
+                        team_name_map[parts[0]],
+                        parts[parts.len() - 1]
+                    ));
                 }
                 if parts.len() == 3
                     && team_name_map.contains_key(parts[0])
                     && (parts[1] == "packages" || parts[1] == "unstable")
                 {
-                    let team = team_name_map[parts[0]];
-                    return Some(format!("{}/{}", team, parts[2]));
+                    return Some(format!("{}/{}", team_name_map[parts[0]], parts[2]));
                 }
             }
         }
     }
-
     None
 }
 
-/// Convert an alioth URL to a Salsa URL
 fn salsa_url_from_alioth_url(vcs_type: &str, alioth_url: &str) -> Option<String> {
     let mut path = salsa_path_from_alioth_url(vcs_type, alioth_url)?;
     path = path.trim_end_matches('/').to_string();
@@ -341,10 +294,8 @@ fn salsa_url_from_alioth_url(vcs_type: &str, alioth_url: &str) -> Option<String>
     Some(format!("https://salsa.debian.org/{}", path))
 }
 
-/// Error for when a new repository URL cannot be determined
 struct NewRepositoryURLUnknown;
 
-/// Find new VCS URLs for a package migrating from obsolete infrastructure
 async fn find_new_urls(
     vcs_type: &str,
     vcs_url: &str,
@@ -354,7 +305,6 @@ async fn find_new_urls(
 ) -> Result<(String, String, Option<String>), NewRepositoryURLUnknown> {
     let net_access = preferences.net_access.unwrap_or(false);
 
-    // First, try following redirects for HTTP/HTTPS URLs
     if net_access && (vcs_url.starts_with("https://") || vcs_url.starts_with("http://")) {
         if let Ok(client) = reqwest::Client::builder()
             .user_agent("lintian-brush")
@@ -372,7 +322,6 @@ async fn find_new_urls(
         }
     }
 
-    // Try vcswatch database if network access is allowed
     if net_access {
         if let Ok(Some((db_vcs_type, db_vcs_url, db_vcs_browser))) =
             retrieve_vcswatch_urls(package).await
@@ -392,18 +341,15 @@ async fn find_new_urls(
         }
     }
 
-    // Try to guess repository URL from maintainer email
     let guessed_url = debian_analyzer::salsa::guess_repository_url(package, maintainer_email);
     let (new_vcs_type, new_vcs_url) = if let Some(url) = guessed_url {
         ("Git".to_string(), url.to_string())
     } else {
-        // Fall back to converting alioth URL to Salsa
         let converted_url =
             salsa_url_from_alioth_url(vcs_type, vcs_url).ok_or(NewRepositoryURLUnknown)?;
         ("Git".to_string(), converted_url)
     };
 
-    // Verify repository exists if network access is allowed
     if net_access && !verify_salsa_repository(&new_vcs_url).await.unwrap_or(false) {
         return Err(NewRepositoryURLUnknown);
     }
@@ -412,96 +358,120 @@ async fn find_new_urls(
     Ok((new_vcs_type, new_vcs_url, vcs_browser))
 }
 
-/// Main function to migrate VCS fields from obsolete infrastructure
-pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(
+    base_path: &Path,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let abs = base_path.join(&control_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
-
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut source = editor.source().ok_or(FixerError::NoChanges)?;
-
-    // Get VCS info
-    let (vcs_type, vcs_url) = if let Some(url) = source.get_vcs_url("Git") {
-        ("Git", url)
-    } else if let Some(url) = source.get_vcs_url("Svn") {
-        ("Svn", url)
-    } else if let Some(url) = source.get_vcs_url("Bzr") {
-        ("Bzr", url)
-    } else if let Some(url) = source.get_vcs_url("Hg") {
-        ("Hg", url)
-    } else if let Some(url) = source.get_vcs_url("Cvs") {
-        ("Cvs", url)
-    } else {
-        return Err(FixerError::NoChanges);
+    let content = std::fs::read_to_string(&abs)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
     };
+    let paragraph = source.as_deb822();
 
-    // Check if on obsolete host
+    // Pick the first VCS field present.
+    let pairs: &[(&str, &str)] = &[
+        ("Vcs-Git", "Git"),
+        ("Vcs-Svn", "Svn"),
+        ("Vcs-Bzr", "Bzr"),
+        ("Vcs-Hg", "Hg"),
+        ("Vcs-Cvs", "Cvs"),
+    ];
+    let Some((field_name, vcs_type, vcs_url)) = pairs
+        .iter()
+        .find_map(|(field, kind)| paragraph.get(field).map(|v| (*field, *kind, v)))
+    else {
+        return Ok(Vec::new());
+    };
     if !is_on_obsolete_host(&vcs_url) {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Get package and maintainer info
-    let paragraph = source.as_mut_deb822();
-    let package = paragraph
-        .get("Source")
-        .ok_or(FixerError::NoChanges)?
-        .to_string();
-    let maintainer = paragraph
-        .get("Maintainer")
-        .ok_or(FixerError::NoChanges)?
-        .to_string();
+    let Some(package) = paragraph.get("Source") else {
+        return Ok(Vec::new());
+    };
+    let Some(maintainer) = paragraph.get("Maintainer") else {
+        return Ok(Vec::new());
+    };
     let (_, maintainer_email) = parseaddr(&maintainer);
 
-    let old_vcs_browser = source.get_vcs_url("Browser");
-    let old_vcs_type = vcs_type.to_string();
+    let old_vcs_browser = paragraph.get("Vcs-Browser");
     let old_vcs_url = vcs_url.clone();
 
-    // Find new URLs
     let rt = tokio::runtime::Runtime::new()
         .map_err(|e| FixerError::Other(format!("Failed to create runtime: {}", e)))?;
-
-    let (new_vcs_type, new_vcs_url, new_vcs_browser) = rt
-        .block_on(find_new_urls(
-            vcs_type,
-            &vcs_url,
-            &package,
-            maintainer_email,
-            preferences,
-        ))
-        .map_err(|_| FixerError::NoChanges)?;
-
-    // Record fixed lintian issues
-    let mut fixed_issues = Vec::new();
-
-    let issue = LintianIssue::source_with_info(
-        "vcs-obsolete-in-debian-infrastructure",
-        vec![format!(
-            "vcs-{} {}",
-            old_vcs_type.to_lowercase(),
-            old_vcs_url
-        )],
-    );
-
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    fixed_issues.push(issue);
-
-    // Check for vcs-field-bitrotted tag (CVS and ViewVC cases)
-    let vcs_cvs = source.get_vcs_url("Cvs");
-    let is_cvs_bitrotted = if let Some(cvs_url) = vcs_cvs {
-        regex::Regex::new(r"@(?:cvs\.alioth|anonscm)\.debian\.org:/cvsroot/")
-            .ok()
-            .map(|re| re.is_match(&cvs_url))
-            .unwrap_or(false)
-    } else {
-        false
+    let Ok((new_vcs_type, new_vcs_url, new_vcs_browser)) = rt.block_on(find_new_urls(
+        vcs_type,
+        &vcs_url,
+        &package,
+        maintainer_email,
+        preferences,
+    )) else {
+        return Ok(Vec::new());
     };
 
+    // Fields to drop: every Vcs-* (and Browser unless we're keeping it)
+    // that doesn't match the target Vcs-* type.
+    let new_vcs_field = format!("Vcs-{}", new_vcs_type);
+    let mut actions: Vec<Action> = Vec::new();
+    for hdr in ["Vcs-Git", "Vcs-Bzr", "Vcs-Hg", "Vcs-Svn", "Vcs-Cvs"] {
+        if hdr != new_vcs_field && paragraph.get(hdr).is_some() {
+            actions.push(Action::Deb822(Deb822Action::RemoveField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Source,
+                field: hdr.into(),
+            }));
+        }
+    }
+    if new_vcs_browser.is_none() && old_vcs_browser.is_some() {
+        actions.push(Action::Deb822(Deb822Action::RemoveField {
+            file: control_rel.clone(),
+            paragraph: ParagraphSelector::Source,
+            field: "Vcs-Browser".into(),
+        }));
+    }
+    actions.push(Action::Deb822(Deb822Action::SetField {
+        file: control_rel.clone(),
+        paragraph: ParagraphSelector::Source,
+        field: new_vcs_field.clone(),
+        value: new_vcs_url.clone(),
+    }));
+    if let Some(browser) = new_vcs_browser.clone() {
+        actions.push(Action::Deb822(Deb822Action::SetField {
+            file: control_rel.clone(),
+            paragraph: ParagraphSelector::Source,
+            field: "Vcs-Browser".into(),
+            value: browser,
+        }));
+    }
+
+    let mut diagnostics = Vec::new();
+
+    diagnostics.push(Diagnostic::with_actions(
+        LintianIssue::source_with_info(
+            "vcs-obsolete-in-debian-infrastructure",
+            vec![format!("vcs-{} {}", vcs_type.to_lowercase(), old_vcs_url)],
+        ),
+        "Update Vcs-* headers to use salsa repository.",
+        actions.clone(),
+    ));
+
+    // Bitrotted-tag emission: CVS via cvs.alioth/anonscm or Svn with
+    // viewvc browser.
+    let is_cvs_bitrotted = paragraph
+        .get("Vcs-Cvs")
+        .as_deref()
+        .and_then(|cvs_url| {
+            regex::Regex::new(r"@(?:cvs\.alioth|anonscm)\.debian\.org:/cvsroot/")
+                .ok()
+                .map(|re| re.is_match(cvs_url))
+        })
+        .unwrap_or(false);
     let is_svn_viewvc_bitrotted = vcs_type == "Svn"
         && old_vcs_browser
             .as_ref()
@@ -514,55 +484,43 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
             old_vcs_url,
             old_vcs_browser.as_deref().unwrap_or("")
         );
-        let issue = LintianIssue::source_with_info("vcs-field-bitrotted", vec![info]);
-        if issue.should_fix(base_path) {
-            fixed_issues.push(issue);
-        }
+        diagnostics.push(Diagnostic::with_actions(
+            LintianIssue::source_with_info("vcs-field-bitrotted", vec![info]),
+            "Update Vcs-* headers to use salsa repository.",
+            actions,
+        ));
     }
 
-    // Remove old VCS fields
-    {
-        let paragraph = source.as_mut_deb822();
-        for hdr in ["Vcs-Git", "Vcs-Bzr", "Vcs-Hg", "Vcs-Svn", "Vcs-Cvs"] {
-            if hdr != format!("Vcs-{}", new_vcs_type) {
-                paragraph.remove(hdr);
-            }
-        }
-        if new_vcs_browser.is_none() {
-            paragraph.remove("Vcs-Browser");
-        }
-    }
-
-    // Set new VCS fields
-    source.set_vcs_url(&new_vcs_type, &new_vcs_url);
-    if let Some(browser) = new_vcs_browser {
-        source.set_vcs_url("Browser", &browser);
-    }
-
-    editor.commit()?;
-
-    let description = "Update Vcs-* headers to use salsa repository.".to_string();
-
-    Ok(FixerResult::builder(&description)
-        .fixed_issues(fixed_issues)
-        .build())
+    // Suppress the unused-warning when the udd cfg path makes
+    // `field_name` unused.
+    let _ = field_name;
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "vcs-field-bitrotted",
     tags: ["vcs-obsolete-in-debian-infrastructure", "vcs-field-bitrotted"],
-    // Must fix infrastructure changes before checking for broken URIs
     before: ["vcs-broken-uri"],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences)
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply_with(
+        base: &Path,
+        prefs: &FixerPreferences,
+    ) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, prefs)
+    }
 
     #[test]
     fn test_is_on_obsolete_host() {
@@ -579,7 +537,6 @@ mod tests {
 
     #[test]
     fn test_salsa_url_from_alioth_url_team() {
-        // Test conversion for a team repository
         let result =
             salsa_url_from_alioth_url("Git", "git://git.debian.org/pkg-javascript/node-foo");
         assert_eq!(
@@ -590,69 +547,57 @@ mod tests {
 
     #[test]
     fn test_salsa_url_from_alioth_url_personal() {
-        // Personal repositories (not matching any team pattern) return None
-        // These are handled via guess_repository_url in find_new_urls
-        let result = salsa_url_from_alioth_url("Git", "git://git.debian.org/jelmer/lintian-brush");
-        assert_eq!(result, None);
+        // Personal repos return None; the find_new_urls layer handles them
+        // via guess_repository_url when network access is allowed.
+        assert_eq!(
+            salsa_url_from_alioth_url("Git", "git://git.debian.org/jelmer/lintian-brush"),
+            None
+        );
     }
 
     #[test]
     fn test_simple_migration() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("control");
         fs::write(
-            debian_dir.join("control"),
-            "Source: lintian-brush\n\
-             Maintainer: Jelmer Vernooij <jelmer@debian.org>\n\
-             Vcs-Git: git://git.debian.org/jelmer/lintian-brush\n\
-             Vcs-Browser: https://alioth.debian.org/git/jelmer/lintian-brush\n\n\
-             Package: lintian-brush\n\
-             Description: Testing\n Test test\n",
+            &path,
+            "Source: lintian-brush\nMaintainer: Jelmer Vernooij <jelmer@debian.org>\nVcs-Git: git://git.debian.org/jelmer/lintian-brush\nVcs-Browser: https://alioth.debian.org/git/jelmer/lintian-brush\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
         )
         .unwrap();
 
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             net_access: Some(false),
             ..Default::default()
         };
-
-        let result = run(base_path, &preferences).unwrap();
+        let result = run_apply_with(tmp.path(), &prefs).unwrap();
         assert!(result
             .description
             .contains("Update Vcs-* headers to use salsa repository"));
 
-        let content = fs::read_to_string(debian_dir.join("control")).unwrap();
-        assert!(content.contains("Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git"));
-        assert!(content.contains("Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush"));
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git"));
+        assert!(after.contains("Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush"));
     }
 
     #[test]
     fn test_already_on_salsa() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("control");
+        let original = "Source: lintian-brush\nMaintainer: Jelmer Vernooij <jelmer@debian.org>\nVcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git\nVcs-Browser: https://salsa.debian.org/jelmer/lintian-brush\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n";
+        fs::write(&path, original).unwrap();
 
-        fs::write(
-            debian_dir.join("control"),
-            "Source: lintian-brush\n\
-             Maintainer: Jelmer Vernooij <jelmer@debian.org>\n\
-             Vcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git\n\
-             Vcs-Browser: https://salsa.debian.org/jelmer/lintian-brush\n\n\
-             Package: lintian-brush\n\
-             Description: Testing\n Test test\n",
-        )
-        .unwrap();
-
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             net_access: Some(false),
             ..Default::default()
         };
-
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply_with(tmp.path(), &prefs),
+            Err(FixerError::NoChanges)
+        ));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
     }
 }
