@@ -1,18 +1,16 @@
-use crate::{Certainty, FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, LintianIssue};
 use deb822_lossless::Deb822;
 use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-/// Extract license names from a synopsis.
-///
-/// This will return a list of licenses, as a list of possible names per license.
+/// Extract license names from a synopsis. Returns a list of licenses, as
+/// a list of possible names per license (handles `X with Y exception`).
 fn extract_licenses(synopsis: &str) -> Vec<Vec<String>> {
     let mut ret = Vec::new();
     for license in synopsis.split(" or ") {
         let mut options = vec![license.to_string()];
-        // Handle "license with exception" pattern
         if let Some((base, _exception)) = license.rsplit_once(" with ") {
             if license.ends_with(" exception") {
                 options.push(base.to_string());
@@ -50,8 +48,6 @@ fn collect_defined_licenses(deb822: &Deb822) -> HashSet<String> {
 
 fn collect_used_licenses(deb822: &Deb822, defined: &HashSet<String>) -> Vec<Vec<String>> {
     let mut used = Vec::new();
-
-    // Collect from header
     if let Some(header) = deb822.paragraphs().next() {
         if let Some(license) = header.get("License") {
             if let Some(synopsis) = get_license_name(&license) {
@@ -62,8 +58,6 @@ fn collect_used_licenses(deb822: &Deb822, defined: &HashSet<String>) -> Vec<Vec<
             }
         }
     }
-
-    // Collect from Files paragraphs
     for paragraph in deb822.paragraphs() {
         if paragraph.get("Files").is_none() {
             continue;
@@ -79,7 +73,6 @@ fn collect_used_licenses(deb822: &Deb822, defined: &HashSet<String>) -> Vec<Vec<
         }
         used.extend(extract_licenses(&synopsis));
     }
-
     used
 }
 
@@ -104,6 +97,8 @@ fn calculate_extra_used(defined: &HashSet<String>, used: &[Vec<String>]) -> Vec<
     extra_used
 }
 
+/// Returns `Possible` if any unused license name is referenced in the
+/// text of *another* license paragraph or in a Comment field anywhere.
 fn check_license_references(deb822: &Deb822, extra_defined: &HashSet<String>) -> Certainty {
     for name in extra_defined {
         for paragraph in deb822.paragraphs() {
@@ -128,23 +123,39 @@ fn check_license_references(deb822: &Deb822, extra_defined: &HashSet<String>) ->
     Certainty::Certain
 }
 
-fn remove_unused_license_paragraphs(
-    deb822: &mut Deb822,
-    extra_defined: &HashSet<String>,
-    base_path: &Path,
-    fixed_issues: &mut Vec<LintianIssue>,
-    overridden_issues: &mut Vec<LintianIssue>,
-) -> Vec<(String, usize)> {
-    let mut indices_to_remove = Vec::new();
-    let mut removed_licenses = Vec::new();
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let abs = base_path.join(&copyright_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    if !content.starts_with("Format:") {
+        return Ok(Vec::new());
+    }
+    let deb822 = match Deb822::from_str(&content) {
+        Ok(d) => d,
+        Err(_) => return Ok(Vec::new()),
+    };
 
+    let defined = collect_defined_licenses(&deb822);
+    let used = collect_used_licenses(&deb822, &defined);
+    let extra_defined = calculate_extra_defined(&defined, &used);
+    let extra_used = calculate_extra_used(&defined, &used);
+
+    if extra_defined.is_empty() || !extra_used.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let certainty = check_license_references(&deb822, &extra_defined);
+
+    let mut diagnostics = Vec::new();
     for (idx, paragraph) in deb822.paragraphs().enumerate() {
-        // Skip header (first paragraph)
+        // Skip the header.
         if idx == 0 {
             continue;
         }
-
-        // Check if this is a standalone License paragraph (not Files paragraph)
+        // Only standalone License paragraphs (no Files: field).
         if paragraph.get("Files").is_some() {
             continue;
         }
@@ -154,108 +165,57 @@ fn remove_unused_license_paragraphs(
         let Some(name) = get_license_name(&license) else {
             continue;
         };
-        if extra_defined.contains(&name) {
-            let line_number = paragraph.line() + 1;
-            let issue = LintianIssue::source_with_info(
-                "unused-license-paragraph-in-dep5-copyright",
-                vec![format!("{} [debian/copyright:{}]", name, line_number)],
-            );
-
-            if issue.should_fix(base_path) {
-                indices_to_remove.push(idx);
-                removed_licenses.push((name.clone(), line_number));
-                fixed_issues.push(issue);
-            } else {
-                overridden_issues.push(issue);
-            }
+        if !extra_defined.contains(&name) {
+            continue;
         }
+
+        let line_number = paragraph.line() + 1;
+        let issue = LintianIssue::source_with_info(
+            "unused-license-paragraph-in-dep5-copyright",
+            vec![format!("{} [debian/copyright:{}]", name, line_number)],
+        );
+
+        // Address by the License field's full value (synopsis + body):
+        // unique enough to identify the paragraph. Stash the license
+        // name in the message so the describer can list them.
+        diagnostics.push(
+            Diagnostic::with_actions(
+                issue,
+                format!("name\t{}", name),
+                vec![Action::Deb822(Deb822Action::RemoveParagraph {
+                    file: copyright_rel.clone(),
+                    paragraph: ParagraphSelector::ByKey {
+                        field: "License".into(),
+                        value: license,
+                    },
+                })],
+            )
+            .with_certainty(certainty),
+        );
     }
 
-    // Remove in reverse order to maintain indices
-    for idx in indices_to_remove.iter().rev() {
-        deb822.remove_paragraph(*idx);
-    }
-
-    removed_licenses
+    Ok(diagnostics)
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
-
-    if !copyright_path.exists() {
-        return Err(FixerError::NoChanges);
-    }
-
-    let content = fs::read_to_string(&copyright_path)?;
-
-    if !content.starts_with("Format:") {
-        return Err(FixerError::NoChanges);
-    }
-
-    let mut deb822 = Deb822::from_str(&content).map_err(|_| FixerError::NoChanges)?;
-
-    let defined = collect_defined_licenses(&deb822);
-    let used = collect_used_licenses(&deb822, &defined);
-    let extra_defined = calculate_extra_defined(&defined, &used);
-    let extra_used = calculate_extra_used(&defined, &used);
-
-    // Only proceed if we have unused definitions and no missing definitions
-    if extra_defined.is_empty() || !extra_used.is_empty() {
-        return Err(FixerError::NoChanges);
-    }
-
-    let mut certainty = Certainty::Certain;
-
-    // If there are undefined licenses, drop certainty
-    if !extra_used.is_empty() {
-        certainty = Certainty::Possible;
-    }
-
-    // Check if unused licenses are referenced in text or comments
-    let reference_certainty = check_license_references(&deb822, &extra_defined);
-    if reference_certainty == Certainty::Possible {
-        certainty = Certainty::Possible;
-    }
-
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-    let removed_licenses = remove_unused_license_paragraphs(
-        &mut deb822,
-        &extra_defined,
-        base_path,
-        &mut fixed_issues,
-        &mut overridden_issues,
-    );
-
-    let new_content = deb822.to_string();
-    if new_content == content {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    fs::write(&copyright_path, new_content)?;
-
-    let license_list: Vec<_> = removed_licenses
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let names: Vec<&str> = fixed
         .iter()
-        .map(|(name, _)| name.clone())
+        .filter_map(|d| d.message.strip_prefix("name\t"))
         .collect();
-    Ok(FixerResult::builder(format!(
+    format!(
         "Remove unused license definitions for {}.",
-        license_list.join(", ")
-    ))
-    .certainty(certainty)
-    .fixed_issues(fixed_issues)
-    .overridden_issues(overridden_issues)
-    .build())
+        names.join(", ")
+    )
 }
 
 declare_fixer! {
     name: "unused-license-paragraph-in-dep5-copyright",
     tags: ["unused-license-paragraph-in-dep5-copyright"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
@@ -263,81 +223,66 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "blah", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_extract_licenses() {
-        let licenses = extract_licenses("GPL-2+");
-        assert_eq!(licenses, vec![vec!["GPL-2+"]]);
-
-        let licenses = extract_licenses("GPL-2+ or BSD");
-        assert_eq!(licenses, vec![vec!["GPL-2+"], vec!["BSD"]]);
-
-        let licenses = extract_licenses("GPL-2+ with exception");
-        assert_eq!(licenses, vec![vec!["GPL-2+ with exception", "GPL-2+"]]);
+        assert_eq!(extract_licenses("GPL-2+"), vec![vec!["GPL-2+"]]);
+        assert_eq!(
+            extract_licenses("GPL-2+ or BSD"),
+            vec![vec!["GPL-2+"], vec!["BSD"]]
+        );
+        assert_eq!(
+            extract_licenses("GPL-2+ with exception"),
+            vec![vec!["GPL-2+ with exception", "GPL-2+"]]
+        );
     }
 
     #[test]
     fn test_remove_unused_license() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
+        fs::write(
+            &path,
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: blah\nSource: https://github.com/example/blah\n\nFiles: *\nCopyright: 2013 Somebody <somebody@example.com>\nLicense: GPL-2+\n\nLicense: GPL-2+\n This program is free software; you can redistribute it\n .\n version 2 of the License, or (at your option) any later\n version.\n\nLicense: BSL-1\n Boost Software License, Version 1.0\n",
+        )
+        .unwrap();
 
-        let copyright_content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: blah
-Source: https://github.com/example/blah
+        let result = run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            result.description,
+            "Remove unused license definitions for BSL-1."
+        );
+        assert_eq!(result.certainty, Some(Certainty::Certain));
 
-Files: *
-Copyright: 2013 Somebody <somebody@example.com>
-License: GPL-2+
-
-License: GPL-2+
- This program is free software; you can redistribute it
- and/or modify it under the terms of the GNU General Public
- License as published by the Free Software Foundation; either
- version 2 of the License, or (at your option) any later
- version.
-
-License: BSL-1
- Boost Software License, Version 1.0
-"#;
-
-        let copyright_path = debian_dir.join("copyright");
-        fs::write(&copyright_path, copyright_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "blah", &version, &Default::default());
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&copyright_path).unwrap();
-        assert!(!updated_content.contains("BSL-1"));
-        assert!(updated_content.contains("GPL-2+"));
+        // The removed BSL-1 paragraph leaves a trailing blank line —
+        // the lossless deb822 representation tracks the blank-line
+        // separator as part of the file rather than the paragraph.
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: blah\nSource: https://github.com/example/blah\n\nFiles: *\nCopyright: 2013 Somebody <somebody@example.com>\nLicense: GPL-2+\n\nLicense: GPL-2+\n This program is free software; you can redistribute it\n .\n version 2 of the License, or (at your option) any later\n version.\n\n",
+        );
     }
 
     #[test]
     fn test_no_changes_when_all_licenses_used() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
+        let original = "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n\nFiles: *\nCopyright: 2013 Somebody\nLicense: GPL-2+\n\nLicense: GPL-2+\n This program is free software\n";
+        fs::write(&path, original).unwrap();
 
-        let copyright_content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-
-Files: *
-Copyright: 2013 Somebody
-License: GPL-2+
-
-License: GPL-2+
- This program is free software
-"#;
-
-        let copyright_path = debian_dir.join("copyright");
-        fs::write(&copyright_path, copyright_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "blah", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
     }
 }
