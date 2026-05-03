@@ -1,260 +1,223 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, SystemdAction};
+use crate::{FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    // Find all systemd service files
+/// Map an Alias= value to its corrected form: `.service` is the only
+/// extension allowed for an alias of a `.service` unit. Returns the new
+/// value, or `None` if the existing value already has the right shape.
+fn fix_alias(alias: &str) -> Option<String> {
+    const SERVICE_EXT: &str = ".service";
+    match alias.rfind('.') {
+        Some(idx) => {
+            let (base, ext) = (&alias[..idx], &alias[idx..]);
+            if ext == SERVICE_EXT {
+                None
+            } else {
+                Some(format!("{}{}", base, SERVICE_EXT))
+            }
+        }
+        None => Some(format!("{}{}", alias, SERVICE_EXT)),
+    }
+}
+
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     let debian_path = base_path.join("debian");
     if !debian_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-
+    let mut diagnostics = Vec::new();
     for entry in std::fs::read_dir(&debian_path)? {
         let entry = entry?;
         let path = entry.path();
-
-        // Get the extension from the file path
-        let required_ext = match path.extension().and_then(|e| e.to_str()) {
-            Some(ext) => format!(".{}", ext),
-            None => continue, // Skip files without extension
-        };
-
-        // Skip if not a .service file
-        if required_ext != ".service" {
+        if path.extension().and_then(|e| e.to_str()) != Some("service") {
             continue;
         }
-
-        // Skip symbolic links
         if path.is_symlink() {
             continue;
         }
 
-        // Read the service file
         let content = std::fs::read_to_string(&path)?;
-
-        // Parse using systemd-unit-edit
         let unit = systemd_unit_edit::SystemdUnit::from_str(&content).map_err(|e| {
             FixerError::Other(format!("Failed to parse {}: {:?}", path.display(), e))
         })?;
-
-        // Find the Unit section
-        let mut unit_section = match unit.get_section("Unit") {
-            Some(section) => section,
-            None => continue, // No Unit section, skip this file
+        let Some(unit_section) = unit.get_section("Unit") else {
+            continue;
         };
 
-        // Get all "Alias" values
         let alias_values = unit_section.get_all("Alias");
-
-        if !alias_values.is_empty() {
-            let mut needs_fix = false;
-
-            // Check each alias and see if it needs fixing
-            for alias in &alias_values {
-                let (_base, current_ext) = match alias.rfind('.') {
-                    Some(idx) => (&alias[..idx], &alias[idx..]),
-                    None => (alias.as_str(), ""),
-                };
-
-                if current_ext != required_ext {
-                    needs_fix = true;
-                    break;
-                }
-            }
-
-            if needs_fix {
-                // Get the relative path from base_path for the lintian issue
-                let rel_path = path
-                    .strip_prefix(base_path)
-                    .map(|p| p.to_string_lossy().to_string())
-                    .unwrap_or_else(|_| path.to_string_lossy().to_string());
-
-                let issue = LintianIssue::source_with_info(
-                    "systemd-service-alias-without-extension",
-                    vec![rel_path],
-                );
-
-                if issue.should_fix(base_path) {
-                    // Remove all Alias entries
-                    unit_section.remove_all("Alias");
-
-                    // Add them back with the correct extension
-                    for alias in alias_values {
-                        let new_alias = if let Some(idx) = alias.rfind('.') {
-                            let base = &alias[..idx];
-                            format!("{}{}", base, required_ext)
-                        } else {
-                            format!("{}{}", alias, required_ext)
-                        };
-
-                        unit_section.add("Alias", &new_alias);
-                    }
-
-                    // Write the modified content back
-                    std::fs::write(&path, unit.text())?;
-
-                    fixed_issues.push(issue);
-                } else {
-                    overridden_issues.push(issue);
-                }
-            }
+        if alias_values.is_empty() {
+            continue;
         }
+
+        // Pair (old, new) for each alias that needs fixing. If none do,
+        // skip the file.
+        let fixes: Vec<(String, String)> = alias_values
+            .iter()
+            .filter_map(|a| fix_alias(a).map(|new| (a.clone(), new)))
+            .collect();
+        if fixes.is_empty() {
+            continue;
+        }
+
+        let rel: PathBuf = path.strip_prefix(base_path).unwrap_or(&path).to_path_buf();
+        let rel_str = rel.to_string_lossy().to_string();
+        let issue = LintianIssue::source_with_info(
+            "systemd-service-alias-without-extension",
+            vec![rel_str],
+        );
+
+        // Emit one (RemoveValue, Add) pair per malformed alias. Aliases
+        // that are already correct are left alone, preserving their
+        // position in the file.
+        let mut actions = Vec::with_capacity(fixes.len() * 2);
+        for (old, new) in fixes {
+            actions.push(Action::Systemd(SystemdAction::RemoveValue {
+                file: rel.clone(),
+                section: "Unit".into(),
+                field: "Alias".into(),
+                value: old,
+            }));
+            actions.push(Action::Systemd(SystemdAction::Add {
+                file: rel.clone(),
+                section: "Unit".into(),
+                field: "Alias".into(),
+                value: new,
+            }));
+        }
+
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            "Use proper extensions in Alias in systemd files.",
+            actions,
+        ));
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    Ok(
-        FixerResult::builder("Use proper extensions in Alias in systemd files.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "systemd-service-alias-without-extension",
     tags: ["systemd-service-alias-without-extension"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
+    #[test]
+    fn test_fix_alias() {
+        assert_eq!(fix_alias("bar"), Some("bar.service".to_string()));
+        assert_eq!(fix_alias("bar.target"), Some("bar.service".to_string()));
+        assert_eq!(fix_alias("bar.service"), None);
+    }
 
     #[test]
     fn test_add_service_extension_to_alias() {
-        let input = r#"[Unit]
-Description=Test Service
-Alias=bar
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("foo.service");
+        fs::write(
+            &path,
+            "[Unit]\nDescription=Test Service\nAlias=bar\n\n[Service]\nType=oneshot\n",
+        )
+        .unwrap();
 
-[Service]
-Type=oneshot
-"#;
+        run_apply(tmp.path()).unwrap();
 
-        let unit = systemd_unit_edit::SystemdUnit::from_str(input).unwrap();
-        let mut unit_section = unit.get_section("Unit").unwrap();
-
-        let alias_values = unit_section.get_all("Alias");
-        assert_eq!(alias_values, vec!["bar"]);
-
-        // Fix the alias
-        unit_section.remove_all("Alias");
-        unit_section.add("Alias", "bar.service");
-
-        let expected = r#"[Unit]
-Description=Test Service
-Alias=bar.service
-
-[Service]
-Type=oneshot
-"#;
-        assert_eq!(unit.text(), expected);
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "[Unit]\nDescription=Test Service\nAlias=bar.service\n\n[Service]\nType=oneshot\n",
+        );
     }
 
     #[test]
     fn test_replace_wrong_extension() {
-        let input = r#"[Unit]
-Description=Test Service
-Alias=bar.target
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("foo.service");
+        fs::write(
+            &path,
+            "[Unit]\nDescription=Test Service\nAlias=bar.target\n\n[Service]\nType=oneshot\n",
+        )
+        .unwrap();
 
-[Service]
-Type=oneshot
-"#;
+        run_apply(tmp.path()).unwrap();
 
-        let unit = systemd_unit_edit::SystemdUnit::from_str(input).unwrap();
-        let mut unit_section = unit.get_section("Unit").unwrap();
-
-        let alias_values = unit_section.get_all("Alias");
-        assert_eq!(alias_values, vec!["bar.target"]);
-
-        // Fix the alias - replace .target with .service
-        unit_section.remove_all("Alias");
-        let alias = &alias_values[0];
-        let base = &alias[..alias.rfind('.').unwrap()];
-        unit_section.add("Alias", &format!("{}.service", base));
-
-        let expected = r#"[Unit]
-Description=Test Service
-Alias=bar.service
-
-[Service]
-Type=oneshot
-"#;
-        assert_eq!(unit.text(), expected);
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "[Unit]\nDescription=Test Service\nAlias=bar.service\n\n[Service]\nType=oneshot\n",
+        );
     }
 
     #[test]
     fn test_multiple_aliases() {
-        let input = r#"[Unit]
-Description=Test Service
-Alias=foo
-Alias=bar.target
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("foo.service");
+        fs::write(
+            &path,
+            "[Unit]\nDescription=Test Service\nAlias=foo\nAlias=bar.target\n\n[Service]\nType=oneshot\n",
+        )
+        .unwrap();
 
-[Service]
-Type=oneshot
-"#;
+        run_apply(tmp.path()).unwrap();
 
-        let unit = systemd_unit_edit::SystemdUnit::from_str(input).unwrap();
-        let mut unit_section = unit.get_section("Unit").unwrap();
-
-        let alias_values = unit_section.get_all("Alias");
-        assert_eq!(alias_values, vec!["foo", "bar.target"]);
-
-        // Fix all aliases
-        unit_section.remove_all("Alias");
-        for alias in alias_values {
-            let new_alias = if let Some(idx) = alias.rfind('.') {
-                let base = &alias[..idx];
-                format!("{}.service", base)
-            } else {
-                format!("{}.service", alias)
-            };
-            unit_section.add("Alias", &new_alias);
-        }
-
-        let expected = r#"[Unit]
-Description=Test Service
-Alias=foo.service
-Alias=bar.service
-
-[Service]
-Type=oneshot
-"#;
-        assert_eq!(unit.text(), expected);
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "[Unit]\nDescription=Test Service\nAlias=foo.service\nAlias=bar.service\n\n[Service]\nType=oneshot\n",
+        );
     }
 
     #[test]
     fn test_correct_extension_unchanged() {
-        let input = r#"[Unit]
-Description=Test Service
-Alias=bar.service
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("foo.service");
+        let original =
+            "[Unit]\nDescription=Test Service\nAlias=bar.service\n\n[Service]\nType=oneshot\n";
+        fs::write(&path, original).unwrap();
 
-[Service]
-Type=oneshot
-"#;
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
+    }
 
-        let unit = systemd_unit_edit::SystemdUnit::from_str(input).unwrap();
-        let unit_section = unit.get_section("Unit").unwrap();
+    #[test]
+    fn test_partial_correct_aliases() {
+        // Mixed: one already-correct, one needing a fix. Only the broken
+        // one should be touched, and the correct one keeps its place.
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("foo.service");
+        fs::write(
+            &path,
+            "[Unit]\nDescription=Test Service\nAlias=foo.service\nAlias=bar\n\n[Service]\nType=oneshot\n",
+        )
+        .unwrap();
 
-        let alias_values = unit_section.get_all("Alias");
-        assert_eq!(alias_values, vec!["bar.service"]);
+        run_apply(tmp.path()).unwrap();
 
-        // Check that it already has the correct extension
-        for alias in &alias_values {
-            assert!(alias.ends_with(".service"));
-        }
-
-        // No changes needed
-        assert_eq!(unit.text(), input);
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "[Unit]\nDescription=Test Service\nAlias=foo.service\nAlias=bar.service\n\n[Service]\nType=oneshot\n",
+        );
     }
 }
