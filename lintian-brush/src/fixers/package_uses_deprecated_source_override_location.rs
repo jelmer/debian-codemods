@@ -1,68 +1,65 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, LintianIssue};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let old_path = base_path.join("debian/source.lintian-overrides");
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let old_rel = PathBuf::from("debian/source.lintian-overrides");
+    let new_rel = PathBuf::from("debian/source/lintian-overrides");
 
-    if !old_path.exists() {
-        return Err(FixerError::NoChanges);
+    let old_abs = base_path.join(&old_rel);
+    if !old_abs.exists() {
+        return Ok(Vec::new());
     }
+    let new_abs = base_path.join(&new_rel);
+
+    let old_content = fs::read_to_string(&old_abs)?;
+    let merged_content = if new_abs.exists() {
+        let mut existing = fs::read_to_string(&new_abs)?;
+        existing.push_str(&old_content);
+        existing
+    } else {
+        old_content
+    };
 
     let issue = LintianIssue::source_with_info(
         "old-source-override-location",
         vec!["debian/source.lintian-overrides".to_string()],
     );
 
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    let source_dir = base_path.join("debian/source");
-    let new_path = source_dir.join("lintian-overrides");
-
-    // Create debian/source directory if it doesn't exist
-    if !source_dir.exists() {
-        fs::create_dir_all(&source_dir)?;
-    }
-
-    // Read the content of the old file
-    let old_content = fs::read_to_string(&old_path)?;
-
-    if new_path.exists() {
-        // If the new file already exists, append the content
-        let mut new_content = fs::read_to_string(&new_path)?;
-        new_content.push_str(&old_content);
-        fs::write(&new_path, new_content)?;
-    } else {
-        // If the new file doesn't exist, move the content
-        fs::write(&new_path, old_content)?;
-    }
-
-    // Remove the old file
-    fs::remove_file(&old_path)?;
-
-    Ok(
-        FixerResult::builder("Move source package lintian overrides to debian/source.")
-            .fixed_issue(issue)
-            .certainty(crate::Certainty::Certain)
-            .build(),
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Move source package lintian overrides to debian/source.",
+        vec![
+            Action::Filesystem(FilesystemAction::Write {
+                file: new_rel,
+                content: merged_content.into_bytes(),
+            }),
+            Action::Filesystem(FilesystemAction::Delete { file: old_rel }),
+        ],
     )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
     name: "package-uses-deprecated-source-override-location",
     tags: ["old-source-override-location"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_simple_move() {
@@ -74,21 +71,19 @@ mod tests {
         let old_path = debian_dir.join("source.lintian-overrides");
         fs::write(&old_path, "foo source: some-tag exact match\n").unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(
             result.description,
             "Move source package lintian overrides to debian/source."
         );
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        assert_eq!(result.certainty, Some(Certainty::Certain));
 
-        // Old file should be removed
         assert!(!old_path.exists());
-
-        // New file should exist with same content
         let new_path = debian_dir.join("source/lintian-overrides");
-        assert!(new_path.exists());
-        let content = fs::read_to_string(&new_path).unwrap();
-        assert_eq!(content, "foo source: some-tag exact match\n");
+        assert_eq!(
+            fs::read_to_string(&new_path).unwrap(),
+            "foo source: some-tag exact match\n"
+        );
     }
 
     #[test]
@@ -101,41 +96,25 @@ mod tests {
 
         let old_path = debian_dir.join("source.lintian-overrides");
         let new_path = source_dir.join("lintian-overrides");
+        fs::write(&old_path, "foo source: tag-a\n").unwrap();
+        fs::write(&new_path, "foo source: tag-b\n").unwrap();
 
-        fs::write(&old_path, "foo source: some-tag exact match\n").unwrap();
-        fs::write(&new_path, "bar source: another-tag\n").unwrap();
+        run_apply(base_path).unwrap();
 
-        let result = run(base_path).unwrap();
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Old file should be removed
         assert!(!old_path.exists());
-
-        // New file should have both contents
-        let content = fs::read_to_string(&new_path).unwrap();
         assert_eq!(
-            content,
-            "bar source: another-tag\nfoo source: some-tag exact match\n"
+            fs::read_to_string(&new_path).unwrap(),
+            "foo source: tag-b\nfoo source: tag-a\n"
         );
     }
 
     #[test]
-    fn test_no_old_file() {
+    fn test_no_change_when_no_old_file() {
         let temp_dir = TempDir::new().unwrap();
         let base_path = temp_dir.path();
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    #[test]
-    fn test_no_debian_dir() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
     }
 }
